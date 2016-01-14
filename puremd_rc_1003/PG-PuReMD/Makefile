@@ -1,0 +1,226 @@
+CC      = mpicc
+CDEBUG  = -g
+CNOOPT  = -O2
+#COPT    = -O3 -funroll-loops -fstrict-aliasing -D__CUDA_DEBUG_LOG__#-finline-functions -finline-limit=15 -qhot
+COPT    = -O3 -funroll-loops -fstrict-aliasing #-finline-functions -finline-limit=15 -qhot
+
+LIBS    = -lz -lm#-lmass
+CDEFS   = -I. -Wall #-W -Wno-uninitialized -ldl -rdynamic -pg -g #-qlanglvl=extc99 -qsuppress=1500-036 -qarch=auto -qtune=auto
+
+CUDA_INCLUDE	= -I. -I/opt/cuda6/include
+#CUDA_INCLUDE	= -I. -I/usr/common/usg/cuda/5.5/include -I/usr/common/usg/openmpi/1.4.5/gcc/include
+
+CFLAGS  = $(CDEFS) $(COPT) $(CUDA_INCLUDE)
+FLAG    = $(CFLAGS) $(INCS) $(LIBS)
+EXE     = pg-puremd 
+
+#DEBUG OPTIONS
+#__CUDA_DEBUG_LOG__    	Prints debug information
+#__CUDA_MEM__		Prints memory information of all the major data structures and total mem. 	
+#DEBUG, DEBUG_FOCUS, TEST_ENERGY, TEST_FOCUS, CG_PERFORMANCE, LOG_PERFORMANCE, STANDARD_BOUNDARIES, OLD_BOUNDARIES, 
+#MIDPOINT_BOUNDARIES are defined in the original parallel code.
+
+NVCC			= nvcc
+NVCC_LIBS	= -L/opt/cuda6/lib64 -lcudart -m64
+#NVCC_LIBS	= -L/usr/common/usg/cuda/5.5/lib64 -lcudart -m64
+NVCC_FLAGS	= $(CUDA_INCLUDE) -D__USE_GPU__ -arch=sm_20 --compiler-options "-O3 -funroll-loops -fstrict-aliasing" -O3
+#NVCC_FLAGS	= $(CUDA_INCLUDE) -D__USE_GPU__ -D__CUDA_DEBUG_LOG__ -arch=sm_20 --compiler-options "-O3 -funroll-loops -fstrict-aliasing" -O3
+
+OBJ     =  allocate.o basic_comm.o ffield.o grid.o list.o lookup.o io_tools.o reset_tools.o restart.o random.o tool_box.o traj.o vector.o analyze.o box.o system_props.o control.o comm_tools.o geo_tools.o linear_solvers.o neighbors.o qEq.o bond_orders.o multi_body.o bonds.o valence_angles.o hydrogen_bonds.o torsion_angles.o nonbonded.o forces.o integrate.o init_md.o parallelreax.o cuda_utils.o dev_alloc.o cuda_environment.o dev_system_props.o reduction.o center_mass.o cuda_copy.o cuda_reset_tools.o dev_list.o cuda_neighbors.o cuda_bond_orders.o cuda_bonds.o cuda_multi_body.o cuda_valence_angles.o cuda_torsion_angles.o cuda_hydrogen_bonds.o cuda_forces.o cuda_qEq.o cuda_linear_solvers.o matvec.o dual_matvec.o cuda_nonbonded.o cuda_integrate.o cuda_post_evolve.o cuda_init_md.o validation.o cuda_lookup.o
+
+all:    $(EXE)
+
+pg-puremd: $(OBJ) Makefile
+	$(CC) $(OBJ) $(FLAG) $(NVCC_LIBS) -o $(EXE)
+
+# level 8
+parallelreax.o: parallelreax.c reax_types.h analyze.o comm_tools.o control.o ffield.o forces.o geo_tools.o init_md.o integrate.o io_tools.o neighbors.o reset_tools.o restart.o system_props.o tool_box.o traj.o vector.o
+	$(CC) $(CFLAGS) -c parallelreax.c
+
+# level 7
+init_md.o: init_md.c init_md.h reax_types.h allocate.o box.o comm_tools.o forces.o grid.o integrate.o io_tools.o list.o lookup.o neighbors.o random.o reset_tools.o system_props.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c init_md.c
+
+#level 6
+integrate.o: integrate.c integrate.h reax_types.h box.o comm_tools.o forces.o grid.o io_tools.o neighbors.o reset_tools.o system_props.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c integrate.c
+
+cuda_integrate.o: cuda_integrate.cu cuda_integrate.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_integrate.cu
+
+# level 5
+forces.o: forces.c forces.h reax_types.h bond_orders.o bonds.o basic_comm.o hydrogen_bonds.o io_tools.o list.o lookup.o multi_body.o nonbonded.o qEq.o tool_box.o torsion_angles.o valence_angles.o vector.o
+	$(CC) $(CFLAGS) -c forces.c
+
+cuda_forces.o: cuda_forces.cu cuda_forces.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_forces.cu
+
+geo_tools.o: geo_tools.c geo_tools.h reax_types.h allocate.o box.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c geo_tools.c
+
+restart.o: restart.c restart.h reax_types.h allocate.o box.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c restart.c
+
+# level 4
+box.o: box.c box.h reax_types.h comm_tools.o io_tools.o system_props.o vector.o
+	$(CC) $(CFLAGS) -c box.c
+
+comm_tools.o: comm_tools.c comm_tools.h grid.o reset_tools.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c comm_tools.c
+
+linear_solvers.o: linear_solvers.c linear_solvers.h reax_types.h basic_comm.o io_tools.o vector.o
+	$(CC) $(CFLAGS) -c linear_solvers.c
+
+cuda_linear_solvers.o: cuda_linear_solvers.cu cuda_linear_solvers.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_linear_solvers.cu
+
+neighbors.o: neighbors.c neighbors.h reax_types.h io_tools.o list.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c neighbors.c
+
+cuda_neighbors.o: cuda_neighbors.cu cuda_neighbors.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_neighbors.cu
+
+qEq.o: qEq.c qEq.h reax_types.h allocate.o basic_comm.o io_tools.o linear_solvers.o
+	$(CC) $(CFLAGS) -c qEq.c
+
+cuda_qEq.o: cuda_qEq.cu cuda_qEq.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_qEq.cu
+
+# level 3
+bonds.o: bonds.c bonds.h reax_types.h bond_orders.o list.o tool_box.o vector.o 
+	$(CC) $(CFLAGS) -c bonds.c
+
+cuda_bonds.o: cuda_bonds.cu cuda_bonds.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_bonds.cu
+
+grid.o: grid.c grid.h reax_types.h allocate.o reset_tools.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c grid.c
+
+hydrogen_bonds.o: hydrogen_bonds.c hydrogen_bonds.h reax_types.h bond_orders.o list.o valence_angles.o vector.o
+	$(CC) $(CFLAGS) -c hydrogen_bonds.c
+
+cuda_hydrogen_bonds.o: cuda_hydrogen_bonds.cu cuda_hydrogen_bonds.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_hydrogen_bonds.cu
+
+io_tools.o: io_tools.c io_tools.h basic_comm.o list.o reset_tools.o system_props.o tool_box.o traj.o vector.o
+	$(CC) $(CFLAGS) -c io_tools.c
+
+lookup.o: lookup.c lookup.h reax_types.h nonbonded.o tool_box.o
+	$(CC) $(CFLAGS) -c lookup.c
+
+cuda_lookup.o: cuda_lookup.cu cuda_lookup.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_lookup.cu
+
+multi_body.o: multi_body.c multi_body.h reax_types.h bond_orders.o list.o vector.o
+	$(CC) $(CFLAGS) -c multi_body.c
+
+cuda_multi_body.o: cuda_multi_body.cu cuda_multi_body.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_multi_body.cu
+
+torsion_angles.o: torsion_angles.c torsion_angles.h reax_types.h tool_box.o bond_orders.o list.o vector.o
+	$(CC) $(CFLAGS) -c torsion_angles.c
+	
+cuda_torsion_angles.o: cuda_torsion_angles.cu cuda_torsion_angles.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_torsion_angles.cu
+
+valence_angles.o: valence_angles.c valence_angles.h reax_types.h bond_orders.o list.o vector.o
+	$(CC) $(CFLAGS) -c valence_angles.c
+
+cuda_valence_angles.o: cuda_valence_angles.cu cuda_valence_angles.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_valence_angles.cu
+
+# level 2
+allocate.o: allocate.c allocate.h list.o reset_tools.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c allocate.c
+
+analyze.o: analyze.c analyze.h reax_types.h list.o vector.o
+	$(CC) $(CFLAGS) -c analyze.c
+
+basic_comm.o: basic_comm.c basic_comm.h reax_types.h vector.o
+	$(CC) $(CFLAGS) -c basic_comm.c
+
+bond_orders.o: bond_orders.c bond_orders.h reax_types.h list.o vector.o
+	$(CC) $(CFLAGS) -c bond_orders.c
+
+cuda_bond_orders.o: cuda_bond_orders.cu cuda_bond_orders.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_bond_orders.cu
+
+nonbonded.o: nonbonded.c nonbonded.h reax_types.h list.o vector.o 
+	$(CC) $(CFLAGS) -c nonbonded.c
+cuda_nonbonded.o: cuda_nonbonded.cu cuda_nonbonded.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_nonbonded.cu
+
+reset_tools.o: reset_tools.c reset_tools.h reax_types.h list.o tool_box.o vector.o
+	$(CC) $(CFLAGS) -c reset_tools.c
+
+system_props.o: system_props.c system_props.h reax_types.h tool_box.o vector.o
+	$(CC) $(CFLAGS) -c system_props.c
+
+center_mass.o: center_mass.h center_mass.cu vector.o
+	$(NVCC) $(NVCC_FLAGS) -c center_mass.cu
+
+# level 1
+control.o: control.c control.h reax_types.h tool_box.o
+	$(CC) $(CFLAGS) -c control.c
+
+ffield.o: ffield.c ffield.h reax_types.h tool_box.o
+	$(CC) $(CFLAGS) -c ffield.c
+
+list.o: list.c list.h reax_types.h tool_box.o
+	$(CC) $(CFLAGS) -c list.c
+
+dev_list.o: dev_list.cu dev_list.h reax_types.h 
+	$(NVCC) $(NVCC_FLAGS) -c dev_list.cu
+
+traj.o: traj.c traj.h reax_types.h list.o tool_box.o
+	$(CC) $(CFLAGS) -c traj.c
+
+vector.o: vector.cu vector.h reax_types.h random.o
+#	$(CC) $(CFLAGS) -c vector.c
+	$(NVCC) $(NVCC_FLAGS) -c vector.cu
+
+dev_alloc.o: dev_alloc.h dev_alloc.cu
+	$(NVCC) $(NVCC_FLAGS) -c dev_alloc.cu
+
+cuda_environment.o: cuda_environment.h cuda_environment.cu
+	$(NVCC) $(NVCC_FLAGS) -c cuda_environment.cu
+
+dev_system_props.o: dev_system_props.h dev_system_props.cu
+	$(NVCC) $(NVCC_FLAGS) -c dev_system_props.cu
+
+cuda_copy.o: cuda_copy.h cuda_copy.cu
+	$(NVCC) $(NVCC_FLAGS) -c cuda_copy.cu
+
+cuda_reset_tools.o: cuda_reset_tools.h cuda_reset_tools.cu
+	$(NVCC) $(NVCC_FLAGS) -c cuda_reset_tools.cu
+
+cuda_post_evolve.o: cuda_post_evolve.cu cuda_post_evolve.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_post_evolve.cu
+
+cuda_init_md.o: cuda_init_md.cu cuda_init_md.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_init_md.cu
+
+# level 0 - no external dependencies
+random.o: random.c random.h reax_types.h 
+	$(CC) $(CFLAGS) -c random.c
+
+tool_box.o: tool_box.c tool_box.h reax_types.h 
+	$(CC) $(CFLAGS) -c tool_box.c
+
+cuda_utils.o: cuda_utils.h cuda_utils.cu cuda_reax_constants.h
+	$(NVCC) $(NVCC_FLAGS) -c cuda_utils.cu
+
+reduction.o: reduction.h reduction.cu
+	$(NVCC) $(NVCC_FLAGS) -c reduction.cu
+
+matvec.o: matvec.cu matvec.h
+	$(NVCC) $(NVCC_FLAGS) -c matvec.cu
+
+dual_matvec.o: dual_matvec.cu dual_matvec.h
+	$(NVCC) $(NVCC_FLAGS) -c dual_matvec.cu
+
+validation.o: validation.h validation.cu
+	$(NVCC) $(NVCC_FLAGS) -c validation.cu
+
+clean:
+	rm -f *.o *~ core $(EXE) 

@@ -1,0 +1,28 @@
+
+Changes to the original code. 
+
+1. grid.c - changed the span from cell->cutoff to control->vlist_cut to
+include all the cells for both native and non-native cells
+
+2. in bond_orders.c, in the bond orders calculation, turned off the use of
+bond_mark feature on both device and host.
+
+3. Merged the THREE_BODY Fix, from Single GPU implementation to mGPU
+implementation, to fix the three_body's generated per bond.
+
+4. The valence_angles has a condition where I or J has to be less than "n" but
+there is no restriction on K
+
+so if we have (i>n j>n and k<n) we have a problem
+
+this will NOT produce a 3 BODY. 
+
+where as (i>n j<n and k>n) 
+will produce a 3 BODY.
+
+if we remove this condition, the number of three bodies are matching. 
+Even the bonds are matching..... so this is the fix and get it working.
+
+5. Updated the condition for sparse matrix generation
+
+6. updated the condition for non bonded force calculations.

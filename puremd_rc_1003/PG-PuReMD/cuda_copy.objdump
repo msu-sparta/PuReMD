@@ -1,0 +1,860 @@
+
+cuda_copy.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <rvec_Copy>:
+  fprintf( fout, "\n" );
+}
+
+
+  CUDA_HOST_DEVICE static inline void rvec_Copy( rvec dest, rvec src )
+{
+   0:	55                   	push   %rbp
+   1:	48 89 e5             	mov    %rsp,%rbp
+   4:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+   8:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+  dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
+   c:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+  10:	48 8b 10             	mov    (%rax),%rdx
+  13:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  17:	48 89 10             	mov    %rdx,(%rax)
+  1a:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  1e:	48 8d 50 08          	lea    0x8(%rax),%rdx
+  22:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+  26:	48 8b 40 08          	mov    0x8(%rax),%rax
+  2a:	48 89 02             	mov    %rax,(%rdx)
+  2d:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  31:	48 8d 50 10          	lea    0x10(%rax),%rdx
+  35:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+  39:	48 8b 40 10          	mov    0x10(%rax),%rax
+  3d:	48 89 02             	mov    %rax,(%rdx)
+}
+  40:	5d                   	pop    %rbp
+  41:	c3                   	retq   
+
+0000000000000042 <ivec_Copy>:
+  v[0] = v[1] = v[2] = 0;
+}
+
+
+CUDA_HOST_DEVICE static inline void ivec_Copy( ivec dest, ivec src )
+{
+  42:	55                   	push   %rbp
+  43:	48 89 e5             	mov    %rsp,%rbp
+  46:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+  4a:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+  dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
+  4e:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+  52:	8b 10                	mov    (%rax),%edx
+  54:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  58:	89 10                	mov    %edx,(%rax)
+  5a:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  5e:	48 8d 50 04          	lea    0x4(%rax),%rdx
+  62:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+  66:	8b 40 04             	mov    0x4(%rax),%eax
+  69:	89 02                	mov    %eax,(%rdx)
+  6b:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  6f:	48 8d 50 08          	lea    0x8(%rax),%rdx
+  73:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+  77:	8b 40 08             	mov    0x8(%rax),%eax
+  7a:	89 02                	mov    %eax,(%rdx)
+}
+  7c:	5d                   	pop    %rbp
+  7d:	c3                   	retq   
+
+000000000000007e <Sync_Grid>:
+
+extern "C" int  Make_List( int, int, int, reax_list*);
+extern "C" void Delete_List( reax_list*);
+
+void Sync_Grid (grid *host, grid *device)
+{
+  7e:	55                   	push   %rbp
+  7f:	48 89 e5             	mov    %rsp,%rbp
+  82:	48 83 ec 60          	sub    $0x60,%rsp
+  86:	48 89 7d a8          	mov    %rdi,-0x58(%rbp)
+  8a:	48 89 75 a0          	mov    %rsi,-0x60(%rbp)
+   int total;
+	grid_cell local_cell;
+   total = host->ncells[0] * host->ncells[1] * host->ncells[2];
+  8e:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+  92:	8b 50 0c             	mov    0xc(%rax),%edx
+  95:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+  99:	8b 40 10             	mov    0x10(%rax),%eax
+  9c:	0f af d0             	imul   %eax,%edx
+  9f:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+  a3:	8b 40 14             	mov    0x14(%rax),%eax
+  a6:	0f af c2             	imul   %edx,%eax
+  a9:	89 45 fc             	mov    %eax,-0x4(%rbp)
+
+   ivec_Copy (device->ncells, host->ncells);
+  ac:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+  b0:	48 8d 50 0c          	lea    0xc(%rax),%rdx
+  b4:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+  b8:	48 83 c0 0c          	add    $0xc,%rax
+  bc:	48 89 d6             	mov    %rdx,%rsi
+  bf:	48 89 c7             	mov    %rax,%rdi
+  c2:	e8 7b ff ff ff       	callq  42 <ivec_Copy>
+   rvec_Copy (device->cell_len, host->cell_len);
+  c7:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+  cb:	48 8d 50 18          	lea    0x18(%rax),%rdx
+  cf:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+  d3:	48 83 c0 18          	add    $0x18,%rax
+  d7:	48 89 d6             	mov    %rdx,%rsi
+  da:	48 89 c7             	mov    %rax,%rdi
+  dd:	e8 1e ff ff ff       	callq  0 <rvec_Copy>
+   rvec_Copy (device->inv_len, host->inv_len);
+  e2:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+  e6:	48 8d 50 30          	lea    0x30(%rax),%rdx
+  ea:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+  ee:	48 83 c0 30          	add    $0x30,%rax
+  f2:	48 89 d6             	mov    %rdx,%rsi
+  f5:	48 89 c7             	mov    %rax,%rdi
+  f8:	e8 03 ff ff ff       	callq  0 <rvec_Copy>
+
+   ivec_Copy (device->bond_span, host->bond_span );
+  fd:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 101:	48 8d 50 48          	lea    0x48(%rax),%rdx
+ 105:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 109:	48 83 c0 48          	add    $0x48,%rax
+ 10d:	48 89 d6             	mov    %rdx,%rsi
+ 110:	48 89 c7             	mov    %rax,%rdi
+ 113:	e8 2a ff ff ff       	callq  42 <ivec_Copy>
+   ivec_Copy (device->nonb_span, host->nonb_span );
+ 118:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 11c:	48 8d 50 54          	lea    0x54(%rax),%rdx
+ 120:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 124:	48 83 c0 54          	add    $0x54,%rax
+ 128:	48 89 d6             	mov    %rdx,%rsi
+ 12b:	48 89 c7             	mov    %rax,%rdi
+ 12e:	e8 0f ff ff ff       	callq  42 <ivec_Copy>
+   ivec_Copy (device->vlist_span, host->vlist_span );
+ 133:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 137:	48 8d 50 60          	lea    0x60(%rax),%rdx
+ 13b:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 13f:	48 83 c0 60          	add    $0x60,%rax
+ 143:	48 89 d6             	mov    %rdx,%rsi
+ 146:	48 89 c7             	mov    %rax,%rdi
+ 149:	e8 f4 fe ff ff       	callq  42 <ivec_Copy>
+
+   ivec_Copy (device->native_cells, host->native_cells );
+ 14e:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 152:	48 8d 50 6c          	lea    0x6c(%rax),%rdx
+ 156:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 15a:	48 83 c0 6c          	add    $0x6c,%rax
+ 15e:	48 89 d6             	mov    %rdx,%rsi
+ 161:	48 89 c7             	mov    %rax,%rdi
+ 164:	e8 d9 fe ff ff       	callq  42 <ivec_Copy>
+   ivec_Copy (device->native_str, host->native_str );
+ 169:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 16d:	48 8d 50 78          	lea    0x78(%rax),%rdx
+ 171:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 175:	48 83 c0 78          	add    $0x78,%rax
+ 179:	48 89 d6             	mov    %rdx,%rsi
+ 17c:	48 89 c7             	mov    %rax,%rdi
+ 17f:	e8 be fe ff ff       	callq  42 <ivec_Copy>
+   ivec_Copy (device->native_end, host->native_end );
+ 184:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 188:	48 8d 90 84 00 00 00 	lea    0x84(%rax),%rdx
+ 18f:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 193:	48 05 84 00 00 00    	add    $0x84,%rax
+ 199:	48 89 d6             	mov    %rdx,%rsi
+ 19c:	48 89 c7             	mov    %rax,%rdi
+ 19f:	e8 9e fe ff ff       	callq  42 <ivec_Copy>
+
+   device->ghost_cut = host->ghost_cut;
+ 1a4:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 1a8:	48 8b 90 90 00 00 00 	mov    0x90(%rax),%rdx
+ 1af:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 1b3:	48 89 90 90 00 00 00 	mov    %rdx,0x90(%rax)
+   ivec_Copy (device->ghost_span, host->ghost_span );
+ 1ba:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 1be:	48 8d 90 98 00 00 00 	lea    0x98(%rax),%rdx
+ 1c5:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 1c9:	48 05 98 00 00 00    	add    $0x98,%rax
+ 1cf:	48 89 d6             	mov    %rdx,%rsi
+ 1d2:	48 89 c7             	mov    %rax,%rdi
+ 1d5:	e8 68 fe ff ff       	callq  42 <ivec_Copy>
+   ivec_Copy (device->ghost_nonb_span, host->ghost_nonb_span );
+ 1da:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 1de:	48 8d 90 a4 00 00 00 	lea    0xa4(%rax),%rdx
+ 1e5:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 1e9:	48 05 a4 00 00 00    	add    $0xa4,%rax
+ 1ef:	48 89 d6             	mov    %rdx,%rsi
+ 1f2:	48 89 c7             	mov    %rax,%rdi
+ 1f5:	e8 48 fe ff ff       	callq  42 <ivec_Copy>
+   ivec_Copy (device->ghost_hbond_span, host->ghost_hbond_span );
+ 1fa:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 1fe:	48 8d 90 b0 00 00 00 	lea    0xb0(%rax),%rdx
+ 205:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 209:	48 05 b0 00 00 00    	add    $0xb0,%rax
+ 20f:	48 89 d6             	mov    %rdx,%rsi
+ 212:	48 89 c7             	mov    %rax,%rdi
+ 215:	e8 28 fe ff ff       	callq  42 <ivec_Copy>
+   ivec_Copy (device->ghost_bond_span, host->ghost_bond_span );
+ 21a:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 21e:	48 8d 90 bc 00 00 00 	lea    0xbc(%rax),%rdx
+ 225:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 229:	48 05 bc 00 00 00    	add    $0xbc,%rax
+ 22f:	48 89 d6             	mov    %rdx,%rsi
+ 232:	48 89 c7             	mov    %rax,%rdi
+ 235:	e8 08 fe ff ff       	callq  42 <ivec_Copy>
+
+	copy_host_device (host->str, device->str, sizeof (int) * total, cudaMemcpyHostToDevice, "grid:str");
+ 23a:	8b 45 fc             	mov    -0x4(%rbp),%eax
+ 23d:	c1 e0 02             	shl    $0x2,%eax
+ 240:	89 c2                	mov    %eax,%edx
+ 242:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 246:	48 8b b0 d8 00 00 00 	mov    0xd8(%rax),%rsi
+ 24d:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 251:	48 8b 80 d8 00 00 00 	mov    0xd8(%rax),%rax
+ 258:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 25e:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 263:	48 89 c7             	mov    %rax,%rdi
+ 266:	e8 00 00 00 00       	callq  26b <Sync_Grid+0x1ed>
+	copy_host_device (host->end, device->end, sizeof (int) * total, cudaMemcpyHostToDevice, "grid:end");
+ 26b:	8b 45 fc             	mov    -0x4(%rbp),%eax
+ 26e:	c1 e0 02             	shl    $0x2,%eax
+ 271:	89 c2                	mov    %eax,%edx
+ 273:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 277:	48 8b b0 e0 00 00 00 	mov    0xe0(%rax),%rsi
+ 27e:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 282:	48 8b 80 e0 00 00 00 	mov    0xe0(%rax),%rax
+ 289:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 28f:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 294:	48 89 c7             	mov    %rax,%rdi
+ 297:	e8 00 00 00 00       	callq  29c <Sync_Grid+0x21e>
+	copy_host_device (host->cutoff, device->cutoff, sizeof (real) * total, cudaMemcpyHostToDevice, "grid:cutoff");
+ 29c:	8b 45 fc             	mov    -0x4(%rbp),%eax
+ 29f:	c1 e0 03             	shl    $0x3,%eax
+ 2a2:	89 c2                	mov    %eax,%edx
+ 2a4:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 2a8:	48 8b b0 e8 00 00 00 	mov    0xe8(%rax),%rsi
+ 2af:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 2b3:	48 8b 80 e8 00 00 00 	mov    0xe8(%rax),%rax
+ 2ba:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 2c0:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 2c5:	48 89 c7             	mov    %rax,%rdi
+ 2c8:	e8 00 00 00 00       	callq  2cd <Sync_Grid+0x24f>
+	copy_host_device (host->nbrs_x, device->nbrs_x, sizeof (ivec) * total * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x");
+ 2cd:	8b 45 fc             	mov    -0x4(%rbp),%eax
+ 2d0:	48 98                	cltq   
+ 2d2:	89 c2                	mov    %eax,%edx
+ 2d4:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 2d8:	8b 40 08             	mov    0x8(%rax),%eax
+ 2db:	48 98                	cltq   
+ 2dd:	0f af d0             	imul   %eax,%edx
+ 2e0:	89 d0                	mov    %edx,%eax
+ 2e2:	01 c0                	add    %eax,%eax
+ 2e4:	01 d0                	add    %edx,%eax
+ 2e6:	c1 e0 02             	shl    $0x2,%eax
+ 2e9:	89 c2                	mov    %eax,%edx
+ 2eb:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 2ef:	48 8b b0 f0 00 00 00 	mov    0xf0(%rax),%rsi
+ 2f6:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 2fa:	48 8b 80 f0 00 00 00 	mov    0xf0(%rax),%rax
+ 301:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 307:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 30c:	48 89 c7             	mov    %rax,%rdi
+ 30f:	e8 00 00 00 00       	callq  314 <Sync_Grid+0x296>
+	copy_host_device (host->nbrs_cp, device->nbrs_cp, sizeof (rvec) * total * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp");
+ 314:	8b 45 fc             	mov    -0x4(%rbp),%eax
+ 317:	48 98                	cltq   
+ 319:	89 c2                	mov    %eax,%edx
+ 31b:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 31f:	8b 40 08             	mov    0x8(%rax),%eax
+ 322:	48 98                	cltq   
+ 324:	0f af d0             	imul   %eax,%edx
+ 327:	89 d0                	mov    %edx,%eax
+ 329:	01 c0                	add    %eax,%eax
+ 32b:	01 d0                	add    %edx,%eax
+ 32d:	c1 e0 03             	shl    $0x3,%eax
+ 330:	89 c2                	mov    %eax,%edx
+ 332:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 336:	48 8b b0 f8 00 00 00 	mov    0xf8(%rax),%rsi
+ 33d:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 341:	48 8b 80 f8 00 00 00 	mov    0xf8(%rax),%rax
+ 348:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 34e:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 353:	48 89 c7             	mov    %rax,%rdi
+ 356:	e8 00 00 00 00       	callq  35b <Sync_Grid+0x2dd>
+
+	copy_host_device (host->rel_box, device->rel_box, sizeof (ivec) * total, cudaMemcpyHostToDevice, "grid:rel_box");
+ 35b:	8b 55 fc             	mov    -0x4(%rbp),%edx
+ 35e:	89 d0                	mov    %edx,%eax
+ 360:	01 c0                	add    %eax,%eax
+ 362:	01 d0                	add    %edx,%eax
+ 364:	c1 e0 02             	shl    $0x2,%eax
+ 367:	89 c2                	mov    %eax,%edx
+ 369:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 36d:	48 8b b0 00 01 00 00 	mov    0x100(%rax),%rsi
+ 374:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 378:	48 8b 80 00 01 00 00 	mov    0x100(%rax),%rax
+ 37f:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 385:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 38a:	48 89 c7             	mov    %rax,%rdi
+ 38d:	e8 00 00 00 00       	callq  392 <Sync_Grid+0x314>
+
+	device->max_nbrs = host->max_nbrs;
+ 392:	48 8b 45 a8          	mov    -0x58(%rbp),%rax
+ 396:	8b 50 08             	mov    0x8(%rax),%edx
+ 399:	48 8b 45 a0          	mov    -0x60(%rbp),%rax
+ 39d:	89 50 08             	mov    %edx,0x8(%rax)
+
+		copy_host_device (&local_cell, &device->cells[i], sizeof (grid_cell), 
+					cudaMemcpyHostToDevice, "grid:cell-cuda_copy");
+   }
+	*/
+}
+ 3a0:	c9                   	leaveq 
+ 3a1:	c3                   	retq   
+
+00000000000003a2 <Sync_Atoms>:
+
+void Sync_Atoms (reax_system *sys)
+{
+ 3a2:	55                   	push   %rbp
+ 3a3:	48 89 e5             	mov    %rsp,%rbp
+ 3a6:	48 83 ec 10          	sub    $0x10,%rsp
+ 3aa:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+	copy_host_device (sys->my_atoms, sys->d_my_atoms, 
+ 3ae:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 3b2:	8b 80 9c 00 00 00    	mov    0x9c(%rax),%eax
+ 3b8:	69 c0 d0 00 00 00    	imul   $0xd0,%eax,%eax
+ 3be:	89 c2                	mov    %eax,%edx
+ 3c0:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 3c4:	48 8b b0 e0 0b 00 00 	mov    0xbe0(%rax),%rsi
+ 3cb:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 3cf:	48 8b 80 d8 0b 00 00 	mov    0xbd8(%rax),%rax
+ 3d6:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 3dc:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 3e1:	48 89 c7             	mov    %rax,%rdi
+ 3e4:	e8 00 00 00 00       	callq  3e9 <Sync_Atoms+0x47>
+			sizeof (reax_atom) * sys->total_cap, cudaMemcpyHostToDevice, "system:my_atoms");
+}
+ 3e9:	c9                   	leaveq 
+ 3ea:	c3                   	retq   
+
+00000000000003eb <Sync_System>:
+
+void Sync_System (reax_system *sys)
+{
+ 3eb:	55                   	push   %rbp
+ 3ec:	48 89 e5             	mov    %rsp,%rbp
+ 3ef:	48 83 ec 10          	sub    $0x10,%rsp
+ 3f3:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+	//fprintf (stderr, "p:%d - trying to copy atoms : %d \n", sys->my_rank, sys->local_cap);
+	Sync_Atoms (sys);
+ 3f7:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 3fb:	48 89 c7             	mov    %rax,%rdi
+ 3fe:	e8 00 00 00 00       	callq  403 <Sync_System+0x18>
+
+	copy_host_device (&(sys->my_box), sys->d_my_box, 
+ 403:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 407:	48 8b 80 98 09 00 00 	mov    0x998(%rax),%rax
+ 40e:	48 8b 55 f8          	mov    -0x8(%rbp),%rdx
+ 412:	48 8d ba 20 06 00 00 	lea    0x620(%rdx),%rdi
+ 419:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 41f:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 424:	ba b8 01 00 00       	mov    $0x1b8,%edx
+ 429:	48 89 c6             	mov    %rax,%rsi
+ 42c:	e8 00 00 00 00       	callq  431 <Sync_System+0x46>
+			sizeof (simulation_box), cudaMemcpyHostToDevice, "system:my_box");
+
+	copy_host_device (&(sys->my_ext_box), sys->d_my_ext_box, 
+ 431:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 435:	48 8b 80 a0 09 00 00 	mov    0x9a0(%rax),%rax
+ 43c:	48 8b 55 f8          	mov    -0x8(%rbp),%rdx
+ 440:	48 8d ba d8 07 00 00 	lea    0x7d8(%rdx),%rdi
+ 447:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 44d:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 452:	ba b8 01 00 00       	mov    $0x1b8,%edx
+ 457:	48 89 c6             	mov    %rax,%rsi
+ 45a:	e8 00 00 00 00       	callq  45f <Sync_System+0x74>
+			sizeof (simulation_box), cudaMemcpyHostToDevice, "system:my_ext_box");
+
+	copy_host_device (sys->reax_param.sbp, sys->reax_param.d_sbp, 
+ 45f:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 463:	8b 00                	mov    (%rax),%eax
+ 465:	c1 e0 04             	shl    $0x4,%eax
+ 468:	89 c2                	mov    %eax,%edx
+ 46a:	c1 e2 04             	shl    $0x4,%edx
+ 46d:	89 d1                	mov    %edx,%ecx
+ 46f:	29 c1                	sub    %eax,%ecx
+ 471:	89 c8                	mov    %ecx,%eax
+ 473:	89 c2                	mov    %eax,%edx
+ 475:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 479:	48 8b 70 40          	mov    0x40(%rax),%rsi
+ 47d:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 481:	48 8b 40 38          	mov    0x38(%rax),%rax
+ 485:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 48b:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 490:	48 89 c7             	mov    %rax,%rdi
+ 493:	e8 00 00 00 00       	callq  498 <Sync_System+0xad>
+			sizeof (single_body_parameters) * sys->reax_param.num_atom_types, cudaMemcpyHostToDevice, "system:sbp");
+	copy_host_device (sys->reax_param.tbp, sys->reax_param.d_tbp, 
+ 498:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 49c:	8b 00                	mov    (%rax),%eax
+ 49e:	be 02 00 00 00       	mov    $0x2,%esi
+ 4a3:	89 c7                	mov    %eax,%edi
+ 4a5:	e8 00 00 00 00       	callq  4aa <Sync_System+0xbf>
+ 4aa:	f2 0f 10 0d 00 00 00 	movsd  0x0(%rip),%xmm1        # 4b2 <Sync_System+0xc7>
+ 4b1:	00 
+ 4b2:	f2 0f 59 c1          	mulsd  %xmm1,%xmm0
+ 4b6:	f2 0f 2c d0          	cvttsd2si %xmm0,%edx
+ 4ba:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 4be:	48 8b 70 50          	mov    0x50(%rax),%rsi
+ 4c2:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 4c6:	48 8b 40 48          	mov    0x48(%rax),%rax
+ 4ca:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 4d0:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 4d5:	48 89 c7             	mov    %rax,%rdi
+ 4d8:	e8 00 00 00 00       	callq  4dd <Sync_System+0xf2>
+			sizeof (two_body_parameters) * pow (sys->reax_param.num_atom_types, 2), cudaMemcpyHostToDevice, "system:tbp");
+	copy_host_device (sys->reax_param.thbp, sys->reax_param.d_thbp, 
+ 4dd:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 4e1:	8b 00                	mov    (%rax),%eax
+ 4e3:	be 03 00 00 00       	mov    $0x3,%esi
+ 4e8:	89 c7                	mov    %eax,%edi
+ 4ea:	e8 00 00 00 00       	callq  4ef <Sync_System+0x104>
+ 4ef:	f2 0f 10 0d 00 00 00 	movsd  0x0(%rip),%xmm1        # 4f7 <Sync_System+0x10c>
+ 4f6:	00 
+ 4f7:	f2 0f 59 c1          	mulsd  %xmm1,%xmm0
+ 4fb:	f2 0f 2c d0          	cvttsd2si %xmm0,%edx
+ 4ff:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 503:	48 8b 70 60          	mov    0x60(%rax),%rsi
+ 507:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 50b:	48 8b 40 58          	mov    0x58(%rax),%rax
+ 50f:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 515:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 51a:	48 89 c7             	mov    %rax,%rdi
+ 51d:	e8 00 00 00 00       	callq  522 <Sync_System+0x137>
+			sizeof (three_body_header) * pow (sys->reax_param.num_atom_types, 3), cudaMemcpyHostToDevice, "system:thbh");
+	copy_host_device (sys->reax_param.hbp, sys->reax_param.d_hbp, 
+ 522:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 526:	8b 00                	mov    (%rax),%eax
+ 528:	be 03 00 00 00       	mov    $0x3,%esi
+ 52d:	89 c7                	mov    %eax,%edi
+ 52f:	e8 00 00 00 00       	callq  534 <Sync_System+0x149>
+ 534:	f2 0f 10 0d 00 00 00 	movsd  0x0(%rip),%xmm1        # 53c <Sync_System+0x151>
+ 53b:	00 
+ 53c:	f2 0f 59 c1          	mulsd  %xmm1,%xmm0
+ 540:	f2 0f 2c d0          	cvttsd2si %xmm0,%edx
+ 544:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 548:	48 8b 70 70          	mov    0x70(%rax),%rsi
+ 54c:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 550:	48 8b 40 68          	mov    0x68(%rax),%rax
+ 554:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 55a:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 55f:	48 89 c7             	mov    %rax,%rdi
+ 562:	e8 00 00 00 00       	callq  567 <Sync_System+0x17c>
+			sizeof (hbond_parameters) * pow (sys->reax_param.num_atom_types, 3), cudaMemcpyHostToDevice, "system:hbond");
+	copy_host_device (sys->reax_param.fbp, sys->reax_param.d_fbp, 
+ 567:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 56b:	8b 00                	mov    (%rax),%eax
+ 56d:	be 04 00 00 00       	mov    $0x4,%esi
+ 572:	89 c7                	mov    %eax,%edi
+ 574:	e8 00 00 00 00       	callq  579 <Sync_System+0x18e>
+ 579:	f2 0f 10 0d 00 00 00 	movsd  0x0(%rip),%xmm1        # 581 <Sync_System+0x196>
+ 580:	00 
+ 581:	f2 0f 59 c1          	mulsd  %xmm1,%xmm0
+ 585:	f2 0f 2c d0          	cvttsd2si %xmm0,%edx
+ 589:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 58d:	48 8b b0 80 00 00 00 	mov    0x80(%rax),%rsi
+ 594:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 598:	48 8b 40 78          	mov    0x78(%rax),%rax
+ 59c:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 5a2:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 5a7:	48 89 c7             	mov    %rax,%rdi
+ 5aa:	e8 00 00 00 00       	callq  5af <Sync_System+0x1c4>
+			sizeof (four_body_header) * pow (sys->reax_param.num_atom_types, 4), cudaMemcpyHostToDevice, "system:four_header");
+
+	copy_host_device (sys->reax_param.gp.l, sys->reax_param.d_gp.l, 
+ 5af:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 5b3:	8b 40 08             	mov    0x8(%rax),%eax
+ 5b6:	c1 e0 03             	shl    $0x3,%eax
+ 5b9:	89 c2                	mov    %eax,%edx
+ 5bb:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 5bf:	48 8b 70 28          	mov    0x28(%rax),%rsi
+ 5c3:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 5c7:	48 8b 40 10          	mov    0x10(%rax),%rax
+ 5cb:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 5d1:	b9 01 00 00 00       	mov    $0x1,%ecx
+ 5d6:	48 89 c7             	mov    %rax,%rdi
+ 5d9:	e8 00 00 00 00       	callq  5de <Sync_System+0x1f3>
+			sizeof (real) * sys->reax_param.gp.n_global, cudaMemcpyHostToDevice, "system:global_parameters");
+	
+	sys->reax_param.d_gp.n_global = sys->reax_param.gp.n_global; 
+ 5de:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 5e2:	8b 50 08             	mov    0x8(%rax),%edx
+ 5e5:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 5e9:	89 50 20             	mov    %edx,0x20(%rax)
+	sys->reax_param.d_gp.vdw_type = sys->reax_param.gp.vdw_type; 
+ 5ec:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 5f0:	8b 50 18             	mov    0x18(%rax),%edx
+ 5f3:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 5f7:	89 50 30             	mov    %edx,0x30(%rax)
+}
+ 5fa:	c9                   	leaveq 
+ 5fb:	c3                   	retq   
+
+00000000000005fc <Output_Sync_Atoms>:
+
+void Output_Sync_Atoms (reax_system *sys)
+{
+ 5fc:	55                   	push   %rbp
+ 5fd:	48 89 e5             	mov    %rsp,%rbp
+ 600:	48 83 ec 10          	sub    $0x10,%rsp
+ 604:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+	//TODO changed this from sys->n to sys->N
+	copy_host_device (sys->my_atoms, sys->d_my_atoms, 
+ 608:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 60c:	8b 80 9c 00 00 00    	mov    0x9c(%rax),%eax
+ 612:	69 c0 d0 00 00 00    	imul   $0xd0,%eax,%eax
+ 618:	89 c2                	mov    %eax,%edx
+ 61a:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 61e:	48 8b b0 e0 0b 00 00 	mov    0xbe0(%rax),%rsi
+ 625:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 629:	48 8b 80 d8 0b 00 00 	mov    0xbd8(%rax),%rax
+ 630:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 636:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 63b:	48 89 c7             	mov    %rax,%rdi
+ 63e:	e8 00 00 00 00       	callq  643 <Output_Sync_Atoms+0x47>
+					sizeof (reax_atom) * sys->total_cap, cudaMemcpyDeviceToHost, "system:my_atoms");
+}
+ 643:	c9                   	leaveq 
+ 644:	c3                   	retq   
+
+0000000000000645 <Output_Sync_Simulation_Data>:
+
+void Output_Sync_Simulation_Data (simulation_data *host, simulation_data *dev)
+{
+ 645:	55                   	push   %rbp
+ 646:	48 89 e5             	mov    %rsp,%rbp
+ 649:	48 83 ec 10          	sub    $0x10,%rsp
+ 64d:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 651:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+	copy_host_device (&host->my_en, &dev->my_en, sizeof (energy_data), 
+ 655:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 659:	48 8d b0 38 01 00 00 	lea    0x138(%rax),%rsi
+ 660:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 664:	48 05 38 01 00 00    	add    $0x138,%rax
+ 66a:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 670:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 675:	ba 80 00 00 00       	mov    $0x80,%edx
+ 67a:	48 89 c7             	mov    %rax,%rdi
+ 67d:	e8 00 00 00 00       	callq  682 <Output_Sync_Simulation_Data+0x3d>
+							cudaMemcpyDeviceToHost, "simulation_data:energy_data");
+	copy_host_device (&host->kin_press, &dev->kin_press, sizeof (real), 
+ 682:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 686:	48 8d b0 88 04 00 00 	lea    0x488(%rax),%rsi
+ 68d:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 691:	48 05 88 04 00 00    	add    $0x488,%rax
+ 697:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 69d:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 6a2:	ba 08 00 00 00       	mov    $0x8,%edx
+ 6a7:	48 89 c7             	mov    %rax,%rdi
+ 6aa:	e8 00 00 00 00       	callq  6af <Output_Sync_Simulation_Data+0x6a>
+							cudaMemcpyDeviceToHost, "simulation_data:kin_press");
+	copy_host_device (host->int_press, dev->int_press, sizeof (rvec), 
+ 6af:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 6b3:	48 8d b0 90 04 00 00 	lea    0x490(%rax),%rsi
+ 6ba:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 6be:	48 05 90 04 00 00    	add    $0x490,%rax
+ 6c4:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 6ca:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 6cf:	ba 18 00 00 00       	mov    $0x18,%edx
+ 6d4:	48 89 c7             	mov    %rax,%rdi
+ 6d7:	e8 00 00 00 00       	callq  6dc <Output_Sync_Simulation_Data+0x97>
+							cudaMemcpyDeviceToHost, "simulation_data:int_press");
+	copy_host_device (host->ext_press, dev->ext_press, sizeof (rvec), 
+ 6dc:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 6e0:	48 8d b0 c0 04 00 00 	lea    0x4c0(%rax),%rsi
+ 6e7:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 6eb:	48 05 c0 04 00 00    	add    $0x4c0,%rax
+ 6f1:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 6f7:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 6fc:	ba 18 00 00 00       	mov    $0x18,%edx
+ 701:	48 89 c7             	mov    %rax,%rdi
+ 704:	e8 00 00 00 00       	callq  709 <Output_Sync_Simulation_Data+0xc4>
+							cudaMemcpyDeviceToHost, "simulation_data:ext_press");
+}
+ 709:	c9                   	leaveq 
+ 70a:	c3                   	retq   
+
+000000000000070b <Sync_Workspace>:
+
+void Sync_Workspace (storage *workspace, enum cudaMemcpyKind dir)
+{
+ 70b:	55                   	push   %rbp
+ 70c:	48 89 e5             	mov    %rsp,%rbp
+ 70f:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 713:	89 75 f4             	mov    %esi,-0xc(%rbp)
+}
+ 716:	5d                   	pop    %rbp
+ 717:	c3                   	retq   
+
+0000000000000718 <Sync_Matrix>:
+
+void Sync_Matrix (sparse_matrix *L, sparse_matrix *U, enum cudaMemcpyKind dir )
+{
+ 718:	55                   	push   %rbp
+ 719:	48 89 e5             	mov    %rsp,%rbp
+ 71c:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 720:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+ 724:	89 55 ec             	mov    %edx,-0x14(%rbp)
+}
+ 727:	5d                   	pop    %rbp
+ 728:	c3                   	retq   
+
+0000000000000729 <_Z20Sync_Output_ControlsP15output_controlsP14control_params14cudaMemcpyKind>:
+
+void Sync_Output_Controls (output_controls *, control_params *, enum cudaMemcpyKind)
+{
+ 729:	55                   	push   %rbp
+ 72a:	48 89 e5             	mov    %rsp,%rbp
+ 72d:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 731:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+ 735:	89 55 ec             	mov    %edx,-0x14(%rbp)
+}
+ 738:	5d                   	pop    %rbp
+ 739:	c3                   	retq   
+
+000000000000073a <Sync_Control>:
+
+void Sync_Control (control_params *host, control_params *device, enum cudaMemcpyKind dir)
+{
+ 73a:	55                   	push   %rbp
+ 73b:	48 89 e5             	mov    %rsp,%rbp
+ 73e:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 742:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+ 746:	89 55 ec             	mov    %edx,-0x14(%rbp)
+}
+ 749:	5d                   	pop    %rbp
+ 74a:	c3                   	retq   
+
+000000000000074b <Prep_Device_For_Output>:
+
+
+void Prep_Device_For_Output (reax_system *system, simulation_data *data )
+{
+ 74b:	55                   	push   %rbp
+ 74c:	48 89 e5             	mov    %rsp,%rbp
+ 74f:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 753:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+}
+ 757:	5d                   	pop    %rbp
+ 758:	c3                   	retq   
+
+0000000000000759 <Output_Sync_Lists>:
+
+void Output_Sync_Lists (reax_list *host, reax_list *device, int type)
+{
+ 759:	55                   	push   %rbp
+ 75a:	48 89 e5             	mov    %rsp,%rbp
+ 75d:	48 83 ec 20          	sub    $0x20,%rsp
+ 761:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 765:	48 89 75 f0          	mov    %rsi,-0x10(%rbp)
+ 769:	89 55 ec             	mov    %edx,-0x14(%rbp)
+
+   //memory is allocated on the host
+   //Make_List(device->n, device->num_intrs, type, host);
+   
+   //memcpy the entries from device to host
+   copy_host_device (host->index, device->index, sizeof (int) * device->n, cudaMemcpyDeviceToHost, "list:index");
+ 76c:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 770:	8b 40 04             	mov    0x4(%rax),%eax
+ 773:	c1 e0 02             	shl    $0x2,%eax
+ 776:	89 c2                	mov    %eax,%edx
+ 778:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 77c:	48 8b 70 10          	mov    0x10(%rax),%rsi
+ 780:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 784:	48 8b 40 10          	mov    0x10(%rax),%rax
+ 788:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 78e:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 793:	48 89 c7             	mov    %rax,%rdi
+ 796:	e8 00 00 00 00       	callq  79b <Output_Sync_Lists+0x42>
+   copy_host_device (host->end_index, device->end_index, sizeof (int) * device->n, cudaMemcpyDeviceToHost, "list:end_index");
+ 79b:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 79f:	8b 40 04             	mov    0x4(%rax),%eax
+ 7a2:	c1 e0 02             	shl    $0x2,%eax
+ 7a5:	89 c2                	mov    %eax,%edx
+ 7a7:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 7ab:	48 8b 70 18          	mov    0x18(%rax),%rsi
+ 7af:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 7b3:	48 8b 40 18          	mov    0x18(%rax),%rax
+ 7b7:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 7bd:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 7c2:	48 89 c7             	mov    %rax,%rdi
+ 7c5:	e8 00 00 00 00       	callq  7ca <Output_Sync_Lists+0x71>
+
+   switch (type)
+ 7ca:	8b 45 ec             	mov    -0x14(%rbp),%eax
+ 7cd:	83 f8 01             	cmp    $0x1,%eax
+ 7d0:	74 07                	je     7d9 <Output_Sync_Lists+0x80>
+ 7d2:	83 f8 02             	cmp    $0x2,%eax
+ 7d5:	74 36                	je     80d <Output_Sync_Lists+0xb4>
+ 7d7:	eb 6e                	jmp    847 <Output_Sync_Lists+0xee>
+   {   
+      case TYP_BOND:
+         copy_host_device (host->select.bond_list, device->select.bond_list, 
+ 7d9:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 7dd:	8b 40 08             	mov    0x8(%rax),%eax
+ 7e0:	69 c0 a8 01 00 00    	imul   $0x1a8,%eax,%eax
+ 7e6:	89 c2                	mov    %eax,%edx
+ 7e8:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 7ec:	48 8b 70 28          	mov    0x28(%rax),%rsi
+ 7f0:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 7f4:	48 8b 40 28          	mov    0x28(%rax),%rax
+ 7f8:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 7fe:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 803:	48 89 c7             	mov    %rax,%rdi
+ 806:	e8 00 00 00 00       	callq  80b <Output_Sync_Lists+0xb2>
+                           sizeof (bond_data) * device->num_intrs, cudaMemcpyDeviceToHost, "bond_list");
+      break;
+ 80b:	eb 60                	jmp    86d <Output_Sync_Lists+0x114>
+
+      case TYP_THREE_BODY:
+         copy_host_device (host->select.three_body_list, device->select.three_body_list, 
+ 80d:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 811:	8b 40 08             	mov    0x8(%rax),%eax
+ 814:	89 c2                	mov    %eax,%edx
+ 816:	89 d0                	mov    %edx,%eax
+ 818:	01 c0                	add    %eax,%eax
+ 81a:	01 d0                	add    %edx,%eax
+ 81c:	c1 e0 05             	shl    $0x5,%eax
+ 81f:	89 c2                	mov    %eax,%edx
+ 821:	48 8b 45 f0          	mov    -0x10(%rbp),%rax
+ 825:	48 8b 70 28          	mov    0x28(%rax),%rsi
+ 829:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 82d:	48 8b 40 28          	mov    0x28(%rax),%rax
+ 831:	41 b8 00 00 00 00    	mov    $0x0,%r8d
+ 837:	b9 02 00 00 00       	mov    $0x2,%ecx
+ 83c:	48 89 c7             	mov    %rax,%rdi
+ 83f:	e8 00 00 00 00       	callq  844 <Output_Sync_Lists+0xeb>
+                           sizeof (three_body_interaction_data )* device->num_intrs, cudaMemcpyDeviceToHost, "three_body_list");
+      break;
+ 844:	90                   	nop
+ 845:	eb 26                	jmp    86d <Output_Sync_Lists+0x114>
+
+      default:
+         fprintf (stderr, "Unknown list synching from device to host ---- > %d \n", type );
+ 847:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 84e <Output_Sync_Lists+0xf5>
+ 84e:	8b 55 ec             	mov    -0x14(%rbp),%edx
+ 851:	be 00 00 00 00       	mov    $0x0,%esi
+ 856:	48 89 c7             	mov    %rax,%rdi
+ 859:	b8 00 00 00 00       	mov    $0x0,%eax
+ 85e:	e8 00 00 00 00       	callq  863 <Output_Sync_Lists+0x10a>
+         exit (1);
+ 863:	bf 01 00 00 00       	mov    $0x1,%edi
+ 868:	e8 00 00 00 00       	callq  86d <Output_Sync_Lists+0x114>
+      break;
+   }  
+}
+ 86d:	c9                   	leaveq 
+ 86e:	c3                   	retq   
+
+000000000000086f <_ZL26__cudaUnregisterBinaryUtilv>:
+}
+
+static void **__cudaFatCubinHandle;
+
+static void __cdecl __cudaUnregisterBinaryUtil(void)
+{
+ 86f:	55                   	push   %rbp
+ 870:	48 89 e5             	mov    %rsp,%rbp
+  __cudaUnregisterFatBinary(__cudaFatCubinHandle);
+ 873:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 87a <_ZL26__cudaUnregisterBinaryUtilv+0xb>
+ 87a:	48 89 c7             	mov    %rax,%rdi
+ 87d:	e8 00 00 00 00       	callq  882 <_ZL26__cudaUnregisterBinaryUtilv+0x13>
+}
+ 882:	5d                   	pop    %rbp
+ 883:	c3                   	retq   
+
+0000000000000884 <_ZL31__nv_cudaEntityRegisterCallbackPPv>:
+ 884:	55                   	push   %rbp
+ 885:	48 89 e5             	mov    %rsp,%rbp
+ 888:	48 89 7d f8          	mov    %rdi,-0x8(%rbp)
+ 88c:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+ 890:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 897 <_ZL31__nv_cudaEntityRegisterCallbackPPv+0x13>
+ 897:	5d                   	pop    %rbp
+ 898:	c3                   	retq   
+
+0000000000000899 <_ZL81__sti____cudaRegisterAll_44_tmpxft_000043c2_00000000_6_cuda_copy_cpp1_ii_5e3558e5v>:
+ 899:	55                   	push   %rbp
+ 89a:	48 89 e5             	mov    %rsp,%rbp
+ 89d:	48 83 ec 10          	sub    $0x10,%rsp
+ 8a1:	bf 00 00 00 00       	mov    $0x0,%edi
+ 8a6:	e8 00 00 00 00       	callq  8ab <_ZL81__sti____cudaRegisterAll_44_tmpxft_000043c2_00000000_6_cuda_copy_cpp1_ii_5e3558e5v+0x12>
+ 8ab:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 8b2 <_ZL81__sti____cudaRegisterAll_44_tmpxft_000043c2_00000000_6_cuda_copy_cpp1_ii_5e3558e5v+0x19>
+ 8b2:	48 c7 45 f8 00 00 00 	movq   $0x0,-0x8(%rbp)
+ 8b9:	00 
+ 8ba:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 8c1 <_ZL81__sti____cudaRegisterAll_44_tmpxft_000043c2_00000000_6_cuda_copy_cpp1_ii_5e3558e5v+0x28>
+ 8c1:	48 8b 55 f8          	mov    -0x8(%rbp),%rdx
+ 8c5:	48 89 c7             	mov    %rax,%rdi
+ 8c8:	ff d2                	callq  *%rdx
+ 8ca:	bf 00 00 00 00       	mov    $0x0,%edi
+ 8cf:	e8 00 00 00 00       	callq  8d4 <_ZL81__sti____cudaRegisterAll_44_tmpxft_000043c2_00000000_6_cuda_copy_cpp1_ii_5e3558e5v+0x3b>
+ 8d4:	c9                   	leaveq 
+ 8d5:	c3                   	retq   
+
+00000000000008d6 <_Z41__static_initialization_and_destruction_0ii>:
+ 8d6:	55                   	push   %rbp
+ 8d7:	48 89 e5             	mov    %rsp,%rbp
+ 8da:	48 83 ec 10          	sub    $0x10,%rsp
+ 8de:	89 7d fc             	mov    %edi,-0x4(%rbp)
+ 8e1:	89 75 f8             	mov    %esi,-0x8(%rbp)
+ 8e4:	83 7d fc 01          	cmpl   $0x1,-0x4(%rbp)
+ 8e8:	75 2a                	jne    914 <_Z41__static_initialization_and_destruction_0ii+0x3e>
+ 8ea:	81 7d f8 ff ff 00 00 	cmpl   $0xffff,-0x8(%rbp)
+ 8f1:	75 21                	jne    914 <_Z41__static_initialization_and_destruction_0ii+0x3e>
+  extern wostream wclog;	/// Linked to standard error (buffered)
+#endif
+  //@}
+
+  // For construction of filebuffers for cout, cin, cerr, clog et. al.
+  static ios_base::Init __ioinit;
+ 8f3:	bf 00 00 00 00       	mov    $0x0,%edi
+ 8f8:	e8 00 00 00 00       	callq  8fd <_Z41__static_initialization_and_destruction_0ii+0x27>
+ 8fd:	b8 00 00 00 00       	mov    $0x0,%eax
+ 902:	ba 00 00 00 00       	mov    $0x0,%edx
+ 907:	be 00 00 00 00       	mov    $0x0,%esi
+ 90c:	48 89 c7             	mov    %rax,%rdi
+ 90f:	e8 00 00 00 00       	callq  914 <_Z41__static_initialization_and_destruction_0ii+0x3e>
+ 914:	c9                   	leaveq 
+ 915:	c3                   	retq   
+
+0000000000000916 <_GLOBAL__sub_I_Sync_Grid>:
+ 916:	55                   	push   %rbp
+ 917:	48 89 e5             	mov    %rsp,%rbp
+ 91a:	be ff ff 00 00       	mov    $0xffff,%esi
+ 91f:	bf 01 00 00 00       	mov    $0x1,%edi
+ 924:	e8 ad ff ff ff       	callq  8d6 <_Z41__static_initialization_and_destruction_0ii>
+ 929:	5d                   	pop    %rbp
+ 92a:	c3                   	retq   
+
+Disassembly of section .text._ZSt3powIiiEN9__gnu_cxx11__promote_2IT_T0_NS0_9__promoteIS2_XsrSt12__is_integerIS2_E7__valueEE6__typeENS4_IS3_XsrS5_IS3_E7__valueEE6__typeEE6__typeES2_S3_:
+
+0000000000000000 <_ZSt3powIiiEN9__gnu_cxx11__promote_2IT_T0_NS0_9__promoteIS2_XsrSt12__is_integerIS2_E7__valueEE6__typeENS4_IS3_XsrS5_IS3_E7__valueEE6__typeEE6__typeES2_S3_>:
+#endif
+
+  template<typename _Tp, typename _Up>
+    inline
+    typename __gnu_cxx::__promote_2<_Tp, _Up>::__type
+    pow(_Tp __x, _Up __y)
+   0:	55                   	push   %rbp
+   1:	48 89 e5             	mov    %rsp,%rbp
+   4:	48 83 ec 10          	sub    $0x10,%rsp
+   8:	89 7d fc             	mov    %edi,-0x4(%rbp)
+   b:	89 75 f8             	mov    %esi,-0x8(%rbp)
+    {
+      typedef typename __gnu_cxx::__promote_2<_Tp, _Up>::__type __type;
+      return pow(__type(__x), __type(__y));
+   e:	f2 0f 2a 4d f8       	cvtsi2sdl -0x8(%rbp),%xmm1
+  13:	f2 0f 2a 45 fc       	cvtsi2sdl -0x4(%rbp),%xmm0
+  18:	e8 00 00 00 00       	callq  1d <_ZSt3powIiiEN9__gnu_cxx11__promote_2IT_T0_NS0_9__promoteIS2_XsrSt12__is_integerIS2_E7__valueEE6__typeENS4_IS3_XsrS5_IS3_E7__valueEE6__typeEE6__typeES2_S3_+0x1d>
+    }
+  1d:	c9                   	leaveq 
+  1e:	c3                   	retq   

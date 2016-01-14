@@ -1,0 +1,42 @@
+# TeX
+*.aux
+*.log
+*.pyg
+*.synctex.gz
+*.nav
+*.snm
+*.out
+*.bbl
+*.blg
+*.log
+*.toc
+*.pdf
+
+# ViM, emacs, nano, leafpad
+*.swp
+*~
+
+# Python
+*.pyc
+*.pyo
+
+# Libreoffice
+.~lock.*
+
+# Autotools
+autom4te.cache
+.deps
+stamp-h1
+config.log
+
+# Compiled languages (C,C++,Fortran,...)
+*.o
+
+# flex/bison files
+*.yy.c
+*.yy.h
+*.tab.c
+*.tab.h
+
+# General
+*.tar.gz
