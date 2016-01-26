@@ -30,6 +30,7 @@ void Vector_Copy( real*, real*, int );
 void Vector_Scale( real*, real, real*, int );
 void Vector_Sum( real*, real, real*, real, real*, int );
 void Vector_Add( real*, real, real*, int );
+void Vector_Add2( real*, real*, int );
 void Vector_Print( FILE*, char*, real*, int );
 real Dot( real*, real*, int );
 real Norm( real*, int );

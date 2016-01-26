@@ -67,6 +67,13 @@ inline void Vector_Add( real* dest, real c, real* v, int k )
 }
 
 
+inline void Vector_Add2( real* dest, real* v, int k )
+{
+  for( --k; k>=0; --k )
+    dest[k] += v[k];
+}
+
+
 void Vector_Print( FILE *fout, char *vname, real *v, int k )
 {
   int i;

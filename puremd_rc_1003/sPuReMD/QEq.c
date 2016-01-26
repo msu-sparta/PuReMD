@@ -27,6 +27,7 @@
 
 int compare_matrix_entry(const void *v1, const void *v2)
 {
+  /* larger element has larger column index */
   return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
 }
 
@@ -35,9 +36,11 @@ void Sort_Matrix_Rows( sparse_matrix *A )
 {
   int i, si, ei;
   
+  /* sort each row of A using column indices */
   for( i = 0; i < A->n; ++i ) {
     si = A->start[i];
     ei = A->start[i+1];
+    /* polymorphic sort in standard C library */
     qsort( &(A->entries[si]), ei - si, 
 	   sizeof(sparse_matrix_entry), compare_matrix_entry );
   }
@@ -219,9 +222,12 @@ void Init_MatVec( reax_system *system, control_params *control,
     //Print_Linear_System( system, control, workspace, data->step );
     Sort_Matrix_Rows( workspace->H );
     //fprintf( stderr, "H matrix sorted\n" );
+    // TODO: comment out
     Calculate_Droptol( workspace->H, workspace->droptol, control->droptol ); 
     //fprintf( stderr, "drop tolerances calculated\n" );
     if( workspace->L == NULL ) {
+      // TODO: ilu_par & ichol_par contain same sparsity pattern as H,
+      //   so allocate with same NNZ (workspace->H->m)
       fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
       if( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
 	  Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 ){
@@ -235,6 +241,9 @@ void Init_MatVec( reax_system *system, control_params *control,
 #endif
     }
 
+    // TODO: replace with ilu_par or ichol_par
+    // TODO: add parameters for sweeps to control file
+    //ICHOL_PAR( workspace->H, 3, workspace->L, workspace->U );
     ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "icholt-" );
@@ -314,10 +323,11 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
   //if( data->step % 10 == 0 )
   //  Print_Linear_System( system, control, workspace, far_nbrs, data->step );
 
-  matvecs = GMRES( workspace, workspace->H, 
-    workspace->b_s, control->q_err, workspace->s[0], out_control->log );
-  matvecs += GMRES( workspace, workspace->H, 
-    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
+  //TODO: add parameters in control file for solver choice and options
+  //matvecs = GMRES( workspace, workspace->H, 
+  //  workspace->b_s, control->q_err, workspace->s[0], out_control->log );
+  //matvecs += GMRES( workspace, workspace->H, 
+  //  workspace->b_t, control->q_err, workspace->t[0], out_control->log );
 
   //matvecs = GMRES_HouseHolder( workspace, workspace->H, 
   //    workspace->b_s, control->q_err, workspace->s[0], out_control->log );
@@ -325,9 +335,14 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
   //    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
   
   //matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
-   // workspace->L, workspace->U, workspace->s[0], out_control->log );
+  // workspace->L, workspace->U, workspace->s[0], out_control->log );
   //matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
-   // workspace->L, workspace->U, workspace->t[0], out_control->log );
+  // workspace->L, workspace->U, workspace->t[0], out_control->log );
+
+  matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
+   workspace->L, workspace->U, workspace->s[0], out_control->log );
+  matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->q_err,
+   workspace->L, workspace->U, workspace->t[0], out_control->log );
 
   //matvecs=PCG( workspace, workspace->H, workspace->b_s, control->q_err, 
   //	  workspace->L, workspace->U, workspace->s[0], out_control->log ) + 1;

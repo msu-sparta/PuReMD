@@ -35,6 +35,9 @@ int GMRES_HouseHolder( static_storage*, sparse_matrix*,
 int PGMRES( static_storage*, sparse_matrix*, real*, real, 
 	    sparse_matrix*, sparse_matrix*, real*, FILE* );
 
+int PGMRES_Jacobi( static_storage*, sparse_matrix*, real*, real, 
+	    sparse_matrix*, sparse_matrix*, real*, FILE* );
+
 int PCG( static_storage*, sparse_matrix*, real*, real, 
 	sparse_matrix*, sparse_matrix*, real*, FILE* );
 
