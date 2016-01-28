@@ -25,8 +25,13 @@
 #include "vector.h"
 
 
-/* sparse matrix-vector product  */
-void Sparse_MatVec( sparse_matrix *A, real *x, real *b )
+/* sparse matrix-vector product Ax=b
+ * where:
+ *   A: lower triangular matrix
+ *   x: vector
+ *   b: vector (result) */
+static void Sparse_MatVec( const sparse_matrix * const A,
+    const real * const x, real * const b )
 {
   int i, j, k, n, si, ei;
   real H;
@@ -51,7 +56,47 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b )
     }
 
     // the diagonal entry is the last one in
-    b[i] += A->entries[k].val * x[i]; 
+    b[i] += A->entries[A->start[i+1]-1].val * x[i]; 
+  }
+}
+
+
+/* sparse matrix-vector product Ax=b
+ * ommitting diagonal of A (for Jacobi iteration),
+ *   A: triangular matrix
+ *   x: vector
+ *   b: vector (result)
+ *   tri: triangularity of A (lower/upper) */
+static void Sparse_MatVec2( const sparse_matrix * const A,
+    const TRIANGULARITY tri, const real * const x, real * const b)
+{
+  int i, k, n, si = 0, ei = 0;
+
+  n = A->n;
+  for( i = 0; i < n; ++i )
+  {
+    b[i] = 0;
+  }
+
+  for( i = 0; i < n; ++i )
+  {
+    if(tri == LOWER)
+    {
+      si = A->start[i];
+      ei = A->start[i+1]-1;
+    }
+    else if(tri == UPPER)
+    {
+
+      si = A->start[i]+1;
+      ei = A->start[i+1];
+    }
+    
+    for( k = si; k < ei; ++k )
+    {
+      b[A->entries[k].j] += A->entries[k].j * x[i]; 
+      b[i] += A->entries[k].j * x[A->entries[k].j];
+    }
   }
 }
 
@@ -113,62 +158,29 @@ void Backward_Subs( sparse_matrix *U, real *y, real *x )
  *
  * Note: Newmann series arises from series expansion of the inverse of
  * the coefficient matrix in the triangular system. */
-void Jacobi_Iter( const sparse_matrix *G, const sparse_matrix *Dinv,
-		const real *b, const real *x_0, real *x, const int maxiter )
+static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
+        const sparse_matrix * const Dinv, const real * const b,
+        real * const x, const unsigned int maxiter )
 {
-  unsigned int i, iter = 0;
+  unsigned int iter = 0;
   real *Dinv_b;
 
-  if( (Dinv_b = (real*) malloc(sizeof(real)*(Dinv->m))) == NULL )
+  if( (Dinv_b = (real*) malloc(sizeof(real)*(Dinv->n))) == NULL )
   {
     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
     exit(INSUFFICIENT_SPACE);
   }
 
   /* precompute and cache, as invariant in loop below */
-  Sparse_MatVec( (sparse_matrix*) Dinv, (real*) b, Dinv_b );
+  Sparse_MatVec( (sparse_matrix*)Dinv, (real*)b, Dinv_b );
 
   do
   {
     // x_{k+1} = G*x_{k} + Dinv*b;
-    Sparse_MatVec( (sparse_matrix*) &G, x, x );
-    //#pragma omp parallel for
+    Sparse_MatVec2( (sparse_matrix*)G, tri, x, x );
     Vector_Add2( x, Dinv_b, Dinv->n );
     ++iter;
   } while( iter < maxiter );
-  
-//  Dinv_c = Dinv*c;
-//  if ((nargin < 4) || isempty(x0))
-//    x0 = zeros(size(c));
-//  end
-//  if ((nargin < 5) || isempty(tol))
-//    tol = Inf;
-//  end
-//  if ((nargin == 7) && ~isempty(fp))
-//    write = true;
-//  else
-//    write = false;
-//  end
-//  x = x0;
-//  x_old = x0;
-//  relres = Inf;
-//  relres_old = Inf;
-//  resvec = [];
-//  iters = 0;
-//  first = true;
-//  
-//  %  while first || (relres >= tol && relres < relres_old && iters < maxiters)
-//  %  while first || (relres >= tol && iters < maxiters)
-//  while first || (iters < maxiters)
-//    x_old = x;
-//    relres_old = relres;
-//    x = G*x_old + Dinv_c;
-//    iters = iters + 1;
-//    
-//    first = false;
-//    relres = norm(x-x_old);
-//    resvec(iters) = relres;
-//  end
 
   free(Dinv_b);
 }
@@ -603,92 +615,39 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
 {
   int i, j, k, itr, N, pj, si, ei;
   real cc, tmp1, tmp2, temp, bnorm;
-  sparse_matrix *G_L, *G_U, *Dinv_L, *Dinv_U;
+  sparse_matrix *Dinv_L, *Dinv_U;
 
   N = H->n;
   bnorm = Norm( b, N );
 
-  // TODO: compute Jacobi iteration matrices
-  if( Allocate_Matrix( &G_L, L->n, (L->m - L->n) ) == 0 ||
-    Allocate_Matrix( &G_U, U->n, (U->m - U->n) ) == 0 ||
-    Allocate_Matrix( &Dinv_L, L->n, L->n ) == 0 ||
-    Allocate_Matrix( &Dinv_U, U->n, U->n ) == 0 ){
-    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-    exit(INSUFFICIENT_SPACE);
-  }
-  /* truncated Newmann series: x_{k+1} = Gx_k + D^{-1}b
+  /* Compute Jacobi iteration matrices from
+   * truncated Newmann series: x_{k+1} = Gx_k + D^{-1}b
    * where:
    *   G = I - D^{-1}R
    *   R = triangular matrix
    *   D = diagonal matrix, diagonals from R */
+  if( Allocate_Matrix( &Dinv_L, L->n, L->n ) == 0 ||
+    Allocate_Matrix( &Dinv_U, U->n, U->n ) == 0 )
+  {
+    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+    exit(INSUFFICIENT_SPACE);
+  }
 
   /* construct D^{-1}_L and D^{-1}_U */
   for( i = 0; i < N; ++i )
   {
-    si = L->start[i];
-    ei = L->start[i+1];
-    for( pj = si; pj < ei; ++pj )
-    {
-      if( L->entries[pj].j == i)
-      {
-        Dinv_L->start[i] = i;
-        Dinv_L->entries[i].j = i;
-        Dinv_L->entries[i].val = 1.0 / L->entries[pj].val;
-	break;
-      }
-    }
+    si = L->start[i+1]-1;
+    Dinv_L->start[i] = i;
+    Dinv_L->entries[i].j = i;
+    Dinv_L->entries[i].val = 1. / L->entries[si].val;
 
     si = U->start[i];
-    ei = U->start[i+1];
-    for( pj = si; pj < ei; ++pj )
-    {
-      if( U->entries[pj].j == i)
-      {
-        Dinv_U->start[i] = i;
-        Dinv_U->entries[i].j = i;
-        Dinv_U->entries[i].val = 1.0 / U->entries[pj].val;
-	break;
-      }
-    }
+    Dinv_U->start[i] = i;
+    Dinv_U->entries[i].j = i;
+    Dinv_U->entries[i].val = 1. / U->entries[si].val;
   }
-
-  /* construct G_L and G_U */
-  G_L->n = L->n;
-  G_L->m = (L->m-L->n);
-  G_U->n = U->n;
-  G_U->m = (U->m-U->n);
-  j = 0;
-  k = 0;
-  for( i = 0; i < N; ++i )
-  {
-    si = L->start[i];
-    ei = L->start[i+1];
-  
-    for( pj = si; pj < ei; ++pj )
-    {
-      /* zeros along diagonal, so skip */
-      if( L->entries[pj].j != i )
-      {
-        G_L->entries[j].j = L->entries[pj].j;
-        G_L->entries[j].val = -(Dinv_L->entries[i].val * L->entries[j].val);
-	++j;
-      }
-    }
-
-    si = U->start[i];
-    ei = U->start[i+1];
-  
-    for( pj = si; pj < ei; ++pj )
-    {
-      /* zeros along diagonal, so skip */
-      if( U->entries[pj].j != i )
-      {
-        G_U->entries[k].j = U->entries[pj].j;
-        G_U->entries[k].val = -(Dinv_U->entries[i].val * U->entries[k].val);
-	++k;
-      }
-    }
-  }
+  Dinv_L->start[N] = N;
+  Dinv_U->start[N] = N;
 
   /* GMRES outer-loop */
   for( itr = 0; itr < MAX_ITR; ++itr ) {
@@ -697,12 +656,10 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
     Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
     // TODO: add parameters to config file
     // TODO: cache results and use for inital guess?
-    Jacobi_Iter( (const sparse_matrix*)G_L, (const sparse_matrix*)Dinv_L, 
-		    (const real*)workspace->v[0], (const real*)workspace->v[0],
-		    workspace->v[0], 100 );
-    Jacobi_Iter( (const sparse_matrix*)G_U, (const sparse_matrix*)Dinv_U,
-		    (const real*)workspace->v[0], (const real*)workspace->v[0],
-		    workspace->v[0], 100 );
+    Jacobi_Iter( (const sparse_matrix*)L, LOWER, (const sparse_matrix*)Dinv_L, 
+		    (const real*)workspace->v[0], workspace->v[0], 100 );
+    Jacobi_Iter( (const sparse_matrix*)U, UPPER, (const sparse_matrix*)Dinv_U,
+		    (const real*)workspace->v[0], workspace->v[0], 100 );
     workspace->g[0] = Norm( workspace->v[0], N );
     Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
     //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
@@ -713,12 +670,10 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
       Sparse_MatVec( H, workspace->v[j], workspace->v[j+1] );
       // TODO: add parameters to config file
       // TODO: cache results and use for inital guess?
-      Jacobi_Iter( (const sparse_matrix*)G_L, (const sparse_matrix*)Dinv_L, 
-  		    (const real*)workspace->v[j+1], (const real*)workspace->v[j+1],
-  		    workspace->v[j+1], 100 );
-      Jacobi_Iter( (const sparse_matrix*)G_U, (const sparse_matrix*)Dinv_U,
-  		    (const real*)workspace->v[j+1], (const real*)workspace->v[j+1],
-  		    workspace->v[j+1], 100 );
+      Jacobi_Iter( (const sparse_matrix*)L, LOWER, (const sparse_matrix*)Dinv_L, 
+  		    (const real*)workspace->v[j+1], workspace->v[j+1], 100 );
+      Jacobi_Iter( (const sparse_matrix*)U, UPPER, (const sparse_matrix*)Dinv_U,
+  		    (const real*)workspace->v[j+1], workspace->v[j+1], 100 );
       
       /* apply modified Gram-Schmidt to orthogonalize the new residual */
       for( i = 0; i < j-1; i++ ) workspace->h[i][j] = 0;
@@ -799,7 +754,11 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
   //	      itr, j, fabs( workspace->g[j] ) / bnorm );
   // data->timing.matvec += itr * RESTART + j;
   
-  if( itr >= MAX_ITR ) {
+  Deallocate_Matrix( Dinv_U );
+  Deallocate_Matrix( Dinv_L );
+  
+  if( itr >= MAX_ITR )
+  {
     fprintf( stderr, "GMRES convergence failed\n" );
     // return -1;
     return itr * (RESTART+1) + j + 1;

@@ -22,115 +22,155 @@
 #include "vector.h"
 
 
-inline int Vector_isZero( real* v, int k )
+inline int Vector_isZero( const real * const v, const unsigned int k )
 {
-  for( --k; k>=0; --k )
-    if( fabs( v[k] ) > ALMOST_ZERO )
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    if( fabs( v[i] ) > ALMOST_ZERO )
+    {
       return 0;
+    }
+  }
   
   return 1;
 }
 
 
-inline void Vector_MakeZero( real *v, int k )
+inline void Vector_MakeZero( real * const v, const unsigned int k )
 {
-  for( --k; k>=0; --k )
-    v[k] = 0;
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    v[i] = ZERO;
+  }
 }
 
 
-inline void Vector_Copy( real* dest, real* v, int k )
+inline void Vector_Copy( real * const dest, const real * const v, const unsigned int k )
 {
-  for( --k; k>=0; --k )
-    dest[k] = v[k];
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    dest[i] = v[i];
+  }
 }
 
 
-inline void Vector_Scale( real* dest, real c, real* v, int k )
+inline void Vector_Scale( real * const dest, const real c, const real * const v, const unsigned int k )
 {
-  for( --k; k>=0; --k )
-    dest[k] = c * v[k];
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    dest[i] = c * v[i];
+  }
 }
 
 
-inline void Vector_Sum( real* dest, real c, real* v, real d, real* y, int k )
+inline void Vector_Sum( real * const dest, const real c, const real * const v, const real d,
+    const real * const y, const unsigned int k )
 {
-  for( --k; k>=0; --k )
-    dest[k] = c * v[k] + d * y[k];
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    dest[i] = c * v[i] + d * y[i];
+  }
 }
 
 
-inline void Vector_Add( real* dest, real c, real* v, int k )
+inline void Vector_Add( real * const dest, const real c, const real * const v, const unsigned int k )
 {
-  for( --k; k>=0; --k )
-    dest[k] += c * v[k];
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    dest[i] += c * v[i];
+  }
 }
 
 
-inline void Vector_Add2( real* dest, real* v, int k )
+inline void Vector_Add2( real * const dest, const real * const v, const unsigned int k )
 {
-  for( --k; k>=0; --k )
-    dest[k] += v[k];
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    dest[i] += v[i];
+  }
 }
 
 
-void Vector_Print( FILE *fout, char *vname, real *v, int k )
+void Vector_Print( FILE * const fout, const char * const vname, const real * const v,
+    const unsigned int k )
 {
-  int i;
+  unsigned int i;
 
   fprintf( fout, "%s:\n", vname );
   for( i = 0; i < k; ++i )
+  {
     fprintf( fout, "%24.15e\n", v[i] );
+  }
   fprintf( fout, "\n" );
 }
 
 
-inline real Dot( real* v1, real* v2, int k )
+inline real Dot( const real * const v1, const real * const v2, const unsigned int k )
 {
-  real ret = 0;
-  
-  for( --k; k>=0; --k )
-    ret +=  v1[k] * v2[k];
+  real ret = ZERO;
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    ret +=  v1[i] * v2[i];
+  }
 
   return ret;
 }
 
 
-inline real Norm( real* v1, int k )
+inline real Norm( const real * const v1, const unsigned int k )
 {
-  real ret = 0;
-  
-  for( --k; k>=0; --k )
-    ret +=  SQR( v1[k] );
+  real ret = ZERO;
+  unsigned int i;
+
+  for( i=0; i<k; ++i )
+  {
+    ret +=  SQR( v1[i] );
+  }
 
   return SQRT( ret );
 }
 
 
-inline void rvec_Copy( rvec dest, rvec src )
+inline void rvec_Copy( rvec dest, const rvec src )
 {
   dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
 }
 
-inline void rvec_Scale( rvec ret, real c, rvec v )
+inline void rvec_Scale( rvec ret, const real c, const rvec v )
 {
   ret[0] = c * v[0], ret[1] = c * v[1], ret[2] = c * v[2];
 }
 
 
-inline void rvec_Add( rvec ret, rvec v )
+inline void rvec_Add( rvec ret, const rvec v )
 {
   ret[0] += v[0], ret[1] += v[1], ret[2] += v[2];
 }
 
 
-inline void rvec_ScaledAdd( rvec ret, real c, rvec v )
+inline void rvec_ScaledAdd( rvec ret, const real c, const rvec v )
 {
   ret[0] += c * v[0], ret[1] += c * v[1], ret[2] += c * v[2];
 }
 
 
-inline void rvec_Sum( rvec ret, rvec v1 ,rvec v2 )
+inline void rvec_Sum( rvec ret, const rvec v1 , const rvec v2 )
 {
   ret[0] = v1[0] + v2[0];
   ret[1] = v1[1] + v2[1];
@@ -138,7 +178,8 @@ inline void rvec_Sum( rvec ret, rvec v1 ,rvec v2 )
 }
 
 
-inline void rvec_ScaledSum( rvec ret, real c1, rvec v1 ,real c2, rvec v2 )
+inline void rvec_ScaledSum( rvec ret, const real c1, const rvec v1,
+    const real c2, const rvec v2 )
 {
   ret[0] = c1 * v1[0] + c2 * v2[0]; 
   ret[1] = c1 * v1[1] + c2 * v2[1];
@@ -146,19 +187,20 @@ inline void rvec_ScaledSum( rvec ret, real c1, rvec v1 ,real c2, rvec v2 )
 }
 
 
-inline real rvec_Dot( rvec v1, rvec v2 )
+inline real rvec_Dot( const rvec v1, const rvec v2 )
 {
   return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
 }
 
 
-inline real rvec_ScaledDot( real c1, rvec v1, real c2, rvec v2 )
+inline real rvec_ScaledDot( const real c1, const rvec v1,
+    const real c2, const rvec v2 )
 {
   return (c1*c2) * (v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]);
 }
 
 
-inline void rvec_Multiply( rvec r, rvec v1, rvec v2 )
+inline void rvec_Multiply( rvec r, const rvec v1, const rvec v2 )
 {
   r[0] = v1[0] * v2[0];
   r[1] = v1[1] * v2[1];
@@ -166,7 +208,7 @@ inline void rvec_Multiply( rvec r, rvec v1, rvec v2 )
 }
 
 
-inline void rvec_iMultiply( rvec r, ivec v1, rvec v2 )
+inline void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
 {
   r[0] = v1[0] * v2[0];
   r[1] = v1[1] * v2[1];
@@ -174,7 +216,7 @@ inline void rvec_iMultiply( rvec r, ivec v1, rvec v2 )
 }
 
 
-inline void rvec_Divide( rvec r, rvec v1, rvec v2 )
+inline void rvec_Divide( rvec r, const rvec v1, const rvec v2 )
 {
   r[0] = v1[0] / v2[0];
   r[1] = v1[1] / v2[1];
@@ -182,7 +224,7 @@ inline void rvec_Divide( rvec r, rvec v1, rvec v2 )
 }
 
 
-inline void rvec_iDivide( rvec r, rvec v1, ivec v2 )
+inline void rvec_iDivide( rvec r, const rvec v1, const ivec v2 )
 {
   r[0] = v1[0] / v2[0];
   r[1] = v1[1] / v2[1];
@@ -190,7 +232,7 @@ inline void rvec_iDivide( rvec r, rvec v1, ivec v2 )
 }
 
 
-inline void rvec_Invert( rvec r, rvec v )
+inline void rvec_Invert( rvec r, const rvec v )
 {
   r[0] = 1. / v[0];
   r[1] = 1. / v[1];
@@ -198,7 +240,7 @@ inline void rvec_Invert( rvec r, rvec v )
 }
 
 
-inline void rvec_Cross( rvec ret, rvec v1, rvec v2 )
+inline void rvec_Cross( rvec ret, const rvec v1, const rvec v2 )
 {
   ret[0] = v1[1] * v2[2] - v1[2] * v2[1];
   ret[1] = v1[2] * v2[0] - v1[0] * v2[2];
@@ -206,34 +248,40 @@ inline void rvec_Cross( rvec ret, rvec v1, rvec v2 )
 }
 
 
-inline void rvec_OuterProduct( rtensor r, rvec v1, rvec v2 )
+inline void rvec_OuterProduct( rtensor r, const rvec v1, const rvec v2 )
 {
-  int i, j;
+  unsigned int i, j;
 
   for( i = 0; i < 3; ++i )
+  {
     for( j = 0; j < 3; ++j )
+    {
       r[i][j] = v1[i] * v2[j];
+    }
+  }
 }
 
 
-inline real rvec_Norm_Sqr( rvec v )
+inline real rvec_Norm_Sqr( const rvec v )
 {
   return SQR(v[0]) + SQR(v[1]) + SQR(v[2]);
 }
 
 
-inline real rvec_Norm( rvec v )
+inline real rvec_Norm( const rvec v )
 {
   return SQRT( SQR(v[0]) + SQR(v[1]) + SQR(v[2]) );
 }
 
 
-inline int rvec_isZero( rvec v )
+inline int rvec_isZero( const rvec v )
 {
   if( fabs(v[0]) > ALMOST_ZERO || 
       fabs(v[1]) > ALMOST_ZERO || 
       fabs(v[2]) > ALMOST_ZERO )
+  {
     return 0;
+  }
   return 1;
 }
 
@@ -254,7 +302,7 @@ inline void rvec_Random( rvec v )
 
 inline void rtensor_Multiply( rtensor ret, rtensor m1, rtensor m2 )
 {
-  int i, j, k;
+  unsigned int i, j, k;
   rtensor temp;
 
   // check if the result matrix is the same as one of m1, m2.
@@ -287,36 +335,46 @@ inline void rtensor_Multiply( rtensor ret, rtensor m1, rtensor m2 )
 }
 
 
-inline void rtensor_MatVec( rvec ret, rtensor m, rvec v )
+inline void rtensor_MatVec( rvec ret, rtensor m, const rvec v )
 {
-  int i;
+  unsigned int i;
   rvec temp;
 
   // if ret is the same vector as v, we cannot modify the 
   // contents of v until all computation is finished.
   if( ret == v )
+  {
+    for( i = 0; i < 3; ++i )
     {
-      for( i = 0; i < 3; ++i )
-	temp[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2];
+      temp[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2];
+    }
 
-      for( i = 0; i < 3; ++i )
-	ret[i] = temp[i];
-    }
-  else
+    for( i = 0; i < 3; ++i )
     {
-      for( i = 0; i < 3; ++i )
-	ret[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2];
+      ret[i] = temp[i];
     }
+  }
+  else
+  {
+    for( i = 0; i < 3; ++i )
+    {
+      ret[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2];
+    }
+  }
 }
 
 
-inline void rtensor_Scale( rtensor ret, real c, rtensor m )
+inline void rtensor_Scale( rtensor ret, const real c, rtensor m )
 {
-  int i, j;
+  unsigned int i, j;
 
   for( i = 0; i < 3; ++i )
+  {
     for( j = 0; j < 3; ++j )
+    {
       ret[i][j] = c * m[i][j];
+    }
+  }
 }
 
 
@@ -325,49 +383,69 @@ inline void rtensor_Add( rtensor ret, rtensor t )
   int i, j;
 
   for( i = 0; i < 3; ++i )
+  {
     for( j = 0; j < 3; ++j )
+    {
       ret[i][j] += t[i][j];
+    }
+  }
 }
 
 
-inline void rtensor_ScaledAdd( rtensor ret, real c, rtensor t )
+inline void rtensor_ScaledAdd( rtensor ret, const real c, rtensor t )
 {
-  int i, j;
+  unsigned int i, j;
 
   for( i = 0; i < 3; ++i )
+  {
     for( j = 0; j < 3; ++j )
+    {
       ret[i][j] += c * t[i][j];
+    }
+  }
 }
 
 
 inline void rtensor_Sum( rtensor ret, rtensor t1, rtensor t2 )
 {
-  int i, j;
+  unsigned int i, j;
 
   for( i = 0; i < 3; ++i )
+  {
     for( j = 0; j < 3; ++j )
+    {
       ret[i][j] = t1[i][j] + t2[i][j];
+    }
+  }
 }
 
 
-inline void rtensor_ScaledSum( rtensor ret, real c1, rtensor t1, 
-			       real c2, rtensor t2 )
+inline void rtensor_ScaledSum( rtensor ret, const real c1, rtensor t1, 
+			       const real c2, rtensor t2 )
 {
-  int i, j;
+  unsigned int i, j;
 
   for( i = 0; i < 3; ++i )
+  {
     for( j = 0; j < 3; ++j )
+    {
       ret[i][j] = c1 * t1[i][j] + c2 * t2[i][j];
+    }
+  }
 }
 
 
 inline void rtensor_Copy( rtensor ret, rtensor t )
 {
-  int i, j;
+  unsigned int i, j;
 
   for( i = 0; i < 3; ++i )
+  {
     for( j = 0; j < 3; ++j )
+    {
       ret[i][j] = t[i][j];
+    }
+  }
 }
 
 
@@ -409,9 +487,9 @@ inline real rtensor_Trace( rtensor t )
 }
 
 
-void Print_rTensor(FILE* fp, rtensor t)
+void Print_rTensor(FILE * const fp, rtensor t)
 {
-  int i, j;
+  unsigned int i, j;
 
   for (i=0; i < 3; i++)
     {
@@ -429,13 +507,13 @@ inline void ivec_MakeZero( ivec v )
 }
 
 
-inline void ivec_Copy( ivec dest, ivec src )
+inline void ivec_Copy( ivec dest, const ivec src )
 {
   dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
 }
 
 
-inline void ivec_Scale( ivec dest, real C, ivec src )
+inline void ivec_Scale( ivec dest, const real C, const ivec src )
 {
   dest[0] = C * src[0];
   dest[1] = C * src[1];
@@ -443,7 +521,7 @@ inline void ivec_Scale( ivec dest, real C, ivec src )
 }
 
 
-inline void ivec_rScale( ivec dest, real C, rvec src )
+inline void ivec_rScale( ivec dest, const real C, const rvec src )
 {
   dest[0] = (int)(C * src[0]);
   dest[1] = (int)(C * src[1]);
@@ -451,24 +529,28 @@ inline void ivec_rScale( ivec dest, real C, rvec src )
 }
 
 
-inline int ivec_isZero( ivec v )
+inline int ivec_isZero( const ivec v )
 {
   if( v[0]==0 && v[1]==0 && v[2]==0 )
+  {
     return 1;
+  }
   return 0;
 }
 
 
-inline int ivec_isEqual( ivec v1, ivec v2 )
+inline int ivec_isEqual( const ivec v1, const ivec v2 )
 {
   if( v1[0]==v2[0] && v1[1]==v2[1] && v1[2]==v2[2] )
+  {
     return 1;
+  }
 
   return 0;
 }
 
 
-inline void ivec_Sum( ivec dest, ivec v1, ivec v2 )
+inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
 {
   dest[0] = v1[0] + v2[0];
   dest[1] = v1[1] + v2[1];

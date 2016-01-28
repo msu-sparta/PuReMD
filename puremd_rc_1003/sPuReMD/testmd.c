@@ -82,8 +82,16 @@ void Read_System( char *geof, char *ff, char *ctrlf,
 {
   FILE *ffield, *ctrl;
 
-  ffield = fopen( ff, "r" );
-  ctrl = fopen( ctrlf, "r" );
+  if ( (ffield = fopen( ff, "r" )) == NULL )
+  {
+    fprintf( stderr, "Error opening the ffield file!\n" );
+    exit( FILE_NOT_FOUND_ERR );
+  }
+  if ( (ctrl = fopen( ctrlf, "r" )) == NULL )
+  {
+    fprintf( stderr, "Error opening the ffield file!\n" );
+    exit( FILE_NOT_FOUND_ERR );
+  }
 
   /* ffield file */
   Read_Force_Field( ffield, &(system->reaxprm) );
@@ -120,6 +128,12 @@ void Read_System( char *geof, char *ff, char *ctrlf,
 }
 
 
+static void usage(char* argv[])
+{
+    fprintf(stderr, "usage: ./%s geometry ffield control\n", argv[0]);
+}
+
+
 int main(int argc, char* argv[])
 {
   reax_system system;
@@ -130,6 +144,12 @@ int main(int argc, char* argv[])
   output_controls out_control;
   evolve_function Evolve;
   int steps;
+
+  if( argc != 4 )
+  {
+    usage(argv);
+    exit( INVALID_INPUT );
+  }
   
   lists = (list*) malloc( sizeof(list) * LIST_N );
 

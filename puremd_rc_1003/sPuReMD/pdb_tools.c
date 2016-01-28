@@ -100,9 +100,9 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
   /* count number of atoms in the pdb file */
   system->N = 0;
-  while (!feof(pdb)) {
-    s[0] = 0;
-    fgets( s, MAX_LINE, pdb );
+  s[0] = 0;
+  while (fgets( s, MAX_LINE, pdb ))
+  {
     
     tmp[0][0] = 0;
     c = Tokenize( s, &tmp );
@@ -110,7 +110,14 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     if( strncmp( tmp[0], "ATOM", 4 ) == 0 || 
 	strncmp( tmp[0], "HETATM", 6 ) == 0 )
       (system->N)++;
+    s[0] = 0;
   }
+  if(ferror(pdb))
+  {
+    fprintf(stderr, "Error reading PDB file. Terminating.\n");
+    exit( INVALID_INPUT );
+  }
+
   fclose(pdb);
 #if defined(DEBUG_FOCUS)
   fprintf( stderr, "system->N: %d\n", system->N );
@@ -131,7 +138,11 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
   
 
   /* start reading and processing pdb file */
-  pdb = fopen(pdb_file,"r");
+  if ( (pdb = fopen(pdb_file,"r")) == NULL )
+  {
+    fprintf( stderr, "Error opening the pdb file!\n" );
+    exit( FILE_NOT_FOUND_ERR );
+  }
   c = 0;
   c1 = 0;
 
@@ -282,7 +293,11 @@ char Write_PDB( reax_system* system, control_params *control,
 
   /* open output pdb file */
   sprintf( temp, "%s%d.pdb", control->sim_name, data->step );
-  out_control->pdb = fopen( temp, "w" );
+  if ( (out_control->pdb = fopen( temp, "w" )) == NULL )
+  {
+    fprintf( stderr, "Error opening the pdb output file!\n" );
+    exit( FILE_NOT_FOUND_ERR );
+  }
 
 
   /* Writing Box information */
@@ -426,8 +441,12 @@ char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
     workspace->restricted_list[i] = (int*) calloc( MAX_RESTRICT, sizeof(int) );
   
 
-  /* start reading and processing pdb file */
-  bgf = fopen( bgf_file, "r" );
+  /* start reading and processing bgf file */
+  if ( (bgf = fopen( bgf_file, "r" )) == NULL )
+  {
+    fprintf( stderr, "Error opening the bgf file!\n" );
+    exit( FILE_NOT_FOUND_ERR );
+  }
   atom_cnt = 0;
   token_cnt = 0;
 

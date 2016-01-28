@@ -26,6 +26,12 @@
 
 #include "mytypes.h"
 
+typedef enum
+{
+  LOWER = 0,
+  UPPER = 1,
+} TRIANGULARITY;
+
 int GMRES( static_storage*, sparse_matrix*, 
 	   real*, real, real*, FILE* );
 

@@ -880,8 +880,9 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     tmp[i] = (char*) malloc(sizeof(char)*MAX_LINE);
 
   /* read control parameters file */
-  while (!feof(fp)) {
-    fgets(s,MAX_LINE,fp);
+//  while (!feof(fp)) {
+  while(fgets(s,MAX_LINE,fp))
+  {
     c=Tokenize(s,&tmp);
     
     if( strcmp(tmp[0], "simulation_name") == 0 ) {
@@ -1163,6 +1164,11 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     }
   }
   
+  if(ferror(fp))
+  {
+    fprintf(stderr, "Error reading control file. Terminating.\n");
+    exit( INVALID_INPUT );
+  }
   
   /* determine target T */
   if( control->T_mode == 0 )

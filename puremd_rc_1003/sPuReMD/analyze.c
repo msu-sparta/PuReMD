@@ -728,8 +728,9 @@ void Calculate_Drift( reax_system *system, control_params *control,
 	  /* the atom has moved almost half the box size. 
 	     exclude it from further drift computations as it might have an 
 	     improper contribution due to periodic boudnaries. */
-	  workspace->x_old[i][0] = workspace->x_old[i][2] = 
-	    workspace->x_old[i][2] = -999999999999.0;
+	  workspace->x_old[i][0] = -999999999999.0;
+          workspace->x_old[i][2] = -999999999999.0;
+	  workspace->x_old[i][2] = -999999999999.0;
 	  continue;
 	}
 	

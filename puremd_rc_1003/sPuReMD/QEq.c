@@ -104,6 +104,7 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
 }
 
 
+/* Incomplete Cholesky factorization with thresholding */
 void ICHOLT( sparse_matrix *A, real *droptol, 
 	     sparse_matrix *L, sparse_matrix *U )
 {
@@ -194,18 +195,25 @@ void ICHOLT( sparse_matrix *A, real *droptol,
   L->start[i] = Ltop;
   //fprintf( stderr, "nnz(L): %d, max: %d\n", Ltop, L->n * 50 );
 
+  /* U = L^T (Cholesky factorization) */
   for( i = 1; i <= U->n; ++i )
+  {
     Utop[i] = U->start[i] = U->start[i] + U->start[i-1] + 1;
-  
+  }
   for( i = 0; i < L->n; ++i )
-    for( pj = L->start[i]; pj < L->start[i+1]; ++pj ){
+  {
+    for( pj = L->start[i]; pj < L->start[i+1]; ++pj )
+    {
       j = L->entries[pj].j;
       U->entries[Utop[j]].j = i;
       U->entries[Utop[j]].val = L->entries[pj].val;
       Utop[j]++;
     }
+  }
 
   //fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
+
+  free(Utop);
 }
 
 
@@ -324,10 +332,10 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
   //  Print_Linear_System( system, control, workspace, far_nbrs, data->step );
 
   //TODO: add parameters in control file for solver choice and options
-  //matvecs = GMRES( workspace, workspace->H, 
-  //  workspace->b_s, control->q_err, workspace->s[0], out_control->log );
-  //matvecs += GMRES( workspace, workspace->H, 
-  //  workspace->b_t, control->q_err, workspace->t[0], out_control->log );
+//  matvecs = GMRES( workspace, workspace->H, 
+//    workspace->b_s, control->q_err, workspace->s[0], out_control->log );
+//  matvecs += GMRES( workspace, workspace->H, 
+//    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
 
   //matvecs = GMRES_HouseHolder( workspace, workspace->H, 
   //    workspace->b_s, control->q_err, workspace->s[0], out_control->log );

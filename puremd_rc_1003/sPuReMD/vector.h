@@ -24,61 +24,61 @@
 
 #include "mytypes.h"
 
-int  Vector_isZero( real*, int );
-void Vector_MakeZero( real*, int );
-void Vector_Copy( real*, real*, int );
-void Vector_Scale( real*, real, real*, int );
-void Vector_Sum( real*, real, real*, real, real*, int );
-void Vector_Add( real*, real, real*, int );
-void Vector_Add2( real*, real*, int );
-void Vector_Print( FILE*, char*, real*, int );
-real Dot( real*, real*, int );
-real Norm( real*, int );
+int Vector_isZero( const real * const, const unsigned int );
+void Vector_MakeZero( real * const, const unsigned int );
+void Vector_Copy( real * const, const real * const, const unsigned int );
+void Vector_Scale( real * const, const real, const real * const, const unsigned int );
+void Vector_Sum( real * const, const real, const real * const, const real, const real * const, const unsigned int );
+void Vector_Add( real * const, const real, const real * const, const unsigned int );
+void Vector_Add2( real * const, const real * const, const unsigned int );
+void Vector_Print( FILE * const, const char * const, const real * const, const unsigned int );
+real Dot( const real * const, const real * const, const unsigned int );
+real Norm( const real * const, const unsigned int );
 
-void rvec_Copy( rvec, rvec );
-void rvec_Scale( rvec, real, rvec );
-void rvec_Add( rvec, rvec );
-void rvec_ScaledAdd( rvec, real, rvec );
-void rvec_Sum( rvec, rvec, rvec );
-void rvec_ScaledSum( rvec, real, rvec, real, rvec );
-real rvec_Dot( rvec, rvec );
-real rvec_ScaledDot( real, rvec, real, rvec );
-void rvec_Multiply( rvec, rvec, rvec );
-void rvec_iMultiply( rvec, ivec, rvec );
-void rvec_Divide( rvec, rvec, rvec );
-void rvec_iDivide( rvec, rvec, ivec );
-void rvec_Invert( rvec, rvec );
-void rvec_Cross( rvec, rvec, rvec );
-void rvec_OuterProduct( rtensor, rvec, rvec );
-real rvec_Norm_Sqr( rvec );
-real rvec_Norm( rvec );
-int  rvec_isZero( rvec );
+void rvec_Copy( rvec, const rvec );
+void rvec_Scale( rvec, const real, const rvec );
+void rvec_Add( rvec, const rvec );
+void rvec_ScaledAdd( rvec, const real, const rvec );
+void rvec_Sum( rvec, const rvec, const rvec );
+void rvec_ScaledSum( rvec, const real, const rvec, const real, const rvec );
+real rvec_Dot( const rvec, const rvec );
+real rvec_ScaledDot( const real, const rvec, const real, const rvec );
+void rvec_Multiply( rvec, const rvec, const rvec );
+void rvec_iMultiply( rvec, const ivec, const rvec );
+void rvec_Divide( rvec, const rvec, const rvec );
+void rvec_iDivide( rvec, const rvec, const ivec );
+void rvec_Invert( rvec, const rvec );
+void rvec_Cross( rvec, const rvec, const rvec );
+void rvec_OuterProduct( rtensor, const rvec, const rvec );
+real rvec_Norm_Sqr( const rvec );
+real rvec_Norm( const rvec );
+int rvec_isZero( const rvec );
 void rvec_MakeZero( rvec );
 void rvec_Random( rvec );
 
 void rtensor_MakeZero( rtensor );
 void rtensor_Multiply( rtensor, rtensor, rtensor );
-void rtensor_MatVec( rvec, rtensor, rvec );
-void rtensor_Scale( rtensor, real, rtensor );
+void rtensor_MatVec( rvec, rtensor, const rvec );
+void rtensor_Scale( rtensor, const real, rtensor );
 void rtensor_Add( rtensor, rtensor );
-void rtensor_ScaledAdd( rtensor, real, rtensor );
+void rtensor_ScaledAdd( rtensor, const real, rtensor );
 void rtensor_Sum( rtensor, rtensor, rtensor );
-void rtensor_ScaledSum( rtensor, real, rtensor, real, rtensor );
-void rtensor_Scale( rtensor, real, rtensor );
+void rtensor_ScaledSum( rtensor, const real, rtensor, const real, rtensor );
+void rtensor_Scale( rtensor, const real, rtensor );
 void rtensor_Copy( rtensor, rtensor );
 void rtensor_Identity( rtensor );
 void rtensor_Transpose( rtensor, rtensor );
 real rtensor_Det( rtensor );
 real rtensor_Trace( rtensor );
 
-void Print_rTensor(FILE*,rtensor);
+void Print_rTensor(FILE * const, rtensor);
 
-int  ivec_isZero( ivec );
-int  ivec_isEqual( ivec, ivec );
+int ivec_isZero( const ivec );
+int ivec_isEqual( const ivec, const ivec );
 void ivec_MakeZero( ivec );
-void ivec_Copy( ivec, ivec );
-void ivec_Scale( ivec, real, ivec );
-void ivec_rScale( ivec, real, rvec );
-void ivec_Sum( ivec, ivec, ivec );
+void ivec_Copy( ivec, const ivec );
+void ivec_Scale( ivec, const real, const ivec );
+void ivec_rScale( ivec, const real, const rvec );
+void ivec_Sum( ivec, const ivec, const ivec );
 
 #endif
