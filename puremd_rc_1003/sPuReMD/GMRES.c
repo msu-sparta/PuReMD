@@ -56,7 +56,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     }
 
     // the diagonal entry is the last one in
-    b[i] += A->entries[A->start[i+1]-1].val * x[i]; 
+    b[i] += A->entries[k].val * x[i]; 
   }
 }
 
