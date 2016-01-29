@@ -70,7 +70,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 static void Sparse_MatVec2( const sparse_matrix * const A,
                             const TRIANGULARITY tri, const real * const x, real * const b)
 {
-    int i, k, n, si = 0, ei = 0;
+    int i, j, k, n, si = 0, ei = 0;
+    real H;
 
     n = A->n;
     for ( i = 0; i < n; ++i )
@@ -94,8 +95,9 @@ static void Sparse_MatVec2( const sparse_matrix * const A,
 
         for ( k = si; k < ei; ++k )
         {
-            b[A->entries[k].j] += A->entries[k].j * x[i];
-            b[i] += A->entries[k].j * x[A->entries[k].j];
+            j = A->entries[k].j;
+            H = A->entries[k].val;
+            b[i] += H * x[j];
         }
     }
 }
@@ -163,9 +165,10 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
                          real * const x, const unsigned int maxiter )
 {
     unsigned int iter = 0;
-    real *Dinv_b;
+    real *Dinv_b, *temp;
 
-    if ( (Dinv_b = (real*) malloc(sizeof(real) * (Dinv->n))) == NULL )
+    if ( (Dinv_b = (real*) malloc(sizeof(real) * (Dinv->n))) == NULL 
+        || (temp = (real*) malloc(sizeof(real) * (Dinv->n))) == NULL )
     {
         fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
         exit(INSUFFICIENT_SPACE);
@@ -177,12 +180,14 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
     do
     {
         // x_{k+1} = G*x_{k} + Dinv*b;
-        Sparse_MatVec2( (sparse_matrix*)G, tri, x, x );
-        Vector_Add2( x, Dinv_b, Dinv->n );
+        Sparse_MatVec2( (sparse_matrix*)G, tri, x, temp );
+        Vector_Add2( temp, Dinv_b, Dinv->n );
+        Vector_Copy( x, temp, Dinv->n );
         ++iter;
     }
     while ( iter < maxiter );
 
+    free(temp);
     free(Dinv_b);
 }
 
@@ -679,10 +684,12 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
         // TODO: add parameters to config file
         // TODO: cache results and use for inital guess?
-        Jacobi_Iter( (const sparse_matrix*)L, LOWER, (const sparse_matrix*)Dinv_L,
-                     (const real*)workspace->v[0], workspace->v[0], 100 );
-        Jacobi_Iter( (const sparse_matrix*)U, UPPER, (const sparse_matrix*)Dinv_U,
-                     (const real*)workspace->v[0], workspace->v[0], 100 );
+       Jacobi_Iter( (const sparse_matrix*)L, LOWER, (const sparse_matrix*)Dinv_L,
+                    (const real*)workspace->v[0], workspace->v[0], 100 );
+       Jacobi_Iter( (const sparse_matrix*)U, UPPER, (const sparse_matrix*)Dinv_U,
+                    (const real*)workspace->v[0], workspace->v[0], 100 );
+//        Forward_Subs( L, workspace->v[0], workspace->v[0] );
+//        Backward_Subs( U, workspace->v[0], workspace->v[0] );
         workspace->g[0] = Norm( workspace->v[0], N );
         Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
@@ -698,6 +705,8 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
                          (const real*)workspace->v[j + 1], workspace->v[j + 1], 100 );
             Jacobi_Iter( (const sparse_matrix*)U, UPPER, (const sparse_matrix*)Dinv_U,
                          (const real*)workspace->v[j + 1], workspace->v[j + 1], 100 );
+//            Forward_Subs( L, workspace->v[j + 1], workspace->v[j + 1] );
+//            Backward_Subs( U, workspace->v[j + 1], workspace->v[j + 1] );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
             for ( i = 0; i < j - 1; i++ ) workspace->h[i][j] = 0;

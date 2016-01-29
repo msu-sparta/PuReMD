@@ -358,10 +358,10 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //matvecs += GMRES_HouseHolder( workspace, workspace->H,
     //    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
 
-    //matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
-    // workspace->L, workspace->U, workspace->s[0], out_control->log );
-    //matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
-    // workspace->L, workspace->U, workspace->t[0], out_control->log );
+//    matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
+//      workspace->L, workspace->U, workspace->s[0], out_control->log );
+//    matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
+//      workspace->L, workspace->U, workspace->t[0], out_control->log );
 
     matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
                              workspace->L, workspace->U, workspace->s[0], out_control->log );
