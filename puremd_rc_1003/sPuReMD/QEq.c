@@ -228,6 +228,133 @@ void ICHOLT( sparse_matrix *A, real *droptol,
 }
 
 
+/* Parallel incomplete Cholesky factorization
+ * 
+ * Reference:
+ * Edmond Chow and Aftab Patel
+ * Fine-Grained Parallel Incomplete LU Factorization
+ * SIAM J. Sci. Comp. */
+static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
+             sparse_matrix * const U, sparse_matrix * const U_t )
+{
+    unsigned int i, j, k, pj, x = 0, y = 0, ei_x, ei_y;
+    real sum;
+    int *Utop;
+
+    Utop = (int*) malloc((A->n + 1) * sizeof(int));
+    for ( i = 0; i < A->n; ++i )
+    {
+        Utop[i] = 0;
+    }
+
+    /* initial guesses for U^T */
+    memcpy( &(U_t->start), &(A->start), sizeof(int) * (A->n+1) );
+    memcpy( &(U_t->entries), &(A->entries), sizeof(sparse_matrix_entry) * (A->m) );
+
+    for ( i = 0; i < sweeps; ++i )
+    {
+//        #pragma omp parallel for
+        for ( j = 0; j < A->m; ++j )
+        {
+            sum = ZERO;
+
+            /* determine row bounds of current nonzero */
+            for ( k = 0; k < A->n; ++k )
+            {
+                if( A->start[k] > j )
+                {
+                    x = A->start[k - 1];
+                    ei_x = A->start[k];
+                    break;
+                }
+            }
+            y = A->start[A->entries[j].j];
+            ei_y = A->start[A->entries[j].j + 1];
+
+            /* sparse dot product: dot( A(i,1:i-1), A(j,1:i-1) ) */
+            while( A->entries[x].j < A->entries[j].j && 
+                    A->entries[y].j < A->entries[j].j && 
+                    x < ei_x && y < ei_y )
+            {
+                if( A->entries[x].j == A->entries[y].j )
+                {
+                    sum += A->entries[x].val * A->entries[y].val;
+                }
+                else if( A->entries[x].j < A->entries[y].j )
+                {
+                    ++x;
+                }
+                else
+                {
+                    ++y;
+                }
+            }
+
+            sum = A->entries[j].val - sum;
+
+            if( A->entries[j].j == A->start[k - 1] )
+            {
+                U_t->entries[j].val = sum / U_t->entries[A->start[k]-1].val;
+            }
+            else
+            {
+                U_t->entries[j].val = SQRT( sum );
+            }
+        }
+    }
+
+
+    //TODO: transpose U^T and copy into U
+    for ( i = 0; i < U_t->n; ++i )
+    {
+        for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
+        {
+            U->start[U_t->entries[pj].j + 1]++;
+        }
+    }
+    for ( i = 1; i <= U->n; ++i )
+    {
+        Utop[i] = U->start[i] = U->start[i] + U->start[i - 1] + 1;
+    }
+    for ( i = 0; i < U_t->n; ++i )
+    {
+        for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
+        {
+            j = U_t->entries[pj].j;
+            U->entries[Utop[j]].j = i;
+            U->entries[Utop[j]].val = U_t->entries[pj].val;
+            Utop[j]++;
+        }
+    }
+
+    free(Utop);
+}
+//% use entries of A as inital guesses for U
+//U = triu(A);
+//% find all non-zero elements
+//[row,col] = find(U);
+//for s=1:sweeps
+//    for b=1:numel(row);
+//        i = row(b);
+//        j = col(b);
+//%        stemp = 0.0;
+//%        for k=1:(i-1)
+//%          stemp = stemp + U(k,i)*U(k,j);
+//%        end
+//         OR
+//%        for k=1:(j-1)
+//%          stemp = stemp + U(i,k)*U(j,k);
+//%        end
+//%	stemp = A(i,j) - stemp;
+//        % vectorized computations for sparse matrices
+//	if (i ~= j)
+//	    U(i,j) = (A(i,j) - dot(U(1:i-1,i),U(1:i-1,j))) / U(i,i);
+//        else
+//	    U(i,i) = sqrt(A(i,j) - dot(U(1:i-1,i),U(1:i-1,j)));
+//	end
+//    end
+//end
+
 void Init_MatVec( reax_system *system, control_params *control,
                   simulation_data *data, static_storage *workspace,
                   list *far_nbrs )
@@ -263,7 +390,6 @@ void Init_MatVec( reax_system *system, control_params *control,
 #endif
         }
 
-        // TODO: replace with ilu_par or ichol_par
         // TODO: add parameters for sweeps to control file
         //ICHOL_PAR( workspace->H, 3, workspace->L, workspace->U );
         ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
