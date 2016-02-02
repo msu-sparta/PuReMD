@@ -100,4 +100,4 @@ vector.o: vector.c vector.h mytypes.h
 	$(CC) $(DEFS) -c vector.c
 
 clean:
-	rm -f *.o *~ core 
+	rm -f *.o *~ core spuremd
