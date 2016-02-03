@@ -242,14 +242,27 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     int *Utop;
 
     Utop = (int*) malloc((A->n + 1) * sizeof(int));
-    for ( i = 0; i < A->n; ++i )
+    for ( i = 0; i <= A->n; ++i )
     {
+        U->start[i] = 0;
         Utop[i] = 0;
     }
 
     /* initial guesses for U^T */
-    memcpy( &(U_t->start), &(A->start), sizeof(int) * (A->n+1) );
-    memcpy( &(U_t->entries), &(A->entries), sizeof(sparse_matrix_entry) * (A->m) );
+    memcpy( U_t->start, A->start, sizeof(int) * (A->n+1) );
+    memcpy( U_t->entries, A->entries, sizeof(sparse_matrix_entry) * (A->m) );
+
+    /* to get convergence, A must have unit diagonal, so apply
+     * transformation DAD, where D = diag(1./diag(A)),
+     * to initial guess and apply ad hoc during sweeps */
+    for ( i = 0; i < U_t->n; ++i )
+    {
+        for ( pj = U_t->start[i]; pj < U_t->start[i + 1] - 1; ++pj )
+        {
+            U_t->entries[pj].val /= U_t->entries[U_t->start[i + 1] - 1].val;
+        }
+        U_t->entries[pj].val = 1.;
+    }
 
     for ( i = 0; i < sweeps; ++i )
     {
@@ -278,7 +291,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             {
                 if( A->entries[x].j == A->entries[y].j )
                 {
-                    sum += A->entries[x].val * A->entries[y].val;
+                    sum += (A->entries[x].val / A->entries[ei_x - 1].val) * 
+                            (A->entries[y].val / A->entries[ei_y - 1].val);
+                    ++x;
+                    ++y;
                 }
                 else if( A->entries[x].j < A->entries[y].j )
                 {
@@ -290,7 +306,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 }
             }
 
-            sum = A->entries[j].val - sum;
+            sum = (A->entries[j].val / A->entries[ei_x - 1].val) - sum;
 
             if( A->entries[j].j == A->start[k - 1] )
             {
@@ -304,9 +320,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     }
 
 
-    //TODO: transpose U^T and copy into U
+    /* transpose U^T and copy into U */
     for ( i = 0; i < U_t->n; ++i )
     {
+        /* count nonzeros in each row of U, store in U->start */
         for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
         {
             U->start[U_t->entries[pj].j + 1]++;
@@ -369,18 +386,23 @@ void Init_MatVec( reax_system *system, control_params *control,
         //Print_Linear_System( system, control, workspace, data->step );
         Sort_Matrix_Rows( workspace->H );
         //fprintf( stderr, "H matrix sorted\n" );
-        // TODO: comment out
-        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
+//        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
         //fprintf( stderr, "drop tolerances calculated\n" );
         if ( workspace->L == NULL )
         {
+//            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
+//            if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
+//                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
+//            {
+//                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+//                exit(INSUFFICIENT_SPACE);
+//            }
             // TODO: ilu_par & ichol_par contain same sparsity pattern as H,
             //   so allocate with same NNZ (workspace->H->m)
-            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
-            if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
-                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
+            if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, workspace->H->m ) == 0 ||
+                    Allocate_Matrix( &(workspace->U), far_nbrs->n, workspace->H->m ) == 0 )
             {
-                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                 exit(INSUFFICIENT_SPACE);
             }
 #if defined(DEBUG_FOCUS)
@@ -390,9 +412,9 @@ void Init_MatVec( reax_system *system, control_params *control,
 #endif
         }
 
+//        ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
         // TODO: add parameters for sweeps to control file
-        //ICHOL_PAR( workspace->H, 3, workspace->L, workspace->U );
-        ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+        ICHOL_PAR( workspace->H, 3, workspace->L, workspace->U );
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "icholt-" );
         //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
