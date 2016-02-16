@@ -58,41 +58,40 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 }
 
 
-/* sparse matrix-vector product Ax=b
- * ommitting diagonal of A (for Jacobi iteration),
- *   A: triangular matrix
+/* sparse matrix-vector product Gx=b (for Jacobi iteration),
+ * where G = (I - D^{-1}R) (G not explicitly computed and stored)
+ *   R: strictly triangular matrix (diagonals not used)
+ *   tri: triangularity of A (lower/upper)
+ *   D_inv: inverse of the diagonal of R
  *   x: vector
- *   b: vector (result)
- *   tri: triangularity of A (lower/upper) */
-static void Sparse_MatVec2( const sparse_matrix * const A,
-                            const TRIANGULARITY tri, const real * const x, real * const b)
+ *   b: vector (result) */
+static void Sparse_MatVec2( const sparse_matrix * const R,
+                            const TRIANGULARITY tri, const real * const Dinv,
+                            const real * const x, real * const b)
 {
-    int i, j, k, n, si = 0, ei = 0;
-    real H;
+    int i, k, si = 0, ei = 0;
 
-    n = A->n;
-    Vector_MakeZero( b, n );
+    Vector_MakeZero( b, R->n );
 
-    for ( i = 0; i < n; ++i )
+    for ( i = 0; i < R->n; ++i )
     {
         if (tri == LOWER)
         {
-            si = A->start[i];
-            ei = A->start[i + 1] - 1;
+            si = R->start[i];
+            ei = R->start[i + 1] - 1;
         }
         else if (tri == UPPER)
         {
 
-            si = A->start[i] + 1;
-            ei = A->start[i + 1];
+            si = R->start[i] + 1;
+            ei = R->start[i + 1];
         }
 
         for ( k = si; k < ei; ++k )
         {
-            j = A->entries[k].j;
-            H = A->entries[k].val;
-            b[i] += H * x[j];
+            b[i] += R->entries[k].val * x[R->entries[k].j];
         }
+        b[i] *= -Dinv[i];
     }
 }
 
@@ -179,8 +178,9 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
 
     do
     {
+        // Issue: G = I - D^{-1}R, NOT R
         // x_{k+1} = G*x_{k} + Dinv*b;
-        Sparse_MatVec2( (sparse_matrix*)G, tri, rp, rp2 );
+        Sparse_MatVec2( (sparse_matrix*)G, tri, Dinv, rp, rp2 );
         Vector_Add2( rp2, Dinv_b, n );
         rp3 = rp;
         rp = rp2;
@@ -682,8 +682,8 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         Sparse_MatVec( H, x, workspace->b_prm );
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
         // TODO: add parameters to config file
-        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 100 );
-        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 100 );
+        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 30 );
+        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 30 );
 //        Forward_Subs( L, workspace->v[0], workspace->v[0] );
 //        Backward_Subs( U, workspace->v[0], workspace->v[0] );
         workspace->g[0] = Norm( workspace->v[0], N );
@@ -696,8 +696,8 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
             /* matvec */
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
             // TODO: add parameters to config file
-            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 100 );
-            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 100 );
+            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
+            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
 //            Forward_Subs( L, workspace->v[j + 1], workspace->v[j + 1] );
 //            Backward_Subs( U, workspace->v[j + 1], workspace->v[j + 1] );
 
