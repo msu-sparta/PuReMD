@@ -93,6 +93,7 @@
 #define INSUFFICIENT_SPACE    14
 #define UNKNOWN_OPTION        15
 #define INVALID_INPUT         16
+#define NUMERIC_BREAKDOWN     17
 
 #define C_ATOM  0
 #define H_ATOM  1

@@ -682,10 +682,8 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         Sparse_MatVec( H, x, workspace->b_prm );
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
         // TODO: add parameters to config file
-        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 30 );
-        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 30 );
-//        Forward_Subs( L, workspace->v[0], workspace->v[0] );
-//        Backward_Subs( U, workspace->v[0], workspace->v[0] );
+        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 40 );
+        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 40 );
         workspace->g[0] = Norm( workspace->v[0], N );
         Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
@@ -696,10 +694,8 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
             /* matvec */
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
             // TODO: add parameters to config file
-            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
-            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
-//            Forward_Subs( L, workspace->v[j + 1], workspace->v[j + 1] );
-//            Backward_Subs( U, workspace->v[j + 1], workspace->v[j + 1] );
+            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 40 );
+            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 40 );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
             for ( i = 0; i < j - 1; i++ ) workspace->h[i][j] = 0;
