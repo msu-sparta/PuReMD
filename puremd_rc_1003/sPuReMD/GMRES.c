@@ -682,8 +682,8 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         Sparse_MatVec( H, x, workspace->b_prm );
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
         // TODO: add parameters to config file
-        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 40 );
-        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 40 );
+        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 30 );
+        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 30 );
         workspace->g[0] = Norm( workspace->v[0], N );
         Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
@@ -694,11 +694,14 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
             /* matvec */
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
             // TODO: add parameters to config file
-            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 40 );
-            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 40 );
+            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
+            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
-            for ( i = 0; i < j - 1; i++ ) workspace->h[i][j] = 0;
+            for ( i = 0; i < j - 1; i++ )
+            {
+                workspace->h[i][j] = 0;
+            }
 
             //for( i = 0; i <= j; i++ ) {
             for ( i = MAX(j - 1, 0); i <= j; i++ )
@@ -745,12 +748,15 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         }
 
 
+        /* TODO: solve using Jacobi iteration? */
         /* solve Hy = g: H is now upper-triangular, do back-substitution */
         for ( i = j - 1; i >= 0; i-- )
         {
             temp = workspace->g[i];
             for ( k = j - 1; k > i; k-- )
+            {
                 temp -= workspace->h[i][k] * workspace->y[k];
+            }
 
             workspace->y[i] = temp / workspace->h[i][i];
         }
@@ -758,14 +764,18 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         /* update x = x_0 + Vy */
         Vector_MakeZero( workspace->p, N );
         for ( i = 0; i < j; i++ )
+        {
             Vector_Add( workspace->p, workspace->y[i], workspace->v[i], N );
+        }
         //Backward_Subs( U, workspace->p, workspace->p );
         //Forward_Subs( L, workspace->p, workspace->p );
         Vector_Add( x, 1., workspace->p, N );
 
         /* stopping condition */
         if ( fabs(workspace->g[j]) / bnorm <= tol )
+        {
             break;
+        }
     }
 
     // Sparse_MatVec( H, x, workspace->b_prm );
