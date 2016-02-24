@@ -333,7 +333,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             sum = DAD->entries[j].val - sum;
 
             /* diagonal entries */
-            if( (U_t->start[k] - 1) == j )
+            if( (k - 1) == U_t->entries[j].j )
             {
                 /* sanity check */
                 if( sum < ZERO )
@@ -352,8 +352,9 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         }
     }
 
-    /* apply inverse transformation D^{-1}DADD^{-1} = A \approx D^{-1}U^{T}UD^{-1},
-     * i.e., D^{-1}U^{T} */
+    /* apply inverse transformation D^{-1}U^{T},
+     * since DAD \approx U^{T}U, so
+     * D^{-1}DADD^{-1} = A \approx D^{-1}U^{T}UD^{-1} */
     for ( i = 0; i < A->n; ++i )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
@@ -362,10 +363,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         }
     }
 
-    /* transpose U^T and copy into U */
+    /* transpose U^{T} and copy into U */
     for ( i = 0; i < U_t->n; ++i )
     {
-        /* count nonzeros in each row of U (column-wise),
+        /* count nonzeros in each row of U (columns of U^{T}),
          * store in U->start */
         for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
         {
@@ -375,7 +376,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     /* set correct row pointer in U */
     for ( i = 1; i <= U->n; ++i )
     {
-        Utop[i] = U->start[i] = U->start[i] + U->start[i - 1] + 1;
+        Utop[i] = U->start[i] = U->start[i] + U->start[i - 1];
     }
     /* for each row */
     for ( i = 0; i < U_t->n; ++i )
@@ -424,8 +425,9 @@ void Init_MatVec( reax_system *system, control_params *control,
 //                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
 //                exit(INSUFFICIENT_SPACE);
 //            }
-           if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, workspace->H->m ) == 0 ||
-                   Allocate_Matrix( &(workspace->U), far_nbrs->n, workspace->H->m ) == 0 )
+           /* factors have sparsity pattern as H */
+           if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
+                   Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
            {
                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                exit(INSUFFICIENT_SPACE);
@@ -439,13 +441,14 @@ void Init_MatVec( reax_system *system, control_params *control,
 
 //        ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
         // TODO: add parameters for sweeps to control file
-       ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+        ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
 
+#if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname );
         sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname );
-#if defined(DEBUG_FOCUS)
+
         fprintf( stderr, "icholt-" );
         //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
         //Print_Sparse_Matrix2( workspace->L, fname );
@@ -522,8 +525,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     Init_MatVec( system, control, data, workspace, far_nbrs );
 
-    //if( data->step % 10 == 0 )
-    //  Print_Linear_System( system, control, workspace, far_nbrs, data->step );
+//    if( data->step % 10 == 0 )
+//      Print_Linear_System( system, control, workspace, data->step );
 
     //TODO: add parameters in control file for solver choice and options
 //  matvecs = GMRES( workspace, workspace->H,

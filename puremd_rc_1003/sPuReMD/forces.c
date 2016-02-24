@@ -318,6 +318,7 @@ void Init_Forces( reax_system *system, control_params *control,
             atom_j = &(system->atoms[j]);
 
             flag = 0;
+            /*TODO: build H with smaller cutoff, use for preconditioning*/
             if ((data->step - data->prev_steps) % control->reneighbor == 0)
             {
                 if ( nbr_pj->d <= control->r_cut)
