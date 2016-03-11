@@ -204,7 +204,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
     }
 
     L->start[i] = Ltop;
-    //fprintf( stderr, "nnz(L): %d, max: %d\n", Ltop, L->n * 50 );
+//    fprintf( stderr, "nnz(L): %d, max: %d\n", Ltop, L->n * 50 );
 
     /* U = L^T (Cholesky factorization) */
     for ( i = 1; i <= U->n; ++i )
@@ -222,7 +222,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         }
     }
 
-    //fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
+//    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
 
     free(Utop);
 }
@@ -289,7 +289,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero */
-        for ( j = 0; j < A->m; ++j )
+        for ( j = 0; j < A->start[A->n]; ++j )
         {
             sum = ZERO;
 
@@ -338,7 +338,12 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 /* sanity check */
                 if( sum < ZERO )
                 {
-                    fprintf( stderr, "Numeric breakdown in ICHOL. Terminating.\n" );
+                    fprintf( stderr, "Numeric breakdown in ICHOL Terminating.\n");
+#if defined(DEBUG_FOCUS)
+                    fprintf( stderr, "A(%5d,%5d) = %10.3f\n",
+                            k - 1, A->entries[j].j, A->entries[j].val );
+                    fprintf( stderr, "sum = %10.3f\n", sum);
+#endif
                     exit(NUMERIC_BREAKDOWN);
                 }
 
@@ -362,6 +367,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
            U_t->entries[pj].val *= D_inv[i];
         }
     }
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "nnz(L): %d, max: %d\n", U_t->start[U_t->n], U_t->n * 50 );
+#endif
 
     /* transpose U^{T} and copy into U */
     for ( i = 0; i < U_t->n; ++i )
@@ -393,6 +402,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         }
     }
 
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
+#endif
+
     Deallocate_Matrix( DAD );
     free(D_inv);
     free(D);
@@ -413,6 +426,7 @@ void Init_MatVec( reax_system *system, control_params *control,
     {
         //Print_Linear_System( system, control, workspace, data->step );
         Sort_Matrix_Rows( workspace->H );
+        Sort_Matrix_Rows( workspace->H_sp );
         //fprintf( stderr, "H matrix sorted\n" );
 //        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
         //fprintf( stderr, "drop tolerances calculated\n" );
@@ -441,7 +455,7 @@ void Init_MatVec( reax_system *system, control_params *control,
 
 //        ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
         // TODO: add parameters for sweeps to control file
-        ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+        ICHOL_PAR( workspace->H_sp, 1, workspace->L, workspace->U );
 
 #if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
@@ -539,10 +553,10 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //matvecs += GMRES_HouseHolder( workspace, workspace->H,
     //    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
 
-//   matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
-//     workspace->L, workspace->U, workspace->s[0], out_control->log );
-//   matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
-//     workspace->L, workspace->U, workspace->t[0], out_control->log );
+//    matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
+//        workspace->L, workspace->U, workspace->s[0], out_control->log );
+//    matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
+//        workspace->L, workspace->U, workspace->t[0], out_control->log );
 
     matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
                              workspace->L, workspace->U, workspace->s[0], out_control->log );
