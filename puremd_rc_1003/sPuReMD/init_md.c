@@ -243,6 +243,7 @@ void Init_Workspace( reax_system *system, control_params *control,
 
     /* QEq storage */
     workspace->H        = NULL;
+    workspace->H_sp     = NULL;
     workspace->L        = NULL;
     workspace->U        = NULL;
     workspace->droptol  = (real *) calloc( system->N, sizeof( real ) );
@@ -375,6 +376,11 @@ void Init_Lists( reax_system *system, control_params *control,
                             &Htop, hb_top, bond_top, &num_3body );
 
     Allocate_Matrix( &(workspace->H), system->N, Htop );
+    /* TODO: better estimate for H_sp?
+     *   If so, need to refactor Estimate_Storage_Sizes
+     *   to use various cut-off distances as parameters
+     *   (non-bonded, hydrogen, 3body, etc.) */
+    Allocate_Matrix( &(workspace->H_sp), system->N, Htop );
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - Htop: %d\n", Htop );
     fprintf( stderr, "memory allocated: H = %ldMB\n",

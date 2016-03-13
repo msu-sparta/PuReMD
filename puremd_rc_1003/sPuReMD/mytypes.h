@@ -124,17 +124,17 @@ typedef real rvec[3];
 typedef int  ivec[3];
 typedef real rtensor[3][3];
 
-enum {NVE, NVT, NPT, sNPT, iNPT, ensNR, bNVT};
-enum {FAR_NBRS, NEAR_NBRS, THREE_BODIES, BONDS, OLD_BONDS,
-      HBONDS, DBO, DDELTA, LIST_N
+enum {NVE = 0, NVT = 1, NPT = 2, sNPT = 3, iNPT = 4, ensNR = 5, bNVT = 6};
+enum {FAR_NBRS = 0, NEAR_NBRS = 1, THREE_BODIES = 2, BONDS = 3, OLD_BONDS = 4,
+      HBONDS = 5, DBO = 6, DDELTA = 7, LIST_N = 8
      };
-enum {TYP_VOID, TYP_THREE_BODY, TYP_BOND, TYP_HBOND, TYP_DBO,
-      TYP_DDELTA, TYP_FAR_NEIGHBOR, TYP_NEAR_NEIGHBOR, TYP_N
+enum {TYP_VOID = 0, TYP_THREE_BODY = 1, TYP_BOND = 2, TYP_HBOND = 3, TYP_DBO = 4,
+      TYP_DDELTA = 5, TYP_FAR_NEIGHBOR = 6, TYP_NEAR_NEIGHBOR = 7, TYP_N = 8
      };
-enum {UNKNOWN, WATER};
-enum {NO_ANALYSIS, FRAGMENTS, REACTIONS, NUM_ANALYSIS};
-enum {WRITE_ASCII, WRITE_BINARY, RF_N};
-enum {XYZ, PDB, BGF, ASCII_RESTART, BINARY_RESTART, GF_N};
+enum {UNKNOWN = 0, WATER = 1};
+enum {NO_ANALYSIS = 0, FRAGMENTS = 1, REACTIONS = 2, NUM_ANALYSIS = 3};
+enum {WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2};
+enum {XYZ = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5};
 
 
 
@@ -410,7 +410,7 @@ typedef struct
     int reneighbor;
     real vlist_cut;
     real nbr_cut;
-    real r_cut, r_low; // upper and lower taper
+    real r_cut, r_sp_cut, r_low; // upper and lower taper
     real bo_cut;
     real thb_cut;
     real hb_cut;
@@ -653,9 +653,9 @@ typedef struct
  * See, e.g.,
  *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
  *
- *   m: number of nonzeros (NNZ)
+ *   m: number of nonzeros (NNZ) ALLOCATED
  *   n: number of rows
- *   start: row pointer (last element contains NNZ + 1)
+ *   start: row pointer (last element contains ACTUAL NNZ)
  *   entries: (column index, val) pairs
  * */
 typedef struct
@@ -691,7 +691,7 @@ typedef struct
     rvec *dDeltap_self;
 
     /* QEq storage */
-    sparse_matrix *H, *L, *U;
+    sparse_matrix *H, *H_sp, *L, *U;
     real *droptol;
     real *w;
     real *Hdia_inv;
