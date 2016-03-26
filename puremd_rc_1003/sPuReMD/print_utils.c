@@ -744,6 +744,29 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     fclose( out );
 
+    sprintf( fname, "%s.H_sp%d.out", control->sim_name, step );
+    out = fopen( fname, "w" );
+    H = workspace->H_sp;
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
+        {
+            fprintf( out, "%6d%6d %24.15e\n",
+                     workspace->orig_id[i], workspace->orig_id[H->entries[j].j],
+                     H->entries[j].val );
+
+            fprintf( out, "%6d%6d %24.15e\n",
+                     workspace->orig_id[H->entries[j].j], workspace->orig_id[i],
+                     H->entries[j].val );
+        }
+        // the diagonal entry
+        fprintf( out, "%6d%6d %24.15e\n",
+                 workspace->orig_id[i], workspace->orig_id[i], H->entries[j].val );
+    }
+
+    fclose( out );
+
     /*sprintf( fname, "%s.b_s%d", control->sim_name, step );
       out = fopen( fname, "w" );
       for( i = 0; i < system->N; i++ )
@@ -814,8 +837,14 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
     FILE *f = fopen( fname, "w" );
 
     for ( i = 0; i < A->n; ++i )
+    {
         for ( j = A->start[i]; j < A->start[i + 1]; ++j )
-            fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
+        {
+            //fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
+            //Convert 0-based to 1-based (for Matlab)
+            fprintf( f, "%6d%6d %24.15e\n", i+1, A->entries[j].j+1, A->entries[j].val );
+        }
+    }
 
     fclose(f);
 }
