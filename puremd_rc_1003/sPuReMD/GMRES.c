@@ -160,9 +160,9 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
     unsigned int i, iter = 0;
     real *Dinv_b, *rp, *rp2, *rp3;
 
-    if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL 
-        || (rp = (real*) malloc(sizeof(real) * n)) == NULL
-        || (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
+    if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL
+            || (rp = (real*) malloc(sizeof(real) * n)) == NULL
+            || (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
     {
         fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
         exit(INSUFFICIENT_SPACE);
@@ -171,7 +171,7 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
     Vector_MakeZero( rp, n );
 
     /* precompute and cache, as invariant in loop below */
-    for( i = 0; i < n; ++i )
+    for ( i = 0; i < n; ++i )
     {
         Dinv_b[i] = Dinv[i] * b[i];
     }
@@ -198,18 +198,23 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
 
 
 /* generalized minimual residual iterative solver for sparse linear systems,
- * no preconditioner */
+ * diagonal preconditioner */
 int GMRES( static_storage *workspace, sparse_matrix *H,
-           real *b, real tol, real *x, FILE *fout )
+           real *b, real tol, real *x, FILE *fout, real *time )
 {
     int i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
+    struct timeval start, stop;
 
     N = H->n;
     bnorm = Norm( b, N );
     /* apply the diagonal pre-conditioner to rhs */
+    gettimeofday( &start, NULL );
     for ( i = 0; i < N; ++i )
         workspace->b_prc[i] = b[i] * workspace->Hdia_inv[i];
+    gettimeofday( &stop, NULL );
+    *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+             - (start.tv_sec + start.tv_usec / 1000000.0);
 
     /* GMRES outer-loop */
     for ( itr = 0; itr < MAX_ITR; ++itr )
@@ -229,8 +234,13 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
         {
             /* matvec */
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
+            /*pre-conditioner*/
+            gettimeofday( &start, NULL );
             for ( k = 0; k < N; ++k )
-                workspace->v[j + 1][k] *= workspace->Hdia_inv[k]; /*pre-conditioner*/
+                workspace->v[j + 1][k] *= workspace->Hdia_inv[k];
+            gettimeofday( &stop, NULL );
+            *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                     - (start.tv_sec + start.tv_usec / 1000000.0);
             //fprintf( stderr, "%d-%d: matvec done.\n", itr, j );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
@@ -517,10 +527,11 @@ int GMRES_HouseHolder( static_storage *workspace, sparse_matrix *H,
  * with preconditioner using factors LU \approx H
  * and forward / backward substitution */
 int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
-            sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout )
+            sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time )
 {
     int i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
+    struct timeval start, stop;
 
     N = H->n;
     bnorm = Norm( b, N );
@@ -531,8 +542,12 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
         /* calculate r0 */
         Sparse_MatVec( H, x, workspace->b_prm );
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
+        gettimeofday( &start, NULL );
         Forward_Subs( L, workspace->v[0], workspace->v[0] );
         Backward_Subs( U, workspace->v[0], workspace->v[0] );
+        gettimeofday( &stop, NULL );
+        *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                 - (start.tv_sec + start.tv_usec / 1000000.0);
         workspace->g[0] = Norm( workspace->v[0], N );
         Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
@@ -542,8 +557,12 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
         {
             /* matvec */
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
+            gettimeofday( &start, NULL );
             Forward_Subs( L, workspace->v[j + 1], workspace->v[j + 1] );
             Backward_Subs( U, workspace->v[j + 1], workspace->v[j + 1] );
+            gettimeofday( &stop, NULL );
+            *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                     - (start.tv_sec + start.tv_usec / 1000000.0);
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
             for ( i = 0; i < j - 1; i++ ) workspace->h[i][j] = 0;
@@ -643,11 +662,12 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
  * with preconditioner using factors LU \approx H
  * and Jacobi iteration for approximate factor application */
 int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real tol,
-                   sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout )
+                   sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time )
 {
     int i, j, k, itr, N, si;
     real cc, tmp1, tmp2, temp, bnorm;
     real *Dinv_L, *Dinv_U;
+    struct timeval start, stop;
 
     N = H->n;
     bnorm = Norm( b, N );
@@ -658,8 +678,8 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
      *   G = I - D^{-1}R
      *   R = triangular matrix
      *   D = diagonal matrix, diagonals from R */
-    if ( (Dinv_L = (real*) malloc(sizeof(real) * N)) == NULL 
-        || (Dinv_U = (real*) malloc(sizeof(real) * N)) == NULL )
+    if ( (Dinv_L = (real*) malloc(sizeof(real) * N)) == NULL
+            || (Dinv_U = (real*) malloc(sizeof(real) * N)) == NULL )
     {
         fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
         exit(INSUFFICIENT_SPACE);
@@ -682,8 +702,12 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         Sparse_MatVec( H, x, workspace->b_prm );
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
         // TODO: add parameters to config file
-        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 30 );
-        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 30 );
+        gettimeofday( &start, NULL );
+        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 50 );
+        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 50 );
+        gettimeofday( &stop, NULL );
+        *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                 - (start.tv_sec + start.tv_usec / 1000000.0);
         workspace->g[0] = Norm( workspace->v[0], N );
         Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
@@ -694,8 +718,12 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
             /* matvec */
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
             // TODO: add parameters to config file
-            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
-            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 30 );
+            gettimeofday( &start, NULL );
+            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 50 );
+            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 50 );
+            gettimeofday( &stop, NULL );
+            *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                     - (start.tv_sec + start.tv_usec / 1000000.0);
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
             for ( i = 0; i < j - 1; i++ )
@@ -963,4 +991,41 @@ int SDM( static_storage *workspace, sparse_matrix *H,
     }
 
     return i;
+}
+
+
+real condest( sparse_matrix *L, sparse_matrix *U )
+{
+    unsigned int i, N;
+    real *e, c;
+
+    N = L->n;
+
+    if ( (e = (real*) malloc(sizeof(real) * N)) == NULL )
+    {
+        fprintf( stderr, "Not enough memory for condest. Terminating.\n" );
+        exit(INSUFFICIENT_SPACE);
+    }
+
+    for ( i = 0; i < N; ++i )
+    {
+        e[i] = 1.;
+    }
+
+    Forward_Subs( L, e, e );
+    Backward_Subs( U, e, e );
+
+    c = fabs(e[0]);
+    for ( i = 1; i < N; ++i)
+    {
+        if ( fabs(e[i]) > c )
+        {
+            c = fabs(e[i]);
+        }
+
+    }
+
+    free( e );
+
+    return c;
 }

@@ -33,16 +33,16 @@ typedef enum
 } TRIANGULARITY;
 
 int GMRES( static_storage*, sparse_matrix*,
-           real*, real, real*, FILE* );
+           real*, real, real*, FILE*, real* );
 
 int GMRES_HouseHolder( static_storage*, sparse_matrix*,
                        real*, real, real*, FILE* );
 
 int PGMRES( static_storage*, sparse_matrix*, real*, real,
-            sparse_matrix*, sparse_matrix*, real*, FILE* );
+            sparse_matrix*, sparse_matrix*, real*, FILE*, real* );
 
 int PGMRES_Jacobi( static_storage*, sparse_matrix*, real*, real,
-                   sparse_matrix*, sparse_matrix*, real*, FILE* );
+                   sparse_matrix*, sparse_matrix*, real*, FILE*, real* );
 
 int PCG( static_storage*, sparse_matrix*, real*, real,
          sparse_matrix*, sparse_matrix*, real*, FILE* );
@@ -52,5 +52,7 @@ int CG( static_storage*, sparse_matrix*,
 
 int uyduruk_GMRES( static_storage*, sparse_matrix*,
                    real*, real, real*, int, FILE* );
+
+real condest( sparse_matrix*, sparse_matrix* );
 
 #endif

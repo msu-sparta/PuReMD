@@ -110,13 +110,16 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
 
 
 /* Incomplete Cholesky factorization with thresholding */
-void ICHOLT( sparse_matrix *A, real *droptol,
-             sparse_matrix *L, sparse_matrix *U )
+real ICHOLT( sparse_matrix *A, real *droptol,
+            sparse_matrix *L, sparse_matrix *U )
 {
     sparse_matrix_entry tmp[1000];
     int i, j, pj, k1, k2, tmptop, Ltop;
     real val;
     int *Utop;
+    struct timeval start, stop;
+
+    gettimeofday( &start, NULL );
 
     Utop = (int*) malloc((A->n + 1) * sizeof(int));
 
@@ -204,7 +207,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
     }
 
     L->start[i] = Ltop;
-    //fprintf( stderr, "nnz(L): %d, max: %d\n", Ltop, L->n * 50 );
+//    fprintf( stderr, "nnz(L): %d, max: %d\n", Ltop, L->n * 50 );
 
     /* U = L^T (Cholesky factorization) */
     for ( i = 1; i <= U->n; ++i )
@@ -222,20 +225,24 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         }
     }
 
-    //fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
+//    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
 
     free(Utop);
+
+    gettimeofday( &stop, NULL );
+    return (stop.tv_sec + stop.tv_usec / 1000000.0)
+        - (start.tv_sec + start.tv_usec / 1000000.0);
 }
 
 
 /* Fine-grained (parallel) incomplete Cholesky factorization
- * 
+ *
  * Reference:
  * Edmond Chow and Aftab Patel
  * Fine-Grained Parallel Incomplete LU Factorization
  * SIAM J. Sci. Comp. */
 static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
-             sparse_matrix * const U_t, sparse_matrix * const U )
+                       sparse_matrix * const U_t, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x = 0, y = 0, ei_x, ei_y;
     real *D, *D_inv, sum;
@@ -265,16 +272,16 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     }
 
     /* to get convergence, A must have unit diagonal, so apply
-     * transformation DAD, where D = D(1./sqrt(D(A))) */ 
-    memcpy( DAD->start, A->start, sizeof(int) * (A->n+1) );
+     * transformation DAD, where D = D(1./sqrt(D(A))) */
+    memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-           DAD->entries[pj].j = A->entries[pj].j;
-           DAD->entries[pj].val =
-                   A->entries[pj].val * D[i] * D[A->entries[pj].j];
+            DAD->entries[pj].j = A->entries[pj].j;
+            DAD->entries[pj].val =
+                A->entries[pj].val * D[i] * D[A->entries[pj].j];
         }
         /* diagonal */
         DAD->entries[pj].j = A->entries[pj].j;
@@ -283,7 +290,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     /* initial guesses for U^T,
      * assume: A and DAD symmetric and stored lower triangular */
-    memcpy( U_t->start, DAD->start, sizeof(int) * (DAD->n+1) );
+    memcpy( U_t->start, DAD->start, sizeof(int) * (DAD->n + 1) );
     memcpy( U_t->entries, DAD->entries, sizeof(sparse_matrix_entry) * (DAD->m) );
 
     for ( i = 0; i < sweeps; ++i )
@@ -298,7 +305,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             ei_x = 0;
             for ( k = 0; k <= A->n; ++k )
             {
-                if( U_t->start[k] > j )
+                if ( U_t->start[k] > j )
                 {
                     x = U_t->start[k - 1];
                     ei_x = U_t->start[k];
@@ -310,17 +317,17 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             ei_y = U_t->start[U_t->entries[j].j + 1];
 
             /* sparse dot product: dot( U^T(i,1:j-1), U^T(j,1:j-1) ) */
-            while( U_t->entries[x].j < U_t->entries[j].j && 
-                    U_t->entries[y].j < U_t->entries[j].j && 
+            while ( U_t->entries[x].j < U_t->entries[j].j &&
+                    U_t->entries[y].j < U_t->entries[j].j &&
                     x < ei_x && y < ei_y )
             {
-                if( U_t->entries[x].j == U_t->entries[y].j )
+                if ( U_t->entries[x].j == U_t->entries[y].j )
                 {
                     sum += (U_t->entries[x].val * U_t->entries[y].val);
                     ++x;
                     ++y;
                 }
-                else if( U_t->entries[x].j < U_t->entries[y].j )
+                else if ( U_t->entries[x].j < U_t->entries[y].j )
                 {
                     ++x;
                 }
@@ -333,10 +340,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             sum = DAD->entries[j].val - sum;
 
             /* diagonal entries */
-            if( (k - 1) == U_t->entries[j].j )
+            if ( (k - 1) == U_t->entries[j].j )
             {
                 /* sanity check */
-                if( sum < ZERO )
+                if ( sum < ZERO )
                 {
                     fprintf( stderr, "Numeric breakdown in ICHOL. Terminating.\n" );
                     exit(NUMERIC_BREAKDOWN);
@@ -359,7 +366,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
-           U_t->entries[pj].val *= D_inv[i];
+            U_t->entries[pj].val *= D_inv[i];
         }
     }
 
@@ -406,7 +413,7 @@ void Init_MatVec( reax_system *system, control_params *control,
 {
     int i, fillin;
     real s_tmp, t_tmp;
-    char fname[100];
+//    char fname[100];
 
     if (control->refactor > 0 &&
             ((data->step - data->prev_steps) % control->refactor == 0 || workspace->L == NULL))
@@ -414,24 +421,24 @@ void Init_MatVec( reax_system *system, control_params *control,
         //Print_Linear_System( system, control, workspace, data->step );
         Sort_Matrix_Rows( workspace->H );
         //fprintf( stderr, "H matrix sorted\n" );
-//        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
+        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
         //fprintf( stderr, "drop tolerances calculated\n" );
         if ( workspace->L == NULL )
         {
-//            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
-//            if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
-//                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
+            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
+            if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
+                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
+            {
+                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+                exit(INSUFFICIENT_SPACE);
+            }
+            /* factors have sparsity pattern as H */
+//            if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
+//                    Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
 //            {
-//                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+//                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
 //                exit(INSUFFICIENT_SPACE);
 //            }
-           /* factors have sparsity pattern as H */
-           if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
-                   Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
-           {
-               fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-               exit(INSUFFICIENT_SPACE);
-           }
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "fillin = %d\n", fillin );
             fprintf( stderr, "allocated memory: L = U = %ldMB\n",
@@ -439,9 +446,11 @@ void Init_MatVec( reax_system *system, control_params *control,
 #endif
         }
 
-//        ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+        data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
         // TODO: add parameters for sweeps to control file
-        ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+//        ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+
+        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
@@ -525,29 +534,29 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     Init_MatVec( system, control, data, workspace, far_nbrs );
 
-//    if( data->step % 10 == 0 )
-//      Print_Linear_System( system, control, workspace, data->step );
+    if( data->step == 0 || data->step == 100 )
+      Print_Linear_System( system, control, workspace, data->step );
 
     //TODO: add parameters in control file for solver choice and options
-//  matvecs = GMRES( workspace, workspace->H,
-//    workspace->b_s, control->q_err, workspace->s[0], out_control->log );
-//  matvecs += GMRES( workspace, workspace->H,
-//    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
+//    matvecs = GMRES( workspace, workspace->H,
+//                     workspace->b_s, control->q_err, workspace->s[0], out_control->log, &(data->timing.pre_app) );
+//    matvecs += GMRES( workspace, workspace->H,
+//                      workspace->b_t, control->q_err, workspace->t[0], out_control->log, &(data->timing.pre_app) );
 
-    //matvecs = GMRES_HouseHolder( workspace, workspace->H,
-    //    workspace->b_s, control->q_err, workspace->s[0], out_control->log );
-    //matvecs += GMRES_HouseHolder( workspace, workspace->H,
-    //    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
+//    matvecs = GMRES_HouseHolder( workspace, workspace->H,
+//                                 workspace->b_s, control->q_err, workspace->s[0], out_control->log );
+//    matvecs += GMRES_HouseHolder( workspace, workspace->H,
+//                                  workspace->b_t, control->q_err, workspace->t[0], out_control->log );
 
-//   matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
-//     workspace->L, workspace->U, workspace->s[0], out_control->log );
-//   matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
-//     workspace->L, workspace->U, workspace->t[0], out_control->log );
+    matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
+                      workspace->L, workspace->U, workspace->s[0], out_control->log, &(data->timing.pre_app) );
+    matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
+                       workspace->L, workspace->U, workspace->t[0], out_control->log, &(data->timing.pre_app) );
 
-    matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
-                             workspace->L, workspace->U, workspace->s[0], out_control->log );
-    matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->q_err,
-                              workspace->L, workspace->U, workspace->t[0], out_control->log );
+//    matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
+//                             workspace->L, workspace->U, workspace->s[0], out_control->log, &(data->timing.pre_app) );
+//    matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->q_err,
+//                              workspace->L, workspace->U, workspace->t[0], out_control->log, &(data->timing.pre_app) );
 
     //matvecs=PCG( workspace, workspace->H, workspace->b_s, control->q_err,
     //      workspace->L, workspace->U, workspace->s[0], out_control->log ) + 1;

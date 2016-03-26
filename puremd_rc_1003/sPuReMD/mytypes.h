@@ -502,6 +502,8 @@ typedef struct
     real nonb;
     real QEq;
     int  matvecs;
+    real  pre_comp;
+    real  pre_app;
 } reax_timing;
 
 
