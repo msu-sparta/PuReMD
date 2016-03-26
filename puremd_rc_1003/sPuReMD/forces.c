@@ -266,9 +266,9 @@ void Init_Forces( reax_system *system, control_params *control,
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
-    int Htop, btop_i, btop_j, num_bonds, num_hbonds;
+    int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top, jhb_top;
-    int flag;
+    int flag, flag_sp;
     real r_ij, r2, self_coef;
     real dr3gamij_1, dr3gamij_3, Tap;
     //real val, dif, base;
@@ -276,7 +276,7 @@ void Init_Forces( reax_system *system, control_params *control,
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
     real p_boc1, p_boc2;
-    sparse_matrix *H;
+    sparse_matrix *H, *H_sp;
     list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -291,12 +291,17 @@ void Init_Forces( reax_system *system, control_params *control,
     hbonds = *lists + HBONDS;
 
     H = workspace->H;
+    H_sp = workspace->H_sp;
     Htop = 0;
+    H_sp_top = 0;
     num_bonds = 0;
     num_hbonds = 0;
     btop_i = btop_j = 0;
     p_boc1 = system->reaxprm.gp.l[0];
     p_boc2 = system->reaxprm.gp.l[1];
+
+    //TODO: add to control file, remove
+    control->r_sp_cut = 8.0;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -305,6 +310,7 @@ void Init_Forces( reax_system *system, control_params *control,
         start_i = Start_Index(i, far_nbrs);
         end_i   = End_Index(i, far_nbrs);
         H->start[i] = Htop;
+        H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
         sbp_i = &(system->reaxprm.sbp[type_i]);
         ihb = ihb_top = -1;
@@ -318,17 +324,31 @@ void Init_Forces( reax_system *system, control_params *control,
             atom_j = &(system->atoms[j]);
 
             flag = 0;
-            /*TODO: build H with smaller cutoff, use for preconditioning*/
+            flag_sp = 0;
             if ((data->step - data->prev_steps) % control->reneighbor == 0)
             {
-                if ( nbr_pj->d <= control->r_cut)
+                if ( nbr_pj->d <= control->r_cut )
+                {
                     flag = 1;
-                else flag = 0;
+                    if ( nbr_pj->d <= control->r_sp_cut )
+                    {
+                        flag_sp = 1;
+                    }
+                }
+                else
+                {
+                    flag = 0;
+                    flag_sp = 0;
+                }
             }
             else if ((nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &(system->box),
                                                     nbr_pj->dvec)) <= SQR(control->r_cut))
             {
-                nbr_pj->d = sqrt(nbr_pj->d);
+                if ( nbr_pj->d <= SQR(control->r_sp_cut))
+                {
+                    flag_sp = 1;
+                }
+                nbr_pj->d = SQRT( nbr_pj->d );
                 flag = 1;
             }
 
@@ -355,6 +375,14 @@ void Init_Forces( reax_system *system, control_params *control,
                 H->entries[Htop].j = j;
                 H->entries[Htop].val = self_coef * Tap * EV_to_KCALpMOL / dr3gamij_3;
                 ++Htop;
+
+                /* H_sp matrix entry */
+                if ( flag_sp )
+                {
+                    H_sp->entries[H_sp_top].j = j;
+                    H_sp->entries[H_sp_top].val = self_coef * Tap * EV_to_KCALpMOL / dr3gamij_3;
+                    ++H_sp_top;
+                }
 
                 /* hydrogen bond lists */
                 if ( control->hb_cut > 0 && (ihb == 1 || ihb == 2) &&
@@ -514,6 +542,10 @@ void Init_Forces( reax_system *system, control_params *control,
         H->entries[Htop].val = system->reaxprm.sbp[type_i].eta;
         ++Htop;
 
+        H_sp->entries[H_sp_top].j = i;
+        H_sp->entries[H_sp_top].val = system->reaxprm.sbp[type_i].eta;
+        ++H_sp_top;
+
         Set_End_Index( i, btop_i, bonds );
         if ( ihb == 1 )
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
@@ -521,8 +553,12 @@ void Init_Forces( reax_system *system, control_params *control,
         //     i, Start_Index( i, bonds ), End_Index( i, bonds ) );
     }
 
+//    printf("Htop = %d\n", Htop);
+//    printf("H_sp_top = %d\n", H_sp_top);
+
     // mark the end of j list
     H->start[i] = Htop;
+    H_sp->start[i] = H_sp_top;
     /* validate lists - decide if reallocation is required! */
     Validate_Lists( workspace, lists,
                     data->step, system->N, H->m, Htop, num_bonds, num_hbonds );

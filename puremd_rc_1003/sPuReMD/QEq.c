@@ -296,7 +296,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero */
-        for ( j = 0; j < A->m; ++j )
+        for ( j = 0; j < A->start[A->n]; ++j )
         {
             sum = ZERO;
 
@@ -345,7 +345,12 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 /* sanity check */
                 if ( sum < ZERO )
                 {
-                    fprintf( stderr, "Numeric breakdown in ICHOL. Terminating.\n" );
+                    fprintf( stderr, "Numeric breakdown in ICHOL Terminating.\n");
+#if defined(DEBUG_FOCUS)
+                    fprintf( stderr, "A(%5d,%5d) = %10.3f\n",
+                            k - 1, A->entries[j].j, A->entries[j].val );
+                    fprintf( stderr, "sum = %10.3f\n", sum);
+#endif
                     exit(NUMERIC_BREAKDOWN);
                 }
 
@@ -369,6 +374,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             U_t->entries[pj].val *= D_inv[i];
         }
     }
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "nnz(L): %d, max: %d\n", U_t->start[U_t->n], U_t->n * 50 );
+#endif
 
     /* transpose U^{T} and copy into U */
     for ( i = 0; i < U_t->n; ++i )
@@ -400,6 +409,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         }
     }
 
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
+#endif
+
     Deallocate_Matrix( DAD );
     free(D_inv);
     free(D);
@@ -420,6 +433,7 @@ void Init_MatVec( reax_system *system, control_params *control,
     {
         //Print_Linear_System( system, control, workspace, data->step );
         Sort_Matrix_Rows( workspace->H );
+        Sort_Matrix_Rows( workspace->H_sp );
         //fprintf( stderr, "H matrix sorted\n" );
         Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
         //fprintf( stderr, "drop tolerances calculated\n" );
