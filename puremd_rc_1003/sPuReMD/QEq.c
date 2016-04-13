@@ -120,7 +120,7 @@ real ICHOLT( sparse_matrix *A, real *droptol,
     struct timeval start, stop;
 
     gettimeofday( &start, NULL );
-
+    
     Utop = (int*) malloc((A->n + 1) * sizeof(int));
 
     // clear variables
@@ -296,6 +296,8 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero */
+        #pragma omp parallel for schedule(guided) \
+            default(none) private(sum, ei_x, ei_y) firstprivate(x, y)
         for ( j = 0; j < A->start[A->n]; ++j )
         {
             sum = ZERO;
@@ -461,10 +463,11 @@ void Init_MatVec( reax_system *system, control_params *control,
         }
 
         data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+//        data->timing.pre_comp += ICHOLT( workspace->H_sp, workspace->droptol, workspace->L, workspace->U );
         // TODO: add parameters for sweeps to control file
 //        ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
 
-        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
+//        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
@@ -548,8 +551,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     Init_MatVec( system, control, data, workspace, far_nbrs );
 
-    if( data->step == 0 || data->step == 100 )
-      Print_Linear_System( system, control, workspace, data->step );
+//    if( data->step == 0 || data->step == 100 )
+//      Print_Linear_System( system, control, workspace, data->step );
 
     //TODO: add parameters in control file for solver choice and options
 //    matvecs = GMRES( workspace, workspace->H,

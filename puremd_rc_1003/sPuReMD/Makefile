@@ -1,7 +1,7 @@
 CC      = gcc 
 
 LIBS    = -lm -lz
-CFLAGS  = -I.  -Wall -O3 -funroll-loops -fstrict-aliasing
+CFLAGS  = -I.  -Wall -O3 -funroll-loops -fstrict-aliasing -fopenmp
 #CFLAGS  = -I.  -Wall -pg -gstabs
 #CFLAGS  = -I.  -Wall -funroll-loops -fstrict-aliasing
 #-finline-functions  -finline-limit=15 -g#-DTEST -pg -ldl -rdynamic -g

@@ -35,25 +35,60 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 {
     int i, j, k, n, si, ei;
     real H;
+#ifdef _OPENMP
+    real *b_local;
+#endif
 
     n = A->n;
     Vector_MakeZero( b, n );
 
-    for ( i = 0; i < n; ++i )
+    #pragma omp parallel \
+    default(none) shared(n) private(b_local, si, ei, H, i, j, k)
     {
-        si = A->start[i];
-        ei = A->start[i + 1] - 1;
-
-        for ( k = si; k < ei; ++k )
+#ifdef _OPENMP
+        if ( (b_local = (real*) calloc(n, sizeof(real))) == NULL )
         {
-            j = A->entries[k].j;
-            H = A->entries[k].val;
-            b[j] += H * x[i];
-            b[i] += H * x[j];
+            exit( INSUFFICIENT_SPACE );
+        }
+#endif
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < n; ++i )
+        {
+            si = A->start[i];
+            ei = A->start[i + 1] - 1;
+
+            for ( k = si; k < ei; ++k )
+            {
+                j = A->entries[k].j;
+                H = A->entries[k].val;
+#ifdef _OPENMP
+                b_local[j] += H * x[i];
+                b_local[i] += H * x[j];
+#else
+                b[j] += H * x[i];
+                b[i] += H * x[j];
+#endif
+            }
+
+            // the diagonal entry is the last one in
+#ifdef _OPENMP
+            b_local[i] += A->entries[k].val * x[i];
+#else
+            b[i] += A->entries[k].val * x[i];
+#endif
         }
 
-        // the diagonal entry is the last one in
-        b[i] += A->entries[k].val * x[i];
+#ifdef _OPENMP
+        #pragma omp critical(redux)
+        {
+            for ( i = 0; i < n; ++i )
+            {
+                b[i] += b_local[i];
+            }
+        }
+
+        free(b_local);
+#endif
     }
 }
 
@@ -70,28 +105,60 @@ static void Sparse_MatVec2( const sparse_matrix * const R,
                             const real * const x, real * const b)
 {
     int i, k, si = 0, ei = 0;
+#ifdef _OPENMP
+    real *b_local;
+#endif
 
     Vector_MakeZero( b, R->n );
 
-    for ( i = 0; i < R->n; ++i )
+    #pragma omp parallel default(none) private(b_local, i, k) firstprivate(si, ei)
     {
-        if (tri == LOWER)
+#ifdef _OPENMP
+        if ( (b_local = (real*) calloc(R->n, sizeof(real))) == NULL )
         {
-            si = R->start[i];
-            ei = R->start[i + 1] - 1;
+            exit( INSUFFICIENT_SPACE );
         }
-        else if (tri == UPPER)
+#endif
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < R->n; ++i )
         {
+            if (tri == LOWER)
+            {
+                si = R->start[i];
+                ei = R->start[i + 1] - 1;
+            }
+            else if (tri == UPPER)
+            {
 
-            si = R->start[i] + 1;
-            ei = R->start[i + 1];
+                si = R->start[i] + 1;
+                ei = R->start[i + 1];
+            }
+
+            for ( k = si; k < ei; ++k )
+            {
+#ifdef _OPENMP
+                b_local[i] += R->entries[k].val * x[R->entries[k].j];
+#else
+                b[i] += R->entries[k].val * x[R->entries[k].j];
+#endif
+            }
+#ifdef _OPENMP
+            b_local[i] *= -Dinv[i];
+#else
+            b[i] *= -Dinv[i];
+#endif
+        }
+#ifdef _OPENMP
+        #pragma omp critical(redux)
+        {
+            for ( i = 0; i < R->n; ++i )
+            {
+                b[i] += b_local[i];
+            }
         }
 
-        for ( k = si; k < ei; ++k )
-        {
-            b[i] += R->entries[k].val * x[R->entries[k].j];
-        }
-        b[i] *= -Dinv[i];
+        free(b_local);
+#endif
     }
 }
 
