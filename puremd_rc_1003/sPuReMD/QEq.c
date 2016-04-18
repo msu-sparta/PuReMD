@@ -297,7 +297,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         /* for each nonzero */
         #pragma omp parallel for schedule(guided) \
-            default(none) private(sum, ei_x, ei_y) firstprivate(x, y)
+            default(none) shared(DAD) private(sum, ei_x, ei_y, k) firstprivate(x, y)
         for ( j = 0; j < A->start[A->n]; ++j )
         {
             sum = ZERO;

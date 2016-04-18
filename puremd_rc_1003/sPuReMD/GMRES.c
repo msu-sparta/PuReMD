@@ -24,6 +24,8 @@
 #include "list.h"
 #include "vector.h"
 
+#include <omp.h>
+
 
 /* sparse matrix-vector product Ax=b
  * where:
@@ -36,20 +38,35 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     int i, j, k, n, si, ei;
     real H;
 #ifdef _OPENMP
-    real *b_local;
+    static real **b_local;
+    unsigned int tid;
 #endif
 
     n = A->n;
     Vector_MakeZero( b, n );
 
+#ifdef _OPENMP
+    /* keep b_local for program duration to avoid allocate/free
+     * overhead per Sparse_MatVec call*/
+    if ( b_local == NULL )
+    {
+        b_local = (real**) malloc( omp_get_num_threads() * sizeof(real*));
+        for ( i = 0; i < omp_get_num_threads(); ++i )
+        {
+            if ( (b_local[i] = (real*) malloc( n * sizeof(real))) == NULL )
+            {
+                exit( INSUFFICIENT_SPACE );
+            }
+        }
+    }
+#endif
+
     #pragma omp parallel \
-    default(none) shared(n) private(b_local, si, ei, H, i, j, k)
+        default(none) shared(n, b_local) private(si, ei, H, j, k, tid)
     {
 #ifdef _OPENMP
-        if ( (b_local = (real*) calloc(n, sizeof(real))) == NULL )
-        {
-            exit( INSUFFICIENT_SPACE );
-        }
+        tid = omp_get_thread_num();
+        Vector_MakeZero( b_local[tid], n );
 #endif
         #pragma omp for schedule(guided)
         for ( i = 0; i < n; ++i )
@@ -62,8 +79,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
                 j = A->entries[k].j;
                 H = A->entries[k].val;
 #ifdef _OPENMP
-                b_local[j] += H * x[i];
-                b_local[i] += H * x[j];
+                b_local[tid][j] += H * x[i];
+                b_local[tid][i] += H * x[j];
 #else
                 b[j] += H * x[i];
                 b[i] += H * x[j];
@@ -72,24 +89,22 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
             // the diagonal entry is the last one in
 #ifdef _OPENMP
-            b_local[i] += A->entries[k].val * x[i];
+            b_local[tid][i] += A->entries[k].val * x[i];
 #else
             b[i] += A->entries[k].val * x[i];
 #endif
         }
+    }
 
 #ifdef _OPENMP
-        #pragma omp critical(redux)
+    for ( tid = 0; tid < omp_get_num_threads(); ++tid )
+    {
+        for ( i = 0; i < n; ++i )
         {
-            for ( i = 0; i < n; ++i )
-            {
-                b[i] += b_local[i];
-            }
+            b[i] += b_local[tid][i];
         }
-
-        free(b_local);
-#endif
     }
+#endif
 }
 
 
