@@ -31,6 +31,10 @@
 #include "time.h"
 #include "zlib.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 //#define DEBUG_FOCUS
 //#define TEST_FORCES
 //#define TEST_ENERGY
