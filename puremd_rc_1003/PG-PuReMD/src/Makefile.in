@@ -119,7 +119,7 @@ cuda_multi_body.o: cuda_multi_body.cu cuda_multi_body.h
 
 torsion_angles.o: torsion_angles.c torsion_angles.h reax_types.h tool_box.o bond_orders.o list.o vector.o
 	$(CC) $(CFLAGS) -c torsion_angles.c
-	
+
 cuda_torsion_angles.o: cuda_torsion_angles.cu cuda_torsion_angles.h
 	$(NVCC) $(NVCC_FLAGS) -c cuda_torsion_angles.cu
 
@@ -147,7 +147,7 @@ cuda_bond_orders.o: cuda_bond_orders.cu cuda_bond_orders.h
 
 nonbonded.o: nonbonded.c nonbonded.h reax_types.h list.o vector.o 
 	$(CC) $(CFLAGS) -c nonbonded.c
-cuda_nonbonded.o: cuda_nonbonded.cu cuda_nonbonded.h
+	cuda_nonbonded.o: cuda_nonbonded.cu cuda_nonbonded.h
 	$(NVCC) $(NVCC_FLAGS) -c cuda_nonbonded.cu
 
 reset_tools.o: reset_tools.c reset_tools.h reax_types.h list.o tool_box.o vector.o
@@ -176,7 +176,7 @@ traj.o: traj.c traj.h reax_types.h list.o tool_box.o
 	$(CC) $(CFLAGS) -c traj.c
 
 vector.o: vector.cu vector.h reax_types.h random.o
-#	$(CC) $(CFLAGS) -c vector.c
+	#	$(CC) $(CFLAGS) -c vector.c
 	$(NVCC) $(NVCC_FLAGS) -c vector.cu
 
 dev_alloc.o: dev_alloc.h dev_alloc.cu

@@ -33,6 +33,12 @@ autom4te.cache
 .deps
 stamp-h1
 config.log
+config.guess
+config.status
+config.sub
+configure
+Makefile
+Makefile.in
 
 # Compiled languages (C,C++,Fortran,...)
 *.o

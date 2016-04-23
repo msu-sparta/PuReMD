@@ -1,10 +1,10 @@
-BINDIR=./bin
+BINDIR = ./bin
 
-CC	 	= g++
-NVCC	 = nvcc
+CC = gcc
+NVCC = nvcc
 
-LIBS    = -L/opt/cuda/lib64 -lm -lz -lcuda -lcudart -lcublas -lcusparse -m64
-#LIBS    = -L/opt/cuda/lib64 -lm -lz -lcuda -lcudart
+LIBS = -L/opt/cuda/lib64 -lm -lz -lcuda -lcudart -lcublas -lcusparse -m64
+#LIBS=-L/opt/cuda/lib64 -lm -lz -lcuda -lcudart
 
 #Debug Options
 #__CUDA_MEM__ Prints the memory allocated to the executable
@@ -12,28 +12,28 @@ LIBS    = -L/opt/cuda/lib64 -lm -lz -lcuda -lcudart -lcublas -lcusparse -m64
 #__BUILD_DEBUG__ builds a debug version, which runs serial and gpu code at the same time for 
 #					  every time step and validates the results 
 
-NVCCFLAGS  = -I.  -I/opt/cuda/include -D__USE_GPU__ -arch=sm_20 -O3 -Xptxas="-O3"
-CFLAGS  = -I.  -Wall -funroll-loops -fstrict-aliasing -O3
+NVCCFLAGS = -I. -I/opt/cuda/include -D__USE_GPU__ -arch=sm_20 -O3 -Xptxas="-O3"
+CFLAGS = -I. -Wall -funroll-loops -fstrict-aliasing -O3
 
-DEFS    = $(CFLAGS)
+DEFS = $(CFLAGS)
 NVCCDEFS = $(NVCCFLAGS)
 
-FLAG    = $(DEFS) $(INCS) $(LIBS)
+FLAG = $(DEFS) $(INCS) $(LIBS)
 NVCCFLAG = $(NVCCDEFS) $(LIBS)
 
-OBJ		= GMRES.o QEq.o allocate.o analyze.o bond_orders.o \
-			box.o forces.o four_body_interactions.o \
-			grid.o init_md.o integrate.o list.o \
-			lookup.o neighbors.o param.o pdb_tools.o \
-			print_utils.o reset_utils.o \
-			restart.o single_body_interactions.o \
-			system_props.o three_body_interactions.o \
-			traj.o two_body_interactions.o vector.o \
-			testmd.o \
-			cuda_utils.o cuda_copy.o cuda_init.o reduction.o \
-			center_mass.o helpers.o validation.o matvec.o
+OBJ = GMRES.o QEq.o allocate.o analyze.o bond_orders.o \
+      box.o forces.o four_body_interactions.o \
+      grid.o init_md.o integrate.o list.o \
+      lookup.o neighbors.o param.o pdb_tools.o \
+      print_utils.o reset_utils.o \
+      restart.o single_body_interactions.o \
+      system_props.o three_body_interactions.o \
+      traj.o two_body_interactions.o vector.o \
+      testmd.o \
+      cuda_utils.o cuda_copy.o cuda_init.o reduction.o \
+      center_mass.o helpers.o validation.o matvec.o
 
-all:  gpu 
+all: gpu 
 
 #
 #build the executable here
