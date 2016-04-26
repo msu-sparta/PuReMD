@@ -45,27 +45,30 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     n = A->n;
     Vector_MakeZero( b, n );
 
-#ifdef _OPENMP
-    /* keep b_local for program duration to avoid allocate/free
-     * overhead per Sparse_MatVec call*/
-    if ( b_local == NULL )
-    {
-        b_local = (real**) malloc( omp_get_num_threads() * sizeof(real*));
-        for ( i = 0; i < omp_get_num_threads(); ++i )
-        {
-            if ( (b_local[i] = (real*) malloc( n * sizeof(real))) == NULL )
-            {
-                exit( INSUFFICIENT_SPACE );
-            }
-        }
-    }
-#endif
-
     #pragma omp parallel \
-        default(none) shared(n, b_local) private(si, ei, H, j, k, tid)
+        default(none) shared(n, b_local) private(si, ei, H, i, j, k, tid)
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
+
+        #pragma omp master
+        {
+            /* keep b_local for program duration to avoid allocate/free
+             * overhead per Sparse_MatVec call*/
+            if ( b_local == NULL )
+            {
+                b_local = (real**) malloc( omp_get_num_threads() * sizeof(real*));
+                for ( i = 0; i < omp_get_num_threads(); ++i )
+                {
+                    if ( (b_local[i] = (real*) malloc( n * sizeof(real))) == NULL )
+                    {
+                        exit( INSUFFICIENT_SPACE );
+                    }
+                }
+            }
+        }
+        #pragma omp barrier
+
         Vector_MakeZero( b_local[tid], n );
 #endif
         #pragma omp for schedule(guided)
@@ -94,17 +97,20 @@ static void Sparse_MatVec( const sparse_matrix * const A,
             b[i] += A->entries[k].val * x[i];
 #endif
         }
+#ifdef _OPENMP
+        #pragma omp master
+        {
+            for ( i = 0; i < omp_get_num_threads(); ++i )
+            {
+                for ( j = 0; j < n; ++j )
+                {
+                    b[j] += b_local[i][j];
+                }
+            }
+        }
+#endif
     }
 
-#ifdef _OPENMP
-    for ( tid = 0; tid < omp_get_num_threads(); ++tid )
-    {
-        for ( i = 0; i < n; ++i )
-        {
-            b[i] += b_local[tid][i];
-        }
-    }
-#endif
 }
 
 
