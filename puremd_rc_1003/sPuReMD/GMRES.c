@@ -63,7 +63,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 		}
             }
 
-            Vector_MakeZero( b_local, omp_get_num_threads() * n );
+            Vector_MakeZero( (real * const)b_local, omp_get_num_threads() * n );
         }
         #pragma omp barrier
 
@@ -259,52 +259,144 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                          const real * const Dinv, const unsigned int n,
                          const real * const b, real * const x, const unsigned int maxiter )
 {
-    unsigned int i, iter = 0;
+    unsigned int i, k, si = 0, ei = 0, iter = 0;
+#ifdef _OPENMP
+    static real *b_local;
+    unsigned int tid;
+#endif
     static real *Dinv_b, *rp, *rp2, *rp3;
 
-    if ( Dinv_b == NULL )
+    #pragma omp parallel \
+        default(none) shared(b, b_local, Dinv_b, rp, rp2, rp3, iter, stderr) private(si, ei, i, k, tid)
     {
-        if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL )
+#ifdef _OPENMP
+        tid = omp_get_thread_num();
+#endif
+    
+        #pragma omp master
         {
-            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-            exit(INSUFFICIENT_SPACE);
-        }
-    }
-    if ( rp == NULL )
-    {
-        if ( (rp = (real*) malloc(sizeof(real) * n)) == NULL )
+            /* keep b_local for program duration to avoid allocate/free
+             * overhead per Sparse_MatVec call*/
+            if ( Dinv_b == NULL )
+            {
+                if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                    exit(INSUFFICIENT_SPACE);
+                }
+            }
+            if ( rp == NULL )
+            {
+                if ( (rp = (real*) malloc(sizeof(real) * n)) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                    exit(INSUFFICIENT_SPACE);
+                }
+            }
+            if ( rp2 == NULL )
+            {
+                    if ( (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                    exit(INSUFFICIENT_SPACE);
+                }
+            }
+#ifdef _OPENMP
+            if ( b_local == NULL )
+            {
+                if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                    exit( INSUFFICIENT_SPACE );
+                }
+	    }
+#endif
+    
+            Vector_MakeZero( rp, n );
+	}
+    
+        #pragma omp barrier
+    
+        /* precompute and cache, as invariant in loop below */
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < n; ++i )
         {
-            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-            exit(INSUFFICIENT_SPACE);
+            Dinv_b[i] = Dinv[i] * b[i];
         }
-    }
-    if ( rp2 == NULL )
-    {
-            if ( (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
+
+        #pragma omp barrier
+
+        do
         {
-            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-            exit(INSUFFICIENT_SPACE);
+            // x_{k+1} = G*x_{k} + Dinv*b;
+	    //Sparse_MatVec_Vector_Add( (sparse_matrix*)R, tri, Dinv, rp, rp2, Dinv_b );
+            #pragma omp master
+            {
+                Vector_MakeZero( rp2, R->n );
+#ifdef _OPENMP
+    	        Vector_MakeZero( b_local, omp_get_num_threads() * R->n );
+#endif
+            }
+    
+            #pragma omp barrier
+
+            #pragma omp for schedule(guided)
+            for ( i = 0; i < R->n; ++i )
+            {
+                if (tri == LOWER)
+                {
+                    si = R->start[i];
+                    ei = R->start[i + 1] - 1;
+                }
+                else if (tri == UPPER)
+                {
+    
+                    si = R->start[i] + 1;
+                    ei = R->start[i + 1];
+                }
+    
+                for ( k = si; k < ei; ++k )
+                {
+#ifdef _OPENMP
+                    b_local[tid * R->n + i] += R->entries[k].val * rp[R->entries[k].j];
+#else
+                    rp2[i] += R->entries[k].val * rp[R->entries[k].j];
+#endif
+                }
+#ifdef _OPENMP
+                b_local[tid * R->n + i] *= -Dinv[i];
+#else
+                rp2[i] *= -Dinv[i];
+#endif
+            }
+	    
+            #pragma omp barrier
+
+            #pragma omp for schedule(guided)
+            for ( i = 0; i < R->n; ++i )
+            {
+#ifdef _OPENMP
+                for ( k = 0; k < omp_get_num_threads(); ++k )
+                {
+                    rp2[i] += b_local[k * R->n + i];
+                }
+#endif
+
+    	        rp2[i] += Dinv_b[i];
+            }
+
+            #pragma omp master
+            {
+                rp3 = rp;
+                rp = rp2;
+                rp2 = rp3;
+                ++iter;
+            }
+
+            #pragma omp barrier
         }
+        while ( iter < maxiter );
     }
-
-    Vector_MakeZero( rp, n );
-
-    /* precompute and cache, as invariant in loop below */
-    for ( i = 0; i < n; ++i )
-    {
-        Dinv_b[i] = Dinv[i] * b[i];
-    }
-
-    do
-    {
-        // x_{k+1} = G*x_{k} + Dinv*b;
-        Sparse_MatVec_Vector_Add( (sparse_matrix*)R, tri, Dinv, rp, rp2, Dinv_b );
-        rp3 = rp;
-        rp = rp2;
-        rp2 = rp3;
-        ++iter;
-    }
-    while ( iter < maxiter );
 
     Vector_Copy( x, rp, n );
 }
