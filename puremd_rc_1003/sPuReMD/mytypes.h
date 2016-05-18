@@ -505,9 +505,10 @@ typedef struct
     real bonded;
     real nonb;
     real QEq;
-    int  matvecs;
-    real  pre_comp;
-    real  pre_app;
+    int matvecs;
+    real pre_comp;
+    real pre_app;
+    real spmv;
 } reax_timing;
 
 

@@ -38,7 +38,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     int i, j, k, n, si, ei;
     real H;
 #ifdef _OPENMP
-    static real **b_local;
+    static real *b_local;
     unsigned int tid;
 #endif
 
@@ -46,7 +46,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     Vector_MakeZero( b, n );
 
     #pragma omp parallel \
-        default(none) shared(n, b_local) private(si, ei, H, i, j, k, tid)
+        default(none) shared(n, b, b_local) private(si, ei, H, i, j, k, tid)
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
@@ -57,19 +57,16 @@ static void Sparse_MatVec( const sparse_matrix * const A,
              * overhead per Sparse_MatVec call*/
             if ( b_local == NULL )
             {
-                b_local = (real**) malloc( omp_get_num_threads() * sizeof(real*));
-                for ( i = 0; i < omp_get_num_threads(); ++i )
-                {
-                    if ( (b_local[i] = (real*) malloc( n * sizeof(real))) == NULL )
-                    {
-                        exit( INSUFFICIENT_SPACE );
-                    }
-                }
+                if ( (b_local = (real*) malloc( omp_get_num_threads() * n * sizeof(real))) == NULL )
+		{
+                    exit( INSUFFICIENT_SPACE );
+		}
             }
+
+            Vector_MakeZero( b_local, omp_get_num_threads() * n );
         }
         #pragma omp barrier
 
-        Vector_MakeZero( b_local[tid], n );
 #endif
         #pragma omp for schedule(guided)
         for ( i = 0; i < n; ++i )
@@ -82,8 +79,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
                 j = A->entries[k].j;
                 H = A->entries[k].val;
 #ifdef _OPENMP
-                b_local[tid][j] += H * x[i];
-                b_local[tid][i] += H * x[j];
+                b_local[tid * n + j] += H * x[i];
+                b_local[tid * n + i] += H * x[j];
 #else
                 b[j] += H * x[i];
                 b[i] += H * x[j];
@@ -92,20 +89,18 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
             // the diagonal entry is the last one in
 #ifdef _OPENMP
-            b_local[tid][i] += A->entries[k].val * x[i];
+            b_local[tid * n + i] += A->entries[k].val * x[i];
 #else
             b[i] += A->entries[k].val * x[i];
 #endif
         }
 #ifdef _OPENMP
-        #pragma omp master
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < n; ++i )
         {
-            for ( i = 0; i < omp_get_num_threads(); ++i )
+            for ( j = 0; j < omp_get_num_threads(); ++j )
             {
-                for ( j = 0; j < n; ++j )
-                {
-                    b[j] += b_local[i][j];
-                }
+                b[i] += b_local[j * n + i];
             }
         }
 #endif
@@ -115,30 +110,48 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
 
 /* sparse matrix-vector product Gx=b (for Jacobi iteration),
+ * followed by vector addition of D^{-1}b,
  * where G = (I - D^{-1}R) (G not explicitly computed and stored)
  *   R: strictly triangular matrix (diagonals not used)
  *   tri: triangularity of A (lower/upper)
- *   D_inv: inverse of the diagonal of R
+ *   D^{-1} (D_inv): inverse of the diagonal of R
  *   x: vector
- *   b: vector (result) */
-static void Sparse_MatVec2( const sparse_matrix * const R,
+ *   b: vector (result)
+ *   D^{-1}b (Dinv_b): precomputed vector-vector product */
+static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
                             const TRIANGULARITY tri, const real * const Dinv,
-                            const real * const x, real * const b)
+                            const real * const x, real * const b, const real * const Dinv_b)
 {
     int i, k, si = 0, ei = 0;
 #ifdef _OPENMP
-    real *b_local;
+    static real *b_local;
+    unsigned int tid;
 #endif
 
     Vector_MakeZero( b, R->n );
 
-    #pragma omp parallel default(none) private(b_local, i, k) firstprivate(si, ei)
+    #pragma omp parallel \
+        default(none) shared(b, b_local) private(si, ei, i, k, tid)
     {
 #ifdef _OPENMP
-        if ( (b_local = (real*) calloc(R->n, sizeof(real))) == NULL )
+        tid = omp_get_thread_num();
+
+        #pragma omp master
         {
-            exit( INSUFFICIENT_SPACE );
-        }
+            /* keep b_local for program duration to avoid allocate/free
+             * overhead per Sparse_MatVec call*/
+            if ( b_local == NULL )
+            {
+                if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
+                {
+                    exit( INSUFFICIENT_SPACE );
+                }
+	    }
+
+	    Vector_MakeZero( b_local, omp_get_num_threads() * R->n );
+	}
+        #pragma omp barrier
+
 #endif
         #pragma omp for schedule(guided)
         for ( i = 0; i < R->n; ++i )
@@ -158,27 +171,28 @@ static void Sparse_MatVec2( const sparse_matrix * const R,
             for ( k = si; k < ei; ++k )
             {
 #ifdef _OPENMP
-                b_local[i] += R->entries[k].val * x[R->entries[k].j];
+                b_local[tid * R->n + i] += R->entries[k].val * x[R->entries[k].j];
 #else
                 b[i] += R->entries[k].val * x[R->entries[k].j];
 #endif
             }
 #ifdef _OPENMP
-            b_local[i] *= -Dinv[i];
+            b_local[tid * R->n + i] *= -Dinv[i];
 #else
             b[i] *= -Dinv[i];
 #endif
         }
 #ifdef _OPENMP
-        #pragma omp critical(redux)
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < R->n; ++i )
         {
-            for ( i = 0; i < R->n; ++i )
+            for ( k = 0; k < omp_get_num_threads(); ++k )
             {
-                b[i] += b_local[i];
+                b[i] += b_local[k * R->n + i];
             }
-        }
 
-        free(b_local);
+	    b[i] += Dinv_b[i];
+        }
 #endif
     }
 }
@@ -237,23 +251,40 @@ void Backward_Subs( sparse_matrix *U, real *y, real *x )
  *   D = diagonal matrix, diagonals from R
  *
  * Note: used during the backsolves when applying preconditioners with
- * triangular factors to iterative linear solvers
+ * triangular factors in iterative linear solvers
  *
  * Note: Newmann series arises from series expansion of the inverse of
- * the coefficient matrix in the triangular system. */
-static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
+ * the coefficient matrix in the triangular system */
+static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                          const real * const Dinv, const unsigned int n,
                          const real * const b, real * const x, const unsigned int maxiter )
 {
     unsigned int i, iter = 0;
-    real *Dinv_b, *rp, *rp2, *rp3;
+    static real *Dinv_b, *rp, *rp2, *rp3;
 
-    if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL
-            || (rp = (real*) malloc(sizeof(real) * n)) == NULL
-            || (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
+    if ( Dinv_b == NULL )
     {
-        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL )
+        {
+            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+            exit(INSUFFICIENT_SPACE);
+        }
+    }
+    if ( rp == NULL )
+    {
+        if ( (rp = (real*) malloc(sizeof(real) * n)) == NULL )
+        {
+            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+            exit(INSUFFICIENT_SPACE);
+        }
+    }
+    if ( rp2 == NULL )
+    {
+            if ( (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
+        {
+            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+            exit(INSUFFICIENT_SPACE);
+        }
     }
 
     Vector_MakeZero( rp, n );
@@ -266,10 +297,8 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
 
     do
     {
-        // Issue: G = I - D^{-1}R, NOT R
         // x_{k+1} = G*x_{k} + Dinv*b;
-        Sparse_MatVec2( (sparse_matrix*)G, tri, Dinv, rp, rp2 );
-        Vector_Add2( rp2, Dinv_b, n );
+        Sparse_MatVec_Vector_Add( (sparse_matrix*)R, tri, Dinv, rp, rp2, Dinv_b );
         rp3 = rp;
         rp = rp2;
         rp2 = rp3;
@@ -278,17 +307,13 @@ static void Jacobi_Iter( const sparse_matrix * const G, const TRIANGULARITY tri,
     while ( iter < maxiter );
 
     Vector_Copy( x, rp, n );
-
-    free(rp2);
-    free(rp);
-    free(Dinv_b);
 }
 
 
 /* generalized minimual residual iterative solver for sparse linear systems,
  * diagonal preconditioner */
 int GMRES( static_storage *workspace, sparse_matrix *H,
-           real *b, real tol, real *x, FILE *fout, real *time )
+           real *b, real tol, real *x, FILE *fout, real *time, real *spmv_time )
 {
     int i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -308,7 +333,11 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
     for ( itr = 0; itr < MAX_ITR; ++itr )
     {
         /* calculate r0 */
+        gettimeofday( &start, NULL );
         Sparse_MatVec( H, x, workspace->b_prm );
+        gettimeofday( &stop, NULL );
+        *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                 - (start.tv_sec + start.tv_usec / 1000000.0);
         for ( i = 0; i < N; ++i )
             workspace->b_prm[i] *= workspace->Hdia_inv[i]; /* pre-conditioner */
 
@@ -321,7 +350,11 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
         for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
         {
             /* matvec */
+            gettimeofday( &start, NULL );
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
+            gettimeofday( &stop, NULL );
+            *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                     - (start.tv_sec + start.tv_usec / 1000000.0);
             /*pre-conditioner*/
             gettimeofday( &start, NULL );
             for ( k = 0; k < N; ++k )
@@ -615,7 +648,7 @@ int GMRES_HouseHolder( static_storage *workspace, sparse_matrix *H,
  * with preconditioner using factors LU \approx H
  * and forward / backward substitution */
 int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
-            sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time )
+            sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time, real *spmv_time )
 {
     int i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -628,7 +661,11 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
     for ( itr = 0; itr < MAX_ITR; ++itr )
     {
         /* calculate r0 */
+        gettimeofday( &start, NULL );
         Sparse_MatVec( H, x, workspace->b_prm );
+        gettimeofday( &stop, NULL );
+        *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                 - (start.tv_sec + start.tv_usec / 1000000.0);
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
         gettimeofday( &start, NULL );
         Forward_Subs( L, workspace->v[0], workspace->v[0] );
@@ -644,7 +681,11 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
         for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
         {
             /* matvec */
+            gettimeofday( &start, NULL );
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
+            gettimeofday( &stop, NULL );
+            *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                     - (start.tv_sec + start.tv_usec / 1000000.0);
             gettimeofday( &start, NULL );
             Forward_Subs( L, workspace->v[j + 1], workspace->v[j + 1] );
             Backward_Subs( U, workspace->v[j + 1], workspace->v[j + 1] );
@@ -750,7 +791,7 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
  * with preconditioner using factors LU \approx H
  * and Jacobi iteration for approximate factor application */
 int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real tol,
-                   sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time )
+                   sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time, real *spmv_time )
 {
     int i, j, k, itr, N, si;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -787,7 +828,11 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
     for ( itr = 0; itr < MAX_ITR; ++itr )
     {
         /* calculate r0 */
+        gettimeofday( &start, NULL );
         Sparse_MatVec( H, x, workspace->b_prm );
+        gettimeofday( &stop, NULL );
+        *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                 - (start.tv_sec + start.tv_usec / 1000000.0);
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
         // TODO: add parameters to config file
         gettimeofday( &start, NULL );
@@ -804,7 +849,11 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
         {
             /* matvec */
+            gettimeofday( &start, NULL );
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
+            gettimeofday( &stop, NULL );
+            *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
+                     - (start.tv_sec + start.tv_usec / 1000000.0);
             // TODO: add parameters to config file
             gettimeofday( &start, NULL );
             Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 50 );

@@ -30,7 +30,6 @@ void Vector_Copy( real * const, const real * const, const unsigned int );
 void Vector_Scale( real * const, const real, const real * const, const unsigned int );
 void Vector_Sum( real * const, const real, const real * const, const real, const real * const, const unsigned int );
 void Vector_Add( real * const, const real, const real * const, const unsigned int );
-void Vector_Add2( real * const, const real * const, const unsigned int );
 void Vector_Print( FILE * const, const char * const, const real * const, const unsigned int );
 real Dot( const real * const, const real * const, const unsigned int );
 real Norm( const real * const, const unsigned int );

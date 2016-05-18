@@ -631,7 +631,7 @@ void Output_Results( reax_system *system, control_params *control,
             f_update = 1;
         else f_update = out_control->energy_update_freq;
 
-        fprintf( out_control->log, "%6d%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.6f%10.6f\n",
+        fprintf( out_control->log, "%6d%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.6f%10.6f%10.6f\n",
                  data->step, t_elapsed / f_update,
                  data->timing.nbrs / f_update,
                  data->timing.init_forces / f_update,
@@ -640,7 +640,8 @@ void Output_Results( reax_system *system, control_params *control,
                  data->timing.QEq / f_update,
                  (double)data->timing.matvecs / f_update,
                  data->timing.pre_comp / f_update,
-                 data->timing.pre_app / f_update );
+                 data->timing.pre_app / f_update,
+                 data->timing.spmv / f_update );
 
         data->timing.total = Get_Time( );
         data->timing.nbrs = 0;
@@ -651,6 +652,7 @@ void Output_Results( reax_system *system, control_params *control,
         data->timing.matvecs = 0;
         data->timing.pre_comp = ZERO;
         data->timing.pre_app = ZERO;
+        data->timing.spmv = ZERO;
 
         fflush( out_control->out );
         fflush( out_control->pot );

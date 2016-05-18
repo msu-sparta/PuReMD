@@ -94,17 +94,6 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 }
 
 
-inline void Vector_Add2( real * const dest, const real * const v, const unsigned int k )
-{
-    unsigned int i;
-
-    for ( i = 0; i < k; ++i )
-    {
-        dest[i] += v[i];
-    }
-}
-
-
 void Vector_Print( FILE * const fout, const char * const vname, const real * const v,
                    const unsigned int k )
 {
