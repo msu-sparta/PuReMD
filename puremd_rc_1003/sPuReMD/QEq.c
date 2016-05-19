@@ -241,13 +241,16 @@ real ICHOLT( sparse_matrix *A, real *droptol,
  * Edmond Chow and Aftab Patel
  * Fine-Grained Parallel Incomplete LU Factorization
  * SIAM J. Sci. Comp. */
-static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
+static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                        sparse_matrix * const U_t, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x = 0, y = 0, ei_x, ei_y;
     real *D, *D_inv, sum;
     sparse_matrix *DAD;
     int *Utop;
+    struct timeval start, stop;
+
+    gettimeofday( &start, NULL );
 
     if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
     {
@@ -297,7 +300,7 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         /* for each nonzero */
         #pragma omp parallel for schedule(guided) \
-            default(none) shared(DAD) private(sum, ei_x, ei_y, k) firstprivate(x, y)
+            default(none) shared(DAD, stderr) private(sum, ei_x, ei_y, k) firstprivate(x, y)
         for ( j = 0; j < A->start[A->n]; ++j )
         {
             sum = ZERO;
@@ -419,6 +422,10 @@ static void ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     free(D_inv);
     free(D);
     free(Utop);
+
+    gettimeofday( &stop, NULL );
+    return (stop.tv_sec + stop.tv_usec / 1000000.0)
+        - (start.tv_sec + start.tv_usec / 1000000.0);
 }
 
 
@@ -437,24 +444,36 @@ void Init_MatVec( reax_system *system, control_params *control,
         Sort_Matrix_Rows( workspace->H );
         Sort_Matrix_Rows( workspace->H_sp );
         //fprintf( stderr, "H matrix sorted\n" );
-        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
-        //fprintf( stderr, "drop tolerances calculated\n" );
+	if ( control->pre_comp == ICHOLT_PC )
+	{
+            Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
+            //fprintf( stderr, "drop tolerances calculated\n" );
+	}
         if ( workspace->L == NULL )
         {
-            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
-            if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
-                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
-            {
-                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
-                exit(INSUFFICIENT_SPACE);
-            }
-            /* factors have sparsity pattern as H */
-//            if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
-//                    Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
-//            {
-//                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-//                exit(INSUFFICIENT_SPACE);
-//            }
+	    switch ( control->pre_comp )
+	    {
+	        case ICHOLT_PC:
+                    fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
+                    if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
+                            Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
+                    {
+                        fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+                        exit(INSUFFICIENT_SPACE);
+                    }
+    		    break;
+		case ICHOL_PAR_PC:
+                    /* ICHOL_PAR: factors have sparsity pattern as H */
+                    if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
+                            Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
+                    {
+                        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                        exit(INSUFFICIENT_SPACE);
+                    }
+		    break;
+		default:
+		    break;
+	    }
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "fillin = %d\n", fillin );
             fprintf( stderr, "allocated memory: L = U = %ldMB\n",
@@ -462,10 +481,18 @@ void Init_MatVec( reax_system *system, control_params *control,
 #endif
         }
 
-        data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
-//        data->timing.pre_comp += ICHOLT( workspace->H_sp, workspace->droptol, workspace->L, workspace->U );
-        // TODO: add parameters for sweeps to control file
-//        ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+	switch ( control->pre_comp )
+	{
+	    case ICHOLT_PC:
+                data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+//                data->timing.pre_comp += ICHOLT( workspace->H_sp, workspace->droptol, workspace->L, workspace->U );
+		break;
+	    case ICHOL_PAR_PC:
+                data->timing.pre_comp += ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+		break;
+	    default:
+		break;
+	}
 
 //        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
@@ -554,41 +581,61 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 //    if( data->step == 0 || data->step == 100 )
 //      Print_Linear_System( system, control, workspace, data->step );
 
-    //TODO: add parameters in control file for solver choice and options
-//    matvecs = GMRES( workspace, workspace->H,
-//                     workspace->b_s, control->q_err, workspace->s[0], out_control->log, &(data->timing.pre_app) );
-//    matvecs += GMRES( workspace, workspace->H,
-//                      workspace->b_t, control->q_err, workspace->t[0], out_control->log, &(data->timing.pre_app) );
-
-//    matvecs = GMRES_HouseHolder( workspace, workspace->H,
-//                                 workspace->b_s, control->q_err, workspace->s[0], out_control->log );
-//    matvecs += GMRES_HouseHolder( workspace, workspace->H,
-//                                  workspace->b_t, control->q_err, workspace->t[0], out_control->log );
-
-    matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
-                      workspace->L, workspace->U, workspace->s[0], out_control->log, &(data->timing.pre_app) );
-    matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
-                       workspace->L, workspace->U, workspace->t[0], out_control->log, &(data->timing.pre_app) );
-
-//    matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
-//                             workspace->L, workspace->U, workspace->s[0], out_control->log, &(data->timing.pre_app) );
-//    matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->q_err,
-//                              workspace->L, workspace->U, workspace->t[0], out_control->log, &(data->timing.pre_app) );
-
-    //matvecs=PCG( workspace, workspace->H, workspace->b_s, control->q_err,
-    //      workspace->L, workspace->U, workspace->s[0], out_control->log ) + 1;
-    ///matvecs+=PCG( workspace, workspace->H, workspace->b_t, control->q_err,
-    //     workspace->L, workspace->U, workspace->t[0], out_control->log ) + 1;
-
-    //matvecs = CG( workspace, workspace->H,
-    // workspace->b_s, control->q_err, workspace->s[0], out_control->log ) + 1;
-    //matvecs += CG( workspace, workspace->H,
-    // workspace->b_t, control->q_err, workspace->t[0], out_control->log ) + 1;
-
-    //matvecs = SDM( workspace, workspace->H,
-    // workspace->b_s, control->q_err, workspace->s[0], out_control->log ) + 1;
-    //matvecs += SDM( workspace, workspace->H,
-    // workspace->b_t, control->q_err, workspace->t[0], out_control->log ) + 1;
+    switch ( control->solver )
+    {
+        case GMRES_S:
+            matvecs = GMRES( workspace, workspace->H,
+                             workspace->b_s, control->q_err, workspace->s[0], out_control->log,
+                             &(data->timing.pre_app), &(data->timing.spmv) );
+            matvecs += GMRES( workspace, workspace->H,
+                              workspace->b_t, control->q_err, workspace->t[0], out_control->log, 
+                              &(data->timing.pre_app), &(data->timing.spmv) );
+            break;
+        case GMRES_H_S:
+            matvecs = GMRES_HouseHolder( workspace, workspace->H,
+                                         workspace->b_s, control->q_err, workspace->s[0], out_control->log );
+            matvecs += GMRES_HouseHolder( workspace, workspace->H,
+                                          workspace->b_t, control->q_err, workspace->t[0], out_control->log );
+            break;
+        case PGMRES_S:
+            matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
+                              workspace->L, workspace->U, workspace->s[0], out_control->log,
+                              &(data->timing.pre_app), &(data->timing.spmv) );
+            matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
+                               workspace->L, workspace->U, workspace->t[0], out_control->log,
+                               &(data->timing.pre_app), &(data->timing.spmv) );
+            break;
+        case PGMRES_J_S:
+            matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
+                                     workspace->L, workspace->U, workspace->s[0], control->jacobi_iters,
+				     out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+            matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->q_err,
+                                      workspace->L, workspace->U, workspace->t[0], control->jacobi_iters,
+				      out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+            break;
+        case CG_S:
+            matvecs = CG( workspace, workspace->H,
+                          workspace->b_s, control->q_err, workspace->s[0], out_control->log ) + 1;
+            matvecs += CG( workspace, workspace->H,
+                           workspace->b_t, control->q_err, workspace->t[0], out_control->log ) + 1;
+            break;
+        case PCG_S:
+            matvecs = PCG( workspace, workspace->H, workspace->b_s, control->q_err,
+                         workspace->L, workspace->U, workspace->s[0], out_control->log ) + 1;
+            matvecs += PCG( workspace, workspace->H, workspace->b_t, control->q_err,
+                            workspace->L, workspace->U, workspace->t[0], out_control->log ) + 1;
+            break;
+        case SDM_S:
+            matvecs = SDM( workspace, workspace->H,
+                           workspace->b_s, control->q_err, workspace->s[0], out_control->log ) + 1;
+            matvecs += SDM( workspace, workspace->H,
+                            workspace->b_t, control->q_err, workspace->t[0], out_control->log ) + 1;
+            break;
+	default:
+            fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
+            exit( INVALID_INPUT );
+	    break;
+    }
 
     data->timing.matvecs += matvecs;
 #if defined(DEBUG_FOCUS)

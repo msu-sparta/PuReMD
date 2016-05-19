@@ -128,18 +128,37 @@ typedef real rvec[3];
 typedef int  ivec[3];
 typedef real rtensor[3][3];
 
-enum {NVE = 0, NVT = 1, NPT = 2, sNPT = 3, iNPT = 4, ensNR = 5, bNVT = 6};
-enum {FAR_NBRS = 0, NEAR_NBRS = 1, THREE_BODIES = 2, BONDS = 3, OLD_BONDS = 4,
-      HBONDS = 5, DBO = 6, DDELTA = 7, LIST_N = 8
-     };
-enum {TYP_VOID = 0, TYP_THREE_BODY = 1, TYP_BOND = 2, TYP_HBOND = 3, TYP_DBO = 4,
-      TYP_DDELTA = 5, TYP_FAR_NEIGHBOR = 6, TYP_NEAR_NEIGHBOR = 7, TYP_N = 8
-     };
-enum {UNKNOWN = 0, WATER = 1};
-enum {NO_ANALYSIS = 0, FRAGMENTS = 1, REACTIONS = 2, NUM_ANALYSIS = 3};
-enum {WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2};
-enum {XYZ = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5};
-
+/* config params */
+enum ensemble {
+	NVE = 0, NVT = 1, NPT = 2, sNPT = 3, iNPT = 4, ensNR = 5, bNVT = 6
+};
+enum interaction_list_offets {
+	FAR_NBRS = 0, NEAR_NBRS = 1, THREE_BODIES = 2, BONDS = 3, OLD_BONDS = 4,
+	HBONDS = 5, DBO = 6, DDELTA = 7, LIST_N = 8
+};
+enum interaction_type {
+	TYP_VOID = 0, TYP_THREE_BODY = 1, TYP_BOND = 2, TYP_HBOND = 3, TYP_DBO = 4,
+	TYP_DDELTA = 5, TYP_FAR_NEIGHBOR = 6, TYP_NEAR_NEIGHBOR = 7, TYP_N = 8
+};
+enum molecule_type {
+	UNKNOWN = 0, WATER = 1
+};
+enum molecular_analysis_type {
+	NO_ANALYSIS = 0, FRAGMENTS = 1, REACTIONS = 2, NUM_ANALYSIS = 3
+};
+enum restart_format {
+	WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2
+};
+enum geometry {
+	XYZ = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5
+};
+enum solver {
+	GMRES_S = 0, GMRES_H_S = 1, PGMRES_S = 2,
+	PGMRES_J_S = 3, CG_S = 4, PCG_S = 5, SDM_S = 6,
+};
+enum pre_comp {
+	DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2,
+};
 
 
 /* Global params mapping */
@@ -443,8 +462,12 @@ typedef struct
     int freq_diffusion_coef;
     int restrict_type;
 
+    unsigned int solver;
+    unsigned int pre_comp;
     int refactor;
     real droptol;
+    unsigned int jacobi_iters;
+
 
     int molec_anal;
     int freq_molec_anal;
@@ -751,6 +774,7 @@ typedef struct
 } static_storage;
 
 
+/* interaction lists */
 typedef struct
 {
     int n;

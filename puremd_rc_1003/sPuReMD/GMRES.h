@@ -42,7 +42,7 @@ int PGMRES( static_storage*, sparse_matrix*, real*, real,
             sparse_matrix*, sparse_matrix*, real*, FILE*, real*, real* );
 
 int PGMRES_Jacobi( static_storage*, sparse_matrix*, real*, real,
-                   sparse_matrix*, sparse_matrix*, real*, FILE*, real*, real* );
+                   sparse_matrix*, sparse_matrix*, real*, unsigned int, FILE*, real*, real* );
 
 int PCG( static_storage*, sparse_matrix*, real*, real,
          sparse_matrix*, sparse_matrix*, real*, FILE* );

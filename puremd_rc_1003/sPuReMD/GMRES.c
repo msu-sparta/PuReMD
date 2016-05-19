@@ -883,7 +883,8 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
  * with preconditioner using factors LU \approx H
  * and Jacobi iteration for approximate factor application */
 int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real tol,
-                   sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time, real *spmv_time )
+                   sparse_matrix *L, sparse_matrix *U, real *x, unsigned int iters,
+		   FILE *fout, real *time, real *spmv_time )
 {
     int i, j, k, itr, N, si;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -926,10 +927,9 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
         *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
                  - (start.tv_sec + start.tv_usec / 1000000.0);
         Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
-        // TODO: add parameters to config file
         gettimeofday( &start, NULL );
-        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], 50 );
-        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], 50 );
+        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], iters );
+        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], iters );
         gettimeofday( &stop, NULL );
         *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
                  - (start.tv_sec + start.tv_usec / 1000000.0);
@@ -946,10 +946,9 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
             gettimeofday( &stop, NULL );
             *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
                      - (start.tv_sec + start.tv_usec / 1000000.0);
-            // TODO: add parameters to config file
             gettimeofday( &start, NULL );
-            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], 50 );
-            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], 50 );
+            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], iters );
+            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], iters );
             gettimeofday( &stop, NULL );
             *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
                      - (start.tv_sec + start.tv_usec / 1000000.0);

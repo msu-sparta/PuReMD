@@ -839,7 +839,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     strcpy( control->sim_name, "default.sim" );
 
     control->restart = 0;
-    out_control->restart_format = 1;
+    out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;
     strcpy( control->restart_from, "default.res" );
     out_control->restart_freq = 0;
@@ -847,11 +847,11 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     control->reposition_atoms = 0;
 
-    control->ensemble = 0;
+    control->ensemble = NVE;
     control->nsteps = 0;
     control->dt = 0.25;
 
-    control->geo_format = 1;
+    control->geo_format = PDB;
     control->restrict_bonds = 0;
 
     control->periodic_boundaries = 1;
@@ -870,8 +870,11 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     control->q_err = 0.000001;
     control->tabulate = 0;
+    control->solver = PGMRES_S;
+    control->pre_comp = ICHOLT_PC;
     control->refactor = 100;
     control->droptol = 0.01;
+    control->jacobi_iters = 0;
 
     control->T_init = 0.;
     control->T_final = 300.;
@@ -911,7 +914,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     out_control->bond_info = 0;
     out_control->angle_info = 0;
 
-    control->molec_anal = 0;
+    control->molec_anal = NO_ANALYSIS;
     control->freq_molec_anal = 0;
     control->bg_cut = 0.3;
     control->num_ignored = 0;
@@ -1037,15 +1040,30 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             val = atof( tmp[1] );
             control->q_err = val;
         }
-        else if ( strcmp(tmp[0], "ilu_refactor") == 0 )
+        else if ( strcmp(tmp[0], "solver") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->solver = ival;
+        }
+        else if ( strcmp(tmp[0], "pre_comp") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->pre_comp = ival;
+        }
+        else if ( strcmp(tmp[0], "pre_refactor") == 0 )
         {
             ival = atoi( tmp[1] );
             control->refactor = ival;
         }
-        else if ( strcmp(tmp[0], "ilu_droptol") == 0 )
+        else if ( strcmp(tmp[0], "pre_droptol") == 0 )
         {
             val = atof( tmp[1] );
             control->droptol = val;
+        }
+        else if ( strcmp(tmp[0], "pre_j_iters") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->jacobi_iters = val;
         }
         else if ( strcmp(tmp[0], "temp_init") == 0 )
         {
