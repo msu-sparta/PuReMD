@@ -1,4 +1,4 @@
-AM_CXXFLAGS = -Wall -Werror
+AM_CFLAGS += -Wall -O3 -funroll-loops -fstrict-aliasing
 
 bin_PROGRAMS = spuremd
 spuremd_SOURCES = grid.c list.c lookup.c print_utils.c \

@@ -4,9 +4,9 @@
 AC_PREREQ([2.69])
 
 AC_INIT([sPuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
-AM_INIT_AUTOMAKE([1.15])
-LT_PREREQ([2.2])
-LT_INIT([dlopen])
+AM_INIT_AUTOMAKE([1.15 -Wall -Werror foreign])
+#LT_PREREQ([2.2])
+#LT_INIT([dlopen])
 
 AC_LANG([C])
 
@@ -42,16 +42,18 @@ AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset])
 
 # Check for OpenMP support.
-AC_OPENMP
-if test "x${OPENMP_CFLAGS}" = "x"; then
-	AC_MSG_WARN([
-  -----------------------------------------------
-   Unable to find OpenMP support on this system.
-   Building a single-threaded version.
-  -----------------------------------------------])
-else
-	AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")
-	AC_SUBST(AM_CPPFLAGS, "$OPENMP_CFLAGS")
+if test "x$BUILD_OPENMP" = "xyes"; then
+	AC_OPENMP
+	if test "x${OPENMP_CFLAGS}" = "x"; then
+		AC_MSG_WARN([
+	  -----------------------------------------------
+	   Unable to find OpenMP support on this system.
+	   Building a single-threaded version.
+	  -----------------------------------------------])
+	else
+		AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")
+		AC_SUBST(AM_CPPFLAGS, "$OPENMP_CFLAGS")
+	fi
 fi
 
 AC_CONFIG_FILES([Makefile

@@ -2,7 +2,7 @@
 
 # libtool - Provide generalized library-building support services.
 # Generated automatically by config.status (purdue-molecular-dynamics-suite) 1.0
-# Libtool was configured on host linuxbox.homenet:
+# Libtool was configured on host dev-intel14-k20:
 # NOTE: Changes made to this file will be lost: look at ltmain.sh.
 #
 #   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005,
@@ -90,13 +90,13 @@ EGREP="/bin/grep -E"
 FGREP="/bin/grep -F"
 
 # A BSD- or MS-compatible name lister.
-NM="/bin/nm -B"
+NM="/usr/bin/nm -B"
 
 # Whether we need soft or hard links.
 LN_S="ln -s"
 
 # What is the maximum length of a command?
-max_cmd_len=1572864
+max_cmd_len=3458764513820540925
 
 # Object file suffix (normally "o").
 objext=o
@@ -161,7 +161,7 @@ old_postuninstall_cmds=""
 lock_old_archive_extraction=no
 
 # A C compiler.
-LTCC="gcc"
+LTCC="/opt/software/GCC/5.2/bin/gcc"
 
 # LTCC compiler flags.
 LTCFLAGS="-g -O2"
@@ -272,10 +272,10 @@ finish_eval=""
 hardcode_into_libs=yes
 
 # Compile-time system search path for libraries.
-sys_lib_search_path_spec="/usr/lib/gcc/x86_64-redhat-linux/5.3.1 /usr/lib64 /lib64 "
+sys_lib_search_path_spec="/opt/software/cudatoolkit/7.0/lib64 /opt/software/GCC/5.2/lib64 /opt/software/GCC/5.2/lib/gcc/x86_64-pc-linux-gnu/6.0.0 /lib64 /usr/lib64 /opt/software/OpenMPI/1.8--GCC-4.8.2/lib /opt/software/ClusterStudio/2013sp1/composer_xe_2013_sp1.0.080/mkl/lib/intel64 /opt/software/Python/2.7.2--GCC-4.4.5/lib "
 
 # Run-time system search path for libraries.
-sys_lib_dlsearch_path_spec="/lib64 /usr/lib64 /lib /usr/lib /usr/lib64/bind99 /usr/lib64/llvm "
+sys_lib_dlsearch_path_spec="/lib64 /usr/lib64 /lib /usr/lib /usr/lib64/atlas /usr/lib64/mysql /usr/lib64/nvidia /usr/lib64/papi-4.1.3 /usr/lib64/papi-5.1.1/usr/lib /opt/intel/mic/coi/host-linux-release/lib    /usr/lib64/qt-3.3/lib /usr/lib64/xulrunner "
 
 # Whether dlopen is supported.
 dlopen_support=yes
@@ -284,7 +284,7 @@ dlopen_support=yes
 dlopen_self=yes
 
 # Whether dlopen of statically linked programs is supported.
-dlopen_self_static=yes
+dlopen_self_static=no
 
 # Commands to strip libraries.
 old_striplib="strip --strip-debug"
@@ -292,7 +292,7 @@ striplib="strip --strip-unneeded"
 
 
 # The linker used to build libraries.
-LD="/bin/ld -m elf_x86_64"
+LD="/usr/bin/ld -m elf_x86_64"
 
 # How to create reloadable object files.
 reload_flag=" -r"
@@ -302,7 +302,7 @@ reload_cmds="\$LD\$reload_flag -o \$output\$reload_objs"
 old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs~\$RANLIB \$tool_oldlib"
 
 # A language specific compiler.
-CC="gcc"
+CC="/opt/software/GCC/5.2/bin/gcc"
 
 # Is the compiler the GNU compiler?
 with_gcc=yes
@@ -317,7 +317,7 @@ pic_flag=" -fPIC -DPIC"
 wl="-Wl,"
 
 # Compiler flag to prevent dynamic linking.
-link_static_flag=""
+link_static_flag="-static"
 
 # Does compiler simultaneously support -c and -o options?
 compiler_c_o="yes"
