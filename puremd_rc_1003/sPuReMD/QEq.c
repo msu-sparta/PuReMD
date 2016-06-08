@@ -210,8 +210,8 @@ void Init_MatVec( reax_system *system, control_params *control,
 		  simulation_data *data, static_storage *workspace, 
 		  list *far_nbrs )
 {
-  int i, fillin;
-  real s_tmp, t_tmp;
+  int i, j, si, ei, fillin;
+  real s_tmp, t_tmp, sum;
   //char fname[100];
 
   if(control->refactor > 0 && 
@@ -281,6 +281,18 @@ void Init_MatVec( reax_system *system, control_params *control,
     workspace->t[2][i] = workspace->t[1][i];
     workspace->t[1][i] = workspace->t[0][i];
     workspace->t[0][i] = t_tmp;
+  }
+
+  /* compute b_s */
+  for( i = 0; i < system->N; ++i ) {
+    si = workspace->H->start[i];
+    ei = workspace->H->start[i+1]-1;
+    sum = ZERO;
+    
+    for( j = si; j < ei; ++j ) {
+      sum += workspace->H->entries[j].val;
+    }
+    workspace->b_s[i] = sum * control->q_net - system->reaxprm.sbp[ system->atoms[i].type ].chi;
   }
 }
 

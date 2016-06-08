@@ -818,6 +818,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
   control->hb_cut = 7.50;
 
   control->q_err = 0.000001;
+  control->q_net = ZERO;
   control->tabulate = 0;
   control->refactor = 100;
   control->droptol = 0.01;
@@ -966,6 +967,10 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     else if( strcmp(tmp[0], "q_err") == 0 ) {
       val = atof( tmp[1] );
       control->q_err = val;
+    }
+    else if( strcmp(tmp[0], "q_net") == 0 ) {
+      val = atof( tmp[1] );
+      control->q_net = val;
     }
     else if( strcmp(tmp[0], "ilu_refactor") == 0 ) {
       ival = atoi( tmp[1] );

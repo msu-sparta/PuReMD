@@ -406,6 +406,7 @@ typedef struct
   real hb_cut;
   real Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
   real q_err;
+  real q_net;
   int  max_far_nbrs;
   
   real T_init, T_final, T;
