@@ -29,6 +29,7 @@
 .~lock.*
 
 # Autotools
+aclocal.m4
 autom4te.cache
 .deps
 stamp-h1
@@ -37,6 +38,7 @@ config.guess
 config.status
 config.sub
 configure
+libtool
 Makefile
 Makefile.in
 
