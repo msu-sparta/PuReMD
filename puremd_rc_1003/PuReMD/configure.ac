@@ -71,12 +71,6 @@ if test "$mpi_vendor" = "OpenMPI"
 then 
 	MPI_CFLAGS=`$MPICC --showme:compile`
 	MPI_LDFLAGS=`$MPICC --showme:link`
-	AC_MSG_WARN([
-	  -----------------------------------------------
-	   OpenMPI: 
-             $MPI_CFLAGS
-             $MPI_LDFLAGS
-	  -----------------------------------------------])
 	AC_MSG_NOTICE([OpenMPI found])
 	AC_MSG_NOTICE([MPI_CFLAGS=$MPI_CFLAGS])
 	AC_MSG_NOTICE([MPI_LDFLAGS=$MPI_LDFLAGS])
