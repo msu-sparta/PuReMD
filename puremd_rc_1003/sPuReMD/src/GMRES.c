@@ -46,7 +46,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     Vector_MakeZero( b, n );
 
     #pragma omp parallel \
-        default(none) shared(n, b, b_local) private(si, ei, H, i, j, k, tid)
+        default(none) shared(n, b_local) private(si, ei, H, i, j, k, tid)
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
@@ -131,7 +131,7 @@ static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
     Vector_MakeZero( b, R->n );
 
     #pragma omp parallel \
-        default(none) shared(b, b_local) private(si, ei, i, k, tid)
+        default(none) shared(b_local) private(si, ei, i, k, tid)
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
@@ -267,7 +267,7 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
     static real *Dinv_b, *rp, *rp2, *rp3;
 
     #pragma omp parallel \
-        default(none) shared(b, b_local, Dinv_b, rp, rp2, rp3, iter, stderr) private(si, ei, i, k, tid)
+        default(none) shared(b_local, Dinv_b, rp, rp2, rp3, iter, stderr) private(si, ei, i, k, tid)
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
