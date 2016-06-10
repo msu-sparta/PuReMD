@@ -19,82 +19,16 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __VECTOR_H_
-#define __VECTOR_H_
-
-#include "reax_types.h"
-
-#include "cuda_reax_constants.h"
+#include "vector.h"
 #include "random.h"
 
+#if defined(SUDHIR)
+
 #ifdef __cplusplus
-extern "C"  {  
+extern "C"  {   
 #endif
 
 
-inline int  Vector_isZero( real*, int );
-inline void Vector_MakeZero( real*, int );
-inline void Vector_Copy( real*, real*, int );
-inline void Vector_Scale( real*, real, real*, int );
-inline void Vector_Sum( real*, real, real*, real, real*, int );
-inline void Vector_Add( real*, real, real*, int );
-inline real Dot( real*, real*, int );
-inline real Norm( real*, int );
-inline void Vector_Print( FILE*, char*, real*, int );
-
-CUDA_HOST_DEVICE  static void rvec_Copy( rvec, rvec );
-CUDA_HOST_DEVICE  static inline void rvec_Scale( rvec, real, rvec );
-CUDA_HOST_DEVICE  static inline void rvec_Add( rvec, rvec );
-CUDA_HOST_DEVICE  static inline void rvec_ScaledAdd( rvec, real, rvec );
-inline void rvec_Sum( rvec, rvec, rvec );
-CUDA_HOST_DEVICE  static inline void rvec_ScaledSum( rvec, real, rvec, real, rvec );
-CUDA_HOST_DEVICE  static inline real rvec_Dot( rvec, rvec );
-inline real rvec_ScaledDot( real, rvec, real, rvec );
-inline void rvec_Multiply( rvec, rvec, rvec );
-inline void rvec_iMultiply( rvec, ivec, rvec );
-inline void rvec_Divide( rvec, rvec, rvec );
-inline void rvec_iDivide( rvec, rvec, ivec );
-inline void rvec_Invert( rvec, rvec );
-CUDA_HOST_DEVICE  static inline void rvec_Cross( rvec, rvec, rvec );
-inline void rvec_OuterProduct( rtensor, rvec, rvec );
-inline real rvec_Norm_Sqr( rvec );
-inline real rvec_Norm( rvec );
-inline int  rvec_isZero( rvec );
-CUDA_HOST_DEVICE  static inline void rvec_MakeZero( rvec );
-inline void rvec_Random( rvec );
-
-inline void rtensor_MakeZero( rtensor );
-inline void rtensor_Multiply( rtensor, rtensor, rtensor );
-inline void rtensor_MatVec( rvec, rtensor, rvec );
-inline void rtensor_Scale( rtensor, real, rtensor );
-inline void rtensor_Add( rtensor, rtensor );
-inline void rtensor_ScaledAdd( rtensor, real, rtensor );
-inline void rtensor_Sum( rtensor, rtensor, rtensor );
-inline void rtensor_ScaledSum( rtensor, real, rtensor, real, rtensor );
-inline void rtensor_Scale( rtensor, real, rtensor );
-inline void rtensor_Copy( rtensor, rtensor );
-inline void rtensor_Identity( rtensor );
-inline void rtensor_Transpose( rtensor, rtensor );
-inline real rtensor_Det( rtensor );
-inline real rtensor_Trace( rtensor );
-
-inline void Print_rTensor(FILE*,rtensor);
-
-inline int  ivec_isZero( ivec );
-inline int  ivec_isEqual( ivec, ivec );
-inline void ivec_MakeZero( ivec );
-inline void ivec_Copy( ivec, ivec );
-inline void ivec_Scale( ivec, real, ivec );
-inline void ivec_rScale( ivec, real, rvec );
-inline void ivec_Sum( ivec, ivec, ivec );
-inline void ivec_ScaledSum( ivec, int, ivec, int, ivec );
-inline void ivec_Add( ivec, ivec );
-inline void ivec_ScaledAdd( ivec, int, ivec );
-inline void ivec_Max( ivec, ivec, ivec );
-inline void ivec_Max3( ivec, ivec, ivec, ivec );
-
-
-#if defined(LAMMPS_REAX) || defined(PURE_REAX)
 inline int Vector_isZero( real* v, int k )
 {
   for( --k; k>=0; --k )
@@ -168,29 +102,29 @@ inline void Vector_Print( FILE *fout, char *vname, real *v, int k )
 
   fprintf( fout, "%s:", vname );
   for( i = 0; i < k; ++i )
-    fprintf( fout, "%8.3f\n", v[i] );
+    fprintf( fout, "%24.15e\n", v[i] );
   fprintf( fout, "\n" );
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Copy( rvec dest, rvec src )
+void rvec_Copy( rvec dest, rvec src )
 {
   dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
 }
 
-CUDA_HOST_DEVICE static inline void rvec_Scale( rvec ret, real c, rvec v )
+inline void rvec_Scale( rvec ret, real c, rvec v )
 {
   ret[0] = c * v[0], ret[1] = c * v[1], ret[2] = c * v[2];
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Add( rvec ret, rvec v )
+inline void rvec_Add( rvec ret, rvec v )
 {
   ret[0] += v[0], ret[1] += v[1], ret[2] += v[2];
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_ScaledAdd( rvec ret, real c, rvec v )
+inline void rvec_ScaledAdd( rvec ret, real c, rvec v )
 {
   ret[0] += c * v[0], ret[1] += c * v[1], ret[2] += c * v[2];
 }
@@ -204,7 +138,7 @@ inline void rvec_Sum( rvec ret, rvec v1 ,rvec v2 )
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_ScaledSum( rvec ret, real c1, rvec v1 ,real c2, rvec v2 )
+inline void rvec_ScaledSum( rvec ret, real c1, rvec v1 ,real c2, rvec v2 )
 {
   ret[0] = c1 * v1[0] + c2 * v2[0]; 
   ret[1] = c1 * v1[1] + c2 * v2[1];
@@ -212,7 +146,7 @@ CUDA_HOST_DEVICE static inline void rvec_ScaledSum( rvec ret, real c1, rvec v1 ,
 }
 
 
-CUDA_HOST_DEVICE static inline real rvec_Dot( rvec v1, rvec v2 )
+inline real rvec_Dot( rvec v1, rvec v2 )
 {
   return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
 }
@@ -264,7 +198,7 @@ inline void rvec_Invert( rvec r, rvec v )
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Cross( rvec ret, rvec v1, rvec v2 )
+inline void rvec_Cross( rvec ret, rvec v1, rvec v2 )
 {
   ret[0] = v1[1] * v2[2] - v1[2] * v2[1];
   ret[1] = v1[2] * v2[0] - v1[0] * v2[2];
@@ -303,10 +237,10 @@ inline int rvec_isZero( rvec v )
   return 1;
 }
 
-
-CUDA_HOST_DEVICE static inline void rvec_MakeZero( rvec v )
+inline void rvec_MakeZero( rvec v )
 {
-  v[0] = v[1] = v[2] = 0.0000000000000;
+//  v[0] = v[1] = v[2] = 0.0000000000000;
+  v[0] = v[1] = v[2] = 0.000000000000000e+00;
 }
 
 
@@ -493,7 +427,8 @@ inline void Print_rTensor(FILE* fp, rtensor t)
 
 inline void ivec_MakeZero( ivec v )
 {
-  v[0] = v[1] = v[2] = 0;
+// LGJ  v[0] = v[1] = v[2] = 0;
+  v[0] = v[1] = v[2] = 0.000000000000000e+00;
 }
 
 
@@ -582,12 +517,9 @@ inline void ivec_Max3( ivec res, ivec v1, ivec v2, ivec v3 )
   res[1] = MAX3( v1[1], v2[1], v3[1] );
   res[2] = MAX3( v1[2], v2[2], v3[2] );
 }
-#endif
-
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif

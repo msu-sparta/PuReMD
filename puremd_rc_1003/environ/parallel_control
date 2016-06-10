@@ -1,7 +1,7 @@
 simulation_name	        water.6.112    ! output files will carry this name + their specific ext.
 ensemble_type	 	1	! 0: NVE  1: Berendsen NVT  2: Nose-Hoover NVT(under testing)  3: semi-isotropic NPT  4: isotropic NPT  5: anisotropic NPT (under development)
-nsteps			10    ! number of simulation steps
-dt			0.25 	! time step in fs
+nsteps			100    ! number of simulation steps
+dt			0.10 	! time step in fs
 proc_by_dim             1 1 2   ! distribution of processors by dimensions
 geo_format 		1 	! 0: custom  1: pdb (only if natoms < 100000) 2: ASCII restart 3: binary restart
 

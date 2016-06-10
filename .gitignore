@@ -28,10 +28,18 @@
 .~lock.*
 
 # Autotools
+aclocal.m4
 autom4te.cache
 .deps
 stamp-h1
 config.log
+config.guess
+config.status
+config.sub
+configure
+libtool
+Makefile
+Makefile.in
 
 # Compiled languages (C,C++,Fortran,...)
 *.o
