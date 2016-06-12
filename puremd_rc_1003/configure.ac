@@ -25,14 +25,18 @@ AC_ARG_ENABLE([mpi],
 	      [AS_HELP_STRING([--enable-mpi],
 			      [enable MPI support @<:@default: no@:>@])],
 	      [package_mpi_enabled=${enableval}], [package_mpi_enabled=no])
-AC_ARG_ENABLE([mpi-single-gpu],
-	      [AS_HELP_STRING([--enable-mpi-single-gpu],
-			      [enable MPI+CUDA (single GPU) support @<:@default: no@:>@])],
-	      [package_mpi_single_gpu_enabled=${enableval}], [package_mpi_single_gpu_enabled=no])
-AC_ARG_ENABLE([mpi-multi-gpu],
-	      [AS_HELP_STRING([--enable-mpi-multi-gpu],
+AC_ARG_ENABLE([gpu],
+	      [AS_HELP_STRING([--enable-gpu],
+			      [enable CUDA (single GPU) support @<:@default: no@:>@])],
+	      [package_gpu_enabled=${enableval}], [package_gpu_enabled=no])
+AC_ARG_ENABLE([mpi-not-gpu],
+	      [AS_HELP_STRING([--enable-mpi-not-gpu],
+			      [enable MPI but not CUDA support @<:@default: no@:>@])],
+	      [package_mpi_not_gpu_enabled=${enableval}], [package_mpi_not_gpu_enabled=no])
+AC_ARG_ENABLE([mpi-gpu],
+	      [AS_HELP_STRING([--enable-mpi-gpu],
 			      [enable MPI+CUDA (multi GPU) support @<:@default: no@:>@])],
-	      [package_mpi_multi_gpu_enabled=${enableval}], [package_mpi_multi_gpu_enabled=no])
+	      [package_mpi_gpu_enabled=${enableval}], [package_mpi_gpu_enabled=no])
 
 if test "x${package_serial_enabled}" = "xyes" || test "x${package_openmp_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([sPuReMD])
@@ -47,14 +51,19 @@ if test "x${package_mpi_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PuReMD])
 fi
 AM_CONDITIONAL([BUILD_MPI], [test "x${package_mpi_enabled}" = "xyes"])
-if test "x${package_mpi_single_gpu_enabled}" = "xyes"; then
+if test "x${package_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PuReMD-GPU])
 fi
-AM_CONDITIONAL([BUILD_SINGLE_GPU], [test "x${package_mpi_single_gpu_enabled}" = "xyes"])
-if test "x${package_mpi_multi_gpu_enabled}" = "xyes"; then
+AM_CONDITIONAL([BUILD_GPU], [test "x${package_gpu_enabled}" = "xyes"])
+if test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PG-PuReMD])
+	if test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" != "xyes"; then
+		export BUILD_MPI_NOT_GPU="yes"
+	else
+		export BUILD_MPI_NOT_GPU="no"
+	fi
 fi
-AM_CONDITIONAL([BUILD_MULTI_GPU], [test "x${package_mpi_multi_gpu_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" = "xyes"])
 
 # Provides debug compilation mode.
 AC_ARG_ENABLE([debug],

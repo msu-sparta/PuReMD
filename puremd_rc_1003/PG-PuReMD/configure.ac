@@ -4,7 +4,7 @@
 AC_PREREQ([2.69])
 
 AC_INIT([PG-PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
-AM_INIT_AUTOMAKE([1.15 -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 #LT_PREREQ([2.2])
 #LT_INIT([dlopen])
 
@@ -47,18 +47,27 @@ AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset])
 
 # Check for CUDA support.
-CONFIGURE_HEADLINE([ CUDA support ])
-AX_CUDA
-if test "BUILD_DEBUG" = "true"
-then
-	NVCCFLAGS+=" -g -G"
-else
-	NVCCFLAGS+=" -O3"
+if test "x$BUILD_GPU" = "xyes"; then
+	CONFIGURE_HEADLINE([ CUDA support ])
+	AX_CUDA
+	if test "BUILD_DEBUG" = "true"
+	then
+		NVCCFLAGS+=" -g -G"
+	else
+		NVCCFLAGS+=" -O3"
+	fi
+
+	AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
 fi
+AM_CONDITIONAL([BUILD_CUDA], [test "x${BUILD_GPU}" = "xyes"])
 
 if test "BUILD_PROF" = "true"
 then
-	NVCCFLAGS+=" --compiler-options ${gprof_flags}"
+	if test "x$BUILD_GPU" = "xyes"; then
+		NVCCFLAGS+=" --compiler-options ${gprof_flags}"
+	else
+		CFLAGS+=" --compiler-options ${gprof_flags}"
+	fi
 fi
 
 # Check for MPI support.
@@ -123,6 +132,6 @@ fi
 AC_SUBST(MPI_CFLAGS)
 AC_SUBST(MPI_LDFLAGS)
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
