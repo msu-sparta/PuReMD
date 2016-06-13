@@ -59,9 +59,9 @@ AM_CONDITIONAL([BUILD_GPU], [test "x${package_gpu_enabled}" = "xyes"])
 if test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PG-PuReMD])
 	if test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" != "xyes"; then
-		export BUILD_MPI_NOT_GPU="yes"
+		export BUILD_GPU="no"
 	else
-		export BUILD_MPI_NOT_GPU="no"
+		export BUILD_GPU="yes"
 	fi
 fi
 AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" = "xyes"])

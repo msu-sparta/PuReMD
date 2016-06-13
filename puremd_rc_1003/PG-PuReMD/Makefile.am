@@ -24,13 +24,11 @@ NVCCFLAGS += --compiler-options -fno-strict-aliasing
 NVCCFLAGS += --compiler-options -Wno-unused-function
 NVCCFLAGS += --compiler-options -Wno-unused-parameter
 NVCCFLAGS += --compiler-options "$(MPI_CFLAGS)"
-
-#NVCC_LIBS = -lcudart -m64
 endif
 
 
-bin_PROGRAMS = pg-puremd
-pg_puremd_SOURCES = src/allocate.c src/basic_comm.c src/ffield.c src/grid.c src/list.c \
+bin_PROGRAMS = src/pg-puremd
+src_pg_puremd_SOURCES = src/allocate.c src/basic_comm.c src/ffield.c src/grid.c src/list.c \
 	src/lookup.c src/io_tools.c src/reset_tools.c src/restart.c src/random.c \
 	src/tool_box.c src/traj.c src/vector.c src/analyze.c src/box.c src/system_props.c \
 	src/control.c src/comm_tools.c src/geo_tools.c src/linear_solvers.c src/neighbors.c \
@@ -39,7 +37,7 @@ pg_puremd_SOURCES = src/allocate.c src/basic_comm.c src/ffield.c src/grid.c src/
 	src/integrate.c src/init_md.c src/parallelreax.c
 
 if BUILD_CUDA
-pg_puremd_SOURCES += src/cuda_utils.cu src/dev_alloc.cu src/cuda_environment.cu \
+src_pg_puremd_SOURCES += src/cuda_utils.cu src/dev_alloc.cu src/cuda_environment.cu \
       src/dev_system_props.cu src/reduction.cu src/center_mass.cu \
       src/cuda_copy.cu src/cuda_reset_tools.cu src/dev_list.cu \
       src/cuda_neighbors.cu src/cuda_bond_orders.cu src/cuda_bonds.cu \
@@ -50,13 +48,13 @@ pg_puremd_SOURCES += src/cuda_utils.cu src/dev_alloc.cu src/cuda_environment.cu 
       src/cuda_init_md.cu src/validation.cu src/cuda_lookup.cu
 
 # dummy source to cause C linking
-nodist_EXTRA_pg_puremd_SOURCES = src/dummy.c
+nodist_EXTRA_src_pg_puremd_SOURCES = src/dummy.c
 endif
 
 
-pg_puremd_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS)
-pg_puremd_LDFLAGS = $(AM_LDFLAGS) $(MPI_LDFLAGS)
+src_pg_puremd_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS)
+src_pg_puremd_LDFLAGS = $(AM_LDFLAGS) $(MPI_LDFLAGS)
 
 if BUILD_CUDA
-	pg_puremd_LDFLAGS += $(CUDA_LIBS)
+src_pg_puremd_LDFLAGS += $(CUDA_LIBS)
 endif

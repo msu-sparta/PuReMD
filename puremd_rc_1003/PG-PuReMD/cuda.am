@@ -5,14 +5,14 @@
 # in autotroll.am)
 #SUFFIXES = .cu
 
+AM_V_NVCC = $(AM_V_NVCC_@AM_V@)
+AM_V_NVCC_ = $(AM_V_NVCC_@AM_DEFAULT_V@)
+AM_V_NVCC_0 = @echo "  NVCC" $@;
+
 # these are default values for the maximun register count parameter
 # passed to nvcc compiler (you might need to change it sometimes; all you need
 # is to set it as an environment variable).
 MAX_REG_COUNT ?=48
 
 .cu.o:
-	$(AM_V_GEN)$(NVCC) $(NVCCFLAGS) -maxrregcount=$(MAX_REG_COUNT) -o $@ -c $<
-.cu.lo:
-	$(AM_V_GEN)$(top_srcdir)/am/cudalt.py $@ $(NVCC) $(NVCCFLAGS) -maxrregcount=$(MAX_REG_COUNT) -c $<
-.cu.c:
-	$(AM_V_GEN)cp $< $@
+	$(AM_V_NVCC)$(NVCC) $(NVCCFLAGS) -maxrregcount=$(MAX_REG_COUNT) -o $@ -c $<

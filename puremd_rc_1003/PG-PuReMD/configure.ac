@@ -51,11 +51,10 @@ AC_CHECK_FUNCS([gettimeofday memset])
 if test "x$BUILD_GPU" = "xyes"; then
 	CONFIGURE_HEADLINE([ CUDA support ])
 	AX_CUDA
+        NVCCFLAGS=
 	if test "BUILD_DEBUG" = "true"
 	then
 		NVCCFLAGS+=" -g -G"
-	else
-		NVCCFLAGS+=" -O3"
 	fi
 
 	AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
