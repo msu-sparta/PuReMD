@@ -390,6 +390,7 @@ void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
   }
 }
 
+#ifdef HAVE_CUDA
 void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 {
   Dev_Delete_List( far_nbrs);
@@ -398,6 +399,7 @@ void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
     MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
   }
 }
+#endif
 
 
 /*
@@ -480,6 +482,7 @@ int Reallocate_HBonds_List( reax_system *system, reax_list *hbonds )
   return total_hbonds;
 }
 
+#ifdef HAVE_CUDA
 int Cuda_Reallocate_HBonds_List( int n, int num_intrs, reax_list *hbonds )
 {
   Dev_Delete_List( hbonds);
@@ -489,6 +492,7 @@ int Cuda_Reallocate_HBonds_List( int n, int num_intrs, reax_list *hbonds )
   }
   return SUCCESS;
 }
+#endif
 
 int Reallocate_Bonds_List( reax_system *system, reax_list *bonds,
 			   int *total_bonds, int *est_3body )
@@ -513,6 +517,7 @@ int Reallocate_Bonds_List( reax_system *system, reax_list *bonds,
   return SUCCESS;
 }
 
+#ifdef HAVE_CUDA
 int Cuda_Reallocate_Bonds_List( int n, int num_intrs, reax_list *bonds)
 {
   Dev_Delete_List( bonds);
@@ -523,6 +528,7 @@ int Cuda_Reallocate_Bonds_List( int n, int num_intrs, reax_list *bonds)
 
   return SUCCESS;
 }
+#endif
 
 
 /*************       grid        *************/
@@ -1053,6 +1059,7 @@ void ReAllocate( reax_system *system, control_params *control,
 #endif
 }
 
+#ifdef HAVE_CUDA
 void Cuda_ReAllocate( reax_system *system, control_params *control, 
 		 simulation_data *data, storage *workspace, reax_list **lists, 
 		 mpi_datatypes *mpi_data )
@@ -1370,3 +1377,4 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
   MPI_Barrier( MPI_COMM_WORLD );
 #endif
 }
+#endif

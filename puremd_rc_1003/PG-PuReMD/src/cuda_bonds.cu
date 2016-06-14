@@ -21,7 +21,7 @@
 
 #include "reax_types.h"
 #include "index_utils.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "dev_list.h"
 
 

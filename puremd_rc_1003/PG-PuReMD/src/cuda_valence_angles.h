@@ -23,7 +23,7 @@
 #define __VALENCE_ANGLES_H_
 
 #include "reax_types.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "vector.h"
 
 CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *, 

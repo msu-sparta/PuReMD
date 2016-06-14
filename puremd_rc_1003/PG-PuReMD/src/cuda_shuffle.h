@@ -23,7 +23,7 @@
 #define __CUDA_SHUFFLE_H_
 
 #include "reax_types.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 #ifdef __cplusplus
 extern "C"  {

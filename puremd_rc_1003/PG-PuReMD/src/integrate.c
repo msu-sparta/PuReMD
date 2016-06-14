@@ -32,10 +32,12 @@
 #include "tool_box.h"
 #include "vector.h"
 
+#ifdef HAVE_CUDA
 #include "cuda_integrate.h"
 #include "cuda_copy.h"
 
 #include "cuda_neighbors.h"
+#endif
 
 
 void Velocity_Verlet_NVE( reax_system* system, control_params* control, 
@@ -272,6 +274,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 }
 
 
+#ifdef HAVE_CUDA
 void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, 
 				    control_params* control, 
 				    simulation_data *data,
@@ -449,7 +452,7 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
   MPI_Barrier( MPI_COMM_WORLD );
 #endif
 }
-
+#endif
 
 
 /* uses Berendsen-type coupling for both T and P. 

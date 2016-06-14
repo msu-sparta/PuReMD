@@ -20,9 +20,12 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #include "index_utils.h"
 
+#ifdef HAVE_CUDA
 #include "cuda_lookup.h"
+#endif
 
 #if defined(PURE_REAX)
 #include "lookup.h"
@@ -294,14 +297,14 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
   free(fele);
   free(fCEclmb);
 
-  //////////////////////////////////////////////
+#ifdef HAVE_CUDA
   //copy the LR_Table to the device here.
-
   t_start = Get_Time ();
   copy_LR_table_to_device (system, control, aggregated);
   t_end = Get_Timing_Info ( t_start );
 
   fprintf (stderr, "Device copy of LR Lookup table: %f \n", t_end );
+#endif
 
   return 1;
 }

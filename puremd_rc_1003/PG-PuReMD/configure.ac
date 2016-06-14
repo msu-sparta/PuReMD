@@ -47,29 +47,6 @@ AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset])
 
-# Check for CUDA support.
-if test "x$BUILD_GPU" = "xyes"; then
-	CONFIGURE_HEADLINE([ CUDA support ])
-	AX_CUDA
-        NVCCFLAGS=
-	if test "BUILD_DEBUG" = "true"
-	then
-		NVCCFLAGS+=" -g -G"
-	fi
-
-	AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
-fi
-AM_CONDITIONAL([BUILD_CUDA], [test "x${BUILD_GPU}" = "xyes"])
-
-if test "BUILD_PROF" = "true"
-then
-	if test "x$BUILD_GPU" = "xyes"; then
-		NVCCFLAGS+=" --compiler-options ${gprof_flags}"
-	else
-		CFLAGS+=" --compiler-options ${gprof_flags}"
-	fi
-fi
-
 # Check for MPI support.
 CONFIGURE_HEADLINE([ MPI compiler ])
 ACX_MPI([], [AC_MSG_ERROR([could not find mpi library])])
@@ -131,6 +108,29 @@ else
 fi
 AC_SUBST(MPI_CFLAGS)
 AC_SUBST(MPI_LDFLAGS)
+
+# Check for CUDA support.
+if test "x$BUILD_GPU" = "xyes"; then
+	CONFIGURE_HEADLINE([ CUDA support ])
+	AX_CUDA
+        NVCCFLAGS=
+	if test "BUILD_DEBUG" = "true"
+	then
+		NVCCFLAGS+=" -g -G"
+	fi
+	AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
+else
+	AM_CONDITIONAL(USE_CUDA, test "x" = "xyes")
+fi
+
+if test "BUILD_PROF" = "true"
+then
+	if test "x$BUILD_GPU" = "xyes"; then
+		NVCCFLAGS+=" --compiler-options ${gprof_flags}"
+	else
+		CFLAGS+=" ${gprof_flags}"
+	fi
+fi
 
 AC_CONFIG_FILES([Makefile])
 

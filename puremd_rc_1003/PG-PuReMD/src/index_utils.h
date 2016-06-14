@@ -1,7 +1,6 @@
 #ifndef __INDEX_UTILS_H_
 #define __INDEX_UTILS_H_
 
-#include "cuda_reax_constants.h"
 #include "reax_types.h"
 
 

@@ -1,6 +1,6 @@
 
 #include "cuda_post_evolve.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "vector.h"
 #include "cuda_utils.h"
 

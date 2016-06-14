@@ -2,7 +2,7 @@
 #include "validation.h"
 #include "cuda_utils.h"
 #include "list.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 #include "index_utils.h"
 #include "vector.h"

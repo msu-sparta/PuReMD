@@ -26,10 +26,12 @@
 #include "linear_solvers.h"
 #include "tool_box.h"
 
+#ifdef HAVE_CUDA
 #include "cuda_qEq.h"
 #include "cuda_linear_solvers.h"
 
 #include "validation.h"
+#endif
 
 int compare_matrix_entry(const void *v1, const void *v2)
 {
@@ -347,6 +349,8 @@ void Calculate_Charges( reax_system *system, storage *workspace,
   free(q);
 }
 
+
+#ifdef HAVE_CUDA
 void Cuda_Calculate_Charges( reax_system *system, storage *workspace, 
 			mpi_datatypes *mpi_data )
 {
@@ -375,6 +379,7 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
 
   cuda_charges_updateq ( system, q );
 }
+#endif
 
 
 void QEq( reax_system *system, control_params *control, simulation_data *data, 
@@ -432,6 +437,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 #endif
 }
 
+
+#ifdef HAVE_CUDA
 void Cuda_QEq( reax_system *system, control_params *control, simulation_data *data, 
      storage *workspace, output_controls *out_control, 
      mpi_datatypes *mpi_data )
@@ -479,3 +486,4 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data *da
   }
 #endif
 }
+#endif

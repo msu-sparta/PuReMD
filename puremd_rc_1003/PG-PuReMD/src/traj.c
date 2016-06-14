@@ -933,24 +933,27 @@ int Append_Frame( reax_system *system, control_params *control,
 #endif
   Write_Frame_Header( system, control, data, out_control, mpi_data );
 
-  //CUDA Wrappers here
   if( out_control->write_atoms ) {
     //Sync atoms here
+#ifdef HAVE_CUDA
 	 Output_Sync_Atoms ( system );
+#endif
     Write_Atoms( system, control, out_control, mpi_data );
   }
 
-  //CUDA Wrappers here
   if( out_control->write_bonds ) {
     //sync bonds here
+#ifdef HAVE_CUDA
 	 Output_Sync_Lists ((*lists + BONDS), (*dev_lists + BONDS), TYP_BOND);
+#endif
     Write_Bonds( system, control, (*lists + BONDS), out_control, mpi_data );
   }
 
-  //CUDA Wrappers here
   if( out_control->write_angles ) {
     //sync three body interactions here
+#ifdef HAVE_CUDA
 	 Output_Sync_Lists ((*lists + THREE_BODIES), (*dev_lists + THREE_BODIES), TYP_THREE_BODY);
+#endif
     Write_Angles( system, control, (*lists + BONDS), (*lists + THREE_BODIES), 
 		  out_control, mpi_data );
   }

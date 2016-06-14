@@ -3,7 +3,7 @@
 #define __CUDA_BOND_ORDERS_H__
 
 #include "reax_types.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 #include "vector.h"
 

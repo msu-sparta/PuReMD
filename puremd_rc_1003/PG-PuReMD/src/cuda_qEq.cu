@@ -21,7 +21,7 @@
 
 #include "cuda_qEq.h"
 
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "reduction.h"
 #include "cuda_utils.h"
 

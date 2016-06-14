@@ -21,7 +21,7 @@
 
 #include "cuda_linear_solvers.h"
 
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "cuda_utils.h"
 #include "reduction.h"
 #include "dual_matvec.h"

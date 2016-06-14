@@ -23,8 +23,6 @@
 #define __VECTOR_H_
 
 #include "reax_types.h"
-
-#include "cuda_reax_constants.h"
 #include "random.h"
 
 #ifdef __cplusplus

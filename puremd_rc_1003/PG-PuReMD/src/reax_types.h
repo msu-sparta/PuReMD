@@ -19,18 +19,48 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#if !(defined(__REAX_TYPES_H_) || defined(__CUDA_REAX_TYPES_H_))
+
+#ifdef __CUDACC__
+
+#ifndef __CUDA_REAX_TYPES_H_
+#define __CUDA_REAX_TYPES_H_
+#define CUDA_HOST __host__
+#define CUDA_DEVICE __device__
+#define CUDA_GLOBAL __global__
+#define CUDA_HOST_DEVICE __host__ __device__
+#endif
+
+#else
+
 #ifndef __REAX_TYPES_H_
 #define __REAX_TYPES_H_
+#define CUDA_HOST
+#define CUDA_DEVICE
+#define CUDA_GLOBAL
+#define CUDA_HOST_DEVICE
+#endif
 
-#include "ctype.h"
-#include "math.h"
-#include "mpi.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "sys/time.h"
-#include "time.h"
-#include "zlib.h"
+#endif
+
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+#define __CONFIG_H_
+#include "config.h"
+#endif
+
+#include <ctype.h>
+#include <math.h>
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
+#include <time.h>
+#include <zlib.h>
+
+#ifdef HAVE_CUDA
+#include <cuda.h>
+#endif
 
 #if defined(__IBMC__)
 #define inline __inline__
@@ -131,10 +161,80 @@
 #define RESTART 30
 
 /**************** RESOURCE CONSTANTS **********************/
+#ifdef HAVE_CUDA
 //#define			CUDA_BLOCK_SIZE				256
 #define			SCRATCH_SIZE					(1024 * 1024 * 20)
 #define			HOST_SCRATCH_SIZE				(1024 * 1024 * 20)
 #define			RES_SCRATCH						0x90
+
+/* BLOCK SIZES for kernels */
+#define				HB_SYM_BLOCK_SIZE					64
+#define				HB_KER_SYM_THREADS_PER_ATOM			16
+#define				HB_POST_PROC_BLOCK_SIZE				256
+#define				HB_POST_PROC_KER_THREADS_PER_ATOM	32
+
+#if defined( __INIT_BLOCK_SIZE__)
+#define				DEF_BLOCK_SIZE						__INIT_BLOCK_SIZE__    /* all utility functions and all */
+#define				CUDA_BLOCK_SIZE						__INIT_BLOCK_SIZE__    	/* init forces */
+#define				ST_BLOCK_SIZE						__INIT_BLOCK_SIZE__    
+#else
+#define				DEF_BLOCK_SIZE						256						/* all utility functions and all */
+#define				CUDA_BLOCK_SIZE						256						/* init forces */
+#define				ST_BLOCK_SIZE						256	
+#endif
+
+#if defined( __NBRS_THREADS_PER_ATOM__ )
+#define				NB_KER_THREADS_PER_ATOM				__NBRS_THREADS_PER_ATOM__
+#else
+#define				NB_KER_THREADS_PER_ATOM				16
+#endif
+
+#if defined( __NBRS_BLOCK_SIZE__)
+#define				NBRS_BLOCK_SIZE						__NBRS_BLOCK_SIZE__
+#else
+#define				NBRS_BLOCK_SIZE						256
+#endif
+
+#if defined( __HB_THREADS_PER_ATOM__)
+#define				HB_KER_THREADS_PER_ATOM				__HB_THREADS_PER_ATOM__
+#else
+#define				HB_KER_THREADS_PER_ATOM				32
+#endif
+
+#if defined(__HB_BLOCK_SIZE__)
+#define				HB_BLOCK_SIZE					__HB_BLOCK_SIZE__
+#else
+#define				HB_BLOCK_SIZE						256
+#endif
+
+#if defined( __VDW_THREADS_PER_ATOM__ )
+#define				VDW_KER_THREADS_PER_ATOM			__VDW_THREADS_PER_ATOM__
+#else
+#define				VDW_KER_THREADS_PER_ATOM			32
+#endif
+
+#if defined( __VDW_BLOCK_SIZE__)
+#define				VDW_BLOCK_SIZE						__VDW_BLOCK_SIZE__
+#else
+#define				VDW_BLOCK_SIZE						256
+#endif
+
+#if defined( __MATVEC_THREADS_PER_ROW__ )
+#define 			MATVEC_KER_THREADS_PER_ROW		__MATVEC_THREADS_PER_ROW__
+#else
+#define 			MATVEC_KER_THREADS_PER_ROW		32
+#endif
+
+#if defined( __MATVEC_BLOCK_SIZE__)
+#define				MATVEC_BLOCK_SIZE					__MATVEC_BLOCK_SIZE__
+#else
+#define				MATVEC_BLOCK_SIZE					512
+#endif
+
+//Validation
+#define				GPU_TOLERANCE				1e-5
+
+#endif
 
 
 
@@ -622,14 +722,13 @@ typedef struct
   reax_atom       *my_atoms;
   reax_atom       *d_my_atoms;
 
-  //CUDA
+/*CUDA-specific*/
   int					max_sparse_entries;
   int 				init_thblist;
   int					num_thbodies;
 
   int					max_bonds;
   int					max_hbonds;
-
 } reax_system;
 
 
@@ -846,7 +945,7 @@ typedef struct {
   int scl;
   far_neighbor_data *ptr;
 
-  //CUDA
+/*CUDA-specific*/
   int sym_index;
   rvec hb_f;
 } hbond_data;
@@ -882,7 +981,7 @@ typedef struct {
   rvec dvec;
   bond_order_data bo_data;
 
-  //CUDA
+/*CUDA-specific*/
   real ae_CdDelta;
 
   real va_CdDelta;
@@ -895,7 +994,6 @@ typedef struct {
   rvec hb_f;
 
   rvec tf_f;
-
 } bond_data;
 
 
@@ -1162,9 +1260,7 @@ typedef void (*unpacker) ( reax_system*, int, void*, int, neighbor_proc*, int );
 typedef void (*dist_packer) (void*, mpi_out_data*);
 typedef void (*coll_unpacker) (void*, void*, mpi_out_data*);
 
-////////////////////////////////
-//CUDA SPECIFIC DECLARATIONS
-////////////////////////////////
+/*CUDA-specific*/
 extern reax_list **dev_lists;
 extern storage *dev_workspace;
 extern storage *dev_storage;

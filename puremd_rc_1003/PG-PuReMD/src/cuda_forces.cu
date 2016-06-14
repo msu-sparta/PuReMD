@@ -1,7 +1,7 @@
 
 #include "cuda_forces.h"
 
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "reax_types.h"
 #include "dev_list.h"
 #include "list.h"

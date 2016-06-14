@@ -1,42 +1,36 @@
-if BUILD_CUDA
+if USE_CUDA
 SUFFIXES = .cu
 include cuda.am
 endif
 
-AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing
-AM_CPPFLAGS = -I$(srcdir)
-AM_LDFLAGS  = 
+AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)
+AM_CPPFLAGS =
+AM_LDFLAGS = $(MPI_LDFLAGS)
 
-if BUILD_CUDA
-AM_CFLAGS += $(CUDA_CFLAGS)
-AM_CPPFLAGS += $(CUDA_CFLAGS)
-
+if USE_CUDA
 # default CUDA nvcc flags
 #   Note: cc 13 for Tesla
 #   Note: cc 20 for Fermi
 #   Note: cc 30 for Kepler K10
 #   Note: cc 35 for Kepler K20
-NVCCFLAGS +=  -D__USE_GPU__ -use_fast_math 
-NVCCFLAGS += -gencode arch=compute_35,code=sm_35 --compiler-options "-O3 -funroll-loops -fstrict-aliasing" -O3
-NVCCFLAGS += --ptxas-options -v
-NVCCFLAGS += --compiler-options -I$(srcdir) 
-NVCCFLAGS += --compiler-options -fno-strict-aliasing
-NVCCFLAGS += --compiler-options -Wno-unused-function
-NVCCFLAGS += --compiler-options -Wno-unused-parameter
-NVCCFLAGS += --compiler-options "$(MPI_CFLAGS)"
+NVCCFLAGS += -use_fast_math 
+NVCCFLAGS += -gencode arch=compute_35,code=sm_35
+NVCCFLAGS += --compiler-options "$(DEFS) -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)"
+#NVCCFLAGS += --ptxas-options -v
 endif
 
 
 bin_PROGRAMS = src/pg-puremd
 src_pg_puremd_SOURCES = src/allocate.c src/basic_comm.c src/ffield.c src/grid.c src/list.c \
 	src/lookup.c src/io_tools.c src/reset_tools.c src/restart.c src/random.c \
-	src/tool_box.c src/traj.c src/vector.c src/analyze.c src/box.c src/system_props.c \
+	src/tool_box.c src/traj.c src/analyze.c src/box.c src/system_props.c \
 	src/control.c src/comm_tools.c src/geo_tools.c src/linear_solvers.c src/neighbors.c \
 	src/qEq.c src/bond_orders.c src/multi_body.c src/bonds.c src/valence_angles.c \
 	src/hydrogen_bonds.c src/torsion_angles.c src/nonbonded.c src/forces.c \
 	src/integrate.c src/init_md.c src/parallelreax.c
+src_pg_puremd_LDADD = src/vector.o
 
-if BUILD_CUDA
+if USE_CUDA
 src_pg_puremd_SOURCES += src/cuda_utils.cu src/dev_alloc.cu src/cuda_environment.cu \
       src/dev_system_props.cu src/reduction.cu src/center_mass.cu \
       src/cuda_copy.cu src/cuda_reset_tools.cu src/dev_list.cu \
@@ -49,12 +43,21 @@ src_pg_puremd_SOURCES += src/cuda_utils.cu src/dev_alloc.cu src/cuda_environment
 
 # dummy source to cause C linking
 nodist_EXTRA_src_pg_puremd_SOURCES = src/dummy.c
+
+src_vector.o:
+	$(AM_V_NVCC)$(NVCC) $(NVCCFLAGS) -maxrregcount=$(MAX_REG_COUNT) -o src/vector.o -c src/vector.c
+else
+src_vector.o:
+	$(AM_V_CC)$(CC) $(DEFS) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CCFLAGS) \
+	-maxrregcount=$(MAX_REG_COUNT) -o src/vector.o -c src/vector.c
 endif
 
 
-src_pg_puremd_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS)
-src_pg_puremd_LDFLAGS = $(AM_LDFLAGS) $(MPI_LDFLAGS)
+src_pg_puremd_CFLAGS = $(AM_CFLAGS) $(CFLAGS)
+src_pg_puremd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
+src_pg_puremd_LDFLAGS = $(AM_LDFLAGS) $(LDFLAGS)
 
-if BUILD_CUDA
+if USE_CUDA
+src_pg_puremd_CFLAGS += $(CUDA_CFLAGS)
 src_pg_puremd_LDFLAGS += $(CUDA_LIBS)
 endif

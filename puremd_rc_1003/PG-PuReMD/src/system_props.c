@@ -20,7 +20,9 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+#ifdef HAVE_CUDA
 #include "dev_system_props.h"
+#endif
 
 #if defined(PURE_REAX)
 #include "system_props.h"
@@ -80,6 +82,8 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
     data->therm.T = ALMOST_ZERO;
 }
 
+
+#ifdef HAVE_CUDA
 void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data, 
 			     MPI_Comm comm )
 {
@@ -100,7 +104,7 @@ void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
   if( fabs(data->therm.T) < ALMOST_ZERO ) 
     data->therm.T = ALMOST_ZERO;
 }
-
+#endif
 
 
 void Compute_System_Energy( reax_system *system, simulation_data *data, 
@@ -111,8 +115,10 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
 	//TODO remove this is an UGLY fix
   my_en [13] = data->my_en.e_kin;
 
+#ifdef HAVE_CUDA
   //Cuda Wrapper here
   dev_sync_simulation_data ( data );
+#endif
 
   my_en[0] = data->my_en.e_bond;
   my_en[1] = data->my_en.e_ov;
@@ -182,6 +188,8 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data,
   data->inv_M = 1. / data->M;
 }
 
+
+#ifdef HAVE_CUDA
 void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data, 
 			 MPI_Comm comm  )
 {
@@ -195,6 +203,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
 
   data->inv_M = 1. / data->M;
 }
+#endif
 
 
 void Compute_Center_of_Mass( reax_system *system, simulation_data *data, 
@@ -312,6 +321,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 }
 
 
+#ifdef HAVE_CUDA
 void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data, 
 			     mpi_datatypes *mpi_data, MPI_Comm comm )
 {
@@ -406,21 +416,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 	   data->avcm[0], data->avcm[1], data->avcm[2] );
 #endif
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#endif
 
 
 /* IMPORTANT: This function assumes that current kinetic energy

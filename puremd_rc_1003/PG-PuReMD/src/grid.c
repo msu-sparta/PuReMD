@@ -520,11 +520,15 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
   //fprintf (stderr, "*********** grid max_atoms: %d \n", g->max_atoms );
   if( max_atoms >= g->max_atoms * DANGER_ZONE ) {
     realloc->gcell_atoms = MAX( max_atoms*SAFE_ZONE, MIN_GCELL_POPL );
+#ifdef HAVE_CUDA
     dev_workspace->realloc.gcell_atoms = MAX( max_atoms*SAFE_ZONE, MIN_GCELL_POPL );
+#endif
   }
   else  {
   	realloc->gcell_atoms = -1;
+#ifdef HAVE_CUDA
   	dev_workspace->realloc.gcell_atoms = -1;
+#endif
   }
 }
 

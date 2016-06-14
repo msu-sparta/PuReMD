@@ -24,7 +24,7 @@
 #include "vector.h"
 
 #include "index_utils.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "cuda_utils.h"
 #include "tool_box.h"
 

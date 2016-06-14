@@ -20,13 +20,16 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #include "index_utils.h"
+#ifdef HAVE_CUDA
 #include "cuda_forces.h"
 
 #include "cuda_linear_solvers.h"
 #include "cuda_neighbors.h"
 //#include "cuda_bond_orders.h"
 #include "validation.h"
+#endif
 
 #if defined(PURE_REAX)
 #include "forces.h"
@@ -63,8 +66,10 @@
 
 interaction_function Interaction_Functions[NUM_INTRS];
 
+#ifdef HAVE_CUDA
 void Cuda_Total_Forces (reax_system *, control_params *, simulation_data *, storage *); 
 void Cuda_Total_Forces_PURE (reax_system *, storage *); 
+#endif
 
 void Dummy_Interaction( reax_system *system, control_params *control, 
 			simulation_data *data, storage *workspace, 
@@ -198,6 +203,8 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 #endif
 }
 
+
+#ifdef HAVE_CUDA
 void Cuda_Compute_Total_Force( reax_system *system, control_params *control, 
 			  simulation_data *data, storage *workspace, 
 			  reax_list **lists, mpi_datatypes *mpi_data )
@@ -225,6 +232,7 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
 #endif
 	
 }
+#endif
 
 
 void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
@@ -1057,6 +1065,8 @@ void Compute_Forces( reax_system *system, control_params *control,
 #endif
 }
 
+
+#ifdef HAVE_CUDA
 void Cuda_Compute_Forces( reax_system *system, control_params *control, 
 		     simulation_data *data, storage *workspace, 
 		     reax_list **lists, output_controls *out_control, 
@@ -1158,6 +1168,8 @@ void Cuda_Compute_Forces( reax_system *system, control_params *control,
 #endif
 
 }
+#endif
+
 
 int validate_device (reax_system *system, simulation_data *data, storage *workspace, reax_list **lists )
 {

@@ -23,7 +23,7 @@
 #define __TORSION_ANGLES_H_
 
 #include "reax_types.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *, 
                                        global_parameters , 

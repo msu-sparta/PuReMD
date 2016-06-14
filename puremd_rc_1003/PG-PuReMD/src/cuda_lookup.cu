@@ -2,7 +2,7 @@
 #include "cuda_lookup.h"
 #include "index_utils.h"
 #include "cuda_utils.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 
 void copy_LR_table_to_device (reax_system *system, control_params *control, int *aggregated)

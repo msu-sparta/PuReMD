@@ -23,7 +23,7 @@
 #define __HBONDS_H_
 
 #include "reax_types.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs (  reax_atom *,
 														storage ,

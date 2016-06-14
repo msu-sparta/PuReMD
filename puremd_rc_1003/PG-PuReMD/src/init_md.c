@@ -21,10 +21,12 @@
 
 #include "reax_types.h"
 
+#ifdef HAVE_CUDA
 #include "dev_alloc.h"
 #include "dev_list.h"
 #include "cuda_copy.h"
 #include "validation.h"
+#endif
 
 #if defined(PURE_REAX)
 #include "init_md.h"
@@ -187,6 +189,7 @@ int Init_System( reax_system *system, control_params *control,
 }
 
 
+#ifdef HAVE_CUDA
 int Cuda_Init_System( reax_system *system, control_params *control, 
 		 simulation_data *data, storage *workspace, 
 		 mpi_datatypes *mpi_data, char *msg )
@@ -265,10 +268,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
   
   return SUCCESS;
 }
-
-
-
-
+#endif
 
 
 /************************ initialize simulation data ************************/
@@ -363,6 +363,8 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
   return SUCCESS;
 }
 
+
+#ifdef HAVE_CUDA
 int Cuda_Init_Simulation_Data( reax_system *system, control_params *control, 
 			  simulation_data *data, char *msg )
 {
@@ -444,6 +446,7 @@ int Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 #endif
   return SUCCESS;
 }
+#endif
 
 
 #elif defined(LAMMPS_REAX)
@@ -543,6 +546,8 @@ int Init_Workspace( reax_system *system, control_params *control,
   return SUCCESS;
 }
 
+
+#ifdef HAVE_CUDA
 int Cuda_Init_Workspace( reax_system *system, control_params *control, 
 		    storage *workspace, char *msg )
 { 
@@ -561,6 +566,7 @@ int Cuda_Init_Workspace( reax_system *system, control_params *control,
 
   return SUCCESS;
 }
+#endif
 
 
 /************** setup communication data structures  **************/
@@ -805,6 +811,8 @@ int  Init_Lists( reax_system *system, control_params *control,
   return SUCCESS;
 }
 
+
+#ifdef HAVE_CUDA
 int  Cuda_Init_Lists( reax_system *system, control_params *control, 
 		 simulation_data *data, storage *workspace, reax_list **lists, 
 		 mpi_datatypes *mpi_data, char *msg )
@@ -1003,6 +1011,7 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
 
   return SUCCESS;
 }
+#endif
 
 
 #if defined(PURE_REAX)
@@ -1144,7 +1153,7 @@ void Pure_Initialize( reax_system *system, control_params *control,
 }
 
 
-
+#ifdef HAVE_CUDA
 void Cuda_Initialize( reax_system *system, control_params *control, 
 		 simulation_data *data, storage *workspace, 
 		 reax_list **lists, output_controls *out_control, 
@@ -1246,6 +1255,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 	 fprintf( stderr, "p%d: Device Initialization Done \n", system->my_rank );
 #endif
 }
+#endif
 
 
 #elif defined(LAMMPS_REAX)

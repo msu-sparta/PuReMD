@@ -6,7 +6,7 @@
 #include "stdlib.h"
 #include "stdio.h"
 
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 #ifdef __cplusplus
 extern "C"  {

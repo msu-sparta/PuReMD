@@ -2,7 +2,7 @@
 #ifndef __REDUCTION_H__
 #define __REDUCTION_H__
 
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "reax_types.h"
 
 #define  INITIAL  0

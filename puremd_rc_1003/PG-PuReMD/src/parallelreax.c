@@ -37,10 +37,12 @@
 #include "traj.h"
 #include "vector.h"
 
+#ifdef HAVE_CUDA
 #include "cuda_environment.h"
 #include "cuda_post_evolve.h"
 
 #include "validation.h"
+#endif
 
 evolve_function Evolve;
 evolve_function Cuda_Evolve;
@@ -121,6 +123,8 @@ void Post_Evolve( reax_system* system, control_params* control,
   Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 }
 
+
+#ifdef HAVE_CUDA
 void Cuda_Post_Evolve( reax_system* system, control_params* control, 
 		  simulation_data* data, storage* workspace, 
 		  reax_list** lists, output_controls *out_control, 
@@ -138,7 +142,10 @@ void Cuda_Post_Evolve( reax_system* system, control_params* control,
   /* compute kinetic energy of the system */
   Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 }
+#endif
 
+
+#ifdef HAVE_CUDA
 void init_blocks (reax_system *system)
 {
 	compute_blocks (&BLOCKS, &BLOCK_SIZE, system->n);
@@ -154,6 +161,7 @@ void init_blocks (reax_system *system)
 	//#endif
 
 }
+#endif
 
 
 int main( int argc, char* argv[] )
@@ -170,9 +178,10 @@ int main( int argc, char* argv[] )
   real t_begin, t_end;
 
   /* Remove this debug information later */
-  #if defined(__CUDA_DEBUG_LOG__)
+#ifdef HAVE_CUDA
+#if defined(__CUDA_DEBUG_LOG__)
   fprintf (stderr, " Size of LR Lookup table %d \n", sizeof (LR_lookup_table) );
-  #endif
+#endif
 
 #if defined( __SM_35__)
   fprintf (stderr, " nbrs block size: %d \n", NBRS_BLOCK_SIZE);
@@ -189,8 +198,7 @@ int main( int argc, char* argv[] )
 
   fprintf (stderr, " General block size: %d \n",  DEF_BLOCK_SIZE);
 #endif
-  
-
+#endif
 
   /* allocated main datastructures */
   system = (reax_system *) smalloc( sizeof(reax_system), "system" );
@@ -213,6 +221,7 @@ int main( int argc, char* argv[] )
     smalloc( sizeof(output_controls), "out_control" );
   mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
 
+#ifdef HAVE_CUDA
   /* allocate the cuda auxiliary data structures */
   dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
 
@@ -221,6 +230,7 @@ int main( int argc, char* argv[] )
     dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
     dev_lists[i]->allocated = 0;
   }
+#endif
 
   /* Initialize member variables */
   system->init_thblist = FALSE;
@@ -233,6 +243,7 @@ int main( int argc, char* argv[] )
   system->wsize = control->nprocs;
   system->global_offset = (int *)scalloc(system->wsize+1,sizeof(int),"global_offset");
 
+#ifdef HAVE_CUDA
   /* setup the CUDA Device for this process can be on the same machine
 	* or on a different machine, for now use the rank to compute the device
 	* This will only work on a single machine with 2 GPUs*/
@@ -241,6 +252,7 @@ int main( int argc, char* argv[] )
   //Cleanup_Cuda_Environment ();
   print_device_mem_usage ();
   //fprintf( stderr, "p%d: Total number of GPUs on this node -- %d\n", system->my_rank, my_device_id);
+#endif
 
   /* read system description files */
   Read_System( argv[1], argv[2], argv[3], system, control, 
@@ -250,51 +262,64 @@ int main( int argc, char* argv[] )
   MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
+#ifdef HAVE_CUDA
   /* init the blocks sizes for cuda kernels */
   init_blocks (system);
+#endif
 
   /* measure total simulation time after input is read */
   if( system->my_rank == MASTER_NODE )
     t_start = Get_Time( );
 
-  /* initialize datastructures */
-  //Initialize( system, control, data, workspace, lists, out_control, mpi_data ); 
 
+  /* initialize datastructures */
+#ifdef HAVE_CUDA
   Cuda_Initialize( system, control, data, workspace, lists, out_control, mpi_data ); 
 #if defined(__CUDA_DEBUG__)
   Pure_Initialize( system, control, data, workspace, lists, out_control, mpi_data ); 
 #endif
+#else
+  Initialize( system, control, data, workspace, lists, out_control, mpi_data ); 
+#endif
 
+#ifdef HAVE_CUDA
 print_device_mem_usage ();
 
   /* init the blocks sizes for cuda kernels */
   init_blocks (system);
+#endif
 
 #if defined(DEBUG)
   fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
   MPI_Barrier( MPI_COMM_WORLD );
 #endif
   //END OF FIRST STEP
-  //
 
   // compute f_0 
   Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
+#ifdef HAVE_CUDA
   Sync_Atoms ( system );
   Sync_Grid (&system->my_grid, &system->d_my_grid);
   init_blocks (system);
-  #if defined(__CUDA_DENUG_LOG__)
+#if defined(__CUDA_DENUG_LOG__)
   fprintf( stderr, "p%d: Comm_Atoms synchronized \n", system->my_rank );
-  #endif
+#endif
+#endif
 
 	//Second step
+#ifdef HAVE_CUDA
   Cuda_Reset ( system, control, data, workspace, lists );
 #if defined(__CUDA_DEBUG__)
   Reset( system, control, data, workspace, lists );
 #endif
    //fprintf( stderr, "p%d: Cuda_Reset done...\n", system->my_rank );
+#else
+  Reset( system, control, data, workspace, lists );
+#endif
 
 
 	//Third Step
+#ifdef HAVE_CUDA
   Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 #if defined(__CUDA_DEBUG__)
   Generate_Neighbor_Lists( system, data, workspace, lists );
@@ -302,9 +327,13 @@ print_device_mem_usage ();
   #if defined(__CUDA_DENUG_LOG__)
   fprintf (stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
   #endif
+#else
+  Generate_Neighbor_Lists( system, data, workspace, lists );
+#endif
 
 
 	//Fourth Step
+#ifdef HAVE_CUDA
 #if defined(__CUDA_DEBUG__)
 	fprintf (stderr, " Host Compute Forces begin.... \n");
   Compute_Forces( system, control, data, workspace,  
@@ -315,8 +344,13 @@ print_device_mem_usage ();
   #if defined(__CUDA_DENUG_LOG__)
   fprintf (stderr, "p%d: Cuda_Compute_Forces done...\n", system->my_rank );
   #endif
+#else
+  Compute_Forces( system, control, data, workspace,  
+		  lists, out_control, mpi_data );
+#endif
 
 
+#ifdef HAVE_CUDA
 #if defined (__CUDA_DEBUG__)
   Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 #endif
@@ -324,7 +358,11 @@ print_device_mem_usage ();
   #if defined(__CUDA_DENUG_LOG__)
   fprintf (stderr, "p%d: Cuda_Compute_Kinetic_Energy done ... \n", system->my_rank);
   #endif
+#else
+  Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+#endif
 
+#ifdef HAVE_CUDA
 #if defined(__CUDA_DEBUG__)
 	validate_device (system, data, workspace, lists);
 #endif
@@ -333,10 +371,16 @@ print_device_mem_usage ();
   Output_Results( system, control, data, lists, out_control, mpi_data );
   //fprintf (stderr, "p%d: Output_Results done ... \n", system->my_rank);
 #endif
+#else
+  Output_Results( system, control, data, lists, out_control, mpi_data );
+  //fprintf (stderr, "p%d: Output_Results done ... \n", system->my_rank);
+#endif
 
+#ifdef HAVE_CUDA
 #if defined(DEBUG)
   fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
   MPI_Barrier( MPI_COMM_WORLD );
+#endif
 #endif
 
   // start the simulation 
@@ -346,6 +390,7 @@ print_device_mem_usage ();
 
 		//t_begin = Get_Time ();
     
+#ifdef HAVE_CUDA
 #if defined(__CUDA_DEBUG__)
     Evolve( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
@@ -362,9 +407,16 @@ print_device_mem_usage ();
 
 	//t_end = Get_Timing_Info (t_begin);
 	 //fprintf (stderr, " Post Evolve time: %f \n", t_end);
+#else
+    Evolve( system, control, data, workspace, lists, out_control, mpi_data );
+    Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
+#endif
 
-
+#ifdef HAVE_CUDA
 #if !defined(__CUDA_DEBUG__)
+  Output_Results( system, control, data, lists, out_control, mpi_data );
+#endif
+#else
   Output_Results( system, control, data, lists, out_control, mpi_data );
 #endif
 
@@ -385,9 +437,11 @@ print_device_mem_usage ();
 
   }
 
+#ifdef HAVE_CUDA
   //vaildate the results in debug mode
 #if defined(__CUDA_DEBUG__)
 	validate_device (system, data, workspace, lists);
+#endif
 #endif
   
   /* end of the simulation, write total simulation time */ 

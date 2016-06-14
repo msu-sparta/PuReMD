@@ -19,7 +19,7 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 #include "cuda_multi_body.h"
 #include "index_utils.h"
 #include "cuda_helpers.h"

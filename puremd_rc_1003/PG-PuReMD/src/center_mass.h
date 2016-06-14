@@ -3,7 +3,7 @@
 #define __CENTER_MASS_H__
 
 #include "reax_types.h"
-#include "cuda_reax_constants.h"
+#include "reax_types.h"
 
 CUDA_GLOBAL void center_of_mass_blocks (single_body_parameters *, reax_atom *,
                             rvec *res_xcm, 

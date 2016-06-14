@@ -25,7 +25,9 @@
 #include "tool_box.h"
 #include "vector.h"
 
+#ifdef HAVE_CUDA
 #include "validation.h"
+#endif
 
 #if defined(CG_PERFORMANCE)
 real t_start, t_elapsed, matvec_time, dot_time;
@@ -88,9 +90,13 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
   }
 #endif
 
+#ifdef HAVE_CUDA
 	check_zeros_host (x, system->N, "x");
+#endif
   Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
+#ifdef HAVE_CUDA
 	check_zeros_host (x, system->N, "x");
+#endif
 
   dual_Sparse_MatVec( H, x, workspace->q2, N );
 
@@ -235,6 +241,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
 
 
+#ifdef HAVE_CUDA
 int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, 
 	     rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout, simulation_data *data )
 {
@@ -522,6 +529,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
   return (i+1) + matvecs;
 }
+#endif
 
 
 void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
@@ -614,6 +622,7 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
 }
 
 
+#ifdef HAVE_CUDA
 int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, 
 	real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
@@ -720,6 +729,7 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H,
   
   return i;
 }
+#endif
 
 
 int CG_test( reax_system *system, storage *workspace, sparse_matrix *H, 
