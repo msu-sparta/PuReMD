@@ -176,7 +176,7 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 		&s_a[0], &s_b[0], &s_c[0],
 		&s_alpha[0], &s_beta[0], &s_gamma[0],
 		&s_group[0], &s_zValue[0] );
-      
+
       /* compute full volume tensor from the angles */
       Setup_Big_Box( atof(s_a),  atof(s_b), atof(s_c), 
 		     atof(s_alpha), atof(s_beta), atof(s_gamma), 

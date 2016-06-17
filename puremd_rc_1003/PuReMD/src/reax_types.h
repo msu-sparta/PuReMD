@@ -54,6 +54,15 @@
 #define REAX_MAX_ATOM_TYPES     25
 #define REAX_MAX_MOLECULE_SIZE  20
 
+/* NaN IEEE 754 representation for C99 in math.h
+ * Note: function choice must match REAL typedef below */
+#ifdef NAN
+#define IS_NAN_REAL(a) (isnan(a))
+#else
+#warn "No support for NaN"
+#define NAN_REAL(a) (0)
+#endif
+
 /********************** TYPE DEFINITIONS ********************/
 typedef int  ivec[3];
 typedef double real;

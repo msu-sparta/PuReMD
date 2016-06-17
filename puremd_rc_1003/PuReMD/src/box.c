@@ -141,6 +141,13 @@ void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
 {
   double c_alpha, c_beta, c_gamma, s_gamma, zi;
 
+  if ( IS_NAN_REAL(a) || IS_NAN_REAL(b) || IS_NAN_REAL(c)
+      || IS_NAN_REAL(alpha) || IS_NAN_REAL(beta) || IS_NAN_REAL(gamma) )
+  {
+    fprintf( stderr, "Invalid simulation box boundaries for big box (NaN). Terminating...\n" );
+    exit( INVALID_INPUT );
+  }
+
   c_alpha = cos(DEG2RAD(alpha));
   c_beta  = cos(DEG2RAD(beta));
   c_gamma = cos(DEG2RAD(gamma));
