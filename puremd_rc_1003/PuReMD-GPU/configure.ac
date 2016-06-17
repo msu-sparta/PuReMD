@@ -4,14 +4,23 @@
 AC_PREREQ([2.69])
 
 AC_INIT([PuReMD-GPU], [1.0], [ohearnku@msu.edu hma@msu.edu])
-#AM_INIT_AUTOMAKE([1.15])
-LT_PREREQ([2.2])
-LT_INIT([dlopen])
+AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
+#LT_PREREQ([2.2])
+#LT_INIT([dlopen])
+
+AC_CONFIG_MACRO_DIR([../m4])
 
 AC_LANG([C])
 
 AC_CONFIG_SRCDIR([src/analyze.c])
 AC_CONFIG_HEADERS([src/config.h])
+
+# Headline formatter
+AC_DEFUN([CONFIGURE_HEADLINE],
+[
+        echo; echo "+++ $1 +++"
+])
 
 # Checks for programs.
 AC_PROG_CC
@@ -51,22 +60,38 @@ AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_CHECK_TYPES([gzFile], [], 
 	       [AC_MSG_FAILURE([gzFile type not found in zlib.h], [1])], [#include<zlib.h>])
-AC_CHECK_TYPES([cublasHandle_t], [], 
-	       [AC_MSG_FAILURE([cublasHandle_t type not found in cublas.h], [1])], [#include<cublas_v2.h>])
-AC_CHECK_TYPES([cusparseHandle_t], [], 
-	       [AC_MSG_FAILURE([cusparseHandle_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
-AC_CHECK_TYPES([cusparseMatDescr_t], [], 
-	       [AC_MSG_FAILURE([cusparseMatDescr_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
-AC_CHECK_TYPES([CUSPARSE_MATRIX_TYPE_GENERAL], [], 
-	       [AC_MSG_FAILURE([CUSPARSE_MATRIX_TYPE_GENERAL type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
-AC_CHECK_TYPES([CUSPARSE_INDEX_BASE_ZERO], [], 
-	       [AC_MSG_FAILURE([CUSPARSE_INDEX_BASE_ZERO type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
 
 # Checks for library functions.
 AC_FUNC_MALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([memset pow sqrt])
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+# Check for CUDA support.
+CONFIGURE_HEADLINE([ CUDA support ])
+AX_CUDA
+NVCCFLAGS=
+if test "BUILD_DEBUG" = "true"
+then
+	NVCCFLAGS+=" -g -G"
+fi
+AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
+
+if test "BUILD_PROF" = "true"
+then
+	NVCCFLAGS+=" --compiler-options ${gprof_flags}"
+fi
+
+AC_CHECK_TYPES([cublasHandle_t], [], 
+	       [AC_MSG_FAILURE([cublasHandle_t type not found in cublas.h], [1])], [#include<cublas_v2.h>])
+AC_CHECK_TYPES([cusparseHandle_t], [], 
+	       [AC_MSG_FAILURE([cusparseHandle_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
+AC_CHECK_TYPES([cusparseMatDescr_t], [], 
+	       [AC_MSG_FAILURE([cusparseMatDescr_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
+#AC_CHECK_TYPES([CUSPARSE_MATRIX_TYPE_GENERAL], [], 
+#	       [AC_MSG_FAILURE([CUSPARSE_MATRIX_TYPE_GENERAL type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
+#AC_CHECK_TYPES([CUSPARSE_INDEX_BASE_ZERO], [], 
+#	       [AC_MSG_FAILURE([CUSPARSE_INDEX_BASE_ZERO type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
+
+AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT

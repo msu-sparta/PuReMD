@@ -4,7 +4,7 @@
 AC_PREREQ([2.69])
 
 AC_INIT([PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
-AM_INIT_AUTOMAKE([1.15 -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 #LT_PREREQ([2.2])
 #LT_INIT([dlopen])
@@ -107,6 +107,6 @@ fi
 AC_SUBST(MPI_CFLAGS)
 AC_SUBST(MPI_LDFLAGS)
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
