@@ -6,7 +6,7 @@ from subprocess import Popen, PIPE
 from os import environ, path, rename
 from time import time
 
-base_dir = '/mnt/home/ohearnku/PuReMD-dev/puremd_rc_1003'
+base_dir = os.getcwd()
 control_dir = path.join(base_dir, 'environ')
 data_dir = path.join(base_dir, 'data')
 puremd_args = [ \
