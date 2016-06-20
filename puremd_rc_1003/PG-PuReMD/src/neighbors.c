@@ -240,7 +240,7 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
       }
 	}
 
-	fprintf (stderr, "Total numner of host neighbors: %d \n", num_far);
+	fprintf (stderr, "Total number of host neighbors: %d \n", num_far);
   
 #if defined(DEBUG_FOCUS)
   fprintf( stderr, "p%d: estimate nbrs done - num_far=%d\n", 

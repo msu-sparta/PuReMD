@@ -398,7 +398,7 @@ int Tokenize( char* s, char*** tok )
 
 /***************** taken from lammps ************************/
 /* safe malloc */
-void *smalloc( long n, char *name )
+void* smalloc( long n, char *name )
 {
   void *ptr;
 
