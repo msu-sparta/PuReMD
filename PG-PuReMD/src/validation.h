@@ -35,8 +35,8 @@ int print_device_array (real *, int);
 void compare_rvec2( rvec2 *host, rvec2 *device, int N, char *msg);
 void compare_array (real *host, real *device, int N, char *msg);
 
-int 	check_zeros_host (rvec2 *host, int n, char *);
-int 	check_zeros_device (rvec2 *device, int n, char *);
+int     check_zeros_host (rvec2 *host, int n, char *);
+int     check_zeros_device (rvec2 *device, int n, char *);
 
 
 

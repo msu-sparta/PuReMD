@@ -4,7 +4,7 @@
 #include "reax_types.h"
 
 #ifdef __cplusplus
-extern "C"  {  
+extern "C"  {
 #endif
 
 void Sync_Atoms (reax_system *);

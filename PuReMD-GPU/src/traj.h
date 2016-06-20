@@ -1,19 +1,19 @@
 /*----------------------------------------------------------------------
   PuReMD-GPU - Reax Force Field Simulator
-      
+
   Copyright (2014) Purdue University
   Sudhir Kylasa, skylasa@purdue.edu
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
   Ananth Y Grama, ayg@cs.purdue.edu
- 
+
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 2 of 
+  published by the Free Software Foundation; either version 2 of
   the License, or (at your option) any later version.
-               
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU General Public License for more details:
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
@@ -73,17 +73,18 @@
 #define SIZE_INFO_LINE3 "%-10d %-10d %-10d\n"
 #define SIZE_INFO_LEN3 33
 
-enum ATOM_LINE_OPTS {OPT_NOATOM = 0, OPT_ATOM_BASIC = 4, OPT_ATOM_wF = 5, 
-		     OPT_ATOM_wV = 6, OPT_ATOM_FULL = 7};
+enum ATOM_LINE_OPTS {OPT_NOATOM = 0, OPT_ATOM_BASIC = 4, OPT_ATOM_wF = 5,
+                     OPT_ATOM_wV = 6, OPT_ATOM_FULL = 7
+                    };
 enum BOND_LINE_OPTS {OPT_NOBOND, OPT_BOND_BASIC, OPT_BOND_FULL};
 enum ANGLE_LINE_OPTS {OPT_NOANGLE, OPT_ANGLE_BASIC};
 
 struct
 {
-  int no_of_sub_blocks;
-  int size;
-  char* buffer;
-  struct __block** sub_blocks;
+    int no_of_sub_blocks;
+    int size;
+    char* buffer;
+    struct __block** sub_blocks;
 } __block;
 
 typedef struct __block block;
@@ -98,19 +99,19 @@ int Skip_Next_Block( gzFile, int*);
 
  {HEADER}
   size flag char (1)
-  size of header to skip (int) 
+  size of header to skip (int)
   Title (char[80])
   size flag char (2)
   size of control param block (int)
-  Entire control param structure 
+  Entire control param structure
   size of frame descriptor (int)
-  Frame descriptor Block 
+  Frame descriptor Block
       [ Frame descriptor block
          No. of global quantities lines (say m) (int)
-	 Format for each global quantity line [m].
-	 Comma separated names for each global quantity line [m].
+     Format for each global quantity line [m].
+     Comma separated names for each global quantity line [m].
       ]
-  
+
   {FRAMES}
   size flag char (1)
   size of the entire frame to skip it (int)
@@ -142,17 +143,17 @@ int Skip_Next_Block( gzFile, int*);
 */
 
 
-int Write_Custom_Header( reax_system*, control_params*, 
-			 static_storage*, output_controls* );
-int Write_xyz_Header   ( reax_system*, control_params*, 
-			 static_storage*, output_controls* );
+int Write_Custom_Header( reax_system*, control_params*,
+                         static_storage*, output_controls* );
+int Write_xyz_Header   ( reax_system*, control_params*,
+                         static_storage*, output_controls* );
 
 /*
   Write_Traj_Header( gzfile file,
-  		     int No. of lines of global qunatities,
-		     char** format for global quantities,
-		     char** names for global quantities,
-	             control_params* control);
+             int No. of lines of global qunatities,
+             char** format for global quantities,
+             char** names for global quantities,
+                 control_params* control);
  */
 char Write_Traj_Header( FILE*, int, char**, char**, control_params* );
 
@@ -160,28 +161,28 @@ char Write_Traj_Header( FILE*, int, char**, char**, control_params* );
 /*
   Push_Traj_Frame(gzfile file,
                   reax_system* system,
-		  control_params* control,
-		  simulation_data* data,
-		  static_storage* workspace,
-		  list** lists,
-		  char** various flags);
+          control_params* control,
+          simulation_data* data,
+          static_storage* workspace,
+          list** lists,
+          char** various flags);
 */
-int Push_Traj_Frame( /*gzfile*/ FILE*, reax_system*, control_params*, 
-		     simulation_data*, static_storage*, list**, char** );
+int Push_Traj_Frame( /*gzfile*/ FILE*, reax_system*, control_params*,
+                                simulation_data*, static_storage*, list**, char** );
 
 /*
   Append_Traj_Frame( gzfile file,
                         reax_system* system,
                         control_params* control,
-		        simulation_data* data,
-		        static_storage* workspace,
-		        list** lists,
-		        char** various flags);
+                simulation_data* data,
+                static_storage* workspace,
+                list** lists,
+                char** various flags);
 */
-int Append_Custom_Frame( reax_system*, control_params*, simulation_data*, 
-			 static_storage*, list**, output_controls* );
-int Append_xyz_Frame   ( reax_system*, control_params*, simulation_data*, 
-			 static_storage*, list**, output_controls* );
+int Append_Custom_Frame( reax_system*, control_params*, simulation_data*,
+                         static_storage*, list**, output_controls* );
+int Append_xyz_Frame   ( reax_system*, control_params*, simulation_data*,
+                         static_storage*, list**, output_controls* );
 
 
 void Read_Traj( output_controls*, char * );

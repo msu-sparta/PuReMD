@@ -28,23 +28,23 @@ void print_device_mem_usage ();
 #define cudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
 inline void __cudaCheckError( const char *file, const int line )
 {
-   cudaError err = cudaGetLastError();
-   if ( cudaSuccess != err )
-   {  
-      fprintf (stderr, "Failed .. %s:%d -- gpu erro code %d\n", file, line, err ); 
-      exit( -1 ); 
-   }  
- 
-   // More careful checking. However, this will affect performance.
-   // Comment away if needed.
-   /* 
-   err = cudaDeviceSynchronize();
-   if( cudaSuccess != err )
-   {
-      exit( -1 );
-   }
-   */
-   return;
+    cudaError err = cudaGetLastError();
+    if ( cudaSuccess != err )
+    {
+        fprintf (stderr, "Failed .. %s:%d -- gpu erro code %d\n", file, line, err );
+        exit( -1 );
+    }
+
+    // More careful checking. However, this will affect performance.
+    // Comment away if needed.
+    /*
+    err = cudaDeviceSynchronize();
+    if( cudaSuccess != err )
+    {
+       exit( -1 );
+    }
+    */
+    return;
 }
 
 #endif

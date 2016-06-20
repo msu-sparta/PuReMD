@@ -3,11 +3,11 @@
 #define __CUDA_ENVIRONMENT_H__
 
 #ifdef __cplusplus
-extern "C"  {  
+extern "C"  {
 #endif
 
-	void Setup_Cuda_Environment (int, int, int);
-	void Cleanup_Cuda_Environment ();
+void Setup_Cuda_Environment (int, int, int);
+void Cleanup_Cuda_Environment ();
 
 #ifdef __cplusplus
 }

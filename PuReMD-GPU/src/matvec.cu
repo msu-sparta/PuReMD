@@ -1,16 +1,16 @@
 /*----------------------------------------------------------------------
   PuReMD-GPU - Reax Force Field Simulator
-      
+
   Copyright (2014) Purdue University
   Sudhir Kylasa, skylasa@purdue.edu
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
   Ananth Y Grama, ayg@cs.purdue.edu
- 
+
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
   published by the Free Software Foundation; either version 2 of 
   the License, or (at your option) any later version.
-               
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
@@ -61,7 +61,7 @@ GLOBAL void Cuda_Matvec_csr (sparse_matrix H, real *vec, real *results, int num_
 	//if (row < num_rows)
 	{
 		vals[threadIdx.x] = 0;
-		
+
 		if (row < num_rows) {
 			row_start = H.start[row];
 			row_end = H.end[row];
@@ -69,7 +69,7 @@ GLOBAL void Cuda_Matvec_csr (sparse_matrix H, real *vec, real *results, int num_
 			// compute running sum per thread
 			for(int jj = row_start + lane; jj < row_end; jj += 32)
 				vals[threadIdx.x] += H.entries[jj].val * vec [ H.entries[jj].j ];
-				//vals[threadIdx.x] += H.val[jj] * vec [ H.j[jj] ];
+			//vals[threadIdx.x] += H.val[jj] * vec [ H.j[jj] ];
 		}
 
 		__syncthreads ();

@@ -1,16 +1,16 @@
 /*----------------------------------------------------------------------
   PuReMD-GPU - Reax Force Field Simulator
-      
+
   Copyright (2014) Purdue University
   Sudhir Kylasa, skylasa@purdue.edu
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
   Ananth Y Grama, ayg@cs.purdue.edu
- 
+
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
   published by the Free Software Foundation; either version 2 of 
   the License, or (at your option) any later version.
-               
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
@@ -25,117 +25,117 @@
 #include "vector.h"
 
 GLOBAL void center_of_mass_blocks (single_body_parameters *sbp, reax_atom *atoms,
-							rvec *res_xcm, 
-							rvec *res_vcm, 
-							rvec *res_amcm, 
-							size_t n)
+		rvec *res_xcm, 
+		rvec *res_vcm, 
+		rvec *res_amcm, 
+		size_t n)
 {
-  extern __shared__ rvec xcm[];
-  extern __shared__ rvec vcm[];
-  extern __shared__ rvec amcm[];
+	extern __shared__ rvec xcm[];
+	extern __shared__ rvec vcm[];
+	extern __shared__ rvec amcm[];
 
-  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-  unsigned int xcm_id = threadIdx.x;
-  unsigned int vcm_id = blockDim.x;
-  unsigned int amcm_id = 2 *(blockDim.x);
+	unsigned int xcm_id = threadIdx.x;
+	unsigned int vcm_id = blockDim.x;
+	unsigned int amcm_id = 2 *(blockDim.x);
 
-  unsigned int index = 0;
-  rvec tmp;
-  real m;
+	unsigned int index = 0;
+	rvec tmp;
+	real m;
 
-  rvec_MakeZero (xcm [threadIdx.x]);
-  rvec_MakeZero (vcm [vcm_id + threadIdx.x]);
-  rvec_MakeZero (amcm[amcm_id + threadIdx.x]);
-  rvec_MakeZero (tmp);
+	rvec_MakeZero (xcm [threadIdx.x]);
+	rvec_MakeZero (vcm [vcm_id + threadIdx.x]);
+	rvec_MakeZero (amcm[amcm_id + threadIdx.x]);
+	rvec_MakeZero (tmp);
 
-  if (i < n){
-    m = sbp [ atoms[i].type ].mass;
-  	rvec_ScaledAdd (xcm [threadIdx.x], m, atoms [i].x);
-	rvec_ScaledAdd (vcm [vcm_id + threadIdx.x], m, atoms [i].v);
-	rvec_Cross (tmp, atoms[i].x, atoms [i].v);
-	rvec_ScaledAdd (amcm[amcm_id + threadIdx.x], m, tmp);
-  }
-  __syncthreads ();
-
-  for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 ) { 
-
-  	if ((threadIdx.x < offset)) {
-    	index = threadIdx.x + offset;
-		rvec_Add (xcm [threadIdx.x], xcm[index]);
-		rvec_Add (vcm [vcm_id  + threadIdx.x], vcm[vcm_id + index]);
-		rvec_Add (amcm[amcm_id + threadIdx.x], amcm[amcm_id + index]);
-	} 
+	if (i < n){
+		m = sbp [ atoms[i].type ].mass;
+		rvec_ScaledAdd (xcm [threadIdx.x], m, atoms [i].x);
+		rvec_ScaledAdd (vcm [vcm_id + threadIdx.x], m, atoms [i].v);
+		rvec_Cross (tmp, atoms[i].x, atoms [i].v);
+		rvec_ScaledAdd (amcm[amcm_id + threadIdx.x], m, tmp);
+	}
 	__syncthreads ();
-  }
-  
-  if ((threadIdx.x == 0)){
-  	rvec_Copy (res_xcm[blockIdx.x], xcm[0]);
-	rvec_Copy (res_vcm[blockIdx.x], vcm[vcm_id]);
-	rvec_Copy (res_amcm[blockIdx.x], amcm[amcm_id]);
-  }
+
+	for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 ) { 
+
+		if ((threadIdx.x < offset)) {
+			index = threadIdx.x + offset;
+			rvec_Add (xcm [threadIdx.x], xcm[index]);
+			rvec_Add (vcm [vcm_id  + threadIdx.x], vcm[vcm_id + index]);
+			rvec_Add (amcm[amcm_id + threadIdx.x], amcm[amcm_id + index]);
+		} 
+		__syncthreads ();
+	}
+
+	if ((threadIdx.x == 0)){
+		rvec_Copy (res_xcm[blockIdx.x], xcm[0]);
+		rvec_Copy (res_vcm[blockIdx.x], vcm[vcm_id]);
+		rvec_Copy (res_amcm[blockIdx.x], amcm[amcm_id]);
+	}
 }
 
 GLOBAL void center_of_mass (rvec *xcm, 
-							rvec *vcm, 
-							rvec *amcm, 
-							rvec *res_xcm,
-							rvec *res_vcm,
-							rvec *res_amcm,
-							size_t n)
+		rvec *vcm, 
+		rvec *amcm, 
+		rvec *res_xcm,
+		rvec *res_vcm,
+		rvec *res_amcm,
+		size_t n)
 {
-  extern __shared__ rvec sh_xcm[];
-  extern __shared__ rvec sh_vcm[];
-  extern __shared__ rvec sh_amcm[];
+	extern __shared__ rvec sh_xcm[];
+	extern __shared__ rvec sh_vcm[];
+	extern __shared__ rvec sh_amcm[];
 
-  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-  unsigned int xcm_id = threadIdx.x;
-  unsigned int vcm_id = blockDim.x;
-  unsigned int amcm_id = 2 * (blockDim.x);
+	unsigned int xcm_id = threadIdx.x;
+	unsigned int vcm_id = blockDim.x;
+	unsigned int amcm_id = 2 * (blockDim.x);
 
-  unsigned int index = 0;
-  rvec t_xcm, t_vcm, t_amcm;
+	unsigned int index = 0;
+	rvec t_xcm, t_vcm, t_amcm;
 
-  rvec_MakeZero (t_xcm);
-  rvec_MakeZero (t_vcm);
-  rvec_MakeZero (t_amcm);
+	rvec_MakeZero (t_xcm);
+	rvec_MakeZero (t_vcm);
+	rvec_MakeZero (t_amcm);
 
-  if (i < n){
-  	rvec_Copy ( t_xcm, xcm[threadIdx.x]);
-	rvec_Copy ( t_vcm, vcm[threadIdx.x]);
-	rvec_Copy ( t_amcm, amcm[threadIdx.x]);
-  }
+	if (i < n){
+		rvec_Copy ( t_xcm, xcm[threadIdx.x]);
+		rvec_Copy ( t_vcm, vcm[threadIdx.x]);
+		rvec_Copy ( t_amcm, amcm[threadIdx.x]);
+	}
 
-  rvec_Copy (sh_xcm[xcm_id], t_xcm);
-  rvec_Copy (sh_vcm[vcm_id + threadIdx.x], t_vcm);
-  rvec_Copy (sh_amcm[amcm_id + threadIdx.x], t_amcm);
+	rvec_Copy (sh_xcm[xcm_id], t_xcm);
+	rvec_Copy (sh_vcm[vcm_id + threadIdx.x], t_vcm);
+	rvec_Copy (sh_amcm[amcm_id + threadIdx.x], t_amcm);
 
-  __syncthreads ();
-
-  for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 ) { 
-
-  	if (threadIdx.x < offset) {
-    	index = threadIdx.x + offset;
-		rvec_Add (sh_xcm [threadIdx.x], sh_xcm[index]);
-		rvec_Add (sh_vcm [vcm_id + threadIdx.x], sh_vcm[vcm_id + index]);
-		rvec_Add (sh_amcm [amcm_id + threadIdx.x], sh_amcm[amcm_id + index]);
-	} 
 	__syncthreads ();
-  }
 
-  if (threadIdx.x == 0){
-  	rvec_Copy (res_xcm[blockIdx.x], sh_xcm[0]);
-	rvec_Copy (res_vcm[blockIdx.x], sh_vcm[vcm_id]);
-	rvec_Copy (res_amcm[blockIdx.x], sh_amcm[amcm_id]);
-  }
+	for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 ) { 
+
+		if (threadIdx.x < offset) {
+			index = threadIdx.x + offset;
+			rvec_Add (sh_xcm [threadIdx.x], sh_xcm[index]);
+			rvec_Add (sh_vcm [vcm_id + threadIdx.x], sh_vcm[vcm_id + index]);
+			rvec_Add (sh_amcm [amcm_id + threadIdx.x], sh_amcm[amcm_id + index]);
+		} 
+		__syncthreads ();
+	}
+
+	if (threadIdx.x == 0){
+		rvec_Copy (res_xcm[blockIdx.x], sh_xcm[0]);
+		rvec_Copy (res_vcm[blockIdx.x], sh_vcm[vcm_id]);
+		rvec_Copy (res_amcm[blockIdx.x], sh_amcm[amcm_id]);
+	}
 }
 
 GLOBAL void compute_center_mass (single_body_parameters *sbp, 
-								reax_atom *atoms,
-								real *results, 
-								real xcm0, real xcm1, real xcm2,
-								size_t n)
+		reax_atom *atoms,
+		real *results, 
+		real xcm0, real xcm1, real xcm2,
+		size_t n)
 {
 	extern __shared__ real xx[];
 	extern __shared__ real xy[];
@@ -162,10 +162,10 @@ GLOBAL void compute_center_mass (single_body_parameters *sbp,
 
 
 	xx[xx_i] = xy [xy_i + threadIdx.x] = xz[xz_i + threadIdx.x] = 
-	yy[yy_i + threadIdx.x] = yz[yz_i + threadIdx.x] = zz[zz_i + threadIdx.x] = 0;
+		yy[yy_i + threadIdx.x] = yz[yz_i + threadIdx.x] = zz[zz_i + threadIdx.x] = 0;
 
 	if (i < n){
-      	m = sbp[ atoms[i].type ].mass;
+		m = sbp[ atoms[i].type ].mass;
 		rvec_ScaledSum( diff, 1., atoms[i].x, -1., xcm );
 		xx[ xx_i ] = diff[0] * diff[0] * m;
 		xy[ xy_i + threadIdx.x ] = diff[0] * diff[1] * m;
@@ -219,7 +219,7 @@ GLOBAL void compute_center_mass (real *input, real *output, size_t n)
 	unsigned int index = 0;
 
 	xx[xx_i] = xy [xy_i + threadIdx.x] = xz[xz_i + threadIdx.x] = 
-	yy[yy_i + threadIdx.x] = yz[yz_i + threadIdx.x] = zz[zz_i + threadIdx.x] = 0;
+		yy[yy_i + threadIdx.x] = yz[yz_i + threadIdx.x] = zz[zz_i + threadIdx.x] = 0;
 
 	if (i < n)
 	{

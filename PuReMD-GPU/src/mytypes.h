@@ -1,19 +1,19 @@
 /*----------------------------------------------------------------------
   PuReMD-GPU - Reax Force Field Simulator
-      
+
   Copyright (2014) Purdue University
   Sudhir Kylasa, skylasa@purdue.edu
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
   Ananth Y Grama, ayg@cs.purdue.edu
- 
+
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 2 of 
+  published by the Free Software Foundation; either version 2 of
   the License, or (at your option) any later version.
-               
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU General Public License for more details:
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
@@ -80,7 +80,7 @@
 #define CAL_to_JOULES   4.184000      // CALories --> JOULES
 #define JOULES_to_CAL   1/4.184000    // JOULES --> CALories
 #define AMU_to_GRAM     1.6605e-24
-#define ANG_to_CM       1.0e-8   
+#define ANG_to_CM       1.0e-8
 #define AVOGNR          6.0221367e23
 #define P_CONV          1.0e-24 * AVOGNR * JOULES_to_CAL
 
@@ -119,10 +119,10 @@
 #define GE_ATOM 6
 #define X_ATOM  7
 
-#define	GPU_TOLERANCE	1e-5
+#define GPU_TOLERANCE   1e-5
 
-#define ZERO           0.000000000000000e+00 
-#define ALMOST_ZERO    1e-10 
+#define ZERO           0.000000000000000e+00
+#define ALMOST_ZERO    1e-10
 #define NEG_INF       -1e10
 #define NO_BOND        1e-3
 #define HB_THRESHOLD   1e-2
@@ -135,157 +135,157 @@
 #define DANGER_ZONE 0.95
 #define LOOSE_ZONE  0.75
 
-#define	RES_GRID_ATOMS		0x01
-#define	RES_GRID_TOP		0x02
-#define	RES_GRID_MARK		0x03
-#define	RES_GRID_START		0x04
-#define	RES_GRID_END		0x05
-#define 	RES_GRID_NBRS		0x06
-#define 	RES_GRID_NBRS_CP	0x07
+#define RES_GRID_ATOMS      0x01
+#define RES_GRID_TOP        0x02
+#define RES_GRID_MARK       0x03
+#define RES_GRID_START      0x04
+#define RES_GRID_END        0x05
+#define     RES_GRID_NBRS       0x06
+#define     RES_GRID_NBRS_CP    0x07
 
-#define 	RES_SYSTEM_ATOMS			0x10
-#define	RES_SYSTEM_SIMULATION_BOX	0x11
+#define     RES_SYSTEM_ATOMS            0x10
+#define RES_SYSTEM_SIMULATION_BOX   0x11
 
-#define	RES_REAX_INT_SBP	0x20
-#define	RES_REAX_INT_TBP	0x21
-#define	RES_REAX_INT_THBP	0x22
-#define	RES_REAX_INT_HBP	0x23
-#define	RES_REAX_INT_FBP	0x24
+#define RES_REAX_INT_SBP    0x20
+#define RES_REAX_INT_TBP    0x21
+#define RES_REAX_INT_THBP   0x22
+#define RES_REAX_INT_HBP    0x23
+#define RES_REAX_INT_FBP    0x24
 
-#define	RES_SIMULATION_DATA	0x30
+#define RES_SIMULATION_DATA 0x30
 
-#define      RES_STORAGE						0x401
-#define      RES_STORAGE_HBOND_INDEX		0x402
-#define      RES_STORAGE_TOTAL_BOND_ORDER	0x403
-#define      RES_STORAGE_DELTAP				0x404
-#define      RES_STORAGE_DELTAP_BOC			0x404
-#define      RES_STORAGE_DDELTAP_SELF		0x405
-#define      RES_STORAGE_DELTA				0x406
-#define      RES_STORAGE_DELTA_LP			0x407
-#define      RES_STORAGE_DELTA_LP_TEMP		0x408
-#define      RES_STORAGE_DDELTA_LP			0x409
-#define      RES_STORAGE_DDELTA_LP_TEMP	0x40A
-#define      RES_STORAGE_DELTA_E				0x40B
-#define      RES_STORAGE_DELTA_BOC			0x40C
-#define      RES_STORAGE_NL					0x40D
-#define      RES_STORAGE_NLP_TEMP			0x40E
-#define      RES_STORAGE_CLP					0x40F
-#define      RES_STORAGE_CDDELTA				0x410
-#define      RES_STORAGE_VLPEX				0x411
-#define      RES_STORAGE_DROPTOL				0x412
-#define      RES_STORAGE_W						0x413
-#define      RES_STORAGE_HDIA_INV			0x414
-#define      RES_STORAGE_B						0x415
-#define      RES_STORAGE_B_S					0x416
-#define      RES_STORAGE_B_T					0x417
-#define      RES_STORAGE_B_PRC				0x418
-#define      RES_STORAGE_B_PRM				0x419
-#define      RES_STORAGE_S_T					0x41A
-#define      RES_STORAGE_S						0x41B
-#define      RES_STORAGE_T						0x41C
-#define      RES_STORAGE_Y						0x41D
-#define      RES_STORAGE_Z						0x41E
-#define      RES_STORAGE_G						0x41F
-#define      RES_STORAGE_HS					0x420
-#define      RES_STORAGE_HC					0x421
-#define      RES_STORAGE_RN					0x422
-#define      RES_STORAGE_V 					0x423
-#define      RES_STORAGE_H						0x424
-#define      RES_STORAGE_R						0x425
-#define      RES_STORAGE_D						0x426
-#define      RES_STORAGE_Q						0x427
-#define      RES_STORAGE_P						0x428
-#define      RES_STORAGE_A						0x429
-#define      RES_STORAGE_F_OLD				0x42A
-#define      RES_STORAGE_V_CONST				0x42B
-#define      RES_STORAGE_MARK					0x42C
-#define      RES_STORAGE_OLD_MARK			0x42D
-#define      RES_STORAGE_X_OLD				0x42E
-#define		 RES_STORAGE_NLP					0x42F
-#define		 RES_STORAGE_MAP_SERIALS		0x430
-#define	    RES_STORAGE_RESTRICTED			0x431
-#define		 RES_STORAGE_RESTRICTED_LIST	0x432
-#define		 RES_STORAGE_ORIG_ID				0x433
+#define      RES_STORAGE                        0x401
+#define      RES_STORAGE_HBOND_INDEX        0x402
+#define      RES_STORAGE_TOTAL_BOND_ORDER   0x403
+#define      RES_STORAGE_DELTAP             0x404
+#define      RES_STORAGE_DELTAP_BOC         0x404
+#define      RES_STORAGE_DDELTAP_SELF       0x405
+#define      RES_STORAGE_DELTA              0x406
+#define      RES_STORAGE_DELTA_LP           0x407
+#define      RES_STORAGE_DELTA_LP_TEMP      0x408
+#define      RES_STORAGE_DDELTA_LP          0x409
+#define      RES_STORAGE_DDELTA_LP_TEMP 0x40A
+#define      RES_STORAGE_DELTA_E                0x40B
+#define      RES_STORAGE_DELTA_BOC          0x40C
+#define      RES_STORAGE_NL                 0x40D
+#define      RES_STORAGE_NLP_TEMP           0x40E
+#define      RES_STORAGE_CLP                    0x40F
+#define      RES_STORAGE_CDDELTA                0x410
+#define      RES_STORAGE_VLPEX              0x411
+#define      RES_STORAGE_DROPTOL                0x412
+#define      RES_STORAGE_W                      0x413
+#define      RES_STORAGE_HDIA_INV           0x414
+#define      RES_STORAGE_B                      0x415
+#define      RES_STORAGE_B_S                    0x416
+#define      RES_STORAGE_B_T                    0x417
+#define      RES_STORAGE_B_PRC              0x418
+#define      RES_STORAGE_B_PRM              0x419
+#define      RES_STORAGE_S_T                    0x41A
+#define      RES_STORAGE_S                      0x41B
+#define      RES_STORAGE_T                      0x41C
+#define      RES_STORAGE_Y                      0x41D
+#define      RES_STORAGE_Z                      0x41E
+#define      RES_STORAGE_G                      0x41F
+#define      RES_STORAGE_HS                 0x420
+#define      RES_STORAGE_HC                 0x421
+#define      RES_STORAGE_RN                 0x422
+#define      RES_STORAGE_V                  0x423
+#define      RES_STORAGE_H                      0x424
+#define      RES_STORAGE_R                      0x425
+#define      RES_STORAGE_D                      0x426
+#define      RES_STORAGE_Q                      0x427
+#define      RES_STORAGE_P                      0x428
+#define      RES_STORAGE_A                      0x429
+#define      RES_STORAGE_F_OLD              0x42A
+#define      RES_STORAGE_V_CONST                0x42B
+#define      RES_STORAGE_MARK                   0x42C
+#define      RES_STORAGE_OLD_MARK           0x42D
+#define      RES_STORAGE_X_OLD              0x42E
+#define      RES_STORAGE_NLP                    0x42F
+#define      RES_STORAGE_MAP_SERIALS        0x430
+#define     RES_STORAGE_RESTRICTED          0x431
+#define      RES_STORAGE_RESTRICTED_LIST    0x432
+#define      RES_STORAGE_ORIG_ID                0x433
 
-#define	RES_CONTROL_PARAMS	0x50
+#define RES_CONTROL_PARAMS  0x50
 
-#define	RES_GLOBAL_PARAMS		0x60
+#define RES_GLOBAL_PARAMS       0x60
 
-#define	RES_SPARSE_MATRIX_INDEX		0x70
-#define	RES_SPARSE_MATRIX_ENTRY		0x71
+#define RES_SPARSE_MATRIX_INDEX     0x70
+#define RES_SPARSE_MATRIX_ENTRY     0x71
 
-#define	RES_LR_LOOKUP_Y				0x80
-#define	RES_LR_LOOKUP_H				0x81
-#define	RES_LR_LOOKUP_VDW				0x82
-#define	RES_LR_LOOKUP_CEVD			0x83
-#define	RES_LR_LOOKUP_ELE				0x84
-#define	RES_LR_LOOKUP_CECLMB			0x85
-#define	RES_LR_LOOKUP_TABLE			0x86
+#define RES_LR_LOOKUP_Y             0x80
+#define RES_LR_LOOKUP_H             0x81
+#define RES_LR_LOOKUP_VDW               0x82
+#define RES_LR_LOOKUP_CEVD          0x83
+#define RES_LR_LOOKUP_ELE               0x84
+#define RES_LR_LOOKUP_CECLMB            0x85
+#define RES_LR_LOOKUP_TABLE         0x86
 
-#define	RES_SCRATCH						0x90
+#define RES_SCRATCH                     0x90
 
 
-#define	LIST_INDEX						0x00
-#define  LIST_END_INDEX					0x01
-#define	LIST_FAR_NEIGHBOR_DATA		0x10
-#define	LIST_HBOND_DATA				0x11
-#define	LIST_BOND_DATA					0x12
-#define	LIST_THREE_BODY_DATA			0x13
+#define LIST_INDEX                      0x00
+#define  LIST_END_INDEX                 0x01
+#define LIST_FAR_NEIGHBOR_DATA      0x10
+#define LIST_HBOND_DATA             0x11
+#define LIST_BOND_DATA                  0x12
+#define LIST_THREE_BODY_DATA            0x13
 
 #define     INT_SIZE    sizeof (int)
 #define     IVEC_SIZE   sizeof (ivec)
 #define     RVEC_SIZE   sizeof (rvec)
-#define		REAL_SIZE	sizeof (real)
+#define     REAL_SIZE   sizeof (real)
 
-#define     FAR_NEIGHBOR_SIZE   	sizeof (far_neighbor_data)
-#define		BOND_DATA_SIZE			sizeof (bond_data)
-#define		HBOND_DATA_SIZE		sizeof (hbond_data)
-#define     REAX_ATOM_SIZE  		sizeof (reax_atom)
-#define     SIMULATION_BOX_SIZE 	sizeof (simulation_box)
-#define		SIMULATION_DATA_SIZE sizeof (simulation_data)
-#define		STORAGE_SIZE			sizeof (static_storage)
-#define		CONTROL_PARAMS_SIZE	sizeof (control_params)
-#define		SPARSE_MATRIX_ENTRY_SIZE	sizeof (sparse_matrix_entry)
-#define		LR_LOOKUP_TABLE_SIZE			sizeof (LR_lookup_table)
-#define		LR_DATA_SIZE					sizeof (LR_data)
-#define		LR_DATA_PTR_SIZE				sizeof (LR_data *)
-#define		CUBIC_SPLINE_COEF_SIZE		sizeof (cubic_spline_coef)
-#define		CUBIC_SPLINE_COEF_PTR_SIZE sizeof (cubic_spline_coef *)
+#define     FAR_NEIGHBOR_SIZE       sizeof (far_neighbor_data)
+#define     BOND_DATA_SIZE          sizeof (bond_data)
+#define     HBOND_DATA_SIZE     sizeof (hbond_data)
+#define     REAX_ATOM_SIZE          sizeof (reax_atom)
+#define     SIMULATION_BOX_SIZE     sizeof (simulation_box)
+#define     SIMULATION_DATA_SIZE sizeof (simulation_data)
+#define     STORAGE_SIZE            sizeof (static_storage)
+#define     CONTROL_PARAMS_SIZE sizeof (control_params)
+#define     SPARSE_MATRIX_ENTRY_SIZE    sizeof (sparse_matrix_entry)
+#define     LR_LOOKUP_TABLE_SIZE            sizeof (LR_lookup_table)
+#define     LR_DATA_SIZE                    sizeof (LR_data)
+#define     LR_DATA_PTR_SIZE                sizeof (LR_data *)
+#define     CUBIC_SPLINE_COEF_SIZE      sizeof (cubic_spline_coef)
+#define     CUBIC_SPLINE_COEF_PTR_SIZE sizeof (cubic_spline_coef *)
 
-#define	SBP_SIZE 	sizeof (single_body_parameters)
-#define	TBP_SIZE 	sizeof (two_body_parameters)
-#define	THBP_SIZE 	sizeof (three_body_header)
-#define	HBP_SIZE 	sizeof (hbond_parameters)
-#define	FBP_SIZE 	sizeof (four_body_header)
+#define SBP_SIZE    sizeof (single_body_parameters)
+#define TBP_SIZE    sizeof (two_body_parameters)
+#define THBP_SIZE   sizeof (three_body_header)
+#define HBP_SIZE    sizeof (hbond_parameters)
+#define FBP_SIZE    sizeof (four_body_header)
 
-#define	SCRATCH_SIZE		(1024 * 1024 * 10)
+#define SCRATCH_SIZE        (1024 * 1024 * 10)
 
-#define	SPLINE_H_OFFSET				1
-#define	SPLINE_VDW_OFFSET				2
-#define	SPLINE_CEVD_OFFSET			3
-#define  SPLINE_ELE_OFFSET				4
-#define  SPLINE_CECLMB_OFFSET			5
+#define SPLINE_H_OFFSET             1
+#define SPLINE_VDW_OFFSET               2
+#define SPLINE_CEVD_OFFSET          3
+#define  SPLINE_ELE_OFFSET              4
+#define  SPLINE_CECLMB_OFFSET           5
 
 /*
  * Cuda Block Sizes Definitions
  */
-#define	CUDA_BLOCK_SIZE		256
+#define CUDA_BLOCK_SIZE     256
 
 /* Hydrogen Bonds Symmetric*/
-#define	HBONDS_SYM_THREADS_PER_ATOM		16
-#define	HBONDS_SYM_BLOCK_SIZE				64
+#define HBONDS_SYM_THREADS_PER_ATOM     16
+#define HBONDS_SYM_BLOCK_SIZE               64
 
-#define	VDW_THREADS_PER_ATOM					32
-#define	VDW_BLOCK_SIZE							256
+#define VDW_THREADS_PER_ATOM                    32
+#define VDW_BLOCK_SIZE                          256
 
-#define	HBONDS_THREADS_PER_ATOM				32
-#define	HBONDS_BLOCK_SIZE						256
+#define HBONDS_THREADS_PER_ATOM             32
+#define HBONDS_BLOCK_SIZE                       256
 
-#define	NBRS_THREADS_PER_ATOM				16
-#define	NBRS_BLOCK_SIZE						256
+#define NBRS_THREADS_PER_ATOM               16
+#define NBRS_BLOCK_SIZE                     256
 
-#define	MATVEC_BLOCK_SIZE						512
-#define	MATVEC_THREADS_PER_ROW				32
+#define MATVEC_BLOCK_SIZE                       512
+#define MATVEC_THREADS_PER_ROW              32
 
 
 
@@ -297,10 +297,12 @@ typedef int  ivec[3];
 typedef real rtensor[3][3];
 
 enum {NVE, NVT, NPT, sNPT, iNPT, ensNR, bNVT};
-enum {FAR_NBRS, NEAR_NBRS, THREE_BODIES, BONDS, OLD_BONDS, 
-      HBONDS, DBO, DDELTA, LIST_N};
-enum {TYP_VOID, TYP_THREE_BODY, TYP_BOND, TYP_HBOND, TYP_DBO, 
-      TYP_DDELTA, TYP_FAR_NEIGHBOR, TYP_NEAR_NEIGHBOR, TYP_N};
+enum {FAR_NBRS, NEAR_NBRS, THREE_BODIES, BONDS, OLD_BONDS,
+      HBONDS, DBO, DDELTA, LIST_N
+     };
+enum {TYP_VOID, TYP_THREE_BODY, TYP_BOND, TYP_HBOND, TYP_DBO,
+      TYP_DDELTA, TYP_FAR_NEIGHBOR, TYP_NEAR_NEIGHBOR, TYP_N
+     };
 enum {UNKNOWN, WATER};
 enum {NO_ANALYSIS, FRAGMENTS, REACTIONS, NUM_ANALYSIS};
 enum {WRITE_ASCII, WRITE_BINARY, RF_N};
@@ -309,7 +311,7 @@ enum {XYZ, PDB, BGF, ASCII_RESTART, BINARY_RESTART, GF_N};
 
 
 /* Global params mapping */
-/* 
+/*
 l[0]  = p_boc1
 l[1]  = p_boc2
 l[2]  = p_coa2
@@ -352,747 +354,766 @@ l[38] = p_coa3
 */
 
 typedef struct
-{      
-  int n_global;
-  real* l;
-  int vdw_type;
+{
+    int n_global;
+    real* l;
+    int vdw_type;
 } global_parameters;
 
 
 
 typedef struct
 {
-  /* Line one in field file */
-  char name[15];                     /* Two character atom name */
+    /* Line one in field file */
+    char name[15];                     /* Two character atom name */
 
-  real r_s;
-  real valency;                     /* Valency of the atom */
-  real mass;                        /* Mass of atom */
-  real r_vdw;
-  real epsilon;
-  real gamma;
-  real r_pi;
-  real valency_e;
-  real nlp_opt;
+    real r_s;
+    real valency;                     /* Valency of the atom */
+    real mass;                        /* Mass of atom */
+    real r_vdw;
+    real epsilon;
+    real gamma;
+    real r_pi;
+    real valency_e;
+    real nlp_opt;
 
-  /* Line two in field file */
-  real alpha;
-  real gamma_w;
-  real valency_boc;
-  real p_ovun5;
-  real chi;
-  real eta;
-  int  p_hbond; /* Determines whether this type of atom participates in H_bonds.
-		   It is 1 for donor H, 2 for acceptors (O,S,N), 0 for others*/
+    /* Line two in field file */
+    real alpha;
+    real gamma_w;
+    real valency_boc;
+    real p_ovun5;
+    real chi;
+    real eta;
+    int  p_hbond; /* Determines whether this type of atom participates in H_bonds.
+           It is 1 for donor H, 2 for acceptors (O,S,N), 0 for others*/
 
-  /* Line three in field file */
-  real r_pi_pi;
-  real p_lp2;
-  real b_o_131;
-  real b_o_132;
-  real b_o_133;
-  
-  /* Line four in the field file */
-  real p_ovun2;
-  real p_val3;
-  real valency_val;
-  real p_val5;
-  real rcore2;
-  real ecore2;
-  real acore2;
+    /* Line three in field file */
+    real r_pi_pi;
+    real p_lp2;
+    real b_o_131;
+    real b_o_132;
+    real b_o_133;
+
+    /* Line four in the field file */
+    real p_ovun2;
+    real p_val3;
+    real valency_val;
+    real p_val5;
+    real rcore2;
+    real ecore2;
+    real acore2;
 } single_body_parameters;
 
 
 
 /* Two Body Parameters */
-typedef struct {
-  /* Bond Order parameters */
-  real p_bo1,p_bo2,p_bo3,p_bo4,p_bo5,p_bo6;
-  real r_s, r_p, r_pp;  /* r_o distances in BO formula */
-  real p_boc3, p_boc4, p_boc5;
+typedef struct
+{
+    /* Bond Order parameters */
+    real p_bo1, p_bo2, p_bo3, p_bo4, p_bo5, p_bo6;
+    real r_s, r_p, r_pp;  /* r_o distances in BO formula */
+    real p_boc3, p_boc4, p_boc5;
 
-  /* Bond Energy parameters */
-  real p_be1, p_be2;
-  real De_s, De_p, De_pp;
+    /* Bond Energy parameters */
+    real p_be1, p_be2;
+    real De_s, De_p, De_pp;
 
-  /* Over/Under coordination parameters */
-  real p_ovun1;
+    /* Over/Under coordination parameters */
+    real p_ovun1;
 
-  /* Van der Waal interaction parameters */
-  real D;
-  real alpha;
-  real r_vdW;
-  real gamma_w;
-  real rcore, ecore, acore;
+    /* Van der Waal interaction parameters */
+    real D;
+    real alpha;
+    real r_vdW;
+    real gamma_w;
+    real rcore, ecore, acore;
 
-  /* electrostatic parameters */
-  real gamma; // note: this parameter is gamma^-3 and not gamma.
+    /* electrostatic parameters */
+    real gamma; // note: this parameter is gamma^-3 and not gamma.
 
-  real v13cor, ovc;
+    real v13cor, ovc;
 } two_body_parameters;
 
 
 
 /* 3-body parameters */
-typedef struct {
-  /* valence angle */
-  real theta_00;
-  real p_val1, p_val2, p_val4, p_val7;
+typedef struct
+{
+    /* valence angle */
+    real theta_00;
+    real p_val1, p_val2, p_val4, p_val7;
 
-  /* penalty */
-  real p_pen1;
+    /* penalty */
+    real p_pen1;
 
-  /* 3-body conjugation */
-  real p_coa1;
+    /* 3-body conjugation */
+    real p_coa1;
 } three_body_parameters;
 
 
-typedef struct{
-  int cnt;
-  three_body_parameters prm[MAX_3BODY_PARAM];
+typedef struct
+{
+    int cnt;
+    three_body_parameters prm[MAX_3BODY_PARAM];
 } three_body_header;
 
 
 
 /* hydrogen-bond parameters */
-typedef struct{
-  real r0_hb, p_hb1, p_hb2, p_hb3;
+typedef struct
+{
+    real r0_hb, p_hb1, p_hb2, p_hb3;
 } hbond_parameters;
 
 
 
 /* 4-body parameters */
-typedef struct {
-  real V1, V2, V3;
+typedef struct
+{
+    real V1, V2, V3;
 
-  /* torsion angle */
-  real p_tor1;
+    /* torsion angle */
+    real p_tor1;
 
-  /* 4-body conjugation */
-  real p_cot1;
+    /* 4-body conjugation */
+    real p_cot1;
 } four_body_parameters;
 
 
-typedef struct{
-  int cnt;
-  four_body_parameters prm[MAX_4BODY_PARAM];
+typedef struct
+{
+    int cnt;
+    four_body_parameters prm[MAX_4BODY_PARAM];
 } four_body_header;
 
 
-typedef struct{
-  int num_atom_types;
-  global_parameters gp;
-  global_parameters d_gp;
+typedef struct
+{
+    int num_atom_types;
+    global_parameters gp;
+    global_parameters d_gp;
 
-  single_body_parameters *sbp;
-  single_body_parameters *d_sbp;
+    single_body_parameters *sbp;
+    single_body_parameters *d_sbp;
 
-  two_body_parameters *tbp;
-  two_body_parameters *d_tbp;
+    two_body_parameters *tbp;
+    two_body_parameters *d_tbp;
 
-  three_body_header *thbp;
-  three_body_header *d_thbp;
+    three_body_header *thbp;
+    three_body_header *d_thbp;
 
-  hbond_parameters *hbp;
-  hbond_parameters *d_hbp;
+    hbond_parameters *hbp;
+    hbond_parameters *d_hbp;
 
-  four_body_header *fbp;
-  four_body_header *d_fbp;
+    four_body_header *fbp;
+    four_body_header *d_fbp;
 
 } reax_interaction;
 
 
 typedef struct
 {
-  rvec x;        /* Position, velocity, force on atom */
-  rvec v;
-  rvec f;
-  real q;              /* Charge on the atom */
-  int  type;           /* Type of this atom */
-  char name[5];
-  char spare[7];
+    rvec x;        /* Position, velocity, force on atom */
+    rvec v;
+    rvec f;
+    real q;              /* Charge on the atom */
+    int  type;           /* Type of this atom */
+    char name[5];
+    char spare[7];
 } reax_atom;
 
 
 typedef struct
 {
-  real volume;
+    real volume;
 
-  rvec box_norms;
-  rvec side_prop;
-  rvec nbr_box_press[27];
-  // rvec lower_end;
+    rvec box_norms;
+    rvec side_prop;
+    rvec nbr_box_press[27];
+    // rvec lower_end;
 
-  rtensor box, box_inv, old_box;
-  rtensor trans, trans_inv;
-  rtensor g;
+    rtensor box, box_inv, old_box;
+    rtensor trans, trans_inv;
+    rtensor g;
 } simulation_box;
 
 
 typedef struct
 {
-  int  max_atoms;
-  int  max_nbrs;
-  int  total;
-  real cell_size;
-  ivec spread;
+    int  max_atoms;
+    int  max_nbrs;
+    int  total;
+    real cell_size;
+    ivec spread;
 
-  ivec ncell;
-  rvec len;
-  rvec inv_len;
+    ivec ncell;
+    rvec len;
+    rvec inv_len;
 
-  //CUDA
-  int	 max_cuda_nbrs; //TODO remove this not used anymore
+    //CUDA
+    int    max_cuda_nbrs; //TODO remove this not used anymore
 
-  int	*atoms;
-  int	*top;
-  int	*mark;
-  int	*start;
-  int	*end;
-  ivec	*nbrs;
-  rvec	*nbrs_cp;
+    int   *atoms;
+    int   *top;
+    int   *mark;
+    int   *start;
+    int   *end;
+    ivec  *nbrs;
+    rvec  *nbrs_cp;
 
 } grid;
 
 
 typedef struct
 {
-  int N;
+    int N;
 
-  //CUDA
-  //int max_thb_intrs;
-  int max_sparse_matrix_entries;
-  int num_nbrs;
-  int num_bonds;
-  int num_hbonds;
-  int num_thbodies;
-  int init_thblist;
+    //CUDA
+    //int max_thb_intrs;
+    int max_sparse_matrix_entries;
+    int num_nbrs;
+    int num_bonds;
+    int num_hbonds;
+    int num_thbodies;
+    int init_thblist;
 
-  reax_atom *atoms;
-  reax_atom *d_atoms;
+    reax_atom *atoms;
+    reax_atom *d_atoms;
 
-  reax_interaction reaxprm;
+    reax_interaction reaxprm;
 
-  simulation_box box;
-  simulation_box *d_box;
+    simulation_box box;
+    simulation_box *d_box;
 
-  grid g;
-  grid d_g;
+    grid g;
+    grid d_g;
 } reax_system;
 
 
 /* Simulation control parameters not related to the system */
 typedef struct
 {
-  char sim_name[MAX_STR];
-  char restart_from[MAX_STR];
-  int  restart;
-  int  random_vel;
+    char sim_name[MAX_STR];
+    char restart_from[MAX_STR];
+    int  restart;
+    int  random_vel;
 
-  int  reposition_atoms;
+    int  reposition_atoms;
 
-  /* ensemble values:
-     0 : NVE
-     1 : NVT  (Nose-Hoover)
-     2 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic
-     3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
-     4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic */
-  int  ensemble;
-  int  nsteps;
-  int  periodic_boundaries;
-  int  restrict_bonds;
-  int  tabulate;
-  ivec periodic_images;
-  real dt;
+    /* ensemble values:
+       0 : NVE
+       1 : NVT  (Nose-Hoover)
+       2 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic
+       3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
+       4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic */
+    int  ensemble;
+    int  nsteps;
+    int  periodic_boundaries;
+    int  restrict_bonds;
+    int  tabulate;
+    ivec periodic_images;
+    real dt;
 
-  int reneighbor;
-  real vlist_cut;
-  real nbr_cut;
-  real r_cut, r_low; // upper and lower taper
-  real bo_cut;
-  real thb_cut;
-  real hb_cut;
-  real Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
-  real q_err;
-  int  max_far_nbrs;
-  
-  real T_init, T_final, T;
-  real Tau_T;
-  int  T_mode;
-  real T_rate, T_freq;
-  
-  real Tau_PT;
-  rvec P, Tau_P;
-  int  press_mode;
-  real compressibility;
+    int reneighbor;
+    real vlist_cut;
+    real nbr_cut;
+    real r_cut, r_low; // upper and lower taper
+    real bo_cut;
+    real thb_cut;
+    real hb_cut;
+    real Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
+    real q_err;
+    int  max_far_nbrs;
 
-  int remove_CoM_vel;
+    real T_init, T_final, T;
+    real Tau_T;
+    int  T_mode;
+    real T_rate, T_freq;
 
-  int geo_format;
+    real Tau_PT;
+    rvec P, Tau_P;
+    int  press_mode;
+    real compressibility;
 
-  int dipole_anal;
-  int freq_dipole_anal;
+    int remove_CoM_vel;
 
-  int diffusion_coef;
-  int freq_diffusion_coef;
-  int restrict_type;
+    int geo_format;
 
-  int refactor;
-  real droptol;
+    int dipole_anal;
+    int freq_dipole_anal;
 
-  int molec_anal;
-  int freq_molec_anal;
-  real bg_cut;
-  int num_ignored;
-  int  ignore[MAX_ATOM_TYPES];
+    int diffusion_coef;
+    int freq_diffusion_coef;
+    int restrict_type;
 
-  void *d_control;
+    int refactor;
+    real droptol;
+
+    int molec_anal;
+    int freq_molec_anal;
+    real bg_cut;
+    int num_ignored;
+    int  ignore[MAX_ATOM_TYPES];
+
+    void *d_control;
 } control_params;
 
 
 typedef struct
 {
-  real T;
-  real xi;
-  real v_xi;
-  real v_xi_old;
-  real G_xi;
+    real T;
+    real xi;
+    real v_xi;
+    real v_xi_old;
+    real G_xi;
 } thermostat;
 
 
 typedef struct
 {
-  real P;
-  real eps;
-  real v_eps;
-  real v_eps_old;
-  real a_eps;
+    real P;
+    real eps;
+    real v_eps;
+    real v_eps_old;
+    real a_eps;
 
 } isotropic_barostat;
 
 
 typedef struct
 {
-  rtensor P;
-  real P_scalar;
-  
-  real eps;
-  real v_eps;
-  real v_eps_old;
-  real a_eps;
+    rtensor P;
+    real P_scalar;
 
-  rtensor h0;
-  rtensor v_g0;
-  rtensor v_g0_old;
-  rtensor a_g0;
+    real eps;
+    real v_eps;
+    real v_eps_old;
+    real a_eps;
+
+    rtensor h0;
+    rtensor v_g0;
+    rtensor v_g0_old;
+    rtensor a_g0;
 
 } flexible_barostat;
 
 
 typedef struct
 {
-  real start;
-  real end;
-  real elapsed;
+    real start;
+    real end;
+    real elapsed;
 
-  real total; 
-  real nbrs;
-  real init_forces;
-  real bonded;
-  real nonb;
-  real QEq;
-  int  matvecs;
+    real total;
+    real nbrs;
+    real init_forces;
+    real bonded;
+    real nonb;
+    real QEq;
+    int  matvecs;
 } reax_timing;
 
 
 typedef struct
 {
-  int step;
-  int prev_steps;
-  real time;
+    int step;
+    int prev_steps;
+    real time;
 
-  real M;			   /* Total Mass */
-  real inv_M;                      /* 1 / Total Mass */
+    real M;              /* Total Mass */
+    real inv_M;                      /* 1 / Total Mass */
 
-  rvec xcm;                        /* Center of mass */
-  rvec vcm;                        /* Center of mass velocity */
-  rvec fcm;                        /* Center of mass force */
-  rvec amcm;                       /* Angular momentum of CoM */
-  rvec avcm;                       /* Angular velocity of CoM */
-  real etran_cm;                  /* Translational kinetic energy of CoM */
-  real erot_cm;                    /* Rotational kinetic energy of CoM */
+    rvec xcm;                        /* Center of mass */
+    rvec vcm;                        /* Center of mass velocity */
+    rvec fcm;                        /* Center of mass force */
+    rvec amcm;                       /* Angular momentum of CoM */
+    rvec avcm;                       /* Angular velocity of CoM */
+    real etran_cm;                  /* Translational kinetic energy of CoM */
+    real erot_cm;                    /* Rotational kinetic energy of CoM */
 
-  rtensor kinetic;                 /* Kinetic energy tensor */
-  rtensor virial;                  /* Hydrodynamic virial */
+    rtensor kinetic;                 /* Kinetic energy tensor */
+    rtensor virial;                  /* Hydrodynamic virial */
 
-  real E_Tot;
-  real E_Kin;                      /* Total kinetic energy */
-  real E_Pot;
+    real E_Tot;
+    real E_Kin;                      /* Total kinetic energy */
+    real E_Pot;
 
-  real E_BE;                       /* Total bond energy */
-  real E_Ov;                       /* Total over coordination */
-  real E_Un;                       /* Total under coordination energy */
-  real E_Lp;                       /* Total under coordination energy */
-  real E_Ang;                      /* Total valance angle energy */
-  real E_Pen;                      /* Total penalty energy */
-  real E_Coa;                      /* Total three body conjgation energy */
-  real E_HB;                       /* Total Hydrogen bond energy */
-  real E_Tor;                      /* Total torsional energy */
-  real E_Con;                      /* Total four body conjugation energy */ 
-  real E_vdW;                      /* Total van der Waals energy */
-  real E_Ele;                      /* Total electrostatics energy */
-  real E_Pol;                      /* Polarization energy */
+    real E_BE;                       /* Total bond energy */
+    real E_Ov;                       /* Total over coordination */
+    real E_Un;                       /* Total under coordination energy */
+    real E_Lp;                       /* Total under coordination energy */
+    real E_Ang;                      /* Total valance angle energy */
+    real E_Pen;                      /* Total penalty energy */
+    real E_Coa;                      /* Total three body conjgation energy */
+    real E_HB;                       /* Total Hydrogen bond energy */
+    real E_Tor;                      /* Total torsional energy */
+    real E_Con;                      /* Total four body conjugation energy */
+    real E_vdW;                      /* Total van der Waals energy */
+    real E_Ele;                      /* Total electrostatics energy */
+    real E_Pol;                      /* Polarization energy */
 
-  real N_f;                        /*Number of degrees of freedom */
-  rvec t_scale;
-  rtensor p_scale;
-  thermostat therm;                /* Used in Nose_Hoover method */
-  isotropic_barostat iso_bar;
-  flexible_barostat flex_bar;
-  real inv_W;
+    real N_f;                        /*Number of degrees of freedom */
+    rvec t_scale;
+    rtensor p_scale;
+    thermostat therm;                /* Used in Nose_Hoover method */
+    isotropic_barostat iso_bar;
+    flexible_barostat flex_bar;
+    real inv_W;
 
-  rvec int_press;
-  rvec ext_press;
-  real kin_press;
-  rvec tot_press;
-  
-  reax_timing timing;
-  //CUDA
-  reax_timing d_timing;
+    rvec int_press;
+    rvec ext_press;
+    real kin_press;
+    rvec tot_press;
+
+    reax_timing timing;
+    //CUDA
+    reax_timing d_timing;
 
 
-  void *d_simulation_data;
+    void *d_simulation_data;
 } simulation_data;
 
 
-typedef struct {
-  int thb;
-  int pthb; /* pointer to the third body on the central atom's nbrlist */
-  real theta, cos_theta;
-  rvec dcos_di, dcos_dj, dcos_dk;
+typedef struct
+{
+    int thb;
+    int pthb; /* pointer to the third body on the central atom's nbrlist */
+    real theta, cos_theta;
+    rvec dcos_di, dcos_dj, dcos_dk;
 
-  //CUDA
-  int i, j, k;
+    //CUDA
+    int i, j, k;
 } three_body_interaction_data;
 
 
-typedef struct {
-  int nbr;
-  ivec rel_box;
-  //  rvec ext_factor;
-  real d;
-  rvec dvec;
+typedef struct
+{
+    int nbr;
+    ivec rel_box;
+    //  rvec ext_factor;
+    real d;
+    rvec dvec;
 } near_neighbor_data;
 
 
-typedef struct {
-  int nbr;
-  ivec rel_box;
-  //  rvec ext_factor;
-  real d;
-  rvec dvec;
-  // real H; //, Tap, inv_dr3gamij_1, inv_dr3gamij_3;
+typedef struct
+{
+    int nbr;
+    ivec rel_box;
+    //  rvec ext_factor;
+    real d;
+    rvec dvec;
+    // real H; //, Tap, inv_dr3gamij_1, inv_dr3gamij_3;
 
-  //CUDA
-  //int sym_index;
-  //rvec h_f;
-  char spare[16];
+    //CUDA
+    //int sym_index;
+    //rvec h_f;
+    char spare[16];
 } far_neighbor_data;
 
-typedef struct {
-  int nbr;
-  int scl;
-  far_neighbor_data *ptr;
+typedef struct
+{
+    int nbr;
+    int scl;
+    far_neighbor_data *ptr;
 
-  //CUDA
-  int sym_index;
-  rvec h_f;
+    //CUDA
+    int sym_index;
+    rvec h_f;
 
 } hbond_data;
 
 
-typedef struct {
-  int wrt;
-  rvec dVal;
+typedef struct
+{
+    int wrt;
+    rvec dVal;
 } dDelta_data;
 
 
-typedef struct {
-  int wrt;
-  rvec dBO, dBOpi, dBOpi2;
+typedef struct
+{
+    int wrt;
+    rvec dBO, dBOpi, dBOpi2;
 } dbond_data;
 
-typedef struct {
-  real BO, BO_s, BO_pi, BO_pi2;
-  real Cdbo, Cdbopi, Cdbopi2;
-  real C1dbo, C2dbo, C3dbo;
-  real C1dbopi, C2dbopi, C3dbopi, C4dbopi;
-  real C1dbopi2, C2dbopi2, C3dbopi2, C4dbopi2;
-  rvec dBOp, dln_BOp_s, dln_BOp_pi, dln_BOp_pi2;
+typedef struct
+{
+    real BO, BO_s, BO_pi, BO_pi2;
+    real Cdbo, Cdbopi, Cdbopi2;
+    real C1dbo, C2dbo, C3dbo;
+    real C1dbopi, C2dbopi, C3dbopi, C4dbopi;
+    real C1dbopi2, C2dbopi2, C3dbopi2, C4dbopi2;
+    rvec dBOp, dln_BOp_s, dln_BOp_pi, dln_BOp_pi2;
 } bond_order_data;
 
-typedef struct {
-  int nbr;
-  int sym_index;
-  int dbond_index;
-  ivec rel_box;
-  //  rvec ext_factor;
-  real d;
-  rvec dvec;
-  bond_order_data bo_data;
+typedef struct
+{
+    int nbr;
+    int sym_index;
+    int dbond_index;
+    ivec rel_box;
+    //  rvec ext_factor;
+    real d;
+    rvec dvec;
+    bond_order_data bo_data;
 
-	//single body -- lone pair
-  real scratch;
+    //single body -- lone pair
+    real scratch;
 
-  //three_body
-  real CdDelta_ij;
-  rvec f;
+    //three_body
+    real CdDelta_ij;
+    rvec f;
 
-  //hbonds
-  rvec h_f;
+    //hbonds
+    rvec h_f;
 
-  //four body
-  int l;
-  real CdDelta_jk;
-  real Cdbo_kl;
-  rvec i_f;
-  rvec k_f;
+    //four body
+    int l;
+    real CdDelta_jk;
+    real Cdbo_kl;
+    rvec i_f;
+    rvec k_f;
 
-  //compute_total_forces
-  rvec t_f;
+    //compute_total_forces
+    rvec t_f;
 } bond_data;
 
 
-typedef struct {
-  int j;
-  real val;
+typedef struct
+{
+    int j;
+    real val;
 } sparse_matrix_entry;
 
-typedef struct {
-  int n, m;
-  int *start;
-  //CUDA
-  int *end;
-  sparse_matrix_entry *entries;
+typedef struct
+{
+    int n, m;
+    int *start;
+    //CUDA
+    int *end;
+    sparse_matrix_entry *entries;
 
-  int *j;
-  real *val;
+    int *j;
+    real *val;
 
 } sparse_matrix;
 
 
-typedef struct { 
-  int estimate_nbrs;
-  int num_far;
-  int Htop;
-  int hbonds;
-  int num_hbonds;
-  int bonds;
-  int num_bonds;
-  int thbody;
-  int num_3body;
-  int gcell_atoms;
+typedef struct
+{
+    int estimate_nbrs;
+    int num_far;
+    int Htop;
+    int hbonds;
+    int num_hbonds;
+    int bonds;
+    int num_bonds;
+    int thbody;
+    int num_3body;
+    int gcell_atoms;
 } reallocate_data;
 
-typedef struct {
-  /* bond order related storage */
-  real *total_bond_order;
-  real *Deltap, *Deltap_boc;
-  real *Delta, *Delta_lp, *Delta_lp_temp, *Delta_e, *Delta_boc;
-  real *dDelta_lp, *dDelta_lp_temp;
-  real *nlp, *nlp_temp, *Clp, *vlpex;
-  rvec *dDeltap_self;
+typedef struct
+{
+    /* bond order related storage */
+    real *total_bond_order;
+    real *Deltap, *Deltap_boc;
+    real *Delta, *Delta_lp, *Delta_lp_temp, *Delta_e, *Delta_boc;
+    real *dDelta_lp, *dDelta_lp_temp;
+    real *nlp, *nlp_temp, *Clp, *vlpex;
+    rvec *dDeltap_self;
 
-  /* QEq storage */
-  sparse_matrix H, L, U;
-  real *droptol;
-  real *w;
-  real *Hdia_inv;
-  real *b, *b_s, *b_t, *b_prc, *b_prm;
-  real *s, *t;
-  real *s_t; //, *s_old, *t_old, *s_oldest, *t_oldest;
+    /* QEq storage */
+    sparse_matrix H, L, U;
+    real *droptol;
+    real *w;
+    real *Hdia_inv;
+    real *b, *b_s, *b_t, *b_prc, *b_prm;
+    real *s, *t;
+    real *s_t; //, *s_old, *t_old, *s_oldest, *t_oldest;
 
-  /* GMRES related storage */
-  real *y, *z, *g;
-  real *hc, *hs;
-  real *h, *rn, *v;
-  /* CG related storage */
-  real *r, *d, *q, *p;
-  int   s_dims, t_dims;
+    /* GMRES related storage */
+    real *y, *z, *g;
+    real *hc, *hs;
+    real *h, *rn, *v;
+    /* CG related storage */
+    real *r, *d, *q, *p;
+    int   s_dims, t_dims;
 
-  int num_H;
-  int *hbond_index; // for hydrogen bonds
+    int num_H;
+    int *hbond_index; // for hydrogen bonds
 
-  rvec *v_const, *f_old, *a; // used in integrators
+    rvec *v_const, *f_old, *a; // used in integrators
 
-  real *CdDelta;  // coefficient of dDelta for force calculations
+    real *CdDelta;  // coefficient of dDelta for force calculations
 
-  int *mark, *old_mark;  // storage for analysis
-  rvec *x_old;
-  
-  /* storage space for bond restrictions */
-  int  *map_serials;
-  int  *orig_id;
-  int  *restricted;
-  int *restricted_list;  
+    int *mark, *old_mark;  // storage for analysis
+    rvec *x_old;
 
-  reallocate_data realloc;
-  
+    /* storage space for bond restrictions */
+    int  *map_serials;
+    int  *orig_id;
+    int  *restricted;
+    int *restricted_list;
+
+    reallocate_data realloc;
+
 #ifdef TEST_FORCES
-  rvec *f_ele;
-  rvec *f_vdw;
-  rvec *f_bo;
-  rvec *f_be;
-  rvec *f_lp;
-  rvec *f_ov;
-  rvec *f_un;
-  rvec *f_ang;
-  rvec *f_coa;
-  rvec *f_pen;
-  rvec *f_hb;
-  rvec *f_tor;
-  rvec *f_con;
-  rvec *dDelta;       /* Calculated on the fly in bond_orders.c */
+    rvec *f_ele;
+    rvec *f_vdw;
+    rvec *f_bo;
+    rvec *f_be;
+    rvec *f_lp;
+    rvec *f_ov;
+    rvec *f_un;
+    rvec *f_ang;
+    rvec *f_coa;
+    rvec *f_pen;
+    rvec *f_hb;
+    rvec *f_tor;
+    rvec *f_con;
+    rvec *dDelta;       /* Calculated on the fly in bond_orders.c */
 #endif
 } static_storage;
 
 
 typedef struct
 {
-  int n;
-  int num_intrs;
-  int *index;
-  int *end_index;
-  int type;
-  union
-  {
-    void *v;
-    three_body_interaction_data *three_body_list;
-    bond_data *bond_list;
-    dbond_data *dbo_list;
-    dDelta_data *dDelta_list;
-    far_neighbor_data *far_nbr_list;
-    near_neighbor_data *near_nbr_list;
-    hbond_data *hbond_list;
-  }select;
+    int n;
+    int num_intrs;
+    int *index;
+    int *end_index;
+    int type;
+    union
+    {
+        void *v;
+        three_body_interaction_data *three_body_list;
+        bond_data *bond_list;
+        dbond_data *dbo_list;
+        dDelta_data *dDelta_list;
+        far_neighbor_data *far_nbr_list;
+        near_neighbor_data *near_nbr_list;
+        hbond_data *hbond_list;
+    } select;
 } list;
 
 
 
 typedef struct
 {
-  FILE *trj;
-  FILE *out;
-  FILE *pot;
-  FILE *log;
-  FILE *mol, *ign;
-  FILE *dpl;
-  FILE *drft;
-  FILE *pdb;
-  FILE *prs;
+    FILE *trj;
+    FILE *out;
+    FILE *pot;
+    FILE *log;
+    FILE *mol, *ign;
+    FILE *dpl;
+    FILE *drft;
+    FILE *pdb;
+    FILE *prs;
 
-  int  write_steps;
-  int  traj_compress;
-  int  traj_format;
-  char traj_title[81];
-  int  atom_format;
-  int  bond_info;
-  int  angle_info;
+    int  write_steps;
+    int  traj_compress;
+    int  traj_format;
+    char traj_title[81];
+    int  atom_format;
+    int  bond_info;
+    int  angle_info;
 
-  int  restart_format;
-  int  restart_freq;
-  int  debug_level;
-  int  energy_update_freq;
+    int  restart_format;
+    int  restart_freq;
+    int  debug_level;
+    int  energy_update_freq;
 
-  // trajectory output functions
-  int (* write_header)( reax_system*, control_params*, static_storage*, void* );
-  int (* append_traj_frame)(reax_system*, control_params*, 
-			    simulation_data*, static_storage*, list **, void* );
-  int (* write)( FILE *, const char *, ... );
+    // trajectory output functions
+    int (* write_header)( reax_system*, control_params*, static_storage*, void* );
+    int (* append_traj_frame)(reax_system*, control_params*,
+                              simulation_data*, static_storage*, list **, void* );
+    int (* write)( FILE *, const char *, ... );
 
 #ifdef TEST_ENERGY
-  FILE *ebond;
-  FILE *elp, *eov, *eun;
-  FILE *eval, *epen, *ecoa;
-  FILE *ehb;
-  FILE *etor, *econ;
-  FILE *evdw, *ecou;
+    FILE *ebond;
+    FILE *elp, *eov, *eun;
+    FILE *eval, *epen, *ecoa;
+    FILE *ehb;
+    FILE *etor, *econ;
+    FILE *evdw, *ecou;
 #endif
 
-  FILE *ftot;
+    FILE *ftot;
 #ifdef TEST_FORCES
-  FILE *fbo, *fdbo;
-  FILE *fbond;
-  FILE *flp, *fatom;
-  FILE *f3body;
-  FILE *fhb;
-  FILE *f4body;
-  FILE *fnonb;
-  FILE *ftot2;
+    FILE *fbo, *fdbo;
+    FILE *fbond;
+    FILE *flp, *fatom;
+    FILE *f3body;
+    FILE *fhb;
+    FILE *f4body;
+    FILE *fnonb;
+    FILE *ftot2;
 #endif
 } output_controls;
 
 
 typedef struct
 {
-  int atom_count;
-  int atom_list[MAX_MOLECULE_SIZE];
-  int mtypes[MAX_ATOM_TYPES];
-} molecule; 
+    int atom_count;
+    int atom_list[MAX_MOLECULE_SIZE];
+    int mtypes[MAX_ATOM_TYPES];
+} molecule;
 
 
 typedef struct
 {
-  real H;
-  real e_vdW, CEvd;
-  real e_ele, CEclmb;
+    real H;
+    real e_vdW, CEvd;
+    real e_ele, CEclmb;
 } LR_data;
 
 
 
 typedef struct
 {
-  real a, b, c, d;
+    real a, b, c, d;
 } cubic_spline_coef;
 
 typedef struct
 {
-  real xmin, xmax;
-  int n;
-  real dx, inv_dx;
-  real a;
+    real xmin, xmax;
+    int n;
+    real dx, inv_dx;
+    real a;
 
-  real m;
-  real c;
+    real m;
+    real c;
 
-  real *y;
+    real *y;
 } lookup_table;
 
 
 typedef struct
 {
-  real xmin, xmax;
-  int n;
-  real dx, inv_dx;
-  real a;
-  real m;
-  real c;
+    real xmin, xmax;
+    int n;
+    real dx, inv_dx;
+    real a;
+    real m;
+    real c;
 
-  LR_data *y;
-  cubic_spline_coef *H;
-  cubic_spline_coef *vdW, *CEvd;
-  cubic_spline_coef *ele, *CEclmb;
+    LR_data *y;
+    cubic_spline_coef *H;
+    cubic_spline_coef *vdW, *CEvd;
+    cubic_spline_coef *ele, *CEclmb;
 } LR_lookup_table;
 
 
-typedef void (*interaction_function)(reax_system*, control_params*, 
-				     simulation_data*, static_storage*, 
-				     list**, output_controls*);
+typedef void (*interaction_function)(reax_system*, control_params*,
+                                     simulation_data*, static_storage*,
+                                     list**, output_controls*);
 extern interaction_function Interaction_Functions[NO_OF_INTERACTIONS];
 
-typedef void (*evolve_function)(reax_system*, control_params*, 
-				simulation_data*, static_storage*, 
-				list**, output_controls*);
+typedef void (*evolve_function)(reax_system*, control_params*,
+                                simulation_data*, static_storage*,
+                                list**, output_controls*);
 
 typedef real (*lookup_function)(real);
 extern lookup_table Exp, Sqrt, Cube_Root, Four_Third_Root, Cos, Sin, ACos;
@@ -1100,9 +1121,9 @@ extern lookup_table Exp, Sqrt, Cube_Root, Four_Third_Root, Cos, Sin, ACos;
 extern LR_lookup_table *LR;
 
 
-typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*, 
-					   control_params*, far_neighbor_data*,
-					   int*);
+typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*,
+        control_params*, far_neighbor_data*,
+        int*);
 
 
 // CUDA structures

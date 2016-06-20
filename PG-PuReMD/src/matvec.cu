@@ -52,7 +52,7 @@ CUDA_GLOBAL void k_matvec_csr(sparse_matrix H, real *vec, real *results, int num
 #else
 		vals[threadIdx.x] = 0;
 #endif
-		
+
 		if (row < num_rows) {
 			row_start = H.start[row];
 			row_end = H.end[row];
@@ -63,29 +63,29 @@ CUDA_GLOBAL void k_matvec_csr(sparse_matrix H, real *vec, real *results, int num
 				vals += H.entries[jj].val * vec [ H.entries[jj].j ];
 		}
 #else
-				vals[threadIdx.x] += H.entries[jj].val * vec [ H.entries[jj].j ];
-		}
-		__syncthreads ();
+		vals[threadIdx.x] += H.entries[jj].val * vec [ H.entries[jj].j ];
+	}
+	__syncthreads ();
 #endif
 
-		// parallel reduction in shared memory
-		//SIMD instructions with a WARP are synchronous -- so we do not need to synch here
+	// parallel reduction in shared memory
+	//SIMD instructions with a WARP are synchronous -- so we do not need to synch here
 #if defined(__SM_35__)
-        for (int x = MATVEC_KER_THREADS_PER_ROW >> 1; x >= 1; x/=2)
-                vals += shfl( vals, x );
+	for (int x = MATVEC_KER_THREADS_PER_ROW >> 1; x >= 1; x/=2)
+		vals += shfl( vals, x );
 
 	if (lane == 0 && row < num_rows)
 		results[row] = vals;
 #else
-		if (lane < 16) vals[threadIdx.x] += vals[threadIdx.x + 16]; __syncthreads();
-		if (lane < 8) vals[threadIdx.x] += vals[threadIdx.x + 8]; __syncthreads ();
-		if (lane < 4) vals[threadIdx.x] += vals[threadIdx.x + 4]; __syncthreads ();
-		if (lane < 2) vals[threadIdx.x] += vals[threadIdx.x + 2]; __syncthreads ();
-		if (lane < 1) vals[threadIdx.x] += vals[threadIdx.x + 1]; __syncthreads ();
+	if (lane < 16) vals[threadIdx.x] += vals[threadIdx.x + 16]; __syncthreads();
+	if (lane < 8) vals[threadIdx.x] += vals[threadIdx.x + 8]; __syncthreads ();
+	if (lane < 4) vals[threadIdx.x] += vals[threadIdx.x + 4]; __syncthreads ();
+	if (lane < 2) vals[threadIdx.x] += vals[threadIdx.x + 2]; __syncthreads ();
+	if (lane < 1) vals[threadIdx.x] += vals[threadIdx.x + 1]; __syncthreads ();
 
-		// first thread writes the result
-		if (lane == 0 && row < num_rows)
-			results[row] = vals[threadIdx.x];
+	// first thread writes the result
+	if (lane == 0 && row < num_rows)
+		results[row] = vals[threadIdx.x];
 #endif
-	}
+}
 }

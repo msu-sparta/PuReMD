@@ -5,7 +5,7 @@
 #include "reax_types.h"
 
 #ifdef __cplusplus
-extern "C"  {  
+extern "C"  {
 #endif
 
 void Cuda_Reset_Workspace (reax_system *, storage *);

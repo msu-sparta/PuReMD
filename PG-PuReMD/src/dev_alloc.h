@@ -18,7 +18,7 @@ int dev_alloc_control (control_params *);
 int dev_dealloc_grid_cell_atoms (reax_system *);
 int dev_alloc_grid_cell_atoms (reax_system *, int );
 int dev_realloc_system (reax_system *, int , int , char *);
-int dev_dealloc_workspace (reax_system *, control_params *, 
+int dev_dealloc_workspace (reax_system *, control_params *,
                            storage *, int , int , char *);
 int dev_dealloc_matrix (sparse_matrix *);
 

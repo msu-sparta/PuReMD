@@ -1,19 +1,19 @@
 /*----------------------------------------------------------------------
   PuReMD-GPU - Reax Force Field Simulator
-      
+
   Copyright (2014) Purdue University
   Sudhir Kylasa, skylasa@purdue.edu
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
   Ananth Y Grama, ayg@cs.purdue.edu
- 
+
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 2 of 
+  published by the Free Software Foundation; either version 2 of
   the License, or (at your option) any later version.
-               
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU General Public License for more details:
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
@@ -25,50 +25,53 @@
 
 DEVICE inline int cuda_strcmp (char *a, char *b, int len)
 {
-   char *src, *dst;
+    char *src, *dst;
 
-   src = a; 
-   dst = b; 
+    src = a;
+    dst = b;
 
-   for (int i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++)
+    {
 
-      if (*dst == '\0')
-         return 0; 
+        if (*dst == '\0')
+            return 0;
 
-      if (*src != *dst)  return 1; 
+        if (*src != *dst)  return 1;
 
-      src ++;
-      dst ++;
-   }  
+        src ++;
+        dst ++;
+    }
 
-   return 0; 
+    return 0;
 }
 
 DEVICE inline real atomicAdd(real* address, real val)
 {
     unsigned long long int* address_as_ull =
-                             (unsigned long long int*)address;
+        (unsigned long long int*)address;
     unsigned long long int old = *address_as_ull, assumed;
-    do {
-        	assumed = old;
-			old = atomicCAS(address_as_ull, assumed,
+    do
+    {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
                         __double_as_longlong(val + __longlong_as_double(assumed)));
-    } while (assumed != old);
+    }
+    while (assumed != old);
     return __longlong_as_double(old);
 }
 
-DEVICE inline void atomic_rvecAdd( rvec ret, rvec v ) 
+DEVICE inline void atomic_rvecAdd( rvec ret, rvec v )
 {
-  atomicAdd ( &ret[0], v[0] );
-  atomicAdd ( &ret[1], v[1] ); 
-  atomicAdd ( &ret[2], v[2] );
+    atomicAdd ( &ret[0], v[0] );
+    atomicAdd ( &ret[1], v[1] );
+    atomicAdd ( &ret[2], v[2] );
 }
 
-DEVICE inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v ) 
+DEVICE inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
-  atomicAdd ( &ret[0], c * v[0] );
-  atomicAdd ( &ret[1], c * v[1] );
-  atomicAdd ( &ret[2], c * v[2] );
+    atomicAdd ( &ret[0], c * v[0] );
+    atomicAdd ( &ret[1], c * v[1] );
+    atomicAdd ( &ret[2], c * v[2] );
 }
 
 #endif

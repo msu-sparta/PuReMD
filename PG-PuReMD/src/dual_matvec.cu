@@ -48,7 +48,7 @@ CUDA_GLOBAL void  k_dual_matvec_csr(sparse_matrix H, rvec2 *vec, rvec2 *results,
 
 	vals[0] = 0;
 	vals[1] = 0;
-		
+
 	if (row < num_rows) {
 		row_start = H.start[row];
 		row_end = H.end[row];
@@ -87,7 +87,7 @@ CUDA_GLOBAL void  k_dual_matvec_csr(sparse_matrix H, rvec2 *vec, rvec2 *results,
 	{
 		vals[threadIdx.x][0] = 0;
 		vals[threadIdx.x][1] = 0;
-		
+
 		if (row < num_rows) {
 			row_start = H.start[row];
 			row_end = H.end[row];

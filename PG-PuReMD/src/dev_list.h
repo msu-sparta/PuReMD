@@ -1,6 +1,6 @@
 /*----------------------------------------------------------------------
   PuReMD - Purdue ReaxFF Molecular Dynamics Program
-  
+
   Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
   Joseph Fogarty, jcfogart@mail.usf.edu
@@ -9,12 +9,12 @@
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 2 of 
+  published by the Free Software Foundation; either version 2 of
   the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU General Public License for more details:
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
@@ -46,27 +46,27 @@ CUDA_HOST_DEVICE void Dev_Set_End_Index(int,int,reax_list*);
 
 inline CUDA_HOST_DEVICE int Dev_Num_Entries( int i, reax_list *l )
 {
-  return l->end_index[i] - l->index[i];
+    return l->end_index[i] - l->index[i];
 }
 
 inline CUDA_HOST_DEVICE int Dev_Start_Index( int i, reax_list *l )
 {
-  return l->index[i];
+    return l->index[i];
 }
 
 inline CUDA_HOST_DEVICE int Dev_End_Index( int i, reax_list *l )
 {
-  return l->end_index[i];
+    return l->end_index[i];
 }
 
 inline CUDA_HOST_DEVICE void Dev_Set_Start_Index( int i, int val, reax_list *l )
 {
-  l->index[i] = val;
+    l->index[i] = val;
 }
 
 inline CUDA_HOST_DEVICE void Dev_Set_End_Index( int i, int val, reax_list *l )
 {
-  l->end_index[i] = val;
+    l->end_index[i] = val;
 }
 
 #endif

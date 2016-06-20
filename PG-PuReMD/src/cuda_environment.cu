@@ -14,9 +14,9 @@ extern "C" void Setup_Cuda_Environment (int rank, int nprocs, int gpus_per_node)
 
 	//hpcc changes
 	//if (gpus_per_node == 2) {
-		cudaSetDevice ( (rank % (deviceCount)) );
-		//cudaSetDevice( 1 );
-		fprintf( stderr, "p:%d is using GPU: %d \n", rank, (rank % deviceCount));
+	cudaSetDevice ( (rank % (deviceCount)) );
+	//cudaSetDevice( 1 );
+	fprintf( stderr, "p:%d is using GPU: %d \n", rank, (rank % deviceCount));
 	//} else {
 	//	cudaSetDevice ( 0 );
 	//}

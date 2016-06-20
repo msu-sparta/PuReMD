@@ -1,19 +1,19 @@
 /*----------------------------------------------------------------------
   PuReMD-GPU - Reax Force Field Simulator
-      
+
   Copyright (2014) Purdue University
   Sudhir Kylasa, skylasa@purdue.edu
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
   Ananth Y Grama, ayg@cs.purdue.edu
- 
+
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 2 of 
+  published by the Free Software Foundation; either version 2 of
   the License, or (at your option) any later version.
-               
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU General Public License for more details:
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
@@ -24,14 +24,14 @@
 #include "mytypes.h"
 
 /*
-PDB format : 
+PDB format :
 http://www.rcsb.org/pdb/file_formats/pdb/pdbguide2.2/guide2.2_frame.html
 
 #define PDB_ATOM_FORMAT   "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%4s%2s%2s\n"
 
 COLUMNS        DATA TYPE       FIELD         DEFINITION
 --------------------------------------------------------------------------------
-1 -  6        Record name     "ATOM  " 
+1 -  6        Record name     "ATOM  "
 7 - 11        Integer         serial        Atom serial number.
 13 - 16       Atom            name          Atom name.
 17            Character       altLoc        Alternate location indicator.
@@ -42,7 +42,7 @@ COLUMNS        DATA TYPE       FIELD         DEFINITION
 31 - 38       Real(8.3)       x             Orthogonal coord for X in Angstroms
 39 - 46       Real(8.3)       y             Orthogonal coord for Y in Angstroms
 47 - 54       Real(8.3)       z             Orthogonal coord for Z in Angstroms
-55 - 60       Real(6.2)       occupancy     Occupancy. 
+55 - 60       Real(6.2)       occupancy     Occupancy.
 61 - 66       Real(6.2)       tempFactor    Temperature factor.
 73 - 76       LString(4)      segID         Segment identifier, left-justified.
 77 - 78       LString(2)      element       Element symbol, right-justified.
@@ -81,9 +81,9 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 */
 
 /*
-COLUMNS       DATA TYPE       FIELD         DEFINITION 
----------------------------------------------------------- 
-1 - 6        Record name     "CRYST1"  
+COLUMNS       DATA TYPE       FIELD         DEFINITION
+----------------------------------------------------------
+1 - 6        Record name     "CRYST1"
 7 - 15       Real(9.3)       a             a (Angstroms)
 16 - 24      Real(9.3)       b             b (Angstroms)
 25 - 33      Real(9.3)       c             c (Angstroms)
@@ -106,12 +106,12 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 
 #define BGF_CRYSTX_FORMAT "%8s%11s%11s%11s%11s%11s%11s"
 
-char Read_PDB( char*, reax_system*, control_params*, 
-	       simulation_data*, static_storage* );
-char Read_BGF( char*, reax_system*, control_params*, 
-	       simulation_data*, static_storage* );
+char Read_PDB( char*, reax_system*, control_params*,
+               simulation_data*, static_storage* );
+char Read_BGF( char*, reax_system*, control_params*,
+               simulation_data*, static_storage* );
 
-char Write_PDB( reax_system*, control_params*, simulation_data*, 
-		static_storage*, list*, output_controls* );
+char Write_PDB( reax_system*, control_params*, simulation_data*,
+                static_storage*, list*, output_controls* );
 
 #endif
