@@ -24,12 +24,12 @@
 
 GLOBAL void compute_Inc_on_T3 (reax_atom *atoms, unsigned int N, simulation_box *box, real d1, real d2, real d3)
 {
-	int index = blockIdx.x * blockDim.x + threadIdx.x;
-	rvec dx;
-	dx[0] = d1;
-	dx[1] = d2;
-	dx[2] = d3;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    rvec dx;
+    dx[0] = d1;
+    dx[1] = d2;
+    dx[2] = d3;
 
-	if (index < N )
-		Inc_on_T3( atoms[index].x, dx, box );
+    if (index < N )
+        Inc_on_T3( atoms[index].x, dx, box );
 }

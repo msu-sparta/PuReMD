@@ -6,7 +6,7 @@
 
 void Cuda_Init_ScratchArea ()
 {
-	cuda_malloc ((void **)& scratch, SCRATCH_SIZE, 1, "Device:Scratch");
+    cuda_malloc ((void **)& scratch, SCRATCH_SIZE, 1, "Device:Scratch");
 
-	host_scratch = (void *)malloc (HOST_SCRATCH_SIZE );
+    host_scratch = (void *)malloc (HOST_SCRATCH_SIZE );
 }
