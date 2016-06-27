@@ -1,8 +1,8 @@
-
 #ifndef __CUDA_HELPERS__
 #define __CUDA_HELPERS__
 
 #include "reax_types.h"
+
 
 CUDA_DEVICE inline int cuda_strcmp (char *a, char *b, int len)
 {
@@ -26,6 +26,7 @@ CUDA_DEVICE inline int cuda_strcmp (char *a, char *b, int len)
     return 0;
 }
 
+
 CUDA_DEVICE inline real atomicAdd(real* address, real val)
 {
     unsigned long long int* address_as_ull =
@@ -38,8 +39,10 @@ CUDA_DEVICE inline real atomicAdd(real* address, real val)
                         __double_as_longlong(val + __longlong_as_double(assumed)));
     }
     while (assumed != old);
+
     return __longlong_as_double(old);
 }
+
 
 CUDA_DEVICE inline void atomic_rvecAdd( rvec ret, rvec v )
 {
@@ -47,6 +50,7 @@ CUDA_DEVICE inline void atomic_rvecAdd( rvec ret, rvec v )
     atomicAdd ( &ret[1], v[1] );
     atomicAdd ( &ret[2], v[2] );
 }
+
 
 CUDA_DEVICE inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
