@@ -57,6 +57,13 @@ if test "x$BUILD_OPENMP" = "xyes"; then
 	fi
 fi
 
+if test "x$BUILD_SUPERLU_MT" != "xno"
+then
+	AC_DEFINE([HAVE_SUPERLU_MT], [1], [Define to 1 if you have SuperLU_MT support enabled.])
+	AC_SUBST(AM_CPPFLAGS, "-I${BUILD_SUPERLU_MT}/include")
+	AC_SUBST(AM_LDFLAGS, "-L${BUILD_SUPERLU_MT}/lib")
+fi
+
 AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT

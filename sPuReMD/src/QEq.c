@@ -24,6 +24,9 @@
 #include "GMRES.h"
 #include "list.h"
 #include "print_utils.h"
+#if defined(HAVE_SUPERLU_MT)
+#include "slu_mt_ddefs.h"
+#endif
 
 int compare_matrix_entry(const void *v1, const void *v2)
 {
@@ -107,6 +110,229 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
 
     return fillin + A->n;
 }
+
+
+#if defined(HAVE_SUPERLU_MT)
+static real SuperLU_Factorize( const sparse_matrix * const A,
+    sparse_matrix * const L, sparse_matrix * const U )
+{
+    unsigned int i, pj, count, *Ltop, *Utop, r;
+    SuperMatrix A_S, AC_S, L_S, U_S;
+    SCPformat *L_S_store;
+    NCPformat *U_S_store;
+    superlumt_options_t superlumt_options;
+//    pxgstrf_shared_t pxgstrf_shared;
+//    pdgstrf_threadarg_t *pdgstrf_threadarg;
+    int_t nprocs;
+    fact_t fact;
+    trans_t trans;
+    yes_no_t refact, usepr;
+    real u, drop_tol;
+    real *a;
+    int_t *asub, *xa;
+    int_t *perm_c; /* column permutation vector */
+    int_t *perm_r; /* row permutations from partial pivoting */
+    void *work;
+    int_t info, lwork; 
+    int_t permc_spec, panel_size, relax;
+    Gstat_t Gstat;
+    flops_t flopcnt;
+
+    /* Default parameters to control factorization. */
+#ifdef _OPENMP
+    //TODO: set as global parameter and use
+    #pragma omp parallel \
+        default(none) shared(nprocs)
+    {
+        #pragma omp master
+        {
+            /* SuperLU_MT spawns threads internally, so set and pass parameter */
+            nprocs = omp_get_num_threads();
+        }
+    }
+#else
+    nprocs = 1;
+#endif
+//    fact = EQUILIBRATE; /* equilibrate A (i.e., scale rows & cols to have unit norm), then factorize */
+    fact = DOFACT; /* factor from scratch */
+    trans = NOTRANS;
+    refact = NO; /* first time factorization */
+    //TODO: add to control file and use the value there to set these
+    panel_size = sp_ienv(1); /* # consec. cols treated as unit task */
+    relax = sp_ienv(2); /* # cols grouped as relaxed supernode */
+    u = 1.0;
+    usepr = NO;
+    drop_tol = 0.0;
+    work = NULL;
+    lwork = 0;
+
+    if (!(perm_r = intMalloc(A->n)))
+    {
+        SUPERLU_ABORT("Malloc fails for perm_r[].");
+    }
+    if (!(perm_c = intMalloc(A->n)))
+    {
+        SUPERLU_ABORT("Malloc fails for perm_c[].");
+    }
+    if ( !(superlumt_options.etree = intMalloc(A->n)) )
+    {
+	SUPERLU_ABORT("Malloc fails for etree[].");
+    }
+    if ( !(superlumt_options.colcnt_h = intMalloc(A->n)) )
+    {
+	SUPERLU_ABORT("Malloc fails for colcnt_h[].");
+    }
+    if ( !(superlumt_options.part_super_h = intMalloc(A->n)) )
+    {
+	SUPERLU_ABORT("Malloc fails for colcnt_h[].");
+    }
+    if ( (a = (real*) malloc( A->start[A->n] * sizeof(real))) == NULL
+       || (asub = (int_t*) malloc( A->start[A->n] * sizeof(int_t))) == NULL 
+       || (xa = (int_t*) malloc( (A->n + 1) * sizeof(int_t))) == NULL )
+    {
+
+    }
+
+    /* Set up the sparse matrix data structure for A. */
+    count = 0;
+    for( i = 0; i < A->n; ++i )
+    {
+        for( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+            a[count] = A->entries[pj].val;
+            asub[count] = A->entries[pj].j;
+            ++count;
+        }
+    }
+    memcpy( xa, A->start, sizeof(int) * (A->n + 1) );
+    dCreate_CompRow_Matrix(&A_S, A->n, A->n, A->start[A->n], a, asub, xa,
+        SLU_NR, /* row-wise, no supernode */
+        SLU_D, /* double-precision */
+        SLU_SYL /* symmetric, store lower half */
+    );
+
+
+    /********************************
+     * THE FIRST TIME FACTORIZATION *
+     ********************************/
+
+    /* ------------------------------------------------------------
+       Allocate storage and initialize statistics variables. 
+       ------------------------------------------------------------*/
+    StatAlloc(A->n, nprocs, panel_size, relax, &Gstat);
+    StatInit(A->n, nprocs, &Gstat);
+
+    /* ------------------------------------------------------------
+       Get column permutation vector perm_c[], according to permc_spec:
+       permc_spec = 0: natural ordering 
+       permc_spec = 1: minimum degree ordering on structure of A'*A
+       permc_spec = 2: minimum degree ordering on structure of A'+A
+       permc_spec = 3: approximate minimum degree for unsymmetric matrices
+       ------------------------------------------------------------*/ 	
+    permc_spec = 0;
+    get_perm_c(permc_spec, &A_S, perm_c);
+
+    /* ------------------------------------------------------------
+       Initialize the option structure superlumt_options using the
+       user-input parameters;
+       Apply perm_c to the columns of original A to form AC.
+       ------------------------------------------------------------*/
+    pdgstrf_init(nprocs, fact, trans, refact, panel_size, relax,
+        u, usepr, drop_tol, perm_c, perm_r,
+        work, lwork, &A_S, &AC_S, &superlumt_options, &Gstat);
+
+    /* ------------------------------------------------------------
+       Compute the LU factorization of A.
+       The following routine will create nprocs threads.
+       ------------------------------------------------------------*/
+    pdgstrf(&superlumt_options, &AC_S, perm_r, &L_S, &U_S, &Gstat, &info);
+    
+    flopcnt = 0;
+    for (i = 0; i < nprocs; ++i)
+    {
+        flopcnt += Gstat.procstat[i].fcops;
+    }
+    Gstat.ops[FACT] = flopcnt;
+
+    /* Free extra arrays in AC_S. */
+    Destroy_CompRow_Permuted(&AC_S);
+
+    /* ------------------------------------------------------------
+      Deallocate storage after factorization.
+      ------------------------------------------------------------*/
+    pxgstrf_finalize(&superlumt_options, &AC_S);
+
+    printf("\n** Result of sparse LU **\n");
+    L_S_store = (SCPformat *) L_S.Store;
+    U_S_store = (NCPformat *) U_S.Store;
+    printf("No of nonzeros in factor L = " IFMT "\n", L_S_store->nnz);
+    printf("No of nonzeros in factor U = " IFMT "\n", U_S_store->nnz);
+    printf("No of nonzeros in L+U = " IFMT "\n", L_S_store->nnz + U_S_store->nnz - A->n);
+    fflush(stdout);
+
+    /* convert L and R from SuperMatrix to CSR */
+    memset( Ltop, 0, (A->n + 1) * sizeof(int) );
+    memset( Utop, 0, (A->n + 1) * sizeof(int) );
+    for( i = 0; i < A->n; ++i )
+    {
+        //TODO: correct for SCPformat for L?
+        for( pj = L_S_store->rowind_colbeg[i]; pj < L_S_store->rowind_colend[i]; ++pj )
+        {
+            ++Ltop[L_S_store->rowind[pj] + 1];
+        }
+        for( pj = U_S_store->colbeg[i]; pj < U_S_store->colend[i]; ++pj )
+        {
+            ++Utop[U_S_store->rowind[pj] + 1];
+        }
+    }
+    for( i = 1; i <= A->n; ++i )
+    {
+        Ltop[i] = L->start[i] = Ltop[i] + Ltop[i - 1];
+        Utop[i] = U->start[i] = Ltop[i] + Utop[i - 1];
+    }
+    for( i = 0; i < A->n; ++i )
+    {
+        //TODO: correct for SCPformat for L?
+        for( pj = L_S_store->nzval_colbeg[i]; pj < L_S_store->nzval_colend[i]; ++pj )
+        {
+            r = L_S_store->rowind[pj];
+            L->entries[Ltop[r]].j = i;
+            L->entries[Ltop[r]].val = L_S_store->nzval[pj];
+            ++Ltop[r];
+        }
+        for( pj = U_S_store->colbeg[i]; pj < U_S_store->colend[i]; ++pj )
+        {
+            r = U_S_store->rowind[pj];
+            U->entries[Utop[r]].j = i;
+            U->entries[Utop[r]].val = U_S_store->nzval[pj];
+            ++Utop[r];
+        }
+    }
+
+    free( xa );
+    free( asub );
+    free( a );
+    SUPERLU_FREE (perm_r);
+    SUPERLU_FREE (perm_c);
+    SUPERLU_FREE (superlumt_options.etree);
+    SUPERLU_FREE (superlumt_options.colcnt_h);
+    SUPERLU_FREE (superlumt_options.part_super_h);
+    Destroy_CompRow_Matrix(&A_S);
+    if ( lwork == 0 )
+    {
+        Destroy_SuperNode_SCP(&L_S);
+        Destroy_CompCol_NCP(&U_S);
+    }
+    else if ( lwork > 0 )
+    {
+        SUPERLU_FREE(work);
+    }
+    StatFree(&Gstat);
+
+    //TODO: return iters
+    return 0.;
+}
+#endif
 
 
 /* Incomplete Cholesky factorization with thresholding */
@@ -458,12 +684,13 @@ void Init_MatVec( reax_system *system, control_params *control,
                     if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
                             Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
                     {
-                        fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+                        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                         exit(INSUFFICIENT_SPACE);
                     }
     		    break;
 		case ICHOL_PAR_PC:
-                    /* ICHOL_PAR: factors have sparsity pattern as H */
+                case ILU_SUPERLU_MT_PC:
+                    /* factors have sparsity pattern as H */
                     if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
                             Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
                     {
@@ -489,6 +716,9 @@ void Init_MatVec( reax_system *system, control_params *control,
 		break;
 	    case ICHOL_PAR_PC:
                 data->timing.pre_comp += ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+		break;
+	    case ILU_SUPERLU_MT_PC:
+                data->timing.pre_comp += SuperLU_Factorize( workspace->H, workspace->L, workspace->U );
 		break;
 	    default:
 		break;

@@ -22,6 +22,11 @@
 #ifndef __MYTYPES_H_
 #define __MYTYPES_H_
 
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+#define __CONFIG_H_
+#include "config.h"
+#endif
+
 #include "math.h"
 #include "random.h"
 #include "stdio.h"
@@ -157,7 +162,7 @@ enum solver {
 	PGMRES_J_S = 3, CG_S = 4, PCG_S = 5, SDM_S = 6,
 };
 enum pre_comp {
-	DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2,
+	DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2, ILU_SUPERLU_MT_PC = 3,
 };
 
 

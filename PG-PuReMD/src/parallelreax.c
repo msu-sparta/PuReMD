@@ -290,7 +290,6 @@ int main( int argc, char* argv[] )
 #endif
     //END OF FIRST STEP
 
-    fprintf(stderr, "===>HERE\n");
     // compute f_0
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
     Sync_Atoms ( system );
