@@ -244,11 +244,11 @@
 
 /******************* ENUMERATIONS *************************/
 enum geo_formats { CUSTOM = 0, PDB = 1, ASCII_RESTART = 2, BINARY_RESTART = 3, GF_N = 4 };
-    
+
 enum restart_formats { WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2 };
-    
+
 enum ensembles { NVE = 0, bNVT = 1, nhNVT = 2, sNPT = 3, iNPT = 4, NPT = 5, ens_N = 6 };
-    
+
 enum lists { BONDS = 0, OLD_BONDS = 1, THREE_BODIES = 2,
              HBONDS = 3, FAR_NBRS = 4, DBOS = 5, DDELTAS = 6, LIST_N = 7
            };

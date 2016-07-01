@@ -57,8 +57,10 @@ CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms,
     reax_atom *atom_i, *atom_j;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= N) return;
-
+    if (i >= N)
+    {
+        return;
+    }
 
     //Commented in CUDA_KERNEL
     //for( i = 0; i < N; ++i ) { 
@@ -68,25 +70,29 @@ CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms,
     end_i   = Dev_End_Index(i, &far_nbrs);
     sbp_i = &(sbp[type_i]);
 
-    if( i < n ) { 
+    if( i < n )
+    { 
         local = 1;
         cutoff = control->nonb_cut;
         //++(*Htop);
         atomicAdd (Htop, 1);
         ihb = sbp_i->p_hbond;
     }   
-    else {
+    else
+    {
         local = 0;
         cutoff = control->bond_cut;
         ihb = -1; 
     } 
 
-    for( pj = start_i; pj < end_i; ++pj ) { 
+    for( pj = start_i; pj < end_i; ++pj )
+    { 
         nbr_pj = &( far_nbrs.select.far_nbr_list[pj] );
         j = nbr_pj->nbr;
         atom_j = &(my_atoms[j]);
 
-        if (nbr_pj->d <= control->nonb_cut) {
+        if (nbr_pj->d <= control->nonb_cut)
+        {
             type_j = my_atoms[j].type;
             sbp_j = &(sbp[type_j]);
             ihb = sbp_i->p_hbond;
@@ -98,40 +104,56 @@ CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms,
                     && (j < n)
                     && (i > n)
                )
+            {
                 atomicAdd (&hb_top [i], 1);
+            }
 
-            if (i >= n) ihb = -1;
+            if (i >= n)
+            {
+                ihb = -1;
+            }
         }
 
 
 
-        if(nbr_pj->d <= cutoff) {
+        if(nbr_pj->d <= cutoff)
+        {
             type_j = my_atoms[j].type;
             r_ij = nbr_pj->d;
             sbp_j = &(sbp[type_j]);
             twbp = &(tbp[index_tbp (type_i,type_j,num_atom_types)]);
 
-            if( local ) {
+            if( local )
+            {
                 //if( j < n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
                 if( j < n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
+                {
                     //++(*Htop);
                     atomicAdd (Htop, 1);
+                }
                 else if( j < n || atom_i->orig_id > atom_j->orig_id ) //tryQEq ||1
+                {
                     //++(*Htop);
                     atomicAdd (Htop, 1);
+                }
 
                 if( control->hbond_cut > 0.1 && (ihb==1 || ihb==2) &&
                         nbr_pj->d <= control->hbond_cut 
-                  ) {
+                  )
+                {
                     jhb = sbp_j->p_hbond;
                     if( (ihb == 1) && (jhb == 2))
+                    {
                         //++hb_top[i];
                         atomicAdd (&hb_top[i], 1);
+                    }
                     //else if( j < n && ihb == 2 && jhb == 1 )
                     //else if( ihb == 2 && jhb == 1 && j < n)
                     else if( ihb == 2 && jhb == 1 && j < n)
+                    {
                         //++hb_top[j];
                         atomicAdd (&hb_top[i], 1);
+                    }
                 }
             }
 
@@ -176,8 +198,13 @@ CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms,
 CUDA_GLOBAL void ker_init_system_atoms(reax_atom *my_atoms, int N, 
         int *hb_top, int *bond_top)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= N) return;
+    int i;
+    
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N)
+    {
+        return;
+    }
 
     my_atoms[i].num_bonds = bond_top [i];
     my_atoms[i].num_hbonds = hb_top [i];
@@ -189,69 +216,83 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
         int *Htop, int *hb_top, 
         int *bond_top, int *num_3body)
 {
+    int i;
     int blocks = 0;
-    int *l_Htop, *l_hb_top, *l_bond_top, *l_num_3body;
-    int *tmp = (int *)scratch;
-
-    *Htop = 0;
-    //memset( hb_top, 0, sizeof(int) * local_cap);
-    memset( hb_top, 0, sizeof(int) * total_cap);
-    memset( bond_top, 0, sizeof(int) * total_cap );
-    *num_3body = 0;
-
-    //cuda_memset (tmp, 0, 1 + 1 + sizeof (int) * (local_cap+ total_cap), "Cuda_Estimate_Storages");
-    cuda_memset (tmp, 0, sizeof (int) * (1 + 1 + total_cap+ total_cap), "Cuda_Estimate_Storages");
-
-    l_Htop = tmp; 
-    l_num_3body = l_Htop + 1;
-    l_hb_top = l_num_3body + 1;
-    //l_bond_top = l_hb_top + local_cap;
-    l_bond_top = l_hb_top + total_cap;
-
-    blocks = system->N / ST_BLOCK_SIZE + 
-        ((system->N % ST_BLOCK_SIZE == 0) ? 0 : 1);
-
-    ker_estimate_storages <<< blocks, ST_BLOCK_SIZE>>>
-        (system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
-         (control_params *)control->d_control_params, *(*dev_lists + FAR_NBRS), system->reax_param.num_atom_types,
-         system->n, system->N, system->Hcap, system->total_cap, 
-         l_Htop, l_num_3body, l_bond_top, l_hb_top );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
-
-    copy_host_device( Htop, l_Htop, sizeof (int), cudaMemcpyDeviceToHost, "Htop");
-    copy_host_device( num_3body, l_num_3body, sizeof (int), cudaMemcpyDeviceToHost, "num_3body");
-    //copy_host_device( hb_top, l_hb_top, sizeof (int) * local_cap, cudaMemcpyDeviceToHost, "hb_top");
-    copy_host_device( hb_top, l_hb_top, sizeof (int) * total_cap, cudaMemcpyDeviceToHost, "hb_top");
-    copy_host_device( bond_top, l_bond_top, sizeof (int) * total_cap, cudaMemcpyDeviceToHost, "bond_top");
-
-
+    int *d_Htop, *d_hb_top, *d_bond_top, *d_num_3body;
     int bond_count = 0;
     int hbond_count = 0;
     int max_bonds = 0, min_bonds = 999999;
     int max_hbonds = 0, min_hbonds = 999999;
 
-    for (int i = 0; i < system->N; i++) {
-        if (bond_top[i] >= max_bonds) max_bonds = bond_top[i];
-        if (bond_top[i] <= min_bonds) min_bonds = bond_top[i];
+    *Htop = 0;
+    //memset( hb_top, 0, sizeof(int) * local_cap);
+    memset( hb_top, 0, sizeof(int) * total_cap );
+    memset( bond_top, 0, sizeof(int) * total_cap );
+    *num_3body = 0;
+
+    cuda_memset ( d_Htop, 0, sizeof (int), "Cuda_Estimate_Storages" );
+    cuda_memset ( d_hb_top, 0, sizeof (int) * total_cap, "Cuda_Estimate_Storages" );
+//    cuda_memset ( d_bond_top, 0, sizeof (int) * local_cap, "Cuda_Estimate_Storages" );
+    cuda_memset ( d_bond_top, 0, sizeof (int) * total_cap, "Cuda_Estimate_Storages" );
+    cuda_memset ( d_num_3body, 0, sizeof (int), "Cuda_Estimate_Storages" );
+
+    blocks = (int) CEIL((real)system->N / ST_BLOCK_SIZE);
+
+    ker_estimate_storages <<< blocks, ST_BLOCK_SIZE>>>
+        (system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
+         (control_params *)control->d_control_params, *(*dev_lists + FAR_NBRS), system->reax_param.num_atom_types,
+         system->n, system->N, system->Hcap, system->total_cap, 
+         d_Htop, d_num_3body, d_bond_top, d_hb_top );
+    cudaThreadSynchronize ();
+    cudaCheckError ();
+
+    copy_host_device( Htop, d_Htop, sizeof (int), cudaMemcpyDeviceToHost, "Htop");
+    copy_host_device( num_3body, d_num_3body, sizeof (int), cudaMemcpyDeviceToHost, "num_3body");
+    //copy_host_device( hb_top, d_hb_top, sizeof (int) * local_cap, cudaMemcpyDeviceToHost, "hb_top");
+    copy_host_device( hb_top, d_hb_top, sizeof (int) * total_cap, cudaMemcpyDeviceToHost, "hb_top");
+    copy_host_device( bond_top, d_bond_top, sizeof (int) * total_cap, cudaMemcpyDeviceToHost, "bond_top");
+
+    for (i = 0; i < system->N; i++)
+    {
+        if (bond_top[i] >= max_bonds)
+        {
+            max_bonds = bond_top[i];
+        }
+        if (bond_top[i] <= min_bonds)
+        {
+            min_bonds = bond_top[i];
+        }
+
         bond_count += bond_top[i];
     }
     system->max_bonds = max_bonds * SAFER_ZONE;
+
     //for (int i = 0; i < system->n; i++)
-    for (int i = 0; i < system->N; i++){
-        if (hb_top[i] >= max_hbonds) max_hbonds = hb_top[i];
-        if (hb_top[i] <= min_hbonds) min_hbonds = hb_top[i];
+    for (i = 0; i < system->N; i++)
+    {
+        if (hb_top[i] >= max_hbonds)
+        {
+            max_hbonds = hb_top[i];
+        }
+        if (hb_top[i] <= min_hbonds)
+        {
+            min_hbonds = hb_top[i];
+        }
+
         hbond_count += hb_top [i];
     }
     system->max_hbonds = max_hbonds * SAFER_ZONE;
-    //fprintf (stderr, " TOTAL DEVICE BOND COUNT: %d \n", bond_count);
-    //fprintf (stderr, " TOTAL DEVICE HBOND COUNT: %d \n", hbond_count);
-    //fprintf (stderr, " TOTAL DEVICE SPARSE COUNT: %d \n", *Htop);
+
+//#if defined(DEBUG)
+    fprintf (stderr, " TOTAL DEVICE BOND COUNT: %d \n", bond_count);
+    fprintf (stderr, " TOTAL DEVICE HBOND COUNT: %d \n", hbond_count);
+    fprintf (stderr, " TOTAL DEVICE SPARSE COUNT: %d \n", *Htop);
     fprintf (stderr, "p:%d --> Bonds(%d, %d) HBonds (%d, %d) *******\n", 
             system->my_rank, min_bonds, max_bonds, min_hbonds, max_hbonds);
+//#endif
 
     ker_init_system_atoms <<<blocks, ST_BLOCK_SIZE>>>
-        (system->d_my_atoms, system->N, l_hb_top, l_bond_top );
+        (system->d_my_atoms, system->N, d_hb_top, d_bond_top );
     cudaThreadSynchronize ();
     cudaCheckError ();
 }
@@ -964,7 +1005,7 @@ int Cuda_Validate_Lists (reax_system *system, storage *workspace, reax_list **li
                 return FAILURE;
             }
             if (end_index[i] - index[i] >= max_bonds)
-                max_bonds = index[i] - index[i];
+                max_bonds = end_index[i] - index[i];
         }
         realloc->num_bonds = max_bonds;
 

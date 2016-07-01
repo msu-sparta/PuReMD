@@ -15,6 +15,8 @@ if BUILD_MPI_GPU
 SUBDIRS += PG-PuReMD
 endif
 
-EXTRA_DIST = doc/README.txt doc/manual.pdf
+if BUILD_DOC
+SUBDIRS += doc
+endif
 
 dist-hook: rm -rf `find $(distdir) -name .git`

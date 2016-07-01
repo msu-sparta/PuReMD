@@ -14,57 +14,65 @@ AC_CONFIG_MACRO_DIR([m4])
 # Enable silent build rules by default.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERBOSITY],[1])])
 
+AC_DEFUN([AC_PROG_PDFLATEX],
+	 [AC_ARG_VAR([PDFLATEX], [LaTeX PDF generation program])dnl
+	 AC_CHECK_PROGS([PDFLATEX], [pdflatex])
+	 m4_ifval([$1],,
+	 	  [if test -z "$PDFLATEX"; then
+		   AC_MSG_WARN([pdflatex not found. Unable to build documentation. Continuing...])
+		   fi])])
+
 AC_ARG_ENABLE([serial],
 	      [AS_HELP_STRING([--enable-serial],
 			      [enable serial support @<:@default: no@:>@])],
-	      [package_serial_enabled=${enableval}], [package_serial_enabled=no])
+	      [pack_serial_enabled=${enableval}], [pack_serial_enabled=no])
 AC_ARG_ENABLE([openmp],
 	      [AS_HELP_STRING([--enable-openmp],
 			      [enable OpenMP support @<:@default: yes@:>@])],
-	      [package_openmp_enabled=${enableval}], [package_openmp_enabled=yes])
+	      [pack_openmp_enabled=${enableval}], [pack_openmp_enabled=yes])
 AC_ARG_ENABLE([mpi],
 	      [AS_HELP_STRING([--enable-mpi],
 			      [enable MPI support @<:@default: no@:>@])],
-	      [package_mpi_enabled=${enableval}], [package_mpi_enabled=no])
+	      [pack_mpi_enabled=${enableval}], [pack_mpi_enabled=no])
 AC_ARG_ENABLE([gpu],
 	      [AS_HELP_STRING([--enable-gpu],
 			      [enable CUDA (single GPU) support @<:@default: no@:>@])],
-	      [package_gpu_enabled=${enableval}], [package_gpu_enabled=no])
+	      [pack_gpu_enabled=${enableval}], [pack_gpu_enabled=no])
 AC_ARG_ENABLE([mpi-not-gpu],
 	      [AS_HELP_STRING([--enable-mpi-not-gpu],
 			      [enable MPI but not CUDA support @<:@default: no@:>@])],
-	      [package_mpi_not_gpu_enabled=${enableval}], [package_mpi_not_gpu_enabled=no])
+	      [pack_mpi_not_gpu_enabled=${enableval}], [pack_mpi_not_gpu_enabled=no])
 AC_ARG_ENABLE([mpi-gpu],
 	      [AS_HELP_STRING([--enable-mpi-gpu],
 			      [enable MPI+CUDA (multi GPU) support @<:@default: no@:>@])],
-	      [package_mpi_gpu_enabled=${enableval}], [package_mpi_gpu_enabled=no])
+	      [pack_mpi_gpu_enabled=${enableval}], [pack_mpi_gpu_enabled=no])
 
-if test "x${package_serial_enabled}" = "xyes" || test "x${package_openmp_enabled}" = "xyes"; then
+if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([sPuReMD])
-	if test "x${package_serial_enabled}" = "xyes" || test "x${package_openmp_enabled}" != "xyes"; then
+	if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" != "xyes"; then
 		export BUILD_OPENMP="no"
 	else
 		export BUILD_OPENMP="yes"
 	fi
 fi
-AM_CONDITIONAL([BUILD_S_OMP], [test "x${package_serial_enabled}" = "xyes" || test "x${package_openmp_enabled}" = "xyes"])
-if test "x${package_mpi_enabled}" = "xyes"; then
+AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"])
+if test "x${pack_mpi_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PuReMD])
 fi
-AM_CONDITIONAL([BUILD_MPI], [test "x${package_mpi_enabled}" = "xyes"])
-if test "x${package_gpu_enabled}" = "xyes"; then
+AM_CONDITIONAL([BUILD_MPI], [test "x${pack_mpi_enabled}" = "xyes"])
+if test "x${pack_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PuReMD-GPU])
 fi
-AM_CONDITIONAL([BUILD_GPU], [test "x${package_gpu_enabled}" = "xyes"])
-if test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" = "xyes"; then
+AM_CONDITIONAL([BUILD_GPU], [test "x${pack_gpu_enabled}" = "xyes"])
+if test "x${pack_mpi_not_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PG-PuReMD])
-	if test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" != "xyes"; then
+	if test "x${pack_mpi_not_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" != "xyes"; then
 		export BUILD_GPU="no"
 	else
 		export BUILD_GPU="yes"
 	fi
 fi
-AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${package_mpi_not_gpu_enabled}" = "xyes" || test "x${package_mpi_gpu_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${pack_mpi_not_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"])
 
 # Provides debug compilation mode.
 AC_ARG_ENABLE([debug],
@@ -137,6 +145,14 @@ then
 	export BUILD_SUPERLU_MT="${package_superlu_mt}"
 fi
 
+AC_PROG_PDFLATEX
+AM_CONDITIONAL([BUILD_DOC], [test "x${PDFLATEX}" != "x"])
+
 AC_CONFIG_FILES([Makefile])
+
+if test "x${PDFLATEX}" != "x"
+then
+	AC_CONFIG_FILES([doc/Makefile])
+fi
 
 AC_OUTPUT
