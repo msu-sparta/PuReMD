@@ -31,7 +31,7 @@ AC_SEARCH_LIBS([gzopen], [z])
 AC_SEARCH_LIBS([gzeof], [z])
 AC_SEARCH_LIBS([gzgets], [z])
 AC_SEARCH_LIBS([gzseek], [z])
-AC_SEARCH_LIBS([gzclose, [z]])
+AC_SEARCH_LIBS([gzclose], [z])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -59,9 +59,43 @@ fi
 
 if test "x$BUILD_SUPERLU_MT" != "xno"
 then
+	CPPFLAGS="${CPPFLAGS} -I${BUILD_SUPERLU_MT}/include"
+	LDFLAGS="${LDFLAGS} -L${BUILD_SUPERLU_MT}/lib"
+	#TODO: implement better BLAS detection
+	LIBS="${LIBS} -lblas"
+#	BLAS_FOUND_LIBS="yes"
+#	AC_SEARCH_LIBS([dtrsv_], [blas blas_OPENMP],
+#		        [], [BLAS_FOUND_LIBS="no"], [])
+#	AS_IF([test "x${BLAS_FOUND_LIBS}" != "xyes"],
+#	      [AC_MSG_ERROR([Unable to find BLAS library.])])
+	AC_CHECK_HEADERS([slu_mt_ddefs.h], [SUPERLU_MT_FOUND_HEADERS="yes"])
+	AS_IF([test "x${SUPERLU_MT_FOUND_HEADERS}" != "xyes"],
+	      [AC_MSG_ERROR([Unable to find SuperLU MT headers.])])
+	SUPERLU_MT_FOUND_LIBS="yes"
+	#TODO: fix issue where multiple -l flags added, one for each call below
+	AC_SEARCH_LIBS([intMalloc], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
+	AC_SEARCH_LIBS([get_perm_c], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
+	AC_SEARCH_LIBS([pdgstrf_init], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp -lblas -lblas_OPENMP])
+	AC_SEARCH_LIBS([pdgstrf], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp -lblas -lblas_OPENMP])
+	AC_SEARCH_LIBS([pxgstrf_finalize], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp -lblas -lblas_OPENMP])
+	AC_SEARCH_LIBS([StatAlloc], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
+	AC_SEARCH_LIBS([StatInit], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
+	AC_SEARCH_LIBS([StatFree], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
+	AC_SEARCH_LIBS([Destroy_SuperNode_SCP], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
+	AC_SEARCH_LIBS([Destroy_CompCol_NCP], [superlu_mt superlu_mt_OPENMP],
+		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
+	AS_IF([test "x${SUPERLU_MT_FOUND_LIBS}" != "xyes"],
+	      [AC_MSG_ERROR([Unable to find SuperLU MT library.])])
 	AC_DEFINE([HAVE_SUPERLU_MT], [1], [Define to 1 if you have SuperLU_MT support enabled.])
-	AC_SUBST(AM_CPPFLAGS, "-I${BUILD_SUPERLU_MT}/include")
-	AC_SUBST(AM_LDFLAGS, "-L${BUILD_SUPERLU_MT}/lib")
 fi
 
 AC_CONFIG_FILES([Makefile])

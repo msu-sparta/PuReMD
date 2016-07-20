@@ -22,15 +22,7 @@
 #ifndef __GMRES_H_
 #define __GMRES_H_
 
-#define SIGN(x) (x < 0.0 ? -1 : 1);
-
 #include "mytypes.h"
-
-typedef enum
-{
-    LOWER = 0,
-    UPPER = 1,
-} TRIANGULARITY;
 
 int GMRES( static_storage*, sparse_matrix*,
            real*, real, real*, FILE*, real*, real* );
@@ -50,9 +42,9 @@ int PCG( static_storage*, sparse_matrix*, real*, real,
 int CG( static_storage*, sparse_matrix*,
         real*, real, real*, FILE* );
 
-int uyduruk_GMRES( static_storage*, sparse_matrix*,
-                   real*, real, real*, int, FILE* );
+int SDM( static_storage*, sparse_matrix*,
+         real*, real, real*, FILE* );
 
-real condest( sparse_matrix*, sparse_matrix* );
+real condest( const sparse_matrix * const, const sparse_matrix * const );
 
 #endif

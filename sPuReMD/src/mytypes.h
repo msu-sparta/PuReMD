@@ -443,7 +443,6 @@ typedef struct
     real thb_cut;
     real hb_cut;
     real Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
-    real q_err;
     int  max_far_nbrs;
 
     real T_init, T_final, T;
@@ -467,12 +466,13 @@ typedef struct
     int freq_diffusion_coef;
     int restrict_type;
 
-    unsigned int solver;
-    unsigned int pre_comp;
-    int refactor;
-    real droptol;
-    unsigned int jacobi_iters;
-
+    unsigned int qeq_solver_type;
+    real qeq_solver_q_err;
+    unsigned int pre_comp_type;
+    unsigned int pre_comp_refactor;
+    real pre_comp_droptol;
+    unsigned int pre_comp_sweeps;
+    unsigned int pre_app_jacobi_iters;
 
     int molec_anal;
     int freq_molec_anal;

@@ -28,14 +28,14 @@
 #include "slu_mt_ddefs.h"
 #endif
 
-int compare_matrix_entry(const void *v1, const void *v2)
+static int compare_matrix_entry(const void *v1, const void *v2)
 {
     /* larger element has larger column index */
     return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
 }
 
 
-void Sort_Matrix_Rows( sparse_matrix *A )
+static void Sort_Matrix_Rows( sparse_matrix * const A )
 {
     int i, si, ei;
 
@@ -51,7 +51,71 @@ void Sort_Matrix_Rows( sparse_matrix *A )
 }
 
 
-void Calculate_Droptol( sparse_matrix *A, real *droptol, real dtol )
+/* transpose A and copy into A^T */
+static void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
+{
+    unsigned int i, j, pj, *A_t_top;
+
+    if ( (A_t_top = (unsigned int*) calloc( A->n + 1, sizeof(unsigned int))) == NULL )
+    {
+	fprintf( stderr, "Not enough space for matrix tranpose. Terminating...\n" );
+	exit( INSUFFICIENT_SPACE );
+    }
+
+    memset( A_t->start, 0, (A->n + 1) * sizeof(unsigned int) );
+
+    /* count nonzeros in each column of A^T */
+    for ( i = 0; i < A->n; ++i )
+    {
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+                ++A_t->start[A->entries[pj].j + 1];
+        }
+    }
+
+    /* setup the row pointers for A^T */
+    for ( i = 1; i <= A->n; ++i )
+    {
+        A_t_top[i] = A_t->start[i] = A_t->start[i] + A_t->start[i - 1];
+    }
+
+    /* fill in A^T */
+    for ( i = 0; i < A->n; ++i )
+    {
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+            j = A->entries[pj].j;
+            A_t->entries[A_t_top[j]].j = i;
+            A_t->entries[A_t_top[j]].val = A->entries[pj].val;
+            ++A_t_top[j];
+        }
+    }
+
+    free( A_t_top );
+}
+
+
+/* transpose A in-place */
+static void Transpose_I( sparse_matrix * const A )
+{
+    sparse_matrix * A_t;
+
+    if ( Allocate_Matrix( &A_t, A->n, A->m ) == 0 )
+    {
+        fprintf( stderr, "not enough memory for transposing matrices. terminating.\n" );
+        exit(INSUFFICIENT_SPACE);
+    }
+
+    Transpose( A, A_t );
+
+    memcpy( A->start, A_t->start, sizeof(int) * (A_t->n + 1) );
+    memcpy( A->entries, A_t->entries, sizeof(sparse_matrix_entry) * (A_t->start[A_t->n]) );
+
+    Deallocate_Matrix( A_t );
+}
+
+
+static void Calculate_Droptol( const sparse_matrix * const A, real * const droptol, real dtol )
 {
     int i, j, k;
     real val;
@@ -88,7 +152,7 @@ void Calculate_Droptol( sparse_matrix *A, real *droptol, real dtol )
 }
 
 
-int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
+static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol )
 {
     int i, j, pj;
     int fillin;
@@ -117,19 +181,21 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
     sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, pj, count, *Ltop, *Utop, r;
+    sparse_matrix *A_t;
     SuperMatrix A_S, AC_S, L_S, U_S;
+    NCformat *A_S_store;
     SCPformat *L_S_store;
     NCPformat *U_S_store;
     superlumt_options_t superlumt_options;
-//    pxgstrf_shared_t pxgstrf_shared;
-//    pdgstrf_threadarg_t *pdgstrf_threadarg;
+    pxgstrf_shared_t pxgstrf_shared;
+    pdgstrf_threadarg_t *pdgstrf_threadarg;
     int_t nprocs;
     fact_t fact;
     trans_t trans;
     yes_no_t refact, usepr;
     real u, drop_tol;
-    real *a;
-    int_t *asub, *xa;
+    real *a, *at;
+    int_t *asub, *atsub, *xa, *xat;
     int_t *perm_c; /* column permutation vector */
     int_t *perm_r; /* row permutations from partial pivoting */
     void *work;
@@ -153,6 +219,7 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
 #else
     nprocs = 1;
 #endif
+
 //    fact = EQUILIBRATE; /* equilibrate A (i.e., scale rows & cols to have unit norm), then factorize */
     fact = DOFACT; /* factor from scratch */
     trans = NOTRANS;
@@ -160,17 +227,23 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
     //TODO: add to control file and use the value there to set these
     panel_size = sp_ienv(1); /* # consec. cols treated as unit task */
     relax = sp_ienv(2); /* # cols grouped as relaxed supernode */
-    u = 1.0;
+    u = 1.0; /* diagonal pivoting threshold */
     usepr = NO;
     drop_tol = 0.0;
     work = NULL;
     lwork = 0;
 
-    if (!(perm_r = intMalloc(A->n)))
+//#if defined(DEBUG)
+    fprintf( stderr, "nprocs = %d\n", nprocs );
+    fprintf( stderr, "Panel size = %d\n", panel_size );
+    fprintf( stderr, "Relax = %d\n", relax );
+//#endif
+
+    if ( !(perm_r = intMalloc(A->n)) )
     {
         SUPERLU_ABORT("Malloc fails for perm_r[].");
     }
-    if (!(perm_c = intMalloc(A->n)))
+    if ( !(perm_c = intMalloc(A->n)) )
     {
         SUPERLU_ABORT("Malloc fails for perm_c[].");
     }
@@ -184,43 +257,84 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
     }
     if ( !(superlumt_options.part_super_h = intMalloc(A->n)) )
     {
-	SUPERLU_ABORT("Malloc fails for colcnt_h[].");
+	SUPERLU_ABORT("Malloc fails for part_super__h[].");
     }
-    if ( (a = (real*) malloc( A->start[A->n] * sizeof(real))) == NULL
-       || (asub = (int_t*) malloc( A->start[A->n] * sizeof(int_t))) == NULL 
-       || (xa = (int_t*) malloc( (A->n + 1) * sizeof(int_t))) == NULL )
+    if ( ( (a = (real*) malloc( (2 * A->start[A->n] - A->n) * sizeof(real))) == NULL )
+       || ( (asub = (int_t*) malloc( (2 * A->start[A->n] - A->n) * sizeof(int_t))) == NULL )
+       || ( (xa = (int_t*) malloc( (A->n + 1) * sizeof(int_t))) == NULL )
+       || ( (Ltop = (unsigned int*) malloc( (A->n + 1) * sizeof(unsigned int))) == NULL )
+       || ( (Utop = (unsigned int*) malloc( (A->n + 1) * sizeof(unsigned int))) == NULL ) )
     {
-
+	fprintf( stderr, "Not enough space for SuperLU factorization. Terminating...\n" );
+	exit( INSUFFICIENT_SPACE );
+    }
+    if ( Allocate_Matrix( &A_t, A->n, A->m ) == 0 )
+    {
+        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        exit(INSUFFICIENT_SPACE);
     }
 
     /* Set up the sparse matrix data structure for A. */
+    Transpose( A, A_t );
+
     count = 0;
     for( i = 0; i < A->n; ++i )
     {
+        xa[i] = count;
         for( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
             a[count] = A->entries[pj].val;
             asub[count] = A->entries[pj].j;
             ++count;
         }
+        for( pj = A_t->start[i] + 1; pj < A_t->start[i + 1]; ++pj )
+        {
+            a[count] = A_t->entries[pj].val;
+            asub[count] = A_t->entries[pj].j;
+            ++count;
+        }
     }
-    memcpy( xa, A->start, sizeof(int) * (A->n + 1) );
-    dCreate_CompRow_Matrix(&A_S, A->n, A->n, A->start[A->n], a, asub, xa,
-        SLU_NR, /* row-wise, no supernode */
-        SLU_D, /* double-precision */
-        SLU_SYL /* symmetric, store lower half */
-    );
+    xa[i] = count;
 
+    dCompRow_to_CompCol( A->n, A->n, 2 * A->start[A->n] - A->n, a, asub, xa,
+        &at, &atsub, &xat );
 
-    /********************************
-     * THE FIRST TIME FACTORIZATION *
-     ********************************/
+    for( i = 0; i < (2 * A->start[A->n] - A->n); ++i )
+        fprintf( stderr, "%6d", asub[i] );
+    fprintf( stderr, "\n" );
+    for( i = 0; i < (2 * A->start[A->n] - A->n); ++i )
+        fprintf( stderr, "%6.1f", a[i] );
+    fprintf( stderr, "\n" );
+    for( i = 0; i <= A->n; ++i )
+        fprintf( stderr, "%6d", xa[i] );
+    fprintf( stderr, "\n" );
+    for( i = 0; i < (2 * A->start[A->n] - A->n); ++i )
+        fprintf( stderr, "%6d", atsub[i] );
+    fprintf( stderr, "\n" );
+    for( i = 0; i < (2 * A->start[A->n] - A->n); ++i )
+        fprintf( stderr, "%6.1f", at[i] );
+    fprintf( stderr, "\n" );
+    for( i = 0; i <= A->n; ++i )
+        fprintf( stderr, "%6d", xat[i] );
+    fprintf( stderr, "\n" );
+
+    A_S.Stype = SLU_NC; /* column-wise, no supernode */
+    A_S.Dtype = SLU_D; /* double-precision */
+    A_S.Mtype = SLU_GE; /* full (general) matrix -- required for parallel factorization */
+    A_S.nrow = A->n;
+    A_S.ncol = A->n;
+    A_S.Store = (void *) SUPERLU_MALLOC( sizeof(NCformat) );
+    A_S_store = (NCformat *) A_S.Store;
+    A_S_store->nnz = 2 * A->start[A->n] - A->n;
+    A_S_store->nzval = at;
+    A_S_store->rowind = atsub;
+    A_S_store->colptr = xat;
 
     /* ------------------------------------------------------------
        Allocate storage and initialize statistics variables. 
        ------------------------------------------------------------*/
-    StatAlloc(A->n, nprocs, panel_size, relax, &Gstat);
-    StatInit(A->n, nprocs, &Gstat);
+    StatAlloc( A->n, nprocs, panel_size, relax, &Gstat );
+    StatInit( A->n, nprocs, &Gstat );
 
     /* ------------------------------------------------------------
        Get column permutation vector perm_c[], according to permc_spec:
@@ -230,22 +344,28 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
        permc_spec = 3: approximate minimum degree for unsymmetric matrices
        ------------------------------------------------------------*/ 	
     permc_spec = 0;
-    get_perm_c(permc_spec, &A_S, perm_c);
+    get_perm_c( permc_spec, &A_S, perm_c );
 
     /* ------------------------------------------------------------
        Initialize the option structure superlumt_options using the
        user-input parameters;
        Apply perm_c to the columns of original A to form AC.
        ------------------------------------------------------------*/
-    pdgstrf_init(nprocs, fact, trans, refact, panel_size, relax,
+    pdgstrf_init( nprocs, fact, trans, refact, panel_size, relax,
         u, usepr, drop_tol, perm_c, perm_r,
-        work, lwork, &A_S, &AC_S, &superlumt_options, &Gstat);
+        work, lwork, &A_S, &AC_S, &superlumt_options, &Gstat );
+
+    for( i = 0; i < ((NCPformat*)AC_S.Store)->nnz; ++i )
+        fprintf( stderr, "%6.1f", ((real*)(((NCPformat*)AC_S.Store)->nzval))[i] );
+    fprintf( stderr, "\n" );
 
     /* ------------------------------------------------------------
        Compute the LU factorization of A.
        The following routine will create nprocs threads.
        ------------------------------------------------------------*/
-    pdgstrf(&superlumt_options, &AC_S, perm_r, &L_S, &U_S, &Gstat, &info);
+    pdgstrf( &superlumt_options, &AC_S, perm_r, &L_S, &U_S, &Gstat, &info );
+
+    fprintf( stderr, "INFO: %d\n", info );
     
     flopcnt = 0;
     for (i = 0; i < nprocs; ++i)
@@ -254,70 +374,86 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
     }
     Gstat.ops[FACT] = flopcnt;
 
-    /* Free extra arrays in AC_S. */
-    Destroy_CompRow_Permuted(&AC_S);
-
-    /* ------------------------------------------------------------
-      Deallocate storage after factorization.
-      ------------------------------------------------------------*/
-    pxgstrf_finalize(&superlumt_options, &AC_S);
-
+//#if defined(DEBUG)
     printf("\n** Result of sparse LU **\n");
     L_S_store = (SCPformat *) L_S.Store;
     U_S_store = (NCPformat *) U_S.Store;
-    printf("No of nonzeros in factor L = " IFMT "\n", L_S_store->nnz);
-    printf("No of nonzeros in factor U = " IFMT "\n", U_S_store->nnz);
-    printf("No of nonzeros in L+U = " IFMT "\n", L_S_store->nnz + U_S_store->nnz - A->n);
-    fflush(stdout);
+    printf( "No of nonzeros in factor L = " IFMT "\n", L_S_store->nnz );
+    printf( "No of nonzeros in factor U = " IFMT "\n", U_S_store->nnz );
+    fflush( stdout );
+//#endif
 
-    /* convert L and R from SuperMatrix to CSR */
+    /* convert L and R from SuperLU formats to CSR */
     memset( Ltop, 0, (A->n + 1) * sizeof(int) );
     memset( Utop, 0, (A->n + 1) * sizeof(int) );
+    memset( L->start, 0, (A->n + 1) * sizeof(int) );
+    memset( U->start, 0, (A->n + 1) * sizeof(int) );
+
+    for( i = 0; i < 2 * L_S_store->nnz; ++i )
+        fprintf( stderr, "%6.1f", ((real*)(L_S_store->nzval))[i] );
+    fprintf( stderr, "\n" );
+    for( i = 0; i < 2 * U_S_store->nnz; ++i )
+        fprintf( stderr, "%6.1f", ((real*)(U_S_store->nzval))[i] );
+    fprintf( stderr, "\n" );
+
+    printf( "No of supernodes in factor L = " IFMT "\n", L_S_store->nsuper );
     for( i = 0; i < A->n; ++i )
     {
+        fprintf( stderr, "nzval_col_beg[%5d] = %d\n", i, L_S_store->nzval_colbeg[i] );
+        fprintf( stderr, "nzval_col_end[%5d] = %d\n", i, L_S_store->nzval_colend[i] );
         //TODO: correct for SCPformat for L?
-        for( pj = L_S_store->rowind_colbeg[i]; pj < L_S_store->rowind_colend[i]; ++pj )
-        {
-            ++Ltop[L_S_store->rowind[pj] + 1];
-        }
+        //for( pj = L_S_store->rowind_colbeg[i]; pj < L_S_store->rowind_colend[i]; ++pj )
+//        for( pj = 0; pj < L_S_store->rowind_colend[i] - L_S_store->rowind_colbeg[i]; ++pj )
+//        {
+//            ++Ltop[L_S_store->rowind[L_S_store->rowind_colbeg[i] + pj] + 1];
+//        }
+        fprintf( stderr, "col_beg[%5d] = %d\n", i, U_S_store->colbeg[i] );
+        fprintf( stderr, "col_end[%5d] = %d\n", i, U_S_store->colend[i] );
         for( pj = U_S_store->colbeg[i]; pj < U_S_store->colend[i]; ++pj )
         {
             ++Utop[U_S_store->rowind[pj] + 1];
+            fprintf( stderr, "Utop[%5d]     = %d\n", U_S_store->rowind[pj] + 1, Utop[U_S_store->rowind[pj] + 1] );
         }
     }
     for( i = 1; i <= A->n; ++i )
     {
-        Ltop[i] = L->start[i] = Ltop[i] + Ltop[i - 1];
-        Utop[i] = U->start[i] = Ltop[i] + Utop[i - 1];
+//        Ltop[i] = L->start[i] = Ltop[i] + Ltop[i - 1];
+        Utop[i] = U->start[i] = Utop[i] + Utop[i - 1];
+//        fprintf( stderr, "Utop[%5d]     = %d\n", i, Utop[i] );
+//        fprintf( stderr, "U->start[%5d] = %d\n", i, U->start[i] );
     }
     for( i = 0; i < A->n; ++i )
     {
-        //TODO: correct for SCPformat for L?
-        for( pj = L_S_store->nzval_colbeg[i]; pj < L_S_store->nzval_colend[i]; ++pj )
-        {
-            r = L_S_store->rowind[pj];
-            L->entries[Ltop[r]].j = i;
-            L->entries[Ltop[r]].val = L_S_store->nzval[pj];
-            ++Ltop[r];
-        }
+//        for( pj = 0; pj < L_S_store->nzval_colend[i] - L_S_store->nzval_colbeg[i]; ++pj )
+//        {
+//            r = L_S_store->rowind[L_S_store->rowind_colbeg[i] + pj];
+//            L->entries[Ltop[r]].j = r;
+//            L->entries[Ltop[r]].val = ((real*)L_S_store->nzval)[L_S_store->nzval_colbeg[i] + pj];
+//            ++Ltop[r];
+//        }
         for( pj = U_S_store->colbeg[i]; pj < U_S_store->colend[i]; ++pj )
         {
             r = U_S_store->rowind[pj];
             U->entries[Utop[r]].j = i;
-            U->entries[Utop[r]].val = U_S_store->nzval[pj];
+            U->entries[Utop[r]].val = ((real*)U_S_store->nzval)[pj];
             ++Utop[r];
         }
     }
 
+    /* ------------------------------------------------------------
+      Deallocate storage after factorization.
+      ------------------------------------------------------------*/
+    pxgstrf_finalize( &superlumt_options, &AC_S );
+    Deallocate_Matrix( A_t );
     free( xa );
     free( asub );
     free( a );
-    SUPERLU_FREE (perm_r);
-    SUPERLU_FREE (perm_c);
-    SUPERLU_FREE (superlumt_options.etree);
-    SUPERLU_FREE (superlumt_options.colcnt_h);
-    SUPERLU_FREE (superlumt_options.part_super_h);
-    Destroy_CompRow_Matrix(&A_S);
+    SUPERLU_FREE( perm_r );
+    SUPERLU_FREE( perm_c );
+    SUPERLU_FREE( ((NCformat *)A_S.Store)->rowind );
+    SUPERLU_FREE( ((NCformat *)A_S.Store)->colptr );
+    SUPERLU_FREE( ((NCformat *)A_S.Store)->nzval );
+    SUPERLU_FREE( A_S.Store );
     if ( lwork == 0 )
     {
         Destroy_SuperNode_SCP(&L_S);
@@ -329,15 +465,39 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
     }
     StatFree(&Gstat);
 
+    free( Utop );
+    free( Ltop );
+
     //TODO: return iters
     return 0.;
 }
 #endif
 
 
+/* Diagonal preconditioner */
+static real diagonal_pre( const reax_system * const system, real * const Hdia_inv )
+{
+    unsigned int i;
+    struct timeval start, stop;
+
+    gettimeofday( &start, NULL );
+
+    #pragma omp parallel for schedule(guided) \
+        default(none) private(i)
+    for ( i = 0; i < system->N; ++i )
+    {
+        Hdia_inv[i] = 1.0 / system->reaxprm.sbp[system->atoms[i].type].eta;
+    }
+
+    gettimeofday( &stop, NULL );
+    return (stop.tv_sec + stop.tv_usec / 1000000.0)
+        - (start.tv_sec + start.tv_usec / 1000000.0);
+}
+
+
 /* Incomplete Cholesky factorization with thresholding */
-real ICHOLT( sparse_matrix *A, real *droptol,
-            sparse_matrix *L, sparse_matrix *U )
+static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
+            sparse_matrix * const L, sparse_matrix * const U )
 {
     sparse_matrix_entry tmp[1000];
     int i, j, pj, k1, k2, tmptop, Ltop;
@@ -655,31 +815,247 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 }
 
 
-void Init_MatVec( reax_system *system, control_params *control,
-                  simulation_data *data, static_storage *workspace,
-                  list *far_nbrs )
+/* Fine-grained (parallel) incomplete LU factorization
+ * 
+ * Reference:
+ * Edmond Chow and Aftab Patel
+ * Fine-Grained Parallel Incomplete LU Factorization
+ * SIAM J. Sci. Comp.
+ * 
+ * A: symmetric, half-format (lower triangular)
+ * sweeps: number of ILUL_PAR loops over non-zeros
+ * L / U: factorized matrices (A \approx LU) */
+static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
+                       sparse_matrix * const L, sparse_matrix * const U )
+{
+    unsigned int i, j, k, pj, x, y, ei_x, ei_y;
+    real *D, *D_inv, sum;
+    sparse_matrix *DAD;
+    struct timeval start, stop;
+
+    gettimeofday( &start, NULL );
+
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
+    {
+        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        exit(INSUFFICIENT_SPACE);
+    }
+
+    /*TODO: check malloc return status*/
+    D = (real*) malloc(A->n * sizeof(real));
+    D_inv = (real*) malloc(A->n * sizeof(real));
+
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(D, D_inv) private(i)
+    for ( i = 0; i < A->n; ++i )
+    {
+        D_inv[i] = SQRT( A->entries[A->start[i + 1] - 1].val );
+        D[i] = 1.0 / D_inv[i];
+    }
+
+    /* to get convergence, A must have unit diagonal, so apply
+     * transformation DAD, where D = D(1./sqrt(D(A))) */
+    memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(DAD, D) private(i, pj)
+    for ( i = 0; i < A->n; ++i )
+    {
+        /* non-diagonals */
+        for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
+        {
+            DAD->entries[pj].j = A->entries[pj].j;
+            DAD->entries[pj].val =
+                D[i] * A->entries[pj].val * D[A->entries[pj].j];
+        }
+        /* diagonal */
+        DAD->entries[pj].j = A->entries[pj].j;
+        DAD->entries[pj].val = 1.0;
+    }
+
+    /* initial guesses for L and U,
+     * assume: A and DAD symmetric and stored lower triangular */
+    memcpy( L->start, DAD->start, sizeof(int) * (DAD->n + 1) );
+    memcpy( L->entries, DAD->entries, sizeof(sparse_matrix_entry) * (DAD->start[DAD->n]) );
+    /* store U^T in CSR for row-wise access and tranpose later */
+    memcpy( U->start, DAD->start, sizeof(int) * (DAD->n + 1) );
+    memcpy( U->entries, DAD->entries, sizeof(sparse_matrix_entry) * (DAD->start[DAD->n]) );
+
+    /* L has unit diagonal, by convention */
+    #pragma omp parallel for schedule(guided) \
+        default(none) private(i)
+    for ( i = 0; i < A->n; ++i )
+    {
+        L->entries[L->start[i + 1] - 1].val = 1.0;
+    }
+
+    for ( i = 0; i < sweeps; ++i )
+    {
+        /* for each nonzero in L */
+        #pragma omp parallel for schedule(guided) \
+            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+        for ( j = 0; j < DAD->start[DAD->n]; ++j )
+        {
+            sum = ZERO;
+
+            /* determine row bounds of current nonzero */
+            x = 0;
+            ei_x = 0;
+            for ( k = 1; k <= DAD->n; ++k )
+            {
+                if ( DAD->start[k] > j )
+                {
+                    x = DAD->start[k - 1];
+                    ei_x = DAD->start[k];
+                    break;
+                }
+            }
+            /* determine column bounds of current nonzero */
+            y = DAD->start[DAD->entries[j].j];
+            ei_y = DAD->start[DAD->entries[j].j + 1];
+
+            /* sparse dot product:
+             *   dot( L(i,1:j-1), U(1:j-1,j) ) */
+            while ( L->entries[x].j < L->entries[j].j &&
+                    L->entries[y].j < L->entries[j].j &&
+                    x < ei_x && y < ei_y )
+            {
+                if ( L->entries[x].j == L->entries[y].j )
+                {
+                    sum += (L->entries[x].val * U->entries[y].val);
+                    ++x;
+                    ++y;
+                }
+                else if ( L->entries[x].j < L->entries[y].j )
+                {
+                    ++x;
+                }
+                else
+                {
+                    ++y;
+                }
+            }
+
+            if( j != ei_x - 1 )
+            {
+                L->entries[j].val = ( DAD->entries[j].val - sum ) / U->entries[ei_y - 1].val;
+            }
+        }
+
+        #pragma omp parallel for schedule(guided) \
+            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+        for ( j = 0; j < DAD->start[DAD->n]; ++j )
+        {
+            sum = ZERO;
+
+            /* determine row bounds of current nonzero */
+            x = 0;
+            ei_x = 0;
+            for ( k = 1; k <= DAD->n; ++k )
+            {
+                if ( DAD->start[k] > j )
+                {
+                    x = DAD->start[k - 1];
+                    ei_x = DAD->start[k];
+                    break;
+                }
+            }
+            /* determine column bounds of current nonzero */
+            y = DAD->start[DAD->entries[j].j];
+            ei_y = DAD->start[DAD->entries[j].j + 1];
+
+            /* sparse dot product:
+             *   dot( L(i,1:i-1), U(1:i-1,j) ) */
+            while ( U->entries[x].j < U->entries[j].j &&
+                    U->entries[y].j < U->entries[j].j &&
+                    x < ei_x && y < ei_y )
+            {
+                if ( U->entries[x].j == U->entries[y].j )
+                {
+                    sum += (L->entries[y].val * U->entries[x].val);
+                    ++x;
+                    ++y;
+                }
+                else if ( U->entries[x].j < U->entries[y].j )
+                {
+                    ++x;
+                }
+                else
+                {
+                    ++y;
+                }
+            }
+
+            U->entries[j].val = DAD->entries[j].val - sum;
+        }
+    }
+
+    /* apply inverse transformation:
+     * since DAD \approx LU, then
+     * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(DAD, D_inv) private(i, pj)
+    for ( i = 0; i < DAD->n; ++i )
+    {
+        for ( pj = DAD->start[i]; pj < DAD->start[i + 1]; ++pj )
+        {
+            L->entries[pj].val = D_inv[i] * L->entries[pj].val;
+            /* currently storing U^T, so use row index instead of column index */
+            U->entries[pj].val = U->entries[pj].val * D_inv[i];
+        }
+    }
+
+    Transpose_I( U );
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "nnz(L): %d, max: %d\n", L->start[L->n], L->n * 50 );
+    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
+#endif
+
+    Deallocate_Matrix( DAD );
+    free( D_inv );
+    free( D );
+
+    gettimeofday( &stop, NULL );
+    return (stop.tv_sec + stop.tv_usec / 1000000.0)
+        - (start.tv_sec + start.tv_usec / 1000000.0);
+}
+
+
+static void Init_MatVec( const reax_system * const system, const control_params * const control,
+                  simulation_data * const data, static_storage * const workspace,
+                  const list * const far_nbrs )
 {
     int i, fillin;
     real s_tmp, t_tmp;
+    sparse_matrix *H_test, *L_test, *U_test;
 //    char fname[100];
 
-    if (control->refactor > 0 &&
-            ((data->step - data->prev_steps) % control->refactor == 0 || workspace->L == NULL))
+    if (control->pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->pre_comp_refactor == 0 || workspace->L == NULL))
     {
         //Print_Linear_System( system, control, workspace, data->step );
         Sort_Matrix_Rows( workspace->H );
         Sort_Matrix_Rows( workspace->H_sp );
-        //fprintf( stderr, "H matrix sorted\n" );
-	if ( control->pre_comp == ICHOLT_PC )
+#if defined(DEBUG)
+        fprintf( stderr, "H matrix sorted\n" );
+#endif
+
+	switch ( control->pre_comp_type )
 	{
-            Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
-            //fprintf( stderr, "drop tolerances calculated\n" );
-	}
-        if ( workspace->L == NULL )
-        {
-	    switch ( control->pre_comp )
-	    {
-	        case ICHOLT_PC:
+	    case DIAG_PC:
+                if ( workspace->Hdia_inv == NULL )
+                {
+                    workspace->Hdia_inv = (real *) calloc( system->N, sizeof( real ) );
+                }
+                data->timing.pre_comp += diagonal_pre( system, workspace->Hdia_inv );
+		break;
+	    case ICHOLT_PC:
+                Calculate_Droptol( workspace->H, workspace->droptol, control->pre_comp_droptol );
+#if defined(DEBUG_FOCUS)
+                fprintf( stderr, "drop tolerances calculated\n" );
+#endif
+                if ( workspace->L == NULL )
+                {
                     fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
                     if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
                             Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
@@ -687,9 +1063,19 @@ void Init_MatVec( reax_system *system, control_params *control,
                         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                         exit(INSUFFICIENT_SPACE);
                     }
-    		    break;
-		case ICHOL_PAR_PC:
-                case ILU_SUPERLU_MT_PC:
+#if defined(DEBUG)
+                    fprintf( stderr, "fillin = %d\n", fillin );
+                    fprintf( stderr, "allocated memory: L = U = %ldMB\n",
+                                 fillin * sizeof(sparse_matrix_entry) / (1024 * 1024) );
+#endif
+                }
+
+                data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+//                data->timing.pre_comp += ICHOLT( workspace->H_sp, workspace->droptol, workspace->L, workspace->U );
+		break;
+	    case ICHOL_PAR_PC:
+                if ( workspace->L == NULL )
+                {
                     /* factors have sparsity pattern as H */
                     if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
                             Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
@@ -697,34 +1083,73 @@ void Init_MatVec( reax_system *system, control_params *control,
                         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                         exit(INSUFFICIENT_SPACE);
                     }
-		    break;
-		default:
-		    break;
-	    }
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "fillin = %d\n", fillin );
-            fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                     fillin * sizeof(sparse_matrix_entry) / (1024 * 1024) );
-#endif
-        }
+                }
 
-	switch ( control->pre_comp )
-	{
-	    case ICHOLT_PC:
-                data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
-//                data->timing.pre_comp += ICHOLT( workspace->H_sp, workspace->droptol, workspace->L, workspace->U );
-		break;
-	    case ICHOL_PAR_PC:
-                data->timing.pre_comp += ICHOL_PAR( workspace->H, 1, workspace->L, workspace->U );
+//                data->timing.pre_comp += ICHOL_PAR( workspace->H, control->pre_comp_sweeps, workspace->L, workspace->U );
+                data->timing.pre_comp += ILU_PAR( workspace->H, control->pre_comp_sweeps, workspace->L, workspace->U );
+
+//                Print_Sparse_Matrix2( workspace->H, "H.out" );
+//                Print_Sparse_Matrix2( workspace->L, "L.out" );
+//                Print_Sparse_Matrix2( workspace->U, "U.out" );
+
+//                if ( Allocate_Matrix( &H_test, 3, 6 ) == 0 ||
+//                     Allocate_Matrix( &L_test, 3, 6 ) == 0 ||
+//                     Allocate_Matrix( &U_test, 3, 6 ) == 0 )
+//                {
+//                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+//                    exit(INSUFFICIENT_SPACE);
+//                }
+//
+//                //3x3, SPD, store lower half
+//                H_test->start[0] = 0;
+//                H_test->start[1] = 1;
+//                H_test->start[2] = 3;
+//                H_test->start[3] = 6;
+//                H_test->entries[0].j = 0;
+//                H_test->entries[0].val = 4.;
+//                H_test->entries[1].j = 0;
+//                H_test->entries[1].val = 12.;
+//                H_test->entries[2].j = 1;
+//                H_test->entries[2].val = 37.;
+//                H_test->entries[3].j = 0;
+//                H_test->entries[3].val = -16.;
+//                H_test->entries[4].j = 1;
+//                H_test->entries[4].val = -43.;
+//                H_test->entries[5].j = 2;
+//                H_test->entries[5].val = 98.;
+//                
+////                data->timing.pre_comp += ICHOLT( H_test, workspace->droptol, L_test, U_test );
+////                Print_Sparse_Matrix2( L_test, "L_ICHOLT.out" );
+////                Print_Sparse_Matrix2( U_test, "U_ICHOLT.out" );
+////                data->timing.pre_comp += ICHOL_PAR( H_test, 1, L_test, U_test );
+//                data->timing.pre_comp += ILU_PAR( H_test, 1, L_test, U_test );
+//                Print_Sparse_Matrix2( L_test, "L_SLU.out" );
+//                Print_Sparse_Matrix2( U_test, "U_SLU.out" );
+//                exit( 0 );
 		break;
 	    case ILU_SUPERLU_MT_PC:
+                if ( workspace->L == NULL )
+                {
+                    /* factors have sparsity pattern as H */
+                    if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
+                            Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
+                    {
+                        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                        exit(INSUFFICIENT_SPACE);
+                    }
+                }
+
                 data->timing.pre_comp += SuperLU_Factorize( workspace->H, workspace->L, workspace->U );
 		break;
 	    default:
-		break;
+                fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+                exit( INVALID_INPUT );
+	        break;
 	}
 
-//        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
+#if defined(DEBUG)
+        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
+#endif
 
 #if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
@@ -781,8 +1206,7 @@ void Init_MatVec( reax_system *system, control_params *control,
 }
 
 
-
-void Calculate_Charges( reax_system *system, static_storage *workspace )
+static void Calculate_Charges( const reax_system * const system, static_storage * const workspace )
 {
     int i;
     real u, s_sum, t_sum;
@@ -800,9 +1224,9 @@ void Calculate_Charges( reax_system *system, static_storage *workspace )
 }
 
 
-void QEq( reax_system *system, control_params *control, simulation_data *data,
-          static_storage *workspace, list *far_nbrs,
-          output_controls *out_control )
+void QEq( reax_system * const system, control_params * const control, simulation_data * const data,
+          static_storage * const workspace, const list * const far_nbrs,
+          const output_controls * const out_control )
 {
     int matvecs;
 
@@ -811,55 +1235,55 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 //    if( data->step == 0 || data->step == 100 )
 //      Print_Linear_System( system, control, workspace, data->step );
 
-    switch ( control->solver )
+    switch ( control->qeq_solver_type )
     {
         case GMRES_S:
             matvecs = GMRES( workspace, workspace->H,
-                             workspace->b_s, control->q_err, workspace->s[0], out_control->log,
+                             workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log,
                              &(data->timing.pre_app), &(data->timing.spmv) );
             matvecs += GMRES( workspace, workspace->H,
-                              workspace->b_t, control->q_err, workspace->t[0], out_control->log, 
+                              workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log, 
                               &(data->timing.pre_app), &(data->timing.spmv) );
             break;
         case GMRES_H_S:
             matvecs = GMRES_HouseHolder( workspace, workspace->H,
-                                         workspace->b_s, control->q_err, workspace->s[0], out_control->log );
+                                         workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log );
             matvecs += GMRES_HouseHolder( workspace, workspace->H,
-                                          workspace->b_t, control->q_err, workspace->t[0], out_control->log );
+                                          workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log );
             break;
         case PGMRES_S:
-            matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->q_err,
+            matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
                               workspace->L, workspace->U, workspace->s[0], out_control->log,
                               &(data->timing.pre_app), &(data->timing.spmv) );
-            matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->q_err,
+            matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
                                workspace->L, workspace->U, workspace->t[0], out_control->log,
                                &(data->timing.pre_app), &(data->timing.spmv) );
             break;
         case PGMRES_J_S:
-            matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->q_err,
-                                     workspace->L, workspace->U, workspace->s[0], control->jacobi_iters,
+            matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+                                     workspace->L, workspace->U, workspace->s[0], control->pre_app_jacobi_iters,
 				     out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
-            matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->q_err,
-                                      workspace->L, workspace->U, workspace->t[0], control->jacobi_iters,
+            matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+                                      workspace->L, workspace->U, workspace->t[0], control->pre_app_jacobi_iters,
 				      out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
             break;
         case CG_S:
             matvecs = CG( workspace, workspace->H,
-                          workspace->b_s, control->q_err, workspace->s[0], out_control->log ) + 1;
+                          workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log ) + 1;
             matvecs += CG( workspace, workspace->H,
-                           workspace->b_t, control->q_err, workspace->t[0], out_control->log ) + 1;
+                           workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log ) + 1;
             break;
         case PCG_S:
-            matvecs = PCG( workspace, workspace->H, workspace->b_s, control->q_err,
+            matvecs = PCG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
                          workspace->L, workspace->U, workspace->s[0], out_control->log ) + 1;
-            matvecs += PCG( workspace, workspace->H, workspace->b_t, control->q_err,
+            matvecs += PCG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
                             workspace->L, workspace->U, workspace->t[0], out_control->log ) + 1;
             break;
         case SDM_S:
             matvecs = SDM( workspace, workspace->H,
-                           workspace->b_s, control->q_err, workspace->s[0], out_control->log ) + 1;
+                           workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log ) + 1;
             matvecs += SDM( workspace, workspace->H,
-                            workspace->b_t, control->q_err, workspace->t[0], out_control->log ) + 1;
+                            workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log ) + 1;
             break;
 	default:
             fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );

@@ -251,7 +251,6 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->U        = NULL;
     workspace->droptol  = (real *) calloc( system->N, sizeof( real ) );
     workspace->w        = (real *) calloc( system->N, sizeof( real ) );
-    workspace->Hdia_inv = (real *) calloc( system->N, sizeof( real ) );
     workspace->b        = (real *) calloc( system->N * 2, sizeof( real ) );
     workspace->b_s      = (real *) calloc( system->N, sizeof( real ) );
     workspace->b_t      = (real *) calloc( system->N, sizeof( real ) );
@@ -272,7 +271,6 @@ void Init_Workspace( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
-        workspace->Hdia_inv[i] = 1. / system->reaxprm.sbp[system->atoms[i].type].eta;
         workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
         workspace->b_t[i] = -1.0;
 

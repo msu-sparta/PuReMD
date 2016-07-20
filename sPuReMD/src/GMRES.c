@@ -27,6 +27,13 @@
 #include <omp.h>
 
 
+typedef enum
+{
+    LOWER = 0,
+    UPPER = 1,
+} TRIANGULARITY;
+
+
 /* sparse matrix-vector product Ax=b
  * where:
  *   A: lower triangular matrix
@@ -199,7 +206,7 @@ static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
 
 
 /* solve sparse lower triangular linear system using forward substitution */
-void Forward_Subs( sparse_matrix *L, real *b, real *y )
+static void Forward_Subs( const sparse_matrix * const L, const real * const b, real * const y )
 {
     int i, pj, j, si, ei;
     real val;
@@ -222,7 +229,7 @@ void Forward_Subs( sparse_matrix *L, real *b, real *y )
 
 
 /* solve sparse upper triangular linear system using backward substitution */
-void Backward_Subs( sparse_matrix *U, real *y, real *x )
+static void Backward_Subs( const sparse_matrix * const U, const real * const y, real * const x )
 {
     int i, pj, j, si, ei;
     real val;
@@ -1222,7 +1229,7 @@ int SDM( static_storage *workspace, sparse_matrix *H,
 }
 
 
-real condest( sparse_matrix *L, sparse_matrix *U )
+real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 {
     unsigned int i, N;
     real *e, c;
