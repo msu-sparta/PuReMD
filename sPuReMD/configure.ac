@@ -5,7 +5,8 @@ AC_PREREQ([2.69])
 
 AC_INIT([sPuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
-AM_SILENT_RULES([yes])
+# Enable silent build rules by default.
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERBOSITY],[1])])
 #LT_PREREQ([2.2])
 #LT_INIT([dlopen])
 
@@ -15,7 +16,7 @@ AC_CONFIG_SRCDIR([src/traj.h])
 AC_CONFIG_HEADERS([src/config.h])
 
 # Checks for programs.
-AC_PROG_CC
+AC_PROG_CC([icc gcc cc])
 AC_PROG_CPP
 
 # Checks for libraries.

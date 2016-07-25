@@ -5,7 +5,8 @@ AC_PREREQ([2.69])
 
 AC_INIT([PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
-AM_SILENT_RULES([yes])
+# Enable silent build rules by default.
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERBOSITY],[1])])
 #LT_PREREQ([2.2])
 #LT_INIT([dlopen])
 
@@ -23,7 +24,7 @@ AC_DEFUN([CONFIGURE_HEADLINE],
 ])
 
 # Checks for programs.
-AC_PROG_CC
+AC_PROG_CC([cc icc gcc])
 AC_PROG_CPP
 
 # Checks for libraries.
@@ -68,14 +69,14 @@ CFLAGS="$sav_CFLAGS"
 #
 MPI_CFLAGS=
 MPI_LDFLAGS=
-if test "$mpi_vendor" = "OpenMPI"
+if test "x$mpi_vendor" = "xOpenMPI"
 then 
 	MPI_CFLAGS=`$MPICC --showme:compile`
 	MPI_LDFLAGS=`$MPICC --showme:link`
 	AC_MSG_NOTICE([OpenMPI found])
 	AC_MSG_NOTICE([MPI_CFLAGS=$MPI_CFLAGS])
 	AC_MSG_NOTICE([MPI_LDFLAGS=$MPI_LDFLAGS])
-elif test "$mpi_vendor" = "MPICH"
+elif test "x$mpi_vendor" = "xMPICH"
 then
 	# build MPI_CFLAGS
 	tmp=`$MPICC -compile-info | awk '{$1=""; print $0 }'`
