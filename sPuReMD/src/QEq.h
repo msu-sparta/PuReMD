@@ -24,7 +24,8 @@
 
 #include "mytypes.h"
 
-void QEq( reax_system*, control_params*, simulation_data*, static_storage*,
-          list*, output_controls* );
+void QEq( reax_system* const, control_params* const, simulation_data* const,
+          static_storage* const, const list* const,
+          const output_controls* const );
 
 #endif

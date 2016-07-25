@@ -454,7 +454,6 @@ void Copy_Storage( reax_system *system, static_storage *workspace,
 
     orig_id[top]  = workspace->orig_id[old_id];
 
-    workspace->Hdia_inv[top] = 1. / system->reaxprm.sbp[ old_type ].eta;
     workspace->b_s[top] = -system->reaxprm.sbp[ old_type ].chi;
     workspace->b_t[top] = -1.0;
 

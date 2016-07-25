@@ -868,13 +868,15 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->thb_cut = 0.001;
     control->hb_cut = 7.50;
 
-    control->q_err = 0.000001;
     control->tabulate = 0;
-    control->solver = PGMRES_S;
-    control->pre_comp = ICHOLT_PC;
-    control->refactor = 100;
-    control->droptol = 0.01;
-    control->jacobi_iters = 0;
+
+    control->qeq_solver_type = PGMRES_S;
+    control->qeq_solver_q_err = 0.000001;
+    control->pre_comp_type = ICHOLT_PC;
+    control->pre_comp_sweeps = ICHOLT_PC;
+    control->pre_comp_refactor = 100;
+    control->pre_comp_droptol = 0.01;
+    control->pre_app_jacobi_iters = 10;
 
     control->T_init = 0.;
     control->T_final = 300.;
@@ -1035,35 +1037,40 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             val = atof( tmp[1] );
             control->hb_cut = val;
         }
-        else if ( strcmp(tmp[0], "q_err") == 0 )
-        {
-            val = atof( tmp[1] );
-            control->q_err = val;
-        }
-        else if ( strcmp(tmp[0], "solver") == 0 )
+        else if ( strcmp(tmp[0], "qeq_solver_type") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->solver = ival;
+            control->qeq_solver_type = ival;
         }
-        else if ( strcmp(tmp[0], "pre_comp") == 0 )
-        {
-            ival = atoi( tmp[1] );
-            control->pre_comp = ival;
-        }
-        else if ( strcmp(tmp[0], "pre_refactor") == 0 )
-        {
-            ival = atoi( tmp[1] );
-            control->refactor = ival;
-        }
-        else if ( strcmp(tmp[0], "pre_droptol") == 0 )
+        else if ( strcmp(tmp[0], "qeq_solver_q_err") == 0 )
         {
             val = atof( tmp[1] );
-            control->droptol = val;
+            control->qeq_solver_q_err = val;
         }
-        else if ( strcmp(tmp[0], "pre_j_iters") == 0 )
+        else if ( strcmp(tmp[0], "pre_comp_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->pre_comp_type = ival;
+        }
+        else if ( strcmp(tmp[0], "pre_comp_refactor") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->pre_comp_refactor = ival;
+        }
+        else if ( strcmp(tmp[0], "pre_comp_droptol") == 0 )
         {
             val = atof( tmp[1] );
-            control->jacobi_iters = val;
+            control->pre_comp_droptol = val;
+        }
+        else if ( strcmp(tmp[0], "pre_comp_sweeps") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->pre_comp_sweeps = ival;
+        }
+        else if ( strcmp(tmp[0], "pre_app_jacobi_iters") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->pre_app_jacobi_iters = val;
         }
         else if ( strcmp(tmp[0], "temp_init") == 0 )
         {

@@ -22,6 +22,11 @@
 #ifndef __MYTYPES_H_
 #define __MYTYPES_H_
 
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+#define __CONFIG_H_
+#include "config.h"
+#endif
+
 #include "math.h"
 #include "random.h"
 #include "stdio.h"
@@ -157,7 +162,7 @@ enum solver {
 	PGMRES_J_S = 3, CG_S = 4, PCG_S = 5, SDM_S = 6,
 };
 enum pre_comp {
-	DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2,
+	DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2, ILU_SUPERLU_MT_PC = 3,
 };
 
 
@@ -438,7 +443,6 @@ typedef struct
     real thb_cut;
     real hb_cut;
     real Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
-    real q_err;
     int  max_far_nbrs;
 
     real T_init, T_final, T;
@@ -462,12 +466,13 @@ typedef struct
     int freq_diffusion_coef;
     int restrict_type;
 
-    unsigned int solver;
-    unsigned int pre_comp;
-    int refactor;
-    real droptol;
-    unsigned int jacobi_iters;
-
+    unsigned int qeq_solver_type;
+    real qeq_solver_q_err;
+    unsigned int pre_comp_type;
+    unsigned int pre_comp_refactor;
+    real pre_comp_droptol;
+    unsigned int pre_comp_sweeps;
+    unsigned int pre_app_jacobi_iters;
 
     int molec_anal;
     int freq_molec_anal;

@@ -85,12 +85,16 @@
 #define FALSE 0
 
 #define EXP    exp
+#define EXP2   exp2
+#define LOG2   log2
 #define SQRT   sqrt
 #define POW    pow
 #define ACOS   acos
 #define COS    cos
 #define SIN    sin
 #define TAN    tan
+#define CEIL   ceil
+#define FLOOR  floor
 
 #define SQR(x)        ((x)*(x))
 #define CUBE(x)       ((x)*(x)*(x))
@@ -253,10 +257,10 @@ enum interactions { TYP_VOID = 0, TYP_BOND = 1, TYP_THREE_BODY = 2,
                     TYP_HBOND = 3, TYP_FAR_NEIGHBOR = 4, TYP_DBO = 5, TYP_DDELTA = 6, TYP_N = 7
                   };
 
-enum message_tags { INIT, UPDATE, BNDRY, UPDATE_BNDRY,
-                    EXC_VEC1, EXC_VEC2, DIST_RVEC2, COLL_RVEC2,
-                    DIST_RVECS, COLL_RVECS, INIT_DESCS, ATOM_LINES,
-                    BOND_LINES, ANGLE_LINES, RESTART_ATOMS, TAGS_N
+enum message_tags { INIT = 0, UPDATE = 1, BNDRY = 2, UPDATE_BNDRY = 3,
+                    EXC_VEC1 = 4, EXC_VEC2 = 5, DIST_RVEC2 = 6, COLL_RVEC2 = 7,
+                    DIST_RVECS = 8, COLL_RVECS = 9, INIT_DESCS = 10, ATOM_LINES = 11,
+                    BOND_LINES = 12, ANGLE_LINES = 13, RESTART_ATOMS = 14, TAGS_N = 15
                   };
 
 enum errors { FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,

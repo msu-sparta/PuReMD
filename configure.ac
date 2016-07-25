@@ -133,9 +133,18 @@ then
 	export BUILD_TIMING="yes"
 fi
 
+AC_ARG_WITH([superlu-mt],
+	    [AS_HELP_STRING([--with-superlu-mt],
+			    [enable usage of SuperLU MT for QEq preconditioner computation @<:@default: no@:>@])],
+            [package_superlu_mt=${withval}], [package_superlu_mt=no])
+
+if test "x$package_superlu_mt" != "xno"
+then
+	export BUILD_SUPERLU_MT="${package_superlu_mt}"
+fi
+
 AC_PROG_PDFLATEX
 AM_CONDITIONAL([BUILD_DOC], [test "x${PDFLATEX}" != "x"])
-
 
 AC_CONFIG_FILES([Makefile])
 
