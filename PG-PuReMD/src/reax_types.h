@@ -164,6 +164,15 @@
 #define MAX_ITR 10
 #define RESTART 30
 
+/* NaN IEEE 754 representation for C99 in math.h
+ * Note: function choice must match REAL typedef below */
+#ifdef NAN
+#define IS_NAN_REAL(a) (isnan(a))
+#else
+#warn "No support for NaN"
+#define NAN_REAL(a) (0)
+#endif
+
 /**************** RESOURCE CONSTANTS **********************/
 #ifdef HAVE_CUDA
 //#define           CUDA_BLOCK_SIZE             256
@@ -567,6 +576,14 @@ typedef struct
 {
     int num_atom_types;
 
+#ifndef HAVE_CUDA
+    global_parameters gp;
+    single_body_parameters *sbp;
+    two_body_parameters **tbp;
+    three_body_header ***thbp;
+    hbond_parameters ***hbp;
+    four_body_header ****fbp;
+#else
     global_parameters gp;
     global_parameters d_gp;
 
@@ -584,6 +601,7 @@ typedef struct
 
     four_body_header *fbp; //changed
     four_body_header *d_fbp; //changed
+#endif
 } reax_interaction;
 
 
@@ -626,6 +644,21 @@ typedef struct
 
 struct grid_cell
 {
+#ifndef HAVE_CUDA
+    real cutoff;
+    rvec min, max;
+    ivec rel_box;
+
+    int  mark;
+    int  type;
+    int  str;
+    int  end;
+    int  top;
+    int* atoms;
+    struct grid_cell** nbrs;
+    ivec* nbrs_x;
+    rvec* nbrs_cp;
+#else
     //real cutoff;
     rvec min, max;
     //ivec rel_box;
@@ -639,6 +672,7 @@ struct grid_cell
     //struct grid_cell** nbrs; //changed
     //ivec* nbrs_x;
     //rvec* nbrs_cp;
+#endif
 };
 
 typedef struct grid_cell grid_cell;
@@ -665,6 +699,10 @@ typedef struct
     ivec ghost_hbond_span;
     ivec ghost_bond_span;
 
+#ifndef HAVE_CUDA
+    grid_cell*** cells;
+    ivec *order;
+#else
     grid_cell* cells; //changed
     ivec *order;
 
@@ -676,6 +714,7 @@ typedef struct
     rvec *nbrs_cp;
 
     ivec *rel_box;
+#endif
 } grid;
 
 
@@ -1066,7 +1105,11 @@ typedef struct
     int *bond_mark, *done_after;
 
     /* QEq storage */
+#ifndef HAVE_CUDA
+    sparse_matrix *H, *L, *U;
+#else
     sparse_matrix H, L, U; //CHANGED
+#endif
     real *Hdia_inv, *b_s, *b_t, *b_prc, *b_prm, *s, *t;
     real *droptol;
     rvec2 *b, *x;
@@ -1074,7 +1117,11 @@ typedef struct
     /* GMRES storage */
     real *y, *z, *g;
     real *hc, *hs;
+#ifndef HAVE_CUDA
+    real **h, **v;
+#else
     real *h, *v; //changed
+#endif
     /* CG storage */
     real *r, *d, *q, *p;
     rvec2 *r2, *d2, *q2, *p2;
@@ -1088,7 +1135,11 @@ typedef struct
 
     /* storage space for bond restrictions */
     int  *restricted;
+#ifndef HAVE_CUDA
+    int **restricted_list;
+#else
     int *restricted_list;   //changed
+#endif
 
     /* integrator */
     rvec *v_const;
@@ -1132,6 +1183,7 @@ typedef struct
 
 typedef union
 {
+#ifdef HAVE_CUDA
     void *v;
     three_body_interaction_data *three_body_list;
     bond_data          *bond_list;
@@ -1139,6 +1191,7 @@ typedef union
     dDelta_data        *dDelta_list;
     far_neighbor_data  *far_nbr_list;
     hbond_data         *hbond_list;
+#endif
 } list_type;
 
 
@@ -1154,12 +1207,24 @@ typedef struct
 
     int type;
     list_type select;
+
+#ifndef HAVE_CUDA
+    void *v;
+    three_body_interaction_data *three_body_list;
+    bond_data          *bond_list;
+    dbond_data         *dbo_list;
+    dDelta_data        *dDelta_list;
+    far_neighbor_data  *far_nbr_list;
+    hbond_data         *hbond_list;
+#endif
 } reax_list;
 
 
 typedef struct
 {
+#if defined(PURE_REAX)
     MPI_File trj;
+#endif
     FILE *strj;
     int   trj_offset;
     int   atom_line_len;
@@ -1260,7 +1325,11 @@ typedef struct
     cubic_spline_coef *ele, *CEclmb;
 } LR_lookup_table;
 
+#ifndef HAVE_CUDA
+extern LR_lookup_table **LR;
+#else
 extern LR_lookup_table *LR; //changed
+#endif
 
 /* function pointer defs */
 typedef void (*evolve_function)(reax_system*, control_params*,
