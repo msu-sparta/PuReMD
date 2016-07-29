@@ -58,7 +58,7 @@ if test "x$BUILD_OPENMP" = "xyes"; then
 	fi
 fi
 
-if test "x$BUILD_SUPERLU_MT" != "xno"
+if test "x$BUILD_SUPERLU_MT" != "x"
 then
 	CPPFLAGS="${CPPFLAGS} -I${BUILD_SUPERLU_MT}/include"
 	LDFLAGS="${LDFLAGS} -L${BUILD_SUPERLU_MT}/lib"
