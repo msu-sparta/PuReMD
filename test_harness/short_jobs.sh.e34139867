@@ -1,0 +1,1850 @@
+src/io_tools.c: In function ‘Print_Linear_System’:
+src/io_tools.c:871: warning: unused variable ‘H’
+src/io_tools.c:870: warning: unused variable ‘aj’
+src/io_tools.c:868: warning: unused variable ‘j’
+src/io_tools.c: In function ‘Print_GCell_Exchange_Bounds’:
+src/io_tools.c:621: warning: ‘nbr’ is used uninitialized in this function
+src/box.c: In function ‘Setup_Environment’:
+src/box.c:273: warning: unused variable ‘temp’
+src/box.c: In function ‘Scale_Box’:
+src/box.c:310: warning: ‘mu’ may be used uninitialized in this function
+src/valence_angles.c: In function ‘Index_Ck’:
+src/valence_angles.c:105: warning: unused variable ‘bonds’
+src/valence_angles.c:104: warning: unused variable ‘bo_jt’
+src/valence_angles.c:104: warning: unused variable ‘bo_jk’
+src/valence_angles.c:104: warning: unused variable ‘bo_ij’
+src/valence_angles.c:103: warning: unused variable ‘pbond_jt’
+src/valence_angles.c:103: warning: unused variable ‘pbond_jk’
+src/valence_angles.c:103: warning: unused variable ‘pbond_ij’
+src/valence_angles.c:102: warning: unused variable ‘p_kji’
+src/valence_angles.c:102: warning: unused variable ‘p_ijk’
+src/valence_angles.c:101: warning: unused variable ‘thbp’
+src/valence_angles.c:100: warning: unused variable ‘thbh’
+src/valence_angles.c:98: warning: unused variable ‘total_rtensor’
+src/valence_angles.c:98: warning: unused variable ‘temp_rtensor’
+src/valence_angles.c:97: warning: unused variable ‘ext_press’
+src/valence_angles.c:97: warning: unused variable ‘force’
+src/valence_angles.c:96: warning: unused variable ‘BOA_jk’
+src/valence_angles.c:96: warning: unused variable ‘BOA_ij’
+src/valence_angles.c:95: warning: unused variable ‘r_jk’
+src/valence_angles.c:95: warning: unused variable ‘r_ij’
+src/valence_angles.c:94: warning: unused variable ‘sin_theta’
+src/valence_angles.c:94: warning: unused variable ‘cos_theta’
+src/valence_angles.c:94: warning: unused variable ‘theta’
+src/valence_angles.c:94: warning: unused variable ‘theta_00’
+src/valence_angles.c:94: warning: unused variable ‘theta_0’
+src/valence_angles.c:94: warning: unused variable ‘Ctheta_0’
+src/valence_angles.c:93: warning: unused variable ‘f9_Dj’
+src/valence_angles.c:93: warning: unused variable ‘f8_Dj’
+src/valence_angles.c:93: warning: unused variable ‘f7_jk’
+src/valence_angles.c:93: warning: unused variable ‘f7_ij’
+src/valence_angles.c:92: warning: unused variable ‘Cf9j’
+src/valence_angles.c:92: warning: unused variable ‘Cf8j’
+src/valence_angles.c:92: warning: unused variable ‘Cf7jk’
+src/valence_angles.c:92: warning: unused variable ‘Cf7ij’
+src/valence_angles.c:91: warning: unused variable ‘CEcoa5’
+src/valence_angles.c:91: warning: unused variable ‘CEcoa4’
+src/valence_angles.c:91: warning: unused variable ‘CEcoa3’
+src/valence_angles.c:91: warning: unused variable ‘CEcoa2’
+src/valence_angles.c:91: warning: unused variable ‘CEcoa1’
+src/valence_angles.c:90: warning: unused variable ‘e_pen’
+src/valence_angles.c:90: warning: unused variable ‘e_coa’
+src/valence_angles.c:90: warning: unused variable ‘e_ang’
+src/valence_angles.c:89: warning: unused variable ‘CEpen3’
+src/valence_angles.c:89: warning: unused variable ‘CEpen2’
+src/valence_angles.c:89: warning: unused variable ‘CEpen1’
+src/valence_angles.c:88: warning: unused variable ‘CEval8’
+src/valence_angles.c:88: warning: unused variable ‘CEval7’
+src/valence_angles.c:88: warning: unused variable ‘CEval6’
+src/valence_angles.c:88: warning: unused variable ‘CEval5’
+src/valence_angles.c:88: warning: unused variable ‘CEval4’
+src/valence_angles.c:88: warning: unused variable ‘CEval3’
+src/valence_angles.c:88: warning: unused variable ‘CEval2’
+src/valence_angles.c:88: warning: unused variable ‘CEval1’
+src/valence_angles.c:87: warning: unused variable ‘vlpadj’
+src/valence_angles.c:87: warning: unused variable ‘prod_SBO’
+src/valence_angles.c:87: warning: unused variable ‘SBOp’
+src/valence_angles.c:87: warning: unused variable ‘CSBO2’
+src/valence_angles.c:87: warning: unused variable ‘SBO2’
+src/valence_angles.c:87: warning: unused variable ‘SBO’
+src/valence_angles.c:87: warning: unused variable ‘dSBO2’
+src/valence_angles.c:87: warning: unused variable ‘dSBO1’
+src/valence_angles.c:86: warning: unused variable ‘exp_coa2’
+src/valence_angles.c:86: warning: unused variable ‘trm_pen34’
+src/valence_angles.c:86: warning: unused variable ‘exp_pen4’
+src/valence_angles.c:86: warning: unused variable ‘exp_pen3’
+src/valence_angles.c:86: warning: unused variable ‘exp_pen2jk’
+src/valence_angles.c:86: warning: unused variable ‘exp_pen2ij’
+src/valence_angles.c:85: warning: unused variable ‘exp3jk’
+src/valence_angles.c:85: warning: unused variable ‘exp3ij’
+src/valence_angles.c:85: warning: unused variable ‘expval12theta’
+src/valence_angles.c:85: warning: unused variable ‘expval2theta’
+src/valence_angles.c:85: warning: unused variable ‘expval7’
+src/valence_angles.c:85: warning: unused variable ‘expval6’
+src/valence_angles.c:85: warning: unused variable ‘trm8’
+src/valence_angles.c:84: warning: unused variable ‘p_coa4’
+src/valence_angles.c:84: warning: unused variable ‘p_coa3’
+src/valence_angles.c:84: warning: unused variable ‘p_coa2’
+src/valence_angles.c:84: warning: unused variable ‘p_coa1’
+src/valence_angles.c:83: warning: unused variable ‘p_pen4’
+src/valence_angles.c:83: warning: unused variable ‘p_pen3’
+src/valence_angles.c:83: warning: unused variable ‘p_pen2’
+src/valence_angles.c:83: warning: unused variable ‘p_pen1’
+src/valence_angles.c:82: warning: unused variable ‘p_val7’
+src/valence_angles.c:81: warning: unused variable ‘p_val5’
+src/valence_angles.c:81: warning: unused variable ‘p_val4’
+src/valence_angles.c:81: warning: unused variable ‘p_val3’
+src/valence_angles.c:81: warning: unused variable ‘p_val2’
+src/valence_angles.c:81: warning: unused variable ‘p_val1’
+src/valence_angles.c:80: warning: unused variable ‘pBOjt7’
+src/valence_angles.c:80: warning: unused variable ‘temp_bo_jt’
+src/valence_angles.c:80: warning: unused variable ‘temp’
+src/valence_angles.c:78: warning: unused variable ‘cnt’
+src/valence_angles.c:77: warning: unused variable ‘end_pk’
+src/valence_angles.c:77: warning: unused variable ‘start_pk’
+src/valence_angles.c:77: warning: unused variable ‘end_j’
+src/valence_angles.c:77: warning: unused variable ‘start_j’
+src/valence_angles.c:76: warning: unused variable ‘type_k’
+src/valence_angles.c:76: warning: unused variable ‘type_j’
+src/valence_angles.c:76: warning: unused variable ‘type_i’
+src/valence_angles.c:75: warning: unused variable ‘t’
+src/valence_angles.c:75: warning: unused variable ‘pk’
+src/valence_angles.c:75: warning: unused variable ‘k’
+src/valence_angles.c:75: warning: unused variable ‘pi’
+src/valence_angles.c:75: warning: unused variable ‘j’
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for X
+p0@count atoms:
+p0: bigN = 6540
+p0: n = 3341
+p0: N = 3341
+
+p1@count atoms:
+p1: bigN = 6540
+p1: n = 3199
+p1: N = 3199
+
+p0@count atoms:
+p0: bigN = 6001
+p0: n = 3023
+p0: N = 3023
+
+p1@count atoms:
+p1: bigN = 6001
+p1: n = 2978
+p1: N = 2978
+
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for X
+p0@count atoms:
+p0: bigN = 6912
+p0: n = 3456
+p0: N = 3456
+
+p1@count atoms:
+p1: bigN = 6912
+p1: n = 3456
+p1: N = 3456
+
+src/allocate.c: In function ‘PreAllocate_Space’:
+src/allocate.c:46:8: warning: unused variable ‘i’ [-Wunused-variable]
+   int  i;
+        ^
+src/allocate.c: In function ‘Allocate_Workspace’:
+src/allocate.c:250:45: warning: variable ‘local_real’ set but not used [-Wunused-but-set-variable]
+   int i, total_real, total_rvec, local_int, local_real, local_rvec;
+                                             ^
+src/allocate.c:250:34: warning: variable ‘local_int’ set but not used [-Wunused-but-set-variable]
+   int i, total_real, total_rvec, local_int, local_real, local_rvec;
+                                  ^
+src/allocate.c: In function ‘Cuda_Reallocate_Neighbor_List’:
+src/allocate.c:396:3: warning: implicit declaration of function ‘Dev_Delete_List’ [-Wimplicit-function-declaration]
+   Dev_Delete_List( far_nbrs);
+   ^
+src/allocate.c:397:3: warning: implicit declaration of function ‘Dev_Make_List’ [-Wimplicit-function-declaration]
+   if(!Dev_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs)){
+   ^
+src/allocate.c: In function ‘Reallocate_Matrix’:
+src/allocate.c:449:3: warning: passing argument 1 of ‘Allocate_Matrix’ from incompatible pointer type [enabled by default]
+   if( !Allocate_Matrix( H, n, m ) ) {
+   ^
+src/allocate.c:423:5: note: expected ‘struct sparse_matrix *’ but argument is of type ‘struct sparse_matrix **’
+ int Allocate_Matrix( sparse_matrix *H, int cap, int m )
+     ^
+src/allocate.c: In function ‘Estimate_GCell_Population’:
+src/allocate.c:541:19: warning: variable ‘big_box’ set but not used [-Wunused-but-set-variable]
+   simulation_box *big_box, *my_ext_box;
+                   ^
+src/allocate.c: In function ‘Allocate_Grid’:
+src/allocate.c:605:16: warning: unused variable ‘l’ [-Wunused-variable]
+   int i, j, k, l;
+                ^
+src/allocate.c: In function ‘ReAllocate’:
+src/allocate.c:911:10: warning: passing argument 1 of ‘Reallocate_Matrix’ from incompatible pointer type [enabled by default]
+          system->local_cap, realloc->Htop*SAFE_ZONE, "H" );
+          ^
+src/allocate.c:446:5: note: expected ‘struct sparse_matrix **’ but argument is of type ‘struct sparse_matrix *’
+ int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
+     ^
+src/allocate.c: In function ‘Cuda_ReAllocate’:
+src/allocate.c:1125:5: warning: implicit declaration of function ‘dev_realloc_system’ [-Wimplicit-function-declaration]
+     ret = dev_realloc_system ( system, system->local_cap, system->total_cap, msg );
+     ^
+src/allocate.c:1134:5: warning: implicit declaration of function ‘dev_dealloc_workspace’ [-Wimplicit-function-declaration]
+     dev_dealloc_workspace( control, workspace );
+     ^
+src/allocate.c:1135:5: warning: implicit declaration of function ‘dev_alloc_workspace’ [-Wimplicit-function-declaration]
+     ret = dev_alloc_workspace ( system, control, workspace, system->local_cap, 
+     ^
+src/allocate.c:1204:3: warning: implicit declaration of function ‘dev_dealloc_matrix’ [-Wimplicit-function-declaration]
+   dev_dealloc_matrix (&dev_workspace->H);
+   ^
+src/allocate.c:1215:3: warning: implicit declaration of function ‘dev_alloc_matrix’ [-Wimplicit-function-declaration]
+   dev_alloc_matrix ( &(dev_workspace->H), system->total_cap, 
+   ^
+src/allocate.c:1072:18: warning: variable ‘H’ set but not used [-Wunused-but-set-variable]
+   sparse_matrix *H;
+                  ^
+src/allocate.c:1068:43: warning: unused variable ‘Hflag’ [-Wunused-variable]
+   int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
+                                           ^
+src/allocate.c:1068:7: warning: variable ‘num_bonds’ set but not used [-Wunused-but-set-variable]
+   int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
+       ^
+In file included from src/allocate.c:28:0:
+src/allocate.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/ffield.c: In function ‘Read_Force_Field’:
+src/ffield.c:41:12: warning: variable ‘c’ set but not used [-Wunused-but-set-variable]
+   int      c, i, j, k, l, m, n, o, p, cnt;
+            ^
+In file included from src/ffield.c:25:0:
+src/ffield.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/grid.c: In function ‘Mark_GCells’:
+src/grid.c:38:18: warning: variable ‘end_send’ set but not used [-Wunused-but-set-variable]
+   ivec str_send, end_send;
+                  ^
+src/grid.c:38:8: warning: variable ‘str_send’ set but not used [-Wunused-but-set-variable]
+   ivec str_send, end_send;
+        ^
+src/grid.c: In function ‘Setup_New_Grid’:
+src/grid.c:251:20: warning: variable ‘bc’ set but not used [-Wunused-but-set-variable]
+   boundary_cutoff *bc;
+                    ^
+src/grid.c: In function ‘Update_Grid’:
+src/grid.c:349:20: warning: variable ‘bc’ set but not used [-Wunused-but-set-variable]
+   boundary_cutoff *bc;
+                    ^
+src/grid.c:346:14: warning: variable ‘gc’ set but not used [-Wunused-but-set-variable]
+   grid_cell *gc;
+              ^
+src/grid.c:343:54: warning: variable ‘ghost_hbond_span’ set but not used [-Wunused-but-set-variable]
+   ivec ghost_span, ghost_nonb_span, ghost_bond_span, ghost_hbond_span;;
+                                                      ^
+src/grid.c:343:37: warning: variable ‘ghost_bond_span’ set but not used [-Wunused-but-set-variable]
+   ivec ghost_span, ghost_nonb_span, ghost_bond_span, ghost_hbond_span;;
+                                     ^
+src/grid.c:343:20: warning: variable ‘ghost_nonb_span’ set but not used [-Wunused-but-set-variable]
+   ivec ghost_span, ghost_nonb_span, ghost_bond_span, ghost_hbond_span;;
+                    ^
+src/grid.c:342:37: warning: variable ‘bond_span’ set but not used [-Wunused-but-set-variable]
+   ivec ci, native_cells, nonb_span, bond_span;
+                                     ^
+src/grid.c:342:26: warning: variable ‘nonb_span’ set but not used [-Wunused-but-set-variable]
+   ivec ci, native_cells, nonb_span, bond_span;
+                          ^
+src/grid.c: In function ‘Bin_My_Atoms’:
+src/grid.c:442:19: warning: variable ‘big_box’ set but not used [-Wunused-but-set-variable]
+   simulation_box *big_box, *my_box, *my_ext_box;
+                   ^
+In file included from src/grid.c:26:0:
+src/grid.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/list.c:26:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/lookup.c:33:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/io_tools.c: In function ‘Print_Linear_System’:
+src/io_tools.c:886:18: warning: unused variable ‘H’ [-Wunused-variable]
+   sparse_matrix *H;
+                  ^
+src/io_tools.c:885:19: warning: unused variable ‘aj’ [-Wunused-variable]
+   reax_atom *ai, *aj;
+                   ^
+src/io_tools.c:883:12: warning: unused variable ‘j’ [-Wunused-variable]
+   int   i, j;
+            ^
+In file included from src/io_tools.c:30:0:
+src/io_tools.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/reset_tools.c:33:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/restart.c: In function ‘Read_Restart’:
+src/restart.c:330:9: warning: variable ‘c’ set but not used [-Wunused-but-set-variable]
+   int i,c, top;
+         ^
+In file included from src/restart.c:25:0:
+src/restart.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/tool_box.c:24:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/traj.c: In function ‘Append_Frame’:
+src/traj.c:939:3: warning: implicit declaration of function ‘Output_Sync_Atoms’ [-Wimplicit-function-declaration]
+   Output_Sync_Atoms ( system );
+   ^
+src/traj.c:947:3: warning: implicit declaration of function ‘Output_Sync_Lists’ [-Wimplicit-function-declaration]
+   Output_Sync_Lists ((*lists + BONDS), (*dev_lists + BONDS), TYP_BOND);
+   ^
+In file included from src/traj.c:26:0:
+src/traj.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/box.c: In function ‘Setup_My_Ext_Box’:
+src/box.c:213:19: warning: variable ‘big_box’ set but not used [-Wunused-but-set-variable]
+   simulation_box *big_box, *my_box, *my_ext_box;
+                   ^
+src/box.c: In function ‘Setup_Environment’:
+src/box.c:266:8: warning: unused variable ‘temp’ [-Wunused-variable]
+   char temp[100] = "";
+        ^
+src/box.c: In function ‘Scale_Box’:
+src/box.c:303:8: warning: ‘mu[0]’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+   rvec mu;
+        ^
+src/box.c:303:8: warning: ‘mu[1]’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+src/box.c:303:8: warning: ‘mu[2]’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+src/system_props.c: In function ‘Cuda_Compute_Kinetic_Energy’:
+src/system_props.c:92:8: warning: unused variable ‘m’ [-Wunused-variable]
+   real m;
+        ^
+src/system_props.c:91:8: warning: unused variable ‘p’ [-Wunused-variable]
+   rvec p;
+        ^
+src/system_props.c:90:7: warning: unused variable ‘i’ [-Wunused-variable]
+   int i;
+       ^
+src/system_props.c: In function ‘Cuda_Compute_Total_Mass’:
+src/system_props.c:196:8: warning: unused variable ‘i’ [-Wunused-variable]
+   int  i;
+        ^
+src/system_props.c: In function ‘Cuda_Compute_Center_of_Mass’:
+src/system_props.c:332:14: warning: unused variable ‘diff’ [-Wunused-variable]
+   rvec tvec, diff;
+              ^
+src/system_props.c:329:8: warning: unused variable ‘m’ [-Wunused-variable]
+   real m, det; //xx, xy, xz, yy, yz, zz;
+        ^
+In file included from src/system_props.c:29:0:
+src/system_props.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/control.c: In function ‘Read_Control_File’:
+src/control.c:37:9: warning: variable ‘c’ set but not used [-Wunused-but-set-variable]
+   int   c,i,ival;
+         ^
+In file included from src/control.c:25:0:
+src/control.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/comm_tools.c: In function ‘Sort_Boundary_Atoms’:
+src/comm_tools.c:257:19: warning: variable ‘my_box’ set but not used [-Wunused-but-set-variable]
+   simulation_box *my_box;
+                   ^
+src/comm_tools.c: In function ‘Estimate_Boundary_Atoms’:
+src/comm_tools.c:298:19: warning: variable ‘my_box’ set but not used [-Wunused-but-set-variable]
+   simulation_box *my_box;
+                   ^
+In file included from src/comm_tools.c:25:0:
+src/comm_tools.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/geo_tools.c: In function ‘Read_PDB’:
+src/geo_tools.c:255:29: warning: variable ‘icode’ set but not used [-Wunused-but-set-variable]
+   char   alt_loc, chain_id, icode;
+                             ^
+src/geo_tools.c:255:19: warning: variable ‘chain_id’ set but not used [-Wunused-but-set-variable]
+   char   alt_loc, chain_id, icode;
+                   ^
+src/geo_tools.c:255:10: warning: variable ‘alt_loc’ set but not used [-Wunused-but-set-variable]
+   char   alt_loc, chain_id, icode;
+          ^
+In file included from src/geo_tools.c:25:0:
+src/geo_tools.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/linear_solvers.c: In function ‘dual_CG’:
+src/linear_solvers.c:77:7: warning: unused variable ‘a’ [-Wunused-variable]
+   int a;
+       ^
+src/linear_solvers.c: In function ‘Cuda_dual_CG’:
+src/linear_solvers.c:278:3: warning: implicit declaration of function ‘get_from_device’ [-Wimplicit-function-declaration]
+   get_from_device (spad, x, sizeof (rvec2) * system->total_cap, "CG:x:get");
+   ^
+src/linear_solvers.c:280:3: warning: implicit declaration of function ‘put_on_device’ [-Wimplicit-function-declaration]
+   put_on_device (spad, x, sizeof (rvec2) * system->total_cap, "CG:x:put");
+   ^
+src/linear_solvers.c:298:3: warning: implicit declaration of function ‘Cuda_Dual_Matvec’ [-Wimplicit-function-declaration]
+   Cuda_Dual_Matvec ( H, x, dev_workspace->q2, system->N, system->total_cap);
+   ^
+src/linear_solvers.c:328:3: warning: implicit declaration of function ‘Cuda_CG_Diagnol_Preconditioner’ [-Wimplicit-function-declaration]
+   Cuda_CG_Diagnol_Preconditioner (dev_workspace, b, system->n);
+   ^
+src/linear_solvers.c:343:3: warning: implicit declaration of function ‘Cuda_Norm’ [-Wimplicit-function-declaration]
+   Cuda_Norm (b, n, my_sum);
+   ^
+src/linear_solvers.c:362:3: warning: implicit declaration of function ‘Cuda_Dot’ [-Wimplicit-function-declaration]
+   Cuda_Dot (dev_workspace->r2, dev_workspace->d2, my_dot, n);
+   ^
+src/linear_solvers.c:452:3: warning: implicit declaration of function ‘Cuda_DualCG_Preconditioer’ [-Wimplicit-function-declaration]
+   Cuda_DualCG_Preconditioer (dev_workspace, x, alpha, system->n, my_dot);
+   ^
+src/linear_solvers.c:480:3: warning: implicit declaration of function ‘Cuda_Vector_Sum_Rvec2’ [-Wimplicit-function-declaration]
+   Cuda_Vector_Sum_Rvec2 (dev_workspace->d2, dev_workspace->p2, beta,
+   ^
+src/linear_solvers.c:491:3: warning: implicit declaration of function ‘Cuda_RvecCopy_From’ [-Wimplicit-function-declaration]
+   Cuda_RvecCopy_From (dev_workspace->t, dev_workspace->x, 1, system->n);
+   ^
+src/linear_solvers.c:501:3: warning: implicit declaration of function ‘Cuda_RvecCopy_To’ [-Wimplicit-function-declaration]
+   Cuda_RvecCopy_To (dev_workspace->x, dev_workspace->t, 1, system->n);
+   ^
+src/linear_solvers.c:255:7: warning: unused variable ‘a’ [-Wunused-variable]
+   int a;
+       ^
+src/linear_solvers.c:248:17: warning: variable ‘N’ set but not used [-Wunused-but-set-variable]
+   int  i, j, n, N, matvecs, scale;
+                 ^
+src/linear_solvers.c:248:11: warning: unused variable ‘j’ [-Wunused-variable]
+   int  i, j, n, N, matvecs, scale;
+           ^
+src/linear_solvers.c: In function ‘CG’:
+src/linear_solvers.c:563:26: warning: variable ‘sig0’ set but not used [-Wunused-but-set-variable]
+   real sig_old, sig_new, sig0;
+                          ^
+src/linear_solvers.c: In function ‘Cuda_CG’:
+src/linear_solvers.c:644:3: warning: implicit declaration of function ‘Cuda_Matvec’ [-Wimplicit-function-declaration]
+   Cuda_Matvec( H, x, dev_workspace->q, system->N, system->total_cap );
+   ^
+src/linear_solvers.c:656:3: warning: implicit declaration of function ‘Cuda_Vector_Sum’ [-Wimplicit-function-declaration]
+   Cuda_Vector_Sum( dev_workspace->r , 1.,  b, -1., dev_workspace->q, system->n );
+   ^
+src/linear_solvers.c:659:3: warning: implicit declaration of function ‘Cuda_CG_Preconditioner’ [-Wimplicit-function-declaration]
+   Cuda_CG_Preconditioner (dev_workspace->d, dev_workspace->r, dev_workspace->Hdia_inv, system->n);
+   ^
+src/linear_solvers.c:631:26: warning: variable ‘sig0’ set but not used [-Wunused-but-set-variable]
+   real sig_old, sig_new, sig0;
+                          ^
+src/linear_solvers.c:629:11: warning: unused variable ‘j’ [-Wunused-variable]
+   int  i, j, scale;
+           ^
+src/linear_solvers.c: In function ‘CG_test’:
+src/linear_solvers.c:740:26: warning: variable ‘sig0’ set but not used [-Wunused-but-set-variable]
+   real sig_old, sig_new, sig0;
+                          ^
+src/linear_solvers.c: In function ‘PCG’:
+src/linear_solvers.c:899:11: warning: variable ‘me’ set but not used [-Wunused-but-set-variable]
+   int  i, me, n, N, scale;
+           ^
+In file included from src/linear_solvers.c:25:0:
+src/linear_solvers.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/neighbors.c: In function ‘Generate_Neighbor_Lists’:
+src/neighbors.c:76:20: warning: variable ‘gcj’ set but not used [-Wunused-but-set-variable]
+   grid_cell *gci, *gcj;
+                    ^
+src/neighbors.c:76:14: warning: variable ‘gci’ set but not used [-Wunused-but-set-variable]
+   grid_cell *gci, *gcj;
+              ^
+src/neighbors.c: In function ‘Estimate_NumNeighbors’:
+src/neighbors.c:185:20: warning: unused variable ‘gcj’ [-Wunused-variable]
+   grid_cell *gci, *gcj;
+                    ^
+src/neighbors.c:185:14: warning: variable ‘gci’ set but not used [-Wunused-but-set-variable]
+   grid_cell *gci, *gcj;
+              ^
+In file included from src/neighbors.c:25:0:
+src/neighbors.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/qEq.c: In function ‘Estimate_LU_Fill’:
+src/qEq.c:90:10: warning: variable ‘j’ set but not used [-Wunused-but-set-variable]
+   int i, j, pj;
+          ^
+src/qEq.c: In function ‘Cuda_Calculate_Charges’:
+src/qEq.c:368:3: warning: implicit declaration of function ‘cuda_charges_x’ [-Wimplicit-function-declaration]
+   cuda_charges_x ( system, my_sum );
+   ^
+src/qEq.c:376:3: warning: implicit declaration of function ‘cuda_charges_st’ [-Wimplicit-function-declaration]
+   cuda_charges_st ( system, workspace, q, u );
+   ^
+src/qEq.c:380:3: warning: implicit declaration of function ‘cuda_charges_updateq’ [-Wimplicit-function-declaration]
+   cuda_charges_updateq ( system, q );
+   ^
+src/qEq.c:360:14: warning: unused variable ‘atom’ [-Wunused-variable]
+   reax_atom *atom;
+              ^
+src/qEq.c:357:14: warning: unused variable ‘i’ [-Wunused-variable]
+   int        i, scale;
+              ^
+src/qEq.c: In function ‘Cuda_QEq’:
+src/qEq.c:448:3: warning: implicit declaration of function ‘Cuda_Init_MatVec’ [-Wimplicit-function-declaration]
+   Cuda_Init_MatVec( system, workspace );
+   ^
+In file included from src/qEq.c:27:0:
+src/qEq.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/bond_orders.c: In function ‘BO’:
+src/bond_orders.c:798:34: warning: variable ‘num_bonds’ set but not used [-Wunused-but-set-variable]
+   int start_i, end_i, sym_index, num_bonds;
+                                  ^
+src/multi_body.c: In function ‘Atom_Energy’:
+src/multi_body.c:53:35: warning: variable ‘sbp_j’ set but not used [-Wunused-but-set-variable]
+   single_body_parameters *sbp_i, *sbp_j;
+                                   ^
+src/multi_body.c:50:8: warning: variable ‘p_lp1’ set but not used [-Wunused-but-set-variable]
+   real p_lp1, p_lp2, p_lp3;
+        ^
+In file included from src/bonds.c:28:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/valence_angles.c: In function ‘Valence_Angles’:
+src/valence_angles.c:100:14: warning: variable ‘r_jk’ set but not used [-Wunused-but-set-variable]
+   real r_ij, r_jk;
+              ^
+src/valence_angles.c:100:8: warning: variable ‘r_ij’ set but not used [-Wunused-but-set-variable]
+   real r_ij, r_jk;
+        ^
+src/hydrogen_bonds.c: In function ‘Hydrogen_Bonds’:
+src/hydrogen_bonds.c:50:8: warning: variable ‘r_ij’ set but not used [-Wunused-but-set-variable]
+   real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
+        ^
+src/torsion_angles.c: In function ‘Torsion_Angles’:
+src/torsion_angles.c:159:32: warning: variable ‘end_k’ set but not used [-Wunused-but-set-variable]
+   int start_j, end_j, start_k, end_k;
+                                ^
+src/torsion_angles.c:159:23: warning: variable ‘start_k’ set but not used [-Wunused-but-set-variable]
+   int start_j, end_j, start_k, end_k;
+                       ^
+In file included from src/torsion_angles.c:28:0:
+src/torsion_angles.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/forces.c: In function ‘Compute_Bonded_Forces’:
+src/forces.c:102:7: warning: unused variable ‘i’ [-Wunused-variable]
+   int i;
+       ^
+src/forces.c: In function ‘Cuda_Compute_Total_Force’:
+src/forces.c:224:3: warning: passing argument 1 of ‘get_from_device’ from incompatible pointer type [enabled by default]
+   get_from_device (f, dev_workspace->f, sizeof (rvec) * system->N , "total_force:f:get");
+   ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:30:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void get_from_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c:224:3: warning: passing argument 2 of ‘get_from_device’ from incompatible pointer type [enabled by default]
+   get_from_device (f, dev_workspace->f, sizeof (rvec) * system->N , "total_force:f:get");
+   ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:30:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void get_from_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c:229:3: warning: passing argument 1 of ‘put_on_device’ from incompatible pointer type [enabled by default]
+   put_on_device (f, dev_workspace->f, sizeof (rvec) * system->N, "total_force:f:put" ); 
+   ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:31:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void put_on_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c:229:3: warning: passing argument 2 of ‘put_on_device’ from incompatible pointer type [enabled by default]
+   put_on_device (f, dev_workspace->f, sizeof (rvec) * system->N, "total_force:f:put" ); 
+   ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:31:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void put_on_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c: In function ‘Validate_Lists’:
+src/forces.c:243:20: warning: variable ‘realloc’ set but not used [-Wunused-but-set-variable]
+   reallocate_data *realloc;
+                    ^
+src/forces.c: In function ‘Init_Forces_noQEq’:
+src/forces.c:672:8: warning: variable ‘r_ij’ set but not used [-Wunused-but-set-variable]
+   real r_ij, cutoff;
+        ^
+src/forces.c: In function ‘Estimate_Storages’:
+src/forces.c:841:14: warning: variable ‘r2’ set but not used [-Wunused-but-set-variable]
+   real r_ij, r2;
+              ^
+In file included from src/forces.c:46:0:
+src/forces.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/integrate.c:37:0:
+src/cuda_copy.h:13:61: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Control (control_params *, control_params *, enum cudaMemcpyKind);
+                                                             ^
+src/cuda_copy.h:13:61: warning: its scope is only this definition or declaration, which is probably not what you want [enabled by default]
+src/cuda_copy.h:14:58: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Matrix (sparse_matrix *, sparse_matrix *, enum cudaMemcpyKind);
+                                                          ^
+src/cuda_copy.h:15:51: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Output_Control (output_controls *, enum cudaMemcpyKind);
+                                                   ^
+src/cuda_copy.h:16:47: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Workspace (storage *workspace, enum cudaMemcpyKind);
+                                               ^
+src/integrate.c: In function ‘Cuda_Velocity_Verlet_Berendsen_NVT’:
+src/integrate.c:308:3: warning: implicit declaration of function ‘bNVT_update_velocity_part1’ [-Wimplicit-function-declaration]
+   bNVT_update_velocity_part1 (system, dt);
+   ^
+src/integrate.c:327:3: warning: implicit declaration of function ‘init_blocks’ [-Wimplicit-function-declaration]
+   init_blocks (system);
+   ^
+src/integrate.c:365:6: warning: implicit declaration of function ‘Cuda_Generate_Neighbor_Lists’ [-Wimplicit-function-declaration]
+      Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+      ^
+src/integrate.c:425:3: warning: implicit declaration of function ‘bNVT_update_velocity_part2’ [-Wimplicit-function-declaration]
+   bNVT_update_velocity_part2 (system, dt);
+   ^
+src/integrate.c:444:3: warning: implicit declaration of function ‘bNVT_scale_velocities’ [-Wimplicit-function-declaration]
+   bNVT_scale_velocities (system, lambda);
+   ^
+src/integrate.c:295:17: warning: unused variable ‘cap_3body’ [-Wunused-variable]
+   int bond_cap, cap_3body;
+                 ^
+src/integrate.c:295:7: warning: unused variable ‘bond_cap’ [-Wunused-variable]
+   int bond_cap, cap_3body;
+       ^
+src/integrate.c:294:28: warning: unused variable ‘total_bonds’ [-Wunused-variable]
+   int total_hbonds, count, total_bonds;
+                            ^
+src/integrate.c:294:21: warning: unused variable ‘count’ [-Wunused-variable]
+   int total_hbonds, count, total_bonds;
+                     ^
+src/integrate.c:294:7: warning: unused variable ‘total_hbonds’ [-Wunused-variable]
+   int total_hbonds, count, total_bonds;
+       ^
+src/integrate.c:293:13: warning: unused variable ‘num_3body’ [-Wunused-variable]
+   int Htop, num_3body;
+             ^
+src/integrate.c:293:7: warning: unused variable ‘Htop’ [-Wunused-variable]
+   int Htop, num_3body;
+       ^
+src/integrate.c:292:19: warning: unused variable ‘hb_top’ [-Wunused-variable]
+   int *bond_top, *hb_top;
+                   ^
+src/integrate.c:292:8: warning: unused variable ‘bond_top’ [-Wunused-variable]
+   int *bond_top, *hb_top;
+        ^
+src/integrate.c:289:14: warning: unused variable ‘atom’ [-Wunused-variable]
+   reax_atom *atom;
+              ^
+src/integrate.c:288:8: warning: unused variable ‘dx’ [-Wunused-variable]
+   rvec dx;
+        ^
+src/integrate.c:287:8: warning: unused variable ‘inv_m’ [-Wunused-variable]
+   real inv_m, dt, lambda;
+        ^
+In file included from src/integrate.c:32:0:
+src/integrate.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/init_md.c:27:0:
+src/cuda_copy.h:13:61: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Control (control_params *, control_params *, enum cudaMemcpyKind);
+                                                             ^
+src/cuda_copy.h:13:61: warning: its scope is only this definition or declaration, which is probably not what you want [enabled by default]
+src/cuda_copy.h:14:58: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Matrix (sparse_matrix *, sparse_matrix *, enum cudaMemcpyKind);
+                                                          ^
+src/cuda_copy.h:15:51: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Output_Control (output_controls *, enum cudaMemcpyKind);
+                                                   ^
+src/cuda_copy.h:16:47: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Workspace (storage *workspace, enum cudaMemcpyKind);
+                                               ^
+src/init_md.c: In function ‘Cuda_Init_Workspace’:
+src/init_md.c:562:3: warning: implicit declaration of function ‘Cuda_Reset_Workspace’ [-Wimplicit-function-declaration]
+   Cuda_Reset_Workspace( system, workspace );
+   ^
+src/init_md.c: In function ‘Init_Lists’:
+src/init_md.c:710:3: warning: implicit declaration of function ‘Make_List’ [-Wimplicit-function-declaration]
+   if(!Make_List(system->total_cap,num_nbrs,TYP_FAR_NEIGHBOR,*lists+FAR_NBRS)){
+   ^
+src/init_md.c:704:7: warning: unused variable ‘nrecv’ [-Wunused-variable]
+   int nrecv[MAX_NBRS];
+       ^
+src/init_md.c: In function ‘Cuda_Init_Lists’:
+src/init_md.c:828:3: warning: implicit declaration of function ‘Cuda_Estimate_Neighbors’ [-Wimplicit-function-declaration]
+   Cuda_Estimate_Neighbors (system, nbr_indices);
+   ^
+src/init_md.c:861:2: warning: implicit declaration of function ‘Cuda_Init_Neighbors_Indices’ [-Wimplicit-function-declaration]
+  Cuda_Init_Neighbors_Indices (nbr_indices, system->N);
+  ^
+src/init_md.c:863:3: warning: implicit declaration of function ‘Cuda_Generate_Neighbor_Lists’ [-Wimplicit-function-declaration]
+   Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+   ^
+src/init_md.c:868:3: warning: implicit declaration of function ‘Cuda_Estimate_Storages’ [-Wimplicit-function-declaration]
+   Cuda_Estimate_Storages( system, control, lists, system->local_cap, system->total_cap,
+   ^
+src/init_md.c:879:3: warning: implicit declaration of function ‘Cuda_Estimate_Sparse_Matrix’ [-Wimplicit-function-declaration]
+   Cuda_Estimate_Sparse_Matrix (system, control, data, lists);
+   ^
+src/init_md.c:823:7: warning: unused variable ‘nrecv’ [-Wunused-variable]
+   int nrecv[MAX_NBRS];
+       ^
+src/init_md.c:821:55: warning: variable ‘cap_3body’ set but not used [-Wunused-but-set-variable]
+   int total_hbonds, total_bonds, bond_cap, num_3body, cap_3body, Htop;
+                                                       ^
+src/init_md.c: In function ‘Initialize’:
+src/init_md.c:1089:5: warning: passing argument 3 of ‘Init_Lookup_Tables’ from incompatible pointer type [enabled by default]
+     if( Init_Lookup_Tables(system,control,workspace,mpi_data,msg) == FAILURE ) {
+     ^
+In file included from src/init_md.c:41:0:
+src/lookup.h:29:5: note: expected ‘real *’ but argument is of type ‘struct storage *’
+ int Init_Lookup_Tables( reax_system*, control_params*, real *, 
+     ^
+src/init_md.c: In function ‘Cuda_Initialize’:
+src/init_md.c:1166:3: warning: implicit declaration of function ‘Cuda_Init_ScratchArea’ [-Wimplicit-function-declaration]
+   Cuda_Init_ScratchArea ();
+   ^
+src/init_md.c:1163:17: warning: unused variable ‘t_end’ [-Wunused-variable]
+   real t_start, t_end;
+                 ^
+src/init_md.c:1163:8: warning: unused variable ‘t_start’ [-Wunused-variable]
+   real t_start, t_end;
+        ^
+In file included from src/init_md.c:46:0:
+src/init_md.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/parallelreax.c: In function ‘init_blocks’:
+src/parallelreax.c:151:2: warning: implicit declaration of function ‘compute_blocks’ [-Wimplicit-function-declaration]
+  compute_blocks (&BLOCKS, &BLOCK_SIZE, system->n);
+  ^
+src/parallelreax.c:152:2: warning: implicit declaration of function ‘compute_nearest_pow_2’ [-Wimplicit-function-declaration]
+  compute_nearest_pow_2 (BLOCKS, &BLOCKS_POW_2);
+  ^
+src/parallelreax.c:157:2: warning: implicit declaration of function ‘compute_matvec_blocks’ [-Wimplicit-function-declaration]
+  compute_matvec_blocks (&MATVEC_BLOCKS, system->N);
+  ^
+src/parallelreax.c: In function ‘main’:
+src/parallelreax.c:253:3: warning: implicit declaration of function ‘print_device_mem_usage’ [-Wimplicit-function-declaration]
+   print_device_mem_usage ();
+   ^
+src/parallelreax.c:301:3: warning: implicit declaration of function ‘Sync_Atoms’ [-Wimplicit-function-declaration]
+   Sync_Atoms ( system );
+   ^
+src/parallelreax.c:302:3: warning: implicit declaration of function ‘Sync_Grid’ [-Wimplicit-function-declaration]
+   Sync_Grid (&system->my_grid, &system->d_my_grid);
+   ^
+src/parallelreax.c:323:3: warning: implicit declaration of function ‘Cuda_Generate_Neighbor_Lists’ [-Wimplicit-function-declaration]
+   Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+   ^
+src/parallelreax.c:178:17: warning: unused variable ‘t_end’ [-Wunused-variable]
+   real t_begin, t_end;
+                 ^
+src/parallelreax.c:178:8: warning: unused variable ‘t_begin’ [-Wunused-variable]
+   real t_begin, t_end;
+        ^
+In file included from src/parallelreax.c:36:0:
+src/parallelreax.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/dev_alloc.cu(14): warning: missing return statement at end of non-void function "dev_alloc_control"
+
+src/dev_alloc.cu(30): warning: variable "local_cell" was declared but never referenced
+
+src/dev_alloc.cu(33): warning: variable "nbrs_x" was declared but never referenced
+
+src/dev_alloc.cu(120): warning: missing return statement at end of non-void function "dev_dealloc_grid_cell_atoms"
+
+src/dev_alloc.cu(139): warning: missing return statement at end of non-void function "dev_alloc_grid_cell_atoms"
+
+src/dev_alloc.cu(198): warning: variable "i" was declared but never referenced
+
+src/dev_alloc.cu(198): warning: variable "local_int" was set but never used
+
+src/dev_alloc.cu(198): warning: variable "local_real" was set but never used
+
+src/dev_alloc.cu(14): warning: missing return statement at end of non-void function "dev_alloc_control"
+
+src/dev_alloc.cu(30): warning: variable "local_cell" was declared but never referenced
+
+src/dev_alloc.cu(33): warning: variable "nbrs_x" was declared but never referenced
+
+src/dev_alloc.cu(120): warning: missing return statement at end of non-void function "dev_dealloc_grid_cell_atoms"
+
+src/dev_alloc.cu(139): warning: missing return statement at end of non-void function "dev_alloc_grid_cell_atoms"
+
+src/dev_alloc.cu(198): warning: variable "i" was declared but never referenced
+
+src/dev_alloc.cu(198): warning: variable "local_int" was set but never used
+
+src/dev_alloc.cu(198): warning: variable "local_real" was set but never used
+
+src/center_mass.cu(64): warning: variable "xcm_id" was declared but never referenced
+
+src/center_mass.cu(386): warning: variable "xx_i" was declared but never referenced
+
+src/center_mass.cu(64): warning: variable "xcm_id" was declared but never referenced
+
+src/center_mass.cu(386): warning: variable "xx_i" was declared but never referenced
+
+src/cuda_copy.cu(17): warning: variable "local_cell" was declared but never referenced
+
+src/cuda_copy.cu(17): warning: variable "local_cell" was declared but never referenced
+
+src/cuda_reset_tools.cu(24): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(44): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(53): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(54): warning: variable "atom" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(24): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(44): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(53): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(54): warning: variable "atom" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(401): warning: variable "my_count" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(505): warning: variable "nbr_data" was declared but never referenced
+
+src/cuda_neighbors.cu(606): warning: variable "num_nbrs" was declared but never referenced
+
+src/cuda_neighbors.cu(608): warning: variable "far_nbrs" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(401): warning: variable "my_count" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(505): warning: variable "nbr_data" was declared but never referenced
+
+src/cuda_neighbors.cu(606): warning: variable "num_nbrs" was declared but never referenced
+
+src/cuda_neighbors.cu(608): warning: variable "far_nbrs" was declared but never referenced
+
+src/cuda_bond_orders.cu(38): warning: variable "sym_index" was declared but never referenced
+
+src/cuda_bond_orders.cu(38): warning: variable "num_bonds" was set but never used
+
+src/cuda_bond_orders.cu(44): warning: variable "p_lp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(46): warning: variable "explp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(47): warning: variable "sbp_j" was declared but never referenced
+
+src/cuda_bond_orders.cu(49): warning: variable "bo_ji" was declared but never referenced
+
+src/cuda_bond_orders.cu(374): warning: variable "sbp_i" was declared but never referenced
+
+src/cuda_bond_orders.cu(427): warning: variable "tf_f" was declared but never referenced
+
+src/cuda_bond_orders.cu(590): warning: variable "k" was set but never used
+
+src/cuda_bond_orders.cu(38): warning: variable "sym_index" was declared but never referenced
+
+src/cuda_bond_orders.cu(38): warning: variable "num_bonds" was set but never used
+
+src/cuda_bond_orders.cu(44): warning: variable "p_lp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(46): warning: variable "explp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(47): warning: variable "sbp_j" was declared but never referenced
+
+src/cuda_bond_orders.cu(49): warning: variable "bo_ji" was declared but never referenced
+
+src/cuda_bond_orders.cu(374): warning: variable "sbp_i" was declared but never referenced
+
+src/cuda_bond_orders.cu(427): warning: variable "tf_f" was declared but never referenced
+
+src/cuda_bond_orders.cu(590): warning: variable "k" was set but never used
+
+src/cuda_bonds.cu(38): warning: variable "natoms" was declared but never referenced
+
+src/cuda_bonds.cu(41): warning: variable "ebond" was set but never used
+
+src/cuda_bonds.cu(38): warning: variable "natoms" was declared but never referenced
+
+src/cuda_bonds.cu(41): warning: variable "ebond" was set but never used
+
+src/cuda_multi_body.cu(44): warning: variable "e_lp" was set but never used
+
+src/cuda_multi_body.cu(45): warning: variable "e_lph" was set but never used
+
+src/cuda_multi_body.cu(46): warning: variable "e_ov" was set but never used
+
+src/cuda_multi_body.cu(51): warning: variable "p_lp1" was set but never used
+
+src/cuda_multi_body.cu(54): warning: variable "sbp_j" was set but never used
+
+src/cuda_multi_body.cu(326): warning: variable "pbond" was declared but never referenced
+
+src/cuda_multi_body.cu(44): warning: variable "e_lp" was set but never used
+
+src/cuda_multi_body.cu(45): warning: variable "e_lph" was set but never used
+
+src/cuda_multi_body.cu(46): warning: variable "e_ov" was set but never used
+
+src/cuda_multi_body.cu(51): warning: variable "p_lp1" was set but never used
+
+src/cuda_multi_body.cu(54): warning: variable "sbp_j" was set but never used
+
+src/cuda_multi_body.cu(326): warning: variable "pbond" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "j" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "pi" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "k" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "t" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "type_i" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "type_j" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "type_k" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "start_j" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "end_j" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "start_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "end_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(46): warning: variable "cnt" was declared but never referenced
+
+src/cuda_valence_angles.cu(46): warning: variable "num_thb_intrs" was declared but never referenced
+
+src/cuda_valence_angles.cu(48): warning: variable "temp" was declared but never referenced
+
+src/cuda_valence_angles.cu(48): warning: variable "temp_bo_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(48): warning: variable "pBOjt7" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val1" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val2" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val3" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val4" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val5" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val6" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val7" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val8" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val9" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val10" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen1" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen2" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen3" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen4" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa1" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa2" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa3" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa4" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "trm8" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval6" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval7" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval2theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval12theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "exp3ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "exp3jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen2ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen2jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen3" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen4" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "trm_pen34" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_coa2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "dSBO1" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "dSBO2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "SBO" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "SBO2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "CSBO2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "SBOp" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "prod_SBO" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "vlpadj" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval1" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval2" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval3" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval4" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval5" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval6" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval7" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval8" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "CEpen1" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "CEpen2" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "CEpen3" was declared but never referenced
+
+src/cuda_valence_angles.cu(58): warning: variable "e_ang" was declared but never referenced
+
+src/cuda_valence_angles.cu(58): warning: variable "e_coa" was declared but never referenced
+
+src/cuda_valence_angles.cu(58): warning: variable "e_pen" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa1" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa2" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa3" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa4" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa5" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf7ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf7jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf8j" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf9j" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f7_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f7_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f8_Dj" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f9_Dj" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "Ctheta_0" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "theta_0" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "theta_00" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "cos_theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "sin_theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(63): warning: variable "r_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(63): warning: variable "r_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(64): warning: variable "BOA_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(64): warning: variable "BOA_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(65): warning: variable "force" was declared but never referenced
+
+src/cuda_valence_angles.cu(65): warning: variable "ext_press" was declared but never referenced
+
+src/cuda_valence_angles.cu(68): warning: variable "thbh" was declared but never referenced
+
+src/cuda_valence_angles.cu(69): warning: variable "thbp" was declared but never referenced
+
+src/cuda_valence_angles.cu(70): warning: variable "p_ijk" was declared but never referenced
+
+src/cuda_valence_angles.cu(70): warning: variable "p_kji" was declared but never referenced
+
+src/cuda_valence_angles.cu(71): warning: variable "pbond_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(71): warning: variable "pbond_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(71): warning: variable "pbond_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(72): warning: variable "bo_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(72): warning: variable "bo_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(72): warning: variable "bo_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(74): warning: variable "bonds" was declared but never referenced
+
+src/cuda_valence_angles.cu(76): warning: variable "workspace" was declared but never referenced
+
+src/cuda_valence_angles.cu(101): warning: variable "start_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(101): warning: variable "end_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(114): warning: variable "e_ang" was set but never used
+
+src/cuda_valence_angles.cu(119): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(119): warning: variable "r_jk" was set but never used
+
+src/cuda_valence_angles.cu(126): warning: variable "p_kji" was declared but never referenced
+
+src/cuda_valence_angles.cu(657): warning: variable "k" was declared but never referenced
+
+src/cuda_valence_angles.cu(657): warning: variable "t" was declared but never referenced
+
+src/cuda_valence_angles.cu(658): warning: variable "type_i" was set but never used
+
+src/cuda_valence_angles.cu(658): warning: variable "type_j" was set but never used
+
+src/cuda_valence_angles.cu(658): warning: variable "type_k" was declared but never referenced
+
+src/cuda_valence_angles.cu(660): warning: variable "cnt" was declared but never referenced
+
+src/cuda_valence_angles.cu(662): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(662): warning: variable "r_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(665): warning: variable "pbond_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(666): warning: variable "bo_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "j" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "pi" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "k" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(43): warning: variable "t" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "type_i" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "type_j" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "type_k" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "start_j" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "end_j" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "start_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(45): warning: variable "end_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(46): warning: variable "cnt" was declared but never referenced
+
+src/cuda_valence_angles.cu(46): warning: variable "num_thb_intrs" was declared but never referenced
+
+src/cuda_valence_angles.cu(48): warning: variable "temp" was declared but never referenced
+
+src/cuda_valence_angles.cu(48): warning: variable "temp_bo_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(48): warning: variable "pBOjt7" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val1" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val2" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val3" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val4" was declared but never referenced
+
+src/cuda_valence_angles.cu(49): warning: variable "p_val5" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val6" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val7" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val8" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val9" was declared but never referenced
+
+src/cuda_valence_angles.cu(50): warning: variable "p_val10" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen1" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen2" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen3" was declared but never referenced
+
+src/cuda_valence_angles.cu(51): warning: variable "p_pen4" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa1" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa2" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa3" was declared but never referenced
+
+src/cuda_valence_angles.cu(52): warning: variable "p_coa4" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "trm8" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval6" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval7" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval2theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "expval12theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "exp3ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(53): warning: variable "exp3jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen2ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen2jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen3" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_pen4" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "trm_pen34" was declared but never referenced
+
+src/cuda_valence_angles.cu(54): warning: variable "exp_coa2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "dSBO1" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "dSBO2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "SBO" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "SBO2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "CSBO2" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "SBOp" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "prod_SBO" was declared but never referenced
+
+src/cuda_valence_angles.cu(55): warning: variable "vlpadj" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval1" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval2" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval3" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval4" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval5" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval6" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval7" was declared but never referenced
+
+src/cuda_valence_angles.cu(56): warning: variable "CEval8" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "CEpen1" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "CEpen2" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "CEpen3" was declared but never referenced
+
+src/cuda_valence_angles.cu(58): warning: variable "e_ang" was declared but never referenced
+
+src/cuda_valence_angles.cu(58): warning: variable "e_coa" was declared but never referenced
+
+src/cuda_valence_angles.cu(58): warning: variable "e_pen" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa1" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa2" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa3" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa4" was declared but never referenced
+
+src/cuda_valence_angles.cu(59): warning: variable "CEcoa5" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf7ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf7jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf8j" was declared but never referenced
+
+src/cuda_valence_angles.cu(60): warning: variable "Cf9j" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f7_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f7_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f8_Dj" was declared but never referenced
+
+src/cuda_valence_angles.cu(61): warning: variable "f9_Dj" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "Ctheta_0" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "theta_0" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "theta_00" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "cos_theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(62): warning: variable "sin_theta" was declared but never referenced
+
+src/cuda_valence_angles.cu(63): warning: variable "r_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(63): warning: variable "r_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(64): warning: variable "BOA_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(64): warning: variable "BOA_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(65): warning: variable "force" was declared but never referenced
+
+src/cuda_valence_angles.cu(65): warning: variable "ext_press" was declared but never referenced
+
+src/cuda_valence_angles.cu(68): warning: variable "thbh" was declared but never referenced
+
+src/cuda_valence_angles.cu(69): warning: variable "thbp" was declared but never referenced
+
+src/cuda_valence_angles.cu(70): warning: variable "p_ijk" was declared but never referenced
+
+src/cuda_valence_angles.cu(70): warning: variable "p_kji" was declared but never referenced
+
+src/cuda_valence_angles.cu(71): warning: variable "pbond_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(71): warning: variable "pbond_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(71): warning: variable "pbond_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(72): warning: variable "bo_ij" was declared but never referenced
+
+src/cuda_valence_angles.cu(72): warning: variable "bo_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(72): warning: variable "bo_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(74): warning: variable "bonds" was declared but never referenced
+
+src/cuda_valence_angles.cu(76): warning: variable "workspace" was declared but never referenced
+
+src/cuda_valence_angles.cu(101): warning: variable "start_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(101): warning: variable "end_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(114): warning: variable "e_ang" was set but never used
+
+src/cuda_valence_angles.cu(119): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(119): warning: variable "r_jk" was set but never used
+
+src/cuda_valence_angles.cu(126): warning: variable "p_kji" was declared but never referenced
+
+src/cuda_valence_angles.cu(657): warning: variable "k" was declared but never referenced
+
+src/cuda_valence_angles.cu(657): warning: variable "t" was declared but never referenced
+
+src/cuda_valence_angles.cu(658): warning: variable "type_i" was set but never used
+
+src/cuda_valence_angles.cu(658): warning: variable "type_j" was set but never used
+
+src/cuda_valence_angles.cu(658): warning: variable "type_k" was declared but never referenced
+
+src/cuda_valence_angles.cu(660): warning: variable "cnt" was declared but never referenced
+
+src/cuda_valence_angles.cu(662): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(662): warning: variable "r_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(665): warning: variable "pbond_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(666): warning: variable "bo_jt" was declared but never referenced
+
+src/cuda_torsion_angles.cu(154): warning: variable "natoms" was declared but never referenced
+
+src/cuda_torsion_angles.cu(156): warning: variable "start_k" was set but never used
+
+src/cuda_torsion_angles.cu(156): warning: variable "end_k" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_tor" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_con" was set but never used
+
+src/cuda_torsion_angles.cu(154): warning: variable "natoms" was declared but never referenced
+
+src/cuda_torsion_angles.cu(156): warning: variable "start_k" was set but never used
+
+src/cuda_torsion_angles.cu(156): warning: variable "end_k" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_tor" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_con" was set but never used
+
+src/cuda_hydrogen_bonds.cu(54): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(291): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(637): warning: variable "j" was set but never used
+
+src/cuda_hydrogen_bonds.cu(702): warning: variable "j" was set but never used
+
+src/cuda_hydrogen_bonds.cu(54): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(291): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(637): warning: variable "j" was set but never used
+
+src/cuda_hydrogen_bonds.cu(702): warning: variable "j" was set but never used
+
+src/cuda_forces.cu(51): warning: variable "r2" was set but never used
+
+src/cuda_forces.cu(760): warning: variable "my_bucket" was declared but never referenced
+
+src/cuda_forces.cu(826): warning: variable "comp" was declared but never referenced
+
+src/cuda_forces.cu(826): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_forces.cu(833): warning: variable "num_hbonds" was set but never used
+
+src/cuda_forces.cu(833): warning: variable "num_bonds" was set but never used
+
+src/cuda_forces.cu(1031): warning: variable "j" was declared but never referenced
+
+src/cuda_forces.cu(1033): warning: variable "type_i" was declared but never referenced
+
+src/cuda_forces.cu(1033): warning: variable "type_j" was declared but never referenced
+
+src/cuda_forces.cu(1034): warning: variable "nbr_pj" was declared but never referenced
+
+src/cuda_forces.cu(1035): warning: variable "atom_i" was set but never used
+
+src/cuda_forces.cu(1035): warning: variable "atom_j" was declared but never referenced
+
+src/cuda_forces.cu(1211): warning: variable "t_elapsed" was set but never used
+
+src/cuda_forces.cu(51): warning: variable "r2" was set but never used
+
+src/cuda_forces.cu(760): warning: variable "my_bucket" was declared but never referenced
+
+src/cuda_forces.cu(826): warning: variable "comp" was declared but never referenced
+
+src/cuda_forces.cu(826): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_forces.cu(833): warning: variable "num_hbonds" was set but never used
+
+src/cuda_forces.cu(833): warning: variable "num_bonds" was set but never used
+
+src/cuda_forces.cu(1031): warning: variable "j" was declared but never referenced
+
+src/cuda_forces.cu(1033): warning: variable "type_i" was declared but never referenced
+
+src/cuda_forces.cu(1033): warning: variable "type_j" was declared but never referenced
+
+src/cuda_forces.cu(1034): warning: variable "nbr_pj" was declared but never referenced
+
+src/cuda_forces.cu(1035): warning: variable "atom_i" was set but never used
+
+src/cuda_forces.cu(1035): warning: variable "atom_j" was declared but never referenced
+
+src/cuda_forces.cu(1211): warning: variable "t_elapsed" was set but never used
+
+src/cuda_linear_solvers.cu(245): warning: variable "blocks" was set but never used
+
+src/cuda_linear_solvers.cu(271): warning: variable "blocks" was set but never used
+
+src/cuda_linear_solvers.cu(245): warning: variable "blocks" was set but never used
+
+src/cuda_linear_solvers.cu(271): warning: variable "blocks" was set but never used
+
+src/validation.cu(199): warning: statement is unreachable
+
+src/validation.cu(119): warning: loop is not reachable
+
+src/validation.cu(225): warning: variable "start" was declared but never referenced
+
+src/validation.cu(225): warning: variable "end" was declared but never referenced
+
+src/validation.cu(225): warning: variable "index" was declared but never referenced
+
+src/validation.cu(338): warning: statement is unreachable
+
+src/validation.cu(423): warning: missing return statement at end of non-void function "print_hbonds"
+
+src/validation.cu(416): warning: variable "src" was declared but never referenced
+
+src/validation.cu(416): warning: variable "tgt" was declared but never referenced
+
+src/validation.cu(429): warning: variable "index" was declared but never referenced
+
+src/validation.cu(654): warning: variable "tgt_sym" was declared but never referenced
+
+src/validation.cu(646): warning: variable "src_sym" was declared but never referenced
+
+src/validation.cu(601): warning: variable "index" was declared but never referenced
+
+src/validation.cu(765): warning: variable "tcount" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "x" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "itr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_nbr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_11" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "miscount" was set but never used
+
+src/validation.cu(1223): warning: variable "src" was declared but never referenced
+
+src/validation.cu(1223): warning: variable "dest" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gci" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj_nbr" was declared but never referenced
+
+src/validation.cu(1226): warning: variable "found" was declared but never referenced
+
+src/validation.cu(1408): warning: variable "t_start" was declared but never referenced
+
+src/validation.cu(1409): warning: variable "t_end" was declared but never referenced
+
+src/validation.cu(1405): warning: variable "y" was declared but never referenced
+
+src/validation.cu(1370): warning: variable "test" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "start" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "end" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "count" was set but never used
+
+src/validation.cu(1641): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1641): warning: variable "count" was set but never used
+
+src/validation.cu(1686): warning: missing return statement at end of non-void function "print_device_array"
+
+src/validation.cu(199): warning: statement is unreachable
+
+src/validation.cu(119): warning: loop is not reachable
+
+src/validation.cu(225): warning: variable "start" was declared but never referenced
+
+src/validation.cu(225): warning: variable "end" was declared but never referenced
+
+src/validation.cu(225): warning: variable "index" was declared but never referenced
+
+src/validation.cu(338): warning: statement is unreachable
+
+src/validation.cu(423): warning: missing return statement at end of non-void function "print_hbonds"
+
+src/validation.cu(416): warning: variable "src" was declared but never referenced
+
+src/validation.cu(416): warning: variable "tgt" was declared but never referenced
+
+src/validation.cu(429): warning: variable "index" was declared but never referenced
+
+src/validation.cu(654): warning: variable "tgt_sym" was declared but never referenced
+
+src/validation.cu(646): warning: variable "src_sym" was declared but never referenced
+
+src/validation.cu(601): warning: variable "index" was declared but never referenced
+
+src/validation.cu(765): warning: variable "tcount" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "x" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "itr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_nbr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_11" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "miscount" was set but never used
+
+src/validation.cu(1223): warning: variable "src" was declared but never referenced
+
+src/validation.cu(1223): warning: variable "dest" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gci" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj_nbr" was declared but never referenced
+
+src/validation.cu(1226): warning: variable "found" was declared but never referenced
+
+src/validation.cu(1408): warning: variable "t_start" was declared but never referenced
+
+src/validation.cu(1409): warning: variable "t_end" was declared but never referenced
+
+src/validation.cu(1405): warning: variable "y" was declared but never referenced
+
+src/validation.cu(1370): warning: variable "test" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "start" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "end" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "count" was set but never used
+
+src/validation.cu(1641): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1641): warning: variable "count" was set but never used
+
+src/validation.cu(1686): warning: missing return statement at end of non-void function "print_device_array"
+
+src/cuda_lookup.cu(10): warning: variable "r" was declared but never referenced
+
+src/cuda_lookup.cu(10): warning: variable "r" was declared but never referenced
+
+p:0 is using GPU: 0 
+p:1 is using GPU: 0 
+Error on the memory call 
+Warning: changed valency_val to valency_boc for X
+Total 12884705280 Mb 12287 gig 11 , free 12755042304, Mb 12164 , gig 11 
+Warning: changed valency_val to valency_boc for X
+Failed to allocate memory on device for the res: Device:Scratch...  exiting with code: 46 size: 20971520 
+--------------------------------------------------------------------------
+mpirun has exited due to process rank 1 with PID 16643 on
+node lac-030 exiting improperly. There are two reasons this could occur:
+
+1. this process did not call "init" before exiting, but others in
+the job did. This can cause a job to hang indefinitely while it waits
+for all processes to call "init". By rule, if one process calls "init",
+then ALL processes must call "init" prior to termination.
+
+2. this process called "init", but exited without calling "finalize".
+By rule, all processes that call "init" MUST call "finalize" prior to
+exiting or it will be considered an "abnormal termination"
+
+This may have caused other processes in the application to be
+terminated by signals sent by mpirun (as reported here).
+--------------------------------------------------------------------------
+mv: cannot stat `water.6540.log': No such file or directory
+mv: cannot stat `water.6540.out': No such file or directory
+mv: cannot stat `water.6540.pot': No such file or directory
+mv: cannot stat `water.6540.trj': No such file or directory
+p:1 is using GPU: 0 
+p:0 is using GPU: 0 
+Error on the memory call 
+Total 12884705280 Mb 12287 gig 11 , free 12755042304, Mb 12164 , gig 11 
+Failed to allocate memory on device for the res: Device:Scratch...  exiting with code: 46 size: 20971520 
+--------------------------------------------------------------------------
+mpirun has exited due to process rank 0 with PID 16663 on
+node lac-030 exiting improperly. There are two reasons this could occur:
+
+1. this process did not call "init" before exiting, but others in
+the job did. This can cause a job to hang indefinitely while it waits
+for all processes to call "init". By rule, if one process calls "init",
+then ALL processes must call "init" prior to termination.
+
+2. this process called "init", but exited without calling "finalize".
+By rule, all processes that call "init" MUST call "finalize" prior to
+exiting or it will be considered an "abnormal termination"
+
+This may have caused other processes in the application to be
+terminated by signals sent by mpirun (as reported here).
+--------------------------------------------------------------------------
+mv: cannot stat `silica.6000.log': No such file or directory
+mv: cannot stat `silica.6000.out': No such file or directory
+mv: cannot stat `silica.6000.pot': No such file or directory
+mv: cannot stat `silica.6000.trj': No such file or directory
+p:0 is using GPU: 0 
+p:1 is using GPU: 0 
+Error on the memory call 
+Warning: changed valency_val to valency_boc for X
+Total 12884705280 Mb 12287 gig 11 , free 12755042304, Mb 12164 , gig 11 
+Warning: changed valency_val to valency_boc for X
+Failed to allocate memory on device for the res: Device:Scratch...  exiting with code: 46 size: 20971520 
+--------------------------------------------------------------------------
+mpirun has exited due to process rank 1 with PID 16684 on
+node lac-030 exiting improperly. There are two reasons this could occur:
+
+1. this process did not call "init" before exiting, but others in
+the job did. This can cause a job to hang indefinitely while it waits
+for all processes to call "init". By rule, if one process calls "init",
+then ALL processes must call "init" prior to termination.
+
+2. this process called "init", but exited without calling "finalize".
+By rule, all processes that call "init" MUST call "finalize" prior to
+exiting or it will be considered an "abnormal termination"
+
+This may have caused other processes in the application to be
+terminated by signals sent by mpirun (as reported here).
+--------------------------------------------------------------------------
+mv: cannot stat `zno.6912.log': No such file or directory
+mv: cannot stat `zno.6912.out': No such file or directory
+mv: cannot stat `zno.6912.pot': No such file or directory
+mv: cannot stat `zno.6912.trj': No such file or directory

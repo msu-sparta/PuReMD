@@ -105,13 +105,15 @@ extern "C" void compute_blocks ( int *blocks, int *block_size, int count )
 
 extern "C" void compute_matvec_blocks ( int *blocks, int count )
 {
+
     *blocks = (int) CEIL((double) count * MATVEC_KER_THREADS_PER_ROW / MATVEC_BLOCK_SIZE);
 }
 
 
 extern "C" void compute_nearest_pow_2 (int blocks, int *result)
 {
-    *result = (int) EXP2( CEIL( LOG2((double) blocks) ) );
+
+  *result = (int) EXP2( CEIL( LOG2((double) blocks) ) );
 }
 
 

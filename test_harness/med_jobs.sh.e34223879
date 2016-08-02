@@ -1,0 +1,2967 @@
+configure: error: in `/mnt/home/korteme1/PuReMD_new':
+configure: error: cannot run C compiled programs.
+If you meant to cross compile, use `--host'.
+See `config.log' for more details
+/opt/software/GCC/4.8.2/libexec/gcc/x86_64-unknown-linux-gnu/4.8.2/cc1: error while loading shared libraries: libmpc.so.3: cannot open shared object file: No such file or directory
+make[1]: *** [src/bin_pg_puremd-allocate.o] Error 1
+make: *** [all-recursive] Error 1
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for X
+mv: cannot stat `water.78480.trj': No such file or directory
+mv: cannot stat `silica.72000.trj': No such file or directory
+p0@count atoms:
+p0: bigN = 56800
+p0: n = 28452
+p0: N = 28452
+
+p1@count atoms:
+p1: bigN = 56800
+p1: n = 28348
+p1: N = 28348
+
+mv: cannot stat `bilayer.56800.trj': No such file or directory
+p0@count atoms:
+p0: bigN = 19733
+p0: n = 9846
+p0: N = 9846
+
+p1@count atoms:
+p1: bigN = 19733
+p1: n = 9887
+p1: N = 9887
+
+mv: cannot stat `dna.trj': No such file or directory
+p1@count atoms:
+p1: bigN = 48256
+p1: n = 24180
+p1: N = 24180
+
+p0@count atoms:
+p0: bigN = 48256
+p0: n = 24076
+p0: N = 24076
+
+mv: cannot stat `petn.trj': No such file or directory
+src/allocate.c: In function ‘PreAllocate_Space’:
+src/allocate.c:46:10: warning: unused variable ‘i’ [-Wunused-variable]
+     int  i;
+          ^
+src/allocate.c: In function ‘Allocate_Workspace’:
+src/allocate.c:253:47: warning: variable ‘local_real’ set but not used [-Wunused-but-set-variable]
+     int i, total_real, total_rvec, local_int, local_real, local_rvec;
+                                               ^
+src/allocate.c:253:36: warning: variable ‘local_int’ set but not used [-Wunused-but-set-variable]
+     int i, total_real, total_rvec, local_int, local_real, local_rvec;
+                                    ^
+src/allocate.c: In function ‘Cuda_Reallocate_Neighbor_List’:
+src/allocate.c:404:5: warning: implicit declaration of function ‘Dev_Delete_List’ [-Wimplicit-function-declaration]
+     Dev_Delete_List( far_nbrs);
+     ^
+src/allocate.c:405:5: warning: implicit declaration of function ‘Dev_Make_List’ [-Wimplicit-function-declaration]
+     if (!Dev_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs))
+     ^
+src/allocate.c: In function ‘Reallocate_Matrix’:
+src/allocate.c:458:5: warning: passing argument 1 of ‘Allocate_Matrix’ from incompatible pointer type [enabled by default]
+     if ( !Allocate_Matrix( H, n, m ) )
+     ^
+src/allocate.c:432:5: note: expected ‘struct sparse_matrix *’ but argument is of type ‘struct sparse_matrix **’
+ int Allocate_Matrix( sparse_matrix *H, int cap, int m )
+     ^
+src/allocate.c: In function ‘Estimate_GCell_Population’:
+src/allocate.c:557:21: warning: variable ‘big_box’ set but not used [-Wunused-but-set-variable]
+     simulation_box *big_box, *my_ext_box;
+                     ^
+src/allocate.c: In function ‘Allocate_Grid’:
+src/allocate.c:624:18: warning: unused variable ‘l’ [-Wunused-variable]
+     int i, j, k, l;
+                  ^
+src/allocate.c: In function ‘ReAllocate’:
+src/allocate.c:946:28: warning: passing argument 1 of ‘Reallocate_Matrix’ from incompatible pointer type [enabled by default]
+                            system->local_cap, realloc->Htop * SAFE_ZONE, "H" );
+                            ^
+src/allocate.c:455:5: note: expected ‘struct sparse_matrix **’ but argument is of type ‘struct sparse_matrix *’
+ int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
+     ^
+src/allocate.c: In function ‘Cuda_ReAllocate’:
+src/allocate.c:1177:9: warning: implicit declaration of function ‘dev_realloc_system’ [-Wimplicit-function-declaration]
+         ret = dev_realloc_system ( system, system->local_cap, system->total_cap, msg );
+         ^
+src/allocate.c:1187:9: warning: implicit declaration of function ‘dev_dealloc_workspace’ [-Wimplicit-function-declaration]
+         dev_dealloc_workspace( control, workspace );
+         ^
+src/allocate.c:1188:9: warning: implicit declaration of function ‘dev_alloc_workspace’ [-Wimplicit-function-declaration]
+         ret = dev_alloc_workspace ( system, control, workspace, system->local_cap,
+         ^
+src/allocate.c:1263:9: warning: implicit declaration of function ‘dev_dealloc_matrix’ [-Wimplicit-function-declaration]
+         dev_dealloc_matrix (&dev_workspace->H);
+         ^
+src/allocate.c:1274:9: warning: implicit declaration of function ‘dev_alloc_matrix’ [-Wimplicit-function-declaration]
+         dev_alloc_matrix ( &(dev_workspace->H), system->total_cap,
+         ^
+src/allocate.c:1121:20: warning: variable ‘H’ set but not used [-Wunused-but-set-variable]
+     sparse_matrix *H;
+                    ^
+src/allocate.c:1117:45: warning: unused variable ‘Hflag’ [-Wunused-variable]
+     int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
+                                             ^
+src/allocate.c:1117:9: warning: variable ‘num_bonds’ set but not used [-Wunused-but-set-variable]
+     int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
+         ^
+In file included from src/allocate.c:28:0:
+src/allocate.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/ffield.c: In function ‘Read_Force_Field’:
+src/ffield.c:41:14: warning: variable ‘c’ set but not used [-Wunused-but-set-variable]
+     int      c, i, j, k, l, m, n, o, p, cnt;
+              ^
+In file included from src/ffield.c:25:0:
+src/ffield.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/grid.c: In function ‘Mark_GCells’:
+src/grid.c:38:20: warning: variable ‘end_send’ set but not used [-Wunused-but-set-variable]
+     ivec str_send, end_send;
+                    ^
+src/grid.c:38:10: warning: variable ‘str_send’ set but not used [-Wunused-but-set-variable]
+     ivec str_send, end_send;
+          ^
+src/grid.c: In function ‘Setup_New_Grid’:
+src/grid.c:262:22: warning: variable ‘bc’ set but not used [-Wunused-but-set-variable]
+     boundary_cutoff *bc;
+                      ^
+src/grid.c: In function ‘Update_Grid’:
+src/grid.c:363:22: warning: variable ‘bc’ set but not used [-Wunused-but-set-variable]
+     boundary_cutoff *bc;
+                      ^
+src/grid.c:360:16: warning: variable ‘gc’ set but not used [-Wunused-but-set-variable]
+     grid_cell *gc;
+                ^
+src/grid.c:357:56: warning: variable ‘ghost_hbond_span’ set but not used [-Wunused-but-set-variable]
+     ivec ghost_span, ghost_nonb_span, ghost_bond_span, ghost_hbond_span;;
+                                                        ^
+src/grid.c:357:39: warning: variable ‘ghost_bond_span’ set but not used [-Wunused-but-set-variable]
+     ivec ghost_span, ghost_nonb_span, ghost_bond_span, ghost_hbond_span;;
+                                       ^
+src/grid.c:357:22: warning: variable ‘ghost_nonb_span’ set but not used [-Wunused-but-set-variable]
+     ivec ghost_span, ghost_nonb_span, ghost_bond_span, ghost_hbond_span;;
+                      ^
+src/grid.c:356:39: warning: variable ‘bond_span’ set but not used [-Wunused-but-set-variable]
+     ivec ci, native_cells, nonb_span, bond_span;
+                                       ^
+src/grid.c:356:28: warning: variable ‘nonb_span’ set but not used [-Wunused-but-set-variable]
+     ivec ci, native_cells, nonb_span, bond_span;
+                            ^
+src/grid.c: In function ‘Bin_My_Atoms’:
+src/grid.c:463:21: warning: variable ‘big_box’ set but not used [-Wunused-but-set-variable]
+     simulation_box *big_box, *my_box, *my_ext_box;
+                     ^
+In file included from src/grid.c:26:0:
+src/grid.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/list.c:26:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/lookup.c:33:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/io_tools.c: In function ‘Print_Linear_System’:
+src/io_tools.c:954:20: warning: unused variable ‘H’ [-Wunused-variable]
+     sparse_matrix *H;
+                    ^
+src/io_tools.c:953:21: warning: unused variable ‘aj’ [-Wunused-variable]
+     reax_atom *ai, *aj;
+                     ^
+src/io_tools.c:951:14: warning: unused variable ‘j’ [-Wunused-variable]
+     int   i, j;
+              ^
+In file included from src/io_tools.c:30:0:
+src/io_tools.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/reset_tools.c:33:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/restart.c: In function ‘Read_Restart’:
+src/restart.c:350:12: warning: variable ‘c’ set but not used [-Wunused-but-set-variable]
+     int i, c, top;
+            ^
+In file included from src/restart.c:25:0:
+src/restart.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/tool_box.c:24:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/traj.c: In function ‘Append_Frame’:
+src/traj.c:988:9: warning: implicit declaration of function ‘Output_Sync_Atoms’ [-Wimplicit-function-declaration]
+         Output_Sync_Atoms ( system );
+         ^
+src/traj.c:997:9: warning: implicit declaration of function ‘Output_Sync_Lists’ [-Wimplicit-function-declaration]
+         Output_Sync_Lists ((*lists + BONDS), (*dev_lists + BONDS), TYP_BOND);
+         ^
+In file included from src/traj.c:26:0:
+src/traj.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/box.c: In function ‘Setup_My_Ext_Box’:
+src/box.c:221:21: warning: variable ‘big_box’ set but not used [-Wunused-but-set-variable]
+     simulation_box *big_box, *my_box, *my_ext_box;
+                     ^
+src/box.c: In function ‘Setup_Environment’:
+src/box.c:275:10: warning: unused variable ‘temp’ [-Wunused-variable]
+     char temp[100] = "";
+          ^
+src/box.c: In function ‘Scale_Box’:
+src/box.c:312:10: warning: ‘mu[0]’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+     rvec mu;
+          ^
+src/box.c:312:10: warning: ‘mu[1]’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+src/box.c:312:10: warning: ‘mu[2]’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+src/system_props.c: In function ‘Cuda_Compute_Kinetic_Energy’:
+src/system_props.c:96:10: warning: unused variable ‘m’ [-Wunused-variable]
+     real m;
+          ^
+src/system_props.c:95:10: warning: unused variable ‘p’ [-Wunused-variable]
+     rvec p;
+          ^
+src/system_props.c:94:9: warning: unused variable ‘i’ [-Wunused-variable]
+     int i;
+         ^
+src/system_props.c: In function ‘Cuda_Compute_Total_Mass’:
+src/system_props.c:201:10: warning: unused variable ‘i’ [-Wunused-variable]
+     int  i;
+          ^
+src/system_props.c: In function ‘Cuda_Compute_Center_of_Mass’:
+src/system_props.c:340:16: warning: unused variable ‘diff’ [-Wunused-variable]
+     rvec tvec, diff;
+                ^
+src/system_props.c:337:10: warning: unused variable ‘m’ [-Wunused-variable]
+     real m, det; //xx, xy, xz, yy, yz, zz;
+          ^
+In file included from src/system_props.c:29:0:
+src/system_props.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/control.c: In function ‘Read_Control_File’:
+src/control.c:37:11: warning: variable ‘c’ set but not used [-Wunused-but-set-variable]
+     int   c, i, ival;
+           ^
+In file included from src/control.c:25:0:
+src/control.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/comm_tools.c: In function ‘Sort_Boundary_Atoms’:
+src/comm_tools.c:273:21: warning: variable ‘my_box’ set but not used [-Wunused-but-set-variable]
+     simulation_box *my_box;
+                     ^
+src/comm_tools.c: In function ‘Estimate_Boundary_Atoms’:
+src/comm_tools.c:316:21: warning: variable ‘my_box’ set but not used [-Wunused-but-set-variable]
+     simulation_box *my_box;
+                     ^
+In file included from src/comm_tools.c:25:0:
+src/comm_tools.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/geo_tools.c: In function ‘Read_PDB’:
+src/geo_tools.c:269:31: warning: variable ‘icode’ set but not used [-Wunused-but-set-variable]
+     char   alt_loc, chain_id, icode;
+                               ^
+src/geo_tools.c:269:21: warning: variable ‘chain_id’ set but not used [-Wunused-but-set-variable]
+     char   alt_loc, chain_id, icode;
+                     ^
+src/geo_tools.c:269:12: warning: variable ‘alt_loc’ set but not used [-Wunused-but-set-variable]
+     char   alt_loc, chain_id, icode;
+            ^
+In file included from src/geo_tools.c:25:0:
+src/geo_tools.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/linear_solvers.c: In function ‘dual_CG’:
+src/linear_solvers.c:79:9: warning: unused variable ‘a’ [-Wunused-variable]
+     int a;
+         ^
+src/linear_solvers.c: In function ‘Cuda_dual_CG’:
+src/linear_solvers.c:291:5: warning: implicit declaration of function ‘get_from_device’ [-Wimplicit-function-declaration]
+     get_from_device (spad, x, sizeof (rvec2) * system->total_cap, "CG:x:get");
+     ^
+src/linear_solvers.c:293:5: warning: implicit declaration of function ‘put_on_device’ [-Wimplicit-function-declaration]
+     put_on_device (spad, x, sizeof (rvec2) * system->total_cap, "CG:x:put");
+     ^
+src/linear_solvers.c:311:5: warning: implicit declaration of function ‘Cuda_Dual_Matvec’ [-Wimplicit-function-declaration]
+     Cuda_Dual_Matvec ( H, x, dev_workspace->q2, system->N, system->total_cap);
+     ^
+src/linear_solvers.c:341:5: warning: implicit declaration of function ‘Cuda_CG_Diagnol_Preconditioner’ [-Wimplicit-function-declaration]
+     Cuda_CG_Diagnol_Preconditioner (dev_workspace, b, system->n);
+     ^
+src/linear_solvers.c:356:5: warning: implicit declaration of function ‘Cuda_Norm’ [-Wimplicit-function-declaration]
+     Cuda_Norm (b, n, my_sum);
+     ^
+src/linear_solvers.c:375:5: warning: implicit declaration of function ‘Cuda_Dot’ [-Wimplicit-function-declaration]
+     Cuda_Dot (dev_workspace->r2, dev_workspace->d2, my_dot, n);
+     ^
+src/linear_solvers.c:466:9: warning: implicit declaration of function ‘Cuda_DualCG_Preconditioer’ [-Wimplicit-function-declaration]
+         Cuda_DualCG_Preconditioer (dev_workspace, x, alpha, system->n, my_dot);
+         ^
+src/linear_solvers.c:494:9: warning: implicit declaration of function ‘Cuda_Vector_Sum_Rvec2’ [-Wimplicit-function-declaration]
+         Cuda_Vector_Sum_Rvec2 (dev_workspace->d2, dev_workspace->p2, beta,
+         ^
+src/linear_solvers.c:506:9: warning: implicit declaration of function ‘Cuda_RvecCopy_From’ [-Wimplicit-function-declaration]
+         Cuda_RvecCopy_From (dev_workspace->t, dev_workspace->x, 1, system->n);
+         ^
+src/linear_solvers.c:516:9: warning: implicit declaration of function ‘Cuda_RvecCopy_To’ [-Wimplicit-function-declaration]
+         Cuda_RvecCopy_To (dev_workspace->x, dev_workspace->t, 1, system->n);
+         ^
+src/linear_solvers.c:267:9: warning: unused variable ‘a’ [-Wunused-variable]
+     int a;
+         ^
+src/linear_solvers.c:260:19: warning: variable ‘N’ set but not used [-Wunused-but-set-variable]
+     int  i, j, n, N, matvecs, scale;
+                   ^
+src/linear_solvers.c:260:13: warning: unused variable ‘j’ [-Wunused-variable]
+     int  i, j, n, N, matvecs, scale;
+             ^
+src/linear_solvers.c: In function ‘CG’:
+src/linear_solvers.c:581:28: warning: variable ‘sig0’ set but not used [-Wunused-but-set-variable]
+     real sig_old, sig_new, sig0;
+                            ^
+src/linear_solvers.c: In function ‘Cuda_CG’:
+src/linear_solvers.c:664:5: warning: implicit declaration of function ‘Cuda_Matvec’ [-Wimplicit-function-declaration]
+     Cuda_Matvec( H, x, dev_workspace->q, system->N, system->total_cap );
+     ^
+src/linear_solvers.c:676:5: warning: implicit declaration of function ‘Cuda_Vector_Sum’ [-Wimplicit-function-declaration]
+     Cuda_Vector_Sum( dev_workspace->r , 1.,  b, -1., dev_workspace->q, system->n );
+     ^
+src/linear_solvers.c:679:5: warning: implicit declaration of function ‘Cuda_CG_Preconditioner’ [-Wimplicit-function-declaration]
+     Cuda_CG_Preconditioner (dev_workspace->d, dev_workspace->r, dev_workspace->Hdia_inv, system->n);
+     ^
+src/linear_solvers.c:651:28: warning: variable ‘sig0’ set but not used [-Wunused-but-set-variable]
+     real sig_old, sig_new, sig0;
+                            ^
+src/linear_solvers.c:649:13: warning: unused variable ‘j’ [-Wunused-variable]
+     int  i, j, scale;
+             ^
+src/linear_solvers.c: In function ‘CG_test’:
+src/linear_solvers.c:762:28: warning: variable ‘sig0’ set but not used [-Wunused-but-set-variable]
+     real sig_old, sig_new, sig0;
+                            ^
+src/linear_solvers.c: In function ‘PCG’:
+src/linear_solvers.c:930:13: warning: variable ‘me’ set but not used [-Wunused-but-set-variable]
+     int  i, me, n, N, scale;
+             ^
+In file included from src/linear_solvers.c:25:0:
+src/linear_solvers.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/neighbors.c: In function ‘Generate_Neighbor_Lists’:
+src/neighbors.c:77:22: warning: variable ‘gcj’ set but not used [-Wunused-but-set-variable]
+     grid_cell *gci, *gcj;
+                      ^
+src/neighbors.c:77:16: warning: variable ‘gci’ set but not used [-Wunused-but-set-variable]
+     grid_cell *gci, *gcj;
+                ^
+src/neighbors.c: In function ‘Estimate_NumNeighbors’:
+src/neighbors.c:192:22: warning: unused variable ‘gcj’ [-Wunused-variable]
+     grid_cell *gci, *gcj;
+                      ^
+src/neighbors.c:192:16: warning: variable ‘gci’ set but not used [-Wunused-but-set-variable]
+     grid_cell *gci, *gcj;
+                ^
+In file included from src/neighbors.c:25:0:
+src/neighbors.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/qEq.c: In function ‘Estimate_LU_Fill’:
+src/qEq.c:94:12: warning: variable ‘j’ set but not used [-Wunused-but-set-variable]
+     int i, j, pj;
+            ^
+src/qEq.c: In function ‘Cuda_Calculate_Charges’:
+src/qEq.c:386:5: warning: implicit declaration of function ‘cuda_charges_x’ [-Wimplicit-function-declaration]
+     cuda_charges_x ( system, my_sum );
+     ^
+src/qEq.c:394:5: warning: implicit declaration of function ‘cuda_charges_st’ [-Wimplicit-function-declaration]
+     cuda_charges_st ( system, workspace, q, u );
+     ^
+src/qEq.c:398:5: warning: implicit declaration of function ‘cuda_charges_updateq’ [-Wimplicit-function-declaration]
+     cuda_charges_updateq ( system, q );
+     ^
+src/qEq.c:378:16: warning: unused variable ‘atom’ [-Wunused-variable]
+     reax_atom *atom;
+                ^
+src/qEq.c:375:16: warning: unused variable ‘i’ [-Wunused-variable]
+     int        i, scale;
+                ^
+src/qEq.c: In function ‘Cuda_QEq’:
+src/qEq.c:467:5: warning: implicit declaration of function ‘Cuda_Init_MatVec’ [-Wimplicit-function-declaration]
+     Cuda_Init_MatVec( system, workspace );
+     ^
+In file included from src/qEq.c:27:0:
+src/qEq.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/bond_orders.c: In function ‘BO’:
+src/bond_orders.c:814:36: warning: variable ‘num_bonds’ set but not used [-Wunused-but-set-variable]
+     int start_i, end_i, sym_index, num_bonds;
+                                    ^
+src/multi_body.c: In function ‘Atom_Energy’:
+src/multi_body.c:53:37: warning: variable ‘sbp_j’ set but not used [-Wunused-but-set-variable]
+     single_body_parameters *sbp_i, *sbp_j;
+                                     ^
+src/multi_body.c:50:10: warning: variable ‘p_lp1’ set but not used [-Wunused-but-set-variable]
+     real p_lp1, p_lp2, p_lp3;
+          ^
+In file included from src/bonds.c:28:0:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/valence_angles.c: In function ‘Valence_Angles’:
+src/valence_angles.c:101:16: warning: variable ‘r_jk’ set but not used [-Wunused-but-set-variable]
+     real r_ij, r_jk;
+                ^
+src/valence_angles.c:101:10: warning: variable ‘r_ij’ set but not used [-Wunused-but-set-variable]
+     real r_ij, r_jk;
+          ^
+src/hydrogen_bonds.c: In function ‘Hydrogen_Bonds’:
+src/hydrogen_bonds.c:50:10: warning: variable ‘r_ij’ set but not used [-Wunused-but-set-variable]
+     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
+          ^
+src/torsion_angles.c: In function ‘Torsion_Angles’:
+src/torsion_angles.c:159:34: warning: variable ‘end_k’ set but not used [-Wunused-but-set-variable]
+     int start_j, end_j, start_k, end_k;
+                                  ^
+src/torsion_angles.c:159:25: warning: variable ‘start_k’ set but not used [-Wunused-but-set-variable]
+     int start_j, end_j, start_k, end_k;
+                         ^
+In file included from src/torsion_angles.c:28:0:
+src/torsion_angles.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/forces.c: In function ‘Compute_Bonded_Forces’:
+src/forces.c:102:9: warning: unused variable ‘i’ [-Wunused-variable]
+     int i;
+         ^
+src/forces.c: In function ‘Cuda_Compute_Total_Force’:
+src/forces.c:225:5: warning: passing argument 1 of ‘get_from_device’ from incompatible pointer type [enabled by default]
+     get_from_device (f, dev_workspace->f, sizeof (rvec) * system->N , "total_force:f:get");
+     ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:30:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void get_from_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c:225:5: warning: passing argument 2 of ‘get_from_device’ from incompatible pointer type [enabled by default]
+     get_from_device (f, dev_workspace->f, sizeof (rvec) * system->N , "total_force:f:get");
+     ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:30:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void get_from_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c:230:5: warning: passing argument 1 of ‘put_on_device’ from incompatible pointer type [enabled by default]
+     put_on_device (f, dev_workspace->f, sizeof (rvec) * system->N, "total_force:f:put" );
+     ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:31:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void put_on_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c:230:5: warning: passing argument 2 of ‘put_on_device’ from incompatible pointer type [enabled by default]
+     put_on_device (f, dev_workspace->f, sizeof (rvec) * system->N, "total_force:f:put" );
+     ^
+In file included from src/forces.c:28:0:
+src/cuda_linear_solvers.h:31:6: note: expected ‘real *’ but argument is of type ‘real (*)[3]’
+ void put_on_device (real *host, real *device, unsigned int bytes, char *);
+      ^
+src/forces.c: In function ‘Validate_Lists’:
+src/forces.c:244:22: warning: variable ‘realloc’ set but not used [-Wunused-but-set-variable]
+     reallocate_data *realloc;
+                      ^
+src/forces.c: In function ‘Init_Forces_noQEq’:
+src/forces.c:712:10: warning: variable ‘r_ij’ set but not used [-Wunused-but-set-variable]
+     real r_ij, cutoff;
+          ^
+src/forces.c: In function ‘Estimate_Storages’:
+src/forces.c:899:16: warning: variable ‘r2’ set but not used [-Wunused-but-set-variable]
+     real r_ij, r2;
+                ^
+In file included from src/forces.c:46:0:
+src/forces.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/integrate.c:37:0:
+src/cuda_copy.h:13:61: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Control (control_params *, control_params *, enum cudaMemcpyKind);
+                                                             ^
+src/cuda_copy.h:13:61: warning: its scope is only this definition or declaration, which is probably not what you want [enabled by default]
+src/cuda_copy.h:14:58: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Matrix (sparse_matrix *, sparse_matrix *, enum cudaMemcpyKind);
+                                                          ^
+src/cuda_copy.h:15:51: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Output_Control (output_controls *, enum cudaMemcpyKind);
+                                                   ^
+src/cuda_copy.h:16:47: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Workspace (storage *workspace, enum cudaMemcpyKind);
+                                               ^
+src/integrate.c: In function ‘Cuda_Velocity_Verlet_Berendsen_NVT’:
+src/integrate.c:318:5: warning: implicit declaration of function ‘bNVT_update_velocity_part1’ [-Wimplicit-function-declaration]
+     bNVT_update_velocity_part1 (system, dt);
+     ^
+src/integrate.c:337:5: warning: implicit declaration of function ‘init_blocks’ [-Wimplicit-function-declaration]
+     init_blocks (system);
+     ^
+src/integrate.c:378:9: warning: implicit declaration of function ‘Cuda_Generate_Neighbor_Lists’ [-Wimplicit-function-declaration]
+         Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+         ^
+src/integrate.c:438:5: warning: implicit declaration of function ‘bNVT_update_velocity_part2’ [-Wimplicit-function-declaration]
+     bNVT_update_velocity_part2 (system, dt);
+     ^
+src/integrate.c:457:5: warning: implicit declaration of function ‘bNVT_scale_velocities’ [-Wimplicit-function-declaration]
+     bNVT_scale_velocities (system, lambda);
+     ^
+src/integrate.c:305:19: warning: unused variable ‘cap_3body’ [-Wunused-variable]
+     int bond_cap, cap_3body;
+                   ^
+src/integrate.c:305:9: warning: unused variable ‘bond_cap’ [-Wunused-variable]
+     int bond_cap, cap_3body;
+         ^
+src/integrate.c:304:30: warning: unused variable ‘total_bonds’ [-Wunused-variable]
+     int total_hbonds, count, total_bonds;
+                              ^
+src/integrate.c:304:23: warning: unused variable ‘count’ [-Wunused-variable]
+     int total_hbonds, count, total_bonds;
+                       ^
+src/integrate.c:304:9: warning: unused variable ‘total_hbonds’ [-Wunused-variable]
+     int total_hbonds, count, total_bonds;
+         ^
+src/integrate.c:303:15: warning: unused variable ‘num_3body’ [-Wunused-variable]
+     int Htop, num_3body;
+               ^
+src/integrate.c:303:9: warning: unused variable ‘Htop’ [-Wunused-variable]
+     int Htop, num_3body;
+         ^
+src/integrate.c:302:21: warning: unused variable ‘hb_top’ [-Wunused-variable]
+     int *bond_top, *hb_top;
+                     ^
+src/integrate.c:302:10: warning: unused variable ‘bond_top’ [-Wunused-variable]
+     int *bond_top, *hb_top;
+          ^
+src/integrate.c:299:16: warning: unused variable ‘atom’ [-Wunused-variable]
+     reax_atom *atom;
+                ^
+src/integrate.c:298:10: warning: unused variable ‘dx’ [-Wunused-variable]
+     rvec dx;
+          ^
+src/integrate.c:297:10: warning: unused variable ‘inv_m’ [-Wunused-variable]
+     real inv_m, dt, lambda;
+          ^
+In file included from src/integrate.c:32:0:
+src/integrate.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+In file included from src/init_md.c:27:0:
+src/cuda_copy.h:13:61: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Control (control_params *, control_params *, enum cudaMemcpyKind);
+                                                             ^
+src/cuda_copy.h:13:61: warning: its scope is only this definition or declaration, which is probably not what you want [enabled by default]
+src/cuda_copy.h:14:58: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Matrix (sparse_matrix *, sparse_matrix *, enum cudaMemcpyKind);
+                                                          ^
+src/cuda_copy.h:15:51: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Output_Control (output_controls *, enum cudaMemcpyKind);
+                                                   ^
+src/cuda_copy.h:16:47: warning: ‘enum cudaMemcpyKind’ declared inside parameter list [enabled by default]
+ void Sync_Workspace (storage *workspace, enum cudaMemcpyKind);
+                                               ^
+src/init_md.c: In function ‘Cuda_Init_Workspace’:
+src/init_md.c:578:5: warning: implicit declaration of function ‘Cuda_Reset_Workspace’ [-Wimplicit-function-declaration]
+     Cuda_Reset_Workspace( system, workspace );
+     ^
+src/init_md.c: In function ‘Init_Lists’:
+src/init_md.c:726:5: warning: implicit declaration of function ‘Make_List’ [-Wimplicit-function-declaration]
+     if (!Make_List(system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR, *lists + FAR_NBRS))
+     ^
+src/init_md.c:720:9: warning: unused variable ‘nrecv’ [-Wunused-variable]
+     int nrecv[MAX_NBRS];
+         ^
+src/init_md.c: In function ‘Cuda_Init_Lists’:
+src/init_md.c:853:5: warning: implicit declaration of function ‘Cuda_Estimate_Neighbors’ [-Wimplicit-function-declaration]
+     Cuda_Estimate_Neighbors (system, nbr_indices);
+     ^
+src/init_md.c:888:5: warning: implicit declaration of function ‘Cuda_Init_Neighbors_Indices’ [-Wimplicit-function-declaration]
+     Cuda_Init_Neighbors_Indices (nbr_indices, system->N);
+     ^
+src/init_md.c:890:5: warning: implicit declaration of function ‘Cuda_Generate_Neighbor_Lists’ [-Wimplicit-function-declaration]
+     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+     ^
+src/init_md.c:895:5: warning: implicit declaration of function ‘Cuda_Estimate_Storages’ [-Wimplicit-function-declaration]
+     Cuda_Estimate_Storages( system, control, lists, system->local_cap, system->total_cap,
+     ^
+src/init_md.c:906:5: warning: implicit declaration of function ‘Cuda_Estimate_Sparse_Matrix’ [-Wimplicit-function-declaration]
+     Cuda_Estimate_Sparse_Matrix (system, control, data, lists);
+     ^
+src/init_md.c:848:9: warning: unused variable ‘nrecv’ [-Wunused-variable]
+     int nrecv[MAX_NBRS];
+         ^
+src/init_md.c:846:57: warning: variable ‘cap_3body’ set but not used [-Wunused-but-set-variable]
+     int total_hbonds, total_bonds, bond_cap, num_3body, cap_3body, Htop;
+                                                         ^
+src/init_md.c: In function ‘Initialize’:
+src/init_md.c:1129:9: warning: passing argument 3 of ‘Init_Lookup_Tables’ from incompatible pointer type [enabled by default]
+         if ( Init_Lookup_Tables(system, control, workspace, mpi_data, msg) == FAILURE )
+         ^
+In file included from src/init_md.c:41:0:
+src/lookup.h:29:5: note: expected ‘real *’ but argument is of type ‘struct storage *’
+ int Init_Lookup_Tables( reax_system*, control_params*, real *,
+     ^
+src/init_md.c: In function ‘Cuda_Initialize’:
+src/init_md.c:1210:5: warning: implicit declaration of function ‘Cuda_Init_ScratchArea’ [-Wimplicit-function-declaration]
+     Cuda_Init_ScratchArea ();
+     ^
+src/init_md.c:1207:19: warning: unused variable ‘t_end’ [-Wunused-variable]
+     real t_start, t_end;
+                   ^
+src/init_md.c:1207:10: warning: unused variable ‘t_start’ [-Wunused-variable]
+     real t_start, t_end;
+          ^
+In file included from src/init_md.c:46:0:
+src/init_md.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/parallelreax.c: In function ‘init_blocks’:
+src/parallelreax.c:157:5: warning: implicit declaration of function ‘compute_blocks’ [-Wimplicit-function-declaration]
+     compute_blocks (&BLOCKS, &BLOCK_SIZE, system->n);
+     ^
+src/parallelreax.c:158:5: warning: implicit declaration of function ‘compute_nearest_pow_2’ [-Wimplicit-function-declaration]
+     compute_nearest_pow_2 (BLOCKS, &BLOCKS_POW_2);
+     ^
+src/parallelreax.c:163:5: warning: implicit declaration of function ‘compute_matvec_blocks’ [-Wimplicit-function-declaration]
+     compute_matvec_blocks (&MATVEC_BLOCKS, system->N);
+     ^
+src/parallelreax.c: In function ‘main’:
+src/parallelreax.c:258:5: warning: implicit declaration of function ‘print_device_mem_usage’ [-Wimplicit-function-declaration]
+     print_device_mem_usage ();
+     ^
+src/parallelreax.c:295:5: warning: implicit declaration of function ‘Sync_Atoms’ [-Wimplicit-function-declaration]
+     Sync_Atoms ( system );
+     ^
+src/parallelreax.c:296:5: warning: implicit declaration of function ‘Sync_Grid’ [-Wimplicit-function-declaration]
+     Sync_Grid (&system->my_grid, &system->d_my_grid);
+     ^
+src/parallelreax.c:311:5: warning: implicit declaration of function ‘Cuda_Generate_Neighbor_Lists’ [-Wimplicit-function-declaration]
+     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+     ^
+src/parallelreax.c:184:19: warning: unused variable ‘t_end’ [-Wunused-variable]
+     real t_begin, t_end;
+                   ^
+src/parallelreax.c:184:10: warning: unused variable ‘t_begin’ [-Wunused-variable]
+     real t_begin, t_end;
+          ^
+In file included from src/parallelreax.c:36:0:
+src/parallelreax.c: At top level:
+src/tool_box.h:40:20: warning: ‘GridCell_to_Box_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+                    ^
+src/tool_box.h:41:20: warning: ‘DistSqr_between_Special_Points’ declared ‘static’ but never defined [-Wunused-function]
+ static inline real DistSqr_between_Special_Points( rvec, rvec );
+                    ^
+src/dev_alloc.cu(14): warning: missing return statement at end of non-void function "dev_alloc_control"
+
+src/dev_alloc.cu(30): warning: variable "local_cell" was declared but never referenced
+
+src/dev_alloc.cu(33): warning: variable "nbrs_x" was declared but never referenced
+
+src/dev_alloc.cu(120): warning: missing return statement at end of non-void function "dev_dealloc_grid_cell_atoms"
+
+src/dev_alloc.cu(139): warning: missing return statement at end of non-void function "dev_alloc_grid_cell_atoms"
+
+src/dev_alloc.cu(198): warning: variable "i" was declared but never referenced
+
+src/dev_alloc.cu(198): warning: variable "local_int" was set but never used
+
+src/dev_alloc.cu(198): warning: variable "local_real" was set but never used
+
+src/dev_alloc.cu(14): warning: missing return statement at end of non-void function "dev_alloc_control"
+
+src/dev_alloc.cu(30): warning: variable "local_cell" was declared but never referenced
+
+src/dev_alloc.cu(33): warning: variable "nbrs_x" was declared but never referenced
+
+src/dev_alloc.cu(120): warning: missing return statement at end of non-void function "dev_dealloc_grid_cell_atoms"
+
+src/dev_alloc.cu(139): warning: missing return statement at end of non-void function "dev_alloc_grid_cell_atoms"
+
+src/dev_alloc.cu(198): warning: variable "i" was declared but never referenced
+
+src/dev_alloc.cu(198): warning: variable "local_int" was set but never used
+
+src/dev_alloc.cu(198): warning: variable "local_real" was set but never used
+
+src/center_mass.cu(64): warning: variable "xcm_id" was declared but never referenced
+
+src/center_mass.cu(386): warning: variable "xx_i" was declared but never referenced
+
+src/center_mass.cu(64): warning: variable "xcm_id" was declared but never referenced
+
+src/center_mass.cu(386): warning: variable "xx_i" was declared but never referenced
+
+src/cuda_copy.cu(17): warning: variable "local_cell" was declared but never referenced
+
+src/cuda_copy.cu(17): warning: variable "local_cell" was declared but never referenced
+
+src/cuda_reset_tools.cu(24): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(44): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(53): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(54): warning: variable "atom" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(24): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(44): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_reset_tools.cu(53): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(54): warning: variable "atom" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "i" was declared but never referenced
+
+src/cuda_reset_tools.cu(100): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(401): warning: variable "my_count" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(505): warning: variable "nbr_data" was declared but never referenced
+
+src/cuda_neighbors.cu(606): warning: variable "num_nbrs" was declared but never referenced
+
+src/cuda_neighbors.cu(608): warning: variable "far_nbrs" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(57): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(213): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(401): warning: variable "my_count" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gci" was declared but never referenced
+
+src/cuda_neighbors.cu(504): warning: variable "gcj" was declared but never referenced
+
+src/cuda_neighbors.cu(505): warning: variable "nbr_data" was declared but never referenced
+
+src/cuda_neighbors.cu(606): warning: variable "num_nbrs" was declared but never referenced
+
+src/cuda_neighbors.cu(608): warning: variable "far_nbrs" was declared but never referenced
+
+src/cuda_bond_orders.cu(38): warning: variable "sym_index" was declared but never referenced
+
+src/cuda_bond_orders.cu(38): warning: variable "num_bonds" was set but never used
+
+src/cuda_bond_orders.cu(44): warning: variable "p_lp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(46): warning: variable "explp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(47): warning: variable "sbp_j" was declared but never referenced
+
+src/cuda_bond_orders.cu(49): warning: variable "bo_ji" was declared but never referenced
+
+src/cuda_bond_orders.cu(374): warning: variable "sbp_i" was declared but never referenced
+
+src/cuda_bond_orders.cu(427): warning: variable "tf_f" was declared but never referenced
+
+src/cuda_bond_orders.cu(590): warning: variable "k" was set but never used
+
+src/cuda_bond_orders.cu(38): warning: variable "sym_index" was declared but never referenced
+
+src/cuda_bond_orders.cu(38): warning: variable "num_bonds" was set but never used
+
+src/cuda_bond_orders.cu(44): warning: variable "p_lp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(46): warning: variable "explp1" was declared but never referenced
+
+src/cuda_bond_orders.cu(47): warning: variable "sbp_j" was declared but never referenced
+
+src/cuda_bond_orders.cu(49): warning: variable "bo_ji" was declared but never referenced
+
+src/cuda_bond_orders.cu(374): warning: variable "sbp_i" was declared but never referenced
+
+src/cuda_bond_orders.cu(427): warning: variable "tf_f" was declared but never referenced
+
+src/cuda_bond_orders.cu(590): warning: variable "k" was set but never used
+
+src/cuda_bonds.cu(38): warning: variable "natoms" was declared but never referenced
+
+src/cuda_bonds.cu(41): warning: variable "ebond" was set but never used
+
+src/cuda_bonds.cu(38): warning: variable "natoms" was declared but never referenced
+
+src/cuda_bonds.cu(41): warning: variable "ebond" was set but never used
+
+src/cuda_multi_body.cu(44): warning: variable "e_lp" was set but never used
+
+src/cuda_multi_body.cu(45): warning: variable "e_lph" was set but never used
+
+src/cuda_multi_body.cu(46): warning: variable "e_ov" was set but never used
+
+src/cuda_multi_body.cu(51): warning: variable "p_lp1" was set but never used
+
+src/cuda_multi_body.cu(54): warning: variable "sbp_j" was set but never used
+
+src/cuda_multi_body.cu(326): warning: variable "pbond" was declared but never referenced
+
+src/cuda_multi_body.cu(44): warning: variable "e_lp" was set but never used
+
+src/cuda_multi_body.cu(45): warning: variable "e_lph" was set but never used
+
+src/cuda_multi_body.cu(46): warning: variable "e_ov" was set but never used
+
+src/cuda_multi_body.cu(51): warning: variable "p_lp1" was set but never used
+
+src/cuda_multi_body.cu(54): warning: variable "sbp_j" was set but never used
+
+src/cuda_multi_body.cu(326): warning: variable "pbond" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "start_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "end_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "e_ang" was set but never used
+
+src/cuda_valence_angles.cu(62): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(62): warning: variable "r_jk" was set but never used
+
+src/cuda_valence_angles.cu(69): warning: variable "p_kji" was declared but never referenced
+
+src/cuda_valence_angles.cu(592): warning: variable "k" was declared but never referenced
+
+src/cuda_valence_angles.cu(592): warning: variable "t" was declared but never referenced
+
+src/cuda_valence_angles.cu(593): warning: variable "type_i" was set but never used
+
+src/cuda_valence_angles.cu(593): warning: variable "type_j" was set but never used
+
+src/cuda_valence_angles.cu(593): warning: variable "type_k" was declared but never referenced
+
+src/cuda_valence_angles.cu(595): warning: variable "cnt" was declared but never referenced
+
+src/cuda_valence_angles.cu(597): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(597): warning: variable "r_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(600): warning: variable "pbond_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(601): warning: variable "bo_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "start_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(44): warning: variable "end_pk" was declared but never referenced
+
+src/cuda_valence_angles.cu(57): warning: variable "e_ang" was set but never used
+
+src/cuda_valence_angles.cu(62): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(62): warning: variable "r_jk" was set but never used
+
+src/cuda_valence_angles.cu(69): warning: variable "p_kji" was declared but never referenced
+
+src/cuda_valence_angles.cu(592): warning: variable "k" was declared but never referenced
+
+src/cuda_valence_angles.cu(592): warning: variable "t" was declared but never referenced
+
+src/cuda_valence_angles.cu(593): warning: variable "type_i" was set but never used
+
+src/cuda_valence_angles.cu(593): warning: variable "type_j" was set but never used
+
+src/cuda_valence_angles.cu(593): warning: variable "type_k" was declared but never referenced
+
+src/cuda_valence_angles.cu(595): warning: variable "cnt" was declared but never referenced
+
+src/cuda_valence_angles.cu(597): warning: variable "r_ij" was set but never used
+
+src/cuda_valence_angles.cu(597): warning: variable "r_jk" was declared but never referenced
+
+src/cuda_valence_angles.cu(600): warning: variable "pbond_jt" was declared but never referenced
+
+src/cuda_valence_angles.cu(601): warning: variable "bo_jt" was declared but never referenced
+
+src/cuda_torsion_angles.cu(154): warning: variable "natoms" was declared but never referenced
+
+src/cuda_torsion_angles.cu(156): warning: variable "start_k" was set but never used
+
+src/cuda_torsion_angles.cu(156): warning: variable "end_k" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_tor" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_con" was set but never used
+
+src/cuda_torsion_angles.cu(154): warning: variable "natoms" was declared but never referenced
+
+src/cuda_torsion_angles.cu(156): warning: variable "start_k" was set but never used
+
+src/cuda_torsion_angles.cu(156): warning: variable "end_k" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_tor" was set but never used
+
+src/cuda_torsion_angles.cu(178): warning: variable "e_con" was set but never used
+
+src/cuda_hydrogen_bonds.cu(54): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(291): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(637): warning: variable "j" was set but never used
+
+src/cuda_hydrogen_bonds.cu(702): warning: variable "j" was set but never used
+
+src/cuda_hydrogen_bonds.cu(54): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(291): warning: variable "r_ij" was set but never used
+
+src/cuda_hydrogen_bonds.cu(637): warning: variable "j" was set but never used
+
+src/cuda_hydrogen_bonds.cu(702): warning: variable "j" was set but never used
+
+src/cuda_forces.cu(51): warning: variable "r2" was set but never used
+
+src/cuda_forces.cu(813): warning: variable "my_bucket" was declared but never referenced
+
+src/cuda_forces.cu(882): warning: variable "comp" was declared but never referenced
+
+src/cuda_forces.cu(882): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_forces.cu(889): warning: variable "num_hbonds" was set but never used
+
+src/cuda_forces.cu(889): warning: variable "num_bonds" was set but never used
+
+src/cuda_forces.cu(1088): warning: variable "j" was declared but never referenced
+
+src/cuda_forces.cu(1090): warning: variable "type_i" was declared but never referenced
+
+src/cuda_forces.cu(1090): warning: variable "type_j" was declared but never referenced
+
+src/cuda_forces.cu(1091): warning: variable "nbr_pj" was declared but never referenced
+
+src/cuda_forces.cu(1092): warning: variable "atom_i" was set but never used
+
+src/cuda_forces.cu(1092): warning: variable "atom_j" was declared but never referenced
+
+src/cuda_forces.cu(1239): warning: variable "t_elapsed" was set but never used
+
+src/cuda_forces.cu(51): warning: variable "r2" was set but never used
+
+src/cuda_forces.cu(813): warning: variable "my_bucket" was declared but never referenced
+
+src/cuda_forces.cu(882): warning: variable "comp" was declared but never referenced
+
+src/cuda_forces.cu(882): warning: variable "Hindex" was declared but never referenced
+
+src/cuda_forces.cu(889): warning: variable "num_hbonds" was set but never used
+
+src/cuda_forces.cu(889): warning: variable "num_bonds" was set but never used
+
+src/cuda_forces.cu(1088): warning: variable "j" was declared but never referenced
+
+src/cuda_forces.cu(1090): warning: variable "type_i" was declared but never referenced
+
+src/cuda_forces.cu(1090): warning: variable "type_j" was declared but never referenced
+
+src/cuda_forces.cu(1091): warning: variable "nbr_pj" was declared but never referenced
+
+src/cuda_forces.cu(1092): warning: variable "atom_i" was set but never used
+
+src/cuda_forces.cu(1092): warning: variable "atom_j" was declared but never referenced
+
+src/cuda_forces.cu(1239): warning: variable "t_elapsed" was set but never used
+
+src/cuda_linear_solvers.cu(245): warning: variable "blocks" was set but never used
+
+src/cuda_linear_solvers.cu(271): warning: variable "blocks" was set but never used
+
+src/cuda_linear_solvers.cu(245): warning: variable "blocks" was set but never used
+
+src/cuda_linear_solvers.cu(271): warning: variable "blocks" was set but never used
+
+src/validation.cu(199): warning: statement is unreachable
+
+src/validation.cu(119): warning: loop is not reachable
+
+src/validation.cu(225): warning: variable "start" was declared but never referenced
+
+src/validation.cu(225): warning: variable "end" was declared but never referenced
+
+src/validation.cu(225): warning: variable "index" was declared but never referenced
+
+src/validation.cu(338): warning: statement is unreachable
+
+src/validation.cu(423): warning: missing return statement at end of non-void function "print_hbonds"
+
+src/validation.cu(416): warning: variable "src" was declared but never referenced
+
+src/validation.cu(416): warning: variable "tgt" was declared but never referenced
+
+src/validation.cu(429): warning: variable "index" was declared but never referenced
+
+src/validation.cu(654): warning: variable "tgt_sym" was declared but never referenced
+
+src/validation.cu(646): warning: variable "src_sym" was declared but never referenced
+
+src/validation.cu(601): warning: variable "index" was declared but never referenced
+
+src/validation.cu(765): warning: variable "tcount" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "x" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "itr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_nbr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_11" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "miscount" was set but never used
+
+src/validation.cu(1223): warning: variable "src" was declared but never referenced
+
+src/validation.cu(1223): warning: variable "dest" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gci" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj_nbr" was declared but never referenced
+
+src/validation.cu(1226): warning: variable "found" was declared but never referenced
+
+src/validation.cu(1408): warning: variable "t_start" was declared but never referenced
+
+src/validation.cu(1409): warning: variable "t_end" was declared but never referenced
+
+src/validation.cu(1405): warning: variable "y" was declared but never referenced
+
+src/validation.cu(1370): warning: variable "test" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "start" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "end" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "count" was set but never used
+
+src/validation.cu(1641): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1641): warning: variable "count" was set but never used
+
+src/validation.cu(1686): warning: missing return statement at end of non-void function "print_device_array"
+
+src/validation.cu(199): warning: statement is unreachable
+
+src/validation.cu(119): warning: loop is not reachable
+
+src/validation.cu(225): warning: variable "start" was declared but never referenced
+
+src/validation.cu(225): warning: variable "end" was declared but never referenced
+
+src/validation.cu(225): warning: variable "index" was declared but never referenced
+
+src/validation.cu(338): warning: statement is unreachable
+
+src/validation.cu(423): warning: missing return statement at end of non-void function "print_hbonds"
+
+src/validation.cu(416): warning: variable "src" was declared but never referenced
+
+src/validation.cu(416): warning: variable "tgt" was declared but never referenced
+
+src/validation.cu(429): warning: variable "index" was declared but never referenced
+
+src/validation.cu(654): warning: variable "tgt_sym" was declared but never referenced
+
+src/validation.cu(646): warning: variable "src_sym" was declared but never referenced
+
+src/validation.cu(601): warning: variable "index" was declared but never referenced
+
+src/validation.cu(765): warning: variable "tcount" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "x" was declared but never referenced
+
+src/validation.cu(1221): warning: variable "itr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_nbr" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "itr_11" was declared but never referenced
+
+src/validation.cu(1222): warning: variable "miscount" was set but never used
+
+src/validation.cu(1223): warning: variable "src" was declared but never referenced
+
+src/validation.cu(1223): warning: variable "dest" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gci" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj" was declared but never referenced
+
+src/validation.cu(1225): warning: variable "gcj_nbr" was declared but never referenced
+
+src/validation.cu(1226): warning: variable "found" was declared but never referenced
+
+src/validation.cu(1408): warning: variable "t_start" was declared but never referenced
+
+src/validation.cu(1409): warning: variable "t_end" was declared but never referenced
+
+src/validation.cu(1405): warning: variable "y" was declared but never referenced
+
+src/validation.cu(1370): warning: variable "test" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "start" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "end" was declared but never referenced
+
+src/validation.cu(1545): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1610): warning: variable "count" was set but never used
+
+src/validation.cu(1641): warning: variable "index" was declared but never referenced
+
+src/validation.cu(1641): warning: variable "count" was set but never used
+
+src/validation.cu(1686): warning: missing return statement at end of non-void function "print_device_array"
+
+src/cuda_lookup.cu(10): warning: variable "r" was declared but never referenced
+
+src/cuda_lookup.cu(10): warning: variable "r" was declared but never referenced
+
+p:0 is using GPU: 0 
+p:1 is using GPU: 1 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for X
+ TOTAL DEVICE BOND COUNT: 300936 
+ TOTAL DEVICE HBOND COUNT: 3085560 
+ TOTAL DEVICE SPARSE COUNT: 16446348 
+p:1 --> Bonds(0, 10) HBonds (0, 132) *******
+ TOTAL DEVICE BOND COUNT: 300936 
+ TOTAL DEVICE HBOND COUNT: 3085560 
+ TOTAL DEVICE SPARSE COUNT: 16446348 
+p:0 --> Bonds(0, 10) HBonds (0, 132) *******
+p:1 - allocated H matrix: max_entries: 537, cap: 55410345 
+**** Total HBonds allocated --> 16469004 total_cap: 103185 per atom: 159, max_hbonds: 184 
+**** Total Bonds allocated --> 1394402 total_cap: 103185 per atom: 13, max_bonds: 14 
+p:0 - allocated H matrix: max_entries: 546, cap: 56339010 
+Total 12884705280 Mb 12287 gig 11 , free 8771239936, Mb 8364 , gig 8 
+**** Total HBonds allocated --> 16469004 total_cap: 103185 per atom: 159, max_hbonds: 184 
+**** Total Bonds allocated --> 1394402 total_cap: 103185 per atom: 13, max_bonds: 14 
+Total 12884705280 Mb 12287 gig 11 , free 8756297728, Mb 8350 , gig 8 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15157824 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17734872 
+p0 --> Overhead (Step-1) 0.084624 
+p1 --> Overhead (Step-1) 0.085090 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15157812 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17734860 
+p0 --> Overhead (Step-2) 0.084642 
+p1 --> Overhead (Step-2) 0.085249 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167100 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17725740 
+p0 --> Overhead (Step-3) 0.084598 
+p1 --> Overhead (Step-3) 0.085230 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167220 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17725836 
+p0 --> Overhead (Step-4) 0.084599 
+p1 --> Overhead (Step-4) 0.085140 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167376 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17726376 
+p1 --> Overhead (Step-5) 0.085264 
+p0 --> Overhead (Step-5) 0.084741 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167100 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17726268 
+p0 --> Overhead (Step-6) 0.084708 
+p1 --> Overhead (Step-6) 0.085186 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167064 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17725992 
+p0 --> Overhead (Step-7) 0.084701 
+p1 --> Overhead (Step-7) 0.085296 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15166956 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17725956 
+p0 --> Overhead (Step-8) 0.084723 
+p1 --> Overhead (Step-8) 0.085310 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167148 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17726388 
+p0 --> Overhead (Step-9) 0.084544 
+p1 --> Overhead (Step-9) 0.085178 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15166716 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17725764 
+p0 --> Overhead (Step-10) 0.084596 
+p1 --> Overhead (Step-10) 0.085165 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15166740 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17725692 
+p0 --> Overhead (Step-11) 0.084690 
+p1 --> Overhead (Step-11) 0.085299 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167208 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17725968 
+p0 --> Overhead (Step-12) 0.084713 
+p1 --> Overhead (Step-12) 0.085202 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167328 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17726400 
+p0 --> Overhead (Step-13) 0.084632 
+p1 --> Overhead (Step-13) 0.085171 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15167244 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17726676 
+p0 --> Overhead (Step-14) 0.084665 
+p1 --> Overhead (Step-14) 0.085390 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15175080 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17718336 
+p0 --> Overhead (Step-15) 0.084741 
+p1 --> Overhead (Step-15) 0.085242 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15175656 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17718840 
+p0 --> Overhead (Step-16) 0.084765 
+p1 --> Overhead (Step-16) 0.085162 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15175752 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719224 
+p0 --> Overhead (Step-17) 0.084528 
+p1 --> Overhead (Step-17) 0.085214 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176388 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720100 
+p0 --> Overhead (Step-18) 0.084697 
+p1 --> Overhead (Step-18) 0.085207 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176772 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720484 
+p0 --> Overhead (Step-19) 0.084644 
+p1 --> Overhead (Step-19) 0.085208 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176868 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720460 
+p0 --> Overhead (Step-20) 0.084506 
+p1 --> Overhead (Step-20) 0.085228 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176448 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720232 
+p0 --> Overhead (Step-21) 0.084769 
+p1 --> Overhead (Step-21) 0.085460 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176112 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720232 
+p0 --> Overhead (Step-22) 0.084561 
+p1 --> Overhead (Step-22) 0.085211 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176040 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720304 
+p0 --> Overhead (Step-23) 0.084516 
+p1 --> Overhead (Step-23) 0.085004 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15175620 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719572 
+p0 --> Overhead (Step-24) 0.084452 
+p1 --> Overhead (Step-24) 0.085001 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176352 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720592 
+p0 --> Overhead (Step-25) 0.084535 
+p1 --> Overhead (Step-25) 0.085063 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15177000 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17721024 
+p0 --> Overhead (Step-26) 0.084447 
+p1 --> Overhead (Step-26) 0.084938 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15177360 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17721240 
+p0 --> Overhead (Step-27) 0.084375 
+p1 --> Overhead (Step-27) 0.084915 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176880 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720664 
+p0 --> Overhead (Step-28) 0.084235 
+p1 --> Overhead (Step-28) 0.084808 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176856 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720976 
+p1 --> Overhead (Step-29) 0.084859 
+p0 --> Overhead (Step-29) 0.084389 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15176568 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17721048 
+p1 --> Overhead (Step-30) 0.084890 
+p0 --> Overhead (Step-30) 0.084439 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15185460 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712444 
+p1 --> Overhead (Step-31) 0.084950 
+p0 --> Overhead (Step-31) 0.084535 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15184908 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712468 
+p1 --> Overhead (Step-32) 0.084844 
+p0 --> Overhead (Step-32) 0.084257 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15185628 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17713932 
+p1 --> Overhead (Step-33) 0.084738 
+p0 --> Overhead (Step-33) 0.084264 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15186300 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17715036 
+p0 --> Overhead (Step-34) 0.084242 
+p1 --> Overhead (Step-34) 0.084776 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15185700 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17714868 
+p0 --> Overhead (Step-35) 0.084368 
+p1 --> Overhead (Step-35) 0.085088 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15185400 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17714784 
+p0 --> Overhead (Step-36) 0.084543 
+p1 --> Overhead (Step-36) 0.084983 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15185544 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17714856 
+p0 --> Overhead (Step-37) 0.084490 
+p1 --> Overhead (Step-37) 0.084997 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15186144 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17715360 
+p0 --> Overhead (Step-38) 0.084604 
+p1 --> Overhead (Step-38) 0.085078 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187020 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17715852 
+p0 --> Overhead (Step-39) 0.084510 
+p1 --> Overhead (Step-39) 0.085035 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187500 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17716740 
+p0 --> Overhead (Step-40) 0.084450 
+p1 --> Overhead (Step-40) 0.085057 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187440 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17717112 
+p0 --> Overhead (Step-41) 0.084701 
+p1 --> Overhead (Step-41) 0.085123 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187080 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17716944 
+p0 --> Overhead (Step-42) 0.084536 
+p1 --> Overhead (Step-42) 0.084917 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15186660 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17716404 
+p0 --> Overhead (Step-43) 0.084344 
+p1 --> Overhead (Step-43) 0.084919 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15186840 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17716752 
+p0 --> Overhead (Step-44) 0.084315 
+p1 --> Overhead (Step-44) 0.084984 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15186996 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17716884 
+p0 --> Overhead (Step-45) 0.084368 
+p1 --> Overhead (Step-45) 0.084998 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187416 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17717736 
+p0 --> Overhead (Step-46) 0.084485 
+p1 --> Overhead (Step-46) 0.085039 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187536 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17717976 
+p0 --> Overhead (Step-47) 0.084407 
+p1 --> Overhead (Step-47) 0.084835 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187668 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17718444 
+p0 --> Overhead (Step-48) 0.084401 
+p1 --> Overhead (Step-48) 0.085207 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187452 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17718636 
+p0 --> Overhead (Step-49) 0.084423 
+p1 --> Overhead (Step-49) 0.084930 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187056 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17718528 
+p0 --> Overhead (Step-50) 0.084416 
+p1 --> Overhead (Step-50) 0.084955 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187476 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17718948 
+p0 --> Overhead (Step-51) 0.084363 
+p1 --> Overhead (Step-51) 0.085093 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187572 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719500 
+p0 --> Overhead (Step-52) 0.084522 
+p1 --> Overhead (Step-52) 0.084928 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187452 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719428 
+p0 --> Overhead (Step-53) 0.084311 
+p1 --> Overhead (Step-53) 0.084949 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187068 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719308 
+p0 --> Overhead (Step-54) 0.084260 
+p1 --> Overhead (Step-54) 0.084874 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187572 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719788 
+p0 --> Overhead (Step-55) 0.084310 
+p1 --> Overhead (Step-55) 0.084868 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188112 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720544 
+p0 --> Overhead (Step-56) 0.084456 
+p1 --> Overhead (Step-56) 0.084945 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188616 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720832 
+p0 --> Overhead (Step-57) 0.084473 
+p1 --> Overhead (Step-57) 0.085075 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188568 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720592 
+p0 --> Overhead (Step-58) 0.084453 
+p1 --> Overhead (Step-58) 0.085125 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15189168 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17721168 
+p0 --> Overhead (Step-59) 0.084392 
+p1 --> Overhead (Step-59) 0.085144 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188868 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720748 
+p0 --> Overhead (Step-60) 0.084541 
+p1 --> Overhead (Step-60) 0.084999 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188748 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720940 
+p0 --> Overhead (Step-61) 0.084418 
+p1 --> Overhead (Step-61) 0.085073 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188700 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720700 
+p0 --> Overhead (Step-62) 0.084395 
+p1 --> Overhead (Step-62) 0.084976 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188460 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720460 
+p0 --> Overhead (Step-63) 0.084544 
+p1 --> Overhead (Step-63) 0.085098 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187740 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719596 
+p0 --> Overhead (Step-64) 0.084589 
+p1 --> Overhead (Step-64) 0.085062 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188088 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720112 
+p0 --> Overhead (Step-65) 0.084566 
+p1 --> Overhead (Step-65) 0.085149 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188088 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719704 
+p0 --> Overhead (Step-66) 0.084635 
+p1 --> Overhead (Step-66) 0.085160 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187584 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719584 
+p0 --> Overhead (Step-67) 0.084572 
+p1 --> Overhead (Step-67) 0.085190 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187416 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719176 
+p0 --> Overhead (Step-68) 0.084656 
+p1 --> Overhead (Step-68) 0.085083 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187956 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719644 
+p0 --> Overhead (Step-69) 0.084577 
+p1 --> Overhead (Step-69) 0.085061 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188316 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720388 
+p0 --> Overhead (Step-70) 0.084658 
+p1 --> Overhead (Step-70) 0.085199 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187272 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719248 
+p0 --> Overhead (Step-71) 0.084602 
+p1 --> Overhead (Step-71) 0.085080 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187068 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17719236 
+p0 --> Overhead (Step-72) 0.084703 
+p1 --> Overhead (Step-72) 0.085212 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15186612 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17718876 
+p0 --> Overhead (Step-73) 0.084618 
+p1 --> Overhead (Step-73) 0.085307 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187560 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720208 
+p0 --> Overhead (Step-74) 0.084571 
+p1 --> Overhead (Step-74) 0.085171 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188268 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720964 
+p0 --> Overhead (Step-75) 0.084803 
+p1 --> Overhead (Step-75) 0.085183 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188628 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17721756 
+p0 --> Overhead (Step-76) 0.084880 
+p1 --> Overhead (Step-76) 0.085240 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188268 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17721156 
+p0 --> Overhead (Step-77) 0.084598 
+p1 --> Overhead (Step-77) 0.085077 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188532 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720988 
+p0 --> Overhead (Step-78) 0.084838 
+p1 --> Overhead (Step-78) 0.085281 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15188388 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17721132 
+p0 --> Overhead (Step-79) 0.084667 
+p1 --> Overhead (Step-79) 0.085241 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15187980 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17720676 
+p0 --> Overhead (Step-80) 0.084848 
+p1 --> Overhead (Step-80) 0.085258 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15197760 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17711304 
+p0 --> Overhead (Step-81) 0.084757 
+p1 --> Overhead (Step-81) 0.085356 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198288 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712072 
+p0 --> Overhead (Step-82) 0.084648 
+p1 --> Overhead (Step-82) 0.085196 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198792 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712624 
+p0 --> Overhead (Step-83) 0.084559 
+p1 --> Overhead (Step-83) 0.085241 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198780 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712516 
+p0 --> Overhead (Step-84) 0.084766 
+p1 --> Overhead (Step-84) 0.085197 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198864 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712312 
+p0 --> Overhead (Step-85) 0.084729 
+p1 --> Overhead (Step-85) 0.085239 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198756 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712132 
+p0 --> Overhead (Step-86) 0.084694 
+p1 --> Overhead (Step-86) 0.085159 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198480 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17711952 
+p0 --> Overhead (Step-87) 0.084745 
+p1 --> Overhead (Step-87) 0.085190 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198948 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712324 
+p0 --> Overhead (Step-88) 0.084790 
+p1 --> Overhead (Step-88) 0.085319 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198504 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17711832 
+p0 --> Overhead (Step-89) 0.084735 
+p1 --> Overhead (Step-89) 0.085231 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15199092 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712084 
+p0 --> Overhead (Step-90) 0.084750 
+p1 --> Overhead (Step-90) 0.085291 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198576 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712192 
+p0 --> Overhead (Step-91) 0.084747 
+p1 --> Overhead (Step-91) 0.085273 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198012 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17711940 
+p0 --> Overhead (Step-92) 0.084696 
+p1 --> Overhead (Step-92) 0.085281 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198312 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17711832 
+p0 --> Overhead (Step-93) 0.084921 
+p1 --> Overhead (Step-93) 0.085250 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198120 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17712264 
+p0 --> Overhead (Step-94) 0.084789 
+p1 --> Overhead (Step-94) 0.085278 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15199356 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17710476 
+p0 --> Overhead (Step-95) 0.084774 
+p1 --> Overhead (Step-95) 0.085360 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15199020 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17710452 
+p0 --> Overhead (Step-96) 0.084870 
+p1 --> Overhead (Step-96) 0.085280 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198888 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17710200 
+p0 --> Overhead (Step-97) 0.084857 
+p1 --> Overhead (Step-97) 0.085258 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198684 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17710092 
+p0 --> Overhead (Step-98) 0.085027 
+p1 --> Overhead (Step-98) 0.085385 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198840 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17710128 
+p0 --> Overhead (Step-99) 0.085011 
+p1 --> Overhead (Step-99) 0.085383 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198876 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17709924 
+p0 --> Overhead (Step-100) 0.084949 
+p1 --> Overhead (Step-100) 0.085449 
+p:1 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 55410345, used: 15198576 
+p:0 - Cuda_Reallocate: Total H matrix entries: 39240, cap: 56339010, used: 17709360 
+mv: cannot stat `water.78480.trj': No such file or directory
+p:1 is using GPU: 1 
+p:0 is using GPU: 0 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+ TOTAL DEVICE BOND COUNT: 414310 
+ TOTAL DEVICE HBOND COUNT: 0 
+ TOTAL DEVICE SPARSE COUNT: 9501228 
+p:1 --> Bonds(0, 10) HBonds (0, 0) *******
+ TOTAL DEVICE BOND COUNT: 414310 
+ TOTAL DEVICE HBOND COUNT: 0 
+ TOTAL DEVICE SPARSE COUNT: 9501228 
+p:0 --> Bonds(0, 10) HBonds (0, 0) *******
+p:1 - allocated H matrix: max_entries: 358, cap: 30094554 
+**** Total Bonds allocated --> 1681238 total_cap: 84063 per atom: 19, max_bonds: 14 
+p:0 - allocated H matrix: max_entries: 358, cap: 30094554 
+**** Total Bonds allocated --> 1681238 total_cap: 84063 per atom: 19, max_bonds: 14 
+Total 12884705280 Mb 12287 gig 11 , free 10820812800, Mb 10319 , gig 10 
+Total 12884705280 Mb 12287 gig 11 , free 10820812800, Mb 10319 , gig 10 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969208 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033248 
+p0 --> Overhead (Step-1) 0.061793 
+p1 --> Overhead (Step-1) 0.062032 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969196 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033236 
+p0 --> Overhead (Step-2) 0.061735 
+p1 --> Overhead (Step-2) 0.062078 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969184 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033224 
+p0 --> Overhead (Step-3) 0.061771 
+p1 --> Overhead (Step-3) 0.062112 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969196 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033236 
+p0 --> Overhead (Step-4) 0.061720 
+p1 --> Overhead (Step-4) 0.062167 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969220 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033260 
+p0 --> Overhead (Step-5) 0.061967 
+p1 --> Overhead (Step-5) 0.062116 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969184 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033248 
+p0 --> Overhead (Step-6) 0.061748 
+p1 --> Overhead (Step-6) 0.062132 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969172 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033284 
+p0 --> Overhead (Step-7) 0.061765 
+p1 --> Overhead (Step-7) 0.062076 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969232 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033344 
+p0 --> Overhead (Step-8) 0.061853 
+p1 --> Overhead (Step-8) 0.062132 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969220 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033332 
+p0 --> Overhead (Step-9) 0.061802 
+p1 --> Overhead (Step-9) 0.062162 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969208 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033272 
+p0 --> Overhead (Step-10) 0.061838 
+p1 --> Overhead (Step-10) 0.062165 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969184 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033248 
+p0 --> Overhead (Step-11) 0.061782 
+p1 --> Overhead (Step-11) 0.062250 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969136 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033224 
+p0 --> Overhead (Step-12) 0.061856 
+p1 --> Overhead (Step-12) 0.062173 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969184 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033296 
+p0 --> Overhead (Step-13) 0.061679 
+p1 --> Overhead (Step-13) 0.062052 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969100 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033188 
+p0 --> Overhead (Step-14) 0.061824 
+p1 --> Overhead (Step-14) 0.062121 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969124 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033260 
+p0 --> Overhead (Step-15) 0.061797 
+p1 --> Overhead (Step-15) 0.062228 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969052 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10033284 
+p0 --> Overhead (Step-16) 0.061882 
+p1 --> Overhead (Step-16) 0.062006 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969892 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032396 
+p0 --> Overhead (Step-17) 0.061792 
+p1 --> Overhead (Step-17) 0.062085 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969904 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032408 
+p0 --> Overhead (Step-18) 0.061840 
+p1 --> Overhead (Step-18) 0.061962 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969796 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032300 
+p0 --> Overhead (Step-19) 0.061733 
+p1 --> Overhead (Step-19) 0.062070 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969772 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032228 
+p0 --> Overhead (Step-20) 0.061752 
+p1 --> Overhead (Step-20) 0.062033 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969724 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032180 
+p0 --> Overhead (Step-21) 0.061881 
+p1 --> Overhead (Step-21) 0.062043 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969748 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032228 
+p0 --> Overhead (Step-22) 0.061801 
+p1 --> Overhead (Step-22) 0.062035 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969736 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032240 
+p0 --> Overhead (Step-23) 0.061796 
+p1 --> Overhead (Step-23) 0.061971 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969592 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032120 
+p0 --> Overhead (Step-24) 0.061771 
+p1 --> Overhead (Step-24) 0.062133 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969520 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032048 
+p0 --> Overhead (Step-25) 0.061826 
+p1 --> Overhead (Step-25) 0.062137 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969496 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032096 
+p0 --> Overhead (Step-26) 0.061914 
+p1 --> Overhead (Step-26) 0.062078 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969472 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032096 
+p0 --> Overhead (Step-27) 0.061809 
+p1 --> Overhead (Step-27) 0.062020 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969412 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032060 
+p0 --> Overhead (Step-28) 0.061874 
+p1 --> Overhead (Step-28) 0.062052 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969496 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032240 
+p0 --> Overhead (Step-29) 0.061829 
+p1 --> Overhead (Step-29) 0.062000 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969532 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032300 
+p0 --> Overhead (Step-30) 0.061912 
+p1 --> Overhead (Step-30) 0.062056 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969460 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032180 
+p0 --> Overhead (Step-31) 0.061753 
+p1 --> Overhead (Step-31) 0.062113 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969400 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032096 
+p0 --> Overhead (Step-32) 0.061774 
+p1 --> Overhead (Step-32) 0.062100 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969340 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10032012 
+p0 --> Overhead (Step-33) 0.061771 
+p1 --> Overhead (Step-33) 0.062133 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970660 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030740 
+p0 --> Overhead (Step-34) 0.061976 
+p1 --> Overhead (Step-34) 0.062230 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970744 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030824 
+p0 --> Overhead (Step-35) 0.061917 
+p1 --> Overhead (Step-35) 0.062133 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970744 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030920 
+p0 --> Overhead (Step-36) 0.061882 
+p1 --> Overhead (Step-36) 0.062132 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970612 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030932 
+p0 --> Overhead (Step-37) 0.061946 
+p1 --> Overhead (Step-37) 0.062188 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970492 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030860 
+p0 --> Overhead (Step-38) 0.061953 
+p1 --> Overhead (Step-38) 0.062304 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970420 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030836 
+p0 --> Overhead (Step-39) 0.061959 
+p1 --> Overhead (Step-39) 0.062243 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970468 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10031004 
+p0 --> Overhead (Step-40) 0.061831 
+p1 --> Overhead (Step-40) 0.062107 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970360 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030872 
+p0 --> Overhead (Step-41) 0.061902 
+p1 --> Overhead (Step-41) 0.062161 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970336 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030920 
+p0 --> Overhead (Step-42) 0.061888 
+p1 --> Overhead (Step-42) 0.062058 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970228 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10030836 
+p0 --> Overhead (Step-43) 0.061976 
+p1 --> Overhead (Step-43) 0.062148 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970960 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029888 
+p0 --> Overhead (Step-44) 0.061931 
+p1 --> Overhead (Step-44) 0.062205 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970852 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029900 
+p0 --> Overhead (Step-45) 0.061913 
+p1 --> Overhead (Step-45) 0.062122 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970816 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029960 
+p1 --> Overhead (Step-46) 0.062116 
+p0 --> Overhead (Step-46) 0.061928 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970660 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029852 
+p1 --> Overhead (Step-47) 0.062201 
+p0 --> Overhead (Step-47) 0.061854 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970612 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029924 
+p1 --> Overhead (Step-48) 0.061938 
+p0 --> Overhead (Step-48) 0.061985 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971944 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028400 
+p1 --> Overhead (Step-49) 0.061967 
+p0 --> Overhead (Step-49) 0.061936 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971716 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028316 
+p1 --> Overhead (Step-50) 0.062054 
+p0 --> Overhead (Step-50) 0.062038 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971860 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028436 
+p1 --> Overhead (Step-51) 0.062007 
+p0 --> Overhead (Step-51) 0.061789 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971716 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028364 
+p0 --> Overhead (Step-52) 0.061742 
+p1 --> Overhead (Step-52) 0.062127 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971800 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028472 
+p1 --> Overhead (Step-53) 0.062542 
+p0 --> Overhead (Step-53) 0.062298 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971704 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028424 
+p0 --> Overhead (Step-54) 0.062300 
+p1 --> Overhead (Step-54) 0.062356 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971776 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028520 
+p0 --> Overhead (Step-55) 0.062325 
+p1 --> Overhead (Step-55) 0.062507 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971680 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028520 
+p0 --> Overhead (Step-56) 0.062338 
+p1 --> Overhead (Step-56) 0.062507 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971692 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028748 
+p0 --> Overhead (Step-57) 0.062095 
+p1 --> Overhead (Step-57) 0.062362 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971584 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028832 
+p0 --> Overhead (Step-58) 0.062217 
+p1 --> Overhead (Step-58) 0.062386 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971500 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028820 
+p0 --> Overhead (Step-59) 0.062148 
+p1 --> Overhead (Step-59) 0.062317 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971368 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028736 
+p0 --> Overhead (Step-60) 0.062145 
+p1 --> Overhead (Step-60) 0.062396 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971368 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028808 
+p0 --> Overhead (Step-61) 0.062196 
+p1 --> Overhead (Step-61) 0.062256 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971272 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028808 
+p1 --> Overhead (Step-62) 0.062442 
+p0 --> Overhead (Step-62) 0.062236 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971044 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028748 
+p1 --> Overhead (Step-63) 0.062522 
+p0 --> Overhead (Step-63) 0.062345 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970972 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028796 
+p0 --> Overhead (Step-64) 0.062201 
+p1 --> Overhead (Step-64) 0.062318 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970960 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028904 
+p0 --> Overhead (Step-65) 0.061987 
+p1 --> Overhead (Step-65) 0.062244 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970948 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028868 
+p0 --> Overhead (Step-66) 0.062143 
+p1 --> Overhead (Step-66) 0.062183 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970948 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029084 
+p0 --> Overhead (Step-67) 0.062192 
+p1 --> Overhead (Step-67) 0.062277 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970948 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029276 
+p0 --> Overhead (Step-68) 0.062191 
+p1 --> Overhead (Step-68) 0.062336 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971008 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029336 
+p1 --> Overhead (Step-69) 0.062514 
+p0 --> Overhead (Step-69) 0.062165 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970948 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029372 
+p1 --> Overhead (Step-70) 0.062328 
+p0 --> Overhead (Step-70) 0.062237 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970936 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029456 
+p1 --> Overhead (Step-71) 0.062290 
+p0 --> Overhead (Step-71) 0.062184 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970792 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029312 
+p1 --> Overhead (Step-72) 0.062355 
+p0 --> Overhead (Step-72) 0.062215 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970732 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029276 
+p1 --> Overhead (Step-73) 0.062410 
+p0 --> Overhead (Step-73) 0.062096 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970756 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029348 
+p0 --> Overhead (Step-74) 0.062177 
+p1 --> Overhead (Step-74) 0.062315 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970744 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029408 
+p0 --> Overhead (Step-75) 0.062330 
+p1 --> Overhead (Step-75) 0.062537 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970480 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029336 
+p0 --> Overhead (Step-76) 0.062166 
+p1 --> Overhead (Step-76) 0.062286 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970408 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029384 
+p1 --> Overhead (Step-77) 0.062400 
+p0 --> Overhead (Step-77) 0.062158 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970480 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029552 
+p1 --> Overhead (Step-78) 0.062353 
+p0 --> Overhead (Step-78) 0.062107 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970468 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029612 
+p1 --> Overhead (Step-79) 0.062374 
+p0 --> Overhead (Step-79) 0.062137 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970360 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029576 
+p1 --> Overhead (Step-80) 0.062525 
+p0 --> Overhead (Step-80) 0.062275 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970120 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029336 
+p1 --> Overhead (Step-81) 0.062342 
+p0 --> Overhead (Step-81) 0.062153 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8969904 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10029240 
+p1 --> Overhead (Step-82) 0.062310 
+p0 --> Overhead (Step-82) 0.062108 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971104 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028064 
+p1 --> Overhead (Step-83) 0.062461 
+p0 --> Overhead (Step-83) 0.062264 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8970996 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028100 
+p1 --> Overhead (Step-84) 0.062415 
+p0 --> Overhead (Step-84) 0.062222 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8971140 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028364 
+p1 --> Overhead (Step-85) 0.062394 
+p0 --> Overhead (Step-85) 0.062293 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972604 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10026804 
+p0 --> Overhead (Step-86) 0.061826 
+p1 --> Overhead (Step-86) 0.062127 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972460 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10026756 
+p1 --> Overhead (Step-87) 0.062769 
+p0 --> Overhead (Step-87) 0.062349 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972568 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10026840 
+p1 --> Overhead (Step-88) 0.062631 
+p0 --> Overhead (Step-88) 0.062498 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972508 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10026972 
+p1 --> Overhead (Step-89) 0.062477 
+p0 --> Overhead (Step-89) 0.062333 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972640 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027200 
+p1 --> Overhead (Step-90) 0.062641 
+p0 --> Overhead (Step-90) 0.062434 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972700 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027404 
+p0 --> Overhead (Step-91) 0.062038 
+p1 --> Overhead (Step-91) 0.062538 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972400 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027200 
+p0 --> Overhead (Step-92) 0.062419 
+p1 --> Overhead (Step-92) 0.062591 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972376 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027344 
+p0 --> Overhead (Step-93) 0.062214 
+p1 --> Overhead (Step-93) 0.062433 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972388 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027452 
+p0 --> Overhead (Step-94) 0.062531 
+p1 --> Overhead (Step-94) 0.062540 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972352 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027560 
+p0 --> Overhead (Step-95) 0.062300 
+p1 --> Overhead (Step-95) 0.062460 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972352 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027632 
+p0 --> Overhead (Step-96) 0.062370 
+p1 --> Overhead (Step-96) 0.062737 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972292 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027740 
+p1 --> Overhead (Step-97) 0.062612 
+p0 --> Overhead (Step-97) 0.062363 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972268 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027764 
+p1 --> Overhead (Step-98) 0.062456 
+p0 --> Overhead (Step-98) 0.062246 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972172 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027980 
+p1 --> Overhead (Step-99) 0.062403 
+p0 --> Overhead (Step-99) 0.062288 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972100 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10027934 
+p0 --> Overhead (Step-100) 0.062455 
+p1 --> Overhead (Step-100) 0.062679 
+p:0 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 10028028 
+p:1 - Cuda_Reallocate: Total H matrix entries: 36000, cap: 30094554, used: 8972052 
+mv: cannot stat `silica.72000.trj': No such file or directory
+p:0 is using GPU: 0 
+p:1 is using GPU: 1 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+ TOTAL DEVICE BOND COUNT: 297836 
+ TOTAL DEVICE HBOND COUNT: 1320532 
+ TOTAL DEVICE SPARSE COUNT: 13222319 
+p:0 --> Bonds(0, 14) HBonds (0, 163) *******
+ TOTAL DEVICE BOND COUNT: 297052 
+ TOTAL DEVICE HBOND COUNT: 1294852 
+ TOTAL DEVICE SPARSE COUNT: 13054519 
+p:1 --> Bonds(0, 13) HBonds (0, 168) *******
+p:0 - allocated H matrix: max_entries: 781, cap: 63010299 
+**** Total HBonds allocated --> 9735440 total_cap: 80679 per atom: 120, max_hbonds: 228 
+**** Total Bonds allocated --> 1302622 total_cap: 80679 per atom: 16, max_bonds: 19 
+Total 12884705280 Mb 12287 gig 11 , free 8913723392, Mb 8500 , gig 8 
+p:1 - allocated H matrix: max_entries: 796, cap: 64132924 
+**** Total HBonds allocated --> 9638952 total_cap: 80569 per atom: 119, max_hbonds: 235 
+**** Total Bonds allocated --> 1299828 total_cap: 80569 per atom: 16, max_bonds: 18 
+Total 12884705280 Mb 12287 gig 11 , free 8915427328, Mb 8502 , gig 8 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854180 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422658 
+p1 --> Overhead (Step-1) 0.071848 
+p0 --> Overhead (Step-1) 0.073398 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422652 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854174 
+p0 --> Overhead (Step-2) 0.071907 
+p1 --> Overhead (Step-2) 0.071781 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854186 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422642 
+p0 --> Overhead (Step-3) 0.071864 
+p1 --> Overhead (Step-3) 0.071755 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854198 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422618 
+p0 --> Overhead (Step-4) 0.071946 
+p1 --> Overhead (Step-4) 0.071794 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854144 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422614 
+p0 --> Overhead (Step-5) 0.071802 
+p1 --> Overhead (Step-5) 0.071902 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854182 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422696 
+p0 --> Overhead (Step-6) 0.071869 
+p1 --> Overhead (Step-6) 0.071786 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854192 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422740 
+p0 --> Overhead (Step-7) 0.071846 
+p1 --> Overhead (Step-7) 0.072103 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854082 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422778 
+p0 --> Overhead (Step-8) 0.071853 
+p1 --> Overhead (Step-8) 0.071616 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853275 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423471 
+p0 --> Overhead (Step-9) 0.071955 
+p1 --> Overhead (Step-9) 0.071932 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853309 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423461 
+p0 --> Overhead (Step-10) 0.071836 
+p1 --> Overhead (Step-10) 0.071716 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853187 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423437 
+p0 --> Overhead (Step-11) 0.071853 
+p1 --> Overhead (Step-11) 0.071952 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853217 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423367 
+p0 --> Overhead (Step-12) 0.072101 
+p1 --> Overhead (Step-12) 0.071824 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853118 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423480 
+p1 --> Overhead (Step-13) 0.071800 
+p0 --> Overhead (Step-13) 0.072030 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423347 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853283 
+p1 --> Overhead (Step-14) 0.071724 
+p0 --> Overhead (Step-14) 0.072224 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853327 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423383 
+p1 --> Overhead (Step-15) 0.071728 
+p0 --> Overhead (Step-15) 0.071934 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853313 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423561 
+p0 --> Overhead (Step-16) 0.071983 
+p1 --> Overhead (Step-16) 0.071750 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853379 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423471 
+p0 --> Overhead (Step-17) 0.072028 
+p1 --> Overhead (Step-17) 0.071733 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853134 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423630 
+p0 --> Overhead (Step-18) 0.072159 
+p1 --> Overhead (Step-18) 0.071968 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853064 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423696 
+p1 --> Overhead (Step-19) 0.071791 
+p0 --> Overhead (Step-19) 0.072075 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423131 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853365 
+p1 --> Overhead (Step-20) 0.071797 
+p0 --> Overhead (Step-20) 0.072016 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853279 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423267 
+p0 --> Overhead (Step-21) 0.072073 
+p1 --> Overhead (Step-21) 0.071756 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853171 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423227 
+p0 --> Overhead (Step-22) 0.071922 
+p1 --> Overhead (Step-22) 0.071905 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853305 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423079 
+p0 --> Overhead (Step-23) 0.071912 
+p1 --> Overhead (Step-23) 0.071744 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853463 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423011 
+p0 --> Overhead (Step-24) 0.072162 
+p1 --> Overhead (Step-24) 0.071818 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852390 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424054 
+p0 --> Overhead (Step-25) 0.072121 
+p1 --> Overhead (Step-25) 0.071924 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851595 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13425189 
+p0 --> Overhead (Step-26) 0.071967 
+p1 --> Overhead (Step-26) 0.072096 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851968 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424784 
+p0 --> Overhead (Step-27) 0.071959 
+p1 --> Overhead (Step-27) 0.071818 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852050 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424518 
+p0 --> Overhead (Step-28) 0.072039 
+p1 --> Overhead (Step-28) 0.071888 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852713 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423725 
+p0 --> Overhead (Step-29) 0.071983 
+p1 --> Overhead (Step-29) 0.071817 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852555 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423773 
+p0 --> Overhead (Step-30) 0.071947 
+p1 --> Overhead (Step-30) 0.071968 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852957 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423377 
+p0 --> Overhead (Step-31) 0.071979 
+p1 --> Overhead (Step-31) 0.072062 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852819 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423371 
+p0 --> Overhead (Step-32) 0.071887 
+p1 --> Overhead (Step-32) 0.071933 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853092 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423150 
+p0 --> Overhead (Step-33) 0.071897 
+p1 --> Overhead (Step-33) 0.071944 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852954 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423472 
+p0 --> Overhead (Step-34) 0.071650 
+p1 --> Overhead (Step-34) 0.072042 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852942 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423448 
+p0 --> Overhead (Step-35) 0.071602 
+p1 --> Overhead (Step-35) 0.071988 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851835 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424493 
+p0 --> Overhead (Step-36) 0.071577 
+p1 --> Overhead (Step-36) 0.071650 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851689 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424513 
+p1 --> Overhead (Step-37) 0.071628 
+p0 --> Overhead (Step-37) 0.071967 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13425352 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12850830 
+p0 --> Overhead (Step-38) 0.071750 
+p1 --> Overhead (Step-38) 0.071494 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426870 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849260 
+p0 --> Overhead (Step-39) 0.071644 
+p1 --> Overhead (Step-39) 0.071607 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849926 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426258 
+p0 --> Overhead (Step-40) 0.071859 
+p1 --> Overhead (Step-40) 0.071466 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12850230 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13425750 
+p1 --> Overhead (Step-41) 0.071460 
+p0 --> Overhead (Step-41) 0.071642 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12850226 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13425812 
+p0 --> Overhead (Step-42) 0.071730 
+p1 --> Overhead (Step-42) 0.071440 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12850475 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13425633 
+p0 --> Overhead (Step-43) 0.071546 
+p1 --> Overhead (Step-43) 0.071595 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12850216 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426070 
+p0 --> Overhead (Step-44) 0.071722 
+p1 --> Overhead (Step-44) 0.071399 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849901 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426447 
+p1 --> Overhead (Step-45) 0.071586 
+p0 --> Overhead (Step-45) 0.071676 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849470 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426734 
+p0 --> Overhead (Step-46) 0.071569 
+p1 --> Overhead (Step-46) 0.071494 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849492 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426694 
+p1 --> Overhead (Step-47) 0.071499 
+p0 --> Overhead (Step-47) 0.071591 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849488 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426742 
+p0 --> Overhead (Step-48) 0.071927 
+p1 --> Overhead (Step-48) 0.071431 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849498 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426884 
+p0 --> Overhead (Step-49) 0.071479 
+p1 --> Overhead (Step-49) 0.071513 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849679 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426461 
+p0 --> Overhead (Step-50) 0.071549 
+p1 --> Overhead (Step-50) 0.071615 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12849645 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13426447 
+p1 --> Overhead (Step-51) 0.071468 
+p0 --> Overhead (Step-51) 0.071749 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12850342 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13425722 
+p0 --> Overhead (Step-52) 0.071619 
+p1 --> Overhead (Step-52) 0.071461 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12850316 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13425732 
+p1 --> Overhead (Step-53) 0.071481 
+p0 --> Overhead (Step-53) 0.071712 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851317 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424823 
+p0 --> Overhead (Step-54) 0.071694 
+p1 --> Overhead (Step-54) 0.071598 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851231 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424947 
+p1 --> Overhead (Step-55) 0.071643 
+p0 --> Overhead (Step-55) 0.071739 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852147 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423991 
+p0 --> Overhead (Step-56) 0.071542 
+p1 --> Overhead (Step-56) 0.071632 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851888 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424284 
+p1 --> Overhead (Step-57) 0.071559 
+p0 --> Overhead (Step-57) 0.071616 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852755 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423295 
+p0 --> Overhead (Step-58) 0.071623 
+p1 --> Overhead (Step-58) 0.071650 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852829 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423415 
+p1 --> Overhead (Step-59) 0.071534 
+p0 --> Overhead (Step-59) 0.071631 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852757 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423601 
+p0 --> Overhead (Step-60) 0.071779 
+p1 --> Overhead (Step-60) 0.071649 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852755 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423667 
+p1 --> Overhead (Step-61) 0.071537 
+p0 --> Overhead (Step-61) 0.071839 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424278 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852112 
+p0 --> Overhead (Step-62) 0.071628 
+p1 --> Overhead (Step-62) 0.071545 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852112 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424298 
+p1 --> Overhead (Step-63) 0.071529 
+p0 --> Overhead (Step-63) 0.071655 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852210 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424256 
+p0 --> Overhead (Step-64) 0.071832 
+p1 --> Overhead (Step-64) 0.071436 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424196 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852278 
+p1 --> Overhead (Step-65) 0.071446 
+p0 --> Overhead (Step-65) 0.071721 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424085 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852457 
+p0 --> Overhead (Step-66) 0.071658 
+p1 --> Overhead (Step-66) 0.071372 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852491 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423927 
+p1 --> Overhead (Step-67) 0.071388 
+p0 --> Overhead (Step-67) 0.071717 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852808 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423562 
+p0 --> Overhead (Step-68) 0.071859 
+p1 --> Overhead (Step-68) 0.071617 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423634 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852868 
+p1 --> Overhead (Step-69) 0.071597 
+p0 --> Overhead (Step-69) 0.071901 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853171 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423167 
+p0 --> Overhead (Step-70) 0.071691 
+p1 --> Overhead (Step-70) 0.071459 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851923 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424223 
+p1 --> Overhead (Step-71) 0.071399 
+p0 --> Overhead (Step-71) 0.071780 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853515 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422869 
+p0 --> Overhead (Step-72) 0.071788 
+p1 --> Overhead (Step-72) 0.071429 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853462 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422962 
+p1 --> Overhead (Step-73) 0.071694 
+p0 --> Overhead (Step-73) 0.071786 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13423389 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12852969 
+p0 --> Overhead (Step-74) 0.071857 
+p1 --> Overhead (Step-74) 0.071498 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851862 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424508 
+p1 --> Overhead (Step-75) 0.071397 
+p0 --> Overhead (Step-75) 0.071801 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851589 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424649 
+p0 --> Overhead (Step-76) 0.071699 
+p1 --> Overhead (Step-76) 0.071481 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424631 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851573 
+p1 --> Overhead (Step-77) 0.071493 
+p0 --> Overhead (Step-77) 0.071718 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424581 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851553 
+p0 --> Overhead (Step-78) 0.071655 
+p1 --> Overhead (Step-78) 0.071612 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424284 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851892 
+p1 --> Overhead (Step-79) 0.071429 
+p0 --> Overhead (Step-79) 0.071911 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12851940 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13424276 
+p0 --> Overhead (Step-80) 0.071888 
+p1 --> Overhead (Step-80) 0.071565 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853506 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422594 
+p1 --> Overhead (Step-81) 0.071497 
+p0 --> Overhead (Step-81) 0.071798 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853470 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13422572 
+p0 --> Overhead (Step-82) 0.071829 
+p1 --> Overhead (Step-82) 0.071602 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421789 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854221 
+p1 --> Overhead (Step-83) 0.071556 
+p0 --> Overhead (Step-83) 0.071705 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854202 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421822 
+p0 --> Overhead (Step-84) 0.071875 
+p1 --> Overhead (Step-84) 0.071707 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854341 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421615 
+p1 --> Overhead (Step-85) 0.071691 
+p0 --> Overhead (Step-85) 0.071808 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853919 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421903 
+p0 --> Overhead (Step-86) 0.071863 
+p1 --> Overhead (Step-86) 0.071819 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12853813 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421907 
+p1 --> Overhead (Step-87) 0.071596 
+p0 --> Overhead (Step-87) 0.071686 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421320 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854456 
+p0 --> Overhead (Step-88) 0.071701 
+p1 --> Overhead (Step-88) 0.071587 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421386 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12854488 
+p1 --> Overhead (Step-89) 0.071522 
+p0 --> Overhead (Step-89) 0.071749 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855583 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420239 
+p0 --> Overhead (Step-90) 0.071872 
+p1 --> Overhead (Step-90) 0.071495 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855203 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420443 
+p1 --> Overhead (Step-91) 0.071714 
+p0 --> Overhead (Step-91) 0.071740 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855275 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420419 
+p0 --> Overhead (Step-92) 0.071794 
+p1 --> Overhead (Step-92) 0.071453 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855374 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420382 
+p1 --> Overhead (Step-93) 0.071517 
+p0 --> Overhead (Step-93) 0.071756 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855378 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420446 
+p0 --> Overhead (Step-94) 0.071718 
+p1 --> Overhead (Step-94) 0.071507 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855422 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420536 
+p1 --> Overhead (Step-95) 0.071537 
+p0 --> Overhead (Step-95) 0.071848 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855572 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420552 
+p0 --> Overhead (Step-96) 0.071817 
+p1 --> Overhead (Step-96) 0.071577 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855570 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420524 
+p1 --> Overhead (Step-97) 0.071498 
+p0 --> Overhead (Step-97) 0.071781 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855516 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420642 
+p0 --> Overhead (Step-98) 0.071753 
+p1 --> Overhead (Step-98) 0.071478 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855602 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13420646 
+p1 --> Overhead (Step-99) 0.071479 
+p0 --> Overhead (Step-99) 0.071771 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855167 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421009 
+p0 --> Overhead (Step-100) 0.071706 
+p1 --> Overhead (Step-100) 0.071572 
+p:0 - Cuda_Reallocate: Total H matrix entries: 28452, cap: 63010299, used: 12855219 
+p:1 - Cuda_Reallocate: Total H matrix entries: 28348, cap: 64132924, used: 13421007 
+mv: cannot stat `bilayer.56800.trj': No such file or directory
+p:0 is using GPU: 0 
+p:1 is using GPU: 1 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+ TOTAL DEVICE BOND COUNT: 100194 
+ TOTAL DEVICE HBOND COUNT: 715044 
+ TOTAL DEVICE SPARSE COUNT: 3960434 
+p:1 --> Bonds(0, 12) HBonds (0, 140) *******
+ TOTAL DEVICE BOND COUNT: 99038 
+ TOTAL DEVICE HBOND COUNT: 708400 
+ TOTAL DEVICE SPARSE COUNT: 3924951 
+p:0 --> Bonds(0, 11) HBonds (0, 138) *******
+p:1 - allocated H matrix: max_entries: 548, cap: 19042452 
+p:0 - allocated H matrix: max_entries: 552, cap: 19039032 
+**** Total HBonds allocated --> 4610208 total_cap: 34749 per atom: 132, max_hbonds: 196 
+**** Total Bonds allocated --> 469656 total_cap: 34749 per atom: 13, max_bonds: 16 
+**** Total HBonds allocated --> 4562592 total_cap: 34491 per atom: 132, max_hbonds: 193 
+**** Total Bonds allocated --> 464813 total_cap: 34491 per atom: 13, max_bonds: 15 
+Total 12884705280 Mb 12287 gig 11 , free 11433345024, Mb 10903 , gig 10 
+Total 12884705280 Mb 12287 gig 11 , free 11461001216, Mb 10930 , gig 10 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913078 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972307 
+p0 --> Overhead (Step-1) 0.025621 
+p1 --> Overhead (Step-1) 0.025891 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913189 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972192 
+p0 --> Overhead (Step-2) 0.025695 
+p1 --> Overhead (Step-2) 0.025829 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913193 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972200 
+p0 --> Overhead (Step-3) 0.025738 
+p1 --> Overhead (Step-3) 0.025839 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913197 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972200 
+p0 --> Overhead (Step-4) 0.025679 
+p1 --> Overhead (Step-4) 0.025844 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972200 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913209 
+p0 --> Overhead (Step-5) 0.025654 
+p1 --> Overhead (Step-5) 0.025814 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913201 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972208 
+p0 --> Overhead (Step-6) 0.025725 
+p1 --> Overhead (Step-6) 0.025916 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913050 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972325 
+p0 --> Overhead (Step-7) 0.025614 
+p1 --> Overhead (Step-7) 0.025825 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913072 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972319 
+p0 --> Overhead (Step-8) 0.025647 
+p1 --> Overhead (Step-8) 0.025904 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913058 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972345 
+p0 --> Overhead (Step-9) 0.025620 
+p1 --> Overhead (Step-9) 0.025874 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913086 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972397 
+p0 --> Overhead (Step-10) 0.025641 
+p1 --> Overhead (Step-10) 0.025866 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913036 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972367 
+p0 --> Overhead (Step-11) 0.025637 
+p1 --> Overhead (Step-11) 0.025775 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913064 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972357 
+p0 --> Overhead (Step-12) 0.025638 
+p1 --> Overhead (Step-12) 0.025845 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913056 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972363 
+p0 --> Overhead (Step-13) 0.025642 
+p1 --> Overhead (Step-13) 0.025803 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913062 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972381 
+p0 --> Overhead (Step-14) 0.025677 
+p1 --> Overhead (Step-14) 0.025907 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913080 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972449 
+p0 --> Overhead (Step-15) 0.025602 
+p1 --> Overhead (Step-15) 0.025876 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912497 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973080 
+p0 --> Overhead (Step-16) 0.025566 
+p1 --> Overhead (Step-16) 0.025833 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912609 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973092 
+p0 --> Overhead (Step-17) 0.025614 
+p1 --> Overhead (Step-17) 0.025918 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912432 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973303 
+p0 --> Overhead (Step-18) 0.025539 
+p1 --> Overhead (Step-18) 0.025836 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912394 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973313 
+p0 --> Overhead (Step-19) 0.025544 
+p1 --> Overhead (Step-19) 0.025875 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912595 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972968 
+p0 --> Overhead (Step-20) 0.025599 
+p1 --> Overhead (Step-20) 0.025904 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912605 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972910 
+p0 --> Overhead (Step-21) 0.025578 
+p1 --> Overhead (Step-21) 0.025882 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912607 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972914 
+p0 --> Overhead (Step-22) 0.025604 
+p1 --> Overhead (Step-22) 0.025822 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973383 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912070 
+p0 --> Overhead (Step-23) 0.025585 
+p1 --> Overhead (Step-23) 0.025810 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912128 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973357 
+p0 --> Overhead (Step-24) 0.025614 
+p1 --> Overhead (Step-24) 0.025817 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912092 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973411 
+p0 --> Overhead (Step-25) 0.025672 
+p1 --> Overhead (Step-25) 0.025910 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912098 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973465 
+p0 --> Overhead (Step-26) 0.025651 
+p1 --> Overhead (Step-26) 0.025814 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912130 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973447 
+p0 --> Overhead (Step-27) 0.025683 
+p1 --> Overhead (Step-27) 0.026100 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912084 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973479 
+p0 --> Overhead (Step-28) 0.025618 
+p1 --> Overhead (Step-28) 0.025801 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912070 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973439 
+p0 --> Overhead (Step-29) 0.025577 
+p1 --> Overhead (Step-29) 0.025823 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912168 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973469 
+p0 --> Overhead (Step-30) 0.025564 
+p1 --> Overhead (Step-30) 0.025873 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912182 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973447 
+p0 --> Overhead (Step-31) 0.025606 
+p1 --> Overhead (Step-31) 0.025795 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912168 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973521 
+p0 --> Overhead (Step-32) 0.025644 
+p1 --> Overhead (Step-32) 0.025820 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972808 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912777 
+p0 --> Overhead (Step-33) 0.025704 
+p1 --> Overhead (Step-33) 0.026427 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912725 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972808 
+p0 --> Overhead (Step-34) 0.025676 
+p1 --> Overhead (Step-34) 0.025897 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912805 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972800 
+p0 --> Overhead (Step-35) 0.025675 
+p1 --> Overhead (Step-35) 0.025803 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912759 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972814 
+p0 --> Overhead (Step-36) 0.025571 
+p1 --> Overhead (Step-36) 0.025912 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911571 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973910 
+p0 --> Overhead (Step-37) 0.025583 
+p1 --> Overhead (Step-37) 0.025805 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911597 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973836 
+p0 --> Overhead (Step-38) 0.025699 
+p1 --> Overhead (Step-38) 0.025790 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911579 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973804 
+p0 --> Overhead (Step-39) 0.025653 
+p1 --> Overhead (Step-39) 0.025816 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973862 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911609 
+p0 --> Overhead (Step-40) 0.025616 
+p1 --> Overhead (Step-40) 0.025772 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911579 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973810 
+p0 --> Overhead (Step-41) 0.025665 
+p1 --> Overhead (Step-41) 0.025846 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974401 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911008 
+p0 --> Overhead (Step-42) 0.025696 
+p1 --> Overhead (Step-42) 0.025807 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911076 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974385 
+p0 --> Overhead (Step-43) 0.025664 
+p1 --> Overhead (Step-43) 0.025904 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911044 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974371 
+p0 --> Overhead (Step-44) 0.025659 
+p1 --> Overhead (Step-44) 0.025808 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911062 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974379 
+p0 --> Overhead (Step-45) 0.025694 
+p1 --> Overhead (Step-45) 0.025869 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911082 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974335 
+p0 --> Overhead (Step-46) 0.025738 
+p1 --> Overhead (Step-46) 0.025851 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911041 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974424 
+p0 --> Overhead (Step-47) 0.025636 
+p1 --> Overhead (Step-47) 0.025822 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974476 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911071 
+p0 --> Overhead (Step-48) 0.025594 
+p1 --> Overhead (Step-48) 0.025825 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974454 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911021 
+p0 --> Overhead (Step-49) 0.025591 
+p1 --> Overhead (Step-49) 0.025901 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3910985 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974452 
+p0 --> Overhead (Step-50) 0.025571 
+p1 --> Overhead (Step-50) 0.025849 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911017 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974472 
+p0 --> Overhead (Step-51) 0.025678 
+p1 --> Overhead (Step-51) 0.025866 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911059 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974478 
+p0 --> Overhead (Step-52) 0.025706 
+p1 --> Overhead (Step-52) 0.026134 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911099 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974486 
+p0 --> Overhead (Step-53) 0.025737 
+p1 --> Overhead (Step-53) 0.025826 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974462 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911109 
+p0 --> Overhead (Step-54) 0.025753 
+p1 --> Overhead (Step-54) 0.025807 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911117 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974488 
+p0 --> Overhead (Step-55) 0.025716 
+p1 --> Overhead (Step-55) 0.025871 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911123 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974472 
+p0 --> Overhead (Step-56) 0.025584 
+p1 --> Overhead (Step-56) 0.025841 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911732 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973903 
+p0 --> Overhead (Step-57) 0.025644 
+p1 --> Overhead (Step-57) 0.025825 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911750 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973901 
+p0 --> Overhead (Step-58) 0.025646 
+p1 --> Overhead (Step-58) 0.025877 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911784 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973921 
+p0 --> Overhead (Step-59) 0.025663 
+p1 --> Overhead (Step-59) 0.025850 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911704 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973969 
+p0 --> Overhead (Step-60) 0.025671 
+p1 --> Overhead (Step-60) 0.025862 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911720 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974017 
+p0 --> Overhead (Step-61) 0.025680 
+p1 --> Overhead (Step-61) 0.025885 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911810 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974099 
+p0 --> Overhead (Step-62) 0.025642 
+p1 --> Overhead (Step-62) 0.025819 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911746 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974087 
+p0 --> Overhead (Step-63) 0.025683 
+p1 --> Overhead (Step-63) 0.025875 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911893 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974010 
+p0 --> Overhead (Step-64) 0.025650 
+p1 --> Overhead (Step-64) 0.025846 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911839 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974052 
+p0 --> Overhead (Step-65) 0.025710 
+p1 --> Overhead (Step-65) 0.025866 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974038 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911793 
+p0 --> Overhead (Step-66) 0.025771 
+p1 --> Overhead (Step-66) 0.025813 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974020 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911711 
+p0 --> Overhead (Step-67) 0.025701 
+p1 --> Overhead (Step-67) 0.025858 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911709 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974088 
+p0 --> Overhead (Step-68) 0.025674 
+p1 --> Overhead (Step-68) 0.025808 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911617 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974170 
+p0 --> Overhead (Step-69) 0.025712 
+p1 --> Overhead (Step-69) 0.025904 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911557 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974186 
+p0 --> Overhead (Step-70) 0.025666 
+p1 --> Overhead (Step-70) 0.025943 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911519 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974170 
+p0 --> Overhead (Step-71) 0.025676 
+p1 --> Overhead (Step-71) 0.025905 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974160 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911571 
+p0 --> Overhead (Step-72) 0.025730 
+p1 --> Overhead (Step-72) 0.025903 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3911563 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3974116 
+p0 --> Overhead (Step-73) 0.025655 
+p1 --> Overhead (Step-73) 0.025880 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912068 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973561 
+p0 --> Overhead (Step-74) 0.025675 
+p1 --> Overhead (Step-74) 0.025817 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973565 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912230 
+p0 --> Overhead (Step-75) 0.025719 
+p1 --> Overhead (Step-75) 0.025818 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912204 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973589 
+p0 --> Overhead (Step-76) 0.025696 
+p1 --> Overhead (Step-76) 0.025918 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912222 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973551 
+p0 --> Overhead (Step-77) 0.025699 
+p1 --> Overhead (Step-77) 0.025814 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912108 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973541 
+p0 --> Overhead (Step-78) 0.025648 
+p1 --> Overhead (Step-78) 0.025905 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912409 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973194 
+p0 --> Overhead (Step-79) 0.025695 
+p1 --> Overhead (Step-79) 0.025864 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912367 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973220 
+p0 --> Overhead (Step-80) 0.025713 
+p1 --> Overhead (Step-80) 0.025901 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3973230 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912383 
+p0 --> Overhead (Step-81) 0.025615 
+p1 --> Overhead (Step-81) 0.025900 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912838 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972807 
+p0 --> Overhead (Step-82) 0.025653 
+p1 --> Overhead (Step-82) 0.025907 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912828 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972757 
+p0 --> Overhead (Step-83) 0.025626 
+p1 --> Overhead (Step-83) 0.025907 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912926 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972673 
+p0 --> Overhead (Step-84) 0.025637 
+p1 --> Overhead (Step-84) 0.025938 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912902 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972717 
+p0 --> Overhead (Step-85) 0.025662 
+p1 --> Overhead (Step-85) 0.025939 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913449 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972204 
+p0 --> Overhead (Step-86) 0.025685 
+p1 --> Overhead (Step-86) 0.025898 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913006 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972581 
+p0 --> Overhead (Step-87) 0.025684 
+p1 --> Overhead (Step-87) 0.025906 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912936 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972607 
+p0 --> Overhead (Step-88) 0.025676 
+p1 --> Overhead (Step-88) 0.026010 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912846 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972643 
+p0 --> Overhead (Step-89) 0.025639 
+p1 --> Overhead (Step-89) 0.025945 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912878 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972665 
+p0 --> Overhead (Step-90) 0.025705 
+p1 --> Overhead (Step-90) 0.025952 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912752 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972659 
+p0 --> Overhead (Step-91) 0.025591 
+p1 --> Overhead (Step-91) 0.025882 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972647 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912802 
+p0 --> Overhead (Step-92) 0.025678 
+p1 --> Overhead (Step-92) 0.025959 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912987 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972438 
+p0 --> Overhead (Step-93) 0.025664 
+p1 --> Overhead (Step-93) 0.025957 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913001 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972504 
+p0 --> Overhead (Step-94) 0.025608 
+p1 --> Overhead (Step-94) 0.025913 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912961 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972564 
+p0 --> Overhead (Step-95) 0.025662 
+p1 --> Overhead (Step-95) 0.025923 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912947 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972608 
+p0 --> Overhead (Step-96) 0.025705 
+p1 --> Overhead (Step-96) 0.026049 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972593 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913068 
+p0 --> Overhead (Step-97) 0.025573 
+p1 --> Overhead (Step-97) 0.025959 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913064 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972625 
+p0 --> Overhead (Step-98) 0.025652 
+p1 --> Overhead (Step-98) 0.026016 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913004 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972609 
+p0 --> Overhead (Step-99) 0.025622 
+p1 --> Overhead (Step-99) 0.025960 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3913056 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972635 
+p0 --> Overhead (Step-100) 0.025589 
+p1 --> Overhead (Step-100) 0.025923 
+p:1 - Cuda_Reallocate: Total H matrix entries: 9887, cap: 19042452, used: 3972619 
+p:0 - Cuda_Reallocate: Total H matrix entries: 9846, cap: 19039032, used: 3912954 
+mv: cannot stat `dna.trj': No such file or directory
+p:0 is using GPU: 0 
+p:1 is using GPU: 1 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+Total 12884705280 Mb 12287 gig 11 , free 12755025920, Mb 12164 , gig 11 
+fopen: error opening the pdb file! terminating...
+fopen: error opening the pdb file! terminating...
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 1 in communicator MPI_COMM_WORLD 
+with errorcode -10.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun has exited due to process rank 1 with PID 25008 on
+node lac-342 exiting improperly. There are two reasons this could occur:
+
+1. this process did not call "init" before exiting, but others in
+the job did. This can cause a job to hang indefinitely while it waits
+for all processes to call "init". By rule, if one process calls "init",
+then ALL processes must call "init" prior to termination.
+
+2. this process called "init", but exited without calling "finalize".
+By rule, all processes that call "init" MUST call "finalize" prior to
+exiting or it will be considered an "abnormal termination"
+
+This may have caused other processes in the application to be
+terminated by signals sent by mpirun (as reported here).
+--------------------------------------------------------------------------
+[lac-342:25006] 1 more process has sent help message help-mpi-api.txt / mpi-abort
+[lac-342:25006] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+mv: cannot stat `petn.log': No such file or directory
+mv: cannot stat `petn.out': No such file or directory
+mv: cannot stat `petn.pot': No such file or directory
+mv: cannot stat `petn.trj': No such file or directory

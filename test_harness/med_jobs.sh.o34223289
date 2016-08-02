@@ -1,0 +1,255 @@
+checking for a BSD-compatible install... ./install-sh -c
+checking whether build environment is sane... yes
+checking for a thread-safe mkdir -p... /bin/mkdir -p
+checking for gawk... gawk
+checking whether make sets $(MAKE)... yes
+checking whether make supports nested variables... yes
+checking whether make supports nested variables... (cached) yes
+checking build system type... x86_64-unknown-linux-gnu
+checking host system type... x86_64-unknown-linux-gnu
+checking how to print strings... printf
+checking for style of include used by make... GNU
+checking for gcc... /usr/bin/gcc
+checking whether the C compiler works... yes
+checking for C compiler default output file name... a.out
+checking for suffix of executables... 
+checking whether we are cross compiling... no
+checking for suffix of object files... o
+checking whether we are using the GNU C compiler... no
+checking whether /usr/bin/gcc accepts -g... no
+checking for /usr/bin/gcc option to accept ISO C89... none needed
+checking whether /usr/bin/gcc understands -c and -o together... no
+checking dependency style of /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc... none
+checking for a sed that does not truncate output... /bin/sed
+checking for grep that handles long lines and -e... /bin/grep
+checking for egrep... /bin/grep -E
+checking for fgrep... /bin/grep -F
+checking for non-GNU ld... /usr/bin/ld
+checking if the linker (/usr/bin/ld) is GNU ld... yes
+checking for BSD- or MS-compatible name lister (nm)... /usr/bin/nm -B
+checking the name lister (/usr/bin/nm -B) interface... BSD nm
+checking whether ln -s works... yes
+checking the maximum length of command line arguments... 3458764513820540925
+checking whether the shell understands some XSI constructs... yes
+checking whether the shell understands "+="... yes
+checking how to convert x86_64-unknown-linux-gnu file names to x86_64-unknown-linux-gnu format... func_convert_file_noop
+checking how to convert x86_64-unknown-linux-gnu file names to toolchain format... func_convert_file_noop
+checking for /usr/bin/ld option to reload object files... -r
+checking for objdump... objdump
+checking how to recognize dependent libraries... pass_all
+checking for dlltool... no
+checking how to associate runtime and link libraries... printf %s\n
+checking for ar... ar
+checking for archiver @FILE support... no
+checking for strip... strip
+checking for ranlib... ranlib
+checking command to parse /usr/bin/nm -B output from /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc object... failed
+checking for sysroot... no
+checking for mt... no
+checking if : is a manifest tool... no
+checking how to run the C preprocessor... /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc -E
+checking for ANSI C header files... no
+checking for sys/types.h... yes
+checking for sys/stat.h... no
+checking for stdlib.h... no
+checking for string.h... no
+checking for memory.h... yes
+checking for strings.h... yes
+checking for inttypes.h... yes
+checking for stdint.h... no
+checking for unistd.h... no
+checking for dlfcn.h... yes
+checking for objdir... .libs
+checking for /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc option to produce PIC...  -DPIC
+checking if /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc PIC flag  -DPIC works... no
+checking if /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc static flag  works... no
+checking if /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc supports -c -o file.o... yes
+checking if /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc supports -c -o file.o... (cached) yes
+checking whether the /mnt/home/korteme1/PuReMD_new/compile /usr/bin/gcc linker (/usr/bin/ld -m elf_x86_64) supports shared libraries... yes
+checking dynamic linker characteristics... GNU/Linux ld.so
+checking how to hardcode library paths into programs... immediate
+checking for shl_load... no
+checking for shl_load in -ldld... no
+checking for dlopen... no
+checking for dlopen in -ldl... yes
+checking whether a program can dlopen itself... no
+checking whether stripping libraries is possible... yes
+checking if libtool supports shared libraries... yes
+checking whether to build shared libraries... yes
+checking whether to build static libraries... yes
+checking for pdflatex... pdflatex
+checking that generated files are newer than configure... done
+configure: creating ./config.status
+config.status: creating Makefile
+config.status: creating doc/Makefile
+config.status: executing depfiles commands
+config.status: executing libtool commands
+=== configuring in PuReMD (/mnt/home/korteme1/PuReMD_new/PuReMD)
+configure: running /bin/sh ./configure --disable-option-checking '--prefix=/usr/local'  '--enable-openmp=no' '--enable-mpi=yes' 'CC=/usr/bin/gcc' 'CPPFLAGS=-I/opt/software/cudatoolkit/6.0/include' --cache-file=/dev/null --srcdir=.
+checking for a BSD-compatible install... /usr/bin/install -c
+checking whether build environment is sane... yes
+checking for a thread-safe mkdir -p... /bin/mkdir -p
+checking for gawk... gawk
+checking whether make sets $(MAKE)... yes
+checking whether make supports nested variables... yes
+checking whether make supports nested variables... (cached) yes
+checking whether the C compiler works... no
+Making clean in PuReMD
+make[1]: Entering directory `/mnt/home/korteme1/PuReMD_new/PuReMD'
+test -z "bin/puremd" || rm -f bin/puremd
+rm -f *.o
+rm -f src/*.o
+make[1]: Leaving directory `/mnt/home/korteme1/PuReMD_new/PuReMD'
+Making clean in doc
+make[1]: Entering directory `/mnt/home/korteme1/PuReMD_new/doc'
+test -z "manual.pdf manual.log manual.out manual.aux" || rm -f manual.pdf manual.log manual.out manual.aux
+rm -rf .libs _libs
+rm -f *.lo
+make[1]: Leaving directory `/mnt/home/korteme1/PuReMD_new/doc'
+make[1]: Entering directory `/mnt/home/korteme1/PuReMD_new'
+rm -rf .libs _libs
+rm -f *.lo
+make[1]: Leaving directory `/mnt/home/korteme1/PuReMD_new'
+Making all in PuReMD
+make[1]: Entering directory `/mnt/home/korteme1/PuReMD_new/PuReMD'
+  CC       src/bin_puremd-allocate.o
+  CC       src/bin_puremd-basic_comm.o
+  CC       src/bin_puremd-ffield.o
+  CC       src/bin_puremd-grid.o
+  CC       src/bin_puremd-list.o
+  CC       src/bin_puremd-lookup.o
+  CC       src/bin_puremd-io_tools.o
+  CC       src/bin_puremd-reset_tools.o
+  CC       src/bin_puremd-restart.o
+  CC       src/bin_puremd-random.o
+  CC       src/bin_puremd-tool_box.o
+  CC       src/bin_puremd-traj.o
+  CC       src/bin_puremd-vector.o
+  CC       src/bin_puremd-analyze.o
+  CC       src/bin_puremd-box.o
+  CC       src/bin_puremd-system_props.o
+  CC       src/bin_puremd-control.o
+  CC       src/bin_puremd-comm_tools.o
+  CC       src/bin_puremd-geo_tools.o
+  CC       src/bin_puremd-linear_solvers.o
+  CC       src/bin_puremd-neighbors.o
+  CC       src/bin_puremd-qEq.o
+  CC       src/bin_puremd-bond_orders.o
+  CC       src/bin_puremd-multi_body.o
+  CC       src/bin_puremd-bonds.o
+  CC       src/bin_puremd-valence_angles.o
+  CC       src/bin_puremd-hydrogen_bonds.o
+  CC       src/bin_puremd-torsion_angles.o
+  CC       src/bin_puremd-nonbonded.o
+  CC       src/bin_puremd-forces.o
+  CC       src/bin_puremd-integrate.o
+  CC       src/bin_puremd-init_md.o
+  CC       src/bin_puremd-parallelreax.o
+  CCLD     bin/puremd
+make[1]: Leaving directory `/mnt/home/korteme1/PuReMD_new/PuReMD'
+Making all in doc
+make[1]: Entering directory `/mnt/home/korteme1/PuReMD_new/doc'
+  PDFLATEX manual.pdf
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6)
+ %&-line parsing enabled.
+entering extended mode
+(./src/manual.tex
+LaTeX2e <2005/12/01>
+Babel <v3.8h> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, arabic, basque, bulgarian, coptic, welsh, czech, slovak, german, ng
+erman, danish, esperanto, spanish, catalan, galician, estonian, farsi, finnish,
+ french, greek, monogreek, ancientgreek, croatian, hungarian, interlingua, ibyc
+us, indonesian, icelandic, italian, latin, mongolian, dutch, norsk, polish, por
+tuguese, pinyin, romanian, russian, slovenian, uppersorbian, serbian, swedish, 
+turkish, ukenglish, ukrainian, loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size10.clo))
+(/usr/share/texmf/tex/latex/hyperref/hyperref.sty
+(/usr/share/texmf/tex/latex/graphics/keyval.sty)
+(/usr/share/texmf/tex/latex/hyperref/pd1enc.def)
+(/usr/share/texmf/tex/latex/config/hyperref.cfg)
+(/usr/share/texmf/tex/latex/oberdiek/kvoptions.sty)
+Implicit mode ON; LaTeX internals redefined
+(/usr/share/texmf/tex/latex/ltxmisc/url.sty))
+*hyperref using default driver hpdftex*
+(/usr/share/texmf/tex/latex/hyperref/hpdftex.def)
+No file manual.aux.
+(/usr/share/texmf/tex/latex/hyperref/nameref.sty
+(/usr/share/texmf/tex/latex/oberdiek/refcount.sty)) [1{/usr/share/texmf/fonts/m
+ap/pdftex/updmap/pdftex.map}] (/usr/share/texmf/tex/latex/base/omscmr.fd)
+[2]
+
+LaTeX Warning: Reference `sec:puremd_output' on page 3 undefined on input line 
+139.
+
+
+Overfull \hbox (2.28008pt too wide) in paragraph at lines 137--141
+\OT1/cmr/m/n/10 Output files pro-duced by PuReMD will be in \OT1/cmtt/m/n/10 si
+mulation[]name.some[]extension
+[3]
+
+LaTeX Warning: Reference `sec:puremd_geo' on page 4 undefined on input line 190
+.
+
+
+Overfull \hbox (7.18575pt too wide) in paragraph at lines 208--212
+\OT1/cmr/m/n/10 set to a pos-i-tive in-te-ger. A restart file is named as fol-l
+ows: \OT1/cmtt/m/n/10 simulation[]name.resS
+[4]
+
+LaTeX Warning: Reference `sec:puremd_output' on page 5 undefined on input line 
+234.
+
+
+Overfull \hbox (1.94493pt too wide) in paragraph at lines 254--258
+\OT1/cmr/m/n/10 These cut-off pa-ram-e-ters are cru-cial for the cor-rect-ness 
+and ef-fi-ciency of PuReMD.
+
+Overfull \hbox (0.10077pt too wide) in paragraph at lines 275--280
+\OT1/cmr/m/n/10 PuReMD fea-tures de-layed neigh-bor gen-er-a-tion by us-ing Ver
+-let lists. \OT1/cmtt/m/n/10 reneighbor
+[5]
+
+LaTeX Warning: Citation `ref:berendsen' on page 6 undefined on input line 307.
+
+
+LaTeX Warning: Citation `ref:klein' on page 6 undefined on input line 308.
+
+
+LaTeX Warning: Citation `ref:berendsen' on page 6 undefined on input line 323.
+
+[6] [7] [8]
+
+LaTeX Warning: Reference `sec:puremd_inp' on page 9 undefined on input line 562
+.
+
+[9] [10] (./manual.aux)
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+ )
+(see the transcript file for additional information)</usr/share/texmf/fonts/typ
+e1/bluesky/cm/cmbx10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmbx12.pfb></
+usr/share/texmf/fonts/type1/bluesky/cm/cmmi10.pfb></usr/share/texmf/fonts/type1
+/bluesky/cm/cmr10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr12.pfb></usr/
+share/texmf/fonts/type1/bluesky/cm/cmr17.pfb></usr/share/texmf/fonts/type1/blue
+sky/cm/cmr7.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmsy10.pfb></usr/share
+/texmf/fonts/type1/bluesky/cm/cmsy7.pfb></usr/share/texmf/fonts/type1/bluesky/c
+m/cmti10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmtt10.pfb>
+Output written on manual.pdf (10 pages, 105013 bytes).
+Transcript written on manual.log.
+make[1]: Leaving directory `/mnt/home/korteme1/PuReMD_new/doc'
+make[1]: Entering directory `/mnt/home/korteme1/PuReMD_new'
+make[1]: Nothing to be done for `all-am'.
+make[1]: Leaving directory `/mnt/home/korteme1/PuReMD_new'
+
+=====================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   EXIT CODE: 15
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+=====================================================================================

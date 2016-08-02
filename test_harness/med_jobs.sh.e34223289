@@ -1,0 +1,79 @@
+mkdir: cannot create directory `conftest.dir': File exists
+/usr/bin/install: cannot create regular file `/mnt/home/korteme1/PuReMD_new/conftest.dir/conftest.one': File exists
+cat: write error: Stale file handle
+rm: cannot remove `conftest.dir': Is a directory
+cat: conftest.err: No such file or directory
+sed: can't read conftest.c: No such file or directory
+sed: can't read conftest.c: No such file or directory
+grep: conftest.err: No such file or directory
+cat: conftest.er1: No such file or directory
+mv: cannot stat `conftest.er1': No such file or directory
+sed: can't read conftest.c: No such file or directory
+sed: can't read conftest.c: No such file or directory
+cat: conftest.err: No such file or directory
+sed: couldn't close stdout: Stale file handle
+sed: can't read libtoolT: No such file or directory
+cp: cannot create regular file `libtoolT': File exists
+mv: cannot stat `libtoolT.tmp': No such file or directory
+cp: cannot stat `libtoolT.tmp': No such file or directory
+sed: can't read libtoolT: No such file or directory
+config.status: WARNING: Unable to substitute extended shell functions in libtool
+mkdir: cannot create directory `conftest.dir': File exists
+cat: conftest.er1: No such file or directory
+configure: error: in `/mnt/home/korteme1/PuReMD_new/PuReMD':
+configure: error: C compiler cannot create executables
+See `config.log' for more details
+configure: error: ./configure failed for PuReMD
+src/io_tools.c: In function ‘Print_Linear_System’:
+src/io_tools.c:936: warning: unused variable ‘H’
+src/io_tools.c:935: warning: unused variable ‘aj’
+src/io_tools.c:933: warning: unused variable ‘j’
+src/io_tools.c: In function ‘Print_GCell_Exchange_Bounds’:
+src/io_tools.c:678: warning: ‘nbr’ is used uninitialized in this function
+src/box.c: In function ‘Setup_Environment’:
+src/box.c:275: warning: unused variable ‘temp’
+src/box.c: In function ‘Scale_Box’:
+src/box.c:312: warning: ‘mu’ may be used uninitialized in this function
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for X
+mv: cannot stat `water.78480.trj': No such file or directory
+mv: cannot stat `silica.72000.trj': No such file or directory
+p1@count atoms:
+p1: bigN = 56800
+p1: n = 28348
+p1: N = 28348
+
+p0@count atoms:
+p0: bigN = 56800
+p0: n = 28452
+p0: N = 28452
+
+mv: cannot stat `bilayer.56800.trj': No such file or directory
+p1@count atoms:
+p1: bigN = 19733
+p1: n = 9887
+p1: N = 9887
+
+p0@count atoms:
+p0: bigN = 19733
+p0: n = 9846
+p0: N = 9846
+
+mv: cannot stat `dna.trj': No such file or directory
+p1@count atoms:
+p1: bigN = 48256
+p1: n = 24180
+p1: N = 24180
+
+p0@count atoms:
+p0: bigN = 48256
+p0: n = 24076
+p0: N = 24076
+
+[mpiexec@lac-028] HYD_pmcd_pmiserv_send_signal (./pm/pmiserv/pmiserv_cb.c:184): assert (!closed) failed
+[mpiexec@lac-028] ui_cmd_cb (./pm/pmiserv/pmiserv_pmci.c:74): unable to send SIGUSR1 downstream
+[mpiexec@lac-028] HYDT_dmxu_poll_wait_for_event (./tools/demux/demux_poll.c:77): callback returned error status
+[mpiexec@lac-028] HYDT_bscu_wait_for_completion (./tools/bootstrap/utils/bscu_wait.c:55): error waiting for event
+[mpiexec@lac-028] HYDT_bsci_wait_for_completion (./tools/bootstrap/src/bsci_wait.c:23): launcher returned error waiting for completion
+[mpiexec@lac-028] HYD_pmci_wait_for_completion (./pm/pmiserv/pmiserv_pmci.c:191): launcher returned error waiting for completion
+[mpiexec@lac-028] main (./ui/mpich/mpiexec.c:405): process manager error waiting for completion

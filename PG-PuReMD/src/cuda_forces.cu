@@ -219,6 +219,7 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
     int i;
     int blocks = 0;
     int *d_Htop, *d_hb_top, *d_bond_top, *d_num_3body;
+    int * tmp = (int*) scratch;
     int bond_count = 0;
     int hbond_count = 0;
     int max_bonds = 0, min_bonds = 999999;
@@ -229,13 +230,16 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
     memset( hb_top, 0, sizeof(int) * total_cap );
     memset( bond_top, 0, sizeof(int) * total_cap );
     *num_3body = 0;
-
-    cuda_memset ( d_Htop, 0, sizeof (int), "Cuda_Estimate_Storages" );
-    cuda_memset ( d_hb_top, 0, sizeof (int) * total_cap, "Cuda_Estimate_Storages" );
-//    cuda_memset ( d_bond_top, 0, sizeof (int) * local_cap, "Cuda_Estimate_Storages" );
-    cuda_memset ( d_bond_top, 0, sizeof (int) * total_cap, "Cuda_Estimate_Storages" );
-    cuda_memset ( d_num_3body, 0, sizeof (int), "Cuda_Estimate_Storages" );
-
+	
+    //cuda_memset (tmp, 0, 1 + 1 + sizeof (int) * (local_cap+ total_cap), "Cuda_Estimate_Storages");
+    cuda_memset (tmp, 0, sizeof (int) * (1 + 1 + total_cap+ total_cap), "Cuda_Estimate_Storages");
+ 
+    d_Htop = tmp; 
+    d_num_3body = d_Htop + 1;
+    d_hb_top = d_num_3body + 1;
+    //d_bond_top = d_hb_top + local_cap;
+    d_bond_top = d_hb_top + total_cap;
+   
     blocks = (int) CEIL((real)system->N / ST_BLOCK_SIZE);
 
     ker_estimate_storages <<< blocks, ST_BLOCK_SIZE>>>

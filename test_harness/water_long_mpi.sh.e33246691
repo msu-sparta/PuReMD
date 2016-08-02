@@ -1,0 +1,12 @@
+io_tools.c: In function ‘Print_Linear_System’:
+io_tools.c:871: warning: unused variable ‘H’
+io_tools.c:870: warning: unused variable ‘aj’
+io_tools.c:868: warning: unused variable ‘j’
+io_tools.c: In function ‘Print_GCell_Exchange_Bounds’:
+io_tools.c:621: warning: ‘nbr’ is used uninitialized in this function
+box.c: In function ‘Setup_Environment’:
+box.c:266: warning: unused variable ‘temp’
+box.c: In function ‘Scale_Box’:
+box.c:303: warning: ‘mu’ may be used uninitialized in this function
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for X
