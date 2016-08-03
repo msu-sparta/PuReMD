@@ -1,8 +1,8 @@
 ######################################################################################################################################################
 #
-# To run test, open up sim_test_master.sh. This script qsubs all parts of the test. Decide which tests you want to run, comment out the rest. 
-# Be aware that running sim_test_master in its entirety requests 56 hours of compute time on Laconia. For quicker checks,
-# it might be better to only qsub short_jobs.sh. This usually gets in the queue almost immediately.
+# To run test, open up sim_test_master.sh. This script compiles all executables and qsubs all parts of the test. 
+# Decide which tests you want to run, comment out the rest. Unless you don't want to recompile, make sure not to comment out ./compile_all_executables.
+# Be aware that running sim_test_master in its entirety requests 32 hours of compute time on Laconia.
 #
 # To begin test:
 #

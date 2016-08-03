@@ -58,6 +58,27 @@ tail petn_mpi.pot;
 echo "tail petn_mpi_gpu.pot:"
 tail petn_mpi_gpu.pot;
 
+echo "___________________________________________"
+echo "Large Systems"
+
+echo "-------------------------------------------"
+echo "tail water.327000_mpi.pot:"
+tail water.327000_mpi.pot;
+echo "tail water.327000_mpi_gpu.pot:"
+tail water.327000_mpi_gpu.pot;
+
+echo "-------------------------------------------"
+echo "tail silica.300000_mpi.pot:"
+tail silica.300000_mpi.pot;
+echo "tail silica.300000_mpi_gpu.pot:"
+tail silica.300000_mpi_gpu.pot;
+
+echo "-------------------------------------------"
+echo "tail bilayer.340800_mpi.pot:"
+tail bilayer.340800_mpi.pot;
+echo "tail bilayer.340800_mpi_gpu.pot:"
+tail bilayer.340800_mpi_gpu.pot;
+
 
 
 

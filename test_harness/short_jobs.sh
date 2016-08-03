@@ -5,24 +5,16 @@
 #PBS -l walltime=30:00
 #PBS -l feature=gpgpu:intel16
 
-#cd ${PBS_O_WORKDIR}
-cd /mnt/home/korteme1/PuReMD_new/test_harness
+cd "${PBS_O_WORKDIR}"
+#cd /mnt/home/korteme1/PuReMD_new/test_harness
 
 # Import modules we will need
 module purge
 module load GNU/4.4.5 MPICH2/1.4.1p1 CUDA/6.0
-module load autoconf/2.69 automake/1.15
 
 ############
 # MPI Runs #
 ############
-
-# Compile for MPI 
-cd ..
-./configure --enable-openmp=no --enable-mpi=yes
-make clean && make
-#make
-cd test_harness
 
 # Run, after each run we must rename the output files, or another run will overwrite it
 
@@ -53,17 +45,6 @@ mv zno.6912.trj zno.6912_mpi.trj
 
 module purge
 module load GNU/4.8.2 OpenMPI/1.6.5 CUDA/6.0
-module load autoconf/2.69 automake/1.15
-
-#export CUDA_VISIBLE_DEVICES=0
-
-# Compile for MPI-GPU
-cd ..
-./configure --enable-openmp=no --enable-mpi-gpu=yes
-make clean && make
-#make
-
-cd test_harness
 
 mpirun -np 2 ../PG-PuReMD/bin/pg-puremd ../data/benchmarks/water/water_6540.pdb ../data/benchmarks/water/ffield.water water_6540_control
 
