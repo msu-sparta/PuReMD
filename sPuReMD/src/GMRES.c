@@ -66,7 +66,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
             {
                 if ( (b_local = (real*) malloc( omp_get_num_threads() * n * sizeof(real))) == NULL )
 		{
-                    exit( INSUFFICIENT_SPACE );
+                    exit( INSUFFICIENT_MEMORY );
 		}
             }
 
@@ -151,7 +151,7 @@ static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
             {
                 if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
                 {
-                    exit( INSUFFICIENT_SPACE );
+                    exit( INSUFFICIENT_MEMORY );
                 }
 	    }
 
@@ -289,7 +289,7 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                 if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit(INSUFFICIENT_SPACE);
+                    exit( INSUFFICIENT_MEMORY );
                 }
             }
             if ( rp == NULL )
@@ -297,7 +297,7 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                 if ( (rp = (real*) malloc(sizeof(real) * n)) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit(INSUFFICIENT_SPACE);
+                    exit( INSUFFICIENT_MEMORY );
                 }
             }
             if ( rp2 == NULL )
@@ -305,7 +305,7 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                     if ( (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit(INSUFFICIENT_SPACE);
+                    exit( INSUFFICIENT_MEMORY );
                 }
             }
 #ifdef _OPENMP
@@ -314,7 +314,7 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                 if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit( INSUFFICIENT_SPACE );
+                    exit( INSUFFICIENT_MEMORY );
                 }
 	    }
 #endif
@@ -911,7 +911,7 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
             || (Dinv_U = (real*) malloc(sizeof(real) * N)) == NULL )
     {
         fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     /* construct D^{-1}_L and D^{-1}_U */
@@ -1239,7 +1239,7 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
     if ( (e = (real*) malloc(sizeof(real) * N)) == NULL )
     {
         fprintf( stderr, "Not enough memory for condest. Terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     for ( i = 0; i < N; ++i )

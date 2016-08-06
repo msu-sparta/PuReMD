@@ -21,7 +21,7 @@
 
 #include "print_utils.h"
 #include "list.h"
-#include "pdb_tools.h"
+#include "geo_tools.h"
 #include "system_props.h"
 #include "vector.h"
 
@@ -375,18 +375,6 @@ void Init_Force_Test_Functions( )
 #endif
 
 
-char *Get_Element( reax_system *system, int i )
-{
-    return &( system->reaxprm.sbp[system->atoms[i].type].name[0] );
-}
-
-
-char *Get_Atom_Name( reax_system *system, int i )
-{
-    return &(system->atoms[i].name[0]);
-}
-
-
 /* near nbrs contain both i-j, j-i nbrhood info */
 void Print_Near_Neighbors( reax_system *system, control_params *control,
                            static_storage *workspace, list **lists )
@@ -690,7 +678,7 @@ void Output_Results( reax_system *system, control_params *control,
         out_control->append_traj_frame( system, control, data,
                                         workspace, lists, out_control );
 
-        //Write_PDB( system, control, data, workspace, *lists+BONDS, out_control );
+        //Write_PDB( system, *lists+BONDS, data, control, workspace, out_control );
         // t_elapsed = Get_Timing_Info( t_start );
         // fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
     }

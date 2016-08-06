@@ -164,19 +164,17 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 
     switch ( geo_format )
     {
-    case PDB:
-        cryst = "CRYST1";
-        break;
-    default:
-        cryst = "BOX";
+        case PDB:
+            cryst = "CRYST1";
+            break;
+        default:
+            cryst = "BOX";
     }
 
     /* locate the cryst line in the geo file, read it and
        initialize the big box */
-    while ( !feof( geo ) )
+    while ( fgets( line, MAX_LINE, geo ) )
     {
-        fgets( line, MAX_LINE, geo );
-
         if ( strncmp( line, cryst, 6 ) == 0 )
         {
             if ( geo_format == PDB )
@@ -192,6 +190,10 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
                            &(system->big_box) );
             return SUCCESS;
         }
+    }
+    if ( ferror( geo ) )
+    {
+        return FAILURE;
     }
 
     return FAILURE;
@@ -310,15 +312,11 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     c  = 0;
     c1 = 0;
     top = 0;
-    while ( !feof( pdb ) )
-    {
-        /* clear previous input line */
-        s[0] = 0;
-        for ( i = 0; i < c1; ++i )
-            tmp[i][0] = 0;
+    s[0] = 0;
 
+    while ( fgets( s, MAX_LINE, pdb ) )
+    {
         /* read new line and tokenize it */
-        fgets( s, MAX_LINE, pdb );
         strncpy( s1, s, MAX_LINE - 1 );
         c1 = Tokenize( s, &tmp );
 
@@ -474,6 +472,15 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
                 // fprintf( stderr, "\n" );
             }
         }
+
+        /* clear previous input line */
+        s[0] = 0;
+        for ( i = 0; i < c1; ++i )
+            tmp[i][0] = 0;
+    }
+    if ( ferror( pdb ) )
+    {
+        return FAILURE;
     }
 
     fclose( pdb );

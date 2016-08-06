@@ -51,9 +51,13 @@ void Read_System( char *geo_file, char *ffield_file, char *control_file,
 
     /* geo file */
     if ( control->geo_format == CUSTOM )
+    {
         Read_Geo( geo_file, system, control, data, workspace, mpi_data );
+    }
     else if ( control->geo_format == PDB )
+    {
         Read_PDB( geo_file, system, control, data, workspace, mpi_data );
+    }
     else if ( control->geo_format == ASCII_RESTART )
     {
         Read_Restart( geo_file, system, control, data, workspace, mpi_data );
@@ -103,6 +107,11 @@ void Post_Evolve( reax_system* system, control_params* control,
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 }
 
+static void usage(char* argv[])
+{
+    fprintf(stderr, "usage: ./%s geometry ffield control\n", argv[0]);
+}
+
 
 int main( int argc, char* argv[] )
 {
@@ -115,6 +124,12 @@ int main( int argc, char* argv[] )
     mpi_datatypes *mpi_data;
     int i;
     real t_start = 0, t_elapsed;
+
+    if ( argc != 4 )
+    {
+        usage(argv);
+        exit( INVALID_INPUT );
+    }
 
     /* allocated main datastructures */
     system = (reax_system *)

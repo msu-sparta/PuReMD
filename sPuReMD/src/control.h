@@ -19,21 +19,11 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __ALLOCATE_H_
-#define __ALLOCATE_H_
+#ifndef __CONTROL_H_
+#define __CONTROL_H_
 
 #include "mytypes.h"
 
-int PreAllocate_Space( reax_system*, control_params*, static_storage* );
-
-void Reallocate( reax_system*, static_storage*, list**, int );
-
-int Allocate_Matrix( sparse_matrix**, int, int );
-
-void Deallocate_Matrix( sparse_matrix* );
-
-int Allocate_HBond_List( int, int, int*, int*, list* );
-
-int Allocate_Bond_List( int, int*, list* );
+char Read_Control_File( FILE*, reax_system*, control_params*, output_controls* );
 
 #endif

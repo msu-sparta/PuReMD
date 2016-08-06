@@ -187,7 +187,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
             fprintf( stderr,
                      "step%d - ran out of space on H matrix: Htop=%d, max = %d",
                      step, Htop, Hmax );
-            exit(INSUFFICIENT_SPACE);
+            exit( INSUFFICIENT_MEMORY );
         }
     }
 
@@ -206,7 +206,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
     {
         fprintf( stderr, "step%d-bondchk failed: i=%d end(i)=%d str(i+1)=%d\n",
                  step, flag, End_Index(flag, bonds), Start_Index(flag + 1, bonds) );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     if ( End_Index(i, bonds) >= bonds->num_intrs - 2 )
@@ -217,7 +217,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
         {
             fprintf( stderr, "step%d-bondchk failed: i=%d end(i)=%d bond_end=%d\n",
                      step, flag, End_Index(i, bonds), bonds->num_intrs );
-            exit(INSUFFICIENT_SPACE);
+            exit( INSUFFICIENT_MEMORY );
         }
     }
 
@@ -240,7 +240,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
         {
             fprintf( stderr, "step%d-hbondchk failed: i=%d end(i)=%d str(i+1)=%d\n",
                      step, flag, End_Index(flag, hbonds), Start_Index(flag + 1, hbonds) );
-            exit(INSUFFICIENT_SPACE);
+            exit( INSUFFICIENT_MEMORY );
         }
 
         if ( Num_Entries(i, hbonds) >=
@@ -252,7 +252,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
             {
                 fprintf( stderr, "step%d-hbondchk failed: i=%d end(i)=%d hbondend=%d\n",
                          step, flag, End_Index(i, hbonds), hbonds->num_intrs );
-                exit(INSUFFICIENT_SPACE);
+                exit( INSUFFICIENT_MEMORY );
             }
         }
     }

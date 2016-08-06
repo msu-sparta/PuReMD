@@ -20,89 +20,11 @@
   ----------------------------------------------------------------------*/
 
 #include "box.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
-void Init_Box_From_CRYST(real a, real b, real c,
-                         real alpha, real beta, real gamma,
-                         simulation_box* box )
-{
-    double c_alpha, c_beta, c_gamma, s_gamma, zi;
-
-    c_alpha = cos(DEG2RAD(alpha));
-    c_beta  = cos(DEG2RAD(beta));
-    c_gamma = cos(DEG2RAD(gamma));
-    s_gamma = sin(DEG2RAD(gamma));
-
-    zi = (c_alpha - c_beta * c_gamma) / s_gamma;
-
-    box->box[0][0] = a;
-    box->box[0][1] = 0.0;
-    box->box[0][2] = 0.0;
-
-    box->box[1][0] = b * c_gamma;
-    box->box[1][1] = b * s_gamma;
-    box->box[1][2] = 0.0;
-
-    box->box[2][0] = c * c_beta;
-    box->box[2][1] = c * zi;
-    box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
-
-    Make_Consistent( box );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
-             box->box[0][0], box->box[1][1], box->box[2][2] );
-#endif
-}
-
-
-void Update_Box( rtensor box_tensor, simulation_box* box )
-{
-    int i, j;
-
-    for (i = 0; i < 3; i++)
-        for (j = 0; j < 3; j++)
-            box->box[i][j] = box_tensor[i][j];
-
-    Make_Consistent( box );
-}
-
-
-void Update_Box_Isotropic( simulation_box *box, real mu )
-{
-    /*box->box[0][0] =
-      POW( V_new / ( box->side_prop[1] * box->side_prop[2] ), 1.0/3.0 );
-    box->box[1][1] = box->box[0][0] * box->side_prop[1];
-    box->box[2][2] = box->box[0][0] * box->side_prop[2];
-    */
-    rtensor_Copy( box->old_box, box->box );
-    box->box[0][0] *= mu;
-    box->box[1][1] *= mu;
-    box->box[2][2] *= mu;
-
-    box->volume = box->box[0][0] * box->box[1][1] * box->box[2][2];
-    Make_Consistent(box/*, periodic*/);
-}
-
-
-void Update_Box_SemiIsotropic( simulation_box *box, rvec mu )
-{
-    /*box->box[0][0] =
-      POW( V_new / ( box->side_prop[1] * box->side_prop[2] ), 1.0/3.0 );
-    box->box[1][1] = box->box[0][0] * box->side_prop[1];
-    box->box[2][2] = box->box[0][0] * box->side_prop[2]; */
-    rtensor_Copy( box->old_box, box->box );
-    box->box[0][0] *= mu[0];
-    box->box[1][1] *= mu[1];
-    box->box[2][2] *= mu[2];
-
-    box->volume = box->box[0][0] * box->box[1][1] * box->box[2][2];
-    Make_Consistent(box);
-}
-
-
-void Make_Consistent(simulation_box* box)
+void Make_Consistent( simulation_box* box )
 {
     real one_vol;
 
@@ -196,7 +118,6 @@ void Make_Consistent(simulation_box* box)
 //       fprintf(stderr,"\n");
 //     }
 
-
     box->g[0][0] = box->box[0][0] * box->box[0][0] +
                    box->box[0][1] * box->box[0][1] +
                    box->box[0][2] * box->box[0][2];
@@ -228,44 +149,85 @@ void Make_Consistent(simulation_box* box)
 }
 
 
-void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
+/* setup the simulation box */
+void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
+        simulation_box* box )
 {
-    int i, j;
-    real tmp;
+    double c_alpha, c_beta, c_gamma, s_gamma, zi;
 
-    //  printf(">x1: (%lf, %lf, %lf)\n",x1[0],x1[1],x1[2]);
+    if ( IS_NAN_REAL(a) || IS_NAN_REAL(b) || IS_NAN_REAL(c)
+            || IS_NAN_REAL(alpha) || IS_NAN_REAL(beta) || IS_NAN_REAL(gamma) )
+    {
+        fprintf( stderr, "Invalid simulation box boundaries for big box (NaN). Terminating...\n" );
+        exit( INVALID_INPUT );
+    }
 
-    if (flag > 0)
-    {
-        for (i = 0; i < 3; i++)
-        {
-            tmp = 0.0;
-            for (j = 0; j < 3; j++)
-                tmp += box->trans[i][j] * x1[j];
-            x2[i] = tmp;
-        }
-    }
-    else
-    {
-        for (i = 0; i < 3; i++)
-        {
-            tmp = 0.0;
-            for (j = 0; j < 3; j++)
-                tmp += box->trans_inv[i][j] * x1[j];
-            x2[i] = tmp;
-        }
-    }
-    //  printf(">x2: (%lf, %lf, %lf)\n", x2[0], x2[1], x2[2]);
+    c_alpha = COS(DEG2RAD(alpha));
+    c_beta  = COS(DEG2RAD(beta));
+    c_gamma = COS(DEG2RAD(gamma));
+    s_gamma = SIN(DEG2RAD(gamma));
+    zi = (c_alpha - c_beta * c_gamma) / s_gamma;
+
+    box->box[0][0] = a;
+    box->box[0][1] = 0.0;
+    box->box[0][2] = 0.0;
+    box->box[1][0] = b * c_gamma;
+    box->box[1][1] = b * s_gamma;
+    box->box[1][2] = 0.0;
+    box->box[2][0] = c * c_beta;
+    box->box[2][1] = c * zi;
+    box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
+#if defined(DEBUG)
+    fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
+             box->box[0][0], box->box[1][1], box->box[2][2] );
+#endif
+
+    Make_Consistent( box );
 }
 
 
-void Transform_to_UnitBox( rvec x1, simulation_box *box, char flag, rvec x2 )
+void Update_Box( rtensor box_tensor, simulation_box* box )
 {
-    Transform( x1, box, flag, x2 );
+    int i, j;
 
-    x2[0] /= box->box_norms[0];
-    x2[1] /= box->box_norms[1];
-    x2[2] /= box->box_norms[2];
+    for (i = 0; i < 3; i++)
+        for (j = 0; j < 3; j++)
+            box->box[i][j] = box_tensor[i][j];
+
+    Make_Consistent( box );
+}
+
+
+void Update_Box_Isotropic( simulation_box *box, real mu )
+{
+    /*box->box[0][0] =
+      POW( V_new / ( box->side_prop[1] * box->side_prop[2] ), 1.0/3.0 );
+    box->box[1][1] = box->box[0][0] * box->side_prop[1];
+    box->box[2][2] = box->box[0][0] * box->side_prop[2];
+    */
+    rtensor_Copy( box->old_box, box->box );
+    box->box[0][0] *= mu;
+    box->box[1][1] *= mu;
+    box->box[2][2] *= mu;
+
+    box->volume = box->box[0][0] * box->box[1][1] * box->box[2][2];
+    Make_Consistent(box/*, periodic*/);
+}
+
+
+void Update_Box_SemiIsotropic( simulation_box *box, rvec mu )
+{
+    /*box->box[0][0] =
+      POW( V_new / ( box->side_prop[1] * box->side_prop[2] ), 1.0/3.0 );
+    box->box[1][1] = box->box[0][0] * box->side_prop[1];
+    box->box[2][2] = box->box[0][0] * box->side_prop[2]; */
+    rtensor_Copy( box->old_box, box->box );
+    box->box[0][0] *= mu[0];
+    box->box[1][1] *= mu[1];
+    box->box[2][2] *= mu[2];
+
+    box->volume = box->box[0][0] * box->box[1][1] * box->box[2][2];
+    Make_Consistent(box);
 }
 
 
@@ -278,7 +240,7 @@ void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
     {
         tmp = x[i] + dx[i];
         if ( tmp <= -box->box_norms[i] || tmp >= box->box_norms[i] )
-            tmp = fmod( tmp, box->box_norms[i] );
+            tmp = FMOD( tmp, box->box_norms[i] );
 
         if ( tmp < 0 ) tmp += box->box_norms[i];
         x[i] = tmp;
@@ -369,7 +331,6 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
 }
 
 
-
 int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
                        real cutoff, far_neighbor_data *data )
 {
@@ -415,7 +376,6 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
 
     return 0;
 }
-
 
 
 /* Determines if the distance between x1 and x2 is < vlist_cut.
@@ -617,7 +577,7 @@ void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box
 }*/
 
 
-void Print_Box_Information( simulation_box* box, FILE *out )
+void Print_Box( simulation_box* box, FILE *out )
 {
     int i, j;
 

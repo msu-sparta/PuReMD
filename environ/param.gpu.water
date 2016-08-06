@@ -34,7 +34,7 @@ p_mass                  5000.00                 ! in fs, pressure inertia parame
 compress                0.008134                ! in ps^2 * A / amu ( 4.5X10^(-5) bar^(-1) )
 press_mode              0                       ! 0: internal + external pressure, 1: ext only, 2: int only
 
-geo_format              1                       ! 0: xyz, 1: pdb, 2: bgf
+geo_format              1                       ! 0: custom, 1: pdb, 2: bgf
 write_freq              0                       ! write trajectory after so many steps
 traj_compress           0                       ! 0: no compression  1: uses zlib to compress trajectory output
 traj_format             0                       ! 0: our own format (below options apply to this only), 1: xyz, 2: bgf, 3: pdb

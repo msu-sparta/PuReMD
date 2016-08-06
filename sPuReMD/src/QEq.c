@@ -59,7 +59,7 @@ static void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
     if ( (A_t_top = (unsigned int*) calloc( A->n + 1, sizeof(unsigned int))) == NULL )
     {
 	fprintf( stderr, "Not enough space for matrix tranpose. Terminating...\n" );
-	exit( INSUFFICIENT_SPACE );
+	exit( INSUFFICIENT_MEMORY );
     }
 
     memset( A_t->start, 0, (A->n + 1) * sizeof(unsigned int) );
@@ -103,7 +103,7 @@ static void Transpose_I( sparse_matrix * const A )
     if ( Allocate_Matrix( &A_t, A->n, A->m ) == 0 )
     {
         fprintf( stderr, "not enough memory for transposing matrices. terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     Transpose( A, A_t );
@@ -266,12 +266,12 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
        || ( (Utop = (unsigned int*) malloc( (A->n + 1) * sizeof(unsigned int))) == NULL ) )
     {
 	fprintf( stderr, "Not enough space for SuperLU factorization. Terminating...\n" );
-	exit( INSUFFICIENT_SPACE );
+	exit( INSUFFICIENT_MEMORY );
     }
     if ( Allocate_Matrix( &A_t, A->n, A->m ) == 0 )
     {
         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     /* Set up the sparse matrix data structure for A. */
@@ -641,7 +641,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
     {
         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     D = (real*) malloc(A->n * sizeof(real));
@@ -838,7 +838,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
     {
         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     /*TODO: check malloc return status*/
@@ -1061,7 +1061,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                             Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
                     {
                         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                        exit(INSUFFICIENT_SPACE);
+                        exit( INSUFFICIENT_MEMORY );
                     }
 #if defined(DEBUG)
                     fprintf( stderr, "fillin = %d\n", fillin );
@@ -1081,7 +1081,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                             Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
                     {
                         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                        exit(INSUFFICIENT_SPACE);
+                        exit( INSUFFICIENT_MEMORY );
                     }
                 }
 
@@ -1097,7 +1097,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 //                     Allocate_Matrix( &U_test, 3, 6 ) == 0 )
 //                {
 //                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-//                    exit(INSUFFICIENT_SPACE);
+//                    exit( INSUFFICIENT_MEMORY );
 //                }
 //
 //                //3x3, SPD, store lower half
@@ -1135,11 +1135,15 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                             Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
                     {
                         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                        exit(INSUFFICIENT_SPACE);
+                        exit( INSUFFICIENT_MEMORY );
                     }
                 }
-
+#if defined(HAVE_SUPERLU_MT)
                 data->timing.pre_comp += SuperLU_Factorize( workspace->H, workspace->L, workspace->U );
+#else
+                fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
+                exit( INVALID_INPUT );
+#endif
 		break;
 	    default:
                 fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );

@@ -46,6 +46,11 @@
 //#define REORDER_ATOMS  // turns on nbrgen opt by re-ordering atoms
 //#define LGJ
 
+#define SUCCESS  1
+#define FAILURE  0
+#define TRUE  1
+#define FALSE 0
+
 #define EXP    exp
 #define SQRT   sqrt
 #define POW    pow
@@ -53,6 +58,7 @@
 #define COS    cos
 #define SIN    sin
 #define TAN    tan
+#define FMOD   fmod
 
 #define SQR(x)        ((x)*(x))
 #define CUBE(x)       ((x)*(x)*(x))
@@ -60,6 +66,15 @@
 #define RAD2DEG(a)    ((a)*180.0/PI)
 #define MAX( x, y )   (((x) > (y)) ? (x) : (y))
 #define MIN( x, y )   (((x) < (y)) ? (x) : (y))
+
+/* NaN IEEE 754 representation for C99 in math.h
+ * Note: function choice must match REAL typedef below */
+#ifdef NAN
+#define IS_NAN_REAL(a) (isnan(a))
+#else
+#warn "No support for NaN"
+#define NAN_REAL(a) (0)
+#endif
 
 #define PI            3.14159265
 #define C_ele          332.06371
@@ -77,11 +92,16 @@
 #define AVOGNR          6.0221367e23
 #define P_CONV          1.0e-24 * AVOGNR * JOULES_to_CAL
 
-#define MAX_STR             100      // MAX STRing length (used for naming)
+#define MAX_STR             1024
+#define MAX_LINE            1024
+#define MAX_TOKENS          1024
+#define MAX_TOKEN_LEN       1024
+
 #define MAX_ATOM_ID         100000
 #define MAX_RESTRICT        15
 #define MAX_MOLECULE_SIZE   20
 #define MAX_ATOM_TYPES      25
+
 #define MAX_GRID            50
 #define MAX_3BODY_PARAM     5
 #define MAX_4BODY_PARAM     5
@@ -94,24 +114,6 @@
 
 #define MAX_ITR             10
 #define RESTART             50
-
-#define FILE_NOT_FOUND_ERR    10
-#define UNKNOWN_ATOM_TYPE_ERR 11
-#define CANNOT_OPEN_OUTFILE   12
-#define INIT_ERR              13
-#define INSUFFICIENT_SPACE    14
-#define UNKNOWN_OPTION        15
-#define INVALID_INPUT         16
-#define NUMERIC_BREAKDOWN     17
-
-#define C_ATOM  0
-#define H_ATOM  1
-#define O_ATOM  2
-#define N_ATOM  3
-#define S_ATOM  4
-#define SI_ATOM 5
-#define GE_ATOM 6
-#define X_ATOM  7
 
 #define ZERO           0.000000000000000e+00
 #define ALMOST_ZERO    1e-10
@@ -134,35 +136,67 @@ typedef int  ivec[3];
 typedef real rtensor[3][3];
 
 /* config params */
-enum ensemble {
-	NVE = 0, NVT = 1, NPT = 2, sNPT = 3, iNPT = 4, ensNR = 5, bNVT = 6
+enum ensemble
+{
+    NVE = 0, NVT = 1, NPT = 2, sNPT = 3, iNPT = 4, ensNR = 5, bNVT = 6,
 };
-enum interaction_list_offets {
-	FAR_NBRS = 0, NEAR_NBRS = 1, THREE_BODIES = 2, BONDS = 3, OLD_BONDS = 4,
-	HBONDS = 5, DBO = 6, DDELTA = 7, LIST_N = 8
+
+enum interaction_list_offets
+{
+    FAR_NBRS = 0, NEAR_NBRS = 1, THREE_BODIES = 2, BONDS = 3, OLD_BONDS = 4,
+    HBONDS = 5, DBO = 6, DDELTA = 7, LIST_N = 8,
 };
-enum interaction_type {
-	TYP_VOID = 0, TYP_THREE_BODY = 1, TYP_BOND = 2, TYP_HBOND = 3, TYP_DBO = 4,
-	TYP_DDELTA = 5, TYP_FAR_NEIGHBOR = 6, TYP_NEAR_NEIGHBOR = 7, TYP_N = 8
+
+enum interaction_type
+{
+    TYP_VOID = 0, TYP_THREE_BODY = 1, TYP_BOND = 2, TYP_HBOND = 3, TYP_DBO = 4,
+    TYP_DDELTA = 5, TYP_FAR_NEIGHBOR = 6, TYP_NEAR_NEIGHBOR = 7, TYP_N = 8,
 };
-enum molecule_type {
-	UNKNOWN = 0, WATER = 1
+
+enum errors
+{
+    FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
+    CANNOT_OPEN_FILE = -12, CANNOT_INITIALIZE = -13,
+    INSUFFICIENT_MEMORY = -14, UNKNOWN_OPTION = -15,
+    INVALID_INPUT = -16, INVALID_GEO = -17,
+    NUMERIC_BREAKDOWN = -18,
 };
-enum molecular_analysis_type {
-	NO_ANALYSIS = 0, FRAGMENTS = 1, REACTIONS = 2, NUM_ANALYSIS = 3
+
+enum atoms
+{
+    C_ATOM = 0, H_ATOM = 1, O_ATOM = 2, N_ATOM = 3,
+    S_ATOM = 4, SI_ATOM = 5, GE_ATOM = 6, X_ATOM = 7,
 };
-enum restart_format {
-	WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2
+
+enum molecule_type
+{
+    UNKNOWN = 0, WATER = 1,
 };
-enum geometry {
-	XYZ = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5
+
+enum molecular_analysis_type
+{
+    NO_ANALYSIS = 0, FRAGMENTS = 1, REACTIONS = 2, NUM_ANALYSIS = 3,
 };
-enum solver {
-	GMRES_S = 0, GMRES_H_S = 1, PGMRES_S = 2,
-	PGMRES_J_S = 3, CG_S = 4, PCG_S = 5, SDM_S = 6,
+
+enum restart_format
+{
+    WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2,
 };
-enum pre_comp {
-	DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2, ILU_SUPERLU_MT_PC = 3,
+
+enum geo_formats
+{
+    CUSTOM = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5,
+};
+
+enum solver
+{
+    GMRES_S = 0, GMRES_H_S = 1, PGMRES_S = 2,
+    PGMRES_J_S = 3, CG_S = 4, PCG_S = 5, SDM_S = 6,
+};
+
+enum pre_comp
+{
+    DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2, ILU_SUPERLU_MT_PC = 3,
 };
 
 
@@ -357,10 +391,14 @@ typedef struct
 
 typedef struct
 {
-    rvec x, v, f;        /* Position, velocity, force on atom */
-    real q;              /* Charge on the atom */
     int  type;           /* Type of this atom */
-    char name[5];
+    char name[8];
+
+    rvec x; // position
+    rvec v; // velocity
+    rvec f; // force
+
+    real q;              /* Charge on the atom */
 } reax_atom;
 
 

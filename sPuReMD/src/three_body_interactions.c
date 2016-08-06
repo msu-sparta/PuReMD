@@ -571,7 +571,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
         {
             fprintf( stderr, "step%d-ran out of space on angle_list: top=%d, max=%d",
                      data->step, num_thb_intrs, thb_intrs->num_intrs );
-            exit( INSUFFICIENT_SPACE );
+            exit( INSUFFICIENT_MEMORY );
         }
     }
 
