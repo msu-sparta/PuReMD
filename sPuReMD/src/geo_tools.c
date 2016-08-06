@@ -360,7 +360,6 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
             atom = &(system->atoms[top]);
             pdb_serial = (int) strtod( &serial[0], &endptr );
             workspace->orig_id[top] = pdb_serial;
-            fprintf( stderr, "===>HERE1.5\n" );
 
             Trim_Spaces( element );
             atom->type = Get_Atom_Type( &(system->reaxprm), element );

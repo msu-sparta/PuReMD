@@ -167,14 +167,11 @@ int main(int argc, char* argv[])
 
     lists = (list*) malloc( sizeof(list) * LIST_N );
 
-    fprintf( stderr, "===>HERE\n" );
     Read_System( argv[1], argv[2], argv[3], &system, &control,
                  &data, &workspace, &out_control );
-    fprintf( stderr, "===>HERE2\n" );
 
     Initialize( &system, &control, &data, &workspace, &lists,
                 &out_control, &Evolve );
-    fprintf( stderr, "===>HERE3\n" );
 
     /* compute f_0 */
     //if( control.restart == 0 ) {
