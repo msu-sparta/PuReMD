@@ -87,16 +87,11 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
     {
         return 0;
     }
-    if ( (H->entries =
-                (sparse_matrix_entry*) malloc(sizeof(sparse_matrix_entry) * m)) == NULL )
+    if ( (H->j = (int*) malloc(sizeof(int) * m)) == NULL
+        || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
     {
         return 0;
     }
-//  if( ((H->j = (int*) malloc(sizeof(int)*m)) == NULL) ||
-//      ((H->val = (real*) malloc(sizeof(real)*m)) == NULL) )
-//  {
-//    return 0;
-//  }
 
     return 1;
 }
@@ -105,7 +100,8 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 void Deallocate_Matrix( sparse_matrix *H )
 {
     free(H->start);
-    free(H->entries);
+    free(H->j);
+    free(H->val);
     free(H);
 }
 

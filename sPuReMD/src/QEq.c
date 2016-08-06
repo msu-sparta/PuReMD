@@ -31,23 +31,54 @@
 static int compare_matrix_entry(const void *v1, const void *v2)
 {
     /* larger element has larger column index */
-    return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
+    return *(int *)v1 - *(int *)v2;
 }
 
 
 static void Sort_Matrix_Rows( sparse_matrix * const A )
 {
-    int i, si, ei;
+    int i, j, k, si, ei, *temp_j;
+    real *temp_val;
+
+    if ( ( temp_j = (int*) malloc( A->n * sizeof(int)) ) == NULL
+            || ( temp_val = (real*) malloc( A->n * sizeof(real)) ) == NULL )
+    {
+	fprintf( stderr, "Not enough space for matrix row sort. Terminating...\n" );
+	exit( INSUFFICIENT_MEMORY );
+    }
 
     /* sort each row of A using column indices */
     for ( i = 0; i < A->n; ++i )
     {
         si = A->start[i];
         ei = A->start[i + 1];
-        /* polymorphic sort in standard C library */
-        qsort( &(A->entries[si]), ei - si,
-               sizeof(sparse_matrix_entry), compare_matrix_entry );
+        memcpy( temp_j, A->j + si, sizeof(int) * (ei - si) );
+        memcpy( temp_val, A->val + si, sizeof(real) * (ei - si) );
+
+        //TODO: consider implementing single custom one-pass sort instead of using qsort + manual sort
+        /* polymorphic sort in standard C library using column indices */
+        qsort( temp_j, ei - si, sizeof(int), compare_matrix_entry );
+
+        /* manually sort vals */
+        for ( j = 0; j < (ei - si); ++j )
+        {
+            for ( k = 0; k < (ei - si); ++k )
+            {
+                if ( A->j[si + j] == temp_j[k] )
+                {
+                    A->val[si + k] = temp_val[j];
+                    break;
+                }
+
+            }
+        }
+        
+        /* copy sorted column indices */
+        memcpy( A->j + si, temp_j, sizeof(int) * (ei - si) );
     }
+
+    free( temp_val );
+    free( temp_j );
 }
 
 
@@ -69,7 +100,7 @@ static void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
-                ++A_t->start[A->entries[pj].j + 1];
+                ++A_t->start[A->j[pj] + 1];
         }
     }
 
@@ -84,9 +115,9 @@ static void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
-            j = A->entries[pj].j;
-            A_t->entries[A_t_top[j]].j = i;
-            A_t->entries[A_t_top[j]].val = A->entries[pj].val;
+            j = A->j[pj];
+            A_t->j[A_t_top[j]] = i;
+            A_t->val[A_t_top[j]] = A->val[pj];
             ++A_t_top[j];
         }
     }
@@ -109,7 +140,8 @@ static void Transpose_I( sparse_matrix * const A )
     Transpose( A, A_t );
 
     memcpy( A->start, A_t->start, sizeof(int) * (A_t->n + 1) );
-    memcpy( A->entries, A_t->entries, sizeof(sparse_matrix_entry) * (A_t->start[A_t->n]) );
+    memcpy( A->j, A_t->j, sizeof(int) * (A_t->start[A_t->n]) );
+    memcpy( A->val, A_t->val, sizeof(real) * (A_t->start[A_t->n]) );
 
     Deallocate_Matrix( A_t );
 }
@@ -129,14 +161,14 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
     {
         for ( k = A->start[i]; k < A->start[i + 1] - 1; ++k )
         {
-            j = A->entries[k].j;
-            val = A->entries[k].val;
+            j = A->j[k];
+            val = A->val[k];
 
             droptol[i] += val * val;
             droptol[j] += val * val;
         }
 
-        val = A->entries[k].val; // diagonal entry
+        val = A->val[k]; // diagonal entry
         droptol[i] += val * val;
     }
 
@@ -164,8 +196,8 @@ static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const d
     for ( i = 0; i < A->n; ++i )
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            j = A->entries[pj].j;
-            val = A->entries[pj].val;
+            j = A->j[pj];
+            val = A->val[pj];
             //fprintf( stderr, "i: %d, j: %d", i, j );
 
             if ( fabs(val) > droptol[i] )
@@ -499,7 +531,8 @@ static real diagonal_pre( const reax_system * const system, real * const Hdia_in
 static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
             sparse_matrix * const L, sparse_matrix * const U )
 {
-    sparse_matrix_entry tmp[1000];
+    int tmp_j[1000];
+    real tmp_val[1000];
     int i, j, pj, k1, k2, tmptop, Ltop;
     real val;
     int *Utop;
@@ -513,10 +546,14 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
     Ltop = 0;
     tmptop = 0;
     for ( i = 0; i <= A->n; ++i )
+    {
         L->start[i] = U->start[i] = 0;
+    }
 
     for ( i = 0; i < A->n; ++i )
+    {
         Utop[i] = 0;
+    }
 
     //fprintf( stderr, "n: %d\n", A->n );
     for ( i = 0; i < A->n; ++i )
@@ -526,8 +563,8 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            j = A->entries[pj].j;
-            val = A->entries[pj].val;
+            j = A->j[pj];
+            val = A->val[pj];
             //fprintf( stderr, "i: %d, j: %d", i, j );
 
             if ( fabs(val) > droptol[i] )
@@ -536,20 +573,26 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
                 k2 = L->start[j];
                 while ( k1 < tmptop && k2 < L->start[j + 1] )
                 {
-                    if ( tmp[k1].j < L->entries[k2].j )
+                    if ( tmp_j[k1] < L->j[k2] )
+                    {
                         ++k1;
-                    else if ( tmp[k1].j > L->entries[k2].j )
+                    }
+                    else if ( tmp_j[k1] > L->j[k2] )
+                    {
                         ++k2;
+                    }
                     else
-                        val -= (tmp[k1++].val * L->entries[k2++].val);
+                    {
+                        val -= (tmp_val[k1++] * L->val[k2++]);
+                    }
                 }
 
                 // L matrix is lower triangular,
                 // so right before the start of next row comes jth diagonal
-                val /= L->entries[L->start[j + 1] - 1].val;
+                val /= L->val[L->start[j + 1] - 1];
 
-                tmp[tmptop].j = j;
-                tmp[tmptop].val = val;
+                tmp_j[tmptop] = j;
+                tmp_val[tmptop] = val;
                 ++tmptop;
             }
             //fprintf( stderr, " -- done\n" );
@@ -557,18 +600,20 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
         // compute the ith diagonal in L
         // sanity check
-        if ( A->entries[pj].j != i )
+        if ( A->j[pj] != i )
         {
             fprintf( stderr, "i=%d, badly built A matrix!\n", i );
             exit(999);
         }
 
-        val = A->entries[pj].val;
+        val = A->val[pj];
         for ( k1 = 0; k1 < tmptop; ++k1 )
-            val -= (tmp[k1].val * tmp[k1].val);
+        {
+            val -= (tmp_val[k1] * tmp_val[k1]);
+        }
 
-        tmp[tmptop].j = i;
-        tmp[tmptop].val = SQRT(val);
+        tmp_j[tmptop] = i;
+        tmp_val[tmptop] = SQRT(val);
 
         // apply the dropping rule once again
         //fprintf( stderr, "row%d: tmptop: %d\n", i, tmptop );
@@ -577,17 +622,19 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
         //fprintf( stderr, "\n" );
         //fprintf( stderr, "row(%d): droptol=%.4f\n", i+1, droptol[i] );
         for ( k1 = 0; k1 < tmptop; ++k1 )
-            if ( fabs(tmp[k1].val) > droptol[i] / tmp[tmptop].val )
+        {
+            if ( fabs(tmp_val[k1]) > droptol[i] / tmp_val[tmptop] )
             {
-                L->entries[Ltop].j = tmp[k1].j;
-                L->entries[Ltop].val = tmp[k1].val;
-                U->start[tmp[k1].j + 1]++;
+                L->j[Ltop] = tmp_j[k1];
+                L->val[Ltop] = tmp_val[k1];
+                U->start[tmp_j[k1] + 1]++;
                 ++Ltop;
                 //fprintf( stderr, "%d(%.4f)  ", tmp[k1].j+1, tmp[k1].val );
             }
+        }
         // keep the diagonal in any case
-        L->entries[Ltop].j = tmp[k1].j;
-        L->entries[Ltop].val = tmp[k1].val;
+        L->j[Ltop] = tmp_j[k1];
+        L->val[Ltop] = tmp_val[k1];
         ++Ltop;
         //fprintf( stderr, "%d(%.4f)\n", tmp[k1].j+1,  tmp[k1].val );
     }
@@ -604,9 +651,9 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
     {
         for ( pj = L->start[i]; pj < L->start[i + 1]; ++pj )
         {
-            j = L->entries[pj].j;
-            U->entries[Utop[j]].j = i;
-            U->entries[Utop[j]].val = L->entries[pj].val;
+            j = L->j[pj];
+            U->j[Utop[j]] = i;
+            U->val[Utop[j]] = L->val[pj];
             Utop[j]++;
         }
     }
@@ -650,7 +697,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     for ( i = 0; i < A->n; ++i )
     {
-        D_inv[i] = SQRT( A->entries[A->start[i + 1] - 1].val );
+        D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
         D[i] = 1. / D_inv[i];
     }
 
@@ -668,19 +715,19 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         /* non-diagonals */
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            DAD->entries[pj].j = A->entries[pj].j;
-            DAD->entries[pj].val =
-                A->entries[pj].val * D[i] * D[A->entries[pj].j];
+            DAD->j[pj] = A->j[pj];
+            DAD->val[pj] = A->val[pj] * D[i] * D[A->j[pj]];
         }
         /* diagonal */
-        DAD->entries[pj].j = A->entries[pj].j;
-        DAD->entries[pj].val = 1.;
+        DAD->j[pj] = A->j[pj];
+        DAD->val[pj] = 1.;
     }
 
     /* initial guesses for U^T,
      * assume: A and DAD symmetric and stored lower triangular */
     memcpy( U_t->start, DAD->start, sizeof(int) * (DAD->n + 1) );
-    memcpy( U_t->entries, DAD->entries, sizeof(sparse_matrix_entry) * (DAD->m) );
+    memcpy( U_t->j, DAD->j, sizeof(int) * (DAD->m) );
+    memcpy( U_t->val, DAD->val, sizeof(real) * (DAD->m) );
 
     for ( i = 0; i < sweeps; ++i )
     {
@@ -704,21 +751,21 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 }
             }
             /* column bounds of current nonzero */
-            y = U_t->start[U_t->entries[j].j];
-            ei_y = U_t->start[U_t->entries[j].j + 1];
+            y = U_t->start[U_t->j[j]];
+            ei_y = U_t->start[U_t->j[j] + 1];
 
             /* sparse dot product: dot( U^T(i,1:j-1), U^T(j,1:j-1) ) */
-            while ( U_t->entries[x].j < U_t->entries[j].j &&
-                    U_t->entries[y].j < U_t->entries[j].j &&
+            while ( U_t->j[x] < U_t->j[j] &&
+                    U_t->j[y] < U_t->j[j] &&
                     x < ei_x && y < ei_y )
             {
-                if ( U_t->entries[x].j == U_t->entries[y].j )
+                if ( U_t->j[x] == U_t->j[y] )
                 {
-                    sum += (U_t->entries[x].val * U_t->entries[y].val);
+                    sum += (U_t->val[x] * U_t->val[y]);
                     ++x;
                     ++y;
                 }
-                else if ( U_t->entries[x].j < U_t->entries[y].j )
+                else if ( U_t->j[x] < U_t->j[y] )
                 {
                     ++x;
                 }
@@ -728,10 +775,10 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 }
             }
 
-            sum = DAD->entries[j].val - sum;
+            sum = DAD->val[j] - sum;
 
             /* diagonal entries */
-            if ( (k - 1) == U_t->entries[j].j )
+            if ( (k - 1) == U_t->j[j] )
             {
                 /* sanity check */
                 if ( sum < ZERO )
@@ -745,12 +792,12 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                     exit(NUMERIC_BREAKDOWN);
                 }
 
-                U_t->entries[j].val = SQRT( sum );
+                U_t->val[j] = SQRT( sum );
             }
             /* non-diagonal entries */
             else
             {
-                U_t->entries[j].val = sum / U_t->entries[ei_y - 1].val;
+                U_t->val[j] = sum / U_t->val[ei_y - 1];
             }
         }
     }
@@ -762,7 +809,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
-            U_t->entries[pj].val *= D_inv[i];
+            U_t->val[pj] *= D_inv[i];
         }
     }
 
@@ -777,7 +824,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
          * store in U->start */
         for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
         {
-            U->start[U_t->entries[pj].j + 1]++;
+            U->start[U_t->j[pj] + 1]++;
         }
     }
     /* set correct row pointer in U */
@@ -791,9 +838,9 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         /* for each nonzero (column-wise) in U^T */
         for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
         {
-            j = U_t->entries[pj].j;
-            U->entries[Utop[j]].j = i;
-            U->entries[Utop[j]].val = U_t->entries[pj].val;
+            j = U_t->j[pj];
+            U->j[Utop[j]] = i;
+            U->val[Utop[j]] = U_t->val[pj];
             /* Utop contains pointer within rows of U
              * (columns of U^T) to add next nonzero, so increment */
             Utop[j]++;
@@ -849,7 +896,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         default(none) shared(D, D_inv) private(i)
     for ( i = 0; i < A->n; ++i )
     {
-        D_inv[i] = SQRT( A->entries[A->start[i + 1] - 1].val );
+        D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
         D[i] = 1.0 / D_inv[i];
     }
 
@@ -863,29 +910,30 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         /* non-diagonals */
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            DAD->entries[pj].j = A->entries[pj].j;
-            DAD->entries[pj].val =
-                D[i] * A->entries[pj].val * D[A->entries[pj].j];
+            DAD->j[pj] = A->j[pj];
+            DAD->val[pj] = D[i] * A->val[pj] * D[A->j[pj]];
         }
         /* diagonal */
-        DAD->entries[pj].j = A->entries[pj].j;
-        DAD->entries[pj].val = 1.0;
+        DAD->j[pj] = A->j[pj];
+        DAD->val[pj] = 1.0;
     }
 
     /* initial guesses for L and U,
      * assume: A and DAD symmetric and stored lower triangular */
     memcpy( L->start, DAD->start, sizeof(int) * (DAD->n + 1) );
-    memcpy( L->entries, DAD->entries, sizeof(sparse_matrix_entry) * (DAD->start[DAD->n]) );
+    memcpy( L->j, DAD->j, sizeof(int) * (DAD->start[DAD->n]) );
+    memcpy( L->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
     /* store U^T in CSR for row-wise access and tranpose later */
     memcpy( U->start, DAD->start, sizeof(int) * (DAD->n + 1) );
-    memcpy( U->entries, DAD->entries, sizeof(sparse_matrix_entry) * (DAD->start[DAD->n]) );
+    memcpy( U->j, DAD->j, sizeof(int) * (DAD->start[DAD->n]) );
+    memcpy( U->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
 
     /* L has unit diagonal, by convention */
     #pragma omp parallel for schedule(guided) \
         default(none) private(i)
     for ( i = 0; i < A->n; ++i )
     {
-        L->entries[L->start[i + 1] - 1].val = 1.0;
+        L->val[L->start[i + 1] - 1] = 1.0;
     }
 
     for ( i = 0; i < sweeps; ++i )
@@ -910,22 +958,22 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 }
             }
             /* determine column bounds of current nonzero */
-            y = DAD->start[DAD->entries[j].j];
-            ei_y = DAD->start[DAD->entries[j].j + 1];
+            y = DAD->start[DAD->j[j]];
+            ei_y = DAD->start[DAD->j[j] + 1];
 
             /* sparse dot product:
              *   dot( L(i,1:j-1), U(1:j-1,j) ) */
-            while ( L->entries[x].j < L->entries[j].j &&
-                    L->entries[y].j < L->entries[j].j &&
+            while ( L->j[x] < L->j[j] &&
+                    L->j[y] < L->j[j] &&
                     x < ei_x && y < ei_y )
             {
-                if ( L->entries[x].j == L->entries[y].j )
+                if ( L->j[x] == L->j[y] )
                 {
-                    sum += (L->entries[x].val * U->entries[y].val);
+                    sum += (L->val[x] * U->val[y]);
                     ++x;
                     ++y;
                 }
-                else if ( L->entries[x].j < L->entries[y].j )
+                else if ( L->j[x] < L->j[y] )
                 {
                     ++x;
                 }
@@ -937,7 +985,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
             if( j != ei_x - 1 )
             {
-                L->entries[j].val = ( DAD->entries[j].val - sum ) / U->entries[ei_y - 1].val;
+                L->val[j] = ( DAD->val[j] - sum ) / U->val[ei_y - 1];
             }
         }
 
@@ -960,22 +1008,22 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 }
             }
             /* determine column bounds of current nonzero */
-            y = DAD->start[DAD->entries[j].j];
-            ei_y = DAD->start[DAD->entries[j].j + 1];
+            y = DAD->start[DAD->j[j]];
+            ei_y = DAD->start[DAD->j[j] + 1];
 
             /* sparse dot product:
              *   dot( L(i,1:i-1), U(1:i-1,j) ) */
-            while ( U->entries[x].j < U->entries[j].j &&
-                    U->entries[y].j < U->entries[j].j &&
+            while ( U->j[x] < U->j[j] &&
+                    U->j[y] < U->j[j] &&
                     x < ei_x && y < ei_y )
             {
-                if ( U->entries[x].j == U->entries[y].j )
+                if ( U->j[x] == U->j[y] )
                 {
-                    sum += (L->entries[y].val * U->entries[x].val);
+                    sum += (L->val[y] * U->val[x]);
                     ++x;
                     ++y;
                 }
-                else if ( U->entries[x].j < U->entries[y].j )
+                else if ( U->j[x] < U->j[y] )
                 {
                     ++x;
                 }
@@ -985,7 +1033,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 }
             }
 
-            U->entries[j].val = DAD->entries[j].val - sum;
+            U->val[j] = DAD->val[j] - sum;
         }
     }
 
@@ -998,9 +1046,9 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         for ( pj = DAD->start[i]; pj < DAD->start[i + 1]; ++pj )
         {
-            L->entries[pj].val = D_inv[i] * L->entries[pj].val;
+            L->val[pj] = D_inv[i] * L->val[pj];
             /* currently storing U^T, so use row index instead of column index */
-            U->entries[pj].val = U->entries[pj].val * D_inv[i];
+            U->val[pj] = U->val[pj] * D_inv[i];
         }
     }
 

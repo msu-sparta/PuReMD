@@ -708,36 +708,21 @@ typedef struct
 
 
 /* compressed row storage (crs) format
- *   j: column index for corresponding matrix entry
- *   val: matrix entry
- * */
-// TODO: move pointers into below struct (question about addressing performance)
-// Consider: __attribute__((packed)) or similar in structure definition
-//   to avoid having the compiler add padding bytes (manual alignment along word boundary)
-// Warning: padding is implementation (compiler) dependent, so not portable,
-//   and also potentially dangerous
-typedef struct
-{
-    int j;
-    real val;
-} sparse_matrix_entry;
-
-/* compressed row storage (crs) format
  * See, e.g.,
  *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
  *
  *   m: number of nonzeros (NNZ) ALLOCATED
  *   n: number of rows
  *   start: row pointer (last element contains ACTUAL NNZ)
- *   entries: (column index, val) pairs
+ *   j: column index for corresponding matrix entry
+ *   val: matrix entry
  * */
 typedef struct
 {
     int n, m;
     int *start;
-    sparse_matrix_entry *entries;
-//  int *j;
-//  real *val;
+    int *j;
+    real *val;
 } sparse_matrix;
 
 

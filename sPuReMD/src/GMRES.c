@@ -83,8 +83,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
             for ( k = si; k < ei; ++k )
             {
-                j = A->entries[k].j;
-                H = A->entries[k].val;
+                j = A->j[k];
+                H = A->val[k];
 #ifdef _OPENMP
                 b_local[tid * n + j] += H * x[i];
                 b_local[tid * n + i] += H * x[j];
@@ -96,9 +96,9 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
             // the diagonal entry is the last one in
 #ifdef _OPENMP
-            b_local[tid * n + i] += A->entries[k].val * x[i];
+            b_local[tid * n + i] += A->val[k] * x[i];
 #else
-            b[i] += A->entries[k].val * x[i];
+            b[i] += A->val[k] * x[i];
 #endif
         }
 #ifdef _OPENMP
@@ -178,9 +178,9 @@ static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
             for ( k = si; k < ei; ++k )
             {
 #ifdef _OPENMP
-                b_local[tid * R->n + i] += R->entries[k].val * x[R->entries[k].j];
+                b_local[tid * R->n + i] += R->val[k] * x[R->j[k]];
 #else
-                b[i] += R->entries[k].val * x[R->entries[k].j];
+                b[i] += R->val[k] * x[R->j[k]];
 #endif
             }
 #ifdef _OPENMP
@@ -219,11 +219,11 @@ static void Forward_Subs( const sparse_matrix * const L, const real * const b, r
         for ( pj = si; pj < ei - 1; ++pj )
         {
             // TODO: remove assignments? compiler optimizes away?
-            j = L->entries[pj].j;
-            val = L->entries[pj].val;
+            j = L->j[pj];
+            val = L->val[pj];
             y[i] -= val * y[j];
         }
-        y[i] /= L->entries[pj].val;
+        y[i] /= L->val[pj];
     }
 }
 
@@ -242,11 +242,11 @@ static void Backward_Subs( const sparse_matrix * const U, const real * const y, 
         for ( pj = si + 1; pj < ei; ++pj )
         {
             // TODO: remove assignments? compiler optimizes away?
-            j = U->entries[pj].j;
-            val = U->entries[pj].val;
+            j = U->j[pj];
+            val = U->val[pj];
             x[i] -= val * x[j];
         }
-        x[i] /= U->entries[si].val;
+        x[i] /= U->val[si];
     }
 }
 
@@ -365,9 +365,9 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                 for ( k = si; k < ei; ++k )
                 {
 #ifdef _OPENMP
-                    b_local[tid * R->n + i] += R->entries[k].val * rp[R->entries[k].j];
+                    b_local[tid * R->n + i] += R->val[k] * rp[R->j[k]];
 #else
-                    rp2[i] += R->entries[k].val * rp[R->entries[k].j];
+                    rp2[i] += R->val[k] * rp[R->j[k]];
 #endif
                 }
 #ifdef _OPENMP
@@ -918,10 +918,10 @@ int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real to
     for ( i = 0; i < N; ++i )
     {
         si = L->start[i + 1] - 1;
-        Dinv_L[i] = 1. / L->entries[si].val;
+        Dinv_L[i] = 1. / L->val[si];
 
         si = U->start[i];
-        Dinv_U[i] = 1. / U->entries[si].val;
+        Dinv_U[i] = 1. / U->val[si];
     }
 
     /* GMRES outer-loop */
