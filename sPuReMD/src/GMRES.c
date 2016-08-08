@@ -19,12 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "allocate.h"
 #include "GMRES.h"
+#include "allocate.h"
 #include "list.h"
 #include "vector.h"
-
-#include <omp.h>
 
 
 typedef enum
@@ -218,7 +216,6 @@ static void Forward_Subs( const sparse_matrix * const L, const real * const b, r
         ei = L->start[i + 1];
         for ( pj = si; pj < ei - 1; ++pj )
         {
-            // TODO: remove assignments? compiler optimizes away?
             j = L->j[pj];
             val = L->val[pj];
             y[i] -= val * y[j];
@@ -241,13 +238,117 @@ static void Backward_Subs( const sparse_matrix * const U, const real * const y, 
         ei = U->start[i + 1];
         for ( pj = si + 1; pj < ei; ++pj )
         {
-            // TODO: remove assignments? compiler optimizes away?
             j = U->j[pj];
             val = U->val[pj];
             x[i] -= val * x[j];
         }
         x[i] /= U->val[si];
     }
+}
+
+
+/* Triangular solve LU*x = y using level scheduling
+ *
+ * LU: lower/upper triangular, stored in CSR
+ * y: constants in linear system (RHS)
+ * x: solution
+ * tri: triangularity of A (lower/upper)
+ * 
+ * Assumptions:
+ *   LU has non-zero diagonals
+ *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
+static void tri_solve_level_sched( sparse_matrix * const LU, const real * const y,
+    real * const x, const TRIANGULARITY tri )
+{
+    int i, j, pj, local_row, local_level, levels = 1;
+    unsigned int *row_levels, *level_rows, *level_rows_cnt;
+    
+    if ( (row_levels = (unsigned int*) calloc(LU->n, sizeof(unsigned int))) == NULL
+        || (level_rows = (unsigned int*) malloc(LU->n * LU->n * sizeof(unsigned int))) == NULL
+        || (level_rows_cnt = (unsigned int*) calloc(LU->n, sizeof(unsigned int))) == NULL )
+    {
+	fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
+	exit( INSUFFICIENT_MEMORY );
+    }
+
+    /* find levels (row dependencies in substitutions) */
+    if ( tri == LOWER )
+    {
+        for ( i = 0; i < LU->n; ++i )
+        {
+            local_level = 0;
+            for ( pj = LU->start[i]; pj < LU->start[i + 1] - 1; ++pj )
+            {
+                local_level = MAX( local_level, row_levels[LU->j[pj]] + 1 );
+            }
+    
+            levels = MAX( levels, local_level + 1 );
+            row_levels[i] = local_level;
+            level_rows[local_level * LU->n + level_rows_cnt[local_level]] = i;
+            ++level_rows_cnt[local_level];
+        }
+    }
+    else
+    {
+        for ( i = LU->n - 1; i >= 0; --i )
+        {
+            local_level = 0;
+            for ( pj = LU->start[i] + 1; pj < LU->start[i + 1]; ++pj )
+            {
+                local_level = MAX( local_level, row_levels[LU->j[pj]] + 1 );
+            }
+    
+            levels = MAX( levels, local_level + 1 );
+            row_levels[i] = local_level;
+            level_rows[local_level * LU->n + level_rows_cnt[local_level]] = i;
+            ++level_rows_cnt[local_level];
+        }
+    }
+
+
+    /* perform substitutions by level */
+    if ( tri == LOWER )
+    {
+        for ( i = 0; i < levels; ++i )
+        {
+            #pragma omp parallel for schedule(guided) \
+                default(none) private(j, pj, local_row) shared(stderr, i, level_rows_cnt, level_rows)
+            for ( j = 0; j < level_rows_cnt[i]; ++j )
+            {
+                local_row = level_rows[i * LU->n + j];
+                x[local_row] = y[local_row];
+                for ( pj = LU->start[local_row]; pj < LU->start[local_row + 1] - 1; ++pj )
+                {
+                    x[local_row] -= LU->val[pj] * x[LU->j[pj]];
+    
+                }
+                x[local_row] /= LU->val[pj];
+            }
+        }
+    }
+    else
+    {
+        for ( i = 0; i < levels; ++i )
+        {
+            #pragma omp parallel for schedule(guided) \
+                default(none) private(j, pj, local_row) shared(i, level_rows_cnt, level_rows)
+            for ( j = 0; j < level_rows_cnt[i]; ++j )
+            {
+                local_row = level_rows[i * LU->n + j];
+                x[local_row] = y[local_row];
+                for ( pj = LU->start[local_row] + 1; pj < LU->start[local_row + 1]; ++pj )
+                {
+                    x[local_row] -= LU->val[pj] * x[LU->j[pj]];
+    
+                }
+                x[local_row] /= LU->val[LU->start[local_row]];
+            }
+        }
+    }
+
+    free( level_rows_cnt );
+    free( level_rows );
+    free( row_levels );
 }
 
 

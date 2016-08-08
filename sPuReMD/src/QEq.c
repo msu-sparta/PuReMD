@@ -506,7 +506,7 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
 #endif
 
 
-/* Diagonal preconditioner */
+/* Diagonal (Jacobi) preconditioner */
 static real diagonal_pre( const reax_system * const system, real * const Hdia_inv )
 {
     unsigned int i;
