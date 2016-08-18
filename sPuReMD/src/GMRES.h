@@ -24,20 +24,13 @@
 
 #include "mytypes.h"
 
-int GMRES( static_storage*, sparse_matrix*,
-           real*, real, real*, FILE*, real*, real* );
+int GMRES( const static_storage * const, const control_params * const,
+        const sparse_matrix * const, const real * const, real, real * const,
+        const FILE * const, real * const, real * const );
 
-int GMRES_HouseHolder( static_storage*, sparse_matrix*,
-                       real*, real, real*, FILE* );
-
-int PGMRES( static_storage*, sparse_matrix*, real*, real,
-            sparse_matrix*, sparse_matrix*, real*, FILE*, real*, real* );
-
-int PGMRES_Jacobi( static_storage*, sparse_matrix*, real*, real,
-                   sparse_matrix*, sparse_matrix*, real*, unsigned int, FILE*, real*, real* );
-
-int PCG( static_storage*, sparse_matrix*, real*, real,
-         sparse_matrix*, sparse_matrix*, real*, FILE* );
+int GMRES_HouseHolder( const static_storage * const, const control_params * const,
+        const sparse_matrix * const, const real * const, real, real * const,
+        const FILE * const, real * const, real * const );
 
 int CG( static_storage*, sparse_matrix*,
         real*, real, real*, FILE* );

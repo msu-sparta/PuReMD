@@ -69,12 +69,13 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     control->tabulate = 0;
 
-    control->qeq_solver_type = PGMRES_S;
+    control->qeq_solver_type = GMRES_S;
     control->qeq_solver_q_err = 0.000001;
     control->pre_comp_type = ICHOLT_PC;
     control->pre_comp_sweeps = ICHOLT_PC;
     control->pre_comp_refactor = 100;
     control->pre_comp_droptol = 0.01;
+    control->pre_app_type = TRI_SOLVE_PA;
     control->pre_app_jacobi_iters = 10;
 
     control->T_init = 0.;
@@ -265,6 +266,11 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             ival = atoi( tmp[1] );
             control->pre_comp_sweeps = ival;
+        }
+        else if ( strcmp(tmp[0], "pre_app_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->pre_app_type = ival;
         }
         else if ( strcmp(tmp[0], "pre_app_jacobi_iters") == 0 )
         {

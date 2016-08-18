@@ -190,13 +190,17 @@ enum geo_formats
 
 enum solver
 {
-    GMRES_S = 0, GMRES_H_S = 1, PGMRES_S = 2,
-    PGMRES_J_S = 3, CG_S = 4, PCG_S = 5, SDM_S = 6,
+    GMRES_S = 0, GMRES_H_S = 1, CG_S = 2, SDM_S = 3,
 };
 
 enum pre_comp
 {
-    DIAG_PC = 0, ICHOLT_PC = 1, ICHOL_PAR_PC = 2, ILU_SUPERLU_MT_PC = 3,
+    DIAG_PC = 0, ICHOLT_PC = 1, ILU_PAR_PC = 2, ILU_SUPERLU_MT_PC = 3,
+};
+
+enum pre_app
+{
+    NONE_PA = 0, TRI_SOLVE_PA = 1, TRI_SOLVE_LEVEL_SCHED_PA = 2, JACOBI_ITER_PA = 3,
 };
 
 
@@ -510,6 +514,7 @@ typedef struct
     unsigned int pre_comp_refactor;
     real pre_comp_droptol;
     unsigned int pre_comp_sweeps;
+    unsigned int pre_app_type;
     unsigned int pre_app_jacobi_iters;
 
     int molec_anal;

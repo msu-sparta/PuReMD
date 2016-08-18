@@ -506,8 +506,8 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
 #endif
 
 
-/* Diagonal (Jacobi) preconditioner */
-static real diagonal_pre( const reax_system * const system, real * const Hdia_inv )
+/* Diagonal (Jacobi) preconditioner computation */
+static real diag_pre_comp( const reax_system * const system, real * const Hdia_inv )
 {
     unsigned int i;
     struct timeval start, stop;
@@ -1093,9 +1093,13 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 	    case DIAG_PC:
                 if ( workspace->Hdia_inv == NULL )
                 {
-                    workspace->Hdia_inv = (real *) calloc( system->N, sizeof( real ) );
+                    if ( ( workspace->Hdia_inv = (real *) calloc( system->N, sizeof( real ) ) ) == NULL )
+                    {
+                        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                        exit( INSUFFICIENT_MEMORY );
+                    }
                 }
-                data->timing.pre_comp += diagonal_pre( system, workspace->Hdia_inv );
+                data->timing.pre_comp += diag_pre_comp( system, workspace->Hdia_inv );
 		break;
 	    case ICHOLT_PC:
                 Calculate_Droptol( workspace->H, workspace->droptol, control->pre_comp_droptol );
@@ -1121,7 +1125,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                 data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
 //                data->timing.pre_comp += ICHOLT( workspace->H_sp, workspace->droptol, workspace->L, workspace->U );
 		break;
-	    case ICHOL_PAR_PC:
+	    case ILU_PAR_PC:
                 if ( workspace->L == NULL )
                 {
                     /* factors have sparsity pattern as H */
@@ -1290,52 +1294,40 @@ void QEq( reax_system * const system, control_params * const control, simulation
     switch ( control->qeq_solver_type )
     {
         case GMRES_S:
-            matvecs = GMRES( workspace, workspace->H,
-                             workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log,
-                             &(data->timing.pre_app), &(data->timing.spmv) );
-            matvecs += GMRES( workspace, workspace->H,
-                              workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log, 
-                              &(data->timing.pre_app), &(data->timing.spmv) );
+            matvecs = GMRES( workspace, control, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+                    workspace->s[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+            matvecs += GMRES( workspace, control, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+                    workspace->t[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
             break;
         case GMRES_H_S:
-            matvecs = GMRES_HouseHolder( workspace, workspace->H,
-                                         workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log );
-            matvecs += GMRES_HouseHolder( workspace, workspace->H,
-                                          workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log );
-            break;
-        case PGMRES_S:
-            matvecs = PGMRES( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                              workspace->L, workspace->U, workspace->s[0], out_control->log,
-                              &(data->timing.pre_app), &(data->timing.spmv) );
-            matvecs += PGMRES( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                               workspace->L, workspace->U, workspace->t[0], out_control->log,
-                               &(data->timing.pre_app), &(data->timing.spmv) );
-            break;
-        case PGMRES_J_S:
-            matvecs = PGMRES_Jacobi( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                                     workspace->L, workspace->U, workspace->s[0], control->pre_app_jacobi_iters,
-				     out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
-            matvecs += PGMRES_Jacobi( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                                      workspace->L, workspace->U, workspace->t[0], control->pre_app_jacobi_iters,
-				      out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+            matvecs = GMRES_HouseHolder( workspace, control, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+                    workspace->s[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+            matvecs += GMRES_HouseHolder( workspace, control, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+                    workspace->t[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
             break;
         case CG_S:
-            matvecs = CG( workspace, workspace->H,
-                          workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log ) + 1;
-            matvecs += CG( workspace, workspace->H,
-                           workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log ) + 1;
-            break;
-        case PCG_S:
-            matvecs = PCG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                         workspace->L, workspace->U, workspace->s[0], out_control->log ) + 1;
-            matvecs += PCG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                            workspace->L, workspace->U, workspace->t[0], out_control->log ) + 1;
+            matvecs = CG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+                    workspace->s[0], out_control->log ) + 1;
+            matvecs += CG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+                    workspace->t[0], out_control->log ) + 1;
+//            matvecs = CG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+//                    workspace->L, workspace->U, workspace->s[0], control->pre_app_type,
+//                    control->pre_app_jacobi_iters, out_control->log, &(data->timing.pre_app), &(data->timing.spmv) ) + 1;
+//            matvecs += CG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+//                    workspace->L, workspace->U, workspace->t[0], control->pre_app_type,
+//                    control->pre_app_jacobi_iters, out_control->log, &(data->timing.pre_app), &(data->timing.spmv) ) + 1;
             break;
         case SDM_S:
-            matvecs = SDM( workspace, workspace->H,
-                           workspace->b_s, control->qeq_solver_q_err, workspace->s[0], out_control->log ) + 1;
-            matvecs += SDM( workspace, workspace->H,
-                            workspace->b_t, control->qeq_solver_q_err, workspace->t[0], out_control->log ) + 1;
+            matvecs = SDM( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+                    workspace->s[0], out_control->log ) + 1;
+            matvecs += SDM( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+                    workspace->t[0], out_control->log ) + 1;
+//            matvecs = SDM( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+//                    workspace->L, workspace->U, workspace->s[0], control->pre_app_type,
+//                    control->pre_app_jacobi_iters, out_control->log, &(data->timing.pre_app), &(data->timing.spmv) ) + 1;
+//            matvecs += SDM( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+//                    workspace->L, workspace->U, workspace->t[0], control->pre_app_type,
+//                    control->pre_app_jacobi_iters, out_control->log, &(data->timing.pre_app), &(data->timing.spmv) ) + 1;
             break;
 	default:
             fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
