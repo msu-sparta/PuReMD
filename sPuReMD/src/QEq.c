@@ -24,9 +24,11 @@
 #include "GMRES.h"
 #include "list.h"
 #include "print_utils.h"
+#include "tool_box.h"
 #if defined(HAVE_SUPERLU_MT)
 #include "slu_mt_ddefs.h"
 #endif
+
 
 static int compare_matrix_entry(const void *v1, const void *v2)
 {
@@ -147,40 +149,103 @@ static void Transpose_I( sparse_matrix * const A )
 }
 
 
-static void Calculate_Droptol( const sparse_matrix * const A, real * const droptol, real dtol )
+static void Calculate_Droptol( const sparse_matrix * const A, real * const droptol,
+        const real dtol )
 {
     int i, j, k;
     real val;
+#ifdef _OPENMP
+    static real *droptol_local;
+    unsigned int tid;
+#endif
 
-    /* init droptol to 0 */
-    for ( i = 0; i < A->n; ++i )
-        droptol[i] = 0;
-
-    /* calculate sqaure of the norm of each row */
-    for ( i = 0; i < A->n; ++i )
+    #pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local)
     {
-        for ( k = A->start[i]; k < A->start[i + 1] - 1; ++k )
-        {
-            j = A->j[k];
-            val = A->val[k];
+#ifdef _OPENMP
+        tid = omp_get_thread_num();
 
-            droptol[i] += val * val;
-            droptol[j] += val * val;
+        #pragma omp master
+        {
+            /* keep b_local for program duration to avoid allocate/free
+             * overhead per Sparse_MatVec call*/
+            if ( droptol_local == NULL )
+            {
+                if ( (droptol_local = (real*) malloc( omp_get_num_threads() * A->n * sizeof(real))) == NULL )
+                {
+                    exit( INSUFFICIENT_MEMORY );
+                }
+	    }
+	}
+
+        #pragma omp barrier
+#endif
+
+        /* init droptol to 0 */
+        for ( i = 0; i < A->n; ++i )
+        {
+#ifdef _OPENMP
+            droptol_local[tid * A->n + i] = 0.0;
+#else
+            droptol[i] = 0.0;
+#endif
         }
 
-        val = A->val[k]; // diagonal entry
-        droptol[i] += val * val;
-    }
+        #pragma omp barrier
 
-    /* calculate local droptol for each row */
-    //fprintf( stderr, "droptol: " );
-    for ( i = 0; i < A->n; ++i )
-    {
-        //fprintf( stderr, "%f-->", droptol[i] );
-        droptol[i] = SQRT( droptol[i] ) * dtol;
-        //fprintf( stderr, "%f  ", droptol[i] );
+        /* calculate sqaure of the norm of each row */
+        #pragma omp parallel for schedule(guided) \
+            default(none) private(i, j, k, val, tid) shared(droptol_local)
+        for ( i = 0; i < A->n; ++i )
+        {
+            for ( k = A->start[i]; k < A->start[i + 1] - 1; ++k )
+            {
+                j = A->j[k];
+                val = A->val[k];
+
+#ifdef _OPENMP
+                droptol_local[tid * A->n + i] += val * val;
+                droptol_local[tid * A->n + j] += val * val;
+#else
+                droptol[i] += val * val;
+                droptol[j] += val * val;
+#endif
+            }
+
+            val = A->val[k]; // diagonal entry
+#ifdef _OPENMP
+            droptol_local[tid * A->n + i] += val * val;
+#else
+            droptol[i] += val * val;
+#endif
+        }
+
+        #pragma omp barrier
+
+#ifdef _OPENMP
+        #pragma omp parallel for schedule(guided) default(none) private(i, k) shared(droptol_local)
+        for ( i = 0; i < A->n; ++i )
+        {
+            droptol[i] = 0.0;
+            for ( k = 0; k < omp_get_num_threads(); ++k )
+            {
+                droptol[i] += droptol_local[k * A->n + i];
+            }
+        }
+#endif
+
+        #pragma omp barrier
+
+        /* calculate local droptol for each row */
+        //fprintf( stderr, "droptol: " );
+        #pragma omp parallel for schedule(guided) default(none) private(i)
+        for ( i = 0; i < A->n; ++i )
+        {
+            //fprintf( stderr, "%f-->", droptol[i] );
+            droptol[i] = SQRT( droptol[i] ) * dtol;
+            //fprintf( stderr, "%f  ", droptol[i] );
+        }
+        //fprintf( stderr, "\n" );
     }
-    //fprintf( stderr, "\n" );
 }
 
 
@@ -192,17 +257,21 @@ static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const d
 
     fillin = 0;
 
-    //fprintf( stderr, "n: %d\n", A->n );
+    #pragma omp parallel for schedule(guided) \
+        default(none) private(i, j, pj, val) reduction(+: fillin)
     for ( i = 0; i < A->n; ++i )
+    {
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
             j = A->j[pj];
             val = A->val[pj];
-            //fprintf( stderr, "i: %d, j: %d", i, j );
 
-            if ( fabs(val) > droptol[i] )
+            if ( FABS(val) > droptol[i] )
+            {
                 ++fillin;
+            }
         }
+    }
 
     return fillin + A->n;
 }
@@ -510,9 +579,9 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
 static real diag_pre_comp( const reax_system * const system, real * const Hdia_inv )
 {
     unsigned int i;
-    struct timeval start, stop;
+    real start;
 
-    gettimeofday( &start, NULL );
+    start = Get_Time( );
 
     #pragma omp parallel for schedule(guided) \
         default(none) private(i)
@@ -521,24 +590,22 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
         Hdia_inv[i] = 1.0 / system->reaxprm.sbp[system->atoms[i].type].eta;
     }
 
-    gettimeofday( &stop, NULL );
-    return (stop.tv_sec + stop.tv_usec / 1000000.0)
-        - (start.tv_sec + start.tv_usec / 1000000.0);
+    return Get_Timing_Info( start );
 }
 
 
-/* Incomplete Cholesky factorization with thresholding */
+/* Incomplete Cholesky factorization with dual thresholding */
 static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
             sparse_matrix * const L, sparse_matrix * const U )
 {
+    //TODO: either add compilation parameter or dynamically allocate
     int tmp_j[1000];
     real tmp_val[1000];
     int i, j, pj, k1, k2, tmptop, Ltop;
-    real val;
+    real val, start;
     int *Utop;
-    struct timeval start, stop;
 
-    gettimeofday( &start, NULL );
+    start = Get_Time( );
     
     Utop = (int*) malloc((A->n + 1) * sizeof(int));
 
@@ -567,7 +634,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
             val = A->val[pj];
             //fprintf( stderr, "i: %d, j: %d", i, j );
 
-            if ( fabs(val) > droptol[i] )
+            if ( FABS(val) > droptol[i] )
             {
                 k1 = 0;
                 k2 = L->start[j];
@@ -603,7 +670,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
         if ( A->j[pj] != i )
         {
             fprintf( stderr, "i=%d, badly built A matrix!\n", i );
-            exit(999);
+            exit( NUMERIC_BREAKDOWN );
         }
 
         val = A->val[pj];
@@ -623,7 +690,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
         //fprintf( stderr, "row(%d): droptol=%.4f\n", i+1, droptol[i] );
         for ( k1 = 0; k1 < tmptop; ++k1 )
         {
-            if ( fabs(tmp_val[k1]) > droptol[i] / tmp_val[tmptop] )
+            if ( FABS(tmp_val[k1]) > droptol[i] / tmp_val[tmptop] )
             {
                 L->j[Ltop] = tmp_j[k1];
                 L->val[Ltop] = tmp_val[k1];
@@ -662,9 +729,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
     free(Utop);
 
-    gettimeofday( &stop, NULL );
-    return (stop.tv_sec + stop.tv_usec / 1000000.0)
-        - (start.tv_sec + start.tv_usec / 1000000.0);
+    return Get_Timing_Info( start );
 }
 
 
@@ -678,12 +743,11 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                        sparse_matrix * const U_t, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x = 0, y = 0, ei_x, ei_y;
-    real *D, *D_inv, sum;
+    real *D, *D_inv, sum, start;
     sparse_matrix *DAD;
     int *Utop;
-    struct timeval start, stop;
 
-    gettimeofday( &start, NULL );
+    start = Get_Time( );
 
     if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
     {
@@ -691,9 +755,13 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         exit( INSUFFICIENT_MEMORY );
     }
 
-    D = (real*) malloc(A->n * sizeof(real));
-    D_inv = (real*) malloc(A->n * sizeof(real));
-    Utop = (int*) malloc((A->n + 1) * sizeof(int));
+    if( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
+            ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
+            ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL )
+    {
+        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -856,9 +924,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     free(D);
     free(Utop);
 
-    gettimeofday( &stop, NULL );
-    return (stop.tv_sec + stop.tv_usec / 1000000.0)
-        - (start.tv_sec + start.tv_usec / 1000000.0);
+    return Get_Timing_Info( start );
 }
 
 
@@ -869,18 +935,17 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
  * Fine-Grained Parallel Incomplete LU Factorization
  * SIAM J. Sci. Comp.
  * 
- * A: symmetric, half-format (lower triangular)
- * sweeps: number of ILUL_PAR loops over non-zeros
- * L / U: factorized matrices (A \approx LU) */
+ * A: symmetric, half-stored (lower triangular), CSR format
+ * sweeps: number of loops over non-zeros for computation
+ * L / U: factorized triangular matrices (A \approx LU), CSR format */
 static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
-                       sparse_matrix * const L, sparse_matrix * const U )
+        sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x, y, ei_x, ei_y;
-    real *D, *D_inv, sum;
+    real *D, *D_inv, sum, start;
     sparse_matrix *DAD;
-    struct timeval start, stop;
 
-    gettimeofday( &start, NULL );
+    start = Get_Time( );
 
     if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
     {
@@ -888,9 +953,12 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         exit( INSUFFICIENT_MEMORY );
     }
 
-    /*TODO: check malloc return status*/
-    D = (real*) malloc(A->n * sizeof(real));
-    D_inv = (real*) malloc(A->n * sizeof(real));
+    if( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
+            ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
+    {
+        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
 
     #pragma omp parallel for schedule(guided) \
         default(none) shared(D, D_inv) private(i)
@@ -1063,9 +1131,261 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     free( D_inv );
     free( D );
 
-    gettimeofday( &stop, NULL );
-    return (stop.tv_sec + stop.tv_usec / 1000000.0)
-        - (start.tv_sec + start.tv_usec / 1000000.0);
+    return Get_Timing_Info( start );
+}
+
+
+/* Fine-grained (parallel) incomplete LU factorization with thresholding
+ * 
+ * Reference:
+ * Edmond Chow and Aftab Patel
+ * Fine-Grained Parallel Incomplete LU Factorization
+ * SIAM J. Sci. Comp.
+ * 
+ * A: symmetric, half-stored (lower triangular), CSR format
+ * droptol: row-wise tolerances used for dropping
+ * sweeps: number of loops over non-zeros for computation
+ * L / U: factorized triangular matrices (A \approx LU), CSR format */
+static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
+        const unsigned int sweeps, sparse_matrix * const L, sparse_matrix * const U )
+{
+    unsigned int i, j, k, pj, x, y, ei_x, ei_y, Ltop, Utop;
+    real *D, *D_inv, sum, start;
+    sparse_matrix *DAD, *L_temp, *U_temp;
+
+    start = Get_Time( );
+
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 ||
+            Allocate_Matrix( &L_temp, A->n, A->m ) == 0 ||
+            Allocate_Matrix( &U_temp, A->n, A->m ) == 0 )
+    {
+        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    if( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
+            ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
+    {
+        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(D, D_inv) private(i)
+    for ( i = 0; i < A->n; ++i )
+    {
+        D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
+        D[i] = 1.0 / D_inv[i];
+    }
+
+    /* to get convergence, A must have unit diagonal, so apply
+     * transformation DAD, where D = D(1./sqrt(D(A))) */
+    memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(DAD, D) private(i, pj)
+    for ( i = 0; i < A->n; ++i )
+    {
+        /* non-diagonals */
+        for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
+        {
+            DAD->j[pj] = A->j[pj];
+            DAD->val[pj] = D[i] * A->val[pj] * D[A->j[pj]];
+        }
+        /* diagonal */
+        DAD->j[pj] = A->j[pj];
+        DAD->val[pj] = 1.0;
+    }
+
+    /* initial guesses for L and U,
+     * assume: A and DAD symmetric and stored lower triangular */
+    memcpy( L_temp->start, DAD->start, sizeof(int) * (DAD->n + 1) );
+    memcpy( L_temp->j, DAD->j, sizeof(int) * (DAD->start[DAD->n]) );
+    memcpy( L_temp->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
+    /* store U^T in CSR for row-wise access and tranpose later */
+    memcpy( U_temp->start, DAD->start, sizeof(int) * (DAD->n + 1) );
+    memcpy( U_temp->j, DAD->j, sizeof(int) * (DAD->start[DAD->n]) );
+    memcpy( U_temp->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
+
+    /* L has unit diagonal, by convention */
+    #pragma omp parallel for schedule(guided) \
+        default(none) private(i) shared(L_temp)
+    for ( i = 0; i < A->n; ++i )
+    {
+        L_temp->val[L_temp->start[i + 1] - 1] = 1.0;
+    }
+
+    for ( i = 0; i < sweeps; ++i )
+    {
+        /* for each nonzero in L */
+        #pragma omp parallel for schedule(guided) \
+            default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+        for ( j = 0; j < DAD->start[DAD->n]; ++j )
+        {
+            sum = ZERO;
+
+            /* determine row bounds of current nonzero */
+            x = 0;
+            ei_x = 0;
+            for ( k = 1; k <= DAD->n; ++k )
+            {
+                if ( DAD->start[k] > j )
+                {
+                    x = DAD->start[k - 1];
+                    ei_x = DAD->start[k];
+                    break;
+                }
+            }
+            /* determine column bounds of current nonzero */
+            y = DAD->start[DAD->j[j]];
+            ei_y = DAD->start[DAD->j[j] + 1];
+
+            /* sparse dot product:
+             *   dot( L(i,1:j-1), U(1:j-1,j) ) */
+            while ( L_temp->j[x] < L_temp->j[j] &&
+                    L_temp->j[y] < L_temp->j[j] &&
+                    x < ei_x && y < ei_y )
+            {
+                if ( L_temp->j[x] == L_temp->j[y] )
+                {
+                    sum += (L_temp->val[x] * U_temp->val[y]);
+                    ++x;
+                    ++y;
+                }
+                else if ( L_temp->j[x] < L_temp->j[y] )
+                {
+                    ++x;
+                }
+                else
+                {
+                    ++y;
+                }
+            }
+
+            if( j != ei_x - 1 )
+            {
+                L_temp->val[j] = ( DAD->val[j] - sum ) / U_temp->val[ei_y - 1];
+            }
+        }
+
+        #pragma omp parallel for schedule(guided) \
+            default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+        for ( j = 0; j < DAD->start[DAD->n]; ++j )
+        {
+            sum = ZERO;
+
+            /* determine row bounds of current nonzero */
+            x = 0;
+            ei_x = 0;
+            for ( k = 1; k <= DAD->n; ++k )
+            {
+                if ( DAD->start[k] > j )
+                {
+                    x = DAD->start[k - 1];
+                    ei_x = DAD->start[k];
+                    break;
+                }
+            }
+            /* determine column bounds of current nonzero */
+            y = DAD->start[DAD->j[j]];
+            ei_y = DAD->start[DAD->j[j] + 1];
+
+            /* sparse dot product:
+             *   dot( L(i,1:i-1), U(1:i-1,j) ) */
+            while ( U_temp->j[x] < U_temp->j[j] &&
+                    U_temp->j[y] < U_temp->j[j] &&
+                    x < ei_x && y < ei_y )
+            {
+                if ( U_temp->j[x] == U_temp->j[y] )
+                {
+                    sum += (L_temp->val[y] * U_temp->val[x]);
+                    ++x;
+                    ++y;
+                }
+                else if ( U_temp->j[x] < U_temp->j[y] )
+                {
+                    ++x;
+                }
+                else
+                {
+                    ++y;
+                }
+            }
+
+            U_temp->val[j] = DAD->val[j] - sum;
+        }
+    }
+
+    /* apply inverse transformation:
+     * since DAD \approx LU, then
+     * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(DAD, L_temp, U_temp, D_inv) private(i, pj)
+    for ( i = 0; i < DAD->n; ++i )
+    {
+        for ( pj = DAD->start[i]; pj < DAD->start[i + 1]; ++pj )
+        {
+            L_temp->val[pj] = D_inv[i] * L_temp->val[pj];
+            /* currently storing U^T, so use row index instead of column index */
+            U_temp->val[pj] = U_temp->val[pj] * D_inv[i];
+        }
+    }
+
+    /* apply the dropping rule */
+    Ltop = 0;
+    Utop = 0;
+    for ( i = 0; i < DAD->n; ++i )
+    {
+        L->start[i] = Ltop;
+        U->start[i] = Utop;
+
+        for ( pj = L_temp->start[i]; pj < L_temp->start[i + 1] - 1; ++pj )
+        {
+            if ( FABS( L_temp->val[pj] ) > FABS( droptol[i] / L_temp->val[L_temp->start[i + 1] - 1] ) )
+            {
+                L->j[Ltop] = L_temp->j[pj];
+                L->val[Ltop] = L_temp->val[pj];
+                ++Ltop;
+            }
+        }
+
+        /* diagonal */
+        L->j[Ltop] = L_temp->j[pj];
+        L->val[Ltop] = L_temp->val[pj];
+        ++Ltop;
+
+        for ( pj = U_temp->start[i]; pj < U_temp->start[i + 1] - 1; ++pj )
+        {
+            if ( FABS( U_temp->val[pj] ) > FABS( droptol[i] / U_temp->val[U_temp->start[i + 1] - 1] ) )
+            {
+                U->j[Utop] = U_temp->j[pj];
+                U->val[Utop] = U_temp->val[pj];
+                ++Utop;
+            }
+        }
+
+        /* diagonal */
+        U->j[Utop] = U_temp->j[pj];
+        U->val[Utop] = U_temp->val[pj];
+        ++Utop;
+    }
+
+    L->start[i] = Ltop;
+    U->start[i] = Utop;
+
+    Transpose_I( U );
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "nnz(L): %d\n", L->start[L->n] );
+    fprintf( stderr, "nnz(U): %d\n", U->start[U->n] );
+#endif
+
+    Deallocate_Matrix( U_temp );
+    Deallocate_Matrix( L_temp );
+    Deallocate_Matrix( DAD );
+    free( D_inv );
+    free( D );
+
+    return Get_Timing_Info( start );
 }
 
 
@@ -1179,6 +1499,26 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 //                Print_Sparse_Matrix2( U_test, "U_SLU.out" );
 //                exit( 0 );
 		break;
+	    case ILUT_PAR_PC:
+                Calculate_Droptol( workspace->H, workspace->droptol, control->pre_comp_droptol );
+#if defined(DEBUG_FOCUS)
+                fprintf( stderr, "drop tolerances calculated\n" );
+#endif
+
+                if ( workspace->L == NULL )
+                {
+                    /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+                    if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
+                            Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
+                    {
+                        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                        exit( INSUFFICIENT_MEMORY );
+                    }
+                }
+
+                data->timing.pre_comp += ILUT_PAR( workspace->H, workspace->droptol, control->pre_comp_sweeps,
+                        workspace->L, workspace->U );
+                break;
 	    case ILU_SUPERLU_MT_PC:
                 if ( workspace->L == NULL )
                 {

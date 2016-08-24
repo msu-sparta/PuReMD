@@ -617,6 +617,7 @@ void apply_preconditioner( const static_storage * const workspace, real * const 
                     break;
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
+                case ILUT_PAR_PC:
                     tri_solve( LU, y, x, tri );
                     break;
                 default:
@@ -631,6 +632,7 @@ void apply_preconditioner( const static_storage * const workspace, real * const 
                     break;
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
+                case ILUT_PAR_PC:
                     tri_solve_level_sched( LU, y, x, tri, extra );
                     break;
                 default:
@@ -646,6 +648,7 @@ void apply_preconditioner( const static_storage * const workspace, real * const 
                     break;
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
+                case ILUT_PAR_PC:
                     if ( tri == LOWER )
                     {
                         if ( Dinv_L == NULL )

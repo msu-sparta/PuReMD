@@ -58,6 +58,7 @@
 #define COS    cos
 #define SIN    sin
 #define TAN    tan
+#define FABS   fabs
 #define FMOD   fmod
 
 #define SQR(x)        ((x)*(x))
@@ -195,7 +196,7 @@ enum solver
 
 enum pre_comp
 {
-    DIAG_PC = 0, ICHOLT_PC = 1, ILU_PAR_PC = 2, ILU_SUPERLU_MT_PC = 3,
+    DIAG_PC = 0, ICHOLT_PC = 1, ILU_PAR_PC = 2, ILUT_PAR_PC = 3, ILU_SUPERLU_MT_PC = 4,
 };
 
 enum pre_app
