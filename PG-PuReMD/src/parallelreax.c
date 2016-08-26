@@ -415,7 +415,7 @@ int main( int argc, char* argv[] )
     validate_device (system, data, workspace, lists);
 #endif
 
-#else
+#else 
 
     /* allocated main datastructures */
     system = (reax_system *)
@@ -426,18 +426,43 @@ int main( int argc, char* argv[] )
            smalloc( sizeof(simulation_data), "data" );
     workspace = (storage *)
                 smalloc( sizeof(storage), "workspace" );
+
     lists = (reax_list **)
             smalloc( LIST_N * sizeof(reax_list*), "lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
+/*
         lists[i] = (reax_list *)
                    smalloc( sizeof(reax_list), "lists[i]" );
+        lists[i]->allocated = 0;*/
+
+	lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
         lists[i]->allocated = 0;
+
+        //initialize here TODO
+        lists[i]->n = 0; 
+        lists[i]->num_intrs = 0;
+        lists[i]->index = NULL;
+        lists[i]->end_index = NULL;
+        lists[i]->select.v = NULL;
     }
     out_control = (output_controls *)
                   smalloc( sizeof(output_controls), "out_control" );
     mpi_data = (mpi_datatypes *)
                smalloc( sizeof(mpi_datatypes), "mpi_data" );
+
+    /* allocate the cuda auxiliary data structures */
+    dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
+
+    dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
+        dev_lists[i]->allocated = 0;
+    }
+
+    /* Initialize member variables */
+    system->init_thblist = FALSE;
 
     /* setup the parallel environment */
     MPI_Init( &argc, &argv );
@@ -458,9 +483,9 @@ int main( int argc, char* argv[] )
     /* measure total simulation time after input is read */
     if ( system->my_rank == MASTER_NODE )
         t_start = Get_Time( );
-
     /* initialize datastructures */
     Initialize( system, control, data, workspace, lists, out_control, mpi_data );
+   
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
     MPI_Barrier( mpi_data->world );
@@ -469,6 +494,7 @@ int main( int argc, char* argv[] )
     /* compute f_0 */
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
     Reset( system, control, data, workspace, lists );
+    //Print_List(*lists + BONDS);
     Generate_Neighbor_Lists( system, data, workspace, lists );
     Compute_Forces( system, control, data, workspace,
                     lists, out_control, mpi_data );
@@ -504,7 +530,7 @@ int main( int argc, char* argv[] )
         MPI_Barrier( mpi_data->world );
 #endif
     }
-
+    
 #endif
 
     /* end of the simulation, write total simulation time */

@@ -29,7 +29,19 @@
 #include "reax_tool_box.h"
 #endif
 
+void Print_List(reax_list* list){
+	//printf("List_Print\n");
+	int i;
+        printf("START INDICES \n");
+	for (i=0;i<list->n;i++){
+		printf("%d \n",list->index[i]);
+	}
+	printf("END INDICES \n");
+	for (i=0;i<list->n;i++){
+		printf("%d \n", list->end_index[i]);
+	}
 
+}
 /************* allocate list space ******************/
 int Make_List(int n, int num_intrs, int type, reax_list *l)
 {
@@ -40,7 +52,7 @@ int Make_List(int n, int num_intrs, int type, reax_list *l)
 
     l->index = (int*) smalloc( n * sizeof(int), "list:index" );
     l->end_index = (int*) smalloc( n * sizeof(int), "list:end_index" );
-
+//printf("SUCCESS\n");
     l->type = type;
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "list: n=%d num_intrs=%d type=%d\n", n, num_intrs, type );

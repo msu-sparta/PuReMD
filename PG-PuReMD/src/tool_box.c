@@ -425,8 +425,11 @@ void* smalloc( long n, char *name )
         fprintf( stderr, "returning NULL.\n" );
         return NULL;
     }
-
+    //printf("requesting memory for %s \n", name);
+    //malloc( n );
+    //printf("successfuly requested memory for %s \n", name);
     ptr = malloc( n );
+    // printf("successfuly assigned pointer for %s \n", name);
     if ( ptr == NULL )
     {
         fprintf( stderr, "ERROR: failed to allocate %ld bytes for array %s",

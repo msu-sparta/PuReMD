@@ -118,11 +118,7 @@ void Bonds( reax_system *system, control_params *control,
                             (sbp_i->mass == 12.0000 && sbp_j->mass == 15.9990) ||
                             (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) )
                     {
-
-                        //SUDHIR
-                        //TO BE REMOVED
-                        fprintf (stderr, "hit the condition ... \n");
-                        exit (0);
+						
 
                         exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.50) );
                         exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));

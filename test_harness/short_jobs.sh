@@ -67,36 +67,31 @@ mv zno.6912.out zno.6912_mpi_gpu.out
 mv zno.6912.pot zno.6912_mpi_gpu.pot
 mv zno.6912.trj zno.6912_mpi_gpu.trj
 
-# Skipping MPI-NOT-GPU for now, not working yet
-if false
-then
-
 ####################
 # MPI-NOT-GPU Runs #
 ####################
 
-# Compile for MPI-NOT-GPU
-cd ..
-./configure --enable-openmp=no --enable-mpi-not-gpu=yes
-make clean && make
-cd tools
-
-mpirun -np 2 ../PG-PuReMD/src/pg-puremd water_6540.pdb ffield.water water_6540_control
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/water/water_6540.pdb ../data/benchmarks/water/ffield.water water_6540_control
 
 mv water.6540.log water.6540_mpi_not_gpu.log
 mv water.6540.out water.6540_mpi_not_gpu.out
 mv water.6540.pot water.6540_mpi_not_gpu.pot
 mv water.6540.trj water.6540_mpi_not_gpu.trj
 
-mpirun -np 2 ../PG-PuReMD/src/pg-puremd silica_6000.pdb ffield.water silica_6000_control
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/silica/silica_6000.pdb ../data/benchmarks/silica/ffield-bio silica_6000_control
 
 mv silica.6000.log silica.6000_mpi_not_gpu.log
 mv silica.6000.out silica.6000_mpi_not_gpu.out
 mv silica.6000.pot silica.6000_mpi_not_gpu.pot
 mv silica.6000.trj silica.6000_mpi_not_gpu.trj
 
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/metal/zno_6912.pdb ../data/benchmarks/metal/ffield.zno zno_6912_control
 
-fi
+mv zno.6912.log zno.6912_mpi_not_gpu.log
+mv zno.6912.out zno.6912_mpi_not_gpu.out
+mv zno.6912.pot zno.6912_mpi_not_gpu.pot
+mv zno.6912.trj zno.6912_mpi_not_gpu.trj
+
 
 
 

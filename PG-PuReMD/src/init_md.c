@@ -162,6 +162,22 @@ int Init_System( reax_system *system, control_params *control,
     Bin_Boundary_Atoms( system );
 
     /* estimate numH and Hcap */
+
+    system->numH = 0;
+    if ( control->hbond_cut > 0 )
+        for ( i = 0; i < system->n; ++i )
+        {
+            atom = &(system->my_atoms[i]);
+            if ( system->reax_param.sbp[ atom->type ].p_hbond == 1 )
+                atom->Hindex = system->numH++;
+            else atom->Hindex = -1;
+        }
+    //Tried fix
+    //system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
+    system->Hcap = MAX( system->n * SAFER_ZONE, MIN_CAP );
+    //printf("numH: %d, Hcap: %d \n", system->numH, system->Hcap);
+// Sudhir-style below
+/*
     system->numH = 0;
     if ( control->hbond_cut > 0 )
         for ( i = 0; i < system->n; ++i )
@@ -172,6 +188,9 @@ int Init_System( reax_system *system, control_params *control,
             else atom->Hindex = -1;
         }
     system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
+*/
+
+//Sync_System (system);
 
     //Allocate_System( system, system->local_cap, system->total_cap, msg );
 #if defined(DEBUG_FOCUS)
@@ -247,7 +266,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
             //else atom->Hindex = -1;
         }
     system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
-
+    
     //Allocate_System( system, system->local_cap, system->total_cap, msg );
 
     //Sync atoms here to continue the computation
@@ -722,6 +741,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     //for( i = 0; i < MAX_NBRS; ++i ) nrecv[i] = system->my_nbrs[i].est_recv;
     //system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
     //        Sort_Boundary_Atoms, Unpack_Exchange_Message, 1 );
+
     num_nbrs = Estimate_NumNeighbors( system, lists );
     if (!Make_List(system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR, *lists + FAR_NBRS))
     {
@@ -736,13 +756,19 @@ int  Init_Lists( reax_system *system, control_params *control,
 
     Generate_Neighbor_Lists( system, data, workspace, lists );
     bond_top = (int*) calloc( system->total_cap, sizeof(int) );
-    //hb_top = (int*) calloc( system->local_cap, sizeof(int) );
-    hb_top = (int*) calloc( system->Hcap, sizeof(int) );
-
+    hb_top = (int*) calloc( system->local_cap, sizeof(int) );
+    //hb_top = (int*) calloc( system->Hcap, sizeof(int) );
+    //printf("HCap: %d \n", system->Hcap);i
+    
     Estimate_Storages( system, control, lists,
                        &Htop, hb_top, bond_top, &num_3body );
-
+  //Host_Estimate_Sparse_Matrix( system, control, lists, system->local_cap, system->total_cap,
+      //                      &Htop, hb_top, bond_top, &num_3body );
+    
+  
+    //printf("%p , %d , %d \n", (void*)&(workspace->H), system->local_cap,Htop);
     Allocate_Matrix( &(workspace->H), system->local_cap, Htop );
+    
     //MATRIX CHANGES
     //workspace->L = NULL;
     //workspace->U = NULL;
@@ -754,7 +780,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 
     if ( control->hbond_cut > 0 )
     {
-        /* init H indexes */
+        // init H indexes
         total_hbonds = 0;
         for ( i = 0; i < system->n; ++i )
         {
@@ -762,6 +788,10 @@ int  Init_Lists( reax_system *system, control_params *control,
             total_hbonds += hb_top[i];
         }
         total_hbonds = MAX( total_hbonds * SAFER_ZONE, MIN_CAP * MIN_HBONDS );
+
+       // DANIEL, to make Mpi_Not_Gpu_Validate_Lists() not complain that system->max_bonds is 0
+       system->max_hbonds = total_hbonds * SAFER_ZONE;
+
 
         if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND, *lists + HBONDS) )
         {
@@ -785,6 +815,10 @@ int  Init_Lists( reax_system *system, control_params *control,
         total_bonds += bond_top[i];
     }
     bond_cap = MAX( total_bonds * SAFE_ZONE, MIN_CAP * MIN_BONDS );
+ 
+
+    // DANIEL, to make Mpi_Not_Gpu_Validate_Lists() not complain that system->max_bonds is 0
+    system->max_bonds = total_bonds * SAFER_ZONE;
 
     if ( !Make_List( system->total_cap, bond_cap, TYP_BOND, *lists + BONDS) )
     {
@@ -1053,6 +1087,9 @@ void Initialize( reax_system *system, control_params *control,
                  reax_list **lists, output_controls *out_control,
                  mpi_datatypes *mpi_data )
 {
+
+    host_scratch = (void *)malloc (HOST_SCRATCH_SIZE );
+
     char msg[MAX_STR];
 
     if ( Init_MPI_Datatypes( system, workspace, mpi_data, msg ) == FAILURE )
@@ -1317,7 +1354,7 @@ void Initialize( reax_system *system, control_params *control,
                  mpi_datatypes *mpi_data )
 {
     char msg[MAX_STR];
-
+    host_scratch = (void *)malloc (HOST_SCRATCH_SIZE );
     if ( Init_System(system, msg) == FAILURE )
     {
         fprintf( stderr, "p%d: %s\n", system->my_rank, msg );

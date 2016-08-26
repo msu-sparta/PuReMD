@@ -27,7 +27,7 @@
 #ifdef _cplusplus
 extern "C" {
 #endif
-
+    void Print_List(reax_list*);
     int  Make_List( int, int, int, reax_list*);
     void Delete_List( reax_list*);
 

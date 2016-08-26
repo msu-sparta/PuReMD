@@ -431,15 +431,19 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m )
 
 int Allocate_Matrix( sparse_matrix *H, int cap, int m )
 {
-    //H = (sparse_matrix*) smalloc(sizeof(sparse_matrix), "sparse_matrix");
+
+   // printf("cap: %d, m: %d \n", H->cap, H->m);
+   // H = (sparse_matrix*) smalloc(sizeof(sparse_matrix), "sparse_matrix");
     H->cap = cap;
     H->m = m;
+
     H->start = (int*) smalloc(sizeof(int) * cap, "matrix_start");
     H->end = (int*) smalloc(sizeof(int) * cap, "matrix_end");
     H->entries = (sparse_matrix_entry*)
                  smalloc(sizeof(sparse_matrix_entry) * m, "matrix_entries");
 
     return SUCCESS;
+
 }
 
 
@@ -961,7 +965,9 @@ void ReAllocate( reax_system *system, control_params *control,
                 (0 && system->numH <= LOOSE_ZONE * system->Hcap) )
         {
             Hflag = 1;
-            system->Hcap = (int)(system->numH * SAFE_ZONE);
+            //system->Hcap = (int)(system->numH * SAFE_ZONE);
+            // Tried fix
+            system->Hcap = (int)(system->n * SAFE_ZONE);
         }
 
         if ( Hflag || realloc->hbonds )

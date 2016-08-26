@@ -201,7 +201,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
             Set_End_Index( i, total_bonds, bonds );
             total_bonds += system->my_atoms[i].num_bonds;
         }
-
+//	Print_List(*lists + BONDS);
         /* is reallocation needed? */
         if ( total_bonds >= bonds->num_intrs * DANGER_ZONE )
         {
@@ -222,13 +222,19 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
     /* hbonds list */
     if ( control->hbond_cut > 0 && system->numH > 0 )
     {
+//	Print_List(*lists + BONDS);
+
         hbonds = (*lists) + HBONDS;
+//	printf("bonds enum: %d, bonds pointer: %ld ::: hbonds enum: %d, hbonds pointer: %ld \n", BONDS, bonds, HBONDS, hbonds);
+        //hbonds = &(lists[HBONDS]);
         total_hbonds = 0;
 
         /* reset start-end indexes */
         for ( i = 0; i < system->n; ++i )
         {
+
             Hindex = system->my_atoms[i].Hindex;
+//	    printf("i: %d, Hindex: %d \n", i, Hindex);
             if ( Hindex > -1 )
             {
                 Set_Start_Index( Hindex, total_hbonds, hbonds );
@@ -236,7 +242,8 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
                 total_hbonds += system->my_atoms[i].num_hbonds;
             }
         }
-
+	
+//	Print_List(*lists + BONDS);
         /* is reallocation needed? */
         if ( total_hbonds >= hbonds->num_intrs * 0.90/*DANGER_ZONE*/ )
         {

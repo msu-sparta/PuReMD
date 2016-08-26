@@ -246,6 +246,33 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
                     MPI_Abort( comm, INSUFFICIENT_MEMORY );
                 }
             }
+/*
+            if ( Hindex > -1 )
+            {
+                system->my_atoms[i].num_hbonds =
+                    MAX( Num_Entries(Hindex, hbonds) * SAFER_ZONE, MIN_HBONDS );
+*/
+                //if( Num_Entries(i, hbonds) >=
+                //(Start_Index(i+1,hbonds)-Start_Index(i,hbonds))*0.90/*DANGER_ZONE*/){
+                //  workspace->realloc.hbonds = 1;
+/*
+                //TODO
+                if ( Hindex < system->n - 1 )
+                    comp = Start_Index(Hindex + 1, hbonds);
+                else comp = hbonds->num_intrs;
+
+                if ( End_Index(Hindex, hbonds) > comp )
+                {
+                    fprintf(stderr, "step%d-hbondchk failed: H=%d end(H)=%d str(H+1)=%d\n",
+                            step, Hindex, End_Index(Hindex, hbonds), comp );
+                    MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+                }
+            }
+		
+*/
+
+
+
         }
     }
 }

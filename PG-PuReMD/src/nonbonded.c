@@ -340,6 +340,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
 void Compute_Polarization_Energy( reax_system *system, simulation_data *data )
 {
+/*
     int  i, type_i;
     real q;
 
@@ -352,7 +353,25 @@ void Compute_Polarization_Energy( reax_system *system, simulation_data *data )
         data->my_en.e_pol +=
             KCALpMOL_to_EV * (system->reax_param.sbp[type_i].chi * q +
                               (system->reax_param.sbp[type_i].eta / 2.) * SQR(q));
+    }*/
+
+   int  i, type_i;
+    real q;
+
+    data->my_en.e_pol = 0.0;
+    for ( i = 0; i < system->n; i++ )
+    {
+        q = system->my_atoms[i].q;
+        type_i = system->my_atoms[i].type;
+
+        data->my_en.e_pol +=
+            KCALpMOL_to_EV * (system->reax_param.sbp[type_i].chi * q +
+                              (system->reax_param.sbp[type_i].eta / 2.) * SQR(q));
     }
+ 
+
+
+
 }
 
 

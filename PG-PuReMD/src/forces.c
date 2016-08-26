@@ -236,6 +236,273 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
 #endif
 
 
+
+// Essentially no-cuda copies of cuda kernels, to be used only in the mpi-not-gpu version
+////////////////////////
+// HBOND ISSUE
+void mpi_not_gpu_update_bonds (reax_atom *my_atoms,
+        reax_list bonds,
+        int n)
+{
+//    int i = blockIdx.x * blockDim.x + threadIdx.x;
+  //  if (i >= n) return;
+      int i;
+      for (i=0;i<n;i++){
+        my_atoms [i].num_bonds =
+         MAX(Num_Entries(i, &bonds) * 2, MIN_BONDS);
+      }
+}
+
+
+void mpi_not_gpu_update_hbonds (reax_atom *my_atoms,
+        reax_list hbonds,
+        int n)
+{
+    int Hindex;
+    int i;
+    //int i = blockIdx.x * blockDim.x + threadIdx.x;
+    //if (i >= n) return;
+    for (i=0;i<n;i++){
+        Hindex = my_atoms[i].Hindex;
+        my_atoms [i].num_hbonds =
+            MAX(Num_Entries(Hindex, &hbonds) * SAFER_ZONE, MIN_HBONDS);
+    }
+}
+
+// Essentially a copy of cuda_validate_lists, but with all cuda-dependent kernels turned into serial versions
+int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_list **lists, control_params *control,
+        int step, int n, int N, int numH )
+{
+    int blocks;
+    int i, comp, Hindex;
+    int *index, *end_index;
+    reax_list *bonds, *hbonds;
+    reax_atom *my_atoms;
+    reallocate_data *realloc;
+    realloc = &( workspace->realloc);
+
+    int max_sp_entries, num_hbonds, num_bonds;
+    int total_sp_entries;
+
+
+
+    
+
+
+
+    //blocks = system->n / DEF_BLOCK_SIZE +
+    //    ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+    //ker_update_bonds <<< blocks, DEF_BLOCK_SIZE >>>
+    //    (system->d_my_atoms, *(*lists + BONDS),
+      //   system->n);
+    //cudaThreadSynchronize ();
+    //cudaCheckError ();
+   mpi_not_gpu_update_bonds(system->my_atoms, *(*lists + BONDS),system->n);
+
+    ////////////////////////
+    // HBOND ISSUE
+    //FIX - 4 - Added this check for hydrogen bond issue
+    if ((control->hbond_cut > 0) && (system->numH > 0)){
+        //ker_update_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
+        //    (system->d_my_atoms, *(*lists + HBONDS),
+        //     system->n);
+        //cudaThreadSynchronize ();
+        //cudaCheckError ();
+        mpi_not_gpu_update_hbonds(system->my_atoms, *(*lists + HBONDS),system->n);
+
+    }
+
+    //validate sparse matrix entries.
+    //memset (host_scratch, 0, 2 * system->N * sizeof (int));
+    //index = (int *) host_scratch;
+    //end_index = index + system->N;
+    
+    index = workspace->H.start;
+    end_index = workspace->H.end;
+    
+    // immediately set these to host version since there is no device version.
+    //memcpy(index, workspace->H.start, system->N * sizeof (int));
+    //memcpy(end_index, workspace->H.end, system->N * sizeof (int));
+
+
+
+    // don't need these, everything is already at host
+    //copy_host_device (index, dev_workspace->H.start, system->N * sizeof (int),
+    //        cudaMemcpyDeviceToHost, "sparse_matrix:start" );
+    //copy_host_device (end_index, dev_workspace->H.end, system->N * sizeof (int),
+    //        cudaMemcpyDeviceToHost, "sparse_matrix:end" );
+    max_sp_entries = total_sp_entries = 0;
+    //printf("max sparsematrix entries: %d \n", system->max_sparse_entries);
+    for (i = 0; i < n; i++ ){
+        //if (i < N-1)
+        //    comp = index [i+1];
+        //else
+        //    comp = dev_workspace->H.m;
+
+        total_sp_entries += end_index [i] - index[i];
+        if (end_index [i] - index[i] > system->max_sparse_entries) {
+            fprintf( stderr, "step%d-sparsemat-chk failed: i=%d start(i)=%d end(i)=%d \n",
+                    step, i, index[i], end_index[i] );
+            return FAILURE;
+        } else if (end_index[i] >= workspace->H.m) {
+            //SUDHIR_FIX_SPARSE_MATRIX
+            //TODO move this carver
+            //TODO move this carver
+            //TODO move this carver
+            fprintf (stderr, "p:%d - step%d-sparsemat-chk failed (exceed limits): i=%d start(i)=%d end(i)=%d \n",
+                    system->my_rank, step, i, index[i], end_index[i]);
+            //TODO move this carver
+            //TODO move this carver
+            //TODO move this carver
+            return FAILURE;
+        } else {
+            if (max_sp_entries <= end_index[i] - index [i])
+                max_sp_entries = end_index[i] - index [i];
+        }
+    }
+    //if (max_sp_entries <= end_index[i] - index [i])
+    //    max_sp_entries = end_index[i] - index [i];
+
+    //update the current step max_sp_entries;
+    realloc->Htop = max_sp_entries;
+    fprintf (stderr, "p:%d - MPI-Not-GPU Reallocate: Total H matrix entries: %d, cap: %d, used: %d \n",
+            system->my_rank, workspace->H.n, workspace->H.m, total_sp_entries);
+
+    if (total_sp_entries >= workspace->H.m) {
+        fprintf (stderr, "p:%d - **ran out of space for sparse matrix: step: %d, allocated: %d, used: %d \n",
+                system->my_rank, step, workspace->H.m, total_sp_entries);
+
+        return FAILURE;
+    }
+
+
+    //validate Bond list
+    if (N > 0) {
+        num_bonds = 0;
+
+        bonds = *lists + BONDS;
+      //  memset (host_scratch, 0, 2 * bonds->n * sizeof (int));
+
+      //  index = (int *) host_scratch;
+       // end_index = index + bonds->n;
+          index = bonds->index;
+          end_index = bonds->end_index;        
+
+
+      //  memcpy(index, bonds->index, bonds->n * sizeof (int));
+       // memcpy(end_index, bonds->end_index, bonds->n * sizeof (int));
+/*
+        copy_host_device (index, bonds->index, bonds->n * sizeof (int),
+                cudaMemcpyDeviceToHost, "bonds:index");
+        copy_host_device (end_index, bonds->end_index, bonds->n * sizeof (int),
+                cudaMemcpyDeviceToHost, "bonds:end_index");
+*/
+        /*
+           for (i = 0; i < N; i++) {
+           if (i < N-1)
+           comp = index [i+1];
+           else
+           comp = bonds->num_intrs;
+
+           if (end_index [i] > comp) {
+           fprintf( stderr, "step%d-bondchk failed: i=%d start(i)=%d end(i)=%d str(i+1)=%d\n",
+           step, i, index[i], end_index[i], comp );
+           return FAILURE;
+           }
+
+           num_bonds += MAX( (end_index[i] - index[i]) * 4, MIN_BONDS);
+           }
+
+           if (end_index[N-1] >= bonds->num_intrs) {
+           fprintf( stderr, "step%d-bondchk failed(end): i=N-1 start(i)=%d end(i)=%d num_intrs=%d\n",
+           step, index[N-1], end_index[N-1], bonds->num_intrs);
+           return FAILURE;
+           }
+           num_bonds = MAX( num_bonds, MIN_CAP*MIN_BONDS );
+        //check the condition for reallocation
+        realloc->num_bonds = num_bonds;
+         */
+
+        int max_bonds = 0;
+        for (i = 0; i < N; i++) {
+            //printf("i: %d, index[i]: %d, end_index[i]: %d \n", i, index[i], end_index[i]);
+            if (end_index[i] - index[i] >= system->max_bonds) {
+                fprintf( stderr, "MPI-Not-GPU step%d-bondchk failed: i=%d start(i)=%d end(i)=%d max_bonds=%d\n",
+                        step, i, index[i], end_index[i], system->max_bonds);
+                return FAILURE;
+            }
+            if (end_index[i] - index[i] >= max_bonds)
+                max_bonds = end_index[i] - index[i];
+        }
+        realloc->num_bonds = max_bonds;
+
+    }
+    //printf("hbonds->n : %d \n", hbonds->n);
+    //validate Hbonds list
+    num_hbonds = 0;
+    // FIX - 4 - added additional check here
+    if ((numH > 0) && (control->hbond_cut > 0)) {
+        hbonds = *lists + HBONDS;
+        memset (host_scratch, 0, 2 * hbonds->n * sizeof (int) + sizeof (reax_atom) * system->N);
+        index = (int *) host_scratch;
+        end_index = index + hbonds->n;
+        my_atoms = (reax_atom *)(end_index + hbonds->n);
+/*
+        copy_host_device (index, hbonds->index, hbonds->n * sizeof (int),
+                cudaMemcpyDeviceToHost, "hbonds:index");
+        copy_host_device (end_index, hbonds->end_index, hbonds->n * sizeof (int),
+                cudaMemcpyDeviceToHost, "hbonds:end_index");
+        copy_host_device (my_atoms, system->d_my_atoms, system->N * sizeof (reax_atom),
+                cudaMemcpyDeviceToHost, "system:d_my_atoms");
+*/
+        //fprintf (stderr, " Total local atoms: %d \n", n);
+
+        /*
+           for (i = 0; i < N-1; i++) {
+           Hindex = my_atoms [i].Hindex;
+           if (Hindex > -1) 
+           comp = index [Hindex + 1];
+           else
+           comp = hbonds->num_intrs;
+
+           if (end_index [Hindex] > comp) {
+           fprintf(stderr,"step%d-atom:%d hbondchk failed: H=%d start(H)=%d end(H)=%d str(H+1)=%d\n",
+           step, i, Hindex, index[Hindex], end_index[Hindex], comp );
+           return FAILURE;
+           }
+
+           num_hbonds += MAX( (end_index [Hindex] - index [Hindex]) * 2, MIN_HBONDS * 2);
+           }
+           if (end_index [my_atoms[i].Hindex] > hbonds->num_intrs) {
+           fprintf(stderr,"step%d-atom:%d hbondchk failed: H=%d start(H)=%d end(H)=%d num_intrs=%d\n",
+           step, i, Hindex, index[Hindex], end_index[Hindex], hbonds->num_intrs);
+           return FAILURE;
+           }
+
+           num_hbonds += MIN( (end_index [my_atoms[i].Hindex] - index [my_atoms[i].Hindex]) * 2, 
+           2 * MIN_HBONDS);
+           num_hbonds = MAX( num_hbonds, MIN_CAP*MIN_HBONDS );
+           realloc->num_hbonds = num_hbonds;
+         */
+
+        int max_hbonds = 0;
+        for (i = 0; i < N; i++) {
+            if (end_index[i] - index[i] >= system->max_hbonds) {
+                fprintf( stderr, "step%d-hbondchk failed: i=%d start(i)=%d end(i)=%d max_hbonds=%d\n",
+                        step, i, index[i], end_index[i], system->max_hbonds);
+                return FAILURE;
+            }
+            if (end_index[i] - index[i] >= max_hbonds)
+                max_hbonds = end_index[i] - index[i];
+        }
+        realloc->num_hbonds = max_hbonds;
+    }
+
+    return SUCCESS;
+}
+                                                                                                                                           
+/*
 void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
                      int step, int n, int N, int numH )
 {
@@ -244,7 +511,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     reallocate_data *realloc;
     realloc = &(workspace->realloc);
 
-    /* bond list */
+    // bond list 
     if ( N > 0 )
     {
         bonds = *lists + BONDS;
@@ -271,7 +538,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     }
 
 
-    /* hbonds list */
+    // hbonds list 
     if ( numH > 0 )
     {
         hbonds = *lists + HBONDS;
@@ -283,11 +550,11 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
             {
                 system->my_atoms[i].num_hbonds =
                     MAX( Num_Entries(Hindex, hbonds) * SAFER_ZONE, MIN_HBONDS );
-
+*/
                 //if( Num_Entries(i, hbonds) >=
                 //(Start_Index(i+1,hbonds)-Start_Index(i,hbonds))*0.90/*DANGER_ZONE*/){
                 //  workspace->realloc.hbonds = 1;
-
+/*
                 //TODO
                 if ( Hindex < system->n - 1 )
                     comp = Start_Index(Hindex + 1, hbonds);
@@ -302,7 +569,104 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
             }
         }
     }
+}*/
+
+
+void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
+                     int step, int n, int N, int numH, MPI_Comm comm )
+{
+    int i, comp, Hindex;
+    reax_list *bonds, *hbonds;
+    reallocate_data *realloc;
+    realloc = &(workspace->realloc);
+
+    /* bond list */
+    if ( N > 0 )
+    {
+        bonds = *lists + BONDS;
+
+        for ( i = 0; i < N; ++i )
+        {
+            // if( i < n ) - we need to update ghost estimates for delayed nbrings
+            system->my_atoms[i].num_bonds = MAX(Num_Entries(i, bonds) * 2, MIN_BONDS);
+
+            //if( End_Index(i, bonds) >= Start_Index(i+1, bonds)-2 )
+            //workspace->realloc.bonds = 1;
+
+            if ( i < N - 1 )
+                comp = Start_Index(i + 1, bonds);
+            else comp = bonds->num_intrs;
+
+            if ( End_Index(i, bonds) > comp )
+            {
+                fprintf( stderr, "step%d-bondchk failed: i=%d end(i)=%d str(i+1)=%d\n",
+                         step, i, End_Index(i, bonds), comp );
+                MPI_Abort( comm, INSUFFICIENT_MEMORY );
+            }
+        }
+    }
+
+
+    /* hbonds list */
+    if ( numH > 0 )
+    {
+        hbonds = *lists + HBONDS;
+
+        for ( i = 0; i < n; ++i )
+        {
+            Hindex = system->my_atoms[i].Hindex;
+            if ( Hindex > -1 )
+            {
+                system->my_atoms[i].num_hbonds =
+                    (int)(MAX( Num_Entries(Hindex, hbonds) * SAFER_ZONE, MIN_HBONDS ));
+
+                //if( Num_Entries(i, hbonds) >=
+                //(Start_Index(i+1,hbonds)-Start_Index(i,hbonds))*0.90/*DANGER_ZONE*/){
+                //  workspace->realloc.hbonds = 1;
+
+                if ( Hindex < numH - 1 )
+                    comp = Start_Index(Hindex + 1, hbonds);
+                else comp = hbonds->num_intrs;
+
+                if ( End_Index(Hindex, hbonds) > comp )
+                {
+                    fprintf(stderr, "step%d-hbondchk failed: H=%d end(H)=%d str(H+1)=%d\n",
+                            step, Hindex, End_Index(Hindex, hbonds), comp );
+                    MPI_Abort( comm, INSUFFICIENT_MEMORY );
+                }
+            }
+/*
+            if ( Hindex > -1 )
+            {
+                system->my_atoms[i].num_hbonds =
+                    MAX( Num_Entries(Hindex, hbonds) * SAFER_ZONE, MIN_HBONDS );
+*/
+                //if( Num_Entries(i, hbonds) >=
+                //(Start_Index(i+1,hbonds)-Start_Index(i,hbonds))*0.90/*DANGER_ZONE*/){
+                //  workspace->realloc.hbonds = 1;
+/*
+                //TODO
+                if ( Hindex < system->n - 1 )
+                    comp = Start_Index(Hindex + 1, hbonds);
+                else comp = hbonds->num_intrs;
+
+                if ( End_Index(Hindex, hbonds) > comp )
+                {
+                    fprintf(stderr, "step%d-hbondchk failed: H=%d end(H)=%d str(H+1)=%d\n",
+                            step, Hindex, End_Index(Hindex, hbonds), comp );
+                    MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+                }
+            }
+                
+*/
+
+
+
+        }
+    }
 }
+
+
 
 
 #if defined(OLD_VALIDATE)
@@ -449,6 +813,9 @@ void Init_Forces( reax_system *system, control_params *control,
     bonds = *lists + BONDS;
     hbonds = *lists + HBONDS;
 
+   //Print_List(*lists + BONDS);
+
+
     for ( i = 0; i < system->n; ++i )
         workspace->bond_mark[i] = 0;
     for ( i = system->n; i < system->N; ++i )
@@ -457,7 +824,7 @@ void Init_Forces( reax_system *system, control_params *control,
         //workspace->done_after[i] = Start_Index( i, far_nbrs );
     }
 
-    H = &workspace->H; //MATRIX CHANGES
+    H = &(workspace->H); //MATRIX CHANGES
     H->n = system->n;
     Htop = 0;
     num_bonds = 0;
@@ -526,7 +893,6 @@ void Init_Forces( reax_system *system, control_params *control,
                 nbr_pj->dvec[1] = atom_j->x[1] - atom_i->x[1];
                 nbr_pj->dvec[2] = atom_j->x[2] - atom_i->x[2];
                 nbr_pj->d = rvec_Norm_Sqr( nbr_pj->dvec );
-                if (i == 6540) fprintf (stderr, " atom: %d, nbr_pj->d: %f, cutoff: %f \n", i, nbr_pj->d, SQR(cutoff) );
                 if ( nbr_pj->d <= SQR(cutoff) )
                 {
                     nbr_pj->d = sqrt(nbr_pj->d);
@@ -614,9 +980,12 @@ void Init_Forces( reax_system *system, control_params *control,
             }
         }
 
+//        H->end[i] = Htop;
+
         Set_End_Index( i, btop_i, bonds );
         if ( local )
         {
+            //printf("Htop: %d \n", Htop);
             H->end[i] = Htop;
             if ( ihb == 1 )
                 Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
@@ -681,21 +1050,32 @@ void Init_Forces( reax_system *system, control_params *control,
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 #if defined( DEBUG )
-    Print_Bonds( system, bonds, "debugbonds.out" );
-    Print_Bond_List2( system, bonds, "pbonds.out" );
-    Print_Sparse_Matrix( system, H );
-    for ( i = 0; i < H->n; ++i )
+   // Print_Bonds( system, bonds, "debugbonds.out" );
+  //  Print_Bond_List2( system, bonds, "pbonds.out" );
+   // Print_Sparse_Matrix( system, H );
+/*    for ( i = 0; i < H->n; ++i )
         for ( j = H->start[i]; j < H->end[i]; ++j )
             fprintf( stderr, "%d %d %.15e\n",
                      MIN(system->my_atoms[i].orig_id,
                          system->my_atoms[H->entries[j].j].orig_id),
                      MAX(system->my_atoms[i].orig_id,
                          system->my_atoms[H->entries[j].j].orig_id),
-                     H->entries[j].val );
+                     H->entries[j].val );*/
 #endif
+    //Print_List(*lists + BONDS);
 
-    Validate_Lists( system, workspace, lists,
+
+//reax_system *system, storage *workspace, reax_list **lists,
+  //                   int step, int n, int N, int numH )
+
+/*
+    Validate_Lists( system, workspace, lists, control, 
+                    data->step, system->n, system->N, system->numH );*/
+
+  MPI_Not_GPU_Validate_Lists( system, workspace, lists, control,
                     data->step, system->n, system->N, system->numH );
+
+
 }
 
 
@@ -881,11 +1261,108 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
     Print_Bond_List2( system, bonds, "pbonds.out" );
 #endif
 
-    Validate_Lists( system, workspace, lists,
+    MPI_Not_GPU_Validate_Lists( system, workspace, lists, control,
                     data->step, system->n, system->N, system->numH );
 }
 
+void Host_Estimate_Sparse_Matrix (reax_atom *my_atoms, control_params *control,
+        reax_list p_far_nbrs, int n, int N, int renbr, int *indices)
+{
+    int i, j, pj;
+    int start_i, end_i;
+    int flag;
+    real cutoff;
+    far_neighbor_data *nbr_pj;
+    reax_atom *atom_i, *atom_j;
+    reax_list *far_nbrs = &( p_far_nbrs );
 
+    //i = blockIdx.x * blockDim.x + threadIdx.x;
+    //if (i >= N) return;
+    for (i=0;i<N;i++){
+    atom_i = &(my_atoms[i]);
+    start_i = Start_Index(i, far_nbrs);
+    end_i   = End_Index(i, far_nbrs);
+
+    cutoff = control->nonb_cut;
+
+    //++Htop;
+    if ( i < n)
+        indices [i] ++;
+
+    /* update i-j distance - check if j is within cutoff */
+    for( pj = start_i; pj < end_i; ++pj ) {
+        nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
+        j = nbr_pj->nbr;
+        atom_j = &(my_atoms[j]);
+        if( renbr ) {
+            if(nbr_pj->d <= cutoff)
+                flag = 1;
+            else flag = 0;
+        }
+        else {
+            if (i < j) {
+                nbr_pj->dvec[0] = atom_j->x[0] - atom_i->x[0];
+                nbr_pj->dvec[1] = atom_j->x[1] - atom_i->x[1];
+                nbr_pj->dvec[2] = atom_j->x[2] - atom_i->x[2];
+            } else {
+                nbr_pj->dvec[0] = atom_i->x[0] - atom_j->x[0];
+                nbr_pj->dvec[1] = atom_i->x[1] - atom_j->x[1];
+                nbr_pj->dvec[2] = atom_i->x[2] - atom_j->x[2];
+            }
+            nbr_pj->d = rvec_Norm_Sqr( nbr_pj->dvec );
+            //TODO
+            //TODO
+            //TODO
+            //if( nbr_pj->d <= (cutoff) ) {
+            if( nbr_pj->d <= SQR(cutoff) )
+            {
+                nbr_pj->d = sqrt(nbr_pj->d);
+                flag = 1;
+            }
+            else
+            {
+                flag = 0;
+            }
+        }
+
+        if( flag )
+        {
+            /* H matrix entry */
+            //if( j < n || atom_i->orig_id < atom_j->orig_id )
+            //++Htop;
+            //    indices [i] ++;
+            //else if (j < n || atom_i->orig_id > atom_j->orig_id )
+            //    indices [i] ++;
+
+            //if ((i < n) || (j < n))
+            //    indices [i] ++;
+            //if ((i < n) && (i < j) && ((j < n) || atom_i->orig_id < atom_j->orig_id))
+            //    indices [i] ++;
+            //if ( i >= n && j < n && atom_i->orig_id > atom_j->orig_id)
+            //    indices [i] ++;
+            //else if ((i >=n) && (i > j) && ((j < n) || (atom_i->orig_id > atom_j->orig_id)))
+            //    indices [i] ++;
+            //THIS IS THE HOST CONDITION
+            //if (i < n && i < j && ( j < n || atom_i->orig_id < atom_j->orig_id ))
+            //if (i < n && i < j && atom_i->orig_id < atom_j->orig_id && j >=n)
+            //    indices [i] ++;
+            //THIS IS THE DEVICE CONDITION
+            //if ( i > j && i >= n && j < n && atom_j->orig_id < atom_i->orig_id)
+            //    indices [i] ++;
+
+            //this is the working condition
+            if (i < j && i < n && ( j < n || atom_i->orig_id < atom_j->orig_id))
+                indices [i]++;
+            else if (i > j && i >= n && j < n && atom_j->orig_id < atom_i->orig_id)
+                indices [i] ++;
+            else if (i > j && i < n && ( j < n || atom_j->orig_id < atom_i->orig_id ))
+                indices [i] ++;
+        }
+    }
+}
+}
+
+#ifdef HAVE_CUDA
 void Estimate_Storages( reax_system *system, control_params *control,
                         reax_list **lists, int *Htop,
                         int *hb_top, int *bond_top, int *num_3body )
@@ -907,6 +1384,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
     far_nbrs = *lists + FAR_NBRS;
     *Htop = 0;
+    //printf("Hcap: %d \n", system->Hcap);
     memset( hb_top, 0, sizeof(int) * system->Hcap );
     memset( bond_top, 0, sizeof(int) * system->total_cap );
     *num_3body = 0;
@@ -953,19 +1431,21 @@ void Estimate_Storages( reax_system *system, control_params *control,
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
                         ++(*Htop);
 
-                    /* hydrogen bond lists */
+                  
                     if ( control->hbond_cut > 0.1 && (ihb == 1 || ihb == 2) &&
                             nbr_pj->d <= control->hbond_cut )
                     {
                         jhb = sbp_j->p_hbond;
                         if ( ihb == 1 && jhb == 2 )
                             ++hb_top[i];
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        else if ( j < system->n && ihb == 2 && jhb == 1 ){
                             ++hb_top[j];
+			//	printf("j: %d \n", j);
+			}
                     }
                 }
 
-                /* uncorrected bond orders */
+                // uncorrected bond orders 
                 if ( nbr_pj->d <= control->bond_cut )
                 {
                     r2 = SQR(r_ij);
@@ -991,7 +1471,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
                     }
                     else BO_pi2 = C56 = 0.0;
 
-                    /* Initially BO values are the uncorrected ones, page 1 */
+                    // Initially BO values are the uncorrected ones, page 1 
                     BO = BO_s + BO_pi + BO_pi2;
 
                     if ( BO >= control->bo_cut )
@@ -1006,6 +1486,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
     fprintf (stderr, "HOST SPARSE MATRIX ENTRIES: %d \n",  *Htop );
     *Htop = MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES );
+
 
     int hbond_count = 0;
     for ( i = 0; i < system->n; ++i )
@@ -1033,6 +1514,150 @@ void Estimate_Storages( reax_system *system, control_params *control,
 #endif
 }
 
+#else
+
+void Estimate_Storages( reax_system *system, control_params *control,
+                        reax_list **lists, int *Htop, int *hb_top,
+                        int *bond_top, int *num_3body)
+{
+
+    int i, j, pj;
+    int start_i, end_i;
+    int type_i, type_j;
+    int ihb, jhb;
+    int local;
+    real cutoff;
+    real r_ij, r2;
+    real C12, C34, C56;
+    real BO, BO_s, BO_pi, BO_pi2;
+    reax_list *far_nbrs;
+    single_body_parameters *sbp_i, *sbp_j;
+    two_body_parameters *twbp;
+    far_neighbor_data *nbr_pj;
+    reax_atom *atom_i, *atom_j;
+
+    far_nbrs = *lists + FAR_NBRS;
+    *Htop = 0;
+    memset( hb_top, 0, sizeof(int) * system->local_cap );
+    memset( bond_top, 0, sizeof(int) * system->total_cap );
+    *num_3body = 0;
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        atom_i = &(system->my_atoms[i]);
+        type_i  = atom_i->type;
+        start_i = Start_Index(i, far_nbrs);
+        end_i   = End_Index(i, far_nbrs);
+        sbp_i = &(system->reax_param.sbp[type_i]);
+
+        if ( i < system->n )
+        {
+            local = 1;
+            cutoff = control->nonb_cut;
+            ++(*Htop);
+            ihb = sbp_i->p_hbond;
+        }
+        else
+        {
+            local = 0;
+            cutoff = control->bond_cut;
+            ihb = -1;
+        }
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            //nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &( far_nbrs->select.far_nbr_list[pj]);
+            j = nbr_pj->nbr;
+            atom_j = &(system->my_atoms[j]);
+
+            if (nbr_pj->d <= cutoff)
+            {
+                type_j = system->my_atoms[j].type;
+                r_ij = nbr_pj->d;
+                sbp_j = &(system->reax_param.sbp[type_j]);
+                //twbp = &(system->reax_param.tbp[type_i][type_j]);
+                twbp = &(system->reax_param.tbp[index_tbp (type_i, type_j, system->reax_param.num_atom_types)]);
+
+                if ( local )
+                {
+                    if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
+                        ++(*Htop);
+
+                    /* hydrogen bond lists */
+                    if ( control->hbond_cut > 0.1 && (ihb == 1 || ihb == 2) &&
+                            nbr_pj->d <= control->hbond_cut )
+                    {
+                        jhb = sbp_j->p_hbond;
+                        if ( ihb == 1 && jhb == 2 )
+                            ++hb_top[i];
+                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                            ++hb_top[j];
+                    }
+                }
+
+                /* uncorrected bond orders */
+                if ( nbr_pj->d <= control->bond_cut )
+                {
+                    r2 = SQR(r_ij);
+
+                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
+                    {
+                        C12 = twbp->p_bo1 * pow( r_ij / twbp->r_s, twbp->p_bo2 );
+                        BO_s = (1.0 + control->bo_cut) * exp( C12 );
+                    }
+                    else BO_s = C12 = 0.0;
+
+                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
+                    {
+                        C34 = twbp->p_bo3 * pow( r_ij / twbp->r_p, twbp->p_bo4 );
+                        BO_pi = exp( C34 );
+                    }
+                    else BO_pi = C34 = 0.0;
+
+                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
+                    {
+                        C56 = twbp->p_bo5 * pow( r_ij / twbp->r_pp, twbp->p_bo6 );
+                        BO_pi2 = exp( C56 );
+                    }
+                    else BO_pi2 = C56 = 0.0;
+
+                    /* Initially BO values are the uncorrected ones, page 1 */
+                    BO = BO_s + BO_pi + BO_pi2;
+
+                    if ( BO >= control->bo_cut )
+                    {
+                        ++bond_top[i];
+                        ++bond_top[j];
+                    }
+                }
+            }
+        }
+    }
+
+    *Htop = (int)(MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES ));
+
+     // Set max sparse entries, needed for first iteration of validate_list
+          system->max_sparse_entries = *Htop * SAFE_ZONE;
+
+    for ( i = 0; i < system->n; ++i )
+        hb_top[i] = (int)(MAX( hb_top[i] * SAFER_ZONE, MIN_HBONDS ));
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        *num_3body += SQR(bond_top[i]);
+        //if( i < system->n )
+        bond_top[i] = MAX( bond_top[i] * 2, MIN_BONDS );
+        //else bond_top[i] = MAX_BONDS;
+    }
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "p%d @ estimate storages: Htop = %d, num_3body = %d\n",
+             system->my_rank, *Htop, *num_3body );
+    MPI_Barrier( MPI_COMM_WORLD );
+#endif
+}
+#endif
 
 void Compute_Forces( reax_system *system, control_params *control,
                      simulation_data *data, storage *workspace,
