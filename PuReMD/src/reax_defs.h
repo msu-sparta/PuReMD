@@ -102,24 +102,24 @@
 
 
 /******************* ENUMERATIONS *************************/
-enum geo_formats { CUSTOM, PDB, ASCII_RESTART, BINARY_RESTART, GF_N };
+enum geo_formats { CUSTOM = 0, PDB = 1, ASCII_RESTART = 2, BINARY_RESTART = 3, GF_N = 4 };
 
-enum restart_formats { WRITE_ASCII, WRITE_BINARY, RF_N };
+enum restart_formats { WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2 };
 
-enum ensembles { NVE, bNVT, nhNVT, sNPT, iNPT, NPT, ens_N };
+enum ensembles { NVE = 0, bNVT = 1, nhNVT = 2, sNPT = 3, iNPT = 4, NPT = 5, ens_N = 6 };
 
-enum lists { BONDS, OLD_BONDS, THREE_BODIES,
-             HBONDS, FAR_NBRS, DBOS, DDELTAS, LIST_N
+enum lists { BONDS = 0, OLD_BONDS = 1, THREE_BODIES = 2,
+             HBONDS = 3, FAR_NBRS = 4, DBOS = 5, DDELTAS = 6, LIST_N = 7
            };
 
-enum interactions { TYP_VOID, TYP_BOND, TYP_THREE_BODY,
-                    TYP_HBOND, TYP_FAR_NEIGHBOR, TYP_DBO, TYP_DDELTA, TYP_N
+enum interactions { TYP_VOID = 0, TYP_BOND = 1, TYP_THREE_BODY = 2,
+                    TYP_HBOND = 3, TYP_FAR_NEIGHBOR = 4, TYP_DBO = 5, TYP_DDELTA = 6, TYP_N = 7
                   };
 
-enum message_tags { INIT, UPDATE, BNDRY, UPDATE_BNDRY,
-                    EXC_VEC1, EXC_VEC2, DIST_RVEC2, COLL_RVEC2,
-                    DIST_RVECS, COLL_RVECS, INIT_DESCS, ATOM_LINES,
-                    BOND_LINES, ANGLE_LINES, RESTART_ATOMS, TAGS_N
+enum message_tags { INIT = 0, UPDATE = 1, BNDRY = 2, UPDATE_BNDRY = 3,
+                    EXC_VEC1 = 4, EXC_VEC2 = 5, DIST_RVEC2 = 6, COLL_RVEC2 = 7,
+                    DIST_RVECS = 8, COLL_RVECS = 9, INIT_DESCS = 10, ATOM_LINES = 11,
+                    BOND_LINES = 12, ANGLE_LINES = 13, RESTART_ATOMS = 14, TAGS_N = 15
                   };
 
 enum errors { FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
@@ -128,7 +128,7 @@ enum errors { FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
               INVALID_INPUT = -16, INVALID_GEO = -17
             };
 
-enum exchanges { NONE, NEAR_EXCH, FULL_EXCH };
+enum exchanges { NONE = 0, NEAR_EXCH = 1, FULL_EXCH = 2 };
 
 enum gcell_types { NO_NBRS = 0, NEAR_ONLY = 1, HBOND_ONLY = 2, FAR_ONLY = 4,
                    NEAR_HBOND = 3, NEAR_FAR = 5, HBOND_FAR = 6, FULL_NBRS = 7,
@@ -139,9 +139,9 @@ enum atoms { C_ATOM = 0, H_ATOM = 1, O_ATOM = 2, N_ATOM = 3,
              S_ATOM = 4, SI_ATOM = 5, GE_ATOM = 6, X_ATOM = 7
            };
 
-enum traj_methods { REG_TRAJ, MPI_TRAJ, TF_N };
+enum traj_methods { REG_TRAJ = 0, MPI_TRAJ = 1, TF_N = 2 };
 
-enum molecules { UNKNOWN, WATER };
+enum molecules { UNKNOWN = 0, WATER = 1 };
 
 
 #endif

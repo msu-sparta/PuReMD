@@ -92,7 +92,7 @@ void Read_System( char *geo_file, char *ffield_file, char *control_file,
     else
     {
         fprintf( stderr, "unknown geo file format. terminating!\n" );
-        MPI_Abort( MPI_COMM_WORLD, UNKNOWN_OPTION );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_GEO );
     }
 }
 
@@ -170,6 +170,12 @@ void init_blocks (reax_system *system)
 #endif
 
 
+static void usage(char* argv[])
+{
+    fprintf(stderr, "usage: ./%s geometry ffield control\n", argv[0]);
+}
+
+
 int main( int argc, char* argv[] )
 {
     reax_system *system;
@@ -182,6 +188,12 @@ int main( int argc, char* argv[] )
     int i;
     real t_start = 0, t_elapsed;
     real t_begin, t_end;
+
+    if ( argc != 4 )
+    {
+        usage(argv);
+        exit( INVALID_INPUT );
+    }
 
 #ifdef HAVE_CUDA
 

@@ -19,13 +19,20 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __PDB_TOOLS_H_
-#define __PDB_TOOLS_H_
+#ifndef __GEO_TOOLS_H_
+#define __GEO_TOOLS_H_
 
 #include "mytypes.h"
 
-/*
-PDB format :
+// CUSTOM_BOXGEO: BOXGEO box_x box_y box_z  angle1 angle2 angle3
+#define CUSTOM_BOXGEO_FORMAT " %s %lf %lf %lf %lf %lf %lf"
+// CUSTOM ATOM: serial element name x y z
+#define CUSTOM_ATOM_FORMAT " %d %s %s %lf %lf %lf"
+
+char Read_Geo( char*, reax_system*, control_params*,
+        simulation_data*, static_storage* );
+
+/* PDB format :
 http://www.rcsb.org/pdb/file_formats/pdb/pdbguide2.2/guide2.2_frame.html
 
 #define PDB_ATOM_FORMAT   "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%4s%2s%2s\n"
@@ -95,24 +102,28 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 67 - 70      Integer         z             Z value
 */
 
-//#define PDB_ATOM_FORMAT "ATOM  %4d%4s%c%3s%c%4d%c%8.3f%8.3f%8.3f%6.2f%6.2f%-4s%2s%2s\n"
+//#define PDB_ATOM_FORMAT
+//"ATOM  %4d%4s%c%3s%c%4d%c%8.3f%8.3f%8.3f%6.2f%6.2f%-4s%2s%2s\n"
 
 #define PDB_ATOM_FORMAT   "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%4s%2s%2s\n"
+#define PDB_ATOM_FORMAT_LENGTH 71
 #define PDB_HETATM_FORMAT "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%2s%2s\n"
 #define PDB_CONECT_FORMAT "%6s%5d%5d%5d%5d%5d\n"
 #define PDB_CRYST1_FORMAT "%6s%9s%9s%9s%7s%7s%7s%11s%4s\n"
 
 #define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n"
+#define PDB_ATOM_FORMAT_O_LENGTH 81
 #define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
 
 #define BGF_CRYSTX_FORMAT "%8s%11s%11s%11s%11s%11s%11s"
 
 char Read_PDB( char*, reax_system*, control_params*,
-               simulation_data*, static_storage* );
-char Read_BGF( char*, reax_system*, control_params*,
-               simulation_data*, static_storage* );
+        simulation_data*, static_storage* );
 
-char Write_PDB( reax_system*, control_params*, simulation_data*,
-                static_storage*, list*, output_controls* );
+char Read_BGF( char*, reax_system*, control_params*,
+        simulation_data*, static_storage* );
+
+char Write_PDB( reax_system*, list*, simulation_data*,
+        control_params*, static_storage*, output_controls* );
 
 #endif

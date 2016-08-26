@@ -21,24 +21,25 @@
 
 #include "mytypes.h"
 #include "analyze.h"
-#include "box.h"
+#include "control.h"
+#include "ffield.h"
 #include "forces.h"
 #include "init_md.h"
-#include "integrate.h"
 #include "neighbors.h"
-#include "param.h"
-#include "pdb_tools.h"
+#include "geo_tools.h"
 #include "print_utils.h"
 #include "reset_utils.h"
 #include "restart.h"
 #include "system_props.h"
-#include "traj.h"
 #include "vector.h"
 
 
-void Post_Evolve( reax_system* system, control_params* control,
-                  simulation_data* data, static_storage* workspace,
-                  list** lists, output_controls *out_control )
+static void Post_Evolve( reax_system * const system,
+        control_params * const control,
+        simulation_data * const data,
+        static_storage * const workspace,
+        list ** const lists,
+        output_controls * const out_control )
 {
     int i;
     rvec diff, cross;
@@ -77,22 +78,26 @@ void Post_Evolve( reax_system* system, control_params* control,
 }
 
 
-void Read_System( char *geof, char *ff, char *ctrlf,
-                  reax_system *system, control_params *control,
-                  simulation_data *data, static_storage *workspace,
-                  output_controls *out_control )
+void static Read_System( char * const geo_file,
+        char * const ffield_file,
+        char * const control_file,
+        reax_system * const system,
+        control_params * const control,
+        simulation_data * const data,
+        static_storage * const workspace,
+        output_controls * const out_control )
 {
     FILE *ffield, *ctrl;
 
-    if ( (ffield = fopen( ff, "r" )) == NULL )
+    if ( (ffield = fopen( ffield_file, "r" )) == NULL )
     {
         fprintf( stderr, "Error opening the ffield file!\n" );
-        exit( FILE_NOT_FOUND_ERR );
+        exit( FILE_NOT_FOUND );
     }
-    if ( (ctrl = fopen( ctrlf, "r" )) == NULL )
+    if ( (ctrl = fopen( control_file, "r" )) == NULL )
     {
         fprintf( stderr, "Error opening the ffield file!\n" );
-        exit( FILE_NOT_FOUND_ERR );
+        exit( FILE_NOT_FOUND );
     }
 
     /* ffield file */
@@ -102,34 +107,37 @@ void Read_System( char *geof, char *ff, char *ctrlf,
     Read_Control_File( ctrl, system, control, out_control );
 
     /* geo file */
-    if ( control->geo_format == XYZ )
+    if ( control->geo_format == CUSTOM )
     {
-        fprintf( stderr, "xyz input is not implemented yet\n" );
-        exit(1);
+        Read_Geo( geo_file, system, control, data, workspace );
     }
     else if ( control->geo_format == PDB )
-        Read_PDB( geof, system, control, data, workspace );
+    {
+        Read_PDB( geo_file, system, control, data, workspace );
+    }
     else if ( control->geo_format == BGF )
-        Read_BGF( geof, system, control, data, workspace );
+    {
+        Read_BGF( geo_file, system, control, data, workspace );
+    }
     else if ( control->geo_format == ASCII_RESTART )
     {
-        Read_ASCII_Restart( geof, system, control, data, workspace );
+        Read_ASCII_Restart( geo_file, system, control, data, workspace );
         control->restart = 1;
     }
     else if ( control->geo_format == BINARY_RESTART )
     {
-        Read_Binary_Restart( geof, system, control, data, workspace );
+        Read_Binary_Restart( geo_file, system, control, data, workspace );
         control->restart = 1;
     }
     else
     {
         fprintf( stderr, "unknown geo file format. terminating!\n" );
-        exit(1);
+        exit( INVALID_GEO );
     }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "input files have been read...\n" );
-    Print_Box_Information( &(system->box), stderr );
+    Print_Box( &(system->box), stderr );
 #endif
 }
 
@@ -198,13 +206,12 @@ int main(int argc, char* argv[])
     if ( out_control.write_steps > 0 )
     {
         fclose( out_control.trj );
-        Write_PDB( &system, &control, &data, &workspace,
-                   &(lists[BONDS]), &out_control );
+        Write_PDB( &system, &(lists[BONDS]), &data, &control, &workspace, &out_control );
     }
 
     data.timing.end = Get_Time( );
     data.timing.elapsed = Get_Timing_Info( data.timing.start );
     fprintf( out_control.log, "total: %.2f secs\n", data.timing.elapsed );
 
-    return 0;
+    return SUCCESS;
 }

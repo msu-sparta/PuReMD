@@ -21,6 +21,38 @@
 
 #include "allocate.h"
 #include "list.h"
+#include "tool_box.h"
+
+/* allocate space for atoms */
+int PreAllocate_Space( reax_system *system, control_params *control,
+        static_storage *workspace )
+{
+    int i;
+
+    system->atoms = (reax_atom*) scalloc( system->N,
+            sizeof(reax_atom), "atoms" );
+    workspace->orig_id = (int*) scalloc( system->N,
+            sizeof(int), "orid_id" );
+
+    /* space for keeping restriction info, if any */
+    if ( control->restrict_bonds )
+    {
+        workspace->restricted = (int*) scalloc( system->N,
+                sizeof(int), "restricted_atoms" );
+
+        workspace->restricted_list = (int**) scalloc( system->N,
+                sizeof(int*), "restricted_list" );
+
+        for ( i = 0; i < system->N; ++i )
+        {
+            workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT,
+                    sizeof(int), "restricted_list[i]" );
+        }
+    }
+
+    return SUCCESS;
+}
+
 
 void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 {
@@ -28,7 +60,7 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
     if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs ))
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
-        exit( INIT_ERR );
+        exit( CANNOT_INITIALIZE );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -55,16 +87,11 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
     {
         return 0;
     }
-    if ( (H->entries =
-                (sparse_matrix_entry*) malloc(sizeof(sparse_matrix_entry) * m)) == NULL )
+    if ( (H->j = (int*) malloc(sizeof(int) * m)) == NULL
+        || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
     {
         return 0;
     }
-//  if( ((H->j = (int*) malloc(sizeof(int)*m)) == NULL) ||
-//      ((H->val = (real*) malloc(sizeof(real)*m)) == NULL) )
-//  {
-//    return 0;
-//  }
 
     return 1;
 }
@@ -73,7 +100,8 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 void Deallocate_Matrix( sparse_matrix *H )
 {
     free(H->start);
-    free(H->entries);
+    free(H->j);
+    free(H->val);
     free(H);
 }
 
@@ -111,7 +139,7 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
     if ( !Make_List(num_h, num_hbonds, TYP_HBOND, hbonds ) )
     {
         fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
-        exit( INIT_ERR );
+        exit( CANNOT_INITIALIZE );
     }
 
     for ( i = 0; i < n; ++i )
@@ -171,7 +199,7 @@ int Allocate_Bond_List( int n, int *bond_top, list *bonds )
     if ( !Make_List(n, num_bonds, TYP_BOND, bonds ) )
     {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
-        exit( INIT_ERR );
+        exit( CANNOT_INITIALIZE );
     }
 
     Set_Start_Index( 0, 0, bonds );
@@ -274,7 +302,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
                          TYP_THREE_BODY, (*lists) + THREE_BODIES ) )
         {
             fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
-            exit( INIT_ERR );
+            exit( CANNOT_INITIALIZE );
         }
         realloc->num_3body = -1;
 #if defined(DEBUG_FOCUS)

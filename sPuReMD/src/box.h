@@ -24,9 +24,7 @@
 
 #include "mytypes.h"
 
-/* Initializes box from CRYST1 line of PDB */
-void Init_Box_From_CRYST(real, real, real, real, real, real,
-                         simulation_box*/*, int*/);
+void Setup_Box( real, real, real, real, real, real, simulation_box* );
 
 /* Initializes box from box rtensor */
 void Update_Box(rtensor, simulation_box* /*, int*/);
@@ -36,12 +34,6 @@ void Update_Box_SemiIsotropic( simulation_box*, rvec /*, int*/ );
 /* Computes all the transformations,
    metric and other quantities from box rtensor */
 void Make_Consistent(simulation_box*/*, int*/ );
-
-/* Applies transformation to and from
-   Cartesian to Triclinic coordinates based on flag */
-/* Use -1 flag for Cartesian -> Triclinic and +1 for otherway */
-void Transform( rvec, simulation_box*, char, rvec );
-void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
 
 int Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
 void Get_NonPeriodic_Far_Neighbors( rvec, rvec, simulation_box*,
@@ -66,6 +58,6 @@ void Inc_on_T3( rvec, rvec, simulation_box* );
 
 real Metric_Product( rvec, rvec, simulation_box* );
 
-void Print_Box_Information( simulation_box*, FILE* );
+void Print_Box( simulation_box*, FILE* );
 
 #endif

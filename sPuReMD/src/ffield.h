@@ -19,22 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __PARAM_H_
-#define __PARAM_H_
+#ifndef __FFIELD_H_
+#define __FFIELD_H_
 
 #include "mytypes.h"
-
-#define MAX_LINE 1024
-#define MAX_TOKENS 20
-#define MAX_TOKEN_LEN 1024
-
-int  Get_Atom_Type( reax_interaction*, char* );
-
-int  Tokenize( char*, char*** );
-
 char Read_Force_Field( FILE*, reax_interaction* );
-
-char Read_Control_File( FILE*, reax_system*, control_params*,
-                        output_controls* );
 
 #endif

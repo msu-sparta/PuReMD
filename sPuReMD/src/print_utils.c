@@ -21,7 +21,7 @@
 
 #include "print_utils.h"
 #include "list.h"
-#include "pdb_tools.h"
+#include "geo_tools.h"
 #include "system_props.h"
 #include "vector.h"
 
@@ -375,18 +375,6 @@ void Init_Force_Test_Functions( )
 #endif
 
 
-char *Get_Element( reax_system *system, int i )
-{
-    return &( system->reaxprm.sbp[system->atoms[i].type].name[0] );
-}
-
-
-char *Get_Atom_Name( reax_system *system, int i )
-{
-    return &(system->atoms[i].name[0]);
-}
-
-
 /* near nbrs contain both i-j, j-i nbrhood info */
 void Print_Near_Neighbors( reax_system *system, control_params *control,
                            static_storage *workspace, list **lists )
@@ -690,7 +678,7 @@ void Output_Results( reax_system *system, control_params *control,
         out_control->append_traj_frame( system, control, data,
                                         workspace, lists, out_control );
 
-        //Write_PDB( system, control, data, workspace, *lists+BONDS, out_control );
+        //Write_PDB( system, *lists+BONDS, data, control, workspace, out_control );
         // t_elapsed = Get_Timing_Info( t_start );
         // fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
     }
@@ -736,16 +724,16 @@ void Print_Linear_System( reax_system *system, control_params *control,
         for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
         {
             fprintf( out, "%6d%6d %24.15e\n",
-                     workspace->orig_id[i], workspace->orig_id[H->entries[j].j],
-                     H->entries[j].val );
+                     workspace->orig_id[i], workspace->orig_id[H->j[j]],
+                     H->val[j] );
 
             fprintf( out, "%6d%6d %24.15e\n",
-                     workspace->orig_id[H->entries[j].j], workspace->orig_id[i],
-                     H->entries[j].val );
+                     workspace->orig_id[H->j[j]], workspace->orig_id[i],
+                     H->val[j] );
         }
         // the diagonal entry
         fprintf( out, "%6d%6d %24.15e\n",
-                 workspace->orig_id[i], workspace->orig_id[i], H->entries[j].val );
+                 workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
     }
 
     fclose( out );
@@ -759,16 +747,16 @@ void Print_Linear_System( reax_system *system, control_params *control,
         for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
         {
             fprintf( out, "%6d%6d %24.15e\n",
-                     workspace->orig_id[i], workspace->orig_id[H->entries[j].j],
-                     H->entries[j].val );
+                     workspace->orig_id[i], workspace->orig_id[H->j[j]],
+                     H->val[j] );
 
             fprintf( out, "%6d%6d %24.15e\n",
-                     workspace->orig_id[H->entries[j].j], workspace->orig_id[i],
-                     H->entries[j].val );
+                     workspace->orig_id[H->j[j]], workspace->orig_id[i],
+                     H->val[j] );
         }
         // the diagonal entry
         fprintf( out, "%6d%6d %24.15e\n",
-                 workspace->orig_id[i], workspace->orig_id[i], H->entries[j].val );
+                 workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
     }
 
     fclose( out );
@@ -831,7 +819,7 @@ void Print_Sparse_Matrix( sparse_matrix *A )
     {
         fprintf( stderr, "i:%d  j(val):", i );
         for ( j = A->start[i]; j < A->start[i + 1]; ++j )
-            fprintf( stderr, "%d(%.4f) ", A->entries[j].j, A->entries[j].val );
+            fprintf( stderr, "%d(%.4f) ", A->j[j], A->val[j] );
         fprintf( stderr, "\n" );
     }
 }
@@ -848,7 +836,7 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
         {
             //fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
             //Convert 0-based to 1-based (for Matlab)
-            fprintf( f, "%6d%6d %24.15e\n", i+1, A->entries[j].j+1, A->entries[j].val );
+            fprintf( f, "%6d%6d %24.15e\n", i+1, A->j[j]+1, A->val[j] );
         }
     }
 

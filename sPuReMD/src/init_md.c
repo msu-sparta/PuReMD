@@ -217,6 +217,47 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
 }
 
 
+/* Initialize Taper params */
+void Init_Taper( control_params *control )
+{
+    real d1, d7;
+    real swa, swa2, swa3;
+    real swb, swb2, swb3;
+
+    swa = control->r_low;
+    swb = control->r_cut;
+
+    if ( fabs( swa ) > 0.01 )
+        fprintf( stderr, "Warning: non-zero value for lower Taper-radius cutoff\n" );
+
+    if ( swb < 0 )
+    {
+        fprintf( stderr, "Negative value for upper Taper-radius cutoff\n" );
+        exit( INVALID_INPUT );
+    }
+    else if ( swb < 5 )
+        fprintf( stderr, "Warning: low value for upper Taper-radius cutoff:%f\n",
+                 swb );
+
+    d1 = swb - swa;
+    d7 = POW( d1, 7.0 );
+    swa2 = SQR( swa );
+    swa3 = CUBE( swa );
+    swb2 = SQR( swb );
+    swb3 = CUBE( swb );
+
+    control->Tap7 =  20.0 / d7;
+    control->Tap6 = -70.0 * (swa + swb) / d7;
+    control->Tap5 =  84.0 * (swa2 + 3.0 * swa * swb + swb2) / d7;
+    control->Tap4 = -35.0 * (swa3 + 9.0 * swa2 * swb + 9.0 * swa * swb2 + swb3 ) / d7;
+    control->Tap3 = 140.0 * (swa3 * swb + 3.0 * swa2 * swb2 + swa * swb3 ) / d7;
+    control->Tap2 = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
+    control->Tap1 = 140.0 * swa3 * swb3 / d7;
+    control->Tap0 = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2 +
+                     7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
+}
+
+
 void Init_Workspace( reax_system *system, control_params *control,
                      static_storage *workspace )
 {
@@ -347,6 +388,9 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->realloc.gcell_atoms = -1;
 
     Reset_Workspace( system, workspace );
+
+    /* Initialize Taper function */
+    Init_Taper( control );
 }
 
 
@@ -361,7 +405,7 @@ void Init_Lists( reax_system *system, control_params *control,
     if ( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS) )
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
-        exit( INIT_ERR );
+        exit( CANNOT_INITIALIZE );
     }
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
@@ -424,7 +468,7 @@ void Init_Lists( reax_system *system, control_params *control,
     if (!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists) + THREE_BODIES))
     {
         fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
-        exit( INIT_ERR );
+        exit( CANNOT_INITIALIZE );
     }
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
@@ -435,13 +479,13 @@ void Init_Lists( reax_system *system, control_params *control,
     if (!Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA ))
     {
         fprintf( stderr, "Problem in initializing dDelta list. Terminating!\n" );
-        exit( INIT_ERR );
+        exit( CANNOT_INITIALIZE );
     }
 
     if ( !Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, (*lists) + DBO ) )
     {
         fprintf( stderr, "Problem in initializing dBO list. Terminating!\n" );
-        exit( INIT_ERR );
+        exit( CANNOT_INITIALIZE );
     }
 #endif
 
@@ -670,7 +714,7 @@ void Init_Out_Controls(reax_system *system, control_params *control,
        out_control->pdb == NULL )
        {
        fprintf( stderr, "FILE OPEN ERROR. TERMINATING..." );
-       exit( CANNOT_OPEN_OUTFILE );
+       exit( CANNOT_OPEN_FILE );
        }*/
 }
 

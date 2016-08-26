@@ -134,7 +134,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         {
             fprintf( stderr, "step%d-ran out of space on far_nbrs: top=%d, max=%d",
                      data->step, num_far, far_nbrs->num_intrs );
-            exit( INSUFFICIENT_SPACE );
+            exit( INSUFFICIENT_MEMORY );
         }
     }
 

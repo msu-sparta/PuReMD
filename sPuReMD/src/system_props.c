@@ -20,28 +20,8 @@
   ----------------------------------------------------------------------*/
 
 #include "system_props.h"
-#include "box.h"
+#include "tool_box.h"
 #include "vector.h"
-
-
-real Get_Time( )
-{
-    struct timeval tim;
-
-    gettimeofday(&tim, NULL );
-    return ( tim.tv_sec + (tim.tv_usec / 1000000.0) );
-}
-
-
-real Get_Timing_Info( real t_start )
-{
-    struct timeval tim;
-    real t_end;
-
-    gettimeofday(&tim, NULL );
-    t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
-    return (t_end - t_start);
-}
 
 
 void Temperature_Control( control_params *control, simulation_data *data,

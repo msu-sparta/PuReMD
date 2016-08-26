@@ -19,25 +19,11 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __GMRES_H_
-#define __GMRES_H_
+#ifndef __CONTROL_H_
+#define __CONTROL_H_
 
 #include "mytypes.h"
 
-int GMRES( const static_storage * const, const control_params * const,
-        const sparse_matrix * const, const real * const, real, real * const,
-        const FILE * const, real * const, real * const );
-
-int GMRES_HouseHolder( const static_storage * const, const control_params * const,
-        const sparse_matrix * const, const real * const, real, real * const,
-        const FILE * const, real * const, real * const );
-
-int CG( static_storage*, sparse_matrix*,
-        real*, real, real*, FILE* );
-
-int SDM( static_storage*, sparse_matrix*,
-         real*, real, real*, FILE* );
-
-real condest( const sparse_matrix * const, const sparse_matrix * const );
+char Read_Control_File( FILE*, reax_system*, control_params*, output_controls* );
 
 #endif

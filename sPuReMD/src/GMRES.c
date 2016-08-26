@@ -19,12 +19,11 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "allocate.h"
 #include "GMRES.h"
+#include "allocate.h"
 #include "list.h"
+#include "tool_box.h"
 #include "vector.h"
-
-#include <omp.h>
 
 
 typedef enum
@@ -40,7 +39,7 @@ typedef enum
  *   x: vector
  *   b: vector (result) */
 static void Sparse_MatVec( const sparse_matrix * const A,
-                           const real * const x, real * const b )
+        const real * const x, real * const b )
 {
     int i, j, k, n, si, ei;
     real H;
@@ -66,7 +65,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
             {
                 if ( (b_local = (real*) malloc( omp_get_num_threads() * n * sizeof(real))) == NULL )
 		{
-                    exit( INSUFFICIENT_SPACE );
+                    exit( INSUFFICIENT_MEMORY );
 		}
             }
 
@@ -83,8 +82,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
             for ( k = si; k < ei; ++k )
             {
-                j = A->entries[k].j;
-                H = A->entries[k].val;
+                j = A->j[k];
+                H = A->val[k];
 #ifdef _OPENMP
                 b_local[tid * n + j] += H * x[i];
                 b_local[tid * n + i] += H * x[j];
@@ -96,9 +95,9 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
             // the diagonal entry is the last one in
 #ifdef _OPENMP
-            b_local[tid * n + i] += A->entries[k].val * x[i];
+            b_local[tid * n + i] += A->val[k] * x[i];
 #else
-            b[i] += A->entries[k].val * x[i];
+            b[i] += A->val[k] * x[i];
 #endif
         }
 #ifdef _OPENMP
@@ -126,8 +125,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
  *   b: vector (result)
  *   D^{-1}b (Dinv_b): precomputed vector-vector product */
 static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
-                            const TRIANGULARITY tri, const real * const Dinv,
-                            const real * const x, real * const b, const real * const Dinv_b)
+        const TRIANGULARITY tri, const real * const Dinv,
+        const real * const x, real * const b, const real * const Dinv_b)
 {
     int i, k, si = 0, ei = 0;
 #ifdef _OPENMP
@@ -151,7 +150,7 @@ static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
             {
                 if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
                 {
-                    exit( INSUFFICIENT_SPACE );
+                    exit( INSUFFICIENT_MEMORY );
                 }
 	    }
 
@@ -178,9 +177,9 @@ static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
             for ( k = si; k < ei; ++k )
             {
 #ifdef _OPENMP
-                b_local[tid * R->n + i] += R->entries[k].val * x[R->entries[k].j];
+                b_local[tid * R->n + i] += R->val[k] * x[R->j[k]];
 #else
-                b[i] += R->entries[k].val * x[R->entries[k].j];
+                b[i] += R->val[k] * x[R->j[k]];
 #endif
             }
 #ifdef _OPENMP
@@ -205,48 +204,211 @@ static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
 }
 
 
-/* solve sparse lower triangular linear system using forward substitution */
-static void Forward_Subs( const sparse_matrix * const L, const real * const b, real * const y )
+static void diag_pre_app( const real * const Hdia_inv, const real * const y,
+        real * const x, const int N )
 {
-    int i, pj, j, si, ei;
-    real val;
+    unsigned int i;
 
-    for ( i = 0; i < L->n; ++i )
+    #pragma omp parallel for schedule(guided) \
+        default(none) private(i) shared(stderr)
+    for ( i = 0; i < N; ++i )
     {
-        y[i] = b[i];
-        si = L->start[i];
-        ei = L->start[i + 1];
-        for ( pj = si; pj < ei - 1; ++pj )
-        {
-            // TODO: remove assignments? compiler optimizes away?
-            j = L->entries[pj].j;
-            val = L->entries[pj].val;
-            y[i] -= val * y[j];
-        }
-        y[i] /= L->entries[pj].val;
+        x[i] = y[i] * Hdia_inv[i];
     }
 }
 
 
-/* solve sparse upper triangular linear system using backward substitution */
-static void Backward_Subs( const sparse_matrix * const U, const real * const y, real * const x )
+/* Solve triangular system LU*x = y using level scheduling
+ *
+ * LU: lower/upper triangular, stored in CSR
+ * y: constants in linear system (RHS)
+ * x: solution
+ * tri: triangularity of LU (lower/upper)
+ * 
+ * Assumptions:
+ *   LU has non-zero diagonals
+ *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
+static void tri_solve( const sparse_matrix * const LU, const real * const y,
+        real * const x, const TRIANGULARITY tri )
 {
     int i, pj, j, si, ei;
     real val;
 
-    for ( i = U->n - 1; i >= 0; --i )
+    if ( tri == LOWER )
     {
-        x[i] = y[i];
-        si = U->start[i];
-        ei = U->start[i + 1];
-        for ( pj = si + 1; pj < ei; ++pj )
+        for ( i = 0; i < LU->n; ++i )
         {
-            // TODO: remove assignments? compiler optimizes away?
-            j = U->entries[pj].j;
-            val = U->entries[pj].val;
-            x[i] -= val * x[j];
+            x[i] = y[i];
+            si = LU->start[i];
+            ei = LU->start[i + 1];
+            for ( pj = si; pj < ei - 1; ++pj )
+            {
+                j = LU->j[pj];
+                val = LU->val[pj];
+                x[i] -= val * x[j];
+            }
+            x[i] /= LU->val[pj];
         }
-        x[i] /= U->entries[si].val;
+    }
+    else
+    {
+        for ( i = LU->n - 1; i >= 0; --i )
+        {
+            x[i] = y[i];
+            si = LU->start[i];
+            ei = LU->start[i + 1];
+            for ( pj = si + 1; pj < ei; ++pj )
+            {
+                j = LU->j[pj];
+                val = LU->val[pj];
+                x[i] -= val * x[j];
+            }
+            x[i] /= LU->val[si];
+        }
+    }
+}
+
+
+/* Solve triangular system LU*x = y using level scheduling
+ *
+ * LU: lower/upper triangular, stored in CSR
+ * y: constants in linear system (RHS)
+ * x: solution
+ * tri: triangularity of LU (lower/upper)
+ * find_levels: perform level search if positive, otherwise reuse existing levels
+ * 
+ * Assumptions:
+ *   LU has non-zero diagonals
+ *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
+static void tri_solve_level_sched( const sparse_matrix * const LU, const real * const y,
+        real * const x, const TRIANGULARITY tri, int find_levels )
+{
+    int i, j, pj, local_row, local_level, levels;
+    static int levels_L = 1, levels_U = 1;
+    static unsigned int *row_levels_L = NULL, *level_rows_L = NULL, *level_rows_cnt_L = NULL;
+    static unsigned int *row_levels_U = NULL, *level_rows_U = NULL, *level_rows_cnt_U = NULL;
+    unsigned int *row_levels, *level_rows, *level_rows_cnt;
+
+    if ( tri == LOWER )
+    {
+        row_levels = row_levels_L;
+        level_rows = level_rows_L;
+        level_rows_cnt = level_rows_cnt_L;
+        levels = levels_L;
+    }
+    else
+    {
+        row_levels = row_levels_U;
+        level_rows = level_rows_U;
+        level_rows_cnt = level_rows_cnt_U;
+        levels = levels_U;
+    }
+
+    if ( row_levels == NULL || level_rows == NULL || level_rows_cnt == NULL )
+    {
+        if ( (row_levels = (unsigned int*) malloc(LU->n * sizeof(unsigned int))) == NULL
+            || (level_rows = (unsigned int*) malloc(LU->n * LU->n * sizeof(unsigned int))) == NULL
+            || (level_rows_cnt = (unsigned int*) malloc(LU->n * sizeof(unsigned int))) == NULL )
+        {
+            fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
+    }
+
+    /* find levels (row dependencies in substitutions) */
+    if ( find_levels )
+    {
+        memset( row_levels, 0, LU->n * sizeof( unsigned int) );
+        memset( level_rows_cnt, 0, LU->n * sizeof( unsigned int) );
+
+        if ( tri == LOWER )
+        {
+            for ( i = 0; i < LU->n; ++i )
+            {
+                local_level = 0;
+                for ( pj = LU->start[i]; pj < LU->start[i + 1] - 1; ++pj )
+                {
+                    local_level = MAX( local_level, row_levels[LU->j[pj]] + 1 );
+                }
+        
+                levels = MAX( levels, local_level + 1 );
+                row_levels[i] = local_level;
+                level_rows[local_level * LU->n + level_rows_cnt[local_level]] = i;
+                ++level_rows_cnt[local_level];
+            }
+        }
+        else
+        {
+            for ( i = LU->n - 1; i >= 0; --i )
+            {
+                local_level = 0;
+                for ( pj = LU->start[i] + 1; pj < LU->start[i + 1]; ++pj )
+                {
+                    local_level = MAX( local_level, row_levels[LU->j[pj]] + 1 );
+                }
+        
+                levels = MAX( levels, local_level + 1 );
+                row_levels[i] = local_level;
+                level_rows[local_level * LU->n + level_rows_cnt[local_level]] = i;
+                ++level_rows_cnt[local_level];
+            }
+        }
+    }
+
+    /* perform substitutions by level */
+    if ( tri == LOWER )
+    {
+        for ( i = 0; i < levels; ++i )
+        {
+            #pragma omp parallel for schedule(guided) \
+                default(none) private(j, pj, local_row) shared(stderr, i, level_rows_cnt, level_rows)
+            for ( j = 0; j < level_rows_cnt[i]; ++j )
+            {
+                local_row = level_rows[i * LU->n + j];
+                x[local_row] = y[local_row];
+                for ( pj = LU->start[local_row]; pj < LU->start[local_row + 1] - 1; ++pj )
+                {
+                    x[local_row] -= LU->val[pj] * x[LU->j[pj]];
+    
+                }
+                x[local_row] /= LU->val[pj];
+            }
+        }
+    }
+    else
+    {
+        for ( i = 0; i < levels; ++i )
+        {
+            #pragma omp parallel for schedule(guided) \
+                default(none) private(j, pj, local_row) shared(i, level_rows_cnt, level_rows)
+            for ( j = 0; j < level_rows_cnt[i]; ++j )
+            {
+                local_row = level_rows[i * LU->n + j];
+                x[local_row] = y[local_row];
+                for ( pj = LU->start[local_row] + 1; pj < LU->start[local_row + 1]; ++pj )
+                {
+                    x[local_row] -= LU->val[pj] * x[LU->j[pj]];
+    
+                }
+                x[local_row] /= LU->val[LU->start[local_row]];
+            }
+        }
+    }
+
+    /* save level info for re-use if performing repeated triangular solves via preconditioning */
+    if ( tri == LOWER )
+    {
+        row_levels_L = row_levels;
+        level_rows_L = level_rows;
+        level_rows_cnt_L = level_rows_cnt;
+        levels_L = levels;
+    }
+    else
+    {
+        row_levels_U = row_levels;
+        level_rows_U = level_rows;
+        level_rows_cnt_U = level_rows_cnt;
+        levels_U = levels;
     }
 }
 
@@ -262,9 +424,9 @@ static void Backward_Subs( const sparse_matrix * const U, const real * const y, 
  *
  * Note: Newmann series arises from series expansion of the inverse of
  * the coefficient matrix in the triangular system */
-static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
-                         const real * const Dinv, const unsigned int n,
-                         const real * const b, real * const x, const unsigned int maxiter )
+static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
+        const real * const b, real * const x, const TRIANGULARITY tri,
+        const unsigned int maxiter )
 {
     unsigned int i, k, si = 0, ei = 0, iter = 0;
 #ifdef _OPENMP
@@ -286,26 +448,26 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
              * overhead per Sparse_MatVec call*/
             if ( Dinv_b == NULL )
             {
-                if ( (Dinv_b = (real*) malloc(sizeof(real) * n)) == NULL )
+                if ( (Dinv_b = (real*) malloc(sizeof(real) * R->n)) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit(INSUFFICIENT_SPACE);
+                    exit( INSUFFICIENT_MEMORY );
                 }
             }
             if ( rp == NULL )
             {
-                if ( (rp = (real*) malloc(sizeof(real) * n)) == NULL )
+                if ( (rp = (real*) malloc(sizeof(real) * R->n)) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit(INSUFFICIENT_SPACE);
+                    exit( INSUFFICIENT_MEMORY );
                 }
             }
             if ( rp2 == NULL )
             {
-                    if ( (rp2 = (real*) malloc(sizeof(real) * n)) == NULL )
+                    if ( (rp2 = (real*) malloc(sizeof(real) * R->n)) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit(INSUFFICIENT_SPACE);
+                    exit( INSUFFICIENT_MEMORY );
                 }
             }
 #ifdef _OPENMP
@@ -314,19 +476,19 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                 if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
                 {
                     fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit( INSUFFICIENT_SPACE );
+                    exit( INSUFFICIENT_MEMORY );
                 }
 	    }
 #endif
     
-            Vector_MakeZero( rp, n );
+            Vector_MakeZero( rp, R->n );
 	}
     
         #pragma omp barrier
     
         /* precompute and cache, as invariant in loop below */
         #pragma omp for schedule(guided)
-        for ( i = 0; i < n; ++i )
+        for ( i = 0; i < R->n; ++i )
         {
             Dinv_b[i] = Dinv[i] * b[i];
         }
@@ -355,7 +517,7 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                     si = R->start[i];
                     ei = R->start[i + 1] - 1;
                 }
-                else if (tri == UPPER)
+                else
                 {
     
                     si = R->start[i] + 1;
@@ -365,9 +527,9 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
                 for ( k = si; k < ei; ++k )
                 {
 #ifdef _OPENMP
-                    b_local[tid * R->n + i] += R->entries[k].val * rp[R->entries[k].j];
+                    b_local[tid * R->n + i] += R->val[k] * rp[R->j[k]];
 #else
-                    rp2[i] += R->entries[k].val * rp[R->entries[k].j];
+                    rp2[i] += R->val[k] * rp[R->j[k]];
 #endif
                 }
 #ifdef _OPENMP
@@ -405,42 +567,198 @@ static void Jacobi_Iter( const sparse_matrix * const R, const TRIANGULARITY tri,
         while ( iter < maxiter );
     }
 
-    Vector_Copy( x, rp, n );
+    Vector_Copy( x, rp, R->n );
 }
 
 
-/* generalized minimual residual iterative solver for sparse linear systems,
- * diagonal preconditioner */
-int GMRES( static_storage *workspace, sparse_matrix *H,
-           real *b, real tol, real *x, FILE *fout, real *time, real *spmv_time )
+/* Solve triangular system LU*x = y using level scheduling
+ *
+ * workspace: lower/upper triangular, stored in CSR
+ * y: constants in linear system (RHS)
+ * x: solution
+ * tri: triangularity of preconditoning factor LU (lower/upper), if using ILU-based
+ * pc_type: preconditioner computation method used
+ * pa_type: preconditioner application method to use
+ * extra: parameter for some application methods, if applicable
+ * 
+ * Assumptions:
+ *   LU has non-zero diagonals
+ *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
+void apply_preconditioner( const static_storage * const workspace, real * const y,
+        real * const x, const TRIANGULARITY tri, int pc_type, int pa_type, int extra )
 {
-    int i, j, k, itr, N;
-    real cc, tmp1, tmp2, temp, bnorm;
-    struct timeval start, stop;
+    int i, si;
+    sparse_matrix *LU;
+    static real *Dinv_L = NULL, *Dinv_U = NULL;
+
+    if ( tri == LOWER )
+    {
+        LU = workspace->L;
+    }
+    else
+    {
+        LU = workspace->U;
+    }
+
+    if ( ( pc_type != DIAG_PC || tri != LOWER ) && LU == NULL )
+    {
+        return;
+    }
+
+    switch ( pa_type )
+    {
+        case NONE_PA:
+            break;
+        case TRI_SOLVE_PA:
+            switch ( pc_type )
+            {
+                case DIAG_PC:
+                    diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                    tri_solve( LU, y, x, tri );
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case TRI_SOLVE_LEVEL_SCHED_PA:
+            switch ( pc_type )
+            {
+                case DIAG_PC:
+                    diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                    tri_solve_level_sched( LU, y, x, tri, extra );
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case JACOBI_ITER_PA:
+            switch ( pc_type )
+            {
+                case DIAG_PC:
+                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                    if ( tri == LOWER )
+                    {
+                        if ( Dinv_L == NULL )
+                        {
+                            if ( (Dinv_L = (real*) malloc(sizeof(real) * LU->n)) == NULL )
+                            {
+                                fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                                exit( INSUFFICIENT_MEMORY );
+                            }
+                        }
+
+                        /* construct D^{-1} */
+                        for ( i = 0; i < LU->n; ++i )
+                        {
+                            si = LU->start[i + 1] - 1;
+                            Dinv_L[i] = 1. / LU->val[si];
+                        }
+
+                        jacobi_iter( LU, Dinv_L, y, x, tri, extra );
+                    }
+                    else
+                    {
+                        if ( Dinv_U == NULL )
+                        {
+                            if ( (Dinv_U = (real*) malloc(sizeof(real) * LU->n)) == NULL )
+                            {
+                                fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                                exit( INSUFFICIENT_MEMORY );
+                            }
+                        }
+
+                        /* construct D^{-1}_U */
+                        for ( i = 0; i < LU->n; ++i )
+                        {
+                            si = LU->start[i];
+                            Dinv_U[i] = 1. / LU->val[si];
+                        }
+
+                        jacobi_iter( LU, Dinv_U, y, x, tri, extra );
+                    }
+                    break;
+                default:
+                    break;
+            }
+            break;
+        default:
+            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+    }
+
+    return;
+}
+
+
+/* generalized minimual residual iterative solver for sparse linear systems */
+int GMRES( const static_storage * const workspace, const control_params * const control,
+        const sparse_matrix * const H, const real * const b, real tol, real * const x,
+        const FILE * const fout, real * const time, real * const spmv_time )
+{
+    int i, j, k, itr, N, si;
+    real cc, tmp1, tmp2, temp, bnorm, time_start;
 
     N = H->n;
     bnorm = Norm( b, N );
-    /* apply the diagonal pre-conditioner to rhs */
-    gettimeofday( &start, NULL );
-    for ( i = 0; i < N; ++i )
-        workspace->b_prc[i] = b[i] * workspace->Hdia_inv[i];
-    gettimeofday( &stop, NULL );
-    *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-             - (start.tv_sec + start.tv_usec / 1000000.0);
+
+    if ( control->pre_comp_type == DIAG_PC )
+    {
+        /* apply precondioner to RHS */
+        apply_preconditioner( workspace, workspace->b, workspace->b_prc, LOWER,
+                control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+    }
 
     /* GMRES outer-loop */
     for ( itr = 0; itr < MAX_ITR; ++itr )
     {
         /* calculate r0 */
-        gettimeofday( &start, NULL );
+        time_start = Get_Time( );
         Sparse_MatVec( H, x, workspace->b_prm );
-        gettimeofday( &stop, NULL );
-        *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                 - (start.tv_sec + start.tv_usec / 1000000.0);
-        for ( i = 0; i < N; ++i )
-            workspace->b_prm[i] *= workspace->Hdia_inv[i]; /* pre-conditioner */
+        *spmv_time += Get_Timing_Info( time_start );
 
-        Vector_Sum(workspace->v[0], 1., workspace->b_prc, -1., workspace->b_prm, N);
+        if ( control->pre_comp_type == DIAG_PC )
+        {
+            time_start = Get_Time( );
+            apply_preconditioner( workspace, workspace->b_prm, workspace->b_prm, LOWER,
+                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            *time += Get_Timing_Info( time_start );
+        }
+
+
+        if ( control->pre_comp_type == DIAG_PC )
+        {
+            Vector_Sum( workspace->v[0], 1., workspace->b_prc, -1., workspace->b_prm, N );
+        }
+        else
+        {
+            Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
+        }
+
+        if ( control->pre_comp_type != DIAG_PC )
+        {
+            time_start = Get_Time( );
+            apply_preconditioner( workspace, workspace->v[0], workspace->v[0], LOWER,
+                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            apply_preconditioner( workspace, workspace->v[0], workspace->v[0], UPPER,
+                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            *time += Get_Timing_Info( time_start );
+        }
+
         workspace->g[0] = Norm( workspace->v[0], N );
         Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
@@ -449,26 +767,28 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
         for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
         {
             /* matvec */
-            gettimeofday( &start, NULL );
+            time_start = Get_Time( );
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
-            gettimeofday( &stop, NULL );
-            *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                     - (start.tv_sec + start.tv_usec / 1000000.0);
-            /*pre-conditioner*/
-            gettimeofday( &start, NULL );
-            for ( k = 0; k < N; ++k )
-                workspace->v[j + 1][k] *= workspace->Hdia_inv[k];
-            gettimeofday( &stop, NULL );
-            *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                     - (start.tv_sec + start.tv_usec / 1000000.0);
-            //fprintf( stderr, "%d-%d: matvec done.\n", itr, j );
+            *spmv_time += Get_Timing_Info( time_start );
+
+            time_start = Get_Time( );
+            apply_preconditioner( workspace, workspace->v[j + 1], workspace->v[j + 1], LOWER,
+                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            apply_preconditioner( workspace, workspace->v[j + 1], workspace->v[j + 1], UPPER,
+                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            *time += Get_Timing_Info( time_start );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
-            for ( i = 0; i <= j; i++ )
+            for ( i = 0; i < j - 1; i++ )
+            {
+                workspace->h[i][j] = 0;
+            }
+
+            //for( i = 0; i <= j; i++ ) {
+            for ( i = MAX(j - 1, 0); i <= j; i++ )
             {
                 workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
-                Vector_Add( workspace->v[j + 1],
-                            -workspace->h[i][j], workspace->v[i], N );
+                Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
             }
 
             workspace->h[j + 1][j] = Norm( workspace->v[j + 1], N );
@@ -476,9 +796,8 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
                           1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
             // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
 
-
             /* Givens rotations on the upper-Hessenberg matrix to make it U */
-            for ( i = 0; i <= j; i++ )
+            for ( i = MAX(j - 1, 0); i <= j; i++ )
             {
                 if ( i == j )
                 {
@@ -502,32 +821,41 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
             workspace->g[j] = tmp1;
             workspace->g[j + 1] = tmp2;
 
-            // fprintf( stderr, "h: " );
-            // for( i = 0; i <= j+1; ++i )
-            //  fprintf( stderr, "%.6f ", workspace->h[i][j] );
-            // fprintf( stderr, "\n" );
+            //fprintf( stderr, "h: " );
+            //for( i = 0; i <= j+1; ++i )
+            //fprintf( stderr, "%.6f ", workspace->h[i][j] );
+            //fprintf( stderr, "\n" );
             //fprintf( stderr, "res: %.15e\n", workspace->g[j+1] );
         }
 
 
-        /* solve Hy = g.
-           H is now upper-triangular, do back-substitution */
+        /* TODO: solve using Jacobi iteration? */
+        /* solve Hy = g: H is now upper-triangular, do back-substitution */
         for ( i = j - 1; i >= 0; i-- )
         {
             temp = workspace->g[i];
             for ( k = j - 1; k > i; k-- )
+            {
                 temp -= workspace->h[i][k] * workspace->y[k];
+            }
 
             workspace->y[i] = temp / workspace->h[i][i];
         }
 
         /* update x = x_0 + Vy */
+        Vector_MakeZero( workspace->p, N );
         for ( i = 0; i < j; i++ )
-            Vector_Add( x, workspace->y[i], workspace->v[i], N );
+        {
+            Vector_Add( workspace->p, workspace->y[i], workspace->v[i], N );
+        }
+
+        Vector_Add( x, 1., workspace->p, N );
 
         /* stopping condition */
         if ( fabs(workspace->g[j]) / bnorm <= tol )
+        {
             break;
+        }
     }
 
     // Sparse_MatVec( H, x, workspace->b_prm );
@@ -553,9 +881,9 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
 }
 
 
-
-int GMRES_HouseHolder( static_storage *workspace, sparse_matrix *H,
-                       real *b, real tol, real *x, FILE *fout)
+int GMRES_HouseHolder( const static_storage * const workspace, const control_params * const control,
+        const sparse_matrix * const H, const real * const b, real tol, real * const x,
+        const FILE * const fout, real * const time, real * const spmv_time )
 {
     int  i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -743,330 +1071,7 @@ int GMRES_HouseHolder( static_storage *workspace, sparse_matrix *H,
 }
 
 
-/* generalized minimual residual iterative solver for sparse linear systems,
- * with preconditioner using factors LU \approx H
- * and forward / backward substitution */
-int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
-            sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, real *time, real *spmv_time )
-{
-    int i, j, k, itr, N;
-    real cc, tmp1, tmp2, temp, bnorm;
-    struct timeval start, stop;
-
-    N = H->n;
-    bnorm = Norm( b, N );
-
-    /* GMRES outer-loop */
-    for ( itr = 0; itr < MAX_ITR; ++itr )
-    {
-        /* calculate r0 */
-        gettimeofday( &start, NULL );
-        Sparse_MatVec( H, x, workspace->b_prm );
-        gettimeofday( &stop, NULL );
-        *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                 - (start.tv_sec + start.tv_usec / 1000000.0);
-        Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
-        gettimeofday( &start, NULL );
-        Forward_Subs( L, workspace->v[0], workspace->v[0] );
-        Backward_Subs( U, workspace->v[0], workspace->v[0] );
-        gettimeofday( &stop, NULL );
-        *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                 - (start.tv_sec + start.tv_usec / 1000000.0);
-        workspace->g[0] = Norm( workspace->v[0], N );
-        Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
-        //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
-
-        /* GMRES inner-loop */
-        for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
-        {
-            /* matvec */
-            gettimeofday( &start, NULL );
-            Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
-            gettimeofday( &stop, NULL );
-            *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                     - (start.tv_sec + start.tv_usec / 1000000.0);
-            gettimeofday( &start, NULL );
-            Forward_Subs( L, workspace->v[j + 1], workspace->v[j + 1] );
-            Backward_Subs( U, workspace->v[j + 1], workspace->v[j + 1] );
-            gettimeofday( &stop, NULL );
-            *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                     - (start.tv_sec + start.tv_usec / 1000000.0);
-
-            /* apply modified Gram-Schmidt to orthogonalize the new residual */
-            for ( i = 0; i < j - 1; i++ ) workspace->h[i][j] = 0;
-
-            //for( i = 0; i <= j; i++ ) {
-            for ( i = MAX(j - 1, 0); i <= j; i++ )
-            {
-                workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
-                Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
-            }
-
-            workspace->h[j + 1][j] = Norm( workspace->v[j + 1], N );
-            Vector_Scale( workspace->v[j + 1],
-                          1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
-            // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
-
-            /* Givens rotations on the upper-Hessenberg matrix to make it U */
-            for ( i = MAX(j - 1, 0); i <= j; i++ )
-            {
-                if ( i == j )
-                {
-                    cc = SQRT( SQR(workspace->h[j][j]) + SQR(workspace->h[j + 1][j]) );
-                    workspace->hc[j] = workspace->h[j][j] / cc;
-                    workspace->hs[j] = workspace->h[j + 1][j] / cc;
-                }
-
-                tmp1 =  workspace->hc[i] * workspace->h[i][j] +
-                        workspace->hs[i] * workspace->h[i + 1][j];
-                tmp2 = -workspace->hs[i] * workspace->h[i][j] +
-                       workspace->hc[i] * workspace->h[i + 1][j];
-
-                workspace->h[i][j] = tmp1;
-                workspace->h[i + 1][j] = tmp2;
-            }
-
-            /* apply Givens rotations to the rhs as well */
-            tmp1 =  workspace->hc[j] * workspace->g[j];
-            tmp2 = -workspace->hs[j] * workspace->g[j];
-            workspace->g[j] = tmp1;
-            workspace->g[j + 1] = tmp2;
-
-            //fprintf( stderr, "h: " );
-            //for( i = 0; i <= j+1; ++i )
-            //fprintf( stderr, "%.6f ", workspace->h[i][j] );
-            //fprintf( stderr, "\n" );
-            //fprintf( stderr, "res: %.15e\n", workspace->g[j+1] );
-        }
-
-
-        /* solve Hy = g: H is now upper-triangular, do back-substitution */
-        for ( i = j - 1; i >= 0; i-- )
-        {
-            temp = workspace->g[i];
-            for ( k = j - 1; k > i; k-- )
-                temp -= workspace->h[i][k] * workspace->y[k];
-
-            workspace->y[i] = temp / workspace->h[i][i];
-        }
-
-        /* update x = x_0 + Vy */
-        Vector_MakeZero( workspace->p, N );
-        for ( i = 0; i < j; i++ )
-            Vector_Add( workspace->p, workspace->y[i], workspace->v[i], N );
-        //Backward_Subs( U, workspace->p, workspace->p );
-        //Forward_Subs( L, workspace->p, workspace->p );
-        Vector_Add( x, 1., workspace->p, N );
-
-        /* stopping condition */
-        if ( fabs(workspace->g[j]) / bnorm <= tol )
-            break;
-    }
-
-    // Sparse_MatVec( H, x, workspace->b_prm );
-    // for( i = 0; i < N; ++i )
-    // workspace->b_prm[i] *= workspace->Hdia_inv[i];
-    // fprintf( fout, "\n%10s%15s%15s\n", "b_prc", "b_prm", "x" );
-    // for( i = 0; i < N; ++i )
-    // fprintf( fout, "%10.5f%15.12f%15.12f\n",
-    // workspace->b_prc[i], workspace->b_prm[i], x[i] );*/
-
-    // fprintf(fout,"GMRES outer:%d, inner:%d iters - residual norm: %25.20f\n",
-    //          itr, j, fabs( workspace->g[j] ) / bnorm );
-    // data->timing.matvec += itr * RESTART + j;
-
-    if ( itr >= MAX_ITR )
-    {
-        fprintf( stderr, "GMRES convergence failed\n" );
-        // return -1;
-        return itr * (RESTART + 1) + j + 1;
-    }
-
-    return itr * (RESTART + 1) + j + 1;
-}
-
-
-/* generalized minimual residual iterative solver for sparse linear systems,
- * with preconditioner using factors LU \approx H
- * and Jacobi iteration for approximate factor application */
-int PGMRES_Jacobi( static_storage *workspace, sparse_matrix *H, real *b, real tol,
-                   sparse_matrix *L, sparse_matrix *U, real *x, unsigned int iters,
-		   FILE *fout, real *time, real *spmv_time )
-{
-    int i, j, k, itr, N, si;
-    real cc, tmp1, tmp2, temp, bnorm;
-    real *Dinv_L, *Dinv_U;
-    struct timeval start, stop;
-
-    N = H->n;
-    bnorm = Norm( b, N );
-
-    /* Compute Jacobi iteration matrices from
-     * truncated Newmann series: x_{k+1} = Gx_k + D^{-1}b
-     * where:
-     *   G = I - D^{-1}R
-     *   R = triangular matrix
-     *   D = diagonal matrix, diagonals from R */
-    if ( (Dinv_L = (real*) malloc(sizeof(real) * N)) == NULL
-            || (Dinv_U = (real*) malloc(sizeof(real) * N)) == NULL )
-    {
-        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
-    }
-
-    /* construct D^{-1}_L and D^{-1}_U */
-    for ( i = 0; i < N; ++i )
-    {
-        si = L->start[i + 1] - 1;
-        Dinv_L[i] = 1. / L->entries[si].val;
-
-        si = U->start[i];
-        Dinv_U[i] = 1. / U->entries[si].val;
-    }
-
-    /* GMRES outer-loop */
-    for ( itr = 0; itr < MAX_ITR; ++itr )
-    {
-        /* calculate r0 */
-        gettimeofday( &start, NULL );
-        Sparse_MatVec( H, x, workspace->b_prm );
-        gettimeofday( &stop, NULL );
-        *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                 - (start.tv_sec + start.tv_usec / 1000000.0);
-        Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
-        gettimeofday( &start, NULL );
-        Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[0], workspace->v[0], iters );
-        Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[0], workspace->v[0], iters );
-        gettimeofday( &stop, NULL );
-        *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                 - (start.tv_sec + start.tv_usec / 1000000.0);
-        workspace->g[0] = Norm( workspace->v[0], N );
-        Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
-        //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
-
-        /* GMRES inner-loop */
-        for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
-        {
-            /* matvec */
-            gettimeofday( &start, NULL );
-            Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
-            gettimeofday( &stop, NULL );
-            *spmv_time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                     - (start.tv_sec + start.tv_usec / 1000000.0);
-            gettimeofday( &start, NULL );
-            Jacobi_Iter( L, LOWER, Dinv_L, N, workspace->v[j + 1], workspace->v[j + 1], iters );
-            Jacobi_Iter( U, UPPER, Dinv_U, N, workspace->v[j + 1], workspace->v[j + 1], iters );
-            gettimeofday( &stop, NULL );
-            *time += (stop.tv_sec + stop.tv_usec / 1000000.0)
-                     - (start.tv_sec + start.tv_usec / 1000000.0);
-
-            /* apply modified Gram-Schmidt to orthogonalize the new residual */
-            for ( i = 0; i < j - 1; i++ )
-            {
-                workspace->h[i][j] = 0;
-            }
-
-            //for( i = 0; i <= j; i++ ) {
-            for ( i = MAX(j - 1, 0); i <= j; i++ )
-            {
-                workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
-                Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
-            }
-
-            workspace->h[j + 1][j] = Norm( workspace->v[j + 1], N );
-            Vector_Scale( workspace->v[j + 1],
-                          1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
-            // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
-
-            /* Givens rotations on the upper-Hessenberg matrix to make it U */
-            for ( i = MAX(j - 1, 0); i <= j; i++ )
-            {
-                if ( i == j )
-                {
-                    cc = SQRT( SQR(workspace->h[j][j]) + SQR(workspace->h[j + 1][j]) );
-                    workspace->hc[j] = workspace->h[j][j] / cc;
-                    workspace->hs[j] = workspace->h[j + 1][j] / cc;
-                }
-
-                tmp1 =  workspace->hc[i] * workspace->h[i][j] +
-                        workspace->hs[i] * workspace->h[i + 1][j];
-                tmp2 = -workspace->hs[i] * workspace->h[i][j] +
-                       workspace->hc[i] * workspace->h[i + 1][j];
-
-                workspace->h[i][j] = tmp1;
-                workspace->h[i + 1][j] = tmp2;
-            }
-
-            /* apply Givens rotations to the rhs as well */
-            tmp1 =  workspace->hc[j] * workspace->g[j];
-            tmp2 = -workspace->hs[j] * workspace->g[j];
-            workspace->g[j] = tmp1;
-            workspace->g[j + 1] = tmp2;
-
-            //fprintf( stderr, "h: " );
-            //for( i = 0; i <= j+1; ++i )
-            //fprintf( stderr, "%.6f ", workspace->h[i][j] );
-            //fprintf( stderr, "\n" );
-            //fprintf( stderr, "res: %.15e\n", workspace->g[j+1] );
-        }
-
-
-        /* TODO: solve using Jacobi iteration? */
-        /* solve Hy = g: H is now upper-triangular, do back-substitution */
-        for ( i = j - 1; i >= 0; i-- )
-        {
-            temp = workspace->g[i];
-            for ( k = j - 1; k > i; k-- )
-            {
-                temp -= workspace->h[i][k] * workspace->y[k];
-            }
-
-            workspace->y[i] = temp / workspace->h[i][i];
-        }
-
-        /* update x = x_0 + Vy */
-        Vector_MakeZero( workspace->p, N );
-        for ( i = 0; i < j; i++ )
-        {
-            Vector_Add( workspace->p, workspace->y[i], workspace->v[i], N );
-        }
-        //Backward_Subs( U, workspace->p, workspace->p );
-        //Forward_Subs( L, workspace->p, workspace->p );
-        Vector_Add( x, 1., workspace->p, N );
-
-        /* stopping condition */
-        if ( fabs(workspace->g[j]) / bnorm <= tol )
-        {
-            break;
-        }
-    }
-
-    // Sparse_MatVec( H, x, workspace->b_prm );
-    // for( i = 0; i < N; ++i )
-    // workspace->b_prm[i] *= workspace->Hdia_inv[i];
-    // fprintf( fout, "\n%10s%15s%15s\n", "b_prc", "b_prm", "x" );
-    // for( i = 0; i < N; ++i )
-    // fprintf( fout, "%10.5f%15.12f%15.12f\n",
-    // workspace->b_prc[i], workspace->b_prm[i], x[i] );*/
-
-    // fprintf(fout,"GMRES outer:%d, inner:%d iters - residual norm: %25.20f\n",
-    //          itr, j, fabs( workspace->g[j] ) / bnorm );
-    // data->timing.matvec += itr * RESTART + j;
-
-    free( Dinv_U );
-    free( Dinv_L );
-
-    if ( itr >= MAX_ITR )
-    {
-        fprintf( stderr, "GMRES convergence failed\n" );
-        // return -1;
-        return itr * (RESTART + 1) + j + 1;
-    }
-
-    return itr * (RESTART + 1) + j + 1;
-}
-
-
+/* Preconditioned Conjugate Gradient */
 int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
          sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout )
 {
@@ -1084,8 +1089,8 @@ int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
     //Print_Soln( workspace, x, q, b, N );
     //fprintf( stderr, "res: %.15e\n", r_norm );
 
-    Forward_Subs( L, workspace->r, workspace->d );
-    Backward_Subs( U, workspace->d, workspace->p );
+    tri_solve( L, workspace->r, workspace->d, LOWER );
+    tri_solve( U, workspace->d, workspace->p, UPPER );
     sig_new = Dot( workspace->r, workspace->p, N );
     sig0 = sig_new;
 
@@ -1103,8 +1108,8 @@ int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
         r_norm = Norm(workspace->r, N);
         //fprintf( stderr, "res: %.15e\n", r_norm );
 
-        Forward_Subs( L, workspace->r, workspace->d );
-        Backward_Subs( U, workspace->d, workspace->d );
+        tri_solve( L, workspace->r, workspace->d, LOWER );
+        tri_solve( U, workspace->d, workspace->d, UPPER );
         sig_old = sig_new;
         sig_new = Dot( workspace->r, workspace->d, N );
         beta = sig_new / sig_old;
@@ -1122,6 +1127,7 @@ int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
 }
 
 
+/* Conjugate Gradient */
 int CG( static_storage *workspace, sparse_matrix *H,
         real *b, real tol, real *x, FILE *fout )
 {
@@ -1136,7 +1142,9 @@ int CG( static_storage *workspace, sparse_matrix *H,
     Sparse_MatVec( H, x, workspace->q );
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
     for ( j = 0; j < N; ++j )
+    {
         workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+    }
 
     sig_new = Dot( workspace->r, workspace->d, N );
     sig0 = sig_new;
@@ -1179,7 +1187,6 @@ int CG( static_storage *workspace, sparse_matrix *H,
 }
 
 
-
 /* Steepest Descent */
 int SDM( static_storage *workspace, sparse_matrix *H,
          real *b, real tol, real *x, FILE *fout )
@@ -1195,7 +1202,9 @@ int SDM( static_storage *workspace, sparse_matrix *H,
     Sparse_MatVec( H, x, workspace->q );
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
     for ( j = 0; j < N; ++j )
+    {
         workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+    }
 
     sig = Dot( workspace->r, workspace->d, N );
     sig0 = sig;
@@ -1211,7 +1220,9 @@ int SDM( static_storage *workspace, sparse_matrix *H,
         Vector_Add( x, alpha, workspace->d, N );
         Vector_Add( workspace->r, -alpha, workspace->q, N );
         for ( j = 0; j < N; ++j )
+        {
             workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        }
 
         //fprintf( stderr, "d_norm:%24.15e, q_norm:%24.15e, tmp:%24.15e\n",
         //     Norm(workspace->d,N), Norm(workspace->q,N), tmp );
@@ -1229,6 +1240,15 @@ int SDM( static_storage *workspace, sparse_matrix *H,
 }
 
 
+/* Estimate the stability of a 2-side preconditioning scheme
+ * using the factorization A \approx LU. Specifically, estimate the 1-norm of A^{-1}
+ * using the 1-norm of (LU)^{-1}e, with e = [1 1 ... 1]^T through 2 triangular solves:
+ *   1) Ly = e
+ *   2) Ux = y where y = Ux
+ * That is, we seek to solve e = LUx for unknown x 
+ *
+ * Reference: Incomplete LU Preconditioning with the Multilevel Fast Multipole Algorithm
+ *   for Electromagnetic Scattering, SIAM J. Sci. Computing, 2007 */
 real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 {
     unsigned int i, N;
@@ -1239,7 +1259,7 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
     if ( (e = (real*) malloc(sizeof(real) * N)) == NULL )
     {
         fprintf( stderr, "Not enough memory for condest. Terminating.\n" );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     for ( i = 0; i < N; ++i )
@@ -1247,9 +1267,10 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
         e[i] = 1.;
     }
 
-    Forward_Subs( L, e, e );
-    Backward_Subs( U, e, e );
+    tri_solve( L, e, e, LOWER );
+    tri_solve( U, e, e, UPPER );
 
+    /* compute 1-norm of vector e */
     c = fabs(e[0]);
     for ( i = 1; i < N; ++i)
     {

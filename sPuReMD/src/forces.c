@@ -187,7 +187,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
             fprintf( stderr,
                      "step%d - ran out of space on H matrix: Htop=%d, max = %d",
                      step, Htop, Hmax );
-            exit(INSUFFICIENT_SPACE);
+            exit( INSUFFICIENT_MEMORY );
         }
     }
 
@@ -206,7 +206,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
     {
         fprintf( stderr, "step%d-bondchk failed: i=%d end(i)=%d str(i+1)=%d\n",
                  step, flag, End_Index(flag, bonds), Start_Index(flag + 1, bonds) );
-        exit(INSUFFICIENT_SPACE);
+        exit( INSUFFICIENT_MEMORY );
     }
 
     if ( End_Index(i, bonds) >= bonds->num_intrs - 2 )
@@ -217,7 +217,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
         {
             fprintf( stderr, "step%d-bondchk failed: i=%d end(i)=%d bond_end=%d\n",
                      step, flag, End_Index(i, bonds), bonds->num_intrs );
-            exit(INSUFFICIENT_SPACE);
+            exit( INSUFFICIENT_MEMORY );
         }
     }
 
@@ -240,7 +240,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
         {
             fprintf( stderr, "step%d-hbondchk failed: i=%d end(i)=%d str(i+1)=%d\n",
                      step, flag, End_Index(flag, hbonds), Start_Index(flag + 1, hbonds) );
-            exit(INSUFFICIENT_SPACE);
+            exit( INSUFFICIENT_MEMORY );
         }
 
         if ( Num_Entries(i, hbonds) >=
@@ -252,7 +252,7 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
             {
                 fprintf( stderr, "step%d-hbondchk failed: i=%d end(i)=%d hbondend=%d\n",
                          step, flag, End_Index(i, hbonds), hbonds->num_intrs );
-                exit(INSUFFICIENT_SPACE);
+                exit( INSUFFICIENT_MEMORY );
             }
         }
     }
@@ -372,15 +372,15 @@ void Init_Forces( reax_system *system, control_params *control,
                 dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
                 dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
 
-                H->entries[Htop].j = j;
-                H->entries[Htop].val = self_coef * Tap * EV_to_KCALpMOL / dr3gamij_3;
+                H->j[Htop] = j;
+                H->val[Htop] = self_coef * Tap * EV_to_KCALpMOL / dr3gamij_3;
                 ++Htop;
 
                 /* H_sp matrix entry */
                 if ( flag_sp )
                 {
-                    H_sp->entries[H_sp_top].j = j;
-                    H_sp->entries[H_sp_top].val = self_coef * Tap * EV_to_KCALpMOL / dr3gamij_3;
+                    H_sp->j[H_sp_top] = j;
+                    H_sp->val[H_sp_top] = self_coef * Tap * EV_to_KCALpMOL / dr3gamij_3;
                     ++H_sp_top;
                 }
 
@@ -538,12 +538,12 @@ void Init_Forces( reax_system *system, control_params *control,
             }
         }
 
-        H->entries[Htop].j = i;
-        H->entries[Htop].val = system->reaxprm.sbp[type_i].eta;
+        H->j[Htop] = i;
+        H->val[Htop] = system->reaxprm.sbp[type_i].eta;
         ++Htop;
 
-        H_sp->entries[H_sp_top].j = i;
-        H_sp->entries[H_sp_top].val = system->reaxprm.sbp[type_i].eta;
+        H_sp->j[H_sp_top] = i;
+        H_sp->val[H_sp_top] = system->reaxprm.sbp[type_i].eta;
         ++H_sp_top;
 
         Set_End_Index( i, btop_i, bonds );
@@ -663,8 +663,8 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                       t->ele[r].a;
                 val *= EV_to_KCALpMOL / C_ele;
 
-                H->entries[Htop].j = j;
-                H->entries[Htop].val = self_coef * val;
+                H->j[Htop] = j;
+                H->val[Htop] = self_coef * val;
                 ++Htop;
 
                 /* hydrogen bond lists */
@@ -793,8 +793,8 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
             }
         }
 
-        H->entries[Htop].j = i;
-        H->entries[Htop].val = system->reaxprm.sbp[type_i].eta;
+        H->j[Htop] = i;
+        H->val[Htop] = system->reaxprm.sbp[type_i].eta;
         ++Htop;
 
         Set_End_Index( i, btop_i, bonds );
