@@ -175,7 +175,7 @@ int Init_System( reax_system *system, control_params *control,
     //Tried fix
     //system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
     system->Hcap = MAX( system->n * SAFER_ZONE, MIN_CAP );
-    //printf("numH: %d, Hcap: %d \n", system->numH, system->Hcap);
+    
 // Sudhir-style below
 /*
     system->numH = 0;
@@ -758,7 +758,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     bond_top = (int*) calloc( system->total_cap, sizeof(int) );
     hb_top = (int*) calloc( system->local_cap, sizeof(int) );
     //hb_top = (int*) calloc( system->Hcap, sizeof(int) );
-    //printf("HCap: %d \n", system->Hcap);i
+    
     
     Estimate_Storages( system, control, lists,
                        &Htop, hb_top, bond_top, &num_3body );
@@ -766,7 +766,7 @@ int  Init_Lists( reax_system *system, control_params *control,
       //                      &Htop, hb_top, bond_top, &num_3body );
     
   
-    //printf("%p , %d , %d \n", (void*)&(workspace->H), system->local_cap,Htop);
+    
     Allocate_Matrix( &(workspace->H), system->local_cap, Htop );
     
     //MATRIX CHANGES

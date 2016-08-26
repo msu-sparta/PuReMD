@@ -106,7 +106,6 @@ void Sync_Atoms (reax_system *sys)
             sys->my_rank, sys->n, sys->N, sys->total_cap);
 #endif
 
-    //printf("Doing somethign unnecessayr\n");
     copy_host_device (sys->my_atoms, sys->d_my_atoms, sizeof (reax_atom) * sys->N, cudaMemcpyHostToDevice, "system:my_atoms");
     //TODO
     //TODO METIN FIX, coredump on his machine
