@@ -1635,15 +1635,17 @@ void QEq( reax_system * const system, control_params * const control, simulation
     {
         case GMRES_S:
             matvecs = GMRES( workspace, control, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                    workspace->s[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+                    workspace->s[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv),
+                    (data->step - data->prev_steps) % control->pre_comp_refactor == 0 );
             matvecs += GMRES( workspace, control, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                    workspace->t[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+                    workspace->t[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv), 0 );
             break;
         case GMRES_H_S:
             matvecs = GMRES_HouseHolder( workspace, control, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                    workspace->s[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+                    workspace->s[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv),
+                    (data->step - data->prev_steps) % control->pre_comp_refactor == 0 );
             matvecs += GMRES_HouseHolder( workspace, control, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                    workspace->t[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv) );
+                    workspace->t[0], out_control->log, &(data->timing.pre_app), &(data->timing.spmv), 0 );
             break;
         case CG_S:
             matvecs = CG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,

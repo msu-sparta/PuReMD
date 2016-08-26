@@ -573,44 +573,32 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
 
 /* Solve triangular system LU*x = y using level scheduling
  *
- * workspace: lower/upper triangular, stored in CSR
+ * workspace: data struct containing matrices, lower/upper triangular, stored in CSR
+ * control: data struct containing parameters
  * y: constants in linear system (RHS)
  * x: solution
- * tri: triangularity of preconditoning factor LU (lower/upper), if using ILU-based
- * pc_type: preconditioner computation method used
- * pa_type: preconditioner application method to use
- * extra: parameter for some application methods, if applicable
+ * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
  * 
  * Assumptions:
- *   LU has non-zero diagonals
- *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
-void apply_preconditioner( const static_storage * const workspace, real * const y,
-        real * const x, const TRIANGULARITY tri, int pc_type, int pa_type, int extra )
+ *   Matrices have non-zero diagonals
+ *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
+void apply_preconditioner( const static_storage * const workspace, const control_params * const control,
+        real * const y, real * const x, const int fresh_pre )
 {
     int i, si;
-    sparse_matrix *LU;
     static real *Dinv_L = NULL, *Dinv_U = NULL;
 
-    if ( tri == LOWER )
-    {
-        LU = workspace->L;
-    }
-    else
-    {
-        LU = workspace->U;
-    }
-
-    if ( ( pc_type != DIAG_PC || tri != LOWER ) && LU == NULL )
+    if ( control->pre_comp_type != DIAG_PC && workspace->L == NULL )
     {
         return;
     }
 
-    switch ( pa_type )
+    switch ( control->pre_app_type )
     {
         case NONE_PA:
             break;
         case TRI_SOLVE_PA:
-            switch ( pc_type )
+            switch ( control->pre_comp_type )
             {
                 case DIAG_PC:
                     diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
@@ -618,14 +606,17 @@ void apply_preconditioner( const static_storage * const workspace, real * const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-                    tri_solve( LU, y, x, tri );
+                    tri_solve( workspace->L, y, x, LOWER );
+                    tri_solve( workspace->U, y, x, UPPER );
                     break;
                 default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
                     break;
             }
             break;
         case TRI_SOLVE_LEVEL_SCHED_PA:
-            switch ( pc_type )
+            switch ( control->pre_comp_type )
             {
                 case DIAG_PC:
                     diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
@@ -633,14 +624,17 @@ void apply_preconditioner( const static_storage * const workspace, real * const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-                    tri_solve_level_sched( LU, y, x, tri, extra );
+                    tri_solve_level_sched( workspace->L, y, x, LOWER, fresh_pre );
+                    tri_solve_level_sched( workspace->U, y, x, UPPER, fresh_pre );
                     break;
                 default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
                     break;
             }
             break;
         case JACOBI_ITER_PA:
-            switch ( pc_type )
+            switch ( control->pre_comp_type )
             {
                 case DIAG_PC:
                     fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
@@ -649,48 +643,45 @@ void apply_preconditioner( const static_storage * const workspace, real * const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-                    if ( tri == LOWER )
+                    if ( Dinv_L == NULL )
                     {
-                        if ( Dinv_L == NULL )
+                        if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
                         {
-                            if ( (Dinv_L = (real*) malloc(sizeof(real) * LU->n)) == NULL )
-                            {
-                                fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                                exit( INSUFFICIENT_MEMORY );
-                            }
+                            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                            exit( INSUFFICIENT_MEMORY );
                         }
-
-                        /* construct D^{-1} */
-                        for ( i = 0; i < LU->n; ++i )
-                        {
-                            si = LU->start[i + 1] - 1;
-                            Dinv_L[i] = 1. / LU->val[si];
-                        }
-
-                        jacobi_iter( LU, Dinv_L, y, x, tri, extra );
                     }
-                    else
+
+                    /* construct D^{-1}_L */
+                    for ( i = 0; i < workspace->L->n; ++i )
                     {
-                        if ( Dinv_U == NULL )
-                        {
-                            if ( (Dinv_U = (real*) malloc(sizeof(real) * LU->n)) == NULL )
-                            {
-                                fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                                exit( INSUFFICIENT_MEMORY );
-                            }
-                        }
-
-                        /* construct D^{-1}_U */
-                        for ( i = 0; i < LU->n; ++i )
-                        {
-                            si = LU->start[i];
-                            Dinv_U[i] = 1. / LU->val[si];
-                        }
-
-                        jacobi_iter( LU, Dinv_U, y, x, tri, extra );
+                        si = workspace->L->start[i + 1] - 1;
+                        Dinv_L[i] = 1. / workspace->L->val[si];
                     }
+
+                    jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->pre_app_jacobi_iters );
+
+                    if ( Dinv_U == NULL )
+                    {
+                        if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
+                        {
+                            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                            exit( INSUFFICIENT_MEMORY );
+                        }
+                    }
+
+                    /* construct D^{-1}_U */
+                    for ( i = 0; i < workspace->U->n; ++i )
+                    {
+                        si = workspace->U->start[i];
+                        Dinv_U[i] = 1. / workspace->U->val[si];
+                    }
+
+                    jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->pre_app_jacobi_iters );
                     break;
                 default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
                     break;
             }
             break;
@@ -708,7 +699,7 @@ void apply_preconditioner( const static_storage * const workspace, real * const 
 /* generalized minimual residual iterative solver for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
         const sparse_matrix * const H, const real * const b, real tol, real * const x,
-        const FILE * const fout, real * const time, real * const spmv_time )
+        const FILE * const fout, real * const time, real * const spmv_time, const int fresh_pre )
 {
     int i, j, k, itr, N, si;
     real cc, tmp1, tmp2, temp, bnorm, time_start;
@@ -719,8 +710,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     if ( control->pre_comp_type == DIAG_PC )
     {
         /* apply precondioner to RHS */
-        apply_preconditioner( workspace, workspace->b, workspace->b_prc, LOWER,
-                control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+        apply_preconditioner( workspace, control, workspace->b, workspace->b_prc, fresh_pre );
     }
 
     /* GMRES outer-loop */
@@ -734,8 +724,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         if ( control->pre_comp_type == DIAG_PC )
         {
             time_start = Get_Time( );
-            apply_preconditioner( workspace, workspace->b_prm, workspace->b_prm, LOWER,
-                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            apply_preconditioner( workspace, control, workspace->b_prm, workspace->b_prm, fresh_pre );
             *time += Get_Timing_Info( time_start );
         }
 
@@ -752,10 +741,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         if ( control->pre_comp_type != DIAG_PC )
         {
             time_start = Get_Time( );
-            apply_preconditioner( workspace, workspace->v[0], workspace->v[0], LOWER,
-                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
-            apply_preconditioner( workspace, workspace->v[0], workspace->v[0], UPPER,
-                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            apply_preconditioner( workspace, control, workspace->v[0], workspace->v[0], fresh_pre );
             *time += Get_Timing_Info( time_start );
         }
 
@@ -772,10 +758,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             *spmv_time += Get_Timing_Info( time_start );
 
             time_start = Get_Time( );
-            apply_preconditioner( workspace, workspace->v[j + 1], workspace->v[j + 1], LOWER,
-                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
-            apply_preconditioner( workspace, workspace->v[j + 1], workspace->v[j + 1], UPPER,
-                    control->pre_comp_type, control->pre_app_type, control->pre_app_jacobi_iters );
+            apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], fresh_pre );
             *time += Get_Timing_Info( time_start );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
@@ -883,7 +866,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
 int GMRES_HouseHolder( const static_storage * const workspace, const control_params * const control,
         const sparse_matrix * const H, const real * const b, real tol, real * const x,
-        const FILE * const fout, real * const time, real * const spmv_time )
+        const FILE * const fout, real * const time, real * const spmv_time, const int fresh_pre )
 {
     int  i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
