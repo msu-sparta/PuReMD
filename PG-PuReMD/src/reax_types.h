@@ -57,7 +57,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <zlib.h>
-
+#define         HOST_SCRATCH_SIZE               (1024 * 1024 * 20)
 #ifdef HAVE_CUDA
 #include <cuda.h>
 #endif
@@ -577,12 +577,21 @@ typedef struct
     int num_atom_types;
 
 #ifndef HAVE_CUDA
+/*
     global_parameters gp;
     single_body_parameters *sbp;
     two_body_parameters **tbp;
     three_body_header ***thbp;
     hbond_parameters ***hbp;
-    four_body_header ****fbp;
+    four_body_header ****fbp;*/
+
+    global_parameters gp;
+    single_body_parameters *sbp;
+    two_body_parameters *tbp; 
+    three_body_header *thbp; 
+    hbond_parameters *hbp; 
+    four_body_header *fbp; 
+
 #else
     global_parameters gp;
     global_parameters d_gp;
@@ -645,6 +654,7 @@ typedef struct
 struct grid_cell
 {
 #ifndef HAVE_CUDA
+/*
     real cutoff;
     rvec min, max;
     ivec rel_box;
@@ -658,6 +668,23 @@ struct grid_cell
     struct grid_cell** nbrs;
     ivec* nbrs_x;
     rvec* nbrs_cp;
+*/
+
+   //real cutoff;
+   rvec min, max;
+   //ivec rel_box;
+
+   int  mark;
+   int  type;
+   //int  str;
+   //int  end;
+   int  top;
+   int* atoms;
+   //struct grid_cell** nbrs; //changed
+   //ivec* nbrs_x;
+   //rvec* nbrs_cp;
+
+
 #else
     //real cutoff;
     rvec min, max;
@@ -700,8 +727,22 @@ typedef struct
     ivec ghost_bond_span;
 
 #ifndef HAVE_CUDA
-    grid_cell*** cells;
-    ivec *order;
+//    grid_cell*** cells;
+//    ivec *order;
+   
+   grid_cell* cells;
+   ivec *order;
+
+   int *str;
+   int *end;
+   real *cutoff;
+   ivec *nbrs_x;
+   rvec *nbrs_cp;
+
+   ivec *rel_box;
+
+
+
 #else
     grid_cell* cells; //changed
     ivec *order;
@@ -1106,7 +1147,8 @@ typedef struct
 
     /* QEq storage */
 #ifndef HAVE_CUDA
-    sparse_matrix *H, *L, *U;
+//    sparse_matrix *H, *L, *U;
+    sparse_matrix H, L, U;
 #else
     sparse_matrix H, L, U; //CHANGED
 #endif
@@ -1118,7 +1160,8 @@ typedef struct
     real *y, *z, *g;
     real *hc, *hs;
 #ifndef HAVE_CUDA
-    real **h, **v;
+    //real **h, **v;
+    real *h, *v;
 #else
     real *h, *v; //changed
 #endif
@@ -1136,7 +1179,8 @@ typedef struct
     /* storage space for bond restrictions */
     int  *restricted;
 #ifndef HAVE_CUDA
-    int **restricted_list;
+    //int **restricted_list;
+    int * restricted_list;
 #else
     int *restricted_list;   //changed
 #endif
@@ -1183,7 +1227,8 @@ typedef struct
 
 typedef union
 {
-#ifdef HAVE_CUDA
+
+//#ifdef HAVE_CUDA
     void *v;
     three_body_interaction_data *three_body_list;
     bond_data          *bond_list;
@@ -1191,7 +1236,8 @@ typedef union
     dDelta_data        *dDelta_list;
     far_neighbor_data  *far_nbr_list;
     hbond_data         *hbond_list;
-#endif
+//#endif
+
 } list_type;
 
 
@@ -1207,7 +1253,7 @@ typedef struct
 
     int type;
     list_type select;
-
+/*
 #ifndef HAVE_CUDA
     void *v;
     three_body_interaction_data *three_body_list;
@@ -1217,6 +1263,8 @@ typedef struct
     far_neighbor_data  *far_nbr_list;
     hbond_data         *hbond_list;
 #endif
+*/
+
 } reax_list;
 
 
@@ -1326,7 +1374,8 @@ typedef struct
 } LR_lookup_table;
 
 #ifndef HAVE_CUDA
-extern LR_lookup_table **LR;
+//extern LR_lookup_table **LR;
+extern LR_lookup_table *LR;
 #else
 extern LR_lookup_table *LR; //changed
 #endif

@@ -94,37 +94,44 @@ mv petn.out petn_mpi_gpu.out
 mv petn.pot petn_mpi_gpu.pot
 mv petn.trj petn_mpi_gpu.trj
 
-# Skipping MPI-NOT-GPU for now, not working yet
-if false
-then
-
 ####################
-# MPI-NOT-GPU Runs #
+# MPI_Not_GPU Runs #
 ####################
 
-# Compile for MPI-NOT-GPU
-cd ..
-./configure --enable-openmp=no --enable-mpi-not-gpu=yes
-make clean && make
-cd tools
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/water/water_78480.geo ../data/benchmarks/water/ffield.water water_78480_control
 
-mpirun -np 2 ../PG-PuReMD/src/pg-puremd water_6540.pdb ffield.water water_6540_control
+mv water.78480.log water.78480_mpi_not_gpu.log
+mv water.78480.out water.78480_mpi_not_gpu.out
+mv water.78480.pot water.78480_mpi_not_gpu.pot
+mv water.78480.trj water.78480_mpi_not_gpu.trj
 
-mv water.6540.log water.6540_mpi_not_gpu.log
-mv water.6540.out water.6540_mpi_not_gpu.out
-mv water.6540.pot water.6540_mpi_not_gpu.pot
-mv water.6540.trj water.6540_mpi_not_gpu.trj
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/silica/silica_72000.geo ../data/benchmarks/silica/ffield-bio silica_72000_control
 
-mpirun -np 2 ../PG-PuReMD/src/pg-puremd silica_6000.pdb ffield.water silica_6000_control
+mv silica.72000.log silica.72000_mpi_not_gpu.log
+mv silica.72000.out silica.72000_mpi_not_gpu.out
+mv silica.72000.pot silica.72000_mpi_not_gpu.pot
+mv silica.72000.trj silica.72000_mpi_not_gpu.trj
 
-mv silica.6000.log silica.6000_mpi_not_gpu.log
-mv silica.6000.out silica.6000_mpi_not_gpu.out
-mv silica.6000.pot silica.6000_mpi_not_gpu.pot
-mv silica.6000.trj silica.6000_mpi_not_gpu.trj
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/bilayer/bilayer_56800.pdb ../data/benchmarks/bilayer/ffield-bio bilayer_56800_control
 
+mv bilayer.56800.log bilayer.56800_mpi_not_gpu.log
+mv bilayer.56800.out bilayer.56800_mpi_not_gpu.out
+mv bilayer.56800.pot bilayer.56800_mpi_not_gpu.pot
+mv bilayer.56800.trj bilayer.56800_mpi_not_gpu.trj
 
-fi
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/dna/dna_19733.pdb ../data/benchmarks/dna/ffield-dna dna_control
 
+mv dna.log dna_mpi_not_gpu.log
+mv dna.out dna_mpi_not_gpu.out
+mv dna.pot dna_mpi_not_gpu.pot
+mv dna.trj dna_mpi_not_gpu.trj
+
+mpirun -np 2 ../PG-PuReMD/bin/pg-puremd-not-gpu ../data/benchmarks/petn/petn_48256.pdb ../data/benchmarks/petn/ffield.petn petn_control
+
+mv petn.log petn_mpi_not_gpu.log
+mv petn.out petn_mpi_not_gpu.out
+mv petn.pot petn_mpi_not_gpu.pot
+mv petn.trj petn_mpi_not_gpu.trj
 
 
 

@@ -843,6 +843,8 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
     num_bonds = 0;
     p_boc1 = system->reax_param.gp.l[0];
     p_boc2 = system->reax_param.gp.l[1];
+    
+   // printf("Running Bonds \n");
 
     /* Calculate Deltaprime, Deltaprime_boc values */
     for ( i = 0; i < system->N; ++i )
@@ -1215,10 +1217,10 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
 
     //Print_Bonds( system, bonds, "pbonds.out" );
 
-#if defined(TEST_ENERGIES) || defined(TEST_FORCES)
-    fprintf( stderr, "Number of bonds: %d\n", num_bonds );
-    Print_Bond_List( system, control, data, lists, out_control);
-#endif
+//#if defined(TEST_ENERGIES) || defined(TEST_FORCES)
+ //   fprintf( stderr, "Number of bonds: %d\n", num_bonds );
+//    Print_Bond_List( system, control, data, lists, out_control);
+//#endif
 }
 
 
