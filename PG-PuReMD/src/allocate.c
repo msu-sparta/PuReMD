@@ -432,7 +432,6 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m )
 int Allocate_Matrix( sparse_matrix *H, int cap, int m )
 {
 
-   // printf("cap: %d, m: %d \n", H->cap, H->m);
    // H = (sparse_matrix*) smalloc(sizeof(sparse_matrix), "sparse_matrix");
     H->cap = cap;
     H->m = m;

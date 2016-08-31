@@ -139,7 +139,6 @@ int main( int argc, char* argv[] )
     data = (simulation_data *)
            smalloc( sizeof(simulation_data), "data", MPI_COMM_WORLD );
 
-   printf("sizeof(storage): %d \n", sizeof(storage));
     workspace = (storage *)
                 smalloc( sizeof(storage), "workspace", MPI_COMM_WORLD );
     lists = (reax_list **)

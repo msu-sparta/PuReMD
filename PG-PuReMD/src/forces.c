@@ -333,7 +333,7 @@ int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_li
     //copy_host_device (end_index, dev_workspace->H.end, system->N * sizeof (int),
     //        cudaMemcpyDeviceToHost, "sparse_matrix:end" );
     max_sp_entries = total_sp_entries = 0;
-    //printf("max sparsematrix entries: %d \n", system->max_sparse_entries);
+    
     for (i = 0; i < n; i++ ){
         //if (i < N-1)
         //    comp = index [i+1];
@@ -426,7 +426,6 @@ int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_li
 
         int max_bonds = 0;
         for (i = 0; i < N; i++) {
-            //printf("i: %d, index[i]: %d, end_index[i]: %d \n", i, index[i], end_index[i]);
             if (end_index[i] - index[i] >= system->max_bonds) {
                 fprintf( stderr, "MPI-Not-GPU step%d-bondchk failed: i=%d start(i)=%d end(i)=%d max_bonds=%d\n",
                         step, i, index[i], end_index[i], system->max_bonds);
@@ -438,7 +437,7 @@ int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_li
         realloc->num_bonds = max_bonds;
 
     }
-    //printf("hbonds->n : %d \n", hbonds->n);
+    
     //validate Hbonds list
     num_hbonds = 0;
     // FIX - 4 - added additional check here
@@ -1440,7 +1439,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
                             ++hb_top[i];
                         else if ( j < system->n && ihb == 2 && jhb == 1 ){
                             ++hb_top[j];
-			//	printf("j: %d \n", j);
+		
 			}
                     }
                 }
