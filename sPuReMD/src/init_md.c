@@ -290,6 +290,7 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->H_sp     = NULL;
     workspace->L        = NULL;
     workspace->U        = NULL;
+    workspace->Hdia_inv = NULL;
     workspace->droptol  = (real *) calloc( system->N, sizeof( real ) );
     workspace->w        = (real *) calloc( system->N, sizeof( real ) );
     workspace->b        = (real *) calloc( system->N * 2, sizeof( real ) );

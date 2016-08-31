@@ -30,12 +30,16 @@ class TestCase():
                     r'(?P<key>ensemble_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'nsteps': lambda l, x: sub(
                     r'(?P<key>nsteps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'tabulate_long_range': lambda l, x: sub(
+                    r'(?P<key>tabulate_long_range\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'qeq_solver_type': lambda l, x: sub(
                     r'(?P<key>qeq_solver_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'qeq_solver_q_err': lambda l, x: sub(
                     r'(?P<key>qeq_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'pre_comp_type': lambda l, x: sub(
                     r'(?P<key>pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'pre_comp_droptol': lambda l, x: sub(
+                    r'(?P<key>pre_comp_droptol\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'pre_comp_refactor': lambda l, x: sub(
                     r'(?P<key>pre_comp_refactor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'pre_comp_sweeps': lambda l, x: sub(
@@ -63,7 +67,7 @@ class TestCase():
         fp_temp.write(lines)
         fp_temp.close()
 
-    def run(self, bin_file='sPuReMD/bin/spuremd'):
+    def run(self, bin_file='sPuReMD/bin/spuremd', process_results=False):
         base_dir = getcwd()
         bin_path = path.join(base_dir, bin_file)
         env = dict(environ)
@@ -74,6 +78,7 @@ class TestCase():
         fout = open(self.__result_file, 'a')
         if write_header:
             fout.write(self.__result_header_fmt.format(*self.__result_header))
+            fout.flush()
 
         temp_dir = mkdtemp()
         temp_file = path.join(temp_dir, path.basename(self.__control_file))
@@ -81,20 +86,31 @@ class TestCase():
         for p in product(*[self.__params[k] for k in self.__param_names]):
             param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
             param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
-                + '_step' + param_dict['nsteps'] + '_tol' + param_dict['qeq_solver_q_err'] \
-                + '_precomp' + param_dict['pre_comp_type'] + '_thread' + param_dict['threads']
+                + '_s' + param_dict['nsteps'] \
+		+ '_q' + param_dict['qeq_solver_type'] \
+ 		+ '_qtol' + param_dict['qeq_solver_q_err'] \
+                + '_pc' + param_dict['pre_comp_type'] \
+                + '_pctol' + param_dict['pre_comp_droptol'] \
+                + '_pcs' + param_dict['pre_comp_sweeps'] \
+                + '_pa' + param_dict['pre_app_type'] \
+                + '_paji' + param_dict['pre_app_jacobi_iters'] \
+		+ '_t' + param_dict['threads']
 
-            self._setup(param_dict, temp_file)
 
-            env['OMP_NUM_THREADS'] = param_dict['threads']
-            start = time()
-            proc_handle = Popen([bin_path, self.__geo_file, self.__ffield_file, temp_file], 
-                stdout=PIPE, stderr=PIPE, env=env)
-            #TODO: handle outputs?
-            stdout, stderr = proc_handle.communicate()
-            stop = time()
+            if not process_results:
+                self._setup(param_dict, temp_file)
+    
+                env['OMP_NUM_THREADS'] = param_dict['threads']
+                start = time()
+                proc_handle = Popen([bin_path, self.__geo_file, self.__ffield_file, temp_file], 
+                    stdout=PIPE, stderr=PIPE, env=env)
+                stdout, stderr = proc_handle.communicate()
+                stop = time()
+                if proc_handle.returncode < 0:
+                    print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
 
-            self._process_result(fout, stop - start, param_dict)
+            else:
+                self._process_result(fout, stop - start, param_dict)
 
         fout.close()
         remove(temp_file)
@@ -127,8 +143,12 @@ class TestCase():
             spmv = spmv / cnt
 
         fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-            param['nsteps'], param['qeq_solver_q_err'], param['pre_comp_type'], pre_comp, pre_app, iters, spmv,
+            param['nsteps'], param['qeq_solver_type'], param['qeq_solver_q_err'],
+ 	    param['pre_comp_type'], param['pre_comp_droptol'], param['pre_comp_sweeps'],
+	    param['pre_app_type'], param['pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
             qeq, param['threads'], time))
+        fout.flush()
+
 
 
 if __name__ == '__main__':
@@ -141,6 +161,12 @@ if __name__ == '__main__':
             ]
 
     parser = argparse.ArgumentParser(description='Run molecular dynamics simulations on specified data sets.')
+    parser.add_argument('-f', '--out_file', metavar='out_file', default=None, nargs=1,
+            help='Output file to write results.')
+    parser.add_argument('-r', '--process_results', default=False, action='store_true',
+            help='Process simulation results only (do not perform simulations).')
+    parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
+            help='Paramater name and value pairs for the simulation, which multiple values comma delimited.')
     parser.add_argument('data', nargs='+',
             choices=DATA, help='Data sets for which to run simulations.')
 
@@ -151,29 +177,36 @@ if __name__ == '__main__':
     control_dir = path.join(base_dir, 'environ')
     data_dir = path.join(base_dir, 'data/benchmarks')
 
-    header_fmt_str = '{:20}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:10}|{:10}\n'
-    header_str = ['Data Set', 'Steps', 'Q Tol', 'Pre T', 'Pre Comp',
-            'Pre App', 'Iters', 'SpMV', 'QEq', 'Threads', 'Time (s)']
-    body_fmt_str = '{:20} {:5} {:5} {:5} {:10.6f} {:10.6f} {:10.6f} {:10.6f} {:10.6f} {:10} {:10.6f}\n'
+    header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
+    header_str = ['Data Set', 'Steps', 'Q Tol', 'QType', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
+            'Pre App', 'Iters', 'SpMV', 'QEq', 'Thd', 'Time (s)']
+    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
 
     params = {
             'ensemble_type': ['0'],
             'nsteps': ['20'],
-#            'nsteps': ['20', '100', '500', '1000'],
+            'tabulate_long_range': ['0'],
             'qeq_solver_type': ['0'],
             'qeq_solver_q_err': ['1e-6'],
-#            'qeq_solver_q_err': ['1e-6', '1e-10'],
-#            'qeq_solver_q_err': ['1e-6', '1e-8', '1e-10', '1e-14'],
             'pre_comp_type': ['2'],
-#            'pre_comp_type': ['0', '1', '2'],
             'pre_comp_refactor': ['100'],
+            'pre_comp_droptol': ['0.0'],
             'pre_comp_sweeps': ['3'],
             'pre_app_type': ['2'],
             'pre_app_jacobi_iters': ['50'],
-            'threads': ['2'],
-#            'threads': ['1', '2', '4', '12', '24'],
+            'threads': ['1'],
             'geo_format': [],
     }
+
+    if args.out_file:
+        result_file = args.out_file[0]
+    else:
+        result_file = 'result.txt'
+
+    # overwrite default params, if supplied via command line args
+    if args.params:
+        for param in args.params:
+            params[param[0]] = param[1].split(',')
 
     test_cases = []
     if 'water_6540' in args.data:
@@ -183,7 +216,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1']))
+                geo_format=['1'], result_file=result_file))
     if 'water_78480' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'water/water_78480.pdb'),
@@ -191,7 +224,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0']))
+                geo_format=['0'], result_file=result_file))
     if 'water_327000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'water/water_327000.geo'),
@@ -199,7 +232,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0']))
+                geo_format=['0'], result_file=result_file))
     if 'bilayer_56800' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'bilayer/bilayer_56800.pdb'),
@@ -207,7 +240,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1']))
+                geo_format=['1'], result_file=result_file))
     if 'dna_19733' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'dna/dna_19733.pdb'),
@@ -215,7 +248,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1']))
+                geo_format=['1'], result_file=result_file))
     if 'silica_6000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'silica/silica_6000.pdb'),
@@ -223,7 +256,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1']))
+                geo_format=['1'], result_file=result_file))
     if 'silica_72000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'silica/silica_72000.geo'),
@@ -231,7 +264,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0']))
+                geo_format=['0'], result_file=result_file))
     if 'silica_300000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'silica/silica_300000.geo'),
@@ -239,7 +272,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0']))
+                geo_format=['0'], result_file=result_file))
     if 'petn_48256' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'petn/petn_48256.pdb'),
@@ -247,7 +280,7 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1']))
+                geo_format=['1'], result_file=result_file))
 
     for test in test_cases:
-        test.run(bin_file='sPuReMD/bin/spuremd')
+        test.run(bin_file='sPuReMD/bin/spuremd', process_results=args.process_results)

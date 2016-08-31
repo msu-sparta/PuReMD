@@ -193,8 +193,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
         #pragma omp barrier
 
         /* calculate sqaure of the norm of each row */
-        #pragma omp parallel for schedule(guided) \
-            default(none) private(i, j, k, val, tid) shared(droptol_local)
+        #pragma omp for schedule(guided)
         for ( i = 0; i < A->n; ++i )
         {
             for ( k = A->start[i]; k < A->start[i + 1] - 1; ++k )
@@ -222,7 +221,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
         #pragma omp barrier
 
 #ifdef _OPENMP
-        #pragma omp parallel for schedule(guided) default(none) private(i, k) shared(droptol_local)
+        #pragma omp for schedule(guided)
         for ( i = 0; i < A->n; ++i )
         {
             droptol[i] = 0.0;
@@ -237,7 +236,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
 
         /* calculate local droptol for each row */
         //fprintf( stderr, "droptol: " );
-        #pragma omp parallel for schedule(guided) default(none) private(i)
+        #pragma omp for schedule(guided)
         for ( i = 0; i < A->n; ++i )
         {
             //fprintf( stderr, "%f-->", droptol[i] );

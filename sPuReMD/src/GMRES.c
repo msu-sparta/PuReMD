@@ -210,7 +210,7 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
     unsigned int i;
 
     #pragma omp parallel for schedule(guided) \
-        default(none) private(i) shared(stderr)
+        default(none) private(i)
     for ( i = 0; i < N; ++i )
     {
         x[i] = y[i] * Hdia_inv[i];
@@ -583,15 +583,10 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
  *   Matrices have non-zero diagonals
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 void apply_preconditioner( const static_storage * const workspace, const control_params * const control,
-        real * const y, real * const x, const int fresh_pre )
+        const real * const y, real * const x, const int fresh_pre )
 {
     int i, si;
     static real *Dinv_L = NULL, *Dinv_U = NULL;
-
-    if ( control->pre_comp_type != DIAG_PC && workspace->L == NULL )
-    {
-        return;
-    }
 
     switch ( control->pre_app_type )
     {
@@ -653,10 +648,13 @@ void apply_preconditioner( const static_storage * const workspace, const control
                     }
 
                     /* construct D^{-1}_L */
-                    for ( i = 0; i < workspace->L->n; ++i )
+                    if ( fresh_pre )
                     {
-                        si = workspace->L->start[i + 1] - 1;
-                        Dinv_L[i] = 1. / workspace->L->val[si];
+                        for ( i = 0; i < workspace->L->n; ++i )
+                        {
+                            si = workspace->L->start[i + 1] - 1;
+                            Dinv_L[i] = 1. / workspace->L->val[si];
+                        }
                     }
 
                     jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->pre_app_jacobi_iters );
@@ -671,10 +669,13 @@ void apply_preconditioner( const static_storage * const workspace, const control
                     }
 
                     /* construct D^{-1}_U */
-                    for ( i = 0; i < workspace->U->n; ++i )
+                    if ( fresh_pre )
                     {
-                        si = workspace->U->start[i];
-                        Dinv_U[i] = 1. / workspace->U->val[si];
+                        for ( i = 0; i < workspace->U->n; ++i )
+                        {
+                            si = workspace->U->start[i];
+                            Dinv_U[i] = 1. / workspace->U->val[si];
+                        }
                     }
 
                     jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->pre_app_jacobi_iters );
@@ -709,8 +710,8 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
     if ( control->pre_comp_type == DIAG_PC )
     {
-        /* apply precondioner to RHS */
-        apply_preconditioner( workspace, control, workspace->b, workspace->b_prc, fresh_pre );
+        /* apply preconditioner to RHS */
+        apply_preconditioner( workspace, control, b, workspace->b_prc, fresh_pre );
     }
 
     /* GMRES outer-loop */
@@ -741,7 +742,8 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         if ( control->pre_comp_type != DIAG_PC )
         {
             time_start = Get_Time( );
-            apply_preconditioner( workspace, control, workspace->v[0], workspace->v[0], fresh_pre );
+            apply_preconditioner( workspace, control, workspace->v[0], workspace->v[0],
+                    itr == 0 ? fresh_pre : 0 );
             *time += Get_Timing_Info( time_start );
         }
 
@@ -758,51 +760,92 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             *spmv_time += Get_Timing_Info( time_start );
 
             time_start = Get_Time( );
-            apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], fresh_pre );
+            apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], 0 );
             *time += Get_Timing_Info( time_start );
 
-            /* apply modified Gram-Schmidt to orthogonalize the new residual */
-            for ( i = 0; i < j - 1; i++ )
+            if ( control->pre_comp_type == DIAG_PC )
             {
-                workspace->h[i][j] = 0;
-            }
-
-            //for( i = 0; i <= j; i++ ) {
-            for ( i = MAX(j - 1, 0); i <= j; i++ )
-            {
-                workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
-                Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
-            }
-
-            workspace->h[j + 1][j] = Norm( workspace->v[j + 1], N );
-            Vector_Scale( workspace->v[j + 1],
-                          1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
-            // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
-
-            /* Givens rotations on the upper-Hessenberg matrix to make it U */
-            for ( i = MAX(j - 1, 0); i <= j; i++ )
-            {
-                if ( i == j )
+                /* apply modified Gram-Schmidt to orthogonalize the new residual */
+                for( i = 0; i <= j; i++ )
                 {
-                    cc = SQRT( SQR(workspace->h[j][j]) + SQR(workspace->h[j + 1][j]) );
-                    workspace->hc[j] = workspace->h[j][j] / cc;
-                    workspace->hs[j] = workspace->h[j + 1][j] / cc;
+                    workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j+1], N );
+                    Vector_Add( workspace->v[j+1], -workspace->h[i][j], workspace->v[i], N );
                 }
-
-                tmp1 =  workspace->hc[i] * workspace->h[i][j] +
-                        workspace->hs[i] * workspace->h[i + 1][j];
-                tmp2 = -workspace->hs[i] * workspace->h[i][j] +
-                       workspace->hc[i] * workspace->h[i + 1][j];
-
-                workspace->h[i][j] = tmp1;
-                workspace->h[i + 1][j] = tmp2;
+                
+                workspace->h[j+1][j] = Norm( workspace->v[j+1], N );
+                Vector_Scale( workspace->v[j+1], 1. / workspace->h[j+1][j], workspace->v[j+1], N );
+                // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
+                
+                /* Givens rotations on the upper-Hessenberg matrix to make it U */
+                for( i = 0; i <= j; i++ )
+                {
+                    if( i == j )
+                    {
+                        cc = SQRT( SQR(workspace->h[j][j])+SQR(workspace->h[j+1][j]) );
+                        workspace->hc[j] = workspace->h[j][j] / cc;
+                        workspace->hs[j] = workspace->h[j+1][j] / cc;
+                    }
+                
+                    tmp1 =  workspace->hc[i] * workspace->h[i][j] +
+                    workspace->hs[i] * workspace->h[i+1][j];
+                    tmp2 = -workspace->hs[i] * workspace->h[i][j] +
+                    workspace->hc[i] * workspace->h[i+1][j];
+                    
+                    workspace->h[i][j] = tmp1;
+                    workspace->h[i+1][j] = tmp2;
+                }
+                
+                /* apply Givens rotations to the rhs as well */
+                tmp1 =  workspace->hc[j] * workspace->g[j];
+                tmp2 = -workspace->hs[j] * workspace->g[j];
+                workspace->g[j] = tmp1;
+                workspace->g[j+1] = tmp2;
             }
-
-            /* apply Givens rotations to the rhs as well */
-            tmp1 =  workspace->hc[j] * workspace->g[j];
-            tmp2 = -workspace->hs[j] * workspace->g[j];
-            workspace->g[j] = tmp1;
-            workspace->g[j + 1] = tmp2;
+	    else
+            {
+                /* apply modified Gram-Schmidt to orthogonalize the new residual */
+                for ( i = 0; i < j - 1; i++ )
+                {
+                    workspace->h[i][j] = 0;
+                }
+    
+                //for( i = 0; i <= j; i++ ) {
+                for ( i = MAX(j - 1, 0); i <= j; i++ )
+                {
+                    workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
+                    Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
+                }
+    
+                workspace->h[j + 1][j] = Norm( workspace->v[j + 1], N );
+                Vector_Scale( workspace->v[j + 1],
+                              1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
+                // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
+    
+                /* Givens rotations on the upper-Hessenberg matrix to make it U */
+                for ( i = MAX(j - 1, 0); i <= j; i++ )
+                {
+                    if ( i == j )
+                    {
+                        cc = SQRT( SQR(workspace->h[j][j]) + SQR(workspace->h[j + 1][j]) );
+                        workspace->hc[j] = workspace->h[j][j] / cc;
+                        workspace->hs[j] = workspace->h[j + 1][j] / cc;
+                    }
+    
+                    tmp1 =  workspace->hc[i] * workspace->h[i][j] +
+                            workspace->hs[i] * workspace->h[i + 1][j];
+                    tmp2 = -workspace->hs[i] * workspace->h[i][j] +
+                           workspace->hc[i] * workspace->h[i + 1][j];
+    
+                    workspace->h[i][j] = tmp1;
+                    workspace->h[i + 1][j] = tmp2;
+                }
+    
+                /* apply Givens rotations to the rhs as well */
+                tmp1 =  workspace->hc[j] * workspace->g[j];
+                tmp2 = -workspace->hs[j] * workspace->g[j];
+                workspace->g[j] = tmp1;
+                workspace->g[j + 1] = tmp2;
+            }
 
             //fprintf( stderr, "h: " );
             //for( i = 0; i <= j+1; ++i )
