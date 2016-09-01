@@ -24,17 +24,18 @@
 
 inline int Vector_isZero( const real * const v, const unsigned int k )
 {
-    unsigned int i;
+    unsigned int i, ret = TRUE;
 
+    #pragma omp parallel for default(none) private(i) reduction(&&: ret) schedule(guided)
     for ( i = 0; i < k; ++i )
     {
         if ( fabs( v[i] ) > ALMOST_ZERO )
         {
-            return 0;
+            ret = FALSE;
         }
     }
 
-    return 1;
+    return ret;
 }
 
 
@@ -64,6 +65,7 @@ inline void Vector_Scale( real * const dest, const real c, const real * const v,
 {
     unsigned int i;
 
+    #pragma omp parallel for default(none) private(i) schedule(guided)
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i];
@@ -76,6 +78,7 @@ inline void Vector_Sum( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
+    #pragma omp parallel for default(none) private(i) schedule(guided)
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i] + d * y[i];
@@ -87,6 +90,7 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
+    #pragma omp parallel for default(none) private(i) schedule(guided)
     for ( i = 0; i < k; ++i )
     {
         dest[i] += c * v[i];
@@ -113,6 +117,7 @@ inline real Dot( const real * const v1, const real * const v2, const unsigned in
     real ret = ZERO;
     unsigned int i;
 
+    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(guided)
     for ( i = 0; i < k; ++i )
     {
         ret +=  v1[i] * v2[i];
@@ -127,6 +132,7 @@ inline real Norm( const real * const v1, const unsigned int k )
     real ret = ZERO;
     unsigned int i;
 
+    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(guided)
     for ( i = 0; i < k; ++i )
     {
         ret +=  SQR( v1[i] );
@@ -138,24 +144,32 @@ inline real Norm( const real * const v1, const unsigned int k )
 
 inline void rvec_Copy( rvec dest, const rvec src )
 {
-    dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
+    dest[0] = src[0];
+    dest[1] = src[1];
+    dest[2] = src[2];
 }
 
 inline void rvec_Scale( rvec ret, const real c, const rvec v )
 {
-    ret[0] = c * v[0], ret[1] = c * v[1], ret[2] = c * v[2];
+    ret[0] = c * v[0];
+    ret[1] = c * v[1];
+    ret[2] = c * v[2];
 }
 
 
 inline void rvec_Add( rvec ret, const rvec v )
 {
-    ret[0] += v[0], ret[1] += v[1], ret[2] += v[2];
+    ret[0] += v[0];
+    ret[1] += v[1];
+    ret[2] += v[2];
 }
 
 
 inline void rvec_ScaledAdd( rvec ret, const real c, const rvec v )
 {
-    ret[0] += c * v[0], ret[1] += c * v[1], ret[2] += c * v[2];
+    ret[0] += c * v[0];
+    ret[1] += c * v[1];
+    ret[2] += c * v[2];
 }
 
 
@@ -269,9 +283,9 @@ inline int rvec_isZero( const rvec v )
             fabs(v[1]) > ALMOST_ZERO ||
             fabs(v[2]) > ALMOST_ZERO )
     {
-        return 0;
+        return FALSE;
     }
-    return 1;
+    return TRUE;
 }
 
 
@@ -455,10 +469,18 @@ inline void rtensor_MakeZero( rtensor t )
 
 inline void rtensor_Transpose( rtensor ret, rtensor t )
 {
-    ret[0][0] = t[0][0], ret[1][1] = t[1][1], ret[2][2] = t[2][2];
-    ret[0][1] = t[1][0], ret[0][2] = t[2][0];
-    ret[1][0] = t[0][1], ret[1][2] = t[2][1];
-    ret[2][0] = t[0][2], ret[2][1] = t[1][2];
+    ret[0][0] = t[0][0];
+    ret[1][1] = t[1][1];
+    ret[2][2] = t[2][2];
+
+    ret[0][1] = t[1][0];
+    ret[0][2] = t[2][0];
+
+    ret[1][0] = t[0][1];
+    ret[1][2] = t[2][1];
+
+    ret[2][0] = t[0][2];
+    ret[2][1] = t[1][2];
 }
 
 
@@ -498,7 +520,9 @@ inline void ivec_MakeZero( ivec v )
 
 inline void ivec_Copy( ivec dest, const ivec src )
 {
-    dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
+    dest[0] = src[0];
+    dest[1] = src[1];
+    dest[2] = src[2];
 }
 
 
@@ -522,9 +546,9 @@ inline int ivec_isZero( const ivec v )
 {
     if ( v[0] == 0 && v[1] == 0 && v[2] == 0 )
     {
-        return 1;
+        return TRUE;
     }
-    return 0;
+    return FALSE;
 }
 
 
@@ -532,10 +556,10 @@ inline int ivec_isEqual( const ivec v1, const ivec v2 )
 {
     if ( v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2] )
     {
-        return 1;
+        return TRUE;
     }
 
-    return 0;
+    return FALSE;
 }
 
 
