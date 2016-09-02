@@ -103,18 +103,28 @@ class TestCase():
                 env['OMP_NUM_THREADS'] = param_dict['threads']
                 start = time()
                 proc_handle = Popen([bin_path, self.__geo_file, self.__ffield_file, temp_file], 
-                    stdout=PIPE, stderr=PIPE, env=env)
+                    stdout=PIPE, stderr=PIPE, env=env, universal_newlines=True)
                 stdout, stderr = proc_handle.communicate()
                 stop = time()
                 if proc_handle.returncode < 0:
                     print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
+                else:
+                    print('stdout:')
+                    print(stdout)
+                    print('stderr:')
+                    print(stderr)
 
             else:
+                #TODO: fix
+                start = 0.
+                stop = 0.
                 self._process_result(fout, stop - start, param_dict)
 
         fout.close()
-        remove(temp_file)
-        rmdir(temp_dir)
+        if path.exists(temp_file):
+            remove(temp_file)
+        if path.exists(temp_dir):
+            rmdir(temp_dir)
 
     def _process_result(self, fout, time, param):
         qeq = 0.
@@ -123,7 +133,12 @@ class TestCase():
         pre_app = 0.
         spmv = 0.
         cnt = 0
-        with open(param['name'] + '.log', 'r') as fp:
+        log_file = param['name'] + '.log'
+
+        if not path.exists(log_file):
+            print('***WARNING: {0} does not exist!'.format(log_file))
+            return
+        with open(log_file, 'r') as fp:
             for line in fp:
                 line = line.split()
                 try:
@@ -219,7 +234,7 @@ if __name__ == '__main__':
                 geo_format=['1'], result_file=result_file))
     if 'water_78480' in args.data:
         test_cases.append(
-            TestCase(path.join(data_dir, 'water/water_78480.pdb'),
+            TestCase(path.join(data_dir, 'water/water_78480.geo'),
                 path.join(data_dir, 'water/ffield.water'),
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
@@ -241,6 +256,14 @@ if __name__ == '__main__':
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
                 geo_format=['1'], result_file=result_file))
+    if 'bilayer_340800' in args.data:
+        test_cases.append(
+            TestCase(path.join(data_dir, 'bilayer/bilayer_340800.geo'),
+                path.join(data_dir, 'bilayer/ffield-bio'),
+                path.join(control_dir, 'param.gpu.water'),
+                params=params, result_header_fmt=header_fmt_str,
+                result_header = header_str, result_body_fmt=body_fmt_str,
+                geo_format=['0'], result_file=result_file))
     if 'dna_19733' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'dna/dna_19733.pdb'),

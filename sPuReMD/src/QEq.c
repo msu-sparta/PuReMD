@@ -159,7 +159,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
     unsigned int tid;
 #endif
 
-    #pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local)
+    #pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local, stderr)
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
@@ -172,6 +172,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
             {
                 if ( (droptol_local = (real*) malloc( omp_get_num_threads() * A->n * sizeof(real))) == NULL )
                 {
+                    fprintf( stderr, "Not enough space for droptol. Terminating...\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
 	    }
@@ -597,16 +598,21 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
 static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
             sparse_matrix * const L, sparse_matrix * const U )
 {
-    //TODO: either add compilation parameter or dynamically allocate
-    int tmp_j[1000];
-    real tmp_val[1000];
+    int *tmp_j;
+    real *tmp_val;
     int i, j, pj, k1, k2, tmptop, Ltop;
     real val, start;
     int *Utop;
 
     start = Get_Time( );
     
-    Utop = (int*) malloc((A->n + 1) * sizeof(int));
+    if( ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL ||
+            ( tmp_j = (int*) malloc(A->n * sizeof(int)) ) == NULL ||
+            ( tmp_val = (real*) malloc(A->n * sizeof(real)) ) == NULL )
+    {
+        fprintf( stderr, "not enough memory for ICHOLT preconditioning matrices. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
 
     // clear variables
     Ltop = 0;
@@ -726,7 +732,9 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
 //    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
 
-    free(Utop);
+    free( tmp_val );
+    free( tmp_j );
+    free( Utop );
 
     return Get_Timing_Info( start );
 }
@@ -750,7 +758,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
     {
-        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "not enough memory for ICHOL_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -758,7 +766,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL )
     {
-        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "not enough memory for ICHOL_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -948,14 +956,14 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
     {
-        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "not enough memory for ILU_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
     if( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
     {
-        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "not enough memory for ILU_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -1158,14 +1166,14 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
             Allocate_Matrix( &L_temp, A->n, A->m ) == 0 ||
             Allocate_Matrix( &U_temp, A->n, A->m ) == 0 )
     {
-        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "not enough memory for ILUT_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
     if( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
     {
-        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "not enough memory for ILUT_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
