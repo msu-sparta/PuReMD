@@ -115,6 +115,7 @@
 
 #define MAX_ITR             10
 #define RESTART             50
+#define MAX_ROWS_PER_LEVEL  10000 /* triangular solve using level scheduling */
 
 #define ZERO           0.000000000000000e+00
 #define ALMOST_ZERO    1e-10
@@ -725,9 +726,9 @@ typedef struct
  * */
 typedef struct
 {
-    int n, m;
-    int *start;
-    int *j;
+    unsigned int n, m;
+    unsigned int *start;
+    unsigned int *j;
     real *val;
 } sparse_matrix;
 

@@ -133,10 +133,14 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 #endif
 
     if ( control->tabulate == 0)
+    {
         vdW_Coulomb_Energy( system, control, data, workspace, lists, out_control );
+    }
     else
+    {
         Tabulated_vdW_Coulomb_Energy( system, control, data, workspace,
                                       lists, out_control );
+    }
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "nonb forces - " );
 #endif
@@ -933,8 +937,13 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     t_start = Get_Time( );
     if ( !control->tabulate )
+    {
         Init_Forces( system, control, data, workspace, lists, out_control );
-    else Init_Forces_Tab( system, control, data, workspace, lists, out_control );
+    }
+    else
+    {
+        Init_Forces_Tab( system, control, data, workspace, lists, out_control );
+    }
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.init_forces += t_elapsed;
 #if defined(DEBUG_FOCUS)

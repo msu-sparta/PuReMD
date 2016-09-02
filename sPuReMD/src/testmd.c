@@ -191,7 +191,9 @@ int main(int argc, char* argv[])
     for ( ; data.step <= control.nsteps; data.step++ )
     {
         if ( control.T_mode )
+        {
             Temperature_Control( &control, &data, &out_control );
+        }
         Evolve( &system, &control, &data, &workspace, &lists, &out_control );
         Post_Evolve( &system, &control, &data, &workspace, &lists, &out_control );
         Output_Results(&system, &control, &data, &workspace, &lists, &out_control);

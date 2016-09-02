@@ -306,9 +306,9 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
     if ( row_levels == NULL || level_rows == NULL || level_rows_cnt == NULL )
     {
-        if ( (row_levels = (unsigned int*) malloc(LU->n * sizeof(unsigned int))) == NULL
-                || (level_rows = (unsigned int*) malloc(LU->n * LU->n * sizeof(unsigned int))) == NULL
-                || (level_rows_cnt = (unsigned int*) malloc(LU->n * sizeof(unsigned int))) == NULL )
+        if ( (row_levels = (unsigned int*) malloc((size_t)LU->n * sizeof(unsigned int))) == NULL
+                || (level_rows = (unsigned int*) malloc(MAX_ROWS_PER_LEVEL * (size_t)LU->n * sizeof(unsigned int))) == NULL
+                || (level_rows_cnt = (unsigned int*) malloc((size_t)LU->n * sizeof(unsigned int))) == NULL )
         {
             fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
             exit( INSUFFICIENT_MEMORY );
@@ -333,8 +333,14 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
                 levels = MAX( levels, local_level + 1 );
                 row_levels[i] = local_level;
-                level_rows[local_level * LU->n + level_rows_cnt[local_level]] = i;
+                level_rows[local_level * MAX_ROWS_PER_LEVEL + level_rows_cnt[local_level]] = i;
                 ++level_rows_cnt[local_level];
+                if( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
+                {
+                    fprintf( stderr, "Not enough space for triangular solve via level scheduling" );
+                    fprintf( stderr, " (MAX_ROWS_PER_LEVEL). Terminating...\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
         }
         else
@@ -349,8 +355,14 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
                 levels = MAX( levels, local_level + 1 );
                 row_levels[i] = local_level;
-                level_rows[local_level * LU->n + level_rows_cnt[local_level]] = i;
+                level_rows[local_level * MAX_ROWS_PER_LEVEL + level_rows_cnt[local_level]] = i;
                 ++level_rows_cnt[local_level];
+                if( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
+                {
+                    fprintf( stderr, "Not enough space for triangular solve via level scheduling" );
+                    fprintf( stderr, " (MAX_ROWS_PER_LEVEL). Terminating...\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
         }
     }
@@ -364,7 +376,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
             default(none) private(j, pj, local_row) shared(stderr, i, level_rows_cnt, level_rows)
             for ( j = 0; j < level_rows_cnt[i]; ++j )
             {
-                local_row = level_rows[i * LU->n + j];
+                local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
                 x[local_row] = y[local_row];
                 for ( pj = LU->start[local_row]; pj < LU->start[local_row + 1] - 1; ++pj )
                 {
@@ -383,7 +395,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
             default(none) private(j, pj, local_row) shared(i, level_rows_cnt, level_rows)
             for ( j = 0; j < level_rows_cnt[i]; ++j )
             {
-                local_row = level_rows[i * LU->n + j];
+                local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
                 x[local_row] = y[local_row];
                 for ( pj = LU->start[local_row] + 1; pj < LU->start[local_row + 1]; ++pj )
                 {
@@ -786,7 +798,6 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
                 }
             }
-
 
             workspace->h[j + 1][j] = Norm( workspace->v[j + 1], N );
             Vector_Scale( workspace->v[j + 1],
