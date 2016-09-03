@@ -209,11 +209,15 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
     data->timing.init_forces = 0;
     data->timing.bonded = 0;
     data->timing.nonb = 0;
-    data->timing.QEq = 0;
-    data->timing.matvecs = 0;
+    data->timing.QEq = ZERO;
+    data->timing.QEq_sort_mat_rows = ZERO;
     data->timing.pre_comp = ZERO;
     data->timing.pre_app = ZERO;
-    data->timing.spmv = ZERO;
+    data->timing.solver_iters = 0;
+    data->timing.solver_spmv = ZERO;
+    data->timing.solver_vector_ops = ZERO;
+    data->timing.solver_orthog = ZERO;
+    data->timing.solver_tri_solve = ZERO;
 }
 
 
@@ -534,9 +538,10 @@ void Init_Out_Controls(reax_system *system, control_params *control,
         strcpy( temp, control->sim_name );
         strcat( temp, ".log" );
         out_control->log = fopen( temp, "w" );
-        fprintf( out_control->log, "%-6s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s\n",
+        fprintf( out_control->log, "%-6s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s\n",
                  "step", "total", "neighbors", "init", "bonded",
-                 "nonbonded", "QEq", "matvec", "pre comp", "pre app", "spmv" );
+                 "nonbonded", "QEq", "QEq Sort", "S iters", "Pre Comp", "Pre App",
+                 "S spmv", "S vec ops", "S orthog", "S tsolve" );
     }
 
     /* Init pressure file */

@@ -578,10 +578,14 @@ typedef struct
     real bonded;
     real nonb;
     real QEq;
-    int matvecs;
+    real QEq_sort_mat_rows;
     real pre_comp;
     real pre_app;
-    real spmv;
+    int solver_iters;
+    real solver_spmv;
+    real solver_vector_ops;
+    real solver_orthog;
+    real solver_tri_solve;
 } reax_timing;
 
 

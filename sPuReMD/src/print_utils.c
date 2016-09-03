@@ -103,7 +103,6 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
 }
 
 
-
 void Print_Bond_Forces( reax_system *system, control_params *control,
                         simulation_data *data, static_storage *workspace,
                         list **lists, output_controls *out_control )
@@ -118,7 +117,6 @@ void Print_Bond_Forces( reax_system *system, control_params *control,
                 workspace->orig_id[i],
                 workspace->f_be[i][0], workspace->f_be[i][1], workspace->f_be[i][2]);
 }
-
 
 
 void Print_LonePair_Forces( reax_system *system, control_params *control,
@@ -137,7 +135,6 @@ void Print_LonePair_Forces( reax_system *system, control_params *control,
 
     fflush(out_control->flp);
 }
-
 
 
 void Print_OverUnderCoor_Forces( reax_system *system, control_params *control,
@@ -174,7 +171,6 @@ void Print_OverUnderCoor_Forces( reax_system *system, control_params *control,
 
     fflush(out_control->fatom);
 }
-
 
 
 void Print_Three_Body_Forces( reax_system *system, control_params *control,
@@ -232,7 +228,6 @@ void Print_Three_Body_Forces( reax_system *system, control_params *control,
 }
 
 
-
 void Print_Hydrogen_Bond_Forces( reax_system *system, control_params *control,
                                  simulation_data *data,
                                  static_storage *workspace, list **lists,
@@ -250,7 +245,6 @@ void Print_Hydrogen_Bond_Forces( reax_system *system, control_params *control,
 
     fflush(out_control->fhb);
 }
-
 
 
 void Print_Four_Body_Forces( reax_system *system, control_params *control,
@@ -285,7 +279,6 @@ void Print_Four_Body_Forces( reax_system *system, control_params *control,
 
     fflush(out_control->f4body);
 }
-
 
 
 void Print_vdW_Coulomb_Forces( reax_system *system, control_params *control,
@@ -410,6 +403,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
     fclose( fout );
 }
 
+
 /* near nbrs contain both i-j, j-i nbrhood info */
 void Print_Near_Neighbors2( reax_system *system, control_params *control,
                             static_storage *workspace, list **lists )
@@ -443,6 +437,7 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
 
     fclose( fout );
 }
+
 
 /* far nbrs contain only i-j nbrhood info, no j-i. */
 void Print_Far_Neighbors( reax_system *system, control_params *control,
@@ -483,10 +478,12 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
     fclose( fout );
 }
 
+
 int fn_qsort_intcmp( const void *a, const void *b )
 {
     return ( *(int *)a - * (int *)b);
 }
+
 
 void Print_Far_Neighbors2( reax_system *system, control_params *control,
                            static_storage *workspace, list **lists )
@@ -619,28 +616,36 @@ void Output_Results( reax_system *system, control_params *control,
             f_update = 1;
         else f_update = out_control->energy_update_freq;
 
-        fprintf( out_control->log, "%6d%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.6f%10.6f%10.6f\n",
+        fprintf( out_control->log, "%6d%10.2f%10.2f%10.2f%10.2f%10.2f%10.6f%10.6f%10.2f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f\n",
                  data->step, t_elapsed / f_update,
                  data->timing.nbrs / f_update,
                  data->timing.init_forces / f_update,
                  data->timing.bonded / f_update,
                  data->timing.nonb / f_update,
                  data->timing.QEq / f_update,
-                 (double)data->timing.matvecs / f_update,
+                 data->timing.QEq_sort_mat_rows / f_update,
+                 (double)data->timing.solver_iters / f_update,
                  data->timing.pre_comp / f_update,
                  data->timing.pre_app / f_update,
-                 data->timing.spmv / f_update );
+                 data->timing.solver_spmv / f_update,
+                 data->timing.solver_vector_ops / f_update,
+                 data->timing.solver_orthog / f_update,
+                 data->timing.solver_tri_solve / f_update );
 
         data->timing.total = Get_Time( );
         data->timing.nbrs = 0;
         data->timing.init_forces = 0;
         data->timing.bonded = 0;
         data->timing.nonb = 0;
-        data->timing.QEq = 0;
-        data->timing.matvecs = 0;
+        data->timing.QEq = ZERO;
+        data->timing.QEq_sort_mat_rows = ZERO;
         data->timing.pre_comp = ZERO;
         data->timing.pre_app = ZERO;
-        data->timing.spmv = ZERO;
+        data->timing.solver_iters = 0;
+        data->timing.solver_spmv = ZERO;
+        data->timing.solver_vector_ops = ZERO;
+        data->timing.solver_orthog = ZERO;
+        data->timing.solver_tri_solve = ZERO;
 
         fflush( out_control->out );
         fflush( out_control->pot );
@@ -775,7 +780,6 @@ void Print_Linear_System( reax_system *system, control_params *control,
 }
 
 
-
 void Print_Charges( reax_system *system, control_params *control,
                     static_storage *workspace, int step )
 {
@@ -793,7 +797,6 @@ void Print_Charges( reax_system *system, control_params *control,
 
     fclose( fout );
 }
-
 
 
 void Print_Soln( static_storage *workspace,

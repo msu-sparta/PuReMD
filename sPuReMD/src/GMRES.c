@@ -115,95 +115,6 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 }
 
 
-/* sparse matrix-vector product Gx=b (for Jacobi iteration),
- * followed by vector addition of D^{-1}b,
- * where G = (I - D^{-1}R) (G not explicitly computed and stored)
- *   R: strictly triangular matrix (diagonals not used)
- *   tri: triangularity of A (lower/upper)
- *   D^{-1} (D_inv): inverse of the diagonal of R
- *   x: vector
- *   b: vector (result)
- *   D^{-1}b (Dinv_b): precomputed vector-vector product */
-static void Sparse_MatVec_Vector_Add( const sparse_matrix * const R,
-                                      const TRIANGULARITY tri, const real * const Dinv,
-                                      const real * const x, real * const b, const real * const Dinv_b)
-{
-    int i, k, si = 0, ei = 0;
-#ifdef _OPENMP
-    static real *b_local;
-    unsigned int tid;
-#endif
-
-    Vector_MakeZero( b, R->n );
-
-    #pragma omp parallel \
-    default(none) shared(b_local) private(si, ei, i, k, tid)
-    {
-#ifdef _OPENMP
-        tid = omp_get_thread_num();
-
-        #pragma omp master
-        {
-            /* keep b_local for program duration to avoid allocate/free
-             * overhead per Sparse_MatVec call*/
-            if ( b_local == NULL )
-            {
-                if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
-                {
-                    exit( INSUFFICIENT_MEMORY );
-                }
-            }
-
-            Vector_MakeZero( b_local, omp_get_num_threads() * R->n );
-        }
-        #pragma omp barrier
-
-#endif
-        #pragma omp for schedule(guided)
-        for ( i = 0; i < R->n; ++i )
-        {
-            if (tri == LOWER)
-            {
-                si = R->start[i];
-                ei = R->start[i + 1] - 1;
-            }
-            else if (tri == UPPER)
-            {
-
-                si = R->start[i] + 1;
-                ei = R->start[i + 1];
-            }
-
-            for ( k = si; k < ei; ++k )
-            {
-#ifdef _OPENMP
-                b_local[tid * R->n + i] += R->val[k] * x[R->j[k]];
-#else
-                b[i] += R->val[k] * x[R->j[k]];
-#endif
-            }
-#ifdef _OPENMP
-            b_local[tid * R->n + i] *= -Dinv[i];
-#else
-            b[i] *= -Dinv[i];
-#endif
-        }
-#ifdef _OPENMP
-        #pragma omp for schedule(guided)
-        for ( i = 0; i < R->n; ++i )
-        {
-            for ( k = 0; k < omp_get_num_threads(); ++k )
-            {
-                b[i] += b_local[k * R->n + i];
-            }
-
-            b[i] += Dinv_b[i];
-        }
-#endif
-    }
-}
-
-
 static void diag_pre_app( const real * const Hdia_inv, const real * const y,
                           real * const x, const int N )
 {
@@ -335,7 +246,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
                 row_levels[i] = local_level;
                 level_rows[local_level * MAX_ROWS_PER_LEVEL + level_rows_cnt[local_level]] = i;
                 ++level_rows_cnt[local_level];
-                if( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
+                if ( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
                 {
                     fprintf( stderr, "Not enough space for triangular solve via level scheduling" );
                     fprintf( stderr, " (MAX_ROWS_PER_LEVEL). Terminating...\n" );
@@ -357,7 +268,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
                 row_levels[i] = local_level;
                 level_rows[local_level * MAX_ROWS_PER_LEVEL + level_rows_cnt[local_level]] = i;
                 ++level_rows_cnt[local_level];
-                if( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
+                if ( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
                 {
                     fprintf( stderr, "Not enough space for triangular solve via level scheduling" );
                     fprintf( stderr, " (MAX_ROWS_PER_LEVEL). Terminating...\n" );
@@ -368,41 +279,42 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
     }
 
     /* perform substitutions by level */
-    if ( tri == LOWER )
+    #pragma omp parallel default(none) private(i, j, pj, local_row) shared(levels, level_rows_cnt, level_rows)
     {
-        for ( i = 0; i < levels; ++i )
+        if ( tri == LOWER )
         {
-            #pragma omp parallel for schedule(guided) \
-            default(none) private(j, pj, local_row) shared(stderr, i, level_rows_cnt, level_rows)
-            for ( j = 0; j < level_rows_cnt[i]; ++j )
+            for ( i = 0; i < levels; ++i )
             {
-                local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
-                x[local_row] = y[local_row];
-                for ( pj = LU->start[local_row]; pj < LU->start[local_row + 1] - 1; ++pj )
+                #pragma omp for schedule(static)
+                for ( j = 0; j < level_rows_cnt[i]; ++j )
                 {
-                    x[local_row] -= LU->val[pj] * x[LU->j[pj]];
+                    local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
+                    x[local_row] = y[local_row];
+                    for ( pj = LU->start[local_row]; pj < LU->start[local_row + 1] - 1; ++pj )
+                    {
+                        x[local_row] -= LU->val[pj] * x[LU->j[pj]];
 
+                    }
+                    x[local_row] /= LU->val[pj];
                 }
-                x[local_row] /= LU->val[pj];
             }
         }
-    }
-    else
-    {
-        for ( i = 0; i < levels; ++i )
+        else
         {
-            #pragma omp parallel for schedule(guided) \
-            default(none) private(j, pj, local_row) shared(i, level_rows_cnt, level_rows)
-            for ( j = 0; j < level_rows_cnt[i]; ++j )
+            for ( i = 0; i < levels; ++i )
             {
-                local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
-                x[local_row] = y[local_row];
-                for ( pj = LU->start[local_row] + 1; pj < LU->start[local_row + 1]; ++pj )
+                #pragma omp for schedule(static)
+                for ( j = 0; j < level_rows_cnt[i]; ++j )
                 {
-                    x[local_row] -= LU->val[pj] * x[LU->j[pj]];
+                    local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
+                    x[local_row] = y[local_row];
+                    for ( pj = LU->start[local_row] + 1; pj < LU->start[local_row + 1]; ++pj )
+                    {
+                        x[local_row] -= LU->val[pj] * x[LU->j[pj]];
 
+                    }
+                    x[local_row] /= LU->val[LU->start[local_row]];
                 }
-                x[local_row] /= LU->val[LU->start[local_row]];
             }
         }
     }
@@ -510,7 +422,6 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
         do
         {
             // x_{k+1} = G*x_{k} + Dinv*b;
-            //Sparse_MatVec_Vector_Add( (sparse_matrix*)R, tri, Dinv, rp, rp2, Dinv_b );
             #pragma omp master
             {
                 Vector_MakeZero( rp2, R->n );
@@ -711,19 +622,25 @@ void apply_preconditioner( const static_storage * const workspace, const control
 
 /* generalized minimual residual iterative solver for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
-           const sparse_matrix * const H, const real * const b, real tol, real * const x,
-           const FILE * const fout, real * const time, real * const spmv_time, const int fresh_pre )
+           simulation_data * const data, const sparse_matrix * const H,
+           const real * const b, real tol, real * const x,
+           const FILE * const fout, const int fresh_pre )
 {
     int i, j, k, itr, N, si;
     real cc, tmp1, tmp2, temp, bnorm, time_start;
 
     N = H->n;
+
+    time_start = Get_Time( );
     bnorm = Norm( b, N );
+    data->timing.solver_vector_ops += Get_Timing_Info( time_start );
 
     if ( control->pre_comp_type == DIAG_PC )
     {
         /* apply preconditioner to RHS */
+        time_start = Get_Time( );
         apply_preconditioner( workspace, control, b, workspace->b_prc, fresh_pre );
+        data->timing.pre_app += Get_Timing_Info( time_start );
     }
 
     /* GMRES outer-loop */
@@ -732,34 +649,40 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         /* calculate r0 */
         time_start = Get_Time( );
         Sparse_MatVec( H, x, workspace->b_prm );
-        *spmv_time += Get_Timing_Info( time_start );
+        data->timing.solver_spmv += Get_Timing_Info( time_start );
 
         if ( control->pre_comp_type == DIAG_PC )
         {
             time_start = Get_Time( );
             apply_preconditioner( workspace, control, workspace->b_prm, workspace->b_prm, fresh_pre );
-            *time += Get_Timing_Info( time_start );
+            data->timing.pre_app += Get_Timing_Info( time_start );
         }
 
         if ( control->pre_comp_type == DIAG_PC )
         {
+            time_start = Get_Time( );
             Vector_Sum( workspace->v[0], 1., workspace->b_prc, -1., workspace->b_prm, N );
+            data->timing.solver_vector_ops += Get_Timing_Info( time_start );
         }
         else
         {
+            time_start = Get_Time( );
             Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
+            data->timing.solver_vector_ops += Get_Timing_Info( time_start );
         }
 
         if ( control->pre_comp_type != DIAG_PC )
         {
             time_start = Get_Time( );
             apply_preconditioner( workspace, control, workspace->v[0], workspace->v[0],
-                                  itr == 0 ? fresh_pre : 0 );
-            *time += Get_Timing_Info( time_start );
+                    itr == 0 ? fresh_pre : 0 );
+            data->timing.pre_app += Get_Timing_Info( time_start );
         }
 
+        time_start = Get_Time( );
         workspace->g[0] = Norm( workspace->v[0], N );
         Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
+        data->timing.solver_vector_ops += Get_Timing_Info( time_start );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
 
         /* GMRES inner-loop */
@@ -768,25 +691,28 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             /* matvec */
             time_start = Get_Time( );
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
-            *spmv_time += Get_Timing_Info( time_start );
+            data->timing.solver_spmv += Get_Timing_Info( time_start );
 
             time_start = Get_Time( );
             apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], 0 );
-            *time += Get_Timing_Info( time_start );
+            data->timing.pre_app += Get_Timing_Info( time_start );
 
             if ( control->pre_comp_type == DIAG_PC )
             {
                 /* apply modified Gram-Schmidt to orthogonalize the new residual */
+                time_start = Get_Time( );
                 for ( i = 0; i <= j; i++ )
                 {
                     workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
                     Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
                 }
+                data->timing.solver_vector_ops += Get_Timing_Info( time_start );
             }
             else
             {
                 //TODO: investigate correctness of not explicitly orthogonalizing first few vectors
                 /* apply modified Gram-Schmidt to orthogonalize the new residual */
+                time_start = Get_Time( );
                 for ( i = 0; i < j - 1; i++ )
                 {
                     workspace->h[i][j] = 0;
@@ -797,15 +723,19 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
                     Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
                 }
+                data->timing.solver_vector_ops += Get_Timing_Info( time_start );
             }
 
+            time_start = Get_Time( );
             workspace->h[j + 1][j] = Norm( workspace->v[j + 1], N );
             Vector_Scale( workspace->v[j + 1],
-                          1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
+                    1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
+            data->timing.solver_vector_ops += Get_Timing_Info( time_start );
 #if defined(DEBUG)
             fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
 #endif
 
+            time_start = Get_Time( );
             if ( control->pre_comp_type == DIAG_PC )
             {
                 /* Givens rotations on the upper-Hessenberg matrix to make it U */
@@ -855,6 +785,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             tmp2 = -workspace->hs[j] * workspace->g[j];
             workspace->g[j] = tmp1;
             workspace->g[j + 1] = tmp2;
+            data->timing.solver_orthog += Get_Timing_Info( time_start );
 
             //fprintf( stderr, "h: " );
             //for( i = 0; i <= j+1; ++i )
@@ -865,6 +796,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
         /* TODO: solve using Jacobi iteration? */
         /* solve Hy = g: H is now upper-triangular, do back-substitution */
+        time_start = Get_Time( );
         for ( i = j - 1; i >= 0; i-- )
         {
             temp = workspace->g[i];
@@ -875,8 +807,10 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
             workspace->y[i] = temp / workspace->h[i][i];
         }
+        data->timing.solver_tri_solve += Get_Timing_Info( time_start );
 
         /* update x = x_0 + Vy */
+        time_start = Get_Time( );
         Vector_MakeZero( workspace->p, N );
         for ( i = 0; i < j; i++ )
         {
@@ -884,6 +818,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         }
 
         Vector_Add( x, 1., workspace->p, N );
+        data->timing.solver_vector_ops += Get_Timing_Info( time_start );
 
         /* stopping condition */
         if ( fabs(workspace->g[j]) / bnorm <= tol )
@@ -902,7 +837,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
     // fprintf(fout,"GMRES outer:%d, inner:%d iters - residual norm: %25.20f\n",
     //          itr, j, fabs( workspace->g[j] ) / bnorm );
-    // data->timing.matvec += itr * RESTART + j;
+    // data->timing.solver_iters += itr * RESTART + j;
 
     if ( itr >= MAX_ITR )
     {
@@ -916,8 +851,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
 
 int GMRES_HouseHolder( const static_storage * const workspace, const control_params * const control,
-                       const sparse_matrix * const H, const real * const b, real tol, real * const x,
-                       const FILE * const fout, real * const time, real * const spmv_time, const int fresh_pre )
+                       simulation_data * const data, const sparse_matrix * const H,
+                       const real * const b, real tol, real * const x,
+                       const FILE * const fout, const int fresh_pre )
 {
     int  i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
