@@ -198,7 +198,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
         #pragma omp barrier
 
         /* calculate sqaure of the norm of each row */
-        #pragma omp for schedule(guided)
+        #pragma omp for schedule(static)
         for ( i = 0; i < A->n; ++i )
         {
             for ( k = A->start[i]; k < A->start[i + 1] - 1; ++k )
@@ -226,7 +226,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
         #pragma omp barrier
 
 #ifdef _OPENMP
-        #pragma omp for schedule(guided)
+        #pragma omp for schedule(static)
         for ( i = 0; i < A->n; ++i )
         {
             droptol[i] = 0.0;
@@ -241,7 +241,7 @@ static void Calculate_Droptol( const sparse_matrix * const A, real * const dropt
 
         /* calculate local droptol for each row */
         //fprintf( stderr, "droptol: " );
-        #pragma omp for schedule(guided)
+        #pragma omp for schedule(static)
         for ( i = 0; i < A->n; ++i )
         {
             //fprintf( stderr, "%f-->", droptol[i] );
@@ -261,8 +261,8 @@ static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const d
 
     fillin = 0;
 
-    #pragma omp parallel for schedule(guided) \
-    default(none) private(i, j, pj, val) reduction(+: fillin)
+    #pragma omp parallel for schedule(static) \
+        default(none) private(i, j, pj, val) reduction(+: fillin)
     for ( i = 0; i < A->n; ++i )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
@@ -587,7 +587,7 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
 
     start = Get_Time( );
 
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) private(i)
     for ( i = 0; i < system->N; ++i )
     {
@@ -811,7 +811,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero */
-        #pragma omp parallel for schedule(guided) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD, stderr) private(sum, ei_x, ei_y, k) firstprivate(x, y)
         for ( j = 0; j < A->start[A->n]; ++j )
         {
@@ -971,7 +971,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         exit( INSUFFICIENT_MEMORY );
     }
 
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(D, D_inv) private(i)
     for ( i = 0; i < A->n; ++i )
     {
@@ -982,7 +982,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     /* to get convergence, A must have unit diagonal, so apply
      * transformation DAD, where D = D(1./sqrt(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, D) private(i, pj)
     for ( i = 0; i < A->n; ++i )
     {
@@ -1008,8 +1008,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     memcpy( U->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
 
     /* L has unit diagonal, by convention */
-    #pragma omp parallel for schedule(guided) \
-    default(none) private(i)
+    #pragma omp parallel for schedule(static) default(none) private(i)
     for ( i = 0; i < A->n; ++i )
     {
         L->val[L->start[i + 1] - 1] = 1.0;
@@ -1018,8 +1017,8 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero in L */
-        #pragma omp parallel for schedule(guided) \
-        default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+        #pragma omp parallel for schedule(static) \
+            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1068,7 +1067,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             }
         }
 
-        #pragma omp parallel for schedule(guided) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
@@ -1119,7 +1118,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     /* apply inverse transformation:
      * since DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, D_inv) private(i, pj)
     for ( i = 0; i < DAD->n; ++i )
     {
@@ -1181,7 +1180,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
         exit( INSUFFICIENT_MEMORY );
     }
 
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(D, D_inv) private(i)
     for ( i = 0; i < A->n; ++i )
     {
@@ -1192,7 +1191,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     /* to get convergence, A must have unit diagonal, so apply
      * transformation DAD, where D = D(1./sqrt(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, D) private(i, pj)
     for ( i = 0; i < A->n; ++i )
     {
@@ -1218,7 +1217,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     memcpy( U_temp->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
 
     /* L has unit diagonal, by convention */
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) private(i) shared(L_temp)
     for ( i = 0; i < A->n; ++i )
     {
@@ -1228,7 +1227,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero in L */
-        #pragma omp parallel for schedule(guided) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
@@ -1278,7 +1277,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
             }
         }
 
-        #pragma omp parallel for schedule(guided) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
@@ -1329,7 +1328,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     /* apply inverse transformation:
      * since DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
-    #pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, L_temp, U_temp, D_inv) private(i, pj)
     for ( i = 0; i < DAD->n; ++i )
     {

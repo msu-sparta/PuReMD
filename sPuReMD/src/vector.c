@@ -26,7 +26,7 @@ inline int Vector_isZero( const real * const v, const unsigned int k )
 {
     unsigned int i, ret = TRUE;
 
-    #pragma omp parallel for default(none) private(i) reduction(&&: ret) schedule(guided)
+    #pragma omp parallel for default(none) private(i) reduction(&&: ret) schedule(static)
     for ( i = 0; i < k; ++i )
     {
         if ( fabs( v[i] ) > ALMOST_ZERO )
@@ -65,7 +65,7 @@ inline void Vector_Scale( real * const dest, const real c, const real * const v,
 {
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) schedule(guided)
+    #pragma omp parallel for default(none) private(i) schedule(static)
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i];
@@ -78,7 +78,7 @@ inline void Vector_Sum( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) schedule(guided)
+    #pragma omp parallel for default(none) private(i) schedule(static)
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i] + d * y[i];
@@ -90,7 +90,7 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) schedule(guided)
+    #pragma omp parallel for default(none) private(i) schedule(static)
     for ( i = 0; i < k; ++i )
     {
         dest[i] += c * v[i];
@@ -117,7 +117,7 @@ inline real Dot( const real * const v1, const real * const v2, const unsigned in
     real ret = ZERO;
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(guided)
+    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(static)
     for ( i = 0; i < k; ++i )
     {
         ret +=  v1[i] * v2[i];
@@ -132,7 +132,7 @@ inline real Norm( const real * const v1, const unsigned int k )
     real ret = ZERO;
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(guided)
+    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(static)
     for ( i = 0; i < k; ++i )
     {
         ret +=  SQR( v1[i] );

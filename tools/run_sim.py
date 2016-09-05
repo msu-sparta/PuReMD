@@ -115,10 +115,7 @@ class TestCase():
                     print(stderr)
 
             else:
-                #TODO: fix
-                start = 0.
-                stop = 0.
-                self._process_result(fout, stop - start, param_dict)
+                self._process_result(fout, param_dict)
 
         fout.close()
         if path.exists(temp_file):
@@ -126,7 +123,8 @@ class TestCase():
         if path.exists(temp_dir):
             rmdir(temp_dir)
 
-    def _process_result(self, fout, time, param):
+    def _process_result(self, fout, param):
+        time = 0.
         qeq = 0.
         iters = 0.
         pre_comp = 0.
@@ -143,25 +141,35 @@ class TestCase():
                 line = line.split()
                 try:
                     qeq = qeq + float(line[6])
-                    iters = iters + float(line[7])
-                    pre_comp = pre_comp + float(line[8])
-                    pre_app = pre_app + float(line[9])
-                    spmv = spmv + float(line[10])
+                    iters = iters + float(line[8])
+                    pre_comp = pre_comp + float(line[9])
+                    pre_app = pre_app + float(line[10])
+                    spmv = spmv + float(line[11])
                     cnt = cnt + 1
+                    pass
                 except Exception:
                     pass
+                if line[0] == 'total:':
+                    try:
+                        time = float(line[1])
+                    except Exception:
+                        pass
             cnt = cnt - 1
-            qeq = qeq / cnt
-            iters = iters / cnt
-            pre_comp = pre_comp / cnt
-            pre_app = pre_app / cnt
-            spmv = spmv / cnt
+            if cnt > 0:
+                qeq = qeq / cnt
+                iters = iters / cnt
+                pre_comp = pre_comp / cnt
+                pre_app = pre_app / cnt
+                spmv = spmv / cnt
 
-        fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-            param['nsteps'], param['qeq_solver_type'], param['qeq_solver_q_err'],
- 	    param['pre_comp_type'], param['pre_comp_droptol'], param['pre_comp_sweeps'],
-	    param['pre_app_type'], param['pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
-            qeq, param['threads'], time))
+        if cnt == int(param['nsteps']):
+            fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
+                param['nsteps'], param['qeq_solver_type'], param['qeq_solver_q_err'],
+     	    param['pre_comp_type'], param['pre_comp_droptol'], param['pre_comp_sweeps'],
+    	    param['pre_app_type'], param['pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
+                qeq, param['threads'], time))
+        else:
+            print('**WARNING: nsteps not correct in file {0}...'.format(log_file))
         fout.flush()
 
 
@@ -193,7 +201,7 @@ if __name__ == '__main__':
     data_dir = path.join(base_dir, 'data/benchmarks')
 
     header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
-    header_str = ['Data Set', 'Steps', 'Q Tol', 'QType', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
+    header_str = ['Data Set', 'Steps', 'QType', 'Q Tol', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
             'Pre App', 'Iters', 'SpMV', 'QEq', 'Thd', 'Time (s)']
     body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
 

@@ -81,17 +81,17 @@
 #define C_ele          332.06371
 //#define K_B         503.398008   // kcal/mol/K
 #define K_B             0.831687   // amu A^2 / ps^2 / K
-#define F_CONV          1e6 / 48.88821291 / 48.88821291   // --> amu A / ps^2
+#define F_CONV          (1e6 / 48.88821291 / 48.88821291)   // --> amu A / ps^2
 #define E_CONV          0.002391   // amu A^2 / ps^2 --> kcal/mol
 #define EV_to_KCALpMOL 14.400000   // ElectronVolt --> KCAL per MOLe
 #define KCALpMOL_to_EV 23.060549   // 23.020000//KCAL per MOLe --> ElectronVolt
 #define ECxA_to_DEBYE   4.803204      // elem. charge * angstrom -> debye conv
 #define CAL_to_JOULES   4.184000      // CALories --> JOULES
-#define JOULES_to_CAL   1/4.184000    // JOULES --> CALories
+#define JOULES_to_CAL   (1/4.184000)    // JOULES --> CALories
 #define AMU_to_GRAM     1.6605e-24
 #define ANG_to_CM       1.0e-8
 #define AVOGNR          6.0221367e23
-#define P_CONV          1.0e-24 * AVOGNR * JOULES_to_CAL
+#define P_CONV          (1.0e-24 * AVOGNR * JOULES_to_CAL)
 
 #define MAX_STR             1024
 #define MAX_LINE            1024
@@ -115,7 +115,6 @@
 
 #define MAX_ITR             10
 #define RESTART             50
-#define MAX_ROWS_PER_LEVEL  10000 /* triangular solve using level scheduling */
 
 #define ZERO           0.000000000000000e+00
 #define ALMOST_ZERO    1e-10

@@ -538,7 +538,7 @@ void Init_Out_Controls(reax_system *system, control_params *control,
         strcpy( temp, control->sim_name );
         strcat( temp, ".log" );
         out_control->log = fopen( temp, "w" );
-        fprintf( out_control->log, "%-6s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s\n",
+        fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                  "step", "total", "neighbors", "init", "bonded",
                  "nonbonded", "QEq", "QEq Sort", "S iters", "Pre Comp", "Pre App",
                  "S spmv", "S vec ops", "S orthog", "S tsolve" );
