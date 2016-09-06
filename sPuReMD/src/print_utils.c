@@ -616,7 +616,7 @@ void Output_Results( reax_system *system, control_params *control,
             f_update = 1;
         else f_update = out_control->energy_update_freq;
 
-        fprintf( out_control->log, "%6d%10.2f%10.2f%10.2f%10.2f%10.2f%10.6f%10.6f%10.2f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f\n",
+        fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                  data->step, t_elapsed / f_update,
                  data->timing.nbrs / f_update,
                  data->timing.init_forces / f_update,

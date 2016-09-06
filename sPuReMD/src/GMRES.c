@@ -74,7 +74,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
         #pragma omp barrier
 
 #endif
-        #pragma omp for schedule(guided)
+        #pragma omp for schedule(static)
         for ( i = 0; i < n; ++i )
         {
             si = A->start[i];
@@ -101,7 +101,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 #endif
         }
 #ifdef _OPENMP
-        #pragma omp for schedule(guided)
+        #pragma omp for schedule(static)
         for ( i = 0; i < n; ++i )
         {
             for ( j = 0; j < omp_get_num_threads(); ++j )
@@ -120,8 +120,8 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
 {
     unsigned int i;
 
-    #pragma omp parallel for schedule(guided) \
-    default(none) private(i)
+    #pragma omp parallel for schedule(static) \
+        default(none) private(i)
     for ( i = 0; i < N; ++i )
     {
         x[i] = y[i] * Hdia_inv[i];
@@ -198,6 +198,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
     static int levels_L = 1, levels_U = 1;
     static unsigned int *row_levels_L = NULL, *level_rows_L = NULL, *level_rows_cnt_L = NULL;
     static unsigned int *row_levels_U = NULL, *level_rows_U = NULL, *level_rows_cnt_U = NULL;
+    static unsigned int *top = NULL;
     unsigned int *row_levels, *level_rows, *level_rows_cnt;
 
     if ( tri == LOWER )
@@ -218,8 +219,17 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
     if ( row_levels == NULL || level_rows == NULL || level_rows_cnt == NULL )
     {
         if ( (row_levels = (unsigned int*) malloc((size_t)LU->n * sizeof(unsigned int))) == NULL
-                || (level_rows = (unsigned int*) malloc(MAX_ROWS_PER_LEVEL * (size_t)LU->n * sizeof(unsigned int))) == NULL
-                || (level_rows_cnt = (unsigned int*) malloc((size_t)LU->n * sizeof(unsigned int))) == NULL )
+                || (level_rows = (unsigned int*) malloc((size_t)LU->n * sizeof(unsigned int))) == NULL
+                || (level_rows_cnt = (unsigned int*) malloc((size_t)(LU->n + 1) * sizeof(unsigned int))) == NULL )
+        {
+            fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
+    }
+
+    if ( top == NULL )
+    {
+        if ( (top = (unsigned int*) malloc((size_t)(LU->n + 1) * sizeof(unsigned int))) == NULL )
         {
             fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
             exit( INSUFFICIENT_MEMORY );
@@ -229,52 +239,57 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
     /* find levels (row dependencies in substitutions) */
     if ( find_levels )
     {
-        memset( row_levels, 0, LU->n * sizeof( unsigned int) );
-        memset( level_rows_cnt, 0, LU->n * sizeof( unsigned int) );
+        memset( row_levels, 0, LU->n * sizeof(unsigned int) );
+        memset( level_rows_cnt, 0, LU->n * sizeof(unsigned int) );
+        memset( top, 0, LU->n * sizeof(unsigned int) );
 
         if ( tri == LOWER )
         {
             for ( i = 0; i < LU->n; ++i )
             {
-                local_level = 0;
+                local_level = 1;
                 for ( pj = LU->start[i]; pj < LU->start[i + 1] - 1; ++pj )
                 {
                     local_level = MAX( local_level, row_levels[LU->j[pj]] + 1 );
                 }
 
-                levels = MAX( levels, local_level + 1 );
+                levels = MAX( levels, local_level );
                 row_levels[i] = local_level;
-                level_rows[local_level * MAX_ROWS_PER_LEVEL + level_rows_cnt[local_level]] = i;
                 ++level_rows_cnt[local_level];
-                if ( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
-                {
-                    fprintf( stderr, "Not enough space for triangular solve via level scheduling" );
-                    fprintf( stderr, " (MAX_ROWS_PER_LEVEL). Terminating...\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
             }
+
+	    printf("levels(L): %d\n", levels);
+	    printf("NNZ(L): %d\n", LU->start[LU->n]);
         }
         else
         {
             for ( i = LU->n - 1; i >= 0; --i )
             {
-                local_level = 0;
+                local_level = 1;
                 for ( pj = LU->start[i] + 1; pj < LU->start[i + 1]; ++pj )
                 {
                     local_level = MAX( local_level, row_levels[LU->j[pj]] + 1 );
                 }
 
-                levels = MAX( levels, local_level + 1 );
+                levels = MAX( levels, local_level );
                 row_levels[i] = local_level;
-                level_rows[local_level * MAX_ROWS_PER_LEVEL + level_rows_cnt[local_level]] = i;
                 ++level_rows_cnt[local_level];
-                if ( level_rows_cnt[local_level] >= MAX_ROWS_PER_LEVEL )
-                {
-                    fprintf( stderr, "Not enough space for triangular solve via level scheduling" );
-                    fprintf( stderr, " (MAX_ROWS_PER_LEVEL). Terminating...\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
             }
+
+	    printf("levels(U): %d\n", levels);
+	    printf("NNZ(U): %d\n", LU->start[LU->n]);
+        }
+
+        for ( i = 1; i < levels + 1; ++i )
+        {
+            level_rows_cnt[i] += level_rows_cnt[i - 1];
+            top[i] = level_rows_cnt[i];
+        }
+
+        for ( i = 0; i < LU->n; ++i )
+        {
+            level_rows[top[row_levels[i] - 1]] = i;
+	    ++top[row_levels[i] - 1];
         }
     }
 
@@ -286,9 +301,9 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
             for ( i = 0; i < levels; ++i )
             {
                 #pragma omp for schedule(static)
-                for ( j = 0; j < level_rows_cnt[i]; ++j )
+                for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
                 {
-                    local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
+                    local_row = level_rows[j];
                     x[local_row] = y[local_row];
                     for ( pj = LU->start[local_row]; pj < LU->start[local_row + 1] - 1; ++pj )
                     {
@@ -304,9 +319,9 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
             for ( i = 0; i < levels; ++i )
             {
                 #pragma omp for schedule(static)
-                for ( j = 0; j < level_rows_cnt[i]; ++j )
+                for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
                 {
-                    local_row = level_rows[i * MAX_ROWS_PER_LEVEL + j];
+                    local_row = level_rows[j];
                     x[local_row] = y[local_row];
                     for ( pj = LU->start[local_row] + 1; pj < LU->start[local_row + 1]; ++pj )
                     {
@@ -411,7 +426,7 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
         #pragma omp barrier
 
         /* precompute and cache, as invariant in loop below */
-        #pragma omp for schedule(guided)
+        #pragma omp for schedule(static)
         for ( i = 0; i < R->n; ++i )
         {
             Dinv_b[i] = Dinv[i] * b[i];
@@ -432,7 +447,7 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
 
             #pragma omp barrier
 
-            #pragma omp for schedule(guided)
+            #pragma omp for schedule(static)
             for ( i = 0; i < R->n; ++i )
             {
                 if (tri == LOWER)
@@ -464,7 +479,7 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
 
             #pragma omp barrier
 
-            #pragma omp for schedule(guided)
+            #pragma omp for schedule(static)
             for ( i = 0; i < R->n; ++i )
             {
 #ifdef _OPENMP
