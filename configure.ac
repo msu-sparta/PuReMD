@@ -143,14 +143,16 @@ then
 	export BUILD_SUPERLU_MT="${package_superlu_mt}"
 fi
 
+AC_ARG_ENABLE([doc],
+	      [AS_HELP_STRING([--enable-doc],
+			      [enable documentation generation @<:@default: no@:>@])],
+	      [pack_doc_enabled=${enableval}], [pack_doc_enabled=no])
 AC_PROG_PDFLATEX
-AM_CONDITIONAL([BUILD_DOC], [test "x${PDFLATEX}" != "x"])
+AM_CONDITIONAL([BUILD_DOC], [test "x${pack_doc_enabled}" = "xyes" && test "x${PDFLATEX}" != "x"])
+if test "x${pack_doc_enabled}" = "xyes"; then
+	AC_CONFIG_SUBDIRS([doc])
+fi
 
 AC_CONFIG_FILES([Makefile])
-
-if test "x${PDFLATEX}" != "x"
-then
-	AC_CONFIG_FILES([doc/Makefile])
-fi
 
 AC_OUTPUT

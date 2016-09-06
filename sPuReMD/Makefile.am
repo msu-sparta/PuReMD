@@ -8,3 +8,11 @@ bin_spuremd_SOURCES = src/ffield.c src/grid.c src/list.c src/lookup.c src/print_
 		  src/single_body_interactions.c src/two_body_interactions.c \
 		  src/three_body_interactions.c src/four_body_interactions.c src/forces.c \
 		  src/integrate.c src/init_md.c src/testmd.c 
+
+include_HEADERS = src/mytypes.h src/ffield.h src/grid.h src/list.h src/lookup.h src/print_utils.h \
+		  src/reset_utils.h src/restart.h src/random.h src/tool_box.h src/traj.h \
+		  src/vector.h src/allocate.h src/analyze.h src/box.h src/system_props.h src/control.h \
+		  src/geo_tools.h src/neighbors.h src/GMRES.h src/QEq.h src/bond_orders.h \
+		  src/single_body_interactions.h src/two_body_interactions.h \
+		  src/three_body_interactions.h src/four_body_interactions.h src/forces.h \
+		  src/integrate.h src/init_md.h
