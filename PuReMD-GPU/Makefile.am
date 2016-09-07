@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I ../m4
+
 SUFFIXES = .cu
 include ../cuda.am
 

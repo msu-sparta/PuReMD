@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I ../m4
+
 AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing #-finline-functions -finline-limit=15 -qhot
 
 bin_PROGRAMS = bin/puremd

@@ -50,7 +50,7 @@ if test "x$ax_cv_c_compiler_vendor" = "xgnu"; then
 	CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
 fi
 if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
-	CFLAGS="$CFLAGS -fast -Mipa=fast,inline"
+	CFLAGS="$CFLAGS -fast"
 fi
 
 # Check for OpenMP support.
@@ -63,7 +63,12 @@ if test "x$BUILD_OPENMP" = "xyes"; then
 	   Building a single-threaded version.
 	  -----------------------------------------------])
 	else
+		# bug due to recent Intel compiler change (?)
+		if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
+			OPENMP_CFLAGS="-qopenmp"
+		fi
 		AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")
+		AC_SUBST(AM_CPPFLAGS, "$OPENMP_CFLAGS")
 	fi
 fi
 
