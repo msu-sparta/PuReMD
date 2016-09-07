@@ -4,6 +4,7 @@
 AC_PREREQ([2.69])
 
 AC_INIT([Purdue Molecular Dynamics Suite], [1.0], [ohearnku@msu.edu hma@msu.edu])
+: ${CFLAGS=""}
 AM_INIT_AUTOMAKE([1.15 -Wall -Werror])
 # Enable silent build rules by default.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERBOSITY],[1])])
