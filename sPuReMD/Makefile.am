@@ -1,5 +1,3 @@
-AM_CFLAGS += -Wall -O3 -funroll-loops -fstrict-aliasing
-
 bin_PROGRAMS = bin/spuremd
 bin_spuremd_SOURCES = src/ffield.c src/grid.c src/list.c src/lookup.c src/print_utils.c \
 		  src/reset_utils.c src/restart.c src/random.c src/tool_box.c src/traj.c \

@@ -44,6 +44,15 @@ AC_FUNC_MALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset])
 
+# Check for compiler vendor
+AX_COMPILER_VENDOR
+if test "x$ax_cv_c_compiler_vendor" = "xgnu"; then
+	CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
+fi
+if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
+	CFLAGS="$CFLAGS -fast -Mipa=fast,inline"
+fi
+
 # Check for OpenMP support.
 if test "x$BUILD_OPENMP" = "xyes"; then
 	AC_OPENMP
@@ -55,7 +64,6 @@ if test "x$BUILD_OPENMP" = "xyes"; then
 	  -----------------------------------------------])
 	else
 		AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")
-		AC_SUBST(AM_CPPFLAGS, "$OPENMP_CFLAGS")
 	fi
 fi
 
