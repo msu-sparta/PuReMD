@@ -367,24 +367,22 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
                          const real * const b, real * const x, const TRIANGULARITY tri,
                          const unsigned int maxiter )
 {
-    unsigned int i, k, si = 0, ei = 0, iter = 0;
+    unsigned int i, k, si = 0, ei = 0, iter;
 #ifdef _OPENMP
-    static real *b_local;
     unsigned int tid;
 #endif
     static real *Dinv_b, *rp, *rp2, *rp3;
 
     #pragma omp parallel \
-    default(none) shared(b_local, Dinv_b, rp, rp2, rp3, iter, stderr) private(si, ei, i, k, tid)
+    default(none) shared(Dinv_b, rp, rp2, rp3, stderr) private(si, ei, i, k, iter, tid)
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
 #endif
+        iter = 0;
 
         #pragma omp master
         {
-            /* keep b_local for program duration to avoid allocate/free
-             * overhead per Sparse_MatVec call*/
             if ( Dinv_b == NULL )
             {
                 if ( (Dinv_b = (real*) malloc(sizeof(real) * R->n)) == NULL )
@@ -409,16 +407,6 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-#ifdef _OPENMP
-            if ( b_local == NULL )
-            {
-                if ( (b_local = (real*) malloc( omp_get_num_threads() * R->n * sizeof(real))) == NULL )
-                {
-                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
-            }
-#endif
 
             Vector_MakeZero( rp, R->n );
         }
@@ -432,22 +420,12 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
             Dinv_b[i] = Dinv[i] * b[i];
         }
 
-        #pragma omp barrier
-
         do
         {
-            // x_{k+1} = G*x_{k} + Dinv*b;
-            #pragma omp master
-            {
-                Vector_MakeZero( rp2, R->n );
-#ifdef _OPENMP
-                Vector_MakeZero( b_local, omp_get_num_threads() * R->n );
-#endif
-            }
-
             #pragma omp barrier
 
-            #pragma omp for schedule(static)
+            // x_{k+1} = G*x_{k} + Dinv*b;
+            #pragma omp for schedule(guided)
             for ( i = 0; i < R->n; ++i )
             {
                 if (tri == LOWER)
@@ -462,33 +440,14 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
                     ei = R->start[i + 1];
                 }
 
+                rp2[i] = 0.;
+
                 for ( k = si; k < ei; ++k )
                 {
-#ifdef _OPENMP
-                    b_local[tid * R->n + i] += R->val[k] * rp[R->j[k]];
-#else
                     rp2[i] += R->val[k] * rp[R->j[k]];
-#endif
                 }
-#ifdef _OPENMP
-                b_local[tid * R->n + i] *= -Dinv[i];
-#else
+
                 rp2[i] *= -Dinv[i];
-#endif
-            }
-
-            #pragma omp barrier
-
-            #pragma omp for schedule(static)
-            for ( i = 0; i < R->n; ++i )
-            {
-#ifdef _OPENMP
-                for ( k = 0; k < omp_get_num_threads(); ++k )
-                {
-                    rp2[i] += b_local[k * R->n + i];
-                }
-#endif
-
                 rp2[i] += Dinv_b[i];
             }
 
@@ -497,12 +456,10 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
                 rp3 = rp;
                 rp = rp2;
                 rp2 = rp3;
-                ++iter;
             }
 
-            #pragma omp barrier
-        }
-        while ( iter < maxiter );
+            ++iter;
+        } while ( iter < maxiter );
     }
 
     Vector_Copy( x, rp, R->n );
