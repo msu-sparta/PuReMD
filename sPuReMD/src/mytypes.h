@@ -511,6 +511,8 @@ typedef struct
 
     unsigned int qeq_solver_type;
     real qeq_solver_q_err;
+    real qeq_domain_sparsity;
+    unsigned int qeq_domain_sparsify_enabled;
     unsigned int pre_comp_type;
     unsigned int pre_comp_refactor;
     real pre_comp_droptol;

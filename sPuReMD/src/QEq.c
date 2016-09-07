@@ -262,7 +262,7 @@ static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const d
     fillin = 0;
 
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, j, pj, val) reduction(+: fillin)
+    default(none) private(i, j, pj, val) reduction(+: fillin)
     for ( i = 0; i < A->n; ++i )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
@@ -1018,7 +1018,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         /* for each nonzero in L */
         #pragma omp parallel for schedule(static) \
-            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+        default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1405,8 +1405,18 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 {
     int i, fillin;
     real s_tmp, t_tmp, time;
+    sparse_matrix *Hptr;
     sparse_matrix *H_test, *L_test, *U_test;
 //    char fname[100];
+
+    if (control->qeq_domain_sparsify_enabled)
+    {
+        Hptr = workspace->H_sp;
+    }
+    else
+    {
+        Hptr = workspace->H;
+    }
 
     if (control->pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->pre_comp_refactor == 0 || workspace->L == NULL))
@@ -1417,7 +1427,10 @@ static void Init_MatVec( const reax_system * const system, const control_params 
         if ( control->pre_comp_type != DIAG_PC )
         {
             Sort_Matrix_Rows( workspace->H );
-            Sort_Matrix_Rows( workspace->H_sp );
+            if (control->qeq_domain_sparsify_enabled)
+            {
+                Sort_Matrix_Rows( workspace->H_sp );
+            }
         }
         data->timing.QEq_sort_mat_rows += Get_Timing_Info( time );
 #if defined(DEBUG)
@@ -1438,13 +1451,13 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             data->timing.pre_comp += diag_pre_comp( system, workspace->Hdia_inv );
             break;
         case ICHOLT_PC:
-            Calculate_Droptol( workspace->H, workspace->droptol, control->pre_comp_droptol );
+            Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "drop tolerances calculated\n" );
 #endif
             if ( workspace->L == NULL )
             {
-                fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
+                fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
                 if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
                         Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
                 {
@@ -1458,15 +1471,14 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 #endif
             }
 
-            data->timing.pre_comp += ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
-//                data->timing.pre_comp += ICHOLT( workspace->H_sp, workspace->droptol, workspace->L, workspace->U );
+            data->timing.pre_comp += ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
         case ILU_PAR_PC:
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
-                        Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == 0 ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == 0 )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1474,7 +1486,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             }
 
 //                data->timing.pre_comp += ICHOL_PAR( workspace->H, control->pre_comp_sweeps, workspace->L, workspace->U );
-            data->timing.pre_comp += ILU_PAR( workspace->H, control->pre_comp_sweeps, workspace->L, workspace->U );
+            data->timing.pre_comp += ILU_PAR( Hptr, control->pre_comp_sweeps, workspace->L, workspace->U );
 
 //                Print_Sparse_Matrix2( workspace->H, "H.out" );
 //                Print_Sparse_Matrix2( workspace->L, "L.out" );
@@ -1516,7 +1528,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 //                exit( 0 );
             break;
         case ILUT_PAR_PC:
-            Calculate_Droptol( workspace->H, workspace->droptol, control->pre_comp_droptol );
+            Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "drop tolerances calculated\n" );
 #endif
@@ -1524,30 +1536,30 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-                if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
-                        Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == 0 ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == 0 )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
 
-            data->timing.pre_comp += ILUT_PAR( workspace->H, workspace->droptol, control->pre_comp_sweeps,
+            data->timing.pre_comp += ILUT_PAR( Hptr, workspace->droptol, control->pre_comp_sweeps,
                                                workspace->L, workspace->U );
             break;
         case ILU_SUPERLU_MT_PC:
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( &(workspace->L), workspace->H->n, workspace->H->m ) == 0 ||
-                        Allocate_Matrix( &(workspace->U), workspace->H->n, workspace->H->m ) == 0 )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == 0 ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == 0 )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
 #if defined(HAVE_SUPERLU_MT)
-            data->timing.pre_comp += SuperLU_Factorize( workspace->H, workspace->L, workspace->U );
+            data->timing.pre_comp += SuperLU_Factorize( Hptr, workspace->L, workspace->U );
 #else
             fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );

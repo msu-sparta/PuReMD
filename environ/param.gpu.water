@@ -16,6 +16,7 @@ hbond_cutoff            7.50                    ! cutoff distance for hydrogen b
 
 qeq_solver_type         0                       ! method used to solve charge equilibration phase (QEq)
 qeq_solver_q_err        1e-6                    ! relative residual norm threshold used in solver
+qeq_domain_sparsity     1.0                     ! scalar for scaling cut-off distance, used to sparsify QEq matrix (between 0.0 and 1.0)
 pre_comp_type           0                       ! method used to compute QEq preconditioner, if applicable
 pre_comp_refactor       100                     ! nsteps to recompute preconditioner
 pre_comp_droptol        0.0                     ! threshold tolerance for dropping values in preconditioner computation, if applicable

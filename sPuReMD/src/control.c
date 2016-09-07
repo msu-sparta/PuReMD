@@ -61,7 +61,8 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->reneighbor = 1;
     control->vlist_cut = 0;
     control->nbr_cut = 4.;
-    control->r_cut = 10;
+    control->r_cut = 10.;
+    control->r_sp_cut = 10.;
     control->max_far_nbrs = 1000;
     control->bo_cut = 0.01;
     control->thb_cut = 0.001;
@@ -71,6 +72,8 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     control->qeq_solver_type = GMRES_S;
     control->qeq_solver_q_err = 0.000001;
+    control->qeq_domain_sparsify_enabled = FALSE;
+    control->qeq_domain_sparsity = 1.0;
     control->pre_comp_type = ICHOLT_PC;
     control->pre_comp_sweeps = 3;
     control->pre_comp_refactor = 100;
@@ -246,6 +249,12 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             val = atof( tmp[1] );
             control->qeq_solver_q_err = val;
+        }
+        else if ( strcmp(tmp[0], "qeq_domain_sparsity") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->qeq_domain_sparsity = val;
+            control->qeq_domain_sparsify_enabled = TRUE;
         }
         else if ( strcmp(tmp[0], "pre_comp_type") == 0 )
         {
@@ -501,7 +510,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         else
         {
             fprintf( stderr, "WARNING: unknown parameter %s\n", tmp[0] );
-            exit( 15 );
+            exit( UNKNOWN_OPTION );
         }
     }
 
@@ -521,6 +530,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->bo_cut = 0.01 * system->reaxprm.gp.l[29];
     control->r_low  = system->reaxprm.gp.l[11];
     control->r_cut  = system->reaxprm.gp.l[12];
+    control->r_sp_cut  = control->r_cut * control->qeq_domain_sparsity;
     control->vlist_cut += control->r_cut;
 
     system->g.cell_size = control->vlist_cut / 2.;
