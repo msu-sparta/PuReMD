@@ -36,6 +36,8 @@ class TestCase():
                     r'(?P<key>qeq_solver_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'qeq_solver_q_err': lambda l, x: sub(
                     r'(?P<key>qeq_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'qeq_domain_sparsity': lambda l, x: sub(
+                    r'(?P<key>qeq_domain_sparsity\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'pre_comp_type': lambda l, x: sub(
                     r'(?P<key>pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'pre_comp_droptol': lambda l, x: sub(
@@ -89,6 +91,7 @@ class TestCase():
                 + '_s' + param_dict['nsteps'] \
 		+ '_q' + param_dict['qeq_solver_type'] \
  		+ '_qtol' + param_dict['qeq_solver_q_err'] \
+ 		+ '_qds' + param_dict['qeq_domain_sparsity'] \
                 + '_pc' + param_dict['pre_comp_type'] \
                 + '_pctol' + param_dict['pre_comp_droptol'] \
                 + '_pcs' + param_dict['pre_comp_sweeps'] \
@@ -164,9 +167,9 @@ class TestCase():
 
         if cnt == int(param['nsteps']):
             fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-                param['nsteps'], param['qeq_solver_type'], param['qeq_solver_q_err'],
-     	    param['pre_comp_type'], param['pre_comp_droptol'], param['pre_comp_sweeps'],
-    	    param['pre_app_type'], param['pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
+                param['nsteps'], param['qeq_solver_type'], param['qeq_solver_q_err'], param['qeq_domain_sparsity'],
+                param['pre_comp_type'], param['pre_comp_droptol'], param['pre_comp_sweeps'],
+                param['pre_app_type'], param['pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
                 qeq, param['threads'], time))
         else:
             print('**WARNING: nsteps not correct in file {0}...'.format(log_file))
@@ -200,10 +203,10 @@ if __name__ == '__main__':
     control_dir = path.join(base_dir, 'environ')
     data_dir = path.join(base_dir, 'data/benchmarks')
 
-    header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
-    header_str = ['Data Set', 'Steps', 'QType', 'Q Tol', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
+    header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
+    header_str = ['Data Set', 'Steps', 'QType', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
             'Pre App', 'Iters', 'SpMV', 'QEq', 'Thd', 'Time (s)']
-    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
 
     params = {
             'ensemble_type': ['0'],
@@ -211,12 +214,13 @@ if __name__ == '__main__':
             'tabulate_long_range': ['0'],
             'qeq_solver_type': ['0'],
             'qeq_solver_q_err': ['1e-6'],
+            'qeq_domain_sparsity': ['1.0'],
             'pre_comp_type': ['2'],
             'pre_comp_refactor': ['100'],
             'pre_comp_droptol': ['0.0'],
             'pre_comp_sweeps': ['3'],
             'pre_app_type': ['2'],
-            'pre_app_jacobi_iters': ['50'],
+            'pre_app_jacobi_iters': ['30'],
             'threads': ['1'],
             'geo_format': [],
     }
