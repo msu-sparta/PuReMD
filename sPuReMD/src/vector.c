@@ -22,14 +22,27 @@
 #include "vector.h"
 
 
+/* global to make OpenMP shared (Vector_isZero) */
+unsigned int ret;
+/* global to make OpenMP shared (Dot, Norm) */
+real ret2;
+
+
 inline int Vector_isZero( const real * const v, const unsigned int k )
 {
-    unsigned int i, ret = TRUE;
+    unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) reduction(&&: ret) schedule(static)
+    #pragma omp master
+    {
+        ret = TRUE;
+    }
+
+    #pragma omp barrier
+
+    #pragma omp for reduction(&&: ret) schedule(static)
     for ( i = 0; i < k; ++i )
     {
-        if ( fabs( v[i] ) > ALMOST_ZERO )
+        if ( FABS( v[i] ) > ALMOST_ZERO )
         {
             ret = FALSE;
         }
@@ -43,6 +56,7 @@ inline void Vector_MakeZero( real * const v, const unsigned int k )
 {
     unsigned int i;
 
+    #pragma omp for schedule(static)
     for ( i = 0; i < k; ++i )
     {
         v[i] = ZERO;
@@ -54,6 +68,7 @@ inline void Vector_Copy( real * const dest, const real * const v, const unsigned
 {
     unsigned int i;
 
+    #pragma omp for schedule(static)
     for ( i = 0; i < k; ++i )
     {
         dest[i] = v[i];
@@ -65,7 +80,7 @@ inline void Vector_Scale( real * const dest, const real c, const real * const v,
 {
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) schedule(static)
+    #pragma omp for schedule(static)
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i];
@@ -78,7 +93,7 @@ inline void Vector_Sum( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) schedule(static)
+    #pragma omp for schedule(static)
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i] + d * y[i];
@@ -90,7 +105,7 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) schedule(static)
+    #pragma omp for schedule(static)
     for ( i = 0; i < k; ++i )
     {
         dest[i] += c * v[i];
@@ -114,31 +129,44 @@ void Vector_Print( FILE * const fout, const char * const vname, const real * con
 
 inline real Dot( const real * const v1, const real * const v2, const unsigned int k )
 {
-    real ret = ZERO;
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(static)
-    for ( i = 0; i < k; ++i )
+    #pragma omp master
     {
-        ret +=  v1[i] * v2[i];
+        ret2 = ZERO;
     }
 
-    return ret;
+    #pragma omp barrier
+
+
+    #pragma omp for reduction(+: ret2) schedule(static)
+    for ( i = 0; i < k; ++i )
+    {
+        ret2 += v1[i] * v2[i];
+    }
+
+    return ret2;
 }
 
 
 inline real Norm( const real * const v1, const unsigned int k )
 {
-    real ret = ZERO;
     unsigned int i;
 
-    #pragma omp parallel for default(none) private(i) reduction(+: ret) schedule(static)
-    for ( i = 0; i < k; ++i )
+    #pragma omp master
     {
-        ret +=  SQR( v1[i] );
+        ret2 = ZERO;
     }
 
-    return SQRT( ret );
+    #pragma omp barrier
+
+    #pragma omp for reduction(+: ret2) schedule(static)
+    for ( i = 0; i < k; ++i )
+    {
+        ret2 +=  SQR( v1[i] );
+    }
+
+    return SQRT( ret2 );
 }
 
 

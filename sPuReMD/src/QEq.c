@@ -621,15 +621,9 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
     // clear variables
     Ltop = 0;
     tmptop = 0;
-    for ( i = 0; i <= A->n; ++i )
-    {
-        L->start[i] = U->start[i] = 0;
-    }
-
-    for ( i = 0; i < A->n; ++i )
-    {
-        Utop[i] = 0;
-    }
+    memset( L->start, 0, (A->n + 1) * sizeof(unsigned int) );
+    memset( U->start, 0, (A->n + 1) * sizeof(unsigned int) );
+    memset( Utop, 0, A->n * sizeof(unsigned int) );
 
     //fprintf( stderr, "n: %d\n", A->n );
     for ( i = 0; i < A->n; ++i )
@@ -674,7 +668,6 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
             //fprintf( stderr, " -- done\n" );
         }
 
-        // compute the ith diagonal in L
         // sanity check
         if ( A->j[pj] != i )
         {
@@ -682,6 +675,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
             exit( NUMERIC_BREAKDOWN );
         }
 
+        // compute the ith diagonal in L
         val = A->val[pj];
         for ( k1 = 0; k1 < tmptop; ++k1 )
         {

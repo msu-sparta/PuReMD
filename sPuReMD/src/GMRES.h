@@ -26,12 +26,12 @@
 
 int GMRES( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
-        const real * const, real, real * const,
+        const real * const, const real, real * const,
         const FILE * const, const int );
 
 int GMRES_HouseHolder( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
-        const real * const, real, real * const,
+        const real * const, const real, real * const,
         const FILE * const, const int );
 
 int CG( static_storage*, sparse_matrix*,
