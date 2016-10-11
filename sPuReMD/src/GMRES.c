@@ -46,6 +46,14 @@ unsigned int *row_levels_L = NULL, *level_rows_L = NULL, *level_rows_cnt_L = NUL
 unsigned int *row_levels_U = NULL, *level_rows_U = NULL, *level_rows_cnt_U = NULL;
 unsigned int *row_levels, *level_rows, *level_rows_cnt;
 unsigned int *top = NULL;
+/* global to make OpenMP shared (tri_solve_gc) */
+unsigned int *color = NULL;
+unsigned int *to_color = NULL;
+unsigned int *recolor = NULL;
+unsigned int recolor_cnt;
+unsigned int *color_top = NULL;
+unsigned int *permuted_row_col = NULL;
+sparse_matrix *H_full;
 /* global to make OpenMP shared (jacobi_iter) */
 real *Dinv_b = NULL, *rp = NULL, *rp2 = NULL, *rp3 = NULL;
 
@@ -56,7 +64,7 @@ real *Dinv_b = NULL, *rp = NULL, *rp2 = NULL, *rp3 = NULL;
  *   x: vector
  *   b: vector (result) */
 static void Sparse_MatVec( const sparse_matrix * const A,
-        const real * const x, real * const b )
+                           const real * const x, real * const b )
 {
     int i, j, k, n, si, ei;
     real H;
@@ -129,8 +137,93 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 }
 
 
+/* Transpose A and copy into A^T
+ *
+ * A: symmetric, lower triangular (half-format), stored in CSR
+ * A_t: symmetric, upper triangular (half-format), stored in CSR
+ *
+ * Assumptions:
+ *   A has non-zero diagonals
+ *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
+void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
+{
+    unsigned int i, j, pj, *A_t_top;
+
+    if ( (A_t_top = (unsigned int*) calloc( A->n + 1, sizeof(unsigned int))) == NULL )
+    {
+        fprintf( stderr, "Not enough space for matrix tranpose. Terminating...\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    memset( A_t->start, 0, (A->n + 1) * sizeof(unsigned int) );
+
+    /* count nonzeros in each column of A^T */
+    for ( i = 0; i < A->n; ++i )
+    {
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+            ++A_t->start[A->j[pj] + 1];
+        }
+    }
+
+    /* setup the row pointers for A^T */
+    for ( i = 1; i <= A->n; ++i )
+    {
+        A_t_top[i] = A_t->start[i] = A_t->start[i] + A_t->start[i - 1];
+    }
+
+    /* fill in A^T */
+    for ( i = 0; i < A->n; ++i )
+    {
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+            j = A->j[pj];
+            A_t->j[A_t_top[j]] = i;
+            A_t->val[A_t_top[j]] = A->val[pj];
+            ++A_t_top[j];
+        }
+    }
+
+    free( A_t_top );
+}
+
+
+/* Transpose A in-place
+ *
+ * A: symmetric, lower triangular (half-format), stored in CSR
+ *
+ * Assumptions:
+ *   A has non-zero diagonals
+ *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
+void Transpose_I( sparse_matrix * const A )
+{
+    sparse_matrix * A_t;
+
+    if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
+    {
+        fprintf( stderr, "not enough memory for transposing matrices. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    Transpose( A, A_t );
+
+    memcpy( A->start, A_t->start, sizeof(int) * (A_t->n + 1) );
+    memcpy( A->j, A_t->j, sizeof(int) * (A_t->start[A_t->n]) );
+    memcpy( A->val, A_t->val, sizeof(real) * (A_t->start[A_t->n]) );
+
+    Deallocate_Matrix( A_t );
+}
+
+
+/* Apply diagonal inverse (Jacobi) preconditioner to system residual
+ *
+ * Hdia_inv: diagonal inverse preconditioner (constructed using H)
+ * y: current residual
+ * x: preconditioned residual
+ * N: length of preconditioner and vectors (# rows in H)
+ */
 static void diag_pre_app( const real * const Hdia_inv, const real * const y,
-        real * const x, const int N )
+                          real * const x, const int N )
 {
     unsigned int i;
 
@@ -153,7 +246,7 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 static void tri_solve( const sparse_matrix * const LU, const real * const y,
-        real * const x, const TRIANGULARITY tri )
+                       real * const x, const TRIANGULARITY tri )
 {
     int i, pj, j, si, ei;
     real val;
@@ -208,7 +301,7 @@ static void tri_solve( const sparse_matrix * const LU, const real * const y,
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 static void tri_solve_level_sched( const sparse_matrix * const LU, const real * const y,
-        real * const x, const TRIANGULARITY tri, int find_levels )
+                                   real * const x, const TRIANGULARITY tri, int find_levels )
 {
     int i, j, pj, local_row, local_level;
 
@@ -369,6 +462,221 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 }
 
 
+static void compute_H_full( const sparse_matrix * const H )
+{
+    int count, i, j, pj;
+    sparse_matrix *H_t;
+
+    #pragma omp master
+    {
+        if ( Allocate_Matrix( &H_t, H->n, H->m ) == FAILURE )
+        {
+            fprintf( stderr, "not enough memory for full H. terminating.\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
+
+        /* Set up the sparse matrix data structure for A. */
+        Transpose( H, H_t );
+
+        count = 0;
+        for ( i = 0; i < H->n; ++i )
+        {
+            H_full->start[i] = count;
+            for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
+            {
+                H_full->val[count] = H->val[pj];
+                H_full->j[count] = H->j[pj];
+                ++count;
+            }
+            for ( pj = H_t->start[i] + 1; pj < H_t->start[i + 1]; ++pj )
+            {
+                H_full->val[count] = H_t->val[pj];
+                H_full->j[count] = H_t->j[pj];
+                ++count;
+            }
+        }
+        H_full->start[i] = count;
+
+        Deallocate_Matrix( H_t );
+    }
+
+    #pragma omp barrier
+}
+
+
+static void graph_coloring()
+{
+#define MAX_COLOR (500)
+    int i, pj, v;
+    int fb_color[MAX_COLOR];
+
+    #pragma omp master
+    {
+        memset( color, 0, sizeof(unsigned int) * H_full->n );
+        recolor_cnt = H_full->n;
+        for ( i = 0; i < H_full->n; ++i )
+        {
+            to_color[i] = i;
+        }
+    }
+    memset( fb_color, -1, sizeof(unsigned int) * MAX_COLOR );
+    #pragma omp barrier
+
+    while ( recolor_cnt > 0 )
+    {
+        #pragma omp for schedule(static)
+        for ( i = 0; i < H_full->n; ++i )
+        {
+            v = to_color[i];
+
+            for ( pj = H_full->start[v]; pj < H_full->start[v + 1]; ++pj )
+            {
+                fb_color[color[H_full->j[pj]]] = v;
+
+            }
+
+            for ( pj = 1; fb_color[pj] == v; ++pj );
+
+            color[v] = pj;
+        }
+
+        #pragma omp for schedule(static)
+        for ( i = 0; i < H_full->n; ++i )
+        {
+            v = to_color[i];
+            recolor[i] = FALSE;
+
+            for ( pj = H_full->start[v]; pj < H_full->start[v + 1]; ++pj )
+            {
+                if ( color[v] == color[H_full->j[pj]] && v > H_full->j[pj] )
+                {
+                    recolor[i] = TRUE;
+                    break;
+                }
+            }
+
+        }
+
+        //TODO: switch to reduction on recolor_cnt (+) via parallel scan through recolor
+        #pragma omp master
+        {
+            recolor_cnt = 0;
+            for ( i = 0; i < H_full->n; ++i )
+            {
+                if ( recolor[i] == TRUE )
+                {
+                    to_color[recolor_cnt] = i;
+                    color[i] = 0;
+                    ++recolor_cnt;
+                }
+
+            }
+        }
+
+        #pragma omp barrier
+    }
+}
+
+
+static void permute_factor( sparse_matrix * const LU, const TRIANGULARITY tri, const int find_mapping )
+{
+    unsigned int i, pj;
+    sparse_matrix *LUtemp;
+
+    #pragma omp master
+    {
+        memset( color_top, 0, sizeof(unsigned int) * (H_full->n + 1) );
+        if ( Allocate_Matrix( &LUtemp, LU->n, LU->m ) == FAILURE )
+        {
+            fprintf( stderr, "Not enough space for graph coloring (factor permutation). Terminating...\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
+
+        if ( find_mapping == TRUE )
+        {
+            for ( i = 0; i < H_full->n; ++i )
+            {
+                ++color_top[color[i]];
+            }
+
+            for ( i = 1; i < H_full->n + 1; ++i )
+            {
+                color_top[i] += color_top[i - 1];
+            }
+
+            for ( i = 0; i < H_full->n; ++i )
+            {
+                permuted_row_col[color_top[color[i] - 1]] = i;
+                ++color_top[color[i] - 1];
+            }
+
+            /* invert mapping */
+            memcpy( color_top, permuted_row_col, sizeof(unsigned int) * H_full->n );
+            for ( i = 0; i < H_full->n; ++i )
+            {
+                permuted_row_col[color_top[i]] = i;
+            }
+
+        }
+
+        memset( color_top, 0, sizeof(unsigned int) * (H_full->n + 1) );
+
+        if ( tri == LOWER )
+        {
+            /* count nonzeros in each row of permuted factor */
+            for ( i = 0; i < LU->n; ++i )
+            {
+                for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
+                {
+                    if ( permuted_row_col[i] < permuted_row_col[LU->j[pj]] )
+                    {
+                        ++color_top[permuted_row_col[i] + 1];
+                    }
+                    else
+                    {
+                        ++color_top[permuted_row_col[LU->j[pj]] + 1];
+                    }
+                }
+            }
+
+            for ( i = 1; i < LU->n + 1; ++i )
+            {
+                color_top[i] += color_top[i - 1];
+            }
+
+            memcpy( LUtemp->start, color_top, sizeof(unsigned int) * (LU->n + 1) );
+
+            for ( i = 0; i < LU->n; ++i )
+            {
+                for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
+                {
+                    if ( permuted_row_col[i] < permuted_row_col[LU->j[pj]] )
+                    {
+                        LUtemp->j[color_top[permuted_row_col[i]]] = permuted_row_col[LU->j[pj]];
+                        LUtemp->val[color_top[permuted_row_col[i]]] = LU->val[pj];
+                        ++color_top[permuted_row_col[i]];
+                    }
+                    else
+                    {
+                        LUtemp->j[color_top[permuted_row_col[LU->j[pj]]]] = permuted_row_col[i];
+                        LUtemp->val[color_top[permuted_row_col[LU->j[pj]]]] = LU->val[pj];
+                        ++color_top[permuted_row_col[LU->j[pj]]];
+                    }
+                }
+            }
+        }
+
+        memcpy( LU->start, LUtemp->start, sizeof(unsigned int) * (LU->n + 1) );
+        memcpy( LU->j, LUtemp->j, sizeof(unsigned int) * LU->start[LU->n] );
+        memcpy( LU->val, LUtemp->val, sizeof(real) * LU->start[LU->n] );
+
+        Deallocate_Matrix( LUtemp );
+    }
+
+    #pragma omp barrier
+}
+
+
 /* Jacobi iteration using truncated Neumann series: x_{k+1} = Gx_k + D^{-1}b
  * where:
  *   G = I - D^{-1}R
@@ -381,8 +689,8 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
  * Note: Newmann series arises from series expansion of the inverse of
  * the coefficient matrix in the triangular system */
 static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
-        const real * const b, real * const x, const TRIANGULARITY tri,
-        const unsigned int maxiter )
+                         const real * const b, real * const x, const TRIANGULARITY tri,
+                         const unsigned int maxiter )
 {
     unsigned int i, k, si = 0, ei = 0, iter;
 
@@ -485,7 +793,7 @@ static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
  *   Matrices have non-zero diagonals
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 static void apply_preconditioner( const static_storage * const workspace, const control_params * const control,
-        const real * const y, real * const x, const int fresh_pre )
+                                  const real * const y, real * const x, const int fresh_pre )
 {
     int i, si;
 
@@ -529,7 +837,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
             break;
         }
         break;
-    case JACOBI_ITER_PA:
+    case TRI_SOLVE_GC_PA:
         switch ( control->pre_comp_type )
         {
         case DIAG_PC:
@@ -541,57 +849,107 @@ static void apply_preconditioner( const static_storage * const workspace, const 
         case ILUT_PAR_PC:
             #pragma omp master
             {
-                if ( Dinv_L == NULL )
+                if ( color == NULL )
                 {
-                    if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
+                    if ( (color = (unsigned int*) malloc(sizeof(unsigned int) * workspace->H->n)) == NULL ||
+                            (to_color = (unsigned int*) malloc(sizeof(unsigned int) * workspace->H->n)) == NULL ||
+                            (recolor = (unsigned int*) malloc(sizeof(unsigned int) * workspace->H->n)) == NULL ||
+                            (color_top = (unsigned int*) malloc(sizeof(unsigned int) * (workspace->H->n + 1))) == NULL ||
+                            (permuted_row_col = (unsigned int*) malloc(sizeof(unsigned int) * workspace->H->n)) == NULL ||
+                            (Allocate_Matrix( &H_full, workspace->H->n, 2 * workspace->H->m - workspace->H->n ) == FAILURE ) )
                     {
-                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                        fprintf( stderr, "not enough memory for graph coloring. terminating.\n" );
                         exit( INSUFFICIENT_MEMORY );
                     }
                 }
             }
 
             #pragma omp barrier
+
+            if ( fresh_pre )
+            {
+                compute_H_full( workspace->H );
+
+                graph_coloring( );
+
+                permute_factor( workspace->L, LOWER, TRUE );
+                permute_factor( workspace->U, UPPER, FALSE );
+            }
+
+            exit(0);
+
+            tri_solve_level_sched( workspace->L, y, x, LOWER, fresh_pre );
+            tri_solve_level_sched( workspace->U, y, x, UPPER, fresh_pre );
+        break;
+        default:
+            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+        }
+        break;
+    case JACOBI_ITER_PA:
+        switch ( control->pre_comp_type )
+        {
+        case DIAG_PC:
+            fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+        case ICHOLT_PC:
+        case ILU_PAR_PC:
+        case ILUT_PAR_PC:
+            #pragma omp master
+        {
+            if ( Dinv_L == NULL )
+            {
+                if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+        }
+
+        #pragma omp barrier
 
             /* construct D^{-1}_L */
-            if ( fresh_pre )
+        if ( fresh_pre )
+        {
+            #pragma omp for schedule(static)
+            for ( i = 0; i < workspace->L->n; ++i )
             {
-                #pragma omp for schedule(static)
-                for ( i = 0; i < workspace->L->n; ++i )
+                si = workspace->L->start[i + 1] - 1;
+                Dinv_L[i] = 1. / workspace->L->val[si];
+            }
+        }
+
+        jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->pre_app_jacobi_iters );
+
+        #pragma omp master
+        {
+            if ( Dinv_U == NULL )
+            {
+                if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
                 {
-                    si = workspace->L->start[i + 1] - 1;
-                    Dinv_L[i] = 1. / workspace->L->val[si];
+                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
                 }
             }
+        }
 
-            jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->pre_app_jacobi_iters );
-
-            #pragma omp master
-            {
-                if ( Dinv_U == NULL )
-                {
-                    if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
-                    {
-                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                        exit( INSUFFICIENT_MEMORY );
-                    }
-                }
-            }
-
-            #pragma omp barrier
+        #pragma omp barrier
 
             /* construct D^{-1}_U */
-            if ( fresh_pre )
+        if ( fresh_pre )
+        {
+            #pragma omp for schedule(static)
+            for ( i = 0; i < workspace->U->n; ++i )
             {
-                #pragma omp for schedule(static)
-                for ( i = 0; i < workspace->U->n; ++i )
-                {
-                    si = workspace->U->start[i];
-                    Dinv_U[i] = 1. / workspace->U->val[si];
-                }
+                si = workspace->U->start[i];
+                Dinv_U[i] = 1. / workspace->U->val[si];
             }
+        }
 
-            jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->pre_app_jacobi_iters );
+        jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->pre_app_jacobi_iters );
         break;
         default:
             fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -612,9 +970,9 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 
 /* generalized minimual residual iterative solver for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
-        simulation_data * const data, const sparse_matrix * const H,
-        const real * const b, const real tol, real * const x,
-        const FILE * const fout, const int fresh_pre )
+           simulation_data * const data, const sparse_matrix * const H,
+           const real * const b, const real tol, real * const x,
+           const FILE * const fout, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, ret_temp, bnorm, time_start;
@@ -622,7 +980,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     N = H->n;
 
     #pragma omp parallel default(none) private(i, j, k, itr, bnorm, ret_temp) \
-        shared(N, cc, tmp1, tmp2, temp, time_start, g_itr, g_j, stderr)
+    shared(N, cc, tmp1, tmp2, temp, time_start, g_itr, g_j, stderr)
     {
         #pragma omp master
         {
@@ -707,7 +1065,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     time_start = Get_Time( );
                 }
                 apply_preconditioner( workspace, control, workspace->v[0], workspace->v[0],
-                        itr == 0 ? fresh_pre : 0 );
+                                      itr == 0 ? fresh_pre : 0 );
                 #pragma omp master
                 {
                     data->timing.pre_app += Get_Timing_Info( time_start );
@@ -808,7 +1166,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     workspace->h[j + 1][j] = ret_temp;
                 }
                 Vector_Scale( workspace->v[j + 1],
-                        1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
+                              1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
                 #pragma omp master
                 {
                     data->timing.solver_vector_ops += Get_Timing_Info( time_start );
@@ -950,9 +1308,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
 
 int GMRES_HouseHolder( const static_storage * const workspace, const control_params * const control,
-        simulation_data * const data, const sparse_matrix * const H,
-        const real * const b, real tol, real * const x,
-        const FILE * const fout, const int fresh_pre )
+                       simulation_data * const data, const sparse_matrix * const H,
+                       const real * const b, real tol, real * const x,
+                       const FILE * const fout, const int fresh_pre )
 {
     int  i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -1142,7 +1500,7 @@ int GMRES_HouseHolder( const static_storage * const workspace, const control_par
 
 /* Preconditioned Conjugate Gradient */
 int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
-        sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout )
+         sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout )
 {
     int  i, N;
     real tmp, alpha, beta, b_norm, r_norm;
@@ -1258,7 +1616,7 @@ int CG( static_storage *workspace, sparse_matrix *H,
 
 /* Steepest Descent */
 int SDM( static_storage *workspace, sparse_matrix *H,
-        real *b, real tol, real *x, FILE *fout )
+         real *b, real tol, real *x, FILE *fout )
 {
     int  i, j, N;
     real tmp, alpha, beta, b_norm;

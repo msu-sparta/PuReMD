@@ -201,7 +201,7 @@ enum pre_comp
 
 enum pre_app
 {
-    NONE_PA = 0, TRI_SOLVE_PA = 1, TRI_SOLVE_LEVEL_SCHED_PA = 2, JACOBI_ITER_PA = 3,
+    NONE_PA = 0, TRI_SOLVE_PA = 1, TRI_SOLVE_LEVEL_SCHED_PA = 2, TRI_SOLVE_GC_PA = 3, JACOBI_ITER_PA = 4,
 };
 
 

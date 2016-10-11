@@ -30,6 +30,52 @@
 #endif
 
 
+#if defined(TEST_MAT)
+static sparse_matrix * create_test_mat( void )
+{
+    unsigned int i, n;
+    sparse_matrix *H_test;
+
+    if ( Allocate_Matrix( &H_test, 3, 6 ) == FAILURE )
+    {
+        fprintf( stderr, "not enough memory for test matrices. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    //3x3, SPD, store lower half
+    i = 0;
+    n = 0;
+    H_test->start[n] = i;
+    H_test->j[i] = 0;
+    H_test->val[i] = 4.;
+    ++i;
+    ++n;
+    H_test->start[n] = i;
+    H_test->j[i] = 0;
+    H_test->val[i] = 12.;
+    ++i;
+    H_test->j[i] = 1;
+    H_test->val[i] = 37.;
+    ++i;
+    ++n;
+    H_test->start[n] = i;
+    H_test->j[i] = 0;
+    H_test->val[i] = -16.;
+    ++i;
+    H_test->j[i] = 1;
+    H_test->val[i] = -43.;
+    ++i;
+    H_test->j[i] = 2;
+    H_test->val[i] = 98.;
+    ++i;
+    ++n;
+    H_test->start[n] = i;
+
+    return H_test;
+}
+#endif
+
+
 static int compare_matrix_entry(const void *v1, const void *v2)
 {
     /* larger element has larger column index */
@@ -88,73 +134,8 @@ static void Sort_Matrix_Rows( sparse_matrix * const A )
 }
 
 
-/* transpose A and copy into A^T */
-static void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
-{
-    unsigned int i, j, pj, *A_t_top;
-
-    if ( (A_t_top = (unsigned int*) calloc( A->n + 1, sizeof(unsigned int))) == NULL )
-    {
-        fprintf( stderr, "Not enough space for matrix tranpose. Terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-    memset( A_t->start, 0, (A->n + 1) * sizeof(unsigned int) );
-
-    /* count nonzeros in each column of A^T */
-    for ( i = 0; i < A->n; ++i )
-    {
-        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
-        {
-            ++A_t->start[A->j[pj] + 1];
-        }
-    }
-
-    /* setup the row pointers for A^T */
-    for ( i = 1; i <= A->n; ++i )
-    {
-        A_t_top[i] = A_t->start[i] = A_t->start[i] + A_t->start[i - 1];
-    }
-
-    /* fill in A^T */
-    for ( i = 0; i < A->n; ++i )
-    {
-        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
-        {
-            j = A->j[pj];
-            A_t->j[A_t_top[j]] = i;
-            A_t->val[A_t_top[j]] = A->val[pj];
-            ++A_t_top[j];
-        }
-    }
-
-    free( A_t_top );
-}
-
-
-/* transpose A in-place */
-static void Transpose_I( sparse_matrix * const A )
-{
-    sparse_matrix * A_t;
-
-    if ( Allocate_Matrix( &A_t, A->n, A->m ) == 0 )
-    {
-        fprintf( stderr, "not enough memory for transposing matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-    Transpose( A, A_t );
-
-    memcpy( A->start, A_t->start, sizeof(int) * (A_t->n + 1) );
-    memcpy( A->j, A_t->j, sizeof(int) * (A_t->start[A_t->n]) );
-    memcpy( A->val, A_t->val, sizeof(real) * (A_t->start[A_t->n]) );
-
-    Deallocate_Matrix( A_t );
-}
-
-
 static void Calculate_Droptol( const sparse_matrix * const A, real * const droptol,
-                               const real dtol )
+        const real dtol )
 {
     int i, j, k;
     real val;
@@ -283,7 +264,7 @@ static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const d
 
 #if defined(HAVE_SUPERLU_MT)
 static real SuperLU_Factorize( const sparse_matrix * const A,
-                               sparse_matrix * const L, sparse_matrix * const U )
+        sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, pj, count, *Ltop, *Utop, r;
     sparse_matrix *A_t;
@@ -373,7 +354,7 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
         fprintf( stderr, "Not enough space for SuperLU factorization. Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );
     }
-    if ( Allocate_Matrix( &A_t, A->n, A->m ) == 0 )
+    if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -600,7 +581,7 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
 
 /* Incomplete Cholesky factorization with dual thresholding */
 static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
-                    sparse_matrix * const L, sparse_matrix * const U )
+        sparse_matrix * const L, sparse_matrix * const U )
 {
     int *tmp_j;
     real *tmp_val;
@@ -745,7 +726,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
  * Fine-Grained Parallel Incomplete LU Factorization
  * SIAM J. Sci. Comp. */
 static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
-                       sparse_matrix * const U_t, sparse_matrix * const U )
+        sparse_matrix * const U_t, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x = 0, y = 0, ei_x, ei_y;
     real *D, *D_inv, sum, start;
@@ -754,7 +735,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for ICHOL_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -952,7 +933,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 )
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for ILU_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -1151,7 +1132,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
  * sweeps: number of loops over non-zeros for computation
  * L / U: factorized triangular matrices (A \approx LU), CSR format */
 static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
-                      const unsigned int sweeps, sparse_matrix * const L, sparse_matrix * const U )
+        const unsigned int sweeps, sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x, y, ei_x, ei_y, Ltop, Utop;
     real *D, *D_inv, sum, start;
@@ -1159,9 +1140,9 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == 0 ||
-            Allocate_Matrix( &L_temp, A->n, A->m ) == 0 ||
-            Allocate_Matrix( &U_temp, A->n, A->m ) == 0 )
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
+            Allocate_Matrix( &L_temp, A->n, A->m ) == FAILURE ||
+            Allocate_Matrix( &U_temp, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for ILUT_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -1394,13 +1375,11 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
 
 static void Init_MatVec( const reax_system * const system, const control_params * const control,
-                         simulation_data * const data, static_storage * const workspace,
-                         const list * const far_nbrs )
+        simulation_data * const data, static_storage * const workspace, const list * const far_nbrs )
 {
     int i, fillin;
     real s_tmp, t_tmp, time;
     sparse_matrix *Hptr;
-    sparse_matrix *H_test, *L_test, *U_test;
 //    char fname[100];
 
     if (control->qeq_domain_sparsify_enabled)
@@ -1411,6 +1390,10 @@ static void Init_MatVec( const reax_system * const system, const control_params 
     {
         Hptr = workspace->H;
     }
+
+#if defined(TEST_MAT)
+    Hptr = create_test_mat( );
+#endif
 
     if (control->pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->pre_comp_refactor == 0 || workspace->L == NULL))
@@ -1452,8 +1435,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-                if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
-                        Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
+                if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1471,55 +1454,20 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == 0 ||
-                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == 0 )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
 
-//                data->timing.pre_comp += ICHOL_PAR( workspace->H, control->pre_comp_sweeps, workspace->L, workspace->U );
+//            data->timing.pre_comp += ICHOL_PAR( workspace->H, control->pre_comp_sweeps, workspace->L, workspace->U );
             data->timing.pre_comp += ILU_PAR( Hptr, control->pre_comp_sweeps, workspace->L, workspace->U );
 
-//                Print_Sparse_Matrix2( workspace->H, "H.out" );
-//                Print_Sparse_Matrix2( workspace->L, "L.out" );
-//                Print_Sparse_Matrix2( workspace->U, "U.out" );
-
-//                if ( Allocate_Matrix( &H_test, 3, 6 ) == 0 ||
-//                     Allocate_Matrix( &L_test, 3, 6 ) == 0 ||
-//                     Allocate_Matrix( &U_test, 3, 6 ) == 0 )
-//                {
-//                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-//                    exit( INSUFFICIENT_MEMORY );
-//                }
-//
-//                //3x3, SPD, store lower half
-//                H_test->start[0] = 0;
-//                H_test->start[1] = 1;
-//                H_test->start[2] = 3;
-//                H_test->start[3] = 6;
-//                H_test->entries[0].j = 0;
-//                H_test->entries[0].val = 4.;
-//                H_test->entries[1].j = 0;
-//                H_test->entries[1].val = 12.;
-//                H_test->entries[2].j = 1;
-//                H_test->entries[2].val = 37.;
-//                H_test->entries[3].j = 0;
-//                H_test->entries[3].val = -16.;
-//                H_test->entries[4].j = 1;
-//                H_test->entries[4].val = -43.;
-//                H_test->entries[5].j = 2;
-//                H_test->entries[5].val = 98.;
-//
-////                data->timing.pre_comp += ICHOLT( H_test, workspace->droptol, L_test, U_test );
-////                Print_Sparse_Matrix2( L_test, "L_ICHOLT.out" );
-////                Print_Sparse_Matrix2( U_test, "U_ICHOLT.out" );
-////                data->timing.pre_comp += ICHOL_PAR( H_test, 1, L_test, U_test );
-//                data->timing.pre_comp += ILU_PAR( H_test, 1, L_test, U_test );
-//                Print_Sparse_Matrix2( L_test, "L_SLU.out" );
-//                Print_Sparse_Matrix2( U_test, "U_SLU.out" );
-//                exit( 0 );
+//            Print_Sparse_Matrix2( workspace->H, "H.out" );
+//            Print_Sparse_Matrix2( workspace->L, "L.out" );
+//            Print_Sparse_Matrix2( workspace->U, "U.out" );
             break;
         case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
@@ -1530,8 +1478,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == 0 ||
-                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == 0 )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1545,8 +1493,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == 0 ||
-                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == 0 )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );

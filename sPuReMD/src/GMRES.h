@@ -24,6 +24,9 @@
 
 #include "mytypes.h"
 
+void Transpose( const sparse_matrix const *, sparse_matrix const * );
+void Transpose_I( sparse_matrix * const );
+
 int GMRES( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
         const real * const, const real, real * const,

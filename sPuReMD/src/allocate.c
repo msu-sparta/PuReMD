@@ -109,7 +109,7 @@ void Deallocate_Matrix( sparse_matrix *H )
 int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
 {
     Deallocate_Matrix( *H );
-    if ( !Allocate_Matrix( H, n, m ) )
+    if ( Allocate_Matrix( H, n, m ) == FAILURE )
     {
         fprintf(stderr, "not enough space for %s matrix. terminating!\n", name);
         exit( 1 );

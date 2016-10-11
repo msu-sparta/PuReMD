@@ -425,12 +425,20 @@ void Init_Lists( reax_system *system, control_params *control,
     Estimate_Storage_Sizes( system, control, lists,
                             &Htop, hb_top, bond_top, &num_3body );
 
-    Allocate_Matrix( &(workspace->H), system->N, Htop );
+    if ( Allocate_Matrix( &(workspace->H), system->N, Htop ) == FAILURE )
+    {
+        fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
     /* TODO: better estimate for H_sp?
      *   If so, need to refactor Estimate_Storage_Sizes
      *   to use various cut-off distances as parameters
      *   (non-bonded, hydrogen, 3body, etc.) */
-    Allocate_Matrix( &(workspace->H_sp), system->N, Htop );
+    if ( Allocate_Matrix( &(workspace->H_sp), system->N, Htop ) == FAILURE )
+    {
+        fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - Htop: %d\n", Htop );
     fprintf( stderr, "memory allocated: H = %ldMB\n",
