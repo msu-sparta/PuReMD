@@ -57,6 +57,7 @@ int PreAllocate_Space( reax_system *system, control_params *control,
 void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 {
     Delete_List( far_nbrs );
+
     if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs ))
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
@@ -71,29 +72,28 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 #endif
 }
 
+
 int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
 
     if ( (*pH = (sparse_matrix*) malloc(sizeof(sparse_matrix))) == NULL )
     {
-        return 0;
+        return FAILURE;
     }
 
     H = *pH;
     H->n = n;
     H->m = m;
-    if ( (H->start = (unsigned int*) malloc(sizeof(int) * (n + 1))) == NULL )
+
+    if ( (H->start = (unsigned int*) malloc(sizeof(int) * (n + 1))) == NULL
+            || (H->j = (unsigned int*) malloc(sizeof(int) * m)) == NULL
+            || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
     {
-        return 0;
-    }
-    if ( (H->j = (unsigned int*) malloc(sizeof(int) * m)) == NULL
-        || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
-    {
-        return 0;
+        return FAILURE;
     }
 
-    return 1;
+    return SUCCESS;
 }
 
 
@@ -109,10 +109,11 @@ void Deallocate_Matrix( sparse_matrix *H )
 int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
 {
     Deallocate_Matrix( *H );
+
     if ( Allocate_Matrix( H, n, m ) == FAILURE )
     {
         fprintf(stderr, "not enough space for %s matrix. terminating!\n", name);
-        exit( 1 );
+        exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -121,7 +122,8 @@ int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
     fprintf( stderr, "memory allocated: %s = %ldMB\n",
              name, m * sizeof(sparse_matrix_entry) / (1024 * 1024) );
 #endif
-    return 1;
+
+    return SUCCESS;
 }
 
 
@@ -133,7 +135,9 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
     num_hbonds = 0;
     /* find starting indexes for each H and the total number of hbonds */
     for ( i = 1; i < n; ++i )
+    {
         hb_top[i] += hb_top[i - 1];
+    }
     num_hbonds = hb_top[n - 1];
 
     if ( !Make_List(num_h, num_hbonds, TYP_HBOND, hbonds ) )
@@ -143,6 +147,7 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
     }
 
     for ( i = 0; i < n; ++i )
+    {
         if ( h_index[i] == 0 )
         {
             Set_Start_Index( 0, 0, hbonds );
@@ -153,13 +158,14 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
             Set_Start_Index( h_index[i], hb_top[i - 1], hbonds );
             Set_End_Index( h_index[i], hb_top[i - 1], hbonds );
         }
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "allocating hbonds - num_hbonds: %d\n", num_hbonds );
     fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
              num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
 #endif
-    return 1;
+    return SUCCESS;
 }
 
 
@@ -173,8 +179,12 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
 #endif
     hb_top = calloc( n, sizeof(int) );
     for ( i = 0; i < n; ++i )
+    {
         if ( h_index[i] >= 0 )
+        {
             hb_top[i] = MAX(Num_Entries(h_index[i], hbonds) * SAFE_HBONDS, MIN_HBONDS);
+        }
+    }
 
     Delete_List( hbonds );
 
@@ -182,7 +192,7 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
 
     free( hb_top );
 
-    return 1;
+    return SUCCESS;
 }
 
 
@@ -193,7 +203,9 @@ int Allocate_Bond_List( int n, int *bond_top, list *bonds )
     num_bonds = 0;
     /* find starting indexes for each atom and the total number of bonds */
     for ( i = 1; i < n; ++i )
+    {
         bond_top[i] += bond_top[i - 1];
+    }
     num_bonds = bond_top[n - 1];
 
     if ( !Make_List(n, num_bonds, TYP_BOND, bonds ) )
@@ -215,7 +227,7 @@ int Allocate_Bond_List( int n, int *bond_top, list *bonds )
     fprintf( stderr, "memory allocated: bonds = %ldMB\n",
              num_bonds * sizeof(bond_data) / (1024 * 1024) );
 #endif
-    return 1;
+    return SUCCESS;
 }
 
 
@@ -242,7 +254,7 @@ int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
 
     free( bond_top );
 
-    return 1;
+    return SUCCESS;
 }
 
 

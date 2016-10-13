@@ -98,7 +98,7 @@ static void Sort_Matrix_Rows( sparse_matrix * const A )
         }
 
         /* sort each row of A using column indices */
-        #pragma omp for
+        #pragma omp for schedule(guided)
         for ( i = 0; i < A->n; ++i )
         {
             si = A->start[i];
@@ -735,13 +735,8 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for ICHOL_PAR preconditioning matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-    if ( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
+            ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL )
     {
@@ -749,21 +744,22 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         exit( INSUFFICIENT_MEMORY );
     }
 
+    #pragma omp parallel for schedule(static) \
+        default(none) shared(D_inv, D) private(i)
     for ( i = 0; i < A->n; ++i )
     {
         D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
         D[i] = 1. / D_inv[i];
     }
 
-    for ( i = 0; i <= A->n; ++i )
-    {
-        U->start[i] = 0;
-        Utop[i] = 0;
-    }
+    memset( U->start, 0, sizeof(unsigned int) * (A->n + 1) );
+    memset( Utop, 0, sizeof(unsigned int) * (A->n + 1) );
 
     /* to get convergence, A must have unit diagonal, so apply
      * transformation DAD, where D = D(1./sqrt(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(DAD, D_inv, D) private(i, pj)
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
@@ -787,7 +783,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         /* for each nonzero */
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD, stderr) private(sum, ei_x, ei_y, k) firstprivate(x, y)
+            default(none) shared(DAD, stderr) private(sum, ei_x, ei_y, k) firstprivate(x, y)
         for ( j = 0; j < A->start[A->n]; ++j )
         {
             sum = ZERO;
@@ -859,6 +855,8 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     /* apply inverse transformation D^{-1}U^{T},
      * since DAD \approx U^{T}U, so
      * D^{-1}DADD^{-1} = A \approx D^{-1}U^{T}UD^{-1} */
+    #pragma omp parallel for schedule(guided) \
+        default(none) shared(D_inv) private(i, pj)
     for ( i = 0; i < A->n; ++i )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
@@ -872,34 +870,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 #endif
 
     /* transpose U^{T} and copy into U */
-    for ( i = 0; i < U_t->n; ++i )
-    {
-        /* count nonzeros in each row of U (columns of U^{T}),
-         * store in U->start */
-        for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
-        {
-            U->start[U_t->j[pj] + 1]++;
-        }
-    }
-    /* set correct row pointer in U */
-    for ( i = 1; i <= U->n; ++i )
-    {
-        Utop[i] = U->start[i] = U->start[i] + U->start[i - 1];
-    }
-    /* for each row */
-    for ( i = 0; i < U_t->n; ++i )
-    {
-        /* for each nonzero (column-wise) in U^T */
-        for ( pj = U_t->start[i]; pj < U_t->start[i + 1]; ++pj )
-        {
-            j = U_t->j[pj];
-            U->j[Utop[j]] = i;
-            U->val[Utop[j]] = U_t->val[pj];
-            /* Utop contains pointer within rows of U
-             * (columns of U^T) to add next nonzero, so increment */
-            Utop[j]++;
-        }
-    }
+    Transpose( U_t, U );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
@@ -933,13 +904,8 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for ILU_PAR preconditioning matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-    if ( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
+            ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
     {
         fprintf( stderr, "not enough memory for ILU_PAR preconditioning matrices. terminating.\n" );
@@ -947,7 +913,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     }
 
     #pragma omp parallel for schedule(static) \
-    default(none) shared(D, D_inv) private(i)
+        default(none) shared(D, D_inv) private(i)
     for ( i = 0; i < A->n; ++i )
     {
         D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
@@ -958,7 +924,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
      * transformation DAD, where D = D(1./sqrt(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
     #pragma omp parallel for schedule(static) \
-    default(none) shared(DAD, D) private(i, pj)
+        default(none) shared(DAD, D) private(i, pj)
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
@@ -993,7 +959,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         /* for each nonzero in L */
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1043,7 +1009,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         }
 
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1094,7 +1060,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
      * since DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
     #pragma omp parallel for schedule(static) \
-    default(none) shared(DAD, D_inv) private(i, pj)
+        default(none) shared(DAD, D_inv) private(i, pj)
     for ( i = 0; i < DAD->n; ++i )
     {
         for ( pj = DAD->start[i]; pj < DAD->start[i + 1]; ++pj )

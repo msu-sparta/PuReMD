@@ -22,6 +22,7 @@
 #include "GMRES.h"
 #include "allocate.h"
 #include "list.h"
+#include "print_utils.h"
 #include "tool_box.h"
 #include "vector.h"
 
@@ -212,6 +213,63 @@ void Transpose_I( sparse_matrix * const A )
     memcpy( A->val, A_t->val, sizeof(real) * (A_t->start[A_t->n]) );
 
     Deallocate_Matrix( A_t );
+}
+
+
+static int compare_matrix_entry(const void *v1, const void *v2)
+{
+    /* larger element has larger column index */
+    return *(int *)v1 - *(int *)v2;
+}
+
+
+static void Sort_Matrix_Rows( sparse_matrix * const A )
+{
+    int i, j, k, si, ei, *temp_j;
+    real *temp_val;
+
+    if ( ( temp_j = (int*) malloc( A->n * sizeof(int)) ) == NULL
+            || ( temp_val = (real*) malloc( A->n * sizeof(real)) ) == NULL )
+    {
+        fprintf( stderr, "Not enough space for matrix row sort. Terminating...\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    /* sort each row of A using column indices */
+    #pragma omp for schedule(guided)
+    for ( i = 0; i < A->n; ++i )
+    {
+        si = A->start[i];
+        ei = A->start[i + 1];
+        memcpy( temp_j, A->j + si, sizeof(int) * (ei - si) );
+        memcpy( temp_val, A->val + si, sizeof(real) * (ei - si) );
+
+        //TODO: consider implementing single custom one-pass sort instead of using qsort + manual sort
+        /* polymorphic sort in standard C library using column indices */
+        qsort( temp_j, ei - si, sizeof(int), compare_matrix_entry );
+
+        /* manually sort vals */
+        for ( j = 0; j < (ei - si); ++j )
+        {
+            for ( k = 0; k < (ei - si); ++k )
+            {
+                if ( A->j[si + j] == temp_j[k] )
+                {
+                    A->val[si + k] = temp_val[j];
+                    break;
+                }
+
+            }
+        }
+
+        /* copy sorted column indices */
+        memcpy( A->j + si, temp_j, sizeof(int) * (ei - si) );
+    }
+
+    free( temp_val );
+    free( temp_j );
+
+    #pragma omp barrier
 }
 
 
@@ -464,7 +522,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
 static void compute_H_full( const sparse_matrix * const H )
 {
-    int count, i, j, pj;
+    int count, i, pj;
     sparse_matrix *H_t;
 
     #pragma omp master
@@ -580,7 +638,7 @@ static void graph_coloring()
 
 static void permute_factor( sparse_matrix * const LU, const TRIANGULARITY tri, const int find_mapping )
 {
-    unsigned int i, pj;
+    int i, pj, nr, nc;
     sparse_matrix *LUtemp;
 
     #pragma omp master
@@ -621,46 +679,101 @@ static void permute_factor( sparse_matrix * const LU, const TRIANGULARITY tri, c
 
         memset( color_top, 0, sizeof(unsigned int) * (H_full->n + 1) );
 
+        /* count nonzeros in each row of permuted factor and correct entries
+         * to maintain triangularity (re-use color_top for counting) */
         if ( tri == LOWER )
         {
-            /* count nonzeros in each row of permuted factor */
             for ( i = 0; i < LU->n; ++i )
             {
                 for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
                 {
-                    if ( permuted_row_col[i] < permuted_row_col[LU->j[pj]] )
+                    nr = permuted_row_col[i];
+                    nc = permuted_row_col[LU->j[pj]];
+
+                    if ( nc <= nr )
                     {
-                        ++color_top[permuted_row_col[i] + 1];
+                        ++color_top[nr + 1];
                     }
                     else
                     {
-                        ++color_top[permuted_row_col[LU->j[pj]] + 1];
+                        ++color_top[nc + 1];
                     }
                 }
             }
-
-            for ( i = 1; i < LU->n + 1; ++i )
+        }
+        else
+        {
+            for ( i = LU->n - 1; i >= 0; --i )
             {
-                color_top[i] += color_top[i - 1];
+                for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
+                {
+                    nr = permuted_row_col[i];
+                    nc = permuted_row_col[LU->j[pj]];
+
+                    if ( nc >= nr )
+                    {
+                        ++color_top[nr + 1];
+                    }
+                    else
+                    {
+                        ++color_top[nc + 1];
+                    }
+                }
             }
+        }
 
-            memcpy( LUtemp->start, color_top, sizeof(unsigned int) * (LU->n + 1) );
+        for ( i = 1; i < LU->n + 1; ++i )
+        {
+            color_top[i] += color_top[i - 1];
+        }
 
+        memcpy( LUtemp->start, color_top, sizeof(unsigned int) * (LU->n + 1) );
+
+        /* permute factor */
+        if ( tri == LOWER )
+        {
             for ( i = 0; i < LU->n; ++i )
             {
                 for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
                 {
-                    if ( permuted_row_col[i] < permuted_row_col[LU->j[pj]] )
+                    nr = permuted_row_col[i];
+                    nc = permuted_row_col[LU->j[pj]];
+
+                    if ( nc <= nr )
                     {
-                        LUtemp->j[color_top[permuted_row_col[i]]] = permuted_row_col[LU->j[pj]];
-                        LUtemp->val[color_top[permuted_row_col[i]]] = LU->val[pj];
-                        ++color_top[permuted_row_col[i]];
+                        LUtemp->j[color_top[nr]] = nc;
+                        LUtemp->val[color_top[nr]] = LU->val[pj];
+                        ++color_top[nr];
                     }
                     else
                     {
-                        LUtemp->j[color_top[permuted_row_col[LU->j[pj]]]] = permuted_row_col[i];
-                        LUtemp->val[color_top[permuted_row_col[LU->j[pj]]]] = LU->val[pj];
-                        ++color_top[permuted_row_col[LU->j[pj]]];
+                        LUtemp->j[color_top[nc]] = nr;
+                        LUtemp->val[color_top[nc]] = LU->val[pj];
+                        ++color_top[nc];
+                    }
+                }
+            }
+        }
+        else
+        {
+            for ( i = LU->n - 1; i >= 0; --i )
+            {
+                for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
+                {
+                    nr = permuted_row_col[i];
+                    nc = permuted_row_col[LU->j[pj]];
+
+                    if ( nc >= nr )
+                    {
+                        LUtemp->j[color_top[nr]] = nc;
+                        LUtemp->val[color_top[nr]] = LU->val[pj];
+                        ++color_top[nr];
+                    }
+                    else
+                    {
+                        LUtemp->j[color_top[nc]] = nr;
+                        LUtemp->val[color_top[nc]] = LU->val[pj];
+                        ++color_top[nc];
                     }
                 }
             }
@@ -671,9 +784,36 @@ static void permute_factor( sparse_matrix * const LU, const TRIANGULARITY tri, c
         memcpy( LU->val, LUtemp->val, sizeof(real) * LU->start[LU->n] );
 
         Deallocate_Matrix( LUtemp );
+
+//#if defined(DEBUG)
+        if ( tri == LOWER )
+        {
+            Print_Sparse_Matrix2( LU, "L.out" );
+        }
+        else
+        {
+            Print_Sparse_Matrix2( LU, "U.out" );
+        }
     }
+//#endif
 
     #pragma omp barrier
+
+    Sort_Matrix_Rows( LU );
+
+//#if defined(DEBUG)
+    #pragma omp master
+    {
+        if ( tri == LOWER )
+        {
+            Print_Sparse_Matrix2( LU, "L_s.out" );
+        }
+        else
+        {
+            Print_Sparse_Matrix2( LU, "U_s.out" );
+        }
+    }
+//#endif
 }
 
 
@@ -873,10 +1013,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 graph_coloring( );
 
                 permute_factor( workspace->L, LOWER, TRUE );
-                permute_factor( workspace->U, UPPER, FALSE );
+                permute_factor( workspace->U, UPPER, TRUE );
             }
-
-            exit(0);
 
             tri_solve_level_sched( workspace->L, y, x, LOWER, fresh_pre );
             tri_solve_level_sched( workspace->U, y, x, UPPER, fresh_pre );
