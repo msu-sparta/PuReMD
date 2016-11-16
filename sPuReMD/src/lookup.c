@@ -23,7 +23,7 @@
 #include "two_body_interactions.h"
 
 void Make_Lookup_Table(real xmin, real xmax, int n,
-                       lookup_function f, lookup_table* t)
+        lookup_function f, lookup_table* t)
 {
     int i;
 
@@ -47,7 +47,7 @@ void Make_Lookup_Table(real xmin, real xmax, int n,
 
 /* Fills solution into x. Warning: will modify c and d! */
 void Tridiagonal_Solve( const real *a, const real *b,
-                        real *c, real *d, real *x, unsigned int n)
+        real *c, real *d, real *x, unsigned int n)
 {
     int i;
     real id;
@@ -65,12 +65,14 @@ void Tridiagonal_Solve( const real *a, const real *b,
     /* Now back substitute. */
     x[n - 1] = d[n - 1];
     for (i = n - 2; i >= 0; i--)
+    {
         x[i] = d[i] - c[i] * x[i + 1];
+    }
 }
 
 
 void Natural_Cubic_Spline( const real *h, const real *f,
-                           cubic_spline_coef *coef, unsigned int n )
+        cubic_spline_coef *coef, unsigned int n )
 {
     int i;
     real *a, *b, *c, *d, *v;
@@ -85,19 +87,27 @@ void Natural_Cubic_Spline( const real *h, const real *f,
     /* build the linear system */
     a[0] = a[1] = a[n - 1] = 0;
     for ( i = 2; i < n - 1; ++i )
+    {
         a[i] = h[i - 1];
+    }
 
     b[0] = b[n - 1] = 0;
     for ( i = 1; i < n - 1; ++i )
+    {
         b[i] = 2 * (h[i - 1] + h[i]);
+    }
 
     c[0] = c[n - 2] = c[n - 1] = 0;
     for ( i = 1; i < n - 2; ++i )
+    {
         c[i] = h[i];
+    }
 
     d[0] = d[n - 1] = 0;
     for ( i = 1; i < n - 1; ++i )
+    {
         d[i] = 6 * ((f[i + 1] - f[i]) / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
+    }
 
     /*fprintf( stderr, "i  a        b        c        d\n" );
       for( i = 0; i < n; ++i )
@@ -123,7 +133,7 @@ void Natural_Cubic_Spline( const real *h, const real *f,
 
 
 void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
-                            cubic_spline_coef *coef, unsigned int n )
+        cubic_spline_coef *coef, unsigned int n )
 {
     int i;
     real *a, *b, *c, *d, *v;
@@ -138,20 +148,28 @@ void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
     /* build the linear system */
     a[0] = 0;
     for ( i = 1; i < n; ++i )
+    {
         a[i] = h[i - 1];
+    }
 
     b[0] = 2 * h[0];
     for ( i = 1; i < n; ++i )
+    {
         b[i] = 2 * (h[i - 1] + h[i]);
+    }
 
     c[n - 1] = 0;
     for ( i = 0; i < n - 1; ++i )
+    {
         c[i] = h[i];
+    }
 
     d[0] = 6 * (f[1] - f[0]) / h[0] - 6 * v0;
     d[n - 1] = 6 * vlast - 6 * (f[n - 1] - f[n - 2] / h[n - 2]);
     for ( i = 1; i < n - 1; ++i )
+    {
         d[i] = 6 * ((f[i + 1] - f[i]) / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
+    }
 
     /*fprintf( stderr, "i  a        b        c        d\n" );
       for( i = 0; i < n; ++i )
@@ -180,7 +198,10 @@ void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
     real base, dif;
 
     i = (int)(r * t->inv_dx);
-    if ( i == 0 )  ++i;
+    if ( i == 0 )
+    {
+        ++i;
+    }
     base = (real)(i + 1) * t->dx;
     dif = r - base;
     //fprintf( stderr, "r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif );
@@ -234,21 +255,30 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
        number of atom types in the ffield file */
     LR = (LR_lookup_table**) malloc( num_atom_types * sizeof(LR_lookup_table*) );
     for ( i = 0; i < num_atom_types; ++i )
+    {
         LR[i] = (LR_lookup_table*) malloc(num_atom_types * sizeof(LR_lookup_table));
+    }
 
     /* most atom types in ffield file will not exist in the current
        simulation. to avoid unnecessary lookup table space, determine
        the atom types that exist in the current simulation */
     for ( i = 0; i < MAX_ATOM_TYPES; ++i )
+    {
         existing_types[i] = 0;
+    }
     for ( i = 0; i < system->N; ++i )
+    {
         existing_types[ system->atoms[i].type ] = 1;
+    }
 
     /* fill in the lookup table entries for existing atom types.
        only lower half should be enough. */
     for ( i = 0; i < num_atom_types; ++i )
+    {
         if ( existing_types[i] )
+        {
             for ( j = i; j < num_atom_types; ++j )
+            {
                 if ( existing_types[j] )
                 {
                     LR[i][j].xmin = 0;
@@ -317,6 +347,9 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
                     Natural_Cubic_Spline( &h[1], &fCEclmb[1],
                                           &(LR[i][j].CEclmb[1]), control->tabulate + 1 );
                 }
+            }
+        }
+    }
 
     /***** //test LR-Lookup table
      evdw_maxerr = 0;
@@ -387,16 +420,18 @@ real Lookup( real x, lookup_table* t )
     real b;
     int i;
 
-    /* if ( x < t->xmin)
-       {
+    /*
+    if ( x < t->xmin)
+    {
        fprintf(stderr,"Domain check %lf > %lf\n",t->xmin,x);
        exit(0);
-       }
-       if ( x > t->xmax)
-       {
+    }
+    if ( x > t->xmax)
+    {
        fprintf(stderr,"Domain check %lf < %lf\n",t->xmax,x);
        exit(0);
-       } */
+    }
+    */
 
     i = Lookup_Index_Of( x, t );
     x1 = i * t->dx + t->xmin;
@@ -408,6 +443,3 @@ real Lookup( real x, lookup_table* t )
 
     return t->inv_dx * ( t->y[i + 1] - t->y[i] ) * x + b;
 }
-
-
-

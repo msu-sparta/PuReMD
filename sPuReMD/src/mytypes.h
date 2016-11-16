@@ -43,7 +43,7 @@
 //#define DEBUG_FOCUS
 //#define TEST_FORCES
 //#define TEST_ENERGY
-//#define REORDER_ATOMS  // turns on nbrgen opt by re-ordering atoms
+#define REORDER_ATOMS  // turns on nbrgen opt by re-ordering atoms
 //#define LGJ
 
 #define SUCCESS  1
@@ -156,11 +156,16 @@ enum interaction_type
 
 enum errors
 {
-    FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
-    CANNOT_OPEN_FILE = -12, CANNOT_INITIALIZE = -13,
-    INSUFFICIENT_MEMORY = -14, UNKNOWN_OPTION = -15,
-    INVALID_INPUT = -16, INVALID_GEO = -17,
+    FILE_NOT_FOUND = -10,
+    UNKNOWN_ATOM_TYPE = -11,
+    CANNOT_OPEN_FILE = -12,
+    CANNOT_INITIALIZE = -13,
+    INSUFFICIENT_MEMORY = -14,
+    UNKNOWN_OPTION = -15,
+    INVALID_INPUT = -16,
+    INVALID_GEO = -17,
     NUMERIC_BREAKDOWN = -18,
+    RUNTIME_ERROR = -19,
 };
 
 enum atoms

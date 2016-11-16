@@ -35,8 +35,12 @@ inline real DistSqr_to_CP( rvec cp, rvec x )
     real d_sqr = 0;
 
     for ( i = 0; i < 3; ++i )
+    {
         if ( cp[i] > NEG_INF )
+        {
             d_sqr += SQR( cp[i] - x[i] );
+        }
+    }
 
     return d_sqr;
 }
@@ -68,7 +72,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
                 nbrs = g->nbrs[i][j][k];
@@ -126,6 +132,8 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                     //  itr);
                 }
             }
+        }
+    }
 
     if ( num_far > far_nbrs->num_intrs * DANGER_ZONE )
     {
@@ -180,7 +188,9 @@ int Estimate_NumNeighbors( reax_system *system, control_params *control,
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
                 nbrs = g->nbrs[i][j][k];
@@ -229,6 +239,8 @@ int Estimate_NumNeighbors( reax_system *system, control_params *control,
                     }
                 }
             }
+        }
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimate nbrs done, num_far: %d\n", num_far );
@@ -248,11 +260,18 @@ void Choose_Neighbor_Finder( reax_system *system, control_params *control,
         if ( system->box.box_norms[0] > 2.0 * control->vlist_cut &&
                 system->box.box_norms[1] > 2.0 * control->vlist_cut &&
                 system->box.box_norms[2] > 2.0 * control->vlist_cut )
+        {
             (*Get_Far_Neighbors) = Get_Periodic_Far_Neighbors_Big_Box;
-        else  (*Get_Far_Neighbors) = Get_Periodic_Far_Neighbors_Small_Box;
+        }
+        else
+        {
+            (*Get_Far_Neighbors) = Get_Periodic_Far_Neighbors_Small_Box;
+        }
     }
     else
+    {
         (*Get_Far_Neighbors) = Get_NonPeriodic_Far_Neighbors;
+    }
 }
 
 
@@ -299,17 +318,27 @@ inline int can_Bond( static_storage *workspace, int atom1, int atom2 )
     // fprintf( stderr, "can bond %6d %6d?\n", atom1, atom2 );
 
     if ( !workspace->restricted[ atom1 ] && !workspace->restricted[ atom2 ] )
-        return 1;
+    {
+        return FALSE;
+    }
 
     for ( i = 0; i < workspace->restricted[ atom1 ]; ++i )
+    {
         if ( workspace->restricted_list[ atom1 ][i] == atom2 )
-            return 1;
+        {
+            return FALSE;
+        }
+    }
 
     for ( i = 0; i < workspace->restricted[ atom2 ]; ++i )
+    {
         if ( workspace->restricted_list[ atom2 ][i] == atom1 )
-            return 1;
+        {
+            return FALSE;
+        }
+    }
 
-    return 0;
+    return TRUE;
 }
 
 
@@ -319,13 +348,15 @@ inline int is_Near_Neighbor( list *near_nbrs, int atom1, int atom2 )
     int i;
 
     for ( i = Start_Index(atom1, near_nbrs); i < End_Index(atom1, near_nbrs); ++i )
+    {
         if ( near_nbrs->select.near_nbr_list[i].nbr == atom2 )
         {
             // fprintf( stderr, "near neighbors %6d %6d\n", atom1, atom2 );
-            return 1;
+            return FALSE;
         }
+    }
 
-    return 0;
+    return TRUE;
 }
 
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
@@ -346,14 +377,13 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     //int   top_hbond1, top_hbond2;
     get_far_neighbors_function Get_Far_Neighbors;
     far_neighbor_data new_nbrs[125];
-#ifndef REORDER_ATOMS
-    int   l, m;
-#endif
 
     // fprintf( stderr, "\n\tentered nbrs - " );
     if ( control->ensemble == iNPT || control->ensemble == sNPT ||
             control->ensemble == NPT )
+    {
         Update_Grid( system );
+    }
     // fprintf( stderr, "grid updated - " );
 
     Bin_Atoms( system, out_control );
@@ -376,7 +406,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
                 nbrs = g->nbrs[i][j][k];
@@ -411,6 +443,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                         //for(atom2=g->start[x][y][z]; atom2<g->end[x][y][z]; atom2++)
                         //#else
                         for ( m = 0, atom2 = nbr_atoms[m]; m < max; ++m, atom2 = nbr_atoms[m] )
+                        {
                             if ( atom1 >= atom2 )
                             {
                                 //fprintf( stderr, "\tatom2 %d", atom2 );
@@ -423,6 +456,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                                 fprintf( stderr, "\t%d count:%d\n", atom2, count );
 
                                 for ( c = 0; c < count; ++c )
+                                {
                                     if (atom1 != atom2 || (atom1 == atom2 && new_nbrs[c].d >= 0.1))
                                     {
                                         Set_Far_Neighbor(&(far_nbrs->select.far_nbr_list[num_far]),
@@ -458,13 +492,16 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                                           top_hbond2 + 1, hbonds );
                                           }*/
                                     }
+                                }
                             }
+                        }
                     }
 
                     Set_End_Index( atom1, top_far1, far_nbrs );
                 }
             }
-
+        }
+    }
 
     fprintf( stderr, "nbrs done-" );
 
@@ -473,6 +510,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     if ( (data->step - data->prev_steps) < control->restrict_bonds )
     {
         for ( atom1 = 0; atom1 < system->N; ++atom1 )
+        {
             if ( workspace->restricted[ atom1 ] )
             {
                 // fprintf( stderr, "atom1: %d\n", atom1 );
@@ -480,8 +518,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                 top_near1 = End_Index( atom1, near_nbrs );
 
                 for ( j = 0; j < workspace->restricted[ atom1 ]; ++j )
-                    if (!is_Near_Neighbor(near_nbrs, atom1,
-                                          atom2 = workspace->restricted_list[atom1][j]))
+                {
+                    if (is_Near_Neighbor(near_nbrs, atom1,
+                          atom2 = workspace->restricted_list[atom1][j]) == FALSE)
                     {
                         fprintf( stderr, "%3d-%3d: added bond by applying restrictions!\n",
                                  atom1, atom2 );
@@ -505,9 +544,11 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                                            new_nbrs[c].dvec, new_nbrs[c].rel_box );
                         Set_End_Index( atom2, top_near2 + 1, near_nbrs );
                     }
+                }
 
                 Set_End_Index( atom1, top_near1, near_nbrs );
             }
+        }
     }
     // fprintf( stderr, "restrictions applied-" );
 
@@ -522,7 +563,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
             fprintf( stderr,
                      "step%3d: nearnbr list of atom%d is overwritten by atom%d\n",
                      data->step, i + 1, i );
-            exit( 1 );
+            exit( RUNTIME_ERROR );
         }
 
         near_nbrs->num_intrs += Num_Entries(i, near_nbrs);
@@ -532,7 +573,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
             fprintf( stderr,
                      "step%3d: farnbr list of atom%d is overwritten by atom%d\n",
                      data->step, i + 1, i );
-            exit( 1 );
+            exit( RUNTIME_ERROR );
         }
 
         far_nbrs->num_intrs += Num_Entries(i, far_nbrs);
@@ -593,7 +634,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     if ( control->ensemble == iNPT ||
             control->ensemble == sNPT ||
             control->ensemble == NPT )
+    {
         Update_Grid( system );
+    }
     // fprintf( stderr, "grid updated - " );
 
     Bin_Atoms( system, out_control );
@@ -608,7 +651,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
                 nbrs = g->nbrs[i][j][k];
@@ -641,6 +686,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                            we have to compare atom1 with its own periodic images as well,
                            that's why there is also equality in the if stmt below */
                         for ( m = 0, atom2 = nbr_atoms[m]; m < max; ++m, atom2 = nbr_atoms[m] )
+                        {
                             if ( atom1 >= atom2 )
                             {
                                 Get_Far_Neighbors( system->atoms[atom1].x,
@@ -662,6 +708,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                                           new_nbrs[c].dvec[2] ); */
                                     }
                             }
+                        }
 
                         ++itr;
                     }
@@ -669,6 +716,8 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                     Set_End_Index( atom1, num_far, far_nbrs );
                 }
             }
+        }
+    }
 
     far_nbrs->num_intrs = num_far;
     fprintf( stderr, "nbrs done, num_far: %d\n", num_far );

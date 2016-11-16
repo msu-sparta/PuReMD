@@ -46,10 +46,18 @@ int Estimate_GCell_Population( reax_system* system )
 
     max_atoms = 0;
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
+            {
                 if ( max_atoms < g->top[i][j][k] )
+                {
                     max_atoms = g->top[i][j][k];
+                }
+            }
+        }
+    }
 
     return MAX(max_atoms * SAFE_ZONE, MIN_GCELL_POPL);
 }
@@ -117,9 +125,15 @@ void Allocate_Space_for_Grid( reax_system *system )
 
     g->max_atoms = Estimate_GCell_Population( system );
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
+            {
                 g->atoms[i][j][k] = (int*) calloc( g->max_atoms, sizeof(int) );
+            }
+        }
+    }
 
 }
 
@@ -179,8 +193,15 @@ int Shift(int p, int dp, int dim, grid *g )
         dim_len = g->ncell[2];
     }
 
-    while ( newp < 0 )        newp = newp + dim_len;
-    while ( newp >= dim_len ) newp = newp - dim_len;
+    while ( newp < 0 )
+    {
+        newp = newp + dim_len;
+    }
+    while ( newp >= dim_len )
+    {
+        newp = newp - dim_len;
+    }
+
     return newp;
 }
 
@@ -206,18 +227,28 @@ void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
         if ( abs(d) <= g->ncell[i] / 2 )
         {
             if ( d > 0 )
+            {
                 closest_point[i] = c2[i] * g->len[i];
+            }
             else if ( d == 0 )
+            {
                 closest_point[i] = NEG_INF - 1.;
+            }
             else
+            {
                 closest_point[i] = ( c2[i] + 1 ) * g->len[i];
+            }
         }
         else
         {
             if ( d > 0 )
+            {
                 closest_point[i] = ( c2[i] - g->ncell[i] + 1 ) * g->len[i];
+            }
             else
+            {
                 closest_point[i] = ( c2[i] + g->ncell[i] ) * g->len[i];
+            }
         }
     }
 }
@@ -234,7 +265,9 @@ void Find_Neighbor_GridCells( grid *g )
 
     /* pick up a cell in the grid */
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
                 nbrs_stack = g->nbrs[i][j][k];
@@ -290,6 +323,8 @@ void Find_Neighbor_GridCells( grid *g )
                 nbrs_stack[stack_top][2] = -1;
                 Reset_Marks( g, nbrs_stack, stack_top );
             }
+        }
+    }
 }
 
 
@@ -305,8 +340,12 @@ void Setup_Grid( reax_system* system )
     ivec_rScale( ncell, 1. / g->cell_size, my_box->box_norms );
 
     for ( d = 0; d < 3; ++d )
+    {
         if ( ncell[d] <= 0 )
+        {
             ncell[d] = 1;
+        }
+    }
 
     /* find the number of grid cells */
     g->total = ncell[0] * ncell[1] * ncell[2];
@@ -341,8 +380,12 @@ void Update_Grid( reax_system* system )
     ivec_rScale( ncell, 1. / g->cell_size, my_box->box_norms );
 
     for ( d = 0; d < 3; ++d )
+    {
         if ( ncell[d] == 0 )
+        {
             ncell[d] = 1;
+        }
+    }
 
     if ( ivec_isEqual( ncell, g->ncell ) ) /* ncell are unchanged */
     {
@@ -352,7 +395,9 @@ void Update_Grid( reax_system* system )
 
         /* update closest point distances between gcells */
         for ( i = 0; i < g->ncell[0]; i++ )
+        {
             for ( j = 0; j < g->ncell[1]; j++ )
+            {
                 for ( k = 0; k < g->ncell[2]; k++ )
                 {
                     nbrs = g->nbrs[i][j][k];
@@ -370,6 +415,8 @@ void Update_Grid( reax_system* system )
                         ++itr;
                     }
                 }
+            }
+        }
     }
     else   /* at least one of ncell has changed */
     {
@@ -416,14 +463,24 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
 
     max_atoms = 0;
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
+            {
                 if ( max_atoms < g->top[i][j][k] )
+                {
                     max_atoms = g->top[i][j][k];
+                }
+            }
+        }
+    }
 
     /* check if current gcell->max_atoms is safe */
     if ( max_atoms >= g->max_atoms * SAFE_ZONE )
+    {
         workspace->realloc.gcell_atoms = MAX(max_atoms * SAFE_ZONE, MIN_GCELL_POPL);
+    }
 }
 
 
@@ -444,7 +501,9 @@ void Copy_Storage( reax_system *system, static_storage *workspace,
     int i;
 
     for ( i = 0; i < RESTART + 1; ++i )
+    {
         v[i][top] = workspace->v[i][old_id];
+    }
 
     for ( i = 0; i < 3; ++i )
     {
@@ -458,8 +517,13 @@ void Copy_Storage( reax_system *system, static_storage *workspace,
     workspace->b_t[top] = -1.0;
 
     if ( system->reaxprm.sbp[ old_type ].p_hbond == 1 ) // H atom
+    {
         workspace->hbond_index[top] = (*num_H)++;
-    else workspace->hbond_index[top] = -1;
+    }
+    else
+    {
+        workspace->hbond_index[top] = -1;
+    }
 
     rvec_Copy( f_old[top], workspace->f_old[old_id] );
 }
@@ -470,7 +534,9 @@ void Free_Storage( static_storage *workspace )
     int i;
 
     for ( i = 0; i < RESTART + 1; ++i )
+    {
         free( workspace->v[i] );
+    }
     free( workspace->v );
 
     for ( i = 0; i < 3; ++i )
@@ -502,14 +568,20 @@ void Assign_New_Storage( static_storage *workspace,
 
 void Cluster_Atoms( reax_system *system, static_storage *workspace )
 {
-    int         i, j, k, l, top, old_id, num_H = 0;
+    int         i, j, k, l, top, old_id, num_H;
     reax_atom  *old_atom;
-    grid       *g = &( system->g );
-    reax_atom  *new_atoms = (reax_atom*) calloc( system->N, sizeof(reax_atom) );
-    int        *orig_id = (int  *) calloc( system->N, sizeof( int ) );
+    grid       *g;
+    reax_atom  *new_atoms;
+    int        *orig_id ;
     real       **v;
     real       **s, **t;
-    rvec       *f_old = (rvec*) calloc( system->N, sizeof(rvec) );
+    rvec       *f_old;
+
+    num_H = 0;
+    g = &( system->g );
+    new_atoms = (reax_atom*) calloc( system->N, sizeof(reax_atom) );
+    orig_id = (int  *) calloc( system->N, sizeof( int ) );
+    f_old = (rvec*) calloc( system->N, sizeof(rvec) );
 
     s = (real**) calloc( 3, sizeof( real* ) );
     t = (real**) calloc( 3, sizeof( real* ) );
@@ -521,13 +593,16 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
 
     v = (real**) calloc( RESTART + 1, sizeof( real* ) );
     for ( i = 0; i < RESTART + 1; ++i )
+    {
         v[i] = (real *) calloc( system->N, sizeof( real ) );
-
+    }
 
     top = 0;
 
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
                 g->start[i][j][k] = top;
@@ -546,6 +621,8 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
 
                 g->end[i][j][k] = top;
             }
+        }
+    }
 
 
     free( system->atoms );

@@ -76,21 +76,31 @@ static sparse_matrix * create_test_mat( void )
 #endif
 
 
+/* Routine used with qsort for sorting nonzeros within a sparse matrix row
+ *
+ * v1/v2: pointers to column indices of nonzeros within a row (unsigned int)
+ */
 static int compare_matrix_entry(const void *v1, const void *v2)
 {
     /* larger element has larger column index */
-    return *(int *)v1 - *(int *)v2;
+    return *(unsigned int *)v1 - *(unsigned int *)v2;
 }
 
 
+/* Routine used for sorting nonzeros within a sparse matrix row;
+ *  internally, a combination of qsort and manual sorting is utilized
+ *  (parallel calls to qsort when multithreading, rows mapped to threads)
+ *
+ * A: sparse matrix for which to sort nonzeros within a row, stored in CSR format
+ */
 static void Sort_Matrix_Rows( sparse_matrix * const A )
 {
-    int i, j, k, si, ei, *temp_j;
+    unsigned int i, j, k, si, ei, *temp_j;
     real *temp_val;
 
     #pragma omp parallel default(none) private(i, j, k, si, ei, temp_j, temp_val) shared(stderr)
     {
-        if ( ( temp_j = (int*) malloc( A->n * sizeof(int)) ) == NULL
+        if ( ( temp_j = (unsigned int*) malloc( A->n * sizeof(unsigned int)) ) == NULL
                 || ( temp_val = (real*) malloc( A->n * sizeof(real)) ) == NULL )
         {
             fprintf( stderr, "Not enough space for matrix row sort. Terminating...\n" );
@@ -103,12 +113,12 @@ static void Sort_Matrix_Rows( sparse_matrix * const A )
         {
             si = A->start[i];
             ei = A->start[i + 1];
-            memcpy( temp_j, A->j + si, sizeof(int) * (ei - si) );
+            memcpy( temp_j, A->j + si, sizeof(unsigned int) * (ei - si) );
             memcpy( temp_val, A->val + si, sizeof(real) * (ei - si) );
 
             //TODO: consider implementing single custom one-pass sort instead of using qsort + manual sort
             /* polymorphic sort in standard C library using column indices */
-            qsort( temp_j, ei - si, sizeof(int), compare_matrix_entry );
+            qsort( temp_j, ei - si, sizeof(unsigned int), compare_matrix_entry );
 
             /* manually sort vals */
             for ( j = 0; j < (ei - si); ++j )
@@ -125,7 +135,7 @@ static void Sort_Matrix_Rows( sparse_matrix * const A )
             }
 
             /* copy sorted column indices */
-            memcpy( A->j + si, temp_j, sizeof(int) * (ei - si) );
+            memcpy( A->j + si, temp_j, sizeof(unsigned int) * (ei - si) );
         }
 
         free( temp_val );
@@ -1122,7 +1132,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     }
 
     #pragma omp parallel for schedule(static) \
-    default(none) shared(D, D_inv) private(i)
+        default(none) shared(D, D_inv) private(i)
     for ( i = 0; i < A->n; ++i )
     {
         D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
@@ -1133,7 +1143,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
      * transformation DAD, where D = D(1./sqrt(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
     #pragma omp parallel for schedule(static) \
-    default(none) shared(DAD, D) private(i, pj)
+        default(none) shared(DAD, D) private(i, pj)
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
@@ -1159,7 +1169,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
     /* L has unit diagonal, by convention */
     #pragma omp parallel for schedule(static) \
-    default(none) private(i) shared(L_temp)
+        default(none) private(i) shared(L_temp)
     for ( i = 0; i < A->n; ++i )
     {
         L_temp->val[L_temp->start[i + 1] - 1] = 1.0;
@@ -1219,7 +1229,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
         }
 
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1340,6 +1350,11 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 }
 
 
+/* Setup routine which performs the following:
+ *  1) init storage for QEq matrices and other dependent routines
+ *  2) compute preconditioner (if sim. step matches refactor step)
+ *  3) extrapolate ficticious charges s and t
+ */
 static void Init_MatVec( const reax_system * const system, const control_params * const control,
         simulation_data * const data, static_storage * const workspace, const list * const far_nbrs )
 {
@@ -1369,13 +1384,26 @@ static void Init_MatVec( const reax_system * const system, const control_params 
         time = Get_Time( );
         if ( control->pre_comp_type != DIAG_PC )
         {
+            if ( control->pre_app_type == TRI_SOLVE_GC_PA )
+            {
+                if ( control->qeq_domain_sparsify_enabled == TRUE )
+                {
+                    setup_graph_coloring( workspace->H_sp );
+                }
+                else
+                {
+                    setup_graph_coloring( workspace->H );
+                }
+            }
+
             Sort_Matrix_Rows( workspace->H );
-            if (control->qeq_domain_sparsify_enabled)
+            if ( control->qeq_domain_sparsify_enabled == TRUE )
             {
                 Sort_Matrix_Rows( workspace->H_sp );
             }
         }
         data->timing.QEq_sort_mat_rows += Get_Timing_Info( time );
+
 #if defined(DEBUG)
         fprintf( stderr, "H matrix sorted\n" );
 #endif
@@ -1393,6 +1421,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             }
             data->timing.pre_comp += diag_pre_comp( system, workspace->Hdia_inv );
             break;
+
         case ICHOLT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
 #if defined(DEBUG_FOCUS)
@@ -1416,6 +1445,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 
             data->timing.pre_comp += ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
+
         case ILU_PAR_PC:
             if ( workspace->L == NULL )
             {
@@ -1428,13 +1458,9 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                 }
             }
 
-//            data->timing.pre_comp += ICHOL_PAR( workspace->H, control->pre_comp_sweeps, workspace->L, workspace->U );
             data->timing.pre_comp += ILU_PAR( Hptr, control->pre_comp_sweeps, workspace->L, workspace->U );
-
-//            Print_Sparse_Matrix2( workspace->H, "H.out" );
-//            Print_Sparse_Matrix2( workspace->L, "L.out" );
-//            Print_Sparse_Matrix2( workspace->U, "U.out" );
             break;
+
         case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
 #if defined(DEBUG_FOCUS)
@@ -1453,8 +1479,9 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             }
 
             data->timing.pre_comp += ILUT_PAR( Hptr, workspace->droptol, control->pre_comp_sweeps,
-                                               workspace->L, workspace->U );
+                    workspace->L, workspace->U );
             break;
+
         case ILU_SUPERLU_MT_PC:
             if ( workspace->L == NULL )
             {
@@ -1466,6 +1493,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
+
 #if defined(HAVE_SUPERLU_MT)
             data->timing.pre_comp += SuperLU_Factorize( Hptr, workspace->L, workspace->U );
 #else
@@ -1473,6 +1501,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             exit( INVALID_INPUT );
 #endif
             break;
+
         default:
             fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
@@ -1497,6 +1526,9 @@ static void Init_MatVec( const reax_system * const system, const control_params 
     }
 
     /* extrapolation for s & t */
+    //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
+    #pragma omp parallel for schedule(static) \
+        default(none) private(i, s_tmp, t_tmp)
     for ( i = 0; i < system->N; ++i )
     {
         // no extrapolation
@@ -1538,6 +1570,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 }
 
 
+/* Combine ficticious charges s and t to get atomic charge q
+ */
 static void Calculate_Charges( const reax_system * const system, static_storage * const workspace )
 {
     int i;
@@ -1552,10 +1586,19 @@ static void Calculate_Charges( const reax_system * const system, static_storage 
 
     u = s_sum / t_sum;
     for ( i = 0; i < system->N; ++i )
+    {
         system->atoms[i].q = workspace->s[0][i] - u * workspace->t[0][i];
+    }
 }
 
 
+/* Main driver method for QEq kernel
+ *
+ * Rough outline:
+ *  1) init / setup routines
+ *  2) perform 2 linear solves
+ *  3) compute atomic charges based on output of 2)
+ */
 void QEq( reax_system * const system, control_params * const control, simulation_data * const data,
           static_storage * const workspace, const list * const far_nbrs,
           const output_controls * const out_control )
@@ -1565,15 +1608,18 @@ void QEq( reax_system * const system, control_params * const control, simulation
     Init_MatVec( system, control, data, workspace, far_nbrs );
 
 //    if( data->step == 0 || data->step == 100 )
+//    {
 //      Print_Linear_System( system, control, workspace, data->step );
+//    }
 
     switch ( control->qeq_solver_type )
     {
     case GMRES_S:
         iters = GMRES( workspace, control, data, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                       workspace->s[0], out_control->log, (data->step - data->prev_steps) % control->pre_comp_refactor == 0 );
+                       workspace->s[0], out_control->log,
+                       ((data->step - data->prev_steps) % control->pre_comp_refactor == 0) ? TRUE : FALSE );
         iters += GMRES( workspace, control, data, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                        workspace->t[0], out_control->log, 0 );
+                        workspace->t[0], out_control->log, FALSE );
         break;
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data, workspace->H, workspace->b_s, control->qeq_solver_q_err,
@@ -1612,11 +1658,13 @@ void QEq( reax_system * const system, control_params * const control, simulation
     }
 
     data->timing.solver_iters += iters;
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "linsolve-" );
 #endif
 
     Calculate_Charges( system, workspace );
+
     //fprintf( stderr, "%d %.9f %.9f %.9f %.9f %.9f %.9f\n",
     //   data->step,
     //   workspace->s[0][0], workspace->t[0][0],
