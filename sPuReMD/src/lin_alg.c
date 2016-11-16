@@ -19,7 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "GMRES.h"
+#include "lin_alg.h"
+
 #include "allocate.h"
 #include "list.h"
 #include "print_utils.h"
@@ -1918,21 +1919,18 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
         exit( INSUFFICIENT_MEMORY );
     }
 
-    for ( i = 0; i < N; ++i )
-    {
-        e[i] = 1.;
-    }
+    memset( e, 1., N * sizeof(real) );
 
     tri_solve( L, e, e, LOWER );
     tri_solve( U, e, e, UPPER );
 
     /* compute 1-norm of vector e */
-    c = fabs(e[0]);
+    c = FABS(e[0]);
     for ( i = 1; i < N; ++i)
     {
-        if ( fabs(e[i]) > c )
+        if ( FABS(e[i]) > c )
         {
-            c = fabs(e[i]);
+            c = FABS(e[i]);
         }
 
     }

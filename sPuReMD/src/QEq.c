@@ -20,9 +20,10 @@
   ----------------------------------------------------------------------*/
 
 #include "QEq.h"
+
 #include "allocate.h"
-#include "GMRES.h"
 #include "list.h"
+#include "lin_alg.h"
 #include "print_utils.h"
 #include "tool_box.h"
 #if defined(HAVE_SUPERLU_MT)
