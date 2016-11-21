@@ -40,7 +40,9 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
     real H;
 
     for ( i = 0; i < N; ++i )
+    {
         b[i][0] = b[i][1] = 0;
+    }
 
     /* perform multiplication */
     for ( i = 0; i < A->n; ++i )
@@ -96,18 +98,20 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 #ifdef HAVE_CUDA
     check_zeros_host (x, system->N, "x");
 #endif
+
     Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
+
 #ifdef HAVE_CUDA
     check_zeros_host (x, system->N, "x");
 #endif
 
     dual_Sparse_MatVec( H, x, workspace->q2, N );
 
-
 //  if (data->step > 0) return;
 
     // tryQEq
     Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
         Update_Timing_Info( &t_start, &matvec_time );
@@ -118,6 +122,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         /* residual */
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->q2[j][1];
+
         /* apply diagonal pre-conditioner */
         workspace->d2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
         workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
@@ -148,11 +153,13 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     //fprintf( stderr, "my_dot: %f %f\n", my_dot[0], my_dot[1] );
     MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
     //fprintf( stderr, "HOST:sig_new: %f %f\n", sig_new[0], sig_new[1] );
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &dot_time );
+    }
 #endif
-
 
     for ( i = 1; i < 300; ++i )
     {
@@ -163,6 +170,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
         // tryQEq
         Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
             Update_Timing_Info( &t_start, &matvec_time );
@@ -200,12 +208,17 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         sig_old[1] = sig_new[1];
         MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
         //fprintf( stderr, "HOST:sig_new: %f %f\n", sig_new[0], sig_new[1] );
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
             Update_Timing_Info( &t_start, &dot_time );
 #endif
+
         if ( SQRT(sig_new[0]) / b_norm[0] <= tol || SQRT(sig_new[1]) / b_norm[1] <= tol )
+        {
             break;
+        }
+
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
         for ( j = 0; j < system->n; ++j )
@@ -216,31 +229,39 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         }
     }
 
-
     if ( SQRT(sig_new[0]) / b_norm[0] <= tol )
     {
         for ( j = 0; j < n; ++j )
+        {
             workspace->t[j] = workspace->x[j][1];
+        }
         matvecs = CG( system, workspace, H, workspace->b_t, tol, workspace->t,
                       mpi_data, fout );
         fprintf (stderr, " CG1: iterations --> %d \n", matvecs );
         for ( j = 0; j < n; ++j )
+        {
             workspace->x[j][1] = workspace->t[j];
+        }
     }
     else if ( SQRT(sig_new[1]) / b_norm[1] <= tol )
     {
         for ( j = 0; j < n; ++j )
+        {
             workspace->s[j] = workspace->x[j][0];
+        }
         matvecs = CG( system, workspace, H, workspace->b_s, tol, workspace->s,
                       mpi_data, fout );
         fprintf (stderr, " CG2: iterations --> %d \n", matvecs );
         for ( j = 0; j < system->n; ++j )
+        {
             workspace->x[j][0] = workspace->s[j];
+        }
     }
 
-
     if ( i >= 300 )
+    {
         fprintf( stderr, "CG convergence failed!\n" );
+    }
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -252,10 +273,10 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 }
 
 
-
 #ifdef HAVE_CUDA
 int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
-                  rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout, simulation_data *data )
+        rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout,
+        simulation_data *data )
 {
     int  i, j, n, N, matvecs, scale;
     rvec2 tmp, alpha, beta;
@@ -263,7 +284,6 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     rvec2 sig_old, sig_new;
     MPI_Comm comm;
     rvec2 *spad = (rvec2 *) host_scratch;
-
     int a;
 
     n = system->n;
@@ -286,13 +306,13 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //  Dist( system, mpi_data, workspace->x, mpi_data->mpi_rvec2, scale, rvec2_packer );
 //#endif
 
-//  check_zeros_device (x, system->N, "x");
+//  check_zeros_device( x, system->N, "x" );
 
-    get_from_device (spad, x, sizeof (rvec2) * system->total_cap, "CG:x:get");
+    get_from_device( spad, x, sizeof (rvec2) * system->total_cap, "CG:x:get" );
     Dist( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_packer );
-    put_on_device (spad, x, sizeof (rvec2) * system->total_cap, "CG:x:put");
+    put_on_device( spad, x, sizeof (rvec2) * system->total_cap, "CG:x:put" );
 
-//  check_zeros_device (x, system->N, "x");
+//  check_zeros_device( x, system->N, "x" );
 
 //  compare_rvec2 (workspace->x, x, N, "x");
 //  if (data->step > 0) {
@@ -308,6 +328,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //#endif
     //originally we were using only H->n which was system->n (init_md.c)
     //Cuda_Dual_Matvec ( H, x, dev_workspace->q2, H->n, system->total_cap);
+    
     Cuda_Dual_Matvec ( H, x, dev_workspace->q2, system->N, system->total_cap);
 
 //  compare_rvec2 (workspace->q2, dev_workspace->q2, N, "q2");
@@ -319,6 +340,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //#ifdef __CUDA_DEBUG__
 //  Coll(system,mpi_data,workspace->q2,mpi_data->mpi_rvec2,scale,rvec2_unpacker);
 //#endif
+    
     get_from_device (spad, dev_workspace->q2, sizeof (rvec2) * system->total_cap, "CG:q2:get" );
     Coll(system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
     put_on_device (spad, dev_workspace->q2, sizeof (rvec2) * system->total_cap, "CG:q2:put" );
@@ -338,7 +360,9 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //    workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
 //  }
 //#endif
+    
     Cuda_CG_Diagnol_Preconditioner (dev_workspace, b, system->n);
+
 //  compare_rvec2 (workspace->r2, dev_workspace->r2, n, "r2");
 //  compare_rvec2 (workspace->d2, dev_workspace->d2, n, "d2");
 
@@ -354,6 +378,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
     my_sum[0] = my_sum[1] = 0;
     Cuda_Norm (b, n, my_sum);
+
 //  fprintf (stderr, "cg: my_sum[ %f, %f] \n", my_sum[0], my_sum[1]);
 
     MPI_Allreduce( &my_sum, &norm_sqr, 2, MPI_DOUBLE, MPI_SUM, comm );
@@ -373,12 +398,18 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
     my_dot[0] = my_dot[1] = 0;
     Cuda_Dot (dev_workspace->r2, dev_workspace->d2, my_dot, n);
+
 // fprintf( stderr, "my_dot: %f %f\n", my_dot[0], my_dot[1] );
+    
     MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
+
     //fprintf( stderr, "DEVICE:sig_new: %f %f\n", sig_new[0], sig_new[1] );
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &dot_time );
+    }
 #endif
 
     for ( i = 1; i < 300; ++i )
@@ -387,15 +418,19 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //#ifdef __CUDA_DEBUG__
 //    Dist(system,mpi_data,workspace->d2,mpi_data->mpi_rvec2,scale,rvec2_packer);
 //#endif
-        get_from_device (spad, dev_workspace->d2, sizeof (rvec2) * system->total_cap, "cg:d2:get");
-        Dist(system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_packer);
-        put_on_device (spad, dev_workspace->d2, sizeof (rvec2) * system->total_cap, "cg:d2:put");
+        
+        get_from_device( spad, dev_workspace->d2, sizeof (rvec2) * system->total_cap, "cg:d2:get" );
+        Dist( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_packer );
+        put_on_device( spad, dev_workspace->d2, sizeof (rvec2) * system->total_cap, "cg:d2:put" );
+
         //print_device_rvec2 (dev_workspace->d2, N);
 
 //#ifdef __CUDA_DEBUG__
 //    dual_Sparse_MatVec( &workspace->H, workspace->d2, workspace->q2, N );
 //#endif
+        
         Cuda_Dual_Matvec( H, dev_workspace->d2, dev_workspace->q2, system->N, system->total_cap );
+
         /*
         fprintf (stderr, "******************* Device sparse Matrix--------> %d \n", H->n );
         fprintf (stderr, " ******* HOST SPARSE MATRIX ******** \n");
@@ -409,20 +444,23 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         */
         //compare_rvec2 (workspace->q2, dev_workspace->q2, N, "q2");
 
-
         // tryQEq
         // MVAPICH2
 //#ifdef __CUDA_DEBUG__
 //    Coll(system,mpi_data,workspace->q2,mpi_data->mpi_rvec2,scale,rvec2_unpacker);
 //#endif
-        get_from_device (spad, dev_workspace->q2, sizeof (rvec2) * system->total_cap, "cg:q2:get");
-        Coll(system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
-        put_on_device (spad, dev_workspace->q2, sizeof (rvec2) * system->total_cap, "cg:q2:put");
+
+        get_from_device( spad, dev_workspace->q2, sizeof (rvec2) * system->total_cap, "cg:q2:get" );
+        Coll( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker );
+        put_on_device( spad, dev_workspace->q2, sizeof (rvec2) * system->total_cap, "cg:q2:put" );
 
 //       compare_rvec2 (workspace->q2, dev_workspace->q2, N, "q2");
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &matvec_time );
+        }
 #endif
 
         /* dot product: d.q */
@@ -434,6 +472,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //    }
 //       fprintf( stderr, "H:my_dot: %f %f\n", my_dot[0], my_dot[1] );
 //#endif
+
         my_dot[0] = my_dot[1] = 0;
         Cuda_Dot (dev_workspace->d2, dev_workspace->q2, my_dot, n);
         //fprintf( stderr, "D:my_dot: %f %f\n", my_dot[0], my_dot[1] );
@@ -462,8 +501,10 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //    }
 //       fprintf( stderr, "H:my_dot: %f %f\n", my_dot[0], my_dot[1] );
 //#endif
+
         my_dot[0] = my_dot[1] = 0;
-        Cuda_DualCG_Preconditioer (dev_workspace, x, alpha, system->n, my_dot);
+        Cuda_DualCG_Preconditioer( dev_workspace, x, alpha, system->n, my_dot );
+
         //fprintf( stderr, "D:my_dot: %f %f\n", my_dot[0], my_dot[1] );
 
 //   compare_rvec2 (workspace->x, dev_workspace->x, N, "x");
@@ -473,13 +514,20 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         sig_old[0] = sig_new[0];
         sig_old[1] = sig_new[1];
         MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
+
         //fprintf( stderr, "DEVICE:sig_new: %f %f\n", sig_new[0], sig_new[1] );
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &dot_time );
+        }
 #endif
+
         if ( SQRT(sig_new[0]) / b_norm[0] <= tol || SQRT(sig_new[1]) / b_norm[1] <= tol )
+        {
             break;
+        }
 
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
@@ -491,8 +539,9 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //      workspace->d2[j][1] = workspace->p2[j][1] + beta[1] * workspace->d2[j][1];
 //    }
 //#endif
-        Cuda_Vector_Sum_Rvec2 (dev_workspace->d2, dev_workspace->p2, beta,
-                               dev_workspace->d2, system->n);
+
+        Cuda_Vector_Sum_Rvec2( dev_workspace->d2, dev_workspace->p2, beta,
+                dev_workspace->d2, system->n );
 
 //       compare_rvec2 (workspace->d2, dev_workspace->d2, N, "q2");
     }
@@ -503,44 +552,54 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         //for( j = 0; j < n; ++j )
         //  workspace->t[j] = workspace->x[j][1];
         //fprintf (stderr, "Getting started with Cuda_CG1 \n");
-        Cuda_RvecCopy_From (dev_workspace->t, dev_workspace->x, 1, system->n);
+
+        Cuda_RvecCopy_From( dev_workspace->t, dev_workspace->x, 1, system->n );
 
         //compare_array (workspace->b_t, dev_workspace->b_t, system->n, "b_t");
         //compare_array (workspace->t, dev_workspace->t, system->n, "t");
 
         matvecs = Cuda_CG( system, workspace, H, dev_workspace->b_t, tol, dev_workspace->t,
-                           mpi_data, fout );
+                mpi_data, fout );
+
         //fprintf (stderr, " Cuda_CG1: iterations --> %d \n", matvecs );
         //for( j = 0; j < n; ++j )
         //  workspace->x[j][1] = workspace->t[j];
-        Cuda_RvecCopy_To (dev_workspace->x, dev_workspace->t, 1, system->n);
+
+        Cuda_RvecCopy_To( dev_workspace->x, dev_workspace->t, 1, system->n );
     }
     else if ( SQRT(sig_new[1]) / b_norm[1] <= tol )
     {
         //for( j = 0; j < n; ++j )
         //  workspace->s[j] = workspace->x[j][0];
-        Cuda_RvecCopy_From (dev_workspace->s, dev_workspace->x, 0, system->n);
+
+        Cuda_RvecCopy_From( dev_workspace->s, dev_workspace->x, 0, system->n );
 
         //compare_array (workspace->s, dev_workspace->s, system->n, "s");
         //compare_array (workspace->b_s, dev_workspace->b_s, system->n, "b_s");
 
         //fprintf (stderr, "Getting started with Cuda_CG2 \n");
+
         matvecs = Cuda_CG( system, workspace, H, dev_workspace->b_s, tol, dev_workspace->s,
-                           mpi_data, fout );
+                mpi_data, fout );
+
         //fprintf (stderr, " Cuda_CG2: iterations --> %d \n", matvecs );
         //for( j = 0; j < system->n; ++j )
         //  workspace->x[j][0] = workspace->s[j];
-        Cuda_RvecCopy_To (dev_workspace->x, dev_workspace->s, 0, system->n);
+
+        Cuda_RvecCopy_To( dev_workspace->x, dev_workspace->s, 0, system->n );
     }
 
-
     if ( i >= 300 )
+    {
         fprintf( stderr, "Dual CG convergence failed! -> %d\n", i );
+    }
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         fprintf( fout, "QEq %d + %d iters. matvecs: %f  dot: %f\n",
-                 i + 1, matvecs, matvec_time, dot_time );
+                i + 1, matvecs, matvec_time, dot_time );
+    }
 #endif
 
     return (i + 1) + matvecs;
@@ -554,7 +613,9 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
     real H;
 
     for ( i = 0; i < N; ++i )
+    {
         b[i] = 0;
+    }
 
     /* perform multiplication */
     for ( i = 0; i < A->n; ++i )
@@ -583,34 +644,47 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
     scale = sizeof(real) / sizeof(void);
     Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
     Sparse_MatVec( H, x, workspace->q, system->N );
+
     // tryQEq
     Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &matvec_time );
+    }
 #endif
 
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
     for ( j = 0; j < system->n; ++j )
+    {
         workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j]; //pre-condition
+    }
 
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
     sig0 = sig_new;
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &dot_time );
+    }
 #endif
 
     for ( i = 1; i < 300 && SQRT(sig_new) / b_norm > tol; ++i )
     {
         Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+
         //tryQEq
         Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &matvec_time );
+        }
 #endif
 
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);
@@ -619,16 +693,21 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
         /* pre-conditioning */
         for ( j = 0; j < system->n; ++j )
+        {
             workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        }
 
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
         //fprintf (stderr, "Host : sig_new: %f \n", sig_new );
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, system->n );
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &dot_time );
+        }
 #endif
     }
 
@@ -662,12 +741,15 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     //MVAPICH2
     put_on_device (spad, x, sizeof (real) * system->total_cap , "cuda_cg:x:put");
     Cuda_Matvec( H, x, dev_workspace->q, system->N, system->total_cap );
+
     // tryQEq
     // MVAPICH2
     get_from_device (spad, dev_workspace->q, sizeof (real) * system->total_cap, "cuda_cg:q:get" );
     Coll( system, mpi_data, spad, MPI_DOUBLE, scale, real_unpacker );
+
     //MVAPICH2
     put_on_device (spad, dev_workspace->q, sizeof (real) * system->total_cap, "cuda_cg:q:put" );
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
         Update_Timing_Info( &t_start, &matvec_time );
@@ -688,27 +770,33 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     sig_new = Parallel_Dot(spad, spad + system->total_cap, system->n, mpi_data->world);
 
     sig0 = sig_new;
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &dot_time );
+    }
 #endif
 
     for ( i = 1; i < 300 && SQRT(sig_new) / b_norm > tol; ++i )
     {
-
         //MVAPICH2
         get_from_device (spad, dev_workspace->d, sizeof (real) * system->total_cap, "cuda_cg:d:get");
         Dist( system, mpi_data, spad, MPI_DOUBLE, scale, real_packer );
         put_on_device (spad, dev_workspace->d, sizeof (real) * system->total_cap, "cuda_cg:d:put");
 
         Cuda_Matvec( H, dev_workspace->d, dev_workspace->q, system->N, system->total_cap );
+
         //tryQEq
         get_from_device (spad, dev_workspace->q, sizeof (real) * system->total_cap, "cuda_cg:q:get" );
         Coll(system, mpi_data, spad, MPI_DOUBLE, scale, real_unpacker);
         put_on_device (spad, dev_workspace->q, sizeof (real) * system->total_cap , "cuda_cg:q:get");
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &matvec_time );
+        }
 #endif
 
         //TODO do the parallel dot on the device for the local sum
@@ -737,9 +825,12 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
         beta = sig_new / sig_old;
         Cuda_Vector_Sum( dev_workspace->d, 1., dev_workspace->p, beta, dev_workspace->d, system->n );
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &dot_time );
+        }
 #endif
     }
 

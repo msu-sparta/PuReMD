@@ -52,7 +52,6 @@ LR_lookup_table *d_LR;
 ////////////////////////////
 //CUDA SPECIFIC DECLARATIONS
 ////////////////////////////
-
 reax_list   **dev_lists;
 storage         *dev_workspace;
 void            *scratch;
@@ -64,9 +63,8 @@ int         MATVEC_BLOCKS;
 
 
 void Read_System( char *geo_file, char *ffield_file, char *control_file,
-                  reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace,
-                  output_controls *out_control, mpi_datatypes *mpi_data )
+        reax_system *system, control_params *control, simulation_data *data,
+        storage *workspace, output_controls *out_control, mpi_datatypes *mpi_data )
 {
     /* ffield file */
     Read_Force_Field( ffield_file, &(system->reax_param), control );
@@ -76,9 +74,13 @@ void Read_System( char *geo_file, char *ffield_file, char *control_file,
 
     /* geo file */
     if ( control->geo_format == CUSTOM )
+    {
         Read_Geo( geo_file, system, control, data, workspace, mpi_data );
+    }
     else if ( control->geo_format == PDB )
+    {
         Read_PDB( geo_file, system, control, data, workspace, mpi_data );
+    }
     else if ( control->geo_format == ASCII_RESTART )
     {
         Read_Restart( geo_file, system, control, data, workspace, mpi_data );
@@ -98,9 +100,8 @@ void Read_System( char *geo_file, char *ffield_file, char *control_file,
 
 
 void Post_Evolve( reax_system* system, control_params* control,
-                  simulation_data* data, storage* workspace,
-                  reax_list** lists, output_controls *out_control,
-                  mpi_datatypes *mpi_data )
+        simulation_data* data, storage* workspace, reax_list** lists,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i;
     rvec diff, cross;
@@ -131,9 +132,8 @@ void Post_Evolve( reax_system* system, control_params* control,
 
 #ifdef HAVE_CUDA
 void Cuda_Post_Evolve( reax_system* system, control_params* control,
-                       simulation_data* data, storage* workspace,
-                       reax_list** lists, output_controls *out_control,
-                       mpi_datatypes *mpi_data )
+        simulation_data* data, storage* workspace, reax_list** lists,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     /* remove trans & rot velocity of the center of mass from system */
     if ( control->ensemble != NVE && control->remove_CoM_vel &&
@@ -152,20 +152,20 @@ void Cuda_Post_Evolve( reax_system* system, control_params* control,
 
 
 #ifdef HAVE_CUDA
-void init_blocks (reax_system *system)
+void init_blocks(reax_system *system)
 {
-    compute_blocks (&BLOCKS, &BLOCK_SIZE, system->n);
-    compute_nearest_pow_2 (BLOCKS, &BLOCKS_POW_2);
+    compute_blocks( &BLOCKS, &BLOCK_SIZE, system->n );
+    compute_nearest_pow_2( BLOCKS, &BLOCKS_POW_2 );
 
-    compute_blocks (&BLOCKS_N, &BLOCK_SIZE, system->N);
-    compute_nearest_pow_2 (BLOCKS_N, &BLOCKS_POW_2_N);
+    compute_blocks( &BLOCKS_N, &BLOCK_SIZE, system->N );
+    compute_nearest_pow_2( BLOCKS_N, &BLOCKS_POW_2_N );
 
-    compute_matvec_blocks (&MATVEC_BLOCKS, system->N);
-    //#if defined(__CUDA_DEBUG_LOG__)
-    //fprintf (stderr, " MATVEC_BLOCKS: %d BLOCKSIZE: %d  - N:%d \n",
-    //                      MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, system->N );
-    //#endif
+    compute_matvec_blocks( &MATVEC_BLOCKS, system->N );
 
+#if defined(__CUDA_DEBUG_LOG__)
+    fprintf( stderr, " MATVEC_BLOCKS: %d BLOCKSIZE: %d  - N:%d \n",
+            MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, system->N );
+#endif
 }
 #endif
 
@@ -218,7 +218,7 @@ int main( int argc, char* argv[] )
     fprintf (stderr, " General block size: %d \n",  DEF_BLOCK_SIZE);
 #endif
 
-    /* allocated main datastructures */
+    /* allocate main data structures */
     system = (reax_system *) smalloc( sizeof(reax_system), "system" );
     control = (control_params *) smalloc( sizeof(control_params), "control" );
     data = (simulation_data *) smalloc( sizeof(simulation_data), "data" );
@@ -236,13 +236,11 @@ int main( int argc, char* argv[] )
         lists[i]->end_index = NULL;
         lists[i]->select.v = NULL;
     }
-    out_control = (output_controls *)
-                  smalloc( sizeof(output_controls), "out_control" );
+    out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
     mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
 
     /* allocate the cuda auxiliary data structures */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
-
     dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
@@ -253,8 +251,7 @@ int main( int argc, char* argv[] )
     /* Initialize member variables */
     system->init_thblist = FALSE;
 
-
-    /* setup the parallel environment */
+    /* setup MPI environment */
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
@@ -263,38 +260,46 @@ int main( int argc, char* argv[] )
 
     /* setup the CUDA Device for this process can be on the same machine
     * or on a different machine, for now use the rank to compute the device
-    * This will only work on a single machine with 2 GPUs*/
-
-    Setup_Cuda_Environment (system->my_rank, control->nprocs, control->gpus_per_node);
+    * This will only work on a single machine with 2 GPUs */
+    Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
     //Cleanup_Cuda_Environment ();
+    //
+#if defined(DEBUG)
     print_device_mem_usage ();
-    //fprintf( stderr, "p%d: Total number of GPUs on this node -- %d\n", system->my_rank, my_device_id);
+    fprintf( stderr, "p%d: Total number of GPUs on this node -- %d\n", system->my_rank, my_device_id);
+#endif
 
-    /* read system description files */
+    /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
-                 data, workspace, out_control, mpi_data );
+            data, workspace, out_control, mpi_data );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
     /* init the blocks sizes for cuda kernels */
-    init_blocks (system);
+    init_blocks( system );
 
     /* measure total simulation time after input is read */
     if ( system->my_rank == MASTER_NODE )
+    {
         t_start = Get_Time( );
+    }
 
-    /* initialize datastructures */
+    /* initialize data structures */
     Cuda_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
+
 #if defined(__CUDA_DEBUG__)
     Pure_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
 
+#if defined(DEBUG)
     print_device_mem_usage ();
+#endif
 
     /* init the blocks sizes for cuda kernels */
-    init_blocks (system);
+    init_blocks( system );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
@@ -304,49 +309,60 @@ int main( int argc, char* argv[] )
 
     // compute f_0
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
-    Sync_Atoms ( system );
-    Sync_Grid (&system->my_grid, &system->d_my_grid);
+    Sync_Atoms( system );
+    Sync_Grid( &system->my_grid, &system->d_my_grid );
     init_blocks (system);
+
 #if defined(__CUDA_DENUG_LOG__)
     fprintf( stderr, "p%d: Comm_Atoms synchronized \n", system->my_rank );
 #endif
 
     //Second step
     Cuda_Reset ( system, control, data, workspace, lists );
+
 #if defined(__CUDA_DEBUG__)
     Reset( system, control, data, workspace, lists );
 #endif
-    //fprintf( stderr, "p%d: Cuda_Reset done...\n", system->my_rank );
-
+#if defined(DEBUG)
+    fprintf( stderr, "p%d: Cuda_Reset done...\n", system->my_rank );
+#endif
 
     //Third Step
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+
 #if defined(__CUDA_DEBUG__)
     Generate_Neighbor_Lists( system, data, workspace, lists );
 #endif
-#if defined(__CUDA_DENUG_LOG__)
+
+#if defined(DEBUG)
     fprintf (stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
 #endif
 
 
     //Fourth Step
-#if defined(__CUDA_DEBUG__)
+#if defined(DEBUG)
     fprintf (stderr, " Host Compute Forces begin.... \n");
+#endif
+
+#if defined(__CUDA_DEBUG__)
     Compute_Forces( system, control, data, workspace,
                     lists, out_control, mpi_data );
 #endif
-    Cuda_Compute_Forces( system, control, data, workspace,
-                         lists, out_control, mpi_data );
-#if defined(__CUDA_DENUG_LOG__)
+
+    Cuda_Compute_Forces( system, control, data, workspace, lists,
+            out_control, mpi_data );
+
+#if defined(DEBUG)
     fprintf (stderr, "p%d: Cuda_Compute_Forces done...\n", system->my_rank );
 #endif
-
 
 #if defined (__CUDA_DEBUG__)
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 #endif
+
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-#if defined(__CUDA_DENUG_LOG__)
+
+#if defined(DEBUG)
     fprintf (stderr, "p%d: Cuda_Compute_Kinetic_Energy done ... \n", system->my_rank);
 #endif
 
@@ -356,7 +372,9 @@ int main( int argc, char* argv[] )
 
 #if !defined(__CUDA_DEBUG__)
     Output_Results( system, control, data, lists, out_control, mpi_data );
-    //fprintf (stderr, "p%d: Output_Results done ... \n", system->my_rank);
+#endif
+#if defined(DEBUG)
+    fprintf (stderr, "p%d: Output_Results done ... \n", system->my_rank);
 #endif
 
 #if defined(DEBUG)
@@ -368,26 +386,39 @@ int main( int argc, char* argv[] )
     for ( ++data->step; data->step <= control->nsteps; data->step++ )
     {
         if ( control->T_mode )
+        {
             Temperature_Control( control, data );
+        }
 
-        //t_begin = Get_Time ();
+#if defined(DEBUG)
+        t_begin = Get_Time();
+#endif
 
 #if defined(__CUDA_DEBUG__)
         Evolve( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
+
         Cuda_Evolve( system, control, data, workspace, lists, out_control, mpi_data );
 
-        //t_end = Get_Timing_Info (t_begin);
-        //fprintf (stderr, " Evolve time: %f \n", t_end);
+#if defined(DEBUG)
+        t_end = Get_Timing_Info( t_begin );
+        fprintf( stderr, " Evolve time: %f \n", t_end );
+#endif
 
-        //t_begin = Get_Time ();
+#if defined(DEBUG)
+        t_begin = Get_Time();
+#endif
+
         Cuda_Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
+
 #if defined(__CUDA_DEBUG__)
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
 #endif
 
-        //t_end = Get_Timing_Info (t_begin);
-        //fprintf (stderr, " Post Evolve time: %f \n", t_end);
+#if defined(DEBUG)
+        t_end = Get_Timing_Info( t_begin );
+        fprintf( stderr, " Post Evolve time: %f \n", t_end );
+#endif
 
 #if !defined(__CUDA_DEBUG__)
         Output_Results( system, control, data, lists, out_control, mpi_data );
@@ -403,6 +434,7 @@ int main( int argc, char* argv[] )
 //      else if( out_control->restart_format == WRITE_BINARY )
 //  Write_Binary_Restart( system, control, data, out_control, mpi_data );
 //    }
+
 #if defined(DEBUG)
         fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
@@ -410,32 +442,22 @@ int main( int argc, char* argv[] )
 
     }
 
-    //vaildate the results in debug mode
 #if defined(__CUDA_DEBUG__)
+    // vaildate the results in debug mode
     validate_device (system, data, workspace, lists);
 #endif
 
 #else 
 
-    /* allocated main datastructures */
-    system = (reax_system *)
-             smalloc( sizeof(reax_system), "system" );
-    control = (control_params *)
-              smalloc( sizeof(control_params), "control" );
-    data = (simulation_data *)
-           smalloc( sizeof(simulation_data), "data" );
-    workspace = (storage *)
-                smalloc( sizeof(storage), "workspace" );
+    /* allocate main data structures */
+    system = (reax_system *) smalloc( sizeof(reax_system), "system" );
+    control = (control_params *) smalloc( sizeof(control_params), "control" );
+    data = (simulation_data *) smalloc( sizeof(simulation_data), "data" );
+    workspace = (storage *) smalloc( sizeof(storage), "workspace" );
 
-    lists = (reax_list **)
-            smalloc( LIST_N * sizeof(reax_list*), "lists" );
+    lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list*), "lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
-/*
-        lists[i] = (reax_list *)
-                   smalloc( sizeof(reax_list), "lists[i]" );
-        lists[i]->allocated = 0;*/
-
 	lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
         lists[i]->allocated = 0;
 
@@ -446,14 +468,11 @@ int main( int argc, char* argv[] )
         lists[i]->end_index = NULL;
         lists[i]->select.v = NULL;
     }
-    out_control = (output_controls *)
-                  smalloc( sizeof(output_controls), "out_control" );
-    mpi_data = (mpi_datatypes *)
-               smalloc( sizeof(mpi_datatypes), "mpi_data" );
+    out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
+    mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
 
     /* allocate the cuda auxiliary data structures */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
-
     dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
@@ -464,17 +483,18 @@ int main( int argc, char* argv[] )
     /* Initialize member variables */
     system->init_thblist = FALSE;
 
-    /* setup the parallel environment */
+    /* setup MPI environment */
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
     system->wsize = control->nprocs;
-    system->global_offset = (int*)
-                            scalloc( system->wsize + 1, sizeof(int), "global_offset" );
+    system->global_offset = (int*) scalloc( system->wsize + 1,
+            sizeof(int), "global_offset" );
 
-    /* read system description files */
+    /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
-                 data, workspace, out_control, mpi_data );
+            data, workspace, out_control, mpi_data );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
     MPI_Barrier( MPI_COMM_WORLD );
@@ -482,7 +502,10 @@ int main( int argc, char* argv[] )
 
     /* measure total simulation time after input is read */
     if ( system->my_rank == MASTER_NODE )
+    {
         t_start = Get_Time( );
+    }
+
     /* initialize datastructures */
     Initialize( system, control, data, workspace, lists, out_control, mpi_data );
    
@@ -494,12 +517,16 @@ int main( int argc, char* argv[] )
     /* compute f_0 */
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
     Reset( system, control, data, workspace, lists );
-    //Print_List(*lists + BONDS);
+
+#if defined(DEBUG)
+    Print_List(*lists + BONDS);
+#endif
+
     Generate_Neighbor_Lists( system, data, workspace, lists );
-    Compute_Forces( system, control, data, workspace,
-                    lists, out_control, mpi_data );
+    Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
     Output_Results( system, control, data, lists, out_control, mpi_data );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
     MPI_Barrier( mpi_data->world );
@@ -509,7 +536,9 @@ int main( int argc, char* argv[] )
     for ( ++data->step; data->step <= control->nsteps; data->step++ )
     {
         if ( control->T_mode )
+        {
             Temperature_Control( control, data );
+        }
 
         Evolve( system, control, data, workspace, lists, out_control, mpi_data );
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
@@ -521,10 +550,15 @@ int main( int argc, char* argv[] )
                 (data->step - data->prev_steps) % out_control->restart_freq == 0 )
         {
             if ( out_control->restart_format == WRITE_ASCII )
+            {
                 Write_Restart( system, control, data, out_control, mpi_data );
+            }
             else if ( out_control->restart_format == WRITE_BINARY )
+            {
                 Write_Binary_Restart( system, control, data, out_control, mpi_data );
+            }
         }
+
 #if defined(DEBUG)
         fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
         MPI_Barrier( mpi_data->world );
@@ -546,7 +580,6 @@ int main( int argc, char* argv[] )
     //Cleanup_Cuda_Environment ();
 
     MPI_Finalize();
-
 
     /* de-allocate data structures */
     //for( i = 0; i < LIST_N; ++i ) {

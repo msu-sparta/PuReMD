@@ -33,6 +33,7 @@
 #include "validation.h"
 #endif
 
+
 int compare_matrix_entry(const void *v1, const void *v2)
 {
     return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
@@ -48,7 +49,7 @@ void Sort_Matrix_Rows( sparse_matrix *A )
         si = A->start[i];
         ei = A->end[i];
         qsort( &(A->entries[si]), ei - si,
-               sizeof(sparse_matrix_entry), compare_matrix_entry );
+                sizeof(sparse_matrix_entry), compare_matrix_entry );
     }
 }
 
@@ -60,13 +61,16 @@ void Calculate_Droptol( sparse_matrix *A, real *droptol, real dtol )
 
     /* init droptol to 0 - not necessary for an upper-triangular A */
     for ( i = 0; i < A->n; ++i )
+    {
         droptol[i] = 0;
+    }
 
     /* calculate sqaure of the norm of each row */
     for ( i = 0; i < A->n; ++i )
     {
         val = A->entries[A->start[i]].val; // diagonal entry
         droptol[i] += val * val;
+
         // only within my block
         for ( k = A->start[i] + 1; A->entries[k].j < A->n; ++k )
         {
@@ -97,6 +101,7 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
 
     fillin = 0;
     for ( i = 0; i < A->n; ++i )
+    {
         for ( pj = A->start[i] + 1; A->entries[pj].j < A->n; ++pj )
         {
             j = A->entries[pj].j;
@@ -104,13 +109,14 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
             if ( fabs(val) > droptol[i] )
                 ++fillin;
         }
+    }
 
     return fillin + A->n;
 }
 
 
 void ICHOLT( sparse_matrix *A, real *droptol,
-             sparse_matrix *L, sparse_matrix *U )
+        sparse_matrix *L, sparse_matrix *U )
 {
     sparse_matrix_entry tmp[1000];
     int i, j, pj, k1, k2, tmptop, Utop;
@@ -123,7 +129,9 @@ void ICHOLT( sparse_matrix *A, real *droptol,
     Utop = 0;
     tmptop = 0;
     for ( i = 0; i < A->n; ++i )
+    {
         U->start[i] = L->start[i] = L->end[i] = Ltop[i] = 0;
+    }
 
     for ( i = A->n - 1; i >= 0; --i )
     {
@@ -146,11 +154,17 @@ void ICHOLT( sparse_matrix *A, real *droptol,
                 while ( k1 >= 0 && k2 < U->end[j] )
                 {
                     if ( tmp[k1].j < U->entries[k2].j )
+                    {
                         k1--;
+                    }
                     else if ( tmp[k1].j > U->entries[k2].j )
+                    {
                         k2++;
+                    }
                     else
+                    {
                         val -= (tmp[k1--].val * U->entries[k2++].val);
+                    }
                 }
 
                 // U matrix is upper triangular
@@ -168,8 +182,10 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         dval = A->entries[A->start[i]].val;
         //fprintf( stdout, "%d %d %24.16f\n", 6540-i, 6540-i, dval );
         for ( k1 = 0; k1 < tmptop; ++k1 )
+        {
             //if( fabs(tmp[k1].val) > droptol[i] )
             dval -= SQR(tmp[k1].val);
+        }
         dval = SQRT(dval);
         // keep the diagonal in any case
         U->entries[Utop].j = i;
@@ -193,14 +209,17 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         U->end[i] = Utop;
         //fprintf( stderr, "i = %d - Utop = %d\n", i, Utop );
     }
-    // print matrix U
+
 #if defined(DEBUG)
+    // print matrix U
     fprintf( stderr, "nnz(U): %d\n", Utop );
     for ( i = 0; i < U->n; ++i )
     {
         fprintf( stderr, "row%d: ", i );
         for ( pj = U->start[i]; pj < U->end[i]; ++pj )
+        {
             fprintf( stderr, "%d ", U->entries[pj].j );
+        }
         fprintf( stderr, "\n" );
     }
 #endif
@@ -214,6 +233,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
     }
 
     for ( i = 0; i < U->n; ++i )
+    {
         for ( pj = U->start[i]; pj < U->end[i]; ++pj )
         {
             j = U->entries[pj].j;
@@ -221,25 +241,28 @@ void ICHOLT( sparse_matrix *A, real *droptol,
             L->entries[L->end[j]].val = U->entries[pj].val;
             L->end[j]++;
         }
+    }
 
-    // print matrix L
 #if defined(DEBUG)
+    // print matrix L
     fprintf( stderr, "nnz(L): %d\n", L->end[L->n - 1] );
     for ( i = 0; i < L->n; ++i )
     {
         fprintf( stderr, "row%d: ", i );
         for ( pj = L->start[i]; pj < L->end[i]; ++pj )
+        {
             fprintf( stderr, "%d ", L->entries[pj].j );
+        }
         fprintf( stderr, "\n" );
     }
 #endif
+
     sfree( Ltop, "Ltop" );
 }
 
 
 void Init_MatVec( reax_system *system, simulation_data *data,
-                  control_params *control,  storage *workspace,
-                  mpi_datatypes *mpi_data )
+        control_params *control,  storage *workspace, mpi_datatypes *mpi_data )
 {
     int i; //, fillin;
     reax_atom *atom;
@@ -312,9 +335,8 @@ void Init_MatVec( reax_system *system, simulation_data *data,
 }
 
 
-
 void Calculate_Charges( reax_system *system, storage *workspace,
-                        mpi_datatypes *mpi_data )
+        mpi_datatypes *mpi_data )
 {
     int        i, scale;
     real       u;//, s_sum, t_sum;
@@ -362,7 +384,9 @@ void Calculate_Charges( reax_system *system, storage *workspace,
 
     Dist( system, mpi_data, q, MPI_DOUBLE, scale, real_packer );
     for ( i = system->n; i < system->N; ++i )
+    {
         system->my_atoms[i].q = q[i];
+    }
 
     free(q);
 }
@@ -381,9 +405,9 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
 
     scale = sizeof(real) / sizeof(void);
     q =  (real *) host_scratch;
-    memset ( q, 0, system->N * sizeof (real));
+    memset( q, 0, system->N * sizeof (real));
 
-    cuda_charges_x ( system, my_sum );
+    cuda_charges_x( system, my_sum );
     //fprintf (stderr, "Device: my_sum[0]: %f and %f \n", my_sum[0], my_sum[1]);
 
     MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
@@ -391,11 +415,11 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
     u = all_sum[0] / all_sum[1];
     //fprintf (stderr, "Device: u: %f \n", u);
 
-    cuda_charges_st ( system, workspace, q, u );
+    cuda_charges_st( system, workspace, q, u );
 
     Dist( system, mpi_data, q, MPI_DOUBLE, scale, real_packer );
 
-    cuda_charges_updateq ( system, q );
+    cuda_charges_updateq( system, q );
 }
 #endif
 
@@ -412,6 +436,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //if( data->step == 50010 ) {
     //  Print_Linear_System( system, control, workspace, data->step );
     // }
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized qEq\n", system->my_rank );
     //Print_Linear_System( system, control, workspace, data->step );
@@ -428,6 +453,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //s_matvecs = PCG( system, workspace, workspace->H, workspace->b_s,
     //   control->q_err, workspace->L, workspace->U, workspace->s,
     //   mpi_data, out_control->log );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
 #endif
@@ -493,6 +519,7 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data *da
 #endif
 
     Cuda_Calculate_Charges( system, workspace, mpi_data );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed charges\n", system->my_rank );
     //Print_Charges( system );
