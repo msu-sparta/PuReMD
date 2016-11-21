@@ -1,5 +1,5 @@
 simulation_name          water.6.notab.111      ! output files will carry this name + their specific ext.
-ensemble_type            0                      ! 0: NVE, 1: Berendsen NVT, 2: Nose-Hoover NVT(under testing), 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT (under development)
+ensemble_type            1                      ! 0: NVE, 1: Berendsen NVT, 2: Nose-Hoover NVT(under testing), 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT (under development)
 nsteps                   100                    ! number of simulation steps
 dt                       0.25                   ! time step in fs
 proc_by_dim              1 1 1                  ! distribution of processors by dimensions

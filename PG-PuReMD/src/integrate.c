@@ -77,7 +77,9 @@ void Velocity_Verlet_NVE( reax_system* system, control_params* control,
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
+    {
         Generate_Neighbor_Lists( system, data, workspace, lists );
+    }
     Compute_Forces(system, control, data, workspace, lists, out_control, mpi_data);
 
     for ( i = 0; i < system->n; i++ )
@@ -94,14 +96,9 @@ void Velocity_Verlet_NVE( reax_system* system, control_params* control,
 }
 
 
-
 void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
-        control_params* control,
-        simulation_data *data,
-        storage *workspace,
-        reax_list **lists,
-        output_controls *out_control,
-        mpi_datatypes *mpi_data )
+        control_params* control, simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int  i, itr, steps, renbr;
     real inv_m, coef_v;
@@ -116,6 +113,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     fprintf( stderr, "p%d @ step%d\n", system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
     dt = control->dt;
     dt_sqr = SQR(dt);
     therm = &( data->therm );
@@ -130,8 +128,10 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         rvec_Add( system->my_atoms[i].x, dx );
         rvec_Copy( atom->f_old, atom->f );
     }
+
     /* Compute xi(t + dt) */
     therm->xi += ( therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi );
+
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step);
     MPI_Barrier( MPI_COMM_WORLD );
@@ -141,7 +141,9 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
+    {
         Generate_Neighbor_Lists( system, data, workspace, lists );
+    }
     Compute_Forces( system, control, data, workspace, lists,
                     out_control, mpi_data );
 
@@ -196,13 +198,9 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 /* uses Berendsen-type coupling for both T and P.
    All box dimensions are scaled by the same amount,
    there is no change in the angles between axes. */
-void Velocity_Verlet_Berendsen_NVT( reax_system* system,
-                                    control_params* control,
-                                    simulation_data *data,
-                                    storage *workspace,
-                                    reax_list **lists,
-                                    output_controls *out_control,
-                                    mpi_datatypes *mpi_data )
+void Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, steps, renbr;
     real inv_m, dt, lambda;
@@ -236,7 +234,9 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 
     ReAllocate( system, control, data, workspace, lists, mpi_data );
     if ( renbr )
+    {
         Update_Grid( system, control, mpi_data->world );
+    }
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
@@ -254,6 +254,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         /* Compute v(t + dt) */
         rvec_ScaledAdd( atom->v, 0.5 * dt * -F_CONV * inv_m, atom->f );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step);
     MPI_Barrier( MPI_COMM_WORLD );
@@ -263,9 +264,13 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
     lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
+    {
         lambda = MIN_dT;
+    }
     else if (lambda > MAX_dT )
+    {
         lambda = MAX_dT;
+    }
     lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
@@ -345,8 +350,9 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
 
     if ( renbr )
     {
-
+#if defined(DEBUG)
         t_over_start  = Get_Time ();
+#endif
 
         nbr_indices = (int *) host_scratch;
         memset (nbr_indices, 0, sizeof (int) * system->N);
@@ -423,9 +429,11 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
         Cuda_Init_Bond_Indices (bond_top, system->N, bond_cap);
         */
 
+#if defined(DEBUG)
         t_over_elapsed  = Get_Timing_Info (t_over_start);
         fprintf (stderr, "p%d --> Overhead (Step-%d) %f \n",
                  system->my_rank, data->step, t_over_elapsed);
+#endif
     }
 
     //Compute_Forces( system, control, data, workspace,
@@ -434,7 +442,6 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
                          lists, out_control, mpi_data );
 
     /* velocity verlet, 2nd part */
-    //t_over_start = Get_Time ();
     bNVT_update_velocity_part2 (system, dt);
 
 #if defined(DEBUG_FOCUS)
@@ -448,9 +455,13 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
 
     lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
+    {
         lambda = MIN_dT;
+    }
     else if (lambda > MAX_dT )
+    {
         lambda = MAX_dT;
+    }
     lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
@@ -471,13 +482,9 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
 /* uses Berendsen-type coupling for both T and P.
    All box dimensions are scaled by the same amount,
    there is no change in the angles between axes. */
-void Velocity_Verlet_Berendsen_NPT( reax_system* system,
-                                    control_params* control,
-                                    simulation_data *data,
-                                    storage *workspace,
-                                    reax_list **lists,
-                                    output_controls *out_control,
-                                    mpi_datatypes *mpi_data )
+void Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, steps, renbr;
     real inv_m, dt;
@@ -511,7 +518,9 @@ void Velocity_Verlet_Berendsen_NPT( reax_system* system,
 
     ReAllocate( system, control, data, workspace, lists, mpi_data );
     if ( renbr )
+    {
         Update_Grid( system, control, mpi_data->world );
+    }
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )

@@ -391,6 +391,7 @@ int Allocate_Workspace( reax_system *system, control_params *control,
 void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 {
     Delete_List( far_nbrs);
+
     if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs))
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
@@ -398,10 +399,12 @@ void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
     }
 }
 
+
 #ifdef HAVE_CUDA
 void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 {
     Dev_Delete_List( far_nbrs);
+
     if (!Dev_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs))
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");

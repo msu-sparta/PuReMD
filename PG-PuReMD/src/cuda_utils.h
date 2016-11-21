@@ -8,22 +8,22 @@
 
 #include "reax_types.h"
 
+
 #ifdef __cplusplus
 extern "C"  {
 #endif
 
-void compute_blocks (int *, int *, int);
-void compute_nearest_pow_2 (int blocks, int *result);
-void compute_matvec_blocks (int *, int);
+void compute_blocks(int *, int *, int);
+void compute_nearest_pow_2(int blocks, int *result);
+void compute_matvec_blocks(int *, int);
 
+void cuda_malloc(void **, int , int , const char *);
+void cuda_free(void *, const char *);
+void cuda_memset(void *, int , size_t , const char *);
+void copy_host_device(void *, void *, int , enum cudaMemcpyKind, const char *);
+void copy_device(void *, void *, int , const char *);
 
-void cuda_malloc (void **, int , int , char *);
-void cuda_free (void *, char *);
-void cuda_memset (void *, int , size_t , char *);
-void copy_host_device (void *, void *, int , enum cudaMemcpyKind, char *);
-void copy_device (void *, void *, int , char *);
-
-void print_device_mem_usage ();
+void print_device_mem_usage();
 
 #define cudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
 inline void __cudaCheckError( const char *file, const int line )
@@ -31,7 +31,7 @@ inline void __cudaCheckError( const char *file, const int line )
     cudaError err = cudaGetLastError();
     if ( cudaSuccess != err )
     {
-        fprintf (stderr, "Failed .. %s:%d -- gpu erro code %d\n", file, line, err );
+        fprintf( stderr, "Failed .. %s:%d -- gpu erro code %d\n", file, line, err );
         exit( -1 );
     }
 
@@ -44,6 +44,7 @@ inline void __cudaCheckError( const char *file, const int line )
        exit( -1 );
     }
     */
+
     return;
 }
 

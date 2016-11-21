@@ -247,8 +247,9 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
          (control_params *)control->d_control_params, *(*dev_lists + FAR_NBRS), system->reax_param.num_atom_types,
          system->n, system->N, system->Hcap, system->total_cap, 
          d_Htop, d_num_3body, d_bond_top, d_hb_top );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+
+    cudaThreadSynchronize();
+    cudaCheckError();
 
     copy_host_device( Htop, d_Htop, sizeof (int), cudaMemcpyDeviceToHost, "Htop");
     copy_host_device( num_3body, d_num_3body, sizeof (int), cudaMemcpyDeviceToHost, "num_3body");
@@ -287,18 +288,19 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
     }
     system->max_hbonds = max_hbonds * SAFER_ZONE;
 
-//#if defined(DEBUG)
+#if defined(DEBUG)
     fprintf (stderr, " TOTAL DEVICE BOND COUNT: %d \n", bond_count);
     fprintf (stderr, " TOTAL DEVICE HBOND COUNT: %d \n", hbond_count);
     fprintf (stderr, " TOTAL DEVICE SPARSE COUNT: %d \n", *Htop);
     fprintf (stderr, "p:%d --> Bonds(%d, %d) HBonds (%d, %d) *******\n", 
             system->my_rank, min_bonds, max_bonds, min_hbonds, max_hbonds);
-//#endif
+#endif
 
     ker_init_system_atoms <<<blocks, ST_BLOCK_SIZE>>>
         (system->d_my_atoms, system->N, d_hb_top, d_bond_top );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+
+    cudaThreadSynchronize();
+    cudaCheckError();
 }
 
 
@@ -950,8 +952,11 @@ int Cuda_Validate_Lists (reax_system *system, storage *workspace, reax_list **li
 
     //update the current step max_sp_entries;
     realloc->Htop = max_sp_entries;
+
+#if defined(DEBUG)
     fprintf (stderr, "p:%d - Cuda_Reallocate: Total H matrix entries: %d, cap: %d, used: %d \n", 
             system->my_rank, dev_workspace->H.n, dev_workspace->H.m, total_sp_entries);
+#endif
 
     if (total_sp_entries >= dev_workspace->H.m) {
         fprintf (stderr, "p:%d - **ran out of space for sparse matrix: step: %d, allocated: %d, used: %d \n", 

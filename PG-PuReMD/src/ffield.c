@@ -342,6 +342,7 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
 
     /* Equate vval3 to valf for first-row elements (25/10/2004) */
     for ( i = 0; i < reax->num_atom_types; i++ )
+    {
         if ( reax->sbp[i].mass < 21 &&
                 reax->sbp[i].valency_val != reax->sbp[i].valency_boc )
         {
@@ -349,7 +350,7 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
                      reax->sbp[i].name );
             reax->sbp[i].valency_val = reax->sbp[i].valency_boc;
         }
-
+    }
 
     /* next line is number of two body combination and some comments */
     fgets(s, MAX_LINE, fp);

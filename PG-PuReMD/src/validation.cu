@@ -1,4 +1,3 @@
-
 #include "validation.h"
 #include "cuda_utils.h"
 #include "list.h"
@@ -7,6 +6,7 @@
 #include "index_utils.h"
 #include "vector.h"
 
+
 bool check_zero (real p1, real p2)
 {
     if (abs (p1 - p2) >= GPU_TOLERANCE)
@@ -14,6 +14,7 @@ bool check_zero (real p1, real p2)
     else 
         return false;
 }
+
 
 bool check_zero (rvec p1, rvec p2)
 {
@@ -25,6 +26,7 @@ bool check_zero (rvec p1, rvec p2)
     else return false;
 }
 
+
 bool check_zero_rvec2 (rvec2 p1, rvec2 p2)
 {
 
@@ -34,6 +36,7 @@ bool check_zero_rvec2 (rvec2 p1, rvec2 p2)
     else return false;
 }
 
+
 bool check_same (ivec p1, ivec p2)
 {
     if ( (p1[0] == p2[0]) || (p1[1] == p2[1]) || (p1[2] == p2[2]) )
@@ -41,6 +44,7 @@ bool check_same (ivec p1, ivec p2)
     else 
         return false;
 }
+
 
 void print_bond_data (bond_order_data *s)
 {
@@ -1669,21 +1673,29 @@ int print_device_rvec2 (rvec2 *b, int n)
     return print_host_rvec2 (a, n);
 }
 
+
 int print_host_array (real *a, int n)
 {
 
     for (int i = 0; i < n; i++)
+    {
         fprintf (stderr," a[%d] = %f \n", i, a[i]);
+    }
     fprintf(stderr, " ----------------------------------\n");
+
     return SUCCESS;
 }
+
 
 int print_device_array (real *a, int n)
 {
     real *b = (real *) host_scratch;
     copy_host_device (b, a, sizeof (real) * n, cudaMemcpyDeviceToHost, "real");
     print_host_array (b, n);
+
+    return SUCCESS;
 }
+
 
 int check_zeros_host (rvec2 *host, int n, char *msg)
 {
@@ -1698,6 +1710,7 @@ int check_zeros_host (rvec2 *host, int n, char *msg)
 
     return 1;
 }
+
 
 int check_zeros_device (rvec2 *device, int n, char *msg)
 {

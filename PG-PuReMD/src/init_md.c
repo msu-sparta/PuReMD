@@ -955,9 +955,10 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
     //MATRIX CHANGES
     //workspace->L = NULL;
     //workspace->U = NULL;
+
+#if defined(DEBUG_FOCUS)
     fprintf (stderr, "p:%d - allocated H matrix: max_entries: %d, cap: %d \n",
              system->my_rank, system->max_sparse_entries, dev_workspace->H.m);
-#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated H matrix: Htop=%d, space=%dMB\n",
              system->my_rank, Htop,
              (int)(Htop * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
@@ -995,9 +996,10 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
             MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
         }
 
+#if defined(DEBUG_FOCUS)
         fprintf (stderr, "**** Total HBonds allocated --> %d total_cap: %d per atom: %d, max_hbonds: %d \n",
                  total_hbonds, system->total_cap, (total_hbonds / system->total_cap), system->max_hbonds );
-
+#endif
 
         //TODO
         //Cuda_Init_HBond_Indices (hb_top, system->n);
@@ -1006,7 +1008,6 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
         //Cuda_Init_HBond_Indices (hb_top, system->N);
         //THIS IS COMMENTED OUT - CHANGE ORIGINAL
         /****/
-
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: allocated hbonds: total_hbonds=%d, space=%dMB\n",
@@ -1024,8 +1025,11 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
         total_bonds += MAX (bond_top[i] * 4, MIN_BONDS);
     }
     bond_cap = MAX( total_bonds, MIN_CAP * MIN_BONDS );
+
+#if defined(DEBUG)
     fprintf (stderr, "**** Total Bonds allocated --> %d total_cap: %d per atom: %d, max_bonds: %d \n",
              bond_cap, system->total_cap, (bond_cap / system->total_cap), system->max_bonds );
+#endif
 
 
     /***************/

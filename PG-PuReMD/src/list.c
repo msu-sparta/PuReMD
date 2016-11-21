@@ -29,31 +29,44 @@
 #include "reax_tool_box.h"
 #endif
 
-void Print_List(reax_list* list){
-	//printf("List_Print\n");
-	int i;
-        printf("START INDICES \n");
-	for (i=0;i<list->n;i++){
-		printf("%d \n",list->index[i]);
-	}
-	printf("END INDICES \n");
-	for (i=0;i<list->n;i++){
-		printf("%d \n", list->end_index[i]);
-	}
+
+void Print_List(reax_list* list)
+{
+    //printf("List_Print\n");
+    int i;
+
+    printf("START INDICES \n");
+    for( i=0; i<list->n; i++ )
+    {
+        printf("%d \n",list->index[i]);
+    }
+
+    printf("END INDICES \n");
+    for ( i=0; i<list->n; i++ )
+    {
+        printf("%d \n", list->end_index[i]);
+    }
 
 }
+
+
 /************* allocate list space ******************/
 int Make_List(int n, int num_intrs, int type, reax_list *l)
 {
-    l->allocated = 1;
+    int ret = SUCCESS;
 
+    l->allocated = 1;
     l->n = n;
     l->num_intrs = num_intrs;
 
-    l->index = (int*) smalloc( n * sizeof(int), "list:index" );
-    l->end_index = (int*) smalloc( n * sizeof(int), "list:end_index" );
-//printf("SUCCESS\n");
+    if( (l->index = (int*) smalloc( n * sizeof(int), "list:index" )) == NULL
+        ||  (l->end_index = (int*) smalloc( n * sizeof(int), "list:end_index" )) == NULL )
+    {
+        ret = FAILURE;
+    }
+
     l->type = type;
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "list: n=%d num_intrs=%d type=%d\n", n, num_intrs, type );
 #endif
@@ -61,38 +74,59 @@ int Make_List(int n, int num_intrs, int type, reax_list *l)
     switch (l->type)
     {
     case TYP_VOID:
-        l->select.v = (void*) smalloc( l->num_intrs * sizeof(void*), "list:v" );
+        if( (l->select.v = (void*) smalloc( l->num_intrs * sizeof(void*), "list:v" )) == NULL )
+        {
+            ret = FAILURE;
+        }
         break;
 
     case TYP_THREE_BODY:
-        l->select.three_body_list = (three_body_interaction_data*)
-                                    smalloc( l->num_intrs * sizeof(three_body_interaction_data),
-                                             "list:three_bodies" );
+        if( (l->select.three_body_list = (three_body_interaction_data*)
+            smalloc( l->num_intrs * sizeof(three_body_interaction_data),
+            "list:three_bodies" )) == NULL )
+        {
+            ret = FAILURE;
+        }
         break;
 
     case TYP_BOND:
-        l->select.bond_list = (bond_data*)
-                              smalloc( l->num_intrs * sizeof(bond_data), "list:bonds" );
+        if( (l->select.bond_list = (bond_data*)
+            smalloc( l->num_intrs * sizeof(bond_data), "list:bonds" )) == NULL )
+        {
+            ret = FAILURE;
+        }
         break;
 
     case TYP_DBO:
-        l->select.dbo_list = (dbond_data*)
-                             smalloc( l->num_intrs * sizeof(dbond_data), "list:dbonds" );
+        if( (l->select.dbo_list = (dbond_data*)
+            smalloc( l->num_intrs * sizeof(dbond_data), "list:dbonds" )) == NULL )
+        {
+            ret = FAILURE;
+        }
         break;
 
     case TYP_DDELTA:
-        l->select.dDelta_list = (dDelta_data*)
-                                smalloc( l->num_intrs * sizeof(dDelta_data), "list:dDeltas" );
+        if( (l->select.dDelta_list = (dDelta_data*)
+            smalloc( l->num_intrs * sizeof(dDelta_data), "list:dDeltas" )) == NULL )
+        {
+            ret = FAILURE;
+        }
         break;
 
     case TYP_FAR_NEIGHBOR:
-        l->select.far_nbr_list = (far_neighbor_data*)
-                                 smalloc( l->num_intrs * sizeof(far_neighbor_data), "list:far_nbrs" );
+        if( (l->select.far_nbr_list = (far_neighbor_data*)
+            smalloc( l->num_intrs * sizeof(far_neighbor_data), "list:far_nbrs" )) == NULL )
+        {
+            ret = FAILURE;
+        }
         break;
 
     case TYP_HBOND:
-        l->select.hbond_list = (hbond_data*)
-                               smalloc( l->num_intrs * sizeof(hbond_data), "list:hbonds" );
+        if( (l->select.hbond_list = (hbond_data*)
+            smalloc( l->num_intrs * sizeof(hbond_data), "list:hbonds" )) == NULL )
+        {
+            ret = FAILURE;
+        }
         break;
 
     default:
@@ -100,7 +134,7 @@ int Make_List(int n, int num_intrs, int type, reax_list *l)
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
-    return SUCCESS;
+    return ret;
 }
 
 
