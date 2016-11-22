@@ -220,7 +220,6 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
 /////////////////////////////////////////////////////////////////
 //Cuda Functions for GMRES implementation
 /////////////////////////////////////////////////////////////////
-
 GLOBAL void GMRES_Diagonal_Preconditioner (real *b_proc, real *b, real *Hdia_inv, int entries)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -229,6 +228,7 @@ GLOBAL void GMRES_Diagonal_Preconditioner (real *b_proc, real *b, real *Hdia_inv
 
     b_proc [i] = b[i] * Hdia_inv[i];
 }
+
 
 GLOBAL void GMRES_Givens_Rotation (int j, real *h, real *hc, real *hs, real g_j, real *output)
 {
@@ -256,6 +256,7 @@ GLOBAL void GMRES_Givens_Rotation (int j, real *h, real *hc, real *hs, real g_j,
     output[1] = tmp2;
 }
 
+
 GLOBAL void GMRES_BackSubstitution (int j, real *g, real *h, real *y)
 {
     real temp;
@@ -275,25 +276,26 @@ int Cuda_GMRES( static_storage *workspace, real *b, real tol, real *x )
     real cc, tmp1, tmp2, temp, bnorm;
     real v_add_tmp;
     sparse_matrix *H = &workspace->H;
-
     real t_start, t_elapsed;
-
     real *spad = (real *)scratch;
     real *g = (real *) calloc ((RESTART+1), REAL_SIZE);
 
     N = H->n;
 
-    cuda_memset (spad, 0, REAL_SIZE * H->n * 2, RES_SCRATCH );
+    cuda_memset(spad, 0, REAL_SIZE * H->n * 2, RES_SCRATCH );
 
-    Cuda_Norm <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE>>> (b, spad, H->n, INITIAL);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    Cuda_Norm <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE>>>
+        (b, spad, H->n, INITIAL);
+    cudaThreadSynchronize();
+    cudaCheckError();
 
-    Cuda_Norm <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>> (spad, spad + BLOCKS_POW_2, BLOCKS_POW_2, FINAL);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    Cuda_Norm <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>>
+        (spad, spad + BLOCKS_POW_2, BLOCKS_POW_2, FINAL);
+    cudaThreadSynchronize();
+    cudaCheckError();
 
-    copy_host_device ( &bnorm, spad + BLOCKS_POW_2, REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device( &bnorm, spad + BLOCKS_POW_2, REAL_SIZE,
+            cudaMemcpyDeviceToHost, __LINE__);
 
 #ifdef __DEBUG_CUDA__
     fprintf (stderr, "Norm of the array is %e \n", bnorm );
@@ -302,138 +304,158 @@ int Cuda_GMRES( static_storage *workspace, real *b, real tol, real *x )
     /* apply the diagonal pre-conditioner to rhs */
     GMRES_Diagonal_Preconditioner <<<BLOCKS, BLOCK_SIZE>>>
         (workspace->b_prc, b, workspace->Hdia_inv, N);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize();
+    cudaCheckError();
 
     /* GMRES outer-loop */
     for( itr = 0; itr < MAX_ITR; ++itr ) {
         /* calculate r0 */
         //Sparse_MatVec( H, x, workspace->b_prm );      
-        Cuda_Matvec_csr <<<MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, REAL_SIZE * MATVEC_BLOCK_SIZE>>> ( *H, x, workspace->b_prm, N );
-        cudaThreadSynchronize ();
-        cudaCheckError ();
+        Cuda_Matvec_csr <<<MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, REAL_SIZE * MATVEC_BLOCK_SIZE>>>
+            ( *H, x, workspace->b_prm, N );
+        cudaThreadSynchronize();
+        cudaCheckError();
 
         GMRES_Diagonal_Preconditioner <<< BLOCKS, BLOCK_SIZE >>>
             (workspace->b_prm, workspace->b_prm, workspace->Hdia_inv, N);
-        cudaThreadSynchronize ();
-        cudaCheckError ();
+        cudaThreadSynchronize();
+        cudaCheckError();
 
         Cuda_Vector_Sum <<< BLOCKS, BLOCK_SIZE >>>
-            (&workspace->v[ index_wkspace_sys (0,0,N) ], 1.,workspace->b_prc, -1., workspace->b_prm, N);
-        cudaThreadSynchronize ();
+            (&workspace->v[ index_wkspace_sys (0,0,N) ], 1.,
+             workspace->b_prc, -1., workspace->b_prm, N);
+        cudaThreadSynchronize();
         cudaCheckError ();
 
         //workspace->g[0] = Norm( &workspace->v[index_wkspace_sys (0,0,system)], N );
         {
-            cuda_memset (spad, 0, REAL_SIZE * H->n * 2, RES_SCRATCH );
+            cuda_memset( spad, 0, REAL_SIZE * H->n * 2, RES_SCRATCH );
 
             Cuda_Norm <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE>>> 
                 (&workspace->v [index_wkspace_sys (0, 0, N)], spad, N, INITIAL);
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            cudaThreadSynchronize();
+            cudaCheckError();
 
-            Cuda_Norm <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>> (spad, &workspace->g[0], BLOCKS_POW_2, FINAL);
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            Cuda_Norm <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>>
+                (spad, &workspace->g[0], BLOCKS_POW_2, FINAL);
+            cudaThreadSynchronize();
+            cudaCheckError();
 
-            copy_host_device( g, workspace->g, REAL_SIZE, cudaMemcpyDeviceToHost, RES_STORAGE_G);
+            copy_host_device( g, workspace->g, REAL_SIZE,
+                    cudaMemcpyDeviceToHost, RES_STORAGE_G);
         }
 
-        Cuda_Vector_Scale <<< BLOCKS, BLOCK_SIZE >>>
-            ( &workspace->v[ index_wkspace_sys (0,0,N) ], 1.0/g[0], &workspace->v[index_wkspace_sys(0,0,N)], N );
-        cudaThreadSynchronize ();
-        cudaCheckError ();
+        Cuda_Vector_Scale<<< BLOCKS, BLOCK_SIZE >>>
+            ( &workspace->v[ index_wkspace_sys (0,0,N) ], 1.0/g[0],
+              &workspace->v[index_wkspace_sys(0,0,N)], N );
+        cudaThreadSynchronize();
+        cudaCheckError();
 
         /* GMRES inner-loop */
 #ifdef __DEBUG_CUDA__
-        fprintf (stderr, " Inner loop inputs bnorm : %f , tol : %f g[j] : %f \n", bnorm, tol, g[0] );
+        fprintf( stderr,
+                " Inner loop inputs bnorm : %f , tol : %f g[j] : %f \n", bnorm,
+                tol, g[0] );
 #endif
+
         for( j = 0; j < RESTART && fabs(g[j]) / bnorm > tol; j++ ) {
             /* matvec */
             //Sparse_MatVec( H, &workspace->v[index_wkspace_sys(j,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)] );
-            Cuda_Matvec_csr 
-                <<<MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, REAL_SIZE * MATVEC_BLOCK_SIZE>>> 
-                ( *H, &workspace->v[ index_wkspace_sys (j, 0, N)], &workspace->v[ index_wkspace_sys (j+1, 0, N) ], N );
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            Cuda_Matvec_csr<<<MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, REAL_SIZE * MATVEC_BLOCK_SIZE>>> 
+                ( *H, &workspace->v[ index_wkspace_sys (j, 0, N)],
+                  &workspace->v[ index_wkspace_sys (j+1, 0, N) ], N );
+            cudaThreadSynchronize();
+            cudaCheckError();
 
-            GMRES_Diagonal_Preconditioner <<<BLOCKS, BLOCK_SIZE>>>
-                (&workspace->v[ index_wkspace_sys (j+1,0,N) ], &workspace->v[ index_wkspace_sys (j+1,0,N) ], workspace->Hdia_inv, N);
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            GMRES_Diagonal_Preconditioner<<<BLOCKS, BLOCK_SIZE>>>
+                (&workspace->v[ index_wkspace_sys (j+1,0,N) ],
+                 &workspace->v[ index_wkspace_sys( j+1,0,N) ],
+                 workspace->Hdia_inv, N );
+            cudaThreadSynchronize();
+            cudaCheckError();
 
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
-            for( i = 0; i <= j; i++ ) {
+            for( i = 0; i <= j; i++ )
+            {
                 Cuda_Dot <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE>>>
-                    (&workspace->v[index_wkspace_sys(i,0,N)], &workspace->v[index_wkspace_sys(j+1,0,N)], spad, N);
-                cudaThreadSynchronize ();
-                cudaCheckError ();
+                    (&workspace->v[index_wkspace_sys(i,0,N)],
+                     &workspace->v[index_wkspace_sys(j+1,0,N)], spad, N);
+                cudaThreadSynchronize();
+                cudaCheckError();
 
-                Cuda_reduction <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>> (spad, &workspace->h[ index_wkspace_res (i,j) ], BLOCKS_POW_2);
-                cudaThreadSynchronize ();
-                cudaCheckError ();
+                Cuda_reduction<<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>>
+                    (spad, &workspace->h[ index_wkspace_res (i,j) ], BLOCKS_POW_2);
+                cudaThreadSynchronize();
+                cudaCheckError();
 
                 copy_host_device (&v_add_tmp, &workspace->h[ index_wkspace_res (i,j)], REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
 
-                Cuda_Vector_Add <<< BLOCKS, BLOCK_SIZE >>>
+                Cuda_Vector_Add<<< BLOCKS, BLOCK_SIZE >>>
                     ( &workspace->v[index_wkspace_sys(j+1,0,N)], 
                       -v_add_tmp, &workspace->v[index_wkspace_sys(i,0,N)], N );
-                cudaThreadSynchronize ();
-                cudaCheckError ();
+                cudaThreadSynchronize();
+                cudaCheckError();
             }
 
 
             //workspace->h[ index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys(j+1,0,system)], N );
-            cuda_memset (spad, 0, REAL_SIZE * N * 2, RES_SCRATCH );
+            cuda_memset(spad, 0, REAL_SIZE * N * 2, RES_SCRATCH );
 
-            Cuda_Norm <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE>>> (&workspace->v[index_wkspace_sys(j+1,0,N)], spad, N, INITIAL);
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            Cuda_Norm<<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE>>>
+                (&workspace->v[index_wkspace_sys(j+1,0,N)], spad, N, INITIAL);
+            cudaThreadSynchronize();
+            cudaCheckError();
 
-            Cuda_Norm <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>> (spad, &workspace->h[ index_wkspace_res (j+1,j) ], BLOCKS_POW_2, FINAL);
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            Cuda_Norm<<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2>>>
+                (spad, &workspace->h[ index_wkspace_res (j+1,j) ], BLOCKS_POW_2, FINAL);
+            cudaThreadSynchronize();
+            cudaCheckError();
 
-            copy_host_device (&v_add_tmp, &workspace->h[ index_wkspace_res (j+1,j) ], REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+            copy_host_device(&v_add_tmp,
+                    &workspace->h[ index_wkspace_res (j+1,j) ], REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
 
-            Cuda_Vector_Scale <<< BLOCKS, BLOCK_SIZE >>>
+            Cuda_Vector_Scale<<< BLOCKS, BLOCK_SIZE >>>
                 ( &workspace->v[index_wkspace_sys(j+1,0,N)], 
                   1. / v_add_tmp, &workspace->v[index_wkspace_sys(j+1,0,N)], N );
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            cudaThreadSynchronize();
+            cudaCheckError();
 
             /* Givens rotations on the upper-Hessenberg matrix to make it U */
-            GMRES_Givens_Rotation <<<1, 1>>>
+            GMRES_Givens_Rotation<<<1, 1>>>
                 (j, workspace->h, workspace->hc, workspace->hs, g[j], spad);
-            cudaThreadSynchronize ();
-            cudaCheckError ();
-            copy_host_device (&g[j], spad, 2 * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+            cudaThreadSynchronize();
+            cudaCheckError();
+            copy_host_device(&g[j], spad, 2 * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
         }
 
-        copy_host_device (g, workspace->g, (RESTART+1)*REAL_SIZE, cudaMemcpyHostToDevice, __LINE__);
+        copy_host_device(g, workspace->g, (RESTART+1)*REAL_SIZE,
+                cudaMemcpyHostToDevice, __LINE__);
 
         /* solve Hy = g.
            H is now upper-triangular, do back-substitution */
-        copy_host_device (g, spad, (RESTART+1) * REAL_SIZE, cudaMemcpyHostToDevice, RES_STORAGE_G);
-        GMRES_BackSubstitution <<<1, 1>>>
+        copy_host_device(g, spad, (RESTART+1) * REAL_SIZE,
+                cudaMemcpyHostToDevice, RES_STORAGE_G);
+        GMRES_BackSubstitution<<<1, 1>>>
             (j, spad, workspace->h, workspace->y);
-        cudaThreadSynchronize ();
-        cudaCheckError ();
+        cudaThreadSynchronize();
+        cudaCheckError();
 
         /* update x = x_0 + Vy */
         for( i = 0; i < j; i++ )
         {
-            copy_host_device (&v_add_tmp, &workspace->y[i], REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+            copy_host_device(&v_add_tmp, &workspace->y[i], REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
             Cuda_Vector_Add <<<BLOCKS, BLOCK_SIZE>>>
                 ( x, v_add_tmp, &workspace->v[index_wkspace_sys(i,0,N)], N );
             cudaThreadSynchronize ();
-            cudaCheckError ();
+            cudaCheckError();
         }
 
         /* stopping condition */
         if( fabs(g[j]) / bnorm <= tol )
+        {
             break;
+        }
     }
 
     if( itr >= MAX_ITR ) {
@@ -444,6 +466,7 @@ int Cuda_GMRES( static_storage *workspace, real *b, real tol, real *x )
 #ifdef __DEBUG_CUDA__
     fprintf (stderr, " GPU values itr : %d, RESTART: %d, j: %d \n", itr, RESTART, j);
 #endif
+
     return itr * (RESTART+1) + j + 1;
 }
 
@@ -679,8 +702,10 @@ int Cublas_GMRES(reax_system *system, static_storage *workspace, real *b, real t
 #ifdef __DEBUG_CUDA__
     fprintf (stderr, " GPU values itr : %d, RESTART: %d, j: %d \n", itr, RESTART, j);
 #endif
+
     return itr * (RESTART+1) + j + 1;
 }
+
 
 int GMRES_HouseHolder( static_storage *workspace, sparse_matrix *H, 
         real *b, real tol, real *x, FILE *fout, reax_system *system)
@@ -874,7 +899,8 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
     bnorm = Norm( b, N );
 
     /* GMRES outer-loop */
-    for( itr = 0; itr < MAX_ITR; ++itr ) {
+    for( itr = 0; itr < MAX_ITR; ++itr )
+    {
         /* calculate r0 */
         Sparse_MatVec( H, x, workspace->b_prm );      
         Vector_Sum( &workspace->v[index_wkspace_sys(0,0,system)], 1., b, -1., workspace->b_prm, N );
@@ -885,14 +911,18 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
 
         /* GMRES inner-loop */
-        for( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ ) {
+        for( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
+        {
             /* matvec */
             Sparse_MatVec( H, &workspace->v[index_wkspace_sys (j,0,system)], &workspace->v[index_wkspace_sys (j+1,0,system)] );
             Forward_Subs( L, &workspace->v[index_wkspace_sys(j+1,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)] );
             Backward_Subs( U, &workspace->v[index_wkspace_sys(j+1,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)] );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
-            for( i = 0; i < j-1; i++ ) workspace->h[ index_wkspace_res (i,j)] = 0;
+            for( i = 0; i < j-1; i++ )
+            {
+                workspace->h[ index_wkspace_res (i,j)] = 0;
+            }
 
             //for( i = 0; i <= j; i++ ) {
             for( i = MAX(j-1,0); i <= j; i++ ) {
@@ -906,8 +936,10 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
             // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
 
             /* Givens rotations on the upper-Hessenberg matrix to make it U */
-            for( i = MAX(j-1,0); i <= j; i++ )    {
-                if( i == j ) {
+            for( i = MAX(j-1,0); i <= j; i++ )
+            {
+                if( i == j )
+                {
                     cc = SQRT( SQR(workspace->h[ index_wkspace_res (j,j) ])+SQR(workspace->h[ index_wkspace_res (j+1,j) ]) );
                     workspace->hc[j] = workspace->h[ index_wkspace_res (j,j) ] / cc;
                     workspace->hs[j] = workspace->h[ index_wkspace_res (j+1,j) ] / cc;
@@ -937,10 +969,13 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
 
 
         /* solve Hy = g: H is now upper-triangular, do back-substitution */
-        for( i = j-1; i >= 0; i-- ) {
+        for( i = j-1; i >= 0; i-- )
+        {
             temp = workspace->g[i];      
             for( k = j-1; k > i; k-- )
+            {
                 temp -= workspace->h[ index_wkspace_res (i,k) ] * workspace->y[k];
+            }
 
             workspace->y[i] = temp / workspace->h[index_wkspace_res (i,i)];
         }
@@ -955,184 +990,186 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
 
         /* stopping condition */
         if( fabs(workspace->g[j]) / bnorm <= tol )
+        {
             break;
         }
+    }
 
-        // Sparse_MatVec( H, x, workspace->b_prm );
-        // for( i = 0; i < N; ++i )
-        // workspace->b_prm[i] *= workspace->Hdia_inv[i];    
-        // fprintf( fout, "\n%10s%15s%15s\n", "b_prc", "b_prm", "x" );
-        // for( i = 0; i < N; ++i )
-        // fprintf( fout, "%10.5f%15.12f%15.12f\n", 
-        // workspace->b_prc[i], workspace->b_prm[i], x[i] );*/
+    // Sparse_MatVec( H, x, workspace->b_prm );
+    // for( i = 0; i < N; ++i )
+    // workspace->b_prm[i] *= workspace->Hdia_inv[i];    
+    // fprintf( fout, "\n%10s%15s%15s\n", "b_prc", "b_prm", "x" );
+    // for( i = 0; i < N; ++i )
+    // fprintf( fout, "%10.5f%15.12f%15.12f\n", 
+    // workspace->b_prc[i], workspace->b_prm[i], x[i] );*/
 
-        // fprintf(fout,"GMRES outer:%d, inner:%d iters - residual norm: %25.20f\n", 
-        //          itr, j, fabs( workspace->g[j] ) / bnorm );
-        // data->timing.matvec += itr * RESTART + j;
+    // fprintf(fout,"GMRES outer:%d, inner:%d iters - residual norm: %25.20f\n", 
+    //          itr, j, fabs( workspace->g[j] ) / bnorm );
+    // data->timing.matvec += itr * RESTART + j;
 
-        if( itr >= MAX_ITR ) {
-            fprintf( stderr, "GMRES convergence failed\n" );
-            // return -1;
-            return itr * (RESTART+1) + j + 1;
-        }
-
+    if( itr >= MAX_ITR ) {
+        fprintf( stderr, "GMRES convergence failed\n" );
+        // return -1;
         return itr * (RESTART+1) + j + 1;
     }
 
+    return itr * (RESTART+1) + j + 1;
+}
 
 
-    int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol, 
-            sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, reax_system* system )
+
+int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol, 
+        sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout, reax_system* system )
+{
+    int  i, N;
+    real tmp, alpha, beta, b_norm, r_norm;
+    real sig0, sig_old, sig_new;
+
+    N = A->n;
+    b_norm = Norm( b, N );
+    //fprintf( stderr, "b_norm: %.15e\n", b_norm );
+
+    Sparse_MatVec( A, x, workspace->q );
+    Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
+    r_norm = Norm(workspace->r, N);
+    //Print_Soln( workspace, x, q, b, N );
+    //fprintf( stderr, "res: %.15e\n", r_norm );
+
+    Forward_Subs( L, workspace->r, workspace->d );
+    Backward_Subs( U, workspace->d, workspace->p );
+    sig_new = Dot( workspace->r, workspace->p, N );
+    sig0 = sig_new;
+
+    for( i = 0; i < 200 && r_norm/b_norm > tol; ++i )
     {
-        int  i, N;
-        real tmp, alpha, beta, b_norm, r_norm;
-        real sig0, sig_old, sig_new;
+        //for( i = 0; i < 200 && sig_new > SQR(tol) * sig0; ++i ) {
+        Sparse_MatVec( A, workspace->p, workspace->q );
+        tmp = Dot( workspace->q, workspace->p, N );
+        alpha = sig_new / tmp;
+        Vector_Add( x, alpha, workspace->p, N );
+        //fprintf( stderr, "iter%d: |p|=%.15e |q|=%.15e tmp=%.15e\n",
+        //     i+1, Norm(workspace->p,N), Norm(workspace->q,N), tmp );
 
-        N = A->n;
-        b_norm = Norm( b, N );
-        //fprintf( stderr, "b_norm: %.15e\n", b_norm );
-
-        Sparse_MatVec( A, x, workspace->q );
-        Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
+        Vector_Add( workspace->r, -alpha, workspace->q, N );
         r_norm = Norm(workspace->r, N);
-        //Print_Soln( workspace, x, q, b, N );
         //fprintf( stderr, "res: %.15e\n", r_norm );
 
         Forward_Subs( L, workspace->r, workspace->d );
-        Backward_Subs( U, workspace->d, workspace->p );
-        sig_new = Dot( workspace->r, workspace->p, N );
-        sig0 = sig_new;
+        Backward_Subs( U, workspace->d, workspace->d );
+        sig_old = sig_new;
+        sig_new = Dot( workspace->r, workspace->d, N );
+        beta = sig_new / sig_old;
+        Vector_Sum( workspace->p, 1., workspace->d, beta, workspace->p, N );
+    }
 
-        for( i = 0; i < 200 && r_norm/b_norm > tol; ++i ) {
-            //for( i = 0; i < 200 && sig_new > SQR(tol) * sig0; ++i ) {
-            Sparse_MatVec( A, workspace->p, workspace->q );
-            tmp = Dot( workspace->q, workspace->p, N );
-            alpha = sig_new / tmp;
-            Vector_Add( x, alpha, workspace->p, N );
-            //fprintf( stderr, "iter%d: |p|=%.15e |q|=%.15e tmp=%.15e\n",
-            //     i+1, Norm(workspace->p,N), Norm(workspace->q,N), tmp );
-
-            Vector_Add( workspace->r, -alpha, workspace->q, N );
-            r_norm = Norm(workspace->r, N);
-            //fprintf( stderr, "res: %.15e\n", r_norm );
-
-            Forward_Subs( L, workspace->r, workspace->d );
-            Backward_Subs( U, workspace->d, workspace->d );
-            sig_old = sig_new;
-            sig_new = Dot( workspace->r, workspace->d, N );
-            beta = sig_new / sig_old;
-            Vector_Sum( workspace->p, 1., workspace->d, beta, workspace->p, N );
-        }
-
-        //fprintf( fout, "CG took %d iterations\n", i );
-        if( i >= 200 ) {
-            fprintf( stderr, "CG convergence failed!\n" );
-            return i;
-        }
-
+    //fprintf( fout, "CG took %d iterations\n", i );
+    if( i >= 200 ) {
+        fprintf( stderr, "CG convergence failed!\n" );
         return i;
-        }
+    }
+
+    return i;
+}
 
 
-        int CG( static_storage *workspace, sparse_matrix *H, 
-                real *b, real tol, real *x, FILE *fout, reax_system *system)
-        {
-            int  i, j, N;
-            real tmp, alpha, beta, b_norm;
-            real sig_old, sig_new, sig0;
+int CG( static_storage *workspace, sparse_matrix *H, 
+        real *b, real tol, real *x, FILE *fout, reax_system *system)
+{
+    int  i, j, N;
+    real tmp, alpha, beta, b_norm;
+    real sig_old, sig_new, sig0;
 
-            N = H->n;
-            b_norm = Norm( b, N );
-            //fprintf( stderr, "b_norm: %10.6f\n", b_norm );
+    N = H->n;
+    b_norm = Norm( b, N );
+    //fprintf( stderr, "b_norm: %10.6f\n", b_norm );
 
-            Sparse_MatVec( H, x, workspace->q );
-            Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
-            for( j = 0; j < N; ++j )
-                workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+    Sparse_MatVec( H, x, workspace->q );
+    Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
+    for( j = 0; j < N; ++j )
+        workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
 
-            sig_new = Dot( workspace->r, workspace->d, N );
-            sig0 = sig_new;
-            //Print_Soln( workspace, x, q, b, N );
-            //fprintf( stderr, "sig_new: %24.15e, d_norm:%24.15e, q_norm:%24.15e\n", 
-            // sqrt(sig_new), Norm(workspace->d,N), Norm(workspace->q,N) );
-            //fprintf( stderr, "sig_new: %f\n", sig_new );
+    sig_new = Dot( workspace->r, workspace->d, N );
+    sig0 = sig_new;
+    //Print_Soln( workspace, x, q, b, N );
+    //fprintf( stderr, "sig_new: %24.15e, d_norm:%24.15e, q_norm:%24.15e\n", 
+    // sqrt(sig_new), Norm(workspace->d,N), Norm(workspace->q,N) );
+    //fprintf( stderr, "sig_new: %f\n", sig_new );
 
-            for( i = 0; i < 300 && SQRT(sig_new) / b_norm > tol; ++i ) {
-                //for( i = 0; i < 300 && sig_new > SQR(tol)*sig0; ++i ) {
-                Sparse_MatVec( H, workspace->d, workspace->q );
-                tmp = Dot( workspace->d, workspace->q, N );
-                //fprintf( stderr, "tmp: %f\n", tmp );
-                alpha = sig_new / tmp;    
-                Vector_Add( x, alpha, workspace->d, N );
-                //fprintf( stderr, "d_norm:%24.15e, q_norm:%24.15e, tmp:%24.15e\n",
-                //     Norm(workspace->d,N), Norm(workspace->q,N), tmp );
+    for( i = 0; i < 300 && SQRT(sig_new) / b_norm > tol; ++i ) {
+        //for( i = 0; i < 300 && sig_new > SQR(tol)*sig0; ++i ) {
+        Sparse_MatVec( H, workspace->d, workspace->q );
+        tmp = Dot( workspace->d, workspace->q, N );
+        //fprintf( stderr, "tmp: %f\n", tmp );
+        alpha = sig_new / tmp;    
+        Vector_Add( x, alpha, workspace->d, N );
+        //fprintf( stderr, "d_norm:%24.15e, q_norm:%24.15e, tmp:%24.15e\n",
+        //     Norm(workspace->d,N), Norm(workspace->q,N), tmp );
 
-                Vector_Add( workspace->r, -alpha, workspace->q, N );    
-                for( j = 0; j < N; ++j )
-                    workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        Vector_Add( workspace->r, -alpha, workspace->q, N );    
+        for( j = 0; j < N; ++j )
+            workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
 
-                sig_old = sig_new;
-                sig_new = Dot( workspace->r, workspace->p, N );
-                beta = sig_new / sig_old;
-                Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, N );
-                //fprintf( stderr, "sig_new: %f\n", sig_new );
-            }
+        sig_old = sig_new;
+        sig_new = Dot( workspace->r, workspace->p, N );
+        beta = sig_new / sig_old;
+        Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, N );
+        //fprintf( stderr, "sig_new: %f\n", sig_new );
+    }
 
-            fprintf( stderr, "CG took %d iterations\n", i );
+    fprintf( stderr, "CG took %d iterations\n", i );
 
-            if( i >= 300 ) {
-                fprintf( stderr, "CG convergence failed!\n" );
-                return i;
-            }
+    if( i >= 300 ) {
+        fprintf( stderr, "CG convergence failed!\n" );
+        return i;
+    }
 
-            return i;
-            }
+    return i;
+}
 
 
 
-            /* Steepest Descent */
-            int SDM( static_storage *workspace, sparse_matrix *H, 
-                    real *b, real tol, real *x, FILE *fout )
-            {
-                int  i, j, N;
-                real tmp, alpha, beta, b_norm;
-                real sig0, sig;
+/* Steepest Descent */
+int SDM( static_storage *workspace, sparse_matrix *H, 
+        real *b, real tol, real *x, FILE *fout )
+{
+    int  i, j, N;
+    real tmp, alpha, beta, b_norm;
+    real sig0, sig;
 
-                N = H->n;
-                b_norm = Norm( b, N );
-                //fprintf( stderr, "b_norm: %10.6f\n", b_norm );
+    N = H->n;
+    b_norm = Norm( b, N );
+    //fprintf( stderr, "b_norm: %10.6f\n", b_norm );
 
-                Sparse_MatVec( H, x, workspace->q );
-                Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
-                for( j = 0; j < N; ++j )
-                    workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+    Sparse_MatVec( H, x, workspace->q );
+    Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
+    for( j = 0; j < N; ++j )
+        workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
 
-                sig = Dot( workspace->r, workspace->d, N );
-                sig0 = sig;
+    sig = Dot( workspace->r, workspace->d, N );
+    sig0 = sig;
 
-                for( i = 0; i < 300 && SQRT(sig) / b_norm > tol; ++i ) {
-                    Sparse_MatVec( H, workspace->d, workspace->q );
+    for( i = 0; i < 300 && SQRT(sig) / b_norm > tol; ++i ) {
+        Sparse_MatVec( H, workspace->d, workspace->q );
 
-                    sig = Dot( workspace->r, workspace->d, N );
-                    tmp = Dot( workspace->d, workspace->q, N );
-                    alpha = sig / tmp;    
+        sig = Dot( workspace->r, workspace->d, N );
+        tmp = Dot( workspace->d, workspace->q, N );
+        alpha = sig / tmp;    
 
-                    Vector_Add( x, alpha, workspace->d, N );
-                    Vector_Add( workspace->r, -alpha, workspace->q, N );
-                    for( j = 0; j < N; ++j )
-                        workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        Vector_Add( x, alpha, workspace->d, N );
+        Vector_Add( workspace->r, -alpha, workspace->q, N );
+        for( j = 0; j < N; ++j )
+            workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
 
-                    //fprintf( stderr, "d_norm:%24.15e, q_norm:%24.15e, tmp:%24.15e\n",
-                    //     Norm(workspace->d,N), Norm(workspace->q,N), tmp );
-                }
+        //fprintf( stderr, "d_norm:%24.15e, q_norm:%24.15e, tmp:%24.15e\n",
+        //     Norm(workspace->d,N), Norm(workspace->q,N), tmp );
+    }
 
-                fprintf( stderr, "SDM took %d iterations\n", i );
+    fprintf( stderr, "SDM took %d iterations\n", i );
 
-                if( i >= 300 ) {
-                    fprintf( stderr, "SDM convergence failed!\n" );
-                    return i;
-                }
+    if( i >= 300 ) {
+        fprintf( stderr, "SDM convergence failed!\n" );
+        return i;
+    }
 
-                return i;
-            }
-
+    return i;
+}

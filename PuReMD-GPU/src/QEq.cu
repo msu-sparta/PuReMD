@@ -34,12 +34,14 @@
 
 #include "system_props.h"
 
+
 HOST_DEVICE void swap(sparse_matrix_entry *array, int index1, int index2) 
 {
     sparse_matrix_entry temp = array[index1];
     array[index1] = array[index2];
     array[index2] = temp;
 }
+
 
 HOST_DEVICE void quick_sort(sparse_matrix_entry *array, int start, int end)
 {
@@ -62,6 +64,7 @@ HOST_DEVICE void quick_sort(sparse_matrix_entry *array, int start, int end)
     }  
 }
 
+
 int compare_matrix_entry(const void *v1, const void *v2)
 {
     return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
@@ -79,6 +82,7 @@ void Sort_Matrix_Rows( sparse_matrix *A )
                 sizeof(sparse_matrix_entry), compare_matrix_entry );
     }
 }
+
 
 GLOBAL void Cuda_Sort_Matrix_Rows ( sparse_matrix A )
 {
@@ -129,10 +133,11 @@ void Calculate_Droptol( sparse_matrix *A, real *droptol, real dtol )
     //fprintf( stderr, "\n" );
 }
 
+
 GLOBAL void Cuda_Calculate_Droptol ( sparse_matrix p_A, real *droptol, real dtol )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int k, j, offset, x, diagnol;
+    int k, j, offset, x, diagonal;
     real val;
     sparse_matrix *A = &p_A;
 
@@ -152,10 +157,11 @@ GLOBAL void Cuda_Calculate_Droptol ( sparse_matrix p_A, real *droptol, real dtol
 
 }
 
+
 GLOBAL void Cuda_Calculate_Droptol_js ( sparse_matrix p_A, real *droptol, real dtol )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int k, j, offset, x, diagnol;
+    int k, j, offset, x, diagonal;
     real val;
     sparse_matrix *A = &p_A;
 
@@ -171,17 +177,18 @@ GLOBAL void Cuda_Calculate_Droptol_js ( sparse_matrix p_A, real *droptol, real d
     }
 }
 
-GLOBAL void Cuda_Calculate_Droptol_diagnol ( sparse_matrix p_A, real *droptol, real dtol )
+
+GLOBAL void Cuda_Calculate_Droptol_diagonal ( sparse_matrix p_A, real *droptol, real dtol )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int k, j, offset, x, diagnol;
+    int k, j, offset, x, diagonal;
     real val;
     sparse_matrix *A = &p_A;
 
     if ( i < A->n ) {
-        //diagnol element
-        diagnol = A->end[i]-1;
-        val = A->entries [diagnol].val;
+        //diagonal element
+        diagonal = A->end[i]-1;
+        val = A->entries [diagonal].val;
         droptol [i] += val*val;
     }
 
@@ -213,6 +220,7 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
     return fillin + A->n;
 }
 
+
 GLOBAL void Cuda_Estimate_LU_Fill ( sparse_matrix p_A, real *droptol, int *fillin)
 {
     int i, j, pj;
@@ -232,6 +240,7 @@ GLOBAL void Cuda_Estimate_LU_Fill ( sparse_matrix p_A, real *droptol, int *filli
         if (fabs (val) > droptol [i]) ++fillin [i];
     }
 }
+
 
 void ICHOLT( sparse_matrix *A, real *droptol, 
         sparse_matrix *L, sparse_matrix *U )
@@ -336,7 +345,6 @@ void ICHOLT( sparse_matrix *A, real *droptol,
 
     //fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
 }
-
 
 
 void Cuda_ICHOLT( sparse_matrix *A, real *droptol, 
@@ -489,7 +497,7 @@ end = A->end[i]-1; //inclusive
 count = end - start; //inclusive
 tmp_val [kid] = 0;
 
-if (kid < count) //diagnol not included
+if (kid < count) //diagonal not included
 {
 pj = start + kid;
 
@@ -540,7 +548,7 @@ if (kid == 0)
     }
 }
 
-//diagnol element
+//diagonal element
 //val = A->entries[pj].val;
 //for( k1 = 0; k1 < tmptop; ++k1 )
 if (kid < count) 
@@ -612,7 +620,8 @@ void Init_MatVec( reax_system *system, control_params *control,
     //char fname[100];
 
     if(control->refactor > 0 && 
-            ((data->step-data->prev_steps)%control->refactor==0 || workspace->L.entries==NULL)){
+            ((data->step-data->prev_steps)%control->refactor==0 || workspace->L.entries==NULL))
+    {
         //Print_Linear_System( system, control, workspace, data->step );
         Sort_Matrix_Rows( &workspace->H );
 
@@ -621,17 +630,21 @@ void Init_MatVec( reax_system *system, control_params *control,
         Calculate_Droptol( &workspace->H, workspace->droptol, control->droptol ); 
         //fprintf( stderr, "drop tolerances calculated\n" );
 
-
-        if( workspace->L.entries == NULL ) {
+        if( workspace->L.entries == NULL )
+        {
             fillin = Estimate_LU_Fill( &workspace->H, workspace->droptol );
+
 #ifdef __DEBUG_CUDA__
             fprintf( stderr, "fillin = %d\n", fillin );
 #endif
+
             if( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == 0 ||
-                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 ){
+                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == 0 )
+            {
                 fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
                 exit(INSUFFICIENT_SPACE);
             }
+
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "fillin = %d\n", fillin );
             fprintf( stderr, "allocated memory: L = U = %ldMB\n",
@@ -689,43 +702,44 @@ void Init_MatVec( reax_system *system, control_params *control,
     }
 }
 
-void Cuda_Init_MatVec(     reax_system *system, control_params *control, 
-        simulation_data *data, static_storage *workspace, 
-        list *far_nbrs )
+
+void Cuda_Init_MatVec(reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, list *far_nbrs )
 {
     int i, fillin;
     real s_tmp, t_tmp;
     int *spad = (int *)scratch;
     real start = 0, end = 0;
 
-    if(control->refactor > 0 && 
-            ((data->step-data->prev_steps)%control->refactor==0 || dev_workspace->L.entries==NULL)){
-
-        Cuda_Sort_Matrix_Rows <<< BLOCKS, BLOCK_SIZE >>>
+    if( control->refactor > 0 && 
+            ((data->step-data->prev_steps)%control->refactor==0 ||
+             dev_workspace->L.entries==NULL) )
+    {
+        Cuda_Sort_Matrix_Rows<<< BLOCKS, BLOCK_SIZE >>>
             ( dev_workspace->H );
-        cudaThreadSynchronize ();
-        cudaCheckError ();
+        cudaThreadSynchronize();
+        cudaCheckError();
 
 #ifdef __DEBUG_CUDA__
         fprintf (stderr, "Sorting done... \n");
 #endif
 
-        Cuda_Calculate_Droptol <<<BLOCKS, BLOCK_SIZE >>>
+        Cuda_Calculate_Droptol<<<BLOCKS, BLOCK_SIZE >>>
             ( dev_workspace->H, dev_workspace->droptol, control->droptol );
-        cudaThreadSynchronize ();
-        cudaCheckError ();
+        cudaThreadSynchronize();
+        cudaCheckError();
 
 #ifdef __DEBUG_CUDA__
         fprintf (stderr, "Droptol done... \n");
 #endif
 
-        if( dev_workspace->L.entries == NULL ) {
-
+        if( dev_workspace->L.entries == NULL )
+        {
             cuda_memset ( spad, 0, 2 * INT_SIZE * system->N, RES_SCRATCH );
             Cuda_Estimate_LU_Fill <<< BLOCKS, BLOCK_SIZE >>>
                 ( dev_workspace->H, dev_workspace->droptol, spad );
-            cudaThreadSynchronize ();
-            cudaCheckError ();
+            cudaThreadSynchronize();
+            cudaCheckError();
 
             //Reduction for fill in 
             Cuda_reduction <<<BLOCKS_POW_2, BLOCK_SIZE, INT_SIZE * BLOCK_SIZE >>>  
@@ -789,16 +803,36 @@ void Cuda_Init_MatVec(     reax_system *system, control_params *control,
 #ifdef __DEBUG_CUDA__
         fprintf (stderr, " Allocation temp matrices count %d entries %d \n", dev_workspace->H.n, dev_workspace->H.m );
 #endif
+
         start = Get_Time ();
-        if (!Allocate_Matrix (&t_H, dev_workspace->H.n, dev_workspace->H.m)) { fprintf (stderr, "No space for H matrix \n"); exit (0);}
-        if (!Allocate_Matrix (&t_L, far_nbrs->n, dev_workspace->L.m)) { fprintf (stderr, "No space for L matrix \n"); exit (0); }
-        if (!Allocate_Matrix (&t_U, far_nbrs->n, dev_workspace->U.m)) { fprintf (stderr, "No space for U matrix \n"); exit (0); }
+        if(!Allocate_Matrix(&t_H, dev_workspace->H.n, dev_workspace->H.m))
+        {
+            fprintf(stderr, "No space for H matrix \n");
+            exit(0);
+        }
+        if(!Allocate_Matrix(&t_L, far_nbrs->n, dev_workspace->L.m))
+        {
+            fprintf(stderr, "No space for L matrix \n");
+            exit(0);
+        }
+        if(!Allocate_Matrix(&t_U, far_nbrs->n, dev_workspace->U.m))
+        {
+            fprintf(stderr, "No space for U matrix \n");
+            exit(0);
+        }
 
-        copy_host_device ( t_H.start, dev_workspace->H.start, INT_SIZE * (dev_workspace->H.n + 1), cudaMemcpyDeviceToHost, RES_SPARSE_MATRIX_INDEX );
-        copy_host_device ( t_H.end, dev_workspace->H.end, INT_SIZE * (dev_workspace->H.n + 1), cudaMemcpyDeviceToHost, RES_SPARSE_MATRIX_INDEX );
-        copy_host_device ( t_H.entries, dev_workspace->H.entries, SPARSE_MATRIX_ENTRY_SIZE * dev_workspace->H.m, cudaMemcpyDeviceToHost, RES_SPARSE_MATRIX_ENTRY );
+        copy_host_device ( t_H.start, dev_workspace->H.start, INT_SIZE *
+                (dev_workspace->H.n + 1), cudaMemcpyDeviceToHost,
+                RES_SPARSE_MATRIX_INDEX );
+        copy_host_device ( t_H.end, dev_workspace->H.end, INT_SIZE *
+                (dev_workspace->H.n + 1), cudaMemcpyDeviceToHost,
+                RES_SPARSE_MATRIX_INDEX );
+        copy_host_device ( t_H.entries, dev_workspace->H.entries,
+                SPARSE_MATRIX_ENTRY_SIZE * dev_workspace->H.m,
+                cudaMemcpyDeviceToHost, RES_SPARSE_MATRIX_ENTRY );
 
-        copy_host_device ( t_droptol, dev_workspace->droptol, REAL_SIZE * system->N, cudaMemcpyDeviceToHost, RES_STORAGE_DROPTOL );
+        copy_host_device ( t_droptol, dev_workspace->droptol, REAL_SIZE *
+                system->N, cudaMemcpyDeviceToHost, RES_STORAGE_DROPTOL );
 
         //fprintf (stderr, " Done copying LUH .. \n");
         Cuda_ICHOLT (&t_H, t_droptol, &t_L, &t_U);
@@ -827,6 +861,7 @@ void Cuda_Init_MatVec(     reax_system *system, control_params *control,
         //#endif
     }
 }
+
 
 GLOBAL void Init_MatVec_Postprocess (static_storage p_workspace, int N )
 {
@@ -873,6 +908,7 @@ GLOBAL void Init_MatVec_Postprocess (static_storage p_workspace, int N )
     workspace->t[index_wkspace_sys(0,i,N)] = t_tmp;
 }
 
+
 void Calculate_Charges( reax_system *system, static_storage *workspace )
 {
     int i;
@@ -891,16 +927,24 @@ void Calculate_Charges( reax_system *system, static_storage *workspace )
 #endif
 
     for( i = 0; i < system->N; ++i )
+    {
         system->atoms[i].q = workspace->s[index_wkspace_sys(0,i,system)] - u * workspace->t[index_wkspace_sys(0,i,system)];
+    }
 }
+
 
 GLOBAL void Cuda_Update_Atoms_q ( reax_atom *atoms, real *s, real u, real *t, int N)
 {
     int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if (i >= N) return;
+
+    if (i >= N)
+    {
+        return;
+    }
 
     atoms[i].q = s[index_wkspace_sys(0,i,N)] - u * t[index_wkspace_sys(0,i,N)];
 }
+
 
 void Cuda_Calculate_Charges (reax_system *system, static_storage *workspace)
 {
@@ -1017,6 +1061,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     // if( data->step == control->nsteps )
     //Print_Charges( system, control, workspace, data->step );
 }
+
 
 void Cuda_QEq( reax_system *system, control_params *control, simulation_data *data, 
         static_storage *workspace, list *far_nbrs, 

@@ -36,7 +36,9 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
     real H;
 
     for ( i = 0; i < N; ++i )
+    {
         b[i][0] = b[i][1] = 0;
+    }
 
     /* perform multiplication */
     for ( i = 0; i < A->n; ++i )
@@ -64,7 +66,7 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 
 
 int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
-             rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout )
+        rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int  i, j, n, N, matvecs, scale;
     rvec2 tmp, alpha, beta;
@@ -86,13 +88,17 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         t_start = Get_Time( );
     }
 #endif
+
     Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
     dual_Sparse_MatVec( H, x, workspace->q2, N );
     // tryQEq
     Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &matvec_time );
+    }
 #endif
 
     for ( j = 0; j < system->n; ++j )
@@ -126,6 +132,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     }
     MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
     //fprintf( stderr, "sig_new: %f %f\n", sig_new[0], sig_new[1] );
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
         Update_Timing_Info( &t_start, &dot_time );
@@ -137,9 +144,12 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         dual_Sparse_MatVec( H, workspace->d2, workspace->q2, N );
         // tryQEq
         Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &matvec_time );
+        }
 #endif
 
         /* dot product: d.q */
@@ -174,12 +184,18 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         sig_old[1] = sig_new[1];
         MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
         //fprintf( stderr, "sig_new: %f %f\n", sig_new[0], sig_new[1] );
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &dot_time );
+        }
 #endif
+
         if ( sqrt(sig_new[0]) / b_norm[0] <= tol || sqrt(sig_new[1]) / b_norm[1] <= tol )
+        {
             break;
+        }
 
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
@@ -194,30 +210,41 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     if ( sqrt(sig_new[0]) / b_norm[0] <= tol )
     {
         for ( j = 0; j < n; ++j )
+        {
             workspace->t[j] = workspace->x[j][1];
-        matvecs = CG( system, workspace, H, workspace->b_t, tol, workspace->t,
-                      mpi_data, fout );
+        }
+        matvecs = CG( system, workspace, H, workspace->b_t, tol,
+                workspace->t,mpi_data, fout );
         for ( j = 0; j < n; ++j )
+        {
             workspace->x[j][1] = workspace->t[j];
+        }
     }
     else if ( sqrt(sig_new[1]) / b_norm[1] <= tol )
     {
         for ( j = 0; j < n; ++j )
+        {
             workspace->s[j] = workspace->x[j][0];
+        }
         matvecs = CG( system, workspace, H, workspace->b_s, tol, workspace->s,
-                      mpi_data, fout );
+                mpi_data, fout );
         for ( j = 0; j < system->n; ++j )
+        {
             workspace->x[j][0] = workspace->s[j];
+        }
     }
 
-
     if ( i >= 300 )
+    {
         fprintf( stderr, "CG convergence failed!\n" );
+    }
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
-        fprintf( fout, "QEq %d + %d iters. matvecs: %f  dot: %f\n",
-                 i + 1, matvecs, matvec_time, dot_time );
+    {
+        fprintf( fout, "QEq %d + %d iters. matvecs: %f  dot: %f\n", i + 1,
+                matvecs, matvec_time, dot_time );
+    }
 #endif
 
     return (i + 1) + matvecs;
@@ -230,7 +257,9 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
     real H;
 
     for ( i = 0; i < N; ++i )
+    {
         b[i] = 0;
+    }
 
     /* perform multiplication */
     for ( i = 0; i < A->n; ++i )
@@ -249,8 +278,8 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 }
 
 
-int CG( reax_system *system, storage *workspace, sparse_matrix *H,
-        real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
+int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
+        real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int  i, j, scale;
     real tmp, alpha, beta, b_norm;
@@ -269,21 +298,29 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
     Sparse_MatVec( H, x, workspace->q, system->N );
     // tryQEq
     Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &matvec_time );
+    }
 #endif
 
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
     for ( j = 0; j < system->n; ++j )
+    {
         workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j]; //pre-condition
+    }
 
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
     sig0 = sig_new;
+
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
+    {
         Update_Timing_Info( &t_start, &dot_time );
+    }
 #endif
 
     for ( i = 1; i < 300 && sqrt(sig_new) / b_norm > tol; ++i )
@@ -292,9 +329,12 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
         //tryQEq
         Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &matvec_time );
+        }
 #endif
 
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);
@@ -303,15 +343,20 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
         /* pre-conditioning */
         for ( j = 0; j < system->n; ++j )
+        {
             workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        }
 
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, system->n );
+
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
+        {
             Update_Timing_Info( &t_start, &dot_time );
+        }
 #endif
     }
 
@@ -323,8 +368,10 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
-        fprintf( fout, "QEq %d iters. matvecs: %f  dot: %f\n",
-                 i, matvec_time, dot_time );
+    {
+        fprintf( fout, "QEq %d iters. matvecs: %f  dot: %f\n", i, matvec_time,
+                dot_time );
+    }
 #endif
 
     return i;
@@ -332,7 +379,7 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
 
 int CG_test( reax_system *system, storage *workspace, sparse_matrix *H,
-             real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
+        real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int  i, j, scale;
     real tmp, alpha, beta, b_norm;
