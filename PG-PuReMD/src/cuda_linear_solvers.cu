@@ -28,13 +28,13 @@
 #include "matvec.h"
 
 
-void get_from_device(real *host, real *device, unsigned int bytes, char *msg)
+void get_from_device(real *host, real *device, unsigned int bytes, const char *msg)
 {
     copy_host_device( host, device, bytes, cudaMemcpyDeviceToHost, msg );
 }
 
 
-void put_on_device(real *host, real *device, unsigned int bytes, char *msg)
+void put_on_device(real *host, real *device, unsigned int bytes, const char *msg)
 {
     copy_host_device( host, device, bytes, cudaMemcpyHostToDevice, msg );
 }
@@ -73,7 +73,7 @@ void Cuda_CG_Preconditioner(real *res, real *a, real *b, int count)
 }
 
 
-CUDA_GLOBAL void k_diagnol_preconditioner(storage p_workspace, rvec2 *b, int n)
+CUDA_GLOBAL void k_diagonal_preconditioner(storage p_workspace, rvec2 *b, int n)
 {
     storage *workspace = &( p_workspace );
     int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -95,14 +95,14 @@ CUDA_GLOBAL void k_diagnol_preconditioner(storage p_workspace, rvec2 *b, int n)
 }
 
 
-void Cuda_CG_Diagnol_Preconditioner(storage *workspace, rvec2 *b, int n)
+void Cuda_CG_Diagonal_Preconditioner(storage *workspace, rvec2 *b, int n)
 {
     int blocks;
 
     blocks = (n / DEF_BLOCK_SIZE) + 
         (( n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_diagnol_preconditioner <<< blocks, DEF_BLOCK_SIZE >>>
+    k_diagonal_preconditioner <<< blocks, DEF_BLOCK_SIZE >>>
         (*workspace, b, n);
 
     cudaThreadSynchronize();
@@ -147,12 +147,14 @@ CUDA_GLOBAL void k_dual_cg_preconditioner(storage p_workspace, rvec2 *x,
 }
 
 
-void Cuda_DualCG_Preconditioer(storage *workspace, rvec2 *x, rvec2 alpha, int n, rvec2 result)
+void Cuda_DualCG_Preconditioner(storage *workspace, rvec2 *x, rvec2 alpha,
+        int n, rvec2 result)
 {
     int blocks;
     rvec2 *tmp = (rvec2 *) scratch;
-    cuda_memset( tmp, 0, sizeof (rvec2) * ( 2 * n + 1), "cuda_dualcg_preconditioner" );
 
+    cuda_memset( tmp, 0, sizeof (rvec2) * ( 2 * n + 1),
+            "cuda_dualcg_preconditioner" );
     blocks = (n / DEF_BLOCK_SIZE) + 
         (( n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
@@ -163,19 +165,20 @@ void Cuda_DualCG_Preconditioer(storage *workspace, rvec2 *x, rvec2 alpha, int n,
     cudaCheckError();
 
     //Reduction to calculate my_dot
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof (rvec2) * DEF_BLOCK_SIZE >>>
+    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         ( tmp, tmp + n, n);
 
     cudaThreadSynchronize();
     cudaCheckError();
 
-    k_reduction_rvec2 <<< 1, BLOCKS_POW_2, sizeof (rvec2) * BLOCKS_POW_2 >>>
+    k_reduction_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>>
         ( tmp + n, tmp + 2*n, blocks);
 
     cudaThreadSynchronize();
     cudaCheckError();
 
-    copy_host_device( result, (tmp + 2*n), sizeof (rvec2), cudaMemcpyDeviceToHost, "my_dot" );
+    copy_host_device( result, (tmp + 2*n), sizeof(rvec2),
+            cudaMemcpyDeviceToHost, "my_dot" );
 }
 
 

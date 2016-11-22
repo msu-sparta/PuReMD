@@ -25,9 +25,9 @@
 #include "reax_types.h"
 
 void QEq( reax_system*, control_params*, simulation_data*,
-          storage*, output_controls*, mpi_datatypes* );
+        storage*, output_controls*, mpi_datatypes* );
 
 void Cuda_QEq( reax_system*, control_params*, simulation_data*,
-               storage*, output_controls*, mpi_datatypes* );
+        storage*, output_controls*, mpi_datatypes* );
 
 #endif

@@ -28,9 +28,8 @@
 #include "validation.h"
 
 
-CUDA_GLOBAL void ker_init_matvec( reax_atom *my_atoms, 
-        single_body_parameters *sbp, 
-        storage p_workspace, int n  )
+CUDA_GLOBAL void ker_init_matvec( reax_atom *my_atoms, single_body_parameters
+        *sbp, storage p_workspace, int n  )
 {
     storage *workspace = &( p_workspace );
     reax_atom *atom;

@@ -36,7 +36,9 @@ void real_packer( void *dummy, mpi_out_data *out_buf )
     real *out = (real*) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
+    {
         out[i] = buf[ out_buf->index[i] ];
+    }
 }
 
 
@@ -47,7 +49,9 @@ void rvec_packer( void *dummy, mpi_out_data *out_buf )
     rvec *out = (rvec*)out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
+    {
         memcpy( out[i], buf[ out_buf->index[i] ], sizeof(rvec) );
+    }
 }
 
 
@@ -58,12 +62,14 @@ void rvec2_packer( void *dummy, mpi_out_data *out_buf )
     rvec2 *out = (rvec2*) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
+    {
         memcpy( out[i], buf[ out_buf->index[i] ], sizeof(rvec2) );
+    }
 }
 
 
-void Dist( reax_system* system, mpi_datatypes *mpi_data,
-           void *buf, MPI_Datatype type, int scale, dist_packer pack )
+void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
+        MPI_Datatype type, int scale, dist_packer pack )
 {
     int d;
     mpi_out_data *out_bufs;
@@ -83,31 +89,41 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data,
         /* initiate recvs */
         nbr1 = &(system->my_nbrs[2 * d]);
         if ( nbr1->atoms_cnt )
+        {
             MPI_Irecv( buf + nbr1->atoms_str * scale, nbr1->atoms_cnt, type,
-                       nbr1->rank, 2 * d + 1, comm, &req1 );
+                    nbr1->rank, 2 * d + 1, comm, &req1 );
+        }
 
         nbr2 = &(system->my_nbrs[2 * d + 1]);
         if ( nbr2->atoms_cnt )
+        {
             MPI_Irecv( buf + nbr2->atoms_str * scale, nbr2->atoms_cnt, type,
-                       nbr2->rank, 2 * d, comm, &req2 );
+                    nbr2->rank, 2 * d, comm, &req2 );
+        }
 
         /* send both messages in dimension d */
         if ( out_bufs[2 * d].cnt )
         {
             pack( buf, out_bufs + (2 * d) );
             MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt, type,
-                      nbr1->rank, 2 * d, comm );
+                    nbr1->rank, 2 * d, comm );
         }
 
         if ( out_bufs[2 * d + 1].cnt )
         {
             pack( buf, out_bufs + (2 * d + 1) );
-            MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt, type,
-                      nbr2->rank, 2 * d + 1, comm );
+            MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
+                    type, nbr2->rank, 2 * d + 1, comm );
         }
 
-        if ( nbr1->atoms_cnt ) MPI_Wait( &req1, &stat1 );
-        if ( nbr2->atoms_cnt ) MPI_Wait( &req2, &stat2 );
+        if( nbr1->atoms_cnt )
+        {
+            MPI_Wait( &req1, &stat1 );
+        }
+        if( nbr2->atoms_cnt )
+        {
+            MPI_Wait( &req2, &stat2 );
+        }
     }
 
 #if defined(DEBUG)
@@ -123,7 +139,9 @@ void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
     real *buf = (real*) dummy_buf;
 
     for ( i = 0; i < out_buf->cnt; ++i )
+    {
         buf[ out_buf->index[i] ] += in[i];
+    }
 }
 
 
@@ -138,7 +156,7 @@ void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
         rvec_Add( buf[ out_buf->index[i] ], in[i] );
 #if defined(DEBUG)
         fprintf( stderr, "rvec_unpacker: cnt=%d  i =%d  index[i]=%d\n",
-                 out_buf->cnt, i, out_buf->index[i] );
+                out_buf->cnt, i, out_buf->index[i] );
 #endif
     }
 }
@@ -158,8 +176,8 @@ void rvec2_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 }
 
 
-void Coll( reax_system* system, mpi_datatypes *mpi_data,
-           void *buf, MPI_Datatype type, int scale, coll_unpacker unpack )
+void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
+        MPI_Datatype type, int scale, coll_unpacker unpack )
 {
     int d;
     void *in1, *in2;
@@ -172,6 +190,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data,
 #if defined(DEBUG)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
 #endif
+
     comm = mpi_data->comm_mesh3D;
     in1 = mpi_data->in1_buffer;
     in2 = mpi_data->in2_buffer;
@@ -182,28 +201,36 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data,
         /* initiate recvs */
         nbr1 = &(system->my_nbrs[2 * d]);
         if ( out_bufs[2 * d].cnt )
+        {
             MPI_Irecv(in1, out_bufs[2 * d].cnt, type, nbr1->rank, 2 * d + 1, comm, &req1);
+        }
 
         nbr2 = &(system->my_nbrs[2 * d + 1]);
         if ( out_bufs[2 * d + 1].cnt )
+        {
             MPI_Irecv(in2, out_bufs[2 * d + 1].cnt, type, nbr2->rank, 2 * d, comm, &req2);
+        }
 
         /* send both messages in dimension d */
         if ( nbr1->atoms_cnt )
+        {
             MPI_Send( buf + nbr1->atoms_str * scale, nbr1->atoms_cnt, type,
-                      nbr1->rank, 2 * d, comm );
+                    nbr1->rank, 2 * d, comm );
+        }
 
         if ( nbr2->atoms_cnt )
+        {
             MPI_Send( buf + nbr2->atoms_str * scale, nbr2->atoms_cnt, type,
-                      nbr2->rank, 2 * d + 1, comm );
+                    nbr2->rank, 2 * d + 1, comm );
+        }
 
 #if defined(DEBUG)
         fprintf( stderr, "p%d coll[%d] nbr1: str=%d cnt=%d recv=%d\n",
-                 system->my_rank, d, nbr1->atoms_str, nbr1->atoms_cnt,
-                 out_bufs[2 * d].cnt );
+                system->my_rank, d, nbr1->atoms_str, nbr1->atoms_cnt,
+                out_bufs[2 * d].cnt );
         fprintf( stderr, "p%d coll[%d] nbr2: str=%d cnt=%d recv=%d\n",
-                 system->my_rank, d, nbr2->atoms_str, nbr2->atoms_cnt,
-                 out_bufs[2 * d + 1].cnt );
+                system->my_rank, d, nbr2->atoms_str, nbr2->atoms_cnt,
+                out_bufs[2 * d + 1].cnt );
 #endif
 
         if ( out_bufs[2 * d].cnt )
@@ -233,7 +260,9 @@ real Parallel_Norm( real *v, int n, MPI_Comm comm )
 
     my_sum = 0;
     for ( i = 0; i < n; ++i )
+    {
         my_sum += SQR( v[i] );
+    }
 
     MPI_Allreduce( &my_sum, &norm_sqr, 1, MPI_DOUBLE, MPI_SUM, comm );
 
@@ -249,7 +278,9 @@ real Parallel_Dot( real *v1, real *v2, int n, MPI_Comm comm )
 
     my_dot = 0;
     for ( i = 0; i < n; ++i )
+    {
         my_dot += v1[i] * v2[i];
+    }
 
     MPI_Allreduce( &my_dot, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
 
@@ -265,7 +296,9 @@ real Parallel_Vector_Acc( real *v, int n, MPI_Comm comm )
 
     my_acc = 0;
     for ( i = 0; i < n; ++i )
+    {
         my_acc += v[i];
+    }
 
     MPI_Allreduce( &my_acc, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
 
@@ -275,29 +308,33 @@ real Parallel_Vector_Acc( real *v, int n, MPI_Comm comm )
 
 /*****************************************************************************/
 #if defined(TEST_FORCES)
-void Coll_ids_at_Master( reax_system *system, storage *workspace,
-                         mpi_datatypes *mpi_data )
+void Coll_ids_at_Master( reax_system *system, storage *workspace, mpi_datatypes
+        *mpi_data )
 {
     int i;
     int *id_list;
 
     MPI_Gather( &system->n, 1, MPI_INT, workspace->rcounts, 1, MPI_INT,
-                MASTER_NODE, MPI_COMM_WORLD );
+            MASTER_NODE, MPI_COMM_WORLD );
 
     if ( system->my_rank == MASTER_NODE )
     {
         workspace->displs[0] = 0;
         for ( i = 1; i < system->wsize; ++i )
+        {
             workspace->displs[i] = workspace->displs[i - 1] + workspace->rcounts[i - 1];
+        }
     }
 
     id_list = (int*) malloc( system->n * sizeof(int) );
     for ( i = 0; i < system->n; ++i )
+    {
         id_list[i] = system->my_atoms[i].orig_id;
+    }
 
-    MPI_Gatherv( id_list, system->n, MPI_INT,
-                 workspace->id_all, workspace->rcounts, workspace->displs,
-                 MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
+    MPI_Gatherv( id_list, system->n, MPI_INT, workspace->id_all,
+            workspace->rcounts, workspace->displs, MPI_INT, MASTER_NODE,
+            MPI_COMM_WORLD );
 
     free( id_list );
 
@@ -305,18 +342,20 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
     if ( system->my_rank == MASTER_NODE )
     {
         for ( i = 0 ; i < system->bigN; ++i )
+        {
             fprintf( stderr, "id_all[%d]: %d\n", i, workspace->id_all[i] );
+        }
     }
 #endif
 }
 
 
 void Coll_rvecs_at_Master( reax_system *system, storage *workspace,
-                           mpi_datatypes *mpi_data, rvec* v )
+        mpi_datatypes *mpi_data, rvec* v )
 {
-    MPI_Gatherv( v, system->n, mpi_data->mpi_rvec,
-                 workspace->f_all, workspace->rcounts, workspace->displs,
-                 mpi_data->mpi_rvec, MASTER_NODE, MPI_COMM_WORLD );
+    MPI_Gatherv( v, system->n, mpi_data->mpi_rvec, workspace->f_all,
+            workspace->rcounts, workspace->displs, mpi_data->mpi_rvec,
+            MASTER_NODE, MPI_COMM_WORLD );
 }
 
 #endif
