@@ -19,11 +19,11 @@
   ----------------------------------------------------------------------*/
 
 #include "bond_orders.h"
+
 #include "list.h"
 #include "lookup.h"
 #include "print_utils.h"
 #include "vector.h"
-
 
 #include "index_utils.h"
 #include "cuda_utils.h"

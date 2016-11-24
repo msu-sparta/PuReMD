@@ -18,11 +18,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-
-
-
 #include "cuda_copy.h"
+
 #include "vector.h"
+
 
 void Sync_Host_Device (grid *host, grid *dev, enum cudaMemcpyKind dir)
 {

@@ -24,7 +24,7 @@
 #define __CUDA_COPY_H_
 
 #include "cuda_utils.h"
-#include "cuda.h"
+
 #include "mytypes.h"
 #include "list.h"
 

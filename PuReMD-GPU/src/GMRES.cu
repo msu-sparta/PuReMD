@@ -480,11 +480,10 @@ int Cublas_GMRES(reax_system *system, static_storage *workspace, real *b, real t
     real cc, tmp1, tmp2, temp, bnorm;
     real v_add_tmp;
     sparse_matrix *H = &workspace->H;
-
     real t_start, t_elapsed;
-
     real *spad = (real *)scratch;
     real *g = (real *) calloc ((RESTART+1), REAL_SIZE);
+    cublasHandle_t cublasHandle;
 
     N = H->n;
 

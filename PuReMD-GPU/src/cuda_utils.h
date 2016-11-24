@@ -21,13 +21,13 @@
 #ifndef __CUDA_UTILS_H_
 #define __CUDA_UTILS_H_
 
-#include "cuda.h"
-#include "cublas_v2.h"
-#include "cusparse_v2.h"
-#include "stdlib.h"
-#include "stdio.h"
+#include "mytypes.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
+
 
 static __inline__ void modify (cublasHandle_t handle, float *m, int ldm, int n, int p, int q, float alpha, float beta)
 {

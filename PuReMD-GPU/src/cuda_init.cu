@@ -18,14 +18,14 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-
-
-
 #include "cuda_init.h"
+
 #include "cuda_utils.h"
 #include "cuda_copy.h"
+
 #include "vector.h"
 #include "reset_utils.h"
+
 
 void Cuda_Init_System ( reax_system *system)
 {
@@ -55,16 +55,19 @@ void Cuda_Init_System ( reax_system *system)
     system->reaxprm.d_gp.vdw_type = 0;
 }
 
+
 void Cuda_Init_Control (control_params *control)
 {
     cuda_malloc ((void **)&control->d_control, CONTROL_PARAMS_SIZE, 1, RES_CONTROL_PARAMS );
     copy_host_device (control, control->d_control, CONTROL_PARAMS_SIZE, cudaMemcpyHostToDevice, RES_CONTROL_PARAMS );
 }
 
+
 void Cuda_Init_Simulation_Data (simulation_data *data)
 {
     cuda_malloc ((void **) &(data->d_simulation_data), SIMULATION_DATA_SIZE, 1, RES_SIMULATION_DATA );
 }
+
 
 GLOBAL void Initialize_Grid (ivec *nbrs, rvec *nbrs_cp, int N)
 {
@@ -79,6 +82,7 @@ GLOBAL void Initialize_Grid (ivec *nbrs, rvec *nbrs_cp, int N)
     nbrs_cp[index][1] = -1;
     nbrs_cp[index][2] = -1;
 }
+
 
 void Cuda_Init_Grid (grid *host, grid *dev)
 {
@@ -112,6 +116,7 @@ void Cuda_Init_Grid (grid *host, grid *dev)
     cudaCheckError ();
 }
 
+
 GLOBAL void Init_Workspace_Arrays (single_body_parameters *sbp, reax_atom *atoms, 
         static_storage workspace, int N)
 {
@@ -127,6 +132,7 @@ GLOBAL void Init_Workspace_Arrays (single_body_parameters *sbp, reax_atom *atoms
     workspace.b[i+N] = -1.0;
 }
 
+
 GLOBAL void Init_Map_Serials (int *input, int N)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -134,6 +140,7 @@ GLOBAL void Init_Map_Serials (int *input, int N)
 
     input[i] = -1;
 }
+
 
 void Cuda_Init_Workspace_System (reax_system *system, static_storage *workspace )
 {
@@ -262,6 +269,7 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
     Cuda_Reset_Workspace( system, workspace );
 }
 
+
 void Cuda_Init_Workspace_Device ( static_storage *workspace )
 {
     workspace->realloc.estimate_nbrs = -1;
@@ -273,6 +281,7 @@ void Cuda_Init_Workspace_Device ( static_storage *workspace )
     workspace->realloc.gcell_atoms = -1;
 }
 
+
 void Cuda_Init_Sparse_Matrix (sparse_matrix *matrix, int entries, int N)
 {
     cuda_malloc ((void **) &matrix->start, INT_SIZE * (N + 1), 1, RES_SPARSE_MATRIX_INDEX );
@@ -283,6 +292,7 @@ void Cuda_Init_Sparse_Matrix (sparse_matrix *matrix, int entries, int N)
     cuda_malloc ((void **) &matrix->val, REAL_SIZE * entries, 1, RES_SPARSE_MATRIX_ENTRY );
 
 }
+
 
 void Cuda_Init_Scratch ()
 {

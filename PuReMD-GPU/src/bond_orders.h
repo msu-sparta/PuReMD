@@ -21,7 +21,9 @@
 #ifndef __BOND_ORDERS_H_
 #define __BOND_ORDERS_H_
 
+
 #include "mytypes.h"
+
 
 typedef struct
 {
@@ -30,6 +32,7 @@ typedef struct
     real C1dbopi2, C2dbopi2, C3dbopi2, C4dbopi2;
     real C1dDelta, C2dDelta, C3dDelta;
 } dbond_coefficients;
+
 
 #ifdef TEST_FORCES
 void Get_dBO( reax_system*, list**, int, int, real, rvec* );

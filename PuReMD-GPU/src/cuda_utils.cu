@@ -18,11 +18,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-
-
-
 #include "cuda_utils.h"
-#include "mytypes.h"
+
 
 void cuda_malloc (void **ptr, int size, int memset, int err_code) {
 

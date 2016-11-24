@@ -967,7 +967,7 @@ void compare_far_neighbors (int *test, int *start, int *end, far_neighbor_data *
             fprintf (stderr, "Serial NumNeighbors ---> %d \n", num_nbrs);
 #endif
 
-            if( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists)+FAR_NBRS) ) {
+            if( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists)+FAR_NBRS), TYP_HOST ) {
                 fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
                 exit( INIT_ERR );
             }
@@ -1036,7 +1036,7 @@ void compare_far_neighbors (int *test, int *start, int *end, far_neighbor_data *
 #endif
 
             /* 3bodies list */
-            if(!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists)+THREE_BODIES)) {
+            if(!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists)+THREE_BODIES), TYP_HOST) {
                 fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
                 exit( INIT_ERR );
             }
@@ -1046,12 +1046,12 @@ void compare_far_neighbors (int *test, int *start, int *end, far_neighbor_data *
                     num_3body * sizeof(three_body_interaction_data) / (1024*1024) );
 #endif
 #ifdef TEST_FORCES
-            if(!Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA )) {
+            if(!Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA, TYP_HOST )) {
                 fprintf( stderr, "Problem in initializing dDelta list. Terminating!\n" );
                 exit( INIT_ERR );
             }
 
-            if( !Make_List( num_bonds, num_bonds*MAX_BONDS*3, TYP_DBO, (*lists)+DBO ) ) {
+            if( !Make_List( num_bonds, num_bonds*MAX_BONDS*3, TYP_DBO, (*lists)+DBO, TYP_HOST ) ) {
                 fprintf( stderr, "Problem in initializing dBO list. Terminating!\n" );
                 exit( INIT_ERR );
             }

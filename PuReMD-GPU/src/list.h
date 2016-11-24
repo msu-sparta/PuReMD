@@ -23,8 +23,8 @@
 
 #include "mytypes.h"
 
-HOST char Make_List( int, int, int, list* , int proc = TYP_HOST);
-HOST void Delete_List( list* , int proc = TYP_HOST);
+HOST char Make_List( int, int, int, list* , int );
+HOST void Delete_List( list* , int );
 
 
 inline HOST_DEVICE int Num_Entries(int i, list* l)

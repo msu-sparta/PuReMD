@@ -26,8 +26,8 @@
 
 void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 {
-    Delete_List( far_nbrs );
-    if(!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs )){
+    Delete_List( far_nbrs, TYP_HOST );
+    if(!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs, TYP_HOST )){
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
         exit( INIT_ERR );
     }
@@ -153,7 +153,7 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
         hb_top[i] += hb_top[i-1];
     num_hbonds = hb_top[n-1];
 
-    if( !Make_List(num_h, num_hbonds, TYP_HBOND, hbonds ) ) {
+    if( !Make_List(num_h, num_hbonds, TYP_HBOND, hbonds, TYP_HOST ) ) {
         fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
         exit( INIT_ERR );
     }
@@ -238,7 +238,7 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
         if( h_index[i] >= 0 )
             hb_top[i] = MAX(Num_Entries(h_index[i],hbonds)*SAFE_HBONDS, MIN_HBONDS);
 
-    Delete_List( hbonds );
+    Delete_List( hbonds, TYP_HOST );
 
     Allocate_HBond_List( n, num_h, h_index, hb_top, hbonds );
 
@@ -336,7 +336,7 @@ int Allocate_Bond_List( int n, int *bond_top, list *bonds )
         bond_top[i] += bond_top[i-1];
     num_bonds = bond_top[n-1];
 
-    if( !Make_List(n, num_bonds, TYP_BOND, bonds ) ) {
+    if( !Make_List(n, num_bonds, TYP_BOND, bonds, TYP_HOST ) ) {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
         exit( INIT_ERR );
     }
@@ -372,7 +372,7 @@ int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
         bond_top[i] = MAX( Num_Entries( i, bonds ) * 2, MIN_BONDS );
     }
 
-    Delete_List( bonds );
+    Delete_List( bonds, TYP_HOST );
 
     Allocate_Bond_List( n, bond_top, bonds );
     *num_bonds = bond_top[n-1];
@@ -585,14 +585,14 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
 
     if( realloc->num_3body > 0 ) {
         fprintf (stderr, " Reallocating 3Body \n");
-        Delete_List( (*lists)+THREE_BODIES );
+        Delete_List( (*lists)+THREE_BODIES, TYP_HOST );
 
         if( num_bonds == -1 )
             num_bonds = ((*lists)+BONDS)->num_intrs;
         realloc->num_3body *= SAFE_ZONE;
 
         if( !Make_List( num_bonds, realloc->num_3body,
-                    TYP_THREE_BODY, (*lists)+THREE_BODIES ) ) {
+                    TYP_THREE_BODY, (*lists)+THREE_BODIES, TYP_HOST ) ) {
             fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
             exit( INIT_ERR );
         }

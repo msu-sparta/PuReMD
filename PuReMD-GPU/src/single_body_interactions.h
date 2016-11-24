@@ -21,7 +21,8 @@
 #ifndef __SINGLE_BODY_INTERACTIONS_H_
 #define __SINGLE_BODY_INTERACTIONS_H_
 
-#include <mytypes.h>
+#include "mytypes.h"
+
 
 void LonePair_OverUnder_Coordination_Energy( reax_system*, control_params*,
         simulation_data*, static_storage*,

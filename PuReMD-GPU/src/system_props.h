@@ -21,7 +21,7 @@
 #ifndef __SYSTEM_PROP_H_
 #define __SYSTEM_PROP_H_
 
-#include <mytypes.h>
+#include "mytypes.h"
 
 real Get_Time( );
 
@@ -43,7 +43,7 @@ void Compute_Pressure( reax_system*, simulation_data*, static_storage* );
 void Compute_Pressure_Isotropic( reax_system*, control_params*, simulation_data*, output_controls* );
 
 void prep_dev_system (reax_system *system);
-GLOBAL void Compute_Total_Mass (single_body_parameters *, reax_atom *, real *, size_t );
+GLOBAL void k_Compute_Total_Mass (single_body_parameters *, reax_atom *, real *, size_t );
 //GLOBAL void Compute_Kinetic_Energy (single_body_parameters *, reax_atom *, unsigned int , simulation_data *, real *);
 
 

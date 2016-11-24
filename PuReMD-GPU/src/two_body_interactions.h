@@ -21,8 +21,9 @@
 #ifndef __TWO_BODY_INTERACTIONS_H_
 #define __TWO_BODY_INTERACTIONS_H_
 
-#include <mytypes.h>
+#include "mytypes.h"
 #include "index_utils.h"
+
 
 void Bond_Energy( reax_system*, control_params*, simulation_data*,
                   static_storage*, list**, output_controls* );

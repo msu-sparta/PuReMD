@@ -50,7 +50,7 @@ AC_SEARCH_LIBS([cublasDdot], [cublas])
 AC_SEARCH_LIBS([cudaThreadSynchronize], [cuda])
 AC_SEARCH_LIBS([cudaCheckError], [cuda])
 # FIXME: Replace `main' with a function in `-lcudart':
-#AC_CHECK_LIB([cudart], [main])
+AC_CHECK_LIB([cudart], [main])
 AC_SEARCH_LIBS([cusparseCheckError], [cusparse])
 AC_SEARCH_LIBS([cusparseCreateMatDescr], [cusparse])
 AC_SEARCH_LIBS([cusparseSetMatType], [cusparse])
@@ -89,10 +89,6 @@ AC_CHECK_TYPES([cusparseHandle_t], [],
 	       [AC_MSG_FAILURE([cusparseHandle_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
 AC_CHECK_TYPES([cusparseMatDescr_t], [], 
 	       [AC_MSG_FAILURE([cusparseMatDescr_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
-#AC_CHECK_TYPES([CUSPARSE_MATRIX_TYPE_GENERAL], [], 
-#	       [AC_MSG_FAILURE([CUSPARSE_MATRIX_TYPE_GENERAL type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
-#AC_CHECK_TYPES([CUSPARSE_INDEX_BASE_ZERO], [], 
-#	       [AC_MSG_FAILURE([CUSPARSE_INDEX_BASE_ZERO type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
 
 AC_CONFIG_FILES([Makefile])
 

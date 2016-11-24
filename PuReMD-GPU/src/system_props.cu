@@ -100,7 +100,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data )
     //cuda_malloc ((void **)&partial_sums, sizeof (real) * (blocks + 1), 1, 0);
     cuda_memset (partial_sums, 0, REAL_SIZE * (BLOCKS_POW_2 + 1), RES_SCRATCH );
 
-    Compute_Total_Mass <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE >>> 
+    k_Compute_Total_Mass <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE >>> 
         (system->reaxprm.d_sbp, system->d_atoms, partial_sums, system->N);
     cudaThreadSynchronize ();
     cudaCheckError ();
@@ -133,7 +133,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data )
 }
 
 
-GLOBAL void Compute_Total_Mass (single_body_parameters *sbp, reax_atom *atoms, real *per_block_results, size_t n) 
+GLOBAL void k_Compute_Total_Mass (single_body_parameters *sbp, reax_atom *atoms, real *per_block_results, size_t n) 
 {
     extern __shared__ real sdata[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;

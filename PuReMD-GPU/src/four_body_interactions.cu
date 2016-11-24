@@ -993,33 +993,23 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
                                 if( control->ensemble == NVE || control->ensemble == NVT ||control->ensemble == bNVT) {
                                     /* dcos_theta_ijk */
                                     //PERFORMANCE IMPACT
-                                    atomic_rvecScaledAdd (pbond_ij->i_f, 
-                                            CEtors7 + CEconj4, p_ijk->dcos_dk );
-                                    rvec_ScaledAdd( atoms[j].f, 
-                                            CEtors7 + CEconj4, p_ijk->dcos_dj );
-                                    atomic_rvecScaledAdd( pbond_jk->k_f, 
-                                            CEtors7 + CEconj4, p_ijk->dcos_di );
+                                    atomic_rvecScaledAdd( pbond_ij->i_f, CEtors7 + CEconj4, p_ijk->dcos_dk );
+                                    rvec_ScaledAdd( atoms[j].f, CEtors7 + CEconj4, p_ijk->dcos_dj );
+                                    atomic_rvecScaledAdd( pbond_jk->k_f, CEtors7 + CEconj4, p_ijk->dcos_di );
 
 
                                     /* dcos_theta_jkl */
                                     //PERFORMANCE IMPACT
-                                    rvec_ScaledAdd( atoms[j].f, 
-                                            CEtors8 + CEconj5, p_jkl->dcos_di );
-                                    atomic_rvecScaledAdd( pbond_jk->i_f, 
-                                            CEtors8 + CEconj5, p_jkl->dcos_dj );
-                                    atomic_rvecScaledAdd( pbond_kl->k_f, 
-                                            CEtors8 + CEconj5, p_jkl->dcos_dk );
+                                    rvec_ScaledAdd( atoms[j].f, CEtors8 + CEconj5, p_jkl->dcos_di );
+                                    atomic_rvecScaledAdd( pbond_jk->i_f, CEtors8 + CEconj5, p_jkl->dcos_dj );
+                                    atomic_rvecScaledAdd( pbond_kl->k_f, CEtors8 + CEconj5, p_jkl->dcos_dk );
 
                                     /* dcos_omega */
                                     //PERFORMANCE IMPACT
-                                    atomic_rvecScaledAdd( pbond_ij->i_f, 
-                                            CEtors9 + CEconj6, dcos_omega_di );
-                                    rvec_ScaledAdd( atoms[j].f, 
-                                            CEtors9 + CEconj6, dcos_omega_dj );
-                                    atomic_rvecScaledAdd( pbond_jk->i_f, 
-                                            CEtors9 + CEconj6, dcos_omega_dk );
-                                    atomic_rvecScaledAdd( pbond_kl->k_f, 
-                                            CEtors9 + CEconj6, dcos_omega_dl );
+                                    atomic_rvecScaledAdd( pbond_ij->i_f, CEtors9 + CEconj6, dcos_omega_di );
+                                    rvec_ScaledAdd( atoms[j].f, CEtors9 + CEconj6, dcos_omega_dj );
+                                    atomic_rvecScaledAdd( pbond_jk->i_f, CEtors9 + CEconj6, dcos_omega_dk );
+                                    atomic_rvecScaledAdd( pbond_kl->k_f, CEtors9 + CEconj6, dcos_omega_dl );
                                 }
                                 else {
                                     ivec_Sum(rel_box_jl, pbond_jk->rel_box, pbond_kl->rel_box);
@@ -1033,8 +1023,7 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
                                     //rvec_Add (sh_press [threadIdx.x], ext_press);
 
                                     //PERFORMANCE IMPACT
-                                    rvec_ScaledAdd( atoms[j].f, 
-                                            CEtors7 + CEconj4, p_ijk->dcos_dj );
+                                    rvec_ScaledAdd( atoms[j].f, CEtors7 + CEconj4, p_ijk->dcos_dj );
 
                                     rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_di );
                                     //PERFORMANCE IMPACT
@@ -1047,8 +1036,7 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
 
                                     /* dcos_theta_jkl */
                                     //PERFORMANCE IMPACT
-                                    rvec_ScaledAdd( atoms[j].f, 
-                                            CEtors8 + CEconj5, p_jkl->dcos_di );
+                                    rvec_ScaledAdd( atoms[j].f, CEtors8 + CEconj5, p_jkl->dcos_di );
 
                                     rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                     //PERFORMANCE IMPACT

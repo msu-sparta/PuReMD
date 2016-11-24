@@ -19,8 +19,8 @@
   ----------------------------------------------------------------------*/
 
 #include "reduction.h"
+
 #include "vector.h"
-#include "mytypes.h"
 
 
 GLOBAL void Cuda_reduction(const real *input, real *per_block_results, const size_t n)
