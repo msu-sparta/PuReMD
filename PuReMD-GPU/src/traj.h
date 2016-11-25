@@ -22,8 +22,8 @@
 #define __TRAJ_H__
 
 #include "mytypes.h"
-#include "zlib.h"
 
+#include <zlib.h>
 
 #define BLOCK_MARK "REAX_BLOCK_MARK "
 #define BLOCK_MARK_LEN 16
@@ -73,11 +73,13 @@
 #define SIZE_INFO_LINE3 "%-10d %-10d %-10d\n"
 #define SIZE_INFO_LEN3 33
 
+
 enum ATOM_LINE_OPTS {OPT_NOATOM = 0, OPT_ATOM_BASIC = 4, OPT_ATOM_wF = 5,
                      OPT_ATOM_wV = 6, OPT_ATOM_FULL = 7
                     };
 enum BOND_LINE_OPTS {OPT_NOBOND, OPT_BOND_BASIC, OPT_BOND_FULL};
 enum ANGLE_LINE_OPTS {OPT_NOANGLE, OPT_ANGLE_BASIC};
+
 
 struct
 {
@@ -89,10 +91,10 @@ struct
 
 typedef struct __block block;
 
+
 int Write_Block( gzFile, block* );
 int Read_Next_Block( gzFile, block*, int* );
 int Skip_Next_Block( gzFile, int*);
-
 
 /*
   Format for trajectory file
@@ -141,8 +143,6 @@ int Skip_Next_Block( gzFile, int*);
   No. of torsion entries (int)
   Torsion info lines as per torsion format.
 */
-
-
 int Write_Custom_Header( reax_system*, control_params*,
                          static_storage*, output_controls* );
 int Write_xyz_Header   ( reax_system*, control_params*,

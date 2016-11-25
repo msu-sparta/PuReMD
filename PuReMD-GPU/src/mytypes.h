@@ -31,6 +31,11 @@
     #include <cuda.h>
     #include <cublas_v2.h>
     #include <cusparse_v2.h>
+    #if __CUDA_ARCH__ < 600
+      #define MYATOMICADD myAtomicAdd
+    #else
+      #define MYATOMICADD atomicAdd
+    #endif
   #endif
 #else
   #ifndef __MYTYPES_H_

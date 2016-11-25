@@ -34,16 +34,19 @@
 #include "traj.h"
 #include "vector.h"
 
-
 #include "cuda_init.h"
 #include "cuda_copy.h"
 #include "cuda_utils.h"
 #include "helpers.h"
 #include "reduction.h"
 
-#include     "index_utils.h"
+#include "cuda_allocate.h"
+#include "cuda_system_props.h"
+
+#include "index_utils.h"
 
 #include "validation.h"
+
 
 void Generate_Initial_Velocities(reax_system *system, real T )
 {
@@ -967,7 +970,7 @@ void compare_far_neighbors (int *test, int *start, int *end, far_neighbor_data *
             fprintf (stderr, "Serial NumNeighbors ---> %d \n", num_nbrs);
 #endif
 
-            if( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists)+FAR_NBRS), TYP_HOST ) {
+            if( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists)+FAR_NBRS, TYP_HOST ) ) {
                 fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
                 exit( INIT_ERR );
             }
@@ -1036,7 +1039,7 @@ void compare_far_neighbors (int *test, int *start, int *end, far_neighbor_data *
 #endif
 
             /* 3bodies list */
-            if(!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists)+THREE_BODIES), TYP_HOST) {
+            if(!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists)+THREE_BODIES, TYP_HOST )) {
                 fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
                 exit( INIT_ERR );
             }

@@ -871,7 +871,7 @@ where i < k */
 
                             e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
                             //PERFORMANCE IMPACT
-                            //atomicAdd (&data->E_Ang, e_ang);
+                            //MYATOMICADD(&data->E_Ang, e_ang);
                             E_Ang [j] += e_ang;
                             /* END ANGLE ENERGY*/
 
@@ -895,7 +895,7 @@ where i < k */
 
                             e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                             //PERFORMANCE IMPACT
-                            //atomicAdd (&data->E_Pen, e_pen);
+                            //MYATOMICADD(&data->E_Pen, e_pen);
                             E_Pen [j] += e_pen;
 
 
@@ -921,7 +921,7 @@ where i < k */
                                 EXP( -p_coa4 * SQR(BOA_jk - 1.5) );
 
                             //PERFORMANCE IMPACT
-                            //atomicAdd (&data->E_Coa, e_coa);
+                            //MYATOMICADD(&data->E_Coa, e_coa);
                             E_Coa [j] += e_coa;
 
                             CEcoa1 = -2 * p_coa4 * (BOA_ij - 1.5) * e_coa;
@@ -933,19 +933,19 @@ where i < k */
 
                             /* FORCES */
                             /*
-                               atomicAdd (&bo_ij->Cdbo, (CEval1 + CEpen2 + (CEcoa1-CEcoa4)) );
-                               atomicAdd (&bo_jk->Cdbo, (CEval2 + CEpen3 + (CEcoa2-CEcoa5)) );
-                               atomicAdd (&workspace->CdDelta[j], ((CEval3 + CEval7) + CEpen1 + CEcoa3) );
-                               atomicAdd (&workspace->CdDelta[i], CEcoa4 );
-                               atomicAdd (&workspace->CdDelta[k], CEcoa5 );              
+                               MYATOMICADD(&bo_ij->Cdbo, (CEval1 + CEpen2 + (CEcoa1-CEcoa4)) );
+                               MYATOMICADD(&bo_jk->Cdbo, (CEval2 + CEpen3 + (CEcoa2-CEcoa5)) );
+                               MYATOMICADD(&workspace->CdDelta[j], ((CEval3 + CEval7) + CEpen1 + CEcoa3) );
+                               MYATOMICADD(&workspace->CdDelta[i], CEcoa4 );
+                               MYATOMICADD(&workspace->CdDelta[k], CEcoa5 );              
                              */
 
                             bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1-CEcoa4)) ;
                             bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2-CEcoa5)) ;
                             workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3) ;
-                            //atomicAdd (&workspace->CdDelta[i], CEcoa4 );
+                            //MYATOMICADD(&workspace->CdDelta[i], CEcoa4 );
                             pbond_ij->CdDelta_ij += CEcoa4 ;
-                            //atomicAdd (&workspace->CdDelta[k], CEcoa5 );              
+                            //MYATOMICADD(&workspace->CdDelta[k], CEcoa5 );              
                             pbond_jk->CdDelta_ij += CEcoa5;
 
                             for( t = start_j; t < end_j; ++t ) {
@@ -960,9 +960,9 @@ where i < k */
                                 //    (CEval6 * pBOjt7) );
 
                                 /*
-                                   atomicAdd (&bo_jt->Cdbo, (CEval6 * pBOjt7) );
-                                   atomicAdd (&bo_jt->Cdbopi, CEval5 );
-                                   atomicAdd (&bo_jt->Cdbopi2, CEval5 );
+                                   MYATOMICADD(&bo_jt->Cdbo, (CEval6 * pBOjt7) );
+                                   MYATOMICADD(&bo_jt->Cdbopi, CEval5 );
+                                   MYATOMICADD(&bo_jt->Cdbopi2, CEval5 );
                                  */
                                 bo_jt->Cdbo        += (CEval6 * pBOjt7) ;
                                 bo_jt->Cdbopi    += CEval5 ;
@@ -1670,7 +1670,7 @@ GLOBAL void Hydrogen_Bonds (    reax_atom *atoms,
 
                     //PERFORMANCE IMPACT
                     e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                    //atomicAdd ( &data->E_HB, e_hb );
+                    //MYATOMICADD( &data->E_HB, e_hb );
                     //E_HB [j] += e_hb;
                     sh_hb [threadIdx.x] += e_hb;
 
@@ -2050,7 +2050,7 @@ GLOBAL void Hydrogen_Bonds (    reax_atom *atoms,
 
                         //PERFORMANCE IMPACT
                         e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                        //atomicAdd ( &data->E_HB, e_hb );
+                        //MYATOMICADD( &data->E_HB, e_hb );
                         //E_HB [j] += e_hb;
                         sh_hb [threadIdx.x] += e_hb;
 

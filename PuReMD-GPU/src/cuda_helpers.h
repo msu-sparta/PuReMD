@@ -25,7 +25,7 @@
 #include "mytypes.h"
 
 
-DEVICE static inline int cuda_strcmp(char *a, char *b, int len)
+DEVICE inline int cuda_strcmp(char *a, char *b, int len)
 {
     char *src, *dst;
 
@@ -52,8 +52,7 @@ DEVICE static inline int cuda_strcmp(char *a, char *b, int len)
 }
 
 
-#if __CUDA_ARCH__ < 600
-DEVICE static inline real atomicAdd(double* address, double val)
+DEVICE inline real myAtomicAdd(double* address, double val)
 {
     unsigned long long int* address_as_ull =
         (unsigned long long int*)address;
@@ -67,22 +66,21 @@ DEVICE static inline real atomicAdd(double* address, double val)
     while (assumed != old);
     return __longlong_as_double(old);
 }
-#endif
 
 
-DEVICE static inline void atomic_rvecAdd( rvec ret, rvec v )
+DEVICE inline void atomic_rvecAdd( rvec ret, rvec v )
 {
-    atomicAdd( (double*)&ret[0], (double)v[0] );
-    atomicAdd( (double*)&ret[1], (double)v[1] );
-    atomicAdd( (double*)&ret[2], (double)v[2] );
+    MYATOMICADD( (double*)&ret[0], (double)v[0] );
+    MYATOMICADD( (double*)&ret[1], (double)v[1] );
+    MYATOMICADD( (double*)&ret[2], (double)v[2] );
 }
 
 
-DEVICE static inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
+DEVICE inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
-    atomicAdd( (double*)&ret[0], (double)(c * v[0]) );
-    atomicAdd( (double*)&ret[1], (double)(c * v[1]) );
-    atomicAdd( (double*)&ret[2], (double)(c * v[2]) );
+    MYATOMICADD( (double*)&ret[0], (double)(c * v[0]) );
+    MYATOMICADD( (double*)&ret[1], (double)(c * v[1]) );
+    MYATOMICADD( (double*)&ret[2], (double)(c * v[2]) );
 }
 
 

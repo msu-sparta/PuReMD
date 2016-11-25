@@ -374,7 +374,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
         e_lp = p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
 
         //PERFORMANCE IMPACT
-        atomicAdd (&data->E_Lp, e_lp);
+        MYATOMICADD(&data->E_Lp, e_lp);
 
         dElp = p_lp2 * inv_expvd2 + 
             75 * p_lp2 * workspace->Delta_lp[i] * expvd2 * SQR(inv_expvd2);
@@ -382,7 +382,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
         //PERFORMANCE IMPACT
         //workspace->CdDelta[i] += CElp;      // lp - 1st term
-        atomicAdd (&workspace->CdDelta[i], CElp);
+        MYATOMICADD(&workspace->CdDelta[i], CElp);
 
 
 #ifdef TEST_ENERGY
@@ -416,7 +416,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
                             //PERFORMANCE IMPACT
                             e_lph = p_lp3 * SQR(vov3-3.0);
-                            atomicAdd (&data->E_Lp, e_lph );
+                            MYATOMICADD(&data->E_Lp, e_lph );
                             //estrain(i) += e_lph;
 
                             deahu2dbo = 2.*p_lp3*(vov3 - 3.);
@@ -426,7 +426,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
 
                             //PERFORMANCE IMPACT
-                            atomicAdd (&workspace->CdDelta[i], deahu2dsbo);
+                            MYATOMICADD(&workspace->CdDelta[i], deahu2dsbo);
 #ifdef TEST_ENERGY
                             //TODO
                             //fprintf(out_control->elp,"C2cor%6d%6d%23.15e%23.15e%23.15e\n",
@@ -500,7 +500,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
     //PERFORMANCE IMPACT
     //data->E_Ov += e_ov = sum_ovun1 * CEover1;
     e_ov = sum_ovun1 * CEover1;
-    atomicAdd (&data->E_Ov, e_ov ); 
+    MYATOMICADD(&data->E_Ov, e_ov ); 
 
     CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 *
         ( 1.0 - Delta_lpcorr*( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ) );
@@ -523,7 +523,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
     //PERFORMANCE IMPACT
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
-    atomicAdd (&data->E_Un, e_un );
+    MYATOMICADD(&data->E_Un, e_un );
 
     CEunder1 = inv_exp_ovun2n * ( p_ovun5*p_ovun6*exp_ovun6*inv_exp_ovun8 +
             p_ovun2 * e_un * exp_ovun2n);
@@ -537,8 +537,8 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
     // forces 
     //PERFORMANCE IMPACT
-    atomicAdd (&workspace->CdDelta[i] , CEover3);   // OvCoor - 2nd term
-    atomicAdd (&workspace->CdDelta[i], CEunder3);  // UnCoor - 1st term
+    MYATOMICADD(&workspace->CdDelta[i] , CEover3);   // OvCoor - 2nd term
+    MYATOMICADD(&workspace->CdDelta[i], CEunder3);  // UnCoor - 1st term
 
 #ifdef TEST_FORCES
     //TODO
@@ -559,7 +559,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
         bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s; // OvCoor - 1st  
 
         //PERFORMANCE IMPACT
-        atomicAdd (&workspace->CdDelta[j], CEover4*(1.0 - dfvl*workspace->dDelta_lp[j])* (bo_ij->BO_pi + bo_ij->BO_pi2)); // OvCoor - 3a
+        MYATOMICADD(&workspace->CdDelta[j], CEover4*(1.0 - dfvl*workspace->dDelta_lp[j])* (bo_ij->BO_pi + bo_ij->BO_pi2)); // OvCoor - 3a
 
         bo_ij->Cdbopi += CEover4 * 
             (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j]);//OvCoor-3b
@@ -568,7 +568,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
 
         //PERFORMANCE IMPACT
-        atomicAdd (&workspace->CdDelta[j], CEunder4*(1.0-dfvl*workspace->dDelta_lp[j]) * (bo_ij->BO_pi + bo_ij->BO_pi2) );   // UnCoor - 2a
+        MYATOMICADD(&workspace->CdDelta[j], CEunder4*(1.0-dfvl*workspace->dDelta_lp[j]) * (bo_ij->BO_pi + bo_ij->BO_pi2) );   // UnCoor - 2a
 
         bo_ij->Cdbopi += CEunder4 * 
             (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j]);//UnCoor-2b
@@ -705,7 +705,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
     // calculate the energy 
     e_lp = p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
-    //atomicAdd (&data->E_Lp, e_lp );
+    //MYATOMICADD(&data->E_Lp, e_lp );
     E_Lp [ i ] = e_lp;
 
     dElp = p_lp2 * inv_expvd2 + 
@@ -732,7 +732,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
     e_lph = p_lp3 * SQR(vov3-3.0);
     E_Lp [i] += e_lph;
-    //atomicAdd (&data->E_Lp, e_lph );
+    //MYATOMICADD(&data->E_Lp, e_lph );
     //estrain(i) += e_lph;
 
     deahu2dbo = 2.*p_lp3*(vov3 - 3.);
@@ -790,7 +790,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
     e_ov = sum_ovun1 * CEover1;
     E_Ov [ i ] = e_ov;
-    //atomicAdd ( &data->E_Ov, e_ov );
+    //MYATOMICADD( &data->E_Ov, e_ov );
 
     CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 *
         ( 1.0 - Delta_lpcorr*( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ) );
@@ -813,7 +813,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
 
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
     E_Un [i] = e_un;
-    //atomicAdd ( &data->E_Un, e_un );
+    //MYATOMICADD( &data->E_Un, e_un );
 
     CEunder1 = inv_exp_ovun2n * ( p_ovun5*p_ovun6*exp_ovun6*inv_exp_ovun8 +
             p_ovun2 * e_un * exp_ovun2n);
@@ -903,7 +903,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy_LP ( reax_atom *atoms, g
 
     // calculate the energy 
     e_lp = p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
-    //atomicAdd (&data->E_Lp, e_lp );
+    //MYATOMICADD(&data->E_Lp, e_lp );
     E_Lp [ i ] = e_lp;
 
     dElp = p_lp2 * inv_expvd2 + 
@@ -930,7 +930,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy_LP ( reax_atom *atoms, g
 
                         e_lph = p_lp3 * SQR(vov3-3.0);
                         E_Lp [i] += e_lph;
-                        //atomicAdd (&data->E_Lp, e_lph );
+                        //MYATOMICADD(&data->E_Lp, e_lph );
                         //estrain(i) += e_lph;
 
                         deahu2dbo = 2.*p_lp3*(vov3 - 3.);

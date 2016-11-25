@@ -39,6 +39,7 @@
 #include "cuda_copy.h"
 #include "validation.h"
 
+#include "cuda_system_props.h"
 
 
 interaction_function Interaction_Functions[NO_OF_INTERACTIONS];

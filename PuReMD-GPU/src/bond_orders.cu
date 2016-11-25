@@ -36,6 +36,7 @@ inline real Cf45( real p1, real p2 )
         ( SQR( EXP(-p1 / 2) + EXP(p1 / 2) ) * (EXP(-p2 / 2) + EXP(p2 / 2)) );
 }
 
+
 #ifdef TEST_FORCES
 void Get_dBO( reax_system *system, list **lists, 
         int i, int pj, real C, rvec *v )
@@ -66,7 +67,8 @@ void Get_dBOpinpi2( reax_system *system, list **lists,
     start_pj = Start_Index(pj, dBOs);
     end_pj = End_Index(pj, dBOs);
 
-    for( k = start_pj; k < end_pj; ++k ) {
+    for( k = start_pj; k < end_pj; ++k )
+    {
         dbo_k = &(dBOs->select.dbo_list[k]);
         rvec_Scale( vpi[dbo_k->wrt], Cpi, dbo_k->dBOpi );
         rvec_Scale( vpi2[dbo_k->wrt], Cpi2, dbo_k->dBOpi2 );
@@ -177,7 +179,6 @@ void Add_dDelta_to_Forces( reax_system *system, list **lists, int i, real C )
         rvec_ScaledAdd( system->atoms[dDeltas->select.dDelta_list[k].wrt].f, 
                 C, dDeltas->select.dDelta_list[k].dVal );
 }
-
 
 
 HOST_DEVICE void Calculate_dBO( int i, int pj, static_storage p_workspace, 
@@ -367,7 +368,6 @@ HOST_DEVICE void Calculate_dBO( int i, int pj, static_storage p_workspace,
 #endif
 
 
-
 void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system, 
         simulation_data *data, static_storage *workspace, 
         list **lists )
@@ -521,10 +521,10 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
        temp[0], temp[1], temp[2] ); */
 }
 
+
 /////////////////////////////////////////////////////////////
 //Cuda Functions
 /////////////////////////////////////////////////////////////
-
 HOST_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, reax_atom *atoms, 
         simulation_data *data, static_storage *workspace, 
         list *bonds )
@@ -646,6 +646,7 @@ HOST_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, reax_atom *atoms,
     rvec_Add( data->ext_press, ext_press );
 }
 
+
 /////////////////////////////////////////////////////////////
 //Cuda Functions
 /////////////////////////////////////////////////////////////
@@ -760,6 +761,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
     rvec_ScaledAdd(system->atoms[j].f, coef.C4dbopi2, workspace->dDeltap_self[j]);
     /*3rd, dBOpi2*/
 }
+
 
 HOST_DEVICE void Cuda_Add_dBond_to_Forces ( int i, int pj, reax_atom *atoms, 
         static_storage *workspace, list *bonds )
@@ -890,6 +892,7 @@ HOST_DEVICE void Cuda_Add_dBond_to_Forces ( int i, int pj, reax_atom *atoms,
     }
 }
 
+
 HOST_DEVICE void Cuda_dbond_to_Forces_postprocess (int i, reax_atom *atoms, list *bonds)
 {
     int pk;
@@ -909,6 +912,7 @@ HOST_DEVICE void Cuda_dbond_to_Forces_postprocess (int i, reax_atom *atoms, list
         rvec_Add (atoms[i].f, nbr_k_sym->t_f);
     }
 }
+
 
 /* Locate j on i's list.
    This function assumes that j is there for sure!
@@ -1377,7 +1381,6 @@ GLOBAL void Cuda_Calculate_Bond_Orders_Init (  reax_atom *atoms, global_paramete
 /* A very important and crucial assumption here is that each segment
    belonging to a different atom in nbrhoods->nbr_list is sorted in its own.
    This can either be done in the general coordinator function or here */
-
 GLOBAL void Cuda_Calculate_Bond_Orders (  reax_atom *atoms, global_parameters g_params, single_body_parameters *sbp,
         two_body_parameters *tbp, static_storage workspace, list bonds,
         list dDeltas, list dBOs, int num_atom_types, int N )
@@ -1397,7 +1400,6 @@ GLOBAL void Cuda_Calculate_Bond_Orders (  reax_atom *atoms, global_parameters g_
     two_body_parameters *twbp;
     bond_order_data *bo_ij, *bo_ji;
     single_body_parameters *sbp_i, *sbp_j;
-
 
 #if defined(TEST_FORCES)
     int  k, pk, start_j, end_j;
@@ -1432,7 +1434,6 @@ GLOBAL void Cuda_Calculate_Bond_Orders (  reax_atom *atoms, global_parameters g_
 
 
     // fprintf( stderr, "done with uncorrected bond orders\n" );
-
 
     /* Corrected Bond Order calculations */
     //for( i = 0; i < system->N; ++i ) {
@@ -1778,6 +1779,7 @@ workspace.dDelta_lp_temp[j] = workspace.Clp[j];
 #endif
 }
 
+
 GLOBAL void Cuda_Update_Uncorrected_BO (  static_storage workspace, list bonds, int N )
 {
     int i, j, pj;
@@ -1811,6 +1813,7 @@ GLOBAL void Cuda_Update_Uncorrected_BO (  static_storage workspace, list bonds, 
         }
     }
 }
+
 
 GLOBAL void Cuda_Update_Workspace_After_Bond_Orders(  reax_atom *atoms, global_parameters g_params, single_body_parameters *sbp,
         static_storage workspace, int N )
@@ -1867,8 +1870,8 @@ GLOBAL void Cuda_Update_Workspace_After_Bond_Orders(  reax_atom *atoms, global_p
 
 }
 
-//Import from the forces file. 
 
+//Import from the forces file. 
 GLOBAL void Cuda_Compute_Total_Force (reax_atom *atoms, simulation_data *data, 
         static_storage workspace, list p_bonds, int ensemble, int N)
 {
@@ -1888,6 +1891,7 @@ GLOBAL void Cuda_Compute_Total_Force (reax_atom *atoms, simulation_data *data,
         }
     }
 }
+
 
 GLOBAL void Cuda_Compute_Total_Force_PostProcess (reax_atom *atoms, simulation_data *data, 
         static_storage workspace, list p_bonds, int ensemble, int N)

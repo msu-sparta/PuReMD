@@ -36,6 +36,9 @@
 #include "reduction.h"
 #include "validation.h"
 
+#include "cuda_allocate.h"
+#include "cuda_system_props.h"
+
 
 void Velocity_Verlet_NVE(reax_system* system, control_params* control, 
         simulation_data *data, static_storage *workspace, 

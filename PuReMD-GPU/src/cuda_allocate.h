@@ -18,19 +18,14 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __ALLOCATE_H_
-#define __ALLOCATE_H_
+#ifndef __CUDA_ALLOCATE_H_
+#define __CUDA_ALLOCATE_H_
 
 #include "mytypes.h"
 
-void Reallocate( reax_system*, static_storage*, list**, int );
-
-int Allocate_Matrix( sparse_matrix*, int, int );
-void Deallocate_Matrix( sparse_matrix *);
-
-int Allocate_HBond_List( int, int, int*, int*, list* );
-
-int Allocate_Bond_List( int, int*, list* );
-
+int Cuda_Allocate_Matrix( sparse_matrix*, int, int );
+int Cuda_Allocate_HBond_List( int, int, int*, int*, list* );
+int Cuda_Allocate_Bond_List( int, int*, list* );
+void Cuda_Reallocate( reax_system*, static_storage*, list*, int, int );
 
 #endif

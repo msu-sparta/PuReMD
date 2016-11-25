@@ -782,7 +782,7 @@ int Estimate_NumNeighbors( reax_system *system, control_params *control,
                     }
 
                     //__syncthreads ();
-                    //atomicAdd ( &warp_sync [threadIdx.x / __THREADS_PER_ATOM__ ], 1);
+                    //MYATOMICADD( &warp_sync [threadIdx.x / __THREADS_PER_ATOM__ ], 1);
                     //while ( warp_sync [threadIdx.x / __THREADS_PER_ATOM__ ] < __THREADS_PER_ATOM__ ) ;
 
                     if (nbrgen)

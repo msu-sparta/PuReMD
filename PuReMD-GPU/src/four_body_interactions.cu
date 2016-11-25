@@ -889,7 +889,7 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
 
                                 //PERFORMANCE IMPACT
                                 e_tor = fn10 * sin_ijk * sin_jkl * CV;
-                                //atomicAdd (&data->E_Tor ,e_tor );
+                                //MYATOMICADD(&data->E_Tor ,e_tor );
                                 E_Tor [j] += e_tor;
                                 //sh_tor [threadIdx.x] += e_tor;
 
@@ -933,7 +933,7 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
                                 fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
                                 //PERFORMANCE IMPACT
                                 e_con = fbp->p_cot1 * fn12 * (1. + (SQR(cos_omega)-1.) * sin_ijk*sin_jkl);
-                                //atomicAdd (&data->E_Con ,e_con );
+                                //MYATOMICADD(&data->E_Con ,e_con );
                                 E_Con [j] += e_con ;
                                 //sh_con [threadIdx.x] += e_con;
 
@@ -971,12 +971,12 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
                                 /* forces */
                                 //PERFORMANCE IMPACT
                                 /*
-                                   atomicAdd ( &bo_jk->Cdbopi, CEtors2 );
-                                   atomicAdd ( &workspace->CdDelta[j], CEtors3 );
-                                   atomicAdd ( &workspace->CdDelta[k], CEtors3 );
-                                   atomicAdd ( &bo_ij->Cdbo, (CEtors4 + CEconj1) );
-                                   atomicAdd ( &bo_jk->Cdbo, (CEtors5 + CEconj2) );
-                                   atomicAdd ( &bo_kl->Cdbo, (CEtors6 + CEconj3) );
+                                   MYATOMICADD( &bo_jk->Cdbopi, CEtors2 );
+                                   MYATOMICADD( &workspace->CdDelta[j], CEtors3 );
+                                   MYATOMICADD( &workspace->CdDelta[k], CEtors3 );
+                                   MYATOMICADD( &bo_ij->Cdbo, (CEtors4 + CEconj1) );
+                                   MYATOMICADD( &bo_jk->Cdbo, (CEtors5 + CEconj2) );
+                                   MYATOMICADD( &bo_kl->Cdbo, (CEtors6 + CEconj3) );
                                  */
 
                                 //PERFORMANCE IMPACT
@@ -987,7 +987,7 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
                                 bo_jk->Cdbo += CEtors5 + CEconj2;
 
                                 //TODO REMOVE THIS ATOMIC OPERATION IF POSSIBLE
-                                atomicAdd (&pbond_kl->Cdbo_kl, CEtors6 + CEconj3 );
+                                MYATOMICADD(&pbond_kl->Cdbo_kl, CEtors6 + CEconj3 );
                                 //TODO REMOVE THIS ATOMIC OPERATION IF POSSIBLE
 
                                 if( control->ensemble == NVE || control->ensemble == NVT ||control->ensemble == bNVT) {

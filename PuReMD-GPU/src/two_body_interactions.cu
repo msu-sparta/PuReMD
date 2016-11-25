@@ -221,7 +221,7 @@ GLOBAL void Cuda_Bond_Energy ( reax_atom *atoms, global_parameters g_params,
                 -twbp->De_pp * bo_ij->BO_pi2;
 
             //PERFORMANCE IMAPCT
-            //atomicAdd (&data->E_BE, ebond);
+            //MYATOMICADD(&data->E_BE, ebond);
             //TODO
             //E_BE [ i ] += ebond/2.0;
             E_BE [ i ] += ebond;
@@ -274,7 +274,7 @@ GLOBAL void Cuda_Bond_Energy ( reax_atom *atoms, global_parameters g_params,
                     //estrain(j2) = estrain(j2) + 0.50*estriph;
 
                     //PERFORMANCE IMPACT
-                    //atomicAdd (&data->E_BE, estriph);
+                    //MYATOMICADD(&data->E_BE, estriph);
                     E_BE [ i] += estriph;
                     //data->E_BE += estriph;
 
@@ -289,7 +289,7 @@ GLOBAL void Cuda_Bond_Energy ( reax_atom *atoms, global_parameters g_params,
 
                     //PERFORMANCE IMAPCT
                     workspace->CdDelta[i] += decobdboua;
-                    //atomicAdd (&workspace->CdDelta[j], decobdboub);
+                    //MYATOMICADD(&workspace->CdDelta[j], decobdboub);
                     //CdDelta [ i * N + i ] += decobdboua;
                     //CdDelta [ i * N + j ] += decobdboua;
                     //workspace->CdDelta [i] += decobdboua;

@@ -21,7 +21,9 @@
 #ifndef __BOX_H__
 #define __BOX_H__
 
+
 #include "mytypes.h"
+
 
 /* Initializes box from CRYST1 line of PDB */
 void Init_Box_From_CRYST(real, real, real, real, real, real,
@@ -98,7 +100,6 @@ void Print_Box_Information( simulation_box*, FILE* );
 
 //CUDA Device Functions
 //HOST_DEVICE inline void Inc_on_T3( rvec, rvec, simulation_box* );
-
 HOST_DEVICE inline void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
 {
     int i;

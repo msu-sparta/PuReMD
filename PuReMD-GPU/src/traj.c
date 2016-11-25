@@ -20,7 +20,10 @@
 
 #include "traj.h"
 #include "list.h"
-#include "cuda_copy.h"
+
+#ifdef __PRINT_CPU_RESULTS__
+  #include "cuda_copy.h"
+#endif
 
 /************************************************/
 /*      CUSTOM FORMAT ROUTINES                  */
@@ -207,7 +210,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     if( write_bonds )
     {
 
-#ifndef __PRINT_CPU_RESULTS__
+#ifdef __PRINT_CPU_RESULTS__
         //fprintf (stderr, "Synching bonds from device for printing ....\n");
         Sync_Host_Device (bonds, (dev_lists + BONDS), TYP_BOND );
 #endif
@@ -239,7 +242,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     num_thb_intrs = 0;
     if( write_angles ) {
 
-#ifndef __PRINT_CPU_RESULTS__
+#ifdef __PRINT_CPU_RESULTS__
         //fprintf (stderr, "Synching three bodies from deivce for printing ... \n");
         Sync_Host_Device (thb_intrs, dev_lists + THREE_BODIES, TYP_THREE_BODY );
         if ( !write_bonds) {

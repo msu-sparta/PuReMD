@@ -36,7 +36,6 @@
 #include "cuda_init.h"
 #include "reduction.h"
 //#include "matrix.h"
-
 #include "validation.h"
 
 #include "cudaProfiler.h"
@@ -2634,7 +2633,7 @@ GLOBAL void Estimate_Storage_Sizes     (reax_atom *atoms,
 
         if( nbr_pj->d <= control->r_cut ) {
             //++(*Htop);
-            atomicAdd (Htop, 1);
+            atomicAdd(Htop, 1);
 
             /* hydrogen bond lists */ 
             //TODO - CHANGE ORIGINAL
@@ -2643,11 +2642,11 @@ GLOBAL void Estimate_Storage_Sizes     (reax_atom *atoms,
                 jhb = sbp_j->p_hbond;
                 if( ihb == 1 && jhb == 2 )
                     //++hb_top[i];
-                    atomicAdd (&hb_top[i], 1);
+                    atomicAdd(&hb_top[i], 1);
                 else if( ihb == 2 && jhb == 1 )
                     //++hb_top[j];
-                    //atomicAdd (&hb_top[j], 1);
-                    atomicAdd (&hb_top[i], 1);
+                    //atomicAdd(&hb_top[j], 1);
+                    atomicAdd(&hb_top[i], 1);
             }
             //TODO -- CHANGE ORIGINAL
 
@@ -2685,8 +2684,8 @@ GLOBAL void Estimate_Storage_Sizes     (reax_atom *atoms,
                 if( BO >= control->bo_cut ) {
                     //++bond_top[i];
                     //++bond_top[j];
-                    atomicAdd (&bond_top[i], 1);
-                    atomicAdd (&bond_top[j], 1);
+                    atomicAdd(&bond_top[i], 1);
+                    atomicAdd(&bond_top[j], 1);
                 }
             }
         }
