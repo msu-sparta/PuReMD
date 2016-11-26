@@ -101,7 +101,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system,
                     type_j = system->atoms[j].type;
 
                     if( !strcmp( system->reaxprm.sbp[type_j].name, "C" ) ) {
-                        twbp = &( system->reaxprm.tbp[ index_tbp (type_i,type_j,&system->reaxprm) ]);
+                        twbp = &( system->reaxprm.tbp[ index_tbp(type_i,type_j,system->reaxprm.num_atom_types) ]);
                         bo_ij = &( bonds->select.bond_list[pj].bo_data );
                         Di = workspace->Delta[i];
                         vov3 = bo_ij->BO - Di - 0.040*POW(Di, 4.);
@@ -149,7 +149,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system,
             type_j = system->atoms[j].type;      
             bo_ij = &(bonds->select.bond_list[pj].bo_data);
             sbp_j = &(system->reaxprm.sbp[ type_j ]);
-            twbp = &(system->reaxprm.tbp[ index_tbp (type_i,type_j,&system->reaxprm) ]);
+            twbp = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,system->reaxprm.num_atom_types) ]);
 
             sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
             sum_ovun2 += (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j])*
@@ -222,7 +222,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system,
             j = pbond->nbr;
             type_j = system->atoms[j].type;
             bo_ij = &(pbond->bo_data);
-            twbp  = &(system->reaxprm.tbp[ index_tbp (type_i,type_j,&system->reaxprm) ]);
+            twbp  = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,system->reaxprm.num_atom_types) ]);
 
 
             bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s; // OvCoor - 1st  
@@ -407,7 +407,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
                     type_j = atoms[j].type;
 
                     if( !cuda_strcmp( sbp[type_j].name, "C", 15 ) ) {
-                        twbp = &( tbp[ index_tbp (type_i,type_j,num_atom_types) ]);
+                        twbp = &( tbp[ index_tbp(type_i,type_j,num_atom_types) ]);
                         bo_ij = &( bonds->select.bond_list[pj].bo_data );
                         Di = workspace->Delta[i];
                         vov3 = bo_ij->BO - Di - 0.040*POW(Di, 4.);
@@ -469,7 +469,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
         type_j = atoms[j].type;      
         bo_ij = &(bonds->select.bond_list[pj].bo_data);
         sbp_j = &(sbp[ type_j ]);
-        twbp = &(tbp[ index_tbp (type_i,type_j,num_atom_types) ]);
+        twbp = &(tbp[ index_tbp(type_i,type_j,num_atom_types) ]);
 
         sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
         sum_ovun2 += (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j])*
@@ -553,7 +553,7 @@ GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
         j = pbond->nbr;
         type_j = atoms[j].type;
         bo_ij = &(pbond->bo_data);
-        twbp  = &(tbp[ index_tbp (type_i,type_j,num_atom_types) ]);
+        twbp  = &(tbp[ index_tbp(type_i,type_j,num_atom_types) ]);
 
 
         bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s; // OvCoor - 1st  
@@ -723,7 +723,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
     type_j = atoms[j].type;
 
     if( !cuda_strcmp( sbp[type_j].name, "C", 15 ) ) {
-    twbp = &( tbp[ index_tbp (type_i,type_j,num_atom_types) ]);
+    twbp = &( tbp[ index_tbp(type_i,type_j,num_atom_types) ]);
     bo_ij = &( bonds->select.bond_list[pj].bo_data );
     Di = workspace->Delta[i];
     vov3 = bo_ij->BO - Di - 0.040*POW(Di, 4.);
@@ -769,7 +769,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
         type_j = atoms[j].type;      
         bo_ij = &(bonds->select.bond_list[pj].bo_data);
         sbp_j = &(sbp[ type_j ]);
-        twbp = &(tbp[ index_tbp (type_i,type_j,num_atom_types) ]);
+        twbp = &(tbp[ index_tbp(type_i,type_j,num_atom_types) ]);
 
         sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
         sum_ovun2 += (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j])*
@@ -831,7 +831,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *atoms, glob
         j = pbond->nbr;
         type_j = atoms[j].type;
         bo_ij = &(pbond->bo_data);
-        twbp  = &(tbp[ index_tbp (type_i,type_j,num_atom_types) ]);
+        twbp  = &(tbp[ index_tbp(type_i,type_j,num_atom_types) ]);
 
         bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s; // OvCoor - 1st  
 
@@ -921,7 +921,7 @@ GLOBAL void test_LonePair_OverUnder_Coordination_Energy_LP ( reax_atom *atoms, g
                 type_j = atoms[j].type;
 
                 if( !cuda_strcmp( sbp[type_j].name, "C", 15 ) ) {
-                    twbp = &( tbp[ index_tbp (type_i,type_j,num_atom_types) ]);
+                    twbp = &( tbp[ index_tbp(type_i,type_j,num_atom_types) ]);
                     bo_ij = &( bonds->select.bond_list[pj].bo_data );
                     Di = workspace->Delta[i];
                     vov3 = bo_ij->BO - Di - 0.040*POW(Di, 4.);

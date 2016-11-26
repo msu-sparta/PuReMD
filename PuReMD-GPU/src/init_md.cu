@@ -34,11 +34,12 @@
 #include "traj.h"
 #include "vector.h"
 
+#include "cuda_utils.h"
 #include "cuda_init.h"
 #include "cuda_copy.h"
-#include "cuda_utils.h"
-#include "helpers.h"
-#include "reduction.h"
+#include "cuda_box.h"
+#include "cuda_forces.h"
+#include "cuda_reduction.h"
 
 #include "cuda_allocate.h"
 #include "cuda_system_props.h"
@@ -163,7 +164,7 @@ void Cuda_Init_System( reax_system *system, control_params *control,
         exit( UNKNOWN_OPTION );
     }
 
-    compute_Inc_on_T3 <<<BLOCKS_POW_2, BLOCK_SIZE>>>
+    k_compute_Inc_on_T3<<<BLOCKS_POW_2, BLOCK_SIZE>>>
         (system->d_atoms, system->N, system->d_box, dx[0], dx[1], dx[2]);
     cudaThreadSynchronize ();
     cudaCheckError ();

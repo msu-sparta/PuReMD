@@ -269,7 +269,7 @@ where i < k */
                     if( BOA_jk > 0.0 && 
                             (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut)/*0*/) {
                         r_jk = pbond_jk->d;              
-                        thbh = &( system->reaxprm.thbp[ index_thbp (type_i,type_j,type_k,&system->reaxprm) ] );
+                        thbh = &( system->reaxprm.thbp[ index_thbp(type_i,type_j,type_k,system->reaxprm.num_atom_types) ] );
                         flag = 0;
 
                         /* if( workspace->orig_id[i] < workspace->orig_id[k] )
@@ -799,7 +799,7 @@ where i < k */
                 if( BOA_jk > 0.0 && 
                         (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut)/*0*/) {
                     r_jk = pbond_jk->d;              
-                    thbh = &( d_thbp[ index_thbp (type_i,type_j,type_k,num_atom_types) ] );
+                    thbh = &( d_thbp[ index_thbp(type_i,type_j,type_k,num_atom_types) ] );
                     flag = 0;
 
                     /* if( workspace->orig_id[i] < workspace->orig_id[k] )
@@ -1369,7 +1369,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         bo_ij = &(pbond_ij->bo_data);
                         type_i = system->atoms[i].type;
                         r_ij = pbond_ij->d;         
-                        hbp = &(system->reaxprm.hbp[ index_hbp(type_i, type_j, type_k, &system->reaxprm) ]);
+                        hbp = &(system->reaxprm.hbp[ index_hbp(type_i, type_j, type_k, system->reaxprm.num_atom_types) ]);
                         ++num_hb_intrs;
 
                         Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,

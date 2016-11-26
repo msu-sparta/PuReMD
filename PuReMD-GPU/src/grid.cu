@@ -396,11 +396,11 @@ void Copy_Storage( reax_system *system, static_storage *workspace,
     int i;
 
     for( i = 0; i < RESTART+1; ++i )
-        v[ index_wkspace_sys (i,top, system) ] = workspace->v[ index_wkspace_sys (i,old_id, system) ];
+        v[ index_wkspace_sys (i,top, system->N) ] = workspace->v[ index_wkspace_sys (i,old_id, system->N) ];
 
     for( i = 0; i < 3; ++i ) {
-        s[ index_wkspace_sys (i,top, system) ] = workspace->s[ index_wkspace_sys (i,old_id, system) ];
-        t[ index_wkspace_sys (i,top, system) ] = workspace->t[ index_wkspace_sys (i,old_id, system) ];
+        s[ index_wkspace_sys (i,top, system->N) ] = workspace->s[ index_wkspace_sys (i,old_id, system->N) ];
+        t[ index_wkspace_sys (i,top, system->N) ] = workspace->t[ index_wkspace_sys (i,old_id, system->N) ];
     }
 
     orig_id[top]  = workspace->orig_id[old_id];

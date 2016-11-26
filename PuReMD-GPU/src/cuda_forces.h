@@ -18,12 +18,25 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __HELPERS_H__
-#define __HELPERS_H__
+#ifndef __CUDA_FORCES_H_
+#define __CUDA_FORCES_H_
 
 #include "mytypes.h"
 
-GLOBAL void compute_Inc_on_T3 (reax_atom *atoms, unsigned int N,
-                               simulation_box *box, real d1, real d2, real d3);
+void Cuda_Compute_Forces( reax_system*, control_params*, simulation_data*,
+    static_storage*, list**, output_controls* );
+
+void Cuda_Estimate_Storage_Sizes (reax_system *, control_params *, int *);
+
+GLOBAL void Estimate_Storage_Sizes  (reax_atom *, int , single_body_parameters *,
+    two_body_parameters *, global_parameters ,
+    control_params *, list , int , int *);
+
+GLOBAL void Estimate_Sparse_Matrix_Entries ( reax_atom *, control_params *,
+    simulation_data *, simulation_box *, list , int , int *);
+
+void Cuda_Threebody_List( reax_system *, static_storage *, list *, int );
+
+bool validate_device (reax_system *, simulation_data *, static_storage *, list **);
 
 #endif

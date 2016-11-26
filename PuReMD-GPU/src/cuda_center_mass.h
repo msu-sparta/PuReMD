@@ -18,17 +18,17 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __FORCES_H_
-#define __FORCES_H_
+#ifndef __CUDA_CENTER_MASS_H__
+#define __CUDA_CENTER_MASS_H__
 
 #include "mytypes.h"
 
-void Init_Bonded_Force_Functions( control_params* );
-
-void Compute_Forces( reax_system*, control_params*, simulation_data*,
-                     static_storage*, list**, output_controls* );
-
-void Estimate_Storage_Sizes( reax_system*, control_params*, list**,
-                             int*, int*, int*, int* );
+GLOBAL void k_center_of_mass_blocks (single_body_parameters *, reax_atom *,
+    rvec *res_xcm, rvec *res_vcm, rvec *res_amcm, size_t n); 
+GLOBAL void k_center_of_mass (rvec *xcm,
+    rvec *vcm, rvec *amcm, rvec *res_xcm, rvec *res_vcm, rvec *res_amcm, size_t n);
+GLOBAL void k_compute_center_mass (single_body_parameters *sbp,
+    reax_atom *atoms, real *results, real xcm0, real xcm1, real xcm2, size_t n);
+GLOBAL void k_compute_center_mass (real *input, real *output, size_t n);
 
 #endif

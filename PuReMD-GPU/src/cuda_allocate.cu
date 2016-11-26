@@ -23,7 +23,7 @@
 #include "list.h"
 
 #include "cuda_utils.h"
-#include "reduction.h"
+#include "cuda_reduction.h"
 
 
 GLOBAL void Init_HBond_Indexes ( int *, int *, list , int  );

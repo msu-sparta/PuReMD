@@ -23,12 +23,14 @@
 
 #include "mytypes.h"
 
+
 HOST_DEVICE inline void h_swap(sparse_matrix_entry *array, int index1, int index2)
 {
     sparse_matrix_entry temp = array[index1];
     array[index1] = array[index2];
     array[index2] = temp;
 }
+
 
 HOST_DEVICE inline void h_quick_sort(sparse_matrix_entry *array, int start, int end)
 {
@@ -51,12 +53,14 @@ HOST_DEVICE inline void h_quick_sort(sparse_matrix_entry *array, int start, int 
     }
 }
 
+
 inline void d_swap(sparse_matrix_entry *array, int index1, int index2)
 {
     sparse_matrix_entry temp = array[index1];
     array[index1] = array[index2];
     array[index2] = temp;
 }
+
 
 inline void d_quick_sort(sparse_matrix_entry *array, int start, int end)
 {
@@ -80,7 +84,6 @@ inline void d_quick_sort(sparse_matrix_entry *array, int start, int end)
         d_quick_sort(array, k + 1, end);
     }
 }
-
 
 
 #endif

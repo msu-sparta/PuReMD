@@ -278,8 +278,8 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                 pbond_kl = &( bonds->select.bond_list[plk] );
                                 bo_kl = &( pbond_kl->bo_data );
                                 type_l = system->atoms[l].type;
-                                fbh = &(system->reaxprm.fbp[ index_fbp (type_i,type_j,type_k,type_l,&system->reaxprm ) ]);
-                                fbp = &(system->reaxprm.fbp[ index_fbp (type_i,type_j,type_k,type_l,&system->reaxprm )].prm[0]);
+                                fbh = &(system->reaxprm.fbp[ index_fbp(type_i,type_j,type_k,type_l,system->reaxprm.num_atom_types ) ]);
+                                fbp = &(system->reaxprm.fbp[ index_fbp(type_i,type_j,type_k,type_l,system->reaxprm.num_atom_types )].prm[0]);
 
                                 if( i != l && fbh->cnt && bo_kl->BO > control->thb_cut/*0*/ &&
                                         bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut/*0*/ ){
@@ -836,8 +836,8 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
                             pbond_kl = &( bonds->select.bond_list[plk] );
                             bo_kl = &( pbond_kl->bo_data );
                             type_l = atoms[l].type;
-                            fbh = &(d_fbp[ index_fbp (type_i,type_j,type_k,type_l,num_atom_types) ]);
-                            fbp = &(d_fbp[ index_fbp (type_i,type_j,type_k,type_l,num_atom_types)].prm[0]);
+                            fbh = &(d_fbp[ index_fbp(type_i,type_j,type_k,type_l,num_atom_types) ]);
+                            fbp = &(d_fbp[ index_fbp(type_i,type_j,type_k,type_l,num_atom_types)].prm[0]);
 
                             if( i != l && fbh->cnt && bo_kl->BO > control->thb_cut/*0*/ &&
                                     bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut/*0*/ ){

@@ -18,7 +18,7 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reduction.h"
+#include "cuda_reduction.h"
 
 #include "vector.h"
 
@@ -51,6 +51,7 @@ GLOBAL void Cuda_reduction(const real *input, real *per_block_results, const siz
         per_block_results[blockIdx.x] = sdata[0];
     }
 }
+
 
 GLOBAL void Cuda_Norm (const real *input, real *per_block_results, const size_t n, int pass)
 {
@@ -87,6 +88,7 @@ GLOBAL void Cuda_Norm (const real *input, real *per_block_results, const size_t 
     }
 }
 
+
 GLOBAL void Cuda_Dot (const real *a, const real *b, real *per_block_results, const size_t n )
 {
     extern __shared__ real sdata[];
@@ -116,6 +118,7 @@ GLOBAL void Cuda_Dot (const real *a, const real *b, real *per_block_results, con
     }
 }
 
+
 GLOBAL void Cuda_matrix_col_reduction(const real *input, real *per_block_results, const size_t n)
 {
     extern __shared__ real sdata[];
@@ -144,10 +147,6 @@ GLOBAL void Cuda_matrix_col_reduction(const real *input, real *per_block_results
         per_block_results[blockIdx.x] = sdata[0];
     }
 }
-
-
-
-
 
 
 GLOBAL void Cuda_reduction(const int *input, int *per_block_results, const size_t n)
@@ -213,10 +212,10 @@ GLOBAL void Cuda_reduction_rvec (rvec *input, rvec *results, size_t n)
     }
 }
 
+
 //////////////////////////////////////////////////
 //vector functions
 //////////////////////////////////////////////////
-
 GLOBAL void Cuda_Vector_Sum( real* dest, real c, real* v, real d, real* y, int k ) 
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -225,6 +224,7 @@ GLOBAL void Cuda_Vector_Sum( real* dest, real c, real* v, real d, real* y, int k
     dest[i] = c * v[i] + d * y[i];
 }
 
+
 GLOBAL void Cuda_Vector_Scale( real* dest, real c, real* v, int k ) 
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -232,6 +232,7 @@ GLOBAL void Cuda_Vector_Scale( real* dest, real c, real* v, int k )
 
     dest[i] = c * v[i];
 }
+
 
 GLOBAL void Cuda_Vector_Add( real* dest, real c, real* v, int k )
 {

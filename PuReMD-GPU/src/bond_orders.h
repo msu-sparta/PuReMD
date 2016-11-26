@@ -55,16 +55,4 @@ void Add_dBond_to_Forces_NPT( int, int, reax_system*, simulation_data*,
 void Calculate_Bond_Orders( reax_system*, control_params*, simulation_data*,
                             static_storage*, list**, output_controls* );
 
-//CUDA Functions
-GLOBAL void Cuda_Calculate_Bond_Orders_Init (  reax_atom *, global_parameters , single_body_parameters *,
-        static_storage , int , int );
-GLOBAL void Cuda_Calculate_Bond_Orders ( reax_atom *, global_parameters , single_body_parameters *,
-        two_body_parameters *, static_storage , list , list , list , int , int );
-GLOBAL void Cuda_Update_Uncorrected_BO (  static_storage , list , int );
-GLOBAL void Cuda_Update_Workspace_After_Bond_Orders(  reax_atom *, global_parameters , single_body_parameters *,
-        static_storage , int );
-GLOBAL void Cuda_Compute_Total_Force (reax_atom *, simulation_data *, static_storage , list , int , int );
-GLOBAL void Cuda_Compute_Total_Force_PostProcess (reax_atom *, simulation_data *, static_storage , list , int , int );
-//HOST_DEVICE void Cuda_Add_dBond_to_Forces( int, int, reax_atom *, static_storage*, list* );
-//HOST_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int, int, reax_atom *, simulation_data*, static_storage*, list* );
 #endif

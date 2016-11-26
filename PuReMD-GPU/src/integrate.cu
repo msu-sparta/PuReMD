@@ -33,11 +33,11 @@
 #include "list.h"
 
 #include "cuda_utils.h"
-#include "reduction.h"
-#include "validation.h"
-
+#include "cuda_reduction.h"
 #include "cuda_allocate.h"
+#include "cuda_forces.h"
 #include "cuda_system_props.h"
+#include "validation.h"
 
 
 void Velocity_Verlet_NVE(reax_system* system, control_params* control, 

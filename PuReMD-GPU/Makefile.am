@@ -20,16 +20,17 @@ NVCCFLAGS += --compiler-options "$(DEFS) -D__SM_35__ -O3 -funroll-loops -fstrict
 bin_PROGRAMS = bin/puremd-gpu
 bin_puremd_gpu_SOURCES = src/analyze.c src/print_utils.c \
 	src/restart.c src/param.c src/pdb_tools.c src/box.c \
-	src/GMRES.cu src/QEq.cu src/allocate.c src/bond_orders.cu \
-	src/forces.cu src/four_body_interactions.cu \
+	src/GMRES.cu src/QEq.cu src/allocate.c src/bond_orders.c \
+	src/forces.u src/four_body_interactions.cu \
 	src/grid.cu src/init_md.cu src/integrate.cu src/list.cu \
 	src/lookup.cu src/neighbors.cu \
 	src/reset_utils.cu src/single_body_interactions.cu \
 	src/system_props.c src/three_body_interactions.cu \
 	src/traj.c src/two_body_interactions.cu src/vector.c \
-	src/cuda_utils.cu src/cuda_copy.cu src/cuda_init.cu src/reduction.cu \
-	src/center_mass.cu src/helpers.cu src/validation.cu src/matvec.cu \
-        src/cuda_allocate.cu \
+	src/cuda_utils.cu src/cuda_copy.cu src/cuda_init.cu src/cuda_reduction.cu \
+	src/cuda_center_mass.cu src/cuda_box.cu src/validation.cu src/matvec.cu \
+        src/cuda_allocate.cu src/cuda_bond_orders.cu \
+        src/cuda_forces.cu \
         src/cuda_system_props.cu \
 	src/testmd.c
 include_HEADERS = src/mytypes.h src/analyze.h src/print_utils.h \
@@ -41,9 +42,10 @@ include_HEADERS = src/mytypes.h src/analyze.h src/print_utils.h \
 	src/reset_utils.h src/single_body_interactions.h \
 	src/system_props.h src/three_body_interactions.h \
 	src/traj.h src/two_body_interactions.h src/vector.h \
-	src/cuda_utils.h src/cuda_copy.h src/cuda_init.h src/reduction.h \
-	src/center_mass.h src/helpers.h src/validation.h src/matvec.h \
-        src/cuda_allocate.h \
+	src/cuda_utils.h src/cuda_copy.h src/cuda_init.h src/cuda_reduction.h \
+	src/cuda_center_mass.h src/cuda_box.h src/validation.h src/matvec.h \
+        src/cuda_allocate.h src/cuda_bond_orders.h \
+        src/cuda_forces.h \
         src/cuda_system_props.h
 
 # dummy source to cause C linking

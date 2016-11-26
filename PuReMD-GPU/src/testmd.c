@@ -37,9 +37,9 @@
 #include "grid.h"
 #include "cuda_utils.h"
 #include "cuda_copy.h"
-#include "validation.h"
-
+#include "cuda_forces.h"
 #include "cuda_system_props.h"
+#include "validation.h"
 
 
 interaction_function Interaction_Functions[NO_OF_INTERACTIONS];

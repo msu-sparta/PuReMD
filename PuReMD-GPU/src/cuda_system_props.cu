@@ -23,10 +23,10 @@
 #include "box.h"
 #include "vector.h"
 
-#include "center_mass.h"
+#include "cuda_center_mass.h"
 #include "cuda_copy.h"
 #include "cuda_utils.h"
-#include "reduction.h"
+#include "cuda_reduction.h"
 
 
 GLOBAL void k_Compute_Total_Mass(single_body_parameters *, reax_atom *, real *, size_t );
@@ -113,12 +113,12 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     l_vcm = r_scratch + (BLOCKS_POW_2 + 1);
     l_amcm = r_scratch + 2 * (BLOCKS_POW_2 + 1);
 
-    center_of_mass_blocks <<<BLOCKS_POW_2, BLOCK_SIZE, 3 * (RVEC_SIZE * BLOCK_SIZE) >>> 
+    k_center_of_mass_blocks<<<BLOCKS_POW_2, BLOCK_SIZE, 3 * (RVEC_SIZE * BLOCK_SIZE) >>> 
         (system->reaxprm.d_sbp, system->d_atoms, l_xcm, l_vcm, l_amcm, system->N);
     cudaThreadSynchronize ();
     cudaCheckError ();
 
-    center_of_mass <<<1, BLOCKS_POW_2, 3 * (RVEC_SIZE * BLOCKS_POW_2) >>> 
+    k_center_of_mass<<<1, BLOCKS_POW_2, 3 * (RVEC_SIZE * BLOCKS_POW_2) >>> 
         (l_xcm, l_vcm, l_amcm, 
          l_xcm + BLOCKS_POW_2, 
          l_vcm + BLOCKS_POW_2, 
@@ -188,13 +188,13 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     cuda_memset (partial_results, 0, REAL_SIZE * 6 * (BLOCKS_POW_2 + 1), RES_SCRATCH );
     local_results = (real *) malloc (REAL_SIZE * 6 *(BLOCKS_POW_2+ 1));
 
-    compute_center_mass <<<BLOCKS_POW_2, BLOCK_SIZE, 6 * (REAL_SIZE * BLOCK_SIZE) >>> 
+    k_compute_center_mass<<<BLOCKS_POW_2, BLOCK_SIZE, 6 * (REAL_SIZE * BLOCK_SIZE) >>> 
         (system->reaxprm.d_sbp, system->d_atoms, partial_results, 
          data->xcm[0], data->xcm[1], data->xcm[2], system->N);
     cudaThreadSynchronize ();
     cudaCheckError ();
 
-    compute_center_mass <<<1, BLOCKS_POW_2, 6 * (REAL_SIZE * BLOCKS_POW_2) >>> 
+    k_compute_center_mass<<<1, BLOCKS_POW_2, 6 * (REAL_SIZE * BLOCKS_POW_2) >>> 
         (partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2);
     cudaThreadSynchronize ();
     cudaCheckError ();

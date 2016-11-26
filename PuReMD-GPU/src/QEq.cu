@@ -19,20 +19,21 @@
   ----------------------------------------------------------------------*/
 
 #include "QEq.h"
+
 #include "allocate.h"
 #include "GMRES.h"
 #include "list.h"
 #include "print_utils.h"
 #include "index_utils.h"
+#include "system_props.h"
 
 #include "cuda_utils.h"
 #include "cuda_init.h"
 #include "cuda_copy.h"
+#include "cuda_reduction.h"
+
 #include "sort.h"
 #include "validation.h"
-#include "reduction.h"
-
-#include "system_props.h"
 
 
 HOST_DEVICE void swap(sparse_matrix_entry *array, int index1, int index2) 
@@ -674,11 +675,11 @@ void Init_MatVec( reax_system *system, control_params *control,
 
         // quadratic
         //s_tmp = workspace->s[2][i] + 3 * (workspace->s[0][i]-workspace->s[1][i]);
-        t_tmp = workspace->t[index_wkspace_sys(2,i,system)] + 3*(workspace->t[index_wkspace_sys(0,i,system)]-workspace->t[index_wkspace_sys(1,i,system)]);
+        t_tmp = workspace->t[index_wkspace_sys(2,i,system->N)] + 3*(workspace->t[index_wkspace_sys(0,i,system->N)]-workspace->t[index_wkspace_sys(1,i,system->N)]);
 
         // cubic
-        s_tmp = 4 * (workspace->s[index_wkspace_sys(0,i,system)] + workspace->s[index_wkspace_sys(2,i,system)]) - 
-            (6 * workspace->s[index_wkspace_sys(1,i,system)] + workspace->s[index_wkspace_sys(3,i,system)] );
+        s_tmp = 4 * (workspace->s[index_wkspace_sys(0,i,system->N)] + workspace->s[index_wkspace_sys(2,i,system->N)]) - 
+            (6 * workspace->s[index_wkspace_sys(1,i,system->N)] + workspace->s[index_wkspace_sys(3,i,system->N)] );
         //t_tmp = 4 * (workspace->t[0][i] + workspace->t[2][i]) - 
         //  (6 * workspace->t[1][i] + workspace->t[3][i] );
 
@@ -688,17 +689,17 @@ void Init_MatVec( reax_system *system, control_params *control,
         //t_tmp = 5 * (workspace->t[0][i] - workspace->t[3][i]) + 
         //  10 * (-workspace->t[1][i] + workspace->t[2][i] ) + workspace->t[4][i];
 
-        workspace->s[index_wkspace_sys(4,i,system)] = workspace->s[index_wkspace_sys(3,i,system)];
-        workspace->s[index_wkspace_sys(3,i,system)] = workspace->s[index_wkspace_sys(2,i,system)]; 
-        workspace->s[index_wkspace_sys(2,i,system)] = workspace->s[index_wkspace_sys(1,i,system)];
-        workspace->s[index_wkspace_sys(1,i,system)] = workspace->s[index_wkspace_sys(0,i,system)];
-        workspace->s[index_wkspace_sys(0,i,system)] = s_tmp;
+        workspace->s[index_wkspace_sys(4,i,system->N)] = workspace->s[index_wkspace_sys(3,i,system->N)];
+        workspace->s[index_wkspace_sys(3,i,system->N)] = workspace->s[index_wkspace_sys(2,i,system->N)]; 
+        workspace->s[index_wkspace_sys(2,i,system->N)] = workspace->s[index_wkspace_sys(1,i,system->N)];
+        workspace->s[index_wkspace_sys(1,i,system->N)] = workspace->s[index_wkspace_sys(0,i,system->N)];
+        workspace->s[index_wkspace_sys(0,i,system->N)] = s_tmp;
 
-        workspace->t[index_wkspace_sys(4,i,system)] = workspace->t[index_wkspace_sys(3,i,system)];
-        workspace->t[index_wkspace_sys(3,i,system)] = workspace->t[index_wkspace_sys(2,i,system)]; 
-        workspace->t[index_wkspace_sys(2,i,system)] = workspace->t[index_wkspace_sys(1,i,system)];
-        workspace->t[index_wkspace_sys(1,i,system)] = workspace->t[index_wkspace_sys(0,i,system)];
-        workspace->t[index_wkspace_sys(0,i,system)] = t_tmp;
+        workspace->t[index_wkspace_sys(4,i,system->N)] = workspace->t[index_wkspace_sys(3,i,system->N)];
+        workspace->t[index_wkspace_sys(3,i,system->N)] = workspace->t[index_wkspace_sys(2,i,system->N)]; 
+        workspace->t[index_wkspace_sys(2,i,system->N)] = workspace->t[index_wkspace_sys(1,i,system->N)];
+        workspace->t[index_wkspace_sys(1,i,system->N)] = workspace->t[index_wkspace_sys(0,i,system->N)];
+        workspace->t[index_wkspace_sys(0,i,system->N)] = t_tmp;
     }
 }
 
@@ -916,8 +917,8 @@ void Calculate_Charges( reax_system *system, static_storage *workspace )
 
     s_sum = t_sum = 0.;
     for( i = 0; i < system->N; ++i ) {
-        s_sum += workspace->s[index_wkspace_sys(0,i,system)];
-        t_sum += workspace->t[index_wkspace_sys(0,i,system)];
+        s_sum += workspace->s[index_wkspace_sys(0,i,system->N)];
+        t_sum += workspace->t[index_wkspace_sys(0,i,system->N)];
     }
 
     u = s_sum / t_sum;
@@ -928,7 +929,7 @@ void Calculate_Charges( reax_system *system, static_storage *workspace )
 
     for( i = 0; i < system->N; ++i )
     {
-        system->atoms[i].q = workspace->s[index_wkspace_sys(0,i,system)] - u * workspace->t[index_wkspace_sys(0,i,system)];
+        system->atoms[i].q = workspace->s[index_wkspace_sys(0,i,system->N)] - u * workspace->t[index_wkspace_sys(0,i,system->N)];
     }
 }
 
@@ -1026,9 +1027,9 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //    workspace->b_t, control->q_err, workspace->t[0], out_control->log );
 
     //matvecs = PGMRES( workspace, &workspace->H, workspace->b_s, control->q_err,
-    //  &workspace->L, &workspace->U, &workspace->s[index_wkspace_sys(0,0,system)], out_control->log, system );
+    //  &workspace->L, &workspace->U, &workspace->s[index_wkspace_sys(0,0,system->N)], out_control->log, system );
     //matvecs += PGMRES( workspace, &workspace->H, workspace->b_t, control->q_err,
-    //  &workspace->L, &workspace->U, &workspace->t[index_wkspace_sys(0,0,system)], out_control->log, system );
+    //  &workspace->L, &workspace->U, &workspace->t[index_wkspace_sys(0,0,system->N)], out_control->log, system );
 
     //matvecs=PCG( workspace, workspace->H, workspace->b_s, control->q_err, 
     //      workspace->L, workspace->U, workspace->s[0], out_control->log ) + 1;

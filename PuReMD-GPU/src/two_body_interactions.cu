@@ -63,7 +63,7 @@ void Bond_Energy( reax_system *system, control_params *control,
                 type_j = system->atoms[j].type;
                 sbp_i = &( system->reaxprm.sbp[type_i] );
                 sbp_j = &( system->reaxprm.sbp[type_j] );
-                twbp = &( system->reaxprm.tbp[ index_tbp (type_i,type_j,&system->reaxprm) ] );
+                twbp = &( system->reaxprm.tbp[ index_tbp(type_i,type_j,system->reaxprm.num_atom_types) ] );
                 bo_ij = &( bonds->select.bond_list[pj].bo_data );
 
                 /* calculate the constants */
@@ -205,7 +205,7 @@ GLOBAL void Cuda_Bond_Energy ( reax_atom *atoms, global_parameters g_params,
             type_j = atoms[j].type;
             sbp_i = &( sbp[type_i] );
             sbp_j = &( sbp[type_j] );
-            twbp = &( tbp[ index_tbp (type_i,type_j,num_atom_types) ] );
+            twbp = &( tbp[ index_tbp(type_i,type_j,num_atom_types) ] );
             bo_ij = &( bonds->select.bond_list[pj].bo_data );
 
             /* calculate the constants */
@@ -357,7 +357,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                 nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
                 j = nbr_pj->nbr;
                 r_ij = nbr_pj->d;
-                twbp = &(system->reaxprm.tbp[ index_tbp (system->atoms[i].type, system->atoms[j].type, &system->reaxprm) ]);
+                twbp = &(system->reaxprm.tbp[ index_tbp(system->atoms[i].type, system->atoms[j].type, system->reaxprm.num_atom_types) ]);
                 self_coef = (i == j) ? 0.5 : 1.0; // for supporting small boxes!
 
                 /* Calculate Taper and its derivative */
@@ -557,7 +557,7 @@ if( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut ) {
 nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
 j = nbr_pj->nbr;
 r_ij = nbr_pj->d;
-twbp = &(tbp[ index_tbp (atoms[i].type, atoms[j].type, num_atom_types) ]);
+twbp = &(tbp[ index_tbp(atoms[i].type, atoms[j].type, num_atom_types) ]);
 self_coef = (i == j) ? 0.5 : 1.0; // for supporting small boxes!
 
 //CHANGE ORIGINAL
@@ -743,7 +743,7 @@ GLOBAL void Cuda_vdW_Coulomb_Energy( reax_atom *atoms,
                 nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
                 j = nbr_pj->nbr;
                 r_ij = nbr_pj->d;
-                twbp = &(tbp[ index_tbp (atoms[i].type, atoms[j].type, num_atom_types) ]);
+                twbp = &(tbp[ index_tbp(atoms[i].type, atoms[j].type, num_atom_types) ]);
                 self_coef = (i == j) ? 0.5 : 1.0; // for supporting small boxes!
 
                 //CHANGE ORIGINAL
@@ -932,7 +932,7 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
     real e_core, de_core;
     two_body_parameters *twbp;
 
-    twbp = &(system->reaxprm.tbp[ index_tbp (i,j,&system->reaxprm) ]);
+    twbp = &(system->reaxprm.tbp[ index_tbp(i,j,system->reaxprm.num_atom_types) ]);
     e_core = 0;
     de_core = 0;
 

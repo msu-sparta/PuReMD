@@ -25,7 +25,7 @@
 
 #include "cuda_copy.h"
 #include "cuda_utils.h"
-#include "reduction.h"
+#include "cuda_reduction.h"
 #include "matvec.h"
 #include "system_props.h"
 
@@ -118,29 +118,29 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
             workspace->b_prm[i] *= workspace->Hdia_inv[i]; /* pre-conditioner */    
 
 
-        Vector_Sum(&workspace->v[ index_wkspace_sys (0,0,system) ], 1.,workspace->b_prc, -1., workspace->b_prm, N);
-        workspace->g[0] = Norm( &workspace->v[index_wkspace_sys (0,0,system)], N );
-        Vector_Scale( &workspace->v[ index_wkspace_sys (0,0,system) ], 1.0/workspace->g[0], &workspace->v[index_wkspace_sys(0,0,system)], N );
+        Vector_Sum(&workspace->v[ index_wkspace_sys (0,0,system->N) ], 1.,workspace->b_prc, -1., workspace->b_prm, N);
+        workspace->g[0] = Norm( &workspace->v[index_wkspace_sys (0,0,system->N)], N );
+        Vector_Scale( &workspace->v[ index_wkspace_sys (0,0,system->N) ], 1.0/workspace->g[0], &workspace->v[index_wkspace_sys(0,0,system->N)], N );
 
         /* GMRES inner-loop */
         for( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ ) {
             /* matvec */
-            Sparse_MatVec( H, &workspace->v[index_wkspace_sys(j,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)] );
+            Sparse_MatVec( H, &workspace->v[index_wkspace_sys(j,0,system->N)], &workspace->v[index_wkspace_sys(j+1,0,system->N)] );
 
             for( k = 0; k < N; ++k )  
-                workspace->v[ index_wkspace_sys (j+1,k,system)] *= workspace->Hdia_inv[k]; /*pre-conditioner*/ 
+                workspace->v[ index_wkspace_sys (j+1,k,system->N)] *= workspace->Hdia_inv[k]; /*pre-conditioner*/ 
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
             for( i = 0; i <= j; i++ ) {
-                workspace->h[ index_wkspace_res (i,j) ] = Dot( &workspace->v[index_wkspace_sys(i,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)], N );
-                Vector_Add( &workspace->v[index_wkspace_sys(j+1,0,system)], 
-                        -workspace->h[index_wkspace_res (i,j) ], &workspace->v[index_wkspace_sys(i,0,system)], N );
+                workspace->h[ index_wkspace_res (i,j) ] = Dot( &workspace->v[index_wkspace_sys(i,0,system->N)], &workspace->v[index_wkspace_sys(j+1,0,system->N)], N );
+                Vector_Add( &workspace->v[index_wkspace_sys(j+1,0,system->N)], 
+                        -workspace->h[index_wkspace_res (i,j) ], &workspace->v[index_wkspace_sys(i,0,system->N)], N );
             }
 
 
-            workspace->h[ index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys(j+1,0,system)], N );
-            Vector_Scale( &workspace->v[index_wkspace_sys(j+1,0,system)], 
-                    1. / workspace->h[ index_wkspace_res (j+1,j) ], &workspace->v[index_wkspace_sys(j+1,0,system)], N );
+            workspace->h[ index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys(j+1,0,system->N)], N );
+            Vector_Scale( &workspace->v[index_wkspace_sys(j+1,0,system->N)], 
+                    1. / workspace->h[ index_wkspace_res (j+1,j) ], &workspace->v[index_wkspace_sys(j+1,0,system->N)], N );
             // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
 
 
@@ -188,7 +188,7 @@ int GMRES( static_storage *workspace, sparse_matrix *H,
 
         /* update x = x_0 + Vy */
         for( i = 0; i < j; i++ )
-            Vector_Add( x, workspace->y[i], &workspace->v[index_wkspace_sys(i,0,system)], N );
+            Vector_Add( x, workspace->y[i], &workspace->v[index_wkspace_sys(i,0,system->N)], N );
 
         /* stopping condition */
         if( fabs(workspace->g[j]) / bnorm <= tol )
@@ -327,7 +327,7 @@ int Cuda_GMRES( static_storage *workspace, real *b, real tol, real *x )
         cudaThreadSynchronize();
         cudaCheckError ();
 
-        //workspace->g[0] = Norm( &workspace->v[index_wkspace_sys (0,0,system)], N );
+        //workspace->g[0] = Norm( &workspace->v[index_wkspace_sys (0,0,system->N)], N );
         {
             cuda_memset( spad, 0, REAL_SIZE * H->n * 2, RES_SCRATCH );
 
@@ -360,7 +360,7 @@ int Cuda_GMRES( static_storage *workspace, real *b, real tol, real *x )
 
         for( j = 0; j < RESTART && fabs(g[j]) / bnorm > tol; j++ ) {
             /* matvec */
-            //Sparse_MatVec( H, &workspace->v[index_wkspace_sys(j,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)] );
+            //Sparse_MatVec( H, &workspace->v[index_wkspace_sys(j,0,system->N)], &workspace->v[index_wkspace_sys(j+1,0,system->N)] );
             Cuda_Matvec_csr<<<MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, REAL_SIZE * MATVEC_BLOCK_SIZE>>> 
                 ( *H, &workspace->v[ index_wkspace_sys (j, 0, N)],
                   &workspace->v[ index_wkspace_sys (j+1, 0, N) ], N );
@@ -398,8 +398,7 @@ int Cuda_GMRES( static_storage *workspace, real *b, real tol, real *x )
                 cudaCheckError();
             }
 
-
-            //workspace->h[ index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys(j+1,0,system)], N );
+            //workspace->h[ index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys(j+1,0,system->N)], N );
             cuda_memset(spad, 0, REAL_SIZE * N * 2, RES_SCRATCH );
 
             Cuda_Norm<<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE>>>
@@ -539,7 +538,7 @@ int Cublas_GMRES(reax_system *system, static_storage *workspace, real *b, real t
         cublasCheckError (cublasDaxpy (cublasHandle, N, &D_ONE, workspace->b_prc, 1, &workspace->v[ index_wkspace_sys (0,0,N) ], 1));
         cublasCheckError (cublasDaxpy (cublasHandle, N, &D_MINUS_ONE, workspace->b_prm, 1, &workspace->v[ index_wkspace_sys (0,0,N) ], 1));
 
-        //workspace->g[0] = Norm( &workspace->v[index_wkspace_sys (0,0,system)], N );
+        //workspace->g[0] = Norm( &workspace->v[index_wkspace_sys (0,0,system->N)], N );
         {
             /*
                cuda_memset (spad, 0, REAL_SIZE * H->n * 2, RES_SCRATCH );
@@ -624,7 +623,7 @@ int Cublas_GMRES(reax_system *system, static_storage *workspace, real *b, real t
             }
 
 
-            //workspace->h[ index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys(j+1,0,system)], N );
+            //workspace->h[ index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys(j+1,0,system->N)], N );
             /*
                cuda_memset (spad, 0, REAL_SIZE * N * 2, RES_SCRATCH );
 
@@ -902,20 +901,20 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
     {
         /* calculate r0 */
         Sparse_MatVec( H, x, workspace->b_prm );      
-        Vector_Sum( &workspace->v[index_wkspace_sys(0,0,system)], 1., b, -1., workspace->b_prm, N );
-        Forward_Subs( L, &workspace->v[index_wkspace_sys(0,0,system)], &workspace->v[index_wkspace_sys(0,0,system)] );
-        Backward_Subs( U, &workspace->v[index_wkspace_sys(0,0,system)], &workspace->v[index_wkspace_sys(0,0,system)] );
-        workspace->g[0] = Norm( &workspace->v[index_wkspace_sys(0,0,system)], N );
-        Vector_Scale( &workspace->v[index_wkspace_sys(0,0,system)], 1. / workspace->g[0], &workspace->v[index_wkspace_sys (0,0,system)], N );
+        Vector_Sum( &workspace->v[index_wkspace_sys(0,0,system->N)], 1., b, -1., workspace->b_prm, N );
+        Forward_Subs( L, &workspace->v[index_wkspace_sys(0,0,system->N)], &workspace->v[index_wkspace_sys(0,0,system->N)] );
+        Backward_Subs( U, &workspace->v[index_wkspace_sys(0,0,system->N)], &workspace->v[index_wkspace_sys(0,0,system->N)] );
+        workspace->g[0] = Norm( &workspace->v[index_wkspace_sys(0,0,system->N)], N );
+        Vector_Scale( &workspace->v[index_wkspace_sys(0,0,system->N)], 1. / workspace->g[0], &workspace->v[index_wkspace_sys (0,0,system->N)], N );
         //fprintf( stderr, "res: %.15e\n", workspace->g[0] );
 
         /* GMRES inner-loop */
         for( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
         {
             /* matvec */
-            Sparse_MatVec( H, &workspace->v[index_wkspace_sys (j,0,system)], &workspace->v[index_wkspace_sys (j+1,0,system)] );
-            Forward_Subs( L, &workspace->v[index_wkspace_sys(j+1,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)] );
-            Backward_Subs( U, &workspace->v[index_wkspace_sys(j+1,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)] );
+            Sparse_MatVec( H, &workspace->v[index_wkspace_sys (j,0,system->N)], &workspace->v[index_wkspace_sys (j+1,0,system->N)] );
+            Forward_Subs( L, &workspace->v[index_wkspace_sys(j+1,0,system->N)], &workspace->v[index_wkspace_sys(j+1,0,system->N)] );
+            Backward_Subs( U, &workspace->v[index_wkspace_sys(j+1,0,system->N)], &workspace->v[index_wkspace_sys(j+1,0,system->N)] );
 
             /* apply modified Gram-Schmidt to orthogonalize the new residual */
             for( i = 0; i < j-1; i++ )
@@ -925,13 +924,13 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
 
             //for( i = 0; i <= j; i++ ) {
             for( i = MAX(j-1,0); i <= j; i++ ) {
-                workspace->h[index_wkspace_res (i,j)] = Dot( &workspace->v[index_wkspace_sys (i,0,system)], &workspace->v[index_wkspace_sys(j+1,0,system)], N );
-                Vector_Add( &workspace->v[index_wkspace_sys(j+1,0,system)],-workspace->h[ index_wkspace_res (i,j) ], &workspace->v[index_wkspace_sys(i,0,system)], N );
+                workspace->h[index_wkspace_res (i,j)] = Dot( &workspace->v[index_wkspace_sys (i,0,system->N)], &workspace->v[index_wkspace_sys(j+1,0,system->N)], N );
+                Vector_Add( &workspace->v[index_wkspace_sys(j+1,0,system->N)],-workspace->h[ index_wkspace_res (i,j) ], &workspace->v[index_wkspace_sys(i,0,system->N)], N );
             }
 
-            workspace->h[index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys (j+1,0,system)], N );
-            Vector_Scale( &workspace->v[index_wkspace_sys(j+1,0,system)], 
-                    1. / workspace->h[ index_wkspace_res (j+1,j)], &workspace->v[index_wkspace_sys(j+1,0,system)], N );
+            workspace->h[index_wkspace_res (j+1,j) ] = Norm( &workspace->v[index_wkspace_sys (j+1,0,system->N)], N );
+            Vector_Scale( &workspace->v[index_wkspace_sys(j+1,0,system->N)], 
+                    1. / workspace->h[ index_wkspace_res (j+1,j)], &workspace->v[index_wkspace_sys(j+1,0,system->N)], N );
             // fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
 
             /* Givens rotations on the upper-Hessenberg matrix to make it U */
@@ -982,7 +981,7 @@ int PGMRES( static_storage *workspace, sparse_matrix *H, real *b, real tol,
         /* update x = x_0 + Vy */
         Vector_MakeZero( workspace->p, N );
         for( i = 0; i < j; i++ )
-            Vector_Add( workspace->p, workspace->y[i], &workspace->v[index_wkspace_sys(i,0,system)], N );
+            Vector_Add( workspace->p, workspace->y[i], &workspace->v[index_wkspace_sys(i,0,system->N)], N );
         //Backward_Subs( U, workspace->p, workspace->p );
         //Forward_Subs( L, workspace->p, workspace->p );
         Vector_Add( x, 1., workspace->p, N );
