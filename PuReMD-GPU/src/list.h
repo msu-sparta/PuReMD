@@ -23,8 +23,9 @@
 
 #include "mytypes.h"
 
-HOST char Make_List( int, int, int, list* , int );
-HOST void Delete_List( list* , int );
+
+char Make_List( int, int, int, list* );
+void Delete_List( list* );
 
 
 inline HOST_DEVICE int Num_Entries(int i, list* l)
@@ -32,20 +33,24 @@ inline HOST_DEVICE int Num_Entries(int i, list* l)
     return l->end_index[i] - l->index[i];
 }
 
+
 inline HOST_DEVICE int Start_Index(int i, list *l )
 {
     return l->index[i];
 }
+
 
 inline HOST_DEVICE int End_Index( int i, list *l )
 {
     return l->end_index[i];
 }
 
+
 inline HOST_DEVICE void Set_Start_Index(int i, int val, list *l)
 {
     l->index[i] = val;
 }
+
 
 inline HOST_DEVICE void Set_End_Index(int i, int val, list *l)
 {

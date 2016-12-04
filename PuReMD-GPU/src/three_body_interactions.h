@@ -23,52 +23,15 @@
 
 #include "mytypes.h"
 
+
 void Three_Body_Interactions( reax_system*, control_params*, simulation_data*,
-                              static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 
 void Hydrogen_Bonds( reax_system*, control_params*, simulation_data*,
-                     static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 
+void Calculate_Theta( rvec, real, rvec, real, real*, real* );
 
-//CUDA Functions.
-HOST_DEVICE void Calculate_Theta( rvec, real, rvec, real, real*, real* );
+void Calculate_dCos_Theta( rvec, real, rvec, real, rvec*, rvec*, rvec* );
 
-HOST_DEVICE void Calculate_dCos_Theta( rvec, real, rvec, real, rvec*, rvec*, rvec* );
-
-GLOBAL void Three_Body_Interactions( reax_atom *, single_body_parameters *, three_body_header *,
-                                     global_parameters , control_params *, simulation_data *,
-                                     static_storage ,
-                                     list , list , int , int , real *, real *, real *, rvec *);
-
-GLOBAL void Three_Body_Interactions_results (  reax_atom *,
-        control_params *,
-        static_storage ,
-        list , int );
-
-GLOBAL void Three_Body_Estimate ( reax_atom *atoms,
-                                  control_params *control,
-                                  list p_bonds, int N,
-                                  int *count);
-
-GLOBAL void Hydrogen_Bonds (  reax_atom *,
-                              single_body_parameters *, hbond_parameters *,
-                              control_params *, simulation_data *, static_storage ,
-                              list , list , int , int, real *, rvec *, rvec *);
-GLOBAL void Hydrogen_Bonds_HB (  reax_atom *,
-                                 single_body_parameters *, hbond_parameters *,
-                                 control_params *, simulation_data *, static_storage ,
-                                 list , list , int , int, real *, rvec *, rvec *);
-
-GLOBAL void Hydrogen_Bonds_Postprocess (  reax_atom *,
-        single_body_parameters *,
-        static_storage , list,
-        list , list , int, real * );
-GLOBAL void Hydrogen_Bonds_Far_Nbrs (  reax_atom *,
-                                       single_body_parameters *,
-                                       static_storage , list,
-                                       list , list , int );
-GLOBAL void Hydrogen_Bonds_HNbrs (  reax_atom *,
-                                    single_body_parameters *,
-                                    static_storage , list,
-                                    list , list , int );
 #endif

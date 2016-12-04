@@ -22,58 +22,61 @@
 
 #include "cuda_utils.h"
 #include "cuda_copy.h"
+#include "cuda_reset_utils.h"
 
 #include "vector.h"
-#include "reset_utils.h"
 
 
-void Cuda_Init_System ( reax_system *system)
+void Cuda_Init_System( reax_system *system)
 {
-    cuda_malloc ( (void **) &system->d_atoms, system->N * REAX_ATOM_SIZE, 1, RES_SYSTEM_ATOMS );    
+    cuda_malloc( (void **) &system->d_atoms, system->N * REAX_ATOM_SIZE, 1, RES_SYSTEM_ATOMS );    
 
-    cuda_malloc ( (void **) &system->d_box, sizeof (simulation_box), 1, RES_SYSTEM_SIMULATION_BOX );
+    cuda_malloc( (void **) &system->d_box, sizeof (simulation_box), 1, RES_SYSTEM_SIMULATION_BOX );
 
     //interaction parameters
-    cuda_malloc ((void **) &system->reaxprm.d_sbp, system->reaxprm.num_atom_types * SBP_SIZE,
+    cuda_malloc((void **) &system->reaxprm.d_sbp, system->reaxprm.num_atom_types * SBP_SIZE,
             1, RES_REAX_INT_SBP );
 
-    cuda_malloc ((void **) &system->reaxprm.d_tbp, pow (system->reaxprm.num_atom_types, 2) * TBP_SIZE, 
+    cuda_malloc((void **) &system->reaxprm.d_tbp, pow (system->reaxprm.num_atom_types, 2) * TBP_SIZE, 
             1, RES_REAX_INT_TBP );
 
-    cuda_malloc ((void **) &system->reaxprm.d_thbp, pow (system->reaxprm.num_atom_types, 3) * THBP_SIZE,
+    cuda_malloc((void **) &system->reaxprm.d_thbp, pow (system->reaxprm.num_atom_types, 3) * THBP_SIZE,
             1, RES_REAX_INT_THBP );
 
-    cuda_malloc ((void **) &system->reaxprm.d_hbp, pow (system->reaxprm.num_atom_types, 3) * HBP_SIZE,
+    cuda_malloc((void **) &system->reaxprm.d_hbp, pow (system->reaxprm.num_atom_types, 3) * HBP_SIZE,
             1, RES_REAX_INT_HBP );
 
-    cuda_malloc ((void **) &system->reaxprm.d_fbp, pow (system->reaxprm.num_atom_types, 4) * FBP_SIZE,
+    cuda_malloc((void **) &system->reaxprm.d_fbp, pow (system->reaxprm.num_atom_types, 4) * FBP_SIZE,
             1, RES_REAX_INT_FBP );
 
-    cuda_malloc ((void **) &system->reaxprm.d_gp.l, REAL_SIZE * system->reaxprm.gp.n_global, 1, RES_GLOBAL_PARAMS );
+    cuda_malloc((void **) &system->reaxprm.d_gp.l, REAL_SIZE * system->reaxprm.gp.n_global, 1, RES_GLOBAL_PARAMS );
 
     system->reaxprm.d_gp.n_global = 0;
     system->reaxprm.d_gp.vdw_type = 0;
 }
 
 
-void Cuda_Init_Control (control_params *control)
+void Cuda_Init_Control(control_params *control)
 {
-    cuda_malloc ((void **)&control->d_control, CONTROL_PARAMS_SIZE, 1, RES_CONTROL_PARAMS );
-    copy_host_device (control, control->d_control, CONTROL_PARAMS_SIZE, cudaMemcpyHostToDevice, RES_CONTROL_PARAMS );
+    cuda_malloc((void **)&control->d_control, CONTROL_PARAMS_SIZE, 1, RES_CONTROL_PARAMS );
+    copy_host_device(control, control->d_control, CONTROL_PARAMS_SIZE, cudaMemcpyHostToDevice, RES_CONTROL_PARAMS );
 }
 
 
 void Cuda_Init_Simulation_Data (simulation_data *data)
 {
-    cuda_malloc ((void **) &(data->d_simulation_data), SIMULATION_DATA_SIZE, 1, RES_SIMULATION_DATA );
+    cuda_malloc((void **) &(data->d_simulation_data), SIMULATION_DATA_SIZE, 1, RES_SIMULATION_DATA );
 }
 
 
-GLOBAL void Initialize_Grid (ivec *nbrs, rvec *nbrs_cp, int N)
+GLOBAL void Initialize_Grid(ivec *nbrs, rvec *nbrs_cp, int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (index >= N) return;
+    if (index >= N)
+    {
+        return;
+    }
 
     nbrs[index][0] = -1;
     nbrs[index][1] = -1;
@@ -93,31 +96,31 @@ void Cuda_Init_Grid (grid *host, grid *dev)
     dev->max_cuda_nbrs = host->max_cuda_nbrs;
     dev->cell_size = host->cell_size;
 
-    ivec_Copy (dev->spread, host->spread);
-    ivec_Copy (dev->ncell, host->ncell);
-    rvec_Copy (dev->len, host->len);
-    rvec_Copy (dev->inv_len, host->inv_len);
+    ivec_Copy( dev->spread, host->spread );
+    ivec_Copy( dev->ncell, host->ncell );
+    rvec_Copy( dev->len, host->len );
+    rvec_Copy( dev->inv_len, host->inv_len );
 
-    cuda_malloc ((void **) &dev->top, INT_SIZE * total , 1, RES_GRID_TOP );
-    cuda_malloc ((void **) &dev->mark, INT_SIZE * total , 1, RES_GRID_MARK );
-    cuda_malloc ((void **) &dev->start, INT_SIZE * total , 1, RES_GRID_START );
-    cuda_malloc ((void **) &dev->end, INT_SIZE * total , 1, RES_GRID_END );
+    cuda_malloc((void **) &dev->top, INT_SIZE * total , 1, RES_GRID_TOP );
+    cuda_malloc((void **) &dev->mark, INT_SIZE * total , 1, RES_GRID_MARK );
+    cuda_malloc((void **) &dev->start, INT_SIZE * total , 1, RES_GRID_START );
+    cuda_malloc((void **) &dev->end, INT_SIZE * total , 1, RES_GRID_END );
 
-    cuda_malloc ((void **) &dev->atoms, INT_SIZE * total * host->max_atoms, 1, RES_GRID_ATOMS );
-    cuda_malloc ((void **) &dev->nbrs, IVEC_SIZE * total * host->max_nbrs, 0, RES_GRID_NBRS );
-    cuda_malloc ((void **) &dev->nbrs_cp, RVEC_SIZE * total * host->max_nbrs, 0, RES_GRID_NBRS_CP );
+    cuda_malloc((void **) &dev->atoms, INT_SIZE * total * host->max_atoms, 1, RES_GRID_ATOMS );
+    cuda_malloc((void **) &dev->nbrs, IVEC_SIZE * total * host->max_nbrs, 0, RES_GRID_NBRS );
+    cuda_malloc((void **) &dev->nbrs_cp, RVEC_SIZE * total * host->max_nbrs, 0, RES_GRID_NBRS_CP );
 
     int block_size = 512;
     int blocks = (total*dev->max_nbrs) / block_size + ((total*dev->max_nbrs) % block_size == 0 ? 0 : 1);
 
-    Initialize_Grid <<<blocks, block_size>>>
-        (dev->nbrs, dev->nbrs_cp, total * host->max_nbrs );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    Initialize_Grid<<<blocks, block_size>>>
+        ( dev->nbrs, dev->nbrs_cp, total * host->max_nbrs );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 }
 
 
-GLOBAL void Init_Workspace_Arrays (single_body_parameters *sbp, reax_atom *atoms, 
+GLOBAL void Init_Workspace_Arrays(single_body_parameters *sbp, reax_atom *atoms, 
         static_storage workspace, int N)
 {
 
@@ -294,7 +297,7 @@ void Cuda_Init_Sparse_Matrix (sparse_matrix *matrix, int entries, int N)
 }
 
 
-void Cuda_Init_Scratch ()
+void Cuda_Init_Scratch()
 {
     cuda_malloc ((void **) &scratch, SCRATCH_SIZE, 0, RES_SCRATCH );
 

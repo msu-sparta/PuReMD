@@ -19,16 +19,17 @@
   ----------------------------------------------------------------------*/
 
 #include "traj.h"
+
 #include "list.h"
 
 #ifdef __PRINT_CPU_RESULTS__
   #include "cuda_copy.h"
 #endif
 
+
 /************************************************/
 /*      CUSTOM FORMAT ROUTINES                  */
 /************************************************/
-
 int Write_Custom_Header(reax_system *system, control_params *control, 
         static_storage *workspace, output_controls *out_control)
 {

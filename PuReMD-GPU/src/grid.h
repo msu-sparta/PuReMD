@@ -32,8 +32,6 @@ int  Shift( int, int, int, grid* );
 void Cluster_Atoms( reax_system*, static_storage* );
 
 void Bin_Atoms( reax_system*, static_storage* );
-void Cuda_Bin_Atoms( reax_system*, static_storage* );
-void Cuda_Bin_Atoms_Sync (reax_system *);
 
 void Reset_Marks( grid*, ivec*, int );
 

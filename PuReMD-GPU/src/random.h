@@ -37,9 +37,9 @@ HOST_DEVICE inline double Random(double range)
 /* This function seeds the system pseudo random number generator with
    current time. Use this function once in the begining to initialize
    the system */
-HOST_DEVICE inline void Randomize()
+HOST_DEVICE inline void Randomize( )
 {
-    srandom(time(NULL));
+    srandom( time(NULL) );
 }
 
 

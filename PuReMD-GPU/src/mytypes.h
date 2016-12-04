@@ -67,6 +67,11 @@
 //#define REORDER_ATOMS  // turns on nbrgen opt by re-ordering atoms
 //#define LGJ
 
+#define SUCCESS  1
+#define FAILURE  0
+#define TRUE  1
+#define FALSE 0
+
 #define EXP    exp
 #define SQRT   sqrt
 #define POW    pow
@@ -300,8 +305,6 @@
 #define MATVEC_BLOCK_SIZE                       512
 #define MATVEC_THREADS_PER_ROW              32
 
-
-enum {TYP_HOST, TYP_DEVICE};
 
 typedef double real;
 typedef real rvec[3];

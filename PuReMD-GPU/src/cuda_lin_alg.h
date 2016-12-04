@@ -18,32 +18,16 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __GMRES_H_
-#define __GMRES_H_
+#ifndef __CUDA_LIN_ALG_H_
+#define __CUDA_LIN_ALG_H_
 
 #define SIGN(x) (x < 0.0 ? -1 : 1);
 
 #include "mytypes.h"
 
-int GMRES( static_storage*, sparse_matrix*,
-           real*, real, real*, FILE* , reax_system* );
-
+GLOBAL void Cuda_Matvec (sparse_matrix , real *, real *, int );
+GLOBAL void Cuda_Matvec_csr (sparse_matrix , real *, real *, int );
 int Cuda_GMRES( static_storage *, real *b, real tol, real *x );
 int Cublas_GMRES( reax_system *, static_storage *, real *b, real tol, real *x );
-
-int GMRES_HouseHolder( static_storage*, sparse_matrix*,
-                       real*, real, real*, FILE* , reax_system*  );
-
-int PGMRES( static_storage*, sparse_matrix*, real*, real,
-            sparse_matrix*, sparse_matrix*, real*, FILE*, reax_system* );
-
-int PCG( static_storage*, sparse_matrix*, real*, real,
-         sparse_matrix*, sparse_matrix*, real*, FILE*, reax_system* );
-
-int CG( static_storage*, sparse_matrix*,
-        real*, real, real*, FILE*, reax_system* );
-
-int uyduruk_GMRES( static_storage*, sparse_matrix*,
-                   real*, real, real*, int, FILE*, reax_system* );
 
 #endif

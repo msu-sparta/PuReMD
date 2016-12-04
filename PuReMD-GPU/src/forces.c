@@ -32,8 +32,6 @@
 #include "QEq.h"
 #include "vector.h"
 #include "index_utils.h"
-//#include "matrix.h"
-#include "validation.h"
 
 
 void Dummy_Interaction( reax_system *system, control_params *control, 
@@ -330,7 +328,7 @@ void Init_Forces( reax_system *system, control_params *control,
                 type_j = system->atoms[j].type;
                 r_ij = nbr_pj->d;
                 sbp_j = &(system->reaxprm.sbp[type_j]);
-                twbp = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,&system->reaxprm->num_atom_types) ]);
+                twbp = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,system->reaxprm.num_atom_types) ]);
                 self_coef = (i == j) ? 0.5 : 1.0;
 
                 /* H matrix entry */
@@ -590,7 +588,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 type_j = system->atoms[j].type;
                 r_ij = nbr_pj->d;
                 sbp_j = &(system->reaxprm.sbp[type_j]);
-                twbp = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,&system->reaxprm->num_atom_types) ]);
+                twbp = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,system->reaxprm.num_atom_types) ]);
                 self_coef = (i == j) ? 0.5 : 1.0;
                 tmin  = MIN( type_i, type_j );
                 tmax  = MAX( type_i, type_j );
@@ -786,7 +784,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
             atom_j = &(system->atoms[j]);
             type_j = atom_j->type;
             sbp_j = &(system->reaxprm.sbp[type_j]);
-            twbp = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,&system->reaxprm->num_atom_types) ]);
+            twbp = &(system->reaxprm.tbp[ index_tbp(type_i,type_j,system->reaxprm.num_atom_types) ]);
 
             if( nbr_pj->d <= control->r_cut ) {
                 ++(*Htop);

@@ -23,25 +23,35 @@
 
 #include "mytypes.h"
 
+
 void Generate_Neighbor_Lists( reax_system*, control_params*, simulation_data*,
-                              static_storage*, list**, output_controls* );
-void Cuda_Generate_Neighbor_Lists (reax_system *system,
-                                   static_storage *workspace, control_params *control, bool);
+   static_storage*, list**, output_controls* );
 
 int Estimate_NumNeighbors( reax_system*, control_params*,
-                           static_storage*, list** );
+   static_storage*, list** );
 
-HOST_DEVICE int Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
+int Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
 
-GLOBAL void Estimate_NumNeighbors ( reax_atom *, grid , simulation_box *, control_params *, int *);
-GLOBAL void Generate_Neighbor_Lists( reax_atom *, grid , simulation_box *, control_params *, list );
 
-GLOBAL void Estimate_NumNeighbors ( reax_atom *,
-                                    grid ,
-                                    simulation_box *,
-                                    control_params *,
-                                    int *, int *, int, int , int, int);
-GLOBAL void fix_sym_indices_far_nbrs (list , int );
+static inline HOST_DEVICE int index_grid_debug (int x, int y, int z, int blocksize)
+{
+    return x * 8 * 8 * blocksize +  
+        y * 8 * blocksize +  
+        z * blocksize ;
+}
+
+
+static inline HOST_DEVICE real DistSqr_to_CP( rvec cp, rvec x )
+{
+    int  i;
+    real d_sqr = 0;
+
+    for( i = 0; i < 3; ++i )
+        if( cp[i] > NEG_INF )
+            d_sqr += SQR( cp[i] - x[i] );
+
+    return d_sqr;
+}
 
 
 #endif

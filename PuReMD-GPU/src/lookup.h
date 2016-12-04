@@ -29,8 +29,4 @@ real Lookup( real, lookup_table* );
 
 void Make_LR_Lookup_Table( reax_system*, control_params* );
 
-//CUDA Functions
-void Cuda_Make_LR_Lookup_Table( reax_system*, control_params* );
-void copy_LR_table_to_device ( reax_system*, control_params* );
-
 #endif

@@ -23,35 +23,35 @@
 
 #include "mytypes.h"
 
-bool check_zero (real , real );
-bool check_zero (rvec , rvec );
-bool check_same (ivec , ivec );
+int check_zero (real , real );
+int check_zero (rvec , rvec );
+int check_same (ivec , ivec );
 
 
-bool validate_box (simulation_box *host, simulation_box *dev);
-bool validate_atoms (reax_system *, list **);
-bool validate_grid (reax_system *);
+int validate_box (simulation_box *host, simulation_box *dev);
+int validate_atoms (reax_system *, list **);
+int validate_grid (reax_system *);
 
-bool validate_bonds (reax_system *, static_storage *, list **);
-bool validate_hbonds (reax_system *, static_storage *, list **);
-bool validate_sym_dbond_indices (reax_system *, static_storage *, list **);
-bool validate_three_bodies (reax_system *, static_storage *, list **);
+int validate_bonds (reax_system *, static_storage *, list **);
+int validate_hbonds (reax_system *, static_storage *, list **);
+int validate_sym_dbond_indices (reax_system *, static_storage *, list **);
+int validate_three_bodies (reax_system *, static_storage *, list **);
 void count_three_bodies (reax_system *system, static_storage *workspace, list **lists);
 
-bool bin_three_bodies (reax_system *, static_storage *, list **);
+int bin_three_bodies (reax_system *, static_storage *, list **);
 
-bool validate_sort_matrix (reax_system *, static_storage *);
-bool validate_sparse_matrix (reax_system *, static_storage *);
-bool validate_lu (static_storage *);
+int validate_sort_matrix (reax_system *, static_storage *);
+int validate_sparse_matrix (reax_system *, static_storage *);
+int validate_lu (static_storage *);
 void print_sparse_matrix (reax_system *, static_storage *);
 void print_bond_list (reax_system *, static_storage *, list **);
 
-bool validate_workspace (reax_system *, static_storage *, list **);
-bool validate_neighbors (reax_system *, list **lists);
+int validate_workspace (reax_system *, static_storage *, list **);
+int validate_neighbors (reax_system *, list **lists);
 
-bool validate_data (reax_system *, simulation_data *);
+int validate_data (reax_system *, simulation_data *);
 
-bool analyze_hbonds (reax_system *, static_storage *, list **);
+int analyze_hbonds (reax_system *, static_storage *, list **);
 
 void Print_Matrix (sparse_matrix *);
 void Print_Matrix_L (sparse_matrix *);

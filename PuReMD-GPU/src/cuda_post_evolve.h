@@ -8,23 +8,32 @@
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 2 of
+  published by the Free Software Foundation; either version 2 of 
   the License, or (at your option) any later version.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
   See the GNU General Public License for more details:
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-
-#ifndef __MATVEC__H_
-#define __MATVEC__H_
+#ifndef __CUDA_POST_EVOLVE_H__
+#define __CUDA_POST_EVOLVE_H__
 
 #include "mytypes.h"
 
-GLOBAL void Cuda_Matvec (sparse_matrix , real *, real *, int );
-GLOBAL void Cuda_Matvec_csr (sparse_matrix , real *, real *, int );
+void Cuda_Setup_Evolve( reax_system *, control_params *, 
+        simulation_data *, static_storage *, 
+        list **, output_controls * );
+
+void Cuda_Setup_Output( reax_system *, simulation_data * );
+
+void Cuda_Sync_Temp( control_params * );
+
+void Cuda_Post_Evolve( reax_system *, control_params *, 
+        simulation_data *, static_storage *, 
+        list **, output_controls * );
+
 
 #endif

@@ -20,10 +20,11 @@
 
 #include "cuda_allocate.h"
 
-#include "list.h"
-
 #include "cuda_utils.h"
+#include "cuda_list.h"
 #include "cuda_reduction.h"
+
+#include "list.h"
 
 
 GLOBAL void Init_HBond_Indexes ( int *, int *, list , int  );
@@ -32,8 +33,9 @@ GLOBAL void Init_Bond_Indexes ( int *, list , int  );
 
 void Cuda_Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 {
-    Delete_List( far_nbrs, TYP_DEVICE );
-    if(!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs, TYP_DEVICE )){
+    Cuda_Delete_List( far_nbrs );
+    if(!Cuda_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs ))
+    {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
         exit( INIT_ERR );
     }
@@ -103,7 +105,7 @@ int Cuda_Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top, list 
         hb_top[i] += hb_top[i-1];
     num_hbonds = hb_top[n-1];
 
-    if( !Make_List(num_h, num_hbonds, TYP_HBOND, hbonds , TYP_DEVICE) ) {
+    if( !Cuda_Make_List(num_h, num_hbonds, TYP_HBOND, hbonds ) ) {
         fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
         exit( INIT_ERR );
     }
@@ -148,7 +150,7 @@ int Cuda_Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
         //if( h_index[i] >= 0 )
         hb_top[i] = MAX((hb_end [i] - hb_start[i])*SAFE_HBONDS, MIN_HBONDS);
 
-    Delete_List( hbonds, TYP_DEVICE );
+    Cuda_Delete_List( hbonds );
 
     Cuda_Allocate_HBond_List( n, num_h, h_index, hb_top, hbonds );
 
@@ -171,7 +173,7 @@ int Cuda_Allocate_Bond_List( int num_b, int *b_top, list *bonds )
         b_top[i] += b_top[i-1];
     num_bonds = b_top[num_b-1];
 
-    if( !Make_List(num_b, num_bonds, TYP_BOND, bonds, TYP_DEVICE) ) {
+    if( !Cuda_Make_List(num_b, num_bonds, TYP_BOND, bonds ) ) {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
         exit( INIT_ERR );
     }
@@ -213,7 +215,7 @@ int Cuda_Reallocate_Bonds_List( int n, list *bonds, int *num_3body )
         b_top[i] = MAX((b_end [i] - b_start[i])*2, MIN_BONDS);
     }
 
-    Delete_List( bonds, TYP_DEVICE );
+    Cuda_Delete_List( bonds );
 
     Cuda_Allocate_Bond_List(n, b_top, bonds );
 
@@ -256,10 +258,10 @@ int Cuda_Reallocate_ThreeBody_List ( list *thblist, int count )
     new_total = thb_total;
     new_count = count;
 
-    Delete_List( thblist, TYP_DEVICE );
+    Cuda_Delete_List( thblist );
 
     /*Allocate the list */
-    if(!Make_List( new_count, new_total, TYP_THREE_BODY, thblist, TYP_DEVICE )){
+    if(!Cuda_Make_List( new_count, new_total, TYP_THREE_BODY, thblist )){
         fprintf(stderr, "Problem in reallocating three-body list. Terminating!\n");
         exit( INIT_ERR );
     }
@@ -307,7 +309,7 @@ cuda_memset (d_bond_top, 0, (n+BLOCKS_POW_2+1) * INT_SIZE, RES_SCRATCH );
  copy_host_device (bond_top, d_bond_top, n * INT_SIZE, cudaMemcpyDeviceToHost, __LINE__ );
  copy_host_device (est_3body, d_bond_top + n + BLOCKS_POW_2, INT_SIZE, cudaMemcpyDeviceToHost, __LINE__);
 
- Delete_List( bonds, TYP_DEVICE );
+ Cuda_Delete_List( bonds );
 
  Cuda_Allocate_Bond_List( n, bond_top, bonds );
  *num_bonds = bond_top[n-1];

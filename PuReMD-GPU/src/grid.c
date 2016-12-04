@@ -19,11 +19,10 @@
   ----------------------------------------------------------------------*/
 
 #include "grid.h"
+
 #include "reset_utils.h"
 #include "vector.h"
 #include "index_utils.h"
-
-#include "cuda_utils.h"
 
 
 int Estimate_GCell_Population( reax_system* system )
@@ -361,23 +360,6 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
         workspace->realloc.gcell_atoms = MAX(max_atoms*SAFE_ZONE,MIN_GCELL_POPL); 
 }
 
-void Cuda_Bin_Atoms (reax_system *system, static_storage *workspace )
-{
-    Cuda_Reset_Grid ( &system->d_g);
-
-    Bin_Atoms ( system, workspace );
-
-    dev_workspace->realloc.gcell_atoms = workspace->realloc.gcell_atoms;
-}
-
-void Cuda_Bin_Atoms_Sync (reax_system *system)
-{
-    copy_host_device (system->g.top, system->d_g.top, 
-            INT_SIZE * system->g.ncell[0]*system->g.ncell[1]*system->g.ncell[2], cudaMemcpyHostToDevice, RES_GRID_TOP);
-
-    copy_host_device (system->g.atoms, system->d_g.atoms, 
-            INT_SIZE * system->g.max_atoms*system->g.ncell[0]*system->g.ncell[1]*system->g.ncell[2], cudaMemcpyHostToDevice, RES_GRID_ATOMS);
-}
 
 inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 {
