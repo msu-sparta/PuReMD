@@ -299,7 +299,7 @@ void Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system,
         cudaThreadSynchronize ();
         cudaCheckError ();
 
-        Cuda_reduction <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2 >>>
+        Cuda_reduction<<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2 >>>
             (results, results + BLOCKS_POW_2, BLOCKS_POW_2);
         cudaThreadSynchronize ();
         cudaCheckError ();

@@ -23,11 +23,8 @@
 #include "vector.h"
 
 
-GLOBAL void k_center_of_mass_blocks (single_body_parameters *sbp, reax_atom *atoms,
-        rvec *res_xcm, 
-        rvec *res_vcm, 
-        rvec *res_amcm, 
-        size_t n)
+GLOBAL void k_center_of_mass_blocks( single_body_parameters *sbp, reax_atom *atoms,
+        rvec *res_xcm, rvec *res_vcm, rvec *res_amcm, size_t n )
 {
     extern __shared__ rvec xcm[];
     extern __shared__ rvec vcm[];
@@ -76,13 +73,8 @@ GLOBAL void k_center_of_mass_blocks (single_body_parameters *sbp, reax_atom *ato
 }
 
 
-GLOBAL void k_center_of_mass (rvec *xcm, 
-        rvec *vcm, 
-        rvec *amcm, 
-        rvec *res_xcm,
-        rvec *res_vcm,
-        rvec *res_amcm,
-        size_t n)
+GLOBAL void k_center_of_mass( rvec *xcm, rvec *vcm, rvec *amcm,
+        rvec *res_xcm, rvec *res_vcm, rvec *res_amcm, size_t n )
 {
     extern __shared__ rvec sh_xcm[];
     extern __shared__ rvec sh_vcm[];
@@ -132,11 +124,8 @@ GLOBAL void k_center_of_mass (rvec *xcm,
 }
 
 
-GLOBAL void k_compute_center_mass (single_body_parameters *sbp, 
-        reax_atom *atoms,
-        real *results, 
-        real xcm0, real xcm1, real xcm2,
-        size_t n)
+GLOBAL void k_compute_center_mass_sbp( single_body_parameters *sbp, reax_atom *atoms,
+        real *results, real xcm0, real xcm1, real xcm2, size_t n )
 {
     extern __shared__ real xx[];
     extern __shared__ real xy[];
@@ -161,11 +150,11 @@ GLOBAL void k_compute_center_mass (single_body_parameters *sbp,
     xcm[1] = xcm1;
     xcm[2] = xcm2;
 
-
     xx[xx_i] = xy [xy_i + threadIdx.x] = xz[xz_i + threadIdx.x] = 
         yy[yy_i + threadIdx.x] = yz[yz_i + threadIdx.x] = zz[zz_i + threadIdx.x] = 0;
 
-    if (i < n){
+    if (i < n)
+    {
         m = sbp[ atoms[i].type ].mass;
         rvec_ScaledSum( diff, 1., atoms[i].x, -1., xcm );
         xx[ xx_i ] = diff[0] * diff[0] * m;
@@ -177,8 +166,10 @@ GLOBAL void k_compute_center_mass (single_body_parameters *sbp,
     }
     __syncthreads ();
 
-    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1){
-        if (threadIdx.x < offset){
+    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1)
+    {
+        if (threadIdx.x < offset) 
+        {
             index = threadIdx.x + offset;
             xx[ threadIdx.x ] += xx[ index ];
             xy[ xy_i + threadIdx.x ] += xy [ xy_i + index ];
@@ -190,7 +181,8 @@ GLOBAL void k_compute_center_mass (single_body_parameters *sbp,
         __syncthreads ();
     }
 
-    if (threadIdx.x == 0) {
+    if (threadIdx.x == 0)
+    {
         results [ blockIdx.x*6 ] = xx [ 0 ];
         results [ blockIdx.x*6 + 1 ] = xy [ xy_i + 0 ];
         results [ blockIdx.x*6 + 2 ] = xz [ xz_i + 0 ];
@@ -201,7 +193,7 @@ GLOBAL void k_compute_center_mass (single_body_parameters *sbp,
 }
 
 
-GLOBAL void k_compute_center_mass (real *input, real *output, size_t n)
+GLOBAL void k_compute_center_mass( real *input, real *output, size_t n )
 {
     extern __shared__ real xx[];
     extern __shared__ real xy[];

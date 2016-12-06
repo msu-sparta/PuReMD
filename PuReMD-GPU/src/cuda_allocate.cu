@@ -302,7 +302,7 @@ cuda_memset (d_bond_top, 0, (n+BLOCKS_POW_2+1) * INT_SIZE, RES_SCRATCH );
  cudaThreadSynchronize ();
  cudaCheckError ();
 
- Cuda_reduction <<<1, BLOCKS_POW_2, INT_SIZE * BLOCKS_POW_2>>> 
+ Cuda_reduction_int<<<1, BLOCKS_POW_2, INT_SIZE * BLOCKS_POW_2>>> 
  (d_bond_top + n, d_bond_top + n + BLOCKS_POW_2, BLOCKS_POW_2); 
  cudaThreadSynchronize ();
 

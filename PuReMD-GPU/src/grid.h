@@ -23,6 +23,11 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Setup_Grid( reax_system* );
 
 void Update_Grid( reax_system* );
@@ -34,5 +39,10 @@ void Cluster_Atoms( reax_system*, static_storage* );
 void Bin_Atoms( reax_system*, static_storage* );
 
 void Reset_Marks( grid*, ivec*, int );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

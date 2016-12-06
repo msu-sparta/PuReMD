@@ -334,7 +334,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     //First Bin atoms and they sync the host and the device for the grid.
     //This will copy the atoms from host to device.
     Cuda_Bin_Atoms( system, workspace );
-    Sync_Host_Device( &system->g, &system->d_g, cudaMemcpyHostToDevice );
+    Sync_Host_Device_Grid( &system->g, &system->d_g, cudaMemcpyHostToDevice );
 
     k_Estimate_NumNeighbors<<<blockspergrid, threadsperblock >>>
         (system->d_atoms, system->d_g, system->d_box, 
@@ -544,16 +544,16 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 
     //System
     Cuda_Init_System( system );
-    Sync_Host_Device( system, cudaMemcpyHostToDevice );
+    Sync_Host_Device_Sys( system, cudaMemcpyHostToDevice );
     Cuda_Init_System( system, control, data );
 
     //Simulation Data
     copy_host_device( system->atoms, system->d_atoms, REAX_ATOM_SIZE * system->N , 
             cudaMemcpyHostToDevice, RES_SYSTEM_ATOMS );
     Cuda_Init_Simulation_Data( data );
-    //Sync_Host_Device (data, (simulation_data *)data->d_simulation_data, cudaMemcpyHostToDevice);
+    //Sync_Host_Device_Data( data, (simulation_data *)data->d_simulation_data, cudaMemcpyHostToDevice );
     Cuda_Init_Simulation_Data( system, control, data, out_control, Evolve );
-    Sync_Host_Device( data, (simulation_data *)data->d_simulation_data, cudaMemcpyHostToDevice );
+    Sync_Host_Device_Data( data, (simulation_data *)data->d_simulation_data, cudaMemcpyHostToDevice );
 
     //static storage
     Cuda_Init_Workspace_System( system, dev_workspace );

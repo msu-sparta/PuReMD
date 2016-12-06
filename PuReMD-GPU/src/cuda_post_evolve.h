@@ -23,6 +23,11 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Cuda_Setup_Evolve( reax_system *, control_params *, 
         simulation_data *, static_storage *, 
         list **, output_controls * );
@@ -34,6 +39,10 @@ void Cuda_Sync_Temp( control_params * );
 void Cuda_Post_Evolve( reax_system *, control_params *, 
         simulation_data *, static_storage *, 
         list **, output_controls * );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

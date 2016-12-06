@@ -24,6 +24,10 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 real Get_Time( );
 
 real Get_Timing_Info( real );
@@ -39,6 +43,10 @@ void Compute_Kinetic_Energy( reax_system*, simulation_data* );
 void Compute_Pressure( reax_system*, simulation_data*, static_storage* );
 
 void Compute_Pressure_Isotropic( reax_system*, control_params*, simulation_data*, output_controls* );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

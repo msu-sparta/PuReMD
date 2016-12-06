@@ -149,7 +149,7 @@ GLOBAL void Cuda_matrix_col_reduction(const real *input, real *per_block_results
 }
 
 
-GLOBAL void Cuda_reduction(const int *input, int *per_block_results, const size_t n)
+GLOBAL void Cuda_reduction_int(const int *input, int *per_block_results, const size_t n)
 {
     extern __shared__ int sh_input[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;

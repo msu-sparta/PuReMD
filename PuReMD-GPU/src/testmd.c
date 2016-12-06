@@ -213,17 +213,17 @@ int main( int argc, char* argv[] )
             &out_control, &Evolve );
 #endif
 
-    t_start = Get_Time ();
+    t_start = Get_Time( );
     Cuda_Initialize( &system, &control, &data, &workspace, &lists, 
             &out_control, &Cuda_Evolve );
     t_elapsed = Get_Timing_Info( t_start );
 
 #ifdef __DEBUG_CUDA__
-    fprintf (stderr, " Cuda Initialize timing ---> %f \n", t_elapsed );
+    fprintf( stderr, " Cuda Initialize timing ---> %f \n", t_elapsed );
 #endif
 
 #ifdef __CUDA_MEM__
-    print_device_mem_usage ();
+    print_device_mem_usage( );
 #endif
 
 #ifdef __BUILD_DEBUG__
@@ -233,11 +233,11 @@ int main( int argc, char* argv[] )
     Cuda_Reset( &system, &control, &data, &workspace, &lists );
 
 #ifdef __BUILD_DEBUG__
-    Generate_Neighbor_Lists ( &system, &control, &data, &workspace, 
+    Generate_Neighbor_Lists( &system, &control, &data, &workspace, 
             &lists, &out_control );
 #endif
 
-    Cuda_Generate_Neighbor_Lists (&system, &workspace, &control, FALSE);
+    Cuda_Generate_Neighbor_Lists( &system, &workspace, &control, FALSE );
 
 #ifdef __BUILD_DEBUG__
     Compute_Forces(&system, &control, &data, &workspace, &lists, &out_control);
@@ -297,8 +297,8 @@ int main( int argc, char* argv[] )
         //fprintf (stderr, "Post Evolve done \n");
 
 #ifndef __BUILD_DEBUG__
-        Prep_Device_For_Output ( &system, &data );
-        Output_Results(&system, &control, &data, &workspace, &lists, &out_control);
+        Cuda_Setup_Output( &system, &data );
+        Output_Results( &system, &control, &data, &workspace, &lists, &out_control );
 
         //Analysis( &system, &control, &data, &workspace, &lists, &out_control );
         steps = data.step - data.prev_steps;

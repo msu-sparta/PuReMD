@@ -33,7 +33,7 @@ void Cuda_Setup_Evolve( reax_system* system, control_params* control,
 {
     //fprintf (stderr, "Begin ... \n");
     //to Sync step to the device.
-    //Sync_Host_Device (&data, (simulation_data *)data.d_simulation_data, cudaMemcpyHostToDevice );
+    //Sync_Host_Device_Data( &data, (simulation_data *)data.d_simulation_data, cudaMemcpyHostToDevice );
     copy_host_device( &data->step, &((simulation_data *)data->d_simulation_data)->step, 
             INT_SIZE, cudaMemcpyHostToDevice, RES_SIMULATION_DATA );
 
@@ -49,7 +49,7 @@ void Cuda_Setup_Output( reax_system* system, simulation_data* data )
 
 void Cuda_Sync_Temp( control_params* control )
 {
-    Sync_Host_Device( control, (control_params*)control->d_control, cudaMemcpyHostToDevice );
+    Sync_Host_Device_Params( control, (control_params*)control->d_control, cudaMemcpyHostToDevice );
 }
 
 

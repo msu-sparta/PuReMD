@@ -41,7 +41,7 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 }
 
 
-int Allocate_Matrix( sparse_matrix *H, int n, int m )
+HOST int Allocate_Matrix( sparse_matrix *H, int n, int m )
 {
     H->n = n;
     H->m = m;

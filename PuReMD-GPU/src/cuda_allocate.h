@@ -23,9 +23,19 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 int Cuda_Allocate_Matrix( sparse_matrix*, int, int );
 int Cuda_Allocate_HBond_List( int, int, int*, int*, list* );
 int Cuda_Allocate_Bond_List( int, int*, list* );
 void Cuda_Reallocate( reax_system*, static_storage*, list*, int, int );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

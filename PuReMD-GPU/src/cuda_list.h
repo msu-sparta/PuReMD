@@ -23,7 +23,17 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 char Cuda_Make_List( int, int, int, list* );
 void Cuda_Delete_List( list* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

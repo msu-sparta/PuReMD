@@ -25,6 +25,7 @@
 
 #include "mytypes.h"
 
+
 int GMRES( static_storage*, sparse_matrix*,
            real*, real, real*, FILE* , reax_system* );
 
@@ -42,5 +43,6 @@ int CG( static_storage*, sparse_matrix*,
 
 int uyduruk_GMRES( static_storage*, sparse_matrix*,
                    real*, real, real*, int, FILE*, reax_system* );
+
 
 #endif

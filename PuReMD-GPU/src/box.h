@@ -63,7 +63,7 @@ real Metric_Product( rvec, rvec, simulation_box* );
 
 void Print_Box_Information( simulation_box*, FILE* );
 
-HOST_DEVICE inline real Sq_Distance_on_T3( rvec x1, rvec x2, simulation_box* box, rvec r)
+static inline HOST_DEVICE real Sq_Distance_on_T3( rvec x1, rvec x2, simulation_box* box, rvec r)
 {
 
     real norm = 0.0;
@@ -97,7 +97,7 @@ HOST_DEVICE inline real Sq_Distance_on_T3( rvec x1, rvec x2, simulation_box* box
 }
 
 
-HOST_DEVICE inline void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
+static inline HOST_DEVICE void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
 {
     int i;
     real tmp;

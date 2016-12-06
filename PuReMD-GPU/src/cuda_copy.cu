@@ -25,7 +25,7 @@
 #include "vector.h"
 
 
-void Sync_Host_Device( grid *host, grid *dev, enum cudaMemcpyKind dir )
+void Sync_Host_Device_Grid( grid *host, grid *dev, enum cudaMemcpyKind dir )
 {
     copy_host_device( host->top, dev->top, 
             INT_SIZE * host->ncell[0]*host->ncell[1]*host->ncell[2], dir, RES_GRID_TOP );
@@ -50,7 +50,7 @@ void Sync_Host_Device( grid *host, grid *dev, enum cudaMemcpyKind dir )
 }
 
 
-void Sync_Host_Device( reax_system *sys, enum cudaMemcpyKind dir )
+void Sync_Host_Device_Sys( reax_system *sys, enum cudaMemcpyKind dir )
 {
 
     copy_host_device( sys->atoms, sys->d_atoms, 
@@ -78,13 +78,13 @@ void Sync_Host_Device( reax_system *sys, enum cudaMemcpyKind dir )
 }
 
 
-void Sync_Host_Device( simulation_data *host, simulation_data *dev, enum cudaMemcpyKind dir )
+void Sync_Host_Device_Data( simulation_data *host, simulation_data *dev, enum cudaMemcpyKind dir )
 {
     copy_host_device( host, dev, SIMULATION_DATA_SIZE, dir, RES_SIMULATION_DATA );
 }
 
 
-void Sync_Host_Device( sparse_matrix *L, sparse_matrix *U, enum cudaMemcpyKind dir )
+void Sync_Host_Device_Mat( sparse_matrix *L, sparse_matrix *U, enum cudaMemcpyKind dir )
 {
     copy_host_device( L->start, dev_workspace->L.start, INT_SIZE * (L->n + 1), dir, RES_SPARSE_MATRIX_INDEX );
     copy_host_device( L->end, dev_workspace->L.end, INT_SIZE * (L->n + 1), dir, RES_SPARSE_MATRIX_INDEX );
@@ -96,12 +96,12 @@ void Sync_Host_Device( sparse_matrix *L, sparse_matrix *U, enum cudaMemcpyKind d
 }
 
 
-void Sync_Host_Device( output_controls *, control_params *, enum cudaMemcpyKind )
+void Sync_Host_Device_Control( output_controls *, control_params *, enum cudaMemcpyKind )
 {
 }
 
 
-void Sync_Host_Device( control_params *host, control_params *device, enum cudaMemcpyKind )
+void Sync_Host_Device_Params( control_params *host, control_params *device, enum cudaMemcpyKind )
 {
     copy_host_device( host, device, CONTROL_PARAMS_SIZE, cudaMemcpyHostToDevice, RES_CONTROL_PARAMS );
 }
@@ -117,7 +117,7 @@ void Prep_Device_For_Output( reax_system *system, simulation_data *data )
     //fprintf (stderr, "size to copy --> %d \n", size );
     //copy_host_device (data, (simulation_data *)data->d_simulation_data, size, cudaMemcpyDeviceToHost, RES_SIMULATION_DATA );
 
-    //Sync_Host_Device (data, (simulation_data *)data->d_simulation_data, cudaMemcpyDeviceToHost );
+    //Sync_Host_Device_Data( data, (simulation_data *)data->d_simulation_data, cudaMemcpyDeviceToHost );
     /*
        copy_host_device (&data->E_BE, &((simulation_data *)data->d_simulation_data)->E_BE, 
        REAL_SIZE * 13, cudaMemcpyDeviceToHost, RES_SIMULATION_DATA );
@@ -151,16 +151,18 @@ void Prep_Device_For_Output( reax_system *system, simulation_data *data )
     data->kin_press =  local_data.kin_press;
     data->therm.T = local_data.therm.T;
 
-    //Sync_Host_Device (&system.g, &system.d_g, cudaMemcpyDeviceToHost );
-    Sync_Host_Device( system, cudaMemcpyDeviceToHost );
+    //Sync_Host_Device_Sys( &system.g, &system.d_g, cudaMemcpyDeviceToHost );
+    Sync_Host_Device_Sys( system, cudaMemcpyDeviceToHost );
 }
 
 
-void Sync_Host_Device( list *host, list *device, int type )
+void Sync_Host_Device_List( list *host, list *device, int type )
 {
     //list is already allocated -- discard it first
     if (host->n > 0)
+    {
         Cuda_Delete_List( host );
+    }
 
     //memory is allocated on the host
     Cuda_Make_List( device->n, device->num_intrs, type, host );

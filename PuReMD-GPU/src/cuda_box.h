@@ -23,7 +23,9 @@
 
 #include "mytypes.h"
 
+
 GLOBAL void k_compute_Inc_on_T3 (reax_atom *atoms, unsigned int N,
     simulation_box *box, real d1, real d2, real d3);
+
 
 #endif

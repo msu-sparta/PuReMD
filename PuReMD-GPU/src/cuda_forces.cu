@@ -59,35 +59,35 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     fprintf (stderr, " Begin Bonded Forces ... %d x %d\n", BLOCKS, BLOCK_SIZE);
 #endif
 
-    Cuda_Calculate_Bond_Orders_Init <<< BLOCKS, BLOCK_SIZE >>>
+    Cuda_Calculate_Bond_Orders_Init<<< BLOCKS, BLOCK_SIZE >>>
         (  system->d_atoms, system->reaxprm.d_gp, system->reaxprm.d_sbp,
            *dev_workspace, system->reaxprm.num_atom_types, system->N);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    Cuda_Calculate_Bond_Orders <<< BLOCKS, BLOCK_SIZE >>>
+    Cuda_Calculate_Bond_Orders<<< BLOCKS, BLOCK_SIZE >>>
         ( system->d_atoms, system->reaxprm.d_gp, system->reaxprm.d_sbp, 
           system->reaxprm.d_tbp, *dev_workspace, 
           *(dev_lists + BONDS), *(dev_lists + DDELTA), *(dev_lists + DBO), 
           system->reaxprm.num_atom_types, system->N );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    Cuda_Update_Uncorrected_BO <<<BLOCKS, BLOCK_SIZE>>>
+    Cuda_Update_Uncorrected_BO<<<BLOCKS, BLOCK_SIZE>>>
         (*dev_workspace, *(dev_lists + BONDS), system->N);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    Cuda_Update_Workspace_After_Bond_Orders <<<BLOCKS, BLOCK_SIZE>>>
+    Cuda_Update_Workspace_After_Bond_Orders<<<BLOCKS, BLOCK_SIZE>>>
         (system->d_atoms, system->reaxprm.d_gp, system->reaxprm.d_sbp, 
          *dev_workspace, system->N);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
 #ifdef __DEBUG_CUDA__
     t_elapsed = Get_Timing_Info( t_start );
-    fprintf (stderr, "Bond Orders... return value --> %d --- Timing %lf \n", cudaGetLastError (), t_elapsed );
-    fprintf (stderr, "Cuda_Calculate_Bond_Orders Done... \n");
+    fprintf( stderr, "Bond Orders... return value --> %d --- Timing %lf \n", cudaGetLastError (), t_elapsed );
+    fprintf( stderr, "Cuda_Calculate_Bond_Orders Done... \n" );
 #endif
 
     //Step 2.
@@ -197,7 +197,7 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 #endif
 
     cuda_memset(spad, 0, (dev_lists + BONDS)->num_intrs * sizeof (int), RES_SCRATCH);
-    Three_Body_Estimate <<<BLOCKS, BLOCK_SIZE>>>
+    k_Three_Body_Estimate<<<BLOCKS, BLOCK_SIZE>>>
         (system->d_atoms, 
          (control_params *)control->d_control, 
          *(dev_lists + BONDS),
@@ -269,7 +269,7 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 
     cuda_memset (spad, 0, ( 6 * REAL_SIZE * system->N + RVEC_SIZE * system->N * 2), RES_SCRATCH );
 
-    Three_Body_Interactions <<< BLOCKS, BLOCK_SIZE >>>
+    k_Three_Body_Interactions <<< BLOCKS, BLOCK_SIZE >>>
         ( system->d_atoms,
           system->reaxprm.d_sbp, system->reaxprm.d_thbp, system->reaxprm.d_gp, 
           (control_params *)control->d_control,
@@ -314,41 +314,38 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     cudaThreadSynchronize ();
     cudaCheckError ();
 
-    Cuda_reduction <<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2 >>> 
+    Cuda_reduction<<<1, BLOCKS_POW_2, REAL_SIZE * BLOCKS_POW_2 >>> 
         (spad + 5*system->N, &((simulation_data *)data->d_simulation_data)->E_Coa, BLOCKS_POW_2);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
     //Reduction for ext_pres
     rvec_spad = (rvec *) (spad + 6*system->N);
-    Cuda_reduction_rvec <<<BLOCKS_POW_2, BLOCK_SIZE, RVEC_SIZE * BLOCK_SIZE >>> 
+    Cuda_reduction_rvec<<<BLOCKS_POW_2, BLOCK_SIZE, RVEC_SIZE * BLOCK_SIZE >>> 
         (rvec_spad, rvec_spad + system->N,  system->N);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    Cuda_reduction_rvec <<<1, BLOCKS_POW_2, RVEC_SIZE * BLOCKS_POW_2 >>> 
+    Cuda_reduction_rvec<<<1, BLOCKS_POW_2, RVEC_SIZE * BLOCKS_POW_2 >>> 
         (rvec_spad + system->N, &((simulation_data *)data->d_simulation_data)->ext_press, BLOCKS_POW_2);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
     real t_1, t_2;
-    t_1 = Get_Time ();
+    t_1 = Get_Time( );
     //Sum up the f vector for each atom and collect the CdDelta from all the bonds
-    Three_Body_Interactions_results <<< BLOCKS, BLOCK_SIZE >>>
-        (     system->d_atoms,
-            (control_params *)control->d_control,
-            *dev_workspace, 
-            *(dev_lists + BONDS), 
-            system->N );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
-    t_2 = Get_Timing_Info (t_1);
+    k_Three_Body_Interactions_results <<< BLOCKS, BLOCK_SIZE >>>
+        (system->d_atoms, (control_params *)control->d_control,
+            *dev_workspace, *(dev_lists + BONDS), system->N );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+    t_2 = Get_Timing_Info( t_1 );
 
 #ifdef __DEBUG_CUDA__
     t_elapsed = Get_Timing_Info( t_start );
-    fprintf (stderr, "Three_Body_Interactions post process Timing %lf \n", t_2);
-    fprintf (stderr, "Three_Body_Interactions ...  Timing %lf \n", t_elapsed );
-    fprintf (stderr, "Three_Body_Interactions Done... \n");
+    fprintf( stderr, "Three_Body_Interactions post process Timing %lf \n", t_2 );
+    fprintf( stderr, "Three_Body_Interactions ...  Timing %lf \n", t_elapsed );
+    fprintf( stderr, "Three_Body_Interactions Done... \n" );
 #endif
 
     //Step 5.
@@ -356,21 +353,16 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     t_start = Get_Time( );
 #endif
 
-    cuda_memset (spad, 0, ( 4 * REAL_SIZE * system->N + RVEC_SIZE * system->N * 2), RES_SCRATCH );
-    Four_Body_Interactions <<< BLOCKS, BLOCK_SIZE >>>
-        //Four_Body_Interactions <<< system->N, 32, 32*( 2*REAL_SIZE + RVEC_SIZE)>>>
-        ( system->d_atoms,
-          system->reaxprm.d_gp,
-          system->reaxprm.d_fbp,
-          (control_params *)control->d_control,
-          *(dev_lists + BONDS), *(dev_lists + THREE_BODIES),
-          (simulation_box *)system->d_box,
-          (simulation_data *)data->d_simulation_data,
-          *dev_workspace,
-          system->N, system->reaxprm.num_atom_types, 
-          spad, spad + 2*system->N, (rvec *) (spad + 4*system->N));
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cuda_memset( spad, 0, ( 4 * REAL_SIZE * system->N + RVEC_SIZE * system->N * 2), RES_SCRATCH );
+    //k_Four_Body_Interactions<<< system->N, 32, 32*( 2*REAL_SIZE + RVEC_SIZE)>>>
+    k_Four_Body_Interactions<<< BLOCKS, BLOCK_SIZE >>>
+        ( system->d_atoms, system->reaxprm.d_gp, system->reaxprm.d_fbp,
+          (control_params *)control->d_control, *(dev_lists + BONDS), *(dev_lists + THREE_BODIES),
+          (simulation_box *)system->d_box, (simulation_data *)data->d_simulation_data,
+          *dev_workspace, system->N, system->reaxprm.num_atom_types, 
+          spad, spad + 2*system->N, (rvec *) (spad + 4*system->N) );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
     //Reduction for E_Tor
     Cuda_reduction <<<BLOCKS_POW_2, BLOCK_SIZE, REAL_SIZE * BLOCK_SIZE >>> 
@@ -407,13 +399,11 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     cudaCheckError ();
 
     //Post process here
-    Four_Body_Postprocess     <<< BLOCKS, BLOCK_SIZE >>>
-        (     system->d_atoms,
-            *dev_workspace,
-            *(dev_lists + BONDS),
+    k_Four_Body_Postprocess<<< BLOCKS, BLOCK_SIZE >>>
+        ( system->d_atoms, *dev_workspace, *(dev_lists + BONDS),
             system->N );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
 #ifdef __DEBUG_CUDA__
     t_elapsed = Get_Timing_Info( t_start );
@@ -429,7 +419,7 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cuda_memset (spad, 0, ( 2 * REAL_SIZE * system->N + RVEC_SIZE * system->N * 2 ), RES_SCRATCH );
 
         /*
-           Hydrogen_Bonds <<< BLOCKS, BLOCK_SIZE, BLOCK_SIZE *( REAL_SIZE + RVEC_SIZE) >>>
+           k_Hydrogen_Bonds <<< BLOCKS, BLOCK_SIZE, BLOCK_SIZE *( REAL_SIZE + RVEC_SIZE) >>>
            (  system->d_atoms, 
            system->reaxprm.d_sbp,
            system->reaxprm.d_hbp,
@@ -450,7 +440,7 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 
         int hbs = (system->N * HBONDS_THREADS_PER_ATOM/ HBONDS_BLOCK_SIZE) + 
             (((system->N * HBONDS_THREADS_PER_ATOM) % HBONDS_BLOCK_SIZE) == 0 ? 0 : 1);
-        Hydrogen_Bonds_HB <<< hbs, HBONDS_BLOCK_SIZE, HBONDS_BLOCK_SIZE * ( 2 * REAL_SIZE + 2 * RVEC_SIZE )  >>>
+        k_Hydrogen_Bonds_HB <<< hbs, HBONDS_BLOCK_SIZE, HBONDS_BLOCK_SIZE * ( 2 * REAL_SIZE + 2 * RVEC_SIZE )  >>>
             (  system->d_atoms, 
                system->reaxprm.d_sbp,
                system->reaxprm.d_hbp,
@@ -498,7 +488,7 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         t_1 = Get_Time ();
 #endif
 
-        Hydrogen_Bonds_Postprocess <<< BLOCKS, BLOCK_SIZE, BLOCK_SIZE * RVEC_SIZE >>>
+        k_Hydrogen_Bonds_Postprocess <<< BLOCKS, BLOCK_SIZE, BLOCK_SIZE * RVEC_SIZE >>>
             (     system->d_atoms, 
                 system->reaxprm.d_sbp, 
                 *dev_workspace, 
@@ -516,8 +506,8 @@ void Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         t_1 = Get_Time ();
 #endif
 
-        //Hydrogen_Bonds_Far_Nbrs <<< system->N, 32, 32 * RVEC_SIZE>>>
-        Hydrogen_Bonds_HNbrs <<< system->N, 32, 32 * RVEC_SIZE>>>
+        //k_Hydrogen_Bonds_Far_Nbrs <<< system->N, 32, 32 * RVEC_SIZE>>>
+        k_Hydrogen_Bonds_HNbrs <<< system->N, 32, 32 * RVEC_SIZE>>>
             (     system->d_atoms, 
                 system->reaxprm.d_sbp, 
                 *dev_workspace, 

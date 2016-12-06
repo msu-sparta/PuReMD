@@ -23,8 +23,18 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Cuda_Initialize( reax_system*, control_params*, simulation_data*,
-                      static_storage*, list**, output_controls*, evolve_function* );
+       static_storage*, list**, output_controls*, evolve_function* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 

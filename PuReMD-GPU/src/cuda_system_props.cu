@@ -37,7 +37,7 @@ GLOBAL void k_Kinetic_Energy_Reduction(simulation_data *, real *, int);
 void prep_dev_system (reax_system *system) 
 {
     //copy the system atoms to the device
-    Sync_Host_Device ( system, cudaMemcpyHostToDevice );
+    Sync_Host_Device_Sys( system, cudaMemcpyHostToDevice );
 }
 
 
@@ -188,18 +188,18 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     cuda_memset (partial_results, 0, REAL_SIZE * 6 * (BLOCKS_POW_2 + 1), RES_SCRATCH );
     local_results = (real *) malloc (REAL_SIZE * 6 *(BLOCKS_POW_2+ 1));
 
-    k_compute_center_mass<<<BLOCKS_POW_2, BLOCK_SIZE, 6 * (REAL_SIZE * BLOCK_SIZE) >>> 
+    k_compute_center_mass_sbp<<<BLOCKS_POW_2, BLOCK_SIZE, 6 * (REAL_SIZE * BLOCK_SIZE) >>> 
         (system->reaxprm.d_sbp, system->d_atoms, partial_results, 
          data->xcm[0], data->xcm[1], data->xcm[2], system->N);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
     k_compute_center_mass<<<1, BLOCKS_POW_2, 6 * (REAL_SIZE * BLOCKS_POW_2) >>> 
         (partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    copy_host_device (local_results, partial_results + 6 * BLOCKS_POW_2, REAL_SIZE * 6, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device( local_results, partial_results + 6 * BLOCKS_POW_2, REAL_SIZE * 6, cudaMemcpyDeviceToHost, __LINE__ );
 
 #ifdef __BUILD_DEBUG__
     if (check_zero (local_results[0],xx) ||
@@ -253,16 +253,19 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     inv[2][2] = mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
 
     if( fabs(det) > ALMOST_ZERO )
+    {
         rtensor_Scale( inv, 1./det, inv );
+    }
     else 
+    {
         rtensor_MakeZero( inv );
+    }
 
     /* Compute the angular velocity about the centre of mass */
     rtensor_MatVec( data->avcm, inv, data->amcm );  
     data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
 
-    //free the resources
-    free (local_results);
+    free( local_results );
 
 #if defined(DEBUG)
     fprintf( stderr, "xcm:  %24.15e %24.15e %24.15e\n",  
@@ -286,7 +289,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 }
 
 
-void Cuda_Compute_Kinetic_Energy (reax_system *system, simulation_data *data)
+void Cuda_Compute_Kinetic_Energy( reax_system *system, simulation_data *data )
 {
     real *results = (real *) scratch;
     cuda_memset (results, 0, REAL_SIZE * BLOCKS_POW_2, RES_SCRATCH);
@@ -458,5 +461,3 @@ data->therm.T = ALMOST_ZERO;
 }
 }
  */
-
-

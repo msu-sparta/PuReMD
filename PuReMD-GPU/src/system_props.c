@@ -24,7 +24,7 @@
 #include "vector.h"
 
 
-real Get_Time( )
+HOST real Get_Time( )
 {
     struct timeval tim;
 
@@ -33,7 +33,7 @@ real Get_Time( )
 }
 
 
-real Get_Timing_Info( real t_start )
+HOST real Get_Timing_Info( real t_start )
 {
     struct timeval tim;
     real t_end;

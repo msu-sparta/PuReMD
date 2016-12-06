@@ -23,10 +23,20 @@
 
 #include "mytypes.h"
 
-GLOBAL void Four_Body_Interactions ( reax_atom *, global_parameters ,
-    four_body_header *, control_params *, list , list , simulation_box *,
-    simulation_data *, static_storage , int , int , real *, real *, rvec *);
 
-GLOBAL void Four_Body_Postprocess (reax_atom *, static_storage, list , int );
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
+GLOBAL void k_Four_Body_Interactions( reax_atom *, global_parameters ,
+    four_body_header *, control_params *, list , list , simulation_box *,
+    simulation_data *, static_storage , int , int , real *, real *, rvec * );
+
+GLOBAL void k_Four_Body_Postprocess( reax_atom *, static_storage, list , int );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

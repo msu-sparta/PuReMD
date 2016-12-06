@@ -26,8 +26,6 @@
 #include "vector.h"
 #include "index_utils.h"
 
-#include "cuda_helpers.h"
-
 
 void Bond_Energy( reax_system *system, control_params *control, 
         simulation_data *data, static_storage *workspace, 

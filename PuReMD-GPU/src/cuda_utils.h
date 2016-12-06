@@ -29,6 +29,10 @@
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 static __inline__ void modify( cublasHandle_t handle, float *m, int ldm, int n, int p, int q, float alpha, float beta )
 {
     cublasSscal( handle, n - p, &alpha, &m[IDX2C(p, q, ldm)], ldm );
@@ -47,9 +51,9 @@ void compute_nearest_pow_2( int blocks, int *result );
 void print_device_mem_usage( );
 
 #define cusparseCheckError(cusparseStatus) __cusparseCheckError (cusparseStatus, __FILE__, __LINE__)
-inline void __cusparseCheckError( cusparseStatus_t cusparseStatus, const char *file, const int line )
+static inline void __cusparseCheckError( cusparseStatus_t cusparseStatus, const char *file, const int line )
 {
-    if (cusparseStatus != CUSPARSE_STATUS_SUCCESS)
+    if ( cusparseStatus != CUSPARSE_STATUS_SUCCESS )
     {
         fprintf (stderr, "failed .. %s:%d -- error code %d \n", __FILE__, __LINE__, cusparseStatus);
         exit (-1);
@@ -59,9 +63,9 @@ inline void __cusparseCheckError( cusparseStatus_t cusparseStatus, const char *f
 
 
 #define cublasCheckError(cublasStatus) __cublasCheckError (cublasStatus, __FILE__, __LINE__)
-inline void __cublasCheckError( cublasStatus_t cublasStatus, const char *file, const int line )
+static inline void __cublasCheckError( cublasStatus_t cublasStatus, const char *file, const int line )
 {
-    if( cublasStatus != CUBLAS_STATUS_SUCCESS )
+    if ( cublasStatus != CUBLAS_STATUS_SUCCESS )
     {
         fprintf( stderr, "failed .. %s:%d -- error code %d \n", __FILE__, __LINE__, cublasStatus );
         exit( -1 );
@@ -69,8 +73,9 @@ inline void __cublasCheckError( cublasStatus_t cublasStatus, const char *file, c
     return;
 }
 
+
 #define cudaCheckError() __cudaCheckError( __FILE__, __LINE__ )
-inline void __cudaCheckError( const char *file, const int line )
+static inline void __cudaCheckError( const char *file, const int line )
 {
     cudaError err = cudaGetLastError( );
     if ( cudaSuccess != err )
@@ -90,6 +95,10 @@ inline void __cudaCheckError( const char *file, const int line )
 
     return;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

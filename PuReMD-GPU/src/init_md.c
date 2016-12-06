@@ -351,7 +351,7 @@ void compare_far_neighbors (int *test, int *start, int *end, far_neighbor_data *
     int index = 0;
     int count = 0;
     int jicount = 0;
-    int end_index, gpu_index, gpu_end, k;
+    int i, j, end_index, gpu_index, gpu_end, k;
     far_neighbor_data gpu, cpu;
 
     /*
@@ -370,12 +370,12 @@ void compare_far_neighbors (int *test, int *start, int *end, far_neighbor_data *
      */
 
 
-    for (int i = 0; i < N; i++){
+    for (i = 0; i < N; i++){
         index = Start_Index (i, slist);
         //fprintf (stderr, "GPU : Neighbors of atom --> %d (start: %d , end: %d )\n", i, start[i], end[i]);
 
 
-        for (int j = start[i]; j < end[i]; j++){
+        for (j = start[i]; j < end[i]; j++){
             gpu = data[j];
 
             if (i < data[j].nbr) continue;

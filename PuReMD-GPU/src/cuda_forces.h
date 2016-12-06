@@ -24,6 +24,10 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 GLOBAL void k_Estimate_Sparse_Matrix_Entries ( reax_atom *, control_params *, 
         simulation_data *, simulation_box *, list, int, int * );
 
@@ -35,6 +39,10 @@ void Cuda_Estimate_Storage_Sizes (reax_system *, control_params *, int *);
 void Cuda_Threebody_List( reax_system *, static_storage *, list *, int );
 
 int validate_device (reax_system *, simulation_data *, static_storage *, list **);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

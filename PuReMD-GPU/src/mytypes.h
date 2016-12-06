@@ -28,7 +28,10 @@
     #define GLOBAL __global__
     #define HOST_DEVICE __host__ __device__
 
+    #include <cuda_runtime.h>
     #include <cuda.h>
+    #include <cuda_runtime_api.h>
+
     #include <cublas_v2.h>
     #include <cusparse_v2.h>
     #if __CUDA_ARCH__ < 600
@@ -1144,15 +1147,6 @@ extern reax_timing d_timing;
 extern void *scratch;
 extern int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
 extern int MATVEC_BLOCKS;
-
-#ifdef __CUDACC__
-extern cublasStatus_t cublasStatus;
-extern cublasHandle_t cublasHandle;
-
-extern cusparseHandle_t cusparseHandle;
-extern cusparseStatus_t cusparseStatus;
-extern cusparseMatDescr_t matdescriptor;
-#endif
 
 
 #endif

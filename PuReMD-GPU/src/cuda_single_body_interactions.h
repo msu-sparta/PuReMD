@@ -24,6 +24,10 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *, global_parameters ,
         single_body_parameters *, two_body_parameters *,
         static_storage , simulation_data *,
@@ -45,6 +49,10 @@ GLOBAL void test_LonePair_Postprocess ( reax_atom *, global_parameters ,
         single_body_parameters *, two_body_parameters *,
         static_storage , simulation_data *,
         list , int , int );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

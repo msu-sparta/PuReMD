@@ -23,6 +23,11 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 GLOBAL void Cuda_Calculate_Bond_Orders_Init (  reax_atom *, global_parameters , single_body_parameters *,
         static_storage , int , int );
 GLOBAL void Cuda_Calculate_Bond_Orders ( reax_atom *, global_parameters , single_body_parameters *,
@@ -34,5 +39,10 @@ GLOBAL void Cuda_Compute_Total_Force (reax_atom *, simulation_data *, static_sto
 GLOBAL void Cuda_Compute_Total_Force_PostProcess (reax_atom *, simulation_data *, static_storage , list , int , int );
 //HOST_DEVICE void Cuda_Add_dBond_to_Forces( int, int, reax_atom *, static_storage*, list* );
 //HOST_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int, int, reax_atom *, simulation_data*, static_storage*, list* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

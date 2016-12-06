@@ -405,7 +405,7 @@ GLOBAL void calculate_LR_Values ( LR_lookup_table *d_LR, real *h, real *fh, real
     int r = blockIdx.x * blockDim.x + threadIdx.x;
     if ( r == 0 || r > count ) return;
 
-    LR_vdW_Coulomb( g_params, tbp, control, i, j, r * dr, &data[r], num_atom_types );
+    d_LR_vdW_Coulomb( g_params, tbp, control, i, j, r * dr, &data[r], num_atom_types );
 
     h[r] = d_LR[ index_lr(i, j, num_atom_types) ].dx;
     fh[r] = d_LR[ index_lr(i, j, num_atom_types) ].y[r].H;

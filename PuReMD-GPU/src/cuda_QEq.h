@@ -24,8 +24,16 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Cuda_QEq( reax_system*, control_params*, simulation_data*, static_storage*,
         list*, output_controls* );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

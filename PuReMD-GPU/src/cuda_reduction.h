@@ -18,22 +18,32 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __REDUCTION_H__
-#define __REDUCTION_H__
+#ifndef __CUDA_REDUCTION_H__
+#define __CUDA_REDUCTION_H__
 
 #include "mytypes.h"
 
 #define INITIAL 0
 #define FINAL       1
 
-GLOBAL void Cuda_reduction (const real *input, real *per_block_results, const size_t n);
-GLOBAL void Cuda_Norm (const real *input, real *per_block_results, const size_t n, int pass);
-GLOBAL void Cuda_Dot (const real *a, const real *b, real *per_block_results, const size_t n);
-GLOBAL void Cuda_reduction (const int *input, int *per_block_results, const size_t n);
-GLOBAL void Cuda_reduction_rvec (rvec *, rvec *, size_t n);
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
+GLOBAL void Cuda_reduction( const real *input, real *per_block_results, const size_t n );
+GLOBAL void Cuda_Norm( const real *input, real *per_block_results, const size_t n, int pass );
+GLOBAL void Cuda_Dot( const real *a, const real *b, real *per_block_results, const size_t n );
+GLOBAL void Cuda_reduction_int( const int *input, int *per_block_results, const size_t n );
+GLOBAL void Cuda_reduction_rvec( rvec *, rvec *, size_t n );
 
 GLOBAL void Cuda_Vector_Sum( real* , real , real* , real , real* , int ) ;
 GLOBAL void Cuda_Vector_Scale( real* , real , real* , int ) ;
 GLOBAL void Cuda_Vector_Add( real* , real , real* , int );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

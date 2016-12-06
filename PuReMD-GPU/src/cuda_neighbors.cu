@@ -41,7 +41,7 @@ extern inline DEVICE int index_grid (int blocksize)
 }
 
 
-DEVICE int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box, 
+DEVICE int d_Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box, 
         real cutoff, far_neighbor_data *data )
 {
     real norm_sqr, d, tmp;
@@ -123,20 +123,20 @@ GLOBAL void k_Estimate_NumNeighbors( reax_atom *sys_atoms,
                 //CHANGE ORIGINAL
                 /*
                    if (atom1 > atom2) {
-                   if (Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
+                   if (d_Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
                    control->vlist_cut, &nbr_data)){
                    ++num_far;
                    }
                    }
                  */
                 if (atom1 > atom2) {
-                    if (Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
+                    if (d_Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
                                 control->vlist_cut, &nbr_data)){
                         ++num_far;
                     }
                 }
                 else if (atom1 < atom2) {
-                    if (Are_Far_Neighbors (sys_atoms[atom2].x, sys_atoms[atom1].x, box, 
+                    if (d_Are_Far_Neighbors (sys_atoms[atom2].x, sys_atoms[atom1].x, box, 
                                 control->vlist_cut, &nbr_data)){
                         ++num_far;
                     }
@@ -205,13 +205,13 @@ GLOBAL void k_New_Estimate_NumNeighbors( reax_atom *sys_atoms,
             {
                 atom2 = nbr_atoms[m];
                 if (atom1 > atom2) {
-                    if (Are_Far_Neighbors (atom1_x, sys_atoms[atom2].x, box, 
+                    if (d_Are_Far_Neighbors (atom1_x, sys_atoms[atom2].x, box, 
                                 control->vlist_cut, &temp)){
                         num_far++;
                     }
                 }
                 else if (atom1 < atom2) {
-                    if (Are_Far_Neighbors (sys_atoms[atom2].x, atom1_x, box, 
+                    if (d_Are_Far_Neighbors (sys_atoms[atom2].x, atom1_x, box, 
                                 control->vlist_cut, &temp)){
                         num_far ++;
                     }
@@ -273,7 +273,7 @@ GLOBAL void k_Generate_Neighbor_Lists ( reax_atom *sys_atoms,
                 //CHANGE ORIGINAL
                 /*
                    if (atom1 > atom2) {
-                   if (Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
+                   if (d_Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
                    control->vlist_cut, &temp)){
 
                    nbr_data = & ( far_nbrs.select.far_nbr_list[num_far] );
@@ -291,7 +291,7 @@ GLOBAL void k_Generate_Neighbor_Lists ( reax_atom *sys_atoms,
                    }
                  */
                 if (atom1 > atom2) {
-                    if (Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
+                    if (d_Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
                                 control->vlist_cut, &temp)){
                         nbr_data = & ( far_nbrs.select.far_nbr_list[num_far] );
                         nbr_data->nbr = atom2;
@@ -307,7 +307,7 @@ GLOBAL void k_Generate_Neighbor_Lists ( reax_atom *sys_atoms,
                     }
                 }
                 else if (atom1 < atom2) {
-                    if (Are_Far_Neighbors (sys_atoms[atom2].x, sys_atoms[atom1].x, box, 
+                    if (d_Are_Far_Neighbors (sys_atoms[atom2].x, sys_atoms[atom1].x, box, 
                                 control->vlist_cut, &temp)){
                         nbr_data = & ( far_nbrs.select.far_nbr_list[num_far] );
                         nbr_data->nbr = atom2;
@@ -394,7 +394,7 @@ GLOBAL void k_New_Generate_Neighbor_Lists( reax_atom *sys_atoms,
             {
                 atom2 = nbr_atoms[m];
                 if (atom1 > atom2) {
-                    if (Are_Far_Neighbors (atom1_x, sys_atoms[atom2].x, box, 
+                    if (d_Are_Far_Neighbors (atom1_x, sys_atoms[atom2].x, box, 
                                 control->vlist_cut, &temp)){
                         //nbr_data = & ( far_nbrs.select.far_nbr_list[num_far] );
                         nbr_data = my_start;
@@ -412,7 +412,7 @@ GLOBAL void k_New_Generate_Neighbor_Lists( reax_atom *sys_atoms,
                     }
                 }
                 else if (atom1 < atom2) {
-                    if (Are_Far_Neighbors (sys_atoms[atom2].x, atom1_x, box, 
+                    if (d_Are_Far_Neighbors (sys_atoms[atom2].x, atom1_x, box, 
                                 control->vlist_cut, &temp)){
                         //nbr_data = & ( far_nbrs.select.far_nbr_list[num_far] );
                         nbr_data = my_start;
@@ -532,7 +532,7 @@ GLOBAL void Test_Generate_Neighbor_Lists( reax_atom *sys_atoms,
                 if (m < max) {
                     atom2 = nbr_atoms[m];
                     if (atom1 > atom2) {
-                        if (Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
+                        if (d_Are_Far_Neighbors (sys_atoms[atom1].x, sys_atoms[atom2].x, box, 
                                     control->vlist_cut, &temp))
                         {
                             tnbr [threadIdx.x] = 1;
@@ -540,7 +540,7 @@ GLOBAL void Test_Generate_Neighbor_Lists( reax_atom *sys_atoms,
                         }
                     }
                     else if (atom1 < atom2) {
-                        if (Are_Far_Neighbors (sys_atoms[atom2].x, sys_atoms[atom1].x, box, 
+                        if (d_Are_Far_Neighbors (sys_atoms[atom2].x, sys_atoms[atom1].x, box, 
                                     control->vlist_cut, &temp)){
                             tnbr [threadIdx.x] = 1;
                             nbrgen = TRUE;

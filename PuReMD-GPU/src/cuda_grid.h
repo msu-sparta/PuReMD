@@ -23,7 +23,17 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Cuda_Bin_Atoms( reax_system*, static_storage* );
 void Cuda_Bin_Atoms_Sync (reax_system *);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

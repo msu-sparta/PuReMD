@@ -24,11 +24,19 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void prep_dev_system (reax_system *system);
 
 void Cuda_Compute_Total_Mass( reax_system*, simulation_data* );
 void Cuda_Compute_Center_of_Mass( reax_system*, simulation_data*, FILE* );
 void Cuda_Compute_Kinetic_Energy( reax_system*, simulation_data* );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

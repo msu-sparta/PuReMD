@@ -24,6 +24,10 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Cuda_Reset_Grid( grid* );
 
 void Cuda_Reset_Workspace (reax_system *, static_storage *);
@@ -33,6 +37,9 @@ void Cuda_Reset( reax_system*, control_params*, simulation_data*,
 
 void Cuda_Reset_Atoms (reax_system *);
 
-
+#ifdef __cplusplus
+}
 #endif
 
+
+#endif

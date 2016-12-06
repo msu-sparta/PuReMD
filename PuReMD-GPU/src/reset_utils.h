@@ -24,6 +24,10 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Reset_Atoms( reax_system* );
 
 void Reset_Pressures( simulation_data* );
@@ -47,6 +51,10 @@ void Reset( reax_system*, control_params*, simulation_data*,
 void Reset_Grid( grid* );
 
 void Reset_Marks( grid*, ivec*, int );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

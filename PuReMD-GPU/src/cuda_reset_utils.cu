@@ -143,7 +143,7 @@ void Cuda_Reset( reax_system *system, control_params *control,
 
     //Reset_Simulation_Data( data );
     Cuda_Sync_Simulation_Data ( data );
-    //Sync_Host_Device (data, (simulation_data *)data->d_simulation_data, cudaMemcpyHostToDevice);
+    //Sync_Host_Device_Data( data, (simulation_data *)data->d_simulation_data, cudaMemcpyHostToDevice );
 
     if( control->ensemble == NPT || control->ensemble == sNPT || 
             control->ensemble == iNPT )

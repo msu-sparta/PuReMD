@@ -25,9 +25,19 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 GLOBAL void Cuda_Matvec (sparse_matrix , real *, real *, int );
 GLOBAL void Cuda_Matvec_csr (sparse_matrix , real *, real *, int );
 int Cuda_GMRES( static_storage *, real *b, real tol, real *x );
 int Cublas_GMRES( reax_system *, static_storage *, real *b, real tol, real *x );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

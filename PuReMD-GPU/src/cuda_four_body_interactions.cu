@@ -160,7 +160,7 @@ DEVICE real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
 }
 
 
-GLOBAL void Four_Body_Interactions ( reax_atom *atoms, 
+GLOBAL void k_Four_Body_Interactions ( reax_atom *atoms, 
         global_parameters g_params,
         four_body_header *d_fbp,
         control_params *control,
@@ -804,7 +804,7 @@ GLOBAL void Four_Body_Interactions ( reax_atom *atoms,
 }
 
 
-GLOBAL void Four_Body_Postprocess ( reax_atom *atoms, 
+GLOBAL void k_Four_Body_Postprocess( reax_atom *atoms, 
         static_storage p_workspace, 
         list p_bonds, int N )
 {

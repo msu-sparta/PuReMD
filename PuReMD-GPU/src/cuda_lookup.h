@@ -23,8 +23,18 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Cuda_Make_LR_Lookup_Table( reax_system*, control_params* );
 void copy_LR_table_to_device ( reax_system*, control_params* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 

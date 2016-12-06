@@ -23,6 +23,11 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Cuda_Velocity_Verlet_NVE( reax_system*, control_params*, simulation_data*,
         static_storage*, list**, output_controls* );
 void Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system*, control_params*,
@@ -31,6 +36,11 @@ void Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system*, control_params*,
 void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* , control_params* ,
         simulation_data *, static_storage *,
         list **, output_controls * );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 

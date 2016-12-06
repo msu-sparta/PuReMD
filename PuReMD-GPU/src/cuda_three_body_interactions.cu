@@ -30,7 +30,7 @@
 
 
 /* calculates the theta angle between i-j-k */
-DEVICE void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk, 
+DEVICE void d_Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk, 
         real *theta, real *cos_theta )
 {
     (*cos_theta) = Dot( dvec_ji, dvec_jk, 3 ) / ( d_ji * d_jk );
@@ -42,7 +42,7 @@ DEVICE void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
-DEVICE void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk, 
+DEVICE void d_Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk, 
         rvec* dcos_theta_di, rvec* dcos_theta_dj, 
         rvec* dcos_theta_dk )
 {
@@ -73,7 +73,7 @@ DEVICE void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_
 
 /* this is a 3-body interaction in which the main role is 
    played by j which sits in the middle of the other two. */
-GLOBAL void Three_Body_Interactions( reax_atom *atoms,
+GLOBAL void k_Three_Body_Interactions( reax_atom *atoms,
         single_body_parameters *sbp,
         three_body_header *d_thbp,
         global_parameters g_params,
@@ -253,11 +253,11 @@ where i < k */
                 if (BOA_jk <= 0) continue;
                 //CHANGE ORIGINAL
 
-                Calculate_Theta( pbond_ij->dvec, pbond_ij->d, 
+                d_Calculate_Theta( pbond_ij->dvec, pbond_ij->d, 
                         pbond_jk->dvec, pbond_jk->d,
                         &theta, &cos_theta );
 
-                Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, 
+                d_Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, 
                         pbond_jk->dvec, pbond_jk->d, 
                         &(p_ijk->dcos_di), &(p_ijk->dcos_dj), 
                         &(p_ijk->dcos_dk) );
@@ -642,7 +642,7 @@ where i < k */
 }
 
 
-GLOBAL void Three_Body_Interactions_results (     reax_atom *atoms, control_params *control,
+GLOBAL void k_Three_Body_Interactions_results (     reax_atom *atoms, control_params *control,
         static_storage p_workspace, 
         list p_bonds, int N )
 {
@@ -671,7 +671,7 @@ GLOBAL void Three_Body_Interactions_results (     reax_atom *atoms, control_para
 
 /* this is a 3-body interaction in which the main role is 
    played by j which sits in the middle of the other two. */
-GLOBAL void Three_Body_Estimate ( reax_atom *atoms, 
+GLOBAL void k_Three_Body_Estimate ( reax_atom *atoms, 
         control_params *control,
         list p_bonds, int N, 
         int *count)
@@ -747,7 +747,7 @@ GLOBAL void Three_Body_Estimate ( reax_atom *atoms,
 }
 
 
-GLOBAL void Hydrogen_Bonds(reax_atom *atoms,
+GLOBAL void k_Hydrogen_Bonds(reax_atom *atoms,
         single_body_parameters *sbp,
         hbond_parameters *d_hbp,
         control_params *control,
@@ -874,10 +874,10 @@ GLOBAL void Hydrogen_Bonds(reax_atom *atoms,
                     hbp = &(d_hbp[ index_hbp(type_i, type_j, type_k, num_atom_types) ]);
                     ++num_hb_intrs;
 
-                    Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
+                    d_Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
                             &theta, &cos_theta );
                     // the derivative of cos(theta)
-                    Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
+                    d_Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
                             &dcos_theta_di, &dcos_theta_dj, 
                             &dcos_theta_dk );
 
@@ -1105,7 +1105,7 @@ DEVICE void warpReduce(volatile real* sdata, int tid)
 
 
 
-GLOBAL void Hydrogen_Bonds_HB(reax_atom *atoms,
+GLOBAL void k_Hydrogen_Bonds_HB(reax_atom *atoms,
         single_body_parameters *sbp,
         hbond_parameters *d_hbp,
         control_params *control,
@@ -1254,10 +1254,10 @@ GLOBAL void Hydrogen_Bonds_HB(reax_atom *atoms,
                     hbp = &(d_hbp[ index_hbp(type_i, type_j, type_k, num_atom_types) ]);
                     ++num_hb_intrs;
 
-                    Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
+                    d_Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
                             &theta, &cos_theta );
                     // the derivative of cos(theta)
-                    Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
+                    d_Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
                             &dcos_theta_di, &dcos_theta_dj, 
                             &dcos_theta_dk );
 
@@ -1482,7 +1482,7 @@ GLOBAL void Hydrogen_Bonds_HB(reax_atom *atoms,
 }
 
 
-GLOBAL void Hydrogen_Bonds_Postprocess(reax_atom *atoms, 
+GLOBAL void k_Hydrogen_Bonds_Postprocess(reax_atom *atoms, 
         single_body_parameters *sbp,
         static_storage p_workspace,
         list p_bonds, list p_hbonds, list p_far_nbrs, int N, 
@@ -1547,7 +1547,7 @@ GLOBAL void Hydrogen_Bonds_Postprocess(reax_atom *atoms,
 }
 
 
-GLOBAL void Hydrogen_Bonds_Far_Nbrs(reax_atom *atoms, 
+GLOBAL void k_Hydrogen_Bonds_Far_Nbrs(reax_atom *atoms, 
         single_body_parameters *sbp,
         static_storage p_workspace,
         list p_bonds, list p_hbonds, list p_far_nbrs, int N )
@@ -1593,7 +1593,7 @@ GLOBAL void Hydrogen_Bonds_Far_Nbrs(reax_atom *atoms,
 }
 
 
-GLOBAL void Hydrogen_Bonds_HNbrs(reax_atom *atoms, 
+GLOBAL void k_Hydrogen_Bonds_HNbrs(reax_atom *atoms, 
         single_body_parameters *sbp,
         static_storage p_workspace,
         list p_bonds, list p_hbonds, list p_far_nbrs, int N )

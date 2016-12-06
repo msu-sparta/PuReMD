@@ -213,7 +213,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
 
 #ifdef __PRINT_CPU_RESULTS__
         //fprintf (stderr, "Synching bonds from device for printing ....\n");
-        Sync_Host_Device (bonds, (dev_lists + BONDS), TYP_BOND );
+        Sync_Host_Device_List( bonds, (dev_lists + BONDS), TYP_BOND );
 #endif
 
         for( i = 0; i < system->N; ++i )
@@ -245,10 +245,10 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
 
 #ifdef __PRINT_CPU_RESULTS__
         //fprintf (stderr, "Synching three bodies from deivce for printing ... \n");
-        Sync_Host_Device (thb_intrs, dev_lists + THREE_BODIES, TYP_THREE_BODY );
+        Sync_Host_Device_List( thb_intrs, dev_lists + THREE_BODIES, TYP_THREE_BODY );
         if ( !write_bonds) {
             //fprintf (stderr, "Synching bonds for three bodies from device for printing ... \n");
-            Sync_Host_Device (bonds, (dev_lists + BONDS), TYP_BOND );
+            Sync_Host_Device_List( bonds, (dev_lists + BONDS), TYP_BOND );
         }
 #endif 
 

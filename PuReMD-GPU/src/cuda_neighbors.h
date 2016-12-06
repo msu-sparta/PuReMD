@@ -24,13 +24,21 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 GLOBAL void k_Estimate_NumNeighbors( reax_atom *, grid, simulation_box *,
         control_params *, int * );
 
 void Cuda_Generate_Neighbor_Lists (reax_system *system,
         static_storage *workspace, control_params *control, int);
 
-DEVICE int Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
+DEVICE int d_Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

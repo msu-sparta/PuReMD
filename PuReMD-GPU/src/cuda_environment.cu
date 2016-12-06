@@ -23,20 +23,18 @@
 #include "cuda_utils.h"
 
 
-extern "C" void Setup_Cuda_Environment( int rank, int nprocs, int gpus_per_node )
+void Setup_Cuda_Environment( int rank, int nprocs, int gpus_per_node )
 {
 
-    int deviceCount;
+    int deviceCount = 0;
     cudaError_t flag;
-    cublasStatus_t cublasStatus;
     cublasHandle_t cublasHandle;
     cusparseHandle_t cusparseHandle;
-    cusparseStatus_t cusparseStatus;
     cusparseMatDescr_t matdescriptor;
     
     flag = cudaGetDeviceCount( &deviceCount );
 
-    if ( flag != cudaSuccess )
+    if ( flag != cudaSuccess || deviceCount < 1 )
     {
         fprintf( stderr, "ERROR: no CUDA capable device(s) found. Terminating...\n" );
         exit( 1 );
@@ -45,28 +43,28 @@ extern "C" void Setup_Cuda_Environment( int rank, int nprocs, int gpus_per_node 
     //Calculate the # of GPUs per processor
     //and assign the GPU for each process
     //TODO: handle condition where # CPU procs > # GPUs
-    cudaSetDevice( (rank % (deviceCount)) );
+    cudaSetDevice( rank % deviceCount );
 
 #if defined(__CUDA_DEBUG__)
-    fprintf( stderr, "p:%d is using GPU: %d \n", rank, (rank % deviceCount));
+    fprintf( stderr, "p:%d is using GPU: %d \n", rank, rank % deviceCount );
 #endif
 
     //CHANGE ORIGINAL
     //cudaDeviceSetLimit( cudaLimitStackSize, 8192 );
     //cudaDeviceSetCacheConfig( cudaFuncCachePreferL1 );
-    //cudaCheckError();
+    //cudaCheckError( );
 
-    cublasCheckError( cublasStatus = cublasCreate(&cublasHandle) );
+    cublasCheckError( cublasCreate(&cublasHandle) );
 
-    cusparseCheckError( cusparseStatus = cusparseCreate (&cusparseHandle) );
-    cusparseCheckError( cusparseCreateMatDescr (&matdescriptor) );
+    cusparseCheckError( cusparseCreate(&cusparseHandle) );
+    cusparseCheckError( cusparseCreateMatDescr(&matdescriptor) );
     cusparseSetMatType( matdescriptor, CUSPARSE_MATRIX_TYPE_GENERAL );
     cusparseSetMatIndexBase( matdescriptor, CUSPARSE_INDEX_BASE_ZERO );
 
 }
 
 
-extern "C" void Cleanup_Cuda_Environment( )
+void Cleanup_Cuda_Environment( )
 {
     cudaDeviceReset( );
     cudaDeviceSynchronize( );

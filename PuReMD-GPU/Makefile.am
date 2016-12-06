@@ -28,6 +28,7 @@ bin_puremd_gpu_SOURCES = src/analyze.c src/print_utils.c \
 	src/reset_utils.c src/single_body_interactions.c \
 	src/system_props.c src/three_body_interactions.c \
 	src/traj.c src/two_body_interactions.c src/vector.c \
+	src/testmd.c \
 	src/cuda_utils.cu src/cuda_copy.cu src/cuda_init.cu src/cuda_reduction.cu \
 	src/cuda_center_mass.cu src/cuda_box.cu src/validation.cu \
         src/cuda_allocate.cu src/cuda_bond_orders.cu \
@@ -38,8 +39,7 @@ bin_puremd_gpu_SOURCES = src/analyze.c src/print_utils.c \
 	src/cuda_reset_utils.cu src/cuda_single_body_interactions.cu \
         src/cuda_system_props.cu src/cuda_three_body_interactions.cu \
 	src/cuda_two_body_interactions.cu src/cuda_environment.cu \
-	src/cuda_post_evolve.cu \
-	src/testmd.c
+	src/cuda_post_evolve.cu
 include_HEADERS = src/mytypes.h src/analyze.h src/print_utils.h \
         src/restart.h src/param.h src/pdb_tools.h src/box.h \
 	src/lin_alg.h src/QEq.h src/allocate.h src/bond_orders.h \
