@@ -18,22 +18,31 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-
 #ifndef __CUDA_INIT_H__
 #define __CUDA_INIT_H__
 
 #include "mytypes.h"
 
-void    Cuda_Init_System ( reax_system* );
-void    Cuda_Init_Simulation_Data (simulation_data *);
-void    Cuda_Init_Workspace_System ( reax_system *, static_storage *);
-void    Cuda_Init_Workspace ( reax_system *, control_params *, static_storage *);
-void    Cuda_Init_Workspace_Device ( static_storage *);
-void  Cuda_Init_Control (control_params *);
-void  Cuda_Init_Grid (grid *, grid *);
 
-void    Cuda_Init_Sparse_Matrix (sparse_matrix *, int, int);
+#ifdef __cplusplus
+extern "C"  {
+#endif
 
-void Cuda_Init_Scratch ();
+void Cuda_Init_System( reax_system* );
+void Cuda_Init_Simulation_Data( simulation_data * );
+void Cuda_Init_Workspace_System( reax_system *, static_storage * );
+void Cuda_Init_Workspace( reax_system *, control_params *, static_storage * );
+void Cuda_Init_Workspace_Device( static_storage * );
+void Cuda_Init_Control( control_params * );
+void Cuda_Init_Grid( grid *, grid * );
+
+void Cuda_Init_Sparse_Matrix( sparse_matrix *, int, int );
+
+void Cuda_Init_Scratch( );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

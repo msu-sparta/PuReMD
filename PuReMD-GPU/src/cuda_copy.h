@@ -18,8 +18,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-
-
 #ifndef __CUDA_COPY_H_
 #define __CUDA_COPY_H_
 
@@ -28,14 +26,24 @@
 #include "mytypes.h"
 #include "list.h"
 
-void Sync_Host_Device (grid *, grid *, enum cudaMemcpyKind);
-void Sync_Host_Device (reax_system *, enum cudaMemcpyKind);
-void Sync_Host_Device (control_params *, control_params *, enum cudaMemcpyKind);
-void Sync_Host_Device (simulation_data *, simulation_data *, enum cudaMemcpyKind);
-void Sync_Host_Device (sparse_matrix *, sparse_matrix *, enum cudaMemcpyKind);
-void Sync_Host_Device (output_controls *, enum cudaMemcpyKind);
 
-void Prep_Device_For_Output (reax_system *, simulation_data *);
-void Sync_Host_Device (list *host, list *device, int type);
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
+void Sync_Host_Device_Grid( grid *, grid *, enum cudaMemcpyKind );
+void Sync_Host_Device_Sys( reax_system *, enum cudaMemcpyKind );
+void Sync_Host_Device_Params( control_params *, control_params *, enum cudaMemcpyKind );
+void Sync_Host_Device_Data( simulation_data *, simulation_data *, enum cudaMemcpyKind );
+void Sync_Host_Device_Mat( sparse_matrix *, sparse_matrix *, enum cudaMemcpyKind );
+void Sync_Host_Device_Control( output_controls *, enum cudaMemcpyKind );
+
+void Prep_Device_For_Output( reax_system *, simulation_data * );
+void Sync_Host_Device_List( list *host, list *device, int type );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

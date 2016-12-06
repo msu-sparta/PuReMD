@@ -28,9 +28,17 @@
     #define GLOBAL __global__
     #define HOST_DEVICE __host__ __device__
 
+    #include <cuda_runtime.h>
     #include <cuda.h>
+    #include <cuda_runtime_api.h>
+
     #include <cublas_v2.h>
     #include <cusparse_v2.h>
+    #if __CUDA_ARCH__ < 600
+      #define MYATOMICADD myAtomicAdd
+    #else
+      #define MYATOMICADD atomicAdd
+    #endif
   #endif
 #else
   #ifndef __MYTYPES_H_
@@ -61,6 +69,11 @@
 //#define TEST_ENERGY
 //#define REORDER_ATOMS  // turns on nbrgen opt by re-ordering atoms
 //#define LGJ
+
+#define SUCCESS  1
+#define FAILURE  0
+#define TRUE  1
+#define FALSE 0
 
 #define EXP    exp
 #define SQRT   sqrt
@@ -295,8 +308,6 @@
 #define MATVEC_BLOCK_SIZE                       512
 #define MATVEC_THREADS_PER_ROW              32
 
-
-enum {TYP_HOST, TYP_DEVICE};
 
 typedef double real;
 typedef real rvec[3];
@@ -1107,13 +1118,13 @@ typedef struct
 
 
 typedef void (*interaction_function)(reax_system*, control_params*,
-                                     simulation_data*, static_storage*,
-                                     list**, output_controls*);
+        simulation_data*, static_storage*, list**, output_controls*);
+
 extern interaction_function Interaction_Functions[NO_OF_INTERACTIONS];
 
 typedef void (*evolve_function)(reax_system*, control_params*,
-                                simulation_data*, static_storage*,
-                                list**, output_controls*);
+        simulation_data*, static_storage*,
+        list**, output_controls*);
 
 typedef real (*lookup_function)(real);
 extern lookup_table Exp, Sqrt, Cube_Root, Four_Third_Root, Cos, Sin, ACos;
@@ -1125,7 +1136,6 @@ typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*,
         control_params*, far_neighbor_data*,
         int*);
 
-
 /* CUDA structures */
 extern list *dev_lists;
 extern static_storage *dev_workspace;
@@ -1136,15 +1146,6 @@ extern reax_timing d_timing;
 extern void *scratch;
 extern int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
 extern int MATVEC_BLOCKS;
-
-#ifdef __CUDACC__
-extern cublasStatus_t cublasStatus;
-extern cublasHandle_t cublasHandle;
-
-extern cusparseHandle_t cusparseHandle;
-extern cusparseStatus_t cusparseStatus;
-extern cusparseMatDescr_t matdescriptor;
-#endif
 
 
 #endif

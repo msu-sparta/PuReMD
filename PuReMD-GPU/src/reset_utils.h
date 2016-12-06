@@ -23,6 +23,11 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Reset_Atoms( reax_system* );
 
 void Reset_Pressures( simulation_data* );
@@ -36,10 +41,10 @@ void Reset_Test_Forces( reax_system*, static_storage* );
 void Reset_Workspace( reax_system*, static_storage* );
 
 void Reset_Neighbor_Lists( reax_system*, control_params*,
-                           static_storage*, list** );
+        static_storage*, list** );
 
 void Reset( reax_system*, control_params*, simulation_data*,
-            static_storage*, list** );
+        static_storage*, list** );
 
 //void Reset_Neighbor_Lists( reax_system*, static_storage*, list** );
 
@@ -47,12 +52,9 @@ void Reset_Grid( grid* );
 
 void Reset_Marks( grid*, ivec*, int );
 
-void Cuda_Reset_Grid( grid* );
+#ifdef __cplusplus
+}
+#endif
 
-//CUDA functions
-void Cuda_Reset_Workspace (reax_system *, static_storage *);
-void Cuda_Reset( reax_system*, control_params*, simulation_data*,
-                 static_storage*, list** );
-void Cuda_Reset_Atoms (reax_system *);
 
 #endif

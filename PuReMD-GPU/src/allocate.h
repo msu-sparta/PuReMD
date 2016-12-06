@@ -23,6 +23,11 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Reallocate( reax_system*, static_storage*, list**, int );
 
 int Allocate_Matrix( sparse_matrix*, int, int );
@@ -32,13 +37,9 @@ int Allocate_HBond_List( int, int, int*, int*, list* );
 
 int Allocate_Bond_List( int, int*, list* );
 
-//Cuda Functions
-int Cuda_Allocate_Matrix( sparse_matrix*, int, int );
-int Cuda_Allocate_HBond_List( int, int, int*, int*, list* );
-int Cuda_Allocate_Bond_List( int, int*, list* );
-void Cuda_Reallocate( reax_system*, static_storage*, list*, int, int );
+#ifdef __cplusplus
+}
+#endif
 
-GLOBAL void Init_HBond_Indexes ( int *, int *, list , int  );
-GLOBAL void Init_Bond_Indexes ( int *, list , int  );
 
 #endif
