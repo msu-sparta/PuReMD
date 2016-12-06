@@ -366,7 +366,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //  }
 //#endif
     
-    Cuda_CG_Diagnol_Preconditioner (dev_workspace, b, system->n);
+    Cuda_CG_Diagonal_Preconditioner( dev_workspace, b, system->n );
 
 //  compare_rvec2 (workspace->r2, dev_workspace->r2, n, "r2");
 //  compare_rvec2 (workspace->d2, dev_workspace->d2, n, "d2");
