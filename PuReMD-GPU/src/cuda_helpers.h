@@ -21,9 +21,15 @@
 #ifndef __CUDA_HELPERS__
 #define __CUDA_HELPERS__
 
+
 #include "mytypes.h"
 
-DEVICE inline int cuda_strcmp (char *a, char *b, int len)
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
+static inline DEVICE int cuda_strcmp(char *a, char *b, int len)
 {
     char *src, *dst;
 
@@ -32,20 +38,25 @@ DEVICE inline int cuda_strcmp (char *a, char *b, int len)
 
     for (int i = 0; i < len; i++)
     {
-
         if (*dst == '\0')
+        {
             return 0;
+        }
 
-        if (*src != *dst)  return 1;
+        if (*src != *dst)
+        {
+            return 1;
+        }
 
-        src ++;
-        dst ++;
+        src++;
+        dst++;
     }
 
     return 0;
 }
 
-DEVICE inline real atomicAdd(real* address, real val)
+
+static inline DEVICE double myAtomicAdd(double* address, double val)
 {
     unsigned long long int* address_as_ull =
         (unsigned long long int*)address;
@@ -54,24 +65,31 @@ DEVICE inline real atomicAdd(real* address, real val)
     {
         assumed = old;
         old = atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(val + __longlong_as_double(assumed)));
+                __double_as_longlong(val + __longlong_as_double(assumed)));
     }
     while (assumed != old);
     return __longlong_as_double(old);
 }
 
-DEVICE inline void atomic_rvecAdd( rvec ret, rvec v )
+
+static inline DEVICE void atomic_rvecAdd( rvec ret, rvec v )
 {
-    atomicAdd ( &ret[0], v[0] );
-    atomicAdd ( &ret[1], v[1] );
-    atomicAdd ( &ret[2], v[2] );
+    MYATOMICADD( (double*)&ret[0], (double)v[0] );
+    MYATOMICADD( (double*)&ret[1], (double)v[1] );
+    MYATOMICADD( (double*)&ret[2], (double)v[2] );
 }
 
-DEVICE inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
+
+static inline DEVICE void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
-    atomicAdd ( &ret[0], c * v[0] );
-    atomicAdd ( &ret[1], c * v[1] );
-    atomicAdd ( &ret[2], c * v[2] );
+    MYATOMICADD( (double*)&ret[0], (double)(c * v[0]) );
+    MYATOMICADD( (double*)&ret[1], (double)(c * v[1]) );
+    MYATOMICADD( (double*)&ret[2], (double)(c * v[2]) );
 }
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

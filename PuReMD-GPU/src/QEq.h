@@ -23,10 +23,39 @@
 
 #include "mytypes.h"
 
-void QEq( reax_system*, control_params*, simulation_data*, static_storage*,
-          list*, output_controls* );
 
-void Cuda_QEq( reax_system*, control_params*, simulation_data*, static_storage*,
-               list*, output_controls* );
+void QEq( reax_system*, control_params*, simulation_data*, static_storage*,
+        list*, output_controls* );
+
+
+static inline HOST_DEVICE void swap(sparse_matrix_entry *array, int index1, int index2) 
+{
+    sparse_matrix_entry temp = array[index1];
+    array[index1] = array[index2];
+    array[index2] = temp;
+}
+
+
+static inline HOST_DEVICE void quick_sort(sparse_matrix_entry *array, int start, int end)
+{
+    int i = start;
+    int k = end; 
+
+    if (end - start >= 1)  
+    {  
+        int pivot = array[start].j;
+
+        while (k > i) 
+        {  
+            while ((array[i].j <= pivot) && (i <= end) && (k > i)) i++;
+            while ((array[k].j > pivot) && (k >= start) && (k >= i)) k--;
+            if (k > i) swap(array, i, k);
+        }  
+        swap(array, start, k);
+        quick_sort(array, start, k - 1);
+        quick_sort(array, k + 1, end);
+    }  
+}
+
 
 #endif

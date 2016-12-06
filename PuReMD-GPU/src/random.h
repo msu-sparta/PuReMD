@@ -23,31 +23,29 @@
 
 #include "mytypes.h"
 
-HOST_DEVICE inline double Random(double);
-HOST_DEVICE inline void Randomize();
-HOST_DEVICE inline double GRandom(double , double );
-
 
 /* System random number generator used linear congruance method with
    large periodicity for generation of pseudo random number. function
    Random returns this random number appropriately scaled so that
    0 <= Random(range) < range */
-HOST_DEVICE inline double Random(double range)
+static inline HOST_DEVICE double Random(double range)
 {
     return (random() * range) / 2147483647L;
 }
 
+
 /* This function seeds the system pseudo random number generator with
    current time. Use this function once in the begining to initialize
    the system */
-HOST_DEVICE inline void Randomize()
+static inline HOST_DEVICE void Randomize( )
 {
-    srandom(time(NULL));
+    srandom( time(NULL) );
 }
+
 
 /* GRandom return random number with gaussian distribution with mean
    and standard deviation "sigma" */
-HOST_DEVICE inline double GRandom(double mean, double sigma)
+static inline HOST_DEVICE double GRandom(double mean, double sigma)
 {
     double v1 = Random(2.0) - 1.0;
     double v2 = Random(2.0) - 1.0;
@@ -62,5 +60,6 @@ HOST_DEVICE inline double GRandom(double mean, double sigma)
 
     return mean + v1 * sigma * sqrt(-2.0 * log(rsq) / rsq);
 }
+
 
 #endif

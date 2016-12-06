@@ -18,8 +18,42 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __MYTYPES_H_
-#define __MYTYPES_H_
+#if !(defined(__MYTYPES_H_) || defined(__CUDA_MYTYPES_H_))
+
+#ifdef __CUDACC__
+  #ifndef __CUDA_MYTYPES_H_
+    #define __CUDA_MYTYPES_H_
+    #define HOST __host__
+    #define DEVICE __device__
+    #define GLOBAL __global__
+    #define HOST_DEVICE __host__ __device__
+
+    #include <cuda_runtime.h>
+    #include <cuda.h>
+    #include <cuda_runtime_api.h>
+
+    #include <cublas_v2.h>
+    #include <cusparse_v2.h>
+    #if __CUDA_ARCH__ < 600
+      #define MYATOMICADD myAtomicAdd
+    #else
+      #define MYATOMICADD atomicAdd
+    #endif
+  #endif
+#else
+  #ifndef __MYTYPES_H_
+    #define __MYTYPES_H_
+    #define HOST
+    #define DEVICE
+    #define GLOBAL
+    #define HOST_DEVICE
+  #endif
+#endif
+
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "config.h"
+#endif
 
 #include "math.h"
 //#include "random.h"
@@ -30,28 +64,16 @@
 #include "time.h"
 #include "zlib.h"
 
-
 //#define DEBUG_FOCUS
 //#define TEST_FORCES
 //#define TEST_ENERGY
 //#define REORDER_ATOMS  // turns on nbrgen opt by re-ordering atoms
 //#define LGJ
 
-#ifdef __USE_GPU__
-
-#include "cublas_v2.h"
-#include "cusparse_v2.h"
-
-#define HOST __host__
-#define DEVICE __device__
-#define GLOBAL __global__
-#define HOST_DEVICE __host__ __device__
-#else
-#define HOST
-#define DEVICE
-#define GLOBAL
-#define HOST_DEVICE
-#endif
+#define SUCCESS  1
+#define FAILURE  0
+#define TRUE  1
+#define FALSE 0
 
 #define EXP    exp
 #define SQRT   sqrt
@@ -140,10 +162,10 @@
 #define RES_GRID_MARK       0x03
 #define RES_GRID_START      0x04
 #define RES_GRID_END        0x05
-#define     RES_GRID_NBRS       0x06
-#define     RES_GRID_NBRS_CP    0x07
+#define RES_GRID_NBRS       0x06
+#define RES_GRID_NBRS_CP    0x07
 
-#define     RES_SYSTEM_ATOMS            0x10
+#define RES_SYSTEM_ATOMS            0x10
 #define RES_SYSTEM_SIMULATION_BOX   0x11
 
 #define RES_REAX_INT_SBP    0x20
@@ -154,58 +176,58 @@
 
 #define RES_SIMULATION_DATA 0x30
 
-#define      RES_STORAGE                        0x401
-#define      RES_STORAGE_HBOND_INDEX        0x402
-#define      RES_STORAGE_TOTAL_BOND_ORDER   0x403
-#define      RES_STORAGE_DELTAP             0x404
-#define      RES_STORAGE_DELTAP_BOC         0x404
-#define      RES_STORAGE_DDELTAP_SELF       0x405
-#define      RES_STORAGE_DELTA              0x406
-#define      RES_STORAGE_DELTA_LP           0x407
-#define      RES_STORAGE_DELTA_LP_TEMP      0x408
-#define      RES_STORAGE_DDELTA_LP          0x409
-#define      RES_STORAGE_DDELTA_LP_TEMP 0x40A
-#define      RES_STORAGE_DELTA_E                0x40B
-#define      RES_STORAGE_DELTA_BOC          0x40C
-#define      RES_STORAGE_NL                 0x40D
-#define      RES_STORAGE_NLP_TEMP           0x40E
-#define      RES_STORAGE_CLP                    0x40F
-#define      RES_STORAGE_CDDELTA                0x410
-#define      RES_STORAGE_VLPEX              0x411
-#define      RES_STORAGE_DROPTOL                0x412
-#define      RES_STORAGE_W                      0x413
-#define      RES_STORAGE_HDIA_INV           0x414
-#define      RES_STORAGE_B                      0x415
-#define      RES_STORAGE_B_S                    0x416
-#define      RES_STORAGE_B_T                    0x417
-#define      RES_STORAGE_B_PRC              0x418
-#define      RES_STORAGE_B_PRM              0x419
-#define      RES_STORAGE_S_T                    0x41A
-#define      RES_STORAGE_S                      0x41B
-#define      RES_STORAGE_T                      0x41C
-#define      RES_STORAGE_Y                      0x41D
-#define      RES_STORAGE_Z                      0x41E
-#define      RES_STORAGE_G                      0x41F
-#define      RES_STORAGE_HS                 0x420
-#define      RES_STORAGE_HC                 0x421
-#define      RES_STORAGE_RN                 0x422
-#define      RES_STORAGE_V                  0x423
-#define      RES_STORAGE_H                      0x424
-#define      RES_STORAGE_R                      0x425
-#define      RES_STORAGE_D                      0x426
-#define      RES_STORAGE_Q                      0x427
-#define      RES_STORAGE_P                      0x428
-#define      RES_STORAGE_A                      0x429
-#define      RES_STORAGE_F_OLD              0x42A
-#define      RES_STORAGE_V_CONST                0x42B
-#define      RES_STORAGE_MARK                   0x42C
-#define      RES_STORAGE_OLD_MARK           0x42D
-#define      RES_STORAGE_X_OLD              0x42E
-#define      RES_STORAGE_NLP                    0x42F
-#define      RES_STORAGE_MAP_SERIALS        0x430
-#define     RES_STORAGE_RESTRICTED          0x431
-#define      RES_STORAGE_RESTRICTED_LIST    0x432
-#define      RES_STORAGE_ORIG_ID                0x433
+#define RES_STORAGE                    0x401
+#define RES_STORAGE_HBOND_INDEX        0x402
+#define RES_STORAGE_TOTAL_BOND_ORDER   0x403
+#define RES_STORAGE_DELTAP             0x404
+#define RES_STORAGE_DELTAP_BOC         0x404
+#define RES_STORAGE_DDELTAP_SELF       0x405
+#define RES_STORAGE_DELTA              0x406
+#define RES_STORAGE_DELTA_LP           0x407
+#define RES_STORAGE_DELTA_LP_TEMP      0x408
+#define RES_STORAGE_DDELTA_LP          0x409
+#define RES_STORAGE_DDELTA_LP_TEMP 0x40A
+#define RES_STORAGE_DELTA_E                0x40B
+#define RES_STORAGE_DELTA_BOC          0x40C
+#define RES_STORAGE_NL                 0x40D
+#define RES_STORAGE_NLP_TEMP           0x40E
+#define RES_STORAGE_CLP                    0x40F
+#define RES_STORAGE_CDDELTA                0x410
+#define RES_STORAGE_VLPEX              0x411
+#define RES_STORAGE_DROPTOL                0x412
+#define RES_STORAGE_W                      0x413
+#define RES_STORAGE_HDIA_INV           0x414
+#define RES_STORAGE_B                      0x415
+#define RES_STORAGE_B_S                    0x416
+#define RES_STORAGE_B_T                    0x417
+#define RES_STORAGE_B_PRC              0x418
+#define RES_STORAGE_B_PRM              0x419
+#define RES_STORAGE_S_T                    0x41A
+#define RES_STORAGE_S                      0x41B
+#define RES_STORAGE_T                      0x41C
+#define RES_STORAGE_Y                      0x41D
+#define RES_STORAGE_Z                      0x41E
+#define RES_STORAGE_G                      0x41F
+#define RES_STORAGE_HS                 0x420
+#define RES_STORAGE_HC                 0x421
+#define RES_STORAGE_RN                 0x422
+#define RES_STORAGE_V                  0x423
+#define RES_STORAGE_H                      0x424
+#define RES_STORAGE_R                      0x425
+#define RES_STORAGE_D                      0x426
+#define RES_STORAGE_Q                      0x427
+#define RES_STORAGE_P                      0x428
+#define RES_STORAGE_A                      0x429
+#define RES_STORAGE_F_OLD              0x42A
+#define RES_STORAGE_V_CONST                0x42B
+#define RES_STORAGE_MARK                   0x42C
+#define RES_STORAGE_OLD_MARK           0x42D
+#define RES_STORAGE_X_OLD              0x42E
+#define RES_STORAGE_NLP                    0x42F
+#define RES_STORAGE_MAP_SERIALS        0x430
+#define RES_STORAGE_RESTRICTED          0x431
+#define RES_STORAGE_RESTRICTED_LIST    0x432
+#define RES_STORAGE_ORIG_ID                0x433
 
 #define RES_CONTROL_PARAMS  0x50
 
@@ -223,7 +245,6 @@
 #define RES_LR_LOOKUP_TABLE         0x86
 
 #define RES_SCRATCH                     0x90
-
 
 #define LIST_INDEX                      0x00
 #define  LIST_END_INDEX                 0x01
@@ -288,9 +309,6 @@
 #define MATVEC_THREADS_PER_ROW              32
 
 
-
-enum {TYP_HOST, TYP_DEVICE};
-
 typedef double real;
 typedef real rvec[3];
 typedef int  ivec[3];
@@ -307,7 +325,6 @@ enum {UNKNOWN, WATER};
 enum {NO_ANALYSIS, FRAGMENTS, REACTIONS, NUM_ANALYSIS};
 enum {WRITE_ASCII, WRITE_BINARY, RF_N};
 enum {XYZ, PDB, BGF, ASCII_RESTART, BINARY_RESTART, GF_N};
-
 
 
 /* Global params mapping */
@@ -352,14 +369,12 @@ l[36] = N/A
 l[37] = version number
 l[38] = p_coa3
 */
-
 typedef struct
 {
     int n_global;
     real* l;
     int vdw_type;
 } global_parameters;
-
 
 
 typedef struct
@@ -405,7 +420,6 @@ typedef struct
 } single_body_parameters;
 
 
-
 /* Two Body Parameters */
 typedef struct
 {
@@ -435,7 +449,6 @@ typedef struct
 } two_body_parameters;
 
 
-
 /* 3-body parameters */
 typedef struct
 {
@@ -458,13 +471,11 @@ typedef struct
 } three_body_header;
 
 
-
 /* hydrogen-bond parameters */
 typedef struct
 {
     real r0_hb, p_hb1, p_hb2, p_hb3;
 } hbond_parameters;
-
 
 
 /* 4-body parameters */
@@ -560,7 +571,6 @@ typedef struct
     int   *end;
     ivec  *nbrs;
     rvec  *nbrs_cp;
-
 } grid;
 
 
@@ -768,8 +778,6 @@ typedef struct
     reax_timing timing;
     //CUDA
     reax_timing d_timing;
-
-
     void *d_simulation_data;
 } simulation_data;
 
@@ -837,6 +845,7 @@ typedef struct
     rvec dBO, dBOpi, dBOpi2;
 } dbond_data;
 
+
 typedef struct
 {
     real BO, BO_s, BO_pi, BO_pi2;
@@ -846,6 +855,7 @@ typedef struct
     real C1dbopi2, C2dbopi2, C3dbopi2, C4dbopi2;
     rvec dBOp, dln_BOp_s, dln_BOp_pi, dln_BOp_pi2;
 } bond_order_data;
+
 
 typedef struct
 {
@@ -886,6 +896,7 @@ typedef struct
     real val;
 } sparse_matrix_entry;
 
+
 typedef struct
 {
     int n, m;
@@ -913,6 +924,7 @@ typedef struct
     int num_3body;
     int gcell_atoms;
 } reallocate_data;
+
 
 typedef struct
 {
@@ -999,7 +1011,6 @@ typedef struct
 } list;
 
 
-
 typedef struct
 {
     FILE *trj;
@@ -1070,11 +1081,11 @@ typedef struct
 } LR_data;
 
 
-
 typedef struct
 {
     real a, b, c, d;
 } cubic_spline_coef;
+
 
 typedef struct
 {
@@ -1126,8 +1137,7 @@ typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*,
         int*);
 
 
-// CUDA structures
-//
+/* CUDA structures */
 extern list *dev_lists;
 extern static_storage *dev_workspace;
 extern LR_lookup_table *d_LR;
@@ -1137,16 +1147,6 @@ extern reax_timing d_timing;
 extern void *scratch;
 extern int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
 extern int MATVEC_BLOCKS;
-
-#ifdef __USE_GPU__
-extern cublasStatus_t cublasStatus;
-extern cublasHandle_t cublasHandle;
-
-extern cusparseHandle_t cusparseHandle;
-extern cusparseStatus_t cusparseStatus;
-extern cusparseMatDescr_t matdescriptor;
-#endif
-
 
 
 #endif

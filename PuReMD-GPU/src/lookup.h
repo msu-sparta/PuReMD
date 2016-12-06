@@ -23,14 +23,20 @@
 
 #include "mytypes.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Make_Lookup_Table( real, real, int, lookup_function, lookup_table* );
 int  Lookup_Index_Of( real, lookup_table* );
 real Lookup( real, lookup_table* );
 
 void Make_LR_Lookup_Table( reax_system*, control_params* );
 
-//CUDA Functions
-void Cuda_Make_LR_Lookup_Table( reax_system*, control_params* );
-void copy_LR_table_to_device ( reax_system*, control_params* );
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

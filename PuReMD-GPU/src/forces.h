@@ -28,21 +28,7 @@ void Init_Bonded_Force_Functions( control_params* );
 void Compute_Forces( reax_system*, control_params*, simulation_data*,
                      static_storage*, list**, output_controls* );
 
-void Cuda_Compute_Forces( reax_system*, control_params*, simulation_data*,
-                          static_storage*, list**, output_controls* );
-
 void Estimate_Storage_Sizes( reax_system*, control_params*, list**,
                              int*, int*, int*, int* );
 
-//Cuda
-void Cuda_Estimate_Storage_Sizes (reax_system *, control_params *, int *);
-
-GLOBAL void Estimate_Storage_Sizes  (reax_atom *, int , single_body_parameters *,
-                                     two_body_parameters *, global_parameters ,
-                                     control_params *, list , int , int *);
-GLOBAL void Estimate_Sparse_Matrix_Entries ( reax_atom *, control_params *,
-        simulation_data *, simulation_box *, list , int , int *);
-
-void Cuda_Threebody_List( reax_system *, static_storage *, list *, int );
-bool validate_device (reax_system *, simulation_data *, static_storage *, list **);
 #endif

@@ -1,13 +1,15 @@
 #include "cuda_environment.h"
+
 #include "cuda_utils.h"
 
-extern "C" void Setup_Cuda_Environment (int rank, int nprocs, int gpus_per_node)
+
+extern "C" void Setup_Cuda_Environment(int rank, int nprocs, int gpus_per_node)
 {
 
     int deviceCount;
     cudaError_t flag;
     
-    flag = cudaGetDeviceCount (&deviceCount);
+    flag = cudaGetDeviceCount(&deviceCount);
 
     if ( flag != cudaSuccess )
     {
@@ -18,32 +20,21 @@ extern "C" void Setup_Cuda_Environment (int rank, int nprocs, int gpus_per_node)
     //Calculate the # of GPUs per processor
     //and assign the GPU for each process
     //TODO: handle condition where # CPU procs > # GPUs
-    cudaSetDevice ( (rank % (deviceCount)) );
+    cudaSetDevice( (rank % (deviceCount)) );
 
 #if defined(__CUDA_DEBUG__)
     fprintf( stderr, "p:%d is using GPU: %d \n", rank, (rank % deviceCount));
 #endif
 
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
-    // CHANGE ORIGINAL/////////////////////////////
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
-    //cudaDeviceSetLimit ( cudaLimitStackSize, 8192 );
-    //cudaDeviceSetCacheConfig ( cudaFuncCachePreferL1 );
-    //cudaCheckError ();
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
-    ///////////////////////////////////////////////
+    //CHANGE ORIGINAL
+    //cudaDeviceSetLimit( cudaLimitStackSize, 8192 );
+    //cudaDeviceSetCacheConfig( cudaFuncCachePreferL1 );
+    //cudaCheckError();
 }
 
 
-extern "C" void Cleanup_Cuda_Environment ()
+extern "C" void Cleanup_Cuda_Environment()
 {
-    cudaDeviceReset ();
-    cudaDeviceSynchronize ();
+    cudaDeviceReset();
+    cudaDeviceSynchronize();
 }

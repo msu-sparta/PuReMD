@@ -22,30 +22,26 @@
 #if !(defined(__REAX_TYPES_H_) || defined(__CUDA_REAX_TYPES_H_))
 
 #ifdef __CUDACC__
-
-#ifndef __CUDA_REAX_TYPES_H_
-#define __CUDA_REAX_TYPES_H_
-#define CUDA_HOST __host__
-#define CUDA_DEVICE __device__
-#define CUDA_GLOBAL __global__
-#define CUDA_HOST_DEVICE __host__ __device__
-#endif
-
+  #ifndef __CUDA_REAX_TYPES_H_
+    #define __CUDA_REAX_TYPES_H_
+    #define CUDA_HOST __host__
+    #define CUDA_DEVICE __device__
+    #define CUDA_GLOBAL __global__
+    #define CUDA_HOST_DEVICE __host__ __device__
+  #endif
 #else
-
-#ifndef __REAX_TYPES_H_
-#define __REAX_TYPES_H_
-#define CUDA_HOST
-#define CUDA_DEVICE
-#define CUDA_GLOBAL
-#define CUDA_HOST_DEVICE
-#endif
-
+  #ifndef __REAX_TYPES_H_
+    #define __REAX_TYPES_H_
+    #define CUDA_HOST
+    #define CUDA_DEVICE
+    #define CUDA_GLOBAL
+    #define CUDA_HOST_DEVICE
+  #endif
 #endif
 
 #if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
-#define __CONFIG_H_
-#include "config.h"
+  #define __CONFIG_H_
+  #include "config.h"
 #endif
 
 #include <ctype.h>
@@ -57,13 +53,13 @@
 #include <sys/time.h>
 #include <time.h>
 #include <zlib.h>
-#define         HOST_SCRATCH_SIZE               (1024 * 1024 * 20)
+#define HOST_SCRATCH_SIZE (1024 * 1024 * 20)
 #ifdef HAVE_CUDA
-#include <cuda.h>
+  #include <cuda.h>
 #endif
 
 #if defined(__IBMC__)
-#define inline __inline__
+  #define inline __inline__
 #endif /*IBMC*/
 
 #define PURE_REAX

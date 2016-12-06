@@ -18,7 +18,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-
 #include "validation.h"
 
 #include "cuda_utils.h"
@@ -27,33 +26,37 @@
 #include "sort.h"
 #include "index_utils.h"
 
-bool check_zero (real p1, real p2)
+
+int check_zero (real p1, real p2)
 {
     if (abs (p1 - p2) >= GPU_TOLERANCE)
-        return true;
+        return TRUE;
     else 
-        return false;
+        return FALSE;
 }
 
-bool check_zero (rvec p1, rvec p2)
+
+int check_zero (rvec p1, rvec p2)
 {
 
     if (((abs (p1[0] - p2[0])) >= GPU_TOLERANCE) ||
             ((abs (p1[1] - p2[1])) >= GPU_TOLERANCE) ||
             ((abs (p1[2] - p2[2])) >= GPU_TOLERANCE ))
-        return true;
-    else return false;
+        return TRUE;
+    else return FALSE;
 }
 
-bool check_same (ivec p1, ivec p2)
+
+int check_same (ivec p1, ivec p2)
 {
     if ( (p1[0] == p2[0]) || (p1[1] == p2[1]) || (p1[2] == p2[2]) )
-        return true;
+        return TRUE;
     else 
-        return false;
+        return FALSE;
 }
 
-bool validate_box (simulation_box *host, simulation_box *dev)
+
+int validate_box (simulation_box *host, simulation_box *dev)
 {
 
     simulation_box test;
@@ -62,14 +65,15 @@ bool validate_box (simulation_box *host, simulation_box *dev)
 
     if (memcmp (&test, host, SIMULATION_BOX_SIZE)) {
         fprintf (stderr, " Simulation box is not in synch between host and device \n");
-        return false;
+        return FALSE;
     }
 
     fprintf (stderr, " Simulation box is in **synch** between host and device \n");
-    return true;
+    return TRUE;
 }
 
-bool validate_atoms (reax_system *system, list **lists)
+
+int validate_atoms (reax_system *system, list **lists)
 {
 
     int start, end, index, count, miscount;
@@ -154,8 +158,9 @@ bool validate_atoms (reax_system *system, list **lists)
     //fprintf (stderr, "Reax Atoms DOES **match** between host and device --> %d miscount --> %d \n", count, miscount);
 
     free (test);
-    return true;
+    return TRUE;
 }
+
 
 void Print_Matrix( sparse_matrix *A )
 {
@@ -169,6 +174,7 @@ void Print_Matrix( sparse_matrix *A )
         fprintf( stderr, "\n" );
     }
 }
+
 
 void Print_Matrix_L( sparse_matrix *A )
 {
@@ -184,7 +190,7 @@ void Print_Matrix_L( sparse_matrix *A )
 }
 
 
-bool validate_sort_matrix (reax_system *system, static_storage *workspace)
+int validate_sort_matrix (reax_system *system, static_storage *workspace)
 {
     sparse_matrix test;
     int index, count;
@@ -221,7 +227,7 @@ bool validate_sort_matrix (reax_system *system, static_storage *workspace)
 }
 
 
-bool validate_sparse_matrix( reax_system *system, static_storage *workspace )
+int validate_sparse_matrix( reax_system *system, static_storage *workspace )
 {
     sparse_matrix test;
     int index, count;
@@ -287,10 +293,10 @@ bool validate_sparse_matrix( reax_system *system, static_storage *workspace )
     free (test.start);
     free (test.end);
     free (test.entries);
-    return true;
+    return TRUE;
 }
 
-bool validate_lu (static_storage *workspace)
+int validate_lu (static_storage *workspace)
 {
     sparse_matrix test;
     int index, count;
@@ -354,7 +360,7 @@ bool validate_lu (static_storage *workspace)
     }
 
     //fprintf (stderr, "L and U match on device and host \n");
-    return true;
+    return TRUE;
 }
 
 void print_sparse_matrix (reax_system *system, static_storage *workspace)
@@ -405,7 +411,7 @@ void print_sparse_matrix (reax_system *system, static_storage *workspace)
 }
 
 
-bool validate_bonds (reax_system *system, static_storage *workspace, list **lists)
+int validate_bonds (reax_system *system, static_storage *workspace, list **lists)
 {
     int start, end, index, count, miscount;
     int *d_start, *d_end;
@@ -601,10 +607,10 @@ bool validate_bonds (reax_system *system, static_storage *workspace, list **list
     free (d_start);
     free (d_end);
     free (d_bond_data);
-    return true;
+    return TRUE;
 }
 
-bool validate_sym_dbond_indices (reax_system *system, static_storage *workspace, list **lists)
+int validate_sym_dbond_indices (reax_system *system, static_storage *workspace, list **lists)
 {
     int start, end, index, count, miscount;
     int *d_start, *d_end;
@@ -660,10 +666,11 @@ bool validate_sym_dbond_indices (reax_system *system, static_storage *workspace,
     free (d_start);
     free (d_end);
     free (d_bond_data);
-    return true;
+    return TRUE;
 }
 
-bool analyze_hbonds (reax_system *system, static_storage *workspace, list **lists)
+
+int analyze_hbonds (reax_system *system, static_storage *workspace, list **lists)
 {
     int hindex, nbr_hindex;
     int pj, hj, hb_start_j, hb_end_j, j, nbr;
@@ -748,7 +755,7 @@ bool analyze_hbonds (reax_system *system, static_storage *workspace, list **list
 }
 
 
-bool validate_hbonds (reax_system *system, static_storage *workspace, list **lists)
+int validate_hbonds (reax_system *system, static_storage *workspace, list **lists)
 {
     int *hbond_index, count;
     int *d_start, *d_end, index, d_index;
@@ -858,10 +865,10 @@ bool validate_hbonds (reax_system *system, static_storage *workspace, list **lis
     free (d_start);
     free (d_end);
     free (data);
-    return true;
+    return TRUE;
 }
 
-bool validate_neighbors (reax_system *system, list **lists)
+int validate_neighbors (reax_system *system, list **lists)
 {
     list *far_nbrs = *lists + FAR_NBRS;
     list *d_nbrs = dev_lists + FAR_NBRS;
@@ -989,971 +996,975 @@ bool validate_neighbors (reax_system *system, list **lists)
                     start[i], end[i]);
             exit (10);
         }    
-        }
+    }
 
-        //fprintf (stderr, "FAR Neighbors match between device and host \n");
-        free (start);
-        free (end);
-        free (data);
-        return true;
-        }
+    //fprintf (stderr, "FAR Neighbors match between device and host \n");
+    free (start);
+    free (end);
+    free (data);
+    return TRUE;
+}
 
-        bool validate_workspace (reax_system *system, static_storage *workspace, list **lists) 
+
+int validate_workspace (reax_system *system, static_storage *workspace, list **lists) 
+{
+    real *total_bond_order;
+    int count, tcount;
+
+    total_bond_order = (real *) malloc ( system->N * REAL_SIZE );
+    copy_host_device (total_bond_order, dev_workspace->total_bond_order, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < system->N; i++) {
+
+        //if (abs (workspace->total_bond_order[i] - total_bond_order[i]) >= GPU_TOLERANCE){
+        if ( check_zero (workspace->total_bond_order[i], total_bond_order[i])){
+            fprintf (stderr, "Total bond order does not match for atom %d (%4.15e %4.15e)\n",
+                    i, workspace->total_bond_order[i], total_bond_order[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    free (total_bond_order);
+    //fprintf (stderr, "TOTAL Bond Order mismatch count %d\n", count);
+
+
+    rvec *dDeltap_self;
+    dDeltap_self = (rvec *) calloc (system->N, RVEC_SIZE);
+    copy_host_device (dDeltap_self, dev_workspace->dDeltap_self, system->N * RVEC_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < system->N; i++ )
+    {
+        if (check_zero (workspace->dDeltap_self[i], dDeltap_self[i]))
         {
-            real *total_bond_order;
-            int count, tcount;
+            fprintf (stderr, "index: %d c (%f %f %f) g (%f %f %f )\n", i, 
+                    workspace->dDeltap_self[i][0],
+                    workspace->dDeltap_self[i][1],
+                    workspace->dDeltap_self[i][2],
+                    dDeltap_self[3*i+0],
+                    dDeltap_self[3*i+1],
+                    dDeltap_self[3*i+2] );
+            exit (-1);
+            count ++;
+        }
+    }
+    free (dDeltap_self);
+    //fprintf (stderr, "dDeltap_self mismatch count %d\n", count);
 
-            total_bond_order = (real *) malloc ( system->N * REAL_SIZE );
-            copy_host_device (total_bond_order, dev_workspace->total_bond_order, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    //exit for init_forces
 
-            count = 0;
-            for (int i = 0; i < system->N; i++) {
+    real *test;
+    test = (real *) malloc (system->N * REAL_SIZE);
 
-                //if (abs (workspace->total_bond_order[i] - total_bond_order[i]) >= GPU_TOLERANCE){
-                if ( check_zero (workspace->total_bond_order[i], total_bond_order[i])){
-                    fprintf (stderr, "Total bond order does not match for atom %d (%4.15e %4.15e)\n",
-                            i, workspace->total_bond_order[i], total_bond_order[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            free (total_bond_order);
-            //fprintf (stderr, "TOTAL Bond Order mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->Deltap, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ )
+    {
+        if (check_zero (workspace->Deltap[i], test[i]))
+        {
+            fprintf (stderr, "Deltap: Mismatch index --> %d (%f %f) \n", i, workspace->Deltap[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "Deltap mismatch count %d\n", count);
 
+    copy_host_device (test, dev_workspace->Deltap_boc, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ )
+    {
+        if (check_zero (workspace->Deltap_boc[i], test[i]))
+        {
+            fprintf (stderr, "Deltap_boc: Mismatch index --> %d (%f %f) \n", i, workspace->Deltap_boc[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "dDeltap_boc mismatch count %d\n", count);
 
-            rvec *dDeltap_self;
-            dDeltap_self = (rvec *) calloc (system->N, RVEC_SIZE);
-            copy_host_device (dDeltap_self, dev_workspace->dDeltap_self, system->N * RVEC_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device (test, dev_workspace->Delta, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->Delta[i], test[i])) {
+            fprintf (stderr, "Delta: Mismatch index --> %d (%f %f) \n", i, workspace->Delta[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "Delta mismatch count %d\n", count);
 
-            count = 0;
-            for (int i = 0; i < system->N; i++ )
-            {
-                if (check_zero (workspace->dDeltap_self[i], dDeltap_self[i]))
-                {
-                    fprintf (stderr, "index: %d c (%f %f %f) g (%f %f %f )\n", i, 
-                            workspace->dDeltap_self[i][0],
-                            workspace->dDeltap_self[i][1],
-                            workspace->dDeltap_self[i][2],
-                            dDeltap_self[3*i+0],
-                            dDeltap_self[3*i+1],
-                            dDeltap_self[3*i+2] );
-                    exit (-1);
-                    count ++;
-                }
-            }
-            free (dDeltap_self);
-            //fprintf (stderr, "dDeltap_self mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->Delta_e, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->Delta_e[i], test[i])) {
+            fprintf (stderr, "Delta_e: Mismatch index --> %d (%f %f) \n", i, workspace->Delta_e[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "Delta_e mismatch count %d\n", count);
 
-            //exit for init_forces
+    copy_host_device (test, dev_workspace->vlpex, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->vlpex[i], test[i])) {
+            fprintf (stderr, "vlpex: Mismatch index --> %d (%f %f) \n", i, workspace->vlpex[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "vlpex mismatch count %d\n", count);
 
-            real *test;
-            test = (real *) malloc (system->N * REAL_SIZE);
+    copy_host_device (test, dev_workspace->nlp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->nlp[i], test[i])) {
+            fprintf (stderr, "nlp: Mismatch index --> %d (%f %f) \n", i, workspace->nlp[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "nlp mismatch count %d\n", count);
 
-            copy_host_device (test, dev_workspace->Deltap, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ )
-            {
-                if (check_zero (workspace->Deltap[i], test[i]))
-                {
-                    fprintf (stderr, "Deltap: Mismatch index --> %d (%f %f) \n", i, workspace->Deltap[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "Deltap mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->Delta_lp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->Delta_lp[i], test[i])) {
+            fprintf (stderr, "Delta_lp: Mismatch index --> %d (%f %f) \n", i, workspace->Delta_lp[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "Delta_lp mismatch count %d\n", count);
 
-            copy_host_device (test, dev_workspace->Deltap_boc, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ )
-            {
-                if (check_zero (workspace->Deltap_boc[i], test[i]))
-                {
-                    fprintf (stderr, "Deltap_boc: Mismatch index --> %d (%f %f) \n", i, workspace->Deltap_boc[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "dDeltap_boc mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->Clp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->Clp[i], test[i])) {
+            fprintf (stderr, "Clp: Mismatch index --> %d (%f %f) \n", i, workspace->Clp[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "Clp mismatch count %d\n", count);
 
-            copy_host_device (test, dev_workspace->Delta, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->Delta[i], test[i])) {
-                    fprintf (stderr, "Delta: Mismatch index --> %d (%f %f) \n", i, workspace->Delta[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "Delta mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->dDelta_lp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->dDelta_lp[i], test[i])) {
+            fprintf (stderr, "dDelta_lp: Mismatch index --> %d (%f %f) \n", i, workspace->dDelta_lp[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "dDelta_lp mismatch count %d\n", count);
 
-            copy_host_device (test, dev_workspace->Delta_e, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->Delta_e[i], test[i])) {
-                    fprintf (stderr, "Delta_e: Mismatch index --> %d (%f %f) \n", i, workspace->Delta_e[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "Delta_e mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->nlp_temp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->nlp_temp[i], test[i])) {
+            fprintf (stderr, "nlp_temp: Mismatch index --> %d (%f %f) \n", i, workspace->nlp_temp[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "nlp_temp mismatch count %d\n", count);
 
-            copy_host_device (test, dev_workspace->vlpex, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->vlpex[i], test[i])) {
-                    fprintf (stderr, "vlpex: Mismatch index --> %d (%f %f) \n", i, workspace->vlpex[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "vlpex mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->Delta_lp_temp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->Delta_lp_temp[i], test[i])) {
+            fprintf (stderr, "Delta_lp_temp: Mismatch index --> %d (%f %f) \n", i, workspace->Delta_lp_temp[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "Delta_lp_temp mismatch count %d\n", count);
 
-            copy_host_device (test, dev_workspace->nlp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->nlp[i], test[i])) {
-                    fprintf (stderr, "nlp: Mismatch index --> %d (%f %f) \n", i, workspace->nlp[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "nlp mismatch count %d\n", count);
+    copy_host_device (test, dev_workspace->dDelta_lp_temp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->dDelta_lp_temp[i], test[i])) {
+            fprintf (stderr, "dDelta_lp_temp: Mismatch index --> %d (%f %f) \n", i, workspace->dDelta_lp_temp[i], test[i]);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "dDelta_lp_temp mismatch count %d\n", count);
 
-            copy_host_device (test, dev_workspace->Delta_lp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->Delta_lp[i], test[i])) {
-                    fprintf (stderr, "Delta_lp: Mismatch index --> %d (%f %f) \n", i, workspace->Delta_lp[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "Delta_lp mismatch count %d\n", count);
-
-            copy_host_device (test, dev_workspace->Clp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->Clp[i], test[i])) {
-                    fprintf (stderr, "Clp: Mismatch index --> %d (%f %f) \n", i, workspace->Clp[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "Clp mismatch count %d\n", count);
-
-            copy_host_device (test, dev_workspace->dDelta_lp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->dDelta_lp[i], test[i])) {
-                    fprintf (stderr, "dDelta_lp: Mismatch index --> %d (%f %f) \n", i, workspace->dDelta_lp[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "dDelta_lp mismatch count %d\n", count);
-
-            copy_host_device (test, dev_workspace->nlp_temp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->nlp_temp[i], test[i])) {
-                    fprintf (stderr, "nlp_temp: Mismatch index --> %d (%f %f) \n", i, workspace->nlp_temp[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "nlp_temp mismatch count %d\n", count);
-
-            copy_host_device (test, dev_workspace->Delta_lp_temp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->Delta_lp_temp[i], test[i])) {
-                    fprintf (stderr, "Delta_lp_temp: Mismatch index --> %d (%f %f) \n", i, workspace->Delta_lp_temp[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "Delta_lp_temp mismatch count %d\n", count);
-
-            copy_host_device (test, dev_workspace->dDelta_lp_temp, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->dDelta_lp_temp[i], test[i])) {
-                    fprintf (stderr, "dDelta_lp_temp: Mismatch index --> %d (%f %f) \n", i, workspace->dDelta_lp_temp[i], test[i]);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "dDelta_lp_temp mismatch count %d\n", count);
-
-            //exit for Bond order calculations
+    //exit for Bond order calculations
 
 
-            copy_host_device (test, dev_workspace->CdDelta, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->CdDelta[i], test[i])) {
-                    fprintf (stderr, " CdDelta does NOT match (%f %f) for atom  %d \n", workspace->CdDelta[i], test[i], i);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "CdDelta mismatch count %d\n", count);
-            //exit for Bond Energy calculations
+    copy_host_device (test, dev_workspace->CdDelta, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->CdDelta[i], test[i])) {
+            fprintf (stderr, " CdDelta does NOT match (%f %f) for atom  %d \n", workspace->CdDelta[i], test[i], i);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "CdDelta mismatch count %d\n", count);
+    //exit for Bond Energy calculations
+
+    /*
+       copy_host_device (test, dev_workspace->droptol, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+       count = 0;
+       for (int i = 0; i < system->N; i++ ) {
+       if (check_zero (workspace->droptol[i], test[i])) {
+       fprintf (stderr, " Droptol Does not match (%f %f) \n", workspace->droptol[i], test[i]);
+       exit (-1);
+       count ++;
+       }
+       }
+    //fprintf (stderr, "droptol mismatch count %d\n", count);
+     */
+
+
+    //exit for  QEa calculations
+    /*
+       real *t_s;
+
+       t_s = (real *) malloc (REAL_SIZE * (system->N * 2) );
+       copy_host_device (t_s, dev_workspace->b_prm, REAL_SIZE * (system->N * 2), cudaMemcpyDeviceToHost, __LINE__);
+
+       count = 0;
+       for (int i = 0; i < (system->N * 2); i++ ) {
+       if (check_zero (workspace->b_prm[i], t_s[i])) {
+       fprintf (stderr, " (%f %f) \n", workspace->b_prm[i], t_s[i]);
+       exit (-1);
+       count ++;
+       }
+       }
+    //fprintf (stderr, "b_prm mismatch count %d\n", count);
+
+    t_s = (real *) malloc (REAL_SIZE * 5 * system->N);
+    copy_host_device (t_s, dev_workspace->s, system->N * REAL_SIZE * 5, cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < 5*system->N; i++ ) {
+    if (check_zero (workspace->s[i], t_s[i])) {
+    //fprintf (stderr, " (%f %f)  @ index %d \n", workspace->s[i], t_s[i], i);
+    count ++;
+    }
+    }
+    fprintf (stderr, "s mismatch count %d\n", count);
+
+
+    t_s = (real *) malloc (REAL_SIZE * 5 * system->N);
+    copy_host_device (t_s, dev_workspace->t, system->N * REAL_SIZE * 5, cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < 5*system->N; i++ ) {
+    if (check_zero (workspace->t[i], t_s[i])) {
+    //fprintf (stderr, " (%f %f) @ index : %d\n", workspace->t[i], t_s[i], i);
+    count ++;
+    }
+    }
+    fprintf (stderr, "t mismatch count %d\n", count);
+
+
+    t_s = (real *) malloc (REAL_SIZE * (RESTART+1) * system->N);
+    copy_host_device (t_s, dev_workspace->v, system->N * REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < (RESTART + 1)*system->N; i++ ) {
+    if (check_zero (workspace->v[i], t_s[i])) {
+    //fprintf (stderr, " (%f %f) @ index %d \n", workspace->v[i], t_s[i], i);
+    count ++;
+    }
+    }
+    fprintf (stderr, "v mismatch count %d\n", count);
+
+    t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
+    copy_host_device (t_s, dev_workspace->y, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < (RESTART + 1); i++ ) {
+    if (check_zero (workspace->y[i], t_s[i])) {
+    //fprintf (stderr, " (%f %f) \n", workspace->y[i], t_s[i]);
+    count ++;
+    }
+    }
+    fprintf (stderr, "y mismatch count %d\n", count);
+
+    t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
+    copy_host_device (t_s, dev_workspace->hc, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < (RESTART + 1); i++ ) {
+    if (check_zero (workspace->hc[i], t_s[i])) {
+        //fprintf (stderr, " (%f %f) \n", workspace->hc[i], t_s[i]);
+        count ++;
+    }
+    }
+    fprintf (stderr, "hc mismatch count %d\n", count);
+
+    t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
+    copy_host_device (t_s, dev_workspace->hs, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < (RESTART + 1); i++ ) {
+        if (check_zero (workspace->hs[i], t_s[i])) {
+            //fprintf (stderr, " (%f %f) \n", workspace->hs[i], t_s[i]);
+            count ++;
+        }
+    }
+    fprintf (stderr, "hs mismatch count %d\n", count);
+
+    t_s = (real *) malloc (REAL_SIZE * (RESTART+1) * (RESTART+1) );
+    copy_host_device (t_s, dev_workspace->h, REAL_SIZE * (RESTART+1)*(RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < (RESTART+1)*(RESTART+1); i++ ) {
+        if (check_zero (workspace->h[i], t_s[i])) {
+            //fprintf (stderr, " (%f %f) \n", workspace->h[i], t_s[i]);
+            count ++;
+        }
+    }
+    fprintf (stderr, "h mismatch count %d\n", count);
+
+    t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
+    copy_host_device (t_s, dev_workspace->g, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < (RESTART + 1); i++ ) {
+        if (check_zero (workspace->g[i], t_s[i])) {
+            //fprintf (stderr, " (%f %f) @ index %d\n", workspace->g[i], t_s[i], i);
+            count ++;
+        }
+    }
+    fprintf (stderr, "g mismatch count %d\n", count);
+    */
+
+        rvec *r_s = (rvec *) malloc (RVEC_SIZE * system->N );
+    copy_host_device (r_s, dev_workspace->v_const, RVEC_SIZE * system->N,  cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < system->N; i++ ) {
+        if (check_zero (workspace->v_const[i], r_s[i])) {
+            fprintf (stderr, " v_const (%f %f %f) (%f %f %f) @ index %d\n", 
+                    workspace->v_const[i][0], 
+                    workspace->v_const[i][1], 
+                    workspace->v_const[i][2], 
+                    r_s[i][0], 
+                    r_s[i][1], 
+                    r_s[i][2], 
+                    i);
+            exit (-1);
+            count ++;
+        }
+    }
+    //fprintf (stderr, "v_const mismatch count %d\n", count);
+
+    free (test);
+    free (r_s);
+    return TRUE;
+}
+
+
+int validate_data (reax_system *system, simulation_data *host)
+{
+    simulation_data device;
+
+    copy_host_device (&device, host->d_simulation_data, SIMULATION_DATA_SIZE, cudaMemcpyDeviceToHost, __LINE__);
+
+    if (check_zero (host->E_BE, device.E_BE)){
+        fprintf (stderr, "E_BE does not match (%4.15e %4.15e) \n", host->E_BE, device.E_BE);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Lp, device.E_Lp)){
+        fprintf (stderr, "E_Lp does not match (%4.10e %4.10e) \n", host->E_Lp, device.E_Lp);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Ov, device.E_Ov)){
+        fprintf (stderr, "E_Ov does not match (%4.10e %4.10e) \n", host->E_Ov, device.E_Ov);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Un, device.E_Un)){
+        fprintf (stderr, "E_Un does not match (%4.10e %4.10e) \n", host->E_Un, device.E_Un);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Tor, device.E_Tor)) {
+        fprintf (stderr, "E_Tor does not match (%4.10e %4.10e) \n", host->E_Tor, device.E_Tor);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Con, device.E_Con)) {
+        fprintf (stderr, "E_Con does not match (%4.10e %4.10e) \n", host->E_Con, device.E_Con);
+        exit (-1);
+    }
+
+    if (check_zero (host->ext_press, device.ext_press)) {
+        fprintf (stderr, "ext_press does not match (%4.10e %4.10e) \n", host->ext_press, device.ext_press);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_HB, device.E_HB)) {
+        fprintf (stderr, "E_Hb does not match (%4.10e %4.10e) \n", host->E_HB, device.E_HB);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Ang, device.E_Ang)) {
+        fprintf (stderr, "E_Ang does not match (%4.10e %4.10e) \n", host->E_Ang, device.E_Ang);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Pen, device.E_Pen)) {
+        fprintf (stderr, "E_Pen does not match (%4.10e %4.10e) \n", host->E_Pen, device.E_Pen);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Coa, device.E_Coa)) {
+        fprintf (stderr, "E_Coa does not match (%4.10e %4.10e) \n", host->E_Coa, device.E_Coa);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_vdW, device.E_vdW)) {
+        fprintf (stderr, "E_vdW does not match (%4.20e %4.20e) \n", host->E_vdW, device.E_vdW);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Ele, device.E_Ele)) {
+        fprintf (stderr, "E_Ele does not match (%4.20e %4.20e) \n", host->E_Ele, device.E_Ele);
+        exit (-1);
+    }
+
+    if (check_zero (host->E_Pol, device.E_Pol)) {
+        fprintf (stderr, "E_Pol does not match (%4.10e %4.10e) \n", host->E_Pol, device.E_Pol);
+        exit (-1);
+    }
+
+
+    //fprintf (stderr, "Simulation Data match between host and device \n");
+    return TRUE;
+}
+
+
+void print_bond_data (bond_order_data *s)
+{
+    /*
+       fprintf (stderr, "Bond_Order_Data BO (%f ) BO_s (%f ) BO_pi (%f ) BO_pi2 (%f ) ", 
+       s->BO, 
+       s->BO_s, 
+       s->BO_pi,
+       s->BO_pi2 );
+     */
+    fprintf (stderr, " Cdbo (%e) ", s->Cdbo );
+    fprintf (stderr, " Cdbopi (%e) ", s->Cdbopi );
+    fprintf (stderr, " Cdbopi2 (%e) ", s->Cdbopi2 );
+}
+
+
+void print_bond_list (reax_system *system, static_storage *workspace, list **lists)
+{
+    list *bonds = *lists + BONDS;
+
+    for (int i = 1; i < 2; i++)
+    {
+        fprintf (stderr, "Atom %d Bond_data ( nbrs \n", i);
+        for (int j = Start_Index (i, bonds); j < End_Index (i, bonds); j++) 
+        {
+            bond_data *data = &bonds->select.bond_list [j];
+            fprintf (stderr, "  %d, ", data->nbr );
+            print_bond_data (&data->bo_data);
+            fprintf (stderr, ")\n");
+        }
+    }
+
+    int *b_start = (int *) malloc (INT_SIZE * system->N);
+    int *b_end = (int *) malloc (INT_SIZE * system->N);
+    list *d_bonds = dev_lists + BONDS;
+    bond_data *d_bond_data;
+
+    d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
+
+    copy_host_device ( b_start, d_bonds->index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( b_end, d_bonds->end_index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+    for (int i = 0; i < 2; i++)
+    {
+        fprintf (stderr, "Atom %d Bond_data ( nbrs \n", i);
+        for (int j = b_start[i]; j < b_end[i]; j ++) {
+            bond_data *src = &d_bond_data[j];
+            fprintf (stderr, "  %d, ", src->nbr );
+            print_bond_data (&src->bo_data);
+            fprintf (stderr, ")\n");
+        }
+    }
+}
+
+
+void count_three_bodies (reax_system *system, static_storage *workspace, list **lists)
+{
+    list *three = *lists + THREE_BODIES;
+    list *bonds = *lists + BONDS;
+
+    list *d_three = dev_lists + THREE_BODIES;
+    list *d_bonds = dev_lists + BONDS;
+    bond_data *d_bond_data;
+    real *test;
+
+    three_body_interaction_data *data = (three_body_interaction_data *) 
+        malloc ( sizeof (three_body_interaction_data) * system->num_thbodies);
+    int *start = (int *) malloc (INT_SIZE * system->num_bonds);
+    int *end = (int *) malloc (INT_SIZE * system->num_bonds);
+
+    int *b_start = (int *) malloc (INT_SIZE * system->N);
+    int *b_end = (int *) malloc (INT_SIZE * system->N);
+    int count;
+    int hcount, dcount;
+
+    copy_host_device ( start, d_three->index, 
+            INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( end, d_three->end_index, 
+            INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( data, d_three->select.three_body_list, 
+            sizeof (three_body_interaction_data) * system->num_thbodies, 
+            cudaMemcpyDeviceToHost, __LINE__);
+
+    d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
+
+    copy_host_device ( b_start, d_bonds->index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( b_end, d_bonds->end_index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    hcount = dcount = 0;
+    for (int i = 0; i < system->N; i++)
+    {
+        for (int j = b_start[i]; j < b_end[i]; j ++) {
+            dcount += end[j] - start[j];
+        }
+    }
+
+    fprintf (stderr, "Total Actual Three Body Count ---> %d \n", dcount);
+
+    free (data);
+    free (start);
+    free (end);
+    free (b_start);
+    free (b_end);
+    free (d_bond_data);
+}
+
+
+int validate_three_bodies (reax_system *system, static_storage *workspace, list **lists)
+{
+    list *three = *lists + THREE_BODIES;
+    list *bonds = *lists + BONDS;
+
+    list *d_three = dev_lists + THREE_BODIES;
+    list *d_bonds = dev_lists + BONDS;
+    bond_data *d_bond_data;
+    real *test;
+
+    three_body_interaction_data *data = (three_body_interaction_data *) 
+        malloc ( sizeof (three_body_interaction_data) * system->num_thbodies);
+    int *start = (int *) malloc (INT_SIZE * system->num_bonds);
+    int *end = (int *) malloc (INT_SIZE * system->num_bonds);
+
+    int *b_start = (int *) malloc (INT_SIZE * system->N);
+    int *b_end = (int *) malloc (INT_SIZE * system->N);
+    int count;
+    int hcount, dcount;
+
+
+
+    copy_host_device ( start, d_three->index, 
+            INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( end, d_three->end_index, 
+            INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( data, d_three->select.three_body_list, 
+            sizeof (three_body_interaction_data) * system->num_thbodies, 
+            cudaMemcpyDeviceToHost, __LINE__);
+
+    d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
+
+    copy_host_device ( b_start, d_bonds->index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( b_end, d_bonds->end_index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+
+    //test = (real *) malloc (REAL_SIZE * system->num_bonds);
+    //memset (test, 0, REAL_SIZE * system->num_bonds);
+    //copy_host_device (test, testdata, REAL_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    for (int i = 0; i < system->N; i++)
+    {
+        //for (int j = bonds->index[i]; j < bonds->end_index[i]; j ++)
+
+        hcount = dcount = 0;
+        for (int j = b_start[i]; j < b_end[i]; j ++) {
+            dcount += end[j] - start[j];
+            hcount += Num_Entries (j, three);
 
             /*
-               copy_host_device (test, dev_workspace->droptol, system->N * REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-               count = 0;
-               for (int i = 0; i < system->N; i++ ) {
-               if (check_zero (workspace->droptol[i], test[i])) {
-               fprintf (stderr, " Droptol Does not match (%f %f) \n", workspace->droptol[i], test[i]);
-               exit (-1);
-               count ++;
+               if ((end[j] - start[j]) != (End_Index (j, three) - Start_Index (j, three)))
+               {
+               fprintf (stderr, " Three body count does not match between host and device\n");
+               fprintf (stderr, " Host count : (%d, %d)\n", Start_Index (j, three), End_Index (j, three));
+               fprintf (stderr, " Device count: (%d, %d)\n", start[j], end[j]);
                }
-               }
-            //fprintf (stderr, "droptol mismatch count %d\n", count);
+             */
+        }
+
+
+        if ((dcount != hcount)) {
+
+            fprintf (stderr, " Three body count does not match for the bond %d - %d \n", hcount, dcount); 
+
+            for (int j = b_start[i]; j < b_end[i]; j ++) {
+                bond_order_data *src = &d_bond_data[j].bo_data;
+                dcount = end[j] - start[j];
+                hcount = Num_Entries (j, three);
+                fprintf (stderr, "device \n");
+                print_bond_data (src);
+
+                fprintf (stderr, "\n");
+                src = &bonds->select.bond_list[j].bo_data;
+                fprintf (stderr, "host \n");
+                print_bond_data (src);
+                fprintf (stderr, "\n");
+
+                //fprintf (stderr, "--- Device bo is %f \n", test[j]);
+                fprintf (stderr, "Device %d %d bonds (%d %d) - Host %d %d bonds (%d %d) \n", start[j], end[j],b_start[i], b_end[i],  
+                        Start_Index (j, three), End_Index (j, three), Start_Index (i, bonds), End_Index (i, bonds));
+                fprintf (stderr, "Host %d Device %d -- atom %d index %d \n", hcount, dcount, i, j);
+                fprintf (stderr, "------\n");
+            }
+            fprintf (stderr, " Three Bodies count does not match between host and device \n");
+            exit (-1);
+        }
+    }
+
+    //fprintf (stderr, "Three body count on DEVICE %d  HOST %d \n", dcount, hcount);
+
+    count = 0;
+    for (int i = 0; i < system->N; i++)
+    {
+        int x, y, z;
+        for (x = b_start[i]; x < b_end[i]; x++)
+        {
+            int t_start = start[x];
+            int t_end = end[x];
+
+            bond_data *dev_bond = &d_bond_data [x];
+            bond_data *host_bond;
+            for (z = Start_Index (i, bonds); z < End_Index (i, bonds); z++)
+            {
+                host_bond = &bonds->select.bond_list [z];
+                if ((dev_bond->nbr == host_bond->nbr) &&
+                        check_same (dev_bond->rel_box, host_bond->rel_box) && 
+                        !check_zero (dev_bond->dvec, host_bond->dvec) &&
+                        !check_zero (dev_bond->d, host_bond->d) )
+                {
+                    break;
+                }
+            }
+            if (z >= End_Index (i, bonds)){
+                fprintf (stderr, "Could not find the matching bond on host and device \n");
+                exit (-1);
+            }
+
+            //find this bond in the bonds on the host side.
+
+            for (y = t_start; y < t_end; y++)
+            {
+
+                three_body_interaction_data *device = data + y;
+                three_body_interaction_data *host;
+
+                //fprintf (stderr, "Device thb %d pthb %d \n", device->thb, device->pthb);
+
+                int xx;    
+                for (xx = Start_Index (z, three); xx < End_Index (z, three); xx++)
+                {
+                    host = &three->select.three_body_list [xx];
+                    //fprintf (stderr, "Host thb %d pthb %d \n", host->thb, host->pthb);
+                    //if ((host->thb == device->thb) && (host->pthb == device->pthb))
+                    if ((host->thb == device->thb) && !check_zero (host->theta, device->theta))
+                    {
+                        count ++;
+                        break;
+                    }
+                }
+
+                if ( xx >= End_Index (z, three) ) {
+                    fprintf (stderr, " Could not match for atom %d bonds %d (%d) Three body(%d %d) (%d %d) \n", i, x, z, 
+                            Start_Index (z, three), End_Index (z, three), start[x], end[x] );
+                    exit (-1);
+                }// else fprintf (stderr, "----------------- \n");
+            }
+        }
+    }
+    free (data);
+    free (start);
+    free (end);
+    free (b_start);
+    free (b_end);
+    free (d_bond_data);
+
+    //fprintf (stderr, "Three Body Interaction Data MATCH on device and HOST --> %d \n", count);
+    return TRUE;
+}
+
+
+int bin_three_bodies (reax_system *system, static_storage *workspace, list **lists)
+{
+    list *d_three = dev_lists + THREE_BODIES;
+    list *d_bonds = dev_lists + BONDS;
+    list *three = *lists + THREE_BODIES;
+    list *bonds = *lists + BONDS;
+    bond_data *d_bond_data;
+
+    three_body_interaction_data *data = (three_body_interaction_data *) 
+        malloc ( sizeof (three_body_interaction_data) * system->num_thbodies);
+    int *start = (int *) malloc (INT_SIZE * system->num_bonds);
+    int *end = (int *) malloc (INT_SIZE * system->num_bonds);
+
+    int *b_start = (int *) malloc (INT_SIZE * system->N);
+    int *b_end = (int *) malloc (INT_SIZE * system->N);
+
+    int *a = (int *) malloc (2 * INT_SIZE * system->N );
+    int *b = (int *) malloc (2 * INT_SIZE * system->N );
+    int *c = (int *) malloc (2 * INT_SIZE * system->N );
+    int *d = (int *) malloc (2 * INT_SIZE * system->N );
+
+    for (int i = 0; i < 2 * system->N; i++)
+        a[i] = b[i] = c[i] = d[i] = -1;
+
+    int count;
+    int hcount, dcount;
+    int index_a, index_b, index_c, index_d;
+    index_a = index_b = index_c = index_d = 0;
+
+    copy_host_device ( start, d_three->index, 
+            INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( end, d_three->end_index, 
+            INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( data, d_three->select.three_body_list, 
+            sizeof (three_body_interaction_data) * system->num_thbodies, 
+            cudaMemcpyDeviceToHost, __LINE__);
+
+    d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
+
+    copy_host_device ( b_start, d_bonds->index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device ( b_end, d_bonds->end_index, 
+            INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
+    copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
+
+    count = 0;
+    hcount = dcount = 0;
+
+    /*
+       for (int i = 0; i < 20; i++)
+       {
+       for (int j = Start_Index (i, bonds); j < End_Index (i, bonds); j++)
+       {
+       for ( int k = Start_Index (j, three); k < End_Index (j, three); k ++)
+       {
+       three_body_interaction_data *host = &three->select.three_body_list [k];
+       fprintf (stderr, " atom %d bond (%d %d) -- %d,  (%d %d)\n", 
+       i, Start_Index (i, bonds), End_Index (i, bonds), j, host->thb, host->pthb );
+
+       }
+       }
+       }
+       exit (-1);
+     */
+
+    count = 0;
+    for (int i = 0; i < system->N; i++)
+    {
+        for (int j = b_start[i]; j < b_end[i]; j ++) {
+
+            /*
+               bond_data *src;
+               src = &d_bond_data[j];
+               fprintf (stderr, " atom %d Neighbor %d \n", i, src->nbr );
              */
 
+            for (int x = start[j]; x < end[j]; x ++)
+            {
+                three_body_interaction_data *device = data + x;
 
-            //exit for  QEa calculations
-            /*
-               real *t_s;
-
-               t_s = (real *) malloc (REAL_SIZE * (system->N * 2) );
-               copy_host_device (t_s, dev_workspace->b_prm, REAL_SIZE * (system->N * 2), cudaMemcpyDeviceToHost, __LINE__);
-
-               count = 0;
-               for (int i = 0; i < (system->N * 2); i++ ) {
-               if (check_zero (workspace->b_prm[i], t_s[i])) {
-               fprintf (stderr, " (%f %f) \n", workspace->b_prm[i], t_s[i]);
-               exit (-1);
-               count ++;
-               }
-               }
-            //fprintf (stderr, "b_prm mismatch count %d\n", count);
-
-            t_s = (real *) malloc (REAL_SIZE * 5 * system->N);
-            copy_host_device (t_s, dev_workspace->s, system->N * REAL_SIZE * 5, cudaMemcpyDeviceToHost, __LINE__);
-
-            count = 0;
-            for (int i = 0; i < 5*system->N; i++ ) {
-            if (check_zero (workspace->s[i], t_s[i])) {
-            //fprintf (stderr, " (%f %f)  @ index %d \n", workspace->s[i], t_s[i], i);
-            count ++;
-            }
-            }
-            fprintf (stderr, "s mismatch count %d\n", count);
+                int center = device->j;
+                int d_i = device->i;
+                int d_k = device->k;
 
 
-            t_s = (real *) malloc (REAL_SIZE * 5 * system->N);
-            copy_host_device (t_s, dev_workspace->t, system->N * REAL_SIZE * 5, cudaMemcpyDeviceToHost, __LINE__);
+                //fprintf (stderr, " atom %d bond (%d %d) -- %d, (%d %d %d) -- (%d %d)\n", 
+                //i, b_start[i], b_end[i], j, center, d_i, d_k, device->thb, device->pthb);
 
-            count = 0;
-            for (int i = 0; i < 5*system->N; i++ ) {
-            if (check_zero (workspace->t[i], t_s[i])) {
-            //fprintf (stderr, " (%f %f) @ index : %d\n", workspace->t[i], t_s[i], i);
-            count ++;
-            }
-            }
-            fprintf (stderr, "t mismatch count %d\n", count);
+                if ((a[system->N + center] != -1)) {
+                    a[d_i] = a[d_k] = 1;
+                    continue;
+                } else if ((b[system->N + center] != -1)) {
+                    b[d_i] = b[d_k] = 1;
+                    continue;
+                } else if ((c[system->N + center] != -1)) {
+                    c[d_i] = c[d_k] = 1;
+                    continue;
+                } else if ((d[system->N + center] != -1)) {
+                    d[d_i] = d[d_k] = 1;
+                    continue;
+                }
 
-
-            t_s = (real *) malloc (REAL_SIZE * (RESTART+1) * system->N);
-            copy_host_device (t_s, dev_workspace->v, system->N * REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
-
-            count = 0;
-            for (int i = 0; i < (RESTART + 1)*system->N; i++ ) {
-            if (check_zero (workspace->v[i], t_s[i])) {
-            //fprintf (stderr, " (%f %f) @ index %d \n", workspace->v[i], t_s[i], i);
-            count ++;
-            }
-            }
-            fprintf (stderr, "v mismatch count %d\n", count);
-
-            t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
-            copy_host_device (t_s, dev_workspace->y, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
-
-            count = 0;
-            for (int i = 0; i < (RESTART + 1); i++ ) {
-            if (check_zero (workspace->y[i], t_s[i])) {
-            //fprintf (stderr, " (%f %f) \n", workspace->y[i], t_s[i]);
-            count ++;
-            }
-            }
-            fprintf (stderr, "y mismatch count %d\n", count);
-
-            t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
-            copy_host_device (t_s, dev_workspace->hc, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
-
-            count = 0;
-            for (int i = 0; i < (RESTART + 1); i++ ) {
-            if (check_zero (workspace->hc[i], t_s[i])) {
-                //fprintf (stderr, " (%f %f) \n", workspace->hc[i], t_s[i]);
-                count ++;
-            }
-            }
-            fprintf (stderr, "hc mismatch count %d\n", count);
-
-            t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
-            copy_host_device (t_s, dev_workspace->hs, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
-
-            count = 0;
-            for (int i = 0; i < (RESTART + 1); i++ ) {
-                if (check_zero (workspace->hs[i], t_s[i])) {
-                    //fprintf (stderr, " (%f %f) \n", workspace->hs[i], t_s[i]);
+                if ((a[center] == -1) && (a[d_i] == -1) && (a[d_k] == -1)) {
+                    a[center] = a[d_i] = a[d_k] = 1;
+                    a[system->N + center] = 1;
+                } else if ((b[center] == -1) && (b[d_i] == -1) && (b[d_k] == -1)) {
+                    b[center] =  b[d_i] = b[d_k] = 1;
+                    b[system->N + center] = 1;
+                } else if ((c[center] == -1) && (c[d_i] == -1) && (c[d_k] == -1)) {
+                    c[center] =  c[d_i] = c[d_k] = 1;
+                    c[system->N + center] = 1;
+                } else if ((d[center] == -1) && (d[d_i] == -1) && (d[d_k] == -1)) {
+                    d[center] =  d[d_i] = d[d_k] = 1;
+                    d[system->N + center]= 1;
+                }
+                else {
                     count ++;
+                    break;
+                    fprintf (stderr, "We have a problem with the four bins atom %d bond (%d %d) -- %d, (%d %d %d)\n", 
+                            i, b_start[i], b_end[i], j, center, d_i, d_k);
+                    fprintf (stderr, "A's contents %d %d %d (%d %d %d)\n", 
+                            a[system->N + center], a[system->N + d_i], a[system->N + d_k], a[center], a[d_i], a[d_k]);
+                    fprintf (stderr, "B's contents %d %d %d (%d %d %d)\n", 
+                            b[system->N + center], b[system->N + d_i], b[system->N + d_k], b[center], b[d_i], b[d_k]);
+                    fprintf (stderr, "C's contents %d %d %d (%d %d %d)\n", 
+                            c[system->N + center], c[system->N + d_i], c[system->N + d_k], c[center], c[d_i], c[d_k]);
+                    fprintf (stderr, "D's contents %d %d %d (%d %d %d)\n", 
+                            d[system->N + center], d[system->N + d_i], d[system->N + d_k], d[center], d[d_i], d[d_k]);
+
                 }
             }
-            fprintf (stderr, "hs mismatch count %d\n", count);
+        }
+    }
+    fprintf (stderr, "Miscount is %d \n", count);
+    exit (-1);
 
-            t_s = (real *) malloc (REAL_SIZE * (RESTART+1) * (RESTART+1) );
-            copy_host_device (t_s, dev_workspace->h, REAL_SIZE * (RESTART+1)*(RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
+    count = 0;
+    for (int i = 0; i < system->N; i++)
+    {
+        if (a[system->N + i] != -1) count ++;
+        if (b[system->N + i] != -1) count ++;
+        if (c[system->N + i] != -1) count ++;
+        if (d[system->N + i] != -1) count ++;
+    }
 
-            count = 0;
-            for (int i = 0; i < (RESTART+1)*(RESTART+1); i++ ) {
-                if (check_zero (workspace->h[i], t_s[i])) {
-                    //fprintf (stderr, " (%f %f) \n", workspace->h[i], t_s[i]);
-                    count ++;
+    fprintf (stderr, "binned so many atoms --> %d \n", count );
+}
+
+
+int validate_grid (reax_system *system)
+{
+    int total = system->g.ncell[0] * system->g.ncell[1] * system->g.ncell[2];
+    int count = 0;
+
+    int *dtop = (int *) malloc (INT_SIZE * total );
+    copy_host_device (dtop, system->d_g.top, INT_SIZE * total, cudaMemcpyDeviceToHost, __LINE__);
+
+    for (int i = 0; i < total; i++){
+        if (system->g.top[i] != dtop[i]){
+            fprintf (stderr, " top count does not match (%d %d) @ index %d \n", system->g.top[i], dtop[i], i );
+            exit (-1);
+        }
+    }
+    free (dtop);
+
+    int *datoms = (int *) malloc (INT_SIZE * total * system->d_g.max_atoms);
+    copy_host_device (datoms, system->d_g.atoms, INT_SIZE * total * system->d_g.max_atoms, cudaMemcpyDeviceToHost, __LINE__);
+    for (int i = 0; i < total*system->d_g.max_atoms; i++){
+        if (system->g.atoms[i] != datoms[i]){
+            fprintf (stderr, " atoms count does not match (%d %d) @ index %d \n", system->g.atoms[i], datoms[i], i );
+            exit (-1);
+        }
+    }
+    free (datoms);
+
+    ivec *dnbrs = (ivec *) malloc (IVEC_SIZE * total * system->d_g.max_nbrs);
+    copy_host_device (dnbrs, system->d_g.nbrs, IVEC_SIZE * total * system->d_g.max_nbrs, cudaMemcpyDeviceToHost, __LINE__);
+    for (int i = 0; i < total*system->d_g.max_nbrs; i++){
+        if (!check_same (system->g.nbrs[i], dnbrs[i])){
+            fprintf (stderr, " nbrs count does not match @ index %d \n", i );
+            exit (-1);
+        }
+    }
+    free (dnbrs);
+
+    rvec *dnbrs_cp = (rvec *) malloc (RVEC_SIZE * total * system->d_g.max_nbrs);
+    copy_host_device (dnbrs_cp, system->d_g.nbrs_cp, RVEC_SIZE * total * system->d_g.max_nbrs, cudaMemcpyDeviceToHost, __LINE__);
+    for (int i = 0; i < total*system->d_g.max_nbrs; i++){
+        if (check_zero (system->g.nbrs_cp[i], dnbrs_cp[i])){
+            fprintf (stderr, " nbrs_cp count does not match @ index %d \n", i );
+            exit (-1);
+        }
+    }
+    free (dnbrs_cp);
+
+    //fprintf (stderr, " Grid match between device and host \n");
+    return TRUE;
+}
+
+
+void print_atoms (reax_system *system)
+{
+    int start, end, index;
+
+    reax_atom *test = (reax_atom *) malloc (REAX_ATOM_SIZE * system->N);
+    copy_host_device (test, system->d_atoms, REAX_ATOM_SIZE * system->N, cudaMemcpyDeviceToHost, RES_SYSTEM_ATOMS );
+
+    //for (int i = 0; i < system->N; i++) 
+    for (int i = 0; i < 10; i++) 
+    {
+        fprintf (stderr, "Atom:%d: Type:%d", i, test[i].type);
+        fprintf (stderr, " x(%6.10f %6.10f %6.10f)", test[i].x[0], test[i].x[1], test[i].x[2] );
+        fprintf (stderr, " v(%6.10f %6.10f %6.10f)", test[i].v[0], test[i].v[1], test[i].v[2] );
+        fprintf (stderr, " f(%6.10f %6.10f %6.10f)", test[i].f[0], test[i].f[1], test[i].f[2] );
+        fprintf (stderr, " q(%6.10f) \n", test[i].q );
+    }
+}
+
+
+void print_sys_atoms (reax_system *system)
+{
+    for (int i = 0; i < 10; i++) 
+    {
+        fprintf (stderr, "Atom:%d: Type:%d", i, system->atoms[i].type);
+        fprintf (stderr, " x(%6.10f %6.10f %6.10f)",system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );
+        fprintf (stderr, " v(%6.10f %6.10f %6.10f)",system->atoms[i].v[0], system->atoms[i].v[1], system->atoms[i].v[2] );
+        fprintf (stderr, " f(%6.10f %6.10f %6.10f)", system->atoms[i].f[0], system->atoms[i].f[1], system->atoms[i].f[2] );
+        fprintf (stderr, " q(%6.10f) \n", system->atoms[i].q );
+    }
+}
+
+
+void print_grid (reax_system *system)
+{
+    int i, j, k, x;
+    grid *g = &system->g;
+
+    for( i = 0; i < g->ncell[0]; i++ )
+        for( j = 0; j < g->ncell[1]; j++ )
+            for( k = 0; k < g->ncell[2]; k++ ){
+                fprintf (stderr, "Cell [%d,%d,%d]--(", i, j, k);
+                for (x = 0; x < g->top[index_grid_3d (i,j,k,g) ]; x++){
+                    fprintf (stderr, "%d,", g->atoms[ index_grid_atoms (i,j,k,x,g) ]);
                 }
+                fprintf (stderr, ")\n");
             }
-            fprintf (stderr, "h mismatch count %d\n", count);
-
-            t_s = (real *) malloc (REAL_SIZE * (RESTART+1) );
-            copy_host_device (t_s, dev_workspace->g, REAL_SIZE * (RESTART+1), cudaMemcpyDeviceToHost, __LINE__);
-
-            count = 0;
-            for (int i = 0; i < (RESTART + 1); i++ ) {
-                if (check_zero (workspace->g[i], t_s[i])) {
-                    //fprintf (stderr, " (%f %f) @ index %d\n", workspace->g[i], t_s[i], i);
-                    count ++;
-                }
-            }
-            fprintf (stderr, "g mismatch count %d\n", count);
-            */
-
-                rvec *r_s = (rvec *) malloc (RVEC_SIZE * system->N );
-            copy_host_device (r_s, dev_workspace->v_const, RVEC_SIZE * system->N,  cudaMemcpyDeviceToHost, __LINE__);
-
-            count = 0;
-            for (int i = 0; i < system->N; i++ ) {
-                if (check_zero (workspace->v_const[i], r_s[i])) {
-                    fprintf (stderr, " v_const (%f %f %f) (%f %f %f) @ index %d\n", 
-                            workspace->v_const[i][0], 
-                            workspace->v_const[i][1], 
-                            workspace->v_const[i][2], 
-                            r_s[i][0], 
-                            r_s[i][1], 
-                            r_s[i][2], 
-                            i);
-                    exit (-1);
-                    count ++;
-                }
-            }
-            //fprintf (stderr, "v_const mismatch count %d\n", count);
-
-            free (test);
-            free (r_s);
-            return true;
-            }
-
-            bool validate_data (reax_system *system, simulation_data *host)
-            {
-                simulation_data device;
-
-                copy_host_device (&device, host->d_simulation_data, SIMULATION_DATA_SIZE, cudaMemcpyDeviceToHost, __LINE__);
-
-                if (check_zero (host->E_BE, device.E_BE)){
-                    fprintf (stderr, "E_BE does not match (%4.15e %4.15e) \n", host->E_BE, device.E_BE);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Lp, device.E_Lp)){
-                    fprintf (stderr, "E_Lp does not match (%4.10e %4.10e) \n", host->E_Lp, device.E_Lp);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Ov, device.E_Ov)){
-                    fprintf (stderr, "E_Ov does not match (%4.10e %4.10e) \n", host->E_Ov, device.E_Ov);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Un, device.E_Un)){
-                    fprintf (stderr, "E_Un does not match (%4.10e %4.10e) \n", host->E_Un, device.E_Un);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Tor, device.E_Tor)) {
-                    fprintf (stderr, "E_Tor does not match (%4.10e %4.10e) \n", host->E_Tor, device.E_Tor);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Con, device.E_Con)) {
-                    fprintf (stderr, "E_Con does not match (%4.10e %4.10e) \n", host->E_Con, device.E_Con);
-                    exit (-1);
-                }
-
-                if (check_zero (host->ext_press, device.ext_press)) {
-                    fprintf (stderr, "ext_press does not match (%4.10e %4.10e) \n", host->ext_press, device.ext_press);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_HB, device.E_HB)) {
-                    fprintf (stderr, "E_Hb does not match (%4.10e %4.10e) \n", host->E_HB, device.E_HB);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Ang, device.E_Ang)) {
-                    fprintf (stderr, "E_Ang does not match (%4.10e %4.10e) \n", host->E_Ang, device.E_Ang);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Pen, device.E_Pen)) {
-                    fprintf (stderr, "E_Pen does not match (%4.10e %4.10e) \n", host->E_Pen, device.E_Pen);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Coa, device.E_Coa)) {
-                    fprintf (stderr, "E_Coa does not match (%4.10e %4.10e) \n", host->E_Coa, device.E_Coa);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_vdW, device.E_vdW)) {
-                    fprintf (stderr, "E_vdW does not match (%4.20e %4.20e) \n", host->E_vdW, device.E_vdW);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Ele, device.E_Ele)) {
-                    fprintf (stderr, "E_Ele does not match (%4.20e %4.20e) \n", host->E_Ele, device.E_Ele);
-                    exit (-1);
-                }
-
-                if (check_zero (host->E_Pol, device.E_Pol)) {
-                    fprintf (stderr, "E_Pol does not match (%4.10e %4.10e) \n", host->E_Pol, device.E_Pol);
-                    exit (-1);
-                }
-
-
-                //fprintf (stderr, "Simulation Data match between host and device \n");
-                return true;
-            }
-
-            void print_bond_data (bond_order_data *s)
-            {
-                /*
-                   fprintf (stderr, "Bond_Order_Data BO (%f ) BO_s (%f ) BO_pi (%f ) BO_pi2 (%f ) ", 
-                   s->BO, 
-                   s->BO_s, 
-                   s->BO_pi,
-                   s->BO_pi2 );
-                 */
-                fprintf (stderr, " Cdbo (%e) ", s->Cdbo );
-                fprintf (stderr, " Cdbopi (%e) ", s->Cdbopi );
-                fprintf (stderr, " Cdbopi2 (%e) ", s->Cdbopi2 );
-            }
-
-            void print_bond_list (reax_system *system, static_storage *workspace, list **lists)
-            {
-                list *bonds = *lists + BONDS;
-
-                for (int i = 1; i < 2; i++)
-                {
-                    fprintf (stderr, "Atom %d Bond_data ( nbrs \n", i);
-                    for (int j = Start_Index (i, bonds); j < End_Index (i, bonds); j++) 
-                    {
-                        bond_data *data = &bonds->select.bond_list [j];
-                        fprintf (stderr, "  %d, ", data->nbr );
-                        print_bond_data (&data->bo_data);
-                        fprintf (stderr, ")\n");
-                    }
-                }
-
-                int *b_start = (int *) malloc (INT_SIZE * system->N);
-                int *b_end = (int *) malloc (INT_SIZE * system->N);
-                list *d_bonds = dev_lists + BONDS;
-                bond_data *d_bond_data;
-
-                d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
-
-                copy_host_device ( b_start, d_bonds->index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( b_end, d_bonds->end_index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-                for (int i = 0; i < 2; i++)
-                {
-                    fprintf (stderr, "Atom %d Bond_data ( nbrs \n", i);
-                    for (int j = b_start[i]; j < b_end[i]; j ++) {
-                        bond_data *src = &d_bond_data[j];
-                        fprintf (stderr, "  %d, ", src->nbr );
-                        print_bond_data (&src->bo_data);
-                        fprintf (stderr, ")\n");
-                    }
-                }
-            }
-
-
-
-            void count_three_bodies (reax_system *system, static_storage *workspace, list **lists)
-            {
-                list *three = *lists + THREE_BODIES;
-                list *bonds = *lists + BONDS;
-
-                list *d_three = dev_lists + THREE_BODIES;
-                list *d_bonds = dev_lists + BONDS;
-                bond_data *d_bond_data;
-                real *test;
-
-                three_body_interaction_data *data = (three_body_interaction_data *) 
-                    malloc ( sizeof (three_body_interaction_data) * system->num_thbodies);
-                int *start = (int *) malloc (INT_SIZE * system->num_bonds);
-                int *end = (int *) malloc (INT_SIZE * system->num_bonds);
-
-                int *b_start = (int *) malloc (INT_SIZE * system->N);
-                int *b_end = (int *) malloc (INT_SIZE * system->N);
-                int count;
-                int hcount, dcount;
-
-                copy_host_device ( start, d_three->index, 
-                        INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( end, d_three->end_index, 
-                        INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( data, d_three->select.three_body_list, 
-                        sizeof (three_body_interaction_data) * system->num_thbodies, 
-                        cudaMemcpyDeviceToHost, __LINE__);
-
-                d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
-
-                copy_host_device ( b_start, d_bonds->index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( b_end, d_bonds->end_index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-
-                count = 0;
-                hcount = dcount = 0;
-                for (int i = 0; i < system->N; i++)
-                {
-                    for (int j = b_start[i]; j < b_end[i]; j ++) {
-                        dcount += end[j] - start[j];
-                    }
-                }
-
-                fprintf (stderr, "Total Actual Three Body Count ---> %d \n", dcount);
-
-                free (data);
-                free (start);
-                free (end);
-                free (b_start);
-                free (b_end);
-                free (d_bond_data);
-            }
-
-
-
-            bool validate_three_bodies (reax_system *system, static_storage *workspace, list **lists)
-            {
-                list *three = *lists + THREE_BODIES;
-                list *bonds = *lists + BONDS;
-
-                list *d_three = dev_lists + THREE_BODIES;
-                list *d_bonds = dev_lists + BONDS;
-                bond_data *d_bond_data;
-                real *test;
-
-                three_body_interaction_data *data = (three_body_interaction_data *) 
-                    malloc ( sizeof (three_body_interaction_data) * system->num_thbodies);
-                int *start = (int *) malloc (INT_SIZE * system->num_bonds);
-                int *end = (int *) malloc (INT_SIZE * system->num_bonds);
-
-                int *b_start = (int *) malloc (INT_SIZE * system->N);
-                int *b_end = (int *) malloc (INT_SIZE * system->N);
-                int count;
-                int hcount, dcount;
-
-
-
-                copy_host_device ( start, d_three->index, 
-                        INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( end, d_three->end_index, 
-                        INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( data, d_three->select.three_body_list, 
-                        sizeof (three_body_interaction_data) * system->num_thbodies, 
-                        cudaMemcpyDeviceToHost, __LINE__);
-
-                d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
-
-                copy_host_device ( b_start, d_bonds->index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( b_end, d_bonds->end_index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-
-                //test = (real *) malloc (REAL_SIZE * system->num_bonds);
-                //memset (test, 0, REAL_SIZE * system->num_bonds);
-                //copy_host_device (test, testdata, REAL_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-
-                count = 0;
-                for (int i = 0; i < system->N; i++)
-                {
-                    //for (int j = bonds->index[i]; j < bonds->end_index[i]; j ++)
-
-                    hcount = dcount = 0;
-                    for (int j = b_start[i]; j < b_end[i]; j ++) {
-                        dcount += end[j] - start[j];
-                        hcount += Num_Entries (j, three);
-
-                        /*
-                           if ((end[j] - start[j]) != (End_Index (j, three) - Start_Index (j, three)))
-                           {
-                           fprintf (stderr, " Three body count does not match between host and device\n");
-                           fprintf (stderr, " Host count : (%d, %d)\n", Start_Index (j, three), End_Index (j, three));
-                           fprintf (stderr, " Device count: (%d, %d)\n", start[j], end[j]);
-                           }
-                         */
-                    }
-
-
-                    if ((dcount != hcount)) {
-
-                        fprintf (stderr, " Three body count does not match for the bond %d - %d \n", hcount, dcount); 
-
-                        for (int j = b_start[i]; j < b_end[i]; j ++) {
-                            bond_order_data *src = &d_bond_data[j].bo_data;
-                            dcount = end[j] - start[j];
-                            hcount = Num_Entries (j, three);
-                            fprintf (stderr, "device \n");
-                            print_bond_data (src);
-
-                            fprintf (stderr, "\n");
-                            src = &bonds->select.bond_list[j].bo_data;
-                            fprintf (stderr, "host \n");
-                            print_bond_data (src);
-                            fprintf (stderr, "\n");
-
-                            //fprintf (stderr, "--- Device bo is %f \n", test[j]);
-                            fprintf (stderr, "Device %d %d bonds (%d %d) - Host %d %d bonds (%d %d) \n", start[j], end[j],b_start[i], b_end[i],  
-                                    Start_Index (j, three), End_Index (j, three), Start_Index (i, bonds), End_Index (i, bonds));
-                            fprintf (stderr, "Host %d Device %d -- atom %d index %d \n", hcount, dcount, i, j);
-                            fprintf (stderr, "------\n");
-                        }
-                        fprintf (stderr, " Three Bodies count does not match between host and device \n");
-                        exit (-1);
-                    }
-                }
-
-                //fprintf (stderr, "Three body count on DEVICE %d  HOST %d \n", dcount, hcount);
-
-                count = 0;
-                for (int i = 0; i < system->N; i++)
-                {
-                    int x, y, z;
-                    for (x = b_start[i]; x < b_end[i]; x++)
-                    {
-                        int t_start = start[x];
-                        int t_end = end[x];
-
-                        bond_data *dev_bond = &d_bond_data [x];
-                        bond_data *host_bond;
-                        for (z = Start_Index (i, bonds); z < End_Index (i, bonds); z++)
-                        {
-                            host_bond = &bonds->select.bond_list [z];
-                            if ((dev_bond->nbr == host_bond->nbr) &&
-                                    check_same (dev_bond->rel_box, host_bond->rel_box) && 
-                                    !check_zero (dev_bond->dvec, host_bond->dvec) &&
-                                    !check_zero (dev_bond->d, host_bond->d) )
-                            {
-                                break;
-                            }
-                        }
-                        if (z >= End_Index (i, bonds)){
-                            fprintf (stderr, "Could not find the matching bond on host and device \n");
-                            exit (-1);
-                        }
-
-                        //find this bond in the bonds on the host side.
-
-                        for (y = t_start; y < t_end; y++)
-                        {
-
-                            three_body_interaction_data *device = data + y;
-                            three_body_interaction_data *host;
-
-                            //fprintf (stderr, "Device thb %d pthb %d \n", device->thb, device->pthb);
-
-                            int xx;    
-                            for (xx = Start_Index (z, three); xx < End_Index (z, three); xx++)
-                            {
-                                host = &three->select.three_body_list [xx];
-                                //fprintf (stderr, "Host thb %d pthb %d \n", host->thb, host->pthb);
-                                //if ((host->thb == device->thb) && (host->pthb == device->pthb))
-                                if ((host->thb == device->thb) && !check_zero (host->theta, device->theta))
-                                {
-                                    count ++;
-                                    break;
-                                }
-                            }
-
-                            if ( xx >= End_Index (z, three) ) {
-                                fprintf (stderr, " Could not match for atom %d bonds %d (%d) Three body(%d %d) (%d %d) \n", i, x, z, 
-                                        Start_Index (z, three), End_Index (z, three), start[x], end[x] );
-                                exit (-1);
-                            }// else fprintf (stderr, "----------------- \n");
-                        }
-                    }
-                }
-                free (data);
-                free (start);
-                free (end);
-                free (b_start);
-                free (b_end);
-                free (d_bond_data);
-
-                //fprintf (stderr, "Three Body Interaction Data MATCH on device and HOST --> %d \n", count);
-                return true;
-            }
-
-            bool bin_three_bodies (reax_system *system, static_storage *workspace, list **lists)
-            {
-                list *d_three = dev_lists + THREE_BODIES;
-                list *d_bonds = dev_lists + BONDS;
-                list *three = *lists + THREE_BODIES;
-                list *bonds = *lists + BONDS;
-                bond_data *d_bond_data;
-
-                three_body_interaction_data *data = (three_body_interaction_data *) 
-                    malloc ( sizeof (three_body_interaction_data) * system->num_thbodies);
-                int *start = (int *) malloc (INT_SIZE * system->num_bonds);
-                int *end = (int *) malloc (INT_SIZE * system->num_bonds);
-
-                int *b_start = (int *) malloc (INT_SIZE * system->N);
-                int *b_end = (int *) malloc (INT_SIZE * system->N);
-
-                int *a = (int *) malloc (2 * INT_SIZE * system->N );
-                int *b = (int *) malloc (2 * INT_SIZE * system->N );
-                int *c = (int *) malloc (2 * INT_SIZE * system->N );
-                int *d = (int *) malloc (2 * INT_SIZE * system->N );
-
-                for (int i = 0; i < 2 * system->N; i++)
-                    a[i] = b[i] = c[i] = d[i] = -1;
-
-                int count;
-                int hcount, dcount;
-                int index_a, index_b, index_c, index_d;
-                index_a = index_b = index_c = index_d = 0;
-
-                copy_host_device ( start, d_three->index, 
-                        INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( end, d_three->end_index, 
-                        INT_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( data, d_three->select.three_body_list, 
-                        sizeof (three_body_interaction_data) * system->num_thbodies, 
-                        cudaMemcpyDeviceToHost, __LINE__);
-
-                d_bond_data = (bond_data *) malloc (BOND_DATA_SIZE * system->num_bonds );
-
-                copy_host_device ( b_start, d_bonds->index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device ( b_end, d_bonds->end_index, 
-                        INT_SIZE * system->N, cudaMemcpyDeviceToHost, __LINE__);
-                copy_host_device (d_bond_data, d_bonds->select.bond_list, BOND_DATA_SIZE * system->num_bonds, cudaMemcpyDeviceToHost, __LINE__);
-
-                count = 0;
-                hcount = dcount = 0;
-
-                /*
-                   for (int i = 0; i < 20; i++)
-                   {
-                   for (int j = Start_Index (i, bonds); j < End_Index (i, bonds); j++)
-                   {
-                   for ( int k = Start_Index (j, three); k < End_Index (j, three); k ++)
-                   {
-                   three_body_interaction_data *host = &three->select.three_body_list [k];
-                   fprintf (stderr, " atom %d bond (%d %d) -- %d,  (%d %d)\n", 
-                   i, Start_Index (i, bonds), End_Index (i, bonds), j, host->thb, host->pthb );
-
-                   }
-                   }
-                   }
-                   exit (-1);
-                 */
-
-                count = 0;
-                for (int i = 0; i < system->N; i++)
-                {
-                    for (int j = b_start[i]; j < b_end[i]; j ++) {
-
-                        /*
-                           bond_data *src;
-                           src = &d_bond_data[j];
-                           fprintf (stderr, " atom %d Neighbor %d \n", i, src->nbr );
-                         */
-
-                        for (int x = start[j]; x < end[j]; x ++)
-                        {
-                            three_body_interaction_data *device = data + x;
-
-                            int center = device->j;
-                            int d_i = device->i;
-                            int d_k = device->k;
-
-
-                            //fprintf (stderr, " atom %d bond (%d %d) -- %d, (%d %d %d) -- (%d %d)\n", 
-                            //i, b_start[i], b_end[i], j, center, d_i, d_k, device->thb, device->pthb);
-
-                            if ((a[system->N + center] != -1)) {
-                                a[d_i] = a[d_k] = 1;
-                                continue;
-                            } else if ((b[system->N + center] != -1)) {
-                                b[d_i] = b[d_k] = 1;
-                                continue;
-                            } else if ((c[system->N + center] != -1)) {
-                                c[d_i] = c[d_k] = 1;
-                                continue;
-                            } else if ((d[system->N + center] != -1)) {
-                                d[d_i] = d[d_k] = 1;
-                                continue;
-                            }
-
-                            if ((a[center] == -1) && (a[d_i] == -1) && (a[d_k] == -1)) {
-                                a[center] = a[d_i] = a[d_k] = 1;
-                                a[system->N + center] = 1;
-                            } else if ((b[center] == -1) && (b[d_i] == -1) && (b[d_k] == -1)) {
-                                b[center] =  b[d_i] = b[d_k] = 1;
-                                b[system->N + center] = 1;
-                            } else if ((c[center] == -1) && (c[d_i] == -1) && (c[d_k] == -1)) {
-                                c[center] =  c[d_i] = c[d_k] = 1;
-                                c[system->N + center] = 1;
-                            } else if ((d[center] == -1) && (d[d_i] == -1) && (d[d_k] == -1)) {
-                                d[center] =  d[d_i] = d[d_k] = 1;
-                                d[system->N + center]= 1;
-                            }
-                            else {
-                                count ++;
-                                break;
-                                fprintf (stderr, "We have a problem with the four bins atom %d bond (%d %d) -- %d, (%d %d %d)\n", 
-                                        i, b_start[i], b_end[i], j, center, d_i, d_k);
-                                fprintf (stderr, "A's contents %d %d %d (%d %d %d)\n", 
-                                        a[system->N + center], a[system->N + d_i], a[system->N + d_k], a[center], a[d_i], a[d_k]);
-                                fprintf (stderr, "B's contents %d %d %d (%d %d %d)\n", 
-                                        b[system->N + center], b[system->N + d_i], b[system->N + d_k], b[center], b[d_i], b[d_k]);
-                                fprintf (stderr, "C's contents %d %d %d (%d %d %d)\n", 
-                                        c[system->N + center], c[system->N + d_i], c[system->N + d_k], c[center], c[d_i], c[d_k]);
-                                fprintf (stderr, "D's contents %d %d %d (%d %d %d)\n", 
-                                        d[system->N + center], d[system->N + d_i], d[system->N + d_k], d[center], d[d_i], d[d_k]);
-
-                            }
-                        }
-                    }
-                }
-                fprintf (stderr, "Miscount is %d \n", count);
-                exit (-1);
-
-                count = 0;
-                for (int i = 0; i < system->N; i++)
-                {
-                    if (a[system->N + i] != -1) count ++;
-                    if (b[system->N + i] != -1) count ++;
-                    if (c[system->N + i] != -1) count ++;
-                    if (d[system->N + i] != -1) count ++;
-                }
-
-                fprintf (stderr, "binned so many atoms --> %d \n", count );
-            }
-
-            bool validate_grid (reax_system *system)
-            {
-                int total = system->g.ncell[0] * system->g.ncell[1] * system->g.ncell[2];
-                int count = 0;
-
-                int *dtop = (int *) malloc (INT_SIZE * total );
-                copy_host_device (dtop, system->d_g.top, INT_SIZE * total, cudaMemcpyDeviceToHost, __LINE__);
-
-                for (int i = 0; i < total; i++){
-                    if (system->g.top[i] != dtop[i]){
-                        fprintf (stderr, " top count does not match (%d %d) @ index %d \n", system->g.top[i], dtop[i], i );
-                        exit (-1);
-                    }
-                }
-                free (dtop);
-
-                int *datoms = (int *) malloc (INT_SIZE * total * system->d_g.max_atoms);
-                copy_host_device (datoms, system->d_g.atoms, INT_SIZE * total * system->d_g.max_atoms, cudaMemcpyDeviceToHost, __LINE__);
-                for (int i = 0; i < total*system->d_g.max_atoms; i++){
-                    if (system->g.atoms[i] != datoms[i]){
-                        fprintf (stderr, " atoms count does not match (%d %d) @ index %d \n", system->g.atoms[i], datoms[i], i );
-                        exit (-1);
-                    }
-                }
-                free (datoms);
-
-                ivec *dnbrs = (ivec *) malloc (IVEC_SIZE * total * system->d_g.max_nbrs);
-                copy_host_device (dnbrs, system->d_g.nbrs, IVEC_SIZE * total * system->d_g.max_nbrs, cudaMemcpyDeviceToHost, __LINE__);
-                for (int i = 0; i < total*system->d_g.max_nbrs; i++){
-                    if (!check_same (system->g.nbrs[i], dnbrs[i])){
-                        fprintf (stderr, " nbrs count does not match @ index %d \n", i );
-                        exit (-1);
-                    }
-                }
-                free (dnbrs);
-
-                rvec *dnbrs_cp = (rvec *) malloc (RVEC_SIZE * total * system->d_g.max_nbrs);
-                copy_host_device (dnbrs_cp, system->d_g.nbrs_cp, RVEC_SIZE * total * system->d_g.max_nbrs, cudaMemcpyDeviceToHost, __LINE__);
-                for (int i = 0; i < total*system->d_g.max_nbrs; i++){
-                    if (check_zero (system->g.nbrs_cp[i], dnbrs_cp[i])){
-                        fprintf (stderr, " nbrs_cp count does not match @ index %d \n", i );
-                        exit (-1);
-                    }
-                }
-                free (dnbrs_cp);
-
-                //fprintf (stderr, " Grid match between device and host \n");
-                return true;
-            }
-
-            void print_atoms (reax_system *system)
-            {
-                int start, end, index;
-
-                reax_atom *test = (reax_atom *) malloc (REAX_ATOM_SIZE * system->N);
-                copy_host_device (test, system->d_atoms, REAX_ATOM_SIZE * system->N, cudaMemcpyDeviceToHost, RES_SYSTEM_ATOMS );
-
-                //for (int i = 0; i < system->N; i++) 
-                for (int i = 0; i < 10; i++) 
-                {
-                    fprintf (stderr, "Atom:%d: Type:%d", i, test[i].type);
-                    fprintf (stderr, " x(%6.10f %6.10f %6.10f)", test[i].x[0], test[i].x[1], test[i].x[2] );
-                    fprintf (stderr, " v(%6.10f %6.10f %6.10f)", test[i].v[0], test[i].v[1], test[i].v[2] );
-                    fprintf (stderr, " f(%6.10f %6.10f %6.10f)", test[i].f[0], test[i].f[1], test[i].f[2] );
-                    fprintf (stderr, " q(%6.10f) \n", test[i].q );
-                }
-            }
-
-            void print_sys_atoms (reax_system *system)
-            {
-                for (int i = 0; i < 10; i++) 
-                {
-                    fprintf (stderr, "Atom:%d: Type:%d", i, system->atoms[i].type);
-                    fprintf (stderr, " x(%6.10f %6.10f %6.10f)",system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );
-                    fprintf (stderr, " v(%6.10f %6.10f %6.10f)",system->atoms[i].v[0], system->atoms[i].v[1], system->atoms[i].v[2] );
-                    fprintf (stderr, " f(%6.10f %6.10f %6.10f)", system->atoms[i].f[0], system->atoms[i].f[1], system->atoms[i].f[2] );
-                    fprintf (stderr, " q(%6.10f) \n", system->atoms[i].q );
-                }
-            }
-
-
-            void print_grid (reax_system *system)
-            {
-                int i, j, k, x;
-                grid *g = &system->g;
-
-                for( i = 0; i < g->ncell[0]; i++ )
-                    for( j = 0; j < g->ncell[1]; j++ )
-                        for( k = 0; k < g->ncell[2]; k++ ){
-                            fprintf (stderr, "Cell [%d,%d,%d]--(", i, j, k);
-                            for (x = 0; x < g->top[index_grid_3d (i,j,k,g) ]; x++){
-                                fprintf (stderr, "%d,", g->atoms[ index_grid_atoms (i,j,k,x,g) ]);
-                            }
-                            fprintf (stderr, ")\n");
-                        }
-            }
-
-
+}

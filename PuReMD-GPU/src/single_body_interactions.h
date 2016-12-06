@@ -21,33 +21,13 @@
 #ifndef __SINGLE_BODY_INTERACTIONS_H_
 #define __SINGLE_BODY_INTERACTIONS_H_
 
-#include <mytypes.h>
+#include "mytypes.h"
+
 
 void LonePair_OverUnder_Coordination_Energy( reax_system*, control_params*,
         simulation_data*, static_storage*,
         list**, output_controls* );
 
-//CUDA Functions...
-GLOBAL void Cuda_LonePair_OverUnder_Coordination_Energy ( reax_atom *, global_parameters ,
-        single_body_parameters *, two_body_parameters *,
-        static_storage , simulation_data *,
-        list , int , int );
 
-GLOBAL void test_LonePair_OverUnder_Coordination_Energy_LP ( reax_atom *, global_parameters ,
-        single_body_parameters *, two_body_parameters *,
-        static_storage , simulation_data *,
-        list , int , int,
-        real *, real *, real *);
-
-GLOBAL void test_LonePair_OverUnder_Coordination_Energy ( reax_atom *, global_parameters ,
-        single_body_parameters *, two_body_parameters *,
-        static_storage , simulation_data *,
-        list , int , int,
-        real *, real *, real *);
-
-GLOBAL void test_LonePair_Postprocess ( reax_atom *, global_parameters ,
-                                        single_body_parameters *, two_body_parameters *,
-                                        static_storage , simulation_data *,
-                                        list , int , int );
 #endif
 

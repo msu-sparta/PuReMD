@@ -21,7 +21,12 @@
 #ifndef __SYSTEM_PROP_H_
 #define __SYSTEM_PROP_H_
 
-#include <mytypes.h>
+#include "mytypes.h"
+
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
 
 real Get_Time( );
 
@@ -30,21 +35,18 @@ real Get_Timing_Info( real );
 void Temperature_Control( control_params*, simulation_data*, output_controls* );
 
 void Compute_Total_Mass( reax_system*, simulation_data* );
-void Cuda_Compute_Total_Mass( reax_system*, simulation_data* );
 
 void Compute_Center_of_Mass( reax_system*, simulation_data*, FILE* );
-void Cuda_Compute_Center_of_Mass( reax_system*, simulation_data*, FILE* );
 
 void Compute_Kinetic_Energy( reax_system*, simulation_data* );
-void Cuda_Compute_Kinetic_Energy( reax_system*, simulation_data* );
 
 void Compute_Pressure( reax_system*, simulation_data*, static_storage* );
 
 void Compute_Pressure_Isotropic( reax_system*, control_params*, simulation_data*, output_controls* );
 
-void prep_dev_system (reax_system *system);
-GLOBAL void Compute_Total_Mass (single_body_parameters *, reax_atom *, real *, size_t );
-//GLOBAL void Compute_Kinetic_Energy (single_body_parameters *, reax_atom *, unsigned int , simulation_data *, real *);
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif
