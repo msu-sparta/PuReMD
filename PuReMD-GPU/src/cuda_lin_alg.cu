@@ -364,7 +364,6 @@ int Cublas_GMRES(reax_system *system, static_storage *workspace, real *b, real t
     real t_start, t_elapsed;
     real *spad = (real *)scratch;
     real *g = (real *) calloc ((RESTART+1), REAL_SIZE);
-    cublasHandle_t cublasHandle;
 
     N = H->n;
 
@@ -382,7 +381,7 @@ int Cublas_GMRES(reax_system *system, static_storage *workspace, real *b, real t
        copy_host_device ( &bnorm, spad + BLOCKS_POW_2, REAL_SIZE, cudaMemcpyDeviceToHost, __LINE__);
      */
 
-    cublasCheckError (cublasDnrm2 ( cublasHandle, N, b, 1, &bnorm ));
+    cublasCheckError( cublasDnrm2( cublasHandle, N, b, 1, &bnorm ) );
 
 #ifdef __DEBUG_CUDA__
     fprintf (stderr, "Norm of the array is %e \n", bnorm );

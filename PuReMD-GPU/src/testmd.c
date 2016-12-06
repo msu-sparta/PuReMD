@@ -315,8 +315,9 @@ int main( int argc, char* argv[] )
             fprintf (stderr, " Results does not match between Device and host @ step --> %d \n", data.step);
             exit (1);
         }
-#endif
+
         fprintf (stderr, "step -> %d <- done. \n", data.step);
+#endif
     }
 
     if( out_control.write_steps > 0 ) { 

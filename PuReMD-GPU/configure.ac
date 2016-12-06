@@ -65,33 +65,35 @@ then
 fi
 AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
 
-AC_SEARCH_LIBS([cublasDnrm2], [cublas])
-AC_SEARCH_LIBS([cublasDaxpy], [cublas])
-AC_SEARCH_LIBS([cublasDscal], [cublas])
-AC_SEARCH_LIBS([cublasDdot], [cublas])
-AC_SEARCH_LIBS([cudaThreadSynchronize], [cudart])
-AC_SEARCH_LIBS([cudaGetLastError], [cudart])
+AC_CHECK_LIB([cuda], [cuGetErrorString])
 AC_CHECK_LIB([cudart], [cudaMalloc])
-AC_SEARCH_LIBS([cusparseCreateMatDescr], [cusparse])
-AC_SEARCH_LIBS([cusparseSetMatType], [cusparse])
-AC_SEARCH_LIBS([cusparseSetMatIndexBase], [cusparse])
-
-AC_SEARCH_LIBS([cublasDnrm2], [cublas],
-	[CUBLAS_FOUND_LIBS="yes"], [CUBLAS_FOUND_LIBS="no"], [-lcublas])
-AS_IF([test "x${CUBLAS_FOUND_LIBS}" != "xyes"],
-	[AC_MSG_ERROR([Unable to find CUBLAS library.])])
-
-AC_SEARCH_LIBS([cusparseSetMatType], [cusparse],
-	[CUSPARSE_FOUND_LIBS="yes"], [CUSPARSE_FOUND_LIBS="no"], [-lcusparse])
-AS_IF([test "x${CUSPARSE_FOUND_LIBS}" != "xyes"],
-	[AC_MSG_ERROR([Unable to find CUSPARSE library.])])
-
-AC_CHECK_TYPES([cublasHandle_t], [], 
-	       [AC_MSG_FAILURE([cublasHandle_t type not found in cublas.h], [1])], [#include<cublas_v2.h>])
-AC_CHECK_TYPES([cusparseHandle_t], [], 
-	       [AC_MSG_FAILURE([cusparseHandle_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
-AC_CHECK_TYPES([cusparseMatDescr_t], [], 
-	       [AC_MSG_FAILURE([cusparseMatDescr_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
+AC_CHECK_LIB([cublas], [cublasDnrm2])
+AC_CHECK_LIB([cusparse], [cusparseCreateMatDescr])
+#AC_SEARCH_LIBS([cublasDaxpy], [cublas])
+#AC_SEARCH_LIBS([cublasDscal], [cublas])
+#AC_SEARCH_LIBS([cublasDdot], [cublas])
+#AC_SEARCH_LIBS([cudaThreadSynchronize], [cudart])
+#AC_SEARCH_LIBS([cudaGetLastError], [cudart])
+#AC_SEARCH_LIBS([cusparseCreateMatDescr], [cusparse])
+#AC_SEARCH_LIBS([cusparseSetMatType], [cusparse])
+#AC_SEARCH_LIBS([cusparseSetMatIndexBase], [cusparse])
+#
+#AC_SEARCH_LIBS([cublasDnrm2], [cublas],
+#	[CUBLAS_FOUND_LIBS="yes"], [CUBLAS_FOUND_LIBS="no"], [-lcublas])
+#AS_IF([test "x${CUBLAS_FOUND_LIBS}" != "xyes"],
+#	[AC_MSG_ERROR([Unable to find CUBLAS library.])])
+#
+#AC_SEARCH_LIBS([cusparseSetMatType], [cusparse],
+#	[CUSPARSE_FOUND_LIBS="yes"], [CUSPARSE_FOUND_LIBS="no"], [-lcusparse])
+#AS_IF([test "x${CUSPARSE_FOUND_LIBS}" != "xyes"],
+#	[AC_MSG_ERROR([Unable to find CUSPARSE library.])])
+#
+#AC_CHECK_TYPES([cublasHandle_t], [], 
+#	       [AC_MSG_FAILURE([cublasHandle_t type not found in cublas.h], [1])], [#include<cublas_v2.h>])
+#AC_CHECK_TYPES([cusparseHandle_t], [], 
+#	       [AC_MSG_FAILURE([cusparseHandle_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
+#AC_CHECK_TYPES([cusparseMatDescr_t], [], 
+#	       [AC_MSG_FAILURE([cusparseMatDescr_t type not found in cusparse.h], [1])], [#include<cusparse_v2.h>])
 
 if test "BUILD_PROF" = "true"
 then

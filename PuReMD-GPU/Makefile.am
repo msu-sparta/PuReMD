@@ -3,7 +3,7 @@ ACLOCAL_AMFLAGS = -I ../m4
 SUFFIXES = .cu
 include ../cuda.am
 
-AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing
+AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing -m64
 AM_CPPFLAGS =
 AM_LDFLAGS =
 

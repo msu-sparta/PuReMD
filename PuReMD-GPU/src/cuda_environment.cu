@@ -28,9 +28,6 @@ void Setup_Cuda_Environment( int rank, int nprocs, int gpus_per_node )
 
     int deviceCount = 0;
     cudaError_t flag;
-    cublasHandle_t cublasHandle;
-    cusparseHandle_t cusparseHandle;
-    cusparseMatDescr_t matdescriptor;
     
     flag = cudaGetDeviceCount( &deviceCount );
 
@@ -44,6 +41,11 @@ void Setup_Cuda_Environment( int rank, int nprocs, int gpus_per_node )
     //and assign the GPU for each process
     //TODO: handle condition where # CPU procs > # GPUs
     cudaSetDevice( rank % deviceCount );
+    cudaCheckError( );
+
+    /* reset device and clear previous allocations */
+    Cleanup_Cuda_Environment( );    
+    cudaCheckError( );
 
 #if defined(__CUDA_DEBUG__)
     fprintf( stderr, "p:%d is using GPU: %d \n", rank, rank % deviceCount );

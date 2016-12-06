@@ -20,6 +20,12 @@
 
 #include "cuda_utils.h"
 
+cublasStatus_t cublasStatus;
+cublasHandle_t cublasHandle;
+cusparseHandle_t cusparseHandle;
+cusparseStatus_t cusparseStatus;
+cusparseMatDescr_t matdescriptor;
+
 
 void cuda_malloc( void **ptr, int size, int memset, int err_code )
 {

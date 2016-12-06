@@ -28,6 +28,12 @@
 
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
 
+extern cublasStatus_t cublasStatus;
+extern cublasHandle_t cublasHandle;
+extern cusparseHandle_t cusparseHandle;
+extern cusparseStatus_t cusparseStatus;
+extern cusparseMatDescr_t matdescriptor;
+
 
 #ifdef __cplusplus
 extern "C"  {

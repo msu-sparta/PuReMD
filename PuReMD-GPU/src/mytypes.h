@@ -1118,13 +1118,13 @@ typedef struct
 
 
 typedef void (*interaction_function)(reax_system*, control_params*,
-                                     simulation_data*, static_storage*,
-                                     list**, output_controls*);
+        simulation_data*, static_storage*, list**, output_controls*);
+
 extern interaction_function Interaction_Functions[NO_OF_INTERACTIONS];
 
 typedef void (*evolve_function)(reax_system*, control_params*,
-                                simulation_data*, static_storage*,
-                                list**, output_controls*);
+        simulation_data*, static_storage*,
+        list**, output_controls*);
 
 typedef real (*lookup_function)(real);
 extern lookup_table Exp, Sqrt, Cube_Root, Four_Third_Root, Cos, Sin, ACos;
@@ -1135,7 +1135,6 @@ extern LR_lookup_table *LR;
 typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*,
         control_params*, far_neighbor_data*,
         int*);
-
 
 /* CUDA structures */
 extern list *dev_lists;
