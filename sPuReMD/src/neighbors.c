@@ -29,7 +29,7 @@
 
 
 
-inline real DistSqr_to_CP( rvec cp, rvec x )
+static inline real DistSqr_to_CP( rvec cp, rvec x )
 {
     int  i;
     real d_sqr = 0;

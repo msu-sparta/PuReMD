@@ -705,20 +705,21 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 //    fprintf( stderr, "nnz(L): %d, max: %d\n", Ltop, L->n * 50 );
 
     /* U = L^T (Cholesky factorization) */
-    for ( i = 1; i <= U->n; ++i )
-    {
-        Utop[i] = U->start[i] = U->start[i] + U->start[i - 1] + 1;
-    }
-    for ( i = 0; i < L->n; ++i )
-    {
-        for ( pj = L->start[i]; pj < L->start[i + 1]; ++pj )
-        {
-            j = L->j[pj];
-            U->j[Utop[j]] = i;
-            U->val[Utop[j]] = L->val[pj];
-            Utop[j]++;
-        }
-    }
+    Transpose( L, U );
+//    for ( i = 1; i <= U->n; ++i )
+//    {
+//        Utop[i] = U->start[i] = U->start[i] + U->start[i - 1] + 1;
+//    }
+//    for ( i = 0; i < L->n; ++i )
+//    {
+//        for ( pj = L->start[i]; pj < L->start[i + 1]; ++pj )
+//        {
+//            j = L->j[pj];
+//            U->j[Utop[j]] = i;
+//            U->val[Utop[j]] = L->val[pj];
+//            Utop[j]++;
+//        }
+//    }
 
 //    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
 
@@ -1385,22 +1386,24 @@ static void Init_MatVec( const reax_system * const system, const control_params 
         time = Get_Time( );
         if ( control->pre_comp_type != DIAG_PC )
         {
-            if ( control->pre_app_type == TRI_SOLVE_GC_PA )
-            {
-                if ( control->qeq_domain_sparsify_enabled == TRUE )
-                {
-                    setup_graph_coloring( workspace->H_sp );
-                }
-                else
-                {
-                    setup_graph_coloring( workspace->H );
-                }
-            }
-
             Sort_Matrix_Rows( workspace->H );
             if ( control->qeq_domain_sparsify_enabled == TRUE )
             {
                 Sort_Matrix_Rows( workspace->H_sp );
+            }
+
+            if ( control->pre_app_type == TRI_SOLVE_GC_PA )
+            {
+                if ( control->qeq_domain_sparsify_enabled == TRUE )
+                {
+                    Hptr = setup_graph_coloring( workspace->H_sp );
+                }
+                else
+                {
+                    Hptr = setup_graph_coloring( workspace->H );
+                }
+
+                Sort_Matrix_Rows( Hptr );
             }
         }
         data->timing.QEq_sort_mat_rows += Get_Timing_Info( time );
@@ -1425,9 +1428,11 @@ static void Init_MatVec( const reax_system * const system, const control_params 
 
         case ICHOLT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
+
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "drop tolerances calculated\n" );
 #endif
+
             if ( workspace->L == NULL )
             {
                 fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
@@ -1437,6 +1442,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
+
 #if defined(DEBUG)
                 fprintf( stderr, "fillin = %d\n", fillin );
                 fprintf( stderr, "allocated memory: L = U = %ldMB\n",

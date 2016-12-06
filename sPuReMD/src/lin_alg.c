@@ -64,6 +64,7 @@ real *y_p = NULL;
 real *x_p = NULL;
 unsigned int *mapping = NULL;
 sparse_matrix *H_full;
+sparse_matrix *H_p;
 /* global to make OpenMP shared (jacobi_iter) */
 real *Dinv_b = NULL, *rp = NULL, *rp2 = NULL, *rp3 = NULL;
 
@@ -149,12 +150,9 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
 /* Transpose A and copy into A^T
  *
- * A: symmetric, lower triangular (half-format), stored in CSR
- * A_t: symmetric, upper triangular (half-format), stored in CSR
- *
- * Assumptions:
- *   A has non-zero diagonals
- *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
+ * A: stored in CSR
+ * A_t: stored in CSR
+ */
 void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
 {
     unsigned int i, j, pj, *A_t_top;
@@ -167,7 +165,7 @@ void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
 
     memset( A_t->start, 0, (A->n + 1) * sizeof(unsigned int) );
 
-    /* count nonzeros in each column of A^T */
+    /* count nonzeros in each column of A^T, store one row greater (see next loop) */
     for ( i = 0; i < A->n; ++i )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
@@ -200,11 +198,8 @@ void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
 
 /* Transpose A in-place
  *
- * A: symmetric, lower triangular (half-format), stored in CSR
- *
- * Assumptions:
- *   A has non-zero diagonals
- *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
+ * A: stored in CSR
+ */
 void Transpose_I( sparse_matrix * const A )
 {
     sparse_matrix * A_t;
@@ -880,7 +875,7 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
  * H: symmetric, lower triangular portion only, stored in CSR format;
  *  H is permuted in-place
  */
-void setup_graph_coloring( sparse_matrix * const H )
+sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
 {
     if ( color == NULL )
     {
@@ -893,6 +888,7 @@ void setup_graph_coloring( sparse_matrix * const H )
                 (permuted_row_col = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (permuted_row_col_inv = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (y_p = (real*) malloc(sizeof(real) * H->n)) == NULL ||
+                (Allocate_Matrix( &H_p, H->n, H->m ) == FAILURE ) ||
                 (Allocate_Matrix( &H_full, H->n, 2 * H->m - H->n ) == FAILURE ) )
         {
             fprintf( stderr, "not enough memory for graph coloring. terminating.\n" );
@@ -904,8 +900,13 @@ void setup_graph_coloring( sparse_matrix * const H )
 
     graph_coloring( H_full, LOWER );
     sort_colors( H_full->n, LOWER );
+    
+    memcpy( H_p->start, H->start, sizeof(int) * (H->n + 1) );
+    memcpy( H_p->j, H->j, sizeof(int) * (H->start[H->n]) );
+    memcpy( H_p->val, H->val, sizeof(real) * (H->start[H->n]) );
+    permute_matrix( H_p, LOWER );
 
-    permute_matrix( H, LOWER );
+    return H_p;
 }
 
 
@@ -921,8 +922,8 @@ void setup_graph_coloring( sparse_matrix * const H )
  * Note: Newmann series arises from series expansion of the inverse of
  * the coefficient matrix in the triangular system */
 static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
-                         const real * const b, real * const x, const TRIANGULARITY tri,
-                         const unsigned int maxiter )
+        const real * const b, real * const x, const TRIANGULARITY tri, const
+        unsigned int maxiter )
 {
     unsigned int i, k, si = 0, ei = 0, iter;
 

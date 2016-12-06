@@ -81,10 +81,11 @@ AC_ARG_ENABLE([debug],
 	      )
 if test "x$DEBUG" = "xyes"
 then
-	#TODO: fix exporting to subdirs
-	# See: http://stackoverflow.com/questions/34124337/changing-flags-in-configure-ac-vs-caching-with-subprojects
-	CFLAGS="-g3 -O0 -D_GLIBCXX_DEBUG ${CFLAGS}"
+#	#TODO: fix exporting to subdirs
+#	# See: http://stackoverflow.com/questions/34124337/changing-flags-in-configure-ac-vs-caching-with-subprojects
+#	CFLAGS="-g3 -O0 -D_GLIBCXX_DEBUG ${CFLAGS}"
 	export BUILD_DEBUG="true"
+	export DEBUG_FLAGS="-g2 -O0 -D_GLIBCXX_DEBUG"
 fi
 
 # gprof flags.
@@ -93,35 +94,22 @@ AC_ARG_ENABLE([gprof],
 		[enable support for profiling with gprof @<:@default: no@:>@])],
 	[case "${enableval}" in
 		gnu | yes) 
-			gprof_enabled="yes" 
-			gprof_compiler="gnu compiler"
-			gprof_flags="-pg"
+			# GNU
+			export BUILD_GPROF="true"
+			export GPROF_FLAGS="-pg"
 			;;
 		intel)
-			gprof_enabled="yes"
-			gprof_compiler="intel compiler"
-			gprof_flags="-p"
+			# Intel
+			export BUILD_GPROF="true"
+			export GPROF_FLAGS="-p"
 			;;
 		no)
-			gprof_enabled="no" 
-			gprof_compiler="none"
-			gprof_flags=""
 			;;
 		*)
 			AC_MSG_ERROR([bad value ${enableval} for --enable-gprof (only yes, gnu or intel are possible)]) ;;
 	esac],
-	[gprof_enabled="no"
-	 gprof_compiler="none"
-	 gprof_flags=""
-	]	      
+	[]	      
 )
-if test "x$gprof_enabled" = "xyes"
-then
-	#TODO: fix exporting to subdirs
-	CPPFLAGS="${CPPFLAGS} ${gprof_flags}"
-	LDFLAGS="${LDFLAGS} ${gprof_flags}"
-	export BUILD_PROF="yes"
-fi
 
 # Timing measurements.
 AC_ARG_ENABLE([timing],

@@ -47,10 +47,16 @@ AC_CHECK_FUNCS([gettimeofday memset])
 # Check for compiler vendor
 AX_COMPILER_VENDOR
 if test "x$ax_cv_c_compiler_vendor" = "xgnu"; then
-	CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
+	if test "x$BUILD_DEBUG" = "x"; then
+		CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
+	else
+		CFLAGS="$CFLAGS -Wall"
+	fi
 fi
 if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
-	CFLAGS="$CFLAGS -fast"
+	if test "x$BUILD_DEBUG" = "x"; then
+		CFLAGS="$CFLAGS -fast"
+	fi
 fi
 
 # Check for OpenMP support.
@@ -111,6 +117,16 @@ then
 	AS_IF([test "x${SUPERLU_MT_FOUND_LIBS}" != "xyes"],
 	      [AC_MSG_ERROR([Unable to find SuperLU MT library.])])
 	AC_DEFINE([HAVE_SUPERLU_MT], [1], [Define to 1 if you have SuperLU_MT support enabled.])
+fi
+
+if test "x$BUILD_DEBUG" != "x"
+then
+	CFLAGS="${CFLAGS} ${DEBUG_FLAGS}"
+fi
+
+if test "x$BUILD_GPROF" != "x"
+then
+	CFLAGS="${CFLAGS} ${GPROF_FLAGS}"
 fi
 
 AC_CONFIG_FILES([Makefile])
