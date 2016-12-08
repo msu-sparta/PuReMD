@@ -20,19 +20,19 @@
   ----------------------------------------------------------------------*/
 
 #include "integrate.h"
+
 #include "allocate.h"
 #include "box.h"
 #include "forces.h"
 #include "grid.h"
 #include "neighbors.h"
 #include "print_utils.h"
-#include "QEq.h"
+#include "qeq.h"
 #include "reset_utils.h"
 #include "restart.h"
 #include "system_props.h"
 #include "vector.h"
 #include "list.h"
-
 
 
 void Velocity_Verlet_NVE(reax_system* system, control_params* control,

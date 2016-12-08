@@ -772,17 +772,16 @@ void Calculate_Drift( reax_system *system, control_params *control,
                                 &(system->box), driftvec );
 
             if ( fabs( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
-                    fabs( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
-                    fabs( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 )
+                    fabs( driftvec[1] ) >= system->box.box_norms[1] / 2.0 - 2.0 ||
+                    fabs( driftvec[2] ) >= system->box.box_norms[2] / 2.0 - 2.0 )
             {
                 /* the atom has moved almost half the box size.
                    exclude it from further drift computations as it might have an
                    improper contribution due to periodic boudnaries. */
+                workspace->x_old[i][0] = -999999999.0;
+                workspace->x_old[i][1] = -999999999.0;
+                workspace->x_old[i][2] = -999999999.0;
 
-                //TODO -- check this one. may be not initializing this properly
-                //workspace->x_old[i][0] = workspace->x_old[i][2] = workspace->x_old[i][2] = -999999999999.0;
-                workspace->x_old[i][0] = workspace->x_old[i][2] = workspace->x_old[i][2] = -999999999.0;
-                //TODO -- check this one. may be not initializing this properly
                 continue;
             }
 

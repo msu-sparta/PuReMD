@@ -1,9 +1,10 @@
 /*----------------------------------------------------------------------
-  PuReMD-GPU - Reax Force Field Simulator
+  SerialReax - Reax Force Field Simulator
 
-  Copyright (2014) Purdue University
-  Sudhir Kylasa, skylasa@purdue.edu
+  Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
+  Joseph Fogarty, jcfogart@mail.usf.edu
+  Sagar Pandit, pandit@usf.edu
   Ananth Y Grama, ayg@cs.purdue.edu
 
   This program is free software; you can redistribute it and/or
@@ -18,19 +19,11 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __FORCES_H_
-#define __FORCES_H_
+#ifndef __CONTROL_H_
+#define __CONTROL_H_
 
 #include "mytypes.h"
 
-
-void Init_Bonded_Force_Functions( control_params* );
-
-void Compute_Forces( reax_system*, control_params*, simulation_data*,
-        static_storage*, list**, output_controls* );
-
-void Estimate_Storage_Sizes( reax_system*, control_params*, list**,
-        int*, int*, int*, int* );
-
+char Read_Control_File( FILE*, reax_system*, control_params*, output_controls* );
 
 #endif

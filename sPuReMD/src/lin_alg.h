@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __GMRES_H_
-#define __GMRES_H_
+#ifndef __LIN_ALG_H_
+#define __LIN_ALG_H_
 
 #include "mytypes.h"
 

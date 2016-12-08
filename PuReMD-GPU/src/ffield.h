@@ -1,9 +1,10 @@
 /*----------------------------------------------------------------------
-  PuReMD-GPU - Reax Force Field Simulator
+  SerialReax - Reax Force Field Simulator
 
-  Copyright (2014) Purdue University
-  Sudhir Kylasa, skylasa@purdue.edu
+  Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
+  Joseph Fogarty, jcfogart@mail.usf.edu
+  Sagar Pandit, pandit@usf.edu
   Ananth Y Grama, ayg@cs.purdue.edu
 
   This program is free software; you can redistribute it and/or
@@ -18,24 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __PARAM_H_
-#define __PARAM_H_
+#ifndef __FFIELD_H_
+#define __FFIELD_H_
 
 #include "mytypes.h"
-
-#define MAX_LINE 1024
-#define MAX_TOKENS 20
-#define MAX_TOKEN_LEN 1024
-
-
-int Get_Atom_Type( reax_interaction*, char* );
-
-int Tokenize( char*, char*** );
-
 char Read_Force_Field( FILE*, reax_interaction* );
-
-char Read_Control_File( FILE*, reax_system*, control_params*,
-        output_controls* );
-
 
 #endif

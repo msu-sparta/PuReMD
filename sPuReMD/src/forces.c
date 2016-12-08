@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "forces.h"
+
 #include "box.h"
 #include "bond_orders.h"
 #include "single_body_interactions.h"
@@ -29,7 +30,7 @@
 #include "list.h"
 #include "print_utils.h"
 #include "system_props.h"
-#include "QEq.h"
+#include "qeq.h"
 #include "vector.h"
 
 

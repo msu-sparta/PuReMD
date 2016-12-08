@@ -23,10 +23,9 @@
 
 #include "mytypes.h"
 
-#define MIN_SINE 1e-10
-
 
 void Four_Body_Interactions( reax_system*, control_params*, simulation_data*,
-    static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
+
 
 #endif

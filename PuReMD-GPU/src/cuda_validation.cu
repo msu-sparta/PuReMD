@@ -18,13 +18,13 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "validation.h"
+#include "cuda_validation.h"
+
+#include "index_utils.h"
+#include "list.h"
+#include "sort.h"
 
 #include "cuda_utils.h"
-#include "list.h"
-
-#include "sort.h"
-#include "index_utils.h"
 
 
 int check_zero (real p1, real p2)

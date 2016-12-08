@@ -18,14 +18,15 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "cuda_QEq.h"
+#include "cuda_qeq.h"
 
-#include "QEq.h"
+#include "qeq.h"
 #include "allocate.h"
 #include "lin_alg.h"
 #include "list.h"
 #include "print_utils.h"
 #include "index_utils.h"
+#include "sort.h"
 #include "system_props.h"
 
 #include "cuda_copy.h"
@@ -33,9 +34,7 @@
 #include "cuda_utils.h"
 #include "cuda_lin_alg.h"
 #include "cuda_reduction.h"
-
-#include "sort.h"
-#include "validation.h"
+#include "cuda_validation.h"
 
 
 GLOBAL void Cuda_Sort_Matrix_Rows( sparse_matrix A )

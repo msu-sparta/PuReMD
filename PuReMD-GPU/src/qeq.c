@@ -19,9 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "QEq.h"
+#include "qeq.h"
 
 #include "allocate.h"
+#include "index_utils.h"
 #include "list.h"
 #include "lin_alg.h"
 #include "print_utils.h"
@@ -747,7 +748,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
+    if ( Allocate_Matrix( DAD, A->n, A->m ) == FAILURE ||
             ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL )
@@ -916,7 +917,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
+    if ( Allocate_Matrix( DAD, A->n, A->m ) == FAILURE ||
             ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
     {
@@ -1118,9 +1119,9 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
-            Allocate_Matrix( &L_temp, A->n, A->m ) == FAILURE ||
-            Allocate_Matrix( &U_temp, A->n, A->m ) == FAILURE )
+    if ( Allocate_Matrix( DAD, A->n, A->m ) == FAILURE ||
+            Allocate_Matrix( L_temp, A->n, A->m ) == FAILURE ||
+            Allocate_Matrix( U_temp, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for ILUT_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -1436,8 +1437,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-                if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == FAILURE ||
-                        Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == FAILURE )
+                if ( Allocate_Matrix( workspace->L, far_nbrs->n, fillin ) == FAILURE ||
+                        Allocate_Matrix( workspace->U, far_nbrs->n, fillin ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1457,8 +1458,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                if ( Allocate_Matrix( workspace->L, Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( workspace->U, Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1477,8 +1478,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                if ( Allocate_Matrix( workspace->L, Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( workspace->U, Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1493,8 +1494,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                if ( Allocate_Matrix( workspace->L, Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( workspace->U, Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1539,40 +1540,48 @@ static void Init_MatVec( const reax_system * const system, const control_params 
     for ( i = 0; i < system->N; ++i )
     {
         // no extrapolation
-        //s_tmp = workspace->s[0][i];
-        //t_tmp = workspace->t[0][i];
+        //s_tmp = workspace->s[index_wkspace_sys(0,i,system->N)];
+        //t_tmp = workspace->t[index_wkspace_sys(0,i,system->N)];
 
         // linear
-        //s_tmp = 2 * workspace->s[0][i] - workspace->s[1][i];
-        //t_tmp = 2 * workspace->t[0][i] - workspace->t[1][i];
+        //s_tmp = 2 * workspace->s[index_wkspace_sys(0,i,system->N)] - workspace->s[index_wkspace_sys(1,i,system->N)];
+        //t_tmp = 2 * workspace->t[index_wkspace_sys(0,i,system->N)] - workspace->t[index_wkspace_sys(1,i,system->N)];
 
         // quadratic
-        //s_tmp = workspace->s[2][i] + 3 * (workspace->s[0][i]-workspace->s[1][i]);
-        t_tmp = workspace->t[2][i] + 3 * (workspace->t[0][i] - workspace->t[1][i]);
+//        s_tmp = workspace->s[index_wkspace_sys(2,i,system->N)] +
+//            3 * (workspace->s[index_wkspace_sys(0,i,system->N)]-workspace->s[index_wkspace_sys(1,i,system->N)]);
+        t_tmp = workspace->t[index_wkspace_sys(2,i,system->N)] +
+            3 * (workspace->t[index_wkspace_sys(0,i,system->N)] -workspace->t[index_wkspace_sys(1,i,system->N)]);
 
         // cubic
-        s_tmp = 4 * (workspace->s[0][i] + workspace->s[2][i]) -
-                (6 * workspace->s[1][i] + workspace->s[3][i] );
-        //t_tmp = 4 * (workspace->t[0][i] + workspace->t[2][i]) -
-        //  (6 * workspace->t[1][i] + workspace->t[3][i] );
+        s_tmp = 4 * (workspace->s[index_wkspace_sys(0,i,system->N)] + workspace->s[index_wkspace_sys(2,i,system->N)]) -
+            (6 * workspace->s[index_wkspace_sys(1,i,system->N)] + workspace->s[index_wkspace_sys(3,i,system->N)]);
+        //t_tmp = 4 * (workspace->t[index_wkspace_sys(0,i,system->N)] + workspace->t[index_wkspace_sys(2,i,system->N)]) -
+        //  (6 * workspace->t[index_wkspace_sys(1,i,system->N)] + workspace->t[index_wkspace_sys(3,i,system->N)] );
 
         // 4th order
-        //s_tmp = 5 * (workspace->s[0][i] - workspace->s[3][i]) +
-        //  10 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
-        //t_tmp = 5 * (workspace->t[0][i] - workspace->t[3][i]) +
-        //  10 * (-workspace->t[1][i] + workspace->t[2][i] ) + workspace->t[4][i];
+//        s_tmp = 5 * (workspace->s[index_wkspace_sys(0,i,system->N)] -
+//                workspace->s[index_wkspace_sys(3,i,system->N)]) + 10 *
+//            (-workspace->s[index_wkspace_sys(1,i,system->N)] +
+//             workspace->s[index_wkspace_sys(2,i,system->N)] ) +
+//            workspace->s[index_wkspace_sys(4,i,system->N)];
+//        t_tmp = 5 * (workspace->t[index_wkspace_sys(0,i,system->N)] -
+//                workspace->t[index_wkspace_sys(3,i,system->N)]) + 10 *
+//            (-workspace->t[index_wkspace_sys(1,i,system->N)] +
+//             workspace->t[index_wkspace_sys(2,i,system->N)] ) +
+//            workspace->t[index_wkspace_sys(4,i,system->N)];
 
-        workspace->s[4][i] = workspace->s[3][i];
-        workspace->s[3][i] = workspace->s[2][i];
-        workspace->s[2][i] = workspace->s[1][i];
-        workspace->s[1][i] = workspace->s[0][i];
-        workspace->s[0][i] = s_tmp;
+        workspace->s[index_wkspace_sys(4,i,system->N)] = workspace->s[index_wkspace_sys(3,i,system->N)];
+        workspace->s[index_wkspace_sys(3,i,system->N)] = workspace->s[index_wkspace_sys(2,i,system->N)]; 
+        workspace->s[index_wkspace_sys(2,i,system->N)] = workspace->s[index_wkspace_sys(1,i,system->N)];
+        workspace->s[index_wkspace_sys(1,i,system->N)] = workspace->s[index_wkspace_sys(0,i,system->N)];
+        workspace->s[index_wkspace_sys(0,i,system->N)] = s_tmp;
 
-        workspace->t[4][i] = workspace->t[3][i];
-        workspace->t[3][i] = workspace->t[2][i];
-        workspace->t[2][i] = workspace->t[1][i];
-        workspace->t[1][i] = workspace->t[0][i];
-        workspace->t[0][i] = t_tmp;
+        workspace->t[index_wkspace_sys(4,i,system->N)] = workspace->t[index_wkspace_sys(3,i,system->N)];
+        workspace->t[index_wkspace_sys(3,i,system->N)] = workspace->t[index_wkspace_sys(2,i,system->N)]; 
+        workspace->t[index_wkspace_sys(2,i,system->N)] = workspace->t[index_wkspace_sys(1,i,system->N)];
+        workspace->t[index_wkspace_sys(1,i,system->N)] = workspace->t[index_wkspace_sys(0,i,system->N)];
+        workspace->t[index_wkspace_sys(0,i,system->N)] = t_tmp;
     }
 }
 
@@ -1587,14 +1596,15 @@ static void Calculate_Charges( const reax_system * const system, static_storage 
     s_sum = t_sum = 0.;
     for ( i = 0; i < system->N; ++i )
     {
-        s_sum += workspace->s[0][i];
-        t_sum += workspace->t[0][i];
+        s_sum += workspace->s[index_wkspace_sys(0,i,system->N)];
+        t_sum += workspace->t[index_wkspace_sys(0,i,system->N)];
     }
 
     u = s_sum / t_sum;
     for ( i = 0; i < system->N; ++i )
     {
-        system->atoms[i].q = workspace->s[0][i] - u * workspace->t[0][i];
+        system->atoms[i].q = workspace->s[index_wkspace_sys(0,i,system->N)]
+            - u * workspace->t[index_wkspace_sys(0,i,system->N)];
     }
 }
 
@@ -1614,49 +1624,32 @@ void QEq( reax_system * const system, control_params * const control, simulation
 
     Init_MatVec( system, control, data, workspace, far_nbrs );
 
-//    if( data->step == 0 || data->step == 100 )
-//    {
-//      Print_Linear_System( system, control, workspace, data->step );
-//    }
-
     switch ( control->qeq_solver_type )
     {
     case GMRES_S:
         iters = GMRES( workspace, control, data, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                       workspace->s[0], out_control->log,
-                       ((data->step - data->prev_steps) % control->pre_comp_refactor == 0) ? TRUE : FALSE );
+                &workspace->s[index_wkspace_sys(0,0,system->N)], out_control->log,
+                ((data->step - data->prev_steps) % control->pre_comp_refactor == 0) ? TRUE : FALSE );
         iters += GMRES( workspace, control, data, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                        workspace->t[0], out_control->log, FALSE );
+                &workspace->t[index_wkspace_sys(0,0,system->N)], out_control->log, FALSE );
         break;
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                                   workspace->s[0], out_control->log, (data->step - data->prev_steps) % control->pre_comp_refactor == 0 );
+                &workspace->s[index_wkspace_sys(0,0,system->N)], out_control->log, (data->step - data->prev_steps) % control->pre_comp_refactor == 0 );
         iters += GMRES_HouseHolder( workspace, control, data, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                                    workspace->t[0], out_control->log, 0 );
+                &workspace->t[index_wkspace_sys(0,0,system->N)], out_control->log, 0 );
         break;
     case CG_S:
         iters = CG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                    workspace->s[0], out_control->log ) + 1;
+                &workspace->s[index_wkspace_sys(0,0,system->N)], out_control->log ) + 1;
         iters += CG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                     workspace->t[0], out_control->log ) + 1;
-//            iters = CG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->s[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
-//            iters += CG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->t[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
+                &workspace->t[index_wkspace_sys(0,0,system->N)], out_control->log ) + 1;
         break;
     case SDM_S:
         iters = SDM( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                     workspace->s[0], out_control->log ) + 1;
+                &workspace->s[index_wkspace_sys(0,0,system->N)], out_control->log ) + 1;
         iters += SDM( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-                      workspace->t[0], out_control->log ) + 1;
-//            iters = SDM( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->s[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
-//            iters += SDM( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->t[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
+                &workspace->t[index_wkspace_sys(0,0,system->N)], out_control->log ) + 1;
         break;
     default:
         fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
@@ -1671,12 +1664,4 @@ void QEq( reax_system * const system, control_params * const control, simulation
 #endif
 
     Calculate_Charges( system, workspace );
-
-    //fprintf( stderr, "%d %.9f %.9f %.9f %.9f %.9f %.9f\n",
-    //   data->step,
-    //   workspace->s[0][0], workspace->t[0][0],
-    //   workspace->s[0][1], workspace->t[0][1],
-    //   workspace->s[0][2], workspace->t[0][2] );
-    // if( data->step == control->nsteps )
-    //Print_Charges( system, control, workspace, data->step );
 }

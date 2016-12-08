@@ -46,23 +46,25 @@ AC_ARG_ENABLE([mpi-gpu],
 			      [enable MPI+CUDA (multi GPU) support @<:@default: no@:>@])],
 	      [pack_mpi_gpu_enabled=${enableval}], [pack_mpi_gpu_enabled=no])
 
-if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; then
-	AC_CONFIG_SUBDIRS([sPuReMD])
+if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes" || test "x${pack_gpu_enabled}" = "xyes"; then
+	AC_CONFIG_SUBDIRS([PuReMD-GPU])
 	if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" != "xyes"; then
 		export BUILD_OPENMP="no"
 	else
-		export BUILD_OPENMP="yes"
+		if test "x${pack_gpu_enabled}" = "xyes"; then
+			export BUILD_GPU="yes"
+		else
+			export BUILD_OPENMP="yes"
+		fi
 	fi
 fi
 AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_GPU], [test "x${pack_gpu_enabled}" = "xyes"])
+
 if test "x${pack_mpi_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PuReMD])
 fi
 AM_CONDITIONAL([BUILD_MPI], [test "x${pack_mpi_enabled}" = "xyes"])
-if test "x${pack_gpu_enabled}" = "xyes"; then
-	AC_CONFIG_SUBDIRS([PuReMD-GPU])
-fi
-AM_CONDITIONAL([BUILD_GPU], [test "x${pack_gpu_enabled}" = "xyes"])
 if test "x${pack_mpi_not_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PG-PuReMD])
 	if test "x${pack_mpi_not_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" != "xyes"; then

@@ -21,28 +21,31 @@
 #ifndef __LIN_ALG_H_
 #define __LIN_ALG_H_
 
-#define SIGN(x) (x < 0.0 ? -1 : 1);
-
 #include "mytypes.h"
 
 
-int GMRES( static_storage*, sparse_matrix*,
-           real*, real, real*, FILE* , reax_system* );
+void Transpose( const sparse_matrix const *, sparse_matrix const * );
+void Transpose_I( sparse_matrix * const );
 
-int GMRES_HouseHolder( static_storage*, sparse_matrix*,
-                       real*, real, real*, FILE* , reax_system*  );
+sparse_matrix * setup_graph_coloring( sparse_matrix * const );
 
-int PGMRES( static_storage*, sparse_matrix*, real*, real,
-            sparse_matrix*, sparse_matrix*, real*, FILE*, reax_system* );
+int GMRES( const static_storage * const, const control_params * const,
+        simulation_data * const, const sparse_matrix * const,
+        const real * const, const real, real * const,
+        const FILE * const, const int );
 
-int PCG( static_storage*, sparse_matrix*, real*, real,
-         sparse_matrix*, sparse_matrix*, real*, FILE*, reax_system* );
+int GMRES_HouseHolder( const static_storage * const, const control_params * const,
+        simulation_data * const, const sparse_matrix * const,
+        const real * const, const real, real * const,
+        const FILE * const, const int );
 
 int CG( static_storage*, sparse_matrix*,
-        real*, real, real*, FILE*, reax_system* );
+        real*, real, real*, FILE* );
 
-int uyduruk_GMRES( static_storage*, sparse_matrix*,
-                   real*, real, real*, int, FILE*, reax_system* );
+int SDM( static_storage*, sparse_matrix*,
+         real*, real, real*, FILE* );
+
+real condest( const sparse_matrix * const, const sparse_matrix * const );
 
 
 #endif

@@ -49,7 +49,7 @@
 #include "cuda_reduction.h"
 #include "cuda_reset_utils.h"
 #include "cuda_system_props.h"
-#include "validation.h"
+#include "cuda_validation.h"
 
 
 void Cuda_Init_System( reax_system *system, control_params *control, 
@@ -116,7 +116,9 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     Reset_Simulation_Data( data );
 
     if( !control->restart )  
+    {
         data->step = data->prev_steps = 0;
+    }
 
     switch( control->ensemble ) {
         case NVE:
@@ -124,16 +126,18 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
             *Evolve = Cuda_Velocity_Verlet_NVE;
             break;
 
-
         case NVT:
             data->N_f = 3 * system->N + 1;
             //control->Tau_T = 100 * data->N_f * K_B * control->T_final;
-            if( !control->restart || (control->restart && control->random_vel) ) {
+
+            if( !control->restart || (control->restart && control->random_vel) )
+            {
                 data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin - 
                         data->N_f * K_B * control->T );
                 data->therm.v_xi = data->therm.G_xi * control->dt;
                 data->therm.v_xi_old = 0;
                 data->therm.xi = 0;
+
 #if defined(DEBUG_FOCUS)
                 fprintf( stderr, "init_md: G_xi=%f Tau_T=%f E_kin=%f N_f=%f v_xi=%f\n",
                         data->therm.G_xi, control->Tau_T, data->E_Kin, 
@@ -144,12 +148,13 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
             *Evolve = Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein;
             break;
 
-
         case NPT: // Anisotropic NPT
             fprintf( stderr, "THIS OPTION IS NOT YET IMPLEMENTED! TERMINATING...\n" );
             exit( UNKNOWN_OPTION );
             data->N_f = 3 * system->N + 9;
-            if( !control->restart ) {
+
+            if( !control->restart )
+            {
                 data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin - 
                         data->N_f * K_B * control->T );
                 data->therm.v_xi = data->therm.G_xi * control->dt;
@@ -160,14 +165,12 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
             *Evolve = Velocity_Verlet_Berendsen_Isotropic_NPT;
             break;
 
-
         case sNPT: // Semi-Isotropic NPT
             fprintf( stderr, "THIS OPTION IS NOT YET IMPLEMENTED! TERMINATING...\n" );
             exit( UNKNOWN_OPTION );
             data->N_f = 3 * system->N + 4;
             *Evolve = Velocity_Verlet_Berendsen_SemiIsotropic_NPT;
             break;
-
 
         case iNPT: // Isotropic NPT
             fprintf( stderr, "THIS OPTION IS NOT YET IMPLEMENTED! TERMINATING...\n" );

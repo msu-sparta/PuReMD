@@ -29,7 +29,7 @@ cusparseMatDescr_t matdescriptor;
 
 void cuda_malloc( void **ptr, int size, int memset, int err_code )
 {
-    cudaError_t retVal = cudaSuccess;
+    cudaError_t retVal;
 
     //fprintf (stderr, "&ptr --. %ld \n", &ptr);
     //fprintf (stderr, "ptr --> %ld \n", ptr );
@@ -45,7 +45,8 @@ void cuda_malloc( void **ptr, int size, int memset, int err_code )
     //fprintf (stderr, "&ptr --. %ld \n", &ptr);
     //fprintf (stderr, "ptr --> %ld \n", ptr );
 
-    if ( memset ) {
+    if ( memset )
+    {
         retVal = cudaMemset( *ptr, 0, size );
         if ( retVal != cudaSuccess )
         {
@@ -59,8 +60,12 @@ void cuda_malloc( void **ptr, int size, int memset, int err_code )
 
 void cuda_free( void *ptr, int err_code )
 {
-    cudaError_t retVal = cudaSuccess;
-    if (!ptr) return;
+    cudaError_t retVal;
+
+    if (!ptr)
+    {
+        return;
+    }
 
     retVal = cudaFree( ptr );
 
@@ -75,9 +80,10 @@ void cuda_free( void *ptr, int err_code )
 
 void cuda_memset( void *ptr, int data, size_t count, int err_code )
 {
-    cudaError_t retVal = cudaSuccess;
+    cudaError_t retVal;
 
     retVal = cudaMemset( ptr, data, count );
+
     if (retVal != cudaSuccess) {
         fprintf( stderr, "ptr passed is %ld, value: %ld \n", ptr, &ptr );
         fprintf( stderr, " size to memset: %d \n", count );
@@ -91,7 +97,7 @@ void cuda_memset( void *ptr, int data, size_t count, int err_code )
 
 void copy_host_device( void *host, void *dev, int size, enum cudaMemcpyKind dir, int resid )
 {
-    cudaError_t retVal = cudaErrorNotReady;
+    cudaError_t retVal;
 
     if ( dir == cudaMemcpyHostToDevice )
     {
@@ -112,9 +118,10 @@ void copy_host_device( void *host, void *dev, int size, enum cudaMemcpyKind dir,
 
 void copy_device( void *dest, void *src, int size, int resid )
 {
-    cudaError_t retVal = cudaErrorNotReady;
+    cudaError_t retVal;
 
     retVal = cudaMemcpy( dest, src, size, cudaMemcpyDeviceToDevice );
+
     if ( retVal != cudaSuccess )
     {
         fprintf( stderr, "could not copy resource %d from host to device: reason %d \n",
@@ -134,6 +141,7 @@ void compute_blocks( int *blocks, int *block_size, int count )
 void compute_nearest_pow_2( int blocks, int *result )
 {
     int power = 1;
+
     while (power < blocks)
     {
         power *= 2;
@@ -146,7 +154,9 @@ void compute_nearest_pow_2( int blocks, int *result )
 void print_device_mem_usage( )
 {
     size_t total, free;
+
     cudaMemGetInfo( &free, &total );
+
     if ( cudaGetLastError() != cudaSuccess )
     {
         fprintf( stderr, "Error on the memory call \n" );

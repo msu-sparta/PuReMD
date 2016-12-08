@@ -31,10 +31,10 @@ extern "C"  {
 void Initialize( reax_system*, control_params*, simulation_data*,
         static_storage*, list**, output_controls*, evolve_function* );
 
-void Generate_Initial_Velocities(reax_system *, real );
+void Generate_Initial_Velocities( reax_system *, real );
 
-void Init_Out_Controls(reax_system *, control_params *, static_storage *,
-        output_controls *);
+void Init_Out_Controls( reax_system *, control_params *, static_storage *,
+        output_controls * );
 
 #ifdef __cplusplus
 }

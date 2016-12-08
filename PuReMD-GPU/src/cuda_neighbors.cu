@@ -265,10 +265,9 @@ GLOBAL void k_Generate_Neighbor_Lists ( reax_atom *sys_atoms,
             nbr_atoms = &(atoms [index_grid_atoms (x, y, z, 0, &g) ]);
             max = top [index_grid_3d(x, y, z, &g)];
 
-            for (m = 0; m < max; m++) {
+            for (m = 0; m < max; m++)
+            {
                 atom2 = nbr_atoms[m];
-
-                //nbr_data = & ( far_nbrs.select.far_nbr_list[atom1 * g.max_cuda_nbrs + num_far] );
 
                 //CHANGE ORIGINAL
                 /*

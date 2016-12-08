@@ -1,9 +1,10 @@
 /*----------------------------------------------------------------------
-  PuReMD-GPU - Reax Force Field Simulator
+  SerialReax - Reax Force Field Simulator
 
-  Copyright (2014) Purdue University
-  Sudhir Kylasa, skylasa@purdue.edu
+  Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
+  Joseph Fogarty, jcfogart@mail.usf.edu
+  Sagar Pandit, pandit@usf.edu
   Ananth Y Grama, ayg@cs.purdue.edu
 
   This program is free software; you can redistribute it and/or
@@ -19,11 +20,12 @@
   ----------------------------------------------------------------------*/
 
 #include "restart.h"
+
 #include "box.h"
 #include "vector.h"
 
 void Write_Binary_Restart( reax_system *system, control_params *control,
-                           simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace )
 {
     int  i;
     char fname[MAX_STR];
@@ -65,8 +67,8 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 
 
 void Read_Binary_Restart( char *fname, reax_system *system,
-                          control_params *control, simulation_data *data,
-                          static_storage *workspace )
+        control_params *control, simulation_data *data,
+        static_storage *workspace )
 {
     int i;
     FILE *fres;
@@ -103,14 +105,13 @@ void Read_Binary_Restart( char *fname, reax_system *system,
 
     workspace->map_serials = (int*) calloc( MAX_ATOM_ID, sizeof(int) );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
+    {
         workspace->map_serials[i] = -1;
+    }
 
     workspace->orig_id = (int*) calloc( system->N, sizeof(int) );
     workspace->restricted  = (int*) calloc( system->N, sizeof(int) );
     workspace->restricted_list = (int*) calloc( system->N * MAX_RESTRICT, sizeof(int) );
-    //CHANGE
-    //for( i = 0; i < system->N; ++i )
-    // workspace->restricted_list[i] = (int*) calloc( MAX_RESTRICT, sizeof(int) );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -175,8 +176,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
 
 
 void Read_ASCII_Restart( char *fname, reax_system *system,
-                         control_params *control, simulation_data *data,
-                         static_storage *workspace )
+        control_params *control, simulation_data *data, static_storage *workspace )
 {
     int i;
     FILE *fres;
@@ -185,8 +185,7 @@ void Read_ASCII_Restart( char *fname, reax_system *system,
     fres = fopen( fname, "r" );
 
     /* header */
-    //fscanf( fres, READ_RESTART_HEADER,
-    fscanf( fres, RESTART_HEADER,
+    fscanf( fres, READ_RESTART_HEADER,
             &data->prev_steps, &system->N, &data->therm.T, &data->therm.xi,
             &data->therm.v_xi, &data->therm.v_xi_old, &data->therm.G_xi,
             &system->box.box[0][0], &system->box.box[0][1], &system->box.box[0][2],
@@ -194,7 +193,7 @@ void Read_ASCII_Restart( char *fname, reax_system *system,
             &system->box.box[2][0], &system->box.box[2][1], &system->box.box[2][2]);
     Make_Consistent( &(system->box) );
 
-//#if defined(DEBUG_FOCUS)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "restart step: %d\n", data->prev_steps );
     fprintf( stderr, "restart thermostat: %10.6f %10.6f %10.6f %10.6f %10.6f\n",
              data->therm.T, data->therm.xi,
@@ -204,22 +203,20 @@ void Read_ASCII_Restart( char *fname, reax_system *system,
              system->box.box[0][0], system->box.box[0][1], system->box.box[0][2],
              system->box.box[1][0], system->box.box[1][1], system->box.box[1][2],
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2] );
-    fprintf ( stderr, "Total Atoms read: %d \n", system->N);
-//#endif
+#endif
 
     /* memory allocations for atoms, atom maps, bond restrictions */
     system->atoms = (reax_atom*) calloc( system->N, sizeof(reax_atom) );
 
     workspace->map_serials = (int*) calloc( MAX_ATOM_ID, sizeof(int) );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
+    {
         workspace->map_serials[i] = -1;
+    }
 
     workspace->orig_id = (int*) calloc( system->N, sizeof(int) );
     workspace->restricted  = (int*) calloc( system->N, sizeof(int) );
     workspace->restricted_list = (int*) calloc( system->N * MAX_RESTRICT, sizeof(int) );
-    //CHANGE
-    //for( i = 0; i < system->N; ++i )
-    // workspace->restricted_list[i] = (int*) calloc( MAX_RESTRICT, sizeof(int) );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -240,11 +237,15 @@ void Read_ASCII_Restart( char *fname, reax_system *system,
 
 
 void Write_Restart( reax_system *system, control_params *control,
-                    simulation_data *data, static_storage *workspace,
-                    output_controls *out_control )
+        simulation_data *data, static_storage *workspace, output_controls
+        *out_control )
 {
     if ( out_control->restart_format == WRITE_ASCII )
+    {
         Write_ASCII_Restart( system, control, data, workspace );
+    }
     else if ( out_control->restart_format == WRITE_BINARY )
+    {
         Write_Binary_Restart( system, control, data, workspace );
+    }
 }

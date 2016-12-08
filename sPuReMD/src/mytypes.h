@@ -37,7 +37,7 @@
 #include "zlib.h"
 
 #ifdef _OPENMP
-#include <omp.h>
+  #include <omp.h>
 #endif
 
 //#define DEBUG_FOCUS
@@ -51,6 +51,7 @@
 #define TRUE  1
 #define FALSE 0
 
+#define LOG    log
 #define EXP    exp
 #define SQRT   sqrt
 #define POW    pow
@@ -71,10 +72,10 @@
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
 #ifdef NAN
-#define IS_NAN_REAL(a) (isnan(a))
+  #define IS_NAN_REAL(a) (isnan(a))
 #else
-#warn "No support for NaN"
-#define NAN_REAL(a) (0)
+  #warn "No support for NaN"
+  #define NAN_REAL(a) (0)
 #endif
 
 #define PI            3.14159265
@@ -948,20 +949,21 @@ typedef struct
 
 
 typedef void (*interaction_function)(reax_system*, control_params*,
-                                     simulation_data*, static_storage*,
-                                     list**, output_controls*);
+        simulation_data*, static_storage*, list**, output_controls*);
+
 interaction_function Interaction_Functions[NO_OF_INTERACTIONS];
 
 typedef void (*evolve_function)(reax_system*, control_params*,
-                                simulation_data*, static_storage*,
-                                list**, output_controls*);
+        simulation_data*, static_storage*,
+        list**, output_controls*);
 
 typedef real (*lookup_function)(real);
+
 lookup_table Exp, Sqrt, Cube_Root, Four_Third_Root, Cos, Sin, ACos;
 LR_lookup_table **LR;
 
-
 typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*,
-        control_params*, far_neighbor_data*,
-        int*);
+        control_params*, far_neighbor_data*, int*);
+
+
 #endif
