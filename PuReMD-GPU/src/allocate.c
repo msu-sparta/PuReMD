@@ -71,16 +71,16 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 }
 
 
-int Allocate_Matrix( sparse_matrix *pH, int n, int m )
+int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
 
-    if ( (pH = (sparse_matrix*) malloc(sizeof(sparse_matrix))) == NULL )
+    if ( (*pH = (sparse_matrix*) malloc( sizeof(sparse_matrix)) ) == NULL )
     {
         return FAILURE;
     }
 
-    H = pH;
+    H = *pH;
     H->n = n;
     H->m = m;
 
@@ -104,9 +104,9 @@ void Deallocate_Matrix( sparse_matrix *H )
 }
 
 
-int Reallocate_Matrix( sparse_matrix *H, int n, int m, char *name )
+int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
 {
-    Deallocate_Matrix( H );
+    Deallocate_Matrix( *H );
 
     if ( Allocate_Matrix( H, n, m ) == FAILURE )
     {
@@ -276,7 +276,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
 
     if ( realloc->Htop > 0 )
     {
-        Reallocate_Matrix(workspace->H, system->N, realloc->Htop * SAFE_ZONE, "H");
+        Reallocate_Matrix( &(workspace->H), system->N, realloc->Htop * SAFE_ZONE, "H" );
         realloc->Htop = -1;
 
         Deallocate_Matrix( workspace->L );

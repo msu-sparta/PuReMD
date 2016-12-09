@@ -748,7 +748,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( DAD, A->n, A->m ) == FAILURE ||
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
             ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL )
@@ -917,7 +917,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( DAD, A->n, A->m ) == FAILURE ||
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
             ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
     {
@@ -1119,9 +1119,9 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( DAD, A->n, A->m ) == FAILURE ||
-            Allocate_Matrix( L_temp, A->n, A->m ) == FAILURE ||
-            Allocate_Matrix( U_temp, A->n, A->m ) == FAILURE )
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
+            Allocate_Matrix( &L_temp, A->n, A->m ) == FAILURE ||
+            Allocate_Matrix( &U_temp, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for ILUT_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -1437,8 +1437,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-                if ( Allocate_Matrix( workspace->L, far_nbrs->n, fillin ) == FAILURE ||
-                        Allocate_Matrix( workspace->U, far_nbrs->n, fillin ) == FAILURE )
+                if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1458,8 +1458,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( workspace->L, Hptr->n, Hptr->m ) == FAILURE ||
-                        Allocate_Matrix( workspace->U, Hptr->n, Hptr->m ) == FAILURE )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1478,8 +1478,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-                if ( Allocate_Matrix( workspace->L, Hptr->n, Hptr->m ) == FAILURE ||
-                        Allocate_Matrix( workspace->U, Hptr->n, Hptr->m ) == FAILURE )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
@@ -1494,8 +1494,8 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             if ( workspace->L == NULL )
             {
                 /* factors have sparsity pattern as H */
-                if ( Allocate_Matrix( workspace->L, Hptr->n, Hptr->m ) == FAILURE ||
-                        Allocate_Matrix( workspace->U, Hptr->n, Hptr->m ) == FAILURE )
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
                     fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );

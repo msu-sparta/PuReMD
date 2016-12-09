@@ -585,8 +585,8 @@ void compare_far_neighbors( int *test, int *start, int *end,
 
 
 void Init_Lists( reax_system *system, control_params *control,
-                 simulation_data *data, static_storage *workspace,
-                 list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
     int i, num_nbrs, num_hbonds, num_bonds, num_3body, Htop;
     int *hb_top, *bond_top;
@@ -594,7 +594,7 @@ void Init_Lists( reax_system *system, control_params *control,
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
     if ( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS) )
     {
-        fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
+        fprintf( stderr, "Problem in initializing far nbrs list. Terminating!\n" );
         exit( CANNOT_INITIALIZE );
     }
 #if defined(DEBUG_FOCUS)
@@ -610,16 +610,17 @@ void Init_Lists( reax_system *system, control_params *control,
     Estimate_Storage_Sizes( system, control, lists,
             &Htop, hb_top, bond_top, &num_3body );
 
-    if ( Allocate_Matrix( workspace->H, system->N, Htop ) == FAILURE )
+    if ( Allocate_Matrix( &(workspace->H), system->N, Htop ) == FAILURE )
     {
         fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );
     }
+
     /* TODO: better estimate for H_sp?
      *   If so, need to refactor Estimate_Storage_Sizes
      *   to use various cut-off distances as parameters
      *   (non-bonded, hydrogen, 3body, etc.) */
-    if ( Allocate_Matrix( workspace->H_sp, system->N, Htop ) == FAILURE )
+    if ( Allocate_Matrix( &(workspace->H_sp), system->N, Htop ) == FAILURE )
     {
         fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );

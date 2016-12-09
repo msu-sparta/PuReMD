@@ -204,7 +204,7 @@ void Transpose_I( sparse_matrix * const A )
 {
     sparse_matrix * A_t;
 
-    if ( Allocate_Matrix( A_t, A->n, A->m ) == FAILURE )
+    if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for transposing matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -478,7 +478,7 @@ static void compute_H_full( const sparse_matrix * const H )
     int count, i, pj;
     sparse_matrix *H_t;
 
-    if ( Allocate_Matrix( H_t, H->n, H->m ) == FAILURE )
+    if ( Allocate_Matrix( &H_t, H->n, H->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for full H. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -745,7 +745,7 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
     int i, pj, nr, nc;
     sparse_matrix *LUtemp;
 
-    if ( Allocate_Matrix( LUtemp, LU->n, LU->m ) == FAILURE )
+    if ( Allocate_Matrix( &LUtemp, LU->n, LU->m ) == FAILURE )
     {
         fprintf( stderr, "Not enough space for graph coloring (factor permutation). Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -888,8 +888,8 @@ sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
                 (permuted_row_col = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (permuted_row_col_inv = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (y_p = (real*) malloc(sizeof(real) * H->n)) == NULL ||
-                (Allocate_Matrix( H_p, H->n, H->m ) == FAILURE ) ||
-                (Allocate_Matrix( H_full, H->n, 2 * H->m - H->n ) == FAILURE ) )
+                (Allocate_Matrix( &H_p, H->n, H->m ) == FAILURE ) ||
+                (Allocate_Matrix( &H_full, H->n, 2 * H->m - H->n ) == FAILURE ) )
         {
             fprintf( stderr, "not enough memory for graph coloring. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );

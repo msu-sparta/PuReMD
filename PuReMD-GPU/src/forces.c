@@ -267,8 +267,8 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
 
 
 void Init_Forces( reax_system *system, control_params *control,
-                  simulation_data *data, static_storage *workspace,
-                  list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace, list **lists,
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -311,15 +311,17 @@ void Init_Forces( reax_system *system, control_params *control,
     {
         atom_i = &(system->atoms[i]);
         type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
+        start_i = Start_Index( i, far_nbrs );
+        end_i   = End_Index( i, far_nbrs );
         H->start[i] = Htop;
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
         sbp_i = &(system->reaxprm.sbp[type_i]);
         ihb = ihb_top = -1;
         if ( control->hb_cut > 0 && (ihb = sbp_i->p_hbond) == 1 )
+        {
             ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+        }
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
@@ -554,20 +556,27 @@ void Init_Forces( reax_system *system, control_params *control,
 
         Set_End_Index( i, btop_i, bonds );
         if ( ihb == 1 )
+        {
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
-        //fprintf( stderr, "%d bonds start: %d, end: %d\n",
-        //     i, Start_Index( i, bonds ), End_Index( i, bonds ) );
+        }
+
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "%d bonds start: %d, end: %d\n",
+             i, Start_Index( i, bonds ), End_Index( i, bonds ) );
+#endif
     }
 
-//    printf("Htop = %d\n", Htop);
-//    printf("H_sp_top = %d\n", H_sp_top);
+#if defined(DEBUG_FOCUS)
+    printf( "Htop = %d\n", Htop );
+    printf( "H_sp_top = %d\n", H_sp_top );
+#endif
 
     // mark the end of j list
     H->start[i] = Htop;
     H_sp->start[i] = H_sp_top;
     /* validate lists - decide if reallocation is required! */
-    Validate_Lists( workspace, lists,
-                    data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
+    Validate_Lists( workspace, lists, data->step, system->N, H->m,
+            Htop, num_bonds, num_hbonds );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d: Htop = %d, num_bonds = %d, num_hbonds = %d\n",

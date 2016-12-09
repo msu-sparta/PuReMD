@@ -32,7 +32,7 @@ int PreAllocate_Space( reax_system*, control_params*, static_storage* );
 
 void Reallocate( reax_system*, static_storage*, list**, int );
 
-int Allocate_Matrix( sparse_matrix*, int, int );
+int Allocate_Matrix( sparse_matrix**, int, int );
 
 void Deallocate_Matrix( sparse_matrix *);
 

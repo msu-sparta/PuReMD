@@ -84,8 +84,8 @@ if test "x$BUILD_OPENMP" = "xyes"; then
 		if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
 			OPENMP_CFLAGS="-qopenmp"
 		fi
-		AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")
-		AC_SUBST(AM_CPPFLAGS, "$OPENMP_CFLAGS")
+		AC_SUBST(CFLAGS, "$OPENMP_CFLAGS")
+		AC_SUBST(CPPFLAGS, "$OPENMP_CFLAGS")
 	fi
 fi
 
@@ -131,7 +131,7 @@ then
 fi
 
 # Check for CUDA support.
-if test "x$BUILD_GPU" != "x"
+if test "x$BUILD_GPU" = "xyes"
 then
 	CONFIGURE_HEADLINE([ CUDA support ])
 	AX_CUDA
@@ -175,17 +175,17 @@ else
 	AM_CONDITIONAL(USE_CUDA, test "x" = "xyes")
 fi
 
-if test "x$BUILD_DEBUG" != "x"
+if test "x$BUILD_DEBUG" = "xyes"
 then
 	CFLAGS="${CFLAGS} ${DEBUG_FLAGS}"
 fi
 
-if test "x$BUILD_GPROF" != "x"
+if test "x$BUILD_GPROF" = "xyes"
 then
 	CFLAGS="${CFLAGS} ${GPROF_FLAGS}"
 fi
 
-if test "BUILD_PROF" = "true"
+if test "x$BUILD_PROF" = "xtrue"
 then
 	NVCCFLAGS+=" --compiler-options ${gprof_flags}"
 fi
