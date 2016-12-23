@@ -52,6 +52,7 @@ unsigned int *top = NULL;
 unsigned int *color = NULL;
 unsigned int *to_color = NULL;
 unsigned int *conflict = NULL;
+unsigned int *conflict_cnt = NULL;
 unsigned int *temp_ptr;
 unsigned int *recolor = NULL;
 unsigned int recolor_cnt;
@@ -534,8 +535,16 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
     {
 #define MAX_COLOR (500)
         int i, pj, v;
-        unsigned int temp;
-        int *fb_color;
+        unsigned int temp, recolor_cnt_local, *conflict_local;
+        int tid, num_thread, *fb_color;
+
+#ifdef _OPENMP
+        tid = omp_get_thread_num();
+        num_thread = omp_get_num_threads();
+#else
+        tid = 0;
+        num_thread = 1;
+#endif
 
         #pragma omp master
         {
@@ -562,7 +571,8 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             }
         }
 
-        if ( (fb_color = (int*) malloc(sizeof(int) * MAX_COLOR)) == NULL )
+        if ( (fb_color = (int*) malloc(sizeof(int) * MAX_COLOR)) == NULL ||
+                (conflict_local = (unsigned int*) malloc(sizeof(unsigned int) * A->n)) == NULL )
         {
             fprintf( stderr, "not enough memory for graph coloring. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
@@ -598,29 +608,63 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             }
 
             /* determine if recoloring required */
-            //TODO: switch to reduction on recolor_cnt (+) via parallel scan through recolor
+            temp = recolor_cnt;
+            recolor_cnt_local = 0;
+
+            #pragma omp barrier
+
             #pragma omp master
             {
-                temp = recolor_cnt;
                 recolor_cnt = 0;
+            }
+	    
+            #pragma omp barrier
 
-                for ( i = 0; i < temp; ++i )
+            #pragma omp for schedule(static)
+            for ( i = 0; i < temp; ++i )
+            {
+                v = to_color[i];
+
+                /* search for color conflicts with adjacent vertices */
+                for ( pj = A->start[v]; pj < A->start[v + 1]; ++pj )
                 {
-                    v = to_color[i];
-
-                    /* search for color conflicts with adjacent vertices */
-                    for ( pj = A->start[v]; pj < A->start[v + 1]; ++pj )
+                    if ( color[v] == color[A->j[pj]] && v > A->j[pj] )
                     {
-                        if ( color[v] == color[A->j[pj]] && v > A->j[pj] )
-                        {
-                            conflict[recolor_cnt] = v;
-                            color[v] = 0;
-                            ++recolor_cnt;
-                            break;
-                        }
+                        conflict_local[recolor_cnt_local] = v;
+                        ++recolor_cnt_local;
+                        break;
                     }
                 }
+            }
 
+            /* count thread-local conflicts and compute offsets for copying into shared buffer */
+	    conflict_cnt[tid + 1] = recolor_cnt_local;
+
+            #pragma omp barrier
+
+            #pragma omp master
+            {
+                conflict_cnt[0] = 0;
+                for ( i = 1; i < num_thread + 1; ++i )
+                {
+	            conflict_cnt[i] += conflict_cnt[i - 1];
+                }
+                recolor_cnt = conflict_cnt[num_thread];
+            }
+
+            #pragma omp barrier
+
+            /* copy thread-local conflicts into shared buffer */
+            for ( i = 0; i < recolor_cnt_local; ++i )
+            {
+                conflict[conflict_cnt[tid] + i] = conflict_local[i];
+                color[conflict_local[i]] = 0;
+            }
+
+            #pragma omp barrier
+
+            #pragma omp master
+            {
                 temp_ptr = to_color;
                 to_color = conflict;
                 conflict = temp_ptr;
@@ -629,15 +673,8 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             #pragma omp barrier
         }
 
+        free( conflict_local );
         free( fb_color );
-
-//#if defined(DEBUG)
-//    #pragma omp master
-//    {
-//        for ( i = 0; i < A->n; ++i )
-//            printf("Vertex: %5d, Color: %5d\n", i, color[i] );
-//    }
-//#endif
 
         #pragma omp barrier
     }
@@ -877,12 +914,24 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
  */
 sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
 {
+    int num_thread;
+
     if ( color == NULL )
     {
+#ifdef _OPENMP
+        #pragma omp parallel
+        {
+            num_thread = omp_get_num_threads();
+        }
+#else
+        num_thread = 1;
+#endif
+
         /* internal storage for graph coloring (global to facilitate simultaneous access to OpenMP threads) */
         if ( (color = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (to_color =(unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (conflict = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
+                (conflict_cnt = (unsigned int*) malloc(sizeof(unsigned int) * (num_thread + 1))) == NULL ||
                 (recolor = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (color_top = (unsigned int*) malloc(sizeof(unsigned int) * (H->n + 1))) == NULL ||
                 (permuted_row_col = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
