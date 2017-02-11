@@ -194,6 +194,11 @@ enum geo_formats
     CUSTOM = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5,
 };
 
+enum charge_method
+{
+    QEQ_CM = 0, EEM_CM = 1, ACKS2_CM = 2,
+};
+
 enum solver
 {
     GMRES_S = 0, GMRES_H_S = 1, CG_S = 2, SDM_S = 3,
@@ -514,16 +519,17 @@ typedef struct
     int freq_diffusion_coef;
     int restrict_type;
 
-    unsigned int qeq_solver_type;
-    real qeq_solver_q_err;
-    real qeq_domain_sparsity;
-    unsigned int qeq_domain_sparsify_enabled;
-    unsigned int pre_comp_type;
-    unsigned int pre_comp_refactor;
-    real pre_comp_droptol;
-    unsigned int pre_comp_sweeps;
-    unsigned int pre_app_type;
-    unsigned int pre_app_jacobi_iters;
+    unsigned int charge_method;
+    unsigned int cm_solver_type;
+    real cm_solver_q_err;
+    real cm_domain_sparsity;
+    unsigned int cm_domain_sparsify_enabled;
+    unsigned int cm_solver_pre_comp_type;
+    unsigned int cm_solver_pre_comp_refactor;
+    real cm_solver_pre_comp_droptol;
+    unsigned int cm_solver_pre_comp_sweeps;
+    unsigned int cm_solver_pre_app_type;
+    unsigned int cm_solver_pre_app_jacobi_iters;
 
     int molec_anal;
     int freq_molec_anal;

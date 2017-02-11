@@ -1365,7 +1365,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
     sparse_matrix *Hptr;
 //    char fname[100];
 
-    if (control->qeq_domain_sparsify_enabled)
+    if (control->cm_domain_sparsify_enabled)
     {
         Hptr = workspace->H_sp;
     }
@@ -1378,23 +1378,23 @@ static void Init_MatVec( const reax_system * const system, const control_params 
     Hptr = create_test_mat( );
 #endif
 
-    if (control->pre_comp_refactor > 0 &&
-            ((data->step - data->prev_steps) % control->pre_comp_refactor == 0 || workspace->L == NULL))
+    if (control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 || workspace->L == NULL))
     {
         //Print_Linear_System( system, control, workspace, data->step );
 
         time = Get_Time( );
-        if ( control->pre_comp_type != DIAG_PC )
+        if ( control->cm_solver_pre_comp_type != DIAG_PC )
         {
             Sort_Matrix_Rows( workspace->H );
-            if ( control->qeq_domain_sparsify_enabled == TRUE )
+            if ( control->cm_domain_sparsify_enabled == TRUE )
             {
                 Sort_Matrix_Rows( workspace->H_sp );
             }
 
-            if ( control->pre_app_type == TRI_SOLVE_GC_PA )
+            if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
             {
-                if ( control->qeq_domain_sparsify_enabled == TRUE )
+                if ( control->cm_domain_sparsify_enabled == TRUE )
                 {
                     Hptr = setup_graph_coloring( workspace->H_sp );
                 }
@@ -1412,7 +1412,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
         fprintf( stderr, "H matrix sorted\n" );
 #endif
 
-        switch ( control->pre_comp_type )
+        switch ( control->cm_solver_pre_comp_type )
         {
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
@@ -1427,7 +1427,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
             break;
 
         case ICHOLT_PC:
-            Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "drop tolerances calculated\n" );
@@ -1465,11 +1465,11 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                 }
             }
 
-            data->timing.pre_comp += ILU_PAR( Hptr, control->pre_comp_sweeps, workspace->L, workspace->U );
+            data->timing.pre_comp += ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
             break;
 
         case ILUT_PAR_PC:
-            Calculate_Droptol( Hptr, workspace->droptol, control->pre_comp_droptol );
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "drop tolerances calculated\n" );
 #endif
@@ -1485,7 +1485,7 @@ static void Init_MatVec( const reax_system * const system, const control_params 
                 }
             }
 
-            data->timing.pre_comp += ILUT_PAR( Hptr, workspace->droptol, control->pre_comp_sweeps,
+            data->timing.pre_comp += ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
                     workspace->L, workspace->U );
             break;
 
@@ -1619,44 +1619,44 @@ void QEq( reax_system * const system, control_params * const control, simulation
 //      Print_Linear_System( system, control, workspace, data->step );
 //    }
 
-    switch ( control->qeq_solver_type )
+    switch ( control->cm_solver_type )
     {
     case GMRES_S:
-        iters = GMRES( workspace, control, data, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+        iters = GMRES( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                        workspace->s[0], out_control->log,
-                       ((data->step - data->prev_steps) % control->pre_comp_refactor == 0) ? TRUE : FALSE );
-        iters += GMRES( workspace, control, data, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+                       ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
+        iters += GMRES( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
                         workspace->t[0], out_control->log, FALSE );
         break;
     case GMRES_H_S:
-        iters = GMRES_HouseHolder( workspace, control, data, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-                                   workspace->s[0], out_control->log, (data->step - data->prev_steps) % control->pre_comp_refactor == 0 );
-        iters += GMRES_HouseHolder( workspace, control, data, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+        iters = GMRES_HouseHolder( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+                                   workspace->s[0], out_control->log, (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
+        iters += GMRES_HouseHolder( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
                                     workspace->t[0], out_control->log, 0 );
         break;
     case CG_S:
-        iters = CG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+        iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
                     workspace->s[0], out_control->log ) + 1;
-        iters += CG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+        iters += CG( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
                      workspace->t[0], out_control->log ) + 1;
-//            iters = CG( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->s[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
-//            iters += CG( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->t[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
+//            iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+//                    workspace->L, workspace->U, workspace->s[0], control->cm_solver_pre_app_type,
+//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
+//            iters += CG( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
+//                    workspace->L, workspace->U, workspace->t[0], control->cm_solver_pre_app_type,
+//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
         break;
     case SDM_S:
-        iters = SDM( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
+        iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
                      workspace->s[0], out_control->log ) + 1;
-        iters += SDM( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
+        iters += SDM( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
                       workspace->t[0], out_control->log ) + 1;
-//            iters = SDM( workspace, workspace->H, workspace->b_s, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->s[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
-//            iters += SDM( workspace, workspace->H, workspace->b_t, control->qeq_solver_q_err,
-//                    workspace->L, workspace->U, workspace->t[0], control->pre_app_type,
-//                    control->pre_app_jacobi_iters, out_control->log ) + 1;
+//            iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+//                    workspace->L, workspace->U, workspace->s[0], control->cm_solver_pre_app_type,
+//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
+//            iters += SDM( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
+//                    workspace->L, workspace->U, workspace->t[0], control->cm_solver_pre_app_type,
+//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
         break;
     default:
         fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );

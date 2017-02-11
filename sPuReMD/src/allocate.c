@@ -73,6 +73,7 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 }
 
 
+/* dynamic allocation of memory for matrix in CSR format */
 int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
@@ -97,6 +98,7 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 }
 
 
+/* deallocate memory for matrix in CSR format */
 void Deallocate_Matrix( sparse_matrix *H )
 {
     free(H->start);

@@ -1030,12 +1030,12 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 {
     int i, si;
 
-    switch ( control->pre_app_type )
+    switch ( control->cm_solver_pre_app_type )
     {
     case NONE_PA:
         break;
     case TRI_SOLVE_PA:
-        switch ( control->pre_comp_type )
+        switch ( control->cm_solver_pre_comp_type )
         {
         case DIAG_PC:
             diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
@@ -1053,7 +1053,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
         }
         break;
     case TRI_SOLVE_LEVEL_SCHED_PA:
-        switch ( control->pre_comp_type )
+        switch ( control->cm_solver_pre_comp_type )
         {
         case DIAG_PC:
             diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
@@ -1071,7 +1071,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
         }
         break;
     case TRI_SOLVE_GC_PA:
-        switch ( control->pre_comp_type )
+        switch ( control->cm_solver_pre_comp_type )
         {
         case DIAG_PC:
             fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
@@ -1099,7 +1099,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
         }
         break;
     case JACOBI_ITER_PA:
-        switch ( control->pre_comp_type )
+        switch ( control->cm_solver_pre_comp_type )
         {
         case DIAG_PC:
             fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
@@ -1133,7 +1133,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 }
             }
 
-            jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->pre_app_jacobi_iters );
+            jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
 
             #pragma omp master
             {
@@ -1160,7 +1160,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 }
             }
 
-            jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->pre_app_jacobi_iters );
+            jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
             break;
         default:
             fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -1203,7 +1203,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             data->timing.solver_vector_ops += Get_Timing_Info( time_start );
         }
 
-        if ( control->pre_comp_type == DIAG_PC )
+        if ( control->cm_solver_pre_comp_type == DIAG_PC )
         {
             /* apply preconditioner to RHS */
             #pragma omp master
@@ -1231,7 +1231,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 data->timing.solver_spmv += Get_Timing_Info( time_start );
             }
 
-            if ( control->pre_comp_type == DIAG_PC )
+            if ( control->cm_solver_pre_comp_type == DIAG_PC )
             {
                 #pragma omp master
                 {
@@ -1244,7 +1244,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 }
             }
 
-            if ( control->pre_comp_type == DIAG_PC )
+            if ( control->cm_solver_pre_comp_type == DIAG_PC )
             {
                 #pragma omp master
                 {
@@ -1269,7 +1269,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 }
             }
 
-            if ( control->pre_comp_type != DIAG_PC )
+            if ( control->cm_solver_pre_comp_type != DIAG_PC )
             {
                 #pragma omp master
                 {
@@ -1322,7 +1322,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     data->timing.pre_app += Get_Timing_Info( time_start );
                 }
 
-                if ( control->pre_comp_type == DIAG_PC )
+                if ( control->cm_solver_pre_comp_type == DIAG_PC )
                 {
                     /* apply modified Gram-Schmidt to orthogonalize the new residual */
                     #pragma omp master
@@ -1389,7 +1389,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 #pragma omp master
                 {
                     time_start = Get_Time( );
-                    if ( control->pre_comp_type == DIAG_PC )
+                    if ( control->cm_solver_pre_comp_type == DIAG_PC )
                     {
                         /* Givens rotations on the upper-Hessenberg matrix to make it U */
                         for ( i = 0; i <= j; i++ )
