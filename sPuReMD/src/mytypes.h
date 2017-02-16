@@ -215,7 +215,7 @@ enum pre_app
 };
 
 
-/* Global params mapping */
+/* Force field global params mapping */
 /*
 l[0]  = p_boc1
 l[1]  = p_boc2
@@ -456,10 +456,17 @@ typedef struct
 
 typedef struct
 {
+    /* number of atoms */
     int N;
+    /* dimension of the N x N sparse charge method matrix H */
+    int N_cm;
+    /* atom info */
     reax_atom *atoms;
+    /* atomic interaction parameters */
     reax_interaction reaxprm;
+    /* simulation space (a.k.a. box) parameters */
     simulation_box box;
+    /* grid structure used for binning atoms and tracking neighboring bins */
     grid g;
 } reax_system;
 
@@ -521,6 +528,7 @@ typedef struct
 
     unsigned int charge_method;
     unsigned int cm_solver_type;
+    real cm_q_net;
     real cm_solver_q_err;
     real cm_domain_sparsity;
     unsigned int cm_domain_sparsify_enabled;
@@ -589,15 +597,15 @@ typedef struct
     real init_forces;
     real bonded;
     real nonb;
-    real QEq;
-    real QEq_sort_mat_rows;
-    real pre_comp;
-    real pre_app;
-    int solver_iters;
-    real solver_spmv;
-    real solver_vector_ops;
-    real solver_orthog;
-    real solver_tri_solve;
+    real cm;
+    real cm_sort_mat_rows;
+    real cm_solver_pre_comp;
+    real cm_solver_pre_app;
+    int cm_solver_iters;
+    real cm_solver_spmv;
+    real cm_solver_vector_ops;
+    real cm_solver_orthog;
+    real cm_solver_tri_solve;
 } reax_timing;
 
 

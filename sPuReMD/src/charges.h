@@ -19,12 +19,12 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __QEq_H_
-#define __QEq_H_
+#ifndef __CHARGES_H_
+#define __CHARGES_H_
 
 #include "mytypes.h"
 
-void QEq( reax_system* const, control_params* const, simulation_data* const,
+void Compute_Charges( reax_system* const, control_params* const, simulation_data* const,
           static_storage* const, const list* const,
           const output_controls* const );
 

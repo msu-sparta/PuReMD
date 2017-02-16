@@ -29,7 +29,7 @@
 #include "list.h"
 #include "print_utils.h"
 #include "system_props.h"
-#include "QEq.h"
+#include "charges.h"
 #include "vector.h"
 
 
@@ -132,9 +132,10 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 #endif
 
     t_start = Get_Time( );
-    QEq( system, control, data, workspace, lists[FAR_NBRS], out_control );
+    Compute_Charges( system, control, data, workspace, lists[FAR_NBRS], out_control );
     t_elapsed = Get_Timing_Info( t_start );
-    data->timing.QEq += t_elapsed;
+    data->timing.cm += t_elapsed;
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "qeq - " );
 #endif
@@ -352,7 +353,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
         control_params *control, int i, int j,
         real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    real Tap, dr3gamij_1, dr3gamij_3, ret = 0.0;
+    real Tap, gamij, dr3gamij_1, dr3gamij_3, ret = 0.0;
 
     switch ( control->charge_method )
     {
@@ -368,15 +369,18 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                 Tap = Tap * r_ij + control->Tap1;
                 Tap = Tap * r_ij + control->Tap0;
 
+                /* shielding */
                 dr3gamij_1 = ( r_ij * r_ij * r_ij +
                         system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
                 dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
 
                 ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
             break;
+
             case DIAGONAL:
                 ret = system->reaxprm.sbp[system->atoms[i].type].eta;
             break;
+
             default:
                 fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
                 exit( INVALID_INPUT );
@@ -388,9 +392,35 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
         switch ( pos )
         {
             case OFF_DIAGONAL:
+                Tap = control->Tap7 * r_ij + control->Tap6;
+                Tap = Tap * r_ij + control->Tap5;
+                Tap = Tap * r_ij + control->Tap4;
+                Tap = Tap * r_ij + control->Tap3;
+                Tap = Tap * r_ij + control->Tap2;
+                Tap = Tap * r_ij + control->Tap1;
+                Tap = Tap * r_ij + control->Tap0;
+
+//                gamij = system->reaxprm.sbp[system->atoms[i].type].gamma
+//                    + system->reaxprm.sbp[system->atoms[j].type].gamma;
+//                gamij = SQRT( gamij );
+//                dr3gamij_1 = ( r_ij * r_ij * r_ij +
+//                        1.0 / ( gamij * gamij * gamij ) );
+//                dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+//
+//                ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
+
+                /* shielding */
+                dr3gamij_1 = ( r_ij * r_ij * r_ij +
+                        system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
+                dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+
+                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
             break;
+
             case DIAGONAL:
+                ret = 2.0 * system->reaxprm.sbp[system->atoms[i].type].eta;
             break;
+
             default:
                 fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
                 exit( INVALID_INPUT );
@@ -420,6 +450,42 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
     }
 
     return ret;
+}
+
+
+static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
+        control_params *control, sparse_matrix * H, sparse_matrix * H_sp,
+        int * Htop, int * H_sp_top )
+{
+    int i;
+
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            break;
+
+        case EEM_CM:
+            H->start[system->N] = *Htop;
+            H_sp->start[system->N] = *H_sp_top;
+
+            for ( i = 0; i < system->N_cm; ++i )
+            {
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                ++(*Htop);
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                ++(*H_sp_top);
+            }
+            break;
+
+        case ACKS2_CM:
+            break;
+
+        default:
+            break;
+    }
 }
 
 
@@ -696,7 +762,9 @@ void Init_Forces( reax_system *system, control_params *control,
 
         Set_End_Index( i, btop_i, bonds );
         if ( ihb == 1 )
+        {
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
+        }
         //fprintf( stderr, "%d bonds start: %d, end: %d\n",
         //     i, Start_Index( i, bonds ), End_Index( i, bonds ) );
     }
@@ -705,8 +773,10 @@ void Init_Forces( reax_system *system, control_params *control,
 //    printf("H_sp_top = %d\n", H_sp_top);
 
     // mark the end of j list
-    H->start[i] = Htop;
-    H_sp->start[i] = H_sp_top;
+    Init_Charge_Matrix_Remaining_Entries( system, control, H, H_sp, &Htop, &H_sp_top );
+    H->start[system->N_cm] = Htop;
+    H_sp->start[system->N_cm] = H_sp_top;
+
     /* validate lists - decide if reallocation is required! */
     Validate_Lists( workspace, lists,
                     data->step, system->N, H->m, Htop, num_bonds, num_hbonds );

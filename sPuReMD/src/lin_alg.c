@@ -1200,7 +1200,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         bnorm = Norm( b, N );
         #pragma omp master
         {
-            data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
         }
 
         if ( control->cm_solver_pre_comp_type == DIAG_PC )
@@ -1213,7 +1213,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             apply_preconditioner( workspace, control, b, workspace->b_prc, fresh_pre );
             #pragma omp master
             {
-                data->timing.pre_app += Get_Timing_Info( time_start );
+                data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
             }
         }
 
@@ -1228,7 +1228,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             Sparse_MatVec( H, x, workspace->b_prm );
             #pragma omp master
             {
-                data->timing.solver_spmv += Get_Timing_Info( time_start );
+                data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
             }
 
             if ( control->cm_solver_pre_comp_type == DIAG_PC )
@@ -1240,7 +1240,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 apply_preconditioner( workspace, control, workspace->b_prm, workspace->b_prm, FALSE );
                 #pragma omp master
                 {
-                    data->timing.pre_app += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
                 }
             }
 
@@ -1253,7 +1253,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 Vector_Sum( workspace->v[0], 1., workspace->b_prc, -1., workspace->b_prm, N );
                 #pragma omp master
                 {
-                    data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
                 }
             }
             else
@@ -1265,7 +1265,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
                 #pragma omp master
                 {
-                    data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
                 }
             }
 
@@ -1279,7 +1279,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                         itr == 0 ? fresh_pre : FALSE );
                 #pragma omp master
                 {
-                    data->timing.pre_app += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
                 }
             }
 
@@ -1295,7 +1295,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
             #pragma omp master
             {
-                data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
             }
 
             /* GMRES inner-loop */
@@ -1309,7 +1309,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
                 #pragma omp master
                 {
-                    data->timing.solver_spmv += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
                 }
 
                 #pragma omp master
@@ -1319,7 +1319,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], FALSE );
                 #pragma omp master
                 {
-                    data->timing.pre_app += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
                 }
 
                 if ( control->cm_solver_pre_comp_type == DIAG_PC )
@@ -1336,7 +1336,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     }
                     #pragma omp master
                     {
-                        data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+                        data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
                     }
                 }
                 else
@@ -1363,7 +1363,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     }
                     #pragma omp master
                     {
-                        data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+                        data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
                     }
                 }
 
@@ -1380,7 +1380,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                               1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
                 #pragma omp master
                 {
-                    data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
                 }
 #if defined(DEBUG)
                 fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
@@ -1438,7 +1438,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     tmp2 = -workspace->hs[j] * workspace->g[j];
                     workspace->g[j] = tmp1;
                     workspace->g[j + 1] = tmp2;
-                    data->timing.solver_orthog += Get_Timing_Info( time_start );
+                    data->timing.cm_solver_orthog += Get_Timing_Info( time_start );
                 }
 
                 #pragma omp barrier
@@ -1464,7 +1464,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
                     workspace->y[i] = temp / workspace->h[i][i];
                 }
-                data->timing.solver_tri_solve += Get_Timing_Info( time_start );
+                data->timing.cm_solver_tri_solve += Get_Timing_Info( time_start );
 
                 /* update x = x_0 + Vy */
                 time_start = Get_Time( );
@@ -1478,7 +1478,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             Vector_Add( x, 1., workspace->p, N );
             #pragma omp master
             {
-                data->timing.solver_vector_ops += Get_Timing_Info( time_start );
+                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
             }
 
             /* stopping condition */

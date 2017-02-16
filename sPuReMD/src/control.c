@@ -71,6 +71,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->tabulate = 0;
 
     control->charge_method = QEQ_CM;
+    control->cm_q_net = 0.0;
     control->cm_solver_type = GMRES_S;
     control->cm_solver_q_err = 0.000001;
     control->cm_domain_sparsify_enabled = FALSE;
@@ -245,6 +246,11 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             ival = atoi( tmp[1] );
             control->charge_method = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_q_net") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_q_net = val;
         }
         else if ( strcmp(tmp[0], "cm_solver_type") == 0 )
         {
