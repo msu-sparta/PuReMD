@@ -207,7 +207,8 @@ static void Calculate_Droptol( const sparse_matrix * const A,
 #endif
             }
 
-            val = A->val[k]; // diagonal entry
+            // diagonal entry
+            val = A->val[k];
 #ifdef _OPENMP
             droptol_local[tid * A->n + i] += val * val;
 #else
@@ -581,10 +582,11 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
 
     #pragma omp parallel for schedule(static) \
     default(none) private(i)
-    for ( i = 0; i < system->N_cm; ++i )
+    for ( i = 0; i < system->N; ++i )
     {
         Hdia_inv[i] = 1.0 / system->reaxprm.sbp[system->atoms[i].type].eta;
     }
+    Hdia_inv[system->N_cm - 1] = 1.0;
 
     return Get_Timing_Info( start );
 }
@@ -617,7 +619,9 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
     memset( U->start, 0, (A->n + 1) * sizeof(unsigned int) );
     memset( Utop, 0, A->n * sizeof(unsigned int) );
 
-    //fprintf( stderr, "n: %d\n", A->n );
+//    fprintf( stderr, "n: %d\n", A->n );
+//    fflush( stderr );
+
     for ( i = 0; i < A->n; ++i )
     {
         L->start[i] = Ltop;
@@ -627,7 +631,9 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
         {
             j = A->j[pj];
             val = A->val[pj];
-            //fprintf( stderr, "i: %d, j: %d", i, j );
+
+//            fprintf( stderr, "  i: %d, j: %d\n", i, j );
+//            fflush( stderr );
 
             if ( FABS(val) > droptol[i] )
             {
@@ -657,7 +663,9 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
                 tmp_val[tmptop] = val;
                 ++tmptop;
             }
-            //fprintf( stderr, " -- done\n" );
+
+//            fprintf( stderr, " -- done\n" );
+//            fflush( stderr );
         }
 
         // sanity check
@@ -1476,8 +1484,8 @@ static void Init_Charges( const reax_system * const system,
              || workspace->L == NULL))
     {
 //        Print_Linear_System( system, control, workspace, data->step );
-        Print_Sparse_Matrix2( workspace->H, "H_0.out" );
-        exit(0);
+//        Print_Sparse_Matrix2( workspace->H, "H_0.out" );
+//        exit(0);
 
         time = Get_Time( );
         if ( control->cm_solver_pre_comp_type != DIAG_PC )
@@ -1691,6 +1699,7 @@ static void QEq( reax_system * const system, control_params * const control,
                 workspace->b_t, control->cm_solver_q_err, workspace->t[0],
                 out_control->log, FALSE );
         break;
+
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
@@ -1699,6 +1708,7 @@ static void QEq( reax_system * const system, control_params * const control,
                 workspace->b_t, control->cm_solver_q_err, workspace->t[0],
                 out_control->log, 0 );
         break;
+
     case CG_S:
         iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
                     workspace->s[0], out_control->log ) + 1;
@@ -1711,6 +1721,7 @@ static void QEq( reax_system * const system, control_params * const control,
 //                    workspace->L, workspace->U, workspace->t[0], control->cm_solver_pre_app_type,
 //                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
         break;
+
     case SDM_S:
         iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
                      workspace->s[0], out_control->log ) + 1;
@@ -1723,6 +1734,7 @@ static void QEq( reax_system * const system, control_params * const control,
 //                    workspace->L, workspace->U, workspace->t[0], control->cm_solver_pre_app_type,
 //                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
         break;
+
     default:
         fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
@@ -1792,20 +1804,24 @@ static void EEM( reax_system * const system, control_params * const control,
                 out_control->log,
                 ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         break;
+
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
                 out_control->log,
                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
         break;
+
     case CG_S:
         iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], out_control->log ) + 1;
         break;
+
     case SDM_S:
         iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], out_control->log ) + 1;
         break;
+
     default:
         fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
@@ -1834,12 +1850,15 @@ void Compute_Charges( reax_system * const system, control_params * const control
     case QEQ_CM:
         QEq( system, control, data, workspace, far_nbrs, out_control );
         break;
+
     case EEM_CM:
         EEM( system, control, data, workspace, far_nbrs, out_control );
         break;
+
     case ACKS2_CM:
         //TODO
         break;
+
     default:
         fprintf( stderr, "Invalid charge method. Terminating...\n" );
         exit( INVALID_INPUT );

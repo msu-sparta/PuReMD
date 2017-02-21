@@ -280,7 +280,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
 
     if ( realloc->Htop > 0 )
     {
-        Reallocate_Matrix(&(workspace->H), system->N, realloc->Htop * SAFE_ZONE, "H");
+        Reallocate_Matrix(&(workspace->H), system->N_cm, realloc->Htop * SAFE_ZONE, "H");
         realloc->Htop = -1;
 
         Deallocate_Matrix( workspace->L );

@@ -225,10 +225,10 @@ void Transpose_I( sparse_matrix * const A )
  * Hdia_inv: diagonal inverse preconditioner (constructed using H)
  * y: current residual
  * x: preconditioned residual
- * N: length of preconditioner and vectors (# rows in H)
+ * N: dimensions of preconditioner and vectors (# rows in H)
  */
 static void diag_pre_app( const real * const Hdia_inv, const real * const y,
-                          real * const x, const int N )
+        real * const x, const int N )
 {
     unsigned int i;
 
@@ -245,13 +245,14 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
  * LU: lower/upper triangular, stored in CSR
  * y: constants in linear system (RHS)
  * x: solution
+ * N: dimensions of matrix and vectors
  * tri: triangularity of LU (lower/upper)
  *
  * Assumptions:
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 static void tri_solve( const sparse_matrix * const LU, const real * const y,
-                       real * const x, const TRIANGULARITY tri )
+        real * const x, const int N, const TRIANGULARITY tri )
 {
     int i, pj, j, si, ei;
     real val;
@@ -260,7 +261,7 @@ static void tri_solve( const sparse_matrix * const LU, const real * const y,
     {
         if ( tri == LOWER )
         {
-            for ( i = 0; i < LU->n; ++i )
+            for ( i = 0; i < N; ++i )
             {
                 x[i] = y[i];
                 si = LU->start[i];
@@ -276,7 +277,7 @@ static void tri_solve( const sparse_matrix * const LU, const real * const y,
         }
         else
         {
-            for ( i = LU->n - 1; i >= 0; --i )
+            for ( i = N - 1; i >= 0; --i )
             {
                 x[i] = y[i];
                 si = LU->start[i];
@@ -299,14 +300,16 @@ static void tri_solve( const sparse_matrix * const LU, const real * const y,
  * LU: lower/upper triangular, stored in CSR
  * y: constants in linear system (RHS)
  * x: solution
+ * N: dimensions of matrix and vectors
  * tri: triangularity of LU (lower/upper)
  * find_levels: perform level search if positive, otherwise reuse existing levels
  *
  * Assumptions:
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
-static void tri_solve_level_sched( const sparse_matrix * const LU, const real * const y,
-                                   real * const x, const TRIANGULARITY tri, int find_levels )
+static void tri_solve_level_sched( const sparse_matrix * const LU,
+        const real * const y, real * const x, const int N,
+        const TRIANGULARITY tri, int find_levels )
 {
     int i, j, pj, local_row, local_level;
 
@@ -329,9 +332,9 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
         if ( row_levels == NULL || level_rows == NULL || level_rows_cnt == NULL )
         {
-            if ( (row_levels = (unsigned int*) malloc((size_t)LU->n * sizeof(unsigned int))) == NULL
-                    || (level_rows = (unsigned int*) malloc((size_t)LU->n * sizeof(unsigned int))) == NULL
-                    || (level_rows_cnt = (unsigned int*) malloc((size_t)(LU->n + 1) * sizeof(unsigned int))) == NULL )
+            if ( (row_levels = (unsigned int*) malloc((size_t)N * sizeof(unsigned int))) == NULL
+                    || (level_rows = (unsigned int*) malloc((size_t)N * sizeof(unsigned int))) == NULL
+                    || (level_rows_cnt = (unsigned int*) malloc((size_t)(N + 1) * sizeof(unsigned int))) == NULL )
             {
                 fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
                 exit( INSUFFICIENT_MEMORY );
@@ -340,7 +343,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
         if ( top == NULL )
         {
-            if ( (top = (unsigned int*) malloc((size_t)(LU->n + 1) * sizeof(unsigned int))) == NULL )
+            if ( (top = (unsigned int*) malloc((size_t)(N + 1) * sizeof(unsigned int))) == NULL )
             {
                 fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
                 exit( INSUFFICIENT_MEMORY );
@@ -350,14 +353,14 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
         /* find levels (row dependencies in substitutions) */
         if ( find_levels == TRUE )
         {
-            memset( row_levels, 0, LU->n * sizeof(unsigned int) );
-            memset( level_rows_cnt, 0, LU->n * sizeof(unsigned int) );
-            memset( top, 0, LU->n * sizeof(unsigned int) );
+            memset( row_levels, 0, N * sizeof(unsigned int) );
+            memset( level_rows_cnt, 0, N * sizeof(unsigned int) );
+            memset( top, 0, N * sizeof(unsigned int) );
             levels = 1;
 
             if ( tri == LOWER )
             {
-                for ( i = 0; i < LU->n; ++i )
+                for ( i = 0; i < N; ++i )
                 {
                     local_level = 1;
                     for ( pj = LU->start[i]; pj < LU->start[i + 1] - 1; ++pj )
@@ -372,12 +375,12 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
 //#if defined(DEBUG)
                 fprintf(stderr, "levels(L): %d\n", levels);
-                fprintf(stderr, "NNZ(L): %d\n", LU->start[LU->n]);
+                fprintf(stderr, "NNZ(L): %d\n", LU->start[N]);
 //#endif
             }
             else
             {
-                for ( i = LU->n - 1; i >= 0; --i )
+                for ( i = N - 1; i >= 0; --i )
                 {
                     local_level = 1;
                     for ( pj = LU->start[i] + 1; pj < LU->start[i + 1]; ++pj )
@@ -392,7 +395,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
 
 //#if defined(DEBUG)
                 fprintf(stderr, "levels(U): %d\n", levels);
-                fprintf(stderr, "NNZ(U): %d\n", LU->start[LU->n]);
+                fprintf(stderr, "NNZ(U): %d\n", LU->start[N]);
 //#endif
             }
 
@@ -402,7 +405,7 @@ static void tri_solve_level_sched( const sparse_matrix * const LU, const real * 
                 top[i] = level_rows_cnt[i];
             }
 
-            for ( i = 0; i < LU->n; ++i )
+            for ( i = 0; i < N; ++i )
             {
                 level_rows[top[row_levels[i] - 1]] = i;
                 ++top[row_levels[i] - 1];
@@ -1043,8 +1046,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
         case ICHOLT_PC:
         case ILU_PAR_PC:
         case ILUT_PAR_PC:
-            tri_solve( workspace->L, y, x, LOWER );
-            tri_solve( workspace->U, x, x, UPPER );
+            tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+            tri_solve( workspace->U, x, x, workspace->U->n, UPPER );
             break;
         default:
             fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -1061,8 +1064,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
         case ICHOLT_PC:
         case ILU_PAR_PC:
         case ILUT_PAR_PC:
-            tri_solve_level_sched( workspace->L, y, x, LOWER, fresh_pre );
-            tri_solve_level_sched( workspace->U, x, x, UPPER, fresh_pre );
+            tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+            tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
             break;
         default:
             fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -1088,8 +1091,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
             #pragma omp barrier
 
             permute_vector( y_p, workspace->H->n, FALSE, LOWER );
-            tri_solve_level_sched( workspace->L, y_p, x, LOWER, fresh_pre );
-            tri_solve_level_sched( workspace->U, x, x, UPPER, fresh_pre );
+            tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
+            tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
             permute_vector( x, workspace->H->n, TRUE, UPPER );
         break;
         default:
@@ -1745,8 +1748,8 @@ int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
     //Print_Soln( workspace, x, q, b, N );
     //fprintf( stderr, "res: %.15e\n", r_norm );
 
-    tri_solve( L, workspace->r, workspace->d, LOWER );
-    tri_solve( U, workspace->d, workspace->p, UPPER );
+    tri_solve( L, workspace->r, workspace->d, L->n, LOWER );
+    tri_solve( U, workspace->d, workspace->p, U->n, UPPER );
     sig_new = Dot( workspace->r, workspace->p, N );
     sig0 = sig_new;
 
@@ -1764,8 +1767,8 @@ int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
         r_norm = Norm(workspace->r, N);
         //fprintf( stderr, "res: %.15e\n", r_norm );
 
-        tri_solve( L, workspace->r, workspace->d, LOWER );
-        tri_solve( U, workspace->d, workspace->d, UPPER );
+        tri_solve( L, workspace->r, workspace->d, L->n, LOWER );
+        tri_solve( U, workspace->d, workspace->d, U->n, UPPER );
         sig_old = sig_new;
         sig_new = Dot( workspace->r, workspace->d, N );
         beta = sig_new / sig_old;
@@ -1922,8 +1925,8 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 
     memset( e, 1., N * sizeof(real) );
 
-    tri_solve( L, e, e, LOWER );
-    tri_solve( U, e, e, UPPER );
+    tri_solve( L, e, e, L->n, LOWER );
+    tri_solve( U, e, e, U->n, UPPER );
 
     /* compute 1-norm of vector e */
     c = FABS(e[0]);

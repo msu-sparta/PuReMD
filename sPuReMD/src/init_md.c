@@ -236,15 +236,14 @@ void Init_Taper( control_params *control )
         fprintf( stderr, "Warning: non-zero value for lower Taper-radius cutoff\n" );
     }
 
-    if ( swb < 0 )
+    if ( swb < 0.0 )
     {
         fprintf( stderr, "Negative value for upper Taper-radius cutoff\n" );
         exit( INVALID_INPUT );
     }
-    else if ( swb < 5 )
+    else if ( swb < 5.0 )
     {
-        fprintf( stderr, "Warning: low value for upper Taper-radius cutoff:%f\n",
-                swb );
+        fprintf( stderr, "Warning: low value for upper Taper-radius cutoff:%f\n", swb );
     }
 
     d1 = swb - swa;
@@ -352,6 +351,7 @@ void Init_Workspace( reax_system *system, control_params *control,
                 workspace->b[i + system->N] = -1.0;
             }
             break;
+
         case EEM_CM:
             for ( i = 0; i < system->N; ++i )
             {
@@ -364,9 +364,11 @@ void Init_Workspace( reax_system *system, control_params *control,
             workspace->b_s[system->N] = control->cm_q_net;
             workspace->b[system->N] = control->cm_q_net;
             break;
+
         case ACKS2_CM:
             //TODO
             break;
+
         default:
             fprintf( stderr, "Unknown charge method type. Terminating...\n" );
             exit( INVALID_INPUT );
