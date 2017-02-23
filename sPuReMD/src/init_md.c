@@ -314,6 +314,15 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->H_sp = NULL;
     workspace->L = NULL;
     workspace->U = NULL;
+    workspace->H_EEM = NULL;
+    workspace->L_EEM = NULL;
+    workspace->U_EEM = NULL;
+    workspace->H_ACKS2_1 = NULL;
+    workspace->H_ACKS2_2 = NULL;
+    workspace->L_ACKS2_1 = NULL;
+    workspace->L_ACKS2_2 = NULL;
+    workspace->U_ACKS2_1 = NULL;
+    workspace->U_ACKS2_2 = NULL;
     workspace->Hdia_inv = NULL;
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )

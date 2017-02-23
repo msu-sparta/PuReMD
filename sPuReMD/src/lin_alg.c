@@ -28,13 +28,6 @@
 #include "vector.h"
 
 
-typedef enum
-{
-    LOWER = 0,
-    UPPER = 1,
-} TRIANGULARITY;
-
-
 /* global to make OpenMP shared (Sparse_MatVec) */
 #ifdef _OPENMP
 real *b_local = NULL;
@@ -251,7 +244,7 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
  * Assumptions:
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
-static void tri_solve( const sparse_matrix * const LU, const real * const y,
+void tri_solve( const sparse_matrix * const LU, const real * const y,
         real * const x, const int N, const TRIANGULARITY tri )
 {
     int i, pj, j, si, ei;
@@ -307,7 +300,7 @@ static void tri_solve( const sparse_matrix * const LU, const real * const y,
  * Assumptions:
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
-static void tri_solve_level_sched( const sparse_matrix * const LU,
+void tri_solve_level_sched( const sparse_matrix * const LU,
         const real * const y, real * const x, const int N,
         const TRIANGULARITY tri, int find_levels )
 {
@@ -924,7 +917,7 @@ sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
  *
  * Note: Newmann series arises from series expansion of the inverse of
  * the coefficient matrix in the triangular system */
-static void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
+void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
         const real * const b, real * const x, const TRIANGULARITY tri, const
         unsigned int maxiter )
 {

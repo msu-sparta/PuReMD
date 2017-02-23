@@ -25,8 +25,24 @@
 #include "mytypes.h"
 
 
+typedef enum
+{
+    LOWER = 0,
+    UPPER = 1,
+} TRIANGULARITY;
+
+
 void Transpose( const sparse_matrix const *, sparse_matrix const * );
 void Transpose_I( sparse_matrix * const );
+
+void tri_solve( const sparse_matrix * const, const real * const,
+        real * const, const int, const TRIANGULARITY );
+void tri_solve_level_sched( const sparse_matrix * const,
+        const real * const, real * const, const int,
+        const TRIANGULARITY, int );
+void jacobi_iter( const sparse_matrix * const, const real * const,
+        const real * const, real * const, const TRIANGULARITY,
+        const unsigned int );
 
 sparse_matrix * setup_graph_coloring( sparse_matrix * const );
 

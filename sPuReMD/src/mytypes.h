@@ -779,8 +779,12 @@ typedef struct
     real *nlp, *nlp_temp, *Clp, *vlpex;
     rvec *dDeltap_self;
 
-    /* QEq storage */
+    /* charge method storage */
     sparse_matrix *H, *H_sp, *L, *U;
+    /* EEM-specific */
+    sparse_matrix *H_EEM, *L_EEM, *U_EEM;
+    /* ACKS2-specific */
+    sparse_matrix *H_ACKS2_1, *H_ACKS2_2, *L_ACKS2_1, *L_ACKS2_2, *U_ACKS2_1, *U_ACKS2_2;
     real *droptol;
     real *w;
     real *Hdia_inv;
