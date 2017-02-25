@@ -424,13 +424,33 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
         break;
 
     case ACKS2_CM:
-        //TODO
         switch ( pos )
         {
             case OFF_DIAGONAL:
+                if ( r_ij < control->r_cut && r_ij > 0.001 )
+                {
+                    Tap = control->Tap7 * r_ij + control->Tap6;
+                    Tap = Tap * r_ij + control->Tap5;
+                    Tap = Tap * r_ij + control->Tap4;
+                    Tap = Tap * r_ij + control->Tap3;
+                    Tap = Tap * r_ij + control->Tap2;
+                    Tap = Tap * r_ij + control->Tap1;
+                    Tap = Tap * r_ij + control->Tap0;
+
+                    gamij = SQRT( system->reaxprm.sbp[system->atoms[i].type].gamma
+                            * system->reaxprm.sbp[system->atoms[j].type].gamma );
+                    /* shielding */
+                    dr3gamij_1 = POW( r_ij, 3.0 ) + 1.0 / POW( gamij, 3.0 );
+                    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                    ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
+                }
             break;
+
             case DIAGONAL:
+                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
             break;
+
             default:
                 fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
                 exit( INVALID_INPUT );
@@ -449,10 +469,12 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 
 
 static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
-        control_params *control, sparse_matrix * H, sparse_matrix * H_sp,
+        control_params *control, list *far_nbrs,
+        sparse_matrix * H, sparse_matrix * H_sp,
         int * Htop, int * H_sp_top )
 {
-    int i;
+    int i, j, pj;
+    real d, xcut, bond_softness, * X_diag;
 
     switch ( control->charge_method )
     {
@@ -484,6 +506,130 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             break;
 
         case ACKS2_CM:
+            if ( (X_diag = (real*) calloc(system->N, sizeof(real))) == NULL )
+            {
+                fprintf( stderr, "not enough memory for charge matrix. terminating.\n" );
+                exit( INSUFFICIENT_MEMORY );
+            }
+
+            H->start[system->N] = *Htop;
+            H_sp->start[system->N] = *H_sp_top;
+
+            for ( i = 0; i < system->N; ++i )
+            {
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            H->j[*Htop] = system->N;
+            H->val[*Htop] = 0.0;
+            *Htop = *Htop + 1;
+
+            H_sp->j[*H_sp_top] = system->N;
+            H_sp->val[*H_sp_top] = 0.0;
+            *H_sp_top = *H_sp_top + 1;
+
+            for ( i = 0; i < system->N; ++i )
+            {
+                H->start[system->N + i + 1] = *Htop;
+                H_sp->start[system->N + i + 1] = *H_sp_top;
+
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+
+                for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
+                {
+                    if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+                    {
+                        j = far_nbrs->select.far_nbr_list[pj].nbr;
+
+                        xcut = ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
+                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 )
+                            / 2.0;
+
+                        if ( far_nbrs->select.far_nbr_list[pj].d < xcut &&
+                                far_nbrs->select.far_nbr_list[pj].d > 0.001 )
+                        {
+                            d = far_nbrs->select.far_nbr_list[pj].d / xcut;
+                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 ) * POW( 1.0 - d, 6.0 );
+
+                            H->j[*Htop] = system->N + j + 1;
+                            H->val[*Htop] = MAX( 0.0, bond_softness );
+                            *Htop = *Htop + 1;
+
+                            H_sp->j[*H_sp_top] = system->N + j + 1;
+                            H_sp->val[*H_sp_top] = MAX( 0.0, bond_softness );
+                            *H_sp_top = *H_sp_top + 1;
+
+                            X_diag[i] -= bond_softness;
+                            X_diag[j] -= bond_softness;
+                        }
+                    }
+                }
+
+                H->j[*Htop] = system->N + i + 1;
+                H->val[*Htop] = 0.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = system->N + i + 1;
+                H_sp->val[*H_sp_top] = 0.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            H->start[system->N_cm - 1] = *Htop;
+            H_sp->start[system->N_cm - 1] = *H_sp_top;
+
+            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+            {
+                for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
+                {
+                    if ( H->j[pj] == i )
+                    {
+                        H->val[pj] = X_diag[i - system->N - 1];
+                        break;
+                    }
+                }
+
+                for ( pj = H_sp->start[i]; pj < H_sp->start[i + 1]; ++pj )
+                {
+                    if ( H_sp->j[pj] == i )
+                    {
+                        H_sp->val[pj] = X_diag[i - system->N - 1];
+                        break;
+                    }
+                }
+            }
+
+            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+            {
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            H->j[*Htop] = system->N_cm - 1;
+            H->val[*Htop] = 0.0;
+            *Htop = *Htop + 1;
+
+            H_sp->j[*H_sp_top] = system->N_cm - 1;
+            H_sp->val[*H_sp_top] = 0.0;
+            *H_sp_top = *H_sp_top + 1;
+
+            free( X_diag );
             break;
 
         default:
@@ -775,7 +921,8 @@ void Init_Forces( reax_system *system, control_params *control,
         //     i, Start_Index( i, bonds ), End_Index( i, bonds ) );
     }
 
-    Init_Charge_Matrix_Remaining_Entries( system, control, H, H_sp, &Htop, &H_sp_top );
+    Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
+            H, H_sp, &Htop, &H_sp_top );
 
     // mark the end of j list
     H->start[system->N_cm] = Htop;
@@ -1062,8 +1209,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
 
 void Estimate_Storage_Sizes( reax_system *system, control_params *control,
-                             list **lists, int *Htop, int *hb_top,
-                             int *bond_top, int *num_3body )
+        list **lists, int *Htop, int *hb_top, int *bond_top, int *num_3body )
 {
     int i, j, pj;
     int start_i, end_i;

@@ -176,8 +176,8 @@ int main(int argc, char* argv[])
     /* compute f_0 */
     //if( control.restart == 0 ) {
     Reset( &system, &control, &data, &workspace, &lists );
-    Generate_Neighbor_Lists( &system, &control, &data, &workspace,
-                             &lists, &out_control );
+    Generate_Neighbor_Lists( &system, &control, &data, &workspace, 
+            &lists, &out_control );
 
     //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
     Compute_Forces(&system, &control, &data, &workspace, &lists, &out_control);
@@ -186,8 +186,7 @@ int main(int argc, char* argv[])
     ++data.step;
     //}
     //
-
-
+    
     for ( ; data.step <= control.nsteps; data.step++ )
     {
         if ( control.T_mode )

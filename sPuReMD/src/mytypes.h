@@ -251,7 +251,7 @@ l[30] = p_coa4
 l[31] = p_ovun4
 l[32] = p_ovun3
 l[33] = p_val8
-l[34] = N/A
+l[34] = ACKS2 bond softness
 l[35] = N/A
 l[36] = N/A
 l[37] = version number
@@ -298,6 +298,7 @@ typedef struct
     real b_o_131;
     real b_o_132;
     real b_o_133;
+    real b_s_acks2; /* bond softness for ACKS2 */
 
     /* Line four in the field file */
     real p_ovun2;

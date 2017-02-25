@@ -582,12 +582,18 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
     start = Get_Time( );
 
     #pragma omp parallel for schedule(static) \
-    default(none) private(i)
+        default(none) private(i)
     for ( i = 0; i < system->N; ++i )
     {
         Hdia_inv[i] = 1.0 / system->reaxprm.sbp[system->atoms[i].type].eta;
     }
-    Hdia_inv[system->N_cm - 1] = 1.0;
+
+    #pragma omp parallel for schedule(static) \
+        default(none) private(i)
+    for ( i = system->N; i < system->N_cm; ++i )
+    {
+        Hdia_inv[i] = 1.0;
+    }
 
     return Get_Timing_Info( start );
 }
@@ -595,21 +601,21 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
 
 /* Incomplete Cholesky factorization with dual thresholding */
 static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
-                    sparse_matrix * const L, sparse_matrix * const U )
+        sparse_matrix * const L, sparse_matrix * const U )
 {
     int *tmp_j;
     real *tmp_val;
     int i, j, pj, k1, k2, tmptop, Ltop;
     real val, start;
-    int *Utop;
+    unsigned int *Utop;
 
     start = Get_Time( );
 
-    if ( ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL ||
+    if ( ( Utop = (unsigned int*) malloc((A->n + 1) * sizeof(unsigned int)) ) == NULL ||
             ( tmp_j = (int*) malloc(A->n * sizeof(int)) ) == NULL ||
             ( tmp_val = (real*) malloc(A->n * sizeof(real)) ) == NULL )
     {
-        fprintf( stderr, "not enough memory for ICHOLT preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "[ICHOLT] Not enough memory for preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -620,9 +626,6 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
     memset( U->start, 0, (A->n + 1) * sizeof(unsigned int) );
     memset( Utop, 0, A->n * sizeof(unsigned int) );
 
-//    fprintf( stderr, "n: %d\n", A->n );
-//    fflush( stderr );
-
     for ( i = 0; i < A->n; ++i )
     {
         L->start[i] = Ltop;
@@ -632,9 +635,6 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
         {
             j = A->j[pj];
             val = A->val[pj];
-
-//            fprintf( stderr, "  i: %d, j: %d\n", i, j );
-//            fflush( stderr );
 
             if ( FABS(val) > droptol[i] )
             {
@@ -664,15 +664,12 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
                 tmp_val[tmptop] = val;
                 ++tmptop;
             }
-
-//            fprintf( stderr, " -- done\n" );
-//            fflush( stderr );
         }
 
         // sanity check
         if ( A->j[pj] != i )
         {
-            fprintf( stderr, "i=%d, badly built A matrix!\n", i );
+            fprintf( stderr, "[ICHOLT] badly built A matrix!\n (i = %d) ", i );
             exit( NUMERIC_BREAKDOWN );
         }
 
@@ -683,8 +680,17 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
             val -= (tmp_val[k1] * tmp_val[k1]);
         }
 
+#if defined(DEBUG)
+        if ( val < 0.0 )
+        {
+            fprintf( stderr, "[ICHOLT] Numeric breakdown (SQRT of negative on diagonal i = %d). Terminating.\n", i );
+            exit( NUMERIC_BREAKDOWN );
+
+        }
+#endif
+
         tmp_j[tmptop] = i;
-        tmp_val[tmptop] = SQRT(val);
+        tmp_val[tmptop] = SQRT( val );
 
         // apply the dropping rule once again
         //fprintf( stderr, "row%d: tmptop: %d\n", i, tmptop );
@@ -854,7 +860,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                 /* sanity check */
                 if ( sum < ZERO )
                 {
-                    fprintf( stderr, "Numeric breakdown in ICHOL Terminating.\n");
+                    fprintf( stderr, "Numeric breakdown in ICHOL_PAR. Terminating.\n");
 #if defined(DEBUG_FOCUS)
                     fprintf( stderr, "A(%5d,%5d) = %10.3f\n",
                              k - 1, A->entries[j].j, A->entries[j].val );
@@ -929,7 +935,7 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
             ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
     {
-        fprintf( stderr, "not enough memory for ILU_PAR preconditioning matrices. terminating.\n" );
+        fprintf( stderr, "[ILU_PAR] Not enough memory for preconditioning matrices. Terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -937,12 +943,13 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     default(none) shared(D, D_inv) private(i)
     for ( i = 0; i < A->n; ++i )
     {
-        D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
+        D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
         D[i] = 1.0 / D_inv[i];
+//        printf( "A->val[%8d] = %f, D[%4d] = %f, D_inv[%4d] = %f\n", A->start[i + 1] - 1, A->val[A->start[i + 1] - 1], i, D[i], i, D_inv[i] );
     }
 
     /* to get convergence, A must have unit diagonal, so apply
-     * transformation DAD, where D = D(1./sqrt(D(A))) */
+     * transformation DAD, where D = D(1./sqrt(abs(D(A)))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
     #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, D) private(i, pj)
@@ -1146,7 +1153,7 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     default(none) shared(D, D_inv) private(i)
     for ( i = 0; i < A->n; ++i )
     {
-        D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
+        D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
         D[i] = 1.0 / D_inv[i];
     }
 
@@ -1461,7 +1468,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 {
     sparse_matrix *Hptr;
 
-    if ( control->cm_domain_sparsify_enabled )
+    if ( control->cm_domain_sparsify_enabled == TRUE )
     {
         Hptr = workspace->H_sp;
     }
@@ -1611,9 +1618,9 @@ static void Compute_Preconditioner_EEM( const reax_system * const system,
         switch ( control->cm_solver_pre_app_type )
         {
             case TRI_SOLVE_PA:
-                tri_solve( workspace->L_EEM, ones, x, system->N, LOWER );
+                tri_solve( workspace->L_EEM, ones, x, workspace->L_EEM->n, LOWER );
                 Transpose_I( workspace->U_EEM );
-                tri_solve( workspace->U_EEM, ones, y, system->N, LOWER );
+                tri_solve( workspace->U_EEM, ones, y, workspace->U_EEM->n, LOWER );
                 Transpose_I( workspace->U_EEM );
 
                 memcpy( workspace->L->start, workspace->L_EEM->start, sizeof(unsigned int) * (system->N + 1) );
@@ -1659,9 +1666,9 @@ static void Compute_Preconditioner_EEM( const reax_system * const system,
                 break;
 
             case TRI_SOLVE_LEVEL_SCHED_PA:
-                tri_solve_level_sched( workspace->L_EEM, ones, x, system->N, LOWER, TRUE );
+                tri_solve_level_sched( workspace->L_EEM, ones, x, workspace->L_EEM->n, LOWER, TRUE );
                 Transpose_I( workspace->U_EEM );
-                tri_solve_level_sched( workspace->U_EEM, ones, y, system->N, LOWER, TRUE );
+                tri_solve_level_sched( workspace->U_EEM, ones, y, workspace->U_EEM->n, LOWER, TRUE );
                 Transpose_I( workspace->U_EEM );
 
                 memcpy( workspace->L->start, workspace->L_EEM->start, sizeof(unsigned int) * (system->N + 1) );
@@ -1708,9 +1715,9 @@ static void Compute_Preconditioner_EEM( const reax_system * const system,
 
             //TODO: add Jacobi iter, etc.?
             default:
-                tri_solve( workspace->L_EEM, ones, x, system->N, LOWER );
+                tri_solve( workspace->L_EEM, ones, x, workspace->L_EEM->n, LOWER );
                 Transpose_I( workspace->U_EEM );
-                tri_solve( workspace->U_EEM, ones, y, system->N, LOWER );
+                tri_solve( workspace->U_EEM, ones, y, workspace->U_EEM->n, LOWER );
                 Transpose_I( workspace->U_EEM );
 
                 memcpy( workspace->L->start, workspace->L_EEM->start, sizeof(unsigned int) * (system->N + 1) );
@@ -1778,6 +1785,99 @@ static void Compute_Preconditioner_EEM( const reax_system * const system,
 }
 
 
+/* Compute preconditioner for ACKS2
+ */
+static void Compute_Preconditioner_ACKS2( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, static_storage * const workspace,
+        const list * const far_nbrs )
+{
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = workspace->H_sp;
+    }
+    else
+    {
+        Hptr = workspace->H;
+    }
+
+#if defined(TEST_MAT)
+    Hptr = create_test_mat( );
+#endif
+
+//    fprintf( stderr, "(%4d, %4d): %f\n", system->N, Hptr->j[Hptr->start[system->N + 1] - 1], Hptr->val[Hptr->start[system->N + 1] - 1] );
+//    fprintf( stderr, "(%4d, %4d): %f\n", system->N_cm - 1, Hptr->j[Hptr->start[system->N_cm] - 1], Hptr->val[Hptr->start[system->N_cm] - 1] );
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+    Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+//    fprintf( stderr, "(%4d, %4d): %f\n", system->N, Hptr->j[Hptr->start[system->N + 1] - 1], Hptr->val[Hptr->start[system->N + 1] - 1] );
+//    fprintf( stderr, "(%4d, %4d): %f\n", system->N_cm - 1, Hptr->j[Hptr->start[system->N_cm] - 1], Hptr->val[Hptr->start[system->N_cm] - 1] );
+//    fflush( stderr );
+    
+    switch ( control->cm_solver_pre_comp_type )
+    {
+    case DIAG_PC:
+        data->timing.cm_solver_pre_comp +=
+            diag_pre_comp( system, workspace->Hdia_inv );
+        break;
+
+    case ICHOLT_PC:
+        data->timing.cm_solver_pre_comp +=
+            ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
+        break;
+
+    case ILU_PAR_PC:
+        data->timing.cm_solver_pre_comp +=
+            ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
+        break;
+
+    case ILUT_PAR_PC:
+        data->timing.cm_solver_pre_comp +=
+            ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
+                    workspace->L, workspace->U );
+        break;
+
+    case ILU_SUPERLU_MT_PC:
+#if defined(HAVE_SUPERLU_MT)
+        data->timing.cm_solver_pre_comp +=
+            SuperLU_Factorize( Hptr, workspace->L, workspace->U );
+#else
+        fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
+        exit( INVALID_INPUT );
+#endif
+        break;
+
+    default:
+        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+    Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+
+#if defined(DEBUG)
+    if ( control->cm_solver_pre_comp_type != DIAG_PC )
+    {
+        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
+
+#if defined(DEBUG_FOCUS)
+        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+        Print_Sparse_Matrix2( workspace->L, fname );
+        sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
+        Print_Sparse_Matrix2( workspace->U, fname );
+
+        fprintf( stderr, "icholt-" );
+        //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+        //Print_Sparse_Matrix2( workspace->L, fname );
+        //Print_Sparse_Matrix( U );
+#endif
+    }
+#endif
+}
+
+
 /* Setup routines before computing the preconditioner for QEq
  */
 static void Setup_Preconditioner_QEq( const reax_system * const system,
@@ -1786,10 +1886,10 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         const list * const far_nbrs )
 {
     int i, fillin;
-    real s_tmp, t_tmp, time;
+    real time;
     sparse_matrix *Hptr;
 
-    if (control->cm_domain_sparsify_enabled)
+    if ( control->cm_domain_sparsify_enabled == TRUE )
     {
         Hptr = workspace->H_sp;
     }
@@ -1830,7 +1930,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
     case DIAG_PC:
         if ( workspace->Hdia_inv == NULL )
         {
-            if ( ( workspace->Hdia_inv = (real *) calloc( system->N_cm, sizeof( real ) ) ) == NULL )
+            if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
             {
                 fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                 exit( INSUFFICIENT_MEMORY );
@@ -1850,13 +1950,13 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 #if defined(DEBUG)
         fprintf( stderr, "fillin = %d\n", fillin );
         fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                 fillin * sizeof(sparse_matrix_entry) / (1024 * 1024) );
+                 fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
 #endif
 
         if ( workspace->L == NULL )
         {
-            if ( Allocate_Matrix( &(workspace->L), far_nbrs->n, fillin ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), far_nbrs->n, fillin ) == FAILURE )
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
+                    Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
             {
                 fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
                 exit( INSUFFICIENT_MEMORY );
@@ -1942,10 +2042,10 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
         const list * const far_nbrs )
 {
     int i, fillin;
-    real s_tmp, t_tmp, time;
+    real time;
     sparse_matrix *Hptr;
 
-    if (control->cm_domain_sparsify_enabled)
+    if ( control->cm_domain_sparsify_enabled == TRUE )
     {
         Hptr = workspace->H_sp;
     }
@@ -2025,7 +2125,7 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
 #if defined(DEBUG)
         fprintf( stderr, "fillin = %d\n", fillin );
         fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                 fillin * sizeof(sparse_matrix_entry) / (1024 * 1024) );
+                 fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
 #endif
 
         if ( workspace->L == NULL )
@@ -2117,6 +2217,167 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
 }
 
 
+/* Setup routines before computing the preconditioner for ACKS2
+ */
+static void Setup_Preconditioner_ACKS2( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, static_storage * const workspace,
+        const list * const far_nbrs )
+{
+    int i, fillin;
+    real time;
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = workspace->H_sp;
+    }
+    else
+    {
+        Hptr = workspace->H;
+    }
+
+    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    time = Get_Time( );
+    Sort_Matrix_Rows( workspace->H );
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Sort_Matrix_Rows( workspace->H_sp );
+    }
+
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+    Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        if ( control->cm_domain_sparsify_enabled == TRUE )
+        {
+            Hptr = setup_graph_coloring( workspace->H_sp );
+        }
+        else
+        {
+            Hptr = setup_graph_coloring( workspace->H );
+        }
+
+        Sort_Matrix_Rows( Hptr );
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
+
+#if defined(DEBUG)
+    fprintf( stderr, "H matrix sorted\n" );
+#endif
+
+    switch ( control->cm_solver_pre_comp_type )
+    {
+    case DIAG_PC:
+        if ( workspace->Hdia_inv == NULL )
+        {
+            if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
+            {
+                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                exit( INSUFFICIENT_MEMORY );
+            }
+        }
+        break;
+
+    case ICHOLT_PC:
+        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "drop tolerances calculated\n" );
+#endif
+
+        fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
+
+#if defined(DEBUG)
+        fprintf( stderr, "fillin = %d\n", fillin );
+        fprintf( stderr, "allocated memory: L = U = %ldMB\n",
+                 fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
+#endif
+
+        if ( workspace->L == NULL )
+        {
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
+                    Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
+            {
+                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                exit( INSUFFICIENT_MEMORY );
+            }
+        }
+        else
+        {
+            //TODO: reallocate
+        }
+        break;
+
+    case ILU_PAR_PC:
+        if ( workspace->L == NULL )
+        {
+            /* factors have sparsity pattern as H */
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            {
+                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                exit( INSUFFICIENT_MEMORY );
+            }
+        }
+        else
+        {
+            //TODO: reallocate
+        }
+        break;
+
+    case ILUT_PAR_PC:
+        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "drop tolerances calculated\n" );
+#endif
+
+        if ( workspace->L == NULL )
+        {
+            /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            {
+                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                exit( INSUFFICIENT_MEMORY );
+            }
+        }
+        else
+        {
+            //TODO: reallocate
+        }
+        break;
+
+    case ILU_SUPERLU_MT_PC:
+        if ( workspace->L == NULL )
+        {
+            /* factors have sparsity pattern as H */
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            {
+                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                exit( INSUFFICIENT_MEMORY );
+            }
+        }
+        else
+        {
+            //TODO: reallocate
+        }
+        break;
+
+    default:
+        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+    Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+}
+
+
 /* Combine ficticious charges s and t to get atomic charge q for QEq method
  */
 static void Calculate_Charges_QEq( const reax_system * const system,
@@ -2147,7 +2408,7 @@ static void Calculate_Charges_EEM( const reax_system * const system,
 {
     int i;
 
-    for ( i = 0; i < system->N_cm; ++i )
+    for ( i = 0; i < system->N; ++i )
     {
         system->atoms[i].q = workspace->s[0][i];
     }
@@ -2280,13 +2541,6 @@ static void EEM( reax_system * const system, control_params * const control,
     }
 
 //   Print_Linear_System( system, control, workspace, data->step );
-//    Print_Sparse_Matrix2( workspace->H, "H_0.out" );
-//    Print_Sparse_Matrix2( workspace->L, "L_0.out" );
-//    Print_Sparse_Matrix2( workspace->U, "U_0.out" );
-//    Print_Sparse_Matrix2( workspace->H_EEM, "H_EEM_0.out" );
-//    Print_Sparse_Matrix2( workspace->L_EEM, "L_EEM_0.out" );
-//    Print_Sparse_Matrix2( workspace->U_EEM, "U_EEM_0.out" );
-//    exit(0);
 
     Extrapolate_Charges_EEM( system, control, data, workspace );
 
@@ -2335,10 +2589,88 @@ static void EEM( reax_system * const system, control_params * const control,
 }
 
 
+/* Main driver method for ACKS2 kernel
+ *
+ * Rough outline:
+ *  1) init / setup routines for preconditioning of linear solver
+ *  2) compute preconditioner
+ *  3) extrapolate charges
+ *  4) perform 1 linear solve
+ *  5) compute atomic charges based on output of (4)
+ */
+static void ACKS2( reax_system * const system, control_params * const control,
+        simulation_data * const data, static_storage * const workspace,
+        const list * const far_nbrs, const output_controls * const out_control )
+{
+    int iters;
+
+    if ( control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+    {
+        Setup_Preconditioner_ACKS2( system, control, data, workspace, far_nbrs );
+
+        Compute_Preconditioner_ACKS2( system, control, data, workspace, far_nbrs );
+    }
+
+//   Print_Linear_System( system, control, workspace, data->step );
+//    Print_Sparse_Matrix2( workspace->H, "H_0.out" );
+//    Print_Sparse_Matrix2( workspace->L, "L_0.out" );
+//    Print_Sparse_Matrix2( workspace->U, "U_0.out" );
+//    FILE * fp = fopen( "b.out", "w" );
+//    Vector_Print( fp, "b.out", workspace->b_s, system->N_cm );
+//    fclose( fp );
+//    exit(0);
+
+    Extrapolate_Charges_EEM( system, control, data, workspace );
+
+    switch ( control->cm_solver_type )
+    {
+    case GMRES_S:
+        iters = GMRES( workspace, control, data, workspace->H,
+                workspace->b_s, control->cm_solver_q_err, workspace->s[0],
+                out_control->log,
+                ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
+        break;
+
+    case GMRES_H_S:
+        iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
+                workspace->b_s, control->cm_solver_q_err, workspace->s[0],
+                out_control->log,
+                (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
+        break;
+
+    case CG_S:
+        iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+                workspace->s[0], out_control->log ) + 1;
+        break;
+
+    case SDM_S:
+        iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+                workspace->s[0], out_control->log ) + 1;
+        break;
+
+    default:
+        fprintf( stderr, "Unrecognized ACKS2 solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    data->timing.cm_solver_iters += iters;
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "linsolve-" );
+#endif
+
+    Calculate_Charges_EEM( system, workspace );
+}
+
+
 void Compute_Charges( reax_system * const system, control_params * const control,
                       simulation_data * const data, static_storage * const workspace,
                       const list * const far_nbrs, const output_controls * const out_control )
 {
+    int i;
+
     switch ( control->charge_method )
     {
     case QEQ_CM:
@@ -2350,7 +2682,7 @@ void Compute_Charges( reax_system * const system, control_params * const control
         break;
 
     case ACKS2_CM:
-        //TODO
+        ACKS2( system, control, data, workspace, far_nbrs, out_control );
         break;
 
     default:

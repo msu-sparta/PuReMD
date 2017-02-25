@@ -87,8 +87,8 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
     H->n = n;
     H->m = m;
 
-    if ( (H->start = (unsigned int*) malloc(sizeof(int) * (n + 1))) == NULL
-            || (H->j = (unsigned int*) malloc(sizeof(int) * m)) == NULL
+    if ( (H->start = (unsigned int*) malloc(sizeof(unsigned int) * (n + 1))) == NULL
+            || (H->j = (unsigned int*) malloc(sizeof(unsigned int) * m)) == NULL
             || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
     {
         return FAILURE;

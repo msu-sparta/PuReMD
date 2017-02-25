@@ -266,7 +266,10 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             val = atof( tmp[1] );
             control->cm_domain_sparsity = val;
-            control->cm_domain_sparsify_enabled = TRUE;
+            if ( val < 1.0 )
+            {
+                control->cm_domain_sparsify_enabled = TRUE;
+            }
         }
         else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
         {

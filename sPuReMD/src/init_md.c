@@ -375,7 +375,24 @@ void Init_Workspace( reax_system *system, control_params *control,
             break;
 
         case ACKS2_CM:
-            //TODO
+            for ( i = 0; i < system->N; ++i )
+            {
+                workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+            }
+
+            workspace->b_s[system->N] = control->cm_q_net;
+            workspace->b[system->N] = control->cm_q_net;
+
+            for ( i = system->N + 1; i < system->N_cm; ++i )
+            {
+                workspace->b_s[i] = 0.0;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i] = 0.0;
+            }
             break;
 
         default:
@@ -489,7 +506,7 @@ void Init_Lists( reax_system *system, control_params *control,
                  simulation_data *data, static_storage *workspace,
                  list **lists, output_controls *out_control )
 {
-    int i, num_nbrs, num_hbonds, num_bonds, num_3body, Htop;
+    int i, num_nbrs, num_hbonds, num_bonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
@@ -513,7 +530,23 @@ void Init_Lists( reax_system *system, control_params *control,
     Estimate_Storage_Sizes( system, control, lists, &Htop,
             hb_top, bond_top, &num_3body );
 
-    if ( Allocate_Matrix( &(workspace->H), system->N_cm, Htop ) == FAILURE )
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            max_nnz = Htop;
+            break;
+        case EEM_CM:
+            max_nnz = Htop + system->N_cm;
+            break;
+        case ACKS2_CM:
+            max_nnz = 2 * Htop + 3 * system->N + 2;
+            break;
+        default:
+            max_nnz = Htop;
+            break;
+    }
+
+    if ( Allocate_Matrix( &(workspace->H), system->N_cm, max_nnz ) == FAILURE )
     {
         fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -522,7 +555,7 @@ void Init_Lists( reax_system *system, control_params *control,
      *   If so, need to refactor Estimate_Storage_Sizes
      *   to use various cut-off distances as parameters
      *   (non-bonded, hydrogen, 3body, etc.) */
-    if ( Allocate_Matrix( &(workspace->H_sp), system->N_cm, Htop ) == FAILURE )
+    if ( Allocate_Matrix( &(workspace->H_sp), system->N_cm, max_nnz ) == FAILURE )
     {
         fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );

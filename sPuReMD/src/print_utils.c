@@ -838,7 +838,7 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
         {
             //fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
             //Convert 0-based to 1-based (for Matlab)
-            fprintf( f, "%6d%6d %24.15e\n", i+1, A->j[j]+1, A->val[j] );
+            fprintf( f, "%6d %6d %24.15e\n", i+1, A->j[j]+1, A->val[j] );
         }
     }
 
