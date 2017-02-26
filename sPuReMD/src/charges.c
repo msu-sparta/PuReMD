@@ -574,7 +574,7 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
 
 
 /* Diagonal (Jacobi) preconditioner computation */
-static real diag_pre_comp( const reax_system * const system, real * const Hdia_inv )
+static real diag_pre_comp( const sparse_matrix * const H, real * const Hdia_inv )
 {
     unsigned int i;
     real start;
@@ -583,16 +583,9 @@ static real diag_pre_comp( const reax_system * const system, real * const Hdia_i
 
     #pragma omp parallel for schedule(static) \
         default(none) private(i)
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < H->n; ++i )
     {
-        Hdia_inv[i] = 1.0 / system->reaxprm.sbp[system->atoms[i].type].eta;
-    }
-
-    #pragma omp parallel for schedule(static) \
-        default(none) private(i)
-    for ( i = system->N; i < system->N_cm; ++i )
-    {
-        Hdia_inv[i] = 1.0;
+        Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
     }
 
     return Get_Timing_Info( start );
@@ -1485,7 +1478,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     {
     case DIAG_PC:
         data->timing.cm_solver_pre_comp +=
-            diag_pre_comp( system, workspace->Hdia_inv );
+            diag_pre_comp( Hptr, workspace->Hdia_inv );
         break;
 
     case ICHOLT_PC:
@@ -1578,7 +1571,7 @@ static void Compute_Preconditioner_EEM( const reax_system * const system,
     {
     case DIAG_PC:
         data->timing.cm_solver_pre_comp +=
-            diag_pre_comp( system, workspace->Hdia_inv );
+            diag_pre_comp( Hptr, workspace->Hdia_inv );
         break;
 
     case ICHOLT_PC:
@@ -1819,7 +1812,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     {
     case DIAG_PC:
         data->timing.cm_solver_pre_comp +=
-            diag_pre_comp( system, workspace->Hdia_inv );
+            diag_pre_comp( Hptr, workspace->Hdia_inv );
         break;
 
     case ICHOLT_PC:
@@ -2468,9 +2461,9 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
                     workspace->s[0], out_control->log ) + 1;
-        iters += CG( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += CG( workspace, control, workspace->H, workspace->b_t, control->cm_solver_q_err,
                      workspace->t[0], out_control->log ) + 1;
 //            iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
 //                    workspace->L, workspace->U, workspace->s[0], control->cm_solver_pre_app_type,
@@ -2481,9 +2474,9 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case SDM_S:
-        iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
                      workspace->s[0], out_control->log ) + 1;
-        iters += SDM( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += SDM( workspace,control,  workspace->H, workspace->b_t, control->cm_solver_q_err,
                       workspace->t[0], out_control->log ) + 1;
 //            iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
 //                    workspace->L, workspace->U, workspace->s[0], control->cm_solver_pre_app_type,
@@ -2561,12 +2554,12 @@ static void EEM( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], out_control->log ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], out_control->log ) + 1;
         break;
 
@@ -2640,12 +2633,12 @@ static void ACKS2( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], out_control->log ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], out_control->log ) + 1;
         break;
 

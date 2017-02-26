@@ -113,9 +113,6 @@
 #define MAX_dT              4.00
 #define MIN_dT              0.00
 
-#define MAX_ITR             10
-#define RESTART             50
-
 #define ZERO           0.000000000000000e+00
 #define ALMOST_ZERO    1e-10
 #define NEG_INF       -1e10
@@ -530,6 +527,8 @@ typedef struct
     unsigned int charge_method;
     unsigned int cm_solver_type;
     real cm_q_net;
+    unsigned int cm_solver_max_iters;
+    unsigned int cm_solver_restart;
     real cm_solver_q_err;
     real cm_domain_sparsity;
     unsigned int cm_domain_sparsify_enabled;

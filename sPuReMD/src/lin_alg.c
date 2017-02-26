@@ -1177,9 +1177,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 
 /* generalized minimual residual iterative solver for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
-           simulation_data * const data, const sparse_matrix * const H,
-           const real * const b, const real tol, real * const x,
-           const FILE * const fout, const int fresh_pre )
+        simulation_data * const data, const sparse_matrix * const H, const real * const b,
+        const real tol, real * const x, const FILE * const fout, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, ret_temp, bnorm, time_start;
@@ -1214,7 +1213,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         }
 
         /* GMRES outer-loop */
-        for ( itr = 0; itr < MAX_ITR; ++itr )
+        for ( itr = 0; itr < control->cm_solver_max_iters; ++itr )
         {
             /* calculate r0 */
             #pragma omp master
@@ -1295,7 +1294,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
 
             /* GMRES inner-loop */
-            for ( j = 0; j < RESTART && FABS(workspace->g[j]) / bnorm > tol; j++ )
+            for ( j = 0; j < control->cm_solver_restart && FABS(workspace->g[j]) / bnorm > tol; j++ )
             {
                 /* matvec */
                 #pragma omp master
@@ -1501,28 +1500,28 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
     // fprintf(fout,"GMRES outer:%d, inner:%d iters - residual norm: %25.20f\n",
     //          itr, j, fabs( workspace->g[j] ) / bnorm );
-    // data->timing.solver_iters += itr * RESTART + j;
+    // data->timing.solver_iters += itr * control->cm_solver_restart + j;
 
-    if ( g_itr >= MAX_ITR )
+    if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "GMRES convergence failed\n" );
         // return -1;
-        return g_itr * (RESTART + 1) + g_j + 1;
+        return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
     }
 
-    return g_itr * (RESTART + 1) + g_j + 1;
+    return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
 }
 
 
-int GMRES_HouseHolder( const static_storage * const workspace, const control_params * const control,
-                       simulation_data * const data, const sparse_matrix * const H,
-                       const real * const b, real tol, real * const x,
-                       const FILE * const fout, const int fresh_pre )
+int GMRES_HouseHolder( const static_storage * const workspace,
+        const control_params * const control, simulation_data * const data,
+        const sparse_matrix * const H, const real * const b, real tol,
+        real * const x, const FILE * const fout, const int fresh_pre )
 {
     int  i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
-    real v[10000], z[RESTART + 2][10000], w[RESTART + 2];
-    real u[RESTART + 2][10000];
+    real v[10000], z[control->cm_solver_restart + 2][10000], w[control->cm_solver_restart + 2];
+    real u[control->cm_solver_restart + 2][10000];
 
     N = H->n;
     bnorm = Norm( b, N );
@@ -1536,7 +1535,7 @@ int GMRES_HouseHolder( const static_storage * const workspace, const control_par
     // memset( x, 0, sizeof(real) * N );
 
     /* GMRES outer-loop */
-    for ( itr = 0; itr < MAX_ITR; ++itr )
+    for ( itr = 0; itr < control->cm_solver_max_iters; ++itr )
     {
         /* compute z = r0 */
         Sparse_MatVec( H, x, workspace->b_prm );
@@ -1546,7 +1545,7 @@ int GMRES_HouseHolder( const static_storage * const workspace, const control_par
         }
         Vector_Sum( z[0], 1.,  workspace->b_prc, -1., workspace->b_prm, N );
 
-        Vector_MakeZero( w, RESTART + 1 );
+        Vector_MakeZero( w, control->cm_solver_restart + 1 );
         w[0] = Norm( z[0], N );
 
         Vector_Copy( u[0], z[0], N );
@@ -1557,7 +1556,7 @@ int GMRES_HouseHolder( const static_storage * const workspace, const control_par
         // fprintf( stderr, "\n\n%12.6f\n", w[0] );
 
         /* GMRES inner-loop */
-        for ( j = 0; j < RESTART && fabs( w[j] ) / bnorm > tol; j++ )
+        for ( j = 0; j < control->cm_solver_restart && fabs( w[j] ) / bnorm > tol; j++ )
         {
             /* compute v_j */
             Vector_Scale( z[j], -2 * u[j][j], u[j], N );
@@ -1661,7 +1660,7 @@ int GMRES_HouseHolder( const static_storage * const workspace, const control_par
         }
 
         // fprintf( stderr, "y: " );
-        // for( i = 0; i < RESTART+1; ++i )
+        // for( i = 0; i < control->cm_solver_restart+1; ++i )
         //   fprintf( stderr, "%8.3f ", workspace->y[i] );
 
 
@@ -1712,20 +1711,21 @@ int GMRES_HouseHolder( const static_storage * const workspace, const control_par
     //fprintf( fout,"GMRES outer:%d, inner:%d iters - residual norm: %15.10f\n",
     //         itr, j, fabs( workspace->g[j] ) / bnorm );
 
-    if ( itr >= MAX_ITR )
+    if ( itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "GMRES convergence failed\n" );
         // return -1;
-        return itr * (RESTART + 1) + j + 1;
+        return itr * (control->cm_solver_restart + 1) + j + 1;
     }
 
-    return itr * (RESTART + 1) + j + 1;
+    return itr * (control->cm_solver_restart + 1) + j + 1;
 }
 
 
 /* Preconditioned Conjugate Gradient */
-int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
-         sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout )
+int PCG( static_storage *workspace, const control_params * const control,
+        sparse_matrix *A, real *b, real tol,
+        sparse_matrix *L, sparse_matrix *U, real *x, FILE *fout )
 {
     int  i, N;
     real tmp, alpha, beta, b_norm, r_norm;
@@ -1780,8 +1780,9 @@ int PCG( static_storage *workspace, sparse_matrix *A, real *b, real tol,
 
 
 /* Conjugate Gradient */
-int CG( static_storage *workspace, sparse_matrix *H,
-        real *b, real tol, real *x, FILE *fout )
+int CG( const static_storage * const workspace, const control_params * const control,
+        const sparse_matrix * const H, const real * const b, const real tol, real * const x,
+        const FILE * const fout )
 {
     int  i, j, N;
     real tmp, alpha, beta, b_norm;
@@ -1805,7 +1806,7 @@ int CG( static_storage *workspace, sparse_matrix *H,
     // sqrt(sig_new), Norm(workspace->d,N), Norm(workspace->q,N) );
     //fprintf( stderr, "sig_new: %f\n", sig_new );
 
-    for ( i = 0; i < 300 && SQRT(sig_new) / b_norm > tol; ++i )
+    for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig_new) / b_norm > tol; ++i )
     {
         //for( i = 0; i < 300 && sig_new > SQR(tol)*sig0; ++i ) {
         Sparse_MatVec( H, workspace->d, workspace->q );
@@ -1842,8 +1843,9 @@ int CG( static_storage *workspace, sparse_matrix *H,
 
 
 /* Steepest Descent */
-int SDM( static_storage *workspace, sparse_matrix *H,
-         real *b, real tol, real *x, FILE *fout )
+int SDM( const static_storage * const workspace, const control_params * const control,
+        const sparse_matrix * const H, const real * const b, const real tol, real * const x,
+        const FILE * const fout )
 {
     int  i, j, N;
     real tmp, alpha, beta, b_norm;
@@ -1863,7 +1865,7 @@ int SDM( static_storage *workspace, sparse_matrix *H,
     sig = Dot( workspace->r, workspace->d, N );
     sig0 = sig;
 
-    for ( i = 0; i < 300 && SQRT(sig) / b_norm > tol; ++i )
+    for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / b_norm > tol; ++i )
     {
         Sparse_MatVec( H, workspace->d, workspace->q );
 

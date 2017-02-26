@@ -73,6 +73,8 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->charge_method = QEQ_CM;
     control->cm_q_net = 0.0;
     control->cm_solver_type = GMRES_S;
+    control->cm_solver_max_iters = 100;
+    control->cm_solver_restart = 50;
     control->cm_solver_q_err = 0.000001;
     control->cm_domain_sparsify_enabled = FALSE;
     control->cm_domain_sparsity = 1.0;
@@ -256,6 +258,16 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             ival = atoi( tmp[1] );
             control->cm_solver_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_max_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_max_iters = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_restart") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_restart = ival;
         }
         else if ( strcmp(tmp[0], "cm_solver_q_err") == 0 )
         {

@@ -17,10 +17,12 @@ hbond_cutoff            7.50                    ! cutoff distance for hydrogen b
 charge_method          0                        ! charge method: 0 = QEq, 1 = EEM, 2 = ACKS2
 cm_q_net               0.0                      ! net system charge
 cm_solver_type         0                        ! iterative linear solver for charge method: 0 = GMRES, 1 = GMRES_H, 2 = CG, 3 = SDM
+cm_solver_max_iters    20                       ! max solver iterations
+cm_solver_restart      100                      ! inner iterations of GMRES before restarting
 cm_solver_q_err        1e-6                     ! relative residual norm threshold used in solver
 cm_domain_sparsity     1.0                      ! scalar for scaling cut-off distance, used to sparsify charge matrix (between 0.0 and 1.0)
 cm_solver_pre_comp_type           1             ! method used to compute preconditioner, if applicable
-cm_solver_pre_comp_refactor       100           ! number of steps before recomputing preconditioner
+cm_solver_pre_comp_refactor       1000           ! number of steps before recomputing preconditioner
 cm_solver_pre_comp_droptol        0.0           ! threshold tolerance for dropping values in preconditioner computation, if applicable
 cm_solver_pre_comp_sweeps         3             ! number of sweeps used to compute preconditioner (ILU_PAR)
 cm_solver_pre_app_type            1             ! method used to apply preconditioner

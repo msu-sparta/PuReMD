@@ -56,11 +56,13 @@ int GMRES_HouseHolder( const static_storage * const, const control_params * cons
         const real * const, const real, real * const,
         const FILE * const, const int );
 
-int CG( static_storage*, sparse_matrix*,
-        real*, real, real*, FILE* );
+int CG( const static_storage * const, const control_params * const,
+        const sparse_matrix * const, const real * const, const real, real * const,
+        const FILE * const );
 
-int SDM( static_storage*, sparse_matrix*,
-         real*, real, real*, FILE* );
+int SDM( const static_storage * const, const control_params * const,
+        const sparse_matrix * const, const real * const, const real, real * const,
+        const FILE * const );
 
 real condest( const sparse_matrix * const, const sparse_matrix * const );
 

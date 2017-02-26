@@ -266,7 +266,7 @@ void Init_Taper( control_params *control )
 
 
 void Init_Workspace( reax_system *system, control_params *control,
-                     static_storage *workspace )
+        static_storage *workspace )
 {
     int i;
 
@@ -406,18 +406,18 @@ void Init_Workspace( reax_system *system, control_params *control,
         /* GMRES storage */
         case GMRES_S:
         case GMRES_H_S:
-            workspace->y  = (real *)  calloc( RESTART + 1, sizeof( real ) );
-            workspace->z  = (real *)  calloc( RESTART + 1, sizeof( real ) );
-            workspace->g  = (real *)  calloc( RESTART + 1, sizeof( real ) );
-            workspace->h  = (real **) calloc( RESTART + 1, sizeof( real*) );
-            workspace->hs = (real *)  calloc( RESTART + 1, sizeof( real ) );
-            workspace->hc = (real *)  calloc( RESTART + 1, sizeof( real ) );
-            workspace->rn = (real **) calloc( RESTART + 1, sizeof( real*) );
-            workspace->v  = (real **) calloc( RESTART + 1, sizeof( real*) );
+            workspace->y  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->z  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->g  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->h  = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
+            workspace->hs = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->hc = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->rn = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
+            workspace->v  = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
 
-            for ( i = 0; i < RESTART + 1; ++i )
+            for ( i = 0; i < control->cm_solver_restart + 1; ++i )
             {
-                workspace->h[i]  = (real *) calloc( RESTART + 1, sizeof( real ) );
+                workspace->h[i]  = (real *) calloc( control->cm_solver_restart + 1, sizeof( real ) );
                 workspace->rn[i] = (real *) calloc( system->N_cm * 2, sizeof( real ) );
                 workspace->v[i]  = (real *) calloc( system->N_cm, sizeof( real ) );
             }
