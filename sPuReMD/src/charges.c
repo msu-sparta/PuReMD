@@ -585,7 +585,14 @@ static real diag_pre_comp( const sparse_matrix * const H, real * const Hdia_inv 
         default(none) private(i)
     for ( i = 0; i < H->n; ++i )
     {
-        Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
+        if ( H->val[H->start[i + 1] - 1] != 0.0 )
+        {
+            Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
+        }
+        else
+        {
+            Hdia_inv[i] = 1.0;
+        }
     }
 
     return Get_Timing_Info( start );
@@ -2606,13 +2613,6 @@ static void ACKS2( reax_system * const system, control_params * const control,
     }
 
 //   Print_Linear_System( system, control, workspace, data->step );
-//    Print_Sparse_Matrix2( workspace->H, "H_0.out" );
-//    Print_Sparse_Matrix2( workspace->L, "L_0.out" );
-//    Print_Sparse_Matrix2( workspace->U, "U_0.out" );
-//    FILE * fp = fopen( "b.out", "w" );
-//    Vector_Print( fp, "b.out", workspace->b_s, system->N_cm );
-//    fclose( fp );
-//    exit(0);
 
     Extrapolate_Charges_EEM( system, control, data, workspace );
 
@@ -2663,6 +2663,16 @@ void Compute_Charges( reax_system * const system, control_params * const control
                       const list * const far_nbrs, const output_controls * const out_control )
 {
     int i;
+//    char fname[200];
+//    FILE * fp;
+
+//    if ( data->step == 10 || data->step == 50 || data->step == 100 )
+//    {
+//        sprintf( fname, "s_%d_%s.out", data->step, control->sim_name );
+//        fp = fopen( fname, "w" );
+//        Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
+//        fclose( fp );
+//    }
 
     switch ( control->charge_method )
     {
@@ -2683,4 +2693,14 @@ void Compute_Charges( reax_system * const system, control_params * const control
         exit( INVALID_INPUT );
         break;
     }
+
+//    if ( data->step == 0 )
+//    {
+//        sprintf( fname, "H_%d_%s.out", data->step, control->sim_name );
+//        Print_Sparse_Matrix2( workspace->H, fname );
+//
+//        sprintf( fname, "b_%d_%s.out", data->step, control->sim_name );
+//        fp = fopen( fname, "w" );
+//        Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
+//    }
 }

@@ -118,12 +118,15 @@ void Vector_Print( FILE * const fout, const char * const vname, const real * con
 {
     unsigned int i;
 
-    fprintf( fout, "%s:\n", vname );
+    if ( vname != NULL )
+    {
+        fprintf( fout, "%s:\n", vname );
+    }
+
     for ( i = 0; i < k; ++i )
     {
         fprintf( fout, "%24.15e\n", v[i] );
     }
-    fprintf( fout, "\n" );
 }
 
 

@@ -32,24 +32,32 @@ class TestCase():
                     r'(?P<key>nsteps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'tabulate_long_range': lambda l, x: sub(
                     r'(?P<key>tabulate_long_range\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'qeq_solver_type': lambda l, x: sub(
-                    r'(?P<key>qeq_solver_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'qeq_solver_q_err': lambda l, x: sub(
-                    r'(?P<key>qeq_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'qeq_domain_sparsity': lambda l, x: sub(
-                    r'(?P<key>qeq_domain_sparsity\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'pre_comp_type': lambda l, x: sub(
-                    r'(?P<key>pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'pre_comp_droptol': lambda l, x: sub(
-                    r'(?P<key>pre_comp_droptol\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'pre_comp_refactor': lambda l, x: sub(
-                    r'(?P<key>pre_comp_refactor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'pre_comp_sweeps': lambda l, x: sub(
-                    r'(?P<key>pre_comp_sweeps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'pre_app_type': lambda l, x: sub(
-                    r'(?P<key>pre_app_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'pre_app_jacobi_iters': lambda l, x: sub(
-                    r'(?P<key>pre_app_jacobi_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'charge_method': lambda l, x: sub(
+                    r'(?P<key>charge_method\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_q_net': lambda l, x: sub(
+                    r'(?P<key>cm_q_net\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_type': lambda l, x: sub(
+                    r'(?P<key>cm_solver_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_max_iters': lambda l, x: sub(
+                    r'(?P<key>cm_solver_max_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_restart': lambda l, x: sub(
+                    r'(?P<key>cm_solver_restart\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_q_err': lambda l, x: sub(
+                    r'(?P<key>cm_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_domain_sparsity': lambda l, x: sub(
+                    r'(?P<key>cm_domain_sparsity\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_pre_comp_type': lambda l, x: sub(
+                    r'(?P<key>cm_solver_pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_pre_comp_droptol': lambda l, x: sub(
+                    r'(?P<key>cm_solver_pre_comp_droptol\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_pre_comp_refactor': lambda l, x: sub(
+                    r'(?P<key>cm_solver_pre_comp_refactor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_pre_comp_sweeps': lambda l, x: sub(
+                    r'(?P<key>cm_solver_pre_comp_sweeps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_pre_app_type': lambda l, x: sub(
+                    r'(?P<key>cm_solver_pre_app_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_pre_app_jacobi_iters': lambda l, x: sub(
+                    r'(?P<key>cm_solver_pre_app_jacobi_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'geo_format': lambda l, x: sub(
                     r'(?P<key>geo_format\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
         }
@@ -88,15 +96,16 @@ class TestCase():
         for p in product(*[self.__params[k] for k in self.__param_names]):
             param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
             param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
+                + '_cm' + param_dict['charge_method'] \
                 + '_s' + param_dict['nsteps'] \
-		+ '_q' + param_dict['qeq_solver_type'] \
- 		+ '_qtol' + param_dict['qeq_solver_q_err'] \
- 		+ '_qds' + param_dict['qeq_domain_sparsity'] \
-                + '_pc' + param_dict['pre_comp_type'] \
-                + '_pctol' + param_dict['pre_comp_droptol'] \
-                + '_pcs' + param_dict['pre_comp_sweeps'] \
-                + '_pa' + param_dict['pre_app_type'] \
-                + '_paji' + param_dict['pre_app_jacobi_iters'] \
+		+ '_q' + param_dict['cm_solver_type'] \
+ 		+ '_qtol' + param_dict['cm_solver_q_err'] \
+ 		+ '_qds' + param_dict['cm_domain_sparsity'] \
+                + '_pc' + param_dict['cm_solver_pre_comp_type'] \
+                + '_pctol' + param_dict['cm_solver_pre_comp_droptol'] \
+                + '_pcs' + param_dict['cm_solver_pre_comp_sweeps'] \
+                + '_pa' + param_dict['cm_solver_pre_app_type'] \
+                + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
 		+ '_t' + param_dict['threads']
 
 
@@ -128,7 +137,7 @@ class TestCase():
 
     def _process_result(self, fout, param):
         time = 0.
-        qeq = 0.
+        cm = 0.
         iters = 0.
         pre_comp = 0.
         pre_app = 0.
@@ -143,7 +152,7 @@ class TestCase():
             for line in fp:
                 line = line.split()
                 try:
-                    qeq = qeq + float(line[6])
+                    cm = cm + float(line[6])
                     iters = iters + float(line[8])
                     pre_comp = pre_comp + float(line[9])
                     pre_app = pre_app + float(line[10])
@@ -159,7 +168,7 @@ class TestCase():
                         pass
             cnt = cnt - 1
             if cnt > 0:
-                qeq = qeq / cnt
+                cm = cm / cnt
                 iters = iters / cnt
                 pre_comp = pre_comp / cnt
                 pre_app = pre_app / cnt
@@ -167,10 +176,10 @@ class TestCase():
 
         if cnt == int(param['nsteps']):
             fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-                param['nsteps'], param['qeq_solver_type'], param['qeq_solver_q_err'], param['qeq_domain_sparsity'],
-                param['pre_comp_type'], param['pre_comp_droptol'], param['pre_comp_sweeps'],
-                param['pre_app_type'], param['pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
-                qeq, param['threads'], time))
+                param['nsteps'], param['cm_solver_type'], param['cm_solver_q_err'], param['cm_domain_sparsity'],
+                param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'], param['cm_solver_pre_comp_sweeps'],
+                param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
+                cm, param['threads'], time))
         else:
             print('**WARNING: nsteps not correct in file {0}...'.format(log_file))
         fout.flush()
@@ -205,22 +214,26 @@ if __name__ == '__main__':
 
     header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
     header_str = ['Data Set', 'Steps', 'QType', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
-            'Pre App', 'Iters', 'SpMV', 'QEq', 'Thd', 'Time (s)']
+            'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
     body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
 
     params = {
             'ensemble_type': ['0'],
             'nsteps': ['20'],
             'tabulate_long_range': ['0'],
-            'qeq_solver_type': ['0'],
-            'qeq_solver_q_err': ['1e-6'],
-            'qeq_domain_sparsity': ['1.0'],
-            'pre_comp_type': ['2'],
-            'pre_comp_refactor': ['100'],
-            'pre_comp_droptol': ['0.0'],
-            'pre_comp_sweeps': ['3'],
-            'pre_app_type': ['2'],
-            'pre_app_jacobi_iters': ['30'],
+            'charge_method': ['0'],
+            'cm_q_net': ['0.0'],
+            'cm_solver_type': ['0'],
+            'cm_solver_max_iters': ['20'],
+            'cm_solver_restart': ['100'],
+            'cm_solver_q_err': ['1e-6'],
+            'cm_domain_sparsity': ['1.0'],
+            'cm_solver_pre_comp_type': ['2'],
+            'cm_solver_pre_comp_refactor': ['100'],
+            'cm_solver_pre_comp_droptol': ['0.0'],
+            'cm_solver_pre_comp_sweeps': ['3'],
+            'cm_solver_pre_app_type': ['2'],
+            'cm_solver_pre_app_jacobi_iters': ['30'],
             'threads': ['1'],
             'geo_format': [],
     }
