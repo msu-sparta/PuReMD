@@ -143,7 +143,7 @@ then
 			cuModuleLoad(&cuModule, "myModule.cubin");
 			CUdeviceptr devPtr;
 			CUfunction cuFunction;
-			unsigned pitch, width = 250, height = 500;
+			size_t pitch, width = 250, height = 500;
 			cuMemAllocPitch(&devPtr, &pitch,width * sizeof(float), height, 4);
 			cuModuleGetFunction(&cuFunction, cuModule, "myKernel");
 			cuFuncSetBlockShape(cuFunction, 512, 1, 1);

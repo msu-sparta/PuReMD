@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.69])
 
-AC_INIT([Purdue Molecular Dynamics Suite], [1.0], [ohearnku@msu.edu hma@msu.edu])
+AC_INIT([PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
 : ${CFLAGS=""}
 AM_INIT_AUTOMAKE([1.15 -Wall -Werror])
 # Enable silent build rules by default.
