@@ -355,11 +355,19 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         my_sum[0] += workspace->x[i][0];
         my_sum[1] += workspace->x[i][1];
     }
+
+#if defined(DEBUG)
     fprintf (stderr, "Host : my_sum[0]: %f and %f \n", my_sum[0], my_sum[1]);
+#endif
+
     MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
 
     u = all_sum[0] / all_sum[1];
+
+#if defined(DEBUG)
     fprintf (stderr, "Host : u: %f \n", u);
+#endif
+
     for ( i = 0; i < system->n; ++i )
     {
         atom = &( system->my_atoms[i] );

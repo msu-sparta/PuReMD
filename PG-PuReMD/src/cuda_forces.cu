@@ -30,7 +30,14 @@ extern "C" int  Make_List( int, int, int, reax_list*);
 extern "C" void Delete_List( reax_list*);
 
 
-CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms, 
+
+CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params *control )
+{
+    control->hbond_cut = 0.0;
+}
+
+
+CUDA_GLOBAL void k_estimate_storages (reax_atom *my_atoms, 
         single_body_parameters *sbp, 
         two_body_parameters *tbp,
         control_params *control,
@@ -105,7 +112,7 @@ CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms,
                     && (i > n)
                )
             {
-                atomicAdd (&hb_top [i], 1);
+                atomicAdd( &hb_top[i], 1 );
             }
 
             if (i >= n)
@@ -145,14 +152,14 @@ CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms,
                     if( (ihb == 1) && (jhb == 2))
                     {
                         //++hb_top[i];
-                        atomicAdd (&hb_top[i], 1);
+                        atomicAdd( &hb_top[i], 1 );
                     }
                     //else if( j < n && ihb == 2 && jhb == 1 )
                     //else if( ihb == 2 && jhb == 1 && j < n)
                     else if( ihb == 2 && jhb == 1 && j < n)
                     {
                         //++hb_top[j];
-                        atomicAdd (&hb_top[i], 1);
+                        atomicAdd( &hb_top[i], 1 );
                     }
                 }
             }
@@ -195,7 +202,7 @@ CUDA_GLOBAL void ker_estimate_storages (reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void ker_init_system_atoms(reax_atom *my_atoms, int N, 
+CUDA_GLOBAL void k_init_system_atoms(reax_atom *my_atoms, int N, 
         int *hb_top, int *bond_top)
 {
     int i;
@@ -242,7 +249,7 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
    
     blocks = (int) CEIL((real)system->N / ST_BLOCK_SIZE);
 
-    ker_estimate_storages <<< blocks, ST_BLOCK_SIZE>>>
+    k_estimate_storages <<< blocks, ST_BLOCK_SIZE>>>
         (system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
          (control_params *)control->d_control_params, *(*dev_lists + FAR_NBRS), system->reax_param.num_atom_types,
          system->n, system->N, system->Hcap, system->total_cap, 
@@ -284,7 +291,7 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
             min_hbonds = hb_top[i];
         }
 
-        hbond_count += hb_top [i];
+        hbond_count += hb_top[i];
     }
     system->max_hbonds = max_hbonds * SAFER_ZONE;
 
@@ -296,7 +303,14 @@ void Cuda_Estimate_Storages(reax_system *system, control_params *control,
             system->my_rank, min_bonds, max_bonds, min_hbonds, max_hbonds);
 #endif
 
-    ker_init_system_atoms <<<blocks, ST_BLOCK_SIZE>>>
+    // if number of hydrogen atoms is 0, disable hydrogen bond functionality
+    if ( hbond_count == 0 )
+    {
+        control->hbond_cut = 0.0;
+        k_disable_hydrogen_bonding <<<1,1>>> ( (control_params *)control->d_control_params );
+    }
+
+    k_init_system_atoms <<<blocks, ST_BLOCK_SIZE>>>
         (system->d_my_atoms, system->N, d_hb_top, d_bond_top );
 
     cudaThreadSynchronize();
@@ -345,7 +359,7 @@ CUDA_DEVICE real Compute_tabH( LR_lookup_table *t_LR, real r_ij, int ti, int tj,
 }
 
 
-CUDA_GLOBAL void ker_estimate_sparse_matrix (reax_atom *my_atoms, control_params *control, 
+CUDA_GLOBAL void k_estimate_sparse_matrix (reax_atom *my_atoms, control_params *control, 
         reax_list p_far_nbrs, int n, int N, int renbr, int *indices)
 {
     int i, j, pj;
@@ -459,7 +473,7 @@ int Cuda_Estimate_Sparse_Matrix (reax_system *system, control_params *control,
     //TODO
     //TODO
     //TODO
-    ker_estimate_sparse_matrix  <<< blocks, DEF_BLOCK_SIZE >>>
+    k_estimate_sparse_matrix  <<< blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, (control_params *)control->d_control_params, 
          *(*dev_lists + FAR_NBRS), system->n, system->N, 
          (((data->step-data->prev_steps) % control->reneighbor) == 0), indices);
@@ -483,7 +497,7 @@ int Cuda_Estimate_Sparse_Matrix (reax_system *system, control_params *control,
 }
 
 
-CUDA_GLOBAL void ker_init_forces (reax_atom *my_atoms, single_body_parameters *sbp, 
+CUDA_GLOBAL void k_init_forces (reax_atom *my_atoms, single_body_parameters *sbp, 
         two_body_parameters *tbp, storage workspace, 
         control_params *control, 
         reax_list far_nbrs, reax_list bonds, reax_list hbonds, 
@@ -555,7 +569,7 @@ CUDA_GLOBAL void ker_init_forces (reax_atom *my_atoms, single_body_parameters *s
     }
     //CHANGE ORIGINAL
 
-    if( control->hbond_cut > 0 ) {
+    if( control->hbond_cut > 0.0 ) {
         ihb = sbp_i->p_hbond;
         //CHANGE ORIGINAL
         if( ihb == 1  || ihb == 2) {
@@ -756,7 +770,7 @@ CUDA_GLOBAL void ker_init_forces (reax_atom *my_atoms, single_body_parameters *s
 }
 
 
-CUDA_GLOBAL void ker_init_bond_mark (int offset, int n, int *bond_mark)
+CUDA_GLOBAL void k_init_bond_mark (int offset, int n, int *bond_mark)
 {
     int i;
 
@@ -848,7 +862,7 @@ CUDA_GLOBAL void New_fix_sym_hbond_indices (reax_atom *my_atoms, reax_list hbond
 
 ////////////////////////
 // HBOND ISSUE
-CUDA_GLOBAL void ker_update_bonds (reax_atom *my_atoms, 
+CUDA_GLOBAL void k_update_bonds (reax_atom *my_atoms, 
         reax_list bonds, 
         int n)
 {
@@ -860,7 +874,7 @@ CUDA_GLOBAL void ker_update_bonds (reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void ker_update_hbonds (reax_atom *my_atoms, 
+CUDA_GLOBAL void k_update_hbonds (reax_atom *my_atoms, 
         reax_list hbonds,
         int n)
 {
@@ -894,7 +908,7 @@ int Cuda_Validate_Lists (reax_system *system, storage *workspace, reax_list **li
     blocks = system->n / DEF_BLOCK_SIZE + 
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    ker_update_bonds <<< blocks, DEF_BLOCK_SIZE >>>
+    k_update_bonds <<< blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, *(*lists + BONDS), 
          system->n);
     cudaThreadSynchronize ();
@@ -904,7 +918,7 @@ int Cuda_Validate_Lists (reax_system *system, storage *workspace, reax_list **li
     // HBOND ISSUE
     //FIX - 4 - Added this check for hydrogen bond issue
     if ((control->hbond_cut > 0) && (system->numH > 0)){
-        ker_update_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
+        k_update_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
             (system->d_my_atoms, *(*lists + HBONDS), 
              system->n);
         cudaThreadSynchronize ();
@@ -1084,7 +1098,7 @@ int Cuda_Validate_Lists (reax_system *system, storage *workspace, reax_list **li
 }
 
 
-CUDA_GLOBAL void ker_init_bond_orders (reax_atom *my_atoms, 
+CUDA_GLOBAL void k_init_bond_orders (reax_atom *my_atoms, 
         reax_list far_nbrs, 
         reax_list bonds, 
         real *total_bond_order, 
@@ -1114,7 +1128,7 @@ CUDA_GLOBAL void ker_init_bond_orders (reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void ker_bond_mark (reax_list p_bonds, storage p_workspace, int N)
+CUDA_GLOBAL void k_bond_mark (reax_list p_bonds, storage p_workspace, int N)
 {
     reax_list *bonds = &( p_bonds );
     storage *workspace = &( p_workspace );
@@ -1153,7 +1167,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
        blocks = (system->N - system->n) / DEF_BLOCK_SIZE + 
        (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-       ker_init_bond_mark <<< blocks, DEF_BLOCK_SIZE >>>
+       k_init_bond_mark <<< blocks, DEF_BLOCK_SIZE >>>
        (system->n, (system->N - system->n), dev_workspace->bond_mark);
        cudaThreadSynchronize ();
        cudaCheckError ();
@@ -1165,14 +1179,14 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         (((system->N % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
     //fprintf (stderr, " Total atoms: %d, blocks: %d \n", system->N, init_blocks );
 
-    //    ker_init_bond_orders <<<init_blocks, DEF_BLOCK_SIZE >>>
+    //    k_init_bond_orders <<<init_blocks, DEF_BLOCK_SIZE >>>
     //            ( system->d_my_atoms, *(*dev_lists + FAR_NBRS), *(*dev_lists + BONDS), 
     //                dev_workspace->total_bond_order, system->N);
     //    cudaThreadSynchronize ();
     //    cudaCheckError ();
     //    fprintf (stderr, " DONE WITH VALIDATION \n");
 
-    ker_init_forces <<<init_blocks, DEF_BLOCK_SIZE >>>
+    k_init_forces <<<init_blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, system->reax_param.d_sbp, 
          system->reax_param.d_tbp, *dev_workspace, 
          (control_params *)control->d_control_params, 
@@ -1207,9 +1221,9 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
     //update bond_mark
-    //ker_bond_mark <<< init_blocks, DEF_BLOCK_SIZE>>>
+    //k_bond_mark <<< init_blocks, DEF_BLOCK_SIZE>>>
     /*
-       ker_bond_mark <<< 1, 1>>>
+       k_bond_mark <<< 1, 1>>>
        ( *(*dev_lists + BONDS), *dev_workspace, system->N);
        cudaThreadSynchronize ();
        cudaCheckError ();

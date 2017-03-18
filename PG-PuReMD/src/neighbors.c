@@ -156,7 +156,9 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                 }
             }
 
+#if defined(DEBUG)
     fprintf (stderr, " HOST NEIGHBOR COUNT: %d \n", num_far );
+#endif
 
     workspace->realloc.num_far = num_far;
 
@@ -214,8 +216,15 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
                 for ( l = g->str[index_grid_3d (i, j, k, g)]; l < g->end[index_grid_3d (i, j, k, g)]; ++l )
                 {
                     atom1 = &(system->my_atoms[l]);
-                    if (l == 0) fprintf (stderr, "atom 0 has (%d %d %d) (%f %f %f) \n",
-                                             i, j, k, atom1->x[0], atom1->x[1], atom1->x[2]);
+
+#if defined(DEBUG)
+                    if (l == 0)
+                    {
+                        fprintf (stderr, "atom 0 has (%d %d %d) (%f %f %f) \n",
+                                i, j, k, atom1->x[0], atom1->x[1], atom1->x[2]);
+                    }
+#endif
+
                     //fprintf( stderr, "\tatom %d: ", l );
                     //tmp = num_far; tested = 0;
                     itr = 0;
@@ -251,7 +260,9 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
                 }
             }
 
+#if defined(DEBUG)
     fprintf (stderr, "Total number of host neighbors: %d \n", num_far);
+#endif
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: estimate nbrs done - num_far=%d\n",

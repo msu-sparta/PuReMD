@@ -378,8 +378,11 @@ int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_li
 
     //update the current step max_sp_entries;
     realloc->Htop = max_sp_entries;
+
+#if defined(DEBUG)
     fprintf (stderr, "p:%d - MPI-Not-GPU Reallocate: Total H matrix entries: %d, cap: %d, used: %d \n",
              system->my_rank, workspace->H.n, workspace->H.m, total_sp_entries);
+#endif
 
     if (total_sp_entries >= workspace->H.m)
     {
@@ -443,8 +446,11 @@ int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_li
         {
             if (end_index[i] - index[i] >= system->max_bonds)
             {
+#if defined(DEBUG)
                 fprintf( stderr, "MPI-Not-GPU step%d-bondchk failed: i=%d start(i)=%d end(i)=%d max_bonds=%d\n",
                          step, i, index[i], end_index[i], system->max_bonds);
+#endif
+
                 return FAILURE;
             }
             if (end_index[i] - index[i] >= max_bonds)

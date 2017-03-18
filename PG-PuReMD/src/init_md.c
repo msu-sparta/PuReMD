@@ -154,24 +154,34 @@ int Init_System( reax_system *system, control_params *control,
     Reorder_My_Atoms( system, workspace );
 
     /* estimate N and total capacity */
-    for ( i = 0; i < MAX_NBRS; ++i ) nrecv[i] = 0;
+    for ( i = 0; i < MAX_NBRS; ++i )
+    {
+        nrecv[i] = 0;
+    }
     MPI_Barrier( MPI_COMM_WORLD );
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
-                          Estimate_Boundary_Atoms, Unpack_Estimate_Message, 1 );
+            Estimate_Boundary_Atoms, Unpack_Estimate_Message, 1 );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
 
     /* estimate numH and Hcap */
-
     system->numH = 0;
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
+    {
         for ( i = 0; i < system->n; ++i )
         {
             atom = &(system->my_atoms[i]);
+
             if ( system->reax_param.sbp[ atom->type ].p_hbond == 1 )
+            {
                 atom->Hindex = system->numH++;
-            else atom->Hindex = -1;
+            }
+            else
+            {
+                atom->Hindex = -1;
+            }
         }
+    }
     //Tried fix
     //system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
     system->Hcap = MAX( system->n * SAFER_ZONE, MIN_CAP );
@@ -179,7 +189,7 @@ int Init_System( reax_system *system, control_params *control,
 // Sudhir-style below
 /*
     system->numH = 0;
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
         for ( i = 0; i < system->n; ++i )
         {
             atom = &(system->my_atoms[i]);
@@ -253,7 +263,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 
     /* estimate numH and Hcap */
     system->numH = 0;
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
         //TODO
         //for( i = 0; i < system->n; ++i ) {
         for ( i = 0; i < system->N; ++i )
@@ -778,7 +788,7 @@ int  Init_Lists( reax_system *system, control_params *control,
              (int)(Htop * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
 #endif
 
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
     {
         // init H indexes
         total_hbonds = 0;
@@ -880,7 +890,6 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
     int total_hbonds, total_bonds, bond_cap, num_3body, cap_3body, Htop;
     int *hb_top, *bond_top;
     int nrecv[MAX_NBRS];
-
     int *nbr_indices = (int *) host_scratch;
 
     //num_nbrs = Estimate_NumNeighbors( system, lists );
@@ -890,19 +899,23 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
     //fprintf (stderr, "atom: %d -- %d \n", i, nbr_indices[i]);
 
     for (i = 0; i < system->N; i++)
-        num_nbrs += nbr_indices [i] ;
+    {
+        num_nbrs += nbr_indices [i];
+    }
 
     //fprintf (stderr, "DEVICE Total Neighbors: %d (%d)\n", num_nbrs, (int)(num_nbrs*SAFE_ZONE));
 
     for (i = 0; i < system->N; i++)
+    {
         nbr_indices[i] = MAX (nbr_indices [i] * SAFER_ZONE, MIN_NBRS);
+    }
 
     num_nbrs = 0;
-    num_nbrs += nbr_indices [0] ;
+    num_nbrs += nbr_indices[0];
     for (i = 1; i < system->N; i++)
     {
-        num_nbrs += nbr_indices [i] ;
-        nbr_indices [i] += nbr_indices [i - 1];
+        num_nbrs += nbr_indices[i];
+        nbr_indices[i] += nbr_indices[i - 1];
     }
 
     //fprintf (stderr, "DEVICE total neighbors entries: %d \n", nbr_indices [system->N - 1] );
@@ -928,7 +941,6 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
     hb_top = (int*) calloc( system->total_cap, sizeof(int) );
     Cuda_Estimate_Storages( system, control, lists, system->local_cap, system->total_cap,
                             &Htop, hb_top, bond_top, &num_3body );
-
 
     //TODO - CARVER FIX
     //TODO - CARVER FIX
@@ -965,7 +977,7 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
 #endif
 
     // FIX - 4 - Added addition check here for hydrogen Bonds
-    if (( control->hbond_cut > 0 ) && (system->numH))
+    if (( control->hbond_cut > 0.0 ) && ( system->numH > 0 ))
     {
         /* init H indexes */
         total_hbonds = 0;
@@ -978,7 +990,10 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
             //TODO
             hb_top [i] = MAX( hb_top[i] * 4, MIN_HBONDS * 4);
             total_hbonds += hb_top[i];
-            if (hb_top [i] > 0) count ++;
+            if (hb_top [i] > 0)
+            {
+                ++count;
+            }
         }
         total_hbonds = MAX( total_hbonds, MIN_CAP * MIN_HBONDS );
 

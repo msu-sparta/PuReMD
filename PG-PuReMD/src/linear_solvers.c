@@ -238,7 +238,11 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
         }
         matvecs = CG( system, workspace, H, workspace->b_t, tol, workspace->t,
                       mpi_data, fout );
+
+#if defined(DEBUG)
         fprintf (stderr, " CG1: iterations --> %d \n", matvecs );
+#endif
+
         for ( j = 0; j < n; ++j )
         {
             workspace->x[j][1] = workspace->t[j];
@@ -252,7 +256,11 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
         }
         matvecs = CG( system, workspace, H, workspace->b_s, tol, workspace->s,
                       mpi_data, fout );
+
+#if defined(DEBUG)
         fprintf (stderr, " CG2: iterations --> %d \n", matvecs );
+#endif
+
         for ( j = 0; j < system->n; ++j )
         {
             workspace->x[j][0] = workspace->s[j];
