@@ -19,52 +19,44 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __LIST_H_
-#define __LIST_H_
+#ifndef __DEV_LIST_H_
+#define __DEV_LIST_H_
 
-#include "reax_types.h"
 #include "reax_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int  Dev_Make_List( int, int, int, reax_list*);
-void Dev_Delete_List( reax_list*);
+int Dev_Make_List( int, int, int, reax_list* );
+void Dev_Delete_List( reax_list* );
 
 #ifdef __cplusplus
 }
 #endif
 
-/*
-CUDA_HOST_DEVICE int  Dev_Num_Entries(int,reax_list*);
-CUDA_HOST_DEVICE int  Dev_Start_Index( int, reax_list* );
-CUDA_HOST_DEVICE int  Dev_End_Index( int, reax_list* );
-CUDA_HOST_DEVICE void Dev_Set_Start_Index(int,int,reax_list*);
-CUDA_HOST_DEVICE void Dev_Set_End_Index(int,int,reax_list*);
-*/
 
-inline CUDA_HOST_DEVICE int Dev_Num_Entries( int i, reax_list *l )
+static inline CUDA_HOST_DEVICE int Dev_Num_Entries( int i, reax_list *l )
 {
     return l->end_index[i] - l->index[i];
 }
 
-inline CUDA_HOST_DEVICE int Dev_Start_Index( int i, reax_list *l )
+static inline CUDA_HOST_DEVICE int Dev_Start_Index( int i, reax_list *l )
 {
     return l->index[i];
 }
 
-inline CUDA_HOST_DEVICE int Dev_End_Index( int i, reax_list *l )
+static inline CUDA_HOST_DEVICE int Dev_End_Index( int i, reax_list *l )
 {
     return l->end_index[i];
 }
 
-inline CUDA_HOST_DEVICE void Dev_Set_Start_Index( int i, int val, reax_list *l )
+static inline CUDA_HOST_DEVICE void Dev_Set_Start_Index( int i, int val, reax_list *l )
 {
     l->index[i] = val;
 }
 
-inline CUDA_HOST_DEVICE void Dev_Set_End_Index( int i, int val, reax_list *l )
+static inline CUDA_HOST_DEVICE void Dev_Set_End_Index( int i, int val, reax_list *l )
 {
     l->end_index[i] = val;
 }

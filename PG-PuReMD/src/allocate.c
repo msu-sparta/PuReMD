@@ -21,18 +21,24 @@
 
 #include "reax_types.h"
 #include "index_utils.h"
+
 #if defined(PURE_REAX)
-#include "allocate.h"
-#include "list.h"
-#include "reset_tools.h"
-#include "tool_box.h"
-#include "vector.h"
+  #include "allocate.h"
+  #include "list.h"
+  #include "reset_tools.h"
+  #include "tool_box.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_allocate.h"
-#include "reax_list.h"
-#include "reax_reset_tools.h"
-#include "reax_tool_box.h"
-#include "reax_vector.h"
+  #include "reax_allocate.h"
+  #include "reax_list.h"
+  #include "reax_reset_tools.h"
+  #include "reax_tool_box.h"
+  #include "reax_vector.h"
+#endif
+
+#ifdef HAVE_CUDA
+  #include "dev_alloc.h"
+  #include "dev_list.h"
 #endif
 
 
@@ -390,7 +396,7 @@ int Allocate_Workspace( reax_system *system, control_params *control,
 
 void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 {
-    Delete_List( far_nbrs);
+    Delete_List( far_nbrs );
 
     if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs))
     {
@@ -403,9 +409,9 @@ void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 #ifdef HAVE_CUDA
 void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 {
-    Dev_Delete_List( far_nbrs);
+    Dev_Delete_List( far_nbrs );
 
-    if (!Dev_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs))
+    if (!Dev_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs ))
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
@@ -431,6 +437,7 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m )
   return SUCCESS;
 }
 */
+
 
 int Allocate_Matrix( sparse_matrix *H, int cap, int m )
 {
@@ -458,13 +465,14 @@ void Deallocate_Matrix( sparse_matrix *H )
 }
 
 
-int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
+static int Reallocate_Matrix( sparse_matrix *H, int n, int m, char *name )
 {
-    Deallocate_Matrix( *H );
+    Deallocate_Matrix( H );
+
     if ( !Allocate_Matrix( H, n, m ) )
     {
         fprintf(stderr, "not enough space for %s matrix. terminating!\n", name);
-        exit( 1 );
+        exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -472,6 +480,7 @@ int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
     fprintf( stderr, "memory allocated: %s = %dMB\n",
              name, (int)(m * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
 #endif
+
     return SUCCESS;
 }
 
@@ -500,10 +509,11 @@ int Reallocate_HBonds_List( reax_system *system, reax_list *hbonds )
     return total_hbonds;
 }
 
+
 #ifdef HAVE_CUDA
 int Cuda_Reallocate_HBonds_List( int n, int num_intrs, reax_list *hbonds )
 {
-    Dev_Delete_List( hbonds);
+    Dev_Delete_List( hbonds );
     if ( !Dev_Make_List( n, num_intrs, TYP_HBOND, hbonds) )
     {
         fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
@@ -512,6 +522,7 @@ int Cuda_Reallocate_HBonds_List( int n, int num_intrs, reax_list *hbonds )
     return SUCCESS;
 }
 #endif
+
 
 int Reallocate_Bonds_List( reax_system *system, reax_list *bonds,
                            int *total_bonds, int *est_3body )
@@ -537,6 +548,7 @@ int Reallocate_Bonds_List( reax_system *system, reax_list *bonds,
 
     return SUCCESS;
 }
+
 
 #ifdef HAVE_CUDA
 int Cuda_Reallocate_Bonds_List( int n, int num_intrs, reax_list *bonds)
@@ -594,7 +606,7 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
 #endif
         //SUDHIR
         //gc = &( g->cells[c[0]][c[1]][c[2]] );
-        gc = &( g->cells[ index_grid_3d (c[0], c[1], c[2], g) ] );
+        gc = &( g->cells[ index_grid_3d(c[0], c[1], c[2], g) ] );
         gc->top++;
     }
 
@@ -713,6 +725,7 @@ void Allocate_Grid( reax_system *system, MPI_Comm comm )
                 //g->cells[i][j][k].atoms = (int*) scalloc(g->max_atoms, sizeof(int), "g:atoms");
                 //SUDHIR
                 g->cells[ index_grid_3d (i, j, k, g) ].atoms = (int*) scalloc(g->max_atoms, sizeof(int), "g:atoms");
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d-allocated %dx%dx%d grid: nbrs=%d atoms=%d space=%dMB\n",
              system->my_rank, g->ncells[0], g->ncells[1], g->ncells[2],
@@ -880,6 +893,7 @@ void ReAllocate( reax_system *system, control_params *control,
                  system->my_rank, system->n, system->N,
                  system->local_cap, system->total_cap );
 #endif
+
         ret = Allocate_System( system, system->local_cap, system->total_cap, msg );
         if ( ret != SUCCESS )
         {
@@ -902,7 +916,6 @@ void ReAllocate( reax_system *system, control_params *control,
         }
     }
 
-
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
     /* far neighbors */
     if ( renbr )
@@ -917,18 +930,19 @@ void ReAllocate( reax_system *system, control_params *control,
                          data->step, realloc->num_far, far_nbrs->num_intrs );
                 MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
             }
+
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "p%d: reallocating far_nbrs: num_fars=%d, space=%dMB\n",
                      system->my_rank, (int)(realloc->num_far * SAFE_ZONE),
                      (int)(realloc->num_far * SAFE_ZONE * sizeof(far_neighbor_data) /
                            (1024 * 1024)) );
 #endif
+
             Reallocate_Neighbor_List( far_nbrs, system->total_cap,
                                       realloc->num_far * SAFE_ZONE );
             realloc->num_far = 0;
         }
     }
-
 
     /* qeq coef matrix */
     //MATRIX CHANGES
@@ -942,12 +956,14 @@ void ReAllocate( reax_system *system, control_params *control,
                      data->step, realloc->Htop, H->m );
             MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
         }
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
                  system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
                  (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
                        (1024 * 1024)) );
 #endif
+
         Reallocate_Matrix( &(workspace->H),
                            system->local_cap, realloc->Htop * SAFE_ZONE, "H" );
         //Deallocate_Matrix( workspace->L );
@@ -976,10 +992,12 @@ void ReAllocate( reax_system *system, control_params *control,
         {
             ret = Reallocate_HBonds_List( system, (*lists) + HBONDS );
             realloc->hbonds = 0;
+
 #if defined(DEBUG_FOCUS)
             fprintf(stderr, "p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
                     system->my_rank, ret, (int)(ret * sizeof(hbond_data) / (1024 * 1024)));
 #endif
+
         }
     }
 
@@ -990,6 +1008,7 @@ void ReAllocate( reax_system *system, control_params *control,
         Reallocate_Bonds_List( system, (*lists) + BONDS, &num_bonds, &est_3body );
         realloc->bonds = 0;
         realloc->num_3body = MAX( realloc->num_3body, est_3body );
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating bonds: total_bonds=%d, space=%dMB\n",
                  system->my_rank, num_bonds,
@@ -1000,12 +1019,14 @@ void ReAllocate( reax_system *system, control_params *control,
     /* 3-body list */
     if ( realloc->num_3body > 0 )
     {
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating 3body list: num_3body=%d, space=%dMB\n",
                  system->my_rank, realloc->num_3body,
                  (int)(realloc->num_3body * sizeof(three_body_interaction_data) /
                        (1024 * 1024)) );
 #endif
+
         Delete_List( (*lists) + THREE_BODIES);
 
         if ( num_bonds == -1 )
@@ -1028,6 +1049,7 @@ void ReAllocate( reax_system *system, control_params *control,
 #if defined(DEBUG_FOCUS)
         fprintf(stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms);
 #endif
+
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
             for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
                 for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
@@ -1116,6 +1138,7 @@ void ReAllocate( reax_system *system, control_params *control,
 #endif
 }
 
+
 #ifdef HAVE_CUDA
 void Cuda_ReAllocate( reax_system *system, control_params *control,
                       simulation_data *data, storage *workspace, reax_list **lists,
@@ -1178,8 +1201,9 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                  "n=%d  N=%d  local_cap=%d  total_cap=%d\n",
                  system->my_rank, system->n, system->N,
                  system->local_cap, system->total_cap );
-#endif
         fprintf (stderr, "p:%d -  *** Allocating System *** \n", system->my_rank);
+#endif
+
         //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
 
         ret = dev_realloc_system ( system, system->local_cap, system->total_cap, msg );
@@ -1219,14 +1243,15 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                          data->step, realloc->num_far, far_nbrs->num_intrs );
                 MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
             }
+
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "p%d: reallocating far_nbrs: num_fars=%d, space=%dMB\n",
                      system->my_rank, (int)(realloc->num_far * SAFE_ZONE),
                      (int)(realloc->num_far * SAFE_ZONE * sizeof(far_neighbor_data) /
                            (1024 * 1024)) );
+            fprintf (stderr, "p:%d - *** Reallocating Far Nbrs *** \n", system->my_rank);
 #endif
 
-            fprintf (stderr, "p:%d - *** Reallocating Far Nbrs *** \n", system->my_rank);
             //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
 
             //No Need to reindex neighbors - this is taken care in the integrate function
@@ -1234,7 +1259,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
             realloc->num_far = 0;
         }
     }
-
 
     /* qeq coef matrix */
     //MATRIX CHANGES
@@ -1255,10 +1279,11 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                  system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
                  (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
                        (1024 * 1024)) );
+        fprintf (stderr, "p:%d - *** Reallocating Sparse Matrix *** \n", system->my_rank);
 #endif
+
         //Reallocate_Matrix( &(workspace->H),
         //     system->local_cap, realloc->Htop*SAFE_ZONE, "H" );
-        fprintf (stderr, "p:%d - *** Reallocating Sparse Matrix *** \n", system->my_rank);
         //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
 
         //TODO - CARVER FIX
@@ -1356,10 +1381,10 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     /* grid */
     if ( renbr && realloc->gcell_atoms > -1 )
     {
-        fprintf(stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms);
 #if defined(DEBUG_FOCUS)
         fprintf(stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms);
 #endif
+
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
             for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
                 for ( k = g->native_str[2]; k < g->native_end[2]; k++ )

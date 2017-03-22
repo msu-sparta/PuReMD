@@ -20,14 +20,19 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "traj.h"
-#include "list.h"
-#include "tool_box.h"
+  #include "traj.h"
+  #include "list.h"
+  #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_traj.h"
-#include "reax_list.h"
-#include "reax_tool_box.h"
+  #include "reax_traj.h"
+  #include "reax_list.h"
+  #include "reax_tool_box.h"
+#endif
+
+#ifdef HAVE_CUDA
+  #include "cuda_copy.h"
 #endif
 
 

@@ -4,7 +4,7 @@
 #include "reax_types.h"
 
 
-CUDA_DEVICE inline int cuda_strcmp (char *a, char *b, int len)
+CUDA_DEVICE static inline int cuda_strcmp (char *a, char *b, int len)
 {
     char *src, *dst;
 
@@ -27,7 +27,7 @@ CUDA_DEVICE inline int cuda_strcmp (char *a, char *b, int len)
 }
 
 
-CUDA_DEVICE inline real atomicAdd(real* address, real val)
+CUDA_DEVICE static inline real atomicAdd(real* address, real val)
 {
     unsigned long long int* address_as_ull =
         (unsigned long long int*)address;
@@ -44,7 +44,7 @@ CUDA_DEVICE inline real atomicAdd(real* address, real val)
 }
 
 
-CUDA_DEVICE inline void atomic_rvecAdd( rvec ret, rvec v )
+CUDA_DEVICE static inline void atomic_rvecAdd( rvec ret, rvec v )
 {
     atomicAdd ( &ret[0], v[0] );
     atomicAdd ( &ret[1], v[1] );
@@ -52,7 +52,7 @@ CUDA_DEVICE inline void atomic_rvecAdd( rvec ret, rvec v )
 }
 
 
-CUDA_DEVICE inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
+CUDA_DEVICE static inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
     atomicAdd ( &ret[0], c * v[0] );
     atomicAdd ( &ret[1], c * v[1] );

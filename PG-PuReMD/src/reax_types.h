@@ -91,6 +91,8 @@
 #define TAN    tan
 #define CEIL   ceil
 #define FLOOR  floor
+#define FABS   fabs
+#define FMOD   fmod
 
 #define SQR(x)        ((x)*(x))
 #define CUBE(x)       ((x)*(x)*(x))
@@ -1166,7 +1168,6 @@ typedef struct
     rvec2 *r2, *d2, *q2, *p2;
     /* Taper */
     real Tap[8]; //Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
-    real d_Tap;
 
     /* storage for analysis */
     int  *mark, *old_mark;

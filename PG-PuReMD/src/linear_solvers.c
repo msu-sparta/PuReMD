@@ -20,13 +20,15 @@
   ----------------------------------------------------------------------*/
 
 #include "linear_solvers.h"
+
 #include "basic_comm.h"
 #include "io_tools.h"
 #include "tool_box.h"
 #include "vector.h"
 
 #ifdef HAVE_CUDA
-#include "validation.h"
+  #include "cuda_linear_solvers.h"
+  #include "validation.h"
 #endif
 
 #if defined(CG_PERFORMANCE)

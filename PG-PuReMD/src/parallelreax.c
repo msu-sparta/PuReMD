@@ -38,10 +38,12 @@
 #include "vector.h"
 
 #ifdef HAVE_CUDA
-#include "cuda_environment.h"
-#include "cuda_post_evolve.h"
-
-#include "validation.h"
+  #include "cuda_copy.h"
+  #include "cuda_environment.h"
+  #include "cuda_neighbors.h"
+  #include "cuda_post_evolve.h"
+  #include "cuda_utils.h"
+  #include "validation.h"
 #endif
 
 evolve_function Evolve;

@@ -27,10 +27,9 @@
 #include "tool_box.h"
 
 #ifdef HAVE_CUDA
-#include "cuda_qEq.h"
-#include "cuda_linear_solvers.h"
-
-#include "validation.h"
+  #include "cuda_qEq.h"
+  #include "cuda_linear_solvers.h"
+  #include "validation.h"
 #endif
 
 

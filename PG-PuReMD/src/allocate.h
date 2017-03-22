@@ -23,6 +23,8 @@
 #define __ALLOCATE_H_
 
 #include "reax_types.h"
+
+
 int PreAllocate_Space( reax_system*, control_params*, storage* );
 
 void reax_atom_Copy( reax_atom*, reax_atom* );
@@ -48,4 +50,6 @@ void ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
 
 void Cuda_ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
                       reax_list**, mpi_datatypes* );
+
+
 #endif

@@ -27,19 +27,11 @@
 #ifdef _cplusplus
 extern "C" {
 #endif
-    void Print_List(reax_list*);
-    int  Make_List( int, int, int, reax_list*);
-    void Delete_List( reax_list*);
 
-#ifdef _cplusplus
-}
-#endif
 
-static inline int  Num_Entries(int, reax_list*);
-static inline int  Start_Index( int, reax_list* );
-static inline int  End_Index( int, reax_list* );
-static inline void Set_Start_Index(int, int, reax_list*);
-static inline void Set_End_Index(int, int, reax_list*);
+void Print_List( reax_list* );
+int  Make_List( int, int, int, reax_list* );
+void Delete_List( reax_list* );
 
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
 static inline int Num_Entries( int i, reax_list *l )
@@ -66,6 +58,12 @@ static inline void Set_End_Index( int i, int val, reax_list *l )
 {
     l->end_index[i] = val;
 }
+
 #endif // LAMMPS_REAX
+
+
+#ifdef _cplusplus
+}
+#endif
 
 #endif

@@ -4,7 +4,6 @@
 #include "reax_types.h"
 #include "reax_types.h"
 #include "dev_list.h"
-#include "list.h"
 #include "cuda_utils.h"
 #include "cuda_helpers.h"
 #include "index_utils.h"
@@ -26,9 +25,8 @@
 
 //extern "C" real Get_Time( );
 //extern "C" real Get_Timing_Info( real );
-extern "C" int  Make_List( int, int, int, reax_list*);
-extern "C" void Delete_List( reax_list*);
-
+extern "C" int  Make_List( int, int, int, reax_list* );
+extern "C" void Delete_List( reax_list* );
 
 
 CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params *control )

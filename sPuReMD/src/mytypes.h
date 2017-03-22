@@ -59,6 +59,8 @@
 #define COS    cos
 #define SIN    sin
 #define TAN    tan
+#define CEIL   ceil
+#define FLOOR  floor
 #define FABS   fabs
 #define FMOD   fmod
 

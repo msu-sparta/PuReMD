@@ -33,10 +33,9 @@
 #include "vector.h"
 
 #ifdef HAVE_CUDA
-#include "cuda_integrate.h"
-#include "cuda_copy.h"
-
-#include "cuda_neighbors.h"
+  #include "cuda_integrate.h"
+  #include "cuda_copy.h"
+  #include "cuda_neighbors.h"
 #endif
 
 

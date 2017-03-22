@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __QEq_H_
-#define __QEq_H_
+#ifndef __CUDA_QEQ_H_
+#define __CUDA_QEQ_H_
 
 #include "reax_types.h"
 

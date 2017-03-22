@@ -1,10 +1,10 @@
 #ifndef __CUDA_UTILS_H_
 #define __CUDA_UTILS_H_
 
-#include "cuda.h"
-#include "cuda_runtime.h"
-#include "stdlib.h"
-#include "stdio.h"
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "reax_types.h"
 
@@ -25,8 +25,9 @@ void copy_device(void *, void *, int , const char *);
 
 void print_device_mem_usage();
 
+#ifdef __cplusplus
 #define cudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
-inline void __cudaCheckError( const char *file, const int line )
+static inline void __cudaCheckError( const char *file, const int line )
 {
     cudaError err = cudaGetLastError();
     if ( cudaSuccess != err )
@@ -47,6 +48,7 @@ inline void __cudaCheckError( const char *file, const int line )
 
     return;
 }
+#endif
 
 #endif
 

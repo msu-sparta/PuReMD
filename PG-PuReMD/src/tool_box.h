@@ -31,16 +31,6 @@ void SumScanB( int, int, int, int, MPI_Comm, int* );
 /* from box.h */
 void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
 void Fit_to_Periodic_Box( simulation_box*, rvec* );
-static inline void Box_Touch_Point( simulation_box*, ivec, rvec );
-static inline int  is_Inside_Box( simulation_box*, rvec );
-static inline int  iown_midpoint( simulation_box*, rvec, rvec );
-
-/* from grid.h */
-static inline void GridCell_Closest_Point( grid_cell*, grid_cell*, ivec, ivec, rvec );
-static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
-static inline real DistSqr_between_Special_Points( rvec, rvec );
-static inline real DistSqr_to_Special_Point( rvec, rvec );
-static inline int Relative_Coord_Encoding( ivec );
 
 /* from geo_tools.h */
 void Make_Point( real, real, real, rvec* );

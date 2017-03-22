@@ -239,7 +239,6 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
 #endif
 
 
-
 // Essentially no-cuda copies of cuda kernels, to be used only in the mpi-not-gpu version
 ////////////////////////
 // HBOND ISSUE
@@ -274,6 +273,7 @@ void mpi_not_gpu_update_hbonds (reax_atom *my_atoms,
     }
 }
 
+
 // Essentially a copy of cuda_validate_lists, but with all cuda-dependent kernels turned into serial versions
 int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_list **lists, control_params *control,
                                 int step, int n, int N, int numH )
@@ -288,12 +288,6 @@ int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_li
 
     int max_sp_entries, num_hbonds, num_bonds;
     int total_sp_entries;
-
-
-
-
-
-
 
     //blocks = system->n / DEF_BLOCK_SIZE +
     //    ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
@@ -391,7 +385,6 @@ int MPI_Not_GPU_Validate_Lists (reax_system *system, storage *workspace, reax_li
 
         return FAILURE;
     }
-
 
     //validate Bond list
     if (N > 0)
@@ -772,7 +765,7 @@ void Validate_Lists( storage *workspace, reax_list **lists,
 #endif
 
 
-inline real Compute_H( real r, real gamma, real *ctap )
+static inline real Compute_H( real r, real gamma, real *ctap )
 {
     real taper, dr3gamij_1, dr3gamij_3;
 
@@ -786,11 +779,12 @@ inline real Compute_H( real r, real gamma, real *ctap )
 
     dr3gamij_1 = ( r * r * r + gamma );
     dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+
     return taper * EV_to_KCALpMOL / dr3gamij_3;
 }
 
 
-inline real Compute_tabH( real r_ij, int ti, int tj, int num_atom_types )
+static inline real Compute_tabH( real r_ij, int ti, int tj, int num_atom_types )
 {
     int r, tmin, tmax;
     real val, dif, base;
@@ -804,7 +798,10 @@ inline real Compute_tabH( real r_ij, int ti, int tj, int num_atom_types )
 
     /* cubic spline interpolation */
     r = (int)(r_ij * t->inv_dx);
-    if ( r == 0 )  ++r;
+    if ( r == 0 )
+    {
+        ++r;
+    }
     base = (real)(r + 1) * t->dx;
     dif = r_ij - base;
     val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
@@ -949,9 +946,13 @@ void Init_Forces( reax_system *system, control_params *control,
                         //     MIN(atom_i->orig_id, atom_j->orig_id),
                         //     MAX(atom_i->orig_id, atom_j->orig_id) );
                         if ( control->tabulate == 0 )
+                        {
                             H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                        }
                         else
+                        {
                             H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j, system->reax_param.num_atom_types);
+                        }
                         ++Htop;
                     }
 

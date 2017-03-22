@@ -176,31 +176,3 @@ void Delete_List( reax_list *l)
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 }
-
-
-#if defined(SUDHIR)
-inline int Num_Entries( int i, reax_list *l )
-{
-    return l->end_index[i] - l->index[i];
-}
-
-inline int Start_Index( int i, reax_list *l )
-{
-    return l->index[i];
-}
-
-inline int End_Index( int i, reax_list *l )
-{
-    return l->end_index[i];
-}
-
-inline void Set_Start_Index( int i, int val, reax_list *l )
-{
-    l->index[i] = val;
-}
-
-inline void Set_End_Index( int i, int val, reax_list *l )
-{
-    l->end_index[i] = val;
-}
-#endif

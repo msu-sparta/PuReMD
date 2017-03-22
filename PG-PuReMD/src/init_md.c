@@ -22,40 +22,44 @@
 #include "reax_types.h"
 
 #ifdef HAVE_CUDA
-#include "dev_alloc.h"
-#include "dev_list.h"
-#include "cuda_copy.h"
-#include "validation.h"
+  #include "dev_alloc.h"
+  #include "dev_list.h"
+  #include "cuda_copy.h"
+  #include "cuda_forces.h"
+  #include "cuda_init_md.h"
+  #include "cuda_neighbors.h"
+  #include "cuda_reset_tools.h"
+  #include "validation.h"
 #endif
 
 #if defined(PURE_REAX)
-#include "init_md.h"
-#include "allocate.h"
-#include "box.h"
-#include "comm_tools.h"
-#include "forces.h"
-#include "grid.h"
-#include "integrate.h"
-#include "io_tools.h"
-#include "list.h"
-#include "lookup.h"
-#include "neighbors.h"
-#include "random.h"
-#include "reset_tools.h"
-#include "system_props.h"
-#include "tool_box.h"
-#include "vector.h"
+  #include "init_md.h"
+  #include "allocate.h"
+  #include "box.h"
+  #include "comm_tools.h"
+  #include "forces.h"
+  #include "grid.h"
+  #include "integrate.h"
+  #include "io_tools.h"
+  #include "list.h"
+  #include "lookup.h"
+  #include "neighbors.h"
+  #include "random.h"
+  #include "reset_tools.h"
+  #include "system_props.h"
+  #include "tool_box.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_init_md.h"
-#include "reax_allocate.h"
-#include "reax_forces.h"
-#include "reax_io_tools.h"
-#include "reax_list.h"
-#include "reax_lookup.h"
-#include "reax_reset_tools.h"
-#include "reax_system_props.h"
-#include "reax_tool_box.h"
-#include "reax_vector.h"
+  #include "reax_init_md.h"
+  #include "reax_allocate.h"
+  #include "reax_forces.h"
+  #include "reax_io_tools.h"
+  #include "reax_list.h"
+  #include "reax_lookup.h"
+  #include "reax_reset_tools.h"
+  #include "reax_system_props.h"
+  #include "reax_tool_box.h"
+  #include "reax_vector.h"
 #endif
 
 
@@ -1182,7 +1186,7 @@ void Initialize( reax_system *system, control_params *control,
 
     if ( control->tabulate )
     {
-        if ( Init_Lookup_Tables(system, control, workspace, mpi_data, msg) == FAILURE )
+        if ( Init_Lookup_Tables(system, control, workspace->Tap, mpi_data, msg) == FAILURE )
         {
             fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
             fprintf( stderr, "p%d: couldn't create lookup table! terminating.\n",
@@ -1444,7 +1448,7 @@ void Initialize( reax_system *system, control_params *control,
 
     if ( control->tabulate )
     {
-        if ( Init_Lookup_Tables( system, control, workspace, mpi_data, msg ) == FAILURE )
+        if ( Init_Lookup_Tables( system, control, workspace->Tap, mpi_data, msg ) == FAILURE )
         {
             fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
             fprintf( stderr, "p%d: couldn't create lookup table! terminating.\n",

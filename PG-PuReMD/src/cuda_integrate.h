@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __INTEGRATE_H_
-#define __INTEGRATE_H_
+#ifndef __CUDA_INTEGRATE_H_
+#define __CUDA_INTEGRATE_H_
 
 #include "reax_types.h"
 
@@ -28,9 +28,9 @@
 extern "C" {
 #endif
 
-void bNVT_update_velocity_part1 (reax_system *, real );
-void bNVT_update_velocity_part2 (reax_system *, real );
-void bNVT_scale_velocities (reax_system *, real );
+void bNVT_update_velocity_part1( reax_system *, real );
+void bNVT_update_velocity_part2( reax_system *, real );
+void bNVT_scale_velocities( reax_system *, real );
 
 #ifdef __cplusplus
 }

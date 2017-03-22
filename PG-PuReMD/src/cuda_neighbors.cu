@@ -416,7 +416,7 @@ CUDA_GLOBAL void ker_mt_generate_neighbor_lists (    reax_atom *my_atoms,
                     *result = count [threadIdx.x];
             }
 
-            extern "C" void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data, 
+            void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data, 
                     storage *workspace, reax_list **lists )
             {
                 int blocks, num_far;

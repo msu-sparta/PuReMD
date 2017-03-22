@@ -46,7 +46,7 @@ CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *, control_params *,
 
 
 /* calculates the theta angle between i-j-k */
-CUDA_DEVICE inline void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+CUDA_DEVICE static inline void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         real *theta, real *cos_theta )
 {
     (*cos_theta) = Dot( dvec_ji, dvec_jk, 3 ) / ( d_ji * d_jk );
@@ -58,7 +58,7 @@ CUDA_DEVICE inline void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, 
 
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
-CUDA_DEVICE inline void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+CUDA_DEVICE static inline void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         rvec* dcos_theta_di,
         rvec* dcos_theta_dj,
         rvec* dcos_theta_dk )

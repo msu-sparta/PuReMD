@@ -4,12 +4,13 @@
 
 #include "reax_types.h"
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
-void Cuda_Generate_Neighbors (reax_system *, simulation_data *, storage *, reax_list **);
+void Cuda_Generate_Neighbor_Lists( reax_system *, simulation_data *, storage *, reax_list ** );
 void Cuda_Estimate_Neighbors( reax_system *, int *);
 void Cuda_Init_Neighbors_Indices (int *, int);
 

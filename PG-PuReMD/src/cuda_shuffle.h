@@ -36,7 +36,7 @@ extern "C"  {
  * And the other is taken from the download in the PGPuReMD folder on CUPID
  * http://wenda.baba.io/questions/4481817/overloading-the-cuda-shuffle-function-makes-the-original-ones-invisible.html
  */
-CUDA_DEVICE inline real shfl(real x, int lane)
+CUDA_DEVICE static inline real shfl(real x, int lane)
 {
     // Split the double number into 2 32b registers.
     int lo, hi;

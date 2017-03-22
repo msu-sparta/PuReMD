@@ -1250,7 +1250,7 @@ int Locate_Symmetric_Bond( reax_list *bonds, int i, int j )
 }
 
 
-inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data *src )
+static inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data *src )
 {
     dest->BO = src->BO;
     dest->BO_s = src->BO_s;
