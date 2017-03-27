@@ -86,7 +86,8 @@ then
 	AC_MSG_RESULT([nvcc version : $NVCC_VERSION])
 	
 	# test if architecture is 64 bits and NVCC version >= 2.3
-        libdir=lib
+        #libdir=lib #NOTE: was lib, but changed to lib64 for CUDA 8.0
+        libdir=lib64
 	if test "x$host_cpu" = xx86_64 ; then
 	   if test "x$NVCC_VERSION" \> "x2.2" ; then
               libdir=lib64
@@ -215,23 +216,23 @@ then
     NVCCFLAGS=" -deviceemu"
 fi
 #
-AS_IF([test "x$want_cuda" = xyes],
-    [AS_IF([test "x$NVCCFLAGS" = x],
-        [dnl generate CUDA code for broad spectrum of devices
-         dnl Note: cc 13 for Tesla
-         dnl Note: cc 20 for Fermi
-	 dnl Note: cc 30 for Kepler K10
-	 dnl Note: cc 35 for Kepler K20
-         NVCCFLAGS=["-gencode arch=compute_10,code=sm_10 \
- -gencode arch=compute_11,code=sm_11 \
- -gencode arch=compute_13,code=sm_13 \
- -gencode arch=compute_20,code=sm_20 \
- -gencode arch=compute_30,code=sm_30 \
- -gencode arch=compute_35,code=sm_35"]
-                ]
-             )
-            ]
-        )
+#AS_IF([test "x$want_cuda" = xyes],
+#    [AS_IF([test "x$NVCCFLAGS" = x],
+#        [dnl generate CUDA code for broad spectrum of devices
+#         dnl Note: cc 13 for Tesla
+#         dnl Note: cc 20 for Fermi
+#	 dnl Note: cc 30 for Kepler K10
+#	 dnl Note: cc 35 for Kepler K20
+#         NVCCFLAGS=["-gencode arch=compute_10,code=sm_10 \
+# -gencode arch=compute_11,code=sm_11 \
+# -gencode arch=compute_13,code=sm_13 \
+# -gencode arch=compute_20,code=sm_20 \
+# -gencode arch=compute_30,code=sm_30 \
+# -gencode arch=compute_35,code=sm_35"]
+#                ]
+#             )
+#            ]
+#        )
 if test x$want_fast_math = xyes
 then
 	NVCCFLAGS+=" -use_fast_math"

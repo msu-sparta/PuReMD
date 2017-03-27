@@ -68,17 +68,17 @@ CC="$sav_CC"
 CFLAGS="$sav_CFLAGS"
 
 #
-# try to set MPI_CFLAGS and MPI_LDFLAGS
+# try to set MPI_CFLAGS and MPI_LIBS
 #
 MPI_CFLAGS=
-MPI_LDFLAGS=
+MPI_LIBS=
 if test "$mpi_vendor" = "OpenMPI"
 then 
 	MPI_CFLAGS=`$MPICC --showme:compile`
-	MPI_LDFLAGS=`$MPICC --showme:link`
+	MPI_LIBS=`$MPICC --showme:link`
 	AC_MSG_NOTICE([OpenMPI found])
 	AC_MSG_NOTICE([MPI_CFLAGS=$MPI_CFLAGS])
-	AC_MSG_NOTICE([MPI_LDFLAGS=$MPI_LDFLAGS])
+	AC_MSG_NOTICE([MPI_LIBS=$MPI_LIBS])
 elif test "$mpi_vendor" = "MPICH"
 then
 	# build MPI_CFLAGS
@@ -92,24 +92,24 @@ then
 				;;
 		esac
 	done
-	# build MPI_LDFLAGS
+	# build MPI_LIBS
 	tmp=`$MPICC -link-info | awk '{$1=""; print $0 }'`
 	for i in $tmp
 	do 
 		case $i in 
 			[[\\/]]*.a | ?:[[\\/]]*.a | -[[lLRu]]* | -Wl* )
-				MPI_LDFLAGS="$MPI_LDFLAGS $i"
+				MPI_LIBS="$MPI_LIBS $i"
 				;;
 		esac
 	done
 	AC_MSG_NOTICE([MPICH found])
 	AC_MSG_NOTICE([MPI_CFLAGS=$MPI_CFLAGS])
-	AC_MSG_NOTICE([MPI_LDFLAGS=$MPI_LDFLAGS])
+	AC_MSG_NOTICE([MPI_LIBS=$MPI_LIBS])
 else
 	AC_MSG_WARN([Neither OpenMPI and MPICH have been recognized...])
 fi
 AC_SUBST(MPI_CFLAGS)
-AC_SUBST(MPI_LDFLAGS)
+AC_SUBST(MPI_LIBS)
 
 # Check for CUDA support.
 if test "x$BUILD_GPU" = "xyes"; then

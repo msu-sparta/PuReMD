@@ -5,19 +5,13 @@ SUFFIXES = .cu
 include ../cuda.am
 endif
 
-AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)
-AM_CPPFLAGS =
-AM_LDFLAGS = $(MPI_LDFLAGS)
-
 if USE_CUDA
-# default CUDA nvcc flags
-#   Note: cc 13 for Tesla
-#   Note: cc 20 for Fermi
-#   Note: cc 30 for Kepler K10
-#   Note: cc 35 for Kepler K20
-NVCCFLAGS += -use_fast_math 
-NVCCFLAGS += -gencode arch=compute_35,code=sm_35
-NVCCFLAGS += --compiler-options "$(DEFS) -D__SM_35__ -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)"
+# flags for CUDA compilation via NVCC (see cuda.am)
+#   Note: cc 13 for Tesla, cc 20 for Fermi, cc 30 for Kepler K10, cc 35 for Kepler K20/K40, etc.
+#NVCCFLAGS += -use_fast_math -gencode arch=compute_35,code=sm_35
+NVCCFLAGS += -use_fast_math $(NVCC_OPT_CODE)
+#NVCCFLAGS += --compiler-options "$(DEFS) -D__SM_35__ -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)"
+NVCCFLAGS += --compiler-options "$(DEFS) $(NVCC_OPT_CODE_DEFS) -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)"
 #NVCCFLAGS += --ptxas-options -v
 endif
 
@@ -66,11 +60,11 @@ nodist_EXTRA_bin_pg_puremd_SOURCES = src/dummy.c
 endif
 
 
-bin_pg_puremd_CFLAGS = $(AM_CFLAGS) $(CFLAGS)
+bin_pg_puremd_CFLAGS = $(AM_CFLAGS) -Wall -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS) $(CFLAGS)
 bin_pg_puremd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
-bin_pg_puremd_LDFLAGS = $(AM_LDFLAGS) $(LDFLAGS)
+bin_pg_puremd_LDADD = $(AM_LDADD) $(MPI_LIBS) $(LDADD) -lstdc++
 
 if USE_CUDA
 bin_pg_puremd_CFLAGS += $(CUDA_CFLAGS)
-bin_pg_puremd_LDFLAGS += $(CUDA_LIBS)
+bin_pg_puremd_LDADD += $(CUDA_LIBS)
 endif
