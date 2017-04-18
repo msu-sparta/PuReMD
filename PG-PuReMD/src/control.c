@@ -111,12 +111,13 @@ char Read_Control_File( char *control_file, control_params* control,
     s = (char*) malloc(sizeof(char) * MAX_LINE);
     tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
     for (i = 0; i < MAX_TOKENS; i++)
+    {
         tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
+    }
 
     /* read control parameters file */
-    while (!feof(fp))
+    while( fgets( s, MAX_LINE, fp ) )
     {
-        fgets( s, MAX_LINE, fp );
         c = Tokenize( s, &tmp );
         //fprintf( stderr, "%s\n", s );
 
@@ -269,7 +270,9 @@ char Read_Control_File( char *control_file, control_params* control,
             control->T_init = val;
 
             if ( control->T_init < 0.1 )
+            {
                 control->T_init = 0.1;
+            }
         }
         else if ( strcmp(tmp[0], "temp_final") == 0 )
         {
@@ -277,7 +280,9 @@ char Read_Control_File( char *control_file, control_params* control,
             control->T_final = val;
 
             if ( control->T_final < 0.1 )
+            {
                 control->T_final = 0.1;
+            }
         }
         else if ( strcmp(tmp[0], "t_mass") == 0 )
         {
@@ -401,7 +406,9 @@ char Read_Control_File( char *control_file, control_params* control,
         {
             control->num_ignored = atoi(tmp[1]);
             for ( i = 0; i < control->num_ignored; ++i )
+            {
                 control->ignore[atoi(tmp[i + 2])] = 1;
+            }
         }
         else if ( strcmp(tmp[0], "dipole_anal") == 0 )
         {
@@ -431,18 +438,31 @@ char Read_Control_File( char *control_file, control_params* control,
         else
         {
             fprintf( stderr, "WARNING: unknown parameter %s\n", tmp[0] );
-            MPI_Abort( MPI_COMM_WORLD, 15 );
+            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
+    }
+
+    if ( ferror( fp ) )
+    {
+        fprintf( stderr, "ERROR: parsing control file failed (I/O error). TERMINATING...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
     /* determine target T */
     if ( control->T_mode == 0 )
+    {
         control->T = control->T_final;
-    else control->T = control->T_init;
+    }
+    else
+    {
+        control->T = control->T_init;
+    }
 
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
+    {
         free( tmp[i] );
+    }
     free( tmp );
     free( s );
 

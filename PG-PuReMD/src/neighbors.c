@@ -201,19 +201,21 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncells[0]; i++ )
+    {
         for ( j = 0; j < g->ncells[1]; j++ )
+        {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 //SUDHIR
                 //gci = &(g->cells[i][j][k]);
-                gci = &(g->cells[ index_grid_3d (i, j, k, g) ]);
+                gci = &(g->cells[ index_grid_3d(i, j, k, g) ]);
                 //cutoff = SQR(gci->cutoff);
-                cutoff = SQR(g->cutoff [index_grid_3d (i, j, k, g)]);
+                cutoff = SQR(g->cutoff[ index_grid_3d(i, j, k, g) ]);
 
                 //fprintf( stderr, "gridcell %d %d %d\n", i, j, k );
 
                 /* pick up an atom from the current cell */
-                for ( l = g->str[index_grid_3d (i, j, k, g)]; l < g->end[index_grid_3d (i, j, k, g)]; ++l )
+                for ( l = g->str[ index_grid_3d(i, j, k, g) ]; l < g->end[ index_grid_3d( i, j, k, g) ]; ++l )
                 {
                     atom1 = &(system->my_atoms[l]);
 
@@ -228,18 +230,18 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
                     //fprintf( stderr, "\tatom %d: ", l );
                     //tmp = num_far; tested = 0;
                     itr = 0;
-                    while ( (g->nbrs_x[index_grid_nbrs (i, j, k, itr, g)][0]) >= 0)
+                    while ( (g->nbrs_x[index_grid_nbrs(i, j, k, itr, g)][0]) >= 0 )
                     {
 
-                        ivec_Copy (nbrs_x, g->nbrs_x[index_grid_nbrs (i, j, k, itr, g)]);
+                        ivec_Copy( nbrs_x, g->nbrs_x[index_grid_nbrs(i, j, k, itr, g)] );
 
-                        if (g->str[index_grid_3d (i, j, k, g)] <= g->str[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], g)] &&
-                                (DistSqr_to_Special_Point(g->nbrs_cp[index_grid_nbrs (i, j, k, itr, g)], atom1->x) <= cutoff))
+                        if ( g->str[index_grid_3d(i, j, k, g)] <= g->str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)] &&
+                                (DistSqr_to_Special_Point(g->nbrs_cp[index_grid_nbrs(i, j, k, itr, g)], atom1->x) <= cutoff) )
                             //fprintf( stderr, "\t\tgcell2: %d\n", itr );
                             /* pick up another atom from the neighbor cell */
                             //for( m = gcj->str; m < gcj->end; ++m )
-                            for ( m = g->str[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], g)];
-                                    m < g->end[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], g)]; ++m )
+                            for ( m = g->str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)];
+                                    m < g->end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)]; ++m )
                             {
                                 if ( l < m )
                                 {
@@ -250,15 +252,21 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
                                     dvec[2] = atom2->x[2] - atom1->x[2];
                                     d = rvec_Norm_Sqr( dvec );
                                     if ( d <= cutoff )
+                                    {
                                         ++num_far;
+                                    }
                                 }
                             }
+
                         ++itr;
+
                         //fprintf( stderr, "itr: %d, tested: %d, num_nbrs: %d\n",
                         //   itr, tested, num_far-tmp );
                     }
                 }
             }
+        }
+    }
 
 #if defined(DEBUG)
     fprintf (stderr, "Total number of host neighbors: %d \n", num_far);
@@ -271,6 +279,7 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
 #endif
     return MAX( num_far * SAFE_ZONE, MIN_CAP * MIN_NBRS );
 }
+
 
 /*
 int Estimate_NumNeighbors1( reax_system *system, reax_list **lists )

@@ -897,21 +897,21 @@ int  Cuda_Init_Lists( reax_system *system, control_params *control,
     int *nbr_indices = (int *) host_scratch;
 
     //num_nbrs = Estimate_NumNeighbors( system, lists );
-    Cuda_Estimate_Neighbors (system, nbr_indices);
+    Cuda_Estimate_Neighbors( system, nbr_indices );
     num_nbrs = 0;
     //for (i = 0; i < 20; i++)
     //fprintf (stderr, "atom: %d -- %d \n", i, nbr_indices[i]);
 
     for (i = 0; i < system->N; i++)
     {
-        num_nbrs += nbr_indices [i];
+        num_nbrs += nbr_indices[i];
     }
 
     //fprintf (stderr, "DEVICE Total Neighbors: %d (%d)\n", num_nbrs, (int)(num_nbrs*SAFE_ZONE));
 
     for (i = 0; i < system->N; i++)
     {
-        nbr_indices[i] = MAX (nbr_indices [i] * SAFER_ZONE, MIN_NBRS);
+        nbr_indices[i] = MAX( nbr_indices[i] * SAFER_ZONE, MIN_NBRS );
     }
 
     num_nbrs = 0;

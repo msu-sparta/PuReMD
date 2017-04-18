@@ -902,6 +902,7 @@ int Cuda_Validate_Lists (reax_system *system, storage *workspace, reax_list **li
 
     int max_sp_entries, num_hbonds, num_bonds;
     int total_sp_entries;
+    int max_bonds;
 
     blocks = system->n / DEF_BLOCK_SIZE + 
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
@@ -1018,18 +1019,21 @@ int Cuda_Validate_Lists (reax_system *system, storage *workspace, reax_list **li
         realloc->num_bonds = num_bonds;
          */
 
-        int max_bonds = 0;
-        for (i = 0; i < N; i++) {
-            if (end_index[i] - index[i] >= system->max_bonds) {
+        max_bonds = 0;
+        for (i = 0; i < N; i++)
+        {
+            if (end_index[i] - index[i] >= system->max_bonds)
+            {
                 fprintf( stderr, "step%d-bondchk failed: i=%d start(i)=%d end(i)=%d max_bonds=%d\n",
                         step, i, index[i], end_index[i], system->max_bonds);
                 return FAILURE;
             }
             if (end_index[i] - index[i] >= max_bonds)
+            {
                 max_bonds = end_index[i] - index[i];
+            }
         }
         realloc->num_bonds = max_bonds;
-
     }
 
     //validate Hbonds list

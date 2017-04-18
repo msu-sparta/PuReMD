@@ -3,6 +3,7 @@ ensemble_type            1                      ! 0: NVE, 1: Berendsen NVT, 2: N
 nsteps                   100                    ! number of simulation steps
 dt                       0.25                   ! time step in fs
 proc_by_dim              1 1 1                  ! distribution of processors by dimensions
+gpus_per_node            1                      ! GPUs per node
 
 reposition_atoms         1                      ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
 tabulate_long_range      0                      ! number of sampling points for cubic spline interpolation, 0 no interpolation
