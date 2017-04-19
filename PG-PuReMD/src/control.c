@@ -34,8 +34,8 @@ char Read_Control_File( char *control_file, control_params* control,
 {
     FILE *fp;
     char *s, **tmp;
-    int   c, i, ival;
-    real  val;
+    int c, i, ival;
+    real val;
 
     /* open control file */
     if ( (fp = fopen( control_file, "r" ) ) == NULL )
@@ -54,7 +54,7 @@ char Read_Control_File( char *control_file, control_params* control,
     control->procs_by_dim[1] = 1;
     control->procs_by_dim[2] = 1;
     control->geo_format = 1;
-    control->gpus_per_node = 1;   //hpcc
+    control->gpus_per_node = 1;
 
     control->restart          = 0;
     out_control->restart_format = WRITE_BINARY;
@@ -140,10 +140,10 @@ char Read_Control_File( char *control_file, control_params* control,
             val = atof(tmp[1]);
             control->dt = val * 1.e-3;  // convert dt from fs to ps!
         }
-        else if (strcmp(tmp[0], "gpus_per_node") == 0)      //hpcc
+        else if ( strcmp(tmp[0], "gpus_per_node") == 0 )
         {
-            val = atoi(tmp[1]);
-            control->gpus_per_node = val;
+            ival = atoi(tmp[1]);
+            control->gpus_per_node = ival;
         }
         else if ( strcmp(tmp[0], "proc_by_dim") == 0 )
         {
@@ -155,7 +155,7 @@ char Read_Control_File( char *control_file, control_params* control,
             control->procs_by_dim[2] = ival;
 
             control->nprocs = control->procs_by_dim[0] * control->procs_by_dim[1] *
-                              control->procs_by_dim[2];
+                    control->procs_by_dim[2];
         }
         //else if( strcmp(tmp[0], "restart") == 0 ) {
         //  ival = atoi(tmp[1]);

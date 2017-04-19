@@ -174,7 +174,7 @@
 /**************** RESOURCE CONSTANTS **********************/
 #ifdef HAVE_CUDA
 //#define           CUDA_BLOCK_SIZE             256
-#define         SCRATCH_SIZE                    (1024 * 1024 * 20)
+#define         DEVICE_SCRATCH_SIZE             (1024 * 1024 * 20)
 #define         HOST_SCRATCH_SIZE               (1024 * 1024 * 20)
 #define         RES_SCRATCH                     0x90
 

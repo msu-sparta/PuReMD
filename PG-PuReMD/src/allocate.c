@@ -54,6 +54,7 @@ int PreAllocate_Space( reax_system *system, control_params *control,
     /* determine capacity based on box vol & est atom volume */
     system->local_cap = MAX( (int)(system->n * SAFE_ZONE), MIN_CAP );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
+
 #if defined(DEBUG)||defined(__CUDA_DEBUG_LOG__)
     fprintf( stderr, "p%d: local_cap=%d total_cap=%d\n",
              system->my_rank, system->local_cap, system->total_cap );
@@ -107,7 +108,9 @@ void Copy_Atom_List( reax_atom *dest, reax_atom *src, int n )
     int i;
 
     for ( i = 0; i < n; ++i )
+    {
         memcpy( dest + i, src + i, sizeof(reax_atom) );
+    }
 }
 
 
@@ -127,7 +130,9 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     int i;
 
     if ( !workspace->allocated )
+    {
         return;
+    }
 
     workspace->allocated = 0;
 
@@ -215,7 +220,9 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     }
 
     if ( control->diffusion_coef )
+    {
         sfree( workspace->x_old, "x_old" );
+    }
 
     /* force related storage */
     sfree( workspace->f, "f" );
@@ -347,11 +354,18 @@ int Allocate_Workspace( reax_system *system, control_params *control,
         workspace->old_mark = (int*) scalloc( local_cap, sizeof(int), "old_mark" );
     }
     else
+    {
         workspace->mark = workspace->old_mark = NULL;
+    }
 
     if ( control->diffusion_coef )
+    {
         workspace->x_old = (rvec*) scalloc( local_cap, sizeof(rvec), "x_old" );
-    else workspace->x_old = NULL;
+    }
+    else
+    {
+        workspace->x_old = NULL;
+    }
 
     /* force related storage */
     workspace->f = (rvec*) scalloc( total_cap, sizeof(rvec), "f" );
@@ -442,7 +456,7 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m )
 int Allocate_Matrix( sparse_matrix *H, int cap, int m )
 {
 
-   // H = (sparse_matrix*) smalloc(sizeof(sparse_matrix), "sparse_matrix");
+//    H = (sparse_matrix*) smalloc(sizeof(sparse_matrix), "sparse_matrix");
     H->cap = cap;
     H->m = m;
 
@@ -491,18 +505,20 @@ int Reallocate_HBonds_List( reax_system *system, reax_list *hbonds )
 
     total_hbonds = 0;
     for ( i = 0; i < system->n; ++i )
+    {
         if ( (id = system->my_atoms[i].Hindex) >= 0 )
         {
             system->my_atoms[i].num_hbonds = MAX( Num_Entries(id, hbonds) * SAFER_ZONE,
                                                   MIN_HBONDS );
             total_hbonds += system->my_atoms[i].num_hbonds;
         }
+    }
     total_hbonds = MAX( total_hbonds * SAFER_ZONE, MIN_CAP * MIN_HBONDS );
 
     Delete_List( hbonds);
     if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND, hbonds) )
     {
-        fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
+        fprintf( stderr, "ERROR: not enough space for hbonds list. terminating!\n" );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
@@ -593,9 +609,13 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
             c[d] = (int)((atoms[l].x[d] - my_ext_box->min[d]) * g->inv_len[d]);
 
             if ( c[d] >= g->native_end[d] )
+            {
                 c[d] = g->native_end[d] - 1;
+            }
             else if ( c[d] < g->native_str[d] )
+            {
                 c[d] = g->native_str[d];
+            }
         }
 #if defined(DEBUG)
         fprintf( stderr, "p%d bin_my_atoms: l:%d - atom%d @ %.5f %.5f %.5f" \
@@ -612,7 +632,9 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
 
     max_atoms = 0;
     for ( i = 0; i < g->ncells[0]; i++ )
+    {
         for ( j = 0; j < g->ncells[1]; j++ )
+        {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 //SUDHIR
@@ -625,6 +647,8 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
                          system->my_rank, i, j, k, gc->top );
 #endif
             }
+        }
+    }
 
     my_max = MAX(max_atoms * SAFE_ZONE, MIN_GCELL_POPL);
     MPI_Allreduce( &my_max, &all_max, 1, MPI_INT, MPI_MAX, comm );
@@ -720,11 +744,17 @@ void Allocate_Grid( reax_system *system, MPI_Comm comm )
     g->max_atoms = Estimate_GCell_Population( system, comm );
     /* space for storing atom id's is required only for native cells */
     for ( i = g->native_str[0]; i < g->native_end[0]; ++i )
+    {
         for ( j = g->native_str[1]; j < g->native_end[1]; ++j )
+        {
             for ( k = g->native_str[2]; k < g->native_end[2]; ++k )
+            {
                 //g->cells[i][j][k].atoms = (int*) scalloc(g->max_atoms, sizeof(int), "g:atoms");
                 //SUDHIR
-                g->cells[ index_grid_3d (i, j, k, g) ].atoms = (int*) scalloc(g->max_atoms, sizeof(int), "g:atoms");
+                g->cells[ index_grid_3d(i, j, k, g) ].atoms = (int*) scalloc(g->max_atoms, sizeof(int), "g:atoms");
+            }
+        }
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d-allocated %dx%dx%d grid: nbrs=%d atoms=%d space=%dMB\n",
@@ -832,8 +862,8 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
 
 
 void ReAllocate( reax_system *system, control_params *control,
-                 simulation_data *data, storage *workspace, reax_list **lists,
-                 mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        mpi_datatypes *mpi_data )
 {
     int i, j, k, p;
     int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
@@ -906,10 +936,10 @@ void ReAllocate( reax_system *system, control_params *control,
         /* workspace */
         DeAllocate_Workspace( control, workspace );
         ret = Allocate_Workspace( system, control, workspace, system->local_cap,
-                                  system->total_cap, msg );
+                system->total_cap, msg );
         if ( ret != SUCCESS )
         {
-            fprintf( stderr, "no space for workspace: local_cap=%d total_cap=%d",
+            fprintf( stderr, "ERROR: no space for workspace: local_cap=%d total_cap=%d",
                      system->local_cap, system->total_cap );
             fprintf( stderr, "terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
@@ -926,7 +956,7 @@ void ReAllocate( reax_system *system, control_params *control,
         {
             if ( realloc->num_far > far_nbrs->num_intrs )
             {
-                fprintf( stderr, "step%d-ran out of space on far_nbrs: top=%d, max=%d",
+                fprintf( stderr, "ERROR: step%d-ran out of space on far_nbrs: top=%d, max=%d",
                          data->step, realloc->num_far, far_nbrs->num_intrs );
                 MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
             }
@@ -939,7 +969,7 @@ void ReAllocate( reax_system *system, control_params *control,
 #endif
 
             Reallocate_Neighbor_List( far_nbrs, system->total_cap,
-                                      realloc->num_far * SAFE_ZONE );
+                    realloc->num_far * SAFE_ZONE );
             realloc->num_far = 0;
         }
     }
@@ -1030,14 +1060,16 @@ void ReAllocate( reax_system *system, control_params *control,
         Delete_List( (*lists) + THREE_BODIES);
 
         if ( num_bonds == -1 )
+        {
             num_bonds = ((*lists) + BONDS)->num_intrs;
+        }
 
         realloc->num_3body = MAX( realloc->num_3body * SAFE_ZONE, MIN_3BODIES );
 
         if ( !Make_List( num_bonds, realloc->num_3body,
                          TYP_THREE_BODY, (*lists) + THREE_BODIES) )
         {
-            fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
+            fprintf( stderr, "ERROR: problem in initializing angles list. Terminating!\n" );
             MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
         }
         realloc->num_3body = -1;
@@ -1051,7 +1083,9 @@ void ReAllocate( reax_system *system, control_params *control,
 #endif
 
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
+        {
             for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
+            {
                 for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
                 {
                     // reallocate g->atoms
@@ -1061,6 +1095,8 @@ void ReAllocate( reax_system *system, control_params *control,
                     g->cells[ index_grid_3d (i, j, k, g) ].atoms = (int*)
                             scalloc(realloc->gcell_atoms, sizeof(int), "g:atoms");
                 }
+            }
+        }
         realloc->gcell_atoms = -1;
     }
 
@@ -1068,10 +1104,14 @@ void ReAllocate( reax_system *system, control_params *control,
     // we have to be at a renbring step -
     // to ensure correct values at mpi_buffers for update_boundary_positions
     if ( !renbr )
+    {
         mpi_flag = 0;
+    }
     // check whether in_buffer capacity is enough
     else if ( system->max_recved >= system->est_recv * 0.90 )
+    {
         mpi_flag = 1;
+    }
     else
     {
         // otherwise check individual outgoing buffers
@@ -1094,9 +1134,12 @@ void ReAllocate( reax_system *system, control_params *control,
         fprintf( stderr, "p%d: reallocating mpi_buf: old_recv=%d\n",
                  system->my_rank, system->est_recv );
         for ( p = 0; p < MAX_NBRS; ++p )
+        {
             fprintf( stderr, "p%d: nbr%d old_send=%d\n",
                      system->my_rank, p, system->my_nbrs[p].est_send );
+        }
 #endif
+
         /* update mpi buffer estimates based on last comm */
         system->est_recv = MAX( system->max_recved * SAFER_ZONE, MIN_SEND );
         system->est_trans =
@@ -1109,14 +1152,17 @@ void ReAllocate( reax_system *system, control_params *control,
             nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
             total_send += nbr_pr->est_send;
         }
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
                  system->my_rank, system->est_recv, total_send,
                  (int)((system->est_recv + total_send)*sizeof(boundary_atom) /
                        (1024 * 1024)));
         for ( p = 0; p < MAX_NBRS; ++p )
+        {
             fprintf( stderr, "p%d: nbr%d new_send=%d\n",
                      system->my_rank, p, system->my_nbrs[p].est_send );
+        }
 #endif
 
         /* reallocate mpi buffers */
@@ -1141,8 +1187,8 @@ void ReAllocate( reax_system *system, control_params *control,
 
 #ifdef HAVE_CUDA
 void Cuda_ReAllocate( reax_system *system, control_params *control,
-                      simulation_data *data, storage *workspace, reax_list **lists,
-                      mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        mpi_datatypes *mpi_data )
 {
     int i, j, k, p;
     int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
@@ -1209,7 +1255,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         ret = dev_realloc_system ( system, system->local_cap, system->total_cap, msg );
         if ( ret != SUCCESS )
         {
-            fprintf( stderr, "not enough space for atom_list: total_cap=%d",
+            fprintf( stderr, "ERROR: not enough space for atom_list: total_cap=%d",
                      system->total_cap );
             fprintf( stderr, "terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
@@ -1221,7 +1267,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                                     system->total_cap, msg );
         if ( ret != SUCCESS )
         {
-            fprintf( stderr, "no space for workspace: local_cap=%d total_cap=%d",
+            fprintf( stderr, "ERROR: no space for workspace: local_cap=%d total_cap=%d",
                      system->local_cap, system->total_cap );
             fprintf( stderr, "terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
@@ -1239,7 +1285,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         {
             if ( realloc->num_far > far_nbrs->num_intrs )
             {
-                fprintf( stderr, "step%d-ran out of space on far_nbrs: top=%d, max=%d",
+                fprintf( stderr, "ERROR: step%d-ran out of space on far_nbrs: top=%d, max=%d",
                          data->step, realloc->num_far, far_nbrs->num_intrs );
                 MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
             }
@@ -1274,6 +1320,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                      data->step, realloc->Htop, system->max_sparse_entries );
             MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
         }
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
                  system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
@@ -1293,7 +1340,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //TODO - CARVER FIX
 
         //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-        dev_dealloc_matrix (&dev_workspace->H);
+        dev_dealloc_matrix( &dev_workspace->H );
         //dev_alloc_matrix ( &(dev_workspace->H), system->total_cap,
         //     system->N * system->max_sparse_entries);
 
@@ -1304,8 +1351,8 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //TODO -- MOVER THIS TO CARVER
         //TODO -- MOVER THIS TO CARVER
         //TODO -- MOVER THIS TO CARVER
-        dev_alloc_matrix ( &(dev_workspace->H), system->total_cap,
-                           system->total_cap * system->max_sparse_entries);
+        dev_alloc_matrix( &(dev_workspace->H), system->total_cap,
+                system->total_cap * system->max_sparse_entries );
 
         //TODO - CARVER FIX
         //TODO - CARVER FIX
@@ -1323,10 +1370,10 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
     /* hydrogen bonds list */
     // FIX - 4 - Added additional check here for hydrogen Bond fix
-    if (( control->hbond_cut > 0 )  && (system->numH > 0))
+    if ( ( control->hbond_cut > 0 ) && (system->numH > 0) )
     {
 
-        if ( Nflag || realloc->hbonds)
+        if ( Nflag || realloc->hbonds )
         {
 
             fprintf (stderr, "p:%d - *** Reallocating Hbonds *** Step:%d\n", system->my_rank, data->step);
@@ -1334,6 +1381,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
             ret = Cuda_Reallocate_HBonds_List( system->total_cap, realloc->num_hbonds, (*lists) + HBONDS );
             realloc->hbonds = 0;
+
 #if defined(DEBUG_FOCUS)
             fprintf(stderr, "p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
                     system->my_rank, ret, (int)(ret * sizeof(hbond_data) / (1024 * 1024)));
@@ -1386,19 +1434,24 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 #endif
 
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
+        {
             for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
+            {
                 for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
                 {
                     // reallocate g->atoms
                     // SUDHIR
                     //sfree( g->cells[i][j][k].atoms, "g:atoms" );
-                    sfree( g->cells[ index_grid_3d (i, j, k, g) ].atoms, "g:atoms" );
-                    g->cells[ index_grid_3d (i, j, k, g) ].atoms = (int*)
+                    sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, "g:atoms" );
+                    g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int*)
                             scalloc(realloc->gcell_atoms, sizeof(int), "g:atoms");
                 }
+            }
+        }
+
         //TODO
         //do the same thing for the device here.
-        fprintf (stderr, "p:%d - *** Reallocating Grid Cell Atoms *** Step:%d\n", system->my_rank, data->step);
+        fprintf( stderr, "p:%d - *** Reallocating Grid Cell Atoms *** Step:%d\n", system->my_rank, data->step );
         //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
 
         //FIX - 1 - Tested the reallocation logic
@@ -1411,17 +1464,21 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     // we have to be at a renbring step -
     // to ensure correct values at mpi_buffers for update_boundary_positions
     if ( !renbr )
+    {
         mpi_flag = 0;
+    }
     // check whether in_buffer capacity is enough
     else if ( system->max_recved >= system->est_recv * 0.90 )
+    {
         mpi_flag = 1;
+    }
     else
     {
         // otherwise check individual outgoing buffers
         mpi_flag = 0;
         for ( p = 0; p < MAX_NBRS; ++p )
         {
-            nbr_pr   = &( system->my_nbrs[p] );
+            nbr_pr = &( system->my_nbrs[p] );
             nbr_data = &( mpi_data->out_buffers[p] );
             if ( nbr_data->cnt >= nbr_pr->est_send * 0.90 )
             {
@@ -1437,9 +1494,12 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         fprintf( stderr, "p%d: reallocating mpi_buf: old_recv=%d\n",
                  system->my_rank, system->est_recv );
         for ( p = 0; p < MAX_NBRS; ++p )
+        {
             fprintf( stderr, "p%d: nbr%d old_send=%d\n",
                      system->my_rank, p, system->my_nbrs[p].est_send );
+        }
 #endif
+
         /* update mpi buffer estimates based on last comm */
         system->est_recv = MAX( system->max_recved * SAFER_ZONE, MIN_SEND );
         system->est_trans =
@@ -1452,20 +1512,22 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
             nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
             total_send += nbr_pr->est_send;
         }
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
                  system->my_rank, system->est_recv, total_send,
                  (int)((system->est_recv + total_send)*sizeof(boundary_atom) /
                        (1024 * 1024)));
         for ( p = 0; p < MAX_NBRS; ++p )
+        {
             fprintf( stderr, "p%d: nbr%d new_send=%d\n",
                      system->my_rank, p, system->my_nbrs[p].est_send );
+        }
 #endif
 
         /* reallocate mpi buffers */
         Deallocate_MPI_Buffers( mpi_data );
-        ret = Allocate_MPI_Buffers( mpi_data, system->est_recv,
-                                    system->my_nbrs, msg );
+        ret = Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs, msg );
         if ( ret != SUCCESS )
         {
             fprintf( stderr, "%s", msg );

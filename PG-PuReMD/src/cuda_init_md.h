@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-void Cuda_Init_ScratchArea ();
+void Cuda_Init_ScratchArea( );
 
 #ifdef __cplusplus
 }

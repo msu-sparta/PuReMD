@@ -10,9 +10,10 @@ extern "C" void cuda_malloc(void **ptr, int size, int mem_set, const char *msg)
 
     if( retVal != cudaSuccess )
     {
-        fprintf( stderr, "Failed to allocate memory on device for the res: %s...  exiting with code: %d size: %d \n", 
+        fprintf( stderr,
+                "ERROR: failed to allocate memory on device for resouce %s\nCUDA API error code: %d, requested memory size (in bytes): %d\n", 
                 msg, retVal, size );
-        exit (-1);
+        exit( INSUFFICIENT_MEMORY );
     }  
 
     if( mem_set )
@@ -21,9 +22,10 @@ extern "C" void cuda_malloc(void **ptr, int size, int mem_set, const char *msg)
 
         if( retVal != cudaSuccess )
         {
-            fprintf( stderr, "Failed to memset memory on device for resource %s\n", 
-                    msg );
-            exit( -1 );
+            fprintf( stderr,
+                    "ERROR: failed to memset memory on device for resource %s\nCUDA API error code: %d, requested memory size (in bytes): %d\n", 
+                    msg, retVal, size );
+            exit( INSUFFICIENT_MEMORY );
         }
     }  
 }
@@ -43,7 +45,8 @@ extern "C" void cuda_free(void *ptr, const char *msg)
 
     if( retVal != cudaSuccess )
     {
-        fprintf( stderr, "Failed to release memory on device for res %s... exiting with code %d -- Address %ld\n", 
+        fprintf( stderr,
+                "WARNING: failed to release memory on device for resource %s\nCUDA API error code: %d, memory address: %ld\n", 
                 msg, retVal, (long int) ptr );
         return;
     }  
@@ -57,9 +60,10 @@ extern "C" void cuda_memset(void *ptr, int data, size_t count, const char *msg){
 
     if( retVal != cudaSuccess )
     {
-        fprintf( stderr, "Failed to memset memory on device for %s, cuda code %d\n", 
+        fprintf( stderr,
+                "ERROR: failed to memset memory on device for resource %s\nCUDA API error code: %d\n", 
                 msg, retVal );
-        exit( -1 );
+        exit( INSUFFICIENT_MEMORY );
     }
 }
 
@@ -79,9 +83,10 @@ extern "C" void copy_host_device(void *host, void *dev, int size, enum cudaMemcp
 
     if( retVal != cudaSuccess )
     {
-        fprintf( stderr, "could not copy resource %s from host to device: reason %d \n",
+        fprintf( stderr,
+                "ERROR: could not copy resource %s from host to device\nCUDA API error code: %d n",
                 msg, retVal );
-        exit( -1 );
+        exit( INSUFFICIENT_MEMORY );
     }
 }
 
@@ -93,9 +98,10 @@ extern "C" void copy_device(void *dest, void *src, int size, const char *msg)
     retVal = cudaMemcpy( dest, src, size, cudaMemcpyDeviceToDevice );
     if( retVal != cudaSuccess )
     {
-        fprintf( stderr, "could not copy resource %s from device to device: reason %d \n",
+        fprintf( stderr,
+                "ERROR: could not copy resource %s from device to device\nCUDA API error code: %d\n",
                 msg, retVal );
-        exit( -1 );
+        exit( INSUFFICIENT_MEMORY );
     }
 }
 
@@ -129,11 +135,12 @@ extern "C" void print_device_mem_usage()
 
     if ( cudaGetLastError() != cudaSuccess )
     {
-        fprintf( stderr, "Error on the memory call \n" );
+        fprintf( stderr, "WARNING: error on the CUDA get memory info call\n" );
         return;
     }
 
-    fprintf( stderr, "Total %ld Mb %ld gig %ld , free %ld, Mb %ld , gig %ld \n", 
+    fprintf( stderr,
+            "Total %ld Mb %ld gig %ld , free %ld, Mb %ld , gig %ld \n", 
             total, total/(1024*1024), total/ (1024*1024*1024), 
             free, free/(1024*1024), free/ (1024*1024*1024) );
 }

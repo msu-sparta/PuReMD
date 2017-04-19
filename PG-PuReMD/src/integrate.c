@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "integrate.h"
+
 #include "allocate.h"
 #include "box.h"
 #include "comm_tools.h"
@@ -143,8 +144,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     {
         Generate_Neighbor_Lists( system, data, workspace, lists );
     }
-    Compute_Forces( system, control, data, workspace, lists,
-                    out_control, mpi_data );
+    Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
 
     /* Compute iteration constants for each atom's velocity */
     for ( i = 0; i < system->n; ++i )
@@ -314,12 +314,13 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
     fprintf( stderr, "p%d @ step%d\n", system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = (steps % control->reneighbor == 0);
 
     /* velocity verlet, 1st part */
-    bNVT_update_velocity_part1 (system, dt);
+    bNVT_update_velocity_part1( system, dt );
 
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step);
@@ -329,19 +330,22 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
 
     if ( renbr )
+    {
         Update_Grid( system, control, mpi_data->world );
+    }
 
-    Output_Sync_Atoms (system);
+    Output_Sync_Atoms( system );
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
-    Sync_Atoms ( system );
+    Sync_Atoms( system );
 
-    //Synch the Grid to the Device here
-    Sync_Grid (&system->my_grid, &system->d_my_grid );
+    /* synch the Grid to the Device here */
+    Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-    init_blocks (system);
+    init_blocks( system );
+
 #if defined(__CUDA_DEBUG_LOG__)
-    fprintf (stderr, "p:%d - Matvec BLocks: %d, blocksize: %d \n",
-             system->my_rank, MATVEC_BLOCKS, MATVEC_BLOCK_SIZE);
+    fprintf( stderr, "p:%d - Matvec BLocks: %d, blocksize: %d \n",
+             system->my_rank, MATVEC_BLOCKS, MATVEC_BLOCK_SIZE );
 #endif
 
     //Reset( system, control, data, workspace, lists );
@@ -354,32 +358,36 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
 #endif
 
         nbr_indices = (int *) host_scratch;
-        memset (nbr_indices, 0, sizeof (int) * system->N);
+        memset( nbr_indices, 0, sizeof (int) * system->N );
 
-        Cuda_Estimate_Neighbors (system, nbr_indices);
-
-        num_nbrs = 0;
-        for (i = 0; i < system->N; i++)
-            num_nbrs += nbr_indices [i];
+        Cuda_Estimate_Neighbors( system, nbr_indices );
 
         num_nbrs = 0;
         for (i = 0; i < system->N; i++)
         {
-            nbr_indices [i] = MAX (nbr_indices[i] * SAFE_ZONE, MIN_NBRS);
-            num_nbrs += nbr_indices [i];
+            num_nbrs += nbr_indices[i];
+        }
+
+        num_nbrs = 0;
+        for (i = 0; i < system->N; i++)
+        {
+            nbr_indices[i] = MAX( nbr_indices[i] * SAFE_ZONE, MIN_NBRS );
+            num_nbrs += nbr_indices[i];
         }
 
         if (num_nbrs >= (*dev_lists + FAR_NBRS)->num_intrs)
         {
-            fprintf (stderr, "p%d: Total neighbors: %d is greater than available entries: %d \n",
-                     system->my_rank, num_nbrs, (*dev_lists + FAR_NBRS)->num_intrs);
-            exit (0);
+            fprintf( stderr, "p%d: Total neighbors: %d is greater than available entries: %d \n",
+                     system->my_rank, num_nbrs, (*dev_lists + FAR_NBRS)->num_intrs );
+            exit( 0 );
         }
 
         for (i = 1; i < system->N; i++)
-            nbr_indices [i] += nbr_indices [i - 1];
+        {
+            nbr_indices[i] += nbr_indices[i - 1];
+        }
 
-        Cuda_Init_Neighbors_Indices (nbr_indices, system->N);
+        Cuda_Init_Neighbors_Indices( nbr_indices, system->N );
         Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
         /*
@@ -438,10 +446,10 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
     //Compute_Forces( system, control, data, workspace,
     //          lists, out_control, mpi_data );
     Cuda_Compute_Forces( system, control, data, workspace,
-                         lists, out_control, mpi_data );
+            lists, out_control, mpi_data );
 
     /* velocity verlet, 2nd part */
-    bNVT_update_velocity_part2 (system, dt);
+    bNVT_update_velocity_part2( system, dt );
 
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step);
@@ -464,7 +472,7 @@ void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system,
     lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
-    bNVT_scale_velocities (system, lambda);
+    bNVT_scale_velocities( system, lambda );
 
     //Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
@@ -494,6 +502,7 @@ void Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* control
     fprintf( stderr, "p%d @ step%d\n", system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = (steps % control->reneighbor == 0);

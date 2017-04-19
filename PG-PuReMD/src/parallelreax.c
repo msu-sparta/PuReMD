@@ -51,17 +51,15 @@ evolve_function Cuda_Evolve;
 LR_lookup_table *LR;
 LR_lookup_table *d_LR;
 
-////////////////////////////
-//CUDA SPECIFIC DECLARATIONS
-////////////////////////////
-reax_list   **dev_lists;
-storage         *dev_workspace;
-void            *scratch;
-void            *host_scratch;
+/* CUDA SPECIFIC DECLARATIONS */
+reax_list **dev_lists;
+storage *dev_workspace;
+void *scratch;
+void *host_scratch;
 
-int         BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
-int         BLOCKS_N, BLOCKS_POW_2_N;
-int         MATVEC_BLOCKS;
+int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
+int BLOCKS_N, BLOCKS_POW_2_N;
+int MATVEC_BLOCKS;
 
 
 void Read_System( char *geo_file, char *ffield_file, char *control_file,
@@ -193,7 +191,7 @@ int main( int argc, char* argv[] )
 
     if ( argc != 4 )
     {
-        usage(argv);
+        usage( argv );
         exit( INVALID_INPUT );
     }
 
@@ -260,17 +258,6 @@ int main( int argc, char* argv[] )
     system->wsize = control->nprocs;
     system->global_offset = (int *)scalloc(system->wsize + 1, sizeof(int), "global_offset");
 
-    /* setup the CUDA Device for this process can be on the same machine
-    * or on a different machine, for now use the rank to compute the device
-    * This will only work on a single machine with 2 GPUs */
-    Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
-    //Cleanup_Cuda_Environment ();
-    //
-#if defined(DEBUG)
-    print_device_mem_usage ();
-    fprintf( stderr, "p%d: Total number of GPUs on this node -- %d\n", system->my_rank, my_device_id);
-#endif
-
     /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
@@ -278,6 +265,14 @@ int main( int argc, char* argv[] )
 #if defined(DEBUG)
     fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
     MPI_Barrier( MPI_COMM_WORLD );
+#endif
+
+    /* setup the CUDA Device for this process */
+    Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
+
+#if defined(DEBUG)
+    print_device_mem_usage( );
+    fprintf( stderr, "p%d: Total number of GPUs on this node -- %d\n", system->my_rank, my_device_id);
 #endif
 
     /* init the blocks sizes for cuda kernels */
@@ -297,7 +292,7 @@ int main( int argc, char* argv[] )
 #endif
 
 #if defined(DEBUG)
-    print_device_mem_usage ();
+    print_device_mem_usage( );
 #endif
 
     /* init the blocks sizes for cuda kernels */
@@ -313,9 +308,9 @@ int main( int argc, char* argv[] )
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
     Sync_Atoms( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
-    init_blocks (system);
+    init_blocks( system );
 
-#if defined(__CUDA_DENUG_LOG__)
+#if defined(__CUDA_DEBUG_LOG__)
     fprintf( stderr, "p%d: Comm_Atoms synchronized \n", system->my_rank );
 #endif
 
@@ -339,7 +334,6 @@ int main( int argc, char* argv[] )
 #if defined(DEBUG)
     fprintf (stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
 #endif
-
 
     //Fourth Step
 #if defined(DEBUG)
@@ -428,7 +422,7 @@ int main( int argc, char* argv[] )
 
         //Analysis(system, control, data, workspace, lists, out_control, mpi_data);
 
-        // dump restart info
+        /* dump restart info */
 //    if( out_control->restart_freq &&
 //  (data->step-data->prev_steps) % out_control->restart_freq == 0 ) {
 //      if( out_control->restart_format == WRITE_ASCII )
@@ -445,7 +439,7 @@ int main( int argc, char* argv[] )
     }
 
 #if defined(__CUDA_DEBUG__)
-    // vaildate the results in debug mode
+    /* vaildate the results in debug mode */
     validate_device (system, data, workspace, lists);
 #endif
 
@@ -578,8 +572,6 @@ int main( int argc, char* argv[] )
 
     // Write_PDB( &system, &(lists[BOND]), &out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
-
-    //Cleanup_Cuda_Environment ();
 
     MPI_Finalize();
 

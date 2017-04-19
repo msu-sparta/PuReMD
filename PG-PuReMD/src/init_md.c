@@ -1111,7 +1111,7 @@ void Initialize( reax_system *system, control_params *control,
                  mpi_datatypes *mpi_data )
 {
 
-    host_scratch = (void *)malloc (HOST_SCRATCH_SIZE );
+    host_scratch = (void *)malloc( HOST_SCRATCH_SIZE );
 
     char msg[MAX_STR];
 
@@ -1267,7 +1267,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     real t_start, t_end;
 
     //HOST SCRATCH and Device SCRATCH
-    Cuda_Init_ScratchArea ();
+    Cuda_Init_ScratchArea( );
 
     //MPI_DATATYPES
     if ( Init_MPI_Datatypes( system, workspace, mpi_data, msg ) == FAILURE )
@@ -1377,7 +1377,7 @@ void Initialize( reax_system *system, control_params *control,
                  mpi_datatypes *mpi_data )
 {
     char msg[MAX_STR];
-    host_scratch = (void *)malloc (HOST_SCRATCH_SIZE );
+    host_scratch = (void *)malloc( HOST_SCRATCH_SIZE );
     if ( Init_System(system, msg) == FAILURE )
     {
         fprintf( stderr, "p%d: %s\n", system->my_rank, msg );

@@ -70,11 +70,17 @@ void Setup_Comm( reax_system* system, control_params* control,
 
             /* determine if it is a periodic neighbor */
             if ( nbr_coords[d] < 0 )
+            {
                 nbr_pr->prdc[d] = -1;
+            }
             else if ( nbr_coords[d] >= control->procs_by_dim[d] )
+            {
                 nbr_pr->prdc[d] = +1;
+            }
             else
+            {
                 nbr_pr->prdc[d] = 0;
+            }
         }
 
 #if defined(DEBUG_FOCUS)
@@ -105,6 +111,7 @@ void Update_Comm( reax_system* system )
         nbr_pr = &(system->my_nbrs[i]);
 
         for ( d = 0; d < 3; ++d )
+        {
             /* determine the boundary area with this nbr */
             if ( r[i][d] < 0 )
             {
@@ -120,6 +127,7 @@ void Update_Comm( reax_system* system )
             {
                 nbr_pr->bndry_min[d] = nbr_pr->bndry_max[d] = NEG_INF;
             }
+        }
     }
 }
 
@@ -172,6 +180,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
     fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d starting...\n",
              system->my_rank, start, end, dim );
 #endif
+
     atoms = system->my_atoms;
     my_box = &( system->my_box );
 
@@ -179,6 +188,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
     for ( i = start; i < end; ++i )
     {
         for ( d = dim; d < 3; ++d )
+        {
             if ( atoms[i].x[d] < my_box->min[d] )
             {
                 out_cnt = out_bufs[2 * d].cnt++;
@@ -195,10 +205,12 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
                 atoms[i].orig_id = -1;
                 break;
             }
+        }
     }
 
 #if defined(DEBUG_FOCUS)
     for ( d = 2 * dim; d < 2 * dim + 2; ++d )
+    {
         if ( out_bufs[d].cnt )
         {
             fprintf( stderr, "p%d to p%d(nbr%d) # of transfers = %d\n",
@@ -211,6 +223,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
         }
     //fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d done!\n",
     //   system->my_rank, start, end, dim );
+    }
 #endif
 }
 
@@ -226,14 +239,18 @@ void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
 
     dest = system->my_atoms + end;
     for ( i = 0; i < cnt; ++i )
+    {
         Unpack_MPI_Atom( dest + i, src + i );
+    }
 
     /* adjust coordinates of recved atoms if nbr is a periodic one */
     if ( nbr->prdc[dim] )
     {
         dx = nbr->prdc[dim] * system->big_box.box_norms[dim];
         for ( i = 0; i < cnt; ++i )
+        {
             dest[i].x[dim] += dx;
+        }
     }
 }
 
@@ -278,12 +295,15 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
     fprintf( stderr, "p%d sort_exchange: start=%d end=%d dim=%d starting...\n",
              system->my_rank, start, end, dim );
 #endif
+
     atoms = system->my_atoms;
     my_box = &( system->my_box );
 
     /* place each atom into the appropriate outgoing list */
     for ( i = start; i < end; ++i )
+    {
         for ( d = dim; d < 3; ++d )
+        {
             for ( p = 2 * d; p < 2 * d + 2; ++p )
             {
                 nbr_pr = &( system->my_nbrs[p] );
@@ -296,12 +316,16 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
                     Pack_Boundary_Atom( out_buf + out_cnt, atoms + i, i );
                 }
             }
+        }
+    }
 
 #if defined(DEBUG_FOCUS)
     for ( i = 2 * dim; i < 2 * dim + 2; ++i )
+    {
         fprintf( stderr, "p%d to p%d(nbr%d) # of exchanges to send = %d\n",
                  system->my_rank, system->my_nbrs[i].rank, i,
                  out_bufs[i].cnt );
+    }
     fprintf( stderr, "p%d sort_exchange: start=%d end=%d dim=%d done!\n",
              system->my_rank, start, end, dim );
 #endif
@@ -321,6 +345,7 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
     fprintf( stderr, "p%d estimate_exchange: start=%d end=%d dim=%d starting.\n",
              system->my_rank, start, end, d );
 #endif
+
     atoms = system->my_atoms;
     my_box = &( system->my_box );
     nbr1 = &(system->my_nbrs[2 * d]);
@@ -332,14 +357,19 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
     for ( i = 0; i < end; ++i )
     {
         if ( nbr1->bndry_min[d] <= atoms[i].x[d] && atoms[i].x[d] < nbr1->bndry_max[d] )
+        {
             nbr1->est_send++;
+        }
         if ( nbr2->bndry_min[d] <= atoms[i].x[d] && atoms[i].x[d] < nbr2->bndry_max[d] )
+        {
             nbr2->est_send++;
+        }
     }
 
     /* estimate the space based on the count above */
     nbr1->est_send = MAX( MIN_SEND, nbr1->est_send * SAFER_ZONE );
     nbr2->est_send = MAX( MIN_SEND, nbr2->est_send * SAFER_ZONE );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d est1=%d est2=%d\n",
              system->my_rank, end, d, nbr1->est_send, nbr2->est_send );
@@ -357,6 +387,7 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 
     /* sort the atoms to their outgoing buffers */
     for ( i = 0; i < end; ++i )
+    {
         for ( p = 2 * d; p < 2 * d + 2; ++p )
         {
             nbr_pr = &( system->my_nbrs[p] );
@@ -369,6 +400,7 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
                 Pack_Boundary_Atom( out_buf + out_cnt, atoms + i, i );
             }
         }
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d done!\n",
@@ -395,6 +427,7 @@ void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
     nrecv[2 * d] = nbr1->est_recv;
     nrecv[2 * d + 1] = nbr2->est_recv;
     new_max = MAX( nbr1->est_recv, nbr2->est_recv );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d-p%d(nbr%d) est_send=%d est_recv=%d\n",
              me, nbr1->rank, 2 * d, nbr1->est_send, nbr1->est_recv );
@@ -425,7 +458,9 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
 
     dest = system->my_atoms + end;
     for ( i = 0; i < cnt; ++i )
+    {
         Unpack_Boundary_Atom( dest + i, src + i );
+    }
 
     /* record the atoms recv'd from this nbr */
     nbr->atoms_str = end;
@@ -435,14 +470,18 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
 
     /* update max_recv to make sure that we reallocate at the right time */
     if ( cnt > system->max_recved )
+    {
         system->max_recved = cnt;
+    }
 
     /* adjust coordinates of recved atoms if nbr is a periodic one */
     if ( nbr->prdc[dim] )
     {
         dx = nbr->prdc[dim] * system->big_box.box_norms[dim];
         for ( i = 0; i < cnt; ++i )
+        {
             dest[i].x[dim] += dx;
+        }
     }
 }
 
@@ -483,7 +522,9 @@ void Sort_Position_Updates( reax_system *system, int start, int end,
     {
         out = (rvec*) out_bufs[p].out_atoms;
         for ( i = 0; i < out_bufs[p].cnt; ++i )
+        {
             memcpy( out[i], atoms[ out_bufs[p].index[i] ].x, sizeof(rvec) );
+        }
     }
 }
 
@@ -500,14 +541,18 @@ void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
     start = nbr->atoms_str;
 
     for ( i = 0; i < cnt; ++i )
+    {
         memcpy( atoms[start + i].x, src[i], sizeof(rvec) );
+    }
 
     /* adjust coordinates of recved atoms if nbr is a periodic one */
     if ( nbr->prdc[dim] )
     {
         dx = nbr->prdc[dim] * system->big_box.box_norms[dim];
         for ( i = 0; i < cnt; ++i )
+        {
             atoms[start + i].x[dim] += dx;
+        }
     }
 }
 
@@ -526,7 +571,11 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d sendrecv: entered\n", system->my_rank );
 #endif
-    if ( clr ) Reset_Out_Buffers( mpi_data->out_buffers, system->num_nbrs );
+
+    if ( clr )
+    {
+        Reset_Out_Buffers( mpi_data->out_buffers, system->num_nbrs );
+    }
     comm = mpi_data->comm_mesh3D;
     in1 = mpi_data->in1_buffer;
     in2 = mpi_data->in2_buffer;
@@ -545,8 +594,10 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 
         /* for estimates in1_buffer & in2_buffer will be NULL */
         if ( est_flag )
+        {
             Estimate_Init_Storage( system->my_rank, nbr1, nbr2, d,
                                    &max, nrecv, &in1, &in2, comm );
+        }
 
         /* initiate recvs */
         MPI_Irecv( in1, nrecv[2 * d], type, nbr1->rank, 2 * d + 1, comm, &req1 );
@@ -589,46 +640,64 @@ void Comm_Atoms( reax_system *system, control_params *control,
 {
     int i;
     int nrecv[MAX_NBRS];
+
 #if defined(LOG_PERFORMANCE)
     real t_start = 0, t_elapsed = 0;
 
     if ( system->my_rank == MASTER_NODE )
+    {
         t_start = Get_Time( );
+    }
 #endif
 
     if ( renbr )
     {
-        for ( i = 0; i < MAX_NBRS; ++i ) nrecv[i] = system->est_trans;
+        for ( i = 0; i < MAX_NBRS; ++i )
+        {
+            nrecv[i] = system->est_trans;
+        }
         system->n = SendRecv( system, mpi_data, mpi_data->mpi_atom_type, nrecv,
                               Sort_Transfer_Atoms, Unpack_Transfer_Message, 1 );
         Bin_My_Atoms( system, &(workspace->realloc) );
         Reorder_My_Atoms( system, workspace );
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d updated local atoms, n=%d\n",
                  system->my_rank, system->n );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-        for ( i = 0; i < MAX_NBRS; ++i ) nrecv[i] = system->my_nbrs[i].est_recv;
+        for ( i = 0; i < MAX_NBRS; ++i )
+        {
+            nrecv[i] = system->my_nbrs[i].est_recv;
+        }
         system->N = SendRecv(system, mpi_data, mpi_data->boundary_atom_type, nrecv,
                              Sort_Boundary_Atoms, Unpack_Exchange_Message, 1);
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: exchanged boundary atoms, N=%d\n",
                  system->my_rank, system->N );
         for ( i = 0; i < MAX_NBRS; ++i )
+        {
             fprintf( stderr, "p%d: nbr%d(p%d) str=%d cnt=%d end=%d\n",
                      system->my_rank, i, system->my_nbrs[i].rank,
                      system->my_nbrs[i].atoms_str,  system->my_nbrs[i].atoms_cnt,
                      system->my_nbrs[i].atoms_str + system->my_nbrs[i].atoms_cnt );
+        }
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
         Bin_Boundary_Atoms( system );
     }
     else
     {
-        for ( i = 0; i < MAX_NBRS; ++i ) nrecv[i] = system->my_nbrs[i].atoms_cnt;
+        for ( i = 0; i < MAX_NBRS; ++i )
+        {
+            nrecv[i] = system->my_nbrs[i].atoms_cnt;
+        }
         SendRecv( system, mpi_data, mpi_data->mpi_rvec, nrecv,
                   Sort_Position_Updates, Unpack_Position_Updates, 0 );
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: updated positions\n", system->my_rank );
         MPI_Barrier( MPI_COMM_WORLD );
@@ -642,6 +711,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
         data->timing.comm += t_elapsed;
     }
 #endif
+
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ renbr=%d: comm_atoms done\n", system->my_rank, renbr);
     fprintf( stderr, "p%d: system->n = %d, system->N = %d\n",
