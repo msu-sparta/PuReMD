@@ -8,14 +8,16 @@ extern "C"
 {
 
 
-int dev_alloc_control (control_params *control)
+int dev_alloc_control( control_params *control )
 {
-    cuda_malloc ((void **)&control->d_control_params, sizeof (control_params), 1, "control_params");
-    copy_host_device (control, control->d_control_params, sizeof (control_params), cudaMemcpyHostToDevice, "control_params");
+    cuda_malloc( (void **)&control->d_control_params,
+            sizeof(control_params), 1, "control_params" );
+    copy_host_device( control, control->d_control_params,
+            sizeof(control_params), cudaMemcpyHostToDevice, "control_params" );
 }
 
 
-CUDA_GLOBAL void Init_Nbrs(ivec *nbrs, int N)
+CUDA_GLOBAL void Init_Nbrs( ivec *nbrs, int N )
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= N) return;
@@ -26,7 +28,7 @@ CUDA_GLOBAL void Init_Nbrs(ivec *nbrs, int N)
 }
 
 
-int dev_alloc_grid (reax_system *system)
+int dev_alloc_grid( reax_system *system )
 {
     int total;
     grid_cell local_cell;
@@ -35,30 +37,33 @@ int dev_alloc_grid (reax_system *system)
     ivec *nbrs_x = (ivec *) scratch;
 
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
-    ivec_Copy (device->ncells, host->ncells);
-    rvec_Copy (device->cell_len, host->cell_len);
-    rvec_Copy (device->inv_len, host->inv_len);
+    ivec_Copy( device->ncells, host->ncells );
+    rvec_Copy( device->cell_len, host->cell_len );
+    rvec_Copy( device->inv_len, host->inv_len );
 
-    ivec_Copy (device->bond_span, host->bond_span );
-    ivec_Copy (device->nonb_span, host->nonb_span );
-    ivec_Copy (device->vlist_span, host->vlist_span );
+    ivec_Copy( device->bond_span, host->bond_span );
+    ivec_Copy( device->nonb_span, host->nonb_span );
+    ivec_Copy( device->vlist_span, host->vlist_span );
 
-    ivec_Copy (device->native_cells, host->native_cells );
-    ivec_Copy (device->native_str, host->native_str );
-    ivec_Copy (device->native_end, host->native_end );
+    ivec_Copy( device->native_cells, host->native_cells );
+    ivec_Copy( device->native_str, host->native_str );
+    ivec_Copy( device->native_end, host->native_end );
 
     device->ghost_cut = host->ghost_cut;
-    ivec_Copy (device->ghost_span, host->ghost_span );
-    ivec_Copy (device->ghost_nonb_span, host->ghost_nonb_span );
-    ivec_Copy (device->ghost_hbond_span, host->ghost_hbond_span );
-    ivec_Copy (device->ghost_bond_span, host->ghost_bond_span );
+    ivec_Copy( device->ghost_span, host->ghost_span );
+    ivec_Copy( device->ghost_nonb_span, host->ghost_nonb_span );
+    ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
+    ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
-    cuda_malloc ((void **) &device->str, sizeof (int) * total, 1, "grid:str");
-    cuda_malloc ((void **) &device->end, sizeof (int) * total, 1, "grid:end");
-    cuda_malloc ((void **) &device->cutoff, sizeof (real) * total, 1, "grid:cutoff");
-    cuda_malloc ((void **) &device->nbrs_x, sizeof (ivec) * total * host->max_nbrs, 1, "grid:nbrs_x");
-    cuda_malloc ((void **) &device->nbrs_cp, sizeof (rvec) * total * host->max_nbrs, 1, "grid:nbrs_cp");
-    cuda_malloc ((void **) &device->rel_box, sizeof (ivec) * total, 1, "grid:rel_box");
+    cuda_malloc( (void **) &device->str, sizeof(int) * total, 1, "grid:str" );
+    cuda_malloc( (void **) &device->end, sizeof(int) * total, 1, "grid:end" );
+    cuda_malloc( (void **) &device->cutoff, sizeof(real) * total, 1, "grid:cutoff" );
+    fprintf( stderr, "total = %d\n", total );
+    fprintf( stderr, "host->max_nbrs = %d\n", host->max_nbrs );
+    fprintf( stderr, "sizeof(ivec) = %d\n", sizeof(ivec) );
+    cuda_malloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs, 1, "grid:nbrs_x" );
+    cuda_malloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs, 1, "grid:nbrs_cp" );
+    cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total, 1, "grid:rel_box" );
 
     /*
        int block_size = 512;
@@ -143,34 +148,41 @@ int dev_alloc_grid_cell_atoms (reax_system *system, int cap)
 }
 
 
-int dev_alloc_system (reax_system *system)
+int dev_alloc_system( reax_system *system )
 {
-    cuda_malloc ( (void **) &system->d_my_atoms, system->total_cap * sizeof (reax_atom), 1, "system:d_my_atoms");  
+    cuda_malloc( (void **) &system->d_my_atoms, system->total_cap * sizeof(reax_atom),
+            1, "system:d_my_atoms" );
     //fprintf (stderr, "p:%d - allocated atoms : %d (%ld, %ld) \n", system->my_rank, system->total_cap, 
     //                                                                                    system->my_atoms, system->d_my_atoms);
 
     //simulation boxes
-    cuda_malloc ( (void **) &system->d_big_box, sizeof (simulation_box), 1, "system:d_big_box");
-    cuda_malloc ( (void **) &system->d_my_box, sizeof (simulation_box), 1, "system:d_my_box");
-    cuda_malloc ( (void **) &system->d_my_ext_box, sizeof (simulation_box), 1, "d_my_ext_box");
+    cuda_malloc( (void **) &system->d_big_box, sizeof (simulation_box), 1, "system:d_big_box" );
+    cuda_malloc( (void **) &system->d_my_box, sizeof (simulation_box), 1, "system:d_my_box" );
+    cuda_malloc( (void **) &system->d_my_ext_box, sizeof (simulation_box), 1, "d_my_ext_box" );
 
     //interaction parameters
-    cuda_malloc ((void **) &system->reax_param.d_sbp, system->reax_param.num_atom_types * sizeof (single_body_parameters),
-            1, "system:d_sbp");
+    cuda_malloc( (void **) &system->reax_param.d_sbp,
+            system->reax_param.num_atom_types * sizeof (single_body_parameters),
+            1, "system:d_sbp" );
 
-    cuda_malloc ((void **) &system->reax_param.d_tbp, pow (system->reax_param.num_atom_types, 2) * sizeof (two_body_parameters), 
-            1, "system:d_tbp");
+    cuda_malloc( (void **) &system->reax_param.d_tbp,
+            pow(system->reax_param.num_atom_types, 2) * sizeof (two_body_parameters), 
+            1, "system:d_tbp" );
 
-    cuda_malloc ((void **) &system->reax_param.d_thbp, pow (system->reax_param.num_atom_types, 3) * sizeof (three_body_header),
-            1, "system:d_thbp");
+    cuda_malloc( (void **) &system->reax_param.d_thbp,
+            pow(system->reax_param.num_atom_types, 3) * sizeof (three_body_header),
+            1, "system:d_thbp" );
 
-    cuda_malloc ((void **) &system->reax_param.d_hbp, pow (system->reax_param.num_atom_types, 3) * sizeof (hbond_parameters),
-            1, "system:d_hbp");
+    cuda_malloc( (void **) &system->reax_param.d_hbp,
+            pow (system->reax_param.num_atom_types, 3) * sizeof (hbond_parameters),
+            1, "system:d_hbp" );
 
-    cuda_malloc ((void **) &system->reax_param.d_fbp, pow (system->reax_param.num_atom_types, 4) * sizeof (four_body_header),
-            1, "system:d_fbp");
+    cuda_malloc( (void **) &system->reax_param.d_fbp,
+            pow(system->reax_param.num_atom_types, 4) * sizeof (four_body_header),
+            1, "system:d_fbp" );
 
-    cuda_malloc ((void **) &system->reax_param.d_gp.l, system->reax_param.gp.n_global * sizeof (real), 1, "system:d_gp.l");
+    cuda_malloc( (void **) &system->reax_param.d_gp.l,
+            system->reax_param.gp.n_global * sizeof (real), 1, "system:d_gp.l" );
 
     system->reax_param.d_gp.n_global = 0;
     system->reax_param.d_gp.vdw_type = 0;
@@ -179,20 +191,22 @@ int dev_alloc_system (reax_system *system)
 }
 
 
-int dev_realloc_system (reax_system *system, int local_cap, int total_cap, char *msg)
+int dev_realloc_system( reax_system *system, int local_cap, int total_cap, char *msg )
 {
     //free the existing storage for atoms
-    cuda_free (system->d_my_atoms, "system:d_my_atoms");
+    cuda_free( system->d_my_atoms, "system:d_my_atoms" );
 
-    cuda_malloc ((void **) &system->d_my_atoms, sizeof (reax_atom) * total_cap, 
-            1, "system:d_my_atoms");
+    cuda_malloc( (void **) &system->d_my_atoms, sizeof (reax_atom) * total_cap, 
+            1, "system:d_my_atoms" );
+
     return FAILURE;
 }
 
 
-int dev_alloc_simulation_data(simulation_data *data)
+int dev_alloc_simulation_data( simulation_data *data )
 {
-    cuda_malloc ((void **) &(data->d_simulation_data), sizeof (simulation_data), 1, "simulation_data");
+    cuda_malloc( (void **) &(data->d_simulation_data), sizeof (simulation_data), 1, "simulation_data" );
+
     return SUCCESS;
 }
 
@@ -386,26 +400,26 @@ int dev_dealloc_workspace( control_params *control,
 }
 
 
-int dev_alloc_matrix (sparse_matrix *H, int cap, int m)
+int dev_alloc_matrix( sparse_matrix *H, int cap, int m )
 {
     //sparse_matrix *H;
     //H = *pH;
 
     H->cap = cap;
     H->m = m;
-    cuda_malloc ((void **) &H->start, sizeof (int) * cap, 1, "matrix_start");
-    cuda_malloc ((void **) &H->end, sizeof (int) * cap, 1, "matrix_end");
-    cuda_malloc ((void **) &H->entries, sizeof (sparse_matrix_entry) * m, 1, "matrix_entries");
+    cuda_malloc( (void **) &H->start, sizeof (int) * cap, 1, "matrix_start" );
+    cuda_malloc( (void **) &H->end, sizeof (int) * cap, 1, "matrix_end" );
+    cuda_malloc( (void **) &H->entries, sizeof (sparse_matrix_entry) * m, 1, "matrix_entries" );
 
     return SUCCESS;
 }
 
 
-int dev_dealloc_matrix (sparse_matrix *H)
+int dev_dealloc_matrix( sparse_matrix *H )
 {
-    cuda_free (H->start, "matrix_start");
-    cuda_free (H->end, "matrix_end");
-    cuda_free (H->entries, "matrix_entries");
+    cuda_free( H->start, "matrix_start" );
+    cuda_free( H->end, "matrix_end" );
+    cuda_free( H->entries, "matrix_entries" );
 
     return SUCCESS;
 }

@@ -71,7 +71,7 @@ int Make_List(int n, int num_intrs, int type, reax_list *l)
     fprintf( stderr, "list: n=%d num_intrs=%d type=%d\n", n, num_intrs, type );
 #endif
 
-    switch (l->type)
+    switch ( l->type )
     {
     case TYP_VOID:
         if( (l->select.v = (void*) smalloc( l->num_intrs * sizeof(void*), "list:v" )) == NULL )

@@ -260,7 +260,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 	      // fprintf( out_control->eval, "%6d%6d%6d -- exists in thbp\n", 
 	      //          i+1, j+1, k+1 );
 
-	      if( fabs(thbh->prm[cnt].p_val1) > 0.001 ) {
+	      if( FABS(thbh->prm[cnt].p_val1) > 0.001 ) {
 		thbp = &( thbh->prm[cnt] );			     
 		
 		/* ANGLE ENERGY */

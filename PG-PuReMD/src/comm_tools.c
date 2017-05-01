@@ -495,7 +495,7 @@ void Unpack_Estimate_Message( reax_system *system, int end, void *dummy,
 #endif
 
     system->my_atoms = (reax_atom*)
-                       realloc( system->my_atoms, (end + cnt) * sizeof(reax_atom) );
+            srealloc( system->my_atoms, (end + cnt) * sizeof(reax_atom), "system:my_atoms" );
 
     Unpack_Exchange_Message( system, end, dummy, cnt, nbr, dim );
 

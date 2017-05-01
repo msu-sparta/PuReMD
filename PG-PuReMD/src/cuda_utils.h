@@ -13,17 +13,17 @@
 extern "C"  {
 #endif
 
-void compute_blocks(int *, int *, int);
-void compute_nearest_pow_2(int blocks, int *result);
-void compute_matvec_blocks(int *, int);
+void cuda_malloc( void **, size_t, int, const char * );
+void cuda_free( void *, const char * );
+void cuda_memset( void *, int , size_t , const char * );
+void copy_host_device( void *, void *, size_t, enum cudaMemcpyKind, const char * );
+void copy_device( void *, void *, size_t, const char * );
 
-void cuda_malloc(void **, int , int , const char *);
-void cuda_free(void *, const char *);
-void cuda_memset(void *, int , size_t , const char *);
-void copy_host_device(void *, void *, int , enum cudaMemcpyKind, const char *);
-void copy_device(void *, void *, int , const char *);
+void compute_blocks( int *, int *, int );
+void compute_matvec_blocks( int *, int );
+void compute_nearest_pow_2( int, int * );
 
-void print_device_mem_usage();
+void print_device_mem_usage( );
 
 #ifdef __cplusplus
 #define cudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
@@ -32,19 +32,17 @@ static inline void __cudaCheckError( const char *file, const int line )
     cudaError err = cudaGetLastError();
     if ( cudaSuccess != err )
     {
-        fprintf( stderr, "Failed .. %s:%d -- gpu erro code %d\n", file, line, err );
+        fprintf( stderr, "ERROR: runtime error encountered: %s:%d\n", file, line );
+        fprintf( stderr, "CUDA API error code: %d\n", err );
         exit( -1 );
     }
 
-    // More careful checking. However, this will affect performance.
-    // Comment away if needed.
-    /*
-    err = cudaDeviceSynchronize();
-    if( cudaSuccess != err )
-    {
-       exit( -1 );
-    }
-    */
+    /* More careful checking. However, this will affect performance. */
+//    err = cudaDeviceSynchronize();
+//    if( cudaSuccess != err )
+//    {
+//       exit( -1 );
+//    }
 
     return;
 }

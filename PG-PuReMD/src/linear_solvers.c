@@ -1278,7 +1278,7 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
         // fprintf( stderr, "%10.6f\n", workspace->g[0] );
 
         /* GMRES inner-loop */
-        for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
+        for ( j = 0; j < RESTART && FABS(workspace->g[j]) / bnorm > tol; j++ )
         {
             /* matvec */
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1], N );
@@ -1325,7 +1325,7 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
             workspace->g[j] = tmp1;
             workspace->g[j + 1] = tmp2;
 
-            // fprintf( stderr, "%10.6f\n", fabs(workspace->g[j+1]) );
+            // fprintf( stderr, "%10.6f\n", FABS(workspace->g[j+1]) );
         }
 
         /* solve Hy = g.
@@ -1343,7 +1343,7 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
             Vector_Add( x, workspace->y[i], workspace->v[i], N );
 
         /* stopping condition */
-        if ( fabs(workspace->g[j]) / bnorm <= tol )
+        if ( FABS(workspace->g[j]) / bnorm <= tol )
             break;
     }
 
@@ -1357,7 +1357,7 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
       workspace->b_prc[i], workspace->b_prm[i], x[i] );*/
 
     fprintf( fout, "GMRES outer: %d, inner: %d - |rel residual| = %15.10f\n",
-             itr, j, fabs( workspace->g[j] ) / bnorm );
+             itr, j, FABS( workspace->g[j] ) / bnorm );
 
     if ( itr >= MAX_ITR )
     {
@@ -1407,7 +1407,7 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
         // fprintf( stderr, "\n\n%12.6f\n", w[0] );
 
         /* GMRES inner-loop */
-        for ( j = 0; j < RESTART && fabs( w[j] ) / bnorm > tol; j++ )
+        for ( j = 0; j < RESTART && FABS( w[j] ) / bnorm > tol; j++ )
         {
             /* compute v_j */
             Vector_Scale( z[j], -2 * u[j][j], u[j], N );
@@ -1456,7 +1456,7 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
             }
 
             /* apply the new Givens rotation to H and right-hand side */
-            if ( fabs(v[j + 1]) >= ALMOST_ZERO )
+            if ( FABS(v[j + 1]) >= ALMOST_ZERO )
             {
                 cc = SQRT( SQR( v[j] ) + SQR( v[j + 1] ) );
                 workspace->hc[j] = v[j] / cc;
@@ -1503,7 +1503,7 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
             Vector_Add( x, workspace->y[i], z[i], N );
 
         /* stopping condition */
-        if ( fabs( w[j] ) / bnorm <= tol )
+        if ( FABS( w[j] ) / bnorm <= tol )
             break;
     }
 
@@ -1517,7 +1517,7 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
     //          workspace->b_prc[i], workspace->b_prm[i], x[i] );
 
     fprintf( fout, "GMRES outer:%d  inner:%d iters, |rel residual| = %15.10f\n",
-             itr, j, fabs( workspace->g[j] ) / bnorm );
+             itr, j, FABS( workspace->g[j] ) / bnorm );
 
     if ( itr >= MAX_ITR )
     {

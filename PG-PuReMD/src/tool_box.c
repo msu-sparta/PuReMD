@@ -299,23 +299,63 @@ void* smalloc( long n, char *name )
     if ( n <= 0 )
     {
         fprintf( stderr, "WARNING: trying to allocate %ld bytes for array %s. ",
-                 n, name );
+                n, name );
         fprintf( stderr, "returning NULL.\n" );
         return NULL;
     }
-    //printf("requesting memory for %s \n", name);
-    //malloc( n );
-    //printf("successfuly requested memory for %s \n", name);
+
+#if defined(DEBUG)
+    fprintf( stderr, "INFO: requesting memory for %s\n", name );
+#endif
+
     ptr = malloc( n );
-    // printf("successfuly assigned pointer for %s \n", name);
+
     if ( ptr == NULL )
     {
         fprintf( stderr, "ERROR: failed to allocate %ld bytes for array %s",
-                 n, name );
+                n, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
+#if defined(DEBUG)
+    fprintf( stderr, "INFO: successfuly assigned pointer for %s\n", name );
+#endif
+
     return ptr;
+}
+
+
+/* safe realloc */
+void* srealloc( void *ptr, long n, char *name )
+{
+    void *new_ptr;
+
+    if ( n <= 0 )
+    {
+        fprintf( stderr, "WARNING: trying to allocate %ld bytes for array %s. ",
+                n, name );
+        fprintf( stderr, "returning NULL.\n" );
+        return NULL;
+    }
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "INFO: trying to allocate %ld NEW bytes for array %s.\n",
+                n, name );
+    }
+
+    new_ptr = realloc( ptr, n );
+
+    /* technically, ptr is still allocated and valid in this case,
+     * but we needed more memory, so abort */
+    if ( new_ptr == NULL )
+    {
+        fprintf( stderr, "ERROR: failed to reallocate %ld bytes for array %s",
+                n, name );
+        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+    }
+
+    return new_ptr;
 }
 
 
@@ -327,7 +367,7 @@ void *scalloc( int n, int size, char *name )
     if ( n <= 0 )
     {
         fprintf( stderr, "WARNING: trying to allocate %d elements for array %s. ",
-                 n, name );
+                n, name );
         fprintf( stderr, "returning NULL.\n" );
         return NULL;
     }
@@ -335,7 +375,7 @@ void *scalloc( int n, int size, char *name )
     if ( size <= 0 )
     {
         fprintf( stderr, "WARNING: elements size for array %s is %d. ",
-                 name, size );
+                name, size );
         fprintf( stderr, "returning NULL.\n" );
         return NULL;
     }
@@ -344,7 +384,7 @@ void *scalloc( int n, int size, char *name )
     if ( ptr == NULL )
     {
         fprintf( stderr, "ERROR: failed to allocate %d bytes for array %s",
-                 n * size, name );
+                n * size, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
@@ -358,7 +398,7 @@ void sfree( void *ptr, char *name )
     if ( ptr == NULL )
     {
         fprintf( stderr, "WARNING: trying to free the already NULL pointer %s!\n",
-                 name );
+                name );
         return;
     }
 

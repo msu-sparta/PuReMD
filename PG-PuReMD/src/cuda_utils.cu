@@ -1,7 +1,7 @@
 #include "cuda_utils.h"
 
 
-extern "C" void cuda_malloc(void **ptr, int size, int mem_set, const char *msg)
+extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *msg )
 {
 
     cudaError_t retVal = cudaSuccess;
@@ -10,9 +10,9 @@ extern "C" void cuda_malloc(void **ptr, int size, int mem_set, const char *msg)
 
     if( retVal != cudaSuccess )
     {
-        fprintf( stderr,
-                "ERROR: failed to allocate memory on device for resouce %s\nCUDA API error code: %d, requested memory size (in bytes): %d\n", 
-                msg, retVal, size );
+        fprintf( stderr, "ERROR: failed to allocate memory on device for resouce %s\n", msg );
+        fprintf( stderr, "CUDA API error code: %d, requested memory size (in bytes): %lu\n", 
+                retVal, size );
         exit( INSUFFICIENT_MEMORY );
     }  
 
@@ -22,16 +22,16 @@ extern "C" void cuda_malloc(void **ptr, int size, int mem_set, const char *msg)
 
         if( retVal != cudaSuccess )
         {
-            fprintf( stderr,
-                    "ERROR: failed to memset memory on device for resource %s\nCUDA API error code: %d, requested memory size (in bytes): %d\n", 
-                    msg, retVal, size );
+            fprintf( stderr, "ERROR: failed to memset memory on device for resource %s\n", msg );
+            fprintf( stderr, "CUDA API error code: %d, requested memory size (in bytes): %lu\n", 
+                    retVal, size );
             exit( INSUFFICIENT_MEMORY );
         }
     }  
 }
 
 
-extern "C" void cuda_free(void *ptr, const char *msg)
+extern "C" void cuda_free( void *ptr, const char *msg )
 {
 
     cudaError_t retVal = cudaSuccess;
@@ -53,7 +53,8 @@ extern "C" void cuda_free(void *ptr, const char *msg)
 }
 
 
-extern "C" void cuda_memset(void *ptr, int data, size_t count, const char *msg){
+extern "C" void cuda_memset( void *ptr, int data, size_t count, const char *msg )
+{
     cudaError_t retVal = cudaSuccess;
 
     retVal = cudaMemset( ptr, data, count );
@@ -68,7 +69,8 @@ extern "C" void cuda_memset(void *ptr, int data, size_t count, const char *msg){
 }
 
 
-extern "C" void copy_host_device(void *host, void *dev, int size, enum cudaMemcpyKind dir, const char *msg)
+extern "C" void copy_host_device( void *host, void *dev, size_t size,
+        enum cudaMemcpyKind dir, const char *msg )
 {
     cudaError_t retVal = cudaErrorNotReady;
 
@@ -91,7 +93,7 @@ extern "C" void copy_host_device(void *host, void *dev, int size, enum cudaMemcp
 }
 
 
-extern "C" void copy_device(void *dest, void *src, int size, const char *msg)
+extern "C" void copy_device( void *dest, void *src, size_t size, const char *msg )
 {
     cudaError_t retVal = cudaErrorNotReady;
 
@@ -120,14 +122,14 @@ extern "C" void compute_matvec_blocks( int *blocks, int count )
 }
 
 
-extern "C" void compute_nearest_pow_2(int blocks, int *result)
+extern "C" void compute_nearest_pow_2( int blocks, int *result )
 {
 
   *result = (int) EXP2( CEIL( LOG2((double) blocks) ) );
 }
 
 
-extern "C" void print_device_mem_usage()
+extern "C" void print_device_mem_usage( )
 {
     size_t total, free;
 

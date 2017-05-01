@@ -24,37 +24,34 @@
 
 #include "reax_types.h"
 
-void Velocity_Verlet_NVE( reax_system*, control_params*, simulation_data*,
-                          storage*, reax_list**, output_controls*,
-                          mpi_datatypes* );
+int Velocity_Verlet_NVE( reax_system*, control_params*, simulation_data*,
+        storage*, reax_list**, output_controls*, mpi_datatypes* );
 
-void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system*, control_params*,
-        simulation_data*, storage*,
-        reax_list**, output_controls*,
+int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls*,
         mpi_datatypes* );
 
-void Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
-                                    simulation_data*, storage*,
-                                    reax_list**, output_controls*,
-                                    mpi_datatypes* );
+int Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls*,
+        mpi_datatypes* );
 
-void Velocity_Verlet_Berendsen_NPT( reax_system*, control_params*,
-                                    simulation_data*, storage*,
-                                    reax_list**, output_controls*,
-                                    mpi_datatypes* );
+int Velocity_Verlet_Berendsen_NPT( reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls*,
+        mpi_datatypes* );
 
-/* void Velocity_Verlet_Nose_Hoover_NVT( reax_system*, control_params*,
-                      simulation_data*, storage*, reax_list**,
-                      output_controls*, mpi_datatypes* );
-
-   void Velocity_Verlet_Flexible_NPT( reax_system*, control_params*,
+/*
+int Velocity_Verlet_Nose_Hoover_NVT( reax_system*, control_params*,
                    simulation_data*, storage*, reax_list**,
-                   output_controls*, mpi_datatypes* ); */
+                   output_controls*, mpi_datatypes* );
+
+int Velocity_Verlet_Flexible_NPT( reax_system*, control_params*,
+                simulation_data*, storage*, reax_list**,
+                output_controls*, mpi_datatypes* );
+*/
 
 //CUDA SPECIFIC FUNCTIONS
-void Cuda_Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
-        simulation_data*, storage*,
-        reax_list**, output_controls*,
+int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls*,
         mpi_datatypes* );
 
 #endif

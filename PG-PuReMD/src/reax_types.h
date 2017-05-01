@@ -798,32 +798,32 @@ typedef struct
 {
     reax_interaction reax_param;
 
-    int              n, N, bigN, numH;
-    int              local_cap, total_cap, gcell_cap, Hcap;
-    int              est_recv, est_trans, max_recved;
-    int              wsize, my_rank, num_nbrs;
-    ivec             my_coords;
-    neighbor_proc    my_nbrs[MAX_NBRS];
-    int             *global_offset;
+    int n, N, bigN, numH;
+    int local_cap, total_cap, gcell_cap, Hcap;
+    int est_recv, est_trans, max_recved;
+    int wsize, my_rank, num_nbrs;
+    ivec my_coords;
+    neighbor_proc my_nbrs[MAX_NBRS];
+    int *global_offset;
 
-    simulation_box   big_box, my_box, my_ext_box;
-    simulation_box   *d_big_box, *d_my_box, *d_my_ext_box;
+    simulation_box big_box, my_box, my_ext_box;
+    simulation_box *d_big_box, *d_my_box, *d_my_ext_box;
 
-    grid             my_grid;
-    grid             d_my_grid;
+    grid my_grid;
+    grid d_my_grid;
 
     boundary_cutoff  bndry_cuts;
 
-    reax_atom       *my_atoms;
-    reax_atom       *d_my_atoms;
+    reax_atom *my_atoms;
+    reax_atom *d_my_atoms;
 
     /*CUDA-specific*/
-    int                   max_sparse_entries;
-    int               init_thblist;
-    int                   num_thbodies;
+    int max_sparse_entries;
+    int init_thblist;
+    int num_thbodies;
 
-    int                   max_bonds;
-    int                   max_hbonds;
+    int max_bonds;
+    int max_hbonds;
 } reax_system;
 
 
@@ -866,7 +866,7 @@ typedef struct
 
     int tabulate;
 
-    int qeq_freq;
+    int charge_freq;
     real q_err;
     int refactor;
     real droptol;
@@ -1378,29 +1378,26 @@ extern LR_lookup_table *LR; //changed
 #endif
 
 /* function pointer defs */
-typedef void (*evolve_function)(reax_system*, control_params*,
-                                simulation_data*, storage*, reax_list**,
-                                output_controls*, mpi_datatypes* );
+typedef int (*evolve_function)(reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls*, mpi_datatypes* );
 #if defined(PURE_REAX)
-extern evolve_function  Evolve;
+extern evolve_function Evolve;
 extern evolve_function Cuda_Evolve;
 #endif
 
-typedef void (*interaction_function) (reax_system*, control_params*,
-                                      simulation_data*, storage*,
-                                      reax_list**, output_controls*);
+typedef void (*interaction_function)(reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls*);
 
 typedef void (*print_interaction)(reax_system*, control_params*,
-                                  simulation_data*, storage*,
-                                  reax_list**, output_controls*);
+        simulation_data*, storage*, reax_list**, output_controls*);
 
 typedef real (*lookup_function)(real);
 
-typedef void (*message_sorter) (reax_system*, int, int, int, mpi_out_data*);
-typedef void (*unpacker) ( reax_system*, int, void*, int, neighbor_proc*, int );
+typedef void (*message_sorter)(reax_system*, int, int, int, mpi_out_data*);
+typedef void (*unpacker)( reax_system*, int, void*, int, neighbor_proc*, int );
 
-typedef void (*dist_packer) (void*, mpi_out_data*);
-typedef void (*coll_unpacker) (void*, void*, mpi_out_data*);
+typedef void (*dist_packer)(void*, mpi_out_data*);
+typedef void (*coll_unpacker)(void*, void*, mpi_out_data*);
 
 /*CUDA-specific*/
 extern reax_list **dev_lists;

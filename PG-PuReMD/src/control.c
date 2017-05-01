@@ -74,7 +74,7 @@ char Read_Control_File( char *control_file, control_params* control,
 
     control->tabulate = 0;
 
-    control->qeq_freq = 1;
+    control->charge_freq = 1;
     control->q_err = 1e-6;
     control->refactor = 100;
     control->droptol = 1e-2;;
@@ -244,10 +244,10 @@ char Read_Control_File( char *control_file, control_params* control,
             ival = atoi( tmp[1] );
             control->tabulate = ival;
         }
-        else if ( strcmp(tmp[0], "qeq_freq") == 0 )
+        else if ( strcmp(tmp[0], "charge_freq") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->qeq_freq = ival;
+            control->charge_freq = ival;
         }
         else if ( strcmp(tmp[0], "q_err") == 0 )
         {

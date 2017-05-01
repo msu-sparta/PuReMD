@@ -398,7 +398,7 @@ CUDA_GLOBAL void Cuda_Update_Uncorrected_BO (  storage p_workspace, reax_list p_
         /* Adri uses different dDelta_lp values than the ones in notes... */
         workspace->dDelta_lp[j] = workspace->Clp[j];
         //workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5-workspace->Clp[j]) *
-        //((fabs(workspace->Delta_e[j]/2.0 -
+        //((FABS(workspace->Delta_e[j]/2.0 -
         //       (int)(workspace->Delta_e[j]/2.0)) < 0.1) ? 1 : 0 );
 
         if( sbp_j->mass > 21.0 ) {

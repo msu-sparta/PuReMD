@@ -313,11 +313,11 @@ void Reorder_GridCells( grid *g )
 
 
 void Setup_New_Grid( reax_system* system, control_params* control,
-                     MPI_Comm comm )
+        MPI_Comm comm )
 {
-    int              d, i, j, k;
-    grid            *g;
-    simulation_box  *my_box, *my_ext_box;
+    int d, i, j, k;
+    grid *g;
+    simulation_box *my_box, *my_ext_box;
     boundary_cutoff *bc;
 
 #if defined(DEBUG_FOCUS)
@@ -343,6 +343,7 @@ void Setup_New_Grid( reax_system* system, control_params* control,
     /* cell lengths */
     rvec_iDivide( g->cell_len, my_box->box_norms, g->native_cells );
     rvec_Invert( g->inv_len, g->cell_len );
+    fprintf( stderr, "      [RVEC1]\n" );
 
     for ( d = 0; d < 3; ++d )
     {
@@ -369,6 +370,7 @@ void Setup_New_Grid( reax_system* system, control_params* control,
     /* native cell start & ends */
     ivec_Copy( g->native_str, g->ghost_span );
     ivec_Sum( g->native_end, g->native_str, g->native_cells );
+    fprintf( stderr, "      [RVEC2]\n" );
 
     /* upper bound on the number of gcells to be exchanged with a single nbr */
     system->gcell_cap =
@@ -378,7 +380,17 @@ void Setup_New_Grid( reax_system* system, control_params* control,
 
     /* allocate grid space */
     Allocate_Grid( system, comm );
+    fprintf( stderr, "      [ALLOCATE GRID]\n" );
 
+    fprintf( stderr, "g->native_cells[0] = %d\n", g->native_cells[0] );
+    fprintf( stderr, "g->native_cells[1] = %d\n", g->native_cells[1] );
+    fprintf( stderr, "g->native_cells[2] = %d\n", g->native_cells[2] );
+    fprintf( stderr, "g->ghost_span[0] = %d\n", g->ghost_span[0] );
+    fprintf( stderr, "g->ghost_span[1] = %d\n", g->ghost_span[1] );
+    fprintf( stderr, "g->ghost_span[2] = %d\n", g->ghost_span[2] );
+    fprintf( stderr, "g->ncells[0] = %d\n", g->ncells[0] );
+    fprintf( stderr, "g->ncells[1] = %d\n", g->ncells[1] );
+    fprintf( stderr, "g->ncells[2] = %d\n", g->ncells[2] );
     /* compute min and max coords for each grid cell */
     for ( i = 0; i < g->ncells[0]; i++ )
     {

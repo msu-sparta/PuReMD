@@ -28,9 +28,9 @@
 int PreAllocate_Space( reax_system*, control_params*, storage* );
 
 void reax_atom_Copy( reax_atom*, reax_atom* );
-int  Allocate_System( reax_system*, int, int, char* );
+int Allocate_System( reax_system*, int, int, char* );
 
-int  Allocate_Workspace( reax_system*, control_params*, storage*,
+int Allocate_Workspace( reax_system*, control_params*, storage*,
                          int, int, char* );
 
 void Allocate_Grid( reax_system*, MPI_Comm );
@@ -45,11 +45,11 @@ int Allocate_HBond_List( int, int, int*, int*, reax_list* );
 
 int Allocate_Bond_List( int, int*, reax_list* );
 
-void ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
-                 reax_list**, mpi_datatypes* );
+int ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
+        reax_list**, mpi_datatypes* );
 
-void Cuda_ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
-                      reax_list**, mpi_datatypes* );
+int Cuda_ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
+        reax_list**, mpi_datatypes* );
 
 
 #endif

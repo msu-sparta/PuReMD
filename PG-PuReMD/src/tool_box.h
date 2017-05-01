@@ -61,6 +61,7 @@ int   Tokenize( char*, char*** );
 
 /* from lammps */
 void *smalloc( long, char* );
+void* srealloc( void *ptr, long n, char *name );
 void *scalloc( int, int, char* );
 void sfree( void*, char* );
 

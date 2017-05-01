@@ -41,12 +41,13 @@
 #include "reax_vector.h"
 #endif
 
+
 print_interaction Print_Interactions[NUM_INTRS];
+
 
 /************************ initialize output controls ************************/
 int Init_Output_Files( reax_system *system, control_params *control,
-                       output_controls *out_control, mpi_datatypes *mpi_data,
-                       char *msg )
+        output_controls *out_control, mpi_datatypes *mpi_data, char *msg )
 {
     char temp[MAX_STR];
     int ret;
@@ -202,7 +203,6 @@ int Init_Output_Files( reax_system *system, control_params *control,
         MPI_Bcast( &(out_control->mol), 1, MPI_LONG, 0, MPI_COMM_WORLD );
     }
 
-
 #ifdef TEST_ENERGY
     /* open bond energy file */
     sprintf( temp, "%s.ebond.%d", control->sim_name, system->my_rank );
@@ -300,7 +300,6 @@ int Init_Output_Files( reax_system *system, control_params *control,
         return FAILURE;
     }
 #endif
-
 
 #ifdef TEST_FORCES
     /* open bond orders file */
@@ -470,7 +469,7 @@ int Init_Output_Files( reax_system *system, control_params *control,
 
 /************************ close output files ************************/
 int Close_Output_Files( reax_system *system, control_params *control,
-                        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     if ( out_control->write_steps > 0 )
         End_Traj( system->my_rank, out_control );
@@ -545,7 +544,6 @@ int Close_Output_Files( reax_system *system, control_params *control,
 }
 
 
-
 void Print_Box( simulation_box* box, char *name, FILE *out )
 {
     // int i, j;
@@ -588,7 +586,6 @@ void Print_Box( simulation_box* box, char *name, FILE *out )
     //   }
     // fprintf( out, "}\n" );
 }
-
 
 
 void Print_Grid( grid* g, FILE *out )
@@ -666,7 +663,6 @@ void Print_Grid( grid* g, FILE *out )
 }
 
 
-
 void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
 {
     ivec r;
@@ -707,7 +703,6 @@ void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
 
     fclose(f);
 }
-
 
 
 void Print_Native_GCells( reax_system *system )
@@ -752,7 +747,6 @@ void Print_Native_GCells( reax_system *system )
 }
 
 
-
 void Print_All_GCells( reax_system *system )
 {
     int        i, j, k, l;
@@ -793,7 +787,6 @@ void Print_All_GCells( reax_system *system )
 
     fclose(f);
 }
-
 
 
 void Print_My_Atoms( reax_system *system )
@@ -897,11 +890,15 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
     int i, j;
 
     for ( i = 0; i < A->n; ++i )
+    {
         for ( j = A->start[i]; j < A->end[i]; ++j )
+        {
             fprintf( stderr, "%d %d %.15e\n",
                      system->my_atoms[i].orig_id,
                      system->my_atoms[A->entries[j].j].orig_id,
                      A->entries[j].val );
+        }
+    }
 }
 
 
@@ -911,11 +908,15 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
     FILE *f = fopen( fname, "w" );
 
     for ( i = 0; i < A->n; ++i )
+    {
         for ( j = A->start[i]; j < A->end[i]; ++j )
+        {
             fprintf( f, "%d %d %.15e\n",
                      system->my_atoms[i].orig_id,
                      system->my_atoms[A->entries[j].j].orig_id,
                      A->entries[j].val );
+        }
+    }
 
     fclose(f);
 }
@@ -946,7 +947,7 @@ void Print_Symmetric_Sparse(reax_system *system, sparse_matrix *A, char *fname)
 
 
 void Print_Linear_System( reax_system *system, control_params *control,
-                          storage *workspace, int step )
+        storage *workspace, int step )
 {
     int   i, j;
     char  fname[100];
@@ -997,8 +998,8 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
 void Print_LinSys_Soln( reax_system *system, real *x, real *b_prm, real *b )
 {
-    int    i;
-    char   fname[100];
+    int i;
+    char fname[100];
     FILE  *fout;
 
     sprintf( fname, "qeq.%d.out", system->my_rank );
@@ -1062,6 +1063,7 @@ int fn_qsort_intcmp( const void *a, const void *b )
     return ( *(int *)a - * (int *)b );
 }
 
+
 void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 {
     int i, j, id_i, id_j, nbr, pj;
@@ -1105,9 +1107,10 @@ void Print_Total_Force( reax_system *system, simulation_data *data,
                  workspace->f[i][0], workspace->f[i][1], workspace->f[i][2] );
 }
 
+
 void Output_Results( reax_system *system, control_params *control,
-                     simulation_data *data, reax_list **lists,
-                     output_controls *out_control, mpi_datatypes *mpi_data )
+        simulation_data *data, reax_list **lists,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
 #if defined(LOG_PERFORMANCE)
     real t_elapsed, denom;
@@ -1249,6 +1252,7 @@ void Debug_Marker_Bonded( output_controls *out_control, int step )
              "phi", "bo(12)", "bo(23)", "bo(34)", "econ", "total" );
 }
 
+
 void Debug_Marker_Nonbonded( output_controls *out_control, int step )
 {
     fprintf( out_control->evdw, "step: %d\n%6s%6s%12s%12s%12s\n",
@@ -1266,7 +1270,6 @@ void Dummy_Printer( reax_system *system, control_params *control,
                     reax_list **lists, output_controls *out_control )
 {
 }
-
 
 
 void Print_Bond_Orders( reax_system *system, control_params *control,
@@ -1429,10 +1432,9 @@ void Print_Force_Files( reax_system *system, control_params *control,
 
 
 #if defined(TEST_FORCES) || defined(TEST_ENERGY)
-
 void Print_Far_Neighbors_List( reax_system *system, reax_list **lists,
-                               control_params *control, simulation_data *data,
-                               output_controls *out_control )
+        control_params *control, simulation_data *data,
+        output_controls *out_control )
 {
     int   i, j, id_i, id_j, nbr, natoms;
     int num = 0;
@@ -1466,8 +1468,8 @@ void Print_Far_Neighbors_List( reax_system *system, reax_list **lists,
 }
 
 void Print_Bond_List( reax_system *system, control_params *control,
-                      simulation_data *data, reax_list **lists,
-                      output_controls *out_control)
+        simulation_data *data, reax_list **lists,
+        output_controls *out_control)
 {
     int i, j, id_i, id_j, nbr, pj;
     reax_list *bonds = (*lists) + BONDS;

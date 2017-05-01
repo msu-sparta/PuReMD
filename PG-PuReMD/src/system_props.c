@@ -43,24 +43,30 @@ void Temperature_Control( control_params *control, simulation_data *data )
     {
         if ((data->step - data->prev_steps) % ((int)(control->T_freq / control->dt)) == 0)
         {
-            if ( fabs( control->T - control->T_final ) >= fabs( control->T_rate ) )
+            if ( FABS( control->T - control->T_final ) >= FABS( control->T_rate ) )
+            {
                 control->T += control->T_rate;
-            else control->T = control->T_final;
+            }
+            else
+            {
+                control->T = control->T_final;
+            }
         }
     }
     else if ( control->T_mode == 2 )  // constant slope control
     {
         tmp = control->T_rate * control->dt / control->T_freq;
 
-        if ( fabs( control->T - control->T_final ) >= fabs( tmp ) )
+        if ( FABS( control->T - control->T_final ) >= FABS( tmp ) )
+        {
             control->T += tmp;
+        }
     }
 }
 
 
-
 void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
-                             MPI_Comm comm )
+        MPI_Comm comm )
 {
     int i;
     rvec p;
@@ -82,14 +88,14 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
     data->therm.T = (2. * data->sys_en.e_kin) / (data->N_f * K_B);
 
     // avoid T being an absolute zero, might cause F.P.E!
-    if ( fabs(data->therm.T) < ALMOST_ZERO )
+    if ( FABS(data->therm.T) < ALMOST_ZERO )
         data->therm.T = ALMOST_ZERO;
 }
 
 
 #ifdef HAVE_CUDA
 void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
-                                  MPI_Comm comm )
+        MPI_Comm comm )
 {
     int i;
     rvec p;
@@ -97,22 +103,24 @@ void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 
     data->my_en.e_kin = 0.0;
 
-    dev_compute_kinetic_energy (system, data, &data->my_en.e_kin);
+    dev_compute_kinetic_energy( system, data, &data->my_en.e_kin );
 
     MPI_Allreduce( &data->my_en.e_kin,  &data->sys_en.e_kin,
-                   1, MPI_DOUBLE, MPI_SUM, comm );
+            1, MPI_DOUBLE, MPI_SUM, comm );
 
     data->therm.T = (2. * data->sys_en.e_kin) / (data->N_f * K_B);
 
     // avoid T being an absolute zero, might cause F.P.E!
-    if ( fabs(data->therm.T) < ALMOST_ZERO )
+    if ( FABS(data->therm.T) < ALMOST_ZERO )
+    {
         data->therm.T = ALMOST_ZERO;
+    }
 }
 #endif
 
 
 void Compute_System_Energy( reax_system *system, simulation_data *data,
-                            MPI_Comm comm )
+        MPI_Comm comm )
 {
     real my_en[15], sys_en[15];
 
@@ -179,7 +187,7 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
 
 
 void Compute_Total_Mass( reax_system *system, simulation_data *data,
-                         MPI_Comm comm  )
+        MPI_Comm comm  )
 {
     int  i;
     real tmp;
@@ -196,7 +204,7 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data,
 
 #ifdef HAVE_CUDA
 void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
-                              MPI_Comm comm  )
+        MPI_Comm comm  )
 {
     int  i;
     real tmp;
@@ -212,7 +220,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
 
 
 void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
-                             mpi_datatypes *mpi_data, MPI_Comm comm )
+        mpi_datatypes *mpi_data, MPI_Comm comm )
 {
     int i;
     real m, det; //xx, xy, xz, yy, yz, zz;
@@ -331,7 +339,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
 #ifdef HAVE_CUDA
 void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
-                                  mpi_datatypes *mpi_data, MPI_Comm comm )
+        mpi_datatypes *mpi_data, MPI_Comm comm )
 {
     int i;
     real m, det; //xx, xy, xz, yy, yz, zz;
@@ -437,7 +445,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
  *  We may want to add that for more accuracy.
  */
 void Compute_Pressure(reax_system* system, control_params *control,
-                      simulation_data* data, mpi_datatypes *mpi_data)
+        simulation_data* data, mpi_datatypes *mpi_data)
 {
     int i;
     reax_atom *p_atom;
@@ -511,7 +519,6 @@ void Compute_Pressure(reax_system* system, control_params *control,
     data->iso_bar.P =
         ( data->tot_press[0] + data->tot_press[1] + data->tot_press[2] ) / 3.;
 }
-
 
 
 /*

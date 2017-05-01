@@ -105,7 +105,7 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
         {
             j = A->entries[pj].j;
             val = A->entries[pj].val;
-            if ( fabs(val) > droptol[i] )
+            if ( FABS(val) > droptol[i] )
                 ++fillin;
         }
     }
@@ -146,7 +146,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
             //fprintf( stdout, "%d %d %24.16f\n", 6540-i, 6540-j, val );
             //fprintf( stdout, "%d %d %24.16f\n", 6540-j, 6540-i, val );
 
-            if ( fabs(val) > droptol[i] )
+            if ( FABS(val) > droptol[i] )
             {
                 k1 = tmptop - 1;
                 k2 = U->start[j] + 1;
@@ -182,7 +182,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         //fprintf( stdout, "%d %d %24.16f\n", 6540-i, 6540-i, dval );
         for ( k1 = 0; k1 < tmptop; ++k1 )
         {
-            //if( fabs(tmp[k1].val) > droptol[i] )
+            //if( FABS(tmp[k1].val) > droptol[i] )
             dval -= SQR(tmp[k1].val);
         }
         dval = SQRT(dval);
@@ -195,7 +195,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         for ( k1 = tmptop - 1; k1 >= 0; --k1 )
         {
             // apply the dropping rule once again
-            if ( fabs(tmp[k1].val) > droptol[i] / dval )
+            if ( FABS(tmp[k1].val) > droptol[i] / dval )
             {
                 U->entries[Utop].j = tmp[k1].j;
                 U->entries[Utop].val = tmp[k1].val;

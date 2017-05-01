@@ -37,9 +37,10 @@
 #include "reax_tool_box.h"
 #endif
 
+
 /* Fills solution into x. Warning: will modify c and d! */
 void Tridiagonal_Solve( const real *a, const real *b,
-                        real *c, real *d, real *x, unsigned int n)
+        real *c, real *d, real *x, unsigned int n)
 {
     int i;
     real id;
@@ -62,7 +63,7 @@ void Tridiagonal_Solve( const real *a, const real *b,
 
 
 void Natural_Cubic_Spline( const real *h, const real *f,
-                           cubic_spline_coef *coef, unsigned int n )
+        cubic_spline_coef *coef, unsigned int n )
 {
     int i;
     real *a, *b, *c, *d, *v;
@@ -111,9 +112,8 @@ void Natural_Cubic_Spline( const real *h, const real *f,
 }
 
 
-
 void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
-                            cubic_spline_coef *coef, unsigned int n )
+        cubic_spline_coef *coef, unsigned int n )
 {
     int i;
     real *a, *b, *c, *d, *v;
@@ -211,7 +211,7 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
     fCEvd = (real*) smalloc((control->tabulate + 1) * sizeof(real), "lookup:fCEvd");
     fele = (real*) smalloc( (control->tabulate + 1) * sizeof(real), "lookup:fele" );
     fCEclmb = (real*) smalloc( (control->tabulate + 1) * sizeof(real),
-                               "lookup:fCEclmb" );
+            "lookup:fCEclmb" );
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
@@ -234,7 +234,7 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
         existing_types[ system->my_atoms[i].type ] = 1;
 
     MPI_Allreduce( existing_types, aggregated, MAX_ATOM_TYPES,
-                   MPI_INT, MPI_SUM, mpi_data->world );
+            MPI_INT, MPI_SUM, mpi_data->world );
 
     /* fill in the lookup table entries for existing atom types.
        only lower half should be enough. */
@@ -307,14 +307,14 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
 
 #ifdef HAVE_CUDA
     //copy the LR_Table to the device here.
-    t_start = Get_Time ();
-    copy_LR_table_to_device (system, control, aggregated);
-    t_end = Get_Timing_Info ( t_start );
+    t_start = Get_Time( );
+    copy_LR_table_to_device( system, control, aggregated );
+    t_end = Get_Timing_Info( t_start );
 
-    fprintf (stderr, "Device copy of LR Lookup table: %f \n", t_end );
+    fprintf( stderr, "Device copy of LR Lookup table: %f \n", t_end );
 #endif
 
-    return 1;
+    return SUCCESS;
 }
 
 /*
