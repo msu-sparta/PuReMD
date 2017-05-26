@@ -37,7 +37,7 @@
 
 
 int Set_My_Trajectory_View( MPI_File trj, int offset, MPI_Datatype etype,
-                            MPI_Comm comm, int my_rank, int my_n, int big_n )
+        MPI_Comm comm, int my_rank, int my_n, int big_n )
 {
     int my_disp;
     int length[3];
@@ -990,7 +990,7 @@ int Append_Frame( reax_system *system, control_params *control,
     {
         //Sync atoms here
 #ifdef HAVE_CUDA
-        Output_Sync_Atoms ( system );
+        Output_Sync_Atoms( system );
 #endif
         Write_Atoms( system, control, out_control, mpi_data );
     }
@@ -999,7 +999,7 @@ int Append_Frame( reax_system *system, control_params *control,
     {
         //sync bonds here
 #ifdef HAVE_CUDA
-        Output_Sync_Lists ((*lists + BONDS), (*dev_lists + BONDS), TYP_BOND);
+        Output_Sync_Lists((*lists + BONDS), (*dev_lists + BONDS), TYP_BOND);
 #endif
         Write_Bonds( system, control, (*lists + BONDS), out_control, mpi_data );
     }
@@ -1008,7 +1008,7 @@ int Append_Frame( reax_system *system, control_params *control,
     {
         //sync three body interactions here
 #ifdef HAVE_CUDA
-        Output_Sync_Lists ((*lists + THREE_BODIES), (*dev_lists + THREE_BODIES), TYP_THREE_BODY);
+        Output_Sync_Lists((*lists + THREE_BODIES), (*dev_lists + THREE_BODIES), TYP_THREE_BODY);
 #endif
         Write_Angles( system, control, (*lists + BONDS), (*lists + THREE_BODIES),
                       out_control, mpi_data );

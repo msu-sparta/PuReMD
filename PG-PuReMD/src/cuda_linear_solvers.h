@@ -29,8 +29,6 @@
 extern "C" {
 #endif
 
-void get_from_device(real *host, real *device, unsigned int bytes, const char *);
-void put_on_device(real *host, real *device, unsigned int bytes, const char *);
 
 void Cuda_Vector_Sum(real *res, real a, real *x, real b, real *y, int count);
 void Cuda_CG_Preconditioner(real *res, real *a, real *b, int count);

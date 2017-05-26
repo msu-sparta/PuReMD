@@ -5,10 +5,9 @@
 #include "vector.h"
 #include "cuda_utils.h"
 
-CUDA_GLOBAL void ker_update_velocity_1 (reax_atom *my_atoms, 
-        single_body_parameters *sbp, 
-        real dt,
-        int n)
+
+CUDA_GLOBAL void ker_update_velocity_1( reax_atom *my_atoms, 
+        single_body_parameters *sbp, real dt, int n )
 {
     real inv_m;
     rvec dx;
@@ -28,7 +27,8 @@ CUDA_GLOBAL void ker_update_velocity_1 (reax_atom *my_atoms,
     //}
 }
 
-void bNVT_update_velocity_part1 (reax_system *system, real dt)
+
+void bNVT_update_velocity_part1( reax_system *system, real dt )
 {
     int blocks;
 
@@ -36,14 +36,13 @@ void bNVT_update_velocity_part1 (reax_system *system, real dt)
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     ker_update_velocity_1 <<< blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, system->reax_param.d_sbp, dt, system->n);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 }
 
-CUDA_GLOBAL void ker_update_velocity_2 (reax_atom *my_atoms, 
-        single_body_parameters *sbp, 
-        real dt,
-        int n)
+
+CUDA_GLOBAL void ker_update_velocity_2( reax_atom *my_atoms, 
+        single_body_parameters *sbp, real dt, int n )
 {
     reax_atom *atom;
     real inv_m;
@@ -59,7 +58,8 @@ CUDA_GLOBAL void ker_update_velocity_2 (reax_atom *my_atoms,
     //}
 }
 
-void bNVT_update_velocity_part2 (reax_system *system, real dt)
+
+void bNVT_update_velocity_part2( reax_system *system, real dt )
 {
     int blocks;
 
@@ -67,11 +67,12 @@ void bNVT_update_velocity_part2 (reax_system *system, real dt)
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     ker_update_velocity_2 <<< blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, system->reax_param.d_sbp, dt, system->n);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 }
 
-CUDA_GLOBAL void ker_scale_velocities (reax_atom *my_atoms, real lambda, int n)
+
+CUDA_GLOBAL void ker_scale_velocities( reax_atom *my_atoms, real lambda, int n )
 {
     reax_atom *atom;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -84,7 +85,8 @@ CUDA_GLOBAL void ker_scale_velocities (reax_atom *my_atoms, real lambda, int n)
     //}
 }
 
-void bNVT_scale_velocities (reax_system *system, real lambda)
+
+void bNVT_scale_velocities( reax_system *system, real lambda )
 {
     int blocks;
 
@@ -92,6 +94,6 @@ void bNVT_scale_velocities (reax_system *system, real lambda)
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     ker_scale_velocities <<< blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, lambda, system->n);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 }

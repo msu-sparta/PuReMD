@@ -49,14 +49,13 @@ CUDA_DEVICE real Dev_DistSqr_to_Special_Point( rvec cp, rvec x )
 }
 
 
-CUDA_GLOBAL void ker_generate_neighbor_lists( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbrs, int n, int N )
 {
     int  i, j, k, l, m, itr, num_far;
     real d, cutoff;
     ivec c, nbrs_x;
     rvec dvec;
-    grid_cell *gci, *gcj;
     far_neighbor_data *nbr_data;//, *my_start;
     reax_atom *atom1, *atom2;
 
@@ -95,83 +94,67 @@ CUDA_GLOBAL void ker_generate_neighbor_lists( reax_atom *my_atoms,
     j = c[1];
     k = c[2];
 
-    //gci = &( g.cells[ index_grid_3d (i, j, k, &g) ] );
     cutoff = SQR(g.cutoff[index_grid_3d (i, j, k, &g)]);
 
     itr = 0;
-    while( (g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)][0]) >= 0 ) { 
+    while( (g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)][0]) >= 0 )
+    { 
+        ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
-        ivec_Copy (nbrs_x, g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)] );
-        //gcj =  &( g.cells [ index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ]);
-
-        if( g.str[index_grid_3d (i, j, k, &g)] <= g.str[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
+        if( g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
                 (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs (i, j, k, itr, &g)],atom1->x)<=cutoff) )
             /* pick up another atom from the neighbor cell */
             for( m = g.str[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
-                    m < g.end[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m ) {
-                if(( l < m )) { // prevent recounting same pairs within a gcell 
+                    m < g.end[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
+            {
+                // prevent recounting same pairs within a gcell 
+                if( l < m )
+                {
                     atom2 = &(my_atoms[m]);
                     dvec[0] = atom2->x[0] - atom1->x[0];
                     dvec[1] = atom2->x[1] - atom1->x[1];
                     dvec[2] = atom2->x[2] - atom1->x[2];
                     d = rvec_Norm_Sqr( dvec );
-                    if( d <= cutoff ) { 
+                    if( d <= cutoff )
+                    { 
                         nbr_data = &(far_nbrs.select.far_nbr_list[num_far]);
                         nbr_data->nbr = m;
                         nbr_data->d = SQRT(d);
                         rvec_Copy( nbr_data->dvec, dvec );
-                        //ivec_ScaledSum( nbr_data->rel_box, 1, gcj->rel_box, -1, gci->rel_box );
-                        ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
-                                -1, g.rel_box[index_grid_3d (i, j, k, &g)] );
+                        ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
+                                -1, g.rel_box[index_grid_3d(i, j, k, &g)] );
                         ++num_far;
                     }
                 }
-                /*
-                   if(( l > m )) { // prevent recounting same pairs within a gcell 
-                   atom2 = &(my_atoms[m]);
-                   dvec[0] = atom1->x[0] - atom2->x[0];
-                   dvec[1] = atom1->x[1] - atom2->x[1];
-                   dvec[2] = atom1->x[2] - atom2->x[2];
-                   d = rvec_Norm_Sqr( dvec );
-                   if( d <= cutoff ) { 
-                   nbr_data = &(far_nbrs.select.far_nbr_list[num_far]);
-                   nbr_data->nbr = m;
-                   nbr_data->d = SQRT(d);
-                   rvec_Copy( nbr_data->dvec, dvec );
-                   ivec_ScaledSum( nbr_data->rel_box, 
-                   -1, gcj->rel_box, 1, gci->rel_box );
-                   ++num_far;
-                   }
-                   }   
-                 */
             }
         ++itr;
     }   
 
     itr = 0;
-    while( (g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)][0]) >= 0 ) { 
+    while( (g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)][0]) >= 0 )
+    { 
         ivec_Copy (nbrs_x, g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)] );
-        //gcj =  &( g.cells [ index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ]);
-        cutoff = SQR(g.cutoff[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]);
+        cutoff = SQR(g.cutoff[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]);
 
-        if( g.str[index_grid_3d (i, j, k, &g)] >= g.str[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs (i, j, k, itr, &g)],atom1->x)<=cutoff) )
-            for( m = g.str[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
-                    m < g.end[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m ) {
-                if(( l > m )) {
+        if( g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
+                (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs (i, j, k, itr, &g)],atom1->x) <= cutoff) )
+            for( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
+                    m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m ) {
+                if( l > m )
+                {
                     atom2 = &(my_atoms[m]);
                     dvec[0] = atom1->x[0] - atom2->x[0];
                     dvec[1] = atom1->x[1] - atom2->x[1];
                     dvec[2] = atom1->x[2] - atom2->x[2];
                     d = rvec_Norm_Sqr( dvec );
-                    if( d <= cutoff ) { 
+                    if( d <= cutoff )
+                    {
                         nbr_data = &(far_nbrs.select.far_nbr_list[num_far]);
                         nbr_data->nbr = m;
                         nbr_data->d = SQRT(d);
                         rvec_Copy( nbr_data->dvec, dvec );
-                        //ivec_ScaledSum( nbr_data->rel_box, -1, gcj->rel_box, 1, gci->rel_box );
-                        ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
-                                -1, g.rel_box[index_grid_3d (i, j, k, &g)] );
+                        ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
+                                -1, g.rel_box[index_grid_3d(i, j, k, &g)] );
                         ++num_far;
                     }
                 }   
@@ -183,19 +166,19 @@ CUDA_GLOBAL void ker_generate_neighbor_lists( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void ker_mt_generate_neighbor_lists( reax_atom *my_atoms, 
-//CUDA_GLOBAL void __launch_bounds__ (1024) ker_mt_generate_neighbor_lists( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms, 
+//CUDA_GLOBAL void __launch_bounds__ (1024) k_mt_generate_neighbor_lists( reax_atom *my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbrs, int n, int N )
 {
     extern __shared__ int __nbr[];
     extern __shared__ int __sofar[];
-    bool  nbrgen;
+    bool nbrgen;
 
     int __THREADS_PER_ATOM__ = NB_KER_THREADS_PER_ATOM;
 
     int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     int warp_id = thread_id / __THREADS_PER_ATOM__;
-    int lane_id = thread_id & (__THREADS_PER_ATOM__ -1); 
+    int lane_id = thread_id & (__THREADS_PER_ATOM__ - 1); 
     int my_bucket = threadIdx.x / __THREADS_PER_ATOM__;
 
     if (warp_id >= N )
@@ -211,7 +194,6 @@ CUDA_GLOBAL void ker_mt_generate_neighbor_lists( reax_atom *my_atoms,
     real d, cutoff, cutoff_ji;
     ivec c, nbrs_x;
     rvec dvec;
-    grid_cell *gci, *gcj;
     far_neighbor_data *nbr_data, *my_start;
     reax_atom *atom1, *atom2;
 
@@ -278,41 +260,32 @@ CUDA_GLOBAL void ker_mt_generate_neighbor_lists( reax_atom *my_atoms,
         tnbr[threadIdx.x] = 0;
         nbrgen = false;
 
-        //ivec_Copy( nbrs_x, gci->nbrs_x[itr] );
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
-        //gcj =  &( g.cells[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ]);
 
-        //cutoff = SQR( gci->cutoff );
-        cutoff = SQR( g.cutoff [index_grid_3d (i, j, k, &g)] );
-        //cutoff_ji = SQR(gcj->cutoff);
+        cutoff = SQR( g.cutoff[index_grid_3d(i, j, k, &g)] );
         cutoff_ji = SQR( g.cutoff[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
-        //if( ((gci->str <= gcj->str) && (Dev_DistSqr_to_Special_Point(gci->nbrs_cp[itr],atom1->x)<=cutoff)) 
-        //     || ((gci->str >= gcj->str) && (Dev_DistSqr_to_Special_Point(gci->nbrs_cp[itr],atom1->x)<=cutoff_ji)))
         if( ((g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]) 
                 && (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x)<=cutoff)) 
                 || ((g.str[index_grid_3d (i, j, k, &g)] >= g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]) 
                 && (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x)<=cutoff_ji)))
         {
-            //max = gcj->end - gcj->str;
-            max = g.end[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]
-                    - g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)];
+            max = g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]
+                    - g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)];
             tnbr[threadIdx.x] = 0;
             nbrgen = false;
-            //m = lane_id  + gcj->str; //0-31
-            m = lane_id  + g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; //0-31
+            m = lane_id  + g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; //0-31
             int loopcount = max / __THREADS_PER_ATOM__ + ((max % __THREADS_PER_ATOM__) == 0 ? 0 : 1);
             int iterations = 0;
 
             // pick up another atom from the neighbor cell
-            //for( m = gcj->str; m < gcj->end; ++m ) 
             while (iterations < loopcount)
             {
                 tnbr [threadIdx.x] = 0;
                 nbrgen = false;
 
-                //if(( l < m ) && (m < gcj->end)) { // prevent recounting same pairs within a gcell 
-                if(( l < m ) && (m < g.end [index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]))
-                { // prevent recounting same pairs within a gcell 
+                // prevent recounting same pairs within a gcell 
+                if( l < m  && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
+                {
                     atom2 = &(my_atoms[m]);
                     dvec[0] = atom2->x[0] - atom1->x[0];
                     dvec[1] = atom2->x[1] - atom1->x[1];
@@ -325,8 +298,7 @@ CUDA_GLOBAL void ker_mt_generate_neighbor_lists( reax_atom *my_atoms,
                     }
                 }
 
-                //if(( l > m ) && (m < gcj->end)) {
-                if(( l > m ) && (m < g.end[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]))
+                if( l > m  && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
                 {
                     atom2 = &(my_atoms[m]);
                     dvec[0] = atom1->x[0] - atom2->x[0];
@@ -376,11 +348,10 @@ CUDA_GLOBAL void ker_mt_generate_neighbor_lists( reax_atom *my_atoms,
                         dvec[1] = atom2->x[1] - atom1->x[1];
                         dvec[2] = atom2->x[2] - atom1->x[2];
                         d = rvec_Norm_Sqr( dvec );
-                        nbr_data->d = SQRT (d);
+                        nbr_data->d = SQRT(d);
                         rvec_Copy( nbr_data->dvec, dvec );
-                        //ivec_ScaledSum( nbr_data->rel_box, 1, gcj->rel_box, -1, gci->rel_box );
-                        ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
-                                -1, g.rel_box[index_grid_3d( i, j, k, &g)] );
+                        ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
+                                -1, g.rel_box[index_grid_3d(i, j, k, &g)] );
                     } 
                     else
                     {
@@ -390,15 +361,14 @@ CUDA_GLOBAL void ker_mt_generate_neighbor_lists( reax_atom *my_atoms,
                         d = rvec_Norm_Sqr( dvec );
                         nbr_data->d = SQRT(d);
                         rvec_Copy( nbr_data->dvec, dvec );
-                        //ivec_ScaledSum( nbr_data->rel_box, -1, gcj->rel_box, 1, gci->rel_box );
                         /*
                            CHANGE ORIGINAL
                            This is a bug in the original code 
                            ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
                            -1, g.rel_box[index_grid_3d( i, j, k, &g)] );
                          */
-                        ivec_ScaledSum( nbr_data->rel_box, -1, g.rel_box[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
-                                1, g.rel_box[index_grid_3d( i, j, k, &g)] );
+                        ivec_ScaledSum( nbr_data->rel_box, -1, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
+                                1, g.rel_box[index_grid_3d(i, j, k, &g)] );
                     }
 
                     if (threadIdx.x == leader)
@@ -426,8 +396,16 @@ CUDA_GLOBAL void ker_mt_generate_neighbor_lists( reax_atom *my_atoms,
 }
 
 
+CUDA_GLOBAL void k_print_neighbor_list_indices( reax_list far_nbrs, int N )
+{
+    int l = blockIdx.x * blockDim.x + threadIdx.x;
+    if (l >= N) return;
 
-CUDA_GLOBAL void ker_count_total_nbrs( reax_list far_nbrs, int N, int *result )
+    printf( "%12d: %12d, %12d\n", l, Dev_Start_Index( l, &far_nbrs), Dev_End_Index( l, &far_nbrs ) );
+}
+
+
+CUDA_GLOBAL void k_count_total_nbrs( reax_list far_nbrs, int N, int *result )
 {
     //strided access
     extern __shared__ int count[];
@@ -463,9 +441,10 @@ CUDA_GLOBAL void ker_count_total_nbrs( reax_list far_nbrs, int N, int *result )
 void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data, 
         storage *workspace, reax_list **lists )
 {
-    int i, blocks, num_far;
-    int *d_num_far = (int *) scratch;
-    int *index, *end_index;
+    int i, blocks;
+//    int num_far;
+//    int *d_num_far = (int *) scratch;
+//    int *index, *end_index;
 #if defined(LOG_PERFORMANCE)
     real t_start=0, t_elapsed=0;
 
@@ -475,55 +454,39 @@ void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     }
 #endif
 
-    cuda_memset( d_num_far, 0, sizeof(int), "num_far" );
+//    cuda_memset( d_num_far, 0, sizeof(int), "num_far" );
 
-    //invoke the kernel here
-    //one thread per atom implementation
-    /*
-       blocks = (system->N / NBRS_BLOCK_SIZE) + 
-       ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-       ker_generate_neighbor_lists <<<blocks, NBRS_BLOCK_SIZE>>>
-       (system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-     *(*dev_lists + FAR_NBRS), system->n, system->N);
-     cudaThreadSynchronize ();
-     cudaCheckError ();
-     */
+    /* one thread per atom implementation */
+//    blocks = (system->N / NBRS_BLOCK_SIZE) +
+//        ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+//    k_generate_neighbor_lists <<<blocks, NBRS_BLOCK_SIZE>>>
+//        (system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+//         *(*dev_lists + FAR_NBRS), system->n, system->N);
+//     cudaThreadSynchronize( );
+//     cudaCheckError( );
 
-    //Multiple threads per atom implementation
+    /* multiple threads per atom implementation */
     blocks = ((system->N * NB_KER_THREADS_PER_ATOM) / NBRS_BLOCK_SIZE) + 
         (((system->N * NB_KER_THREADS_PER_ATOM) % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-    ker_mt_generate_neighbor_lists <<<blocks, NBRS_BLOCK_SIZE, 
+    k_mt_generate_neighbor_lists <<<blocks, NBRS_BLOCK_SIZE, 
         //sizeof(int) * (NBRS_BLOCK_SIZE + (NBRS_BLOCK_SIZE / NB_KER_THREADS_PER_ATOM)) >>>
-        sizeof(int) *  2 * (NBRS_BLOCK_SIZE) >>>
+        sizeof(int) * 2 * (NBRS_BLOCK_SIZE) >>>
             (system->d_my_atoms, system->my_ext_box, system->d_my_grid,
             *(*dev_lists + FAR_NBRS), system->n, system->N);
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    /*
-       ker_count_total_nbrs  <<<1, NBRS_BLOCK_SIZE, sizeof (int) * NBRS_BLOCK_SIZE>>>
-       (*(*dev_lists + FAR_NBRS), system->N, d_num_far);
-       cudaThreadSynchronize ();
-       cudaCheckError ();
-       copy_host_device (&num_far, d_num_far, sizeof (int), cudaMemcpyDeviceToHost, "num_far");
-     */
+//    printf("%d\n", system->N);
+//    k_print_neighbor_list_indices <<<blocks, NBRS_BLOCK_SIZE>>> (*(*dev_lists + FAR_NBRS), system->N);
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+//    exit(0);
 
-    index = (int *) host_scratch;
-    memset( index , 0, 2 * sizeof(int) * system->N );
-    end_index = index + system->N;
-
-    copy_host_device( index, (*dev_lists + FAR_NBRS)->index, 
-            sizeof(int) * (*dev_lists + FAR_NBRS)->n, cudaMemcpyDeviceToHost, "nbrs:index" );
-    copy_host_device( end_index, (*dev_lists + FAR_NBRS)->end_index, 
-            sizeof(int) * (*dev_lists + FAR_NBRS)->n, cudaMemcpyDeviceToHost, "nbrs:end_index" );
-
-    num_far = 0;
-    for (i = 0; i < system->N; i++)
-    {
-        num_far += (end_index[i] - index[i]);
-    }
-
-    dev_workspace->realloc.num_far = num_far;
+//    k_count_total_nbrs <<<1, NBRS_BLOCK_SIZE, sizeof (int) * NBRS_BLOCK_SIZE>>>
+//            (*(*dev_lists + FAR_NBRS), system->N, d_num_far);
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+//    copy_host_device( &num_far, d_num_far, sizeof (int), cudaMemcpyDeviceToHost, "num_far" );
 
 #if defined(LOG_PERFORMANCE)
     if( system->my_rank == MASTER_NODE )
@@ -534,17 +497,17 @@ void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 #endif
 
 #if defined(DEBUG_FOCUS)  
-    fprintf( stderr, "p%d @ step%d: nbrs done - num_far=%d\n", 
-            system->my_rank, data->step, num_far );
+    fprintf( stderr, "p%d @ step%d: nbrs done\n", 
+            system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 }
 
 
-CUDA_GLOBAL void ker_estimate_neighbors( reax_atom *my_atoms, 
-        simulation_box my_ext_box, grid g, int n, int N, int *indices)
+CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms, 
+        simulation_box my_ext_box, grid g, int n, int N, int *indices )
 {
-    int  i, j, k, l, m, itr, num_far;
+    int i, j, k, l, m, itr, num_far;
     real d, cutoff;
     rvec dvec, c;
     ivec nbrs_x;
@@ -560,12 +523,10 @@ CUDA_GLOBAL void ker_estimate_neighbors( reax_atom *my_atoms,
 
     num_far = 0;
     atom1 = &(my_atoms[l]);
-    indices [l] = 0;
+    indices[l] = 0;
 
-    //if (atom1->orig_id < 0) return;
-
-    //get the coordinates of the atom and 
-    //compute the grid cell
+    /* get the coordinates of the atom and compute the grid cell
+     * if atom is locally owned by processor AND not ghost atom */
     if (l < n)
     {
         for (i = 0; i < 3; i++)
@@ -581,6 +542,7 @@ CUDA_GLOBAL void ker_estimate_neighbors( reax_atom *my_atoms,
             }
         }
     }
+    /* same as above, but for ghost atoms */
     else
     {
         for (i = 0; i < 3; i++)
@@ -601,24 +563,24 @@ CUDA_GLOBAL void ker_estimate_neighbors( reax_atom *my_atoms,
     j = c[1];
     k = c[2];
 
-    //gci = &( g.cells[ index_grid_3d (i, j, k, &g) ] );
-    //cutoff = SQR(gci->cutoff);
-    cutoff = SQR( g.cutoff [index_grid_3d(i, j, k, &g) ] );
+    cutoff = SQR( g.cutoff[ index_grid_3d(i, j, k, &g) ] );
 
     itr = 0;
-    while( (g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)][0]) >= 0)
+    while( (g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0]) >= 0)
     { 
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
-        //gcj =  &( g.cells [ index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ]);
+        //gcj =  &( g.cells [ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ]);
 
-        if( //(g.str[index_grid_3d (i, j, k, &g)] <= g.str[index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]) &&  
-                (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x)<=cutoff) ) 
+        if( //(g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]) &&  
+                Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x) <= cutoff ) 
         {
             // pick up another atom from the neighbor cell 
             for( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
                     m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
             {
-                if( l < m ) { // prevent recounting same pairs within a gcell 
+                // prevent recounting same pairs within a gcell 
+                if( l < m )
+                {
                     atom2 = &(my_atoms[m]);
                     dvec[0] = atom2->x[0] - atom1->x[0];
                     dvec[1] = atom2->x[1] - atom1->x[1];
@@ -636,20 +598,22 @@ CUDA_GLOBAL void ker_estimate_neighbors( reax_atom *my_atoms,
     }   
 
     itr = 0;
-    while( (g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)][0]) >= 0)
+    while( (g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0]) >= 0 )
     {
-        ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)] );
-        //gcj =  &( g.cells [ index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ]);
+        ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
+        //gcj =  &( g.cells [ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ]);
         cutoff = SQR( g.cutoff[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
 
         if( g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x)<=cutoff) ) 
+                Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x) <= cutoff ) 
         {
             // pick up another atom from the neighbor cell 
             for( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
                     m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
             {
-                if( l > m ) { // prevent recounting same pairs within a gcell 
+                // prevent recounting same pairs within a gcell 
+                if( l > m )
+                {
                     atom2 = &(my_atoms[m]);
                     dvec[0] = atom2->x[0] - atom1->x[0];
                     dvec[1] = atom2->x[1] - atom1->x[1];
@@ -669,63 +633,88 @@ CUDA_GLOBAL void ker_estimate_neighbors( reax_atom *my_atoms,
 }
 
 
-void Cuda_Estimate_Neighbors( reax_system *system, int *nbr_indices )
+int Cuda_Estimate_Neighbors( reax_system *system, int *nbr_indices )
 {
-    int blocks, num_nbrs;
+    int i, blocks, ret;
     int *indices = (int *) scratch;
     reax_list *far_nbrs;
 
-    cuda_memset( indices, 0, sizeof (int) * system->total_cap, 
-            "neighbors:indices");
+    ret = SUCCESS;
+
+    cuda_memset( indices, 0, sizeof(int) * system->total_cap, 
+            "dev_neighbors:indices");
 
     blocks = system->N / DEF_BLOCK_SIZE + 
         ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    ker_estimate_neighbors <<< blocks, DEF_BLOCK_SIZE >>>
+    k_estimate_neighbors <<< blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, (system->my_ext_box), system->d_my_grid, 
          system->n, system->N, indices);
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    copy_host_device( nbr_indices, indices, sizeof (int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, "nbrs:indices" );
+    copy_host_device( nbr_indices, indices, sizeof(int) * system->total_cap, 
+            cudaMemcpyDeviceToHost, "dev_nbrs:indices" );
+
+    /* build neighbor indices (num. far nbrs per atom) */
+    for ( i = 0; i < system->N; i++ )
+    {
+        /* check if per atom bond limits are exceeded,
+         * and, if so, trigger reallocation */
+        if ( nbr_indices[i] > system->my_atoms[i].max_bonds )
+        {
+            ret = FAILURE;
+//            system->my_atoms[i].max_bonds = MAX( (int)CEIL(nbr_indices[i] * SAFE_ZONE), MIN_NBRS );
+            system->my_atoms[i].max_bonds = (int)CEIL(nbr_indices[i] * SAFE_ZONE);
+        }
+        nbr_indices[i] = system->my_atoms[i].max_bonds;
+    }
+
+    return ret;
 }
 
 
-void Cuda_Init_Neighbors_Indices (int *indices, int entries)
+void Cuda_Init_Neighbor_Indices( int *indices, int entries )
 {
+    int i;
     reax_list *far_nbrs = *dev_lists + FAR_NBRS;
 
-    copy_host_device( indices, (far_nbrs->index + 1), (entries -1) * sizeof (int), 
-            cudaMemcpyHostToDevice, "nbrs:index" );
-    copy_host_device( indices, (far_nbrs->end_index + 1), (entries-1) * sizeof (int), 
-            cudaMemcpyHostToDevice, "nbrs:end_index" );
+    for (i = 1; i < entries; i++)
+    {
+        indices[i] += indices[i - 1];
+    }
+
+    copy_host_device( indices, (far_nbrs->index + 1), (entries - 1) * sizeof(int), 
+            cudaMemcpyHostToDevice, "dev_nbrs:index" );
+    copy_host_device( indices, far_nbrs->end_index, entries * sizeof(int), 
+            cudaMemcpyHostToDevice, "dev_nbrs:end_index" );
 }
 
 
-void Cuda_Init_HBond_Indices (int *indices, int entries)
+void Cuda_Init_HBond_Indices( int *indices, int entries )
 {
+    int i;
     reax_list *hbonds = *dev_lists + HBONDS;
 
-    for (int i = 1 ; i < entries; i++)
+    for ( i = 1 ; i < entries; i++ )
     {
         indices[i] += indices[i-1];
     }
 
-    copy_host_device( indices, hbonds->index + 1, (entries-1) * sizeof (int), 
+    copy_host_device( indices, hbonds->index + 1, (entries-1) * sizeof(int), 
             cudaMemcpyHostToDevice, "hbonds:index" );
-    copy_host_device( indices, hbonds->end_index + 1, (entries-1) * sizeof (int), 
+    copy_host_device( indices, hbonds->end_index + 1, (entries-1) * sizeof(int), 
             cudaMemcpyHostToDevice, "hbonds:end_index" );
 }
 
 
-void Cuda_Init_Bond_Indices (int *indices, int entries, int num_intrs)
+void Cuda_Init_Bond_Indices( int *indices, int entries, int num_intrs )
 {
     reax_list *bonds = *dev_lists + BONDS;
 
-    indices[0] = MAX( indices[0]*2, MIN_BONDS );
+    indices[0] = MAX( indices[0] * 2, MIN_BONDS );
     for (int i = 1 ; i < entries; i++)
     {
-        indices[i] = MAX( indices[i]*2, MIN_BONDS );
+        indices[i] = MAX( indices[i] * 2, MIN_BONDS );
     }
 
     for (int i = 1 ; i < entries; i++)
@@ -733,57 +722,8 @@ void Cuda_Init_Bond_Indices (int *indices, int entries, int num_intrs)
         indices[i] += indices[i-1];
     }
 
-    copy_host_device( indices, (bonds->index + 1), (entries - 1) * sizeof (int), 
-            cudaMemcpyHostToDevice, "bonds:index" );
-    copy_host_device( indices, (bonds->end_index + 1), (entries - 1) * sizeof (int), 
-            cudaMemcpyHostToDevice, "bonds:end_index" );
-
-    for (int i = 1 ; i < entries; i++)
-    {
-        if (indices[i] > num_intrs) {
-            fprintf( stderr, "We have a problem here ==> %d index: %d, num_intrs: %d \n", 
-                    i, indices[i], num_intrs );
-            exit( -1 );
-        }
-    }
+    copy_host_device( indices, (bonds->index + 1), (entries - 1) * sizeof(int),
+            cudaMemcpyHostToDevice, "dev_bonds:index" );
+    copy_host_device( indices, (bonds->end_index + 1), (entries - 1) * sizeof(int),
+            cudaMemcpyHostToDevice, "dev_bonds:end_index" );
 }
-
-
-/*
-CUDA_GLOBAL void ker_validate_neighbors (reax_atom *my_atoms, 
-   reax_list far_nbrs, int N)
-{
-   int i, j, pj;
-   far_neighbor_data *nbr_pj;
-   reax_atom *atom_i;
-   int start_i, end_i;
-
-   i = blockIdx.x * blockDim.x + threadIdx.x;
-   if (i >= N) return;
-
-   atom_i = &( my_atoms[i] );
-   start_i = Dev_Start_Index (i, &far_nbrs );
-   end_i = Dev_End_Index (i, &far_nbrs );
-
-   for( pj = start_i; pj < end_i; ++pj ) {
-   nbr_pj = &( far_nbrs.select.far_nbr_list[pj] );
-   j = nbr_pj->nbr;
-   nbr_pj->d = 0;
-   rvec_MakeZero (nbr_pj->dvec);
-   }
-}
-
-void validate_neighbors (reax_system *system)
-{
-   int blocks;
-   blocks = (system->N / NBRS_BLOCK_SIZE) + 
-   ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-   ker_validate_neighbors <<< blocks, NBRS_BLOCK_SIZE>>>
-   (system->d_my_atoms, *(*dev_lists + FAR_NBRS), system->N);
-   cudaThreadSynchronize ();
-   cudaCheckError ();
-
-   fprintf (stderr, " Neighbors validated and is fine... \n");
-}
-
-*/

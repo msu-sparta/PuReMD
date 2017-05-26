@@ -27,7 +27,7 @@
 
 
 void Setup_Comm( reax_system* system, control_params* control,
-                 mpi_datatypes *mpi_data )
+        mpi_datatypes *mpi_data )
 {
     int i, d;
     real bndry_cut;
@@ -169,7 +169,7 @@ void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
 
 /*********************** SORTER **************************/
 void Sort_Transfer_Atoms( reax_system *system, int start, int end,
-                          int dim, mpi_out_data *out_bufs )
+        int dim, mpi_out_data *out_bufs )
 {
     int i, d, out_cnt;
     reax_atom *atoms;
@@ -178,7 +178,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d starting...\n",
-             system->my_rank, start, end, dim );
+            system->my_rank, start, end, dim );
 #endif
 
     atoms = system->my_atoms;
@@ -230,7 +230,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
 
 /*********************** UNPACKER **************************/
 void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
-                              int cnt, neighbor_proc *nbr, int dim )
+        int cnt, neighbor_proc *nbr, int dim )
 {
     int i;
     real dx;
@@ -283,7 +283,7 @@ void Unpack_Boundary_Atom( reax_atom *ratm, boundary_atom *matm )
 
 /*********************** SORTER **************************/
 void Sort_Boundary_Atoms( reax_system *system, int start, int end,
-                          int dim, mpi_out_data *out_bufs )
+        int dim, mpi_out_data *out_bufs )
 {
     int i, d, p, out_cnt;
     reax_atom *atoms;
@@ -293,7 +293,7 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d sort_exchange: start=%d end=%d dim=%d starting...\n",
-             system->my_rank, start, end, dim );
+            system->my_rank, start, end, dim );
 #endif
 
     atoms = system->my_atoms;
@@ -333,7 +333,7 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
 
 
 void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
-                              int d, mpi_out_data *out_bufs )
+        int d, mpi_out_data *out_bufs )
 {
     int i, p, out_cnt;
     reax_atom *atoms;
@@ -343,7 +343,7 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d estimate_exchange: start=%d end=%d dim=%d starting.\n",
-             system->my_rank, start, end, d );
+            system->my_rank, start, end, d );
 #endif
 
     atoms = system->my_atoms;
@@ -372,7 +372,7 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d est1=%d est2=%d\n",
-             system->my_rank, end, d, nbr1->est_send, nbr2->est_send );
+            system->my_rank, end, d, nbr1->est_send, nbr2->est_send );
 #endif
 
     /* allocate the estimated space */
@@ -380,9 +380,9 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
     {
         nbr_pr = &( system->my_nbrs[p] );
         out_bufs[p].index = (int*)
-                            scalloc( nbr_pr->est_send, sizeof(int), "mpibuf:index" );
+            scalloc( nbr_pr->est_send, sizeof(int), "mpibuf:index" );
         out_bufs[p].out_atoms = (void*)
-                                scalloc( nbr_pr->est_send, sizeof(boundary_atom), "mpibuf:out_atoms" );
+            scalloc( nbr_pr->est_send, sizeof(boundary_atom), "mpibuf:out_atoms" );
     }
 
     /* sort the atoms to their outgoing buffers */
@@ -410,8 +410,7 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 
 
 void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
-                            int d, int *max, int *nrecv,
-                            void **in1, void **in2, MPI_Comm comm )
+        int d, int *max, int *nrecv, void **in1, void **in2, MPI_Comm comm )
 {
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
@@ -449,7 +448,7 @@ void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
 
 /*********************** UNPACKER **************************/
 void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
-                              int cnt, neighbor_proc *nbr, int dim )
+        int cnt, neighbor_proc *nbr, int dim )
 {
     int i;
     real dx;
@@ -487,7 +486,7 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
 
 
 void Unpack_Estimate_Message( reax_system *system, int end, void *dummy,
-                              int cnt, neighbor_proc *nbr, int dim )
+        int cnt, neighbor_proc *nbr, int dim )
 {
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d-p%d unpack_estimate: end=%d cnt=%d - unpacking\n",
@@ -510,7 +509,7 @@ void Unpack_Estimate_Message( reax_system *system, int end, void *dummy,
 
 /**************** PACK POSITION UPDATES *******************/
 void Sort_Position_Updates( reax_system *system, int start, int end,
-                            int dim, mpi_out_data *out_bufs )
+        int dim, mpi_out_data *out_bufs )
 {
     int i, p;
     reax_atom *atoms;
@@ -530,7 +529,7 @@ void Sort_Position_Updates( reax_system *system, int start, int end,
 
 /*************** UNPACK POSITION UPDATES ******************/
 void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
-                              int cnt, neighbor_proc *nbr, int dim )
+        int cnt, neighbor_proc *nbr, int dim )
 {
     int i, start;
     reax_atom *atoms;
@@ -558,7 +557,7 @@ void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
 
 
 int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
-              int* nrecv, message_sorter sort_func, unpacker unpack, int clr )
+        int* nrecv, message_sorter sort_func, unpacker unpack, int clr )
 {
     int d, cnt, start, end, max, est_flag;
     mpi_out_data *out_bufs;
@@ -605,9 +604,9 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 
         /* send both messages in dimension d */
         MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt, type,
-                  nbr1->rank, 2 * d, comm );
+                nbr1->rank, 2 * d, comm );
         MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt, type,
-                  nbr2->rank, 2 * d + 1, comm );
+                nbr2->rank, 2 * d + 1, comm );
 
         /* recv and unpack atoms from nbr1 in dimension d */
         MPI_Wait( &req1, &stat1 );
@@ -635,8 +634,8 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 
 
 void Comm_Atoms( reax_system *system, control_params *control,
-                 simulation_data *data, storage *workspace, reax_list **lists,
-                 mpi_datatypes *mpi_data, int renbr )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        mpi_datatypes *mpi_data, int renbr )
 {
     int i;
     int nrecv[MAX_NBRS];
@@ -652,12 +651,13 @@ void Comm_Atoms( reax_system *system, control_params *control,
 
     if ( renbr )
     {
+        /* transfer ownership of atoms */
         for ( i = 0; i < MAX_NBRS; ++i )
         {
             nrecv[i] = system->est_trans;
         }
         system->n = SendRecv( system, mpi_data, mpi_data->mpi_atom_type, nrecv,
-                              Sort_Transfer_Atoms, Unpack_Transfer_Message, 1 );
+                Sort_Transfer_Atoms, Unpack_Transfer_Message, 1 );
         Bin_My_Atoms( system, &(workspace->realloc) );
         Reorder_My_Atoms( system, workspace );
 
@@ -667,12 +667,13 @@ void Comm_Atoms( reax_system *system, control_params *control,
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
+        /* exchange ghost region info with neighbors */
         for ( i = 0; i < MAX_NBRS; ++i )
         {
             nrecv[i] = system->my_nbrs[i].est_recv;
         }
-        system->N = SendRecv(system, mpi_data, mpi_data->boundary_atom_type, nrecv,
-                             Sort_Boundary_Atoms, Unpack_Exchange_Message, 1);
+        system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
+                Sort_Boundary_Atoms, Unpack_Exchange_Message, 1 );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: exchanged boundary atoms, N=%d\n",
@@ -680,9 +681,9 @@ void Comm_Atoms( reax_system *system, control_params *control,
         for ( i = 0; i < MAX_NBRS; ++i )
         {
             fprintf( stderr, "p%d: nbr%d(p%d) str=%d cnt=%d end=%d\n",
-                     system->my_rank, i, system->my_nbrs[i].rank,
-                     system->my_nbrs[i].atoms_str,  system->my_nbrs[i].atoms_cnt,
-                     system->my_nbrs[i].atoms_str + system->my_nbrs[i].atoms_cnt );
+                    system->my_rank, i, system->my_nbrs[i].rank,
+                    system->my_nbrs[i].atoms_str,  system->my_nbrs[i].atoms_cnt,
+                    system->my_nbrs[i].atoms_str + system->my_nbrs[i].atoms_cnt );
         }
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
@@ -696,7 +697,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
             nrecv[i] = system->my_nbrs[i].atoms_cnt;
         }
         SendRecv( system, mpi_data, mpi_data->mpi_rvec, nrecv,
-                  Sort_Position_Updates, Unpack_Position_Updates, 0 );
+                Sort_Position_Updates, Unpack_Position_Updates, 0 );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: updated positions\n", system->my_rank );
@@ -713,7 +714,8 @@ void Comm_Atoms( reax_system *system, control_params *control,
 #endif
 
 #if defined(DEBUG_FOCUS)
-    fprintf(stderr, "p%d @ renbr=%d: comm_atoms done\n", system->my_rank, renbr);
+    fprintf( stderr, "p%d @ renbr=%d: comm_atoms done\n",
+            system->my_rank, renbr );
     fprintf( stderr, "p%d: system->n = %d, system->N = %d\n",
              system->my_rank, system->n, system->N );
     //Print_My_Ext_Atoms( system );

@@ -66,8 +66,8 @@ char Read_Control_File( char *control_file, control_params* control,
     out_control->energy_update_freq = 0;
 
     control->reneighbor = 1;
-    control->vlist_cut = control->nonb_cut;
     control->bond_cut = 5.0;
+    control->vlist_cut = control->nonb_cut;
     control->bg_cut = 0.3;
     control->thb_cut = 0.001;
     control->hbond_cut = 0.0;

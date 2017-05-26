@@ -28,7 +28,7 @@
 extern "C" {
 #endif
 
-int Dev_Make_List( int, int, int, reax_list* );
+void Dev_Make_List( int, int, int, reax_list* );
 void Dev_Delete_List( reax_list* );
 
 #ifdef __cplusplus
@@ -60,5 +60,6 @@ static inline CUDA_HOST_DEVICE void Dev_Set_End_Index( int i, int val, reax_list
 {
     l->end_index[i] = val;
 }
+
 
 #endif

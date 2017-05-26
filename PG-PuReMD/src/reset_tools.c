@@ -273,7 +273,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
 
 
 void Reset( reax_system *system, control_params *control,
-            simulation_data *data, storage *workspace, reax_list **lists )
+        simulation_data *data, storage *workspace, reax_list **lists )
 {
     Reset_Atoms( system, control );
 
@@ -298,20 +298,20 @@ void Reset( reax_system *system, control_params *control,
 
 #ifdef HAVE_CUDA
 void Cuda_Reset( reax_system *system, control_params *control,
-                 simulation_data *data, storage *workspace, reax_list **lists )
+        simulation_data *data, storage *workspace, reax_list **lists )
 {
-    Cuda_Reset_Atoms (system, control);
+    Cuda_Reset_Atoms( system, control );
 
-    Reset_Simulation_Data (data);
+    Reset_Simulation_Data( data );
 
-    if (control->virial)
+    if ( control->virial )
     {
-        Reset_Pressures ( data );
+        Reset_Pressures( data );
     }
 
-    Cuda_Reset_Workspace ( system, workspace );
+    Cuda_Reset_Workspace( system, workspace );
 
-    Cuda_Reset_Neighbor_Lists ( system, control, workspace, lists );
+    Cuda_Reset_Neighbor_Lists( system, control, workspace, lists );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );

@@ -1,3 +1,8 @@
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "cuda_copy.h"
 
 //#include "list.h"
@@ -8,40 +13,47 @@
 //extern "C"  {  
 //#endif
 
-extern "C" int  Make_List( int, int, int, reax_list*);
-extern "C" void Delete_List( reax_list*);
+extern "C" void Make_List( int, int, int, reax_list* );
+extern "C" void Delete_List( reax_list* );
 
-void Sync_Grid (grid *host, grid *device)
+
+void Sync_Grid( grid *host, grid *device )
 {
     int total;
     grid_cell local_cell;
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
 
-    ivec_Copy (device->ncells, host->ncells);
-    rvec_Copy (device->cell_len, host->cell_len);
-    rvec_Copy (device->inv_len, host->inv_len);
+    ivec_Copy( device->ncells, host->ncells);
+    rvec_Copy( device->cell_len, host->cell_len);
+    rvec_Copy( device->inv_len, host->inv_len);
 
-    ivec_Copy (device->bond_span, host->bond_span );
-    ivec_Copy (device->nonb_span, host->nonb_span );
-    ivec_Copy (device->vlist_span, host->vlist_span );
+    ivec_Copy( device->bond_span, host->bond_span );
+    ivec_Copy( device->nonb_span, host->nonb_span );
+    ivec_Copy( device->vlist_span, host->vlist_span );
 
-    ivec_Copy (device->native_cells, host->native_cells );
-    ivec_Copy (device->native_str, host->native_str );
-    ivec_Copy (device->native_end, host->native_end );
+    ivec_Copy( device->native_cells, host->native_cells );
+    ivec_Copy( device->native_str, host->native_str );
+    ivec_Copy( device->native_end, host->native_end );
 
     device->ghost_cut = host->ghost_cut;
-    ivec_Copy (device->ghost_span, host->ghost_span );
-    ivec_Copy (device->ghost_nonb_span, host->ghost_nonb_span );
-    ivec_Copy (device->ghost_hbond_span, host->ghost_hbond_span );
-    ivec_Copy (device->ghost_bond_span, host->ghost_bond_span );
+    ivec_Copy( device->ghost_span, host->ghost_span );
+    ivec_Copy( device->ghost_nonb_span, host->ghost_nonb_span );
+    ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
+    ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
-    copy_host_device (host->str, device->str, sizeof (int) * total, cudaMemcpyHostToDevice, "grid:str");
-    copy_host_device (host->end, device->end, sizeof (int) * total, cudaMemcpyHostToDevice, "grid:end");
-    copy_host_device (host->cutoff, device->cutoff, sizeof (real) * total, cudaMemcpyHostToDevice, "grid:cutoff");
-    copy_host_device (host->nbrs_x, device->nbrs_x, sizeof (ivec) * total * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x");
-    copy_host_device (host->nbrs_cp, device->nbrs_cp, sizeof (rvec) * total * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp");
+    copy_host_device( host->str, device->str, sizeof(int) * total,
+            cudaMemcpyHostToDevice, "grid:str");
+    copy_host_device( host->end, device->end, sizeof(int) * total,
+            cudaMemcpyHostToDevice, "grid:end");
+    copy_host_device( host->cutoff, device->cutoff, sizeof(real) * total,
+            cudaMemcpyHostToDevice, "grid:cutoff");
+    copy_host_device( host->nbrs_x, device->nbrs_x, sizeof(ivec) * total *
+            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x");
+    copy_host_device( host->nbrs_cp, device->nbrs_cp, sizeof(rvec) * total *
+            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp");
 
-    copy_host_device (host->rel_box, device->rel_box, sizeof (ivec) * total, cudaMemcpyHostToDevice, "grid:rel_box");
+    copy_host_device( host->rel_box, device->rel_box, sizeof(ivec) * total,
+            cudaMemcpyHostToDevice, "grid:rel_box");
 
     device->max_nbrs = host->max_nbrs;
 
@@ -94,95 +106,82 @@ void Sync_Grid (grid *host, grid *device)
      */
 }
 
-void Sync_Atoms (reax_system *sys)
+
+void Sync_Atoms( reax_system *sys )
 {
-    //TODO
     //TODO METIN FIX, coredump on his machine
-    //TODO
-    //TODO
-    //copy_host_device (sys->my_atoms, sys->d_my_atoms, sizeof (reax_atom) * sys->total_cap, cudaMemcpyHostToDevice, "system:my_atoms");
+    //copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) * sys->total_cap, cudaMemcpyHostToDevice, "system:my_atoms" );
+
 #if defined(__CUDA_DEBUG_LOG__)
-    fprintf (stderr, "p:%d - Synching atoms: n: %d N: %d, total_cap: %d \n", 
-            sys->my_rank, sys->n, sys->N, sys->total_cap);
+    fprintf( stderr, "p:%d - Synching atoms: n: %d N: %d, total_cap: %d \n", 
+            sys->my_rank, sys->n, sys->N, sys->total_cap );
 #endif
 
-    copy_host_device (sys->my_atoms, sys->d_my_atoms, sizeof (reax_atom) * sys->N, cudaMemcpyHostToDevice, "system:my_atoms");
-    //TODO
+    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) *
+            sys->N, cudaMemcpyHostToDevice, "system:my_atoms" );
     //TODO METIN FIX, coredump on his machine
-    //TODO
-    //TODO
 }
 
-void Sync_System (reax_system *sys)
+
+void Sync_System( reax_system *sys )
 {
     //fprintf (stderr, "p:%d - trying to copy atoms : %d \n", sys->my_rank, sys->local_cap);
     Sync_Atoms (sys);
 
-    copy_host_device (&(sys->my_box), sys->d_my_box, 
-            sizeof (simulation_box), cudaMemcpyHostToDevice, "system:my_box");
+    copy_host_device (&(sys->my_box), sys->d_my_box, sizeof(simulation_box),
+            cudaMemcpyHostToDevice, "system:my_box");
 
-    copy_host_device (&(sys->my_ext_box), sys->d_my_ext_box, 
-            sizeof (simulation_box), cudaMemcpyHostToDevice, "system:my_ext_box");
+    copy_host_device (&(sys->my_ext_box), sys->d_my_ext_box,
+            sizeof(simulation_box), cudaMemcpyHostToDevice,
+            "system:my_ext_box");
 
-    copy_host_device (sys->reax_param.sbp, sys->reax_param.d_sbp, 
-            sizeof (single_body_parameters) * sys->reax_param.num_atom_types, cudaMemcpyHostToDevice, "system:sbp");
-    copy_host_device (sys->reax_param.tbp, sys->reax_param.d_tbp, 
-            sizeof (two_body_parameters) * pow (sys->reax_param.num_atom_types, 2), cudaMemcpyHostToDevice, "system:tbp");
-    copy_host_device (sys->reax_param.thbp, sys->reax_param.d_thbp, 
-            sizeof (three_body_header) * pow (sys->reax_param.num_atom_types, 3), cudaMemcpyHostToDevice, "system:thbh");
-    copy_host_device (sys->reax_param.hbp, sys->reax_param.d_hbp, 
-            sizeof (hbond_parameters) * pow (sys->reax_param.num_atom_types, 3), cudaMemcpyHostToDevice, "system:hbond");
+    copy_host_device (sys->reax_param.sbp, sys->reax_param.d_sbp,
+            sizeof(single_body_parameters) * sys->reax_param.num_atom_types,
+            cudaMemcpyHostToDevice, "system:sbp");
+    copy_host_device (sys->reax_param.tbp, sys->reax_param.d_tbp,
+            sizeof(two_body_parameters) * pow (sys->reax_param.num_atom_types,
+                2), cudaMemcpyHostToDevice, "system:tbp");
+    copy_host_device (sys->reax_param.thbp, sys->reax_param.d_thbp,
+            sizeof(three_body_header) * pow (sys->reax_param.num_atom_types,
+                3), cudaMemcpyHostToDevice, "system:thbh");
+    copy_host_device (sys->reax_param.hbp, sys->reax_param.d_hbp,
+            sizeof(hbond_parameters) * pow (sys->reax_param.num_atom_types, 3),
+            cudaMemcpyHostToDevice, "system:hbond");
     copy_host_device (sys->reax_param.fbp, sys->reax_param.d_fbp, 
-            sizeof (four_body_header) * pow (sys->reax_param.num_atom_types, 4), cudaMemcpyHostToDevice, "system:four_header");
+            sizeof(four_body_header) * pow (sys->reax_param.num_atom_types, 4),
+            cudaMemcpyHostToDevice, "system:four_header");
 
-    copy_host_device (sys->reax_param.gp.l, sys->reax_param.d_gp.l, 
-            sizeof (real) * sys->reax_param.gp.n_global, cudaMemcpyHostToDevice, "system:global_parameters");
+    copy_host_device (sys->reax_param.gp.l, sys->reax_param.d_gp.l,
+            sizeof(real) * sys->reax_param.gp.n_global, cudaMemcpyHostToDevice,
+            "system:global_parameters");
 
     sys->reax_param.d_gp.n_global = sys->reax_param.gp.n_global; 
     sys->reax_param.d_gp.vdw_type = sys->reax_param.gp.vdw_type; 
 }
 
-void Output_Sync_Atoms (reax_system *sys)
+
+void Output_Sync_Atoms( reax_system *sys )
 {
     //TODO changed this from sys->n to sys->N
-    copy_host_device (sys->my_atoms, sys->d_my_atoms, 
-            sizeof (reax_atom) * sys->total_cap, cudaMemcpyDeviceToHost, "system:my_atoms");
+    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) *
+            sys->total_cap, cudaMemcpyDeviceToHost, "system:my_atoms" );
 }
 
-void Output_Sync_Simulation_Data (simulation_data *host, simulation_data *dev)
+
+void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
 {
-    copy_host_device (&host->my_en, &dev->my_en, sizeof (energy_data), 
+    copy_host_device (&host->my_en, &dev->my_en, sizeof(energy_data), 
             cudaMemcpyDeviceToHost, "simulation_data:energy_data");
-    copy_host_device (&host->kin_press, &dev->kin_press, sizeof (real), 
+    copy_host_device (&host->kin_press, &dev->kin_press, sizeof(real), 
             cudaMemcpyDeviceToHost, "simulation_data:kin_press");
-    copy_host_device (host->int_press, dev->int_press, sizeof (rvec), 
+    copy_host_device (host->int_press, dev->int_press, sizeof(rvec), 
             cudaMemcpyDeviceToHost, "simulation_data:int_press");
-    copy_host_device (host->ext_press, dev->ext_press, sizeof (rvec), 
+    copy_host_device (host->ext_press, dev->ext_press, sizeof(rvec), 
             cudaMemcpyDeviceToHost, "simulation_data:ext_press");
 }
 
-void Sync_Workspace (storage *workspace, enum cudaMemcpyKind dir)
-{
-}
 
-void Sync_Matrix (sparse_matrix *L, sparse_matrix *U, enum cudaMemcpyKind dir )
-{
-}
-
-void Sync_Output_Controls (output_controls *, control_params *, enum cudaMemcpyKind)
-{
-}
-
-void Sync_Control (control_params *host, control_params *device, enum cudaMemcpyKind dir)
-{
-}
-
-
-void Prep_Device_For_Output (reax_system *system, simulation_data *data )
-{
-}
-
-void Output_Sync_Lists (reax_list *host, reax_list *device, int type)
+void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
 {
     //fprintf (stderr, " Trying to copy *%d* list from device to host \n", type);
 
@@ -195,24 +194,29 @@ void Output_Sync_Lists (reax_list *host, reax_list *device, int type)
     //Make_List(device->n, device->num_intrs, type, host);
 
     //memcpy the entries from device to host
-    copy_host_device (host->index, device->index, sizeof (int) * device->n, cudaMemcpyDeviceToHost, "output_sync_list:list:index");
-    copy_host_device (host->end_index, device->end_index, sizeof (int) * device->n, cudaMemcpyDeviceToHost, "output_sync:list:end_index");
+    copy_host_device (host->index, device->index, sizeof(int) * device->n,
+            cudaMemcpyDeviceToHost, "output_sync_list:list:index");
+    copy_host_device (host->end_index, device->end_index, sizeof(int) *
+            device->n, cudaMemcpyDeviceToHost, "output_sync:list:end_index");
 
     switch (type)
     {   
         case TYP_BOND:
-            copy_host_device (host->select.bond_list, device->select.bond_list, 
-                    sizeof (bond_data) * device->num_intrs, cudaMemcpyDeviceToHost, "bond_list");
+            copy_host_device (host->select.bond_list, device->select.bond_list,
+                    sizeof(bond_data) * device->num_intrs,
+                    cudaMemcpyDeviceToHost, "bond_list");
             break;
 
         case TYP_THREE_BODY:
-            copy_host_device (host->select.three_body_list, device->select.three_body_list, 
-                    sizeof (three_body_interaction_data )* device->num_intrs, cudaMemcpyDeviceToHost, "three_body_list");
+            copy_host_device (host->select.three_body_list,
+                    device->select.three_body_list,
+                    sizeof(three_body_interaction_data )* device->num_intrs,
+                    cudaMemcpyDeviceToHost, "three_body_list");
             break;
 
         default:
-            fprintf (stderr, "Unknown list synching from device to host ---- > %d \n", type );
-            exit (1);
+            fprintf( stderr, "Unknown list synching from device to host ---- > %d \n", type );
+            exit( 1 );
             break;
     }  
 }

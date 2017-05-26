@@ -337,9 +337,9 @@ void Init_MatVec( reax_system *system, simulation_data *data,
 void Calculate_Charges( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int        i, scale;
-    real       u;//, s_sum, t_sum;
-    rvec2      my_sum, all_sum;
+    int i, scale;
+    real u;//, s_sum, t_sum;
+    rvec2 my_sum, all_sum;
     reax_atom *atom;
     real *q;
 

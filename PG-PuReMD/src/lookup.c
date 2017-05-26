@@ -24,23 +24,23 @@
 #include "index_utils.h"
 
 #ifdef HAVE_CUDA
-#include "cuda_lookup.h"
+  #include "cuda_lookup.h"
 #endif
 
 #if defined(PURE_REAX)
-#include "lookup.h"
-#include "nonbonded.h"
-#include "tool_box.h"
+  #include "lookup.h"
+  #include "nonbonded.h"
+  #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_lookup.h"
-#include "reax_nonbonded.h"
-#include "reax_tool_box.h"
+  #include "reax_lookup.h"
+  #include "reax_nonbonded.h"
+  #include "reax_tool_box.h"
 #endif
 
 
 /* Fills solution into x. Warning: will modify c and d! */
 void Tridiagonal_Solve( const real *a, const real *b,
-        real *c, real *d, real *x, unsigned int n)
+        real *c, real *d, real *x, unsigned int n )
 {
     int i;
     real id;
@@ -229,9 +229,13 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
        simulation. to avoid unnecessary lookup table space, determine
        the atom types that exist in the current simulation */
     for ( i = 0; i < MAX_ATOM_TYPES; ++i )
+    {
         existing_types[i] = 0;
+    }
     for ( i = 0; i < system->n; ++i )
+    {
         existing_types[ system->my_atoms[i].type ] = 1;
+    }
 
     MPI_Allreduce( existing_types, aggregated, MAX_ATOM_TYPES,
             MPI_INT, MPI_SUM, mpi_data->world );
@@ -244,23 +248,23 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
                 if ( aggregated[j] )
                 {
 
-                    LR[ index_lr (i, j, num_atom_types) ].xmin = 0;
-                    LR[ index_lr (i, j, num_atom_types) ].xmax = control->nonb_cut;
-                    LR[ index_lr (i, j, num_atom_types) ].n = control->tabulate + 1;
-                    LR[ index_lr (i, j, num_atom_types) ].dx = dr;
-                    LR[ index_lr (i, j, num_atom_types) ].inv_dx = control->tabulate / control->nonb_cut;
-                    LR[ index_lr (i, j, num_atom_types) ].y = (LR_data*)
-                            smalloc(LR[ index_lr (i, j, num_atom_types) ].n * sizeof(LR_data), "lookup:LR[i,j].y");
-                    LR[ index_lr (i, j, num_atom_types) ].H = (cubic_spline_coef*)
-                            smalloc(LR[ index_lr (i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].H");
-                    LR[ index_lr (i, j, num_atom_types) ].vdW = (cubic_spline_coef*)
-                            smalloc(LR[ index_lr (i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].vdW");
-                    LR[ index_lr (i, j, num_atom_types) ].CEvd = (cubic_spline_coef*)
-                            smalloc(LR[ index_lr (i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].CEvd");
-                    LR[ index_lr (i, j, num_atom_types) ].ele = (cubic_spline_coef*)
-                            smalloc(LR[ index_lr (i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].ele");
-                    LR[ index_lr (i, j, num_atom_types) ].CEclmb = (cubic_spline_coef*)
-                            smalloc(LR[ index_lr (i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].CEclmb");
+                    LR[ index_lr(i, j, num_atom_types) ].xmin = 0;
+                    LR[ index_lr(i, j, num_atom_types) ].xmax = control->nonb_cut;
+                    LR[ index_lr(i, j, num_atom_types) ].n = control->tabulate + 1;
+                    LR[ index_lr(i, j, num_atom_types) ].dx = dr;
+                    LR[ index_lr(i, j, num_atom_types) ].inv_dx = control->tabulate / control->nonb_cut;
+                    LR[ index_lr(i, j, num_atom_types) ].y = (LR_data*)
+                            smalloc(LR[ index_lr(i, j, num_atom_types) ].n * sizeof(LR_data), "lookup:LR[i,j].y");
+                    LR[ index_lr(i, j, num_atom_types) ].H = (cubic_spline_coef*)
+                            smalloc(LR[ index_lr(i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].H");
+                    LR[ index_lr(i, j, num_atom_types) ].vdW = (cubic_spline_coef*)
+                            smalloc(LR[ index_lr(i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].vdW");
+                    LR[ index_lr(i, j, num_atom_types) ].CEvd = (cubic_spline_coef*)
+                            smalloc(LR[ index_lr(i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].CEvd");
+                    LR[ index_lr(i, j, num_atom_types) ].ele = (cubic_spline_coef*)
+                            smalloc(LR[ index_lr(i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].ele");
+                    LR[ index_lr(i, j, num_atom_types) ].CEclmb = (cubic_spline_coef*)
+                            smalloc(LR[ index_lr(i, j, num_atom_types) ].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].CEclmb");
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {
@@ -317,8 +321,9 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
     return SUCCESS;
 }
 
+
 /*
-void copy_LR_table_to_device (reax_system *system, control_params *control, int aggregated)
+void copy_LR_table_to_device( reax_system *system, control_params *control, int aggregated )
 {
   int i, j, r;
   int num_atom_types;

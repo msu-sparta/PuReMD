@@ -20,6 +20,8 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
+#include "allocate.h"
 #include "analyze.h"
 #include "comm_tools.h"
 #include "control.h"
@@ -201,7 +203,7 @@ int main( int argc, char* argv[] )
 
     /* Remove this debug information later */
 #if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, " Size of LR Lookup table %d \n", sizeof (LR_lookup_table) );
+    fprintf( stderr, " Size of LR Lookup table %d \n", sizeof(LR_lookup_table) );
 #endif
 
 #if defined( __SM_35__)
@@ -258,12 +260,11 @@ int main( int argc, char* argv[] )
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
     system->wsize = control->nprocs;
-    system->global_offset = (int *)scalloc(system->wsize + 1, sizeof(int), "global_offset");
+    system->global_offset = (int *) scalloc( system->wsize + 1, sizeof(int), "global_offset" );
 
     /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
-    fprintf( stderr, "[READ SYSTEM] STEP %d\n", data->step );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
@@ -272,7 +273,6 @@ int main( int argc, char* argv[] )
 
     /* setup the CUDA Device for this process */
     Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
-    fprintf( stderr, "[SETUP CUDA ENV] STEP %d\n", data->step );
 
 #if defined(DEBUG)
     print_device_mem_usage( );
@@ -290,15 +290,14 @@ int main( int argc, char* argv[] )
 
     /* initialize data structures */
     Cuda_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
-    fprintf( stderr, "[CUDA INITIALIZE] STEP %d\n", data->step );
 
 #if defined(__CUDA_DEBUG__)
     Pure_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
 
-#if defined(DEBUG)
+//#if defined(DEBUG)
     print_device_mem_usage( );
-#endif
+//#endif
 
     /* init the blocks sizes for cuda kernels */
     init_blocks( system );
@@ -321,7 +320,6 @@ int main( int argc, char* argv[] )
 
     //Second step
     Cuda_Reset( system, control, data, workspace, lists );
-    fprintf( stderr, "[CUDA RESET] STEP %d\n", data->step );
 
 #if defined(__CUDA_DEBUG__)
     Reset( system, control, data, workspace, lists );
@@ -332,29 +330,27 @@ int main( int argc, char* argv[] )
 
     //Third Step
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
-    fprintf( stderr, "[CUDA GENERATE NEIGHBOR LISTS] STEP %d\n", data->step );
 
 #if defined(__CUDA_DEBUG__)
     Generate_Neighbor_Lists( system, data, workspace, lists );
 #endif
 
 #if defined(DEBUG)
-    fprintf (stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
+    fprintf( stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
 #endif
 
     //Fourth Step
 #if defined(DEBUG)
-    fprintf (stderr, " Host Compute Forces begin.... \n");
+    fprintf( stderr, " Host Compute Forces begin.... \n" );
 #endif
 
 #if defined(__CUDA_DEBUG__)
     Compute_Forces( system, control, data, workspace,
-                    lists, out_control, mpi_data );
+            lists, out_control, mpi_data );
 #endif
 
     Cuda_Compute_Forces( system, control, data, workspace, lists,
             out_control, mpi_data );
-    fprintf( stderr, "[CUDA COMPUTE FORCES] STEP %d\n", data->step );
 
 #if defined(DEBUG)
     fprintf (stderr, "p%d: Cuda_Compute_Forces done...\n", system->my_rank );
@@ -365,7 +361,6 @@ int main( int argc, char* argv[] )
 #endif
 
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-    fprintf( stderr, "[CUDA COMPUTE K.E.] STEP %d\n", data->step );
 
 #if defined(DEBUG)
     fprintf (stderr, "p%d: Cuda_Compute_Kinetic_Energy done ... \n", system->my_rank);
@@ -404,12 +399,12 @@ int main( int argc, char* argv[] )
 #endif
 
 #if defined(__CUDA_DEBUG__)
-        Evolve( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = Evolve( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
-
+    
         ret = Cuda_Evolve( system, control, data, workspace, lists, out_control, mpi_data );
         fprintf( stderr, "[EVOLVE] STEP %d\n", data->step );
-
+    
 #if defined(DEBUG)
         t_end = Get_Timing_Info( t_begin );
         fprintf( stderr, " Evolve time: %f \n", t_end );
@@ -423,10 +418,6 @@ int main( int argc, char* argv[] )
         {
             ret = Cuda_Post_Evolve( system, control, data, workspace, lists,
                     out_control, mpi_data );
-        }
-        else
-        {
-            fprintf( stderr, "INFO: retrying step %d...\n", data->step );
         }
         fprintf( stderr, "[POST EVOLVE] STEP %d\n", data->step );
 
@@ -473,6 +464,10 @@ int main( int argc, char* argv[] )
         if ( ret == SUCCESS )
         {
             ++data->step;
+        }
+        else
+        {
+            fprintf( stderr, "INFO: retrying step %d...\n", data->step );
         }
     }
 

@@ -35,11 +35,11 @@ int compare_far_nbrs( const void *p1, const void *p2 )
 
 
 void Draw_Near_Neighbor_Box( reax_system *system, control_params *control,
-                             storage *workspace )
+        storage *workspace )
 {
-    int  i;
-    reax_atom       *atom;
-    simulation_box  *my_box;
+    int i;
+    reax_atom *atom;
+    simulation_box *my_box;
     boundary_cutoff *bc;
 
     my_box = &( system->my_box );
@@ -47,7 +47,9 @@ void Draw_Near_Neighbor_Box( reax_system *system, control_params *control,
 
     /* all native atoms are within near neighbor skin */
     for ( i = 0; i < system->n; ++i )
+    {
         workspace->within_bond_box[i] = 1;
+    }
 
     /* loop over imported atoms */
     for ( i = system->n; i < system->N; ++i )
@@ -60,15 +62,19 @@ void Draw_Near_Neighbor_Box( reax_system *system, control_params *control,
                 atom->x[1] <= my_box->max[1] + bc->ghost_bond &&
                 my_box->min[2] - bc->ghost_bond <= atom->x[2] &&
                 atom->x[2] <= my_box->max[2] + bc->ghost_bond )
+        {
             workspace->within_bond_box[i] = 1;
+        }
         else
+        {
             workspace->within_bond_box[i] = 0;
+        }
     }
 }
 
 
 void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
-                              storage *workspace, reax_list **lists )
+        storage *workspace, reax_list **lists )
 {
     int  i, j, k, l, m, itr, num_far;
     real d, cutoff;
@@ -84,7 +90,9 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     real t_start = 0, t_elapsed = 0;
 
     if ( system->my_rank == MASTER_NODE )
+    {
         t_start = Get_Time( );
+    }
 #endif
 
     // fprintf( stderr, "\n\tentered nbrs - " );
@@ -94,7 +102,9 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncells[0]; i++ )
+    {
         for ( j = 0; j < g->ncells[1]; j++ )
+        {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 //SUDHIR
@@ -121,6 +131,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
                         if ( g->str[index_grid_3d(i, j, k, g)] <= g->str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)] &&
                                 (DistSqr_to_Special_Point(g->nbrs_cp[index_grid_nbrs(i, j, k, itr, g)], atom1->x) <= cutoff) )
+                        {
                             /* pick up another atom from the neighbor cell */
                             //for( m = gcj->str; m < gcj->end; ++m )
                             for ( m = g->str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)];
@@ -141,12 +152,14 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                         rvec_Copy( nbr_data->dvec, dvec );
                                         //ivec_Copy( nbr_data->rel_box, gcj->rel_box );
                                         //ivec_ScaledSum( nbr_data->rel_box, 1, gcj->rel_box, -1, gci->rel_box );
-                                        ivec_ScaledSum( nbr_data->rel_box, 1, g->rel_box[ index_grid_3d (nbrs_x[0], nbrs_x[1], nbrs_x[2], g) ],
-                                                        -1, g->rel_box[index_grid_3d (i, j, k, g)] );
+                                        ivec_ScaledSum( nbr_data->rel_box, 1,
+                                                g->rel_box[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g) ],
+                                                -1, g->rel_box[index_grid_3d(i, j, k, g)] );
                                         ++num_far;
                                     }
                                 }
                             }
+                        }
                         ++itr;
                     }
                     Set_End_Index( l, num_far, far_nbrs );
@@ -155,12 +168,14 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                     //  itr);
                 }
             }
+        }
+    }
 
 #if defined(DEBUG)
     fprintf (stderr, " HOST NEIGHBOR COUNT: %d \n", num_far );
 #endif
 
-    workspace->realloc.num_far = num_far;
+    workspace->realloc.far_nbrs = num_far;
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -178,9 +193,11 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
     for ( i = 0; i < system->N; ++i )
+    {
         qsort( &(far_nbrs->select.far_nbr_list[ Start_Index(i, far_nbrs) ]),
                Num_Entries(i, far_nbrs), sizeof(far_neighbor_data),
                compare_far_nbrs );
+    }
 #endif
 }
 

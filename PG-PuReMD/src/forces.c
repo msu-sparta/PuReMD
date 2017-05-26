@@ -23,45 +23,44 @@
 
 #include "index_utils.h"
 #ifdef HAVE_CUDA
-#include "cuda_forces.h"
-
-#include "cuda_linear_solvers.h"
-#include "cuda_neighbors.h"
-//#include "cuda_bond_orders.h"
-#include "validation.h"
+  #include "cuda_forces.h"
+  #include "cuda_linear_solvers.h"
+  #include "cuda_neighbors.h"
+  #include "cuda_utils.h"
+  #include "validation.h"
 #endif
 
 #if defined(PURE_REAX)
-#include "forces.h"
-#include "bond_orders.h"
-#include "bonds.h"
-#include "basic_comm.h"
-#include "hydrogen_bonds.h"
-#include "io_tools.h"
-#include "list.h"
-#include "lookup.h"
-#include "multi_body.h"
-#include "nonbonded.h"
-#include "qEq.h"
-#include "tool_box.h"
-#include "torsion_angles.h"
-#include "valence_angles.h"
-#include "vector.h"
+  #include "forces.h"
+  #include "bond_orders.h"
+  #include "bonds.h"
+  #include "basic_comm.h"
+  #include "hydrogen_bonds.h"
+  #include "io_tools.h"
+  #include "list.h"
+  #include "lookup.h"
+  #include "multi_body.h"
+  #include "nonbonded.h"
+  #include "qEq.h"
+  #include "tool_box.h"
+  #include "torsion_angles.h"
+  #include "valence_angles.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_forces.h"
-#include "reax_bond_orders.h"
-#include "reax_bonds.h"
-#include "reax_basic_comm.h"
-#include "reax_hydrogen_bonds.h"
-#include "reax_io_tools.h"
-#include "reax_list.h"
-#include "reax_lookup.h"
-#include "reax_multi_body.h"
-#include "reax_nonbonded.h"
-#include "reax_tool_box.h"
-#include "reax_torsion_angles.h"
-#include "reax_valence_angles.h"
-#include "reax_vector.h"
+  #include "reax_forces.h"
+  #include "reax_bond_orders.h"
+  #include "reax_bonds.h"
+  #include "reax_basic_comm.h"
+  #include "reax_hydrogen_bonds.h"
+  #include "reax_io_tools.h"
+  #include "reax_list.h"
+  #include "reax_lookup.h"
+  #include "reax_multi_body.h"
+  #include "reax_nonbonded.h"
+  #include "reax_tool_box.h"
+  #include "reax_torsion_angles.h"
+  #include "reax_valence_angles.h"
+  #include "reax_vector.h"
 #endif
 
 
@@ -74,6 +73,8 @@ void Cuda_Total_Forces_PURE (reax_system *, storage *);
 interaction_function Interaction_Functions[NUM_INTRS];
 
 
+/* placeholder for unused interactions in interaction list
+ * Interaction_Functions, which is initialized in Init_Force_Functions */
 void Dummy_Interaction( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control )
@@ -88,7 +89,7 @@ void Init_Force_Functions( control_params *control )
     Interaction_Functions[2] = Atom_Energy; //Dummy_Interaction;
     Interaction_Functions[3] = Valence_Angles; //Dummy_Interaction;
     Interaction_Functions[4] = Torsion_Angles; //Dummy_Interaction;
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
     {
         Interaction_Functions[5] = Hydrogen_Bonds;
     }
@@ -115,25 +116,20 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
 #endif
 
     /* Implement all force calls as function pointers */
-//  for( i = 0; i < NUM_INTRS; i++ ) {
-//#if defined(DEBUG)
-//    fprintf( stderr, "p%d: starting f%d\n", system->my_rank, i );
-//    MPI_Barrier( MPI_COMM_WORLD );
-//#endif
-//    (Interaction_Functions[i])( system, control, data, workspace,
-//              lists, out_control );
-//#if defined(DEBUG)
-//    fprintf( stderr, "p%d: f%d done\n", system->my_rank, i );
-//    MPI_Barrier( MPI_COMM_WORLD );
-//#endif
-//  }
+    for( i = 0; i < NUM_INTRS; i++ )
+    {
+#if defined(DEBUG)
+        fprintf( stderr, "p%d: starting f%d\n", system->my_rank, i );
+        MPI_Barrier( MPI_COMM_WORLD );
+#endif
 
-    (Interaction_Functions[0])( system, control, data, workspace, lists, out_control );
-    (Interaction_Functions[1])( system, control, data, workspace, lists, out_control );
-    (Interaction_Functions[2])( system, control, data, workspace, lists, out_control );
-    (Interaction_Functions[3])( system, control, data, workspace, lists, out_control );
-    (Interaction_Functions[4])( system, control, data, workspace, lists, out_control );
-    (Interaction_Functions[5])( system, control, data, workspace, lists, out_control );
+        (Interaction_Functions[i])( system, control, data, workspace, lists, out_control );
+
+#if defined(DEBUG)
+        fprintf( stderr, "p%d: f%d done\n", system->my_rank, i );
+        MPI_Barrier( MPI_COMM_WORLD );
+#endif
+    }
 }
 
 
@@ -168,21 +164,29 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
    coefficients accumulated by all interaction functions.
    Saves enormous time & space! */
 void Compute_Total_Force( reax_system *system, control_params *control,
-                          simulation_data *data, storage *workspace,
-                          reax_list **lists, mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        mpi_datatypes *mpi_data )
 {
     int i, pj;
     reax_list *bonds = (*lists) + BONDS;
 
     for ( i = 0; i < system->N; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
+        {
             if ( i < bonds->select.bond_list[pj].nbr )
             {
                 if ( control->virial == 0 )
+                {
                     Add_dBond_to_Forces( i, pj, workspace, lists );
+                }
                 else
+                {
                     Add_dBond_to_Forces_NPT( i, pj, data, workspace, lists );
+                }
             }
+        }
+    }
 
     //Print_Total_Force( system, data, workspace );
 #if defined(PURE_REAX)
@@ -218,13 +222,13 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 
 #ifdef HAVE_CUDA
 void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
-                               simulation_data *data, storage *workspace,
-                               reax_list **lists, mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, mpi_datatypes *mpi_data )
 {
     rvec *f = (rvec *) host_scratch;
-    memset (f, 0, sizeof (rvec) * system->N );
+    memset( f, 0, sizeof(rvec) * system->N );
 
-    Cuda_Total_Forces (system, control, data, workspace);
+    Cuda_Total_Forces( system, control, data, workspace );
 
 #if defined(PURE_REAX)
     /* now all forces are computed to their partially-final values
@@ -233,14 +237,16 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
        all partially-final pieces */
 
     //MVAPICH2
-    get_from_device (f, dev_workspace->f, sizeof (rvec) * system->N , "total_force:f:get");
+    copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N ,
+            cudaMemcpyDeviceToHost, "total_force:f:get" );
 
     Coll( system, mpi_data, f, mpi_data->mpi_rvec,
           sizeof(rvec) / sizeof(void), rvec_unpacker );
 
-    put_on_device (f, dev_workspace->f, sizeof (rvec) * system->N, "total_force:f:put" );
+    copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N,
+            cudaMemcpyHostToDevice, "total_force:f:put" );
 
-    Cuda_Total_Forces_PURE (system, dev_workspace);
+    Cuda_Total_Forces_PURE( system, dev_workspace );
 #endif
 
 }
@@ -250,7 +256,7 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
 // Essentially no-cuda copies of cuda kernels, to be used only in the mpi-not-gpu version
 ////////////////////////
 // HBOND ISSUE
-void mpi_not_gpu_update_bonds (reax_atom *my_atoms, reax_list bonds, int n)
+void mpi_not_gpu_update_bonds( reax_atom *my_atoms, reax_list bonds, int n )
 {
 //    int i = blockIdx.x * blockDim.x + threadIdx.x;
     //  if (i >= n) return;
@@ -263,7 +269,7 @@ void mpi_not_gpu_update_bonds (reax_atom *my_atoms, reax_list bonds, int n)
 }
 
 
-void mpi_not_gpu_update_hbonds (reax_atom *my_atoms, reax_list hbonds, int n)
+void mpi_not_gpu_update_hbonds( reax_atom *my_atoms, reax_list hbonds, int n )
 {
     int Hindex;
     int i;
@@ -435,11 +441,11 @@ int MPI_Not_GPU_Validate_Lists( reax_system *system, storage *workspace,
         int max_bonds = 0;
         for (i = 0; i < N; i++)
         {
-            if (end_index[i] - index[i] >= system->max_bonds)
+            if (end_index[i] - index[i] >= system->my_atoms[i].max_bonds)
             {
 #if defined(DEBUG)
                 fprintf( stderr, "MPI-Not-GPU step%d-bondchk failed: i=%d start(i)=%d end(i)=%d max_bonds=%d\n",
-                         step, i, index[i], end_index[i], system->max_bonds);
+                        step, i, index[i], end_index[i], system->my_atoms[i].max_bonds);
 #endif
 
                 return FAILURE;
@@ -727,13 +733,17 @@ void Validate_Lists( storage *workspace, reax_list **lists,
         flag = -1;
         hbonds = *lists + HBONDS;
         for ( i = 0; i < numH - 1; ++i )
+        {
             if ( Num_Entries(i, hbonds) >=
                     (Start_Index(i + 1, hbonds) - Start_Index(i, hbonds)) * 0.90/*DANGER_ZONE*/ )
             {
                 workspace->realloc.hbonds = 1;
                 if ( End_Index(i, hbonds) > Start_Index(i + 1, hbonds) )
+                {
                     flag = i;
+                }
             }
+        }
 
         if ( flag > -1 )
         {
@@ -805,7 +815,7 @@ static inline real Compute_tabH( real r_ij, int ti, int tj, int num_atom_types )
 }
 
 
-void Init_Forces( reax_system *system, control_params *control,
+int Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
@@ -881,8 +891,13 @@ void Init_Forces( reax_system *system, control_params *control,
             {
                 ihb = sbp_i->p_hbond;
                 if ( ihb == 1 )
+                {
                     ihb_top = End_Index( atom_i->Hindex, hbonds );
-                else ihb_top = -1;
+                }
+                else
+                {
+                    ihb_top = -1;
+                }
             }
         }
 
@@ -892,16 +907,23 @@ void Init_Forces( reax_system *system, control_params *control,
             nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
             j = nbr_pj->nbr;
             atom_j = &(system->my_atoms[j]);
+
             //fprintf( stderr, "%d%d i=%d x_i: %f %f %f,j=%d x_j: %f %f %f, d=%f\n",
             //     MIN(atom_i->orig_id, atom_j->orig_id),
             //     MAX(atom_i->orig_id, atom_j->orig_id),
             //     i, atom_i->x[0], atom_i->x[1], atom_i->x[2],
             //     j, atom_j->x[0], atom_j->x[1], atom_j->x[2], nbr_pj->d );
+
             if ( renbr )
             {
                 if (nbr_pj->d <= cutoff)
+                {
                     flag = 1;
-                else flag = 0;
+                }
+                else
+                {
+                    flag = 0;
+                }
             }
             else
             {
@@ -927,7 +949,7 @@ void Init_Forces( reax_system *system, control_params *control,
                 sbp_j = &(system->reax_param.sbp[type_j]);
                 //SUDHIR
                 //twbp = &(system->reax_param.tbp[type_i][type_j]);
-                twbp = &(system->reax_param.tbp[ index_tbp (type_i, type_j, system->reax_param.num_atom_types)]);
+                twbp = &(system->reax_param.tbp[ index_tbp(type_i, type_j, system->reax_param.num_atom_types)]);
 
                 if ( local )
                 {
@@ -935,11 +957,13 @@ void Init_Forces( reax_system *system, control_params *control,
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq||1
                     {
                         H->entries[Htop].j = j;
+
                         //fprintf( stdout, "%d%d %d %d\n",
                         //     MIN(atom_i->orig_id, atom_j->orig_id),
                         //     MAX(atom_i->orig_id, atom_j->orig_id),
                         //     MIN(atom_i->orig_id, atom_j->orig_id),
                         //     MAX(atom_i->orig_id, atom_j->orig_id) );
+
                         if ( control->tabulate == 0 )
                         {
                             H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
@@ -956,6 +980,7 @@ void Init_Forces( reax_system *system, control_params *control,
                             nbr_pj->d <= control->hbond_cut )
                     {
                         // fprintf( stderr, "%d %d\n", atom1, atom2 );
+
                         jhb = sbp_j->p_hbond;
                         if ( ihb == 1 && jhb == 2 )
                         {
@@ -987,13 +1012,16 @@ void Init_Forces( reax_system *system, control_params *control,
                     ++btop_i;
 
                     if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
+                    {
                         workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
+                    }
                     else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
                     {
                         workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
                         //if( workspace->bond_mark[i] == 1000 )
                         //  workspace->done_after[i] = pj;
                     }
+
                     //fprintf( stdout, "%d%d - %d(%d) %d(%d)\n",
                     //   i , j, i, workspace->bond_mark[i], j, workspace->bond_mark[j] );
                 }
@@ -1006,9 +1034,12 @@ void Init_Forces( reax_system *system, control_params *control,
         if ( local )
         {
             //printf("Htop: %d \n", Htop);
+
             H->end[i] = Htop;
             if ( ihb == 1 )
+            {
                 Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
+            }
         }
     }
 
@@ -1069,35 +1100,16 @@ void Init_Forces( reax_system *system, control_params *control,
              system->my_rank, data->step, Htop, num_bonds, num_hbonds );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
-#if defined( DEBUG )
-    // Print_Bonds( system, bonds, "debugbonds.out" );
-    //  Print_Bond_List2( system, bonds, "pbonds.out" );
-    // Print_Sparse_Matrix( system, H );
-    /*    for ( i = 0; i < H->n; ++i )
-            for ( j = H->start[i]; j < H->end[i]; ++j )
-                fprintf( stderr, "%d %d %.15e\n",
-                         MIN(system->my_atoms[i].orig_id,
-                             system->my_atoms[H->entries[j].j].orig_id),
-                         MAX(system->my_atoms[i].orig_id,
-                             system->my_atoms[H->entries[j].j].orig_id),
-                         H->entries[j].val );*/
-#endif
-    //Print_List(*lists + BONDS);
 
+//    return Validate_Lists( system, workspace, lists, control,
+//            data->step, system->n, system->N, system->numH );
 
-//reax_system *system, storage *workspace, reax_list **lists,
-    //                   int step, int n, int N, int numH )
-
-    /*
-        Validate_Lists( system, workspace, lists, control,
-                        data->step, system->n, system->N, system->numH );*/
-
-    MPI_Not_GPU_Validate_Lists( system, workspace, lists, control,
+    return MPI_Not_GPU_Validate_Lists( system, workspace, lists, control,
             data->step, system->n, system->N, system->numH );
 }
 
 
-void Init_Forces_No_Charges( reax_system *system, control_params *control,
+int Init_Forces_No_Charges( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
@@ -1119,7 +1131,9 @@ void Init_Forces_No_Charges( reax_system *system, control_params *control,
     hbonds = *lists + HBONDS;
 
     for ( i = 0; i < system->n; ++i )
+    {
         workspace->bond_mark[i] = 0;
+    }
     for ( i = system->n; i < system->N; ++i )
     {
         workspace->bond_mark[i] = 1000; // put ghost atoms to an infinite distance
@@ -1157,8 +1171,13 @@ void Init_Forces_No_Charges( reax_system *system, control_params *control,
         {
             ihb = sbp_i->p_hbond;
             if ( ihb == 1 )
+            {
                 ihb_top = End_Index( atom_i->Hindex, hbonds );
-            else ihb_top = -1;
+            }
+            else
+            {
+                ihb_top = -1;
+            }
         }
 
         /* update i-j distance - check if j is within cutoff */
@@ -1171,8 +1190,13 @@ void Init_Forces_No_Charges( reax_system *system, control_params *control,
             if ( renbr )
             {
                 if ( nbr_pj->d <= cutoff )
+                {
                     flag = 1;
-                else flag = 0;
+                }
+                else
+                {
+                    flag = 0;
+                }
             }
             else
             {
@@ -1284,13 +1308,13 @@ void Init_Forces_No_Charges( reax_system *system, control_params *control,
     Print_Bond_List2( system, bonds, "pbonds.out" );
 #endif
 
-    MPI_Not_GPU_Validate_Lists( system, workspace, lists, control,
+    return MPI_Not_GPU_Validate_Lists( system, workspace, lists, control,
             data->step, system->n, system->N, system->numH );
 }
 
 
-void Host_Estimate_Sparse_Matrix(reax_atom *my_atoms, control_params *control,
-        reax_list p_far_nbrs, int n, int N, int renbr, int *indices)
+void Host_Estimate_Sparse_Matrix( reax_atom *my_atoms, control_params *control,
+        reax_list p_far_nbrs, int n, int N, int renbr, int *indices )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1342,8 +1366,6 @@ void Host_Estimate_Sparse_Matrix(reax_atom *my_atoms, control_params *control,
                 }
                 nbr_pj->d = rvec_Norm_Sqr( nbr_pj->dvec );
                 //TODO
-                //TODO
-                //TODO
                 //if( nbr_pj->d <= (cutoff) ) {
                 if ( nbr_pj->d <= SQR(cutoff) )
                 {
@@ -1383,11 +1405,17 @@ void Host_Estimate_Sparse_Matrix(reax_atom *my_atoms, control_params *control,
 
                 //this is the working condition
                 if (i < j && i < n && ( j < n || atom_i->orig_id < atom_j->orig_id))
+                {
                     indices [i]++;
+                }
                 else if (i > j && i >= n && j < n && atom_j->orig_id < atom_i->orig_id)
+                {
                     indices [i] ++;
+                }
                 else if (i > j && i < n && ( j < n || atom_j->orig_id < atom_i->orig_id ))
+                {
                     indices [i] ++;
+                }
             }
         }
     }
@@ -1694,12 +1722,12 @@ void Estimate_Storages( reax_system *system, control_params *control,
 #endif
 
 
-void Compute_Forces( reax_system *system, control_params *control,
+int Compute_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    int charge_flag;
+    int charge_flag, ret;
 #if defined(LOG_PERFORMANCE)
     real t_start = 0;
 
@@ -1722,11 +1750,11 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     if ( charge_flag )
     {
-        Init_Forces( system, control, data, workspace, lists, out_control );
+        ret = Init_Forces( system, control, data, workspace, lists, out_control );
     }
     else
     {
-        Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
+        ret = Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
     }
 
 #if defined(LOG_PERFORMANCE)
@@ -1737,88 +1765,93 @@ void Compute_Forces( reax_system *system, control_params *control,
     }
 #endif
 
-    /********* bonded interactions ************/
-    Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
+    if ( ret == SUCCESS )
+    {
+        /********* bonded interactions ************/
+        Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.bonded) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.bonded) );
+        }
 #endif
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: completed bonded\n",
-             system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf( stderr, "p%d @ step%d: completed bonded\n",
+                 system->my_rank, data->step );
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
     /**************** charges ************************/
 #if defined(PURE_REAX)
-    if ( charge_flag )
-    {
-        QEq( system, control, data, workspace, out_control, mpi_data );
-    }
+        if ( charge_flag )
+        {
+            QEq( system, control, data, workspace, out_control, mpi_data );
+        }
 
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.qEq) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.qEq) );
+        }
 #endif
 #if defined(DEBUG_FOCUS)
-    fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
 #endif //PURE_REAX
-
-    /********* nonbonded interactions ************/
-    Compute_NonBonded_Forces( system, control, data, workspace,
-            lists, out_control, mpi_data );
-
+    
+        /********* nonbonded interactions ************/
+        Compute_NonBonded_Forces( system, control, data, workspace,
+                lists, out_control, mpi_data );
+    
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.nonb) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.nonb) );
+        }
 #endif
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
-             system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
+                 system->my_rank, data->step );
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
-
-    /*********** total force ***************/
-    Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
-
+    
+        /*********** total force ***************/
+        Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
+    
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.bonded) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.bonded) );
+        }
 #endif
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: total forces computed\n",
-             system->my_rank, data->step );
-    //Print_Total_Force( system, data, workspace );
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf( stderr, "p%d @ step%d: total forces computed\n",
+                 system->my_rank, data->step );
+        //Print_Total_Force( system, data, workspace );
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
 #if defined(TEST_FORCES)
-    Print_Force_Files( system, control, data, workspace, lists, out_control, mpi_data );
+        Print_Force_Files( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
+    }
+
+    return ret;
 }
 
 
 #ifdef HAVE_CUDA
-void Cuda_Compute_Forces( reax_system *system, control_params *control,
+int Cuda_Compute_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int charge_flag, retVal = SUCCESS;
+    int charge_flag, retVal;
 
 #if defined(LOG_PERFORMANCE)
     real t_start = 0;
@@ -1849,96 +1882,92 @@ void Cuda_Compute_Forces( reax_system *system, control_params *control,
         retVal = Cuda_Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
     }
 
-    if ( retVal == FAILURE )
+    if ( retVal == SUCCESS )
     {
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
-    //validate_sparse_matrix( system, workspace );
+        //validate_sparse_matrix( system, workspace );
 
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.init_forces) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.init_forces) );
+        }
 #endif
 
-    /********* bonded interactions ************/
-    retVal = Cuda_Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
-    if (retVal == FAILURE)
-    {
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
+        /********* bonded interactions ************/
+        Cuda_Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.bonded) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.bonded) );
+        }
 #endif
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: completed bonded\n",
-             system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf( stderr, "p%d @ step%d: completed bonded\n",
+                 system->my_rank, data->step );
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
     /**************** charges ************************/
 #if defined(PURE_REAX)
-    if ( charge_flag )
-    {
-        Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
-    }
+        if ( charge_flag )
+        {
+            Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
+        }
 
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.qEq) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.qEq) );
+        }
 #endif
 
 #if defined(DEBUG_FOCUS)
-    fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
 #endif //PURE_REAX
 
-    /********* nonbonded interactions ************/
-    Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
-            lists, out_control, mpi_data );
+        /********* nonbonded interactions ************/
+        Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
+                lists, out_control, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.nonb) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.nonb) );
+        }
 #endif
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
-            system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
+                system->my_rank, data->step );
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-    /*********** total force ***************/
-    Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
+        /*********** total force ***************/
+        Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &(data->timing.bonded) );
-    }
+        //MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            Update_Timing_Info( &t_start, &(data->timing.bonded) );
+        }
 #endif
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: total forces computed\n",
-            system->my_rank, data->step );
-    //Print_Total_Force( system, data, workspace );
-    MPI_Barrier( MPI_COMM_WORLD );
+        fprintf( stderr, "p%d @ step%d: total forces computed\n",
+                system->my_rank, data->step );
+        //Print_Total_Force( system, data, workspace );
+        MPI_Barrier( MPI_COMM_WORLD );
 #endif
+    }
 
+    return retVal;
 }
 #endif
 
@@ -1962,7 +1991,7 @@ int validate_device( reax_system *system, simulation_data *data,
 
     if (!retval)
     {
-        fprintf( stderr, "Results *DOES NOT* mattch between device and host \n" );
+        fprintf( stderr, "Result *DOES NOT* match between device and host\n" );
     }
 #endif
 

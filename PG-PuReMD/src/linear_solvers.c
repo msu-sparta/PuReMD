@@ -28,6 +28,7 @@
 
 #ifdef HAVE_CUDA
   #include "cuda_linear_solvers.h"
+  #include "cuda_utils.h"
   #include "validation.h"
 #endif
 
@@ -319,9 +320,9 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
 //  check_zeros_device( x, system->N, "x" );
 
-    get_from_device( spad, x, sizeof (rvec2) * system->total_cap, "CG:x:get" );
+    copy_host_device( spad, x, sizeof(rvec2) * system->total_cap, cudaMemcpyDeviceToHost, "CG:x:get" );
     Dist( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_packer );
-    put_on_device( spad, x, sizeof (rvec2) * system->total_cap, "CG:x:put" );
+    copy_host_device( spad, x, sizeof(rvec2) * system->total_cap, cudaMemcpyHostToDevice, "CG:x:put" );
 
 //  check_zeros_device( x, system->N, "x" );
 
@@ -352,11 +353,11 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //  Coll(system,mpi_data,workspace->q2,mpi_data->mpi_rvec2,scale,rvec2_unpacker);
 //#endif
     
-    get_from_device (spad, dev_workspace->q2, sizeof (rvec2) *
-            system->total_cap, "CG:q2:get" );
+    copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
+            cudaMemcpyDeviceToHost, "CG:q2:get" );
     Coll(system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
-    put_on_device (spad, dev_workspace->q2, sizeof (rvec2) * system->total_cap,
-            "CG:q2:put" );
+    copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
+            cudaMemcpyHostToDevice,"CG:q2:put" );
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -434,11 +435,11 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //    Dist(system,mpi_data,workspace->d2,mpi_data->mpi_rvec2,scale,rvec2_packer);
 //#endif
         
-        get_from_device( spad, dev_workspace->d2, sizeof (rvec2) *
-                system->total_cap, "cg:d2:get" );
+        copy_host_device( spad, dev_workspace->d2, sizeof(rvec2) * system->total_cap,
+                cudaMemcpyDeviceToHost, "cg:d2:get" );
         Dist( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_packer );
-        put_on_device( spad, dev_workspace->d2, sizeof (rvec2) *
-                system->total_cap, "cg:d2:put" );
+        copy_host_device( spad, dev_workspace->d2, sizeof(rvec2) * system->total_cap,
+                cudaMemcpyHostToDevice, "cg:d2:put" );
 
         //print_device_rvec2 (dev_workspace->d2, N);
 
@@ -468,12 +469,11 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //    Coll(system,mpi_data,workspace->q2,mpi_data->mpi_rvec2,scale,rvec2_unpacker);
 //#endif
 
-        get_from_device( spad, dev_workspace->q2, sizeof (rvec2) *
-                system->total_cap, "cg:q2:get" );
-        Coll( system, mpi_data, spad, mpi_data->mpi_rvec2, scale,
-                rvec2_unpacker );
-        put_on_device( spad, dev_workspace->q2, sizeof (rvec2) *
-                system->total_cap, "cg:q2:put" );
+        copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
+                cudaMemcpyDeviceToHost, "cg:q2:get" );
+        Coll( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker );
+        copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
+                cudaMemcpyHostToDevice, "cg:q2:put" );
 
 //       compare_rvec2 (workspace->q2, dev_workspace->q2, N, "q2");
 
@@ -612,7 +612,9 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
     if ( i >= 300 )
     {
-        fprintf( stderr, "Dual CG convergence failed! -> %d\n", i );
+        fprintf( stderr, "WARNING: dual CG convergence failed! (%d steps)\n", i );
+        fprintf( stderr, "\ts lin solve error: %f\n", SQRT(sig_new[0]) / b_norm[0] );
+        fprintf( stderr, "\tt lin solve error: %f\n", SQRT(sig_new[1]) / b_norm[1] );
     }
 
 #if defined(CG_PERFORMANCE)
@@ -755,23 +757,25 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
 
     /* x is on the device */
     //MVAPICH2
-    memset( spad, 0, sizeof (real) * system->total_cap );
-    get_from_device( spad, x, sizeof (real) * system->total_cap, "cuda_cg:x:get" );
+    memset( spad, 0, sizeof(real) * system->total_cap );
+    copy_host_device( spad, x, sizeof(real) * system->total_cap,
+            cudaMemcpyDeviceToHost, "cuda_cg:x:get" );
     Dist( system, mpi_data, spad, MPI_DOUBLE, scale, real_packer );
 
     //MVAPICH2
-    put_on_device( spad, x, sizeof (real) * system->total_cap , "cuda_cg:x:put" );
+    copy_host_device( spad, x, sizeof(real) * system->total_cap,
+            cudaMemcpyHostToDevice, "cuda_cg:x:put" );
     Cuda_Matvec( H, x, dev_workspace->q, system->N, system->total_cap );
 
     // tryQEq
     // MVAPICH2
-    get_from_device( spad, dev_workspace->q, sizeof (real) * system->total_cap,
-            "cuda_cg:q:get" );
+    copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
+            cudaMemcpyDeviceToHost, "cuda_cg:q:get" );
     Coll( system, mpi_data, spad, MPI_DOUBLE, scale, real_unpacker );
 
     //MVAPICH2
-    put_on_device( spad, dev_workspace->q, sizeof (real) * system->total_cap,
-            "cuda_cg:q:put" );
+    copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
+            cudaMemcpyHostToDevice, "cuda_cg:q:put" );
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -788,14 +792,15 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
             dev_workspace->Hdia_inv, system->n );
 
     //TODO do the parallel_norm on the device for the local sum
-    get_from_device( spad, b, sizeof (real) * system->n, "cuda_cg:b:get" );
+    copy_host_device( spad, b, sizeof(real) * system->n,
+            cudaMemcpyDeviceToHost, "cuda_cg:b:get" );
     b_norm = Parallel_Norm( spad, system->n, mpi_data->world );
 
     //TODO do the parallel dot on the device for the local sum
-    get_from_device( spad, dev_workspace->r, sizeof (real) * system->total_cap,
-            "cuda_cg:r:get" );
-    get_from_device( spad + system->total_cap, dev_workspace->d, sizeof (real)
-            * system->total_cap, "cuda_cg:d:get" );
+    copy_host_device( spad, dev_workspace->r, sizeof(real) * system->total_cap,
+            cudaMemcpyDeviceToHost, "cuda_cg:r:get" );
+    copy_host_device( spad + system->total_cap, dev_workspace->d, sizeof(real) * system->total_cap,
+            cudaMemcpyDeviceToHost, "cuda_cg:d:get" );
     sig_new = Parallel_Dot( spad, spad + system->total_cap, system->n,
             mpi_data->world );
 
@@ -811,20 +816,20 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
     for ( i = 1; i < 300 && SQRT(sig_new) / b_norm > tol; ++i )
     {
         //MVAPICH2
-        get_from_device( spad, dev_workspace->d, sizeof (real) *
-                system->total_cap, "cuda_cg:d:get" );
+        copy_host_device( spad, dev_workspace->d, sizeof(real) * system->total_cap,
+                cudaMemcpyDeviceToHost, "cuda_cg:d:get" );
         Dist( system, mpi_data, spad, MPI_DOUBLE, scale, real_packer );
-        put_on_device( spad, dev_workspace->d, sizeof (real) *
-                system->total_cap, "cuda_cg:d:put" );
+        copy_host_device( spad, dev_workspace->d, sizeof(real) * system->total_cap,
+                cudaMemcpyHostToDevice, "cuda_cg:d:put" );
 
         Cuda_Matvec( H, dev_workspace->d, dev_workspace->q, system->N, system->total_cap );
 
         //tryQEq
-        get_from_device( spad, dev_workspace->q, sizeof (real) *
-                system->total_cap, "cuda_cg:q:get" );
+        copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
+                cudaMemcpyDeviceToHost, "cuda_cg:q:get" );
         Coll( system, mpi_data, spad, MPI_DOUBLE, scale, real_unpacker );
-        put_on_device( spad, dev_workspace->q, sizeof (real) *
-                system->total_cap , "cuda_cg:q:get" );
+        copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
+                cudaMemcpyHostToDevice, "cuda_cg:q:get" );
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
@@ -834,10 +839,10 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
 #endif
 
         //TODO do the parallel dot on the device for the local sum
-        get_from_device( spad, dev_workspace->d, sizeof (real) * system->n,
-                "cuda_cg:d:get" );
-        get_from_device( spad + system->n, dev_workspace->q, sizeof (real) *
-                system->n, "cuda_cg:q:get" );
+        copy_host_device( spad, dev_workspace->d, sizeof(real) * system->n,
+                cudaMemcpyDeviceToHost, "cuda_cg:d:get" );
+        copy_host_device( spad + system->n, dev_workspace->q, sizeof(real) * system->n,
+                cudaMemcpyDeviceToHost, "cuda_cg:q:get" );
         tmp = Parallel_Dot( spad, spad + system->n, system->n, mpi_data->world );
 
         alpha = sig_new / tmp;
@@ -856,10 +861,10 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
         sig_old = sig_new;
 
         //TODO do the parallel dot on the device for the local sum
-        get_from_device( spad, dev_workspace->r, sizeof (real) * system->n,
-                "cuda_cg:r:get" );
-        get_from_device( spad + system->n, dev_workspace->p, sizeof (real) *
-                system->n, "cuda_cg:p:get" );
+        copy_host_device( spad, dev_workspace->r, sizeof(real) * system->n,
+                cudaMemcpyDeviceToHost, "cuda_cg:r:get" );
+        copy_host_device( spad + system->n, dev_workspace->p, sizeof(real) * system->n,
+                cudaMemcpyDeviceToHost, "cuda_cg:p:get" );
         sig_new = Parallel_Dot( spad , spad + system->n, system->n, mpi_data->world );
         //fprintf (stderr, "Device: sig_new: %f \n", sig_new );
 

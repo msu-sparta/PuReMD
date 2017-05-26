@@ -53,9 +53,9 @@
 #include <sys/time.h>
 #include <time.h>
 #include <zlib.h>
-#define HOST_SCRATCH_SIZE (1024 * 1024 * 20)
 #ifdef HAVE_CUDA
   #include <cuda.h>
+  #include <cuda_runtime.h>
 #endif
 
 #if defined(__IBMC__)
@@ -102,20 +102,39 @@
 #define MIN(x,y)      (((x) < (y)) ? (x) : (y))
 #define MAX3(x,y,z)   MAX( MAX(x,y), z)
 
-#define PI            3.14159265
+/* transcendental constant pi */
+#if defined(M_PI)
+  /* GNU C library (libc), defined in math.h */
+  #define PI (M_PI)
+#else
+  #define PI            3.14159265
+#endif
+/* ??? */
 #define C_ele          332.06371
+/* ??? */
 //#define K_B         503.398008   // kcal/mol/K
 #define K_B             0.831687   // amu A^2 / ps^2 / K
+/* ??? */
 #define F_CONV          1e6 / 48.88821291 / 48.88821291   // --> amu A / ps^2
+/**/
 #define E_CONV          0.002391   // amu A^2 / ps^2 --> kcal/mol
-#define EV_to_KCALpMOL 14.400000   // ElectronVolt --> KCAL per MOLe
-#define KCALpMOL_to_EV 23.060549   // 23.020000 //KCAL per MOLe --> ElectronVolt
+/* conversion factor from electron volts to kilo calories per mole  */
+#define EV_to_KCALpMOL 14.400000
+/* conversion factor from kilo calories per mode to electron volts */
+#define KCALpMOL_to_EV 23.060549   // 23.020000
+/* conversion factor from (elemental charge * angstroms) to debye */
 #define ECxA_to_DEBYE   4.803204   // elem. charge * Ang -> debye
-#define CAL_to_JOULES   4.184000   // CALories --> JOULES
-#define JOULES_to_CAL   1/4.184000 // JOULES --> CALories
+/* conversion factor from calories to joules */
+#define CAL_to_JOULES   4.184000
+/* conversion factor from joules to calories */
+#define JOULES_to_CAL   1/4.184000
+/* conversion factor from (unified) atomic mass units to grams */
 #define AMU_to_GRAM     1.6605e-24
+/* conversion factor from angstroms to centimenters */
 #define ANG_to_CM       1e-8
+/* Avogadro's constant */
 #define AVOGNR          6.0221367e23
+/* ??? */
 #define P_CONV          1e-24 * AVOGNR * JOULES_to_CAL
 
 #define MAX_STR             1024
@@ -164,17 +183,18 @@
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
-#ifdef NAN
-#define IS_NAN_REAL(a) (isnan(a))
+#if defined(NAN)
+  #define IS_NAN_REAL(a) (isnan(a))
 #else
-#warn "No support for NaN"
-#define NAN_REAL(a) (0)
+  #warn "No support for NaN"
+  #define NAN_REAL(a) (0)
 #endif
 
 /**************** RESOURCE CONSTANTS **********************/
 #ifdef HAVE_CUDA
-//#define           CUDA_BLOCK_SIZE             256
+/* 20 MB */
 #define         DEVICE_SCRATCH_SIZE             (1024 * 1024 * 20)
+/* 20 MB */
 #define         HOST_SCRATCH_SIZE               (1024 * 1024 * 20)
 #define         RES_SCRATCH                     0x90
 
@@ -185,61 +205,61 @@
 #define             HB_POST_PROC_KER_THREADS_PER_ATOM   32
 
 #if defined( __INIT_BLOCK_SIZE__)
-#define             DEF_BLOCK_SIZE                      __INIT_BLOCK_SIZE__    /* all utility functions and all */
-#define             CUDA_BLOCK_SIZE                     __INIT_BLOCK_SIZE__     /* init forces */
-#define             ST_BLOCK_SIZE                       __INIT_BLOCK_SIZE__
+  #define             DEF_BLOCK_SIZE                      __INIT_BLOCK_SIZE__    /* all utility functions and all */
+  #define             CUDA_BLOCK_SIZE                     __INIT_BLOCK_SIZE__     /* init forces */
+  #define             ST_BLOCK_SIZE                       __INIT_BLOCK_SIZE__
 #else
-#define             DEF_BLOCK_SIZE                      256                     /* all utility functions and all */
-#define             CUDA_BLOCK_SIZE                     256                     /* init forces */
-#define             ST_BLOCK_SIZE                       256
+  #define             DEF_BLOCK_SIZE                      256                     /* all utility functions and all */
+  #define             CUDA_BLOCK_SIZE                     256                     /* init forces */
+  #define             ST_BLOCK_SIZE                       256
 #endif
 
 #if defined( __NBRS_THREADS_PER_ATOM__ )
-#define             NB_KER_THREADS_PER_ATOM             __NBRS_THREADS_PER_ATOM__
+  #define             NB_KER_THREADS_PER_ATOM             __NBRS_THREADS_PER_ATOM__
 #else
-#define             NB_KER_THREADS_PER_ATOM             16
+  #define             NB_KER_THREADS_PER_ATOM             16
 #endif
 
 #if defined( __NBRS_BLOCK_SIZE__)
-#define             NBRS_BLOCK_SIZE                     __NBRS_BLOCK_SIZE__
+  #define             NBRS_BLOCK_SIZE                     __NBRS_BLOCK_SIZE__
 #else
-#define             NBRS_BLOCK_SIZE                     256
+  #define             NBRS_BLOCK_SIZE                     256
 #endif
 
 #if defined( __HB_THREADS_PER_ATOM__)
-#define             HB_KER_THREADS_PER_ATOM             __HB_THREADS_PER_ATOM__
+  #define             HB_KER_THREADS_PER_ATOM             __HB_THREADS_PER_ATOM__
 #else
-#define             HB_KER_THREADS_PER_ATOM             32
+  #define             HB_KER_THREADS_PER_ATOM             32
 #endif
 
 #if defined(__HB_BLOCK_SIZE__)
-#define             HB_BLOCK_SIZE                   __HB_BLOCK_SIZE__
+  #define             HB_BLOCK_SIZE                   __HB_BLOCK_SIZE__
 #else
-#define             HB_BLOCK_SIZE                       256
+  #define             HB_BLOCK_SIZE                       256
 #endif
 
 #if defined( __VDW_THREADS_PER_ATOM__ )
-#define             VDW_KER_THREADS_PER_ATOM            __VDW_THREADS_PER_ATOM__
+  #define             VDW_KER_THREADS_PER_ATOM            __VDW_THREADS_PER_ATOM__
 #else
-#define             VDW_KER_THREADS_PER_ATOM            32
+  #define             VDW_KER_THREADS_PER_ATOM            32
 #endif
 
 #if defined( __VDW_BLOCK_SIZE__)
-#define             VDW_BLOCK_SIZE                      __VDW_BLOCK_SIZE__
+  #define             VDW_BLOCK_SIZE                      __VDW_BLOCK_SIZE__
 #else
-#define             VDW_BLOCK_SIZE                      256
+  #define             VDW_BLOCK_SIZE                      256
 #endif
 
 #if defined( __MATVEC_THREADS_PER_ROW__ )
-#define             MATVEC_KER_THREADS_PER_ROW      __MATVEC_THREADS_PER_ROW__
+  #define             MATVEC_KER_THREADS_PER_ROW      __MATVEC_THREADS_PER_ROW__
 #else
-#define             MATVEC_KER_THREADS_PER_ROW      32
+  #define             MATVEC_KER_THREADS_PER_ROW      32
 #endif
 
 #if defined( __MATVEC_BLOCK_SIZE__)
-#define             MATVEC_BLOCK_SIZE                   __MATVEC_BLOCK_SIZE__
+  #define             MATVEC_BLOCK_SIZE                   __MATVEC_BLOCK_SIZE__
 #else
-#define             MATVEC_BLOCK_SIZE                   512
+  #define             MATVEC_BLOCK_SIZE                   512
 #endif
 
 //Validation
@@ -250,111 +270,183 @@
 
 
 /******************* ENUMERATIONS *************************/
+/* geometry file format */
 enum geo_formats { CUSTOM = 0, PDB = 1, ASCII_RESTART = 2, BINARY_RESTART = 3, GF_N = 4 };
 
+/* restart file format */
 enum restart_formats { WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2 };
 
+/* ensemble type */
 enum ensembles { NVE = 0, bNVT = 1, nhNVT = 2, sNPT = 3, iNPT = 4, NPT = 5, ens_N = 6 };
 
+/* interaction list type */
 enum lists { BONDS = 0, OLD_BONDS = 1, THREE_BODIES = 2,
              HBONDS = 3, FAR_NBRS = 4, DBOS = 5, DDELTAS = 6, LIST_N = 7
            };
 
+/* interaction type */
 enum interactions { TYP_VOID = 0, TYP_BOND = 1, TYP_THREE_BODY = 2,
                     TYP_HBOND = 3, TYP_FAR_NEIGHBOR = 4, TYP_DBO = 5, TYP_DDELTA = 6, TYP_N = 7
                   };
 
+/* MPI message tags */
 enum message_tags { INIT = 0, UPDATE = 1, BNDRY = 2, UPDATE_BNDRY = 3,
                     EXC_VEC1 = 4, EXC_VEC2 = 5, DIST_RVEC2 = 6, COLL_RVEC2 = 7,
                     DIST_RVECS = 8, COLL_RVECS = 9, INIT_DESCS = 10, ATOM_LINES = 11,
                     BOND_LINES = 12, ANGLE_LINES = 13, RESTART_ATOMS = 14, TAGS_N = 15
                   };
 
+/* error codes for simulation termination */
 enum errors { FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
               CANNOT_OPEN_FILE = -12, CANNOT_INITIALIZE = -13,
               INSUFFICIENT_MEMORY = -14, UNKNOWN_OPTION = -15,
               INVALID_INPUT = -16, INVALID_GEO = -17
             };
 
+/* ??? */
 enum exchanges { NONE = 0, NEAR_EXCH = 1, FULL_EXCH = 2 };
 
+/* ??? */
 enum gcell_types { NO_NBRS = 0, NEAR_ONLY = 1, HBOND_ONLY = 2, FAR_ONLY = 4,
                    NEAR_HBOND = 3, NEAR_FAR = 5, HBOND_FAR = 6, FULL_NBRS = 7,
                    NATIVE = 8
                  };
 
+/* ??? */
 enum atoms { C_ATOM = 0, H_ATOM = 1, O_ATOM = 2, N_ATOM = 3,
              S_ATOM = 4, SI_ATOM = 5, GE_ATOM = 6, X_ATOM = 7
            };
 
+/* ??? */
 enum traj_methods { REG_TRAJ = 0, MPI_TRAJ = 1, TF_N = 2 };
 
+/* ??? */
 enum molecules { UNKNOWN = 0, WATER = 1 };
-
-enum list_on { TYP_HOST = 0, TYP_DEVICE = 1 };
-
 
 
 /********************** TYPE DEFINITIONS ********************/
+/* 3D vector, integer values */
 typedef int  ivec[3];
+/* double precision floating point */
 typedef double real;
+/* 3D vector, double precision floating point values */
 typedef real rvec[3];
+/* 3D tensor, double precision floating point values */
 typedef real rtensor[3][3];
+/* 2D vector, double precision floating point values */
 typedef real rvec2[2];
+/* 4D vector, double precision floating point values */
 typedef real rvec4[4];
 
 
+/* header used in restart file */
 typedef struct
 {
-    int step, bigN;
-    real T, xi, v_xi, v_xi_old, G_xi;
+    /**/
+    int step;
+    /**/
+    int bigN;
+    real T;
+    /**/
+    real xi;
+    /**/
+    real v_xi;
+    /**/
+    real v_xi_old;
+    /**/
+    real G_xi;
+    /**/
     rtensor box;
 } restart_header;
 
+
+/* atom type used for restarting simulation */
 typedef struct
 {
-    int orig_id, type;
+    /* atom serial number as given in the geo file */
+    int orig_id;
+    /* non-negative integer used to indicate atom type,
+     * as identified by short element string in force field file (single
+     * body parameters section) */
+    int type;
+    /* atom name as given in the geo file */
     char name[8];
-    rvec x, v;
+    /* atomic position, 3D */
+    rvec x;
+    /* atomic velocity, 3D */
+    rvec v;
 } restart_atom;
 
+
+/* atom type used for MPI communications */
 typedef struct
 {
-    int  orig_id;
-    int  imprt_id;
-    int  type;
-    int  num_bonds;
-    int  num_hbonds;
-    //int  pad;  // pad to 8-byte address boundary
+    /* atom serial number as given in the geo file */
+    int orig_id;
+    /* local atom ID on neighbor processor ??? */
+    int imprt_id;
+    /* non-negative integer used to indicate atom type,
+     * as identified by short element string in force field file (single
+     * body parameters section) */
+    int type;
+    /* num. bonds associated with atom */
+    int num_bonds;
+    /* num. hydrogren bonds associated with atom */
+    int num_hbonds;
+    /* pad to 8-byte address boundary */
+    //int  pad;
+    /* atom name as given in the geo file */
     char name[8];
-    rvec x;     // position
-    rvec v;     // velocity
-    rvec f_old; // old force
-    rvec4 s, t;  // for calculating q
+    /* atomic position, 3D */
+    rvec x;
+    /* atomic velocity, 3D */
+    rvec v;
+    /* net force acting upon atom in previous time step, 3D */
+    rvec f_old;
+    /* atomic fictitious charge used during QEq to compute atomic charge,
+     * multiple entries used to hold old values for extrapolation */
+    rvec4 s;
+    /* atomic fictitious charge used during QEq to compute atomic charge,
+     * multiple entries used to hold old values for extrapolation */
+    rvec4 t;
 } mpi_atom;
 
 
+/* atom type used for MPI communications at boundary regions */
 typedef struct
 {
-    int  orig_id;
-    int  imprt_id;
-    int  type;
-    int  num_bonds;
-    int  num_hbonds;
-    //int  pad;
-    rvec x;     // position
+    /* atom serial number as given in the geo file */
+    int orig_id;
+    /* local atom ID on neighbor processor ??? */
+    int imprt_id;
+    /* non-negative integer used to indicate atom type,
+     * as identified by short element string in force field file (single
+     * body parameters section) */
+    int type;
+    /* num. bonds associated with atom */
+    int num_bonds;
+    /* num. hydrogren bonds associated with atom */
+    int num_hbonds;
+    /* pad to 8-byte address boundary */
+    //int pad;
+    /* atomic position, 3D */
+    rvec x;
 } boundary_atom;
 
 
+/**/
 typedef struct
 {
     //int  ncells;
     //int *cnt_by_gcell;
 
+    /**/
     int  cnt;
     //int *block;
+    /**/
     int *index;
     //MPI_Datatype out_dtype;
+    /**/
     void *out_atoms;
 } mpi_out_data;
 
@@ -394,58 +486,66 @@ typedef struct
 } mpi_datatypes;
 
 
-/* Global params mapping */
-/*
-l[0]  = p_boc1
-l[1]  = p_boc2
-l[2]  = p_coa2
-l[3]  = N/A
-l[4]  = N/A
-l[5]  = N/A
-l[6]  = p_ovun6
-l[7]  = N/A
-l[8]  = p_ovun7
-l[9]  = p_ovun8
-l[10] = N/A
-l[11] = swa
-l[12] = swb
-l[13] = N/A
-l[14] = p_val6
-l[15] = p_lp1
-l[16] = p_val9
-l[17] = p_val10
-l[18] = N/A
-l[19] = p_pen2
-l[20] = p_pen3
-l[21] = p_pen4
-l[22] = N/A
-l[23] = p_tor2
-l[24] = p_tor3
-l[25] = p_tor4
-l[26] = N/A
-l[27] = p_cot2
-l[28] = p_vdW1
-l[29] = v_par30
-l[30] = p_coa4
-l[31] = p_ovun4
-l[32] = p_ovun3
-l[33] = p_val8
-l[34] = N/A
-l[35] = N/A
-l[36] = N/A
-l[37] = version number
-l[38] = p_coa3
-*/
-
+/* Global parameters in force field parameters file, mapping:
+ *
+ * l[0]  = p_boc1
+ * l[1]  = p_boc2
+ * l[2]  = p_coa2
+ * l[3]  = N/A
+ * l[4]  = N/A
+ * l[5]  = N/A
+ * l[6]  = p_ovun6
+ * l[7]  = N/A
+ * l[8]  = p_ovun7
+ * l[9]  = p_ovun8
+ * l[10] = N/A
+ * l[11] = swa
+ * l[12] = swb
+ * l[13] = N/A
+ * l[14] = p_val6
+ * l[15] = p_lp1
+ * l[16] = p_val9
+ * l[17] = p_val10
+ * l[18] = N/A
+ * l[19] = p_pen2
+ * l[20] = p_pen3
+ * l[21] = p_pen4
+ * l[22] = N/A
+ * l[23] = p_tor2
+ * l[24] = p_tor3
+ * l[25] = p_tor4
+ * l[26] = N/A
+ * l[27] = p_cot2
+ * l[28] = p_vdW1
+ * l[29] = v_par30
+ * l[30] = p_coa4
+ * l[31] = p_ovun4
+ * l[32] = p_ovun3
+ * l[33] = p_val8
+ * l[34] = N/A
+ * l[35] = N/A
+ * l[36] = N/A
+ * l[37] = version number
+ * l[38] = p_coa3
+ * */
 typedef struct
 {
+    /* num. of global parameters */
     int n_global;
+    /* global parameters */
     real* l;
+    /* van der Waals interaction time, values:
+     * 0: ???
+     * 1: ???
+     * 2: ???
+     * 3: ???
+     * */
     int vdw_type;
 } global_parameters;
 
 
 
+/* single body parameters in force field parameters file */
 typedef struct
 {
     /* Line one in field file */
@@ -489,7 +589,7 @@ typedef struct
 
 
 
-/* Two Body Parameters */
+/* two body parameters in force field parameters file */
 typedef struct
 {
     /* Bond Order parameters */
@@ -519,7 +619,7 @@ typedef struct
 
 
 
-/* 3-body parameters */
+/* 3-body parameters in force field parameters file */
 typedef struct
 {
     /* valence angle */
@@ -542,7 +642,7 @@ typedef struct
 
 
 
-/* hydrogen-bond parameters */
+/* hydrogen bond parameters in force field parameters file */
 typedef struct
 {
     real r0_hb, p_hb1, p_hb2, p_hb3;
@@ -550,7 +650,7 @@ typedef struct
 
 
 
-/* 4-body parameters */
+/* 4-body parameters in force field parameters file */
 typedef struct
 {
     real V1, V2, V3;
@@ -570,6 +670,7 @@ typedef struct
 } four_body_header;
 
 
+/* atomic interaction parameters */
 typedef struct
 {
     int num_atom_types;
@@ -612,43 +713,81 @@ typedef struct
 } reax_interaction;
 
 
-
 typedef struct
 {
-    int  orig_id;
-    int  imprt_id;
-    int  type;
+    /* atom serial number as given in the geo file */
+    int orig_id;
+    /* local atom ID on neighbor processor ??? */
+    int imprt_id;
+    /* non-negative integer used to indicate atom type,
+     * as identified by short element string in force field file (single
+     * body parameters section) */
+    int type;
+    /* atom name as given in the geo file */
     char name[8];
 
-    rvec x; // position
-    rvec v; // velocity
-    rvec f; // force
+    /* atomic position, 3D */
+    rvec x;
+    /* atomic velocity, 3D */
+    rvec v;
+    /* net force acting upon atom, 3D */
+    rvec f;
+    /* net force acting upon atom in previous time step, 3D */
     rvec f_old;
 
-    real q; // charge
-    rvec4 s; // they take part in
-    rvec4 t; // computing q
+    /* atomic charge, computed during coulombic interaction */
+    real q;
+    /* atomic fictitious charge used during QEq to compute atomic charge,
+     * multiple entries used to hold old values for extrapolation */
+    rvec4 s;
+    /* atomic fictitious charge used during QEq to compute atomic charge,
+     * multiple entries used to hold old values for extrapolation */
+    rvec4 t;
 
+    /* unique non-negative integer index of atom if it is a hydrogen atom,
+     * -1 otherwise */
     int Hindex;
+    /* num. bonds associated with atom */
     int num_bonds;
+    /* num. hydrogren bonds associated with atom */
     int num_hbonds;
+    /* ??? */
     int renumber;
+
+    /* max. num. bonds this atom may partake in,
+     * assigned based on memory allocation */
+    int max_bonds;
+    /* max. num. hydrogen bonds this atom may partake in,
+     * assigned based on memory allocation */
+    //int max_hbonds;
 } reax_atom;
 
 
-
 typedef struct
 {
+    /* total volume */
     real V;
-    rvec min, max, box_norms;
+    /**/
+    rvec min;
+    /**/
+    rvec max;
+    /* length of each dimension of the simulation box in Angstroms, 3D */
+    rvec box_norms;
 
-    rtensor box, box_inv;
-    rtensor trans, trans_inv;
+    /**/
+    rtensor box;
+    /**/
+    rtensor box_inv;
+    /**/
+    rtensor trans;
+    /**/
+    rtensor trans_inv;
+    /**/
     rtensor g;
 } simulation_box;
 
 
-
+/**/
 struct grid_cell
 {
 #ifndef HAVE_CUDA
@@ -668,31 +807,32 @@ struct grid_cell
     rvec* nbrs_cp;
 */
 
-   //real cutoff;
-   rvec min, max;
-   //ivec rel_box;
-
-   int  mark;
-   int  type;
-   //int  str;
-   //int  end;
-   int  top;
-   int* atoms;
-   //struct grid_cell** nbrs; //changed
-   //ivec* nbrs_x;
-   //rvec* nbrs_cp;
-
-
-#else
     //real cutoff;
-    rvec min, max;
+    rvec min;
+    rvec max;
     //ivec rel_box;
-
-    int  mark;
-    int  type;
+ 
+    int mark;
+    int type;
     //int  str;
     //int  end;
-    int  top;
+    int top;
+    int* atoms;
+    //struct grid_cell** nbrs; //changed
+    //ivec* nbrs_x;
+    //rvec* nbrs_cp;
+ 
+#else
+    //real cutoff;
+    rvec min;
+    rvec max;
+    //ivec rel_box;
+
+    int mark;
+    int type;
+    //int  str;
+    //int  end;
+    int top;
     int* atoms;
     //struct grid_cell** nbrs; //changed
     //ivec* nbrs_x;
@@ -703,43 +843,70 @@ struct grid_cell
 typedef struct grid_cell grid_cell;
 
 
+/* info. for 3D domain (i.e., spatial) partitioning of atoms
+ * inside the simulation box */
 typedef struct
 {
-    int  total, max_atoms, max_nbrs;
+    /* total number of grid cells (native AND ghost) */
+    int total;
+    /**/
+    int max_atoms;
+    /**/
+    int max_nbrs;
+    /* num. of grid cells in each dimension, 3D*/
     ivec ncells;
+    /* lengths of each grid cell dimension, 3D */
     rvec cell_len;
+    /* multiplicative inverses of lengths of each grid cell dimension, 3D */
     rvec inv_len;
 
+    /* bond interaction cutoff in terms of num. of grid cells in each dimension, 3D */
     ivec bond_span;
+    /* non-bonded interaction cutoff in terms of num. of grid cells in each dimension, 3D */
     ivec nonb_span;
+    /* Verlet list (i.e., neighbor list) cutoff in terms of num. of grid cells in each dimension, 3D */
     ivec vlist_span;
 
+    /* partitioning of */
     ivec native_cells;
+    /**/
     ivec native_str;
+    /**/
     ivec native_end;
 
+    /**/
     real ghost_cut;
+    /**/
     ivec ghost_span;
+    /**/
     ivec ghost_nonb_span;
+    /**/
     ivec ghost_hbond_span;
+    /**/
     ivec ghost_bond_span;
 
 #ifndef HAVE_CUDA
 //    grid_cell*** cells;
 //    ivec *order;
    
-   grid_cell* cells;
-   ivec *order;
-
-   int *str;
-   int *end;
-   real *cutoff;
-   ivec *nbrs_x;
-   rvec *nbrs_cp;
-
-   ivec *rel_box;
-
-
+    /**/
+    grid_cell* cells;
+    /**/
+    ivec *order;
+ 
+    /**/
+    int *str;
+    /**/
+    int *end;
+    /**/
+    real *cutoff;
+    /**/
+    ivec *nbrs_x;
+    /**/
+    rvec *nbrs_cp;
+ 
+    /**/
+    ivec *rel_box;
 
 #else
     grid_cell* cells; //changed
@@ -759,69 +926,140 @@ typedef struct
 
 typedef struct
 {
-    int  rank;
-    int  est_send, est_recv;
-    int  atoms_str, atoms_cnt;
-    ivec rltv, prdc;
-    rvec bndry_min, bndry_max;
+    /**/
+    int rank;
+    /**/
+    int est_send;
+    /**/
+    int est_recv;
+    /**/
+    int atoms_str;
+    /**/
+    int atoms_cnt;
+    /**/
+    ivec rltv;
+    /**/
+    ivec prdc;
+    /**/
+    rvec bndry_min;
+    /**/
+    rvec bndry_max;
 
+    /**/
     int  send_type;
+    /**/
     int  recv_type;
+    /**/
     ivec str_send;
+    /**/
     ivec end_send;
+    /**/
     ivec str_recv;
+    /**/
     ivec end_recv;
 } neighbor_proc;
 
 
-
 typedef struct
 {
+    /**/
     int N;
+    /**/
     int exc_gcells;
+    /**/
     int exc_atoms;
 } bound_estimate;
 
 
-
 typedef struct
 {
+    /**/
     real ghost_nonb;
+    /**/
     real ghost_hbond;
+    /**/
     real ghost_bond;
+    /**/
     real ghost_cutoff;
 } boundary_cutoff;
 
 
-
 typedef struct
 {
+    /* atomic interaction parameters */
     reax_interaction reax_param;
 
-    int n, N, bigN, numH;
-    int local_cap, total_cap, gcell_cap, Hcap;
-    int est_recv, est_trans, max_recved;
-    int wsize, my_rank, num_nbrs;
+    /* num. atoms within spatial domain of MPI process */
+    int n;
+    /* num. atoms (locally owned AND ghost region) within spatial domain of MPI process */
+    int N;
+    /* num. atoms within simulation */
+    int bigN;
+    /* num. hydrogen atoms */
+    int numH;
+    /**/
+    int local_cap;
+    /**/
+    int total_cap;
+    /**/
+    int gcell_cap;
+    /**/
+    int Hcap;
+    /**/
+    int est_recv;
+    /**/
+    int est_trans;
+    /**/
+    int max_recved;
+    /**/
+    int wsize;
+    /**/
+    int my_rank;
+    /**/
+    int num_nbrs;
+    /* coordinates of processor (according to rank) in MPI cartesian topology */
     ivec my_coords;
+    /* list of neighbor processors */
     neighbor_proc my_nbrs[MAX_NBRS];
+    /**/
     int *global_offset;
 
-    simulation_box big_box, my_box, my_ext_box;
-    simulation_box *d_big_box, *d_my_box, *d_my_ext_box;
+    /* global simulation box */
+    simulation_box big_box;
+    /* local simulation box of owned atoms per processor */
+    simulation_box my_box;
+    /* local simulation box of owned AND ghost atoms per processor */
+    simulation_box my_ext_box;
+    /* global simulation box (GPU) */
+    simulation_box *d_big_box;
+    /* local simulation box of owned atoms per processor (GPU) */
+    simulation_box *d_my_box;
+    /* local simulation box of owned AND ghost atoms per processor (GPU) */
+    simulation_box *d_my_ext_box;
 
+    /* grid specifying domain (i.e., spatial) decompisition
+     * of atoms within simulation box */
     grid my_grid;
+    /* grid specifying domain (i.e., spatial) decompisition
+     * of atoms within simulation box (GPU) */
     grid d_my_grid;
 
-    boundary_cutoff  bndry_cuts;
+    /**/
+    boundary_cutoff bndry_cuts;
 
+    /**/
     reax_atom *my_atoms;
+    /**/
     reax_atom *d_my_atoms;
 
     /*CUDA-specific*/
+    /**/
     int max_sparse_entries;
+    /**/
     int init_thblist;
+    /**/
     int num_thbodies;
-
+    //TODO: move to reax_atom
     int max_bonds;
     int max_hbonds;
 } reax_system;
@@ -831,76 +1069,144 @@ typedef struct
 /* system control parameters */
 typedef struct
 {
+    /* simulation name, as supplied via control file */
     char sim_name[MAX_STR];
-    int  nprocs;
-    int  gpus_per_node;
+    /* number of MPI processors, as supplied via control file */
+    int nprocs;
+    /* number of GPUs per node, as supplied via control file */
+    int gpus_per_node;
+    /* MPI processors per each simulation dimension (cartesian topology),
+     * as supplied via control file */
     ivec procs_by_dim;
-    /* ensemble values:
-       0 : NVE
-       1 : bNVT (Berendsen)
-       2 : nhNVT (Nose-Hoover)
-       3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
-       4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
-       5 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic*/
-    int  ensemble;
-    int  nsteps;
+    /* ensemble type for simulation, values:
+     * 0 : NVE
+     * 1 : bNVT (Berendsen)
+     * 2 : nhNVT (Nose-Hoover)
+     * 3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
+     * 4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
+     * 5 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic */
+    int ensemble;
+    /* num. of simulation time steps */
+    int nsteps;
+    /* length of time step, in femtoseconds */
     real dt;
-    int  geo_format;
+    /* format of geometry input file */
+    int geo_format;
+    /* format of restart file */
     int  restart;
 
-    int  restrict_bonds;
-    int  remove_CoM_vel;
-    int  random_vel;
-    int  reposition_atoms;
+    int restrict_bonds;
+    /* flag to control if center of mass velocity is removed */
+    int remove_CoM_vel;
+    /* flag to control if atomic initial velocity is randomly assigned */
+    int random_vel;
+    /* flag to control how atom repositioning is performed, values:
+     * 0: fit to periodic box
+     * 1: put center of mass to box center
+     * 2: put center of mass to box origin  */
+    int reposition_atoms;
 
-    int  reneighbor;
+    /* flag to control the frequency (in terms of simulation time stesp)
+     * at which atom reneighboring is performed */
+    int reneighbor;
+    /* far neighbor (Verlet list) interaction cutoff, in Angstroms */
     real vlist_cut;
+    /* bond interaction cutoff, in Angstroms */
     real bond_cut;
-    real nonb_cut, nonb_low;
+    /* non-bonded interaction cutoff, in Angstroms */
+    real nonb_cut;
+    /* ???, as supplied by force field parameters, in Angstroms */
+    real nonb_low;
+    /* hydrogen bond interaction cutoff, in Angstroms */
     real hbond_cut;
+    /* ghost region cutoff (user-supplied via control file), in Angstroms */
     real user_ghost_cut;
 
+    /* bond graph cutoff, as supplied by control file, in Angstroms */
     real bg_cut;
+    /* bond order cutoff, as supplied by force field parameters, in Angstroms */
     real bo_cut;
+    /* three body interaction cutoff, as supplied by control file, in Angstroms */
     real thb_cut;
 
+    /* flag to control if force computations are tablulated */
     int tabulate;
 
+    /* frequency (in terms of simulation time steps) at which to
+     * re-compute atomic charge distribution */
     int charge_freq;
+    /* error tolerance of solution produced by charge distribution
+     * sparse iterative linear solver */
     real q_err;
+    /* frequency (in terms of simulation time steps) at which to recompute
+     * incomplete factorizations */
     int refactor;
+    /* drop tolerance of incomplete factorization schemes (ILUT, ICHOLT, etc.)
+     * used for preconditioning the iterative linear solver used in charge distribution */
     real droptol;
 
-    real T_init, T_final, T;
+    /* initial temperature of simulation, in Kelvin */
+    real T_init;
+    /* final temperature of simulation, in Kelvin */
+    real T_final;
+    /* current temperature of simulation, in Kelvin */
+    real T;
+    /**/
     real Tau_T;
+    /**/
     int  T_mode;
-    real T_rate, T_freq;
+    /**/
+    real T_rate;
+    /**/
+    real T_freq;
 
+    /**/
     int  virial;
-    rvec P, Tau_P, Tau_PT;
-    int  press_mode;
+    /**/
+    rvec P;
+    /**/
+    rvec Tau_P;
+    /**/
+    rvec Tau_PT;
+    /**/
+    int press_mode;
+    /**/
     real compressibility;
 
-    int  molecular_analysis;
-    int  num_ignored;
-    int  ignore[MAX_ATOM_TYPES];
+    /**/
+    int molecular_analysis;
+    /**/
+    int num_ignored;
+    /**/
+    int ignore[MAX_ATOM_TYPES];
 
-    int  dipole_anal;
-    int  freq_dipole_anal;
-    int  diffusion_coef;
-    int  freq_diffusion_coef;
-    int  restrict_type;
+    /**/
+    int dipole_anal;
+    /**/
+    int freq_dipole_anal;
+    /**/
+    int diffusion_coef;
+    /**/
+    int freq_diffusion_coef;
+    /**/
+    int restrict_type;
 
+    /* control parameters (GPU) */
     void *d_control_params;
 } control_params;
 
 
 typedef struct
 {
+    /**/
     real T;
+    /**/
     real xi;
+    /**/
     real v_xi;
+    /**/
     real v_xi_old;
+    /**/
     real G_xi;
 
 } thermostat;
@@ -908,10 +1214,15 @@ typedef struct
 
 typedef struct
 {
+    /**/
     real P;
+    /**/
     real eps;
+    /**/
     real v_eps;
+    /**/
     real v_eps_old;
+    /**/
     real a_eps;
 
 } isotropic_barostat;
@@ -919,17 +1230,27 @@ typedef struct
 
 typedef struct
 {
+    /**/
     rtensor P;
+    /**/
     real P_scalar;
 
+    /**/
     real eps;
+    /**/
     real v_eps;
+    /**/
     real v_eps_old;
+    /**/
     real a_eps;
 
+    /**/
     rtensor h0;
+    /**/
     rtensor v_g0;
+    /**/
     rtensor v_g0_old;
+    /**/
     rtensor a_g0;
 
 } flexible_barostat;
@@ -937,41 +1258,69 @@ typedef struct
 
 typedef struct
 {
+    /* start time of event */
     real start;
+    /* end time of event */
     real end;
+    /* total elapsed time of event */
     real elapsed;
 
+    /* total simulation time */
     real total;
+    /* communication time */
     real comm;
+    /* neighbor (i.e., Verlet) list generation time */
     real nbrs;
+    /* force initialization time */
     real init_forces;
+    /* bonded force calculation time */
     real bonded;
+    /* non-bonded force calculation time */
     real nonb;
+    /* atomic charge distribution calculation time */
     real qEq;
+    /* num. of steps in iterative linear solver for charge distribution (QEq, first solve) */
     int  s_matvecs;
+    /* num. of steps in iterative linear solver for charge distribution (QEq, second solve) */
     int  t_matvecs;
 } reax_timing;
 
 
 typedef struct
 {
+    /* total energy */
     real e_tot;
-    real e_kin;                      // Total kinetic energy
+    /* total kinetic energy */
+    real e_kin;
+    /* total potential energy */
     real e_pot;
 
-    real e_bond;                     // Total bond energy
-    real e_ov;                       // Total over coordination
-    real e_un;                       // Total under coordination energy
-    real e_lp;                       // Total under coordination energy
-    real e_ang;                      // Total valance angle energy
-    real e_pen;                      // Total penalty energy
-    real e_coa;                      // Total three body conjgation energy
-    real e_hb;                       // Total Hydrogen bond energy
-    real e_tor;                      // Total torsional energy
-    real e_con;                      // Total four body conjugation energy
-    real e_vdW;                      // Total van der Waals energy
-    real e_ele;                      // Total electrostatics energy
-    real e_pol;                      // Polarization energy
+    /* total bond energy */
+    real e_bond;
+    /* total over coordination */
+    real e_ov;
+    /* total under coordination energy */
+    real e_un;
+    /* total under coordination energy */
+    real e_lp;
+    /* total valance angle energy */
+    real e_ang;
+    /* total penalty energy */
+    real e_pen;
+    /* total three body conjugation energy */
+    real e_coa;
+    /* total Hydrogen bond energy */
+    real e_hb;
+    /* total torsional energy */
+    real e_tor;
+    /* total four body conjugation energy */
+    real e_con;
+    /* total van der Waals energy */
+    real e_vdW;
+    /* total electrostatics energy */
+    real e_ele;
+    /* polarization energy */
+    real e_pol;
 } energy_data;
 
 typedef struct
@@ -1113,19 +1462,33 @@ typedef struct
 } sparse_matrix;
 
 
+/* used to determine if and how much space should be reallocated */
 typedef struct
 {
-    int num_far;
-    int H, Htop;
-    int hbonds, num_hbonds;
-    int bonds, num_bonds;
+    /* far neighbor list elements */
+    int far_nbrs;
+    /**/
+    int H;
+    /**/
+    int Htop;
+    /**/
+    int hbonds;
+    /**/
+    int num_hbonds;
+    /**/
+    int bonds;
+    /**/
+    int num_bonds;
+    /**/
     int num_3body;
+    /**/
     int gcell_atoms;
 } reallocate_data;
 
 
 typedef struct
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
     int allocated;
 
     /* communication storage */
@@ -1211,6 +1574,7 @@ typedef struct
     rvec *f_all;
 #endif
 
+    /**/
     reallocate_data realloc;
     //int *num_bonds;
     /* hydrogen bonds */
@@ -1240,15 +1604,22 @@ typedef union
 
 typedef struct
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
     int allocated;
 
+    /**/
     int n;
+    /**/
     int num_intrs;
 
+    /**/
     int *index;
+    /**/
     int *end_index;
 
+    /**/
     int type;
+    /**/
     list_type select;
 /*
 #ifndef HAVE_CUDA

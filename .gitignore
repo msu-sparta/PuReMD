@@ -17,6 +17,7 @@
 *.pdf
 
 # ViM, emacs, nano, leafpad
+tags
 *.swp
 *~
 

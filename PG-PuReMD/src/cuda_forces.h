@@ -4,9 +4,11 @@
 
 #include "reax_types.h"
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 void Cuda_Estimate_Storages( reax_system *, control_params *, reax_list **, int, int,
         int *, int *, int *, int * );
@@ -23,7 +25,7 @@ int Cuda_Init_Forces_No_Charges( reax_system *, control_params *, simulation_dat
 int Cuda_Validate_Lists( reax_system *, storage *, reax_list **, control_params *,
         int, int, int, int );
 
-int Cuda_Compute_Bonded_Forces( reax_system *, control_params *, simulation_data *,
+void Cuda_Compute_Bonded_Forces( reax_system *, control_params *, simulation_data *,
         storage *, reax_list **, output_controls * );
 
 
@@ -35,5 +37,6 @@ void Cuda_Compute_NonBonded_Forces( reax_system *, control_params *,
 #ifdef __cplusplus
 }
 #endif
+
 
 #endif

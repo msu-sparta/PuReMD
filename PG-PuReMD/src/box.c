@@ -26,7 +26,7 @@
 #include "vector.h"
 
 
-void Make_Consistent(simulation_box* box)
+void Make_Consistent( simulation_box* box )
 {
     real one_vol;
 
@@ -277,9 +277,9 @@ void Setup_Environment( reax_system *system, control_params *control,
     /* initialize communicator - 3D mesh with wrap-arounds = 3D torus */
     MPI_Cart_create( MPI_COMM_WORLD, 3, control->procs_by_dim, periodic, 1,
                      &(mpi_data->comm_mesh3D) );
-    MPI_Comm_rank  ( mpi_data->comm_mesh3D, &(system->my_rank) );
+    MPI_Comm_rank( mpi_data->comm_mesh3D, &(system->my_rank) );
     MPI_Cart_coords( mpi_data->comm_mesh3D, system->my_rank, 3,
-                     system->my_coords );
+            system->my_coords );
 
     Setup_Boundary_Cutoffs( system, control );
     Setup_My_Box( system, control );

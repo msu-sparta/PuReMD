@@ -70,7 +70,7 @@ extern "C" void cuda_memset( void *ptr, int data, size_t count, const char *msg 
 
 
 extern "C" void copy_host_device( void *host, void *dev, size_t size,
-        enum cudaMemcpyKind dir, const char *msg )
+        cudaMemcpyKind dir, const char *msg )
 {
     cudaError_t retVal = cudaErrorNotReady;
 
@@ -95,9 +95,10 @@ extern "C" void copy_host_device( void *host, void *dev, size_t size,
 
 extern "C" void copy_device( void *dest, void *src, size_t size, const char *msg )
 {
-    cudaError_t retVal = cudaErrorNotReady;
+    cudaError_t retVal;
 
     retVal = cudaMemcpy( dest, src, size, cudaMemcpyDeviceToDevice );
+
     if( retVal != cudaSuccess )
     {
         fprintf( stderr,
@@ -132,17 +133,19 @@ extern "C" void compute_nearest_pow_2( int blocks, int *result )
 extern "C" void print_device_mem_usage( )
 {
     size_t total, free;
+    cudaError_t retVal;
 
-    cudaMemGetInfo( &free, &total );
+    retVal = cudaMemGetInfo( &free, &total );
 
-    if ( cudaGetLastError() != cudaSuccess )
+    if ( retVal != cudaSuccess )
     {
-        fprintf( stderr, "WARNING: error on the CUDA get memory info call\n" );
+        fprintf( stderr,
+                "WARNING: could not get message usage info from device\nCUDA API error code: %d\n",
+                retVal );
         return;
     }
 
-    fprintf( stderr,
-            "Total %ld Mb %ld gig %ld , free %ld, Mb %ld , gig %ld \n", 
-            total, total/(1024*1024), total/ (1024*1024*1024), 
-            free, free/(1024*1024), free/ (1024*1024*1024) );
+    fprintf( stderr, "Total: %zu bytes (%7.2f MB)\nFree %zu bytes (%7.2f MB)\n", 
+            total, (long long int)total/(1024.0*1024.0),
+            free, (long long int)free/(1024.0*1024.0) );
 }

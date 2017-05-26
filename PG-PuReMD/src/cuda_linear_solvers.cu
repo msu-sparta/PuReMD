@@ -28,18 +28,6 @@
 #include "matvec.h"
 
 
-void get_from_device(real *host, real *device, unsigned int bytes, const char *msg)
-{
-    copy_host_device( host, device, bytes, cudaMemcpyDeviceToHost, msg );
-}
-
-
-void put_on_device(real *host, real *device, unsigned int bytes, const char *msg)
-{
-    copy_host_device( host, device, bytes, cudaMemcpyHostToDevice, msg );
-}
-
-
 void Cuda_Vector_Sum(real *res, real a, real *x, real b, real *y, int count)
 {
     //res = ax + by

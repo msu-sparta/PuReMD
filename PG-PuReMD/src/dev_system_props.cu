@@ -16,50 +16,68 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
 #if defined(__SM_35__)
     extern __shared__ real my_sbp[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real    sdata = 0;
+    real sdata = 0;
 
     if (i < n)
+    {
         sdata = sbp [ my_atoms [i].type ].mass;
+    }
     __syncthreads( );
 
     for(int z = 16; z >=1; z/=2)
+    {
         sdata += shfl ( sdata, z);
+    }
 
     if (threadIdx.x % 32 == 0)
+    {
         my_sbp[threadIdx.x >> 5] = sdata;
+    }
 
     __syncthreads( );
 
-    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1) {
+    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
+    {
         if(threadIdx.x < offset)
+        {
             my_sbp[threadIdx.x] += my_sbp[threadIdx.x + offset];
+        }
 
         __syncthreads( );
     }
 
     if(threadIdx.x == 0)
+    {
         block_results[blockIdx.x] = my_sbp[0];
+    }
 
 #else
-    extern __shared__ real sdata [];
+    extern __shared__ real sdata[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real    x = 0;
+    real x = 0;
 
     if (i < n)
-        x = sbp [ my_atoms [i].type ].mass;
+    {
+        x = sbp[ my_atoms[i].type ].mass;
+    }
 
     sdata[ threadIdx.x ] = x;
     __syncthreads( );
 
-    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1){
+    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1)
+    {
         if (threadIdx.x < offset)
-            sdata [threadIdx.x] += sdata [threadIdx.x + offset];
+        {
+            sdata[threadIdx.x] += sdata[threadIdx.x + offset];
+        }
 
         __syncthreads( );
     }
 
     if (threadIdx.x == 0)
+    {
         block_results[ blockIdx.x] = sdata [0];
+    }
 
 #endif
 }
@@ -70,7 +88,6 @@ extern "C" void dev_compute_total_mass( reax_system *system, real *local_val )
     real *block_mass = (real *) scratch;
     cuda_memset( block_mass, 0, sizeof(real) * (1 + BLOCKS_POW_2), "total_mass:tmp" );
 
-    fprintf( stderr, "BLOCKS = %d, BLOCK_SIZE = %d\n", BLOCKS, BLOCK_SIZE );
     k_compute_total_mass <<<BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
         (system->reax_param.d_sbp, system->d_my_atoms, block_mass, system->n);
     cudaThreadSynchronize( );
@@ -92,7 +109,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 #if defined(__SM_35__)
     extern __shared__ real my_sbpdot[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real    sdata = 0;
+    real sdata = 0;
     rvec p;
 
     if (i < n)
@@ -128,7 +145,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
     if (threadIdx.x == 0)
     {
-        block_results[ blockIdx.x] = my_sbpdot[0];
+        block_results[blockIdx.x] = my_sbpdot[0];
     }
 
 #else
@@ -139,7 +156,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
     if (i < n)
     {
-        m = sbp [ my_atoms [i].type ].mass;
+        m = sbp [ my_atoms[i].type ].mass;
         rvec_Scale( p, m, my_atoms[ i ].v );
         m = 0.5 * rvec_Dot( p, my_atoms[ i ].v );
     }
@@ -159,7 +176,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
     if (threadIdx.x == 0)
     {
-        block_results[blockIdx.x] = sdata [0];
+        block_results[blockIdx.x] = sdata[0];
     }
 #endif
 }

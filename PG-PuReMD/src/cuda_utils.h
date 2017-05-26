@@ -1,11 +1,6 @@
 #ifndef __CUDA_UTILS_H_
 #define __CUDA_UTILS_H_
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "reax_types.h"
 
 
