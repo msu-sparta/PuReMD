@@ -20,16 +20,17 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "valence_angles.h"
-#include "bond_orders.h"
-#include "list.h"
-#include "vector.h"
+  #include "valence_angles.h"
+  #include "bond_orders.h"
+  #include "list.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_valence_angles.h"
-#include "reax_bond_orders.h"
-#include "reax_list.h"
-#include "reax_vector.h"
+  #include "reax_valence_angles.h"
+  #include "reax_bond_orders.h"
+  #include "reax_list.h"
+  #include "reax_vector.h"
 #endif
 
 

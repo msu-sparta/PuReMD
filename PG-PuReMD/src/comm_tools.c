@@ -34,10 +34,11 @@ void Setup_Comm( reax_system* system, control_params* control,
     neighbor_proc *nbr_pr;
     simulation_box *my_box;
     ivec nbr_coords;
-    ivec r[6] = {{ -1, 0, 0}, { +1, 0, 0}, // -x, +x
+    ivec r[6] = {
+        { -1, 0, 0}, { +1, 0, 0}, // -x, +x
         {0, -1, 0}, {0, +1, 0}, // -y, +y
-        {0, 0, -1}, {0, 0, +1}
-    };// -z, +z
+        {0, 0, -1}, {0, 0, +1}, // -z, +z
+    };
     my_box = &(system->my_box);
     bndry_cut = system->bndry_cuts.ghost_cutoff;
 
@@ -98,10 +99,11 @@ void Update_Comm( reax_system* system )
     real bndry_cut;
     neighbor_proc *nbr_pr;
     simulation_box *my_box;
-    ivec r[6] = {{ -1, 0, 0}, { +1, 0, 0}, // -x, +x
+    ivec r[6] = {
+        { -1, 0, 0}, { +1, 0, 0}, // -x, +x
         {0, -1, 0}, {0, +1, 0}, // -y, +y
-        {0, 0, -1}, {0, 0, +1}
-    };// -z, +z
+        {0, 0, -1}, {0, 0, +1}, // -z, +z
+    };
     my_box = &(system->my_box);
     bndry_cut = system->bndry_cuts.ghost_cutoff;
 
@@ -137,9 +139,9 @@ void Update_Comm( reax_system* system )
 /***************** PACK & UNPACK ATOMS *********************/
 void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
 {
-    matm->orig_id  = ratm->orig_id;
+    matm->orig_id = ratm->orig_id;
     matm->imprt_id = i;
-    matm->type     = ratm->type;
+    matm->type = ratm->type;
     matm->num_bonds = ratm->num_bonds;
     matm->num_hbonds = ratm->num_hbonds;
     strcpy( matm->name, ratm->name );
@@ -153,9 +155,9 @@ void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
 
 void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
 {
-    ratm->orig_id  = matm->orig_id;
+    ratm->orig_id = matm->orig_id;
     ratm->imprt_id = matm->imprt_id;
-    ratm->type     = matm->type;
+    ratm->type = matm->type;
     ratm->num_bonds = matm->num_bonds;
     ratm->num_hbonds = matm->num_hbonds;
     strcpy( ratm->name, matm->name );
@@ -214,12 +216,12 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
         if ( out_bufs[d].cnt )
         {
             fprintf( stderr, "p%d to p%d(nbr%d) # of transfers = %d\n",
-                     system->my_rank, system->my_nbrs[d].rank, d, out_bufs[d].cnt );
+                    system->my_rank, system->my_nbrs[d].rank, d, out_bufs[d].cnt );
             out_buf = out_bufs[d].out_atoms;
             for ( i = 0; i < out_bufs[d].cnt; ++i )
                 fprintf( stderr, "p%d to p%d: transfer atom%d [%.3f %.3f %.3f]\n",
-                         system->my_rank, system->my_nbrs[d].rank, out_buf[i].imprt_id,
-                         out_buf[i].x[0],  out_buf[i].x[1],  out_buf[i].x[2] );
+                        system->my_rank, system->my_nbrs[d].rank, out_buf[i].imprt_id,
+                        out_buf[i].x[0],  out_buf[i].x[1],  out_buf[i].x[2] );
         }
     //fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d done!\n",
     //   system->my_rank, start, end, dim );
@@ -262,7 +264,7 @@ void Pack_Boundary_Atom( boundary_atom *matm, reax_atom *ratm, int i )
 {
     matm->orig_id  = ratm->orig_id;
     matm->imprt_id = i;
-    matm->type     = ratm->type;
+    matm->type = ratm->type;
     matm->num_bonds = ratm->num_bonds;
     matm->num_hbonds = ratm->num_hbonds;
     rvec_Copy( matm->x, ratm->x );
@@ -287,7 +289,6 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
 {
     int i, d, p, out_cnt;
     reax_atom *atoms;
-    simulation_box *my_box;
     boundary_atom *out_buf;
     neighbor_proc *nbr_pr;
 
@@ -297,7 +298,6 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
 #endif
 
     atoms = system->my_atoms;
-    my_box = &( system->my_box );
 
     /* place each atom into the appropriate outgoing list */
     for ( i = start; i < end; ++i )
@@ -337,7 +337,6 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 {
     int i, p, out_cnt;
     reax_atom *atoms;
-    simulation_box *my_box;
     boundary_atom *out_buf;
     neighbor_proc *nbr1, *nbr2, *nbr_pr;
 
@@ -347,7 +346,6 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 #endif
 
     atoms = system->my_atoms;
-    my_box = &( system->my_box );
     nbr1 = &(system->my_nbrs[2 * d]);
     nbr2 = &(system->my_nbrs[2 * d + 1]);
     nbr1->est_send = 0;
@@ -438,8 +436,14 @@ void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
     if ( new_max > *max )
     {
         *max = new_max;
-        if (*in1) sfree( *in1, "in1" );
-        if (*in2) sfree( *in2, "in2" );
+        if ( *in1 != NULL )
+        {
+            sfree( *in1, "in1" );
+        }
+        if ( *in2 != NULL )
+        {
+            sfree( *in2, "in2" );
+        }
         *in1 = (void *) smalloc( new_max * sizeof(boundary_atom), "in1" );
         *in2 = (void *) smalloc( new_max * sizeof(boundary_atom), "in2" );
     }
@@ -571,7 +575,7 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
     fprintf( stderr, "p%d sendrecv: entered\n", system->my_rank );
 #endif
 
-    if ( clr )
+    if ( clr == TRUE )
     {
         Reset_Out_Buffers( mpi_data->out_buffers, system->num_nbrs );
     }
@@ -582,7 +586,8 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
     start = 0;
     end = system->n;
     max = 0;
-    est_flag = (mpi_data->in1_buffer == NULL) || (mpi_data->in2_buffer == NULL);
+    est_flag = (mpi_data->in1_buffer == NULL) || (mpi_data->in2_buffer == NULL) ?
+        TRUE : FALSE;
 
     for ( d = 0; d < 3; ++d )
     {
@@ -592,10 +597,10 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
         nbr2 = &(system->my_nbrs[2 * d + 1]);
 
         /* for estimates in1_buffer & in2_buffer will be NULL */
-        if ( est_flag )
+        if ( est_flag == TRUE )
         {
             Estimate_Init_Storage( system->my_rank, nbr1, nbr2, d,
-                                   &max, nrecv, &in1, &in2, comm );
+                    &max, nrecv, &in1, &in2, comm );
         }
 
         /* initiate recvs */
@@ -614,14 +619,22 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
         unpack( system, end, in1, cnt, nbr1, d );
         end += cnt;
 
+#if defined(DEBUG)
+        fprintf( stderr, "p%d: nbr1: d = %d, end = %d\n", system->my_rank, d, end );
+#endif
+
         /* recv and unpack atoms from nbr2 in dimension d */
         MPI_Wait( &req2, &stat2 );
         MPI_Get_count( &stat2, type, &cnt );
         unpack( system, end, in2, cnt, nbr2, d );
         end += cnt;
+
+#if defined(DEBUG)
+        fprintf( stderr, "p%d: nbr2: d = %d, end = %d\n", system->my_rank, d, end );
+#endif
     }
 
-    if ( est_flag )
+    if ( est_flag == TRUE )
     {
         system->est_recv = max;
         system->est_trans = (max * sizeof(boundary_atom)) / sizeof(mpi_atom);
@@ -649,7 +662,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
     }
 #endif
 
-    if ( renbr )
+    if ( renbr == TRUE )
     {
         /* transfer ownership of atoms */
         for ( i = 0; i < MAX_NBRS; ++i )
@@ -657,7 +670,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
             nrecv[i] = system->est_trans;
         }
         system->n = SendRecv( system, mpi_data, mpi_data->mpi_atom_type, nrecv,
-                Sort_Transfer_Atoms, Unpack_Transfer_Message, 1 );
+                Sort_Transfer_Atoms, Unpack_Transfer_Message, TRUE );
         Bin_My_Atoms( system, &(workspace->realloc) );
         Reorder_My_Atoms( system, workspace );
 
@@ -673,7 +686,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
             nrecv[i] = system->my_nbrs[i].est_recv;
         }
         system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
-                Sort_Boundary_Atoms, Unpack_Exchange_Message, 1 );
+                Sort_Boundary_Atoms, Unpack_Exchange_Message, TRUE );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: exchanged boundary atoms, N=%d\n",
@@ -697,7 +710,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
             nrecv[i] = system->my_nbrs[i].atoms_cnt;
         }
         SendRecv( system, mpi_data, mpi_data->mpi_rvec, nrecv,
-                Sort_Position_Updates, Unpack_Position_Updates, 0 );
+                Sort_Position_Updates, Unpack_Position_Updates, FALSE );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: updated positions\n", system->my_rank );

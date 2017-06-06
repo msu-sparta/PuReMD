@@ -72,21 +72,34 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
        j = (int) (my_atoms[ l ].x[1] * g.inv_len[1]);
        k = (int) (my_atoms[ l ].x[2] * g.inv_len[2]);
      */
-    if (l < n) {
+    if (l < n)
+    {
         for (i = 0; i < 3; i++)
         {
             c[i] = (int)((my_atoms[l].x[i]- my_ext_box.min[i])*g.inv_len[i]);   
             if( c[i] >= g.native_end[i] )
+            {
                 c[i] = g.native_end[i] - 1;
+            }
             else if( c[i] < g.native_str[i] )
+            {
                 c[i] = g.native_str[i];
+            }
         }
-    } else {
+    }
+    else
+    {
         for (i = 0; i < 3; i++)
         {
             c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
-            if( c[i] < 0 ) c[i] = 0;
-            else if( c[i] >= g.ncells[i] ) c[i] = g.ncells[i] - 1;
+            if( c[i] < 0 )
+            {
+                c[i] = 0;
+            }
+            else if( c[i] >= g.ncells[i] )
+            {
+                c[i] = g.ncells[i] - 1;
+            }
         }
     }
 
@@ -94,10 +107,10 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
     j = c[1];
     k = c[2];
 
-    cutoff = SQR(g.cutoff[index_grid_3d (i, j, k, &g)]);
+    cutoff = SQR( g.cutoff[index_grid_3d(i, j, k, &g)] );
 
     itr = 0;
-    while( (g.nbrs_x[index_grid_nbrs (i, j, k, itr, &g)][0]) >= 0 )
+    while( (g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0]) >= 0 )
     { 
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
@@ -139,7 +152,8 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
         if( g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
                 (Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs (i, j, k, itr, &g)],atom1->x) <= cutoff) )
             for( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
-                    m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m ) {
+                    m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
+            {
                 if( l > m )
                 {
                     atom2 = &(my_atoms[m]);
@@ -181,7 +195,7 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
     int lane_id = thread_id & (__THREADS_PER_ATOM__ - 1); 
     int my_bucket = threadIdx.x / __THREADS_PER_ATOM__;
 
-    if (warp_id >= N )
+    if ( warp_id >= N )
     {
         return;
     }
@@ -254,7 +268,6 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
     __syncthreads( );
 
     itr = 0;
-    //while( (gci->nbrs_x[itr][0]) >= 0 ) { 
     while( (g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0]) >= 0 )
     { 
         tnbr[threadIdx.x] = 0;
@@ -396,15 +409,6 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void k_print_neighbor_list_indices( reax_list far_nbrs, int N )
-{
-    int l = blockIdx.x * blockDim.x + threadIdx.x;
-    if (l >= N) return;
-
-    printf( "%12d: %12d, %12d\n", l, Dev_Start_Index( l, &far_nbrs), Dev_End_Index( l, &far_nbrs ) );
-}
-
-
 CUDA_GLOBAL void k_count_total_nbrs( reax_list far_nbrs, int N, int *result )
 {
     //strided access
@@ -475,12 +479,6 @@ void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
             *(*dev_lists + FAR_NBRS), system->n, system->N);
     cudaThreadSynchronize( );
     cudaCheckError( );
-
-//    printf("%d\n", system->N);
-//    k_print_neighbor_list_indices <<<blocks, NBRS_BLOCK_SIZE>>> (*(*dev_lists + FAR_NBRS), system->N);
-//    cudaThreadSynchronize( );
-//    cudaCheckError( );
-//    exit(0);
 
 //    k_count_total_nbrs <<<1, NBRS_BLOCK_SIZE, sizeof (int) * NBRS_BLOCK_SIZE>>>
 //            (*(*dev_lists + FAR_NBRS), system->N, d_num_far);
@@ -656,17 +654,15 @@ int Cuda_Estimate_Neighbors( reax_system *system, int *nbr_indices )
             cudaMemcpyDeviceToHost, "dev_nbrs:indices" );
 
     /* build neighbor indices (num. far nbrs per atom) */
-    for ( i = 0; i < system->N; i++ )
+    for ( i = 0; i < system->total_cap; i++ )
     {
         /* check if per atom bond limits are exceeded,
          * and, if so, trigger reallocation */
-        if ( nbr_indices[i] > system->my_atoms[i].max_bonds )
+        if ( nbr_indices[i] > system->max_far_nbrs[i] )
         {
             ret = FAILURE;
-//            system->my_atoms[i].max_bonds = MAX( (int)CEIL(nbr_indices[i] * SAFE_ZONE), MIN_NBRS );
-            system->my_atoms[i].max_bonds = (int)CEIL(nbr_indices[i] * SAFE_ZONE);
+            system->max_far_nbrs[i] = MAX( (int)CEIL(nbr_indices[i] * SAFE_ZONE), MIN_NBRS );
         }
-        nbr_indices[i] = system->my_atoms[i].max_bonds;
     }
 
     return ret;
@@ -701,29 +697,39 @@ void Cuda_Init_HBond_Indices( int *indices, int entries )
     }
 
     copy_host_device( indices, hbonds->index + 1, (entries-1) * sizeof(int), 
-            cudaMemcpyHostToDevice, "hbonds:index" );
+            cudaMemcpyHostToDevice, "dev_hbonds:index" );
     copy_host_device( indices, hbonds->end_index + 1, (entries-1) * sizeof(int), 
-            cudaMemcpyHostToDevice, "hbonds:end_index" );
+            cudaMemcpyHostToDevice, "dev_hbonds:end_index" );
 }
 
 
-void Cuda_Init_Bond_Indices( int *indices, int entries, int num_intrs )
+void Cuda_Init_Bond_Indices( int *indices, int entries )
 {
+    int i;
     reax_list *bonds = *dev_lists + BONDS;
 
-    indices[0] = MAX( indices[0] * 2, MIN_BONDS );
-    for (int i = 1 ; i < entries; i++)
+    for (i = 1 ; i < entries; i++)
     {
-        indices[i] = MAX( indices[i] * 2, MIN_BONDS );
-    }
-
-    for (int i = 1 ; i < entries; i++)
-    {
-        indices[i] += indices[i-1];
+        indices[i] += indices[i - 1];
     }
 
     copy_host_device( indices, (bonds->index + 1), (entries - 1) * sizeof(int),
             cudaMemcpyHostToDevice, "dev_bonds:index" );
-    copy_host_device( indices, (bonds->end_index + 1), (entries - 1) * sizeof(int),
+    copy_host_device( indices, bonds->end_index, entries * sizeof(int),
             cudaMemcpyHostToDevice, "dev_bonds:end_index" );
+}
+
+
+void Cuda_Init_Three_Body_Indices( int *indices, int entries )
+{
+    int i;
+    reax_list *thbody = *dev_lists + THREE_BODIES;
+
+    copy_host_device( indices, thbody->index + 1,
+            sizeof(int) * (entries - 1),
+            cudaMemcpyHostToDevice, "dev_thb:index" );
+    copy_host_device( indices, thbody->end_index,
+            sizeof(int) * entries,
+            cudaMemcpyHostToDevice, "dev_thb:end_index" );
+
 }

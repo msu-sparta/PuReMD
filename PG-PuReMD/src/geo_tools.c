@@ -254,22 +254,21 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
 
 char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
-               simulation_data *data, storage *workspace,
-               mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
 
-    FILE  *pdb;
+    FILE *pdb;
     char **tmp;
-    char  *s, *s1;
-    char   descriptor[9], serial[9];
-    char   atom_name[9], res_name[9], res_seq[9];
-    char   s_x[9], s_y[9], s_z[9];
-    char   occupancy[9], temp_factor[9];
-    char   seg_id[9], element[9], charge[9];
-    char   alt_loc, chain_id, icode;
-    char  *endptr = NULL;
-    int    i, c, c1, pdb_serial, top;
-    rvec   x;
+    char *s, *s1;
+    char descriptor[9], serial[9];
+    char atom_name[9], res_name[9], res_seq[9];
+    char s_x[9], s_y[9], s_z[9];
+    char occupancy[9], temp_factor[9];
+    char seg_id[9], element[9], charge[9];
+    char alt_loc, chain_id, icode;
+    char *endptr = NULL;
+    int i, c, c1, pdb_serial, top;
+    rvec x;
     reax_atom *atom;
 
 
@@ -281,12 +280,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     }
 
     /* allocate memory for tokenizing pdb lines */
-    if ( Allocate_Tokenizer_Space( &s, &s1, &tmp ) == FAILURE )
-    {
-        fprintf( stderr, "Allocate_Tokenizer_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
+    Allocate_Tokenizer_Space( &s, &s1, &tmp );
 
     /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )

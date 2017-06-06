@@ -5,8 +5,8 @@
 #include "cuda_shuffle.h"
 
 
-CUDA_GLOBAL void k_reduction(const real *input, real *per_block_results,
-        const size_t n)
+CUDA_GLOBAL void k_reduction( const real *input, real *per_block_results,
+        const size_t n )
 {
 #if defined(__SM_35__)
     extern __shared__ real my_results[];
@@ -79,7 +79,7 @@ CUDA_GLOBAL void k_reduction(const real *input, real *per_block_results,
 }
 
 
-CUDA_GLOBAL void k_reduction_rvec(rvec *input, rvec *results, size_t n)
+CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 {
 #if defined(__SM_35__)
     extern __shared__ rvec my_rvec[];
@@ -158,7 +158,7 @@ CUDA_GLOBAL void k_reduction_rvec(rvec *input, rvec *results, size_t n)
 }
 
 
-CUDA_GLOBAL void k_reduction_rvec2 (rvec2 *input, rvec2 *results, size_t n)
+CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
 {
 #if defined(__SM_35__)
     extern __shared__ rvec2 my_rvec2[];
@@ -168,27 +168,32 @@ CUDA_GLOBAL void k_reduction_rvec2 (rvec2 *input, rvec2 *results, size_t n)
     sdata[0] = 0.0;
     sdata[1] = 0.0;
 
-    if(i < n){
+    if ( i < n )
+    {
         sdata[0] = input[i][0];
         sdata[1] = input[i][1];
     }
 
     __syncthreads();
 
-    for(int z = 16; z >=1; z/=2){
+    for(int z = 16; z >=1; z/=2)
+    {
         sdata[0] += shfl ( sdata[0], z);
         sdata[1] += shfl ( sdata[1], z);
     }
 
-    if (threadIdx.x % 32 == 0){
+    if (threadIdx.x % 32 == 0)
+    {
         my_rvec2[threadIdx.x >> 5][0] = sdata[0];
         my_rvec2[threadIdx.x >> 5][1] = sdata[1];
     }
 
     __syncthreads ();
 
-    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1) {
-        if(threadIdx.x < offset){
+    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
+    {
+        if(threadIdx.x < offset)
+        {
             my_rvec2[threadIdx.x][0] += my_rvec2[threadIdx.x + offset][0];
             my_rvec2[threadIdx.x][1] += my_rvec2[threadIdx.x + offset][1];
         }
@@ -196,7 +201,8 @@ CUDA_GLOBAL void k_reduction_rvec2 (rvec2 *input, rvec2 *results, size_t n)
         __syncthreads();
     }
 
-    if(threadIdx.x == 0){
+    if(threadIdx.x == 0)
+    {
         results[blockIdx.x][0] = my_rvec2[0][0];
         results[blockIdx.x][1] = my_rvec2[0][1];
     }
@@ -240,7 +246,7 @@ CUDA_GLOBAL void k_reduction_rvec2 (rvec2 *input, rvec2 *results, size_t n)
 }
 
 
-CUDA_GLOBAL void k_dot (const real *a, const real *b, real *per_block_results,
+CUDA_GLOBAL void k_dot( const real *a, const real *b, real *per_block_results,
         const size_t n )
 {
 #if defined(__SM_35__)
@@ -314,7 +320,8 @@ CUDA_GLOBAL void k_dot (const real *a, const real *b, real *per_block_results,
 }
 
 
-CUDA_GLOBAL void k_norm (const real *input, real *per_block_results, const size_t n, int pass)
+CUDA_GLOBAL void k_norm( const real *input, real *per_block_results,
+        const size_t n, int pass )
 {
 #if defined(__SM_35__)
     extern __shared__ real my_norm[];
@@ -323,7 +330,7 @@ CUDA_GLOBAL void k_norm (const real *input, real *per_block_results, const size_
 
     if( i < n )
     {
-        snorm = SQR (input[i]);
+        snorm = SQR( input[i] );
     }
 
     __syncthreads();
@@ -386,8 +393,8 @@ CUDA_GLOBAL void k_norm (const real *input, real *per_block_results, const size_
 }
 
 
-CUDA_GLOBAL void k_norm_rvec2 (const rvec2 *input, rvec2 *per_block_results,
-        const size_t n, int pass)
+CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
+        const size_t n, int pass )
 {
 #if defined(__SM_35__)
     extern __shared__ rvec2 my_norm2[];
@@ -397,10 +404,13 @@ CUDA_GLOBAL void k_norm_rvec2 (const rvec2 *input, rvec2 *per_block_results,
 
     if(i < n)
     {
-        if (pass == INITIAL) {    
+        if (pass == INITIAL)
+        {
             snorm2[0] = SQR (input[i][0]);
             snorm2[1] = SQR (input[i][1]);
-        } else {
+        }
+        else
+        {
             snorm2[0] = input[i][0];
             snorm2[1] = input[i][1];
         }
@@ -507,8 +517,10 @@ CUDA_GLOBAL void k_dot_rvec2(const rvec2 *a, rvec2 *b, rvec2 *res,
 
     __syncthreads ();
 
-    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1) {
-        if(threadIdx.x < offset){
+    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
+    {
+        if(threadIdx.x < offset)
+        {
             my_dot2[threadIdx.x][0] += my_dot2[threadIdx.x + offset][0];
             my_dot2[threadIdx.x][1] += my_dot2[threadIdx.x + offset][1];
         }
@@ -600,9 +612,9 @@ CUDA_GLOBAL void k_rvec2_mul( rvec2* dest, rvec2* v, rvec2* y, int k )
 }
 
 
-CUDA_GLOBAL void k_rvec2_pbetad (rvec2 *dest, rvec2 *a, 
+CUDA_GLOBAL void k_rvec2_pbetad( rvec2 *dest, rvec2 *a, 
         real beta0, real beta1, 
-        rvec2 *b, int n)
+        rvec2 *b, int n )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 

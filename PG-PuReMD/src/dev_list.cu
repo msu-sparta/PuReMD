@@ -37,13 +37,13 @@ extern "C" {
 /************* allocate list space ******************/
 void Dev_Make_List( int n, int num_intrs, int type, reax_list *l )
 {
-    l->allocated = 1;
+    l->allocated = TRUE;
 
     l->n = n;
     l->num_intrs = num_intrs;
 
-    cuda_malloc( (void **) &l->index, n * sizeof(int), 1, "dev_list:index" );
-    cuda_malloc( (void **) &l->end_index, n * sizeof(int), 1, "dev_list:end_index" );
+    cuda_malloc( (void **) &l->index, n * sizeof(int), TRUE, "dev_list:index" );
+    cuda_malloc( (void **) &l->end_index, n * sizeof(int), TRUE, "dev_list:end_index" );
 
     l->type = type;
 
@@ -55,23 +55,23 @@ void Dev_Make_List( int n, int num_intrs, int type, reax_list *l )
     {
         case TYP_FAR_NEIGHBOR:
             cuda_malloc( (void **) &l->select.far_nbr_list, 
-                    l->num_intrs * sizeof(far_neighbor_data), 1, "dev_list:far_nbrs" );
+                    l->num_intrs * sizeof(far_neighbor_data), TRUE, "dev_list:far_nbrs" );
             break;
 
         case TYP_THREE_BODY:
             cuda_malloc( (void **) &l->select.three_body_list,
-                    l->num_intrs * sizeof(three_body_interaction_data), 1, 
+                    l->num_intrs * sizeof(three_body_interaction_data), TRUE,
                     "dev_list:three_bodies" );
             break;
 
         case TYP_HBOND:
             cuda_malloc( (void **) &l->select.hbond_list, 
-                    l->num_intrs * sizeof(hbond_data), 1, "dev_list:hbonds" );
+                    l->num_intrs * sizeof(hbond_data), TRUE, "dev_list:hbonds" );
             break;            
 
         case TYP_BOND:
             cuda_malloc( (void **) &l->select.bond_list,
-                    l->num_intrs * sizeof(bond_data), 1, "dev_list:bonds" );
+                    l->num_intrs * sizeof(bond_data), TRUE, "dev_list:bonds" );
             break;
 
         default:
@@ -83,16 +83,17 @@ void Dev_Make_List( int n, int num_intrs, int type, reax_list *l )
 
 void Dev_Delete_List( reax_list *l )
 {
-    if( l->allocated == 0 )
+    if( l->allocated == FALSE )
     {
         return;
     }
-    l->allocated = 0;
+    l->allocated = FALSE;
 
     cuda_free( l->index, "dev_index" );
     cuda_free( l->end_index, "dev_end_index" );
 
-    switch (l->type) {
+    switch (l->type)
+    {
         case TYP_HBOND:
             cuda_free( l->select.hbond_list, "dev_list:hbonds" );
             break;

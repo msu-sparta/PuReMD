@@ -95,7 +95,6 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     }
 #endif
 
-    // fprintf( stderr, "\n\tentered nbrs - " );
     g = &( system->my_grid );
     far_nbrs = (*lists) + FAR_NBRS;
     num_far = 0;
@@ -107,22 +106,16 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
         {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
-                //SUDHIR
-                //gci = &(g->cells[i][j][k]);
                 gci = &(g->cells[ index_grid_3d(i, j, k, g) ]);
-                //cutoff = SQR(gci->cutoff);
                 cutoff = SQR(g->cutoff[index_grid_3d(i, j, k, g)]);
-                //fprintf( stderr, "gridcell %d %d %d\n", i, j, k );
 
                 /* pick up an atom from the current cell */
                 for (l = g->str[index_grid_3d(i, j, k, g)]; l < g->end[index_grid_3d(i, j, k, g)]; ++l )
                 {
                     atom1 = &(system->my_atoms[l]);
                     Set_Start_Index( l, num_far, far_nbrs );
-                    //fprintf( stderr, "\tatom %d\n", atom1 );
 
                     itr = 0;
-                    //while( (gcj=gci->nbrs[itr]) != NULL ) {
                     while ( (g->nbrs_x[index_grid_nbrs(i, j, k, itr, g)][0]) >= 0 )
                     {
 
@@ -133,11 +126,11 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                 (DistSqr_to_Special_Point(g->nbrs_cp[index_grid_nbrs(i, j, k, itr, g)], atom1->x) <= cutoff) )
                         {
                             /* pick up another atom from the neighbor cell */
-                            //for( m = gcj->str; m < gcj->end; ++m )
                             for ( m = g->str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)];
                                     m < g->end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)]; ++m )
                             {
-                                if ( l < m )  // prevent recounting same pairs within a gcell
+                                /* prevent recounting same pairs within a gcell */
+                                if ( l < m )
                                 {
                                     atom2 = &(system->my_atoms[m]);
                                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -148,7 +141,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                     {
                                         nbr_data = &(far_nbrs->select.far_nbr_list[num_far]);
                                         nbr_data->nbr = m;
-                                        nbr_data->d = SQRT(d);
+                                        nbr_data->d = SQRT( d );
                                         rvec_Copy( nbr_data->dvec, dvec );
                                         //ivec_Copy( nbr_data->rel_box, gcj->rel_box );
                                         //ivec_ScaledSum( nbr_data->rel_box, 1, gcj->rel_box, -1, gci->rel_box );
@@ -160,12 +153,11 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                 }
                             }
                         }
+
                         ++itr;
                     }
+
                     Set_End_Index( l, num_far, far_nbrs );
-                    //fprintf(stderr, "i:%d, start: %d, end: %d - itr: %d\n",
-                    //  atom1,Start_Index(atom1,far_nbrs),End_Index(atom1,far_nbrs),
-                    //  itr);
                 }
             }
         }

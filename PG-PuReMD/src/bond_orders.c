@@ -810,10 +810,10 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
           bo_ij->dln_BOp_pi2[0], bo_ij->dln_BOp_pi2[1],
           bo_ij->dln_BOp_pi2[2] );*/
 
-        return 1;
+        return TRUE;
     }
 
-    return 0;
+    return FALSE;
 }
 
 

@@ -10,8 +10,11 @@ extern "C" {
 #endif
 
 
-void Cuda_Estimate_Storages( reax_system *, control_params *, reax_list **, int, int,
-        int *, int *, int *, int * );
+void Cuda_Estimate_Storages( reax_system *, control_params *, reax_list **,
+        int *, int *, int * );
+
+void Cuda_Estimate_Storages_Three_Body( reax_system *, control_params *,
+        reax_list **, int *, int * );
 
 int Cuda_Estimate_Sparse_Matrix( reax_system *, control_params *,
         simulation_data *, reax_list ** );

@@ -231,9 +231,8 @@ int main( int argc, char* argv[] )
     for ( i = 0; i < LIST_N; ++i )
     {
         lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        lists[i]->allocated = 0;
+        lists[i]->allocated = FALSE;
 
-        //initialize here TODO
         lists[i]->n = 0;
         lists[i]->num_intrs = 0;
         lists[i]->index = NULL;
@@ -243,24 +242,24 @@ int main( int argc, char* argv[] )
     out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
     mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
 
-    /* allocate the cuda auxiliary data structures */
+    /* allocate auxiliary data structures (GPU) */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
     dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
         dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        dev_lists[i]->allocated = 0;
+        dev_lists[i]->allocated = FALSE;
+        lists[i]->n = 0; 
+        lists[i]->num_intrs = 0;
+        lists[i]->index = NULL;
+        lists[i]->end_index = NULL;
+        lists[i]->select.v = NULL;
     }
-
-    /* Initialize member variables */
-    system->init_thblist = FALSE;
 
     /* setup MPI environment */
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
-    system->wsize = control->nprocs;
-    system->global_offset = (int *) scalloc( system->wsize + 1, sizeof(int), "global_offset" );
 
     /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
@@ -309,7 +308,7 @@ int main( int argc, char* argv[] )
     //END OF FIRST STEP
 
     // compute f_0
-    Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
+    Comm_Atoms( system, control, data, workspace, lists, mpi_data, TRUE );
     Sync_Atoms( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
     init_blocks( system );
@@ -486,10 +485,9 @@ int main( int argc, char* argv[] )
     lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list*), "lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
+        // initialize here
 	lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        lists[i]->allocated = 0;
-
-        //initialize here TODO
+        lists[i]->allocated = FALSE;
         lists[i]->n = 0; 
         lists[i]->num_intrs = 0;
         lists[i]->index = NULL;
@@ -499,25 +497,20 @@ int main( int argc, char* argv[] )
     out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
     mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
 
+    //TODO: remove?
     /* allocate the cuda auxiliary data structures */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
     dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
         dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        dev_lists[i]->allocated = 0;
+        dev_lists[i]->allocated = FALSE;
     }
-
-    /* Initialize member variables */
-    system->init_thblist = FALSE;
 
     /* setup MPI environment */
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
-    system->wsize = control->nprocs;
-    system->global_offset = (int*) scalloc( system->wsize + 1,
-            sizeof(int), "global_offset" );
 
     /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
@@ -543,7 +536,7 @@ int main( int argc, char* argv[] )
 #endif
 
     /* compute f_0 */
-    Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
+    Comm_Atoms( system, control, data, workspace, lists, mpi_data, TRUE );
     Reset( system, control, data, workspace, lists );
 
 #if defined(DEBUG)

@@ -24,13 +24,15 @@
 
 #include "reax_types.h"
 
+
 void Initialize( reax_system*, control_params*, simulation_data*,
-                 storage*, reax_list**, output_controls*, mpi_datatypes* );
+        storage*, reax_list**, output_controls*, mpi_datatypes* );
 
 void Pure_Initialize( reax_system*, control_params*, simulation_data*,
-                      storage*, reax_list**, output_controls*, mpi_datatypes* );
+        storage*, reax_list**, output_controls*, mpi_datatypes* );
 
 void Cuda_Initialize( reax_system*, control_params*, simulation_data*,
-                      storage*, reax_list**, output_controls*, mpi_datatypes* );
+        storage*, reax_list**, output_controls*, mpi_datatypes* );
+
 
 #endif

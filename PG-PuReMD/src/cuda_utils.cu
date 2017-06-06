@@ -8,7 +8,7 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
 
     retVal = cudaMalloc( ptr, size );
 
-    if( retVal != cudaSuccess )
+    if ( retVal != cudaSuccess )
     {
         fprintf( stderr, "ERROR: failed to allocate memory on device for resouce %s\n", msg );
         fprintf( stderr, "CUDA API error code: %d, requested memory size (in bytes): %lu\n", 
@@ -16,7 +16,7 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
         exit( INSUFFICIENT_MEMORY );
     }  
 
-    if( mem_set )
+    if ( mem_set == TRUE )
     {
         retVal = cudaMemset( *ptr, 0, size );
 

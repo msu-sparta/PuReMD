@@ -320,7 +320,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace, mpi_datatypes
     if ( system->my_rank == MASTER_NODE )
     {
         workspace->displs[0] = 0;
-        for ( i = 1; i < system->wsize; ++i )
+        for ( i = 1; i < system->nprocs; ++i )
         {
             workspace->displs[i] = workspace->displs[i - 1] + workspace->rcounts[i - 1];
         }

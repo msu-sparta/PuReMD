@@ -25,6 +25,11 @@
 #include "reax_types.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /* from comm_tools.h */
 int SumScan( int, int, int, MPI_Comm );
 
@@ -45,19 +50,11 @@ int Check_Input_Range( int, int, int, char* );
 void Trim_Spaces( char* );
 
 /* from system_props.h */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 real Get_Time( );
 
 real Get_Timing_Info( real );
 
 void Update_Timing_Info( real*, real* );
-
-#ifdef __cplusplus
-}
-#endif
 
 /* from io_tools.h */
 int Get_Atom_Type( reax_interaction*, char* );
@@ -66,7 +63,7 @@ char *Get_Element( reax_system*, int );
 
 char *Get_Atom_Name( reax_system*, int );
 
-int Allocate_Tokenizer_Space( char**, char**, char*** );
+void Allocate_Tokenizer_Space( char**, char**, char*** );
 
 int Tokenize( char*, char*** );
 
@@ -78,6 +75,11 @@ void* srealloc( void *ptr, size_t n, char *name );
 void *scalloc( size_t, size_t, char* );
 
 void sfree( void*, char* );
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)

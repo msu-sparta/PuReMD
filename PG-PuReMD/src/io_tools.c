@@ -949,13 +949,13 @@ void Print_Symmetric_Sparse(reax_system *system, sparse_matrix *A, char *fname)
 void Print_Linear_System( reax_system *system, control_params *control,
         storage *workspace, int step )
 {
-    int   i, j;
-    char  fname[100];
+    int i, j;
+    char fname[100];
     reax_atom *ai, *aj;
     sparse_matrix *H;
     FILE *out;
 
-    // print rhs and init guesses for QEq
+    /* print rhs and init guesses for QEq */
     sprintf( fname, "%s.p%dstate%d", control->sim_name, system->my_rank, step );
     out = fopen( fname, "w" );
     for ( i = 0; i < system->n; i++ )
@@ -968,31 +968,35 @@ void Print_Linear_System( reax_system *system, control_params *control,
     }
     fclose( out );
 
-    // print QEq coef matrix
+    /* print QEq coef matrix */
     sprintf( fname, "%s.p%dH%d", control->sim_name, system->my_rank, step );
     Print_Symmetric_Sparse( system, &workspace->H, fname ); //MATRIX CHANGES
 
-    // print the incomplete H matrix
-    /*sprintf( fname, "%s.p%dHinc%d", control->sim_name, system->my_rank, step );
-    out = fopen( fname, "w" );
-    H = workspace->H;
-    for( i = 0; i < H->n; ++i ) {
-      ai = &(system->my_atoms[i]);
-      for( j = H->start[i]; j < H->end[i]; ++j )
-        if( H->entries[j].j < system->n ) {
-    aj = &(system->my_atoms[H->entries[j].j]);
-    fprintf( out, "%d %d %.15e\n",
-       ai->orig_id, aj->orig_id, H->entries[j].val );
-    if( ai->orig_id != aj->orig_id )
-      fprintf( out, "%d %d %.15e\n",
-         aj->orig_id, ai->orig_id, H->entries[j].val );
-        }
-    }
-    fclose( out );*/
+    /* print the incomplete H matrix */
+//    sprintf( fname, "%s.p%dHinc%d", control->sim_name, system->my_rank, step );
+//    out = fopen( fname, "w" );
+//    H = workspace->H;
+//    for( i = 0; i < H->n; ++i )
+//    {
+//        ai = &(system->my_atoms[i]);
+//        for( j = H->start[i]; j < H->end[i]; ++j )
+//        {
+//            if( H->entries[j].j < system->n )
+//            {
+//                aj = &(system->my_atoms[H->entries[j].j]);
+//                fprintf( out, "%d %d %.15e\n",
+//                ai->orig_id, aj->orig_id, H->entries[j].val );
+//                if( ai->orig_id != aj->orig_id )
+//                    fprintf( out, "%d %d %.15e\n",
+//                aj->orig_id, ai->orig_id, H->entries[j].val );
+//            }
+//        }
+//    }
+//    fclose( out );
 
     // print the L from incomplete cholesky decomposition
-    /*sprintf( fname, "%s.p%dL%d", control->sim_name, system->my_rank, step );
-      Print_Sparse_Matrix2( system, workspace->L, fname );*/
+//    sprintf( fname, "%s.p%dL%d", control->sim_name, system->my_rank, step );
+//    Print_Sparse_Matrix2( system, workspace->L, fname );
 }
 
 

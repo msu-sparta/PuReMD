@@ -11,7 +11,7 @@ extern "C"
 void dev_alloc_control( control_params *control )
 {
     cuda_malloc( (void **)&control->d_control_params,
-            sizeof(control_params), 1, "control_params" );
+            sizeof(control_params), TRUE, "control_params" );
     copy_host_device( control, control->d_control_params,
             sizeof(control_params), cudaMemcpyHostToDevice, "control_params" );
 }
@@ -59,13 +59,13 @@ void dev_alloc_grid( reax_system *system )
     ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
     ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
-    cuda_malloc( (void **) &device->str, sizeof(int) * total, 1, "grid:str" );
-    cuda_malloc( (void **) &device->end, sizeof(int) * total, 1, "grid:end" );
-    cuda_malloc( (void **) &device->cutoff, sizeof(real) * total, 1, "grid:cutoff" );
+    cuda_malloc( (void **) &device->str, sizeof(int) * total, TRUE, "grid:str" );
+    cuda_malloc( (void **) &device->end, sizeof(int) * total, TRUE, "grid:end" );
+    cuda_malloc( (void **) &device->cutoff, sizeof(real) * total, TRUE, "grid:cutoff" );
 
-    cuda_malloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs, 1, "grid:nbrs_x" );
-    cuda_malloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs, 1, "grid:nbrs_cp" );
-    cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total, 1, "grid:rel_box" );
+    cuda_malloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs, TRUE, "grid:nbrs_x" );
+    cuda_malloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs, TRUE, "grid:nbrs_cp" );
+    cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total, TRUE, "grid:rel_box" );
 
     /*
        int block_size = 512;
@@ -78,9 +78,9 @@ void dev_alloc_grid( reax_system *system )
 
        cuda_malloc ((void **)& device->cells, 
        sizeof (grid_cell) * total, 
-       1, "grid:cells");
+       TRUE, "grid:cells");
        fprintf (stderr, " Device cells address --> %ld \n", device->cells );
-       cuda_malloc ((void **) &device->order, sizeof (ivec) * (host->total + 1), 1, "grid:order");
+       cuda_malloc ((void **) &device->order, sizeof (ivec) * (host->total + 1), TRUE, "grid:order");
 
        local_cell.top = local_cell.mark = local_cell.str = local_cell.end = 0;
        fprintf (stderr, "Total cells to be allocated -- > %d \n", total );
@@ -88,20 +88,20 @@ void dev_alloc_grid( reax_system *system )
     //fprintf (stderr, "Address of the local atom -> %ld  \n", &local_cell);
 
     cuda_malloc ((void **) &local_cell.atoms, sizeof (int) * host->max_atoms, 
-    1, "alloc:grid:cells:atoms");
+    TRUE, "alloc:grid:cells:atoms");
     //fprintf (stderr, "Allocated address of the atoms --> %ld  (%d)\n", local_cell.atoms, host->max_atoms );
 
     cuda_malloc ((void **) &local_cell.nbrs_x, sizeof (ivec) * host->max_nbrs, 
-    1, "alloc:grid:cells:nbrs_x" );
+    TRUE, "alloc:grid:cells:nbrs_x" );
     copy_device (local_cell.nbrs_x, nbrs_x, host->max_nbrs * sizeof (ivec), "grid:nbrs_x");    
     //fprintf (stderr, "Allocated address of the nbrs_x--> %ld \n", local_cell.nbrs_x);
 
     cuda_malloc ((void **) &local_cell.nbrs_cp, sizeof (rvec) * host->max_nbrs, 
-    1, "alloc:grid:cells:nbrs_cp" );
+    TRUE, "alloc:grid:cells:nbrs_cp" );
     //fprintf (stderr, "Allocated address of the nbrs_cp--> %ld \n", local_cell.nbrs_cp);
 
     //cuda_malloc ((void **) &local_cell.nbrs, sizeof (grid_cell *) * host->max_nbrs , 
-    //                1, "alloc:grid:cells:nbrs" );
+    //                TRUE, "alloc:grid:cells:nbrs" );
     //fprintf (stderr, "Allocated address of the nbrs--> %ld \n", local_cell.nbrs);
 
     copy_host_device (&local_cell, &device->cells[i], sizeof (grid_cell), cudaMemcpyHostToDevice, "grid:cell-alloc");
@@ -142,7 +142,7 @@ void dev_alloc_grid_cell_atoms( reax_system *system, int cap )
         copy_host_device( &local_cell, &device->cells[i], 
                 sizeof(grid_cell), cudaMemcpyDeviceToHost, "grid:cell-dealloc" );
         cuda_malloc( (void **)&local_cell.atoms, sizeof(int) * cap, 
-                1, "realloc:grid:cells:atoms" );
+                TRUE, "realloc:grid:cells:atoms" );
         copy_host_device( &local_cell, &device->cells[i], 
                 sizeof(grid_cell), cudaMemcpyHostToDevice, "grid:cell-realloc" );
     }
@@ -153,36 +153,36 @@ void dev_alloc_system( reax_system *system )
 {
     /* atoms */
     cuda_malloc( (void **) &system->d_my_atoms, system->total_cap * sizeof(reax_atom),
-            1, "system:d_my_atoms" );
+            TRUE, "system:d_my_atoms" );
 
     /* simulation boxes */
-    cuda_malloc( (void **) &system->d_big_box, sizeof(simulation_box), 1, "system:d_big_box" );
-    cuda_malloc( (void **) &system->d_my_box, sizeof(simulation_box), 1, "system:d_my_box" );
-    cuda_malloc( (void **) &system->d_my_ext_box, sizeof(simulation_box), 1, "d_my_ext_box" );
+    cuda_malloc( (void **) &system->d_big_box, sizeof(simulation_box), TRUE, "system:d_big_box" );
+    cuda_malloc( (void **) &system->d_my_box, sizeof(simulation_box), TRUE, "system:d_my_box" );
+    cuda_malloc( (void **) &system->d_my_ext_box, sizeof(simulation_box), TRUE, "d_my_ext_box" );
 
     /* interaction parameters */
     cuda_malloc( (void **) &system->reax_param.d_sbp,
             system->reax_param.num_atom_types * sizeof(single_body_parameters),
-            1, "system:d_sbp" );
+            TRUE, "system:d_sbp" );
 
     cuda_malloc( (void **) &system->reax_param.d_tbp,
-            pow(system->reax_param.num_atom_types, 2) * sizeof(two_body_parameters), 
-            1, "system:d_tbp" );
+            POW( system->reax_param.num_atom_types, 2.0 ) * sizeof(two_body_parameters), 
+            TRUE, "system:d_tbp" );
 
     cuda_malloc( (void **) &system->reax_param.d_thbp,
-            pow(system->reax_param.num_atom_types, 3) * sizeof(three_body_header),
-            1, "system:d_thbp" );
+            POW( system->reax_param.num_atom_types, 3.0 ) * sizeof(three_body_header),
+            TRUE, "system:d_thbp" );
 
     cuda_malloc( (void **) &system->reax_param.d_hbp,
-            pow (system->reax_param.num_atom_types, 3) * sizeof(hbond_parameters),
-            1, "system:d_hbp" );
+            POW( system->reax_param.num_atom_types, 3.0 ) * sizeof(hbond_parameters),
+            TRUE, "system:d_hbp" );
 
     cuda_malloc( (void **) &system->reax_param.d_fbp,
-            pow(system->reax_param.num_atom_types, 4) * sizeof(four_body_header),
-            1, "system:d_fbp" );
+            POW( system->reax_param.num_atom_types, 4.0 ) * sizeof(four_body_header),
+            TRUE, "system:d_fbp" );
 
     cuda_malloc( (void **) &system->reax_param.d_gp.l,
-            system->reax_param.gp.n_global * sizeof(real), 1, "system:d_gp.l" );
+            system->reax_param.gp.n_global * sizeof(real), TRUE, "system:d_gp.l" );
 
     system->reax_param.d_gp.n_global = 0;
     system->reax_param.d_gp.vdw_type = 0;
@@ -195,13 +195,13 @@ void dev_realloc_system( reax_system *system, int local_cap, int total_cap, char
     cuda_free( system->d_my_atoms, "system:d_my_atoms" );
 
     cuda_malloc( (void **) &system->d_my_atoms, sizeof(reax_atom) * total_cap, 
-            1, "system:d_my_atoms" );
+            TRUE, "system:d_my_atoms" );
 }
 
 
 void dev_alloc_simulation_data( simulation_data *data )
 {
-    cuda_malloc( (void **) &(data->d_simulation_data), sizeof(simulation_data), 1, "simulation_data" );
+    cuda_malloc( (void **) &(data->d_simulation_data), sizeof(simulation_data), TRUE, "simulation_data" );
 }
 
 
@@ -210,7 +210,7 @@ void dev_alloc_workspace( reax_system *system, control_params *control,
 {
     int i, total_real, total_rvec, local_int, local_real, local_rvec;
 
-    workspace->allocated = 1;
+    workspace->allocated = TRUE;
 
     total_real = total_cap * sizeof(real);
     total_rvec = total_cap * sizeof(rvec);
@@ -226,65 +226,65 @@ void dev_alloc_workspace( reax_system *system, control_params *control,
      */
 
     /* bond order related storage  */
-    cuda_malloc( (void **) &workspace->within_bond_box, total_cap * sizeof (int), 1, "skin" );
-    cuda_malloc( (void **) &workspace->total_bond_order, total_real, 1, "total_bo" );
-    cuda_malloc( (void **) &workspace->Deltap, total_real, 1, "Deltap" );
-    cuda_malloc( (void **) &workspace->Deltap_boc, total_real, 1, "Deltap_boc" );
-    cuda_malloc( (void **) &workspace->dDeltap_self, total_rvec, 1, "dDeltap_self" );
-    cuda_malloc( (void **) &workspace->Delta, total_real, 1, "Delta" );
-    cuda_malloc( (void **) &workspace->Delta_lp, total_real, 1, "Delta_lp" );
-    cuda_malloc( (void **) &workspace->Delta_lp_temp, total_real, 1, "Delta_lp_temp" );
-    cuda_malloc( (void **) &workspace->dDelta_lp, total_real, 1, "Delta_lp_temp" );
-    cuda_malloc( (void **) &workspace->dDelta_lp_temp, total_real, 1, "dDelta_lp_temp" );
-    cuda_malloc( (void **) &workspace->Delta_e, total_real, 1, "Delta_e" );
-    cuda_malloc( (void **) &workspace->Delta_boc, total_real, 1, "Delta_boc" );
-    cuda_malloc( (void **) &workspace->nlp, total_real, 1, "nlp" );
-    cuda_malloc( (void **) &workspace->nlp_temp, total_real, 1, "nlp_temp" );
-    cuda_malloc( (void **) &workspace->Clp, total_real, 1, "Clp" );
-    cuda_malloc( (void **) &workspace->vlpex, total_real, 1, "vlpex" );
-    cuda_malloc( (void **) &workspace->bond_mark, total_real, 1, "bond_mark" );
-    cuda_malloc( (void **) &workspace->done_after, total_real, 1, "done_after" );
+    cuda_malloc( (void **) &workspace->within_bond_box, total_cap * sizeof (int), TRUE, "skin" );
+    cuda_malloc( (void **) &workspace->total_bond_order, total_real, TRUE, "total_bo" );
+    cuda_malloc( (void **) &workspace->Deltap, total_real, TRUE, "Deltap" );
+    cuda_malloc( (void **) &workspace->Deltap_boc, total_real, TRUE, "Deltap_boc" );
+    cuda_malloc( (void **) &workspace->dDeltap_self, total_rvec, TRUE, "dDeltap_self" );
+    cuda_malloc( (void **) &workspace->Delta, total_real, TRUE, "Delta" );
+    cuda_malloc( (void **) &workspace->Delta_lp, total_real, TRUE, "Delta_lp" );
+    cuda_malloc( (void **) &workspace->Delta_lp_temp, total_real, TRUE, "Delta_lp_temp" );
+    cuda_malloc( (void **) &workspace->dDelta_lp, total_real, TRUE, "Delta_lp_temp" );
+    cuda_malloc( (void **) &workspace->dDelta_lp_temp, total_real, TRUE, "dDelta_lp_temp" );
+    cuda_malloc( (void **) &workspace->Delta_e, total_real, TRUE, "Delta_e" );
+    cuda_malloc( (void **) &workspace->Delta_boc, total_real, TRUE, "Delta_boc" );
+    cuda_malloc( (void **) &workspace->nlp, total_real, TRUE, "nlp" );
+    cuda_malloc( (void **) &workspace->nlp_temp, total_real, TRUE, "nlp_temp" );
+    cuda_malloc( (void **) &workspace->Clp, total_real, TRUE, "Clp" );
+    cuda_malloc( (void **) &workspace->vlpex, total_real, TRUE, "vlpex" );
+    cuda_malloc( (void **) &workspace->bond_mark, total_real, TRUE, "bond_mark" );
+    cuda_malloc( (void **) &workspace->done_after, total_real, TRUE, "done_after" );
 
 
     /* QEq storage */
-    cuda_malloc( (void **) &workspace->Hdia_inv, total_cap * sizeof(real), 1, "Hdia_inv" );
-    cuda_malloc( (void **) &workspace->b_s, total_cap * sizeof(real), 1, "b_s" );
-    cuda_malloc( (void **) &workspace->b_t, total_cap * sizeof(real), 1, "b_t" );
-    cuda_malloc( (void **) &workspace->b_prc, total_cap * sizeof(real), 1, "b_prc" );
-    cuda_malloc( (void **) &workspace->b_prm, total_cap * sizeof(real), 1, "b_prm" );
-    cuda_malloc( (void **) &workspace->s, total_cap * sizeof(real), 1, "s" );
-    cuda_malloc( (void **) &workspace->t, total_cap * sizeof(real), 1, "t" );
-    cuda_malloc( (void **) &workspace->droptol, total_cap * sizeof(real), 1, "droptol" );
-    cuda_malloc( (void **) &workspace->b, total_cap * sizeof(rvec2), 1, "b" );
-    cuda_malloc( (void **) &workspace->x, total_cap * sizeof(rvec2), 1, "x" );
+    cuda_malloc( (void **) &workspace->Hdia_inv, total_cap * sizeof(real), TRUE, "Hdia_inv" );
+    cuda_malloc( (void **) &workspace->b_s, total_cap * sizeof(real), TRUE, "b_s" );
+    cuda_malloc( (void **) &workspace->b_t, total_cap * sizeof(real), TRUE, "b_t" );
+    cuda_malloc( (void **) &workspace->b_prc, total_cap * sizeof(real), TRUE, "b_prc" );
+    cuda_malloc( (void **) &workspace->b_prm, total_cap * sizeof(real), TRUE, "b_prm" );
+    cuda_malloc( (void **) &workspace->s, total_cap * sizeof(real), TRUE, "s" );
+    cuda_malloc( (void **) &workspace->t, total_cap * sizeof(real), TRUE, "t" );
+    cuda_malloc( (void **) &workspace->droptol, total_cap * sizeof(real), TRUE, "droptol" );
+    cuda_malloc( (void **) &workspace->b, total_cap * sizeof(rvec2), TRUE, "b" );
+    cuda_malloc( (void **) &workspace->x, total_cap * sizeof(rvec2), TRUE, "x" );
 
     /* GMRES storage */
-    cuda_malloc( (void **) &workspace->y, (RESTART+1)*sizeof(real), 1, "y" );
-    cuda_malloc( (void **) &workspace->z, (RESTART+1)*sizeof(real), 1, "z" );
-    cuda_malloc( (void **) &workspace->g, (RESTART+1)*sizeof(real), 1, "g" );
-    cuda_malloc( (void **) &workspace->h, (RESTART+1)*(RESTART+1)*sizeof(real), 1, "h" );
-    cuda_malloc( (void **) &workspace->hs, (RESTART+1)*sizeof(real), 1, "hs" );
-    cuda_malloc( (void **) &workspace->hc, (RESTART+1)*sizeof(real), 1, "hc" );
-    cuda_malloc( (void **) &workspace->v, (RESTART+1)*(RESTART+1)*sizeof(real), 1, "v" );
+    cuda_malloc( (void **) &workspace->y, (RESTART+1)*sizeof(real), TRUE, "y" );
+    cuda_malloc( (void **) &workspace->z, (RESTART+1)*sizeof(real), TRUE, "z" );
+    cuda_malloc( (void **) &workspace->g, (RESTART+1)*sizeof(real), TRUE, "g" );
+    cuda_malloc( (void **) &workspace->h, (RESTART+1)*(RESTART+1)*sizeof(real), TRUE, "h" );
+    cuda_malloc( (void **) &workspace->hs, (RESTART+1)*sizeof(real), TRUE, "hs" );
+    cuda_malloc( (void **) &workspace->hc, (RESTART+1)*sizeof(real), TRUE, "hc" );
+    cuda_malloc( (void **) &workspace->v, (RESTART+1)*(RESTART+1)*sizeof(real), TRUE, "v" );
 
     /* CG storage */
-    cuda_malloc( (void **) &workspace->r, total_cap * sizeof(real), 1, "r" );
-    cuda_malloc( (void **) &workspace->d, total_cap * sizeof(real), 1, "d" );
-    cuda_malloc( (void **) &workspace->q, total_cap * sizeof(real), 1, "q" );
-    cuda_malloc( (void **) &workspace->p, total_cap * sizeof(real), 1, "p" );
-    cuda_malloc( (void **) &workspace->r2, total_cap * sizeof(rvec2), 1, "r2" );
-    cuda_malloc( (void **) &workspace->d2, total_cap * sizeof(rvec2), 1, "d2" );
-    cuda_malloc( (void **) &workspace->q2, total_cap * sizeof(rvec2), 1, "q2" );
-    cuda_malloc( (void **) &workspace->p2, total_cap * sizeof(rvec2), 1, "p2" );
+    cuda_malloc( (void **) &workspace->r, total_cap * sizeof(real), TRUE, "r" );
+    cuda_malloc( (void **) &workspace->d, total_cap * sizeof(real), TRUE, "d" );
+    cuda_malloc( (void **) &workspace->q, total_cap * sizeof(real), TRUE, "q" );
+    cuda_malloc( (void **) &workspace->p, total_cap * sizeof(real), TRUE, "p" );
+    cuda_malloc( (void **) &workspace->r2, total_cap * sizeof(rvec2), TRUE, "r2" );
+    cuda_malloc( (void **) &workspace->d2, total_cap * sizeof(rvec2), TRUE, "d2" );
+    cuda_malloc( (void **) &workspace->q2, total_cap * sizeof(rvec2), TRUE, "q2" );
+    cuda_malloc( (void **) &workspace->p2, total_cap * sizeof(rvec2), TRUE, "p2" );
 
     /* integrator storage */
-    cuda_malloc( (void **) &workspace->v_const, local_rvec, 1, "v_const" );
+    cuda_malloc( (void **) &workspace->v_const, local_rvec, TRUE, "v_const" );
 
     /* storage for analysis */
     if( control->molecular_analysis || control->diffusion_coef )
     {
-        cuda_malloc( (void **) &workspace->mark, local_cap * sizeof(int), 1, "mark" );
-        cuda_malloc( (void **) &workspace->old_mark, local_cap * sizeof(int), 1, "old_mark" );
+        cuda_malloc( (void **) &workspace->mark, local_cap * sizeof(int), TRUE, "mark" );
+        cuda_malloc( (void **) &workspace->old_mark, local_cap * sizeof(int), TRUE, "old_mark" );
     }
     else
     {
@@ -293,7 +293,7 @@ void dev_alloc_workspace( reax_system *system, control_params *control,
 
     if( control->diffusion_coef )
     {
-        cuda_malloc( (void **) &workspace->x_old, local_cap * sizeof(rvec), 1, "x_old" );
+        cuda_malloc( (void **) &workspace->x_old, local_cap * sizeof(rvec), TRUE, "x_old" );
     }
     else
     {
@@ -301,22 +301,22 @@ void dev_alloc_workspace( reax_system *system, control_params *control,
     }
 
     /* force related storage */
-    cuda_malloc( (void **) &workspace->f, total_cap * sizeof(rvec), 1, "f" );
-    cuda_malloc( (void **) &workspace->CdDelta, total_cap * sizeof(rvec), 1, "CdDelta" );
+    cuda_malloc( (void **) &workspace->f, total_cap * sizeof(rvec), TRUE, "f" );
+    cuda_malloc( (void **) &workspace->CdDelta, total_cap * sizeof(rvec), TRUE, "CdDelta" );
 
     /* Taper params */
-    cuda_malloc( (void **) &workspace->Tap, 8 * sizeof(real), 1, "Tap" );
+    cuda_malloc( (void **) &workspace->Tap, 8 * sizeof(real), TRUE, "Tap" );
 }
 
 
 void dev_dealloc_workspace( control_params *control, storage *workspace )
 {
-    if ( !workspace->allocated )
+    if ( workspace->allocated == FALSE )
     {
         return;
     }
 
-    workspace->allocated = 0;
+    workspace->allocated = FALSE;
 
     /* communication storage */  
     /*
@@ -415,9 +415,9 @@ void dev_alloc_matrix( sparse_matrix *H, int cap, int m )
 
     H->cap = cap;
     H->m = m;
-    cuda_malloc( (void **) &H->start, sizeof(int) * cap, 1, "matrix_start" );
-    cuda_malloc( (void **) &H->end, sizeof(int) * cap, 1, "matrix_end" );
-    cuda_malloc( (void **) &H->entries, sizeof(sparse_matrix_entry) * m, 1, "matrix_entries" );
+    cuda_malloc( (void **) &H->start, sizeof(int) * cap, TRUE, "matrix_start" );
+    cuda_malloc( (void **) &H->end, sizeof(int) * cap, TRUE, "matrix_end" );
+    cuda_malloc( (void **) &H->entries, sizeof(sparse_matrix_entry) * m, TRUE, "matrix_entries" );
 }
 
 

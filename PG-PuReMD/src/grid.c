@@ -45,9 +45,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
         {
             for ( z = 0; z < g->ncells[2]; z++ )
             {
-                //SUDHIR
-                //g->cells[x][y][z].type = 0;
-                g->cells[ index_grid_3d (x, y, z, g) ].type = 0;
+                g->cells[ index_grid_3d(x, y, z, g) ].type = 0;
             }
         }
     }
@@ -59,11 +57,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
         {
             for ( z = g->native_str[2]; z < g->native_end[2]; z++ )
             {
-                //SUDHIR
-                //g->cells[x][y][z].type = NATIVE;
-                //ivec_MakeZero( g->cells[x][y][z].rel_box );
-                g->cells[ index_grid_3d (x, y, z, g) ].type = NATIVE;
-                //ivec_MakeZero( g->cells[ index_grid_3d(x, y, z, g) ].rel_box );
+                g->cells[ index_grid_3d(x, y, z, g) ].type = NATIVE;
                 ivec_MakeZero( g->rel_box[ index_grid_3d(x, y, z, g) ]);
             }
         }
@@ -113,7 +107,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
                         str_recv[d] = g->native_str[d];
                         end_recv[d] = g->native_end[d];
                     }
-                    else   // r[d] == +1
+                    else
                     {
                         str_send[d] = g->native_end[d] - send_span[d];
                         end_send[d] = g->native_end[d];
@@ -128,9 +122,6 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
                     {
                         for ( z = str_recv[2]; z < end_recv[2]; ++z )
                         {
-                            //SUDHIR
-                            //ivec_Copy( g->cells[x][y][z].rel_box, prdc );
-                            //ivec_Copy( g->cells[ index_grid_3d(x, y, z, g) ].rel_box, prdc );
                             ivec_Copy( g->rel_box[ index_grid_3d(x, y, z, g) ], prdc );
                         }
                     }
@@ -145,7 +136,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
    periodic boundary conditions are taken into consideration as well. */
 void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
 {
-    int  i, d;
+    int i, d;
 
     for ( i = 0; i < 3; i++ )
     {
@@ -153,8 +144,6 @@ void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
 
         if ( d > 0 )
         {
-            //SUDHIR
-            //closest_point[i] = g->cells[c2[0]][c2[1]][c2[2]].min[i];
             closest_point[i] = g->cells[ index_grid_3d(c2[0], c2[1], c2[2], g) ].min[i];
         }
         else if ( d == 0 )
@@ -163,8 +152,6 @@ void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
         }
         else
         {
-            //SUDHIR
-            //closest_point[i] = g->cells[c2[0]][c2[1]][c2[2]].max[i];
             closest_point[i] = g->cells[ index_grid_3d(c2[0], c2[1], c2[2], g) ].max[i];
         }
     }
@@ -197,7 +184,7 @@ void Find_Neighbor_GridCells( grid *g, control_params *control )
                 top = 0;
                 //fprintf( stderr, "grid1: %d %d %d:\n", ci[0], ci[1], ci[2] );
 
-                if (gc->type == NATIVE)
+                if ( gc->type == NATIVE )
                 {
                     g->cutoff[index_grid_3d(ci[0], ci[1], ci[2], g)] = control->vlist_cut;
                 }
@@ -205,7 +192,6 @@ void Find_Neighbor_GridCells( grid *g, control_params *control )
                 {
                     g->cutoff[index_grid_3d(ci[0], ci[1], ci[2], g)] = control->bond_cut;
                 }
-
 
                 for ( d = 0; d < 3; ++d )
                 {
@@ -252,9 +238,9 @@ void Reorder_GridCells( grid *g )
     dblock[0] = 1; //3; //4; //(int)(ceil( sqrt(g->ncells[0]) ));
     dblock[1] = 1; //3; //4; //(int)(ceil( sqrt(g->ncells[1]) ));
     dblock[2] = 1; //3; //4; //(int)(ceil( sqrt(g->ncells[2]) ));
-    nblocks[0] = (int)(ceil( (real)g->ncells[0] / dblock[0] ));
-    nblocks[1] = (int)(ceil( (real)g->ncells[1] / dblock[1] ));
-    nblocks[2] = (int)(ceil( (real)g->ncells[2] / dblock[2] ));
+    nblocks[0] = (int)(CEIL( (real)g->ncells[0] / dblock[0] ));
+    nblocks[1] = (int)(CEIL( (real)g->ncells[1] / dblock[1] ));
+    nblocks[2] = (int)(CEIL( (real)g->ncells[2] / dblock[2] ));
 
     top = 0;
     for ( i = 0; i < nblocks[0]; ++i )
@@ -263,11 +249,11 @@ void Reorder_GridCells( grid *g )
         {
             for ( k = 0; k < nblocks[2]; ++k )
             {
-                for ( x = i * dblock[0]; x < MIN((i + 1)*dblock[0], g->ncells[0]); ++x )
+                for ( x = i * dblock[0]; x < MIN((i + 1) * dblock[0], g->ncells[0]); ++x )
                 {
-                    for ( y = j * dblock[1]; y < MIN((j + 1)*dblock[1], g->ncells[1]); ++y )
+                    for ( y = j * dblock[1]; y < MIN((j + 1) * dblock[1], g->ncells[1]); ++y )
                     {
-                        for ( z = k * dblock[2]; z < MIN((k + 1)*dblock[2], g->ncells[2]); ++z )
+                        for ( z = k * dblock[2]; z < MIN((k + 1) * dblock[2], g->ncells[2]); ++z )
                         {
                             g->order[top][0] = x;
                             g->order[top][1] = y;
@@ -315,7 +301,7 @@ void Setup_New_Grid( reax_system* system, control_params* control,
     for ( d = 0; d < 3; ++d )
     {
         /* estimate the number of native cells */
-        g->native_cells[d] = (int)(my_box->box_norms[d] / (control->vlist_cut / 2));
+        g->native_cells[d] = (int)(my_box->box_norms[d] / (control->vlist_cut / 2.0));
         if ( g->native_cells[d] == 0 )
         {
             g->native_cells[d] = 1;
@@ -329,24 +315,28 @@ void Setup_New_Grid( reax_system* system, control_params* control,
     for ( d = 0; d < 3; ++d )
     {
         /* # of surrounding grid cells to look into for nonbonded & bonded nbrs */
-        g->vlist_span[d] = (int)ceil( control->vlist_cut / g->cell_len[d] );
-        g->nonb_span[d] = (int)ceil( control->nonb_cut / g->cell_len[d] );
-        g->bond_span[d] = (int)ceil( control->bond_cut / g->cell_len[d] );
+        g->vlist_span[d] = (int)CEIL( control->vlist_cut / g->cell_len[d] );
+        g->nonb_span[d] = (int)CEIL( control->nonb_cut / g->cell_len[d] );
+        g->bond_span[d] = (int)CEIL( control->bond_cut / g->cell_len[d] );
         /* span of the ghost region in terms of gcells */
-        g->ghost_span[d] = (int)ceil(system->bndry_cuts.ghost_cutoff /
-                                     g->cell_len[d]);
-        g->ghost_nonb_span[d] = (int)ceil(system->bndry_cuts.ghost_nonb /
-                                          g->cell_len[d]);
-        g->ghost_hbond_span[d] = (int)ceil( system->bndry_cuts.ghost_hbond /
-                                            g->cell_len[d] );
-        g->ghost_bond_span[d] = (int)ceil( system->bndry_cuts.ghost_bond /
-                                           g->cell_len[d] );
+        g->ghost_span[d] = (int)CEIL(
+                system->bndry_cuts.ghost_cutoff / g->cell_len[d] );
+        g->ghost_nonb_span[d] = (int)CEIL(
+                system->bndry_cuts.ghost_nonb / g->cell_len[d] );
+        g->ghost_hbond_span[d] = (int)CEIL(
+                system->bndry_cuts.ghost_hbond / g->cell_len[d] );
+        g->ghost_bond_span[d] = (int)CEIL(
+                system->bndry_cuts.ghost_bond / g->cell_len[d] );
     }
 
     /* total number of grid cells */
     ivec_ScaledSum( g->ncells, 1, g->native_cells, 2, g->ghost_span );
     g->total = g->ncells[0] * g->ncells[1] * g->ncells[2];
-    //fprintf (stderr, " dimensions (%d, %d, %d) \n", g->ncells[0], g->ncells[1], g->ncells[2]);
+
+#if defined(DEBUG)
+    fprintf( stderr, " dimensions (%d, %d, %d) \n",
+            g->ncells[0], g->ncells[1], g->ncells[2] );
+#endif
 
     /* native cell start & ends */
     ivec_Copy( g->native_str, g->ghost_span );
@@ -355,22 +345,12 @@ void Setup_New_Grid( reax_system* system, control_params* control,
     /* upper bound on the number of gcells to be exchanged with a single nbr */
     system->gcell_cap =
         MAX3( g->native_cells[0] * g->native_cells[1] * g->ghost_span[2],
-              g->native_cells[0] * g->native_cells[2] * g->ghost_span[1],
-              g->native_cells[1] * g->native_cells[2] * g->ghost_span[0] ) + 1;
+                g->native_cells[0] * g->native_cells[2] * g->ghost_span[1],
+                g->native_cells[1] * g->native_cells[2] * g->ghost_span[0] ) + 1;
 
     /* allocate grid space */
     Allocate_Grid( system, comm );
 
-    //TODO: remove
-//    fprintf( stderr, "g->native_cells[0] = %d\n", g->native_cells[0] );
-//    fprintf( stderr, "g->native_cells[1] = %d\n", g->native_cells[1] );
-//    fprintf( stderr, "g->native_cells[2] = %d\n", g->native_cells[2] );
-//    fprintf( stderr, "g->ghost_span[0] = %d\n", g->ghost_span[0] );
-//    fprintf( stderr, "g->ghost_span[1] = %d\n", g->ghost_span[1] );
-//    fprintf( stderr, "g->ghost_span[2] = %d\n", g->ghost_span[2] );
-//    fprintf( stderr, "g->ncells[0] = %d\n", g->ncells[0] );
-//    fprintf( stderr, "g->ncells[1] = %d\n", g->ncells[1] );
-//    fprintf( stderr, "g->ncells[2] = %d\n", g->ncells[2] );
     /* compute min and max coords for each grid cell */
     for ( i = 0; i < g->ncells[0]; i++ )
     {
@@ -378,15 +358,6 @@ void Setup_New_Grid( reax_system* system, control_params* control,
         {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
-                /*
-                g->cells[i][j][k].min[0] = my_ext_box->min[0] + i * g->cell_len[0];
-                g->cells[i][j][k].min[1] = my_ext_box->min[1] + j * g->cell_len[1];
-                g->cells[i][j][k].min[2] = my_ext_box->min[2] + k * g->cell_len[2];
-
-                g->cells[i][j][k].max[0] = my_ext_box->min[0] + (i+1)*g->cell_len[0];
-                g->cells[i][j][k].max[1] = my_ext_box->min[1] + (j+1)*g->cell_len[1];
-                g->cells[i][j][k].max[2] = my_ext_box->min[2] + (k+1)*g->cell_len[2];
-                */
                 g->cells[ index_grid_3d(i, j, k, g) ].min[0] = my_ext_box->min[0] + i * g->cell_len[0];
                 g->cells[ index_grid_3d(i, j, k, g) ].min[1] = my_ext_box->min[1] + j * g->cell_len[1];
                 g->cells[ index_grid_3d(i, j, k, g) ].min[2] = my_ext_box->min[2] + k * g->cell_len[2];
@@ -523,21 +494,21 @@ void Update_Grid( reax_system* system, control_params* control, MPI_Comm comm )
 }
 
 
-/* bin my atoms into grid cells */
+/* Bin my (native) atoms into grid cells */
 void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
 {
-    int  i, j, k, l, d, max_atoms;
+    int i, j, k, l, d, max_atoms;
     ivec c;
     simulation_box *big_box, *my_box, *my_ext_box;
-    grid  *g;
+    grid *g;
     grid_cell *gc;
     reax_atom *atoms;
 
-    big_box    = &(system->big_box);
+    big_box = &(system->big_box);
     my_ext_box = &(system->my_ext_box);
-    my_box     = &(system->my_box);
-    g          = &(system->my_grid);
-    atoms      = system->my_atoms;
+    my_box = &(system->my_box);
+    g = &(system->my_grid);
+    atoms = system->my_atoms;
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d bin_my_atoms: entered\n", system->my_rank );
@@ -559,13 +530,13 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
                 if ( atoms[l].x[d] < my_box->min[d] || atoms[l].x[d] > my_box->max[d] )
                 {
                     fprintf( stderr, "p%d: local atom%d [%f %f %f] is out of my box!\n",
-                             system->my_rank, l,
-                             atoms[l].x[0], atoms[l].x[1], atoms[l].x[2] );
+                            system->my_rank, l,
+                            atoms[l].x[0], atoms[l].x[1], atoms[l].x[2] );
                     fprintf( stderr, "p%d: my_box=[%f-%f, %f-%f, %f-%f]\n",
-                             system->my_rank, my_box->min[0], my_box->max[0],
-                             my_box->min[1], my_box->max[1],
-                             my_box->min[2], my_box->max[2] );
-                    MPI_Abort( MPI_COMM_WORLD, -1 );
+                            system->my_rank, my_box->min[0], my_box->max[0],
+                            my_box->min[1], my_box->max[1],
+                            my_box->min[2], my_box->max[2] );
+                    MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
                 }
 
                 c[d] = (int)((atoms[l].x[d] - my_ext_box->min[d]) * g->inv_len[d]);
@@ -581,10 +552,10 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
 
 #if defined(DEBUG)
             fprintf( stderr, "p%d bin_my_atoms: l:%d - atom%d @ %.5f %.5f %.5f"\
-                     "--> cell: %d %d %d\n",
-                     system->my_rank, l, atoms[l].orig_id,
-                     atoms[l].x[0], atoms[l].x[1], atoms[l].x[2],
-                     c[0], c[1], c[2] );
+                    "--> cell: %d %d %d\n",
+                    system->my_rank, l, atoms[l].orig_id,
+                    atoms[l].x[0], atoms[l].x[1], atoms[l].x[2],
+                    c[0], c[1], c[2] );
 #endif
 
             gc = &( g->cells[ index_grid_3d(c[0], c[1], c[2], g) ] );
@@ -640,7 +611,7 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
 }
 
 
-/* reorder atoms falling into the same gcell together in the atom list */
+/* Reorder atoms falling into the same gcell together in the atom list */
 void Reorder_My_Atoms( reax_system *system, storage *workspace )
 {
     int i, l, x, y, z;
@@ -650,13 +621,10 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
     reax_atom *old_atom, *new_atoms;
 
     /* allocate storage space for est_N */
-    new_atoms = (reax_atom*) malloc( system->total_cap * sizeof(reax_atom) );
+    new_atoms = (reax_atom*) smalloc( system->total_cap * sizeof(reax_atom), "new_atoms" );
     top = 0;
     g = &( system->my_grid );
 
-    //for( i = 0; i < g->ncells[0]; i++ )
-    //for( j = 0; j < g->ncells[1]; j++ )
-    //  for( k = 0; k < g->ncells[2]; k++ ) {
     for ( i = 0; i < g->total; ++i )
     {
         x = g->order[i][0];
@@ -667,10 +635,8 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
 
         for ( l = 0; l < gc->top; ++l )
         {
-            old_id   = gc->atoms[l];
+            old_id = gc->atoms[l];
             old_atom = &( system->my_atoms[old_id] );
-            //fprintf( stderr, "%d <-- %d\n", top, old_id );
-            //reax_atom_Copy( &(new_atoms[top]), old_atom );
             memcpy( new_atoms + top, old_atom, sizeof(reax_atom) );
             new_atoms[top].imprt_id = -1;
             ++top;
@@ -679,7 +645,8 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
     }
 
     /* deallocate old storage */
-    free( system->my_atoms );
+    sfree( system->my_atoms, "system->my_atoms" );
+
     /* start using clustered storages */
     system->my_atoms = new_atoms;
     system->n = top;
@@ -687,6 +654,7 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
 }
 
 
+/* Determine the grid cell which a boundary atom falls within */
 void Get_Boundary_GCell( grid *g, rvec base, rvec x, grid_cell **gc,
         rvec *cur_min, rvec *cur_max, ivec gcell_cood )
 {
@@ -711,26 +679,28 @@ void Get_Boundary_GCell( grid *g, rvec base, rvec x, grid_cell **gc,
 
 #if defined(DEBUG)
     fprintf( stderr, "get_bndry_gc: base=[%f %f %f] x=[%f %f %f] c=[%d %d %d]\n",
-             base[0], base[1], base[2], x[0], x[1], x[2], c[0], c[1], c[2] );
+            base[0], base[1], base[2], x[0], x[1], x[2], c[0], c[1], c[2] );
 #endif
 
     ivec_Copy( gcell_cood, c );
 
     *gc = &( g->cells[ index_grid_3d(c[0], c[1], c[2], g) ] );
-    rvec_ScaledSum( *cur_min, 1, (*gc)->min, -1, loosen );
+    rvec_ScaledSum( *cur_min, 1.0, (*gc)->min, -1.0, loosen );
     rvec_Sum( *cur_max, (*gc)->max, loosen );
 
 #if defined(DEBUG)
     fprintf( stderr, "get_bndry_gc: gcmin=[%f %f %f] gcmax=[%f %f %f]\n",
-             (*gc)->min[0], (*gc)->min[1], (*gc)->min[2],
-             (*gc)->max[0], (*gc)->max[1], (*gc)->max[2] );
+            (*gc)->min[0], (*gc)->min[1], (*gc)->min[2],
+            (*gc)->max[0], (*gc)->max[1], (*gc)->max[2] );
     fprintf( stderr, "get_bndry_gc: curmin=[%f %f %f] curmax=[%f %f %f]\n",
-             (*cur_min)[0], (*cur_min)[1], (*cur_min)[2],
-             (*cur_max)[0], (*cur_max)[1], (*cur_max)[2] );
+            (*cur_min)[0], (*cur_min)[1], (*cur_min)[2],
+            (*cur_max)[0], (*cur_max)[1], (*cur_max)[2] );
 #endif
 }
 
 
+/* Check if the current atom position falls within the
+ * boundaries of a grid cell */
 int is_Within_GCell( rvec x, rvec cur_min, rvec cur_max )
 {
     int d;
@@ -747,10 +717,10 @@ int is_Within_GCell( rvec x, rvec cur_min, rvec cur_max )
 }
 
 
-/* bin my atoms into grid cells */
+/* bin my boundary atoms into grid cells */
 void Bin_Boundary_Atoms( reax_system *system )
 {
-    int  i, start, end;
+    int i, start, end;
     rvec base, cur_min, cur_max;
     grid *g;
     grid_cell *gc;
@@ -776,29 +746,26 @@ void Bin_Boundary_Atoms( reax_system *system )
     memcpy( base, ext_box->min, sizeof(rvec) );
 
     Get_Boundary_GCell( g, base, atoms[start].x, &gc, &cur_min, &cur_max, gcell_cood );
-    g->str[index_grid_3d (gcell_cood[0], gcell_cood[1], gcell_cood[2], g)] = start;
+    g->str[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = start;
     gc->top = 1;
     /* error check */
     if ( is_Within_GCell( atoms[start].x, ext_box->min, ext_box->max ) == FALSE )
     {
-        fprintf( stderr, "p%d: (start):ghost atom%d [%f %f %f] is out of my box!\n",
+        fprintf( stderr, "p%d: (start):ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
                  system->my_rank, start,
                  atoms[start].x[0], atoms[start].x[1], atoms[start].x[2] );
-        //MPI_Abort( MPI_COMM_WORLD, -1 );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
     for ( i = start + 1; i < end; i++ )
     {
         /* error check */
-        //if(atoms[i].x[0]<ext_box->min[0] || atoms[i].x[0]>ext_box->max[0] ||
-        // atoms[i].x[1]<ext_box->min[1] || atoms[i].x[1]>ext_box->max[1] ||
-        // atoms[i].x[2]<ext_box->min[2] || atoms[i].x[2]>ext_box->max[2] ){
         if ( is_Within_GCell( atoms[i].x, ext_box->min, ext_box->max ) == FALSE )
         {
-            fprintf( stderr, "p%d: (middle )ghost atom%d [%f %f %f] is out of my box!\n",
-                     system->my_rank, i,
-                     atoms[i].x[0], atoms[i].x[1], atoms[i].x[2] );
-            //MPI_Abort( MPI_COMM_WORLD, -1 );
+            fprintf( stderr, "p%d: (middle) ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
+                    system->my_rank, i,
+                    atoms[i].x[0], atoms[i].x[1], atoms[i].x[2] );
+            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
 
         if ( is_Within_GCell( atoms[i].x, cur_min, cur_max ) == TRUE )
@@ -807,7 +774,7 @@ void Bin_Boundary_Atoms( reax_system *system )
         }
         else
         {
-            g->end[index_grid_3d (gcell_cood[0], gcell_cood[1], gcell_cood[2], g)] = i;
+            g->end[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = i;
             Get_Boundary_GCell( g, base, atoms[i].x, &gc, &cur_min, &cur_max, gcell_cood );
             /* sanity check! */
             if ( gc->top != 0 )
@@ -818,15 +785,15 @@ void Bin_Boundary_Atoms( reax_system *system )
                          atoms[i].x[0], atoms[i].x[1], atoms[i].x[2],
                          gc->min[0], gc->min[1], gc->min[2],
                          gc->max[0], gc->max[1], gc->max[2] );
-                //MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+                MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             }
-            g->str[index_grid_3d (gcell_cood[0], gcell_cood[1], gcell_cood[2], g)] = i;
+            g->str[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = i;
             gc->top = 1;
         }
     }
 
     /* mark last gcell's end position */
-    g->end[index_grid_3d (gcell_cood[0], gcell_cood[1], gcell_cood[2], g)] = i;
+    g->end[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = i;
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d bin_boundary_atoms: done\n", system->my_rank );

@@ -4,7 +4,7 @@
 #include "dev_list.h"
 
 
-CUDA_GLOBAL void ker_reset_hbond_list( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_reset_hbond_list( reax_atom *my_atoms, 
         reax_list hbonds, int N )
 {
     int Hindex = 0;
@@ -20,21 +20,6 @@ CUDA_GLOBAL void ker_reset_hbond_list( reax_atom *my_atoms,
     {
         Dev_Set_End_Index( Hindex, Dev_Start_Index (Hindex, &hbonds), &hbonds );
     }
-}
-
-
-CUDA_GLOBAL void ker_reset_bond_list( reax_atom *my_atoms, 
-        reax_list bonds, int N )
-{
-    int Hindex = 0;
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (i >= N)
-    {
-        return;
-    }
-
-    Dev_Set_End_Index( i, Dev_Start_Index (i, &bonds), &bonds );
 }
 
 
@@ -54,7 +39,7 @@ void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 }
 
 
-CUDA_GLOBAL void ker_reset_hindex( reax_atom *my_atoms, int N )
+CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, int N )
 {
     int Hindex = 0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -106,7 +91,7 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control )
 
     blocks = system->N / DEF_BLOCK_SIZE + 
         ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
-    ker_reset_hindex <<<blocks, DEF_BLOCK_SIZE>>>
+    k_reset_hindex <<<blocks, DEF_BLOCK_SIZE>>>
         (system->d_my_atoms, system->N);
     cudaThreadSynchronize( );
     cudaCheckError( );
@@ -116,39 +101,9 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control )
 int Cuda_Reset_Neighbor_Lists( reax_system *system, control_params *control,
         storage *workspace, reax_list **lists )
 {
-    int i, total_bonds, Hindex, total_hbonds;
-    reax_list *bonds, *hbonds;
+    int i, Hindex, total_hbonds;
+    reax_list *hbonds;
     int blocks;
-
-    if ( system->N > 0 )
-    {
-        bonds = *dev_lists + BONDS;
-        total_bonds = 0;
-
-        //cuda_memset( bonds->index, 0, sizeof(int) * system->total_cap, "bonds:index" );
-        //cuda_memset( bonds->end_index, 0, sizeof(int) * system->total_cap, "bonds:end_index" );
-        blocks = system->N / DEF_BLOCK_SIZE + 
-            ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
-        ker_reset_bond_list <<<blocks, DEF_BLOCK_SIZE>>>
-            (system->d_my_atoms, *(*dev_lists + BONDS), system->N);
-        cudaThreadSynchronize( );
-        cudaCheckError( );
-
-        // TODO compute the total bonds here.
-        total_bonds = 0;
-
-        /* is reallocation needed? */
-        if( total_bonds >= bonds->num_intrs * DANGER_ZONE )
-        {
-            workspace->realloc.bonds = 1;
-            if( total_bonds >= bonds->num_intrs )
-            {
-                fprintf( stderr, "p%d: not enough space for bonds! total=%d allocated=%d\n", 
-                        system->my_rank, total_bonds, bonds->num_intrs );
-                return FAILURE;
-            }   
-        }   
-    }
 
     //HBonds processing
     //FIX - 4 - Added additional check
@@ -161,7 +116,7 @@ int Cuda_Reset_Neighbor_Lists( reax_system *system, control_params *control,
         //TODO
         blocks = system->N / DEF_BLOCK_SIZE + 
             ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
-        ker_reset_hbond_list <<<blocks, DEF_BLOCK_SIZE>>>
+        k_reset_hbond_list <<<blocks, DEF_BLOCK_SIZE>>>
             (system->d_my_atoms, *(*dev_lists + HBONDS), system->N);
         cudaThreadSynchronize( );
         cudaCheckError( );

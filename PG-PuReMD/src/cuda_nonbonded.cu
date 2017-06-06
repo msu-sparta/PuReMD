@@ -201,7 +201,7 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
 
                 /*Coulomb Calculations*/
                 dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
-                dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 tmp = Tap / dr3gamij_3;
                 //data_e_ele [i] += e_ele = C_ele * my_atoms[i].q * my_atoms[j].q * tmp;

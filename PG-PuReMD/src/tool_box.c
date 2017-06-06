@@ -31,13 +31,13 @@
 /************** taken from comm_tools.c **************/
 int SumScan( int n, int me, int root, MPI_Comm comm )
 {
-    int  i, my_order, wsize;;
+    int i, my_order, wsize;
     int *nbuf = NULL;
 
     if ( me == root )
     {
         MPI_Comm_size( comm, &wsize );
-        nbuf = (int *) calloc( wsize, sizeof(int) );
+        nbuf = (int *) scalloc( wsize, sizeof(int), "SumScan:nbuf" );
 
         MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
 
@@ -48,7 +48,7 @@ int SumScan( int n, int me, int root, MPI_Comm comm )
 
         MPI_Scatter( nbuf, 1, MPI_INT, &my_order, 1, MPI_INT, root, comm );
 
-        free( nbuf );
+        sfree( nbuf, "SumScan:nbuf" );
     }
     else
     {
@@ -62,7 +62,7 @@ int SumScan( int n, int me, int root, MPI_Comm comm )
 
 void SumScanB( int n, int me, int wsize, int root, MPI_Comm comm, int *nbuf )
 {
-    int  i;
+    int i;
 
     MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
 
@@ -88,7 +88,7 @@ void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
     fprintf( stderr, ">x1: (%lf, %lf, %lf)\n",x1[0],x1[1],x1[2] );
 #endif
 
-    if (flag > 0)
+    if ( flag > 0 )
     {
         for (i = 0; i < 3; i++)
         {
@@ -196,11 +196,16 @@ void Trim_Spaces( char *element )
 {
     int i, j;
 
-    for ( i = 0; element[i] == ' '; ++i ); // skip initial space chars
+    // skip initial space chars
+    for ( i = 0; element[i] == ' '; ++i );
 
     for ( j = i; j < (int)(strlen(element)) && element[j] != ' '; ++j )
-        element[j - i] = toupper( element[j] ); // make uppercase, offset to 0
-    element[j - i] = 0; // finalize the string
+    {
+        // make uppercase, offset to 0
+        element[j - i] = toupper( element[j] );
+    }
+    // finalize the string
+    element[j - i] = 0;
 }
 
 
@@ -209,7 +214,7 @@ real Get_Time( )
 {
     struct timeval tim;
 
-    gettimeofday(&tim, NULL );
+    gettimeofday( &tim, NULL );
 
     return ( tim.tv_sec + (tim.tv_usec / 1000000.0) );
 }
@@ -246,8 +251,12 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
     int i;
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
+    {
         if ( !strcmp( reax_param->sbp[i].name, s ) )
+        {
             return i;
+        }
+    }
 
     fprintf( stderr, "Unknown atom type %s. Terminating...\n", s );
     MPI_Abort( MPI_COMM_WORLD, UNKNOWN_ATOM_TYPE );
@@ -268,24 +277,20 @@ char *Get_Atom_Name( reax_system *system, int i )
 }
 
 
-int Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 {
     int i;
 
-    if ( (*line = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-        return FAILURE;
+    *line = (char*) smalloc( sizeof(char) * MAX_LINE, "Tokenizer:line" );
 
-    if ( (*backup = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-        return FAILURE;
+    *backup = (char*) smalloc( sizeof(char) * MAX_LINE, "Tokenizer:backup" );
 
-    if ( (*tokens = (char**) malloc( sizeof(char*) * MAX_TOKENS )) == NULL )
-        return FAILURE;
+    *tokens = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Tokenizer:tokens" );
 
     for ( i = 0; i < MAX_TOKENS; i++ )
-        if ( ((*tokens)[i] = (char*) malloc(sizeof(char) * MAX_TOKEN_LEN)) == NULL )
-            return FAILURE;
-
-    return SUCCESS;
+    {
+        (*tokens)[i] = (char*) smalloc(sizeof(char) * MAX_TOKEN_LEN, "Tokenizer:tokens[i]" );
+    }
 }
 
 

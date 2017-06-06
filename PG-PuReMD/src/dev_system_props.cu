@@ -20,13 +20,13 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
 
     if (i < n)
     {
-        sdata = sbp [ my_atoms [i].type ].mass;
+        sdata = sbp[ my_atoms[i].type ].mass;
     }
     __syncthreads( );
 
     for(int z = 16; z >=1; z/=2)
     {
-        sdata += shfl ( sdata, z);
+        sdata += shfl( sdata, z);
     }
 
     if (threadIdx.x % 32 == 0)
@@ -114,7 +114,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
     if (i < n)
     {
-        sdata = sbp [ my_atoms [i].type ].mass;
+        sdata = sbp[ my_atoms[i].type ].mass;
         rvec_Scale( p, sdata, my_atoms[ i ].v );
         sdata = 0.5 * rvec_Dot( p, my_atoms[ i ].v );
     }
@@ -123,7 +123,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
     for(int z = 16; z >=1; z/=2)
     {
-        sdata += shfl ( sdata, z);
+        sdata += shfl( sdata, z);
     }
 
     if (threadIdx.x % 32 == 0)
@@ -156,7 +156,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
     if (i < n)
     {
-        m = sbp [ my_atoms[i].type ].mass;
+        m = sbp[ my_atoms[i].type ].mass;
         rvec_Scale( p, m, my_atoms[ i ].v );
         m = 0.5 * rvec_Dot( p, my_atoms[ i ].v );
     }

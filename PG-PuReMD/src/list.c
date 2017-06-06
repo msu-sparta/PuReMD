@@ -59,10 +59,11 @@ void Print_List( reax_list* list )
  * */
 void Make_List( int n, int num_intrs, int type, reax_list *l )
 {
-    l->allocated = 1;
+    l->allocated = TRUE;
     l->n = n;
     l->num_intrs = num_intrs;
     l->index = (int*) smalloc( n * sizeof(int), "list:index" );
+    l->end_index = (int*) smalloc( n * sizeof(int), "list:index" );
     l->type = type;
 
 #if defined(DEBUG_FOCUS)
@@ -115,11 +116,11 @@ void Make_List( int n, int num_intrs, int type, reax_list *l )
 
 void Delete_List( reax_list *l )
 {
-    if ( l->allocated == 0 )
+    if ( l->allocated == FALSE )
     {
         return;
     }
-    l->allocated = 0;
+    l->allocated = FALSE;
 
     sfree( l->index, "list:index" );
     sfree( l->end_index, "list:end_index" );
