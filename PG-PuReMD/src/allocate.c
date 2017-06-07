@@ -37,8 +37,8 @@
 #endif
 
 #ifdef HAVE_CUDA
-  #include "dev_alloc.h"
-  #include "dev_list.h"
+  #include "cuda_allocate.h"
+  #include "cuda_list.h"
   #include "cuda_neighbors.h"
 #endif
 

@@ -1,8 +1,9 @@
 
-#include "reduction.h"
-#include "vector.h"
+#include "cuda_reduction.h"
 
 #include "cuda_shuffle.h"
+
+#include "vector.h"
 
 
 CUDA_GLOBAL void k_reduction( const real *input, real *per_block_results,

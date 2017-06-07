@@ -20,18 +20,19 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #ifdef HAVE_CUDA
-#include "dev_system_props.h"
+  #include "cuda_system_props.h"
 #endif
 
 #if defined(PURE_REAX)
-#include "system_props.h"
-#include "tool_box.h"
-#include "vector.h"
+  #include "system_props.h"
+  #include "tool_box.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_system_props.h"
-#include "reax_tool_box.h"
-#include "reax_vector.h"
+  #include "reax_system_props.h"
+  #include "reax_tool_box.h"
+  #include "reax_vector.h"
 #endif
 
 
@@ -125,7 +126,7 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
     real my_en[15], sys_en[15];
 
     //TODO remove this is an UGLY fix
-    my_en [13] = data->my_en.e_kin;
+    my_en[13] = data->my_en.e_kin;
 
 #ifdef HAVE_CUDA
     //Cuda Wrapper here
@@ -149,11 +150,11 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
     MPI_Reduce( my_en, sys_en, 14, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
 
     data->my_en.e_pot = data->my_en.e_bond +
-                        data->my_en.e_ov + data->my_en.e_un  + data->my_en.e_lp +
-                        data->my_en.e_ang + data->my_en.e_pen + data->my_en.e_coa +
-                        data->my_en.e_hb +
-                        data->my_en.e_tor + data->my_en.e_con +
-                        data->my_en.e_vdW + data->my_en.e_ele + data->my_en.e_pol;
+        data->my_en.e_ov + data->my_en.e_un  + data->my_en.e_lp +
+        data->my_en.e_ang + data->my_en.e_pen + data->my_en.e_coa +
+        data->my_en.e_hb +
+        data->my_en.e_tor + data->my_en.e_con +
+        data->my_en.e_vdW + data->my_en.e_ele + data->my_en.e_pol;
 
     data->my_en.e_tot = data->my_en.e_pot + E_CONV * data->my_en.e_kin;
 
@@ -175,11 +176,11 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
         data->sys_en.e_kin = sys_en[13];
 
         data->sys_en.e_pot = data->sys_en.e_bond +
-                             data->sys_en.e_ov + data->sys_en.e_un  + data->sys_en.e_lp +
-                             data->sys_en.e_ang + data->sys_en.e_pen + data->sys_en.e_coa +
-                             data->sys_en.e_hb +
-                             data->sys_en.e_tor + data->sys_en.e_con +
-                             data->sys_en.e_vdW + data->sys_en.e_ele + data->sys_en.e_pol;
+            data->sys_en.e_ov + data->sys_en.e_un  + data->sys_en.e_lp +
+            data->sys_en.e_ang + data->sys_en.e_pen + data->sys_en.e_coa +
+            data->sys_en.e_hb +
+            data->sys_en.e_tor + data->sys_en.e_con +
+            data->sys_en.e_vdW + data->sys_en.e_ele + data->sys_en.e_pol;
 
         data->sys_en.e_tot = data->sys_en.e_pot + E_CONV * data->sys_en.e_kin;
     }
@@ -194,7 +195,9 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data,
 
     tmp = 0;
     for ( i = 0; i < system->n; i++ )
+    {
         tmp += system->reax_param.sbp[ system->my_atoms[i].type ].mass;
+    }
 
     MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
 
@@ -210,7 +213,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
     real tmp;
 
     //compute local total mass of the system
-    dev_compute_total_mass (system, &tmp);
+    dev_compute_total_mass( system, &tmp );
 
     MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
 
@@ -258,7 +261,9 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
     /* Calculate and then invert the inertial tensor */
     for ( i = 0; i < 6; ++i )
+    {
         tmp_mat[i] = 0;
+    }
     //my_xx = my_xy = my_xz = my_yy = my_yz = my_zz = 0;
 
     for ( i = 0; i < system->n; ++i )
@@ -368,7 +373,9 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
     /* Calculate and then invert the inertial tensor */
     for ( i = 0; i < 6; ++i )
+    {
         tmp_mat[i] = 0;
+    }
 
     dev_compute_inertial_tensor( system, tmp_mat, my_xcm );
 
@@ -402,8 +409,13 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         inv[2][2] = mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
 
         if ( det > ALMOST_ZERO )
+        {
             rtensor_Scale( inv, 1. / det, inv );
-        else rtensor_MakeZero( inv );
+        }
+        else
+        {
+            rtensor_MakeZero( inv );
+        }
 
         /* Compute the angular velocity about the centre of mass */
         rtensor_MatVec( data->avcm, inv, data->amcm );
@@ -444,8 +456,8 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
  *  corrections to short-range interactions present.
  *  We may want to add that for more accuracy.
  */
-void Compute_Pressure(reax_system* system, control_params *control,
-        simulation_data* data, mpi_datatypes *mpi_data)
+void Compute_Pressure( reax_system* system, control_params *control,
+        simulation_data* data, mpi_datatypes *mpi_data )
 {
     int i;
     reax_atom *p_atom;

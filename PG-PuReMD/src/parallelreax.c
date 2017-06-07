@@ -45,7 +45,7 @@
   #include "cuda_neighbors.h"
   #include "cuda_post_evolve.h"
   #include "cuda_utils.h"
-  #include "validation.h"
+  #include "cuda_validation.h"
 #endif
 
 evolve_function Evolve;

@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __CUDA_LINEAR_SOLVERS_H_
-#define __CUDA_LINEAR_SOLVERS_H_
+#ifndef __CUDA_LIN_ALG_H_
+#define __CUDA_LIN_ALG_H_
 
 #include "reax_types.h"
 
@@ -41,6 +41,7 @@ void Cuda_RvecCopy_From(real *dst, rvec2 *src, int index, int n);
 void Cuda_RvecCopy_To(rvec2 *dst, real *src, int index, int n);
 void Cuda_Dual_Matvec(sparse_matrix *, rvec2 *, rvec2 *, int , int);
 void Cuda_Matvec(sparse_matrix *, real *, real *, int , int);
+
 
 #ifdef __cplusplus
 }

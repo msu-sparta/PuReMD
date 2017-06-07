@@ -1,7 +1,8 @@
 
 #include "cuda_reset_tools.h"
+
 #include "cuda_utils.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 
 
 CUDA_GLOBAL void k_reset_hbond_list( reax_atom *my_atoms, 

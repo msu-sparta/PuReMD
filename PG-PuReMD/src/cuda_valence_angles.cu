@@ -22,7 +22,7 @@
 #include "cuda_valence_angles.h"
 
 #include "index_utils.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 #include "vector.h"
 
 

@@ -23,7 +23,7 @@
 #include "cuda_multi_body.h"
 #include "index_utils.h"
 #include "cuda_helpers.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 
 
 CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, 

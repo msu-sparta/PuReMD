@@ -1,13 +1,13 @@
 
-#include "dev_system_props.h"
+#include "cuda_system_props.h"
 
-#include "reduction.h"
 #include "cuda_utils.h"
+#include "cuda_reduction.h"
 #include "center_mass.h"
 #include "cuda_copy.h"
+#include "cuda_shuffle.h"
 
 #include "vector.h"
-#include "cuda_shuffle.h"
 
 
 CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *my_atoms, 

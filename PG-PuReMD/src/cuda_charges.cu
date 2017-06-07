@@ -19,13 +19,13 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "cuda_qEq.h"
+#include "cuda_charges.h"
 
 #include "reax_types.h"
-#include "reduction.h"
+#include "cuda_reduction.h"
 #include "cuda_utils.h"
 
-#include "validation.h"
+#include "cuda_validation.h"
 
 
 CUDA_GLOBAL void ker_init_matvec( reax_atom *my_atoms, single_body_parameters

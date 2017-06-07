@@ -1,5 +1,6 @@
 
-#include "dev_alloc.h"
+#include "cuda_allocate.h"
+
 #include "cuda_utils.h"
 
 #include "vector.h"
@@ -21,7 +22,7 @@ CUDA_GLOBAL void Init_Nbrs( ivec *nbrs, int N )
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (index >= N)
+    if ( index >= N )
     {
         return;
     }

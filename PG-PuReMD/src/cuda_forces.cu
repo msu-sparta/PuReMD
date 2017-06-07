@@ -3,7 +3,7 @@
 
 #include "reax_types.h"
 #include "reax_types.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 #include "cuda_utils.h"
 #include "cuda_helpers.h"
 #include "index_utils.h"
@@ -13,7 +13,7 @@
 
 #include "forces.h"
 #include "cuda_bond_orders.h"
-#include "reduction.h"
+#include "cuda_reduction.h"
 #include "cuda_bonds.h"
 #include "cuda_multi_body.h"
 #include "cuda_valence_angles.h"
@@ -54,6 +54,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
     reax_atom *atom_i, *atom_j;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
+
     if (i >= N)
     {
         return;
@@ -192,6 +193,7 @@ CUDA_GLOBAL void k_init_system_atoms( reax_atom *my_atoms, int N,
     int i;
     
     i = blockIdx.x * blockDim.x + threadIdx.x;
+
     if (i >= N)
     {
         return;

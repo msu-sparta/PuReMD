@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __CUDA_QEQ_H_
-#define __CUDA_QEQ_H_
+#ifndef __CUDA_LIST_H_
+#define __CUDA_LIST_H_
 
 #include "reax_types.h"
 
@@ -28,14 +28,38 @@
 extern "C" {
 #endif
 
-void Cuda_Init_MatVec (reax_system *, storage *);
-
-void cuda_charges_x (reax_system *, rvec2 );
-void cuda_charges_st (reax_system *, storage *, real *, real );
-void cuda_charges_updateq (reax_system *, real *);
+void Dev_Make_List( int, int, int, reax_list* );
+void Dev_Delete_List( reax_list* );
 
 #ifdef __cplusplus
 }
 #endif
+
+
+static inline CUDA_HOST_DEVICE int Dev_Num_Entries( int i, reax_list *l )
+{
+    return l->end_index[i] - l->index[i];
+}
+
+static inline CUDA_HOST_DEVICE int Dev_Start_Index( int i, reax_list *l )
+{
+    return l->index[i];
+}
+
+static inline CUDA_HOST_DEVICE int Dev_End_Index( int i, reax_list *l )
+{
+    return l->end_index[i];
+}
+
+static inline CUDA_HOST_DEVICE void Dev_Set_Start_Index( int i, int val, reax_list *l )
+{
+    l->index[i] = val;
+}
+
+static inline CUDA_HOST_DEVICE void Dev_Set_End_Index( int i, int val, reax_list *l )
+{
+    l->end_index[i] = val;
+}
+
 
 #endif

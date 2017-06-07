@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __QEq_H_
-#define __QEq_H_
+#ifndef __CHARGES_H_
+#define __CHARGES_H_
 
 #include "reax_types.h"
 

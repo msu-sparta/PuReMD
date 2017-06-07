@@ -22,14 +22,14 @@
 #include "reax_types.h"
 
 #ifdef HAVE_CUDA
-  #include "dev_alloc.h"
-  #include "dev_list.h"
+  #include "cuda_allocate.h"
+  #include "cuda_list.h"
   #include "cuda_copy.h"
   #include "cuda_forces.h"
   #include "cuda_init_md.h"
   #include "cuda_neighbors.h"
   #include "cuda_reset_tools.h"
-  #include "validation.h"
+  #include "cuda_validation.h"
 #endif
 
 #if defined(PURE_REAX)

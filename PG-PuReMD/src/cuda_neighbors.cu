@@ -20,7 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "cuda_neighbors.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 #include "vector.h"
 
 #include "index_utils.h"

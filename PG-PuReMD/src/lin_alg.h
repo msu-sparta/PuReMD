@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __LINEAR_SOLVERS_H_
-#define __LINEAR_SOLVERS_H_
+#ifndef __LIN_ALG_H_
+#define __LIN_ALG_H_
 
 #include "reax_types.h"
 

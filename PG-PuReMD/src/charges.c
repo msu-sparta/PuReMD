@@ -19,17 +19,18 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "qEq.h"
+#include "charges.h"
+
 #include "allocate.h"
 #include "basic_comm.h"
 #include "io_tools.h"
-#include "linear_solvers.h"
+#include "lin_alg.h"
 #include "tool_box.h"
 
 #ifdef HAVE_CUDA
-  #include "cuda_qEq.h"
-  #include "cuda_linear_solvers.h"
-  #include "validation.h"
+  #include "cuda_charges.h"
+  #include "cuda_lin_alg.h"
+  #include "cuda_validation.h"
 #endif
 
 

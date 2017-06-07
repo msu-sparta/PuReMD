@@ -1,11 +1,11 @@
 
 #include "cuda_bond_orders.h"
 
-#include "dev_list.h"
+#include "cuda_list.h"
 #include "index_utils.h"
 #include "bond_orders.h"
 #include "cuda_utils.h"
-#include "reduction.h"
+#include "cuda_reduction.h"
 
 CUDA_GLOBAL void Cuda_Calculate_BO_init (  reax_atom *my_atoms, 
         single_body_parameters *sbp, 

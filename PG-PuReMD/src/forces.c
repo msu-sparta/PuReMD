@@ -24,10 +24,10 @@
 #include "index_utils.h"
 #ifdef HAVE_CUDA
   #include "cuda_forces.h"
-  #include "cuda_linear_solvers.h"
+  #include "cuda_lin_alg.h"
   #include "cuda_neighbors.h"
   #include "cuda_utils.h"
-  #include "validation.h"
+  #include "cuda_validation.h"
 #endif
 
 #if defined(PURE_REAX)
@@ -41,7 +41,7 @@
   #include "lookup.h"
   #include "multi_body.h"
   #include "nonbonded.h"
-  #include "qEq.h"
+  #include "charges.h"
   #include "tool_box.h"
   #include "torsion_angles.h"
   #include "valence_angles.h"

@@ -19,7 +19,7 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "linear_solvers.h"
+#include "lin_alg.h"
 
 #include "basic_comm.h"
 #include "io_tools.h"
@@ -27,9 +27,9 @@
 #include "vector.h"
 
 #ifdef HAVE_CUDA
-  #include "cuda_linear_solvers.h"
+  #include "cuda_lin_alg.h"
   #include "cuda_utils.h"
-  #include "validation.h"
+  #include "cuda_validation.h"
 #endif
 
 #if defined(CG_PERFORMANCE)

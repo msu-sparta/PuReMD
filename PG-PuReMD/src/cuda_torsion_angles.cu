@@ -23,14 +23,14 @@
 #include "index_utils.h"
 #include "cuda_torsion_angles.h"
 #include "vector.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 #include "cuda_helpers.h"
 
 #define MIN_SINE 1e-10
 
+
 CUDA_DEVICE real Calculate_Omega( rvec dvec_ij, real r_ij,
-        rvec dvec_jk, real r_jk,
-        rvec dvec_kl, real r_kl,
+        rvec dvec_jk, real r_jk, rvec dvec_kl, real r_kl,
         rvec dvec_li, real r_li,
         three_body_interaction_data *p_ijk, 
         three_body_interaction_data *p_jkl, 

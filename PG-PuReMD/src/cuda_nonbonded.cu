@@ -22,10 +22,10 @@
 #include "cuda_nonbonded.h"
 #include "reax_types.h"
 #include "index_utils.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 #include "vector.h"
 #include "cuda_utils.h"
-#include "reduction.h"
+#include "cuda_reduction.h"
 
 #include "cuda_shuffle.h"
 

@@ -25,7 +25,7 @@
 #include "cuda_hydrogen_bonds.h"
 #include "cuda_valence_angles.h"
 #include "cuda_helpers.h"
-#include "dev_list.h"
+#include "cuda_list.h"
 #include "vector.h"
 
 #include "cuda_shuffle.h"

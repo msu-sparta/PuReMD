@@ -1,7 +1,7 @@
 
 
-#ifndef __VALIDATION_H__
-#define __VALIDATION_H__
+#ifndef __CUDA_VALIDATION_H__
+#define __CUDA_VALIDATION_H__
 
 #include "reax_types.h"
 

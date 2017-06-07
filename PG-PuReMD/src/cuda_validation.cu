@@ -1,4 +1,5 @@
-#include "validation.h"
+#include "cuda_validation.h"
+
 #include "cuda_utils.h"
 #include "list.h"
 #include "reax_types.h"
