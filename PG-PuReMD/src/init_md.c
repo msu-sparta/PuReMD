@@ -1037,8 +1037,7 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list */
-    thbody = (int *) host_scratch;
-    memset( thbody, 0, sizeof(int) * (*dev_lists + BONDS)->num_intrs );
+    thbody = (int *) scratch;
 
     Cuda_Estimate_Storages_Three_Body( system, control, dev_lists,
             &total_3body, thbody );

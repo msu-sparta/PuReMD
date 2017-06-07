@@ -156,6 +156,9 @@ void dev_alloc_system( reax_system *system )
     cuda_malloc( (void **) &system->d_my_atoms, system->total_cap * sizeof(reax_atom),
             TRUE, "system:d_my_atoms" );
 
+    /* list reallocation */
+    cuda_malloc( (void **) &system->d_num_thbodies, sizeof(int), TRUE, "system:d_num_thbodies" );
+
     /* simulation boxes */
     cuda_malloc( (void **) &system->d_big_box, sizeof(simulation_box), TRUE, "system:d_big_box" );
     cuda_malloc( (void **) &system->d_my_box, sizeof(simulation_box), TRUE, "system:d_my_box" );

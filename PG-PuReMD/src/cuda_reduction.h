@@ -8,6 +8,7 @@
 #define  FINAL    1
 
 
+CUDA_GLOBAL void k_reduction_int( const int *, int *, const size_t );
 CUDA_GLOBAL void k_reduction( const real *, real *, const size_t );
 CUDA_GLOBAL void k_reduction_rvec( rvec *, rvec *, size_t );
 CUDA_GLOBAL void k_reduction_rvec2( rvec2 *, rvec2 *, size_t );

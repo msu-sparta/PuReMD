@@ -6,6 +6,81 @@
 #include "vector.h"
 
 
+CUDA_GLOBAL void k_reduction_int( const int *input, int *per_block_results,
+        const size_t n )
+{
+#if defined(__SM_35__)
+    extern __shared__ int my_iresults[];
+    int idata;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int x = 0, z, offset;
+
+    if( i < n )
+    {
+        x = input[i];
+    }
+
+    idata = x;
+    __syncthreads();
+
+    for( z = 16; z >=1; z/=2 )
+    {
+        idata += shfl( idata, z );
+    }
+
+    if ( threadIdx.x % 32 == 0 )
+    {
+        my_iresults[threadIdx.x >> 5] = idata;
+    }
+
+    __syncthreads();
+
+    for( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    {
+        if( threadIdx.x < offset )
+        {
+            my_iresults[threadIdx.x] += my_iresults[threadIdx.x + offset];
+        }
+
+        __syncthreads();
+    }
+
+    if( threadIdx.x == 0 )
+    {
+        per_block_results[blockIdx.x] = my_iresults[0];
+    }
+
+#else
+    extern __shared__ int idata[];
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int x = 0, offset;
+
+    if( i < n )
+    {
+        x = input[i];
+    }
+
+    idata[threadIdx.x] = x;
+    __syncthreads( );
+
+    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
+    {
+        if( threadIdx.x < offset )
+        {
+            idata[threadIdx.x] += idata[threadIdx.x + offset];
+        }
+
+        __syncthreads();
+    }
+
+    if( threadIdx.x == 0 )
+    {
+        per_block_results[blockIdx.x] = idata[0];
+    }
+#endif
+}
+
+
 CUDA_GLOBAL void k_reduction( const real *input, real *per_block_results,
         const size_t n )
 {
@@ -85,7 +160,7 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 #if defined(__SM_35__)
     extern __shared__ rvec my_rvec[];
     rvec sdata;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x, z, offset;
 
     rvec_MakeZero( sdata );
 
@@ -94,9 +169,9 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
         rvec_Copy( sdata, input[i] );
     }
 
-    __syncthreads();
+    __syncthreads( );
 
-    for( int z = 16; z >=1; z/=2 )
+    for( z = 16; z >=1; z/=2 )
     {
         sdata[0] += shfl( sdata[0], z);
         sdata[1] += shfl( sdata[1], z);
@@ -108,16 +183,16 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
         rvec_Copy( my_rvec[threadIdx.x >> 5] , sdata );
     }
 
-    __syncthreads ();
+    __syncthreads( );
 
-    for( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    for( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
         if( threadIdx.x < offset )
         {
             rvec_Add( my_rvec[threadIdx.x], my_rvec[threadIdx.x + offset] );
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
     if( threadIdx.x == 0 )
@@ -127,33 +202,33 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 
 #else
     extern __shared__ rvec svec_data[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x, offset;
     rvec x;
 
     rvec_MakeZero( x );
 
-    if(i < n)
+    if ( i < n )
     {
         rvec_Copy( x, input[i] );
     }
 
-    rvec_Copy(svec_data[threadIdx.x], x);
-    __syncthreads();
+    rvec_Copy( svec_data[threadIdx.x], x );
+    __syncthreads( );
 
-    for(int offset = blockDim.x / 2; offset > 0; offset >>= 1)
+    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
     {
-        if(threadIdx.x < offset)
+        if ( threadIdx.x < offset )
         {
-            rvec_Add (svec_data[threadIdx.x], svec_data[threadIdx.x + offset]);
+            rvec_Add( svec_data[threadIdx.x], svec_data[threadIdx.x + offset] );
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if(threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
-        //rvec_Copy (results[blockIdx.x], svec_data[0]);
-        rvec_Add (results[blockIdx.x], svec_data[0]);
+        //rvec_Copy( results[blockIdx.x], svec_data[0] );
+        rvec_Add( results[blockIdx.x], svec_data[0] );
     }
 #endif
 }

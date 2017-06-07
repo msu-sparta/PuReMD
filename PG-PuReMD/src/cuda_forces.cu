@@ -22,9 +22,7 @@
 #include "tool_box.h"
 #include "cuda_nonbonded.h"
 
-
-extern "C" void Make_List( int, int, int, reax_list* );
-extern "C" void Delete_List( reax_list* );
+#include "cub/cub/device/device_reduce.cuh"
 
 
 CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params *control )
@@ -291,28 +289,36 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 void Cuda_Estimate_Storages_Three_Body( reax_system *system, control_params *control, 
         reax_list **lists, int *num_3body, int *thbody )
 {
-    int i;
-    real *spad = (real *) scratch;
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
 
-    cuda_memset( spad, 0, (*dev_lists + BONDS)->num_intrs * sizeof(int), "scratch" );
+    cuda_memset( thbody, 0, (*dev_lists + BONDS)->num_intrs * sizeof(int), "scratch::thbody" );
 
     Estimate_Cuda_Valence_Angles <<<BLOCKS_N, BLOCK_SIZE>>>
         ( system->d_my_atoms, (control_params *)control->d_control_params, 
-          *(*dev_lists + BONDS), system->n, system->N, (int *)spad );
+          *(*dev_lists + BONDS), system->n, system->N, (int *)thbody );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    copy_host_device( thbody, spad, (*dev_lists + BONDS)->num_intrs * sizeof(int),
-            cudaMemcpyDeviceToHost, "thb:offsets" );
+    /* determine temporary device storage requirements */
+    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+            thbody, system->d_num_thbodies, (*dev_lists + BONDS)->num_intrs );
 
-    *num_3body = 0;
-    for ( i = 0; i < (*dev_lists + BONDS)->num_intrs; i++ )
-    {
-        *num_3body += thbody[i];
-        thbody[i] += thbody[i - 1];
-    }
+    /* allocate temporary storage */
+    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+            "cub::sum::temp_storage" );
 
-    system->num_thbodies = thbody[(*dev_lists + BONDS)->num_intrs - 1];
+    /* run sum-reduction */
+    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+            thbody, system->d_num_thbodies, (*dev_lists + BONDS)->num_intrs );
+
+    /* deallocate temporary storage */
+    cuda_free( d_temp_storage, "cub::sum::temp_storage" );
+
+    copy_host_device( num_3body, system->d_num_thbodies, sizeof(int),
+            cudaMemcpyDeviceToHost, "d_num_thbodies" );
+
+    system->num_thbodies = *num_3body;
 }
 
 
@@ -1161,52 +1167,31 @@ int Cuda_Validate_Lists( reax_system *system, storage *workspace,
     }
 
     /* three body interactions */
-    cuda_memset( spad, 0, (*lists + BONDS)->num_intrs * sizeof (int), "scratch" );
-    Estimate_Cuda_Valence_Angles <<<BLOCKS_N, BLOCK_SIZE>>>
-        ( system->d_my_atoms, (control_params *)control->d_control_params, 
-          *(*lists + BONDS), system->n, system->N, (int *)spad);
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-    fprintf( stderr, "      [ESTIMATE_CUDA_VALENCE_ANGLES]\n" );
+    thbody = (int *) scratch;
 
-    thbody = (int *) host_scratch;
-    memset( thbody, 0, sizeof(int) * (*lists + BONDS)->num_intrs );
-    copy_host_device( thbody, spad, (*lists + BONDS)->num_intrs * sizeof(int),
-            cudaMemcpyDeviceToHost, "thb:offsets" );
-
-    total_3body = 0;
-    for (i = 0; i < (*lists + BONDS)->num_intrs; i++)
-    {
-        total_3body += thbody[i];
-        thbody[i] += thbody[i - 1];
-    }
-
-    system->num_thbodies = thbody[(*lists + BONDS)->num_intrs - 1];
+    Cuda_Estimate_Storages_Three_Body( system, control, dev_lists,
+            &total_3body, thbody );
 
     if ( system->num_thbodies > (*lists + THREE_BODIES)->num_intrs ||
                 (*lists + THREE_BODIES)->n < (*lists + BONDS)->num_intrs )
     {
-        realloc->num_3body = total_3body;
-        system->num_thbodies = total_3body;
+        system->num_thbodies = total_3body * SAFE_ZONE;
+        realloc->num_3body = system->num_thbodies;
         ret = FAILURE;
     }
+
+#if defined(DEBUG)
     fprintf( stderr, "system->num_thbodies = %d, lists:THREE_BODIES->num_intrs = %d,\n",
             system->num_thbodies, (*lists + THREE_BODIES)->num_intrs );
     fprintf( stderr, "lists:THREE_BODIES->n = %d, lists:BONDS->num_intrs = %d,\n",
             (*lists + THREE_BODIES)->n, (*lists + BONDS)->num_intrs );
     fprintf( stderr, "total_3body = %d\n", total_3body );
+#endif
 
     if ( ret == SUCCESS )
     {
-        /* copy the indexes into the thb list */
-        copy_host_device( thbody, (*lists + THREE_BODIES)->index + 1,
-                sizeof(int) * ((*lists + BONDS)->num_intrs - 1),
-                cudaMemcpyHostToDevice, "dev_thb:index" );
-        copy_host_device( thbody, (*lists + THREE_BODIES)->end_index + 1,
-                sizeof(int) * ((*lists + BONDS)->num_intrs - 1),
-                cudaMemcpyHostToDevice, "dev_thb:end_index" );
+        Cuda_Init_Three_Body_Indices( thbody, (*dev_lists + BONDS)->num_intrs );
     }
-
 
     return ret;
 }

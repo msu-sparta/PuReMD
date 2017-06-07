@@ -139,25 +139,16 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
     for( pi = start_j; pi < end_j; ++pi )
     {
-
-        //num_thb_intrs = pi * THREE_BODY_OFFSET;
-        //Dev_Set_Start_Index( pi, num_thb_intrs, thb_intrs );
         num_thb_intrs = Dev_Start_Index( pi, thb_intrs );
 
         pbond_ij = &(bonds->select.bond_list[pi]);
         bo_ij = &(pbond_ij->bo_data);
         BOA_ij = bo_ij->BO - control->thb_cut;
 
-        //TODO REMOVE THIS
-        //TODO REMOVE THIS
-        //TODO REMOVE THIS
-        //TODO REMOVE THIS
-        //TODO REMOVE THIS
-
-        if( BOA_ij/*bo_ij->BO*/ > 0.0 &&
+        //if( BOA_ij/*bo_ij->BO*/ > 0.0) {
+        if ( BOA_ij > 0.0 &&
                 ( j < n || pbond_ij->nbr < n ) )
         {
-            //      if( BOA_ij/*bo_ij->BO*/ > 0.0) {
             i = pbond_ij->nbr;
             r_ij = pbond_ij->d;
             type_i = my_atoms[i].type;
@@ -245,7 +236,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                 ++num_thb_intrs;
 
                 if ( j < n && BOA_jk > 0.0 &&
-                        bo_ij->BO * bo_jk->BO > SQR(control->thb_cut)/*0*/ )
+                        bo_ij->BO * bo_jk->BO > SQR(control->thb_cut) )
                 {
                     r_jk = pbond_jk->d;
                     thbh = &( d_thbh[ index_thbp (type_i,type_j,type_k,num_atom_types) ] );
@@ -350,12 +341,12 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                                need to prevent all energies becoming duplicates */
                             if ( pk < pi )
                             {
-                                data_e_pen [j] += e_pen =
-                                    p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
+                                e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
+                                data_e_pen[j] += e_pen;
                             }
 
                             CEpen1 = e_pen * Cf9j / f9_Dj;
-                            temp   = -2.0 * p_pen2 * e_pen;
+                            temp = -2.0 * p_pen2 * e_pen;
                             CEpen2 = temp * (BOA_ij - 2.0);
                             CEpen3 = temp * (BOA_jk - 2.0);
                             /* END PENALTY ENERGY */
@@ -372,12 +363,13 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                             if ( pk < pi )
                             {
 
-                                data_e_coa [j] += e_coa =
+                                e_coa =
                                     p_coa1 / (1. + exp_coa2) *
                                     EXP( -p_coa3 * SQR(workspace->total_bond_order[i]-BOA_ij) ) *
                                     EXP( -p_coa3 * SQR(workspace->total_bond_order[k]-BOA_jk) ) *
                                     EXP( -p_coa4 * SQR(BOA_ij - 1.5) ) *
                                     EXP( -p_coa4 * SQR(BOA_jk - 1.5) );
+                                data_e_coa [j] += e_coa;
                             }
 
                             CEcoa1 = -2 * p_coa4 * (BOA_ij - 1.5) * e_coa;
@@ -561,7 +553,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
             }
         }
 
-        Dev_Set_End_Index(pi, num_thb_intrs, thb_intrs );
+        Dev_Set_End_Index( pi, num_thb_intrs, thb_intrs );
     }
 }
 

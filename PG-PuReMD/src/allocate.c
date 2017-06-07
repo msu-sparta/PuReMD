@@ -1207,7 +1207,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
         /* delete three-body list */
         Dev_Delete_List( *dev_lists + THREE_BODIES );
-//        Delete_List( *lists + THREE_BODIES );
+        Delete_List( *lists + THREE_BODIES );
 
         /* recreate Three-body list */
         Dev_Make_List( (*dev_lists + BONDS)->num_intrs, realloc->num_3body,
@@ -1255,30 +1255,31 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     // to ensure correct values at mpi_buffers for update_boundary_positions
     if ( !renbr )
     {
-        mpi_flag = 0;
+        mpi_flag = FALSE;
     }
     // check whether in_buffer capacity is enough
     else if ( system->max_recved >= system->est_recv * 0.90 )
     {
-        mpi_flag = 1;
+        mpi_flag = TRUE;
     }
     else
     {
         // otherwise check individual outgoing buffers
-        mpi_flag = 0;
+        mpi_flag = FALSE;
         for ( p = 0; p < MAX_NBRS; ++p )
         {
             nbr_pr = &( system->my_nbrs[p] );
             nbr_data = &( mpi_data->out_buffers[p] );
+
             if ( nbr_data->cnt >= nbr_pr->est_send * 0.90 )
             {
-                mpi_flag = 1;
+                mpi_flag = TRUE;
                 break;
             }
         }
     }
 
-    if ( mpi_flag )
+    if ( mpi_flag == TRUE )
     {
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating mpi_buf: old_recv=%d\n",
@@ -1305,13 +1306,14 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
-                 system->my_rank, system->est_recv, total_send,
-                 (int)((system->est_recv + total_send)*sizeof(boundary_atom) /
-                       (1024 * 1024)));
+                system->my_rank, system->est_recv, total_send,
+                (int)((system->est_recv + total_send)*sizeof(boundary_atom) /
+                      (1024 * 1024)));
+
         for ( p = 0; p < MAX_NBRS; ++p )
         {
             fprintf( stderr, "p%d: nbr%d new_send=%d\n",
-                     system->my_rank, p, system->my_nbrs[p].est_send );
+                    system->my_rank, p, system->my_nbrs[p].est_send );
         }
 #endif
 

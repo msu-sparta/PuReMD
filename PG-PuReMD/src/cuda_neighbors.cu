@@ -28,8 +28,7 @@
 #include "cuda_utils.h"
 #include "tool_box.h"
 
-//extern "C" real Get_Time( );
-//extern "C" real Get_Timing_Info( real );
+#include "cub/cub/device/device_scan.cuh"
 
 
 CUDA_DEVICE real Dev_DistSqr_to_Special_Point( rvec cp, rvec x ) 
@@ -722,14 +721,22 @@ void Cuda_Init_Bond_Indices( int *indices, int entries )
 
 void Cuda_Init_Three_Body_Indices( int *indices, int entries )
 {
-    int i;
     reax_list *thbody = *dev_lists + THREE_BODIES;
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
 
-    copy_host_device( indices, thbody->index + 1,
-            sizeof(int) * (entries - 1),
-            cudaMemcpyHostToDevice, "dev_thb:index" );
-    copy_host_device( indices, thbody->end_index,
-            sizeof(int) * entries,
-            cudaMemcpyHostToDevice, "dev_thb:end_index" );
+    /* determine temporary device storage requirements */
+    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
+            indices, thbody->index, entries );
 
+    /* allocate temporary storage */
+    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+            "cub::devicescan::temp_storage" );
+
+    /* run exclusive prefix sum */
+    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
+            indices, thbody->index, entries );
+
+    /* deallocate temporary storage */
+    cuda_free( d_temp_storage, "cub::devicescan::temp_storage" );
 }

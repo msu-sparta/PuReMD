@@ -1095,6 +1095,7 @@ typedef struct
     int max_sparse_entries;
     /**/
     int num_thbodies;
+    int *d_num_thbodies;
     //TODO: move to reax_atom
     int max_hbonds;
 } reax_system;

@@ -156,7 +156,7 @@ int Cuda_Post_Evolve( reax_system* system, control_params* control,
 
 
 #ifdef HAVE_CUDA
-void init_blocks(reax_system *system)
+void init_blocks( reax_system *system )
 {
     compute_blocks( &BLOCKS, &BLOCK_SIZE, system->n );
     compute_nearest_pow_2( BLOCKS, &BLOCKS_POW_2 );

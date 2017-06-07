@@ -42,7 +42,6 @@ void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 
 CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, int N )
 {
-    int Hindex = 0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i >= N)
