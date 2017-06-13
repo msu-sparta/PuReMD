@@ -20,12 +20,13 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "basic_comm.h"
-#include "vector.h"
+  #include "basic_comm.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_basic_comm.h"
-#include "reax_vector.h"
+  #include "reax_basic_comm.h"
+  #include "reax_vector.h"
 #endif
 
 
@@ -50,7 +51,7 @@ void rvec_packer( void *dummy, mpi_out_data *out_buf )
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        memcpy( out[i], buf[ out_buf->index[i] ], sizeof(rvec) );
+        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec) );
     }
 }
 
@@ -63,7 +64,7 @@ void rvec2_packer( void *dummy, mpi_out_data *out_buf )
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        memcpy( out[i], buf[ out_buf->index[i] ], sizeof(rvec2) );
+        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec2) );
     }
 }
 
@@ -81,6 +82,7 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 #if defined(DEBUG)
     fprintf( stderr, "p%d dist: entered\n", system->my_rank );
 #endif
+
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
 
@@ -154,6 +156,7 @@ void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
     for ( i = 0; i < out_buf->cnt; ++i )
     {
         rvec_Add( buf[ out_buf->index[i] ], in[i] );
+
 #if defined(DEBUG)
         fprintf( stderr, "rvec_unpacker: cnt=%d  i =%d  index[i]=%d\n",
                 out_buf->cnt, i, out_buf->index[i] );

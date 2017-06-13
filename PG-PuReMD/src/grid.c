@@ -651,6 +651,43 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
     system->my_atoms = new_atoms;
     system->n = top;
     system->N = system->n;
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "p%d: g->total = %d\n", 
+            system->my_rank, g->total );
+    fprintf( stderr, "p%d: g->ncells[0] = %d, g->ncells[1] = %d, g->ncells[2] = %d\n", 
+            system->my_rank, g->ncells[0], g->ncells[1], g->ncells[2] );
+    fflush( stderr );
+    for ( i = 0; i < g->total; ++i )
+    {
+        x = g->order[i][0];
+        y = g->order[i][1];
+        z = g->order[i][2];
+        gc = &( g->cells[ index_grid_3d(x, y, z, g) ] );
+
+        fprintf( stderr, "p%d: x = %6d, y = %6d, z = %6d\n",
+                system->my_rank, x, y, z );
+        fprintf( stderr, "p%d: index_grid_3d = %d\n",
+                system->my_rank, index_grid_3d(x, y, z, g) );
+        fprintf( stderr, "p%d: i = %6d, g->start[%6d] = %6d, g->end[%6d] = %6d\n",
+                system->my_rank, i, i, g->str[index_grid_3d(x, y, z, g)],
+                i, g->end[index_grid_3d(x, y, z, g)] );
+        fflush( stderr );
+        for ( l = g->str[index_grid_3d(x, y, z, g)]; l < g->end[index_grid_3d(x, y, z, g)]; ++l )
+        {
+            fprintf( stderr, "p%d: atom %6d: x = %10.4f, y = %10.4f, z = %10.4f\n",
+                    system->my_rank, system->my_atoms[l].orig_id,
+                    system->my_atoms[l].x[0],
+                    system->my_atoms[l].x[1],
+                    system->my_atoms[l].x[2] );
+            fflush( stderr );
+        }
+    }
+
+    fprintf( stderr, "p%d: DONE REORDERING BINNED ATOMS\n",
+            system->my_rank );
+    fflush( stderr );
+#endif
 }
 
 
@@ -754,7 +791,7 @@ void Bin_Boundary_Atoms( reax_system *system )
         fprintf( stderr, "p%d: (start):ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
                  system->my_rank, start,
                  atoms[start].x[0], atoms[start].x[1], atoms[start].x[2] );
-        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+//        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
     for ( i = start + 1; i < end; i++ )
@@ -765,7 +802,7 @@ void Bin_Boundary_Atoms( reax_system *system )
             fprintf( stderr, "p%d: (middle) ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
                     system->my_rank, i,
                     atoms[i].x[0], atoms[i].x[1], atoms[i].x[2] );
-            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+//            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
 
         if ( is_Within_GCell( atoms[i].x, cur_min, cur_max ) == TRUE )
@@ -785,7 +822,7 @@ void Bin_Boundary_Atoms( reax_system *system )
                          atoms[i].x[0], atoms[i].x[1], atoms[i].x[2],
                          gc->min[0], gc->min[1], gc->min[2],
                          gc->max[0], gc->max[1], gc->max[2] );
-                MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+//                MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             }
             g->str[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = i;
             gc->top = 1;

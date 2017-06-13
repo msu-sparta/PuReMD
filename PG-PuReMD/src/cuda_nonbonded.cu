@@ -20,14 +20,16 @@
   ----------------------------------------------------------------------*/
 
 #include "cuda_nonbonded.h"
-#include "reax_types.h"
-#include "index_utils.h"
+
 #include "cuda_list.h"
-#include "vector.h"
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
-
 #include "cuda_shuffle.h"
+#include "vector.h"
+
+#include "reax_types.h"
+#include "index_utils.h"
+
 
 //CUDA_GLOBAL void __launch_bounds__ (960) ker_vdW_coulomb_energy(    
 CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms, 
@@ -504,26 +506,20 @@ void Cuda_Compute_Polarization_Energy( reax_system *system, simulation_data *dat
 {
     int blocks;
     real *spad = (real *) scratch;
-    cuda_memset (spad, 0, sizeof (real) * 2 * system->n, "pol_energy");
+    cuda_memset( spad, 0, sizeof(real) * 2 * system->n, "pol_energy" );
 
     blocks = system->n / DEF_BLOCK_SIZE + 
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     ker_pol_energy <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           system->n, spad );
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    //Reduction for polarization energy
-    k_reduction <<< blocks, DEF_BLOCK_SIZE, sizeof (real) * DEF_BLOCK_SIZE >>>
-        ( spad, spad + system->n, system->n);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
-
-    k_reduction <<< 1, BLOCKS_POW_2, sizeof (real) * BLOCKS_POW_2>>>
-        ( spad + system->n, &((simulation_data *)data->d_simulation_data)->my_en.e_pol, blocks);
-    cudaThreadSynchronize ();
-    cudaCheckError ();
+    /* reduction for polarization energy */
+    Cuda_Reduction_Sum( spad,
+            &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
+            system->n );
 }
 
 
@@ -571,29 +567,17 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         cudaCheckError( );
     }
 
-    //reduction for vdw
-    k_reduction <<< rblocks, DEF_BLOCK_SIZE, sizeof(real) * DEF_BLOCK_SIZE >>>
-        ( spad, spad + system->N, system->N);
-    cudaThreadSynchronize( );
-    cudaCheckError( );
+    /* reduction for vdw */
+    Cuda_Reduction_Sum( spad,
+            &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+            system->N );
 
-    k_reduction <<< 1, BLOCKS_POW_2_N, sizeof(real) * BLOCKS_POW_2_N>>>
-        ( spad + system->N, &((simulation_data *)data->d_simulation_data)->my_en.e_vdW, rblocks); 
-    cudaThreadSynchronize( );
-    cudaCheckError( );
+    /* reduction for  ele */
+    Cuda_Reduction_Sum( spad + 2 * system->N,
+            &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+            system->N );
 
-    //reduction for  ele
-    k_reduction <<< rblocks, DEF_BLOCK_SIZE, sizeof(real) * DEF_BLOCK_SIZE >>>
-        ( spad + 2 * system->N, spad + 3 * system->N, system->N);
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-
-    k_reduction <<< 1, BLOCKS_POW_2_N, sizeof(real) * BLOCKS_POW_2_N>>>
-        ( spad + 3 * system->N, &((simulation_data *)data->d_simulation_data)->my_en.e_ele, rblocks);
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-
-    //reduction for ext_press
+    /* reduction for ext_press */
     spad_rvec = (rvec *) (spad + 4 * system->N);
     k_reduction_rvec <<< rblocks, DEF_BLOCK_SIZE, sizeof(rvec) * DEF_BLOCK_SIZE >>>
         ( spad_rvec, spad_rvec + system->N, system->N);

@@ -28,11 +28,15 @@
 extern "C" {
 #endif
 
-void Cuda_Init_MatVec (reax_system *, storage *);
 
-void cuda_charges_x (reax_system *, rvec2 );
-void cuda_charges_st (reax_system *, storage *, real *, real );
-void cuda_charges_updateq (reax_system *, real *);
+void Cuda_Init_MatVec( reax_system *, storage * );
+
+void cuda_charges_x( reax_system *, rvec2 );
+
+void cuda_charges_st( reax_system *, storage *, real *, real );
+
+void cuda_charges_updateq( reax_system *, real * );
+
 
 #ifdef __cplusplus
 }

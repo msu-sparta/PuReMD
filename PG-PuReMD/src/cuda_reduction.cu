@@ -2,82 +2,177 @@
 #include "cuda_reduction.h"
 
 #include "cuda_shuffle.h"
+#include "cuda_utils.h"
 
 #include "vector.h"
 
+#include "cub/cub/device/device_reduce.cuh"
+#include "cub/cub/device/device_scan.cuh"
 
-CUDA_GLOBAL void k_reduction_int( const int *input, int *per_block_results,
-        const size_t n )
+
+//struct RvecSum
+//{
+//    template <typename T>
+//    __device__ __forceinline__
+//    T operator()(const T &a, const T &b) const
+//    {
+//        b[0] = a[0] + b[0];
+//        b[1] = a[1] + b[1];
+//        b[2] = a[2] + b[2];
+//        return b;
+//    }
+//};
+
+
+/* Perform a device-wide reduction (sum operation)
+ *
+ * d_array: device array to reduce
+ * d_dest: device pointer to hold result of reduction */
+void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
 {
-#if defined(__SM_35__)
-    extern __shared__ int my_iresults[];
-    int idata;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int x = 0, z, offset;
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
 
-    if( i < n )
-    {
-        x = input[i];
-    }
+    /* determine temporary device storage requirements */
+    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+            d_array, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    idata = x;
-    __syncthreads();
+    /* allocate temporary storage */
+    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+            "cub::sum::temp_storage" );
 
-    for( z = 16; z >=1; z/=2 )
-    {
-        idata += shfl( idata, z );
-    }
+    /* run sum-reduction */
+    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+            d_array, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    if ( threadIdx.x % 32 == 0 )
-    {
-        my_iresults[threadIdx.x >> 5] = idata;
-    }
+    /* deallocate temporary storage */
+    cuda_free( d_temp_storage, "cub::sum::temp_storage" );
+}
 
-    __syncthreads();
 
-    for( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
-    {
-        if( threadIdx.x < offset )
-        {
-            my_iresults[threadIdx.x] += my_iresults[threadIdx.x + offset];
-        }
+/* Perform a device-wide reduction (sum operation)
+ *
+ * d_array: device array to reduce
+ * d_dest: device pointer to hold result of reduction */
+void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
+{
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
 
-        __syncthreads();
-    }
+    /* determine temporary device storage requirements */
+    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+            d_array, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    if( threadIdx.x == 0 )
-    {
-        per_block_results[blockIdx.x] = my_iresults[0];
-    }
+    /* allocate temporary storage */
+    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+            "cub::sum::temp_storage" );
 
-#else
-    extern __shared__ int idata[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int x = 0, offset;
+    /* run sum-reduction */
+    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+            d_array, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    if( i < n )
-    {
-        x = input[i];
-    }
+    /* deallocate temporary storage */
+    cuda_free( d_temp_storage, "cub::sum::temp_storage" );
+}
 
-    idata[threadIdx.x] = x;
-    __syncthreads( );
 
-    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
-    {
-        if( threadIdx.x < offset )
-        {
-            idata[threadIdx.x] += idata[threadIdx.x + offset];
-        }
+///* Perform a device-wide reduction (sum operation)
+// *
+// * d_array: device array to reduce
+// * d_dest: device pointer to hold result of reduction */
+//void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n )
+//{
+//    void *d_temp_storage = NULL;
+//    size_t temp_storage_bytes = 0;
+//    RvecSum sum_op;
+//    rvec init = {0.0, 0.0, 0.0};
+//
+//    /* determine temporary device storage requirements */
+//    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
+//            d_array, d_dest, n, sum_op, init );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+//
+//    /* allocate temporary storage */
+//    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+//            "cub::reduce::temp_storage" );
+//
+//    /* run sum-reduction */
+//    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
+//            d_array, d_dest, n, sum_op, init );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+//
+//    /* deallocate temporary storage */
+//    cuda_free( d_temp_storage, "cub::reduce::temp_storage" );
+//}
 
-        __syncthreads();
-    }
 
-    if( threadIdx.x == 0 )
-    {
-        per_block_results[blockIdx.x] = idata[0];
-    }
-#endif
+/* Perform a device-wide reduction (max operation)
+ *
+ * d_array: device array to reduce
+ * d_dest: device pointer to hold result of reduction */
+void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n )
+{
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
+
+    /* determine temporary device storage requirements */
+    cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
+            d_array, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+
+    /* allocate temporary storage */
+    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+            "cub::max::temp_storage" );
+
+    /* run exclusive prefix sum */
+    cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
+            d_array, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+
+    /* deallocate temporary storage */
+    cuda_free( d_temp_storage, "cub::max::temp_storage" );
+}
+
+
+/* Perform a device-wide scan (partial sum operation)
+ *
+ * d_src: device array to scan
+ * d_dest: device array to hold result of scan */
+void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n )
+{
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
+
+    /* determine temporary device storage requirements */
+    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
+            d_src, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+
+    /* allocate temporary storage */
+    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+            "cub::devicescan::temp_storage" );
+
+    /* run exclusive prefix sum */
+    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
+            d_src, d_dest, n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+
+    /* deallocate temporary storage */
+    cuda_free( d_temp_storage, "cub::devicescan::temp_storage" );
 }
 
 
@@ -413,7 +508,7 @@ CUDA_GLOBAL void k_norm( const real *input, real *per_block_results,
 
     for(int z = 16; z >=1; z/=2)
     {
-        snorm += shfl ( snorm, z);
+        snorm += shfl ( snorm, z );
     }
 
     if (threadIdx.x % 32 == 0)
@@ -421,7 +516,7 @@ CUDA_GLOBAL void k_norm( const real *input, real *per_block_results,
         my_norm[threadIdx.x >> 5] = snorm;
     }
 
-    __syncthreads ();
+    __syncthreads( );
 
     for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
     {
@@ -445,7 +540,7 @@ CUDA_GLOBAL void k_norm( const real *input, real *per_block_results,
 
     if(i < n)
     {
-        x = SQR (input[i]);
+        x = SQR( input[i] );
     }
 
     snorm[threadIdx.x] = x;
@@ -482,8 +577,8 @@ CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
     {
         if (pass == INITIAL)
         {
-            snorm2[0] = SQR (input[i][0]);
-            snorm2[1] = SQR (input[i][1]);
+            snorm2[0] = SQR( input[i][0] );
+            snorm2[1] = SQR( input[i][1] );
         }
         else
         {
@@ -491,12 +586,12 @@ CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
             snorm2[1] = input[i][1];
         }
     }
-    __syncthreads();
+    __syncthreads( );
 
     for(int z = 16; z >=1; z/=2)
     {
-        snorm2[0] += shfl ( snorm2[0], z);
-        snorm2[1] += shfl ( snorm2[1], z);
+        snorm2[0] += shfl( snorm2[0], z );
+        snorm2[1] += shfl( snorm2[1], z );
     }
 
     if (threadIdx.x % 32 == 0){
@@ -504,18 +599,21 @@ CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
         my_norm2[threadIdx.x >> 5][1] = snorm2[1];
     }
 
-    __syncthreads ();
+    __syncthreads( );
 
-    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1) {
-        if(threadIdx.x < offset){
+    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
+    {
+        if(threadIdx.x < offset)
+        {
             my_norm2[threadIdx.x][0] += my_norm2[threadIdx.x + offset][0];
             my_norm2[threadIdx.x][1] += my_norm2[threadIdx.x + offset][1];
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if(threadIdx.x == 0) {
+    if(threadIdx.x == 0)
+    {
         per_block_results[blockIdx.x][0] = my_norm2[0][0];
         per_block_results[blockIdx.x][1] = my_norm2[0][1];
     }
@@ -530,8 +628,8 @@ CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
     {
         if( pass == INITIAL )
         {
-            x[0] = SQR (input[i][0]);
-            x[1] = SQR (input[i][1]);
+            x[0] = SQR( input[i][0] );
+            x[1] = SQR( input[i][1] );
         }
         else
         {
@@ -542,7 +640,7 @@ CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
 
     snorm2[threadIdx.x][0] = x[0];
     snorm2[threadIdx.x][1] = x[1];
-    __syncthreads();
+    __syncthreads( );
 
     for(int offset = blockDim.x / 2; offset > 0; offset >>= 1)
     {
@@ -552,7 +650,7 @@ CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
             snorm2[threadIdx.x][1] += snorm2[threadIdx.x + offset][1];
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
     if(threadIdx.x == 0)

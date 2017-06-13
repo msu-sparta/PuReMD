@@ -127,7 +127,7 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
                 element[j] = toupper( element[j] );
             //CHAD FIX
             atom->type = Get_Atom_Type( &(system->reax_param), element );
-            strcpy( atom->name, name );
+            strncpy( atom->name, name, MAX_ATOM_NAME_LEN );
             rvec_Copy( atom->x, x );
             rvec_MakeZero( atom->v );
             rvec_MakeZero( atom->f );
@@ -392,8 +392,8 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
             /* if the point is inside my_box, add it to my lists */
             Make_Point( strtod( &s_x[0], &endptr ),
-                        strtod( &s_y[0], &endptr ),
-                        strtod( &s_z[0], &endptr ), &x );
+                    strtod( &s_y[0], &endptr ),
+                    strtod( &s_z[0], &endptr ), &x );
 
             Fit_to_Periodic_Box( &(system->big_box), &x );
 
@@ -406,7 +406,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
                 Trim_Spaces( element );
                 atom->type = Get_Atom_Type( &(system->reax_param), element );
-                strcpy( atom->name, atom_name );
+                strncpy( atom->name, atom_name, MAX_ATOM_NAME_LEN );
 
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );

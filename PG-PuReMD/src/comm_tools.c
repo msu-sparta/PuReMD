@@ -20,10 +20,28 @@
   ----------------------------------------------------------------------*/
 
 #include "comm_tools.h"
+
 #include "grid.h"
 #include "reset_tools.h"
 #include "tool_box.h"
 #include "vector.h"
+
+
+void Check_MPI_Error( int code, const char * msg )
+{
+    char err_msg[MPI_MAX_ERROR_STRING];
+    int len;
+
+    if ( code != MPI_SUCCESS )
+    {
+        MPI_Error_string( code, err_msg, &len );
+
+        fprintf( stderr, "ERROR: MPI error code %d, from %s\n",
+                code, msg );
+        fprintf( stderr, "  MPI error message: %s\n", err_msg );
+        MPI_Abort( MPI_COMM_WORLD, code );
+    }
+}
 
 
 void Setup_Comm( reax_system* system, control_params* control,
@@ -35,9 +53,9 @@ void Setup_Comm( reax_system* system, control_params* control,
     simulation_box *my_box;
     ivec nbr_coords;
     ivec r[6] = {
-        { -1, 0, 0}, { +1, 0, 0}, // -x, +x
-        {0, -1, 0}, {0, +1, 0}, // -y, +y
-        {0, 0, -1}, {0, 0, +1}, // -z, +z
+        { -1, 0, 0}, { 1, 0, 0}, // -x, +x
+        {0, -1, 0}, {0, 1, 0}, // -y, +y
+        {0, 0, -1}, {0, 0, 1}, // -z, +z
     };
     my_box = &(system->my_box);
     bndry_cut = system->bndry_cuts.ghost_cutoff;
@@ -100,9 +118,9 @@ void Update_Comm( reax_system* system )
     neighbor_proc *nbr_pr;
     simulation_box *my_box;
     ivec r[6] = {
-        { -1, 0, 0}, { +1, 0, 0}, // -x, +x
-        {0, -1, 0}, {0, +1, 0}, // -y, +y
-        {0, 0, -1}, {0, 0, +1}, // -z, +z
+        { -1, 0, 0}, { 1, 0, 0}, // -x, +x
+        {0, -1, 0}, {0, 1, 0}, // -y, +y
+        {0, 0, -1}, {0, 0, 1}, // -z, +z
     };
     my_box = &(system->my_box);
     bndry_cut = system->bndry_cuts.ghost_cutoff;
@@ -144,7 +162,7 @@ void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
     matm->type = ratm->type;
     matm->num_bonds = ratm->num_bonds;
     matm->num_hbonds = ratm->num_hbonds;
-    strcpy( matm->name, ratm->name );
+    strncpy( matm->name, ratm->name, MAX_ATOM_NAME_LEN );
     rvec_Copy( matm->x, ratm->x );
     rvec_Copy( matm->v, ratm->v );
     rvec_Copy( matm->f_old, ratm->f_old );
@@ -160,7 +178,7 @@ void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
     ratm->type = matm->type;
     ratm->num_bonds = matm->num_bonds;
     ratm->num_hbonds = matm->num_hbonds;
-    strcpy( ratm->name, matm->name );
+    strncpy( ratm->name, matm->name, MAX_ATOM_NAME_LEN );
     rvec_Copy( ratm->x, matm->x );
     rvec_Copy( ratm->v, matm->v );
     rvec_Copy( ratm->f_old, matm->f_old );
@@ -262,7 +280,7 @@ void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
 /************ PACK & UNPACK BOUNDARY ATOMS **************/
 void Pack_Boundary_Atom( boundary_atom *matm, reax_atom *ratm, int i )
 {
-    matm->orig_id  = ratm->orig_id;
+    matm->orig_id = ratm->orig_id;
     matm->imprt_id = i;
     matm->type = ratm->type;
     matm->num_bonds = ratm->num_bonds;
@@ -386,23 +404,41 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
     /* sort the atoms to their outgoing buffers */
     for ( i = 0; i < end; ++i )
     {
+        /* check if atom is outbound to another processor
+         * in either direction of the dimension under consideration */
         for ( p = 2 * d; p < 2 * d + 2; ++p )
         {
             nbr_pr = &( system->my_nbrs[p] );
             if ( nbr_pr->bndry_min[d] <= atoms[i].x[d] &&
                     atoms[i].x[d] < nbr_pr->bndry_max[d] )
             {
-                out_cnt = out_bufs[p].cnt++;
+                out_cnt = out_bufs[p].cnt;
                 out_bufs[p].index[out_cnt] = i;
                 out_buf = (boundary_atom *)out_bufs[p].out_atoms;
                 Pack_Boundary_Atom( out_buf + out_cnt, atoms + i, i );
+                ++out_bufs[p].cnt;
             }
         }
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d done!\n",
-             system->my_rank, end, d );
+    for ( p = 2 * d; p < 2 * d + 2; ++p )
+    {
+        for ( i = 0; i < out_bufs[p].cnt; ++i )
+        {
+            fprintf( stderr, "p%d: out_bufs[%d].index[%d] = %d\n",
+                    system->my_rank, p, i, out_bufs[p].index[i] );
+            fprintf( stderr, "  p%d: atom %6d, x[0] = %10.4f, x[1] = %10.4f, x[2] = %10.4f\n",
+                    system->my_rank,
+                    ((boundary_atom *)(out_bufs[p].out_atoms))[i].orig_id,
+                    ((boundary_atom *)(out_bufs[p].out_atoms))[i].x[0],
+                    ((boundary_atom *)(out_bufs[p].out_atoms))[i].x[1],
+                    ((boundary_atom *)(out_bufs[p].out_atoms))[i].x[2] );
+        }
+    }
+
+fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d done!\n",
+         system->my_rank, end, d );
 #endif
 }
 
@@ -412,15 +448,21 @@ void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
 {
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
-    int new_max;
+    int new_max, ret;
 
     /* first exchange the estimates, then allocate buffers */
-    MPI_Irecv( &nbr1->est_recv, 1, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
-    MPI_Irecv( &nbr2->est_recv, 1, MPI_INT, nbr2->rank, 2 * d, comm, &req2 );
-    MPI_Send( &nbr1->est_send, 1, MPI_INT, nbr1->rank, 2 * d, comm );
-    MPI_Send( &nbr2->est_send, 1, MPI_INT, nbr2->rank, 2 * d + 1, comm );
-    MPI_Wait( &req1, &stat1 );
-    MPI_Wait( &req2, &stat2 );
+    ret = MPI_Irecv( &nbr1->est_recv, 1, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
+    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Irecv::nbr1" );
+    ret = MPI_Irecv( &nbr2->est_recv, 1, MPI_INT, nbr2->rank, 2 * d, comm, &req2 );
+    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Irecv::nbr2" );
+    ret = MPI_Send( &nbr1->est_send, 1, MPI_INT, nbr1->rank, 2 * d, comm );
+    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Send::nbr1" );
+    ret = MPI_Send( &nbr2->est_send, 1, MPI_INT, nbr2->rank, 2 * d + 1, comm );
+    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Send::nbr2" );
+    ret = MPI_Wait( &req1, &stat1 );
+    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Wait::nbr1" );
+    ret = MPI_Wait( &req2, &stat2 );
+    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Wait::nbr2" );
     nrecv[2 * d] = nbr1->est_recv;
     nrecv[2 * d + 1] = nbr2->est_recv;
     new_max = MAX( nbr1->est_recv, nbr2->est_recv );
@@ -465,11 +507,22 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
         Unpack_Boundary_Atom( dest + i, src + i );
     }
 
+#if defined(DEBUG_FOCUS)
+    for ( i = end; i < end + cnt; ++i )
+    {
+        fprintf( stderr, "UNPACK p%d: d = %d, atom %d, x[0] = %10.4f, x[1] = %10.4f, x[2] = %10.4f\n",
+              system->my_rank, dim, i,
+              system->my_atoms[i].x[0],
+              system->my_atoms[i].x[1],
+              system->my_atoms[i].x[2] );
+    }
+#endif
+
     /* record the atoms recv'd from this nbr */
     nbr->atoms_str = end;
     nbr->atoms_cnt = cnt;
     /* update est_recv */
-    nbr->est_recv = MAX( cnt * SAFER_ZONE, MIN_SEND );
+    nbr->est_recv = MAX( (int)(cnt * SAFER_ZONE), MIN_SEND );
 
     /* update max_recv to make sure that we reallocate at the right time */
     if ( cnt > system->max_recved )
@@ -481,6 +534,11 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
     if ( nbr->prdc[dim] )
     {
         dx = nbr->prdc[dim] * system->big_box.box_norms[dim];
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr, "UNPACK p%d: dim = %d, dx = %f\n",
+                    system->my_rank, dim, dx );
+#endif
+
         for ( i = 0; i < cnt; ++i )
         {
             dest[i].x[dim] += dx;
@@ -563,13 +621,16 @@ void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
 int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
         int* nrecv, message_sorter sort_func, unpacker unpack, int clr )
 {
-    int d, cnt, start, end, max, est_flag;
+    int d, cnt, start, end, max, est_flag, ret;
     mpi_out_data *out_bufs;
     void *in1, *in2;
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     neighbor_proc *nbr1, *nbr2;
+#if defined(DEBUG_FOCUS)
+    int i, p;
+#endif
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d sendrecv: entered\n", system->my_rank );
@@ -603,19 +664,42 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
                     &max, nrecv, &in1, &in2, comm );
         }
 
+#if defined(DEBUG_FOCUS)
+        for ( p = 2 * d; p < 2 * d + 2; ++p )
+        {
+            for ( i = 0; i < out_bufs[p].cnt; ++i )
+            {
+                fprintf( stderr, "p%d: out_bufs[%d].index[%d] = %d\n",
+                        system->my_rank, p, i, out_bufs[p].index[i] );
+                fprintf( stderr, "  p%d: atom %6d, x[0] = %10.4f, x[1] = %10.4f, x[2] = %10.4f\n",
+                        system->my_rank,
+                        ((boundary_atom *)(out_bufs[p].out_atoms))[i].orig_id,
+                        ((boundary_atom *)(out_bufs[p].out_atoms))[i].x[0],
+                        ((boundary_atom *)(out_bufs[p].out_atoms))[i].x[1],
+                        ((boundary_atom *)(out_bufs[p].out_atoms))[i].x[2] );
+            }
+        }
+#endif
+
         /* initiate recvs */
-        MPI_Irecv( in1, nrecv[2 * d], type, nbr1->rank, 2 * d + 1, comm, &req1 );
-        MPI_Irecv( in2, nrecv[2 * d + 1], type, nbr2->rank, 2 * d, comm, &req2 );
+        ret = MPI_Irecv( in1, nrecv[2 * d], type, nbr1->rank, 2 * d + 1, comm, &req1 );
+        Check_MPI_Error( ret, "SendRecv::MPI_Irecv::nbr1" );
+        ret = MPI_Irecv( in2, nrecv[2 * d + 1], type, nbr2->rank, 2 * d, comm, &req2 );
+        Check_MPI_Error( ret, "SendRecv::MPI_Irecv::nbr2" );
 
         /* send both messages in dimension d */
-        MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt, type,
+        ret = MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt, type,
                 nbr1->rank, 2 * d, comm );
-        MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt, type,
+        Check_MPI_Error( ret, "SendRecv::MPI_Send::nbr1" );
+        ret = MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt, type,
                 nbr2->rank, 2 * d + 1, comm );
+        Check_MPI_Error( ret, "SendRecv::MPI_Send::nbr2" );
 
         /* recv and unpack atoms from nbr1 in dimension d */
-        MPI_Wait( &req1, &stat1 );
-        MPI_Get_count( &stat1, type, &cnt );
+        ret = MPI_Wait( &req1, &stat1 );
+        Check_MPI_Error( ret, "SendRecv::MPI_Wait::nbr1" );
+        ret = MPI_Get_count( &stat1, type, &cnt );
+        Check_MPI_Error( ret, "SendRecv::MPI_Count::nbr1" );
         unpack( system, end, in1, cnt, nbr1, d );
         end += cnt;
 
@@ -624,8 +708,10 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 #endif
 
         /* recv and unpack atoms from nbr2 in dimension d */
-        MPI_Wait( &req2, &stat2 );
-        MPI_Get_count( &stat2, type, &cnt );
+        ret = MPI_Wait( &req2, &stat2 );
+        Check_MPI_Error( ret, "SendRecv::MPI_Wait::nbr2" );
+        ret = MPI_Get_count( &stat2, type, &cnt );
+        Check_MPI_Error( ret, "SendRecv::MPI_Count::nbr2" );
         unpack( system, end, in2, cnt, nbr2, d );
         end += cnt;
 

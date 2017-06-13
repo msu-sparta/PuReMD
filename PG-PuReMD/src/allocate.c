@@ -965,7 +965,7 @@ void ReAllocate( reax_system *system, control_params *control,
         /* update mpi buffer estimates based on last comm */
         system->est_recv = MAX( system->max_recved * SAFER_ZONE, MIN_SEND );
         system->est_trans =
-                (system->est_recv * sizeof(boundary_atom)) / sizeof(mpi_atom);
+            (system->est_recv * sizeof(boundary_atom)) / sizeof(mpi_atom);
         total_send = 0;
         for ( p = 0; p < MAX_NBRS; ++p )
         {
@@ -1207,7 +1207,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
         /* delete three-body list */
         Dev_Delete_List( *dev_lists + THREE_BODIES );
-        Delete_List( *lists + THREE_BODIES );
+//        Delete_List( *lists + THREE_BODIES );
 
         /* recreate Three-body list */
         Dev_Make_List( (*dev_lists + BONDS)->num_intrs, realloc->num_3body,

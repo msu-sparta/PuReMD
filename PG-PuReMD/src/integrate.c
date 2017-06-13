@@ -348,13 +348,11 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     real inv_m, dt, lambda;
     rvec dx;
     reax_atom *atom;
-
     int *nbr_indices, num_nbrs;
     int *bond_top, *hb_top;
     int Htop, num_3body;
     int total_hbonds, count, total_bonds;
     int bond_cap, cap_3body;
-
     real t_over_start, t_over_elapsed;
 
 #if defined(DEBUG_FOCUS)
@@ -365,6 +363,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
+    ret = SUCCESS;
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
     fprintf( stderr, "  [CUDA_REALLOCATE] STEP %d\n", data->step );

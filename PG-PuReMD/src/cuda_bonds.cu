@@ -27,15 +27,10 @@
 #include "cuda_list.h"
 
 
-CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, 
-        global_parameters gp, 
-        single_body_parameters *sbp, 
-        two_body_parameters *tbp, 
-        storage p_workspace, 
-        reax_list p_bonds, 
-        int n, int num_atom_types, 
-        real *e_bond
-        )
+CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp, 
+        single_body_parameters *sbp, two_body_parameters *tbp, 
+        storage p_workspace, reax_list p_bonds, int n, int num_atom_types, 
+        real *e_bond )
 {
     int i, j, pj, natoms;
     int start_i, end_i;
@@ -51,7 +46,11 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms,
     storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
+
+    if ( i >= n )
+    {
+        return;
+    }
 
     bonds = &( p_bonds);
     workspace = &( p_workspace );
@@ -65,10 +64,12 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms,
     start_i = Dev_Start_Index(i, bonds);
     end_i = Dev_End_Index(i, bonds);
 
-    for( pj = start_i; pj < end_i; ++pj ) {
+    for ( pj = start_i; pj < end_i; ++pj )
+    {
         j = bonds->select.bond_list[pj].nbr;
 
-        if( my_atoms[i].orig_id <= my_atoms[j].orig_id ) {
+        if ( my_atoms[i].orig_id <= my_atoms[j].orig_id )
+        {
             /* set the pointers */
             type_i = my_atoms[i].type;
             type_j = my_atoms[j].type;
@@ -109,10 +110,12 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms,
                     workspace->f_be, workspace->f_be );
 #endif
             /* Stabilisation terminal triple bond */
-            if( bo_ij->BO >= 1.00 ) {
-                if( gp37 == 2 ||
+            if ( bo_ij->BO >= 1.00 )
+            {
+                if ( gp37 == 2 ||
                         (sbp_i->mass == 12.0000 && sbp_j->mass == 15.9990) || 
-                        (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) ) {
+                        (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) )
+                {
                     exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.50) );
                     exphua1 = EXP(-gp3 * (workspace->total_bond_order[i]-bo_ij->BO));
                     exphub1 = EXP(-gp3 * (workspace->total_bond_order[j]-bo_ij->BO));

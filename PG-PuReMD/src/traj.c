@@ -41,33 +41,37 @@ int Set_My_Trajectory_View( MPI_File trj, int offset, MPI_Datatype etype,
 {
     int my_disp;
     int length[3];
-    MPI_Aint line_len;
+    MPI_Aint lower_bound, extent;
     MPI_Aint disp[3];
     MPI_Datatype type[3];
     MPI_Datatype view;
 
-    /* line length inferred from etype */
-    MPI_Type_extent( etype, &line_len );
-    line_len /= sizeof(char);
+    /* get old type info */
+    MPI_Type_get_extent( etype, &lower_bound, &extent );
 
     /* determine where to start writing into the mpi file */
     my_disp = SumScan( my_n, my_rank, MASTER_NODE, comm );
     my_disp -= my_n;
+    extent /= sizeof(char);
 
-    /* create atom_info_view */
     length[0] = 1;
     length[1] = my_n;
     length[2] = 1;
     disp[0] = 0;
-    disp[1] = line_len * my_disp;
-    disp[2] = line_len * big_n;
+    disp[1] = extent * my_disp;
+    disp[2] = extent * big_n;
     type[0] = MPI_LB;
     type[1] = etype;
     type[2] = MPI_UB;
 
-    MPI_Type_struct( 3, length, disp, type, &view );
+    MPI_Type_create_struct( 3, length, disp, type, &view );
+
+    //TODO: change due to deprecation of MPI_LB/MPI_UB
+//    MPI_Type_create_resized( etype, lower_bound, extent, &view );
+
     MPI_Type_commit( &view );
 
+    /* create atom_info_view */
     MPI_File_set_view( trj, offset, etype, view, "native", MPI_INFO_NULL );
 
     return my_disp;

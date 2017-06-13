@@ -24,6 +24,7 @@
 
 #include "reax_types.h"
 
+void Check_MPI_Error( int, const char * );
 void Setup_Comm( reax_system*, control_params*, mpi_datatypes* );
 void Update_Comm( reax_system* );
 

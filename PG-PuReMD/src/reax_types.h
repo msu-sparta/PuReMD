@@ -141,6 +141,7 @@
 #define MAX_LINE            1024
 #define MAX_TOKENS          1024
 #define MAX_TOKEN_LEN       1024
+#define MAX_ATOM_NAME_LEN   8
 
 #define MAX_ATOM_ID         100000
 #define MAX_RESTRICT        15
@@ -181,6 +182,8 @@
 
 #define MAX_ITR 10
 #define RESTART 30
+
+#define MAX_RETRIES 20
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -301,7 +304,8 @@ enum message_tags { INIT = 0, UPDATE = 1, BNDRY = 2, UPDATE_BNDRY = 3,
 enum errors { FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
               CANNOT_OPEN_FILE = -12, CANNOT_INITIALIZE = -13,
               INSUFFICIENT_MEMORY = -14, UNKNOWN_OPTION = -15,
-              INVALID_INPUT = -16, INVALID_GEO = -17
+              INVALID_INPUT = -16, INVALID_GEO = -17,
+              MAX_RETRIES_REACHED = -18,
             };
 
 /* ??? */
@@ -372,7 +376,7 @@ typedef struct
      * body parameters section) */
     int type;
     /* atom name as given in the geo file */
-    char name[8];
+    char name[MAX_ATOM_NAME_LEN];
     /* atomic position, 3D */
     rvec x;
     /* atomic velocity, 3D */
@@ -398,7 +402,7 @@ typedef struct
     /* pad to 8-byte address boundary */
     //int  pad;
     /* atom name as given in the geo file */
-    char name[8];
+    char name[MAX_ATOM_NAME_LEN];
     /* atomic position, 3D */
     rvec x;
     /* atomic velocity, 3D */
@@ -811,7 +815,7 @@ typedef struct
      * body parameters section) */
     int type;
     /* atom name as given in the geo file */
-    char name[8];
+    char name[MAX_ATOM_NAME_LEN];
 
     /* atomic position, 3D */
     rvec x;
@@ -877,18 +881,18 @@ typedef struct
 /**/
 typedef struct
 {
-    /**/
+    /* min. cell coordinate (top-left) */
     rvec min;
-    /**/
+    /* max. cell coordinate (bottom-right) */
     rvec max;
  
-    /**/
+    /* ??? */
     int mark;
-    /**/
+    /* native or ghost cells (contains atoms only of resp. type) */
     int type;
-    /**/
+    /* count of num. of atoms currently within this grid cell */
     int top;
-    /**/
+    /* IDs of atoms within this grid cell */
     int* atoms;
 } grid_cell;
 
@@ -899,7 +903,7 @@ typedef struct
 {
     /* total number of grid cells (native AND ghost) */
     int total;
-    /**/
+    /* max. num. of atoms with a grid cell can contain */
     int max_atoms;
     /**/
     int max_nbrs;
@@ -946,7 +950,7 @@ typedef struct
     int *end;
     /**/
     real *cutoff;
-    /**/
+    /* rel. positions of cells which fall within neighbor cut-off of a given cell */
     ivec *nbrs_x;
     /**/
     rvec *nbrs_cp;
@@ -1094,7 +1098,12 @@ typedef struct
     /**/
     int max_sparse_entries;
     /**/
+    int *d_max_sparse_entries;
+    /**/
+    int *d_total_sparse_entries;
+    /**/
     int num_thbodies;
+    /**/
     int *d_num_thbodies;
     //TODO: move to reax_atom
     int max_hbonds;

@@ -1859,6 +1859,8 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
     }
 #endif
 
+    retVal = SUCCESS;
+
     /********* init forces ************/
     if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
     {
@@ -1892,7 +1894,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 #endif
 
         /********* bonded interactions ************/
-        Cuda_Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
+        retVal = Cuda_Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
         fprintf( stderr, "    [CUDA_COMPUTE_BONDED_FORCES: %d] STEP %d\n", retVal, data->step );
 
 #if defined(LOG_PERFORMANCE)
@@ -1908,7 +1910,10 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
                  system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
+    }
 
+    if ( retVal == SUCCESS )
+    {
     /**************** charges ************************/
 #if defined(PURE_REAX)
         if ( charge_flag == TRUE )

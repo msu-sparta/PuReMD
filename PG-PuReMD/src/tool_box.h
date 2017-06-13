@@ -65,16 +65,16 @@ char *Get_Atom_Name( reax_system*, int );
 
 void Allocate_Tokenizer_Space( char**, char**, char*** );
 
-int Tokenize( char*, char*** );
+int Tokenize( const char*, char*** );
 
 /* from lammps */
-void *smalloc( size_t, char* );
+void *smalloc( size_t, const char* );
 
-void* srealloc( void *ptr, size_t n, char *name );
+void* srealloc( void *, size_t, const char * );
 
-void *scalloc( size_t, size_t, char* );
+void *scalloc( size_t, size_t, const char* );
 
-void sfree( void*, char* );
+void sfree( void*, const char* );
 
 
 #ifdef __cplusplus

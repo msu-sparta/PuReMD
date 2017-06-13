@@ -4,30 +4,36 @@
 #include "reax_types.h"
 
 
-CUDA_DEVICE static inline int cuda_strcmp (char *a, char *b, int len)
+CUDA_DEVICE static inline int cuda_strcmp( char * a,
+        char * b, int len )
 {
+    int i;
     char *src, *dst;
 
     src = a;
     dst = b;
 
-    for (int i = 0; i < len; i++)
+    for ( i = 0; i < len; i++ )
     {
+        if ( *dst == '\0' )
+        {
+            return FALSE;
+        }
 
-        if (*dst == '\0')
-            return 0;
+        if ( *src != *dst )
+        {
+            return TRUE;
+        }
 
-        if (*src != *dst)  return 1;
-
-        src ++;
-        dst ++;
+        src++;
+        dst++;
     }
 
-    return 0;
+    return FALSE;
 }
 
 
-CUDA_DEVICE static inline real myatomicAdd(real* address, real val)
+CUDA_DEVICE static inline real myatomicAdd( real* address, real val )
 {
     unsigned long long int* address_as_ull =
         (unsigned long long int*)address;
@@ -46,17 +52,17 @@ CUDA_DEVICE static inline real myatomicAdd(real* address, real val)
 
 CUDA_DEVICE static inline void atomic_rvecAdd( rvec ret, rvec v )
 {
-    myatomicAdd ( &ret[0], v[0] );
-    myatomicAdd ( &ret[1], v[1] );
-    myatomicAdd ( &ret[2], v[2] );
+    myatomicAdd( &ret[0], v[0] );
+    myatomicAdd( &ret[1], v[1] );
+    myatomicAdd( &ret[2], v[2] );
 }
 
 
 CUDA_DEVICE static inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
-    myatomicAdd ( &ret[0], c * v[0] );
-    myatomicAdd ( &ret[1], c * v[1] );
-    myatomicAdd ( &ret[2], c * v[2] );
+    myatomicAdd( &ret[0], c * v[0] );
+    myatomicAdd( &ret[1], c * v[1] );
+    myatomicAdd( &ret[2], c * v[2] );
 }
 
 #endif

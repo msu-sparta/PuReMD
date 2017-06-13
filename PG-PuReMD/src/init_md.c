@@ -21,6 +21,8 @@
 
 #include "reax_types.h"
 
+#include <stddef.h>
+
 #ifdef HAVE_CUDA
   #include "cuda_allocate.h"
   #include "cuda_list.h"
@@ -364,7 +366,6 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
 
     case nhNVT:
         fprintf( stderr, "WARNING: Nose-Hoover NVT is still under testing.\n" );
-        //return FAILURE;
         data->N_f = 3 * system->bigN + 1;
         Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
@@ -383,7 +384,9 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
         Evolve = Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
+        {
             Reset_Pressures( data );
+        }
         break;
 
     case iNPT: /* Isotropic NPT */
@@ -391,12 +394,15 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
         Evolve = Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
+        {
             Reset_Pressures( data );
+        }
         break;
 
     case NPT: /* Anisotropic NPT */
-        strcpy( msg, "init_simulation_data: option not yet implemented" );
-        return FAILURE;
+        fprintf( stderr, "p%d: init_simulation_data: option not yet implemented\n",
+              system->my_rank );
+        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
 
         data->N_f = 3 * system->bigN + 9;
         Evolve = Velocity_Verlet_Berendsen_NPT;
@@ -413,8 +419,9 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
         break;
 
     default:
-        strcpy( msg, "init_simulation_data: ensemble not recognized" );
-        return FAILURE;
+        fprintf( stderr, "p%d: init_simulation_data: ensemble not recognized\n",
+              system->my_rank );
+        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
     }
 
     /* initialize the timer(s) */
@@ -463,7 +470,6 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     case nhNVT:
         fprintf( stderr, "WARNING: Nose-Hoover NVT is still under testing.\n" );
-        //return FAILURE;
         data->N_f = 3 * system->bigN + 1;
         Cuda_Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
@@ -498,17 +504,19 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         break;
 
     case NPT: /* Anisotropic NPT */
-        strcpy( msg, "init_simulation_data: option not yet implemented" );
-        return FAILURE;
-
         data->N_f = 3 * system->bigN + 9;
         Cuda_Evolve = Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
+
+        fprintf( stderr, "p%d: init_simulation_data: option not yet implemented\n",
+              system->my_rank );
+        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
         break;
 
     default:
-        strcpy( msg, "init_simulation_data: ensemble not recognized" );
-        return FAILURE;
+        fprintf( stderr, "p%d: init_simulation_data: ensemble not recognized\n",
+              system->my_rank );
+        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
     }
 
     /* initialize the timer(s) */
@@ -657,123 +665,134 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     /* setup the world */
     mpi_data->world = MPI_COMM_WORLD;
 
-    /* allocate mpi buffers  */
-    //Allocate_MPI_Buffers( mpi_data, system->est_recv,
-    //              system->gcell_cap, system->my_nbrs, msg );
-    //tmp = 0;
-    //#if defined(DEBUG_FOCUS)
-    //for( i = 0; i < MAX_NBRS; ++i )
-    //if( i != MYSELF )
-    //  tmp += system->my_nbrs[i].est_send;
-
-    //fprintf( stderr, "p%d: allocated mpi_buffers: recv=%d send=%d total=%dMB\n",
-    //   system->my_rank, system->est_recv, tmp,
-    //   (int)((system->est_recv+tmp)*sizeof(boundary_atom)/(1024*1024)) );
-    //#endif
-    //if( ret != SUCCESS )
-    //  return ret;
-
     /* mpi_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, name,
                    x, v, f_old, s, t] */
     block[0] = block[1] = block[2] = block[3] = block[4] = 1;
-    block[5] = 8;
+    block[5] = MAX_ATOM_NAME_LEN;
     block[6] = block[7] = block[8] = 3;
     block[9] = block[10] = 4;
 
-    MPI_Address( &(sample.orig_id), disp + 0 );
-    MPI_Address( &(sample.imprt_id), disp + 1 );
-    MPI_Address( &(sample.type), disp + 2 );
-    MPI_Address( &(sample.num_bonds), disp + 3 );
-    MPI_Address( &(sample.num_hbonds), disp + 4 );
-    MPI_Address( &(sample.name), disp + 5 );
-    MPI_Address( &(sample.x[0]), disp + 6 );
-    MPI_Address( &(sample.v[0]), disp + 7 );
-    MPI_Address( &(sample.f_old[0]), disp + 8 );
-    MPI_Address( &(sample.s[0]), disp + 9 );
-    MPI_Address( &(sample.t[0]), disp + 10 );
-
-    base = (MPI_Aint)(&(sample));
-    for ( i = 0; i < 11; ++i )
-    {
-        disp[i] -= base;
-    }
+//    MPI_Get_address( &sample, &base );
+//    MPI_Get_address( &(sample.orig_id), disp + 0 );
+//    MPI_Get_address( &(sample.imprt_id), disp + 1 );
+//    MPI_Get_address( &(sample.type), disp + 2 );
+//    MPI_Get_address( &(sample.num_bonds), disp + 3 );
+//    MPI_Get_address( &(sample.num_hbonds), disp + 4 );
+//    MPI_Get_address( &(sample.name), disp + 5 );
+//    MPI_Get_address( &(sample.x[0]), disp + 6 );
+//    MPI_Get_address( &(sample.v[0]), disp + 7 );
+//    MPI_Get_address( &(sample.f_old[0]), disp + 8 );
+//    MPI_Get_address( &(sample.s[0]), disp + 9 );
+//    MPI_Get_address( &(sample.t[0]), disp + 10 );
+//    for ( i = 0; i < 11; ++i )
+//    {
+//        disp[i] -= base;
+//    }
+    disp[0] = offsetof( mpi_atom, orig_id );
+    disp[1] = offsetof( mpi_atom, imprt_id );
+    disp[2] = offsetof( mpi_atom, type );
+    disp[3] = offsetof( mpi_atom, num_bonds );
+    disp[4] = offsetof( mpi_atom, num_hbonds );
+    disp[5] = offsetof( mpi_atom, name );
+    disp[6] = offsetof( mpi_atom, x );
+    disp[7] = offsetof( mpi_atom, v );
+    disp[8] = offsetof( mpi_atom, f_old );
+    disp[9] = offsetof( mpi_atom, s );
+    disp[10] = offsetof( mpi_atom, t );
 
     type[0] = type[1] = type[2] = type[3] = type[4] = MPI_INT;
     type[5] = MPI_CHAR;
     type[6] = type[7] = type[8] = type[9] = type[10] = MPI_DOUBLE;
 
-    MPI_Type_struct( 11, block, disp, type, &(mpi_data->mpi_atom_type) );
+    MPI_Type_create_struct( 11, block, disp, type, &(mpi_data->mpi_atom_type) );
     MPI_Type_commit( &(mpi_data->mpi_atom_type) );
 
     /* boundary_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, x] */
     block[0] = block[1] = block[2] = block[3] = block[4] = 1;
     block[5] = 3;
 
-    MPI_Address( &(b_sample.orig_id), disp + 0 );
-    MPI_Address( &(b_sample.imprt_id), disp + 1 );
-    MPI_Address( &(b_sample.type), disp + 2 );
-    MPI_Address( &(b_sample.num_bonds), disp + 3 );
-    MPI_Address( &(b_sample.num_hbonds), disp + 4 );
-    MPI_Address( &(b_sample.x[0]), disp + 5 );
-
-    base = (MPI_Aint)(&(b_sample));
-    for ( i = 0; i < 6; ++i )
-    {
-        disp[i] -= base;
-    }
+//    MPI_Get_address( &b_sample, &base );
+//    MPI_Get_address( &(b_sample.orig_id), disp + 0 );
+//    MPI_Get_address( &(b_sample.imprt_id), disp + 1 );
+//    MPI_Get_address( &(b_sample.type), disp + 2 );
+//    MPI_Get_address( &(b_sample.num_bonds), disp + 3 );
+//    MPI_Get_address( &(b_sample.num_hbonds), disp + 4 );
+//    MPI_Get_address( &(b_sample.x[0]), disp + 5 );
+//    for ( i = 0; i < 6; ++i )
+//    {
+//        disp[i] -= base;
+//    }
+    disp[0] = offsetof( boundary_atom, orig_id );
+    disp[1] = offsetof( boundary_atom, imprt_id );
+    disp[2] = offsetof( boundary_atom, type );
+    disp[3] = offsetof( boundary_atom, num_bonds );
+    disp[4] = offsetof( boundary_atom, num_hbonds );
+    disp[5] = offsetof( boundary_atom, x );
 
     type[0] = type[1] = type[2] = type[3] = type[4] = MPI_INT;
     type[5] = MPI_DOUBLE;
 
-    MPI_Type_struct( 6, block, disp, type, &(mpi_data->boundary_atom_type) );
+    MPI_Type_create_struct( 6, block, disp, type, &(mpi_data->boundary_atom_type) );
     MPI_Type_commit( &(mpi_data->boundary_atom_type) );
 
     /* mpi_rvec */
     block[0] = 3;
-    MPI_Address( &(rvec_sample[0]), disp + 0 );
-    base = disp[0];
-    for ( i = 0; i < 1; ++i )
-    {
-        disp[i] -= base;
-    }
+
+//    MPI_Get_address( &rvec_sample, &base );
+//    MPI_Get_address( &(rvec_sample[0]), disp + 0 );
+//    for ( i = 0; i < 1; ++i )
+//    {
+//        disp[i] -= base;
+//    }
+    disp[0] = 0;
+
     type[0] = MPI_DOUBLE;
-    MPI_Type_struct( 1, block, disp, type, &(mpi_data->mpi_rvec) );
+
+    MPI_Type_create_struct( 1, block, disp, type, &(mpi_data->mpi_rvec) );
     MPI_Type_commit( &(mpi_data->mpi_rvec) );
 
     /* mpi_rvec2 */
     block[0] = 2;
-    MPI_Address( &(rvec2_sample[0]), disp + 0 );
-    base = disp[0];
-    for ( i = 0; i < 1; ++i )
-    {
-        disp[i] -= base;
-    }
+
+//    MPI_Get_address( &rvec2_sample, &base );
+//    MPI_Get_address( &(rvec2_sample[0]), disp + 0 );
+//    for ( i = 0; i < 1; ++i )
+//    {
+//        disp[i] -= base;
+//    }
+    disp[0] = 0;
+
     type[0] = MPI_DOUBLE;
-    MPI_Type_struct( 1, block, disp, type, &(mpi_data->mpi_rvec2) );
+
+    MPI_Type_create_struct( 1, block, disp, type, &(mpi_data->mpi_rvec2) );
     MPI_Type_commit( &(mpi_data->mpi_rvec2) );
 
-    /* restart_atom - [orig_id, type, name[8], x, v] */
+    /* restart_atom - [orig_id, type, name, x, v] */
     block[0] = block[1] = 1 ;
-    block[2] = 8;
+    block[2] = MAX_ATOM_NAME_LEN;
     block[3] = block[4] = 3;
 
-    MPI_Address( &(r_sample.orig_id), disp + 0 );
-    MPI_Address( &(r_sample.type), disp + 1 );
-    MPI_Address( &(r_sample.name), disp + 2 );
-    MPI_Address( &(r_sample.x[0]), disp + 3 );
-    MPI_Address( &(r_sample.v[0]), disp + 4 );
-
-    base = (MPI_Aint)(&(r_sample));
-    for ( i = 0; i < 5; ++i )
-    {
-        disp[i] -= base;
-    }
+//    MPI_Get_address( &r_sample, &base );
+//    MPI_Get_address( &(r_sample.orig_id), disp + 0 );
+//    MPI_Get_address( &(r_sample.type), disp + 1 );
+//    MPI_Get_address( &(r_sample.name), disp + 2 );
+//    MPI_Get_address( &(r_sample.x[0]), disp + 3 );
+//    MPI_Get_address( &(r_sample.v[0]), disp + 4 );
+//    for ( i = 0; i < 5; ++i )
+//    {
+//        disp[i] -= base;
+//    }
+    disp[0] = offsetof( restart_atom, orig_id );
+    disp[1] = offsetof( restart_atom, type );
+    disp[2] = offsetof( restart_atom, name );
+    disp[3] = offsetof( restart_atom, x );
+    disp[4] = offsetof( restart_atom, v );
 
     type[0] = type[1] = MPI_INT;
     type[2] = MPI_CHAR;
     type[3] = type[4] = MPI_DOUBLE;
 
-    MPI_Type_struct( 5, block, disp, type, &(mpi_data->restart_atom_type) );
+    MPI_Type_create_struct( 5, block, disp, type, &(mpi_data->restart_atom_type) );
     MPI_Type_commit( &(mpi_data->restart_atom_type) );
 
     return SUCCESS;
@@ -904,8 +923,8 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
         mpi_datatypes *mpi_data, char *msg )
 {
     int i, count, ret;
-    int num_nbrs, total_hbonds, total_bonds, total_3body, Htop;
-    int *nbr_indices, *hb_top, *bond_top, *thbody;
+    int num_nbrs, total_hbonds, total_bonds, Htop;
+    int *nbr_indices, *hb_top, *bond_top;
    
     nbr_indices = (int *) host_scratch;
     bond_top = (int*) calloc( system->total_cap, sizeof(int) );
@@ -947,19 +966,12 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Estimate_Storages( system, control, dev_lists, &Htop,
             hb_top, bond_top );
 
-    //TODO - CARVER FIX
-
-    Cuda_Estimate_Sparse_Matrix( system, control, data, dev_lists );
+    /* charges sparse matrix */
+    Cuda_Estimate_Storages_Sparse_Matrix( system, control, data, dev_lists );
 
     dev_alloc_matrix( &(dev_workspace->H), system->total_cap,
             system->total_cap * system->max_sparse_entries );
     dev_workspace->H.n = system->n;
-
-    //THIS IS INITIALIZED in the init_forces function to system->n
-    //but this is never used in the code.
-    //GPU maintains the H matrix to be (NXN) symmetric matrix.
-
-    //TODO - CARVER FIX
 
     //MATRIX CHANGES
     //workspace->L = NULL;
@@ -1036,24 +1048,9 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
             (int)(total_bonds * sizeof(bond_data) / (1024 * 1024)) );
 #endif
 
-    /* 3bodies list */
-    thbody = (int *) scratch;
-
-    Cuda_Estimate_Storages_Three_Body( system, control, dev_lists,
-            &total_3body, thbody );
-
-    Dev_Make_List( (*dev_lists + BONDS)->num_intrs, total_3body,
-            TYP_THREE_BODY, (*dev_lists + THREE_BODIES) );
-//    Make_List( (*lists + BONDS)->num_intrs, total_3body,
-//            TYP_THREE_BODY, (*lists + THREE_BODIES) );
-
-    Cuda_Init_Three_Body_Indices( thbody, (*dev_lists + BONDS)->num_intrs );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: allocated 3-body list: total_3body=%d, space=%dMB\n",
-            system->my_rank, total_3body,
-            (int)(total_3body * sizeof(three_body_interaction_data) / (1024 * 1024)) );
-#endif
+    /* 3bodies list: since a more accurate estimate of the num.
+     * of three body interactions requires that bond orders have
+     * been computed, delay estimation until for computation */
 
     free( hb_top );
     free( bond_top );
@@ -1124,7 +1121,7 @@ void Initialize( reax_system *system, control_params *control,
     fprintf( stderr, "p%d: initialized lists\n", system->my_rank );
 #endif
 
-    if (Init_Output_Files(system, control, out_control, mpi_data, msg) == FAILURE)
+    if ( Init_Output_Files(system, control, out_control, mpi_data, msg) == FAILURE)
     {
         fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
         fprintf( stderr, "p%d: could not open output files! terminating...\n",

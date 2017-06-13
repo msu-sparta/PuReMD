@@ -26,18 +26,10 @@
 #include "cuda_list.h"
 
 
-CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, 
-        global_parameters gp, 
-        single_body_parameters *sbp, 
-        two_body_parameters *tbp, 
-        storage p_workspace, 
-        reax_list p_bonds, 
-        int n, 
-        int num_atom_types,
-        real *data_elp,
-        real *data_eov, 
-        real *data_eun
-        )
+CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp, 
+        single_body_parameters *sbp, two_body_parameters *tbp, 
+        storage p_workspace, reax_list p_bonds, int n, int num_atom_types,
+        real *data_elp, real *data_eov, real *data_eun )
 {
     int i, j, pj, type_i, type_j;
     real Delta_lpcorr, dfvl;
@@ -50,14 +42,17 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
     real p_lp1, p_lp2, p_lp3;
     real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
-
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij; 
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
+
+    if ( i >= n )
+    {
+        return;
+    }
 
     reax_list *bonds = &( p_bonds );
     storage *workspace = &( p_workspace );
@@ -104,21 +99,26 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
 #endif
 
     /* correction for C2 */
-    if( gp.l[5] > 0.001 &&
+    if ( gp.l[5] > 0.001 &&
             !cuda_strcmp( sbp[type_i].name, "C", 1 ) )
-        for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
-            if( my_atoms[i].orig_id < 
-                    my_atoms[bonds->select.bond_list[pj].nbr].orig_id ) {
+    {
+        for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+        {
+            if ( my_atoms[i].orig_id < 
+                    my_atoms[bonds->select.bond_list[pj].nbr].orig_id )
+            {
                 j = bonds->select.bond_list[pj].nbr;
                 type_j = my_atoms[j].type;
 
-                if( !cuda_strcmp( sbp[type_j].name, "C", 1 ) ) {
+                if ( !cuda_strcmp( sbp[type_j].name, "C", 1 ) )
+                {
                     twbp = &( tbp[index_tbp (type_i,type_j, num_atom_types) ]);
                     bo_ij = &( bonds->select.bond_list[pj].bo_data );
                     Di = workspace->Delta[i];
                     vov3 = bo_ij->BO - Di - 0.040*POW(Di, 4.);
 
-                    if( vov3 > 3. ) {
+                    if ( vov3 > 3. )
+                    {
                         data_elp [i] += e_lph = p_lp3 * SQR(vov3-3.0);
 
                         deahu2dbo = 2.*p_lp3*(vov3 - 3.);
@@ -126,11 +126,13 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
 
                         bo_ij->Cdbo += deahu2dbo;
                         workspace->CdDelta[i] += deahu2dsbo;
+
 #ifdef TEST_ENERGY
                         fprintf(out_control->elp,"C2cor%6d%6d%12.6f%12.6f%12.6f\n",
                                 system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                 e_lph, deahu2dbo, deahu2dsbo );
 #endif
+
 #ifdef TEST_FORCES
                         Add_dBO(system, lists, i, pj, deahu2dbo, workspace->f_lp);
                         Add_dDelta(system, lists, i, deahu2dsbo, workspace->f_lp);
@@ -138,8 +140,9 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
                     }
                 }    
             }
+        }
+    }
     //}
-
 
     //for( i = 0; i < system->n; ++i ) {
     type_i = my_atoms[i].type;
@@ -147,17 +150,23 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
 
     /* over-coordination energy */
     if( sbp_i->mass > 21.0 ) 
+    {
         dfvl = 0.0;
-    else dfvl = 1.0; // only for 1st-row elements
+    }
+    else
+    {
+        dfvl = 1.0; // only for 1st-row elements
+    }
 
     p_ovun2 = sbp_i->p_ovun2;
     sum_ovun1 = sum_ovun2 = 0;
-    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj ) {
+    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    {
         j = bonds->select.bond_list[pj].nbr;
         type_j = my_atoms[j].type;
         bo_ij = &(bonds->select.bond_list[pj].bo_data);
         sbp_j = &(sbp[ type_j ]);
-        twbp = &(tbp[ index_tbp (type_i, type_j, num_atom_types )]);
+        twbp = &(tbp[ index_tbp(type_i, type_j, num_atom_types )]);
 
         sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
         sum_ovun2 += (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j])*
@@ -191,7 +200,6 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
     CEover4 = CEover2 * (dfvl * workspace->Delta_lp_temp[i]) * 
         p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1);
 
-
     /* under-coordination potential */
     p_ovun2 = sbp_i->p_ovun2;
     p_ovun5 = sbp_i->p_ovun5;
@@ -213,7 +221,6 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
     CEunder4 = CEunder1 * (dfvl*workspace->Delta_lp_temp[i]) * 
         p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1) + CEunder2;
 
-
     /* forces */
     workspace->CdDelta[i] += CEover3;   // OvCoor - 2nd term
     workspace->CdDelta[i] += CEunder3;  // UnCoor - 1st term
@@ -223,13 +230,13 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
     Add_dDelta( system, lists, i, CEunder3, workspace->f_un ); // UnCoor 1st
 #endif
 
-    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj ) {
+    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    {
         pbond = &(bonds->select.bond_list[pj]);
         j = pbond->nbr;
         bo_ij = &(pbond->bo_data);
-        twbp  = &(tbp[ index_tbp (my_atoms[i].type, my_atoms[pbond->nbr].type, 
+        twbp  = &(tbp[ index_tbp(my_atoms[i].type, my_atoms[pbond->nbr].type, 
                     num_atom_types) ]);
-
 
         bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st 
         //workspace->CdDelta[j] += CEover4 * (1.0 - dfvl*workspace->dDelta_lp[j]) * 
@@ -240,7 +247,6 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
         bo_ij->Cdbopi2 += CEover4 * 
             (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j]);  // OvCoor-3b
 
-
         //workspace->CdDelta[j] += CEunder4 * (1.0 - dfvl*workspace->dDelta_lp[j]) *
         pbond->ae_CdDelta += CEunder4 * (1.0 - dfvl*workspace->dDelta_lp[j]) *
             (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
@@ -248,7 +254,6 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
             (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j]);  // UnCoor-2b
         bo_ij->Cdbopi2 += CEunder4 * 
             (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j]);  // UnCoor-2b
-
 
 #ifdef TEST_ENERGY
         /*      fprintf( out_control->eov, "%6d%12.6f\n", 
@@ -319,30 +324,36 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms,
     //}
 }
 
-CUDA_GLOBAL void Cuda_Atom_Energy_PostProcess ( reax_list p_bonds, 
+
+CUDA_GLOBAL void Cuda_Atom_Energy_PostProcess( reax_list p_bonds, 
         storage p_workspace, int n )
 {
     int i,pj;
     bond_data *pbond, *sbond;
     bond_data *sym_index_bond;
-
-    reax_list *bonds = &p_bonds;
-    storage *workspace = &p_workspace;
+    reax_list *bonds;
+    storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    if ( i >= n) return;
 
-    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj ){
+    if ( i >= n )
+    {
+        return;
+    }
 
+    bonds = &p_bonds;
+    workspace = &p_workspace;
+
+    for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    {
         /*
            pbond = &(bonds->select.bond_list[pj]);
            dbond_index_bond = &( bonds->select.bond_list[ pbond->dbond_index ] );
            workspace->CdDelta [i] += dbond_index_bond->ae_CdDelta;
          */
 
-        sbond = &(bonds->select.bond_list [pj]);
+        sbond = &(bonds->select.bond_list[pj]);
         sym_index_bond = &( bonds->select.bond_list[ sbond->sym_index ]); 
-        workspace->CdDelta [i] += sym_index_bond->ae_CdDelta;
-
+        workspace->CdDelta[i] += sym_index_bond->ae_CdDelta;
     }
 }

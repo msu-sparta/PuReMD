@@ -148,10 +148,10 @@ void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
         exit( INVALID_INPUT );
     }
 
-    c_alpha = cos(DEG2RAD(alpha));
-    c_beta  = cos(DEG2RAD(beta));
-    c_gamma = cos(DEG2RAD(gamma));
-    s_gamma = sin(DEG2RAD(gamma));
+    c_alpha = COS(DEG2RAD(alpha));
+    c_beta  = COS(DEG2RAD(beta));
+    c_gamma = COS(DEG2RAD(gamma));
+    s_gamma = SIN(DEG2RAD(gamma));
     zi = (c_alpha - c_beta * c_gamma) / s_gamma;
 
     rvec_MakeZero( box->min );
@@ -165,9 +165,10 @@ void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
     box->box[2][0] = c * c_beta;
     box->box[2][1] = c * zi;
     box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
+
 #if defined(DEBUG)
     fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
-             box->box[0][0], box->box[1][1], box->box[2][2] );
+            box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
 
     Make_Consistent( box );
@@ -211,30 +212,32 @@ void Setup_My_Box( reax_system *system, control_params *control )
 }
 
 
-
 /* setup my extended box -- my box together with the ghost regions */
 void Setup_My_Ext_Box( reax_system *system, control_params *control )
 {
-    int             d;
-    ivec            native_gcells, ghost_gcells;
-    rvec            gcell_len;
+    int d;
+    ivec native_gcells, ghost_gcells;
+    rvec gcell_len;
     simulation_box *big_box, *my_box, *my_ext_box;
     boundary_cutoff *bc;
 
-    big_box    = &(system->big_box);
-    my_box     = &(system->my_box);
+    big_box = &(system->big_box);
+    my_box = &(system->my_box);
     my_ext_box = &(system->my_ext_box);
-    bc         = &(system->bndry_cuts);
+    bc = &(system->bndry_cuts);
     rtensor_MakeZero( my_ext_box->box );
 
     for ( d = 0; d < 3; ++d )
     {
         /* estimate the number of native cells */
         native_gcells[d] = (int)(my_box->box_norms[d] / (control->vlist_cut / 2));
-        if ( native_gcells[d] == 0 ) native_gcells[d] = 1;
+        if ( native_gcells[d] == 0 )
+        {
+            native_gcells[d] = 1;
+        }
 
         gcell_len[d] = my_box->box_norms[d] / native_gcells[d];
-        ghost_gcells[d] = (int) ceil(bc->ghost_cutoff / gcell_len[d]);
+        ghost_gcells[d] = (int) CEIL(bc->ghost_cutoff / gcell_len[d]);
 
         /* extend my box with the ghost regions */
         my_ext_box->min[d] = my_box->min[d] - ghost_gcells[d] * gcell_len[d];
@@ -264,19 +267,21 @@ void Setup_Boundary_Cutoffs( reax_system *system, control_params *control )
     fprintf( stderr, "ghost_hbond: %8.3f\n", bc->ghost_hbond );
     fprintf( stderr, "ghost_bond: %8.3f\n", bc->ghost_bond );
     fprintf( stderr, "ghost_cutoff: %8.3f\n", bc->ghost_cutoff );
-#endif //DEBUG
+#endif
 }
 
 
 void Setup_Environment( reax_system *system, control_params *control,
-                        mpi_datatypes *mpi_data )
+        mpi_datatypes *mpi_data )
 {
     ivec periodic = {1, 1, 1};
+#if defined(DEBUG_FOCUS)
     char temp[100] = "";
+#endif
 
     /* initialize communicator - 3D mesh with wrap-arounds = 3D torus */
     MPI_Cart_create( MPI_COMM_WORLD, 3, control->procs_by_dim, periodic, 1,
-                     &(mpi_data->comm_mesh3D) );
+            &(mpi_data->comm_mesh3D) );
     MPI_Comm_rank( mpi_data->comm_mesh3D, &(system->my_rank) );
     MPI_Cart_coords( mpi_data->comm_mesh3D, system->my_rank, 3,
             system->my_coords );
@@ -285,10 +290,11 @@ void Setup_Environment( reax_system *system, control_params *control,
     Setup_My_Box( system, control );
     Setup_My_Ext_Box( system, control );
     Setup_Comm( system, control, mpi_data );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coord: %d %d %d\n",
-             system->my_rank,
-             system->my_coords[0], system->my_coords[1], system->my_coords[2] );
+             system->my_rank, system->my_coords[0],
+             system->my_coords[1], system->my_coords[2] );
     sprintf( temp, "p%d big_box", system->my_rank );
     Print_Box( &(system->big_box), temp, stderr );
     sprintf( temp, "p%d my_box", system->my_rank );
@@ -296,20 +302,19 @@ void Setup_Environment( reax_system *system, control_params *control,
     sprintf( temp, "p%d ext_box", system->my_rank );
     Print_Box( &(system->my_ext_box), temp, stderr );
     MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
-#if defined(DEBUG_FOCUS)
-    fprintf(stderr, "p%d: parallel environment initialized\n", system->my_rank);
+    fprintf( stderr, "p%d: parallel environment initialized\n",
+            system->my_rank );
 #endif
 }
 
 
 void Scale_Box( reax_system *system, control_params *control,
-                simulation_data *data, mpi_datatypes *mpi_data )
+        simulation_data *data, mpi_datatypes *mpi_data )
 {
     int i, d;
     real dt, lambda;
-    rvec mu;
+    rvec mu = {0.0, 0.0, 0.0};
     reax_atom *atom;
 
     dt = control->dt;
@@ -321,11 +326,16 @@ void Scale_Box( reax_system *system, control_params *control,
                      1. / 3 );
 
         if ( mu[0] < MIN_dV )
+        {
             mu[0] = MIN_dV;
+        }
         else if ( mu[0] > MAX_dV )
+        {
             mu[0] = MAX_dV;
+        }
 
-        mu[2] = mu[1] = mu[0];
+        mu[1] = mu[0];
+        mu[2] = mu[1];
     }
     else if ( control->ensemble == sNPT )
     {
@@ -335,20 +345,27 @@ void Scale_Box( reax_system *system, control_params *control,
                         1. / 3 );
 
             if ( mu[d] < MIN_dV )
+            {
                 mu[d] = MIN_dV;
+            }
             else if ( mu[d] > MAX_dV )
+            {
                 mu[d] = MAX_dV;
+            }
         }
     }
 
     /* temperature scaler */
     lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
+    {
         lambda = MIN_dT;
+    }
     else if (lambda > MAX_dT )
+    {
         lambda = MAX_dT;
+    }
     lambda = SQRT( lambda );
-
 
     /* Scale velocities and positions at t+dt */
     for ( i = 0; i < system->n; ++i )
@@ -360,7 +377,10 @@ void Scale_Box( reax_system *system, control_params *control,
         atom->x[2] = mu[2] * atom->x[2];
     }
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-    // fprintf( stderr, "damping - " );
+
+#if defined(DEBUG)
+    fprintf( stderr, "damping - " );
+#endif
 
     /* update box & grid */
     system->big_box.box[0][0] *= mu[0];
@@ -387,7 +407,9 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
     {
         tmp = 0.0;
         for ( j = 0; j < 3; j++ )
+        {
             tmp += box->g[i][j] * x2[j];
+        }
         dist += x1[i] * tmp;
     }
 

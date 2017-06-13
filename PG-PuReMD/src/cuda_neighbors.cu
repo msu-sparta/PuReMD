@@ -20,15 +20,16 @@
   ----------------------------------------------------------------------*/
 
 #include "cuda_neighbors.h"
-#include "cuda_list.h"
-#include "vector.h"
 
-#include "index_utils.h"
 #include "reax_types.h"
-#include "cuda_utils.h"
-#include "tool_box.h"
 
-#include "cub/cub/device/device_scan.cuh"
+#include "cuda_list.h"
+#include "cuda_utils.h"
+#include "cuda_reduction.h"
+
+#include "vector.h"
+#include "index_utils.h"
+#include "tool_box.h"
 
 
 CUDA_DEVICE real Dev_DistSqr_to_Special_Point( rvec cp, rvec x ) 
@@ -513,6 +514,7 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
     reax_atom *atom1, *atom2;
 
     l = blockIdx.x * blockDim.x  + threadIdx.x;
+
     if (l >= N)
     {
         return;
@@ -722,21 +724,6 @@ void Cuda_Init_Bond_Indices( int *indices, int entries )
 void Cuda_Init_Three_Body_Indices( int *indices, int entries )
 {
     reax_list *thbody = *dev_lists + THREE_BODIES;
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
 
-    /* determine temporary device storage requirements */
-    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
-            indices, thbody->index, entries );
-
-    /* allocate temporary storage */
-    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "cub::devicescan::temp_storage" );
-
-    /* run exclusive prefix sum */
-    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
-            indices, thbody->index, entries );
-
-    /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "cub::devicescan::temp_storage" );
+    Cuda_Scan_Excl_Sum( indices, thbody->index, entries );
 }

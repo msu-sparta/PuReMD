@@ -153,16 +153,25 @@ void dev_alloc_grid_cell_atoms( reax_system *system, int cap )
 void dev_alloc_system( reax_system *system )
 {
     /* atoms */
-    cuda_malloc( (void **) &system->d_my_atoms, system->total_cap * sizeof(reax_atom),
+    cuda_malloc( (void **) &system->d_my_atoms,
+            system->total_cap * sizeof(reax_atom),
             TRUE, "system:d_my_atoms" );
 
     /* list reallocation */
-    cuda_malloc( (void **) &system->d_num_thbodies, sizeof(int), TRUE, "system:d_num_thbodies" );
+    cuda_malloc( (void **) &system->d_num_thbodies,
+            sizeof(int), TRUE, "system:d_num_thbodies" );
+    cuda_malloc( (void **) &system->d_max_sparse_entries,
+            sizeof(int), TRUE, "system:d_max_sparse_entries" );
+    cuda_malloc( (void **) &system->d_total_sparse_entries,
+            sizeof(int), TRUE, "system:d_total_sparse_entries" );
 
     /* simulation boxes */
-    cuda_malloc( (void **) &system->d_big_box, sizeof(simulation_box), TRUE, "system:d_big_box" );
-    cuda_malloc( (void **) &system->d_my_box, sizeof(simulation_box), TRUE, "system:d_my_box" );
-    cuda_malloc( (void **) &system->d_my_ext_box, sizeof(simulation_box), TRUE, "d_my_ext_box" );
+    cuda_malloc( (void **) &system->d_big_box,
+            sizeof(simulation_box), TRUE, "system:d_big_box" );
+    cuda_malloc( (void **) &system->d_my_box,
+            sizeof(simulation_box), TRUE, "system:d_my_box" );
+    cuda_malloc( (void **) &system->d_my_ext_box,
+            sizeof(simulation_box), TRUE, "d_my_ext_box" );
 
     /* interaction parameters */
     cuda_malloc( (void **) &system->reax_param.d_sbp,

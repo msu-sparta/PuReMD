@@ -461,13 +461,11 @@ void Cuda_Norm( rvec2 *arr, int n, rvec2 result )
 
     k_norm_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         (arr, tmp, n, INITIAL);
-
     cudaThreadSynchronize( );
     cudaCheckError( );
 
     k_norm_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>>
         (tmp, tmp + BLOCKS_POW_2, blocks, FINAL );
-
     cudaThreadSynchronize( );
     cudaCheckError( );
 
@@ -486,14 +484,12 @@ void Cuda_Dot( rvec2 *a, rvec2 *b, rvec2 result, int n )
 
     k_dot_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         ( a, b, tmp, n );
-
     cudaThreadSynchronize( );
     cudaCheckError( );
 
     k_norm_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>> 
-        //k_norm_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * BLOCKS_POW_2 >>> 
+    //k_norm_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * BLOCKS_POW_2 >>> 
         ( tmp, tmp + BLOCKS_POW_2, blocks, FINAL );
-
     cudaThreadSynchronize( );
     cudaCheckError( );
 
@@ -517,7 +513,7 @@ void Cuda_Vector_Sum_Rvec2(rvec2 *x, rvec2 *a, rvec2 b, rvec2 *c, int n)
 }
 
 
-CUDA_GLOBAL void k_rvec2_to_real_copy( real *dst, rvec2 *src, int index, int n)
+CUDA_GLOBAL void k_rvec2_to_real_copy( real *dst, rvec2 *src, int index, int n )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -530,7 +526,7 @@ CUDA_GLOBAL void k_rvec2_to_real_copy( real *dst, rvec2 *src, int index, int n)
 }
 
 
-void Cuda_RvecCopy_From(real *dst, rvec2 *src, int index, int n)
+void Cuda_RvecCopy_From( real *dst, rvec2 *src, int index, int n )
 {
     int blocks;
 
@@ -539,7 +535,6 @@ void Cuda_RvecCopy_From(real *dst, rvec2 *src, int index, int n)
 
     k_rvec2_to_real_copy <<< blocks, DEF_BLOCK_SIZE >>>
         ( dst, src, index, n);
-
     cudaThreadSynchronize( );
     cudaCheckError( );
 }

@@ -294,7 +294,7 @@ void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 }
 
 
-int Tokenize( char* s, char*** tok )
+int Tokenize( const char* s, char*** tok )
 {
     char test[MAX_LINE];
     char *sep = "\t \n!=";
@@ -321,7 +321,7 @@ int Tokenize( char* s, char*** tok )
  *
  * returns: ptr to allocated memory
  * */
-void* smalloc( size_t n, char *name )
+void* smalloc( size_t n, const char *name )
 {
     void *ptr;
 
@@ -360,7 +360,7 @@ void* smalloc( size_t n, char *name )
  *
  * returns: ptr to reallocated memory
  * */
-void* srealloc( void *ptr, size_t n, char *name )
+void* srealloc( void *ptr, size_t n, const char *name )
 {
     void *new_ptr;
 
@@ -408,7 +408,7 @@ void* srealloc( void *ptr, size_t n, char *name )
  *
  * returns: ptr to allocated memory, all bits initialized to zeros
  * */
-void* scalloc( size_t n, size_t size, char *name )
+void* scalloc( size_t n, size_t size, const char *name )
 {
     void *ptr;
 
@@ -445,7 +445,7 @@ void* scalloc( size_t n, size_t size, char *name )
  * ptr: pointer to dynamically allocated memory which will be deallocated
  * name: message with details about pointer, used for warnings/errors
  * */
-void sfree( void *ptr, char *name )
+void sfree( void *ptr, const char *name )
 {
     if ( ptr == NULL )
     {

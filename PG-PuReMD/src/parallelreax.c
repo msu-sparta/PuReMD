@@ -189,7 +189,7 @@ int main( int argc, char* argv[] )
     reax_list **lists;
     output_controls *out_control;
     mpi_datatypes *mpi_data;
-    int i, ret;
+    int i, ret, retries;
     real t_start = 0, t_elapsed;
     real t_begin, t_end;
 
@@ -241,6 +241,8 @@ int main( int argc, char* argv[] )
     }
     out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
     mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
+    mpi_data->in1_buffer = NULL;
+    mpi_data->in2_buffer = NULL;
 
     /* allocate auxiliary data structures (GPU) */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
@@ -366,7 +368,7 @@ int main( int argc, char* argv[] )
 #endif
 
 #if defined(__CUDA_DEBUG__)
-    validate_device (system, data, workspace, lists);
+    validate_device( system, data, workspace, lists );
 #endif
 
 #if !defined(__CUDA_DEBUG__)
@@ -383,12 +385,13 @@ int main( int argc, char* argv[] )
 
     // start the simulation
     ++data->step;
-    while ( data->step <= control->nsteps )
+    retries = 0;
+    while ( data->step <= control->nsteps && retries < MAX_RETRIES )
     {
         fprintf( stderr, "[BEGIN] STEP %d\n", data->step );
         ret = SUCCESS;
 
-        if ( control->T_mode )
+        if ( control->T_mode && retries == 0 )
         {
             Temperature_Control( control, data );
         }
@@ -455,19 +458,27 @@ int main( int argc, char* argv[] )
 //            }
 //        }
 
-#if defined(DEBUG)
-        fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
         if ( ret == SUCCESS )
         {
+#if defined(DEBUG)
+            fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
+            MPI_Barrier( MPI_COMM_WORLD );
+#endif
+
             ++data->step;
+            retries = 0;
         }
         else
         {
+            ++retries;
             fprintf( stderr, "INFO: retrying step %d...\n", data->step );
         }
+    }
+
+    if ( retries >= MAX_RETRIES )
+    {
+        fprintf( stderr, "Maximum retries reached for this step. Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
     }
 
 #if defined(__CUDA_DEBUG__)
@@ -554,36 +565,71 @@ int main( int argc, char* argv[] )
 #endif
 
     /* start the simulation */
-    for ( ++data->step; data->step <= control->nsteps; data->step++ )
+    retries = 0;
+    while ( data->step <= control->nsteps && retries < MAX_RETRIES )
     {
-        if ( control->T_mode )
+        ret = SUCCESS;
+
+        if ( control->T_mode && retries == 0 )
         {
             Temperature_Control( control, data );
         }
 
-        Evolve( system, control, data, workspace, lists, out_control, mpi_data );
-        Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
-        Output_Results( system, control, data, lists, out_control, mpi_data );
-        //Analysis(system, control, data, workspace, lists, out_control, mpi_data);
+        ret = Evolve( system, control, data, workspace, lists, out_control, mpi_data );
 
-        /* dump restart info */
-        if ( out_control->restart_freq &&
-                (data->step - data->prev_steps) % out_control->restart_freq == 0 )
+        if ( ret == SUCCESS )
         {
-            if ( out_control->restart_format == WRITE_ASCII )
+            Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
+        }
+
+        if ( ret == SUCCESS )
+        {
+            Output_Results( system, control, data, lists, out_control, mpi_data );
+        }
+
+        if ( ret == SUCCESS )
+        {
+//            Analysis(system, control, data, workspace, lists, out_control, mpi_data);
+        }
+
+        if ( ret == SUCCESS )
+        {
+            /* dump restart info */
+            if ( out_control->restart_freq &&
+                    (data->step - data->prev_steps) % out_control->restart_freq == 0 )
             {
-                Write_Restart( system, control, data, out_control, mpi_data );
-            }
-            else if ( out_control->restart_format == WRITE_BINARY )
-            {
-                Write_Binary_Restart( system, control, data, out_control, mpi_data );
+                if ( out_control->restart_format == WRITE_ASCII )
+                {
+                    Write_Restart( system, control, data, out_control, mpi_data );
+                }
+                else if ( out_control->restart_format == WRITE_BINARY )
+                {
+                    Write_Binary_Restart( system, control, data, out_control, mpi_data );
+                }
             }
         }
 
+        if ( ret == SUCCESS )
+        {
 #if defined(DEBUG)
-        fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
-        MPI_Barrier( mpi_data->world );
+            fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
+            MPI_Barrier( mpi_data->world );
 #endif
+
+            ++data->step;
+            retries = 0;
+        }
+        else
+        {
+            ++retries;
+            fprintf( stderr, "INFO: retrying step %d...\n", data->step );
+        }
+    }
+
+    if ( retries >= MAX_RETRIES )
+    {
+        fprintf( stderr, "Maximum retries reached for this step. Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
     }
     
 #endif

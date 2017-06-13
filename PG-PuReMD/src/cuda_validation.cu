@@ -409,26 +409,34 @@ int validate_sparse_matrix( reax_system *system, storage *workspace )
         }
     }
 
-    fprintf (stderr, "Sparse Matrix mismatch total: %d, miscount %d  \n", total, count);
-    free (test.start);
-    free (test.end);
-    free (test.entries);
+    fprintf( stderr, "Sparse Matrix mismatch total: %d, miscount %d  \n",
+            total, count );
+    free( test.start );
+    free( test.end );
+    free( test.entries );
     return SUCCESS;
 }
 
-bool print_hbonds (int *d_start, int *d_end, int i, hbond_data *data)
+
+void print_hbonds( int *d_start, int *d_end, int i, hbond_data *data )
 {
+    int j;
     hbond_data src, tgt; 
 
-    fprintf (stderr, " start %d end %d count ---> %d \n", d_start[i], d_end[i], d_end[i] - d_start[i]);   
+    fprintf( stderr, " start %d end %d count ---> %d \n",
+            d_start[i], d_end[i], d_end[i] - d_start[i] );
 
-    for (int j = d_start[i]; j < d_end[i]; j++) 
-        fprintf (stderr, "Atom : %d , Hbond Info . nbr: %d scl: %d index:%d\n", i, data[j].nbr, data[j].scl);
-    fprintf (stderr, " ========================================= \n");
+    for ( j = d_start[i]; j < d_end[i]; j++ )
+    {
+        fprintf( stderr, "Atom : %d , Hbond Info . nbr: %d scl: %d index:%d\n",
+                i, data[j].nbr, data[j].scl );
+    }
+    fprintf( stderr, " ========================================= \n" );
 }
 
 
-int validate_hbonds (reax_system *system, storage *workspace, reax_list **lists)
+int validate_hbonds( reax_system *system, storage *workspace,
+        reax_list **lists )
 {
     int count, nbr, sym_count, dev_count;
     int *d_start, *d_end, index, d_index;
@@ -464,8 +472,8 @@ int validate_hbonds (reax_system *system, storage *workspace, reax_list **lists)
                         d_start[i], d_end[ i],
                         Start_Index (i, hbonds),
                         End_Index (i, hbonds) );
-                print_hbonds (d_start, d_end, i, data);
-                print_hbonds (hbonds->index, hbonds->end_index, i, hbonds->select.hbond_list);
+                print_hbonds( d_start, d_end, i, data );
+                print_hbonds( hbonds->index, hbonds->end_index, i, hbonds->select.hbond_list );
                 exit (-1);
             }
         }
@@ -483,7 +491,7 @@ int validate_hbonds (reax_system *system, storage *workspace, reax_list **lists)
         }
     }
     fprintf (stderr, "Sym count outside 'n' : %d \n", sym_count );
-    //print_hbonds (d_start, d_end, 0, data);
+    //print_hbonds( d_start, d_end, 0, data );
 
 
     count = 0;
@@ -576,11 +584,11 @@ int validate_hbonds (reax_system *system, storage *workspace, reax_list **lists)
             if ( k >= (End_Index (i, hbonds) )){
                 fprintf (stderr, "Hbonds does not match for atom %d hbond_Index %d \n", i, j);
                 fprintf (stderr, " ==========Host============ \n");
-                print_hbonds (hbonds->index, hbonds->end_index, 
-                        i, hbonds->select.hbond_list);
+                print_hbonds( hbonds->index, hbonds->end_index,
+                        i, hbonds->select.hbond_list );
                 fprintf (stderr, " ==========Device============ \n");
-                print_hbonds (d_start, d_end, 
-                        i, data);
+                print_hbonds( d_start, d_end,
+                        i, data );
                 exit (-1);
             }
         }
@@ -1087,18 +1095,18 @@ int validate_workspace (reax_system *system, storage *workspace)
     /////////////////////////////////////////////////////
     //QEq part
     /////////////////////////////////////////////////////
-    compare_rvec2 (workspace->d2, dev_workspace->d2, system->N, "d2");
+    compare_rvec2( workspace->d2, dev_workspace->d2, system->N, "d2" );
 
-    compare_rvec2 (workspace->q2, dev_workspace->q2, system->N, "q2");
+    compare_rvec2( workspace->q2, dev_workspace->q2, system->N, "q2" );
 
-    compare_rvec2 (workspace->x, dev_workspace->x, system->N, "x");
+    compare_rvec2( workspace->x, dev_workspace->x, system->N, "x" );
 
-    compare_rvec2 (workspace->b, dev_workspace->b, system->N, "b");
+    compare_rvec2( workspace->b, dev_workspace->b, system->N, "b" );
 
     return SUCCESS;
 }
 
-void compare_rvec2( rvec2 *host, rvec2 *device, int N, char *msg)
+void compare_rvec2( rvec2 *host, rvec2 *device, int N, const char *msg)
 {
     int count = 0;
     int miscount = 0;
@@ -1118,7 +1126,7 @@ void compare_rvec2( rvec2 *host, rvec2 *device, int N, char *msg)
     fprintf (stderr, "%s match between host and device (%d - %d) \n", msg, count, miscount);
 }
 
-void compare_array( real *host, real *device, int N, char *msg)
+void compare_array( real *host, real *device, int N, const char *msg )
 {
     int count = 0;
     int miscount = 0;
@@ -1463,84 +1471,84 @@ int validate_three_bodies (reax_system *system, storage *workspace, reax_list **
            print_bond_data (src);
            fprintf (stderr, "\n");
 
-//fprintf (stderr, "--- Device bo is %f \n", test[j]);
-fprintf (stderr, "Device %d %d bonds (%d %d) - Host %d %d bonds (%d %d) \n", start[j], end[j],b_start[i], b_end[i],
-Start_Index (j, three), End_Index (j, three), Start_Index (i, bonds), End_Index (i, bonds));
-fprintf (stderr, "Host %d Device %d -- atom %d index %d \n", hcount, dcount, i, j);
-fprintf (stderr, "------\n");
-}
-fprintf (stderr, " Three Bodies count does not match between host and device \n");
-exit (-1);
-}
+        //fprintf (stderr, "--- Device bo is %f \n", test[j]);
+        fprintf (stderr, "Device %d %d bonds (%d %d) - Host %d %d bonds (%d %d) \n", start[j], end[j],b_start[i], b_end[i],
+        Start_Index (j, three), End_Index (j, three), Start_Index (i, bonds), End_Index (i, bonds));
+        fprintf (stderr, "Host %d Device %d -- atom %d index %d \n", hcount, dcount, i, j);
+        fprintf (stderr, "------\n");
+        }
+        fprintf (stderr, " Three Bodies count does not match between host and device \n");
+        exit (-1);
+        }
          */
-}
-fprintf (stderr, "Three body count on DEVICE %d  HOST %d -- miscount: %d\n", dcount, hcount, count);
+    }
+    fprintf (stderr, "Three body count on DEVICE %d  HOST %d -- miscount: %d\n", dcount, hcount, count);
 
-count = 0;
-for (int i = 0; i < system->N; i++)
-{
-    int x, y, z;
-    for (x = b_start[i]; x < b_end[i]; x++)
+    count = 0;
+    for (int i = 0; i < system->N; i++)
     {
-        int t_start = start[x];
-        int t_end = end[x];
-
-        bond_data *dev_bond = &d_bond_data [x];
-        bond_data *host_bond;
-        for (z = Start_Index (i, bonds); z < End_Index (i, bonds); z++)
+        int x, y, z;
+        for (x = b_start[i]; x < b_end[i]; x++)
         {
-            host_bond = &bonds->select.bond_list [z];
-            if ((dev_bond->nbr == host_bond->nbr) &&
-                    check_same (dev_bond->rel_box, host_bond->rel_box) &&
-                    !check_zero (dev_bond->dvec, host_bond->dvec) &&
-                    !check_zero (dev_bond->d, host_bond->d) )
+            int t_start = start[x];
+            int t_end = end[x];
+
+            bond_data *dev_bond = &d_bond_data [x];
+            bond_data *host_bond;
+            for (z = Start_Index (i, bonds); z < End_Index (i, bonds); z++)
             {
-                break;
-            }
-        }
-        if (z >= End_Index (i, bonds)){
-            fprintf (stderr, "Could not find the matching bond on host and device \n");
-            exit (-1);
-        }
-
-        //find this three-body in the bonds on the host side.
-        for (y = t_start; y < t_end; y++)
-        {
-            three_body_interaction_data *device = data + y;
-            three_body_interaction_data *host;
-
-            //fprintf (stderr, "Device thb %d pthb %d \n", device->thb, device->pthb);
-
-            int xx;
-            for (xx = Start_Index (z, three); xx < End_Index (z, three); xx++)
-            {
-                host = &three->select.three_body_list [xx];
-                //fprintf (stderr, "Host thb %d pthb %d \n", host->thb, host->pthb);
-                //if ((host->thb == device->thb) && (host->pthb == device->pthb))
-                if ((host->thb == device->thb) && !check_zero (host->theta, device->theta))
+                host_bond = &bonds->select.bond_list [z];
+                if ((dev_bond->nbr == host_bond->nbr) &&
+                        check_same (dev_bond->rel_box, host_bond->rel_box) &&
+                        !check_zero (dev_bond->dvec, host_bond->dvec) &&
+                        !check_zero (dev_bond->d, host_bond->d) )
                 {
-                    count ++;
                     break;
                 }
             }
-
-            if ( xx >= End_Index (z, three) ) {
-                fprintf (stderr, " Could not match for atom %d bonds %d (%d) Three body(%d %d) (%d %d) \n", i, x, z,
-                        Start_Index (z, three), End_Index (z, three), start[x], end[x] );
+            if (z >= End_Index (i, bonds)){
+                fprintf (stderr, "Could not find the matching bond on host and device \n");
                 exit (-1);
-            }// else fprintf (stderr, "----------------- \n");
+            }
+
+            //find this three-body in the bonds on the host side.
+            for (y = t_start; y < t_end; y++)
+            {
+                three_body_interaction_data *device = data + y;
+                three_body_interaction_data *host;
+
+                //fprintf (stderr, "Device thb %d pthb %d \n", device->thb, device->pthb);
+
+                int xx;
+                for (xx = Start_Index (z, three); xx < End_Index (z, three); xx++)
+                {
+                    host = &three->select.three_body_list [xx];
+                    //fprintf (stderr, "Host thb %d pthb %d \n", host->thb, host->pthb);
+                    //if ((host->thb == device->thb) && (host->pthb == device->pthb))
+                    if ((host->thb == device->thb) && !check_zero (host->theta, device->theta))
+                    {
+                        count ++;
+                        break;
+                    }
+                }
+
+                if ( xx >= End_Index (z, three) ) {
+                    fprintf (stderr, " Could not match for atom %d bonds %d (%d) Three body(%d %d) (%d %d) \n", i, x, z,
+                            Start_Index (z, three), End_Index (z, three), start[x], end[x] );
+                    exit (-1);
+                }// else fprintf (stderr, "----------------- \n");
+            }
         }
     }
-}
-free (data);
-free (start);
-free (end);
-free (b_start);
-free (b_end);
-free (d_bond_data);
+    free (data);
+    free (start);
+    free (end);
+    free (b_start);
+    free (b_end);
+    free (d_bond_data);
 
-fprintf (stderr, "Three Body Interaction Data MATCH on device and HOST --> %d \n", count);
-return SUCCESS;
+    fprintf (stderr, "Three Body Interaction Data MATCH on device and HOST --> %d \n", count);
+    return SUCCESS;
 }
 
 
@@ -1675,51 +1683,65 @@ int print_device_rvec2 (rvec2 *b, int n)
 }
 
 
-int print_host_array (real *a, int n)
+int print_host_array( real *a, int n )
 {
+    int i;
 
-    for (int i = 0; i < n; i++)
+    for ( i = 0; i < n; i++ )
     {
-        fprintf (stderr," a[%d] = %f \n", i, a[i]);
+        fprintf( stderr," a[%d] = %f \n", i, a[i] );
     }
-    fprintf(stderr, " ----------------------------------\n");
+    fprintf( stderr, " ----------------------------------\n" );
 
     return SUCCESS;
 }
 
 
-int print_device_array (real *a, int n)
+int print_device_array( real *a, int n )
 {
     real *b = (real *) host_scratch;
-    copy_host_device (b, a, sizeof (real) * n, cudaMemcpyDeviceToHost, "real");
-    print_host_array (b, n);
+    copy_host_device( b, a, sizeof(real) * n,
+            cudaMemcpyDeviceToHost, "real");
+    print_host_array( b, n );
 
     return SUCCESS;
 }
 
 
-int check_zeros_host (rvec2 *host, int n, char *msg)
+int check_zeros_host( rvec2 *host, int n, const char *msg )
 {
-    int count, count1;
-    count = count1 = 0;
-    for (int i = 0; i < n; i++){
-        if (host[i][0] == 0) count ++;
-        if (host[i][1] == 0) count1 ++;
+    int i, count, count1;
+
+    count = 0;
+    count1 = 0;
+
+    for ( i = 0; i < n; i++ )
+    {
+        if (host[i][0] == 0)
+        {
+            count++;
+        }
+        if (host[i][1] == 0)
+        {
+            count1++;
+        }
     }
 
-    fprintf (stderr, "%s has %d, %d zero elements \n", msg, count, count1 );
+    fprintf( stderr, "%s has %d, %d zero elements \n",
+            msg, count, count1 );
 
-    return 1;
+    return SUCCESS;
 }
 
 
-int check_zeros_device (rvec2 *device, int n, char *msg)
+int check_zeros_device( rvec2 *device, int n, const char *msg )
 {
     rvec2 *a = (rvec2 *) host_scratch;    
 
-    copy_host_device (a, device, sizeof (rvec2) * n, cudaMemcpyDeviceToHost, msg);
+    copy_host_device( a, device, sizeof(rvec2) * n,
+            cudaMemcpyDeviceToHost, msg );
 
-    check_zeros_host (a, n, msg);
+    check_zeros_host( a, n, msg );
 
-    return 1;
+    return SUCCESS;
 }

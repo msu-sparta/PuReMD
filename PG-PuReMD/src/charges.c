@@ -402,26 +402,34 @@ void Calculate_Charges( reax_system *system, storage *workspace,
 
 #ifdef HAVE_CUDA
 void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
-                             mpi_datatypes *mpi_data )
+        mpi_datatypes *mpi_data )
 {
-    int        i, scale;
-    real       u;//, s_sum, t_sum;
-    rvec2      my_sum, all_sum;
+    int i, scale;
+    real u;//, s_sum, t_sum;
+    rvec2 my_sum, all_sum;
     reax_atom *atom;
     real *q;
-    my_sum [0] = my_sum[1] = 0.0;
 
+    my_sum[0] = 0.0;
+    my_sum[1] = 0.0;
     scale = sizeof(real) / sizeof(void);
-    q =  (real *) host_scratch;
+    q = (real *) host_scratch;
     memset( q, 0, system->N * sizeof (real));
 
     cuda_charges_x( system, my_sum );
-    //fprintf (stderr, "Device: my_sum[0]: %f and %f \n", my_sum[0], my_sum[1]);
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "Device: my_sum[0]: %f, my_sum[1]: %f\n",
+            my_sum[0], my_sum[1] );
+#endif
 
     MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
 
     u = all_sum[0] / all_sum[1];
-    //fprintf (stderr, "Device: u: %f \n", u);
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "Device: u: %f \n", u );
+#endif
 
     cuda_charges_st( system, workspace, q, u );
 
@@ -433,13 +441,12 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
 
 
 void QEq( reax_system *system, control_params *control, simulation_data *data,
-          storage *workspace, output_controls *out_control,
-          mpi_datatypes *mpi_data )
+        storage *workspace, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
     int s_matvecs, t_matvecs;
 
     Init_MatVec( system, data, control, workspace, mpi_data );
-
 
     //if( data->step == 50010 ) {
     //  Print_Linear_System( system, control, workspace, data->step );
@@ -451,8 +458,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 #endif
 
     //MATRIX CHANGES
-    s_matvecs = dual_CG(system, workspace, &workspace->H, workspace->b,
-                        control->q_err, workspace->x, mpi_data, out_control->log, data);
+    s_matvecs = dual_CG( system, workspace, &workspace->H, workspace->b,
+            control->q_err, workspace->x, mpi_data, out_control->log, data );
     t_matvecs = 0;
     //fprintf (stderr, "Host: First CG complated with iterations: %d \n", s_matvecs);
 
@@ -471,11 +478,13 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //t_matvecs = PCG( system, workspace, workspace->H, workspace->b_t,
     //   control->q_err, workspace->L, workspace->U, workspace->t,
     //   mpi_data, out_control->log );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: second CG completed\n", system->my_rank );
 #endif
 
     Calculate_Charges( system, workspace, mpi_data );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed charges\n", system->my_rank );
     //Print_Charges( system );

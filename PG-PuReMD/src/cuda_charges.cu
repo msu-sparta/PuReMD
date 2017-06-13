@@ -28,18 +28,21 @@
 #include "cuda_validation.h"
 
 
-CUDA_GLOBAL void ker_init_matvec( reax_atom *my_atoms, single_body_parameters
+CUDA_GLOBAL void k_init_matvec( reax_atom *my_atoms, single_body_parameters
         *sbp, storage p_workspace, int n  )
 {
-    storage *workspace = &( p_workspace );
+    storage *workspace;
     reax_atom *atom;
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i >= n)
     {
         return;
     }
 
+    workspace = &( p_workspace );
     //for( i = 0; i < system->n; ++i ) {
     atom = &( my_atoms[i] );
 
@@ -65,52 +68,54 @@ void Cuda_Init_MatVec( reax_system *system, storage *workspace )
     blocks = system->n / DEF_BLOCK_SIZE + 
         (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    ker_init_matvec <<< blocks, DEF_BLOCK_SIZE >>>
+    k_init_matvec <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *dev_workspace, system->n );
-
     cudaThreadSynchronize();
     cudaCheckError();
 }
 
 
-void cuda_charges_x(reax_system *system, rvec2 my_sum)
+void cuda_charges_x( reax_system *system, rvec2 my_sum )
 {
     int blocks;
     rvec2 *output = (rvec2 *) scratch;
-    cuda_memset( output, 0, sizeof (rvec2) * 2 * system->n, "cuda_charges_x:q" );
+
+    cuda_memset( output, 0, sizeof(rvec2) * 2 * system->n, "cuda_charges_x:q" );
 
     blocks = system->n / DEF_BLOCK_SIZE + 
         (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof (rvec2) * DEF_BLOCK_SIZE >>>
+    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         ( dev_workspace->x, output, system->n );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    cudaThreadSynchronize();
-    cudaCheckError();
-
-    k_reduction_rvec2 <<< 1, BLOCKS_POW_2, sizeof (rvec2) * BLOCKS_POW_2 >>>
+    k_reduction_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>>
         ( output, output + system->n, blocks );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
-    cudaThreadSynchronize();
-    cudaCheckError();
-
-    copy_host_device( my_sum, output + system->n, sizeof (rvec2), cudaMemcpyDeviceToHost, "charges:x" );
+    copy_host_device( my_sum, output + system->n,
+            sizeof(rvec2), cudaMemcpyDeviceToHost, "charges:x" );
 }
 
 
-CUDA_GLOBAL void ker_calculate_st (reax_atom *my_atoms, storage p_workspace, 
-        real u, real *q, int n)
+CUDA_GLOBAL void k_calculate_st( reax_atom *my_atoms, storage p_workspace, 
+        real u, real *q, int n )
 {
-    storage *workspace = &( p_workspace );
+    storage *workspace;
     reax_atom *atom;
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
 
-    if (i >= n)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
     {
         return;
     }
 
+    workspace = &( p_workspace );
     //for( i = 0; i < system->n; ++i ) {
     atom = &( my_atoms[i] );
 
@@ -139,7 +144,8 @@ CUDA_GLOBAL void ker_calculate_st (reax_atom *my_atoms, storage p_workspace,
 //TODO
 
 
-extern "C" void cuda_charges_st (reax_system *system, storage *workspace, real *output, real u)
+extern "C" void cuda_charges_st( reax_system *system, storage *workspace,
+        real *output, real u )
 {
     int blocks;
     real *tmp = (real *) scratch;
@@ -151,11 +157,10 @@ extern "C" void cuda_charges_st (reax_system *system, storage *workspace, real *
     blocks = system->n / DEF_BLOCK_SIZE + 
         (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    ker_calculate_st <<< blocks, DEF_BLOCK_SIZE >>>
+    k_calculate_st <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *dev_workspace, u, tmp, system->n);
-
-    cudaThreadSynchronize();
-    cudaCheckError();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 
     copy_host_device( output, tmp, sizeof (real) * system->n, 
             cudaMemcpyDeviceToHost, "charges:q" );
@@ -169,21 +174,20 @@ extern "C" void cuda_charges_st (reax_system *system, storage *workspace, real *
 //TODO
 
 
-CUDA_GLOBAL void ker_update_q(reax_atom *my_atoms, real *q, int n, int N)
+CUDA_GLOBAL void k_update_q( reax_atom *my_atoms, real *q, int n, int N )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i >= (N-n))
+    if ( i >= (N-n) )
     {
         return;
     }
 
-    //for( i = system->n; i < system->N; ++i )
     my_atoms[i + n].q = q[i + n];
 }
 
 
-void cuda_charges_updateq(reax_system *system, real *q) 
+void cuda_charges_updateq( reax_system *system, real *q )
 {
     int blocks;
     real *dev_q = (real *) scratch;
@@ -193,9 +197,8 @@ void cuda_charges_updateq(reax_system *system, real *q)
     blocks = (system->N - system->n) / DEF_BLOCK_SIZE +
         (( (system->N - system->n) % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    ker_update_q <<< blocks, DEF_BLOCK_SIZE >>>
+    k_update_q <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, dev_q, system->n, system->N);
-
-    cudaThreadSynchronize();
-    cudaCheckError();
+    cudaThreadSynchronize( );
+    cudaCheckError( );
 }
