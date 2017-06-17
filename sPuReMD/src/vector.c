@@ -114,7 +114,7 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 
 
 void Vector_Print( FILE * const fout, const char * const vname, const real * const v,
-                   const unsigned int k )
+        const unsigned int k )
 {
     unsigned int i;
 

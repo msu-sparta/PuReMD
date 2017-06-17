@@ -827,10 +827,19 @@ void Print_Sparse_Matrix( sparse_matrix *A )
 }
 
 
-void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
+void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
 {
     int i, j;
-    FILE *f = fopen( fname, "w" );
+    FILE *f;
+   
+    if ( mode == NULL )
+    {
+        f = fopen( fname, "w" );
+    }
+    else
+    {
+        f = fopen( fname, mode );
+    }
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -839,6 +848,43 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
             //fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
             //Convert 0-based to 1-based (for Matlab)
             fprintf( f, "%6d %6d %24.15e\n", i+1, A->j[j]+1, A->val[j] );
+        }
+    }
+
+    fclose(f);
+}
+
+
+/* Note: watch out for portability issues with endianness
+ * due to serialization of numeric types (integer, IEEE 754) */
+void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
+{
+    int i, j, temp;
+    FILE *f;
+   
+    f = fopen( fname, "wb" );
+
+    /* header: # rows, # nonzeros */
+    fwrite( &(A->n), sizeof(unsigned int), 1, f );
+    fwrite( &(A->start[A->n]), sizeof(unsigned int), 1, f );
+
+    /* row pointers */
+    for ( i = 0; i <= A->n; ++i )
+    {
+        //Convert 0-based to 1-based (for Matlab)
+        temp = A->start[i] + 1;
+        fwrite( &temp, sizeof(unsigned int), 1, f );
+    }
+
+    /* column indices and non-zeros */
+    for ( i = 0; i <= A->n; ++i )
+    {
+        for ( j = A->start[i]; j < A->start[i + 1]; ++j )
+        {
+            //Convert 0-based to 1-based (for Matlab)
+            temp = A->j[j] + 1;
+            fwrite( &temp, sizeof(unsigned int), 1, f );
+            fwrite( &(A->val[j]), sizeof(real), 1, f );
         }
     }
 

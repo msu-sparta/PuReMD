@@ -59,3 +59,6 @@ freq_dipole_anal        1                       ! calculate electric dipole mome
 diffusion_coef          0                       ! 1: calculate diffusion coefficient of the system
 freq_diffusion_coef     1                       ! calculate diffusion coefficient at every 'this many' steps
 restrict_type           2                       ! -1: all types of atoms, 0 and up: only this type of atoms
+
+restart_format          1                       ! 0: restarts in ASCII  1: restarts in binary
+restart_freq            0                       ! 0: do not output any restart files. >0: output a restart file at every 'this many' steps

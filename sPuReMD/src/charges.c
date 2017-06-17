@@ -1420,7 +1420,7 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
 }
 
 
-static void Extrapolate_Charges_EEM( const reax_system * const system,
+static void Extrapolate_Charges_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
@@ -1430,7 +1430,7 @@ static void Extrapolate_Charges_EEM( const reax_system * const system,
     /* extrapolation for s */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
     #pragma omp parallel for schedule(static) \
-    default(none) private(i, s_tmp)
+        default(none) private(i, s_tmp)
     for ( i = 0; i < system->N_cm; ++i )
     {
         // no extrapolation
@@ -1466,6 +1466,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs )
 {
+    real time;
     sparse_matrix *Hptr;
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
@@ -1476,6 +1477,22 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     {
         Hptr = workspace->H;
     }
+
+    time = Get_Time( );
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        if ( control->cm_domain_sparsify_enabled == TRUE )
+        {
+            Hptr = setup_graph_coloring( workspace->H_sp );
+        }
+        else
+        {
+            Hptr = setup_graph_coloring( workspace->H );
+        }
+
+        Sort_Matrix_Rows( Hptr );
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
 #if defined(TEST_MAT)
     Hptr = create_test_mat( );
@@ -1527,53 +1544,300 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 
 #if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-        Print_Sparse_Matrix2( workspace->L, fname );
+        Print_Sparse_Matrix2( workspace->L, fname, NULL );
         sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
-        Print_Sparse_Matrix2( workspace->U, fname );
-
-        fprintf( stderr, "icholt-" );
-        //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-        //Print_Sparse_Matrix2( workspace->L, fname );
-        //Print_Sparse_Matrix( U );
+        Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
 #endif
 }
 
 
-/* Compute preconditioner for EEM
+/* Compute preconditioner for EE
  */
-static void Compute_Preconditioner_EEM( const reax_system * const system,
+//static void Compute_Preconditioner_EE( const reax_system * const system,
+//        const control_params * const control,
+//        simulation_data * const data, static_storage * const workspace,
+//        const list * const far_nbrs )
+//{
+//    int i, top;
+//    static real * ones = NULL, * x = NULL, * y = NULL;
+//    sparse_matrix *Hptr;
+//
+//    Hptr = workspace->H_EE;
+//
+//#if defined(TEST_MAT)
+//    Hptr = create_test_mat( );
+//#endif
+//
+//    if ( ones == NULL )
+//    {
+//        if ( ( ones = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
+//            ( x = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
+//            ( y = (real*) malloc( system->N * sizeof(real)) ) == NULL )
+//        {
+//            fprintf( stderr, "Not enough space for preconditioner computation. Terminating...\n" );
+//            exit( INSUFFICIENT_MEMORY );
+//        }
+//
+//        for ( i = 0; i < system->N; ++i )
+//        {
+//            ones[i] = 1.0;
+//        }
+//    }
+//
+//    switch ( control->cm_solver_pre_comp_type )
+//    {
+//    case DIAG_PC:
+//        data->timing.cm_solver_pre_comp +=
+//            diag_pre_comp( Hptr, workspace->Hdia_inv );
+//        break;
+//
+//    case ICHOLT_PC:
+//        data->timing.cm_solver_pre_comp +=
+//            ICHOLT( Hptr, workspace->droptol, workspace->L_EE, workspace->U_EE );
+//        break;
+//
+//    case ILU_PAR_PC:
+//        data->timing.cm_solver_pre_comp +=
+//            ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L_EE, workspace->U_EE );
+//        break;
+//
+//    case ILUT_PAR_PC:
+//        data->timing.cm_solver_pre_comp +=
+//            ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
+//                    workspace->L_EE, workspace->U_EE );
+//        break;
+//
+//    case ILU_SUPERLU_MT_PC:
+//#if defined(HAVE_SUPERLU_MT)
+//        data->timing.cm_solver_pre_comp +=
+//            SuperLU_Factorize( Hptr, workspace->L_EE, workspace->U_EE );
+//#else
+//        fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
+//        exit( INVALID_INPUT );
+//#endif
+//        break;
+//
+//    default:
+//        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+//        exit( INVALID_INPUT );
+//        break;
+//    }
+//
+//    if ( control->cm_solver_pre_comp_type != DIAG_PC )
+//    {
+//        switch ( control->cm_solver_pre_app_type )
+//        {
+//            case TRI_SOLVE_PA:
+//                tri_solve( workspace->L_EE, ones, x, workspace->L_EE->n, LOWER );
+//                Transpose_I( workspace->U_EE );
+//                tri_solve( workspace->U_EE, ones, y, workspace->U_EE->n, LOWER );
+//                Transpose_I( workspace->U_EE );
+//
+//                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
+//                memcpy( workspace->L->j, workspace->L_EE->j, sizeof(unsigned int) * workspace->L_EE->start[workspace->L_EE->n] );
+//                memcpy( workspace->L->val, workspace->L_EE->val, sizeof(real) * workspace->L_EE->start[workspace->L_EE->n] );
+//
+//                top = workspace->L->start[system->N];
+//                for ( i = 0; i < system->N; ++i )
+//                {
+//                    workspace->L->j[top] = i;
+//                    workspace->L->val[top] = x[i];
+//                    ++top;
+//                }
+//
+//                workspace->L->j[top] = system->N_cm - 1;
+//                workspace->L->val[top] = 1.0;
+//                ++top;
+//
+//                workspace->L->start[system->N_cm] = top;
+//
+//                top = 0;
+//                for ( i = 0; i < system->N; ++i )
+//                {
+//                    workspace->U->start[i] = top;
+//                    memcpy( workspace->U->j + top, workspace->U_EE->j + workspace->U_EE->start[i],
+//                            sizeof(unsigned int) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
+//                    memcpy( workspace->U->val + top, workspace->U_EE->val + workspace->U_EE->start[i],
+//                            sizeof(real) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
+//                    top += (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]);
+//
+//                    workspace->U->j[top] = system->N_cm - 1;
+//                    workspace->U->val[top] = y[i];
+//                    ++top;
+//                }
+//
+//                workspace->U->start[system->N_cm - 1] = top;
+//
+//                workspace->U->j[top] = system->N_cm - 1;
+//                workspace->U->val[top] = -Dot( x, y, system->N );
+//                ++top;
+//
+//                workspace->U->start[system->N_cm] = top;
+//                break;
+//
+//            case TRI_SOLVE_LEVEL_SCHED_PA:
+//                tri_solve_level_sched( workspace->L_EE, ones, x, workspace->L_EE->n, LOWER, TRUE );
+//                Transpose_I( workspace->U_EE );
+//                tri_solve_level_sched( workspace->U_EE, ones, y, workspace->U_EE->n, LOWER, TRUE );
+//                Transpose_I( workspace->U_EE );
+//
+//                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
+//                memcpy( workspace->L->j, workspace->L_EE->j, sizeof(unsigned int) * workspace->L_EE->start[workspace->L_EE->n] );
+//                memcpy( workspace->L->val, workspace->L_EE->val, sizeof(real) * workspace->L_EE->start[workspace->L_EE->n] );
+//
+//                top = workspace->L->start[system->N];
+//                for ( i = 0; i < system->N; ++i )
+//                {
+//                    workspace->L->j[top] = i;
+//                    workspace->L->val[top] = x[i];
+//                    ++top;
+//                }
+//
+//                workspace->L->j[top] = system->N_cm - 1;
+//                workspace->L->val[top] = 1.0;
+//                ++top;
+//
+//                workspace->L->start[system->N_cm] = top;
+//
+//                top = 0;
+//                for ( i = 0; i < system->N; ++i )
+//                {
+//                    workspace->U->start[i] = top;
+//                    memcpy( workspace->U->j + top, workspace->U_EE->j + workspace->U_EE->start[i],
+//                            sizeof(unsigned int) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
+//                    memcpy( workspace->U->val + top, workspace->U_EE->val + workspace->U_EE->start[i],
+//                            sizeof(real) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
+//                    top += (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]);
+//
+//                    workspace->U->j[top] = system->N_cm - 1;
+//                    workspace->U->val[top] = y[i];
+//                    ++top;
+//                }
+//
+//                workspace->U->start[system->N_cm - 1] = top;
+//
+//                workspace->U->j[top] = system->N_cm - 1;
+//                workspace->U->val[top] = -Dot( x, y, system->N );
+//                ++top;
+//
+//                workspace->U->start[system->N_cm] = top;
+//                break;
+//
+//            //TODO: add Jacobi iter, etc.?
+//            default:
+//                tri_solve( workspace->L_EE, ones, x, workspace->L_EE->n, LOWER );
+//                Transpose_I( workspace->U_EE );
+//                tri_solve( workspace->U_EE, ones, y, workspace->U_EE->n, LOWER );
+//                Transpose_I( workspace->U_EE );
+//
+//                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
+//                memcpy( workspace->L->j, workspace->L_EE->j, sizeof(unsigned int) * workspace->L_EE->start[workspace->L_EE->n] );
+//                memcpy( workspace->L->val, workspace->L_EE->val, sizeof(real) * workspace->L_EE->start[workspace->L_EE->n] );
+//
+//                top = workspace->L->start[system->N];
+//                for ( i = 0; i < system->N; ++i )
+//                {
+//                    workspace->L->j[top] = i;
+//                    workspace->L->val[top] = x[i];
+//                    ++top;
+//                }
+//
+//                workspace->L->j[top] = system->N_cm - 1;
+//                workspace->L->val[top] = 1.0;
+//                ++top;
+//
+//                workspace->L->start[system->N_cm] = top;
+//
+//                top = 0;
+//                for ( i = 0; i < system->N; ++i )
+//                {
+//                    workspace->U->start[i] = top;
+//                    memcpy( workspace->U->j + top, workspace->U_EE->j + workspace->U_EE->start[i],
+//                            sizeof(unsigned int) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
+//                    memcpy( workspace->U->val + top, workspace->U_EE->val + workspace->U_EE->start[i],
+//                            sizeof(real) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
+//                    top += (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]);
+//
+//                    workspace->U->j[top] = system->N_cm - 1;
+//                    workspace->U->val[top] = y[i];
+//                    ++top;
+//                }
+//
+//                workspace->U->start[system->N_cm - 1] = top;
+//
+//                workspace->U->j[top] = system->N_cm - 1;
+//                workspace->U->val[top] = -Dot( x, y, system->N );
+//                ++top;
+//
+//                workspace->U->start[system->N_cm] = top;
+//                break;
+//        }
+//    }
+//
+//#if defined(DEBUG)
+//    if ( control->cm_solver_pre_comp_type != DIAG_PC )
+//    {
+//        fprintf( stderr, "condest = %f\n", condest(workspace->L) );
+//
+//#if defined(DEBUG_FOCUS)
+//        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+//        Print_Sparse_Matrix2( workspace->L, fname, NULL );
+//        sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
+//        Print_Sparse_Matrix2( workspace->U, fname, NULL );
+//
+//        fprintf( stderr, "icholt-" );
+//        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+//        Print_Sparse_Matrix2( workspace->L, fname, NULL );
+//        Print_Sparse_Matrix( U );
+//#endif
+//    }
+//#endif
+//}
+
+
+/* Compute preconditioner for EE
+ */
+static void Compute_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs )
 {
-    int i, top;
-    static real * ones = NULL, * x = NULL, * y = NULL;
+    real time;
     sparse_matrix *Hptr;
 
-    Hptr = workspace->H_EEM;
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = workspace->H_sp;
+    }
+    else
+    {
+        Hptr = workspace->H;
+    }
+
+    time = Get_Time( );
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        if ( control->cm_domain_sparsify_enabled == TRUE )
+        {
+            Hptr = setup_graph_coloring( workspace->H_sp );
+        }
+        else
+        {
+            Hptr = setup_graph_coloring( workspace->H );
+        }
+
+        Sort_Matrix_Rows( Hptr );
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
 #if defined(TEST_MAT)
     Hptr = create_test_mat( );
 #endif
 
-    if ( ones == NULL )
-    {
-        if ( ( ones = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
-            ( x = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
-            ( y = (real*) malloc( system->N * sizeof(real)) ) == NULL )
-        {
-            fprintf( stderr, "Not enough space for preconditioner computation. Terminating...\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
-
-        for ( i = 0; i < system->N; ++i )
-        {
-            ones[i] = 1.0;
-        }
-    }
-
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+    
     switch ( control->cm_solver_pre_comp_type )
     {
     case DIAG_PC:
@@ -1583,24 +1847,24 @@ static void Compute_Preconditioner_EEM( const reax_system * const system,
 
     case ICHOLT_PC:
         data->timing.cm_solver_pre_comp +=
-            ICHOLT( Hptr, workspace->droptol, workspace->L_EEM, workspace->U_EEM );
+            ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
         break;
 
     case ILU_PAR_PC:
         data->timing.cm_solver_pre_comp +=
-            ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L_EEM, workspace->U_EEM );
+            ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
         break;
 
     case ILUT_PAR_PC:
         data->timing.cm_solver_pre_comp +=
             ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                    workspace->L_EEM, workspace->U_EEM );
+                    workspace->L, workspace->U );
         break;
 
     case ILU_SUPERLU_MT_PC:
 #if defined(HAVE_SUPERLU_MT)
         data->timing.cm_solver_pre_comp +=
-            SuperLU_Factorize( Hptr, workspace->L_EEM, workspace->U_EEM );
+            SuperLU_Factorize( Hptr, workspace->L, workspace->U );
 #else
         fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
         exit( INVALID_INPUT );
@@ -1613,172 +1877,18 @@ static void Compute_Preconditioner_EEM( const reax_system * const system,
         break;
     }
 
-    if ( control->cm_solver_pre_comp_type != DIAG_PC )
-    {
-        switch ( control->cm_solver_pre_app_type )
-        {
-            case TRI_SOLVE_PA:
-                tri_solve( workspace->L_EEM, ones, x, workspace->L_EEM->n, LOWER );
-                Transpose_I( workspace->U_EEM );
-                tri_solve( workspace->U_EEM, ones, y, workspace->U_EEM->n, LOWER );
-                Transpose_I( workspace->U_EEM );
-
-                memcpy( workspace->L->start, workspace->L_EEM->start, sizeof(unsigned int) * (system->N + 1) );
-                memcpy( workspace->L->j, workspace->L_EEM->j, sizeof(unsigned int) * workspace->L_EEM->start[workspace->L_EEM->n] );
-                memcpy( workspace->L->val, workspace->L_EEM->val, sizeof(real) * workspace->L_EEM->start[workspace->L_EEM->n] );
-
-                top = workspace->L->start[system->N];
-                for ( i = 0; i < system->N; ++i )
-                {
-                    workspace->L->j[top] = i;
-                    workspace->L->val[top] = x[i];
-                    ++top;
-                }
-
-                workspace->L->j[top] = system->N_cm - 1;
-                workspace->L->val[top] = 1.0;
-                ++top;
-
-                workspace->L->start[system->N_cm] = top;
-
-                top = 0;
-                for ( i = 0; i < system->N; ++i )
-                {
-                    workspace->U->start[i] = top;
-                    memcpy( workspace->U->j + top, workspace->U_EEM->j + workspace->U_EEM->start[i],
-                            sizeof(unsigned int) * (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]) );
-                    memcpy( workspace->U->val + top, workspace->U_EEM->val + workspace->U_EEM->start[i],
-                            sizeof(real) * (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]) );
-                    top += (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]);
-
-                    workspace->U->j[top] = system->N_cm - 1;
-                    workspace->U->val[top] = y[i];
-                    ++top;
-                }
-
-                workspace->U->start[system->N_cm - 1] = top;
-
-                workspace->U->j[top] = system->N_cm - 1;
-                workspace->U->val[top] = -Dot( x, y, system->N );
-                ++top;
-
-                workspace->U->start[system->N_cm] = top;
-                break;
-
-            case TRI_SOLVE_LEVEL_SCHED_PA:
-                tri_solve_level_sched( workspace->L_EEM, ones, x, workspace->L_EEM->n, LOWER, TRUE );
-                Transpose_I( workspace->U_EEM );
-                tri_solve_level_sched( workspace->U_EEM, ones, y, workspace->U_EEM->n, LOWER, TRUE );
-                Transpose_I( workspace->U_EEM );
-
-                memcpy( workspace->L->start, workspace->L_EEM->start, sizeof(unsigned int) * (system->N + 1) );
-                memcpy( workspace->L->j, workspace->L_EEM->j, sizeof(unsigned int) * workspace->L_EEM->start[workspace->L_EEM->n] );
-                memcpy( workspace->L->val, workspace->L_EEM->val, sizeof(real) * workspace->L_EEM->start[workspace->L_EEM->n] );
-
-                top = workspace->L->start[system->N];
-                for ( i = 0; i < system->N; ++i )
-                {
-                    workspace->L->j[top] = i;
-                    workspace->L->val[top] = x[i];
-                    ++top;
-                }
-
-                workspace->L->j[top] = system->N_cm - 1;
-                workspace->L->val[top] = 1.0;
-                ++top;
-
-                workspace->L->start[system->N_cm] = top;
-
-                top = 0;
-                for ( i = 0; i < system->N; ++i )
-                {
-                    workspace->U->start[i] = top;
-                    memcpy( workspace->U->j + top, workspace->U_EEM->j + workspace->U_EEM->start[i],
-                            sizeof(unsigned int) * (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]) );
-                    memcpy( workspace->U->val + top, workspace->U_EEM->val + workspace->U_EEM->start[i],
-                            sizeof(real) * (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]) );
-                    top += (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]);
-
-                    workspace->U->j[top] = system->N_cm - 1;
-                    workspace->U->val[top] = y[i];
-                    ++top;
-                }
-
-                workspace->U->start[system->N_cm - 1] = top;
-
-                workspace->U->j[top] = system->N_cm - 1;
-                workspace->U->val[top] = -Dot( x, y, system->N );
-                ++top;
-
-                workspace->U->start[system->N_cm] = top;
-                break;
-
-            //TODO: add Jacobi iter, etc.?
-            default:
-                tri_solve( workspace->L_EEM, ones, x, workspace->L_EEM->n, LOWER );
-                Transpose_I( workspace->U_EEM );
-                tri_solve( workspace->U_EEM, ones, y, workspace->U_EEM->n, LOWER );
-                Transpose_I( workspace->U_EEM );
-
-                memcpy( workspace->L->start, workspace->L_EEM->start, sizeof(unsigned int) * (system->N + 1) );
-                memcpy( workspace->L->j, workspace->L_EEM->j, sizeof(unsigned int) * workspace->L_EEM->start[workspace->L_EEM->n] );
-                memcpy( workspace->L->val, workspace->L_EEM->val, sizeof(real) * workspace->L_EEM->start[workspace->L_EEM->n] );
-
-                top = workspace->L->start[system->N];
-                for ( i = 0; i < system->N; ++i )
-                {
-                    workspace->L->j[top] = i;
-                    workspace->L->val[top] = x[i];
-                    ++top;
-                }
-
-                workspace->L->j[top] = system->N_cm - 1;
-                workspace->L->val[top] = 1.0;
-                ++top;
-
-                workspace->L->start[system->N_cm] = top;
-
-                top = 0;
-                for ( i = 0; i < system->N; ++i )
-                {
-                    workspace->U->start[i] = top;
-                    memcpy( workspace->U->j + top, workspace->U_EEM->j + workspace->U_EEM->start[i],
-                            sizeof(unsigned int) * (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]) );
-                    memcpy( workspace->U->val + top, workspace->U_EEM->val + workspace->U_EEM->start[i],
-                            sizeof(real) * (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]) );
-                    top += (workspace->U_EEM->start[i + 1] - workspace->U_EEM->start[i]);
-
-                    workspace->U->j[top] = system->N_cm - 1;
-                    workspace->U->val[top] = y[i];
-                    ++top;
-                }
-
-                workspace->U->start[system->N_cm - 1] = top;
-
-                workspace->U->j[top] = system->N_cm - 1;
-                workspace->U->val[top] = -Dot( x, y, system->N );
-                ++top;
-
-                workspace->U->start[system->N_cm] = top;
-                break;
-        }
-    }
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
 
 #if defined(DEBUG)
     if ( control->cm_solver_pre_comp_type != DIAG_PC )
     {
-        fprintf( stderr, "condest = %f\n", condest(workspace->L) );
+        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-        Print_Sparse_Matrix2( workspace->L, fname );
+        Print_Sparse_Matrix2( workspace->L, fname, NULL );
         sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
-        Print_Sparse_Matrix2( workspace->U, fname );
-
-        fprintf( stderr, "icholt-" );
-        //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-        //Print_Sparse_Matrix2( workspace->L, fname );
-        //Print_Sparse_Matrix( U );
+        Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
 #endif
@@ -1792,6 +1902,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs )
 {
+    real time;
     sparse_matrix *Hptr;
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
@@ -1803,17 +1914,28 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         Hptr = workspace->H;
     }
 
+    time = Get_Time( );
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        if ( control->cm_domain_sparsify_enabled == TRUE )
+        {
+            Hptr = setup_graph_coloring( workspace->H_sp );
+        }
+        else
+        {
+            Hptr = setup_graph_coloring( workspace->H );
+        }
+
+        Sort_Matrix_Rows( Hptr );
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
+
 #if defined(TEST_MAT)
     Hptr = create_test_mat( );
 #endif
 
-//    fprintf( stderr, "(%4d, %4d): %f\n", system->N, Hptr->j[Hptr->start[system->N + 1] - 1], Hptr->val[Hptr->start[system->N + 1] - 1] );
-//    fprintf( stderr, "(%4d, %4d): %f\n", system->N_cm - 1, Hptr->j[Hptr->start[system->N_cm] - 1], Hptr->val[Hptr->start[system->N_cm] - 1] );
     Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
     Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
-//    fprintf( stderr, "(%4d, %4d): %f\n", system->N, Hptr->j[Hptr->start[system->N + 1] - 1], Hptr->val[Hptr->start[system->N + 1] - 1] );
-//    fprintf( stderr, "(%4d, %4d): %f\n", system->N_cm - 1, Hptr->j[Hptr->start[system->N_cm] - 1], Hptr->val[Hptr->start[system->N_cm] - 1] );
-//    fflush( stderr );
     
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -1864,14 +1986,9 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
 #if defined(DEBUG_FOCUS)
         sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-        Print_Sparse_Matrix2( workspace->L, fname );
+        Print_Sparse_Matrix2( workspace->L, fname, NULL );
         sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
-        Print_Sparse_Matrix2( workspace->U, fname );
-
-        fprintf( stderr, "icholt-" );
-        //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-        //Print_Sparse_Matrix2( workspace->L, fname );
-        //Print_Sparse_Matrix( U );
+        Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
 #endif
@@ -1904,20 +2021,6 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
         Sort_Matrix_Rows( workspace->H_sp );
-    }
-
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
-            Hptr = setup_graph_coloring( workspace->H_sp );
-        }
-        else
-        {
-            Hptr = setup_graph_coloring( workspace->H );
-        }
-
-        Sort_Matrix_Rows( Hptr );
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
@@ -2034,9 +2137,9 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 }
 
 
-/* Setup routines before computing the preconditioner for EEM
+/* Setup routines before computing the preconditioner for EE
  */
-static void Setup_Preconditioner_EEM( const reax_system * const system,
+static void Setup_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs )
@@ -2061,44 +2164,13 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
     {
         Sort_Matrix_Rows( workspace->H_sp );
     }
-
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
-            Hptr = setup_graph_coloring( workspace->H_sp );
-        }
-        else
-        {
-            Hptr = setup_graph_coloring( workspace->H );
-        }
-
-        Sort_Matrix_Rows( Hptr );
-    }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
+
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
 
 #if defined(DEBUG)
     fprintf( stderr, "H matrix sorted\n" );
 #endif
-
-    if ( workspace->H_EEM == NULL )
-    {
-        if ( Allocate_Matrix( &(workspace->H_EEM), system->N, workspace->H->m ) == FAILURE )
-        {
-            fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
-
-    }
-    else
-    {
-        //TODO: reallocate
-    }
-
-    memcpy( workspace->H_EEM->start, Hptr->start, sizeof(unsigned int) * (system->N + 1) );
-    memcpy( workspace->H_EEM->j, Hptr->j, sizeof(unsigned int) * Hptr->start[system->N] );
-    memcpy( workspace->H_EEM->val, Hptr->val, sizeof(real) * Hptr->start[system->N] );
-    Hptr = workspace->H_EEM;
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -2130,9 +2202,7 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
 
         if ( workspace->L == NULL )
         {
-            if ( Allocate_Matrix( &(workspace->L_EEM), far_nbrs->n, fillin ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U_EEM), far_nbrs->n, fillin ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm ) == FAILURE ||
+            if ( Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm ) == FAILURE ||
                     Allocate_Matrix( &(workspace->U), system->N_cm, fillin + system->N_cm ) == FAILURE )
             {
                 fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
@@ -2150,9 +2220,7 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
         if ( workspace->L == NULL )
         {
             /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L_EEM), system->N, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U_EEM), system->N, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                     Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
             {
                 fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
@@ -2175,9 +2243,7 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
         if ( workspace->L == NULL )
         {
             /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-            if ( Allocate_Matrix( &(workspace->L_EEM), system->N, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U_EEM), system->N, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                     Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
             {
                 fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
@@ -2194,9 +2260,7 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
         if ( workspace->L == NULL )
         {
             /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L_EEM), system->N, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U_EEM), system->N, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                     Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
             {
                 fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
@@ -2214,6 +2278,8 @@ static void Setup_Preconditioner_EEM( const reax_system * const system,
         exit( INVALID_INPUT );
         break;
     }
+
+    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
 }
 
 
@@ -2244,24 +2310,10 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
     {
         Sort_Matrix_Rows( workspace->H_sp );
     }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
     Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
     Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
-
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
-            Hptr = setup_graph_coloring( workspace->H_sp );
-        }
-        else
-        {
-            Hptr = setup_graph_coloring( workspace->H );
-        }
-
-        Sort_Matrix_Rows( Hptr );
-    }
-    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
 #if defined(DEBUG)
     fprintf( stderr, "H matrix sorted\n" );
@@ -2397,13 +2449,19 @@ static void Calculate_Charges_QEq( const reax_system * const system,
     for ( i = 0; i < system->N_cm; ++i )
     {
         system->atoms[i].q = workspace->s[0][i] - u * workspace->t[0][i];
+
+#if defined(DEBUG_FOCUS)
+        printf("atom %4d: %f\n", i, system->atoms[i].q);
+        printf("  x[0]: %10.5f, x[1]: %10.5f, x[2]:  %10.5f\n",
+                system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2]);
+#endif
     }
 }
 
 
-/* Get atomic charge q for EEM method
+/* Get atomic charge q for EE method
  */
-static void Calculate_Charges_EEM( const reax_system * const system,
+static void Calculate_Charges_EE( const reax_system * const system,
         static_storage * const workspace )
 {
     int i;
@@ -2440,11 +2498,6 @@ static void QEq( reax_system * const system, control_params * const control,
     }
 
     Extrapolate_Charges_QEq( system, control, data, workspace );
-
-//    if( data->step == 0 || data->step == 100 )
-//    {
-//      Print_Linear_System( system, control, workspace, data->step );
-//    }
 
     switch ( control->cm_solver_type )
     {
@@ -2507,17 +2560,20 @@ static void QEq( reax_system * const system, control_params * const control,
 
     Calculate_Charges_QEq( system, workspace );
 
-    //fprintf( stderr, "%d %.9f %.9f %.9f %.9f %.9f %.9f\n",
-    //   data->step,
-    //   workspace->s[0][0], workspace->t[0][0],
-    //   workspace->s[0][1], workspace->t[0][1],
-    //   workspace->s[0][2], workspace->t[0][2] );
-    // if( data->step == control->nsteps )
-    //Print_Charges( system, control, workspace, data->step );
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "%d %.9f %.9f %.9f %.9f %.9f %.9f\n", data->step,
+       workspace->s[0][0], workspace->t[0][0],
+       workspace->s[0][1], workspace->t[0][1],
+       workspace->s[0][2], workspace->t[0][2] );
+    if( data->step == control->nsteps )
+    {
+        Print_Charges( system, control, workspace, data->step );
+    }
+#endif
 }
 
 
-/* Main driver method for EEM kernel
+/* Main driver method for EE kernel
  *
  * Rough outline:
  *  1) init / setup routines for preconditioning of linear solver
@@ -2526,7 +2582,7 @@ static void QEq( reax_system * const system, control_params * const control,
  *  4) perform 1 linear solve
  *  5) compute atomic charges based on output of (4)
  */
-static void EEM( reax_system * const system, control_params * const control,
+static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs, const output_controls * const out_control )
 {
@@ -2535,14 +2591,12 @@ static void EEM( reax_system * const system, control_params * const control,
     if ( control->cm_solver_pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
     {
-        Setup_Preconditioner_EEM( system, control, data, workspace, far_nbrs );
+        Setup_Preconditioner_EE( system, control, data, workspace, far_nbrs );
 
-        Compute_Preconditioner_EEM( system, control, data, workspace, far_nbrs );
+        Compute_Preconditioner_EE( system, control, data, workspace, far_nbrs );
     }
 
-//   Print_Linear_System( system, control, workspace, data->step );
-
-    Extrapolate_Charges_EEM( system, control, data, workspace );
+    Extrapolate_Charges_EE( system, control, data, workspace );
 
     switch ( control->cm_solver_type )
     {
@@ -2571,7 +2625,7 @@ static void EEM( reax_system * const system, control_params * const control,
         break;
 
     default:
-        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
+        fprintf( stderr, "Unrecognized EE solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }
@@ -2582,7 +2636,7 @@ static void EEM( reax_system * const system, control_params * const control,
     fprintf( stderr, "linsolve-" );
 #endif
 
-    Calculate_Charges_EEM( system, workspace );
+    Calculate_Charges_EE( system, workspace );
 
     // if( data->step == control->nsteps )
     //Print_Charges( system, control, workspace, data->step );
@@ -2614,7 +2668,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 //   Print_Linear_System( system, control, workspace, data->step );
 
-    Extrapolate_Charges_EEM( system, control, data, workspace );
+    Extrapolate_Charges_EE( system, control, data, workspace );
 
     switch ( control->cm_solver_type )
     {
@@ -2654,7 +2708,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
     fprintf( stderr, "linsolve-" );
 #endif
 
-    Calculate_Charges_EEM( system, workspace );
+    Calculate_Charges_EE( system, workspace );
 }
 
 
@@ -2663,16 +2717,18 @@ void Compute_Charges( reax_system * const system, control_params * const control
                       const list * const far_nbrs, const output_controls * const out_control )
 {
     int i;
-//    char fname[200];
-//    FILE * fp;
+#if defined(DEBUG_FOCUS)
+    char fname[200];
+    FILE * fp;
 
-//    if ( data->step == 10 || data->step == 50 || data->step == 100 )
-//    {
-//        sprintf( fname, "s_%d_%s.out", data->step, control->sim_name );
-//        fp = fopen( fname, "w" );
-//        Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
-//        fclose( fp );
-//    }
+    if ( data->step == 0 || data->step == 10 || data->step == 50 || data->step == 100 )
+    {
+        sprintf( fname, "s_%d_%s.out", data->step, control->sim_name );
+        fp = fopen( fname, "w" );
+        Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
+        fclose( fp );
+    }
+#endif
 
     switch ( control->charge_method )
     {
@@ -2680,8 +2736,8 @@ void Compute_Charges( reax_system * const system, control_params * const control
         QEq( system, control, data, workspace, far_nbrs, out_control );
         break;
 
-    case EEM_CM:
-        EEM( system, control, data, workspace, far_nbrs, out_control );
+    case EE_CM:
+        EE( system, control, data, workspace, far_nbrs, out_control );
         break;
 
     case ACKS2_CM:
@@ -2694,13 +2750,20 @@ void Compute_Charges( reax_system * const system, control_params * const control
         break;
     }
 
-//    if ( data->step == 0 )
-//    {
-//        sprintf( fname, "H_%d_%s.out", data->step, control->sim_name );
-//        Print_Sparse_Matrix2( workspace->H, fname );
-//
-//        sprintf( fname, "b_%d_%s.out", data->step, control->sim_name );
-//        fp = fopen( fname, "w" );
-//        Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
-//    }
+#if defined(DEBUG_FOCUS)
+    if ( data->step == 0 || data->step == 10 || data->step == 50 || data->step == 100 )
+    {
+        if ( data->step == 0 )
+        {
+            sprintf( fname, "H_%d_%s.out", data->step, control->sim_name );
+            Print_Sparse_Matrix2( workspace->H, fname, NULL );
+            Print_Sparse_Matrix_Binary( workspace->H, fname );
+        }
+
+        sprintf( fname, "b_%d_%s.out", data->step, control->sim_name );
+        fp = fopen( fname, "w" );
+        Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
+        fclose( fp );
+    }
+#endif
 }

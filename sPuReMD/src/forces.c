@@ -310,7 +310,8 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
         }
         break;
 
-    case EEM_CM:
+    case EE_CM:
+        //TODO
         switch ( pos )
         {
             case OFF_DIAGONAL:
@@ -388,7 +389,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
         }
         break;
 
-    case EEM_CM:
+    case EE_CM:
         switch ( pos )
         {
             case OFF_DIAGONAL:
@@ -481,7 +482,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
         case QEQ_CM:
             break;
 
-        case EEM_CM:
+        case EE_CM:
             H->start[system->N_cm - 1] = *Htop;
             H_sp->start[system->N_cm - 1] = *H_sp_top;
 
@@ -1203,7 +1204,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
              data->step, Htop, num_bonds, num_hbonds );
     //Print_Bonds( system, bonds, "sbonds.out" );
     //Print_Bond_List2( system, bonds, "sbonds.out" );
-    //Print_Sparse_Matrix2( H, "H.out" );
+    //Print_Sparse_Matrix2( H, "H.out", NULL );
 #endif
 }
 

@@ -19,6 +19,7 @@
 # ViM, emacs, nano, leafpad
 *.swp
 *~
+tags
 
 # Python
 *.pyc
@@ -54,7 +55,12 @@ stamp-h1
 *.tab.c
 *.tab.h
 
+# PBS/torque job logs
+*.o[0-9]*
+*.e[0-9]*
+
 # General
 *.tar.gz
 *.pdf
 */bin
+*.txt

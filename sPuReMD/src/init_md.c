@@ -298,7 +298,7 @@ void Init_Workspace( reax_system *system, control_params *control,
         case QEQ_CM:
             system->N_cm = system->N;
             break;
-        case EEM_CM:
+        case EE_CM:
             system->N_cm = system->N + 1;
             break;
         case ACKS2_CM:
@@ -314,15 +314,6 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->H_sp = NULL;
     workspace->L = NULL;
     workspace->U = NULL;
-    workspace->H_EEM = NULL;
-    workspace->L_EEM = NULL;
-    workspace->U_EEM = NULL;
-    workspace->H_ACKS2_1 = NULL;
-    workspace->H_ACKS2_2 = NULL;
-    workspace->L_ACKS2_1 = NULL;
-    workspace->L_ACKS2_2 = NULL;
-    workspace->U_ACKS2_1 = NULL;
-    workspace->U_ACKS2_2 = NULL;
     workspace->Hdia_inv = NULL;
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )
@@ -361,7 +352,7 @@ void Init_Workspace( reax_system *system, control_params *control,
             }
             break;
 
-        case EEM_CM:
+        case EE_CM:
             for ( i = 0; i < system->N; ++i )
             {
                 workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
@@ -535,7 +526,7 @@ void Init_Lists( reax_system *system, control_params *control,
         case QEQ_CM:
             max_nnz = Htop;
             break;
-        case EEM_CM:
+        case EE_CM:
             max_nnz = Htop + system->N_cm;
             break;
         case ACKS2_CM:
