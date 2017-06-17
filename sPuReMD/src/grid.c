@@ -494,13 +494,12 @@ static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 
 
 void Copy_Storage( reax_system *system, static_storage *workspace,
-                   int top, int old_id, int old_type,
-                   int *num_H, real **v, real **s, real **t,
-                   int *orig_id, rvec *f_old )
+        control_params *control, int top, int old_id, int old_type, int *num_H,
+        real **v, real **s, real **t, int *orig_id, rvec *f_old )
 {
     int i;
 
-    for ( i = 0; i < RESTART + 1; ++i )
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
         v[i][top] = workspace->v[i][old_id];
     }
@@ -529,11 +528,11 @@ void Copy_Storage( reax_system *system, static_storage *workspace,
 }
 
 
-void Free_Storage( static_storage *workspace )
+void Free_Storage( static_storage *workspace, control_params * control )
 {
     int i;
 
-    for ( i = 0; i < RESTART + 1; ++i )
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
         free( workspace->v[i] );
     }
@@ -566,7 +565,8 @@ void Assign_New_Storage( static_storage *workspace,
 }
 
 
-void Cluster_Atoms( reax_system *system, static_storage *workspace )
+void Cluster_Atoms( reax_system *system, static_storage *workspace,
+        control_params *control )
 {
     int         i, j, k, l, top, old_id, num_H;
     reax_atom  *old_atom;
@@ -591,8 +591,8 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
         t[i] = (real *) calloc( system->N, sizeof( real ) );
     }
 
-    v = (real**) calloc( RESTART + 1, sizeof( real* ) );
-    for ( i = 0; i < RESTART + 1; ++i )
+    v = (real**) calloc( control->cm_solver_restart + 1, sizeof( real* ) );
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
         v[i] = (real *) calloc( system->N, sizeof( real ) );
     }
@@ -614,8 +614,8 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
                     // fprintf( stderr, "%d <-- %d\n", top, old_id );
 
                     reax_atom_Copy( &(new_atoms[top]), old_atom );
-                    Copy_Storage( system, workspace, top, old_id, old_atom->type,
-                                  &num_H, v, s, t, orig_id, f_old );
+                    Copy_Storage( system, workspace, control, top, old_id, old_atom->type,
+                            &num_H, v, s, t, orig_id, f_old );
                     ++top;
                 }
 
@@ -626,7 +626,7 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
 
 
     free( system->atoms );
-    Free_Storage( workspace );
+    Free_Storage( workspace, control );
 
     system->atoms = new_atoms;
     Assign_New_Storage( workspace, v, s, t, orig_id, f_old );

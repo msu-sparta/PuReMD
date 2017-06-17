@@ -47,7 +47,7 @@ static void Post_Evolve( reax_system * const system,
     /* if velocity dependent force then
        {
        Generate_Neighbor_Lists( &system, &control, &lists );
-       QEq(system, control, workspace, lists[FAR_NBRS]);
+       Compute_Charges(system, control, workspace, lists[FAR_NBRS]);
        Introduce compute_force here if we are using velocity dependent forces
        Compute_Forces(system,control,data,workspace,lists);
        } */
@@ -176,8 +176,8 @@ int main(int argc, char* argv[])
     /* compute f_0 */
     //if( control.restart == 0 ) {
     Reset( &system, &control, &data, &workspace, &lists );
-    Generate_Neighbor_Lists( &system, &control, &data, &workspace,
-                             &lists, &out_control );
+    Generate_Neighbor_Lists( &system, &control, &data, &workspace, 
+            &lists, &out_control );
 
     //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
     Compute_Forces(&system, &control, &data, &workspace, &lists, &out_control);
@@ -186,8 +186,7 @@ int main(int argc, char* argv[])
     ++data.step;
     //}
     //
-
-
+    
     for ( ; data.step <= control.nsteps; data.step++ )
     {
         if ( control.T_mode )

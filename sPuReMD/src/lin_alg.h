@@ -25,8 +25,24 @@
 #include "mytypes.h"
 
 
+typedef enum
+{
+    LOWER = 0,
+    UPPER = 1,
+} TRIANGULARITY;
+
+
 void Transpose( const sparse_matrix const *, sparse_matrix const * );
 void Transpose_I( sparse_matrix * const );
+
+void tri_solve( const sparse_matrix * const, const real * const,
+        real * const, const int, const TRIANGULARITY );
+void tri_solve_level_sched( const sparse_matrix * const,
+        const real * const, real * const, const int,
+        const TRIANGULARITY, int );
+void jacobi_iter( const sparse_matrix * const, const real * const,
+        const real * const, real * const, const TRIANGULARITY,
+        const unsigned int );
 
 sparse_matrix * setup_graph_coloring( sparse_matrix * const );
 
@@ -40,11 +56,13 @@ int GMRES_HouseHolder( const static_storage * const, const control_params * cons
         const real * const, const real, real * const,
         const FILE * const, const int );
 
-int CG( static_storage*, sparse_matrix*,
-        real*, real, real*, FILE* );
+int CG( const static_storage * const, const control_params * const,
+        const sparse_matrix * const, const real * const, const real, real * const,
+        const FILE * const );
 
-int SDM( static_storage*, sparse_matrix*,
-         real*, real, real*, FILE* );
+int SDM( const static_storage * const, const control_params * const,
+        const sparse_matrix * const, const real * const, const real, real * const,
+        const FILE * const );
 
 real condest( const sparse_matrix * const, const sparse_matrix * const );
 

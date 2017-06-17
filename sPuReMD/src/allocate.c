@@ -73,6 +73,7 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 }
 
 
+/* dynamic allocation of memory for matrix in CSR format */
 int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
@@ -86,8 +87,8 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
     H->n = n;
     H->m = m;
 
-    if ( (H->start = (unsigned int*) malloc(sizeof(int) * (n + 1))) == NULL
-            || (H->j = (unsigned int*) malloc(sizeof(int) * m)) == NULL
+    if ( (H->start = (unsigned int*) malloc(sizeof(unsigned int) * (n + 1))) == NULL
+            || (H->j = (unsigned int*) malloc(sizeof(unsigned int) * m)) == NULL
             || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
     {
         return FAILURE;
@@ -97,6 +98,7 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 }
 
 
+/* deallocate memory for matrix in CSR format */
 void Deallocate_Matrix( sparse_matrix *H )
 {
     free(H->start);
@@ -278,7 +280,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
 
     if ( realloc->Htop > 0 )
     {
-        Reallocate_Matrix(&(workspace->H), system->N, realloc->Htop * SAFE_ZONE, "H");
+        Reallocate_Matrix(&(workspace->H), system->N_cm, realloc->Htop * SAFE_ZONE, "H");
         realloc->Htop = -1;
 
         Deallocate_Matrix( workspace->L );

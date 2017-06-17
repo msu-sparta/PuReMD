@@ -47,7 +47,7 @@ AC_ARG_ENABLE([mpi-gpu],
 	      [pack_mpi_gpu_enabled=${enableval}], [pack_mpi_gpu_enabled=no])
 
 if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes" || test "x${pack_gpu_enabled}" = "xyes"; then
-	AC_CONFIG_SUBDIRS([PuReMD-GPU])
+	AC_CONFIG_SUBDIRS([sPuReMD])
 	if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" != "xyes"; then
 		export BUILD_OPENMP="no"
 	else

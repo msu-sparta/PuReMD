@@ -27,7 +27,7 @@
 #include "grid.h"
 #include "neighbors.h"
 #include "print_utils.h"
-#include "qeq.h"
+#include "charges.h"
 #include "reset_utils.h"
 #include "restart.h"
 #include "system_props.h"
@@ -483,7 +483,7 @@ void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
-    /* QEq( system, control, workspace, lists[FAR_NBRS], out_control );
+    /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
     Compute_Forces( system, control, data, workspace, lists, out_control );
@@ -589,7 +589,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
-    /* QEq( system, control, workspace, lists[FAR_NBRS], out_control );
+    /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
     Compute_Forces( system, control, data, workspace, lists, out_control );

@@ -209,15 +209,15 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
     data->timing.init_forces = 0;
     data->timing.bonded = 0;
     data->timing.nonb = 0;
-    data->timing.QEq = ZERO;
-    data->timing.QEq_sort_mat_rows = ZERO;
-    data->timing.pre_comp = ZERO;
-    data->timing.pre_app = ZERO;
-    data->timing.solver_iters = 0;
-    data->timing.solver_spmv = ZERO;
-    data->timing.solver_vector_ops = ZERO;
-    data->timing.solver_orthog = ZERO;
-    data->timing.solver_tri_solve = ZERO;
+    data->timing.cm = ZERO;
+    data->timing.cm_sort_mat_rows = ZERO;
+    data->timing.cm_solver_pre_comp = ZERO;
+    data->timing.cm_solver_pre_app = ZERO;
+    data->timing.cm_solver_iters = 0;
+    data->timing.cm_solver_spmv = ZERO;
+    data->timing.cm_solver_vector_ops = ZERO;
+    data->timing.cm_solver_orthog = ZERO;
+    data->timing.cm_solver_tri_solve = ZERO;
 }
 
 
@@ -231,17 +231,20 @@ void Init_Taper( control_params *control )
     swa = control->r_low;
     swb = control->r_cut;
 
-    if ( fabs( swa ) > 0.01 )
+    if ( FABS( swa ) > 0.01 )
+    {
         fprintf( stderr, "Warning: non-zero value for lower Taper-radius cutoff\n" );
+    }
 
-    if ( swb < 0 )
+    if ( swb < 0.0 )
     {
         fprintf( stderr, "Negative value for upper Taper-radius cutoff\n" );
         exit( INVALID_INPUT );
     }
-    else if ( swb < 5 )
-        fprintf( stderr, "Warning: low value for upper Taper-radius cutoff:%f\n",
-                 swb );
+    else if ( swb < 5.0 )
+    {
+        fprintf( stderr, "Warning: low value for upper Taper-radius cutoff:%f\n", swb );
+    }
 
     d1 = swb - swa;
     d7 = POW( d1, 7.0 );
@@ -258,12 +261,12 @@ void Init_Taper( control_params *control )
     control->Tap2 = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
     control->Tap1 = 140.0 * swa3 * swb3 / d7;
     control->Tap0 = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2 +
-                     7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
+            7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
 }
 
 
 void Init_Workspace( reax_system *system, control_params *control,
-                     static_storage *workspace )
+        static_storage *workspace )
 {
     int i;
 
@@ -289,70 +292,155 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->CdDelta          = (real *) malloc( system->N * sizeof( real ) );
     workspace->vlpex        = (real *) malloc( system->N * sizeof( real ) );
 
-    /* QEq storage */
-    workspace->H        = NULL;
-    workspace->H_sp     = NULL;
-    workspace->L        = NULL;
-    workspace->U        = NULL;
+    /* charge method storage */
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            system->N_cm = system->N;
+            break;
+        case EE_CM:
+            system->N_cm = system->N + 1;
+            break;
+        case ACKS2_CM:
+            system->N_cm = 2 * system->N + 2;
+            break;
+        default:
+            fprintf( stderr, "Unknown charge method type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+    }
+
+    workspace->H = NULL;
+    workspace->H_sp = NULL;
+    workspace->L = NULL;
+    workspace->U = NULL;
     workspace->Hdia_inv = NULL;
-    workspace->droptol  = (real *) calloc( system->N, sizeof( real ) );
-    workspace->w        = (real *) calloc( system->N, sizeof( real ) );
-    workspace->b        = (real *) calloc( system->N * 2, sizeof( real ) );
-    workspace->b_s      = (real *) calloc( system->N, sizeof( real ) );
-    workspace->b_t      = (real *) calloc( system->N, sizeof( real ) );
-    workspace->b_prc    = (real *) calloc( system->N * 2, sizeof( real ) );
-    workspace->b_prm    = (real *) calloc( system->N * 2, sizeof( real ) );
-    workspace->s_t      = (real *) calloc( system->N * 2, sizeof( real ) );
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        workspace->droptol  = (real *) calloc( system->N_cm, sizeof( real ) );
+    }
+    //TODO: check if unused
+    //workspace->w        = (real *) calloc( cm_lin_sys_size, sizeof( real ) );
+    //TODO: check if unused
+    workspace->b        = (real *) calloc( system->N_cm * 2, sizeof( real ) );
+    workspace->b_s      = (real *) calloc( system->N_cm, sizeof( real ) );
+    workspace->b_t      = (real *) calloc( system->N_cm, sizeof( real ) );
+    workspace->b_prc    = (real *) calloc( system->N_cm * 2, sizeof( real ) );
+    workspace->b_prm    = (real *) calloc( system->N_cm * 2, sizeof( real ) );
+    //TODO: check if unused
+    //workspace->s_t      = (real *) calloc( cm_lin_sys_size * 2, sizeof( real ) );
     workspace->s        = (real**) calloc( 5, sizeof( real* ) );
     workspace->t        = (real**) calloc( 5, sizeof( real* ) );
     for ( i = 0; i < 5; ++i )
     {
-        workspace->s[i] = (real *) calloc( system->N, sizeof( real ) );
-        workspace->t[i] = (real *) calloc( system->N, sizeof( real ) );
+        workspace->s[i] = (real *) calloc( system->N_cm, sizeof( real ) );
+        workspace->t[i] = (real *) calloc( system->N_cm, sizeof( real ) );
     }
-    // workspace->s_old    = (real *) calloc( system->N, sizeof( real ) );
-    // workspace->t_old    = (real *) calloc( system->N, sizeof( real ) );
-    // workspace->s_oldest = (real *) calloc( system->N, sizeof( real ) );
-    // workspace->t_oldest = (real *) calloc( system->N, sizeof( real ) );
 
-    for ( i = 0; i < system->N; ++i )
+    switch ( control->charge_method )
     {
-        workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-        workspace->b_t[i] = -1.0;
+        case QEQ_CM:
+            for ( i = 0; i < system->N; ++i )
+            {
+                workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+                workspace->b_t[i] = -1.0;
 
-        workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-        workspace->b[i + system->N] = -1.0;
+                //TODO: check if unused (redundant)
+                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+                workspace->b[i + system->N] = -1.0;
+            }
+            break;
+
+        case EE_CM:
+            for ( i = 0; i < system->N; ++i )
+            {
+                workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+            }
+
+            workspace->b_s[system->N] = control->cm_q_net;
+            workspace->b[system->N] = control->cm_q_net;
+            break;
+
+        case ACKS2_CM:
+            for ( i = 0; i < system->N; ++i )
+            {
+                workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+            }
+
+            workspace->b_s[system->N] = control->cm_q_net;
+            workspace->b[system->N] = control->cm_q_net;
+
+            for ( i = system->N + 1; i < system->N_cm; ++i )
+            {
+                workspace->b_s[i] = 0.0;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i] = 0.0;
+            }
+            break;
+
+        default:
+            fprintf( stderr, "Unknown charge method type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
-    /* GMRES storage */
-    workspace->y  = (real *)  calloc( RESTART + 1, sizeof( real ) );
-    workspace->z  = (real *)  calloc( RESTART + 1, sizeof( real ) );
-    workspace->g  = (real *)  calloc( RESTART + 1, sizeof( real ) );
-    workspace->h  = (real **) calloc( RESTART + 1, sizeof( real*) );
-    workspace->hs = (real *)  calloc( RESTART + 1, sizeof( real ) );
-    workspace->hc = (real *)  calloc( RESTART + 1, sizeof( real ) );
-    workspace->rn = (real **) calloc( RESTART + 1, sizeof( real*) );
-    workspace->v  = (real **) calloc( RESTART + 1, sizeof( real*) );
-
-    for ( i = 0; i < RESTART + 1; ++i )
+    switch ( control->cm_solver_type )
     {
-        workspace->h[i]  = (real *) calloc( RESTART + 1, sizeof( real ) );
-        workspace->rn[i] = (real *) calloc( system->N * 2, sizeof( real ) );
-        workspace->v[i]  = (real *) calloc( system->N, sizeof( real ) );
+        /* GMRES storage */
+        case GMRES_S:
+        case GMRES_H_S:
+            workspace->y  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->z  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->g  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->h  = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
+            workspace->hs = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->hc = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
+            workspace->rn = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
+            workspace->v  = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
+
+            for ( i = 0; i < control->cm_solver_restart + 1; ++i )
+            {
+                workspace->h[i]  = (real *) calloc( control->cm_solver_restart + 1, sizeof( real ) );
+                workspace->rn[i] = (real *) calloc( system->N_cm * 2, sizeof( real ) );
+                workspace->v[i]  = (real *) calloc( system->N_cm, sizeof( real ) );
+            }
+
+            workspace->r = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->d = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->q = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->p = (real *) calloc( system->N_cm, sizeof( real ) );
+            break;
+
+        /* CG storage */
+        case CG_S:
+            workspace->r = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->d = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->q = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->p = (real *) calloc( system->N_cm, sizeof( real ) );
+            break;
+
+        case SDM_S:
+            //TODO
+            break;
+
+        default:
+            fprintf( stderr, "Unknown charge method linear solver type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
-
-    /* CG storage */
-    workspace->r = (real *) calloc( system->N, sizeof( real ) );
-    workspace->d = (real *) calloc( system->N, sizeof( real ) );
-    workspace->q = (real *) calloc( system->N, sizeof( real ) );
-    workspace->p = (real *) calloc( system->N, sizeof( real ) );
-
 
     /* integrator storage */
     workspace->a = (rvec *) malloc( system->N * sizeof( rvec ) );
     workspace->f_old = (rvec *) malloc( system->N * sizeof( rvec ) );
     workspace->v_const = (rvec *) malloc( system->N * sizeof( rvec ) );
-
 
     /* storage for analysis */
     if ( control->molec_anal || control->diffusion_coef )
@@ -361,12 +449,18 @@ void Init_Workspace( reax_system *system, control_params *control,
         workspace->old_mark = (int *) calloc( system->N, sizeof(int) );
     }
     else
+    {
         workspace->mark = workspace->old_mark = NULL;
+    }
 
     if ( control->diffusion_coef )
+    {
         workspace->x_old = (rvec *) calloc( system->N, sizeof( rvec ) );
-    else workspace->x_old = NULL;
-
+    }
+    else
+    {
+        workspace->x_old = NULL;
+    }
 
 #ifdef TEST_FORCES
     workspace->dDelta = (rvec *) malloc( system->N * sizeof( rvec ) );
@@ -403,15 +497,17 @@ void Init_Lists( reax_system *system, control_params *control,
                  simulation_data *data, static_storage *workspace,
                  list **lists, output_controls *out_control )
 {
-    int i, num_nbrs, num_hbonds, num_bonds, num_3body, Htop;
+    int i, num_nbrs, num_hbonds, num_bonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
+
     if ( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS) )
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
         exit( CANNOT_INITIALIZE );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
              num_nbrs * sizeof(far_neighbor_data) / (1024 * 1024) );
@@ -422,10 +518,26 @@ void Init_Lists( reax_system *system, control_params *control,
     hb_top = (int*) calloc( system->N, sizeof(int) );
     bond_top = (int*) calloc( system->N, sizeof(int) );
     num_3body = 0;
-    Estimate_Storage_Sizes( system, control, lists,
-                            &Htop, hb_top, bond_top, &num_3body );
+    Estimate_Storage_Sizes( system, control, lists, &Htop,
+            hb_top, bond_top, &num_3body );
 
-    if ( Allocate_Matrix( &(workspace->H), system->N, Htop ) == FAILURE )
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            max_nnz = Htop;
+            break;
+        case EE_CM:
+            max_nnz = Htop + system->N_cm;
+            break;
+        case ACKS2_CM:
+            max_nnz = 2 * Htop + 3 * system->N + 2;
+            break;
+        default:
+            max_nnz = Htop;
+            break;
+    }
+
+    if ( Allocate_Matrix( &(workspace->H), system->N_cm, max_nnz ) == FAILURE )
     {
         fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -434,15 +546,16 @@ void Init_Lists( reax_system *system, control_params *control,
      *   If so, need to refactor Estimate_Storage_Sizes
      *   to use various cut-off distances as parameters
      *   (non-bonded, hydrogen, 3body, etc.) */
-    if ( Allocate_Matrix( &(workspace->H_sp), system->N, Htop ) == FAILURE )
+    if ( Allocate_Matrix( &(workspace->H_sp), system->N_cm, max_nnz ) == FAILURE )
     {
         fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
         exit( INSUFFICIENT_MEMORY );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - Htop: %d\n", Htop );
     fprintf( stderr, "memory allocated: H = %ldMB\n",
-             Htop * sizeof(sparse_matrix_entry) / (1024 * 1024) );
+            Htop * sizeof(sparse_matrix_entry) / (1024 * 1024) );
 #endif
 
     workspace->num_H = 0;
@@ -450,13 +563,22 @@ void Init_Lists( reax_system *system, control_params *control,
     {
         /* init H indexes */
         for ( i = 0; i < system->N; ++i )
-            if ( system->reaxprm.sbp[ system->atoms[i].type ].p_hbond == 1 ) // H atom
+        {
+            // H atom
+            if ( system->reaxprm.sbp[ system->atoms[i].type ].p_hbond == 1 )
+            {
                 workspace->hbond_index[i] = workspace->num_H++;
-            else workspace->hbond_index[i] = -1;
+            }
+            else
+            {
+                workspace->hbond_index[i] = -1;
+            }
+        }
 
         Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
-                             hb_top, (*lists) + HBONDS );
+                hb_top, (*lists) + HBONDS );
         num_hbonds = hb_top[system->N - 1];
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "estimated storage - num_hbonds: %d\n", num_hbonds );
         fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
@@ -467,6 +589,7 @@ void Init_Lists( reax_system *system, control_params *control,
     /* bonds list */
     Allocate_Bond_List( system->N, bond_top, (*lists) + BONDS );
     num_bonds = bond_top[system->N - 1];
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_bonds: %d\n", num_bonds );
     fprintf( stderr, "memory allocated: bonds = %ldMB\n",
@@ -483,11 +606,13 @@ void Init_Lists( reax_system *system, control_params *control,
         fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
         exit( CANNOT_INITIALIZE );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
     fprintf( stderr, "memory allocated: 3-body = %ldMB\n",
              num_3body * sizeof(three_body_interaction_data) / (1024 * 1024) );
 #endif
+
 #ifdef TEST_FORCES
     if (!Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA ))
     {
@@ -548,7 +673,7 @@ void Init_Out_Controls(reax_system *system, control_params *control,
         out_control->log = fopen( temp, "w" );
         fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                  "step", "total", "neighbors", "init", "bonded",
-                 "nonbonded", "QEq", "QEq Sort", "S iters", "Pre Comp", "Pre App",
+                 "nonbonded", "CM", "CM Sort", "S iters", "Pre Comp", "Pre App",
                  "S spmv", "S vec ops", "S orthog", "S tsolve" );
     }
 

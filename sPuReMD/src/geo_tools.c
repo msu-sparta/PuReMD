@@ -381,9 +381,9 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
             //       system->my_atoms[top].q, occupancy, temp_factor,
             //       seg_id, element );
 
-            //fprintf( stderr, "atom( %8.3f %8.3f %8.3f ) --> p%d\n",
-            // system->my_atoms[top].x[0], system->my_atoms[top].x[1],
-            // system->my_atoms[top].x[2], system->my_rank );
+//            fprintf( stderr, "atom( %8.3f %8.3f %8.3f )\n",
+//                    atom->x[0], atom->x[1],
+//                    atom->x[2] );
 
             c++;
         }

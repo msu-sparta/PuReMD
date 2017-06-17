@@ -114,16 +114,19 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 
 
 void Vector_Print( FILE * const fout, const char * const vname, const real * const v,
-                   const unsigned int k )
+        const unsigned int k )
 {
     unsigned int i;
 
-    fprintf( fout, "%s:\n", vname );
+    if ( vname != NULL )
+    {
+        fprintf( fout, "%s:\n", vname );
+    }
+
     for ( i = 0; i < k; ++i )
     {
         fprintf( fout, "%24.15e\n", v[i] );
     }
-    fprintf( fout, "\n" );
 }
 
 

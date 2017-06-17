@@ -622,30 +622,30 @@ void Output_Results( reax_system *system, control_params *control,
                  data->timing.init_forces / f_update,
                  data->timing.bonded / f_update,
                  data->timing.nonb / f_update,
-                 data->timing.QEq / f_update,
-                 data->timing.QEq_sort_mat_rows / f_update,
-                 (double)data->timing.solver_iters / f_update,
-                 data->timing.pre_comp / f_update,
-                 data->timing.pre_app / f_update,
-                 data->timing.solver_spmv / f_update,
-                 data->timing.solver_vector_ops / f_update,
-                 data->timing.solver_orthog / f_update,
-                 data->timing.solver_tri_solve / f_update );
+                 data->timing.cm / f_update,
+                 data->timing.cm_sort_mat_rows / f_update,
+                 (double)data->timing.cm_solver_iters / f_update,
+                 data->timing.cm_solver_pre_comp / f_update,
+                 data->timing.cm_solver_pre_app / f_update,
+                 data->timing.cm_solver_spmv / f_update,
+                 data->timing.cm_solver_vector_ops / f_update,
+                 data->timing.cm_solver_orthog / f_update,
+                 data->timing.cm_solver_tri_solve / f_update );
 
         data->timing.total = Get_Time( );
         data->timing.nbrs = 0;
         data->timing.init_forces = 0;
         data->timing.bonded = 0;
         data->timing.nonb = 0;
-        data->timing.QEq = ZERO;
-        data->timing.QEq_sort_mat_rows = ZERO;
-        data->timing.pre_comp = ZERO;
-        data->timing.pre_app = ZERO;
-        data->timing.solver_iters = 0;
-        data->timing.solver_spmv = ZERO;
-        data->timing.solver_vector_ops = ZERO;
-        data->timing.solver_orthog = ZERO;
-        data->timing.solver_tri_solve = ZERO;
+        data->timing.cm = ZERO;
+        data->timing.cm_sort_mat_rows = ZERO;
+        data->timing.cm_solver_pre_comp = ZERO;
+        data->timing.cm_solver_pre_app = ZERO;
+        data->timing.cm_solver_iters = 0;
+        data->timing.cm_solver_spmv = ZERO;
+        data->timing.cm_solver_vector_ops = ZERO;
+        data->timing.cm_solver_orthog = ZERO;
+        data->timing.cm_solver_tri_solve = ZERO;
 
         fflush( out_control->out );
         fflush( out_control->pot );
@@ -694,17 +694,17 @@ void Output_Results( reax_system *system, control_params *control,
 
 
 void Print_Linear_System( reax_system *system, control_params *control,
-                          static_storage *workspace, int step )
+        static_storage *workspace, int step )
 {
-    int   i, j;
-    char  fname[100];
+    int i, j;
+    char fname[100];
     sparse_matrix *H;
     FILE *out;
 
     sprintf( fname, "%s.state%d.out", control->sim_name, step );
     out = fopen( fname, "w" );
 
-    for ( i = 0; i < system->N; i++ )
+    for ( i = 0; i < system->N_cm; i++ )
         fprintf( out, "%6d%2d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                  workspace->orig_id[i], system->atoms[i].type,
                  system->atoms[i].x[0], system->atoms[i].x[1],
@@ -719,12 +719,11 @@ void Print_Linear_System( reax_system *system, control_params *control,
     // fprintf( out, "%g\n", workspace->s_t[i+system->N] );
     // fclose( out );
 
-
     sprintf( fname, "%s.H%d.out", control->sim_name, step );
     out = fopen( fname, "w" );
     H = workspace->H;
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->N_cm; ++i )
     {
         for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
         {
@@ -747,7 +746,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
     out = fopen( fname, "w" );
     H = workspace->H_sp;
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->N_cm; ++i )
     {
         for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
         {
@@ -828,10 +827,19 @@ void Print_Sparse_Matrix( sparse_matrix *A )
 }
 
 
-void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
+void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
 {
     int i, j;
-    FILE *f = fopen( fname, "w" );
+    FILE *f;
+   
+    if ( mode == NULL )
+    {
+        f = fopen( fname, "w" );
+    }
+    else
+    {
+        f = fopen( fname, mode );
+    }
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -839,7 +847,44 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
         {
             //fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
             //Convert 0-based to 1-based (for Matlab)
-            fprintf( f, "%6d%6d %24.15e\n", i+1, A->j[j]+1, A->val[j] );
+            fprintf( f, "%6d %6d %24.15e\n", i+1, A->j[j]+1, A->val[j] );
+        }
+    }
+
+    fclose(f);
+}
+
+
+/* Note: watch out for portability issues with endianness
+ * due to serialization of numeric types (integer, IEEE 754) */
+void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
+{
+    int i, j, temp;
+    FILE *f;
+   
+    f = fopen( fname, "wb" );
+
+    /* header: # rows, # nonzeros */
+    fwrite( &(A->n), sizeof(unsigned int), 1, f );
+    fwrite( &(A->start[A->n]), sizeof(unsigned int), 1, f );
+
+    /* row pointers */
+    for ( i = 0; i <= A->n; ++i )
+    {
+        //Convert 0-based to 1-based (for Matlab)
+        temp = A->start[i] + 1;
+        fwrite( &temp, sizeof(unsigned int), 1, f );
+    }
+
+    /* column indices and non-zeros */
+    for ( i = 0; i <= A->n; ++i )
+    {
+        for ( j = A->start[i]; j < A->start[i + 1]; ++j )
+        {
+            //Convert 0-based to 1-based (for Matlab)
+            temp = A->j[j] + 1;
+            fwrite( &temp, sizeof(unsigned int), 1, f );
+            fwrite( &(A->val[j]), sizeof(real), 1, f );
         }
     }
 

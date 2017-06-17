@@ -30,7 +30,7 @@ void Update_Grid( reax_system* );
 
 int  Shift( int, int, int, grid* );
 
-void Cluster_Atoms( reax_system*, static_storage* );
+void Cluster_Atoms( reax_system *, static_storage *, control_params * );
 
 void Bin_Atoms( reax_system*, static_storage* );
 
