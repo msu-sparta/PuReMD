@@ -21,6 +21,9 @@ void dev_realloc_system( reax_system *, int , int , char * );
 void dev_dealloc_workspace( control_params *, storage * );
 void dev_dealloc_matrix( sparse_matrix * );
 
+void Cuda_ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
+        reax_list**, mpi_datatypes* );
+
 
 #ifdef __cplusplus
 }

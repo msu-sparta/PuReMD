@@ -1,8 +1,14 @@
 
 #include "cuda_allocate.h"
 
+#include "cuda_allocate.h"
+#include "cuda_list.h"
+#include "cuda_neighbors.h"
 #include "cuda_utils.h"
 
+#include "allocate.h"
+#include "index_utils.h"
+#include "tool_box.h"
 #include "vector.h"
 
 extern "C"
@@ -157,9 +163,37 @@ void dev_alloc_system( reax_system *system )
             system->total_cap * sizeof(reax_atom),
             TRUE, "system:d_my_atoms" );
 
-    /* list reallocation */
-    cuda_malloc( (void **) &system->d_num_thbodies,
-            sizeof(int), TRUE, "system:d_num_thbodies" );
+    /* list management */
+    cuda_malloc( (void **) &system->d_far_nbrs,
+            system->total_cap * sizeof(int), TRUE, "system:d_far_nbrs" );
+    cuda_malloc( (void **) &system->d_max_far_nbrs,
+            system->total_cap * sizeof(int), TRUE, "system:d_max_far_nbrs" );
+    cuda_malloc( (void **) &system->d_total_far_nbrs,
+            sizeof(int), TRUE, "system:d_total_far_nbrs" );
+    cuda_malloc( (void **) &system->d_realloc_far_nbrs,
+            sizeof(int), TRUE, "system:d_realloc_far_nbrs" );
+
+    cuda_malloc( (void **) &system->d_bonds,
+            system->total_cap * sizeof(int), TRUE, "system:d_bonds" );
+    cuda_malloc( (void **) &system->d_max_bonds,
+            system->total_cap * sizeof(int), TRUE, "system:d_max_bonds" );
+    cuda_malloc( (void **) &system->d_total_bonds,
+            sizeof(int), TRUE, "system:d_total_bonds" );
+    cuda_malloc( (void **) &system->d_realloc_bonds,
+            sizeof(int), TRUE, "system:d_realloc_bonds" );
+
+    cuda_malloc( (void **) &system->d_hbonds,
+            system->total_cap * sizeof(int), TRUE, "system:d_hbonds" );
+    cuda_malloc( (void **) &system->d_max_hbonds,
+            system->total_cap * sizeof(int), TRUE, "system:d_max_hbonds" );
+    cuda_malloc( (void **) &system->d_total_hbonds,
+            sizeof(int), TRUE, "system:d_total_hbonds" );
+    cuda_malloc( (void **) &system->d_realloc_hbonds,
+            sizeof(int), TRUE, "system:d_realloc_hbonds" );
+
+    cuda_malloc( (void **) &system->d_total_thbodies,
+            sizeof(int), TRUE, "system:d_total_thbodies" );
+
     cuda_malloc( (void **) &system->d_max_sparse_entries,
             sizeof(int), TRUE, "system:d_max_sparse_entries" );
     cuda_malloc( (void **) &system->d_total_sparse_entries,
@@ -205,10 +239,30 @@ void dev_alloc_system( reax_system *system )
 void dev_realloc_system( reax_system *system, int local_cap, int total_cap, char *msg )
 {
     /* free the existing storage for atoms, leave other info allocated */
-    cuda_free( system->d_my_atoms, "system:d_my_atoms" );
-
+    cuda_free( system->d_my_atoms, "system::d_my_atoms" );
     cuda_malloc( (void **) &system->d_my_atoms, sizeof(reax_atom) * total_cap, 
-            TRUE, "system:d_my_atoms" );
+            TRUE, "system::d_my_atoms" );
+
+    cuda_free( system->d_far_nbrs, "system::d_far_nbrs" );
+    cuda_malloc( (void **) &system->d_far_nbrs,
+            system->total_cap * sizeof(int), TRUE, "system::d_far_nbrs" );
+    cuda_free( system->d_max_far_nbrs, "system::d_max_far_nbrs" );
+    cuda_malloc( (void **) &system->d_max_far_nbrs,
+            system->total_cap * sizeof(int), TRUE, "system::d_max_far_nbrs" );
+
+    cuda_free( system->d_bonds, "system::d_bonds" );
+    cuda_malloc( (void **) &system->d_bonds,
+            system->total_cap * sizeof(int), TRUE, "system::d_bonds" );
+    cuda_free( system->d_max_bonds, "system::d_max_bonds" );
+    cuda_malloc( (void **) &system->d_max_bonds,
+            system->total_cap * sizeof(int), TRUE, "system::d_max_bonds" );
+
+    cuda_free( system->d_hbonds, "system::d_hbonds" );
+    cuda_malloc( (void **) &system->d_hbonds,
+            system->total_cap * sizeof(int), TRUE, "system::d_hbonds" );
+    cuda_free( system->d_max_hbonds, "system::d_max_hbonds" );
+    cuda_malloc( (void **) &system->d_max_hbonds,
+            system->total_cap * sizeof(int), TRUE, "system::d_max_hbonds" );
 }
 
 
@@ -439,6 +493,344 @@ void dev_dealloc_matrix( sparse_matrix *H )
     cuda_free( H->start, "matrix_start" );
     cuda_free( H->end, "matrix_end" );
     cuda_free( H->entries, "matrix_entries" );
+}
+
+
+void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, size_t n, size_t num_intrs )
+{
+    Dev_Delete_List( far_nbrs );
+    Dev_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs );
+}
+
+
+void Cuda_Reallocate_HBonds_List( reax_list *hbonds, size_t n, size_t num_intrs )
+{
+    Dev_Delete_List( hbonds );
+    Dev_Make_List( n, num_intrs, TYP_HBOND, hbonds );
+}
+
+
+void Cuda_Reallocate_Bonds_List( reax_list *bonds, size_t n, size_t num_intrs )
+{
+    Dev_Delete_List( bonds );
+    Dev_Make_List( n, num_intrs, TYP_BOND, bonds );
+}
+
+
+void Cuda_Reallocate_Thbodies_List( reax_list *thbodies, size_t n, size_t num_intrs )
+{
+    /* delete three-body list */
+    Dev_Delete_List( thbodies );
+//    Delete_List( thbodies );
+
+    /* recreate Three-body list */
+    Dev_Make_List( n, num_intrs, TYP_THREE_BODY, thbodies );
+//    Make_List( n, num_intrs, TYP_THREE_BODY, thbodies );
+
+}
+
+
+void Cuda_ReAllocate( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        mpi_datatypes *mpi_data )
+{
+    int i, j, k, p;
+    int nflag, Nflag, Hflag, mpi_flag, total_send;
+    int renbr, *indices;
+    reallocate_data *realloc;
+    reax_list *far_nbrs;
+    sparse_matrix *H;
+    grid *g;
+    neighbor_proc *nbr_pr;
+    mpi_out_data *nbr_data;
+    char msg[200];
+
+    realloc = &(dev_workspace->realloc);
+    g = &(system->my_grid);
+    H = &dev_workspace->H;
+    indices = (int *) host_scratch;
+
+#if defined(DEBUG)
+    fprintf( stderr, "p%d@reallocate: n: %d, N: %d, numH: %d\n",
+             system->my_rank, system->n, system->N, system->numH );
+    fprintf( stderr, "p%d@reallocate: local_cap: %d, total_cap: %d, Hcap: %d\n",
+             system->my_rank, system->local_cap, system->total_cap,
+             system->Hcap);
+    fprintf( stderr, "p%d: realloc.far_nbrs: %d\n",
+             system->my_rank, realloc->far_nbrs );
+    fprintf( stderr, "p%d: realloc.H: %d, realloc.Htop: %d\n",
+             system->my_rank, realloc->H, realloc->Htop );
+    fprintf( stderr, "p%d: realloc.Hbonds: %d, realloc.num_hbonds: %d\n",
+             system->my_rank, realloc->hbonds, realloc->num_hbonds );
+    fprintf( stderr, "p%d: realloc.bonds: %d, num_bonds: %d\n",
+             system->my_rank, realloc->bonds, realloc->num_bonds );
+    fprintf( stderr, "p%d: realloc.num_3body: %d\n",
+             system->my_rank, realloc->num_3body );
+#endif
+
+    // IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with 0!!!
+    nflag = FALSE;
+    if ( system->n >= DANGER_ZONE * system->local_cap ||
+            (0 && system->n <= LOOSE_ZONE * system->local_cap) )
+    {
+        nflag = TRUE;
+        system->local_cap = (int)(system->n * SAFE_ZONE);
+    }
+
+    Nflag = FALSE;
+    if ( system->N >= DANGER_ZONE * system->total_cap ||
+            (0 && system->N <= LOOSE_ZONE * system->total_cap) )
+    {
+        Nflag = TRUE;
+        system->total_cap = (int)(system->N * SAFE_ZONE);
+    }
+
+    if ( Nflag == TRUE )
+    {
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: reallocating system and workspace -"\
+                 "n=%d  N=%d  local_cap=%d  total_cap=%d\n",
+                 system->my_rank, system->n, system->N,
+                 system->local_cap, system->total_cap );
+        fprintf( stderr, "p:%d -  *** Allocating System *** \n", system->my_rank );
+#endif
+
+        /* system */
+        dev_realloc_system( system, system->local_cap, system->total_cap, msg );
+
+        /* workspace */
+        dev_dealloc_workspace( control, workspace );
+        dev_alloc_workspace( system, control, workspace, system->local_cap,
+                system->total_cap, msg );
+    }
+
+    /* far neighbors */
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    if ( renbr || realloc->far_nbrs == TRUE )
+    {
+        far_nbrs = *dev_lists + FAR_NBRS;
+
+        if ( Nflag == TRUE || realloc->far_nbrs == TRUE )
+        {
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr, "p%d: reallocating far_nbrs: far_nbrs=%d, space=%dMB\n",
+                     system->my_rank, system->total_far_nbrs,
+                     (int)(system->total_far_nbrs * sizeof(far_neighbor_data) /
+                           (1024.0 * 1024.0)) );
+            fprintf( stderr, "p:%d - *** Reallocating Far Nbrs *** \n", system->my_rank );
+#endif
+
+            Cuda_Reallocate_Neighbor_List( far_nbrs, system->total_cap, system->total_far_nbrs );
+            Cuda_Init_Neighbor_Indices( system );
+            realloc->far_nbrs = FALSE;
+        }
+    }
+
+    /* charge coef matrix */
+    //if( nflag || realloc->Htop >= system->max_sparse_entries * DANGER_ZONE ) {
+    //if( realloc->Htop > system->max_sparse_entries ) {
+    if ( nflag == TRUE || realloc->Htop * DANGER_ZONE >= system->max_sparse_entries )
+    {
+        if ( system->max_sparse_entries > realloc->Htop)
+        {
+            fprintf( stderr, "step%d - ran out of space on H matrix: Htop=%d, max = %d",
+                    data->step, realloc->Htop, system->max_sparse_entries );
+            MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        }
+
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
+                 system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
+                 (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
+                       (1024 * 1024)) );
+        fprintf (stderr, "p:%d - *** Reallocating Sparse Matrix *** \n", system->my_rank);
+#endif
+
+        //Reallocate_Matrix( &(workspace->H),
+        //     system->local_cap, realloc->Htop*SAFE_ZONE, "H" );
+        //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+
+        //TODO - CARVER FIX
+
+        //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        dev_dealloc_matrix( H );
+
+        //TODO -- MOVER THIS TO CARVER
+        system->max_sparse_entries = realloc->Htop * SAFE_ZONE;
+        //TODO -- MOVER THIS TO CARVER
+        dev_alloc_matrix( H, system->total_cap,
+                system->total_cap * system->max_sparse_entries );
+
+        //TODO - CARVER FIX
+
+        //Deallocate_Matrix( workspace->L );
+        //Deallocate_Matrix( workspace->U );
+
+        //MATRIX-CHANGES
+        //workspace->L = NULL;
+        //workspace->U = NULL;
+        realloc->Htop = 0;
+    }
+
+    /* hydrogen bonds list */
+    // FIX - 4 - Added additional check here for hydrogen Bond fix
+    if ( control->hbond_cut > 0 && system->numH > 0 )
+    {
+
+        if ( Nflag == TRUE || realloc->hbonds )
+        {
+            fprintf( stderr, "p:%d - *** Reallocating Hbonds *** Step:%d\n", system->my_rank, data->step );
+            //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+
+            Cuda_Reallocate_HBonds_List( (*dev_lists) + HBONDS, system->total_cap, realloc->num_hbonds );
+//            Cuda_Init_HBond_Indices( system );
+            realloc->hbonds = 0;
+
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr, "p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
+                    system->my_rank, ret, (int)(ret * sizeof(hbond_data) / (1024 * 1024)) );
+#endif
+        }
+    }
+
+    /* bonds list */
+    if ( Nflag == TRUE || realloc->bonds == TRUE )
+    {
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: reallocating bonds: total_bonds=%d, space=%dMB\n",
+                 system->my_rank, system->total_bonds,
+                 (int)(system->total_bonds * sizeof(bond_data) / (1024 * 1024)) );
+#endif
+
+        Cuda_Reallocate_Bonds_List( (*dev_lists) + BONDS, system->total_cap, system->total_bonds );
+        Cuda_Init_Bond_Indices( system );
+        realloc->bonds = FALSE;
+    }
+
+    /* 3-body list */
+    if ( Nflag == TRUE || realloc->num_3body > 0 )
+    {
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: reallocating 3body list: num_3body=%d, space=%dMB\n",
+                system->my_rank, realloc->num_3body,
+                (int)(realloc->num_3body * sizeof(three_body_interaction_data) /
+                (1024*1024)) );
+#endif
+
+        Cuda_Reallocate_Thbodies_List( (*dev_lists) + THREE_BODIES,
+                (*dev_lists + BONDS)->num_intrs, system->total_thbodies );
+        realloc->num_3body = -1;
+    }
+
+    /* grid */
+    if ( renbr && realloc->gcell_atoms > -1 )
+    {
+#if defined(DEBUG_FOCUS)
+        fprintf(stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms);
+#endif
+
+        for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
+        {
+            for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
+            {
+                for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
+                {
+                    // reallocate g->atoms
+                    sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, "g:atoms" );
+                    g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int*)
+                            scalloc(realloc->gcell_atoms, sizeof(int), "g:atoms");
+                }
+            }
+        }
+
+        //TODO
+        //do the same thing for the device here.
+        fprintf( stderr, "p:%d - *** Reallocating Grid Cell Atoms *** Step:%d\n", system->my_rank, data->step );
+        //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+
+        //FIX - 1 - Tested the reallocation logic
+        //dev_dealloc_grid_cell_atoms (system);
+        //dev_alloc_grid_cell_atoms (system, realloc->gcell_atoms);
+        realloc->gcell_atoms = -1;
+    }
+
+    /* mpi buffers */
+    // we have to be at a renbring step -
+    // to ensure correct values at mpi_buffers for update_boundary_positions
+    if ( !renbr )
+    {
+        mpi_flag = FALSE;
+    }
+    // check whether in_buffer capacity is enough
+    else if ( system->max_recved >= system->est_recv * 0.90 )
+    {
+        mpi_flag = TRUE;
+    }
+    else
+    {
+        // otherwise check individual outgoing buffers
+        mpi_flag = FALSE;
+        for ( p = 0; p < MAX_NBRS; ++p )
+        {
+            nbr_pr = &( system->my_nbrs[p] );
+            nbr_data = &( mpi_data->out_buffers[p] );
+
+            if ( nbr_data->cnt >= nbr_pr->est_send * 0.90 )
+            {
+                mpi_flag = TRUE;
+                break;
+            }
+        }
+    }
+
+    if ( mpi_flag == TRUE )
+    {
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: reallocating mpi_buf: old_recv=%d\n",
+                 system->my_rank, system->est_recv );
+        for ( p = 0; p < MAX_NBRS; ++p )
+        {
+            fprintf( stderr, "p%d: nbr%d old_send=%d\n",
+                     system->my_rank, p, system->my_nbrs[p].est_send );
+        }
+#endif
+
+        /* update mpi buffer estimates based on last comm */
+        system->est_recv = MAX( system->max_recved * SAFER_ZONE, MIN_SEND );
+        system->est_trans =
+            (system->est_recv * sizeof(boundary_atom)) / sizeof(mpi_atom);
+        total_send = 0;
+        for ( p = 0; p < MAX_NBRS; ++p )
+        {
+            nbr_pr   = &( system->my_nbrs[p] );
+            nbr_data = &( mpi_data->out_buffers[p] );
+            nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
+            total_send += nbr_pr->est_send;
+        }
+
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
+                system->my_rank, system->est_recv, total_send,
+                (int)((system->est_recv + total_send)*sizeof(boundary_atom) /
+                      (1024 * 1024)));
+
+        for ( p = 0; p < MAX_NBRS; ++p )
+        {
+            fprintf( stderr, "p%d: nbr%d new_send=%d\n",
+                    system->my_rank, p, system->my_nbrs[p].est_send );
+        }
+#endif
+
+        /* reallocate mpi buffers */
+        Deallocate_MPI_Buffers( mpi_data );
+        Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs, msg );
+    }
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "p%d @ step%d: reallocate done\n",
+             system->my_rank, data->step );
+    MPI_Barrier( MPI_COMM_WORLD );
+#endif
 }
 
 

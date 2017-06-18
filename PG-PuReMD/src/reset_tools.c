@@ -23,10 +23,6 @@
 
 #include "index_utils.h"
 
-#ifdef HAVE_CUDA
-  #include "cuda_reset_tools.h"
-#endif
-
 #if defined(PURE_REAX)
   #include "reset_tools.h"
   #include "list.h"
@@ -294,28 +290,3 @@ void Reset( reax_system *system, control_params *control,
 #endif
 
 }
-
-
-#ifdef HAVE_CUDA
-void Cuda_Reset( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists )
-{
-    Cuda_Reset_Atoms( system, control );
-
-    Reset_Simulation_Data( data );
-
-    if ( control->virial )
-    {
-        Reset_Pressures( data );
-    }
-
-    Cuda_Reset_Workspace( system, workspace );
-
-    Cuda_Reset_Neighbor_Lists( system, control, workspace, lists );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-}
-#endif

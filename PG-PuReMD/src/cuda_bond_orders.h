@@ -9,8 +9,8 @@
 
 extern "C" {
 
-    void Cuda_Total_Forces( reax_system *, control_params *, simulation_data *, storage * );
-    void Cuda_Total_Forces_PURE( reax_system *, storage * );
+void Cuda_Total_Forces( reax_system *, control_params *, simulation_data *, storage * );
+void Cuda_Total_Forces_PURE( reax_system *, storage * );
 
 }
 
@@ -38,14 +38,13 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
     real BO, BO_s, BO_pi, BO_pi2;
     bond_data *ibond, *jbond;
     bond_order_data *bo_ij, *bo_ji;
-
     rvec bo_ij_dln_BOp_s;
     rvec bo_ij_dln_BOp_pi;
     rvec bo_ij_dln_BOp_pi2;
     rvec bo_ij_dBOp;
 
     j = nbr_pj->nbr;
-    r2 = SQR(nbr_pj->d);
+    r2 = SQR( nbr_pj->d );
 
     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
     {
@@ -107,7 +106,7 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
             bo_ij->BO_pi2 = BO_pi2;
 
             /* Only dln_BOp_xx wrt. dr_i is stored here, note that
-            dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
+             * dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
             rvec_Scale(bo_ij->dln_BOp_s,
                     -bo_ij->BO_s * Cln_BOp_s, ibond->dvec);
             rvec_Scale(bo_ij->dln_BOp_pi,
@@ -116,7 +115,7 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
                     -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec);
 
             /* Only dBOp wrt. dr_i is stored here, note that
-            dBOp/dr_i = -dBOp/dr_j and all others are 0 */
+             * dBOp/dr_i = -dBOp/dr_j and all others are 0 */
             rvec_Scale( bo_ij->dBOp, -(bo_ij->BO_s * Cln_BOp_s +
                         bo_ij->BO_pi * Cln_BOp_pi + bo_ij->BO_pi2 *
                         Cln_BOp_pi2), ibond->dvec );
@@ -156,7 +155,7 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
             //jbond->dbond_index = btop_i;
             //jbond->sym_index = btop_i;
 
-            //Set_End_Index( j, btop_j+1, bonds );
+            //Set_End_Index( j, btop_j + 1, bonds );
 
             bo_ji = &( jbond->bo_data );
             bo_ji->BO = BO;
@@ -196,9 +195,9 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
             rvec_MakeZero (jbond->va_f);
             jbond->ta_CdDelta = 0;
             jbond->ta_Cdbo = 0;
-            rvec_MakeZero (jbond->ta_f);
-            rvec_MakeZero (jbond->hb_f);
-            rvec_MakeZero (jbond->tf_f);
+            rvec_MakeZero( jbond->ta_f );
+            rvec_MakeZero( jbond->hb_f );
+            rvec_MakeZero( jbond->tf_f );
         }
 
         return TRUE;

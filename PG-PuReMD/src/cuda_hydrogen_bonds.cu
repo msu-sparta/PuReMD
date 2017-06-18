@@ -31,25 +31,17 @@
 #include "cuda_shuffle.h"
 
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, 
-        single_body_parameters *sbp, 
-        hbond_parameters *d_hbp,
-        global_parameters gp, 
-        control_params *control, 
-        storage p_workspace, 
-        reax_list p_bonds, 
-        reax_list p_hbonds, 
-        int n, 
-        int num_atom_types, 
-        real *data_e_hb, 
-        rvec *data_ext_press)
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameters *sbp, 
+        hbond_parameters *d_hbp, global_parameters gp, control_params *control, 
+        storage p_workspace, reax_list p_bonds, reax_list p_hbonds, int n, 
+        int num_atom_types, real *data_e_hb, rvec *data_ext_press )
 {
-    int  i, j, k, pi, pk;
-    int  type_i, type_j, type_k;
-    int  start_j, end_j, hb_start_j, hb_end_j;
-    int  hblist[MAX_BONDS];
-    int  itr, top;
-    int  num_hb_intrs = 0;
+    int i, j, k, pi, pk;
+    int type_i, type_j, type_k;
+    int start_j, end_j, hb_start_j, hb_end_j;
+    int hblist[MAX_BONDS];
+    int itr, top;
+    int num_hb_intrs;
     ivec rel_jk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
@@ -63,15 +55,21 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
     reax_list *bonds, *hbonds;
     bond_data *bond_list;
     hbond_data *hbond_list, *hbond_jk;
-    storage *workspace = &( p_workspace );
+    storage *workspace;
+
+    j = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( j >= n )
+    {
+        return;
+    }
 
     bonds = &( p_bonds );
     bond_list = bonds->select.bond_list;
     hbonds = & ( p_hbonds );
     hbond_list = hbonds->select.hbond_list;
-
-    j = blockIdx.x * blockDim.x + threadIdx.x;
-    if (j >= n) return;
+    workspace = &( p_workspace );
+    num_hb_intrs = 0;
 
     /* loops below discover the Hydrogen bonds between i-j-k triplets.
        here j is H atom and there has to be some bond between i and j.
@@ -80,16 +78,18 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
        variables onto the ones in the handout.*/
     //for( j = 0; j < system->n; ++j )
     /* j has to be of type H */
-    if( sbp[ my_atoms[j].type ].p_hbond == 1 ) {
+    if ( sbp[ my_atoms[j].type ].p_hbond == 1 )
+    {
         /*set j's variables */
-        type_j     = my_atoms[j].type;
-        start_j    = Dev_Start_Index(j, bonds);
-        end_j      = Dev_End_Index(j, bonds);
+        type_j = my_atoms[j].type;
+        start_j = Dev_Start_Index(j, bonds);
+        end_j = Dev_End_Index(j, bonds);
         hb_start_j = Dev_Start_Index( my_atoms[j].Hindex, hbonds );
-        hb_end_j   = Dev_End_Index( my_atoms[j].Hindex, hbonds );
+        hb_end_j = Dev_End_Index( my_atoms[j].Hindex, hbonds );
 
         top = 0;
-        for( pi = start_j; pi < end_j; ++pi )  {
+        for( pi = start_j; pi < end_j; ++pi )
+        {
             pbond_ij = &( bond_list[pi] );
             i = pbond_ij->nbr;
             bo_ij = &(pbond_ij->bo_data);
@@ -97,13 +97,16 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
 
             if( sbp[type_i].p_hbond == 2 && 
                     bo_ij->BO >= HB_THRESHOLD )
+            {
                 hblist[top++] = pi;
+            }
         }
 
         // fprintf( stderr, "j: %d, top: %d, hb_start_j: %d, hb_end_j:%d\n", 
         //          j, top, hb_start_j, hb_end_j );
 
-        for( pk = hb_start_j; pk < hb_end_j; ++pk ) {
+        for ( pk = hb_start_j; pk < hb_end_j; ++pk )
+        {
             /* set k's varibles */
             k = hbond_list[pk].nbr;
             type_k = my_atoms[k].type;
@@ -114,12 +117,14 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
             hbond_jk = &( hbond_list [pk] );
             rvec_MakeZero (hbond_jk->hb_f);
 
-            for( itr = 0; itr < top; ++itr ) {
+            for ( itr = 0; itr < top; ++itr )
+            {
                 pi = hblist[itr];
                 pbond_ij = &( bonds->select.bond_list[pi] );
                 i = pbond_ij->nbr;
 
-                if( my_atoms[i].orig_id != my_atoms[k].orig_id ) {
+                if ( my_atoms[i].orig_id != my_atoms[k].orig_id )
+                {
                     bo_ij = &(pbond_ij->bo_data);
                     type_i = my_atoms[i].type;
                     r_ij = pbond_ij->d;         
@@ -133,7 +138,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
                             &dcos_theta_di, &dcos_theta_dj, 
                             &dcos_theta_dk );
 
-                    /* hyrogen bond energy*/
+                    /* hydrogen bond energy */
                     sin_theta2 = SIN( theta/2.0 );
                     sin_xhz4 = SQR(sin_theta2);
                     sin_xhz4 *= sin_xhz4;
@@ -142,9 +147,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
                     exp_hb3 = EXP( -hbp->p_hb3 * ( hbp->r0_hb / r_jk + 
                                 r_jk / hbp->r0_hb - 2.0 ) );
 
-                    //data_e_hb [j] += 
                     e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                    data_e_hb [j] += e_hb;
+                    data_e_hb[j] += e_hb;
 
                     CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
                     CEhb2 = -hbp->p_hb1/2.0 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
@@ -161,7 +165,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
                     /* hydrogen bond forces */
                     bo_ij->Cdbo += CEhb1; // dbo term
 
-                    if( control->virial == 0 ) {
+                    if ( control->virial == 0 )
+                    {
                         // dcos terms
                         //rvec_ScaledAdd( workspace->f[i], +CEhb2, dcos_theta_di ); 
                         //atomic_rvecScaledAdd (workspace->f[i], +CEhb2, dcos_theta_di );
@@ -180,7 +185,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
                         //atomic_rvecScaledAdd( workspace->f[k], +CEhb3/r_jk, dvec_jk );
                         rvec_ScaledAdd( hbond_jk->hb_f, +CEhb3/r_jk, dvec_jk );
                     }
-                    else {
+                    else
+                    {
                         /* for pressure coupling, terms that are not related to bond order
                            derivatives are added directly into pressure vector/tensor */
                         rvec_Scale( force, +CEhb2, dcos_theta_di ); // dcos terms
@@ -222,6 +228,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
                             system->my_atoms[k].orig_id, 
                             r_jk, theta, bo_ij->BO, e_hb, data->my_en.e_hb );       
 #endif
+
 #ifdef TEST_FORCES
                     Add_dBO( system, lists, j, pi, +CEhb1, workspace->f_hb ); //dbo term
                     // dcos terms
@@ -239,54 +246,35 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms,
 }
 
 
-
 //CUDA_GLOBAL void __launch_bounds__ (256, 4) Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms, 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms, 
-        single_body_parameters *sbp, 
-        hbond_parameters *d_hbp,
-        global_parameters gp, 
-        control_params *control, 
-        storage p_workspace, 
-        reax_list p_bonds, 
-        reax_list p_hbonds, 
-        int n, 
-        int num_atom_types, 
-        real *data_e_hb, 
-        rvec *data_ext_press)
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parameters *sbp, 
+        hbond_parameters *d_hbp, global_parameters gp, control_params *control, 
+        storage p_workspace, reax_list p_bonds, reax_list p_hbonds, int n, 
+        int num_atom_types, real *data_e_hb, rvec *data_ext_press )
 {
-
 #if defined( __SM_35__)
     real sh_hb;
     real sh_cdbo;
     rvec sh_atomf;
     rvec sh_hf;
 #else
-
     extern __shared__ real t_hb[];
     extern __shared__ rvec t__f[];
     extern __shared__ rvec t_cdbo[];
     extern __shared__ rvec t_hf [];
-
     real *sh_hb = t_hb;
     real *sh_cdbo = t_hb + blockDim.x;
     rvec *sh_atomf = (rvec *)(sh_cdbo + blockDim.x);
     rvec *sh_hf = (rvec *) (sh_atomf + blockDim.x);
 #endif
-
-    int __THREADS_PER_ATOM__ = HB_KER_THREADS_PER_ATOM;
-
-    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    int warp_id = thread_id / __THREADS_PER_ATOM__;
-    int lane_id = thread_id & (__THREADS_PER_ATOM__ -1); 
-
-    if (warp_id >= n ) return;
-
+    int __THREADS_PER_ATOM__, thread_id, warp_id, lane_id; 
     int  i, j, k, pi, pk;
     int  type_i, type_j, type_k;
     int  start_j, end_j, hb_start_j, hb_end_j;
     int  hblist[MAX_BONDS];
     int  itr, top;
-    int  num_hb_intrs = 0;
+    int  num_hb_intrs;
+    int loopcount, count;
     ivec rel_jk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
@@ -300,17 +288,24 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms,
     reax_list *bonds, *hbonds;
     bond_data *bond_list;
     hbond_data *hbond_list, *hbond_jk;
-    storage *workspace = &( p_workspace );
+    storage *workspace;
 
+    __THREADS_PER_ATOM__ = HB_KER_THREADS_PER_ATOM;
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    warp_id = thread_id / __THREADS_PER_ATOM__;
+    lane_id = thread_id & (__THREADS_PER_ATOM__ - 1); 
+
+    if ( warp_id >= n )
+    {
+        return;
+    }
+
+    num_hb_intrs = 0;
+    workspace = &( p_workspace );
     bonds = &( p_bonds );
     bond_list = bonds->select.bond_list;
     hbonds = & ( p_hbonds );
     hbond_list = hbonds->select.hbond_list;
-
-    /*
-       j = blockIdx.x * blockDim.x + threadIdx.x;
-       if (j >= n) return;
-     */
     j = warp_id;
 
     /* loops below discover the Hydrogen bonds between i-j-k triplets.
@@ -322,62 +317,66 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms,
 
 #if defined( __SM_35__)
     sh_hb  = 0;
-    rvec_MakeZero ( sh_atomf );
+    rvec_MakeZero( sh_atomf );
 #else
-    sh_hb [threadIdx.x] = 0;
-    rvec_MakeZero ( sh_atomf[ threadIdx.x] );
+    sh_hb[threadIdx.x] = 0;
+    rvec_MakeZero( sh_atomf[threadIdx.x] );
 #endif
 
     /* j has to be of type H */
-    if( sbp[ my_atoms[j].type ].p_hbond == 1 ) {
-        /*set j's variables */
-        type_j     = my_atoms[j].type;
-        start_j    = Dev_Start_Index(j, bonds);
-        end_j      = Dev_End_Index(j, bonds);
+    if ( sbp[ my_atoms[j].type ].p_hbond == 1 )
+    {
+        /* set j's variables */
+        type_j = my_atoms[j].type;
+        start_j = Dev_Start_Index(j, bonds);
+        end_j = Dev_End_Index(j, bonds);
         hb_start_j = Dev_Start_Index( my_atoms[j].Hindex, hbonds );
-        hb_end_j   = Dev_End_Index( my_atoms[j].Hindex, hbonds );
+        hb_end_j = Dev_End_Index( my_atoms[j].Hindex, hbonds );
 
         top = 0;
-        for( pi = start_j; pi < end_j; ++pi )  {
+        for ( pi = start_j; pi < end_j; ++pi ) 
+        {
             pbond_ij = &( bond_list[pi] );
             i = pbond_ij->nbr;
             bo_ij = &(pbond_ij->bo_data);
             type_i = my_atoms[i].type;
 
-            if( sbp[type_i].p_hbond == 2 && 
+            if ( sbp[type_i].p_hbond == 2 && 
                     bo_ij->BO >= HB_THRESHOLD )
+            {
                 hblist[top++] = pi;
+            }
         }
 
-        // fprintf( stderr, "j: %d, top: %d, hb_start_j: %d, hb_end_j:%d\n", 
-        //          j, top, hb_start_j, hb_end_j );
+//        fprintf( stderr, "j: %d, top: %d, hb_start_j: %d, hb_end_j:%d\n",
+//                j, top, hb_start_j, hb_end_j );
 
-        for( itr = 0; itr < top; ++itr ) {
+        for ( itr = 0; itr < top; ++itr )
+        {
             pi = hblist[itr];
             pbond_ij = &( bonds->select.bond_list[pi] );
             i = pbond_ij->nbr;
 
 #if defined( __SM_35__)
-            rvec_MakeZero (sh_hf );
-            sh_cdbo  = 0;
+            rvec_MakeZero( sh_hf );
+            sh_cdbo = 0;
 #else
-            rvec_MakeZero (sh_hf [threadIdx.x]);
-            sh_cdbo [threadIdx.x] = 0;
+            rvec_MakeZero( sh_hf[threadIdx.x] );
+            sh_cdbo[threadIdx.x] = 0;
 #endif
 
-
             //for( pk = hb_start_j; pk < hb_end_j; ++pk ) {
-            int loopcount = (hb_end_j - hb_start_j) / HB_KER_THREADS_PER_ATOM + 
+            loopcount = (hb_end_j - hb_start_j) / HB_KER_THREADS_PER_ATOM + 
                 (((hb_end_j - hb_start_j) % HB_KER_THREADS_PER_ATOM == 0) ? 0 : 1);
 
-            int count = 0;
+            count = 0;
             pk = hb_start_j + lane_id;
-            while (count < loopcount)
+            while ( count < loopcount )
             {
-
-                if (pk < hb_end_j)
+                /* only allow threads with an actual hbond */
+                if ( pk < hb_end_j )
                 {
-                    hbond_jk = &( hbond_list [pk] );
+                    hbond_jk = &( hbond_list[pk] );
 
                     /* set k's varibles */
                     k = hbond_list[pk].nbr;
@@ -386,26 +385,26 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms,
                     r_jk = nbr_jk->d;
                     rvec_Scale( dvec_jk, hbond_list[pk].scl, nbr_jk->dvec );
                 }
-                else k = -1;
+                else
+                {
+                    k = -1;
+                }
 
-
-                if( (my_atoms[i].orig_id != my_atoms[k].orig_id)
-                        && (k != -1) ) {
-
+                if ( my_atoms[i].orig_id != my_atoms[k].orig_id && k != -1 )
+                {
                     bo_ij = &(pbond_ij->bo_data);
                     type_i = my_atoms[i].type;
                     r_ij = pbond_ij->d;         
-                    hbp = &(d_hbp[ index_hbp (type_i,type_j,type_k,num_atom_types) ]);
+                    hbp = &(d_hbp[ index_hbp(type_i,type_j,type_k,num_atom_types) ]);
                     ++num_hb_intrs;
 
                     Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
                             &theta, &cos_theta );
                     /* the derivative of cos(theta) */
                     Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
-                            &dcos_theta_di, &dcos_theta_dj, 
-                            &dcos_theta_dk );
+                            &dcos_theta_di, &dcos_theta_dj, &dcos_theta_dk );
 
-                    /* hyrogen bond energy*/
+                    /* hydrogen bond energy */
                     sin_theta2 = SIN( theta/2.0 );
                     sin_xhz4 = SQR(sin_theta2);
                     sin_xhz4 *= sin_xhz4;
@@ -414,14 +413,11 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms,
                     exp_hb3 = EXP( -hbp->p_hb3 * ( hbp->r0_hb / r_jk + 
                                 r_jk / hbp->r0_hb - 2.0 ) );
 
-                    //data_e_hb [j] += 
                     e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                    //data_e_hb [j] += e_hb;
-
 #if defined( __SM_35__)
                     sh_hb += e_hb;
 #else
-                    sh_hb [threadIdx.x] += e_hb;
+                    sh_hb[threadIdx.x] += e_hb;
 #endif
 
                     CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
@@ -437,48 +433,40 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms,
                       exp_hb3, sin_xhz4, e_hb ); */
 
                     /* hydrogen bond forces */
-                    //        bo_ij->Cdbo += CEhb1; // dbo term
 #if defined( __SM_35__)
-                    sh_cdbo += CEhb1;
+                    sh_cdbo += CEhb1; // dbo term
 #else
-                    sh_cdbo[threadIdx.x] += CEhb1;
+                    sh_cdbo[threadIdx.x] += CEhb1; // dbo term
 #endif
 
-                    if( control->virial == 0 ) {
+                    if ( control->virial == 0 )
+                    {
                         // dcos terms
-                        //rvec_ScaledAdd( workspace->f[i], +CEhb2, dcos_theta_di ); 
-                        //atomic_rvecScaledAdd (workspace->f[i], +CEhb2, dcos_theta_di );
-                        //rvec_ScaledAdd( pbond_ij->hb_f, +CEhb2, dcos_theta_di ); 
 #if defined( __SM_35__)
-                        rvec_ScaledAdd( sh_hf , +CEhb2, dcos_theta_di ); 
+                        rvec_ScaledAdd( sh_hf, +CEhb2, dcos_theta_di ); 
 #else
-                        rvec_ScaledAdd( sh_hf [threadIdx.x], +CEhb2, dcos_theta_di ); 
+                        rvec_ScaledAdd( sh_hf[threadIdx.x], +CEhb2, dcos_theta_di ); 
 #endif
 
-                        //rvec_ScaledAdd( workspace->f[j], +CEhb2, dcos_theta_dj );
 #if defined( __SM_35__)
-                        rvec_ScaledAdd( sh_atomf , +CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( sh_atomf, +CEhb2, dcos_theta_dj );
 #else
-                        rvec_ScaledAdd( sh_atomf [threadIdx.x], +CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( sh_atomf[threadIdx.x], +CEhb2, dcos_theta_dj );
 #endif
 
-                        //rvec_ScaledAdd( workspace->f[k], +CEhb2, dcos_theta_dk );
-                        //atomic_rvecScaledAdd( workspace->f[k], +CEhb2, dcos_theta_dk );
                         rvec_ScaledAdd( hbond_jk->hb_f, +CEhb2, dcos_theta_dk );
 
                         // dr terms
-                        //rvec_ScaledAdd( workspace->f[j], -CEhb3/r_jk, dvec_jk ); 
 #if defined( __SM_35__)
-                        rvec_ScaledAdd( sh_atomf , -CEhb3/r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( sh_atomf, -CEhb3/r_jk, dvec_jk ); 
 #else
-                        rvec_ScaledAdd( sh_atomf [threadIdx.x], -CEhb3/r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( sh_atomf[threadIdx.x], -CEhb3/r_jk, dvec_jk ); 
 #endif
 
-                        //rvec_ScaledAdd( workspace->f[k], +CEhb3/r_jk, dvec_jk );
-                        //atomic_rvecScaledAdd( workspace->f[k], +CEhb3/r_jk, dvec_jk );
                         rvec_ScaledAdd( hbond_jk->hb_f, +CEhb3/r_jk, dvec_jk );
                     }
-                    else {
+                    else
+                    {
                         /* for pressure coupling, terms that are not related to bond order
                            derivatives are added directly into pressure vector/tensor */
                         rvec_Scale( force, +CEhb2, dcos_theta_di ); // dcos terms
@@ -508,255 +496,300 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms,
                 } //orid id end
 
                 pk += __THREADS_PER_ATOM__;
-                count ++;
+                count++;
 
             } //for itr loop end
 
             //Reduction here
 #if defined( __SM_35__)
-            for (int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2){
+            for ( int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2 )
+            {
                 sh_cdbo += shfl( sh_cdbo, s);
                 sh_hf[0] += shfl( sh_hf[0], s);
                 sh_hf[1] += shfl( sh_hf[1], s);
                 sh_hf[2] += shfl( sh_hf[2], s);
             }
             //end of the shuffle
-            if (lane_id == 0) {
+            if ( lane_id == 0 )
+            {
                 bo_ij->Cdbo += sh_cdbo ;
-                rvec_Add (pbond_ij->hb_f, sh_hf );
+                rvec_Add( pbond_ij->hb_f, sh_hf );
             }
 #else
-            if (lane_id < 16) {
-                sh_cdbo [threadIdx.x] += sh_cdbo [threadIdx.x + 16];
-                rvec_Add (sh_hf [threadIdx.x], sh_hf [threadIdx.x + 16]);
+            if ( lane_id < 16 )
+            {
+                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 16];
+                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 16] );
             }
-            if (lane_id < 8) {
-                sh_cdbo [threadIdx.x] += sh_cdbo [threadIdx.x + 8];
-                rvec_Add (sh_hf [threadIdx.x], sh_hf [threadIdx.x + 8]);
+            if ( lane_id < 8 )
+            {
+                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 8];
+                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 8] );
             }
-            if (lane_id < 4) {
-                sh_cdbo [threadIdx.x] += sh_cdbo [threadIdx.x + 4];
-                rvec_Add (sh_hf [threadIdx.x], sh_hf [threadIdx.x + 4]);
+            if ( lane_id < 4 )
+            {
+                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 4];
+                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 4] );
             }
-            if (lane_id < 2) {
-                sh_cdbo [threadIdx.x] += sh_cdbo [threadIdx.x + 2];
-                rvec_Add (sh_hf [threadIdx.x], sh_hf [threadIdx.x + 2]);
+            if ( lane_id < 2 )
+            {
+                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 2];
+                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 2] );
             }
-            if (lane_id < 1) {
-                sh_cdbo [threadIdx.x] += sh_cdbo [threadIdx.x + 1];
-                rvec_Add (sh_hf [threadIdx.x], sh_hf [threadIdx.x + 1]);
+            if ( lane_id < 1 )
+            {
+                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 1];
+                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 1] );
 
-                bo_ij->Cdbo += sh_cdbo [threadIdx.x];
-                rvec_Add (pbond_ij->hb_f, sh_hf [threadIdx.x]);
+                bo_ij->Cdbo += sh_cdbo[threadIdx.x];
+                rvec_Add( pbond_ij->hb_f, sh_hf[threadIdx.x] );
             }
 #endif
-
-
         } // for loop hbonds end
-        } //if Hbond check end
+    } //if Hbond check end
 
 #if defined( __SM_35__)
-        for (int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2){
-            sh_hb += shfl( sh_hb, s);
-            sh_atomf[0] += shfl( sh_atomf[0], s);
-            sh_atomf[1] += shfl( sh_atomf[1], s);
-            sh_atomf[2] += shfl( sh_atomf[2], s);
-        }
-        if (lane_id == 0){
-            data_e_hb[j] += sh_hb;
-            rvec_Add (workspace->f[j], sh_atomf);
-        }
-
-
-#else
-        if (lane_id < 16){
-            sh_hb [threadIdx.x] += sh_hb [threadIdx.x + 16];
-            rvec_Add ( sh_atomf [threadIdx.x], sh_atomf [threadIdx.x + 16] );
-        }
-        if (lane_id < 8){
-            sh_hb [threadIdx.x] += sh_hb [threadIdx.x + 8];
-            rvec_Add ( sh_atomf [threadIdx.x], sh_atomf [threadIdx.x + 8] );
-        }
-        if (lane_id < 4){
-            sh_hb [threadIdx.x] += sh_hb [threadIdx.x + 4];
-            rvec_Add ( sh_atomf [threadIdx.x], sh_atomf [threadIdx.x + 4] );
-        }
-        if (lane_id < 2){
-            sh_hb [threadIdx.x] += sh_hb [threadIdx.x + 2];
-            rvec_Add ( sh_atomf [threadIdx.x], sh_atomf [threadIdx.x + 2] );
-        }
-        if (lane_id < 1){
-            sh_hb [threadIdx.x] += sh_hb [threadIdx.x + 1];
-            rvec_Add ( sh_atomf [threadIdx.x], sh_atomf [threadIdx.x + 1] );
-
-            data_e_hb[j] += sh_hb [threadIdx.x];
-            rvec_Add (workspace->f[j], sh_atomf [threadIdx.x]);
-        }
-#endif
-
-    }
-
-
-
-
-
-    CUDA_GLOBAL void Cuda_Hydrogen_Bonds_PostProcess (  reax_atom *atoms,
-            storage p_workspace,
-            reax_list p_bonds, int N)
+    for ( int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2 )
     {
-        int i, pj;
-
-        storage *workspace = &( p_workspace );
-        bond_data *pbond;
-        bond_data *sym_index_bond;
-        reax_list *bonds = &p_bonds;
-
-        i = blockIdx.x * blockDim.x + threadIdx.x;
-        if ( i >= N) return;
-
-        for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj ){
-
-            pbond = &(bonds->select.bond_list[pj]);
-            sym_index_bond = &( bonds->select.bond_list[ pbond->sym_index ] );
-
-            //rvec_Add (atoms[i].f, sym_index_bond->hb_f );
-            rvec_Add (workspace->f[i], sym_index_bond->hb_f );
-        }
+        sh_hb += shfl( sh_hb, s);
+        sh_atomf[0] += shfl( sh_atomf[0], s);
+        sh_atomf[1] += shfl( sh_atomf[1], s);
+        sh_atomf[2] += shfl( sh_atomf[2], s);
     }
-
-    CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs (  reax_atom *atoms,
-            storage p_workspace,
-            reax_list p_hbonds )
+    if ( lane_id == 0 )
     {
-
-#if defined(__SM_35__)
-        rvec __f;
-#else
-        extern __shared__ rvec __f[];
-#endif
-        int i, pj,j;
-        int start, end;
-
-        storage *workspace = &( p_workspace );
-        hbond_data *nbr_pj, *sym_index_nbr;
-        reax_list *hbonds = &p_hbonds;
-
-        i = blockIdx.x;
-
-        start = Dev_Start_Index (i, hbonds);
-        end = Dev_End_Index (i, hbonds);
-        pj = start + threadIdx.x;
-#if defined(__SM_35__)
-        rvec_MakeZero (__f);
-#else
-        rvec_MakeZero (__f[threadIdx.x]);
-#endif
-
-        while (pj < end)
-        {
-            nbr_pj = &( hbonds->select.hbond_list[pj] );
-            j = nbr_pj->nbr;
-
-            sym_index_nbr = & (hbonds->select.hbond_list[ nbr_pj->sym_index ]);
-
-#if defined(__SM_35__)
-            rvec_Add (__f, sym_index_nbr->hb_f );
-#else
-            rvec_Add (__f[threadIdx.x], sym_index_nbr->hb_f );
-#endif
-
-            pj += blockDim.x;
-        }
-
-#if defined(__SM_35__)
-        for (int s = 16; s >= 1; s/=2){
-            __f[0] += shfl( __f[0], s);
-            __f[1] += shfl( __f[1], s);
-            __f[2] += shfl( __f[2], s);
-        }
-
-        if (threadIdx.x == 0)
-            rvec_Add (workspace->f[i], __f);
-#else
-        if (threadIdx.x < 16) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 16]);
-        if (threadIdx.x < 8) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 8]);
-        if (threadIdx.x < 4) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 4]);
-        if (threadIdx.x < 2) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 2]);
-        if (threadIdx.x < 1) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 1]);
-
-        if (threadIdx.x == 0)
-            //rvec_Add (atoms[i].f, __f[0]);
-            rvec_Add (workspace->f[i], __f[0]);
-#endif
+        data_e_hb[j] += sh_hb;
+        rvec_Add( workspace->f[j], sh_atomf );
     }
-
-    CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL (  reax_atom *atoms,
-            storage p_workspace,
-            reax_list p_hbonds, int N )
+#else
+    if ( lane_id < 16 )
     {
-#if defined(__SM_35__)
-        rvec __f;
-#else
-        extern __shared__ rvec __f[];
-#endif
-        int i, pj,j;
-        int start, end;
-
-        storage *workspace = &( p_workspace );
-        hbond_data *nbr_pj, *sym_index_nbr;
-        reax_list *hbonds = &p_hbonds;
-
-        int __THREADS_PER_ATOM__ = HB_POST_PROC_KER_THREADS_PER_ATOM;
-
-        int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-        int warp_id = thread_id / __THREADS_PER_ATOM__;
-        int lane_id = thread_id & (__THREADS_PER_ATOM__ -1); 
-        if (warp_id >= N ) return;
-
-        i = warp_id;
-
-        start = Dev_Start_Index (i, hbonds);
-        end = Dev_End_Index (i, hbonds);
-        pj = start + lane_id;
-
-#if defined(__SM_35__)
-        rvec_MakeZero (__f);
-#else
-        rvec_MakeZero (__f[threadIdx.x]);
-#endif
-
-        while (pj < end)
-        {
-            nbr_pj = &( hbonds->select.hbond_list[pj] );
-            j = nbr_pj->nbr;
-
-            sym_index_nbr = & (hbonds->select.hbond_list[ nbr_pj->sym_index ]);
-#if defined(__SM_35__)
-            rvec_Add (__f, sym_index_nbr->hb_f );
-#else
-            rvec_Add (__f[threadIdx.x], sym_index_nbr->hb_f );
-#endif
-
-            pj += __THREADS_PER_ATOM__;
-        }
-
-#if defined(__SM_35__)
-        for (int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2){
-            __f[0] += shfl( __f[0], s);
-            __f[1] += shfl( __f[1], s);
-            __f[2] += shfl( __f[2], s);
-        }
-
-        if (lane_id == 0)
-            rvec_Add (workspace->f[i], __f);
-#else
-        if (lane_id < 16) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 16]);
-        if (lane_id < 8) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 8]);
-        if (lane_id < 4) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 4]);
-        if (lane_id < 2) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 2]);
-        if (lane_id < 1) rvec_Add (__f[threadIdx.x], __f[threadIdx.x + 1]);
-
-        if (lane_id == 0)
-            rvec_Add (workspace->f[i], __f[threadIdx.x]);
-#endif
+        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 16];
+        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 16] );
     }
+    if ( lane_id < 8 )
+    {
+        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 8];
+        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 8] );
+    }
+    if ( lane_id < 4 )
+    {
+        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 4];
+        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 4] );
+    }
+    if ( lane_id < 2 )
+    {
+        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 2];
+        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 2] );
+    }
+    if ( lane_id < 1 )
+    {
+        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 1];
+        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 1] );
+
+        data_e_hb[j] += sh_hb[threadIdx.x];
+        rvec_Add( workspace->f[j], sh_atomf[threadIdx.x] );
+    }
+#endif
+}
+
+
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_PostProcess( reax_atom *atoms,
+        storage p_workspace, reax_list p_bonds, int N )
+{
+    int i, pj;
+    storage *workspace = &( p_workspace );
+    bond_data *pbond;
+    bond_data *sym_index_bond;
+    reax_list *bonds = &p_bonds;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    {
+        pbond = &(bonds->select.bond_list[pj]);
+        sym_index_bond = &( bonds->select.bond_list[ pbond->sym_index ] );
+
+        //rvec_Add( atoms[i].f, sym_index_bond->hb_f );
+        rvec_Add( workspace->f[i], sym_index_bond->hb_f );
+    }
+}
+
+
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
+        storage p_workspace, reax_list p_hbonds )
+{
+#if defined(__SM_35__)
+    rvec __f;
+#else
+    extern __shared__ rvec __f[];
+#endif
+    int i, pj,j;
+    int start, end;
+    storage *workspace = &( p_workspace );
+    hbond_data *nbr_pj, *sym_index_nbr;
+    reax_list *hbonds = &p_hbonds;
+
+    i = blockIdx.x;
+
+    start = Dev_Start_Index( i, hbonds );
+    end = Dev_End_Index( i, hbonds );
+    pj = start + threadIdx.x;
+#if defined(__SM_35__)
+    rvec_MakeZero( __f );
+#else
+    rvec_MakeZero( __f[threadIdx.x] );
+#endif
+
+    while ( pj < end )
+    {
+        nbr_pj = &( hbonds->select.hbond_list[pj] );
+        j = nbr_pj->nbr;
+
+        sym_index_nbr = &(hbonds->select.hbond_list[ nbr_pj->sym_index ]);
+
+#if defined(__SM_35__)
+        rvec_Add( __f, sym_index_nbr->hb_f );
+#else
+        rvec_Add( __f[threadIdx.x], sym_index_nbr->hb_f );
+#endif
+
+        pj += blockDim.x;
+    }
+
+#if defined(__SM_35__)
+    for ( int s = 16; s >= 1; s/=2 )
+    {
+        __f[0] += shfl( __f[0], s );
+        __f[1] += shfl( __f[1], s );
+        __f[2] += shfl( __f[2], s );
+    }
+
+    if ( threadIdx.x == 0 )
+    {
+        rvec_Add( workspace->f[i], __f );
+    }
+#else
+    if ( threadIdx.x < 16 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 16] );
+    }
+    if ( threadIdx.x < 8 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 8] );
+    }
+    if ( threadIdx.x < 4 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 4] );
+    }
+    if ( threadIdx.x < 2 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 2] );
+    }
+    if ( threadIdx.x < 1 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 1] );
+    }
+
+    if ( threadIdx.x == 0 )
+    {
+        //rvec_Add( atoms[i].f, __f[0] );
+        rvec_Add( workspace->f[i], __f[0] );
+    }
+#endif
+}
+
+
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
+        storage p_workspace, reax_list p_hbonds, int N )
+{
+#if defined(__SM_35__)
+    rvec __f;
+#else
+    extern __shared__ rvec __f[];
+#endif
+    int i, pj,j;
+    int start, end;
+    storage *workspace = &( p_workspace );
+    hbond_data *nbr_pj, *sym_index_nbr;
+    reax_list *hbonds = &p_hbonds;
+    int __THREADS_PER_ATOM__ = HB_POST_PROC_KER_THREADS_PER_ATOM;
+    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    int warp_id = thread_id / __THREADS_PER_ATOM__;
+    int lane_id = thread_id & (__THREADS_PER_ATOM__ -1); 
+
+    if ( warp_id >= N )
+    {
+        return;
+    }
+
+    i = warp_id;
+    start = Dev_Start_Index( i, hbonds );
+    end = Dev_End_Index( i, hbonds );
+    pj = start + lane_id;
+#if defined(__SM_35__)
+    rvec_MakeZero( __f );
+#else
+    rvec_MakeZero( __f[threadIdx.x] );
+#endif
+
+    while ( pj < end )
+    {
+        nbr_pj = &(hbonds->select.hbond_list[pj]);
+        j = nbr_pj->nbr;
+
+        sym_index_nbr = &(hbonds->select.hbond_list[ nbr_pj->sym_index ]);
+#if defined(__SM_35__)
+        rvec_Add ( __f, sym_index_nbr->hb_f );
+#else
+        rvec_Add ( __f[threadIdx.x], sym_index_nbr->hb_f );
+#endif
+
+        pj += __THREADS_PER_ATOM__;
+    }
+
+#if defined(__SM_35__)
+    for ( int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2 )
+    {
+        __f[0] += shfl( __f[0], s );
+        __f[1] += shfl( __f[1], s );
+        __f[2] += shfl( __f[2], s );
+    }
+
+    if ( lane_id == 0 )
+    {
+        rvec_Add( workspace->f[i], __f );
+    }
+#else
+    if ( lane_id < 16 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 16] );
+    }
+    if ( lane_id < 8 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 8] );
+    }
+    if ( lane_id < 4 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 4] );
+    }
+    if ( lane_id < 2 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 2] );
+    }
+    if ( lane_id < 1 )
+    {
+        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 1] );
+    }
+
+    if ( lane_id == 0 )
+    {
+        rvec_Add( workspace->f[i], __f[threadIdx.x] );
+    }
+#endif
+}

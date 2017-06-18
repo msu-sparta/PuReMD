@@ -34,16 +34,17 @@
 #include "vector.h"
 
 #ifdef HAVE_CUDA
+  #include "cuda_allocate.h"
   #include "cuda_integrate.h"
   #include "cuda_copy.h"
   #include "cuda_neighbors.h"
+  #include "cuda_reset_tools.h"
 #endif
 
 
 int Velocity_Verlet_NVE( reax_system* system, control_params* control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, steps, renbr, ret;
     static int verlet_part1_done = FALSE;
@@ -348,7 +349,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     real inv_m, dt, lambda;
     rvec dx;
     reax_atom *atom;
-    int *nbr_indices, num_nbrs;
     int *bond_top, *hb_top;
     int Htop, num_3body;
     int total_hbonds, count, total_bonds;
@@ -376,7 +376,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         fprintf( stderr, "  [bNVT_UPDATE_VEL_PART1] STEP %d\n", data->step );
 
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step);
+        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
@@ -414,17 +414,12 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         t_over_start  = Get_Time ();
 #endif
 
-        nbr_indices = (int *) host_scratch;
-        memset( nbr_indices, 0, sizeof(int) * system->N );
-
-        //TODO: move far_nbrs checks outside of renbr frequency check (i.e., apply every time step)
-        ret = Cuda_Estimate_Neighbors( system, nbr_indices );
+        //TODO: move far_nbrs reallocation checks outside of renbr frequency check
+        ret = Cuda_Estimate_Neighbors( system, data->step );
         fprintf( stderr, "  [CUDA_ESTIMATE_NEIGHBORS: %d] STEP %d\n", ret, data->step );
 
         if ( ret == SUCCESS )
         {
-            Cuda_Init_Neighbor_Indices( nbr_indices, system->N );
-
             Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
     
 #if defined(DEBUG)
@@ -432,10 +427,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
             fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                     system->my_rank, data->step, t_over_elapsed );
 #endif
-        }
-        else
-        {
-            dev_workspace->realloc.far_nbrs = TRUE;
         }
     }
 

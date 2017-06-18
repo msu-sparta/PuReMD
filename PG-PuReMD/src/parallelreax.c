@@ -44,6 +44,7 @@
   #include "cuda_environment.h"
   #include "cuda_neighbors.h"
   #include "cuda_post_evolve.h"
+  #include "cuda_reset_tools.h"
   #include "cuda_utils.h"
   #include "cuda_validation.h"
 #endif

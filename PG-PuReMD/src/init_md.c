@@ -275,11 +275,6 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     Bin_Boundary_Atoms( system );
     fprintf( stderr, "    [BIN_BOUNDARY_ATOMS]\n" );
 
-    system->max_far_nbrs = (int*)
-        scalloc( system->total_cap, sizeof(int), "system:max_far_nbrs" );
-    system->max_bonds = (int*)
-        scalloc( system->total_cap, sizeof(int), "system:max_bonds" );
-
     /* estimate numH and Hcap */
     system->numH = 0;
     if ( control->hbond_cut > 0.0 )
@@ -866,8 +861,6 @@ int Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    //Allocate_Bond_List( system->N, bond_top, (*lists)+BONDS );
-    //num_bonds = bond_top[system->N-1];
     total_bonds = 0;
     for ( i = 0; i < system->N; ++i )
     {
@@ -923,51 +916,39 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
         mpi_datatypes *mpi_data, char *msg )
 {
     int i, count, ret;
-    int num_nbrs, total_hbonds, total_bonds, Htop;
-    int *nbr_indices, *hb_top, *bond_top;
+    int total_hbonds, total_bonds, Htop;
+    int *hb_top;
    
-    nbr_indices = (int *) host_scratch;
-    bond_top = (int*) calloc( system->total_cap, sizeof(int) );
-    hb_top = (int*) calloc( system->total_cap, sizeof(int) );
+    hb_top = (int*) scalloc( system->total_cap, sizeof(int),
+           "Cuda_Init_Lists::hb_top" );
 
-    for ( i = 0; i < system->total_cap; i++ )
-    {
-        system->max_far_nbrs[i] = MIN_NBRS;
-    }
-
-    /* ignore returned error, as system->max_far_nbrs is not yet set */
-    ret = Cuda_Estimate_Neighbors( system, nbr_indices );
-
-    /* count neighbors for list creation */
-    num_nbrs = 0;
-    for (i = 0; i < system->total_cap; i++)
-    {
-        num_nbrs += system->max_far_nbrs[i];
-        nbr_indices[i] = system->max_far_nbrs[i];
-    }
+    /* ignore returned error, as system->d_max_far_nbrs was not valid */
+    ret = Cuda_Estimate_Neighbors( system, data->step );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "DEVICE total neighbors entries: %d \n", num_nbrs );
+    fprintf( stderr, "DEVICE total neighbors entries: %d \n", system->total_far_nbrs );
 #endif
 
-    Dev_Make_List( system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR, *dev_lists + FAR_NBRS );
+    Dev_Make_List( system->total_cap, system->total_far_nbrs,
+            TYP_FAR_NEIGHBOR, *dev_lists + FAR_NBRS );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated far_nbrs: num_far=%d, space=%dMB\n",
-            system->my_rank, num_nbrs,
-            (int)(num_nbrs * sizeof(far_neighbor_data) / (1024 * 1024)) );
+            system->my_rank, system->total_far_nbrs,
+            (int)(system->total_far_nbrs * sizeof(far_neighbor_data) / (1024 * 1024)) );
     fprintf( stderr, "N: %d and total_cap: %d \n", system->N, system->total_cap );
 #endif
 
-    Cuda_Init_Neighbor_Indices( nbr_indices, system->total_cap );
+    Cuda_Init_Neighbor_Indices( system );
 
     Cuda_Generate_Neighbor_Lists( system, data, workspace, dev_lists );
 
-    Cuda_Estimate_Storages( system, control, dev_lists, &Htop,
-            hb_top, bond_top );
+    /* estimate storage for bonds and hbonds */
+    Cuda_Estimate_Storages( system, control, dev_lists, &Htop, hb_top,
+           data->step );
 
-    /* charges sparse matrix */
-    Cuda_Estimate_Storages_Sparse_Matrix( system, control, data, dev_lists );
+    /* estimate storage for charge sparse matrix */
+    Cuda_Estimate_Storage_Sparse_Matrix( system, control, data, dev_lists );
 
     dev_alloc_matrix( &(dev_workspace->H), system->total_cap,
             system->total_cap * system->max_sparse_entries );
@@ -1030,17 +1011,10 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    total_bonds = 0;
-    for ( i = 0; i < system->total_cap; ++i )
-    {
-        total_bonds += system->max_bonds[i];
-        bond_top[i] = system->max_bonds[i];
-    }
+    Dev_Make_List( system->total_cap, system->total_bonds, TYP_BOND, *dev_lists + BONDS );
+    Make_List( system->total_cap, system->total_bonds, TYP_BOND, *lists + BONDS );
 
-    Dev_Make_List( system->total_cap, total_bonds, TYP_BOND, *dev_lists + BONDS );
-    Make_List( system->total_cap, total_bonds, TYP_BOND, *lists + BONDS );
-
-    Cuda_Init_Bond_Indices( bond_top, system->total_cap );
+    Cuda_Init_Bond_Indices( system );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated bonds: total_bonds=%d, space=%dMB\n",
@@ -1052,8 +1026,7 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
      * of three body interactions requires that bond orders have
      * been computed, delay estimation until for computation */
 
-    free( hb_top );
-    free( bond_top );
+    sfree( hb_top, "Cuda_Init_Lists::hb_top" );
 
     return SUCCESS;
 }

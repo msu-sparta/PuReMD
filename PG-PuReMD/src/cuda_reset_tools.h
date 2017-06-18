@@ -8,9 +8,14 @@
 extern "C"  {
 #endif
 
-void Cuda_Reset_Workspace (reax_system *, storage *);
-void Cuda_Reset_Atoms (reax_system *, control_params *);
-int  Cuda_Reset_Neighbor_Lists (reax_system *, control_params *, storage *, reax_list **);
+
+void Cuda_Reset_Workspace( reax_system *, storage * );
+void Cuda_Reset_Atoms( reax_system *, control_params * );
+int  Cuda_Reset_Neighbor_Lists( reax_system *, control_params *,
+        storage *, reax_list ** );
+void Cuda_Reset( reax_system*, control_params*, simulation_data*,
+        storage*, reax_list** );
+
 
 #ifdef __cplusplus
 }

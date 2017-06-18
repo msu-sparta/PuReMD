@@ -4,20 +4,25 @@
 #include "cuda_utils.h"
 #include "cuda_list.h"
 
+#include "reset_tools.h"
+
 
 CUDA_GLOBAL void k_reset_hbond_list( reax_atom *my_atoms, 
         reax_list hbonds, int N )
 {
-    int Hindex = 0;
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int Hindex;
+    int i;
+    
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i >= N)
+    if ( i >= N )
     {
         return;
     }
 
     Hindex = my_atoms[i].Hindex;
-    if (Hindex > 1)
+
+    if ( Hindex > 1 )
     {
         Dev_Set_End_Index( Hindex, Dev_Start_Index (Hindex, &hbonds), &hbonds );
     }
@@ -42,9 +47,11 @@ void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 
 CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, int N )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
 
-    if (i >= N)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
     {
         return;
     }
@@ -91,8 +98,8 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control )
 
     blocks = system->N / DEF_BLOCK_SIZE + 
         ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
-    k_reset_hindex <<<blocks, DEF_BLOCK_SIZE>>>
-        (system->d_my_atoms, system->N);
+    k_reset_hindex <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, system->N );
     cudaThreadSynchronize( );
     cudaCheckError( );
 }
@@ -101,13 +108,13 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control )
 int Cuda_Reset_Neighbor_Lists( reax_system *system, control_params *control,
         storage *workspace, reax_list **lists )
 {
-    int i, Hindex, total_hbonds;
+    int total_hbonds;
     reax_list *hbonds;
     int blocks;
 
     //HBonds processing
     //FIX - 4 - Added additional check
-    if( control->hbond_cut > 0.0 && system->numH > 0 )
+    if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         hbonds = (*dev_lists) + HBONDS;
         total_hbonds = 0;
@@ -116,8 +123,8 @@ int Cuda_Reset_Neighbor_Lists( reax_system *system, control_params *control,
         //TODO
         blocks = system->N / DEF_BLOCK_SIZE + 
             ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
-        k_reset_hbond_list <<<blocks, DEF_BLOCK_SIZE>>>
-            (system->d_my_atoms, *(*dev_lists + HBONDS), system->N);
+        k_reset_hbond_list <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->d_my_atoms, *(*dev_lists + HBONDS), system->N );
         cudaThreadSynchronize( );
         cudaCheckError( );
 
@@ -125,10 +132,10 @@ int Cuda_Reset_Neighbor_Lists( reax_system *system, control_params *control,
         total_hbonds = 0;
 
         /* is reallocation needed? */
-        if( total_hbonds >= hbonds->num_intrs * 0.90/*DANGER_ZONE*/ )
+        if ( total_hbonds >= hbonds->num_intrs * DANGER_ZONE )
         {
             workspace->realloc.hbonds = 1;
-            if( total_hbonds >= hbonds->num_intrs )
+            if ( total_hbonds >= hbonds->num_intrs )
             {
                 fprintf( stderr, "p%d: not enough space for hbonds! total=%d allocated=%d\n",
                         system->my_rank, total_hbonds, hbonds->num_intrs );
@@ -139,5 +146,29 @@ int Cuda_Reset_Neighbor_Lists( reax_system *system, control_params *control,
 
     return SUCCESS;
 }
+
+
+void Cuda_Reset( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists )
+{
+    Cuda_Reset_Atoms( system, control );
+
+    Reset_Simulation_Data( data );
+
+    if ( control->virial )
+    {
+        Reset_Pressures( data );
+    }
+
+    Cuda_Reset_Workspace( system, workspace );
+
+    Cuda_Reset_Neighbor_Lists( system, control, workspace, lists );
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );
+    MPI_Barrier( MPI_COMM_WORLD );
+#endif
+}
+
 
 }

@@ -24,6 +24,10 @@
 
 #include "reax_types.h"
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 
 int PreAllocate_Space( reax_system*, control_params*, storage* );
 
@@ -44,11 +48,14 @@ int Allocate_HBond_List( int, int, int*, int*, reax_list* );
 
 int Allocate_Bond_List( int, int*, reax_list* );
 
+void Deallocate_MPI_Buffers( mpi_datatypes * );
+
 void ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
         reax_list**, mpi_datatypes* );
 
-void Cuda_ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
-        reax_list**, mpi_datatypes* );
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

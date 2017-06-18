@@ -94,6 +94,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
             system->my_atoms[i].orig_id, workspace->nlp[i], 
             e_lp, data->my_en.e_lp );
 #endif
+
 #ifdef TEST_FORCES
     Add_dDelta( system, lists, i, CElp, workspace->f_lp );  // lp - 1st term
 #endif

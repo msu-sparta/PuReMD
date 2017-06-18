@@ -61,7 +61,7 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
         return;
     }
 
-    workspace = & (p_workspace);
+    workspace = &(p_workspace);
     bonds = &(p_bonds);
     num_bonds = 0; 
     p_boc1 = gp.l[0];
@@ -89,8 +89,8 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
     val_i = sbp_i->valency;
     Deltap_i = workspace->Deltap[i];
     Deltap_boc_i = workspace->Deltap_boc[i];
-    start_i = Dev_Start_Index(i, bonds);
-    end_i = Dev_End_Index(i, bonds);
+    start_i = Dev_Start_Index( i, bonds );
+    end_i = Dev_End_Index( i, bonds );
 
     // fprintf( stderr, "i:%d Dp:%g Dbocp:%g s:%d e:%d\n",
     //       i+1, Deltap_i, Deltap_boc_i, start_i, end_i );
@@ -368,8 +368,8 @@ CUDA_GLOBAL void Cuda_Update_Uncorrected_BO( storage p_workspace,
 
     workspace = &( p_workspace );
     bonds = &( p_bonds );
-    start_i = Dev_Start_Index(i, bonds);
-    end_i = Dev_End_Index(i, bonds);
+    start_i = Dev_Start_Index( i, bonds );
+    end_i = Dev_End_Index( i, bonds );
 
     for( pj = start_i; pj < end_i; ++pj )
     {
@@ -635,9 +635,9 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
     int pk, k, j;
-
     rvec tf_f;
-    rvec_MakeZero (tf_f);
+
+    rvec_MakeZero( tf_f );
 
     /* Initializations */
     nbr_j = &(bonds->select.bond_list[pj]);
@@ -645,10 +645,13 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     //bo_ij = &(nbr_j->bo_data);
     //bo_ji = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
 
-    if (i < j) {
+    if ( i < j )
+    {
         bo_ij = &(nbr_j->bo_data);
         bo_ji = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
-    } else {
+    }
+    else
+    {
         bo_ji = &(nbr_j->bo_data);
         bo_ij = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
     }
@@ -671,11 +674,13 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     coef.C2dDelta = bo_ij->C2dbo * (workspace->CdDelta[i]+workspace->CdDelta[j]);
     coef.C3dDelta = bo_ij->C3dbo * (workspace->CdDelta[i]+workspace->CdDelta[j]);
 
-    if (i < j) {
-        for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk ) {
+    if ( i < j )
+    {
+        for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
+        {
             nbr_k = &(bonds->select.bond_list[pk]);
             k = nbr_k->nbr;
-            rvec_MakeZero (tf_f);
+            rvec_MakeZero( tf_f );
 
             /*2nd,dBO*/
             rvec_ScaledAdd( tf_f, -coef.C2dbo, nbr_k->bo_data.dBOp );
@@ -687,7 +692,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
             rvec_ScaledAdd( tf_f, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
             //Temp storage
-            rvec_Add (nbr_k->tf_f, tf_f);
+            rvec_Add( nbr_k->tf_f, tf_f );
         }
         /*1st, dBO*/
         rvec_ScaledAdd( workspace->f[i], coef.C1dbo, bo_ij->dBOp );
@@ -713,12 +718,14 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         /*3rd, dBO_pi2*/
         rvec_ScaledAdd( workspace->f[i], coef.C3dbopi2, workspace->dDeltap_self[i] );
 
-    } else {
-
-        for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk ) {
+    }
+    else
+    {
+        for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
+        {
             nbr_k = &(bonds->select.bond_list[pk]);
             k = nbr_k->nbr;
-            rvec_MakeZero (tf_f);
+            rvec_MakeZero( tf_f );
 
             /*3rd, dBO*/
             rvec_ScaledAdd( tf_f, -coef.C3dbo, nbr_k->bo_data.dBOp );
@@ -730,7 +737,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
             rvec_ScaledAdd( tf_f, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
 
             //Temp Storage
-            rvec_Add (nbr_k->tf_f, tf_f);
+            rvec_Add( nbr_k->tf_f, tf_f );
         }
 
         /*1st,dBO*/
@@ -771,8 +778,8 @@ CUDA_DEVICE void Cuda_dbond_to_Forces_postprocess( int i, reax_atom *atoms,
         nbr_k = &(bonds->select.bond_list[pk]);
         nbr_k_sym = &( bonds->select.bond_list [nbr_k->sym_index] );
 
-        //rvec_Add (atoms[i].f, nbr_k_sym->tf_f);
-        rvec_Add (workspace->f[i], nbr_k_sym->tf_f);
+        //rvec_Add( atoms[i].f, nbr_k_sym->tf_f );
+        rvec_Add( workspace->f[i], nbr_k_sym->tf_f );
     }
 }
 

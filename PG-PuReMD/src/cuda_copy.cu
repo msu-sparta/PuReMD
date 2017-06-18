@@ -1,11 +1,6 @@
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 #include "cuda_copy.h"
 
-//#include "list.h"
 #include "cuda_utils.h"
 #include "vector.h"
 
@@ -73,10 +68,10 @@ void Sync_System( reax_system *sys )
     //fprintf (stderr, "p:%d - trying to copy atoms : %d \n", sys->my_rank, sys->local_cap);
     Sync_Atoms( sys );
 
-    copy_host_device( &(sys->my_box), sys->d_my_box, sizeof(simulation_box),
+    copy_host_device( &sys->my_box, sys->d_my_box, sizeof(simulation_box),
             cudaMemcpyHostToDevice, "system:my_box" );
 
-    copy_host_device( &(sys->my_ext_box), sys->d_my_ext_box,
+    copy_host_device( &sys->my_ext_box, sys->d_my_ext_box,
             sizeof(simulation_box), cudaMemcpyHostToDevice,
             "system:my_ext_box" );
 
@@ -84,16 +79,16 @@ void Sync_System( reax_system *sys )
             sizeof(single_body_parameters) * sys->reax_param.num_atom_types,
             cudaMemcpyHostToDevice, "system:sbp" );
     copy_host_device( sys->reax_param.tbp, sys->reax_param.d_tbp,
-            sizeof(two_body_parameters) * pow (sys->reax_param.num_atom_types,
-                2), cudaMemcpyHostToDevice, "system:tbp" );
+            sizeof(two_body_parameters) * POW(sys->reax_param.num_atom_types, 2),
+            cudaMemcpyHostToDevice, "system:tbp" );
     copy_host_device( sys->reax_param.thbp, sys->reax_param.d_thbp,
-            sizeof(three_body_header) * pow (sys->reax_param.num_atom_types,
-                3), cudaMemcpyHostToDevice, "system:thbh" );
+            sizeof(three_body_header) * POW(sys->reax_param.num_atom_types, 3),
+            cudaMemcpyHostToDevice, "system:thbh" );
     copy_host_device( sys->reax_param.hbp, sys->reax_param.d_hbp,
-            sizeof(hbond_parameters) * pow (sys->reax_param.num_atom_types, 3),
+            sizeof(hbond_parameters) * POW(sys->reax_param.num_atom_types, 3),
             cudaMemcpyHostToDevice, "system:hbond" );
     copy_host_device( sys->reax_param.fbp, sys->reax_param.d_fbp, 
-            sizeof(four_body_header) * pow (sys->reax_param.num_atom_types, 4),
+            sizeof(four_body_header) * POW(sys->reax_param.num_atom_types, 4),
             cudaMemcpyHostToDevice, "system:four_header" );
 
     copy_host_device( sys->reax_param.gp.l, sys->reax_param.d_gp.l,
@@ -137,7 +132,6 @@ void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
     //memory is allocated on the host
     //Make_List(device->n, device->num_intrs, type, host);
 
-    //memcpy the entries from device to host
     copy_host_device( host->index, device->index, sizeof(int) * device->n,
             cudaMemcpyDeviceToHost, "output_sync_list:list:index" );
     copy_host_device( host->end_index, device->end_index, sizeof(int) *
@@ -159,7 +153,8 @@ void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
             break;
 
         default:
-            fprintf( stderr, "Unknown list synching from device to host ---- > %d \n", type );
+            fprintf( stderr, "Unknown list synching from device to host ---- > %d \n",
+                    type );
             exit( INVALID_INPUT );
             break;
     }  
