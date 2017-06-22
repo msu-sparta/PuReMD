@@ -11,7 +11,7 @@ extern "C" {
 
 
 int Cuda_Estimate_Storages( reax_system *, control_params *, reax_list **,
-        int *, int *, int );
+        int *, int );
 
 int Cuda_Estimate_Storage_Three_Body( reax_system *, control_params *,
         int, reax_list **, int *, int * );

@@ -83,7 +83,7 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
 {
     int i;
 
-    if ( !workspace->allocated )
+    if ( workspace->allocated == FALSE )
     {
         return;
     }
@@ -204,13 +204,6 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     sfree( workspace->id_all, "id_all" );
     sfree( workspace->f_all, "f_all" );
 #endif
-
-    /* hbond storage */
-    //sfree( workspace->Hindex, "Hindex" );
-    //sfree( workspace->num_bonds );
-    //sfree( workspace->num_hbonds );
-    //sfree( workspace->hash, "hash" );
-    //sfree( workspace->rev_hash, "rev_hash" );
 }
 
 
@@ -409,7 +402,7 @@ void Reallocate_HBonds_List( reax_system *system, reax_list *hbonds )
         if ( (id = system->my_atoms[i].Hindex) >= 0 )
         {
             system->my_atoms[i].num_hbonds = MAX( Num_Entries(id, hbonds) * SAFER_ZONE,
-                                                  MIN_HBONDS );
+                    MIN_HBONDS );
             total_hbonds += system->my_atoms[i].num_hbonds;
         }
     }

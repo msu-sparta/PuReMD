@@ -179,7 +179,7 @@ int Init_System( reax_system *system, control_params *control,
         {
             atom = &(system->my_atoms[i]);
 
-            if ( system->reax_param.sbp[ atom->type ].p_hbond == 1 )
+            if ( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
             {
                 atom->Hindex = system->numH++;
             }
@@ -200,7 +200,7 @@ int Init_System( reax_system *system, control_params *control,
         for ( i = 0; i < system->n; ++i )
         {
             atom = &(system->my_atoms[i]);
-            if ( system->reax_param.sbp[ atom->type ].p_hbond == 1 )
+            if ( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
                 atom->Hindex = system->numH++;
             else atom->Hindex = -1;
         }
@@ -275,31 +275,14 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     Bin_Boundary_Atoms( system );
     fprintf( stderr, "    [BIN_BOUNDARY_ATOMS]\n" );
 
-    /* estimate numH and Hcap */
-    system->numH = 0;
-    if ( control->hbond_cut > 0.0 )
-    {
-        //TODO
-        //for( i = 0; i < system->n; ++i ) {
-        for ( i = 0; i < system->N; ++i )
-        {
-            atom = &(system->my_atoms[i]);
-            atom->Hindex = i;
-            //FIX - 4 - Added fix for HBond Issue
-            if ( system->reax_param.sbp[ atom->type ].p_hbond == 1 )
-            {
-                system->numH++;
-            }
-            //else atom->Hindex = -1;
-        }
-    }
-    system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
-
     /* Sync atoms here to continue the computation */
     dev_alloc_system( system );
     fprintf( stderr, "    [DEV ALLOC SYSTEM]\n" );
     Sync_System( system );
     fprintf( stderr, "    [SYNC SYSTEM]\n" );
+
+    /* estimate numH and Hcap */
+    Cuda_Reset_Atoms( system, control );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: n=%d local_cap=%d\n",
@@ -312,8 +295,10 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 
     Cuda_Compute_Total_Mass( system, data, mpi_data->comm_mesh3D );
     fprintf( stderr, "    [CUDA COMPUTE TOTAL MASS]\n" );
+
     Cuda_Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
     fprintf( stderr, "    [CUDA COMPUTE CENTER OF MASS]\n" );
+
 //    if( Reposition_Atoms( system, control, data, mpi_data, msg ) == FAILURE )
 //    {
 //        return FAILURE;
@@ -915,19 +900,11 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data, char *msg )
 {
-    int i, count, ret;
-    int total_hbonds, total_bonds, Htop;
-    int *hb_top;
+    int ret;
+    int Htop;
    
-    hb_top = (int*) scalloc( system->total_cap, sizeof(int),
-           "Cuda_Init_Lists::hb_top" );
-
     /* ignore returned error, as system->d_max_far_nbrs was not valid */
     ret = Cuda_Estimate_Neighbors( system, data->step );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "DEVICE total neighbors entries: %d \n", system->total_far_nbrs );
-#endif
 
     Dev_Make_List( system->total_cap, system->total_far_nbrs,
             TYP_FAR_NEIGHBOR, *dev_lists + FAR_NBRS );
@@ -944,8 +921,7 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Generate_Neighbor_Lists( system, data, workspace, dev_lists );
 
     /* estimate storage for bonds and hbonds */
-    Cuda_Estimate_Storages( system, control, dev_lists, &Htop, hb_top,
-           data->step );
+    Cuda_Estimate_Storages( system, control, dev_lists, &Htop, data->step );
 
     /* estimate storage for charge sparse matrix */
     Cuda_Estimate_Storage_Sparse_Matrix( system, control, data, dev_lists );
@@ -967,52 +943,23 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
 #endif
 
     // FIX - 4 - Added addition check here for hydrogen Bonds
-    if ( control->hbond_cut > 0.0  &&  system->numH > 0 )
+    if ( control->hbond_cut > 0.0 &&  system->numH > 0 )
     {
-        /* init H indexes */
-        total_hbonds = 0;
-        count = 0;
+        Dev_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, *dev_lists + HBONDS );
+//        Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, *lists + HBONDS );
 
-        for ( i = 0; i < system->N; ++i )
-        {
-            //system->my_atoms[i].num_hbonds = hb_top[i];
-            //TODO
-            hb_top[i] = MAX( hb_top[i] * 4, MIN_HBONDS * 4);
-            total_hbonds += hb_top[i];
-            if ( hb_top[i] > 0 )
-            {
-                ++count;
-            }
-        }
-        total_hbonds = MAX( total_hbonds, MIN_CAP * MIN_HBONDS );
-
-        Dev_Make_List( system->total_cap, system->total_cap *
-                system->max_hbonds, TYP_HBOND, *dev_lists + HBONDS );
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "**** Total HBonds allocated --> %d total_cap: %d per atom: %d, max_hbonds: %d \n",
-                total_hbonds, system->total_cap, (total_hbonds /
-                    system->total_cap), system->max_hbonds );
-#endif
-
-        //TODO
-        //Cuda_Init_HBond_Indices (hb_top, system->n);
-        /****/
-        //THIS IS COMMENTED OUT - CHANGE ORIGINAL
-        //Cuda_Init_HBond_Indices (hb_top, system->N);
-        //THIS IS COMMENTED OUT - CHANGE ORIGINAL
-        /****/
+        Cuda_Init_HBond_Indices( system );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: allocated hbonds: total_hbonds=%d, space=%dMB\n",
-                system->my_rank, total_hbonds,
-                (int)(total_hbonds * sizeof(hbond_data) / (1024 * 1024)) );
+                system->my_rank, system->total_hbonds,
+                (int)(system->total_hbonds * sizeof(hbond_data) / (1024 * 1024)) );
 #endif
     }
 
     /* bonds list */
     Dev_Make_List( system->total_cap, system->total_bonds, TYP_BOND, *dev_lists + BONDS );
-    Make_List( system->total_cap, system->total_bonds, TYP_BOND, *lists + BONDS );
+//    Make_List( system->total_cap, system->total_bonds, TYP_BOND, *lists + BONDS );
 
     Cuda_Init_Bond_Indices( system );
 
@@ -1025,8 +972,6 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
     /* 3bodies list: since a more accurate estimate of the num.
      * of three body interactions requires that bond orders have
      * been computed, delay estimation until for computation */
-
-    sfree( hb_top, "Cuda_Init_Lists::hb_top" );
 
     return SUCCESS;
 }

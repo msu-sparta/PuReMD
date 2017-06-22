@@ -65,8 +65,8 @@
 
 
 #ifdef HAVE_CUDA
-void Cuda_Total_Forces (reax_system *, control_params *, simulation_data *, storage *);
-void Cuda_Total_Forces_PURE (reax_system *, storage *);
+void Cuda_Total_Forces( reax_system *, control_params *, simulation_data *, storage * );
+void Cuda_Total_Forces_PURE( reax_system *, storage * );
 #endif
 
 
@@ -225,16 +225,18 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, mpi_datatypes *mpi_data )
 {
-    rvec *f = (rvec *) host_scratch;
+    rvec *f;
+
+    f = (rvec *) host_scratch;
     memset( f, 0, sizeof(rvec) * system->N );
 
     Cuda_Total_Forces( system, control, data, workspace );
 
 #if defined(PURE_REAX)
     /* now all forces are computed to their partially-final values
-       based on the neighbors information each processor has had.
-       final values of force on each atom needs to be computed by adding up
-       all partially-final pieces */
+     * based on the neighbors information each processor has had.
+     * final values of force on each atom needs to be computed by adding up
+     * all partially-final pieces */
 
     //MVAPICH2
     copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N ,
@@ -876,7 +878,7 @@ int Init_Forces( reax_system *system, control_params *control,
             cutoff = control->bond_cut;
         }
 
-        ihb = -1;
+        ihb = NON_H_BONDING_ATOM;
         ihb_top = -1;
         if ( local )
         {
@@ -888,7 +890,7 @@ int Init_Forces( reax_system *system, control_params *control,
             if ( control->hbond_cut > 0.0 )
             {
                 ihb = sbp_i->p_hbond;
-                if ( ihb == 1 )
+                if ( ihb == H_ATOM )
                 {
                     ihb_top = End_Index( atom_i->Hindex, hbonds );
                 }
@@ -972,13 +974,13 @@ int Init_Forces( reax_system *system, control_params *control,
                     }
 
                     /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2) &&
+                    if ( control->hbond_cut > 0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM) &&
                             nbr_pj->d <= control->hbond_cut )
                     {
                         // fprintf( stderr, "%d %d\n", atom1, atom2 );
 
                         jhb = sbp_j->p_hbond;
-                        if ( ihb == 1 && jhb == 2 )
+                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                         {
                             hbonds->select.hbond_list[ihb_top].nbr = j;
                             hbonds->select.hbond_list[ihb_top].scl = 1;
@@ -986,7 +988,7 @@ int Init_Forces( reax_system *system, control_params *control,
                             ++ihb_top;
                             ++num_hbonds;
                         }
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbonds );
                             hbonds->select.hbond_list[jhb_top].nbr = i;
@@ -1032,7 +1034,7 @@ int Init_Forces( reax_system *system, control_params *control,
             //printf("Htop: %d \n", Htop);
 
             H->end[i] = Htop;
-            if ( ihb == 1 )
+            if ( ihb == H_ATOM )
             {
                 Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
             }
@@ -1161,12 +1163,12 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
             cutoff = control->bond_cut;
         }
 
-        ihb = -1;
+        ihb = NON_H_BONDING_ATOM;
         ihb_top = -1;
         if ( local && control->hbond_cut > 0 )
         {
             ihb = sbp_i->p_hbond;
-            if ( ihb == 1 )
+            if ( ihb == H_ATOM )
             {
                 ihb_top = End_Index( atom_i->Hindex, hbonds );
             }
@@ -1223,12 +1225,12 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                 if ( local )
                 {
                     /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2) &&
+                    if ( control->hbond_cut > 0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM) &&
                             nbr_pj->d <= control->hbond_cut )
                     {
                         // fprintf( stderr, "%d %d\n", atom1, atom2 );
                         jhb = sbp_j->p_hbond;
-                        if ( ihb == 1 && jhb == 2 )
+                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                         {
                             hbonds->select.hbond_list[ihb_top].nbr = j;
                             hbonds->select.hbond_list[ihb_top].scl = 1;
@@ -1236,7 +1238,7 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                             ++ihb_top;
                             ++num_hbonds;
                         }
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbonds );
                             hbonds->select.hbond_list[jhb_top].nbr = i;
@@ -1273,7 +1275,7 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
         }
 
         Set_End_Index( i, btop_i, bonds );
-        if ( local && ihb == 1 )
+        if ( local && ihb == H_ATOM )
         {
             Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
         }
@@ -1455,16 +1457,16 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
         if ( i < system->n )
         {
-            local = 1;
+            local = TRUE;
             cutoff = control->nonb_cut;
             ++(*Htop);
             ihb = sbp_i->p_hbond;
         }
         else
         {
-            local = 0;
+            local = FALSE;
             cutoff = control->bond_cut;
-            ihb = -1;
+            ihb = NON_H_BONDING_ATOM;
         }
 
         for ( pj = start_i; pj < end_i; ++pj )
@@ -1482,19 +1484,21 @@ void Estimate_Storages( reax_system *system, control_params *control,
                 //twbp = &(system->reax_param.tbp[type_i][type_j]);
                 twbp = &(system->reax_param.tbp[index_tbp (type_i, type_j, system->reax_param.num_atom_types)]);
 
-                if ( local )
+                if ( local == TRUE )
                 {
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
                         ++(*Htop);
 
 
-                    if ( control->hbond_cut > 0.1 && (ihb == 1 || ihb == 2) &&
+                    if ( control->hbond_cut > 0.1 && (ihb == H_ATOM || ihb == H_BONDING_ATOM) &&
                             nbr_pj->d <= control->hbond_cut )
                     {
                         jhb = sbp_j->p_hbond;
-                        if ( ihb == 1 && jhb == 2 )
+                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
+                        {
                             ++hb_top[i];
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        }
+                        else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             ++hb_top[j];
 
@@ -1573,8 +1577,8 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
 #else
 void Estimate_Storages( reax_system *system, control_params *control,
-        reax_list **lists, int *Htop, int *hb_top,
-        int *bond_top, int *num_3body)
+        reax_list **lists, int *Htop, int *hb_top, int *bond_top,
+        int *num_3body )
 {
 
     int i, j, pj;
@@ -1608,16 +1612,16 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
         if ( i < system->n )
         {
-            local = 1;
+            local = TRUE;
             cutoff = control->nonb_cut;
             ++(*Htop);
             ihb = sbp_i->p_hbond;
         }
         else
         {
-            local = 0;
+            local = FALSE;
             cutoff = control->bond_cut;
-            ihb = -1;
+            ihb = NON_H_BONDING_ATOM;
         }
 
         for ( pj = start_i; pj < end_i; ++pj )
@@ -1633,22 +1637,26 @@ void Estimate_Storages( reax_system *system, control_params *control,
                 r_ij = nbr_pj->d;
                 sbp_j = &(system->reax_param.sbp[type_j]);
                 //twbp = &(system->reax_param.tbp[type_i][type_j]);
-                twbp = &(system->reax_param.tbp[index_tbp (type_i, type_j, system->reax_param.num_atom_types)]);
+                twbp = &(system->reax_param.tbp[index_tbp(type_i, type_j, system->reax_param.num_atom_types)]);
 
-                if ( local )
+                if ( local == TRUE )
                 {
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
                         ++(*Htop);
 
                     /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0.1 && (ihb == 1 || ihb == 2) &&
+                    if ( control->hbond_cut > 0.1 && (ihb == H_ATOM || ihb == H_BONDING_ATOM) &&
                             nbr_pj->d <= control->hbond_cut )
                     {
                         jhb = sbp_j->p_hbond;
-                        if ( ihb == 1 && jhb == 2 )
+                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
+                        {
                             ++hb_top[i];
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        }
+                        else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
+                        {
                             ++hb_top[j];
+                        }
                     }
                 }
 
@@ -1875,6 +1883,39 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
     {
         retVal = Cuda_Init_Forces( system, control, data, workspace, lists, out_control );
         fprintf( stderr, "    [CUDA_INIT_FORCES: %d] STEP %d\n", retVal, data->step );
+
+//        int i;
+//        static reax_list **temp_lists;
+//       
+//        if ( data->step == 0 )
+//        {
+//            temp_lists = (reax_list **) smalloc( LIST_N * sizeof (reax_list *), "temp_lists" );
+//            for ( i = 0; i < LIST_N; ++i )
+//            {
+//                temp_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
+//                temp_lists[i]->allocated = FALSE;
+//            }
+//            Make_List( (*dev_lists + BONDS)->n, (*dev_lists + BONDS)->num_intrs,
+//                    TYP_BOND, *temp_lists + BONDS );
+//            Make_List( (*dev_lists + HBONDS)->n, (*dev_lists + HBONDS)->num_intrs,
+//                    TYP_HBOND, *temp_lists + HBONDS );
+//        }
+//        else
+//        {
+//            Delete_List( *temp_lists + BONDS );
+//            Make_List( (*dev_lists + BONDS)->n, (*dev_lists + BONDS)->num_intrs,
+//                    TYP_BOND, *temp_lists + BONDS );
+//            Delete_List( *temp_lists + HBONDS );
+//            Make_List( (*dev_lists + HBONDS)->n, (*dev_lists + HBONDS)->num_intrs,
+//                    TYP_HBOND, *temp_lists + HBONDS );
+//
+//        }
+//        Output_Sync_Lists( *temp_lists + BONDS, *dev_lists + BONDS, TYP_BOND );
+//        Print_Bonds( system, temp_lists, control );
+//        Output_Sync_Lists( *temp_lists + HBONDS, *dev_lists + HBONDS, TYP_HBOND );
+//        Print_HBonds( system, temp_lists, control, data->step );
+//        Print_HBond_Indices( system, temp_lists, control, data->step );
+//        exit( 0 );
     }
     else
     {

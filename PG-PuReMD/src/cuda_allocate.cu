@@ -162,6 +162,7 @@ void dev_alloc_system( reax_system *system )
     cuda_malloc( (void **) &system->d_my_atoms,
             system->total_cap * sizeof(reax_atom),
             TRUE, "system:d_my_atoms" );
+    cuda_malloc( (void **) &system->d_numH, sizeof(int), TRUE, "system:d_numH" );
 
     /* list management */
     cuda_malloc( (void **) &system->d_far_nbrs,
@@ -625,6 +626,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
             realloc->far_nbrs = FALSE;
         }
     }
+    fprintf( stderr, "    [CUDA_REALLOCATE::far nbrs]\n" );
 
     /* charge coef matrix */
     //if( nflag || realloc->Htop >= system->max_sparse_entries * DANGER_ZONE ) {
@@ -671,27 +673,26 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //workspace->U = NULL;
         realloc->Htop = 0;
     }
+    fprintf( stderr, "    [CUDA_REALLOCATE::charge matrix\n" );
 
     /* hydrogen bonds list */
-    // FIX - 4 - Added additional check here for hydrogen Bond fix
-    if ( control->hbond_cut > 0 && system->numH > 0 )
+    if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
 
-        if ( Nflag == TRUE || realloc->hbonds )
+        if ( Nflag == TRUE || realloc->hbonds == TRUE )
         {
-            fprintf( stderr, "p:%d - *** Reallocating Hbonds *** Step:%d\n", system->my_rank, data->step );
-            //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-
-            Cuda_Reallocate_HBonds_List( (*dev_lists) + HBONDS, system->total_cap, realloc->num_hbonds );
-//            Cuda_Init_HBond_Indices( system );
-            realloc->hbonds = 0;
-
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
-                    system->my_rank, ret, (int)(ret * sizeof(hbond_data) / (1024 * 1024)) );
+                    system->my_rank, system->total_hbonds,
+                    (int)(system->total_hbonds * sizeof(hbond_data) / (1024 * 1024)) );
 #endif
+
+            Cuda_Reallocate_HBonds_List( (*dev_lists) + HBONDS, system->total_cap, system->total_hbonds );
+            Cuda_Init_HBond_Indices( system );
+            realloc->hbonds = FALSE;
         }
     }
+    fprintf( stderr, "    [CUDA_REALLOCATE::hbonds\n" );
 
     /* bonds list */
     if ( Nflag == TRUE || realloc->bonds == TRUE )
@@ -706,6 +707,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         Cuda_Init_Bond_Indices( system );
         realloc->bonds = FALSE;
     }
+    fprintf( stderr, "    [CUDA_REALLOCATE::bonds\n" );
 
     /* 3-body list */
     if ( Nflag == TRUE || realloc->num_3body > 0 )
@@ -721,6 +723,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                 (*dev_lists + BONDS)->num_intrs, system->total_thbodies );
         realloc->num_3body = -1;
     }
+    fprintf( stderr, "    [CUDA_REALLOCATE::thbody\n" );
 
     /* grid */
     if ( renbr && realloc->gcell_atoms > -1 )
@@ -753,6 +756,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //dev_alloc_grid_cell_atoms (system, realloc->gcell_atoms);
         realloc->gcell_atoms = -1;
     }
+    fprintf( stderr, "    [CUDA_REALLOCATE::grid\n" );
 
     /* mpi buffers */
     // we have to be at a renbring step -
@@ -825,6 +829,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         Deallocate_MPI_Buffers( mpi_data );
         Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs, msg );
     }
+    fprintf( stderr, "    [CUDA_REALLOCATE::MPI buffers\n" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: reallocate done\n",

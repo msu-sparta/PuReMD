@@ -22,7 +22,9 @@
 #ifndef __TRAJ_H__
 #define __TRAJ_H__
 
+
 #include "reax_types.h"
+
 
 #define MAX_TRJ_LINE_LEN     120
 #define MAX_TRJ_BUFFER_SIZE  (MAX_TRJ_LINE_LEN * 100)
@@ -62,16 +64,28 @@
 #define ANGLE_BASIC "%9d%9d%9d%10.3f\n" // Atom1 Atom2 Atom3 Theta
 #define ANGLE_BASIC_LEN 38
 
-enum ATOM_LINE_OPTS  { OPT_NOATOM = 0, OPT_ATOM_BASIC = 4, OPT_ATOM_wF = 5, OPT_ATOM_wV = 6, OPT_ATOM_FULL = 7, NR_OPT_ATOM = 8 };
-enum BOND_LINE_OPTS  { OPT_NOBOND, OPT_BOND_BASIC, OPT_BOND_FULL, NR_OPT_BOND };
-enum ANGLE_LINE_OPTS { OPT_NOANGLE, OPT_ANGLE_BASIC, NR_OPT_ANGLE };
+
+enum ATOM_LINE_OPTS
+{
+    OPT_NOATOM = 0, OPT_ATOM_BASIC = 4, OPT_ATOM_wF = 5, OPT_ATOM_wV = 6,
+    OPT_ATOM_FULL = 7, NR_OPT_ATOM = 8,
+};
+enum BOND_LINE_OPTS
+{
+    OPT_NOBOND = 0, OPT_BOND_BASIC = 1, OPT_BOND_FULL = 2, NR_OPT_BOND = 3,
+};
+enum ANGLE_LINE_OPTS
+{
+    OPT_NOANGLE = 0, OPT_ANGLE_BASIC = 1, NR_OPT_ANGLE = 2,
+};
 
 
-int  Init_Traj( reax_system*, control_params*, output_controls*,
-                mpi_datatypes*, char* );
-int  End_Traj( int, output_controls* );
+int Init_Traj( reax_system*, control_params*, output_controls*, mpi_datatypes*, char* );
 
-int  Append_Frame( reax_system*, control_params*, simulation_data*,
-                   reax_list**, output_controls*, mpi_datatypes* );
+int End_Traj( int, output_controls* );
+
+int Append_Frame( reax_system*, control_params*, simulation_data*, reax_list**,
+        output_controls*, mpi_datatypes* );
+
 
 #endif

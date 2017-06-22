@@ -846,7 +846,7 @@ void Print_My_Ext_Atoms( reax_system *system )
 
 
 void Print_Far_Neighbors( reax_system *system, reax_list **lists,
-                          control_params *control )
+        control_params *control )
 {
     char  fname[100];
     int   i, j, id_i, id_j, nbr, natoms;
@@ -1037,28 +1037,85 @@ void Print_Charges( reax_system *system )
 }
 
 
-void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
+void Print_HBonds( reax_system *system, reax_list **lists,
+        control_params *control, int step )
 {
-    int i, j, pj;
-    bond_data *pbond;
-    bond_order_data *bo_ij;
-    FILE *f = fopen( fname, "w" );
+    int i, pj; 
+    char fname[MAX_STR]; 
+    hbond_data *phbond;
+    FILE *fout;
+    reax_list *hbonds = (*lists + HBONDS);
+
+    sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
+    fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
+    {
+        for ( pj = Start_Index(i, hbonds); pj < End_Index(i, hbonds); ++pj )
+        {
+            phbond = &(hbonds->select.hbond_list[pj]);
+
+//            fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, phbond->nbr,
+//                    phbond->ptr->dvec[0], phbond->ptr->dvec[1], phbond->ptr->dvec[2] );
+            fprintf( fout, "%8d%8d %8d %8d\n", i, phbond->nbr,
+                  phbond->scl, phbond->sym_index );
+        }
+    }
+
+    fclose( fout );
+}
+
+ 
+void Print_HBond_Indices( reax_system *system, reax_list **lists,
+        control_params *control, int step )
+{
+    int i; 
+    char fname[MAX_STR]; 
+    FILE *fout;
+    reax_list *hbonds = (*lists + HBONDS);
+
+    sprintf( fname, "%s.hbonds_indices.%d.%d", control->sim_name, step, system->my_rank );
+    fout = fopen( fname, "w" );
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        fprintf( fout, "%8d: start: %8d, end: %8d\n",
+                i, Start_Index(i, hbonds), End_Index(i, hbonds) );
+    }
+
+    fclose( fout );
+}
+
+
+void Print_Bonds( reax_system *system, reax_list **lists,
+        control_params *control )
+{
+    int i, pj; 
+    char fname[MAX_STR]; 
+    bond_data *pbond;
+    bond_order_data *bo_ij;
+    FILE *fout;
+    reax_list *bonds = (*lists + BONDS);
+
+    sprintf( fname, "%s.bonds.%d", control->sim_name, system->my_rank );
+    fout = fopen( fname, "w" );
+
+    for ( i = 0; i < system->N; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
             pbond = &(bonds->select.bond_list[pj]);
             bo_ij = &(pbond->bo_data);
-            j = pbond->nbr;
-            //fprintf( f, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-            //       system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
-            //       pbond->d, bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
-            fprintf( f, "%8d%8d %24.15f %24.15f\n",
-                     i, j,//system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
-                     pbond->d, bo_ij->BO );
+//            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
+//                    system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
+//                    pbond->d, bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
+            fprintf( fout, "%8d%8d %24.15f %24.15f\n",
+                    i, pbond->nbr, //system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
+                    pbond->d, bo_ij->BO );
         }
+    }
 
-    fclose(f);
+    fclose( fout );
 }
 
 

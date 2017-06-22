@@ -292,7 +292,8 @@ enum restart_formats
 };
 
 /* ensemble type */
-enum ensembles {
+enum ensembles
+{
     NVE = 0,
     bNVT = 1,
     nhNVT = 2,
@@ -385,20 +386,15 @@ enum gcell_types
     NATIVE = 8,
 };
 
-/* ??? */
-enum atoms
+/* atom types as pertains to hydrogen bonding */
+enum hydrogen_bonding_atom_types
 {
-    C_ATOM = 0,
+    NON_H_BONDING_ATOM = -1,
     H_ATOM = 1,
-    O_ATOM = 2,
-    N_ATOM = 3,
-    S_ATOM = 4,
-    SI_ATOM = 5,
-    GE_ATOM = 6,
-    X_ATOM = 7,
+    H_BONDING_ATOM = 2,
 };
 
-/* ??? */
+/* trajectory file formats */
 enum traj_methods
 {
     REG_TRAJ = 0,
@@ -634,13 +630,13 @@ typedef struct
 {
     /* num. of global parameters, from the force field file */
     int n_global;
-    /* global parameters */
+    /* global parameters, see above mapping */
     real* l;
     /* van der Waals interaction type, values:
-     * 0: ???
-     * 1: ???
-     * 2: ???
-     * 3: ???
+     * 0: none (???)
+     * 1: shielded Morse, no inner-wall
+     * 2: inner wall, no shielding
+     * 3: inner wall + shielding
      * */
     int vdw_type;
 } global_parameters;
@@ -684,8 +680,12 @@ typedef struct
     real chi;
     /**/
     real eta;
-    /* 1 for H, 2 for hbonding atoms (O,S,P,N), 0 for others */
-    int  p_hbond;
+    /* info related to hydrogen bonding
+     * (values correspond to hydrogen_bonding_atom_types enum above):
+     *  0: non-hydrogen bonding atom
+     *  1: H atom
+     *  2: hydrogen bonding atom (e.g., O, S, P, N) */
+    int p_hbond;
 
     /* Line three in field file */
     /**/
@@ -1123,6 +1123,7 @@ typedef struct
     int bigN;
     /* num. hydrogen atoms */
     int numH;
+    int *d_numH;
     /**/
     int local_cap;
     /**/

@@ -79,13 +79,16 @@ int Set_My_Trajectory_View( MPI_File trj, int offset, MPI_Datatype etype,
 
 
 int Reallocate_Output_Buffer( output_controls *out_control, int req_space,
-                              MPI_Comm comm )
+        MPI_Comm comm )
 {
     if ( out_control->buffer_len > 0 )
-        free( out_control->buffer );
+    {
+        sfree( out_control->buffer, "Reallocate_Output_Buffer::out_control->buffer" );
+    }
 
     out_control->buffer_len = req_space * SAFE_ZONE;
-    out_control->buffer = (char*) malloc(out_control->buffer_len * sizeof(char));
+    out_control->buffer = (char*) smalloc( out_control->buffer_len * sizeof(char),
+            "Reallocate_Output_Buffer::out_control->buffer" );
     if ( out_control->buffer == NULL )
     {
         fprintf( stderr,
@@ -99,7 +102,7 @@ int Reallocate_Output_Buffer( output_controls *out_control, int req_space,
 
 
 void Write_Skip_Line( output_controls *out_control, mpi_datatypes *mpi_data,
-                      int my_rank, int skip, int num_section )
+        int my_rank, int skip, int num_section )
 {
     MPI_Status status;
 
@@ -131,33 +134,41 @@ int Write_Header( reax_system *system, control_params *control,
 {
     int  num_hdr_lines, my_hdr_lines, buffer_req;
     MPI_Status status;
-    char ensembles[ens_N][25] =  { "NVE", "NVT", "fully flexible NPT",
-                                   "semi isotropic NPT", "isotropic NPT"
-                                 };
-    char reposition[3][25] = { "fit to periodic box", "CoM to center of box",
-                               "CoM to origin"
-                             };
-    char t_regime[3][25] = { "T-coupling only", "step-wise", "constant slope" };
+    char ensembles[ens_N][25] = {
+        "NVE", "NVT", "fully flexible NPT",
+        "semi isotropic NPT", "isotropic NPT",
+    };
+    char reposition[3][25] = {
+        "fit to periodic box", "CoM to center of box",
+        "CoM to origin",
+    };
+    char t_regime[3][25] = {
+        "T-coupling only", "step-wise", "constant slope",
+    };
 
-    char traj_methods[TF_N][10] = { "custom", "xyz" };
-    char atom_formats[8][40] =  { "none", "invalid", "invalid", "invalid",
-                                  "xyz_q",
-                                  "xyz_q_fxfyfz",
-                                  "xyz_q_vxvyvz",
-                                  "detailed_atom_info"
-                                };
-    char bond_formats[3][30] = { "none",
-                                 "basic_bond_info",
-                                 "detailed_bond_info"
-                               };
-    char angle_formats[2][30] = { "none", "basic_angle_info" };
+    char traj_methods[TF_N][10] = {
+        "custom", "xyz",
+    };
+    char atom_formats[8][40] =  {
+        "none", "invalid", "invalid", "invalid",
+        "xyz_q", "xyz_q_fxfyfz", "xyz_q_vxvyvz",
+        "detailed_atom_info",
+    };
+    char bond_formats[3][30] = {
+        "none", "basic_bond_info", "detailed_bond_info",
+    };
+    char angle_formats[2][30] = {
+        "none", "basic_angle_info",
+    };
 
     /* set header lengths */
     num_hdr_lines = NUM_HEADER_LINES;
     my_hdr_lines = num_hdr_lines * ( system->my_rank == MASTER_NODE );
     buffer_req = my_hdr_lines * HEADER_LINE_LEN;
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
+    {
         Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+    }
 
     /* only the master node writes into trajectory header */
     if ( system->my_rank == MASTER_NODE )
@@ -357,7 +368,7 @@ int Write_Header( reax_system *system, control_params *control,
 
 
 int Write_Init_Desc( reax_system *system, control_params *control,
-                     output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, me, np, cnt, buffer_len, buffer_req;
     reax_atom *p_atom;
@@ -372,11 +383,18 @@ int Write_Init_Desc( reax_system *system, control_params *control,
                      system->bigN * INIT_DESC_LEN, system->bigN );
 
     if ( out_control->traj_method == REG_TRAJ && me == MASTER_NODE )
+    {
         buffer_req = system->bigN * INIT_DESC_LEN + 1;
-    else buffer_req = system->n * INIT_DESC_LEN + 1;
+    }
+    else
+    {
+        buffer_req = system->n * INIT_DESC_LEN + 1;
+    }
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
+    {
         Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+    }
 
     out_control->line[0] = 0;
     out_control->buffer[0] = 0;
@@ -425,8 +443,7 @@ int Write_Init_Desc( reax_system *system, control_params *control,
 
 
 int Init_Traj( reax_system *system, control_params *control,
-               output_controls *out_control, mpi_datatypes *mpi_data,
-               char *msg )
+        output_controls *out_control, mpi_datatypes *mpi_data, char *msg )
 {
     char fname[MAX_STR];
     int  atom_line_len[ NR_OPT_ATOM ] = { 0, 0, 0, 0,
@@ -450,7 +467,8 @@ int Init_Traj( reax_system *system, control_params *control,
     out_control->write_angles = ( out_control->angle_line_len ? 1 : 0 );
 
     /* allocate line & buffer space */
-    out_control->line = (char*) calloc( MAX_TRJ_LINE_LEN + 1, sizeof(char) );
+    out_control->line = (char*) scalloc( MAX_TRJ_LINE_LEN + 1, sizeof(char),
+           "Init_Traj::out_control->line" );
     out_control->buffer_len = 0;
     out_control->buffer = NULL;
 
@@ -527,8 +545,8 @@ int Init_Traj( reax_system *system, control_params *control,
 
 
 int Write_Frame_Header( reax_system *system, control_params *control,
-                        simulation_data *data, output_controls *out_control,
-                        mpi_datatypes *mpi_data )
+        simulation_data *data, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
     int me, num_frm_hdr_lines, my_frm_hdr_lines, buffer_req;
     MPI_Status status;
@@ -539,7 +557,9 @@ int Write_Frame_Header( reax_system *system, control_params *control,
     my_frm_hdr_lines = num_frm_hdr_lines * ( me == MASTER_NODE );
     buffer_req = my_frm_hdr_lines * HEADER_LINE_LEN;
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
+    {
         Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+    }
 
     /* only the master node writes into trajectory header */
     if ( me == MASTER_NODE )
@@ -666,27 +686,33 @@ int Write_Frame_Header( reax_system *system, control_params *control,
 }
 
 
-
 int Write_Atoms( reax_system *system, control_params *control,
-                 output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, me, np, line_len, buffer_len, buffer_req, cnt;
-    MPI_Status  status;
-    reax_atom  *p_atom;
+    MPI_Status status;
+    reax_atom *p_atom;
 
     me = system->my_rank;
     np = control->nprocs;
     line_len = out_control->atom_line_len;
 
     Write_Skip_Line( out_control, mpi_data, me,
-                     system->bigN * line_len, system->bigN );
+            system->bigN * line_len, system->bigN );
 
     if ( out_control->traj_method == REG_TRAJ && me == MASTER_NODE )
+    {
         buffer_req = system->bigN * line_len + 1;
-    else buffer_req = system->n * line_len + 1;
+    }
+    else
+    {
+        buffer_req = system->n * line_len + 1;
+    }
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
+    {
         Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+    }
 
     /* fill in buffer */
     out_control->line[0] = 0;
@@ -761,8 +787,8 @@ int Write_Atoms( reax_system *system, control_params *control,
 }
 
 
-int Write_Bonds(reax_system *system, control_params *control, reax_list *bonds,
-                output_controls *out_control, mpi_datatypes *mpi_data)
+int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, j, pj, me, np;
     int my_bonds, num_bonds;
@@ -790,11 +816,18 @@ int Write_Bonds(reax_system *system, control_params *control, reax_list *bonds,
     Write_Skip_Line( out_control, mpi_data, me, num_bonds * line_len, num_bonds );
 
     if ( out_control->traj_method == REG_TRAJ && me == MASTER_NODE )
+    {
         buffer_req = num_bonds * line_len + 1;
-    else buffer_req = my_bonds * line_len + 1;
+    }
+    else
+    {
+        buffer_req = my_bonds * line_len + 1;
+    }
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
+    {
         Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+    }
 
     /* fill in the buffer */
     my_bonds = 0;
@@ -868,8 +901,8 @@ int Write_Bonds(reax_system *system, control_params *control, reax_list *bonds,
 
 
 int Write_Angles( reax_system *system, control_params *control,
-                  reax_list *bonds, reax_list *thb_intrs,
-                  output_controls *out_control, mpi_datatypes *mpi_data )
+        reax_list *bonds, reax_list *thb_intrs,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, j, k, pi, pk, me, np;
     int my_angles, num_angles;
@@ -909,11 +942,18 @@ int Write_Angles( reax_system *system, control_params *control,
     Write_Skip_Line( out_control, mpi_data, me, num_angles * line_len, num_angles );
 
     if ( out_control->traj_method == REG_TRAJ && me == MASTER_NODE )
+    {
         buffer_req = num_angles * line_len + 1;
-    else buffer_req = my_angles * line_len + 1;
+    }
+    else
+    {
+        buffer_req = my_angles * line_len + 1;
+    }
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
+    {
         Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+    }
 
     /* fill in the buffer */
     my_angles = 0;
@@ -982,8 +1022,8 @@ int Write_Angles( reax_system *system, control_params *control,
 
 
 int Append_Frame( reax_system *system, control_params *control,
-                  simulation_data *data, reax_list **lists,
-                  output_controls *out_control, mpi_datatypes *mpi_data )
+        simulation_data *data, reax_list **lists,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: appending frame %d\n", system->my_rank, data->step );
@@ -1028,12 +1068,16 @@ int Append_Frame( reax_system *system, control_params *control,
 int End_Traj( int my_rank, output_controls *out_control )
 {
     if ( out_control->traj_method == MPI_TRAJ )
+    {
         MPI_File_close( &(out_control->trj) );
+    }
     else if ( my_rank == MASTER_NODE )
+    {
         fclose( out_control->strj );
+    }
 
-    free( out_control->buffer );
-    free( out_control->line );
+    sfree( out_control->buffer, "End_Traj::out_control->buffer" );
+    sfree( out_control->line, "End_Traj::out_control->line" );
 
     return SUCCESS;
 }

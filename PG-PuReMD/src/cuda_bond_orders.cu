@@ -784,24 +784,28 @@ CUDA_DEVICE void Cuda_dbond_to_Forces_postprocess( int i, reax_atom *atoms,
 }
 
 
-CUDA_GLOBAL void ker_total_forces_postprocess( reax_atom *my_atoms,
+CUDA_GLOBAL void k_total_forces_postprocess( reax_atom *my_atoms,
         reax_list p_bonds, storage p_workspace, int N )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
+    reax_list *bonds;
+    storage *workspace;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if ( i >= N )
     {
         return;
     }
 
-    reax_list *bonds = &( p_bonds );
-    storage *workspace = &( p_workspace );
+    bonds = &p_bonds;
+    workspace = &p_workspace;
 
     Cuda_dbond_to_Forces_postprocess( i, my_atoms, bonds, workspace );
 }
 
 
-CUDA_GLOBAL void ker_total_forces( storage p_workspace, reax_list p_bonds, 
+CUDA_GLOBAL void k_total_forces( storage p_workspace, reax_list p_bonds, 
         control_params *control, simulation_data *data, rvec *data_ext_press,
         int N )
 {
@@ -846,7 +850,7 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
 
     blocks = system->N / DEF_BLOCK_SIZE + 
         ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    ker_total_forces <<< blocks, DEF_BLOCK_SIZE >>>
+    k_total_forces <<< blocks, DEF_BLOCK_SIZE >>>
         ( *dev_workspace, *(*dev_lists + BONDS), 
           (control_params *) control->d_control_params, 
           (simulation_data *)data->d_simulation_data, 
@@ -869,14 +873,14 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
     }
 
     //do the post processing for the atomic forces here
-    ker_total_forces_postprocess  <<< blocks, DEF_BLOCK_SIZE >>>
+    k_total_forces_postprocess  <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(*dev_lists + BONDS), *dev_workspace, system->N );
     cudaThreadSynchronize( ); 
     cudaCheckError( ); 
 }
 
 
-CUDA_GLOBAL void ker_total_forces_pure( reax_atom *my_atoms, int n, 
+CUDA_GLOBAL void k_total_forces_pure( reax_atom *my_atoms, int n, 
         storage p_workspace )
 {
     int i;
@@ -889,7 +893,7 @@ CUDA_GLOBAL void ker_total_forces_pure( reax_atom *my_atoms, int n,
         return;
     }
 
-    workspace = &( p_workspace );
+    workspace = &p_workspace;
 
     rvec_Copy( my_atoms[i].f, workspace->f[i] );
 }
@@ -901,7 +905,8 @@ void Cuda_Total_Forces_PURE( reax_system *system, storage *workspace )
 
     blocks = system->n / DEF_BLOCK_SIZE + 
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    ker_total_forces_pure <<< blocks, DEF_BLOCK_SIZE >>>
+
+    k_total_forces_pure <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->n, *dev_workspace);
     cudaThreadSynchronize( ); 
     cudaCheckError( ); 

@@ -337,6 +337,17 @@ int main( int argc, char* argv[] )
     Generate_Neighbor_Lists( system, data, workspace, lists );
 #endif
 
+//    reax_list **temp_lists = (reax_list **) smalloc( LIST_N * sizeof (reax_list *), "temp_lists" );
+//    for ( i = 0; i < LIST_N; ++i )
+//    {
+//        temp_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
+//        temp_lists[i]->allocated = FALSE;
+//    }
+//    Make_List( (*dev_lists + FAR_NBRS)->n, (*dev_lists + FAR_NBRS)->num_intrs,
+//            TYP_FAR_NEIGHBOR, (*temp_lists + FAR_NBRS) );
+//    Output_Sync_Lists( (*temp_lists + FAR_NBRS), (*dev_lists + FAR_NBRS), TYP_FAR_NEIGHBOR );
+//    Print_Far_Neighbors( system, temp_lists, control );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
 #endif
@@ -395,6 +406,7 @@ int main( int argc, char* argv[] )
         if ( control->T_mode && retries == 0 )
         {
             Temperature_Control( control, data );
+            fprintf( stderr, "  [TEMPERATURE CONTROL] STEP %d\n", data->step );
         }
 
 #if defined(DEBUG)
@@ -512,7 +524,7 @@ int main( int argc, char* argv[] )
     //TODO: remove?
     /* allocate the cuda auxiliary data structures */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
-    dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
+    dev_lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list *), "dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
         dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
@@ -642,29 +654,22 @@ int main( int argc, char* argv[] )
         fprintf( out_control->out, "Total Simulation Time: %.2f secs\n", t_elapsed );
     }
 
-    // Write_PDB( &system, &(lists[BOND]), &out_control );
+//    Write_PDB( &system, &(lists[BOND]), &out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
 
     MPI_Finalize( );
 
-    /* de-allocate data structures */
-    //for( i = 0; i < LIST_N; ++i ) {
-    //if (lists[i]->index) free (lists[i]->index);
-    //if (lists[i]->end_index) free (lists[i]->end_index);
-    //if (lists[i]->select.v) free (lists[i]->select.v);
-    //free (lists[i] );
-    //}
-
-    free( system );
-    free( control );
-    free( data );
-    free( workspace );
-    free( lists );
-    free( out_control );
-    free( mpi_data );
+    /* deallocate data structures */
+    sfree( system, "main::system" );
+    sfree( control, "main::control" );
+    sfree( data, "main::data" );
+    sfree( workspace, "main::workspace" );
+    sfree( lists, "main::lists" );
+    sfree( out_control, "main::out_control" );
+    sfree( mpi_data, "main::mpi_data" );
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
-//  Integrate_Results(control);
+//    Integrate_Results(control);
 #endif
 
 #if defined(DEBUG)

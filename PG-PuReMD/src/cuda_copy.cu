@@ -5,6 +5,7 @@
 #include "vector.h"
 
 
+/* Copy grid info from host to device */
 void Sync_Grid( grid *host, grid *device )
 {
     int total;
@@ -47,59 +48,62 @@ void Sync_Grid( grid *host, grid *device )
 }
 
 
+/* Copy atom info from host to device */
 void Sync_Atoms( reax_system *sys )
 {
     //TODO METIN FIX, coredump on his machine
-    //copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) * sys->total_cap, cudaMemcpyHostToDevice, "system:my_atoms" );
+//    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) * sys->total_cap,
+//            cudaMemcpyHostToDevice, "Sync_Atoms::system->my_atoms" );
 
 #if defined(__CUDA_DEBUG_LOG__)
     fprintf( stderr, "p:%d - Synching atoms: n: %d N: %d, total_cap: %d \n", 
             sys->my_rank, sys->n, sys->N, sys->total_cap );
 #endif
 
-    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) *
-            sys->N, cudaMemcpyHostToDevice, "system:my_atoms" );
+    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) * sys->N,
+            cudaMemcpyHostToDevice, "Sync_Atoms::system->my_atoms" );
     //TODO METIN FIX, coredump on his machine
 }
 
 
+/* Copy atomic system info from host to device */
 void Sync_System( reax_system *sys )
 {
-    //fprintf (stderr, "p:%d - trying to copy atoms : %d \n", sys->my_rank, sys->local_cap);
     Sync_Atoms( sys );
 
     copy_host_device( &sys->my_box, sys->d_my_box, sizeof(simulation_box),
-            cudaMemcpyHostToDevice, "system:my_box" );
+            cudaMemcpyHostToDevice, "Sync_System::system->my_box" );
 
     copy_host_device( &sys->my_ext_box, sys->d_my_ext_box,
             sizeof(simulation_box), cudaMemcpyHostToDevice,
-            "system:my_ext_box" );
+            "Sync_System::system->my_ext_box" );
 
     copy_host_device( sys->reax_param.sbp, sys->reax_param.d_sbp,
             sizeof(single_body_parameters) * sys->reax_param.num_atom_types,
-            cudaMemcpyHostToDevice, "system:sbp" );
+            cudaMemcpyHostToDevice, "Sync_System::system->sbp" );
     copy_host_device( sys->reax_param.tbp, sys->reax_param.d_tbp,
             sizeof(two_body_parameters) * POW(sys->reax_param.num_atom_types, 2),
-            cudaMemcpyHostToDevice, "system:tbp" );
+            cudaMemcpyHostToDevice, "Sync_System::system->tbp" );
     copy_host_device( sys->reax_param.thbp, sys->reax_param.d_thbp,
             sizeof(three_body_header) * POW(sys->reax_param.num_atom_types, 3),
-            cudaMemcpyHostToDevice, "system:thbh" );
+            cudaMemcpyHostToDevice, "Sync_System::system->thbh" );
     copy_host_device( sys->reax_param.hbp, sys->reax_param.d_hbp,
             sizeof(hbond_parameters) * POW(sys->reax_param.num_atom_types, 3),
-            cudaMemcpyHostToDevice, "system:hbond" );
+            cudaMemcpyHostToDevice, "Sync_System::system->hbond" );
     copy_host_device( sys->reax_param.fbp, sys->reax_param.d_fbp, 
             sizeof(four_body_header) * POW(sys->reax_param.num_atom_types, 4),
-            cudaMemcpyHostToDevice, "system:four_header" );
+            cudaMemcpyHostToDevice, "Sync_System::system->four_header" );
 
     copy_host_device( sys->reax_param.gp.l, sys->reax_param.d_gp.l,
             sizeof(real) * sys->reax_param.gp.n_global, cudaMemcpyHostToDevice,
-            "system:global_parameters" );
+            "Sync_System::system->global_parameters" );
 
     sys->reax_param.d_gp.n_global = sys->reax_param.gp.n_global; 
     sys->reax_param.d_gp.vdw_type = sys->reax_param.gp.vdw_type; 
 }
 
 
+/* Copy atom info from device to host */
 void Output_Sync_Atoms( reax_system *sys )
 {
     copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) *
@@ -107,6 +111,7 @@ void Output_Sync_Atoms( reax_system *sys )
 }
 
 
+/* Copy simulation data from device to host */
 void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
 {
     copy_host_device( &host->my_en, &dev->my_en, sizeof(energy_data), 
@@ -120,36 +125,49 @@ void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
 }
 
 
+/* Copy interaction lists from device to host */
 void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
 {
-    //fprintf (stderr, " Trying to copy *%d* list from device to host \n", type);
+#if defined(DEBUG)
+    fprintf( stderr, " Trying to copy *%d* list from device to host \n", type );
+#endif
 
-    //list is already allocated -- discard it first
-    //if (host->n > 0)
-    //if (host->allocated > 0)
-    //  Delete_List (host);
-
-    //memory is allocated on the host
-    //Make_List(device->n, device->num_intrs, type, host);
+//    if ( host->allocated == TRUE )
+//    {
+//        Delete_List( host );
+//    }
+//    Make_List( device->n, device->num_intrs, type, host );
 
     copy_host_device( host->index, device->index, sizeof(int) * device->n,
-            cudaMemcpyDeviceToHost, "output_sync_list:list:index" );
+            cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->index" );
     copy_host_device( host->end_index, device->end_index, sizeof(int) *
-            device->n, cudaMemcpyDeviceToHost, "output_sync:list:end_index" );
+            device->n, cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->end_index" );
 
-    switch (type)
+    switch ( type )
     {   
+        case TYP_FAR_NEIGHBOR:
+            copy_host_device( host->select.far_nbr_list, device->select.far_nbr_list,
+                    sizeof(far_neighbor_data) * device->num_intrs,
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list" );
+            break;
+
         case TYP_BOND:
             copy_host_device( host->select.bond_list, device->select.bond_list,
                     sizeof(bond_data) * device->num_intrs,
-                    cudaMemcpyDeviceToHost, "bond_list" );
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::bond_list" );
+            break;
+
+        case TYP_HBOND:
+            copy_host_device( host->select.hbond_list, device->select.hbond_list,
+                    sizeof(hbond_data) * device->num_intrs,
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::hbond_list" );
             break;
 
         case TYP_THREE_BODY:
             copy_host_device( host->select.three_body_list,
                     device->select.three_body_list,
                     sizeof(three_body_interaction_data )* device->num_intrs,
-                    cudaMemcpyDeviceToHost, "three_body_list" );
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::three_body_list" );
             break;
 
         default:

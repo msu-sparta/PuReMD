@@ -345,7 +345,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, steps, renbr, ret;
-    static int verlet_part1_done = FALSE;
+    static int verlet_part1_done = FALSE, estimate_nbrs_done = 0;
     real inv_m, dt, lambda;
     rvec dx;
     reax_atom *atom;
@@ -414,13 +414,18 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         t_over_start  = Get_Time ();
 #endif
 
-        //TODO: move far_nbrs reallocation checks outside of renbr frequency check
-        ret = Cuda_Estimate_Neighbors( system, data->step );
-        fprintf( stderr, "  [CUDA_ESTIMATE_NEIGHBORS: %d] STEP %d\n", ret, data->step );
+        if ( estimate_nbrs_done == 0 )
+        {
+            //TODO: move far_nbrs reallocation checks outside of renbr frequency check
+            ret = Cuda_Estimate_Neighbors( system, data->step );
+            estimate_nbrs_done = 1;
+            fprintf( stderr, "  [CUDA_ESTIMATE_NEIGHBORS: %d] STEP %d\n", ret, data->step );
+        }
 
-        if ( ret == SUCCESS )
+        if ( ret == SUCCESS && estimate_nbrs_done == 1 )
         {
             Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+            estimate_nbrs_done = 2;
     
 #if defined(DEBUG)
             t_over_elapsed  = Get_Timing_Info( t_over_start );
@@ -449,7 +454,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 #endif
 
         /* temperature scaler */
-        //Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
         Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
         fprintf( stderr, "  [CUDA_COMPUTE_KINETIC_ENERGY] STEP %d\n", data->step );
 
@@ -476,6 +480,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 #endif
 
         verlet_part1_done = FALSE;
+        estimate_nbrs_done = 0;
     }
 
     return ret;
@@ -484,8 +489,8 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
 
 /* uses Berendsen-type coupling for both T and P.
-   All box dimensions are scaled by the same amount,
-   there is no change in the angles between axes. */
+ * All box dimensions are scaled by the same amount,
+ * there is no change in the angles between axes. */
 int Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )

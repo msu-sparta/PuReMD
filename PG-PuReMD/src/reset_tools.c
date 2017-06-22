@@ -42,13 +42,13 @@ void Reset_Atoms( reax_system* system, control_params *control )
     reax_atom *atom;
 
     system->numH = 0;
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
     {
         //TODO
         for ( i = 0; i < system->N; ++i )
         {
             atom = &(system->my_atoms[i]);
-            //if( system->reax_param.sbp[ atom->type ].p_hbond == 1 )
+            //if( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
             atom->Hindex = system->numH++;
             //else atom->Hindex = -1;
         }

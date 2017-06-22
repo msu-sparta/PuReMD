@@ -46,7 +46,9 @@ void  Print_Sparse_Matrix2( reax_system*, sparse_matrix*, char* );
 void  Print_Linear_System( reax_system*, control_params*, storage*, int );
 void  Print_LinSys_Soln( reax_system*, real*, real*, real* );
 void  Print_Charges( reax_system* );
-void  Print_Bonds( reax_system*, reax_list*, char* );
+void  Print_HBonds( reax_system*, reax_list**, control_params *, int );
+void  Print_HBond_Indices( reax_system*, reax_list**, control_params *, int );
+void  Print_Bonds( reax_system*, reax_list**, control_params *);
 void  Print_Bond_List2( reax_system*, reax_list*, char* );
 void  Print_Total_Force( reax_system*, simulation_data*, storage* );
 void  Output_Results( reax_system*, control_params*, simulation_data*,

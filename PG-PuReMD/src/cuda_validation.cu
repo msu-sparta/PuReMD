@@ -461,7 +461,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
     sym_count = 0;
     for (int i = 0; i < system->n; i++) {
 
-        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == 1 )
+        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM )
         {
             count += End_Index (i, hbonds) - Start_Index (i, hbonds);
             dev_count += d_end [i] - d_start[i];
@@ -485,7 +485,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
     sym_count = 0;
 
     for (int i = system->n; i < system->N; i++) {
-        //if (system->reax_param.sbp[ system->my_atoms[i].type].p_hbond == 2)
+        //if (system->reax_param.sbp[ system->my_atoms[i].type].p_hbond == H_BONDING_ATOM )
         {
             sym_count += d_end[i] - d_start[i];
         }
@@ -504,7 +504,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
            d_end[d_index] - d_start[d_index]);
          */
 
-        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond != 1 )
+        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond != H_ATOM )
         {
             /*
                int x;

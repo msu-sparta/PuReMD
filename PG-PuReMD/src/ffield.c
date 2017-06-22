@@ -64,7 +64,7 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
 
     /* reading the number of global parameters */
     n = atoi(tmp[0]);
-    if (n < 1)
+    if ( n < 1 )
     {
         fprintf( stderr, "WARNING: number of globals in ffield file is 0!\n" );
         return 1;
@@ -98,80 +98,41 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
     fgets(s, MAX_LINE, fp);
 
     /* Allocating structures in reax_interaction */
-    /*
-    reax->sbp = (single_body_parameters*)
-      scalloc( reax->num_atom_types, sizeof(single_body_parameters), "sbp" );
-    reax->tbp = (two_body_parameters**)
-      scalloc( reax->num_atom_types, sizeof(two_body_parameters*), "tbp" );
-    reax->thbp= (three_body_header***)
-      scalloc( reax->num_atom_types, sizeof(three_body_header**), "thbp" );
-    reax->hbp = (hbond_parameters***)
-      scalloc( reax->num_atom_types, sizeof(hbond_parameters**), "hbp" );
-    reax->fbp = (four_body_header****)
-      scalloc( reax->num_atom_types, sizeof(four_body_header***), "fbp" );
-    tor_flag  = (char****)
-      scalloc( reax->num_atom_types, sizeof(char***), "tor_flag" );
-
-    for( i = 0; i < reax->num_atom_types; i++ ) {
-      reax->tbp[i] = (two_body_parameters*)
-        scalloc( reax->num_atom_types, sizeof(two_body_parameters), "tbp[i]" );
-      reax->thbp[i]= (three_body_header**)
-        scalloc( reax->num_atom_types, sizeof(three_body_header*), "thbp[i]" );
-      reax->hbp[i] = (hbond_parameters**)
-        scalloc( reax->num_atom_types, sizeof(hbond_parameters*), "hbp[i]" );
-      reax->fbp[i] = (four_body_header***)
-        scalloc( reax->num_atom_types, sizeof(four_body_header**), "fbp[i]" );
-      tor_flag[i]  = (char***)
-        scalloc( reax->num_atom_types, sizeof(char**), "tor_flag[i]" );
-
-      for( j = 0; j < reax->num_atom_types; j++ ) {
-        reax->thbp[i][j]= (three_body_header*)
-    scalloc( reax->num_atom_types, sizeof(three_body_header), "thbp[i,j]" );
-        reax->hbp[i][j] = (hbond_parameters*)
-    scalloc( reax->num_atom_types, sizeof(hbond_parameters), "hbp[i,j]" );
-        reax->fbp[i][j] = (four_body_header**)
-    scalloc( reax->num_atom_types, sizeof(four_body_header*), "fbp[i,j]" );
-        tor_flag[i][j]  = (char**)
-    scalloc( reax->num_atom_types, sizeof(char*), "tor_flag[i,j]" );
-
-        for (k=0; k < reax->num_atom_types; k++) {
-    reax->fbp[i][j][k] = (four_body_header*)
-      scalloc(reax->num_atom_types, sizeof(four_body_header), "fbp[i,j,k]");
-    tor_flag[i][j][k]  = (char*)
-      scalloc( reax->num_atom_types, sizeof(char), "tor_flag[i,j,k]" );
-        }
-      }
-    }
-    */
-
     __N = reax->num_atom_types;
 
     reax->sbp = (single_body_parameters*)
-                calloc( reax->num_atom_types, sizeof(single_body_parameters) );
+        scalloc( reax->num_atom_types, sizeof(single_body_parameters),
+                "Read_Force_Field::reax->sbp" );
 
     reax->tbp = (two_body_parameters*)
-                calloc( pow (reax->num_atom_types, 2), sizeof(two_body_parameters) );
+        scalloc( POW(reax->num_atom_types, 2), sizeof(two_body_parameters),
+              "Read_Force_Field::reax->tbp" );
 
     reax->thbp = (three_body_header*)
-                 calloc( pow (reax->num_atom_types, 3), sizeof(three_body_header) );
+        scalloc( POW(reax->num_atom_types, 3), sizeof(three_body_header),
+              "Read_Force_Field::reax->thbp" );
+
     reax->hbp = (hbond_parameters*)
-                calloc( pow (reax->num_atom_types, 3), sizeof(hbond_parameters) );
+        scalloc( POW(reax->num_atom_types, 3), sizeof(hbond_parameters),
+              "Read_Force_Field::reax->hbp" );
 
     reax->fbp = (four_body_header*)
-                calloc( pow (reax->num_atom_types, 4), sizeof(four_body_header) );
+        scalloc( POW(reax->num_atom_types, 4), sizeof(four_body_header),
+              "Read_Force_Field::reax->fbp" );
 
-    tor_flag  = (char*)
-                calloc( pow (reax->num_atom_types, 4), sizeof(char) );
+    tor_flag  = (char*) scalloc( POW(reax->num_atom_types, 4), sizeof(char),
+           "Read_Force_Field::tor_flag" );
 
-    // vdWaals type: 1: Shielded Morse, no inner-wall
-    //               2: inner wall, no shielding
-    //               3: inner wall+shielding
+    /* vdWaals type:
+     * 1: Shielded Morse, no inner-wall
+     * 2: inner wall, no shielding
+     * 3: inner wall+shielding */
     reax->gp.vdw_type = 0;
 
     /* reading single atom parameters */
     /* there are 4 lines of each single atom parameters in ff files. these
-       parameters later determine some of the pair and triplet parameters using
-       combination rules. */
+     * parameters later determine some of the pair and triplet parameters using
+     * combination rules. */
     for ( i = 0; i < reax->num_atom_types; i++ )
     {
         /* line one */
@@ -183,7 +144,9 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
             reax->sbp[i].name[j] = toupper( tmp[0][j] );
         }
 
-        //fprintf( stderr, "Atom Name in the force field : %s \n", reax->sbp[i].name);
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "Atom Name in the force field : %s \n", reax->sbp[i].name );
+#endif
 
         val = atof(tmp[1]);
         reax->sbp[i].r_s = val;
@@ -221,7 +184,7 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         val = atof(tmp[6]);
         reax->sbp[i].eta = 2.0 * val;
         val = atof(tmp[7]);
-        reax->sbp[i].p_hbond = (int) val;
+        reax->sbp[i].p_hbond = (int)val;
 
         /* line 3 */
         fgets( s, MAX_LINE, fp );
@@ -645,12 +608,12 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
     }
 
     /* 4-body parameters are entered in compact form. i.e. 0-X-Y-0
-       correspond to any type of pair of atoms in 1 and 4
-       position. However, explicit X-Y-Z-W takes precedence over the
-       default description.
-       supports multi-well potentials (upto MAX_4BODY_PARAM in mytypes.h)
-       IMPORTANT: for now, directions on how to read multi-entries from ffield
-       is not clear */
+     * correspond to any type of pair of atoms in 1 and 4
+     * position. However, explicit X-Y-Z-W takes precedence over the
+     * default description.
+     * supports multi-well potentials (upto MAX_4BODY_PARAM in mytypes.h)
+     * IMPORTANT: for now, directions on how to read multi-entries from ffield
+     * is not clear */
 
     /* clear all entries first */
     for ( i = 0; i < reax->num_atom_types; ++i )

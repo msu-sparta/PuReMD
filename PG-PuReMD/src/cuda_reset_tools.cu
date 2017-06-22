@@ -1,32 +1,11 @@
 
 #include "cuda_reset_tools.h"
 
-#include "cuda_utils.h"
 #include "cuda_list.h"
+#include "cuda_utils.h"
+#include "cuda_reduction.h"
 
 #include "reset_tools.h"
-
-
-CUDA_GLOBAL void k_reset_hbond_list( reax_atom *my_atoms, 
-        reax_list hbonds, int N )
-{
-    int Hindex;
-    int i;
-    
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= N )
-    {
-        return;
-    }
-
-    Hindex = my_atoms[i].Hindex;
-
-    if ( Hindex > 1 )
-    {
-        Dev_Set_End_Index( Hindex, Dev_Start_Index (Hindex, &hbonds), &hbonds );
-    }
-}
 
 
 extern "C"
@@ -45,7 +24,8 @@ void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 }
 
 
-CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, int N )
+CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sbp,
+        int * hindex, int N )
 {
     int i;
 
@@ -56,95 +36,44 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, int N )
         return;
     }
 
+    if ( sbp[ my_atoms[i].type ].p_hbond == H_ATOM ||
+      sbp[ my_atoms[i].type ].p_hbond == H_BONDING_ATOM )
+    {
+        hindex[i] = 1;
+    }
+    else
+    {
+        hindex[i] = 0;
+    }
+
+//    my_atoms[i].Hindex = hindex[i];
     my_atoms[i].Hindex = i;
 }
 
 
 void Cuda_Reset_Atoms( reax_system* system, control_params *control )
 {
-    int i;
-    reax_atom *atom;
     int blocks;
+    int *hindex;
 
-    /*
-       if( control->hbond_cut > 0 ) 
-    //TODO
-    for( i = 0; i < system->N; ++i ) { 
-    atom = &(system->my_atoms[i]);
-    //if( system->reax_param.sbp[ atom->type ].p_hbond == 1 ) 
-    atom->Hindex = system->numH++;
-    //else atom->Hindex = -1; 
-    }   
-    //TODO
-     */
-    ////////////////////////////////
-    ////////////////////////////////
-    ////////////////////////////////
-    ////////////////////////////////
-    // FIX - 3 - Commented out this line for Hydrogen Bond fix
-    // FIX - HBOND ISSUE
-    // FIX - HBOND ISSUE
-    // FIX - HBOND ISSUE
-    // COMMENTED OUT THIS LINE BELOW
-    //system->numH = system->N;
-    // FIX - HBOND ISSUE
-    // FIX - HBOND ISSUE
-    // FIX - HBOND ISSUE
-    ////////////////////////////////
-    ////////////////////////////////
-    ////////////////////////////////
-    ////////////////////////////////
-    ////////////////////////////////
+    hindex = (int *) scratch;
+    cuda_memset( scratch, 0, system->N * sizeof(int),
+           "Cuda_Reset_Atoms::scratch" );
 
     blocks = system->N / DEF_BLOCK_SIZE + 
         ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+
     k_reset_hindex <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->N );
+        ( system->d_my_atoms, system->reax_param.d_sbp, hindex + 1, system->N );
     cudaThreadSynchronize( );
     cudaCheckError( );
-}
 
+    Cuda_Reduction_Sum( hindex, system->d_numH, system->N );
 
-int Cuda_Reset_Neighbor_Lists( reax_system *system, control_params *control,
-        storage *workspace, reax_list **lists )
-{
-    int total_hbonds;
-    reax_list *hbonds;
-    int blocks;
+    copy_host_device( &(system->numH), system->d_numH, sizeof(int), 
+            cudaMemcpyDeviceToHost, "Cuda_Reset_Atoms::d_numH" );
 
-    //HBonds processing
-    //FIX - 4 - Added additional check
-    if ( control->hbond_cut > 0.0 && system->numH > 0 )
-    {
-        hbonds = (*dev_lists) + HBONDS;
-        total_hbonds = 0;
-
-        /* reset start-end indexes */
-        //TODO
-        blocks = system->N / DEF_BLOCK_SIZE + 
-            ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
-        k_reset_hbond_list <<< blocks, DEF_BLOCK_SIZE >>>
-            ( system->d_my_atoms, *(*dev_lists + HBONDS), system->N );
-        cudaThreadSynchronize( );
-        cudaCheckError( );
-
-        //TODO compute the total hbonds here
-        total_hbonds = 0;
-
-        /* is reallocation needed? */
-        if ( total_hbonds >= hbonds->num_intrs * DANGER_ZONE )
-        {
-            workspace->realloc.hbonds = 1;
-            if ( total_hbonds >= hbonds->num_intrs )
-            {
-                fprintf( stderr, "p%d: not enough space for hbonds! total=%d allocated=%d\n",
-                        system->my_rank, total_hbonds, hbonds->num_intrs );
-                return FAILURE;
-            }
-        }
-    }
-
-    return SUCCESS;
+    system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
 }
 
 
@@ -161,8 +90,6 @@ void Cuda_Reset( reax_system *system, control_params *control,
     }
 
     Cuda_Reset_Workspace( system, workspace );
-
-    Cuda_Reset_Neighbor_Lists( system, control, workspace, lists );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );

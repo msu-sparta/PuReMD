@@ -45,20 +45,20 @@ static inline CUDA_HOST_DEVICE int index_tbp( int i, int j, int num_atom_types )
 /* Indexing routine for three body parameters */
 static inline CUDA_HOST_DEVICE int index_thbp( int i, int j, int k, int num_atom_types )
 {
-    return (i * num_atom_types * num_atom_types ) + (j * num_atom_types ) + k;
+    return (i * num_atom_types * num_atom_types) + (j * num_atom_types) + k;
 }
 
 /* Indexing routine for hydrogen bonding parameters */
 static inline CUDA_HOST_DEVICE int index_hbp( int i, int j, int k, int num_atom_types )
 {
-    return (i * num_atom_types * num_atom_types ) + (j * num_atom_types ) + k;
+    return (i * num_atom_types * num_atom_types) + (j * num_atom_types) + k;
 }
 
 /* Indexing routine for four body parameters */
 static inline CUDA_HOST_DEVICE int index_fbp( int i, int j, int k, int l, int num_atom_types )
 {
-    return (i * num_atom_types * num_atom_types * num_atom_types ) +
-        (j * num_atom_types * num_atom_types ) + (k * num_atom_types ) + l;
+    return (i * num_atom_types * num_atom_types * num_atom_types) +
+        (j * num_atom_types * num_atom_types) + (k * num_atom_types) + l;
 }
 
 /* Indexing routine for LR table (force tabulation) */
