@@ -76,7 +76,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
     {
         for ( i = 0; i < 3; i++ )
         {
-            c[i] = (int)((my_atoms[l].x[i]- my_ext_box.min[i])*g.inv_len[i]);   
+            c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
             if ( c[i] >= g.native_end[i] )
             {
                 c[i] = g.native_end[i] - 1;
@@ -240,7 +240,7 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
     {
         for ( i = 0; i < 3; i++ )
         {
-            c[i] = (int)((my_atoms[l].x[i]- my_ext_box.min[i])*g.inv_len[i]);   
+            c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
             if ( c[i] >= g.native_end[i] )
             {
                 c[i] = g.native_end[i] - 1;
@@ -370,13 +370,14 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
                     //got the indices
                     nbr_data = my_start + nbrssofar[my_bucket] + tnbr[threadIdx.x] - 1;
                     nbr_data->nbr = m;
+
                     if ( l < m )
                     {
                         dvec[0] = atom2->x[0] - atom1->x[0];
                         dvec[1] = atom2->x[1] - atom1->x[1];
                         dvec[2] = atom2->x[2] - atom1->x[2];
                         d = rvec_Norm_Sqr( dvec );
-                        nbr_data->d = SQRT(d);
+                        nbr_data->d = SQRT( d );
                         rvec_Copy( nbr_data->dvec, dvec );
                         ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
                                 -1, g.rel_box[index_grid_3d(i, j, k, &g)] );
@@ -387,7 +388,7 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
                         dvec[1] = atom1->x[1] - atom2->x[1];
                         dvec[2] = atom1->x[2] - atom2->x[2];
                         d = rvec_Norm_Sqr( dvec );
-                        nbr_data->d = SQRT(d);
+                        nbr_data->d = SQRT( d );
                         rvec_Copy( nbr_data->dvec, dvec );
                         /*
                            CHANGE ORIGINAL
@@ -437,24 +438,24 @@ void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 #endif
 
     /* one thread per atom implementation */
-//    blocks = (system->N / NBRS_BLOCK_SIZE) +
-//        ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-//    k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
-//        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-//          *(*dev_lists + FAR_NBRS), system->n, system->N );
-//    cudaThreadSynchronize( );
-//    cudaCheckError( );
-
-    /* multiple threads per atom implementation */
-    blocks = ((system->N * NB_KER_THREADS_PER_ATOM) / NBRS_BLOCK_SIZE) + 
-        (((system->N * NB_KER_THREADS_PER_ATOM) % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-    k_mt_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE, 
-        //sizeof(int) * (NBRS_BLOCK_SIZE + NBRS_BLOCK_SIZE / NB_KER_THREADS_PER_ATOM) >>>
-        sizeof(int) * 2 * NBRS_BLOCK_SIZE >>>
-            ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-              *(*dev_lists + FAR_NBRS), system->n, system->N );
+    blocks = (system->N / NBRS_BLOCK_SIZE) +
+        ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+    k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
+        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+          *(*dev_lists + FAR_NBRS), system->n, system->N );
     cudaThreadSynchronize( );
     cudaCheckError( );
+
+    /* multiple threads per atom implementation */
+//    blocks = ((system->N * NB_KER_THREADS_PER_ATOM) / NBRS_BLOCK_SIZE) + 
+//        (((system->N * NB_KER_THREADS_PER_ATOM) % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+//    k_mt_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE, 
+//        //sizeof(int) * (NBRS_BLOCK_SIZE + NBRS_BLOCK_SIZE / NB_KER_THREADS_PER_ATOM) >>>
+//        sizeof(int) * 2 * NBRS_BLOCK_SIZE >>>
+//            ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+//              *(*dev_lists + FAR_NBRS), system->n, system->N );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
 
 #if defined(LOG_PERFORMANCE)
     if( system->my_rank == MASTER_NODE )

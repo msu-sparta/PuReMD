@@ -326,6 +326,7 @@ int main( int argc, char* argv[] )
 #if defined(__CUDA_DEBUG__)
     Reset( system, control, data, workspace, lists );
 #endif
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: Cuda_Reset done...\n", system->my_rank );
 #endif
@@ -400,13 +401,11 @@ int main( int argc, char* argv[] )
     retries = 0;
     while ( data->step <= control->nsteps && retries < MAX_RETRIES )
     {
-        fprintf( stderr, "[BEGIN] STEP %d\n", data->step );
         ret = SUCCESS;
 
         if ( control->T_mode && retries == 0 )
         {
             Temperature_Control( control, data );
-            fprintf( stderr, "  [TEMPERATURE CONTROL] STEP %d\n", data->step );
         }
 
 #if defined(DEBUG)
@@ -418,7 +417,6 @@ int main( int argc, char* argv[] )
 #endif
     
         ret = Cuda_Evolve( system, control, data, workspace, lists, out_control, mpi_data );
-        fprintf( stderr, "[EVOLVE] STEP %d\n", data->step );
     
 #if defined(DEBUG)
         t_end = Get_Timing_Info( t_begin );
@@ -434,7 +432,6 @@ int main( int argc, char* argv[] )
             ret = Cuda_Post_Evolve( system, control, data, workspace, lists,
                     out_control, mpi_data );
         }
-        fprintf( stderr, "[POST EVOLVE] STEP %d\n", data->step );
 
 #if defined(__CUDA_DEBUG__)
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
@@ -484,13 +481,14 @@ int main( int argc, char* argv[] )
         else
         {
             ++retries;
-            fprintf( stderr, "INFO: retrying step %d...\n", data->step );
+            fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
         }
     }
 
     if ( retries >= MAX_RETRIES )
     {
-        fprintf( stderr, "Maximum retries reached for this step. Terminating...\n" );
+        fprintf( stderr, "Maximum retries reached for this step (%d). Terminating...\n",
+              retries );
         MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
     }
 
@@ -635,7 +633,7 @@ int main( int argc, char* argv[] )
         else
         {
             ++retries;
-            fprintf( stderr, "INFO: retrying step %d...\n", data->step );
+            fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
         }
     }
 

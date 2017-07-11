@@ -568,7 +568,7 @@ void Cuda_RvecCopy_To(rvec2 *dst, real *src, int index, int n)
 }
 
 
-void Cuda_Dual_Matvec(sparse_matrix *H, rvec2 *a, rvec2 *b, int n, int size)
+void Cuda_Dual_Matvec( sparse_matrix *H, rvec2 *a, rvec2 *b, int n, int size )
 {
     int blocks;
 
@@ -590,14 +590,13 @@ void Cuda_Dual_Matvec(sparse_matrix *H, rvec2 *a, rvec2 *b, int n, int size)
     k_dual_matvec_csr <<< MATVEC_BLOCKS, MATVEC_BLOCK_SIZE,
                       sizeof(rvec2) * MATVEC_BLOCK_SIZE >>>
 #endif
-                      (*H, a, b, n);
-
+            ( *H, a, b, n );
     cudaThreadSynchronize( );
     cudaCheckError( );
 }
 
 
-void Cuda_Matvec(sparse_matrix *H, real *a, real *b, int n, int size)
+void Cuda_Matvec( sparse_matrix *H, real *a, real *b, int n, int size )
 {
     int blocks;
 

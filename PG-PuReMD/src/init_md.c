@@ -107,11 +107,12 @@ void Generate_Initial_Velocities( reax_system *system, real T )
     int i;
     real m, scale, norm;
 
-
     if ( T <= 0.1 )
     {
         for ( i = 0; i < system->n; i++ )
+        {
             rvec_MakeZero( system->my_atoms[i].v );
+        }
     }
     else
     {
@@ -248,7 +249,6 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     int nrecv[MAX_NBRS];
 
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
-    fprintf( stderr, "    [SETUP NEW GRID]\n" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d GRID:\n", system->my_rank );
@@ -256,9 +256,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 #endif
 
     Bin_My_Atoms( system, &(workspace->realloc) );
-    fprintf( stderr, "    [BIN MY ATOMS]\n" );
     Reorder_My_Atoms( system, workspace );
-    fprintf( stderr, "    [REORDER MY ATOMS]\n" );
 
     /* estimate N and total capacity */
     for ( i = 0; i < MAX_NBRS; ++i )
@@ -270,16 +268,12 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     system->max_recved = 0;
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
             Estimate_Boundary_Atoms, Unpack_Estimate_Message, TRUE );
-    fprintf( stderr, "    [SEND_RECV:ESTIMATE_BOUNDARY_ATOMS]\n" );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
-    fprintf( stderr, "    [BIN_BOUNDARY_ATOMS]\n" );
 
     /* Sync atoms here to continue the computation */
     dev_alloc_system( system );
-    fprintf( stderr, "    [DEV ALLOC SYSTEM]\n" );
     Sync_System( system );
-    fprintf( stderr, "    [SYNC SYSTEM]\n" );
 
     /* estimate numH and Hcap */
     Cuda_Reset_Atoms( system, control );
@@ -294,10 +288,8 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 #endif
 
     Cuda_Compute_Total_Mass( system, data, mpi_data->comm_mesh3D );
-    fprintf( stderr, "    [CUDA COMPUTE TOTAL MASS]\n" );
 
     Cuda_Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
-    fprintf( stderr, "    [CUDA COMPUTE CENTER OF MASS]\n" );
 
 //    if( Reposition_Atoms( system, control, data, mpi_data, msg ) == FAILURE )
 //    {
@@ -308,11 +300,9 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     if ( !control->restart || (control->restart && control->random_vel) )
     {
         Generate_Initial_Velocities( system, control->T_init );
-        fprintf( stderr, "    [GENERATE INITIAL VELOCITIES]\n" );
     }
 
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-    fprintf( stderr, "    [CUDA COMPUTE K.E.]\n" );
 
     return SUCCESS;
 }
@@ -1138,7 +1128,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
                  system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
-    fprintf( stderr, "  [INIT MPI DATATYPES]\n" );
 
     /* SYSTEM */
     if ( Cuda_Init_System( system, control, data, workspace, mpi_data, msg ) == FAILURE )
@@ -1148,22 +1137,18 @@ void Cuda_Initialize( reax_system *system, control_params *control,
                  system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
-    fprintf( stderr, "  [CUDA INIT SYSTEM]\n" );
 
     /* GRID */
     dev_alloc_grid( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
-    fprintf( stderr, "  [DEV ALLOC GRID]\n" );
 
     //validate_grid( system );
 
     /* SIMULATION_DATA */
     Cuda_Init_Simulation_Data( system, control, data, msg );
-    fprintf( stderr, "  [CUDA INIT SIMULATION DATA]\n" );
 
     /* WORKSPACE */
     Cuda_Init_Workspace( system, control, workspace, msg );
-    fprintf( stderr, "  [CUDA INIT WORKSPACE]\n" );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized workspace\n", system->my_rank );
@@ -1173,7 +1158,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 
     /* CONTROL */
     dev_alloc_control( control );
-    fprintf( stderr, "  [DEV ALLOC CONTROL]\n" );
 
     /* LISTS */
     if ( Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data, msg ) ==
@@ -1184,7 +1168,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
                  system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
-    fprintf( stderr, "  [CUDA INIT LISTS]\n" );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized lists\n", system->my_rank );
@@ -1198,7 +1181,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
                  system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
-    fprintf( stderr, "  [INIT OUTPUT FILES]\n" );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: output files opened\n", system->my_rank );
@@ -1214,7 +1196,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
                      system->my_rank );
             MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
         }
-        fprintf( stderr, "  [INIT LOOKUP TABLES]\n" );
 
 #if defined(DEBUG)
         fprintf( stderr, "p%d: initialized lookup tables\n", system->my_rank );

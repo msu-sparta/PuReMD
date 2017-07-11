@@ -366,14 +366,12 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     ret = SUCCESS;
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
-    fprintf( stderr, "  [CUDA_REALLOCATE] STEP %d\n", data->step );
 
     if ( verlet_part1_done == FALSE )
     {
         /* velocity verlet, 1st part */
         bNVT_update_velocity_part1( system, dt );
         verlet_part1_done = TRUE;
-        fprintf( stderr, "  [bNVT_UPDATE_VEL_PART1] STEP %d\n", data->step );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
@@ -383,19 +381,14 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         if ( renbr )
         {
             Update_Grid( system, control, mpi_data->world );
-            fprintf( stderr, "  [UPDATE_GRID] STEP %d\n", data->step );
         }
 
         Output_Sync_Atoms( system );
-        fprintf( stderr, "  [OUTPUT_SYNC_ATOMS] STEP %d\n", data->step );
         Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
-        fprintf( stderr, "  [COMM_ATOMS] STEP %d\n", data->step );
         Sync_Atoms( system );
-        fprintf( stderr, "  [SYNC_ATOMS] STEP %d\n", data->step );
 
         /* synch the Grid to the Device here */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
-        fprintf( stderr, "  [SYNC_GRID] STEP %d\n", data->step );
 
         init_blocks( system );
 
@@ -406,7 +399,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     }
     
     Cuda_Reset( system, control, data, workspace, lists );
-    fprintf( stderr, "  [CUDA_RESET] STEP %d\n", data->step );
 
     if ( renbr )
     {
@@ -419,7 +411,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
             //TODO: move far_nbrs reallocation checks outside of renbr frequency check
             ret = Cuda_Estimate_Neighbors( system, data->step );
             estimate_nbrs_done = 1;
-            fprintf( stderr, "  [CUDA_ESTIMATE_NEIGHBORS: %d] STEP %d\n", ret, data->step );
         }
 
         if ( ret == SUCCESS && estimate_nbrs_done == 1 )
@@ -439,14 +430,12 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     {
         ret = Cuda_Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
-        fprintf( stderr, "  [CUDA_COMPUTE_FORCES: %d] STEP %d\n", ret, data->step );
     }
 
     if ( ret == SUCCESS )
     {
         /* velocity verlet, 2nd part */
         bNVT_update_velocity_part2( system, dt );
-        fprintf( stderr, "  [bNVT_UPDATE_VEL_PART2] STEP %d\n", data->step );
 
 #if defined(DEBUG_FOCUS)
         fprintf(stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step);
@@ -455,7 +444,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
         /* temperature scaler */
         Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-        fprintf( stderr, "  [CUDA_COMPUTE_KINETIC_ENERGY] STEP %d\n", data->step );
 
         lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
         if ( lambda < MIN_dT )

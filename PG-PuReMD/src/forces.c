@@ -87,6 +87,7 @@ void Init_Force_Functions( control_params *control )
     Interaction_Functions[0] = BO;
     Interaction_Functions[1] = Bonds; //Dummy_Interaction;
     Interaction_Functions[2] = Atom_Energy; //Dummy_Interaction;
+    Interaction_Functions[2] = Atom_Energy; //Dummy_Interaction;
     Interaction_Functions[3] = Valence_Angles; //Dummy_Interaction;
     Interaction_Functions[4] = Torsion_Angles; //Dummy_Interaction;
     if ( control->hbond_cut > 0.0 )
@@ -1882,7 +1883,6 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
     if ( charge_flag == TRUE )
     {
         retVal = Cuda_Init_Forces( system, control, data, workspace, lists, out_control );
-        fprintf( stderr, "    [CUDA_INIT_FORCES: %d] STEP %d\n", retVal, data->step );
 
 //        int i;
 //        static reax_list **temp_lists;
@@ -1936,7 +1936,6 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 
         /********* bonded interactions ************/
         retVal = Cuda_Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
-        fprintf( stderr, "    [CUDA_COMPUTE_BONDED_FORCES: %d] STEP %d\n", retVal, data->step );
 
 #if defined(LOG_PERFORMANCE)
         //MPI_Barrier( MPI_COMM_WORLD );
@@ -1960,7 +1959,6 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         if ( charge_flag == TRUE )
         {
             Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
-            fprintf( stderr, "    [CUDA_QEQ: %d] STEP %d\n", retVal, data->step );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -1980,7 +1978,6 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         /********* nonbonded interactions ************/
         Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
-        fprintf( stderr, "    [CUDA_COMPUTE_NONBONDED_FORCES: %d] STEP %d\n", retVal, data->step );
 
 #if defined(LOG_PERFORMANCE)
         //MPI_Barrier( MPI_COMM_WORLD );
@@ -1997,7 +1994,6 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 
         /*********** total force ***************/
         Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
-        fprintf( stderr, "    [CUDA_COMPUTE_TOTAL_FORCE: %d] STEP %d\n", retVal, data->step );
 
 #if defined(LOG_PERFORMANCE)
         //MPI_Barrier( MPI_COMM_WORLD );
@@ -2011,7 +2007,10 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
                 system->my_rank, data->step );
         //Print_Total_Force( system, data, workspace );
         MPI_Barrier( MPI_COMM_WORLD );
+
 #endif
+
+//        Print_Forces( system );
     }
 
     return retVal;

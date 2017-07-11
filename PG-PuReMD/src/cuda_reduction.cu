@@ -41,7 +41,7 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
 
     /* allocate temporary storage */
     cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "cub::sum::temp_storage" );
+            "Cuda_Reduction_Sum::temp_storage" );
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
@@ -50,7 +50,7 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "cub::sum::temp_storage" );
+    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::temp_storage" );
 }
 
 
@@ -71,7 +71,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
 
     /* allocate temporary storage */
     cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "cub::sum::temp_storage" );
+            "Cuda_Reduction_Sum::temp_storage" );
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
@@ -80,7 +80,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "cub::sum::temp_storage" );
+    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::temp_storage" );
 }
 
 
@@ -133,7 +133,7 @@ void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n )
 
     /* allocate temporary storage */
     cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "cub::max::temp_storage" );
+            "Cuda_Reduction_Max::temp_storage" );
 
     /* run exclusive prefix sum */
     cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
@@ -142,7 +142,7 @@ void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "cub::max::temp_storage" );
+    cuda_free( d_temp_storage, "Cuda_Reduction_Max::temp_storage" );
 }
 
 
@@ -163,7 +163,7 @@ void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n )
 
     /* allocate temporary storage */
     cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "cub::devicescan::temp_storage" );
+            "Cuda_Scan_Excl_Sum::temp_storage" );
 
     /* run exclusive prefix sum */
     cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
@@ -172,7 +172,7 @@ void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "cub::devicescan::temp_storage" );
+    cuda_free( d_temp_storage, "Cuda_Scan_Excl_Sum::temp_storage" );
 }
 
 

@@ -24,6 +24,7 @@
 
 #include "reax_types.h"
 
+
 int Init_Output_Files( reax_system*, control_params*,
                        output_controls*, mpi_datatypes*, char* );
 int Close_Output_Files( reax_system*, control_params*,
@@ -106,4 +107,6 @@ void Print_Bond_List( reax_system*, control_params*, simulation_data*,
                       reax_list**, output_controls*);
 
 #endif
+
+
 #endif

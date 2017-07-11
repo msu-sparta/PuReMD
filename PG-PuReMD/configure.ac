@@ -13,20 +13,22 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERB
 
 AC_CONFIG_MACRO_DIR([../m4])
 
-AC_LANG([C])
-
-AC_CONFIG_SRCDIR([src/torsion_angles.h])
-AC_CONFIG_HEADERS([src/config.h])
-
 # Headline formatter
 AC_DEFUN([CONFIGURE_HEADLINE],
 [
         echo; echo "+++ $1 +++"
 ])
 
+AC_LANG([C])
+
 # Checks for programs.
 AC_PROG_CC([icc gcc cc])
 AC_PROG_CPP
+
+AX_COMPILER_VENDOR
+
+AC_CONFIG_SRCDIR([src/torsion_angles.h])
+AC_CONFIG_HEADERS([src/config.h])
 
 # Checks for libraries.
 AC_SEARCH_LIBS([exp], [m])
@@ -111,11 +113,24 @@ fi
 AC_SUBST(MPI_CFLAGS)
 AC_SUBST(MPI_LIBS)
 
+AC_LANG([C++])
+
+# Checks for programs.
+AC_PROG_CXX([icpc g++ c++])
+AC_PROG_CXXCPP
+
+AX_COMPILER_VENDOR
+
 # Check for CUDA support.
 if test "x$BUILD_GPU" = "xyes"; then
 	CONFIGURE_HEADLINE([ CUDA support ])
 	AX_CUDA
+
         NVCCFLAGS=
+	if test "$ax_cv_cxx_compiler_vendor" = "intel"
+	then
+		NVCCFLAGS+=" -ccbin=icpc"
+	fi
 	if test "BUILD_DEBUG" = "true"
 	then
 		NVCCFLAGS+=" -g -G"

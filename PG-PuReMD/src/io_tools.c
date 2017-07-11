@@ -1190,7 +1190,7 @@ void Output_Results( reax_system *system, control_params *control,
                 out_control->energy_update_freq > 0 &&
                 data->step % out_control->energy_update_freq == 0 )
         {
-#if !defined(DEBUG) && !defined(DEBUG_FOCUS)
+#if defined(DEBUG) && defined(DEBUG_FOCUS)
             fprintf( out_control->out,
                      "%-6d%14.2f%14.2f%14.2f%11.2f%13.2f%13.5f\n",
                      data->step, data->sys_en.e_tot, data->sys_en.e_pot,

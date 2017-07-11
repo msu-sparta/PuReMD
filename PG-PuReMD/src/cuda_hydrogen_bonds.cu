@@ -657,8 +657,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
     workspace = &p_workspace;
     hbonds = &p_hbonds;
 
-    start = Dev_Start_Index( i, hbonds );
-    end = Dev_End_Index( i, hbonds );
+    start = Dev_Start_Index( atoms[i].Hindex, hbonds );
+    end = Dev_End_Index( atoms[i].Hindex, hbonds );
     pj = start + threadIdx.x;
 #if defined(__SM_35__)
     rvec_MakeZero( __f );
@@ -682,8 +682,10 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
         pj += blockDim.x;
     }
 
+    __syncthreads( );
+
 #if defined(__SM_35__)
-    for ( int s = 16; s >= 1; s/=2 )
+    for ( int s = 16; s >= 1; s /= 2 )
     {
         __f[0] += shfl( __f[0], s );
         __f[1] += shfl( __f[1], s );
@@ -699,22 +701,31 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 16] );
     }
+    __syncthreads( );
+
     if ( threadIdx.x < 8 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 8] );
     }
+    __syncthreads( );
+
     if ( threadIdx.x < 4 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 4] );
     }
+    __syncthreads( );
+
     if ( threadIdx.x < 2 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 2] );
     }
+    __syncthreads( );
+
     if ( threadIdx.x < 1 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 1] );
     }
+    __syncthreads( );
 
     if ( threadIdx.x == 0 )
     {
@@ -757,8 +768,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
     workspace = &( p_workspace );
     hbonds = &p_hbonds;
     i = group_id;
-    start = Dev_Start_Index( i, hbonds );
-    end = Dev_End_Index( i, hbonds );
+    start = Dev_Start_Index( atoms[i].Hindex, hbonds );
+    end = Dev_End_Index( atoms[i].Hindex, hbonds );
     pj = start + lane_id;
 #if defined(__SM_35__)
     rvec_MakeZero( __f );
@@ -781,6 +792,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
         pj += __THREADS_PER_ATOM__;
     }
 
+    __syncthreads( );
+
 #if defined(__SM_35__)
     for ( s = __THREADS_PER_ATOM__ >> 1; s >= 1; s /= 2 )
     {
@@ -798,22 +811,31 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 16] );
     }
+    __syncthreads( );
+
     if ( lane_id < 8 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 8] );
     }
+    __syncthreads( );
+
     if ( lane_id < 4 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 4] );
     }
+    __syncthreads( );
+
     if ( lane_id < 2 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 2] );
     }
+    __syncthreads( );
+
     if ( lane_id < 1 )
     {
         rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 1] );
     }
+    __syncthreads( );
 
     if ( lane_id == 0 )
     {

@@ -66,13 +66,19 @@ void dev_alloc_grid( reax_system *system )
     ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
     ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
-    cuda_malloc( (void **) &device->str, sizeof(int) * total, TRUE, "grid:str" );
-    cuda_malloc( (void **) &device->end, sizeof(int) * total, TRUE, "grid:end" );
-    cuda_malloc( (void **) &device->cutoff, sizeof(real) * total, TRUE, "grid:cutoff" );
+    cuda_malloc( (void **) &device->str, sizeof(int) * total, TRUE,
+            "dev_alloc_grid::grid->str" );
+    cuda_malloc( (void **) &device->end, sizeof(int) * total, TRUE,
+            "dev_alloc_grid::grid->end" );
+    cuda_malloc( (void **) &device->cutoff, sizeof(real) * total, TRUE,
+            "dev_alloc_grid::grid->cutoff" );
 
-    cuda_malloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs, TRUE, "grid:nbrs_x" );
-    cuda_malloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs, TRUE, "grid:nbrs_cp" );
-    cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total, TRUE, "grid:rel_box" );
+    cuda_malloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs,
+            TRUE, "dev_alloc_grid::grid->nbrs_x" );
+    cuda_malloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs,
+            TRUE, "dev_alloc_grid::grid->nbrs_cp" );
+    cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total,
+            TRUE, "dev_alloc_grid::grid->rel_box" );
 
     /*
        int block_size = 512;
@@ -129,8 +135,10 @@ void dev_dealloc_grid_cell_atoms( reax_system *system )
     for (int i = 0; i < total; i++)
     {
         copy_host_device( &local_cell, &device->cells[i], 
-                sizeof(grid_cell), cudaMemcpyDeviceToHost, "grid:cell-dealloc" );
-        cuda_free( local_cell.atoms, "grid_cell:atoms" );
+                sizeof(grid_cell), cudaMemcpyDeviceToHost,
+                "dev_dealloc_grid_cell_atoms::grid" );
+        cuda_free( local_cell.atoms,
+                "dev_dealloc_grid_cell_atoms::grid_cell.atoms" );
     }
 }
 
@@ -239,31 +247,63 @@ void dev_alloc_system( reax_system *system )
 
 void dev_realloc_system( reax_system *system, int local_cap, int total_cap, char *msg )
 {
+    int *temp;
+
+    temp = (int *) scratch;
+
     /* free the existing storage for atoms, leave other info allocated */
     cuda_free( system->d_my_atoms, "system::d_my_atoms" );
     cuda_malloc( (void **) &system->d_my_atoms, sizeof(reax_atom) * total_cap, 
             TRUE, "system::d_my_atoms" );
 
+    //TODO: record old total_cap before increase, use here
+    copy_device( temp, system->d_far_nbrs, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
     cuda_free( system->d_far_nbrs, "system::d_far_nbrs" );
     cuda_malloc( (void **) &system->d_far_nbrs,
             system->total_cap * sizeof(int), TRUE, "system::d_far_nbrs" );
+    copy_device( system->d_far_nbrs, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
+
+    copy_device( temp, system->d_max_far_nbrs, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
     cuda_free( system->d_max_far_nbrs, "system::d_max_far_nbrs" );
     cuda_malloc( (void **) &system->d_max_far_nbrs,
             system->total_cap * sizeof(int), TRUE, "system::d_max_far_nbrs" );
+    copy_device( system->d_max_far_nbrs, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
 
+    copy_device( temp, system->d_bonds, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
     cuda_free( system->d_bonds, "system::d_bonds" );
     cuda_malloc( (void **) &system->d_bonds,
             system->total_cap * sizeof(int), TRUE, "system::d_bonds" );
+    copy_device( system->d_bonds, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
+
+    copy_device( temp, system->d_max_bonds, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
     cuda_free( system->d_max_bonds, "system::d_max_bonds" );
     cuda_malloc( (void **) &system->d_max_bonds,
             system->total_cap * sizeof(int), TRUE, "system::d_max_bonds" );
+    copy_device( system->d_max_bonds, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
 
+    copy_device( temp, system->d_hbonds, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
     cuda_free( system->d_hbonds, "system::d_hbonds" );
     cuda_malloc( (void **) &system->d_hbonds,
             system->total_cap * sizeof(int), TRUE, "system::d_hbonds" );
+    copy_device( system->d_hbonds, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
+
+    copy_device( temp, system->d_max_hbonds, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
     cuda_free( system->d_max_hbonds, "system::d_max_hbonds" );
     cuda_malloc( (void **) &system->d_max_hbonds,
             system->total_cap * sizeof(int), TRUE, "system::d_max_hbonds" );
+    copy_device( system->d_max_hbonds, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
 }
 
 
@@ -626,7 +666,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
             realloc->far_nbrs = FALSE;
         }
     }
-    fprintf( stderr, "    [CUDA_REALLOCATE::far nbrs]\n" );
 
     /* charge coef matrix */
     //if( nflag || realloc->Htop >= system->max_sparse_entries * DANGER_ZONE ) {
@@ -673,7 +712,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //workspace->U = NULL;
         realloc->Htop = 0;
     }
-    fprintf( stderr, "    [CUDA_REALLOCATE::charge matrix\n" );
 
     /* hydrogen bonds list */
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
@@ -692,7 +730,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
             realloc->hbonds = FALSE;
         }
     }
-    fprintf( stderr, "    [CUDA_REALLOCATE::hbonds\n" );
 
     /* bonds list */
     if ( Nflag == TRUE || realloc->bonds == TRUE )
@@ -707,7 +744,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         Cuda_Init_Bond_Indices( system );
         realloc->bonds = FALSE;
     }
-    fprintf( stderr, "    [CUDA_REALLOCATE::bonds\n" );
 
     /* 3-body list */
     if ( Nflag == TRUE || realloc->num_3body > 0 )
@@ -723,7 +759,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                 (*dev_lists + BONDS)->num_intrs, system->total_thbodies );
         realloc->num_3body = -1;
     }
-    fprintf( stderr, "    [CUDA_REALLOCATE::thbody\n" );
 
     /* grid */
     if ( renbr && realloc->gcell_atoms > -1 )
@@ -752,11 +787,10 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
 
         //FIX - 1 - Tested the reallocation logic
-        //dev_dealloc_grid_cell_atoms (system);
-        //dev_alloc_grid_cell_atoms (system, realloc->gcell_atoms);
+        //dev_dealloc_grid_cell_atoms( system );
+        //dev_alloc_grid_cell_atoms( system, realloc->gcell_atoms );
         realloc->gcell_atoms = -1;
     }
-    fprintf( stderr, "    [CUDA_REALLOCATE::grid\n" );
 
     /* mpi buffers */
     // we have to be at a renbring step -
@@ -829,7 +863,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         Deallocate_MPI_Buffers( mpi_data );
         Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs, msg );
     }
-    fprintf( stderr, "    [CUDA_REALLOCATE::MPI buffers\n" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: reallocate done\n",

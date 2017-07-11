@@ -152,45 +152,40 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
             i = pbond_ij->nbr;
             r_ij = pbond_ij->d;
             type_i = my_atoms[i].type;
-            // fprintf( out_control->eval, "i: %d\n", i );
 
             /* first copy 3-body intrs from previously computed ones where i>k.
                in the second for-loop below,
                we compute only new 3-body intrs where i < k */
-            /*
+
             // The copy loop commented out because strange asynchronous issues started to surface
             // Each kernel now manually generates everything
-
-            for( pk = start_j; pk < pi; ++pk ) {
-
-            //printf("%d,%d \n", j, pk );
-
-            // fprintf( out_control->eval, "pk: %d\n", pk );
-            start_pk = Dev_Start_Index( pk, thb_intrs );
-            end_pk = Dev_End_Index( pk, thb_intrs );
-
-            for( t = start_pk; t < end_pk; ++t )
-            if( thb_intrs->select.three_body_list[t].thb == i ) {
-            p_ijk = &(thb_intrs->select.three_body_list[num_thb_intrs] );
-            p_kji = &(thb_intrs->select.three_body_list[t]);
-
-            p_ijk->thb = bonds->select.bond_list[pk].nbr;
-            p_ijk->pthb  = pk;
-            p_ijk->theta = p_kji->theta;
-            rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
-            rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
-            rvec_Copy( p_ijk->dcos_dk, p_kji->dcos_di );
-
-            ++num_thb_intrs;
-            printf("\n");
-            break;
-            }
-            }
-             */
+//            for( pk = start_j; pk < pi; ++pk )
+//            {
+//                start_pk = Dev_Start_Index( pk, thb_intrs );
+//                end_pk = Dev_End_Index( pk, thb_intrs );
+//
+//                for( t = start_pk; t < end_pk; ++t )
+//                {
+//                    if( thb_intrs->select.three_body_list[t].thb == i )
+//                    {
+//                        p_ijk = &(thb_intrs->select.three_body_list[num_thb_intrs] );
+//                        p_kji = &(thb_intrs->select.three_body_list[t]);
+//
+//                        p_ijk->thb = bonds->select.bond_list[pk].nbr;
+//                        p_ijk->pthb  = pk;
+//                        p_ijk->theta = p_kji->theta;
+//                        rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
+//                        rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
+//                        rvec_Copy( p_ijk->dcos_dk, p_kji->dcos_di );
+//
+//                        ++num_thb_intrs;
+//                        break;
+//                    }
+//                }
+//            }
 
             /* and this is the second for loop mentioned above */
             //for( pk = pi+1; pk < end_j; ++pk ) {
-
             // Except that now the loop goes all the way from start_j to end_j
             for( pk = start_j; pk < end_j; ++pk )
             {
@@ -239,26 +234,10 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                         bo_ij->BO * bo_jk->BO > SQR(control->thb_cut) )
                 {
                     r_jk = pbond_jk->d;
-                    thbh = &( d_thbh[ index_thbp (type_i,type_j,type_k,num_atom_types) ] );
-
-                    /* if( system->my_atoms[i].orig_id < system->my_atoms[k].orig_id )
-                       fprintf( fval, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-                       system->my_atoms[i].orig_id,
-                       system->my_atoms[j].orig_id,
-                       system->my_atoms[k].orig_id,
-                       bo_ij->BO, bo_jk->BO, p_ijk->theta );
-                       else
-                       fprintf( fval, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-                       system->my_atoms[k].orig_id,
-                       system->my_atoms[j].orig_id,
-                       system->my_atoms[i].orig_id,
-                       bo_jk->BO, bo_ij->BO, p_ijk->theta ); */
+                    thbh = &( d_thbh[ index_thbp(type_i, type_j, type_k, num_atom_types) ] );
 
                     for ( cnt = 0; cnt < thbh->cnt; ++cnt )
                     {
-                        // fprintf( out_control->eval, "%6d%6d%6d -- exists in thbp\n",
-                        //          i+1, j+1, k+1 );
-
                         if ( FABS(thbh->prm[cnt].p_val1) > 0.001 )
                         {
                             thbp = &( thbh->prm[cnt] );
@@ -294,7 +273,8 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                             {
                                 expval12theta = p_val1 * (1.0 - expval2theta);
                             }
-                            else // To avoid linear Me-H-Me angles (6/6/06)
+                            // To avoid linear Me-H-Me angles (6/6/06)
+                            else
                             {
                                 expval12theta = p_val1 * -expval2theta;
                             }
@@ -315,8 +295,8 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
                             if ( pk < pi )
                             {
-                                data_e_ang [j] += e_ang =
-                                    f7_ij * f7_jk * f8_Dj * expval12theta;
+                                e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
+                                data_e_ang[j] += e_ang;
 
                             }
                             /* END ANGLE ENERGY*/
@@ -362,14 +342,13 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                             /* Similar to above comment regarding if statement */
                             if ( pk < pi )
                             {
-
                                 e_coa =
                                     p_coa1 / (1. + exp_coa2) *
                                     EXP( -p_coa3 * SQR(workspace->total_bond_order[i]-BOA_ij) ) *
                                     EXP( -p_coa3 * SQR(workspace->total_bond_order[k]-BOA_jk) ) *
                                     EXP( -p_coa4 * SQR(BOA_ij - 1.5) ) *
                                     EXP( -p_coa4 * SQR(BOA_jk - 1.5) );
-                                data_e_coa [j] += e_coa;
+                                data_e_coa[j] += e_coa;
                             }
 
                             CEcoa1 = -2 * p_coa4 * (BOA_ij - 1.5) * e_coa;
@@ -385,20 +364,15 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                             // we must again check for pk<pi for entire forces part
                             if ( pk < pi )
                             {
-                                /*
-                                   bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
-                                   bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
-                                   workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
-                                   workspace->CdDelta[i] += CEcoa4;
-                                   workspace->CdDelta[k] += CEcoa5;
-                                 */
                                 bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
                                 bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
                                 workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
+//                                workspace->CdDelta[i] += CEcoa4;
+//                                workspace->CdDelta[k] += CEcoa5;
                                 pbond_ij->va_CdDelta += CEcoa4;
                                 pbond_jk->va_CdDelta += CEcoa5;
 
-                                for( t = start_j; t < end_j; ++t )
+                                for ( t = start_j; t < end_j; ++t )
                                 {
                                     pbond_jt = &( bonds->select.bond_list[t] );
                                     bo_jt = &(pbond_jt->bo_data);
@@ -406,25 +380,17 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                                     temp = CUBE( temp_bo_jt );
                                     pBOjt7 = temp * temp * temp_bo_jt;
 
-                                    // fprintf( out_control->eval, "%6d%12.8f\n",
-                                    // workspace->reverse_map[bonds->select.bond_list[t].nbr],
-                                    // (CEval6 * pBOjt7) );
-
                                     bo_jt->Cdbo += (CEval6 * pBOjt7);
                                     bo_jt->Cdbopi += CEval5;
                                     bo_jt->Cdbopi2 += CEval5;
                                 }
 
-                                if( control->virial == 0 )
+                                if ( control->virial == 0 )
                                 {
-                                    /*
-                                       rvec_ScaledAdd( workspace->f[i], CEval8, p_ijk->dcos_di );
-                                       rvec_ScaledAdd( workspace->f[j], CEval8, p_ijk->dcos_dj );
-                                       rvec_ScaledAdd( workspace->f[k], CEval8, p_ijk->dcos_dk );
-                                     */
-
+//                                    rvec_ScaledAdd( workspace->f[i], CEval8, p_ijk->dcos_di );
                                     rvec_ScaledAdd( pbond_ij->va_f, CEval8, p_ijk->dcos_di );
                                     rvec_ScaledAdd( workspace->f[j], CEval8, p_ijk->dcos_dj );
+//                                    rvec_ScaledAdd( workspace->f[k], CEval8, p_ijk->dcos_dk );
                                     rvec_ScaledAdd( pbond_jk->va_f, CEval8, p_ijk->dcos_dk );
                                 }
                                 else
@@ -432,19 +398,19 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                                     /* terms not related to bond order derivatives are
                                        added directly into forces and pressure vector/tensor */
                                     rvec_Scale( force, CEval8, p_ijk->dcos_di );
-                                    //rvec_Add( workspace->f[i], force );
+//                                    rvec_Add( workspace->f[i], force );
                                     rvec_Add( pbond_ij->va_f, force );
                                     rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                                    //rvec_Add( data->my_ext_press, ext_press );
-                                    rvec_Add( my_ext_press [j], ext_press );
+//                                    rvec_Add( data->my_ext_press, ext_press );
+                                    rvec_Add( my_ext_press[j], ext_press );
 
                                     rvec_ScaledAdd( workspace->f[j], CEval8, p_ijk->dcos_dj );
 
                                     rvec_Scale( force, CEval8, p_ijk->dcos_dk );
-                                    //rvec_Add( workspace->f[k], force );
+//                                    rvec_Add( workspace->f[k], force );
                                     rvec_Add( pbond_jk->va_f, force );
                                     rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
-                                    rvec_Add( my_ext_press [j], ext_press );
+                                    rvec_Add( my_ext_press[j], ext_press );
                                 }
                             }
 
@@ -597,7 +563,7 @@ CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *my_atoms,
 {
     int i, j, k, pi, pk;
     int start_j, end_j;
-    int cnt, num_thb_intrs;
+    int num_thb_intrs;
     real BOA_ij, BOA_jk;
     bond_data *pbond_ij, *pbond_jk;
     bond_order_data *bo_ij, *bo_jk;
@@ -629,7 +595,7 @@ CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *my_atoms,
         {
             i = pbond_ij->nbr;
 
-            for( pk = start_j; pk < end_j; ++pk )
+            for ( pk = start_j; pk < end_j; ++pk )
             {
                 if ( pk == pi )
                 {
