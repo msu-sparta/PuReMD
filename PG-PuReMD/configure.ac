@@ -4,6 +4,8 @@
 AC_PREREQ([2.69])
 
 AC_INIT([PG-PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
+# Do not allow AC_PROG_CC to set CFLAGS (this line must be after AC_INIT but before AC_PROG_CC)
+sav_CFLAGS="$CFLAGS"
 : ${CFLAGS=""}
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 # Enable silent build rules by default.
@@ -22,8 +24,9 @@ AC_DEFUN([CONFIGURE_HEADLINE],
 AC_LANG([C])
 
 # Checks for programs.
-AC_PROG_CC([icc gcc cc])
+AC_PROG_CC([icc gcc clang cc])
 AC_PROG_CPP
+CFLAGS="$sav_CFLAGS"
 
 AX_COMPILER_VENDOR
 
@@ -53,7 +56,7 @@ AC_CHECK_FUNCS([gettimeofday memset])
 
 # Check for MPI support.
 CONFIGURE_HEADLINE([ MPI compiler ])
-ACX_MPI([], [AC_MSG_ERROR([could not find mpi library])])
+ACX_MPI([], [AC_MSG_ERROR([could not find MPI library])])
 AC_CHECK_PROG(MPIRUN, mpirun, mpirun)
 AC_SUBST(MPIRUN)
 
@@ -69,9 +72,7 @@ AC_CHECK_DECL([MPICH2], [mpi_vendor="MPICH"],
 CC="$sav_CC"
 CFLAGS="$sav_CFLAGS"
 
-#
 # try to set MPI_CFLAGS and MPI_LIBS
-#
 MPI_CFLAGS=
 MPI_LIBS=
 if test "$mpi_vendor" = "OpenMPI"
@@ -116,7 +117,7 @@ AC_SUBST(MPI_LIBS)
 AC_LANG([C++])
 
 # Checks for programs.
-AC_PROG_CXX([icpc g++ c++])
+AC_PROG_CXX([icpc g++ clang++ c++])
 AC_PROG_CXXCPP
 
 AX_COMPILER_VENDOR
@@ -127,10 +128,7 @@ if test "x$BUILD_GPU" = "xyes"; then
 	AX_CUDA
 
         NVCCFLAGS=
-	if test "$ax_cv_cxx_compiler_vendor" = "intel"
-	then
-		NVCCFLAGS+=" -ccbin=icpc"
-	fi
+	NVCCFLAGS+=" -ccbin=$CXX"
 	if test "BUILD_DEBUG" = "true"
 	then
 		NVCCFLAGS+=" -g -G"
