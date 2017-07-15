@@ -335,7 +335,7 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
         break;
 
     case nhNVT:
-        fprintf( stderr, "WARNING: Nose-Hoover NVT is still under testing.\n" );
+        fprintf( stderr, "[WARNING] Nose-Hoover NVT is still under testing.\n" );
         data->N_f = 3 * system->bigN + 1;
         Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
@@ -381,7 +381,7 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
           data->therm.G_xi = control->Tau_T *
           (2.0 * data->my_en.e_Kin - data->N_f * K_B * control->T );
           data->therm.v_xi = data->therm.G_xi * control->dt;
-          data->iso_bar.eps = (1.0 / 3.0) * log(system->box.volume);
+          data->iso_bar.eps = (1.0 / 3.0) * LOG(system->box.volume);
           data->inv_W = 1.0 /
           ( data->N_f * K_B * control->T * SQR(control->Tau_P) );
           Compute_Pressure( system, control, data, out_control );
@@ -439,7 +439,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         break;
 
     case nhNVT:
-        fprintf( stderr, "WARNING: Nose-Hoover NVT is still under testing.\n" );
+        fprintf( stderr, "[WARNING] Nose-Hoover NVT is still under testing.\n" );
         data->N_f = 3 * system->bigN + 1;
         Cuda_Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
@@ -792,16 +792,16 @@ int Init_Lists( reax_system *system, control_params *control,
 #endif
 
     Generate_Neighbor_Lists( system, data, workspace, lists );
-    bond_top = (int*) calloc( system->total_cap, sizeof(int) );
-    hb_top = (int*) calloc( system->local_cap, sizeof(int) );
-//    hb_top = (int*) calloc( system->Hcap, sizeof(int) );
+    bond_top = (int*) scalloc( system->total_cap, sizeof(int), "Init_Lists::bond_top" );
+    hb_top = (int*) scalloc( system->local_cap, sizeof(int), "Init_Lists::hb_top" );
+//    hb_top = (int*) scalloc( system->Hcap, sizeof(int), "Init_Lists::hb_top" );
     
     Estimate_Storages( system, control, lists,
             &Htop, hb_top, bond_top, &num_3body );
 //    Host_Estimate_Sparse_Matrix( system, control, lists, system->local_cap, system->total_cap,
 //            &Htop, hb_top, bond_top, &num_3body );
     
-    Allocate_Matrix( &(workspace->H), system->local_cap, Htop );
+    Allocate_Matrix( &(workspace->H), system->n, Htop );
     
     //MATRIX CHANGES
     //workspace->L = NULL;
@@ -878,8 +878,8 @@ int Init_Lists( reax_system *system, control_params *control,
              bond_cap * MAX_BONDS * 3 * sizeof(dbond_data) / (1024 * 1024) );
 #endif
 
-    free( hb_top );
-    free( bond_top );
+    sfree( hb_top, "Init_Lists::hb_top" );
+    sfree( bond_top, "Init_Lists::bond_top" );
 
     return SUCCESS;
 }
@@ -911,14 +911,14 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Generate_Neighbor_Lists( system, data, workspace, dev_lists );
 
     /* estimate storage for bonds and hbonds */
-    Cuda_Estimate_Storages( system, control, dev_lists, &Htop, data->step );
+    Cuda_Estimate_Storages( system, control, dev_lists, &(dev_workspace->H), data->step );
 
     /* estimate storage for charge sparse matrix */
-    Cuda_Estimate_Storage_Sparse_Matrix( system, control, data, dev_lists );
+//    Cuda_Estimate_Storage_Sparse_Matrix( system, control, data, dev_lists );
 
-    dev_alloc_matrix( &(dev_workspace->H), system->total_cap,
-            system->total_cap * system->max_sparse_entries );
-    dev_workspace->H.n = system->n;
+    dev_alloc_matrix( &(dev_workspace->H), system->total_cap, system->total_cm_entries );
+
+    Cuda_Init_Sparse_Matrix_Indices( system, &(dev_workspace->H) );
 
     //MATRIX CHANGES
     //workspace->L = NULL;
@@ -926,13 +926,12 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p:%d - allocated H matrix: max_entries: %d, cap: %d \n",
-            system->my_rank, system->max_sparse_entries, dev_workspace->H.m );
+            system->my_rank, system->total_cm_entries, dev_workspace->H.m );
     fprintf( stderr, "p%d: allocated H matrix: Htop=%d, space=%dMB\n",
             system->my_rank, Htop,
             (int)(Htop * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
 #endif
 
-    // FIX - 4 - Added addition check here for hydrogen Bonds
     if ( control->hbond_cut > 0.0 &&  system->numH > 0 )
     {
         Dev_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, *dev_lists + HBONDS );
@@ -975,7 +974,7 @@ void Initialize( reax_system *system, control_params *control,
         mpi_datatypes *mpi_data )
 {
 
-    host_scratch = (void *)malloc( HOST_SCRATCH_SIZE );
+    host_scratch = (void *) smalloc( HOST_SCRATCH_SIZE, "Initialize::host_scratch" );
 
     char msg[MAX_STR];
 
@@ -1211,13 +1210,13 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 
 #elif defined(LAMMPS_REAX)
 void Initialize( reax_system *system, control_params *control,
-                 simulation_data *data, storage *workspace,
-                 reax_list **lists, output_controls *out_control,
-                 mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
     char msg[MAX_STR];
 
-    host_scratch = (void *)malloc( HOST_SCRATCH_SIZE );
+    host_scratch = (void *) smalloc( HOST_SCRATCH_SIZE, "Initialize::host_scratch" );
 
     if ( Init_System(system, msg) == FAILURE )
     {

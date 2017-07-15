@@ -357,24 +357,24 @@ void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 }
 
 
-void Allocate_Matrix( sparse_matrix *H, int cap, int m )
+void Allocate_Matrix( sparse_matrix *H, int n, int m )
 {
-    H->cap = cap;
+    H->n = n;
     H->m = m;
 
-    H->start = (int*) smalloc( sizeof(int) * cap, "matrix_start" );
-    H->end = (int*) smalloc( sizeof(int) * cap, "matrix_end" );
+    H->start = (int*) smalloc( sizeof(int) * n, "Allocate_Matrix::start" );
+    H->end = (int*) smalloc( sizeof(int) * n, "Allocate_Matrix::end" );
     H->entries = (sparse_matrix_entry*)
-        smalloc( sizeof(sparse_matrix_entry) * m, "matrix_entries" );
+        smalloc( sizeof(sparse_matrix_entry) * m, "Allocate_Matrix::entries" );
 }
 
 
 void Deallocate_Matrix( sparse_matrix *H )
 {
-    sfree( H->start, "H->start" );
-    sfree( H->end, "H->end" );
-    sfree( H->entries, "H->entries" );
-    sfree( H, "H" );
+    sfree( H->start, "Deallocate_Matrix::start" );
+    sfree( H->end, "Deallocate_Matrix::end" );
+    sfree( H->entries, "Deallocate_Matrix::entries" );
+    sfree( H, "Deallocate_Matrix::matrix" );
 }
 
 
@@ -747,7 +747,7 @@ void ReAllocate( reax_system *system, control_params *control,
         {
 //            if ( realloc->far_nbrs > far_nbrs->num_intrs )
 //            {
-//                fprintf( stderr, "ERROR: step%d-ran out of space on far_nbrs: top=%d, max=%d",
+//                fprintf( stderr, "[ERROR] step%d-ran out of space on far_nbrs: top=%d, max=%d",
 //                         data->step, realloc->far_nbrs, far_nbrs->num_intrs );
 //                MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
 //            }

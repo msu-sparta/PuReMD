@@ -66,7 +66,7 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
     n = atoi(tmp[0]);
     if ( n < 1 )
     {
-        fprintf( stderr, "WARNING: number of globals in ffield file is 0!\n" );
+        fprintf( stderr, "[WARNING] number of globals in ffield file is 0!\n" );
         return 1;
     }
 

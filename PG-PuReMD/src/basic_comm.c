@@ -329,7 +329,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace, mpi_datatypes
         }
     }
 
-    id_list = (int*) malloc( system->n * sizeof(int) );
+    id_list = (int*) smalloc( system->n * sizeof(int), "Coll_ids_at_Master::id_list" );
     for ( i = 0; i < system->n; ++i )
     {
         id_list[i] = system->my_atoms[i].orig_id;
@@ -339,7 +339,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace, mpi_datatypes
             workspace->rcounts, workspace->displs, MPI_INT, MASTER_NODE,
             MPI_COMM_WORLD );
 
-    free( id_list );
+    sfree( id_list, "Coll_ids_at_Master::id_list" );
 
 #if defined(DEBUG)
     if ( system->my_rank == MASTER_NODE )

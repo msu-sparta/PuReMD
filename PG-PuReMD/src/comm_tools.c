@@ -36,10 +36,10 @@ void Check_MPI_Error( int code, const char * msg )
     {
         MPI_Error_string( code, err_msg, &len );
 
-        fprintf( stderr, "ERROR: MPI error code %d, from %s\n",
+        fprintf( stderr, "[ERROR] MPI error code %d, from %s\n",
                 code, msg );
-        fprintf( stderr, "  MPI error message: %s\n", err_msg );
-        MPI_Abort( MPI_COMM_WORLD, code );
+        fprintf( stderr, "    [INFO] MPI error message: %s\n", err_msg );
+        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
     }
 }
 

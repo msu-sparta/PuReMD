@@ -200,13 +200,17 @@ void dev_alloc_system( reax_system *system )
     cuda_malloc( (void **) &system->d_realloc_hbonds,
             sizeof(int), TRUE, "system:d_realloc_hbonds" );
 
+    cuda_malloc( (void **) &system->d_cm_entries,
+            system->total_cap * sizeof(int), TRUE, "system:d_cm_entries" );
+    cuda_malloc( (void **) &system->d_max_cm_entries,
+            system->total_cap * sizeof(int), TRUE, "system:d_max_cm_entries" );
+    cuda_malloc( (void **) &system->d_total_cm_entries,
+            sizeof(int), TRUE, "system:d_total_cm_entries" );
+    cuda_malloc( (void **) &system->d_realloc_cm_entries,
+            sizeof(int), TRUE, "system:d_realloc_cm_entries" );
+
     cuda_malloc( (void **) &system->d_total_thbodies,
             sizeof(int), TRUE, "system:d_total_thbodies" );
-
-    cuda_malloc( (void **) &system->d_max_sparse_entries,
-            sizeof(int), TRUE, "system:d_max_sparse_entries" );
-    cuda_malloc( (void **) &system->d_total_sparse_entries,
-            sizeof(int), TRUE, "system:d_total_sparse_entries" );
 
     /* simulation boxes */
     cuda_malloc( (void **) &system->d_big_box,
@@ -304,6 +308,22 @@ void dev_realloc_system( reax_system *system, int local_cap, int total_cap, char
             system->total_cap * sizeof(int), TRUE, "system::d_max_hbonds" );
     copy_device( system->d_max_hbonds, temp, system->total_cap * sizeof(int),
             "dev_realloc_system::temp" );
+
+    copy_device( temp, system->d_cm_entries, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
+    cuda_free( system->d_cm_entries, "system::d_cm_entries" );
+    cuda_malloc( (void **) &system->d_cm_entries,
+            system->total_cap * sizeof(int), TRUE, "system::d_cm_entries" );
+    copy_device( system->d_cm_entries, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
+
+    copy_device( temp, system->d_max_cm_entries, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
+    cuda_free( system->d_max_cm_entries, "system::d_max_cm_entries" );
+    cuda_malloc( (void **) &system->d_max_cm_entries,
+            system->total_cap * sizeof(int), TRUE, "system::d_max_cm_entries" );
+    copy_device( system->d_max_cm_entries, temp, system->total_cap * sizeof(int),
+            "dev_realloc_system::temp" );
 }
 
 
@@ -354,7 +374,7 @@ void dev_alloc_workspace( reax_system *system, control_params *control,
     cuda_malloc( (void **) &workspace->done_after, total_real, TRUE, "done_after" );
 
 
-    /* QEq storage */
+    /* charge matrix storage */
     cuda_malloc( (void **) &workspace->Hdia_inv, total_cap * sizeof(real), TRUE, "Hdia_inv" );
     cuda_malloc( (void **) &workspace->b_s, total_cap * sizeof(real), TRUE, "b_s" );
     cuda_malloc( (void **) &workspace->b_t, total_cap * sizeof(real), TRUE, "b_t" );
@@ -453,7 +473,7 @@ void dev_dealloc_workspace( control_params *control, storage *workspace )
     cuda_free( workspace->bond_mark, "bond_mark" );
     cuda_free( workspace->done_after, "done_after" );
 
-    /* QEq storage */
+    /* charge matrix storage */
     cuda_free( workspace->Hdia_inv, "Hdia_inv" );
     cuda_free( workspace->b_s, "b_s" );
     cuda_free( workspace->b_t, "b_t" );
@@ -500,7 +520,7 @@ void dev_dealloc_workspace( control_params *control, storage *workspace )
 
     if( control->diffusion_coef )
     {
-        cuda_free (workspace->x_old, "x_old");
+        cuda_free( workspace->x_old, "x_old" );
     }
     else
     {
@@ -516,24 +536,21 @@ void dev_dealloc_workspace( control_params *control, storage *workspace )
 }
 
 
-void dev_alloc_matrix( sparse_matrix *H, int cap, int m )
+void dev_alloc_matrix( sparse_matrix *H, int n, int m )
 {
-    //sparse_matrix *H;
-    //H = *pH;
-
-    H->cap = cap;
     H->m = m;
-    cuda_malloc( (void **) &H->start, sizeof(int) * cap, TRUE, "matrix_start" );
-    cuda_malloc( (void **) &H->end, sizeof(int) * cap, TRUE, "matrix_end" );
-    cuda_malloc( (void **) &H->entries, sizeof(sparse_matrix_entry) * m, TRUE, "matrix_entries" );
+    H->n = n;
+    cuda_malloc( (void **) &H->start, sizeof(int) * n, TRUE, "dev_alloc_matrix::start" );
+    cuda_malloc( (void **) &H->end, sizeof(int) * n, TRUE, "dev_alloc_matrix::end" );
+    cuda_malloc( (void **) &H->entries, sizeof(sparse_matrix_entry) * m, TRUE, "dev_alloc_matrix::entries" );
 }
 
 
 void dev_dealloc_matrix( sparse_matrix *H )
 {
-    cuda_free( H->start, "matrix_start" );
-    cuda_free( H->end, "matrix_end" );
-    cuda_free( H->entries, "matrix_entries" );
+    cuda_free( H->start, "dev_dealloc_matrix::start" );
+    cuda_free( H->end, "dev_dealloc_matrix::end" );
+    cuda_free( H->entries, "dev_dealloc_matrix::entries" );
 }
 
 
@@ -667,50 +684,26 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         }
     }
 
-    /* charge coef matrix */
-    //if( nflag || realloc->Htop >= system->max_sparse_entries * DANGER_ZONE ) {
-    //if( realloc->Htop > system->max_sparse_entries ) {
-    if ( nflag == TRUE || realloc->Htop * DANGER_ZONE >= system->max_sparse_entries )
+    /* charge matrix */
+    if ( nflag == TRUE || realloc->cm == TRUE )
     {
-        if ( system->max_sparse_entries > realloc->Htop)
-        {
-            fprintf( stderr, "step%d - ran out of space on H matrix: Htop=%d, max = %d",
-                    data->step, realloc->Htop, system->max_sparse_entries );
-            MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-        }
-
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
-                 system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
-                 (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
-                       (1024 * 1024)) );
-        fprintf (stderr, "p:%d - *** Reallocating Sparse Matrix *** \n", system->my_rank);
+                system->my_rank, (int)(system->total_cm_entries),
+                (int)(system->total_cm_entries * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
 #endif
 
-        //Reallocate_Matrix( &(workspace->H),
-        //     system->local_cap, realloc->Htop*SAFE_ZONE, "H" );
-        //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-
-        //TODO - CARVER FIX
-
-        //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
         dev_dealloc_matrix( H );
+        dev_alloc_matrix( H, system->total_cap, system->total_cm_entries );
 
-        //TODO -- MOVER THIS TO CARVER
-        system->max_sparse_entries = realloc->Htop * SAFE_ZONE;
-        //TODO -- MOVER THIS TO CARVER
-        dev_alloc_matrix( H, system->total_cap,
-                system->total_cap * system->max_sparse_entries );
-
-        //TODO - CARVER FIX
+        Cuda_Init_Sparse_Matrix_Indices( system, H );
 
         //Deallocate_Matrix( workspace->L );
         //Deallocate_Matrix( workspace->U );
-
-        //MATRIX-CHANGES
         //workspace->L = NULL;
         //workspace->U = NULL;
-        realloc->Htop = 0;
+
+        realloc->cm = FALSE;
     }
 
     /* hydrogen bonds list */

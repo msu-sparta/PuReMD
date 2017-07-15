@@ -967,7 +967,7 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
                         exp_p2j = EXP( -p_boc2 * Deltap_j );
 
                         f2 = exp_p1i + exp_p1j;
-                        f3 = -1.0 / p_boc2 * log( 0.5 * ( exp_p2i  + exp_p2j ) );
+                        f3 = -1.0 / p_boc2 * LOG( 0.5 * ( exp_p2i  + exp_p2j ) );
                         f1 = 0.5 * ( ( val_i + f2 ) / ( val_i + f2 + f3 ) +
                                      ( val_j + f2 ) / ( val_j + f2 + f3 ) );
 

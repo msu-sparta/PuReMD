@@ -27,9 +27,9 @@ static inline void __cudaCheckError( const char *file, const int line )
     cudaError err = cudaGetLastError();
     if ( cudaSuccess != err )
     {
-        fprintf( stderr, "ERROR: runtime error encountered: %s:%d\n", file, line );
-        fprintf( stderr, "CUDA API error code: %d\n", err );
-        exit( -1 );
+        fprintf( stderr, "[ERROR] runtime error encountered: %s:%d\n", file, line );
+        fprintf( stderr, "    [INFO] CUDA API error code: %d\n", err );
+        exit( RUNTIME_ERROR );
     }
 
     /* More careful checking. However, this will affect performance. */

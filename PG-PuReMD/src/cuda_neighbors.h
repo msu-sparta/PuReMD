@@ -20,6 +20,8 @@ void Cuda_Init_HBond_Indices( reax_system * );
 
 void Cuda_Init_Bond_Indices( reax_system * );
 
+void Cuda_Init_Sparse_Matrix_Indices( reax_system *, sparse_matrix * );
+
 void Cuda_Init_Three_Body_Indices( int *, int );
 
 

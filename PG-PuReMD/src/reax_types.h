@@ -82,13 +82,15 @@
 
 #define EXP    exp
 #define EXP2   exp2
+#define LOG    log
 #define LOG2   log2
 #define SQRT   sqrt
 #define POW    pow
-#define ACOS   acos
 #define COS    cos
+#define ACOS   acos
 #define SIN    sin
 #define TAN    tan
+#define ATAN2  atan2
 #define CEIL   ceil
 #define FLOOR  floor
 #define FABS   fabs
@@ -156,7 +158,7 @@
 
 #define MIN_CAP        50
 #define MIN_NBRS       100
-#define MIN_HENTRIES   100
+#define MIN_CM_ENTRIES 100
 #define MAX_BONDS      30
 #define MIN_BONDS      15
 #define MIN_HBONDS     25
@@ -362,6 +364,7 @@ enum errors
     INVALID_INPUT = -16,
     INVALID_GEO = -17,
     MAX_RETRIES_REACHED = -18,
+    RUNTIME_ERROR = -19,
 };
 
 /* ??? */
@@ -1176,9 +1179,9 @@ typedef struct
     reax_atom *d_my_atoms;
 
     /* current num. of far neighbors per atom */
-    int *far_nbrs; //TODO: move to reax_atom et. al?
+    int *far_nbrs;
     /* current num. of far neighbors per atom (GPU) */
-    int *d_far_nbrs; //TODO: move to reax_atom et. al?
+    int *d_far_nbrs;
     /* max num. of far neighbors per atom */
     int *max_far_nbrs;
     /* max num. of far neighbors per atom (GPU) */
@@ -1191,33 +1194,51 @@ typedef struct
      * FALSE otherwise (GPU) */
     int *d_realloc_far_nbrs;
 
+    /* num. bonds per atom */
     int *bonds;
+    /* num. bonds per atom (GPU) */
     int *d_bonds;
+    /* max. num. bonds per atom */
     int *max_bonds;
+    /* max. num. bonds per atom (GPU) */
     int *d_max_bonds;
+    /* total num. bonds (sum over max) */
     int total_bonds;
+    /* total num. bonds (sum over max) (GPU) */
     int *d_total_bonds;
+    /* TRUE if bonds list requires reallocation, FALSE otherwise (GPU) */
     int *d_realloc_bonds;
 
+    /* num. hydrogen bonds per atom */
     int *hbonds;
+    /* num. hydrogen bonds per atom (GPU) */
     int *d_hbonds;
+    /* max. num. hydrogen bonds per atom */
     int max_hbonds;
     //int *max_hbonds;
+    /* max. num. hydrogen bonds per atom (GPU) */
     int *d_max_hbonds;
+    /* total num. hydrogen bonds (sum over max) */
     int total_hbonds;
+    /* total num. hydrogen bonds (sum over max) (GPU) */
     int *d_total_hbonds;
+    /* TRUE if hydrogen bonds list requires reallocation, FALSE otherwise (GPU) */
     int *d_realloc_hbonds;
 
-    /*CUDA-specific*/
-    /**/
-    int max_sparse_entries;
-    /**/
-    int *d_max_sparse_entries;
-    /**/
-    int *d_total_sparse_entries;
+    /* num. matrix entries per row (GPU) */
+    int *d_cm_entries;
+    /* max. num. matrix entries per row (GPU) */
+    int *d_max_cm_entries;
+    /* total num. matrix entries (sum over max) */
+    int total_cm_entries;
+    /* total num. matrix entries (sum over max) (GPU) */
+    int *d_total_cm_entries;
+    /* TRUE if charge matrix requires reallocation, FALSE otherwise (GPU) */
+    int *d_realloc_cm_entries;
 
-    /**/
+    /* total num. three body interactions */
     int total_thbodies;
+    /* total num. three body interactions (GPU) */
     int *d_total_thbodies;
 } reax_system;
 
@@ -1725,30 +1746,32 @@ typedef struct
 } bond_data;
 
 
-/**/
+/* Secondary structure for matrix in CRS format */
 typedef struct
 {
-    /**/
+    /* column index for corresponding matrix entry */
     int j;
-    /**/
+    /* matrix entry */
     real val;
 } sparse_matrix_entry;
 
 
-/**/
+/* Matrix in compressed row storage (CRS) format,
+ * with modifications for row end pointer and max entries per row (CUDA optimizations).
+ * See, e.g.,
+ *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
+ */
 typedef struct
 {
-    /**/
-    int cap;
-    /**/
+    /* number of rows */
     int n;
-    /**/
+    /* number of nonzeros (NNZ) ALLOCATED */
     int m;
-    /**/
+    /* row start pointer (last element contains ACTUAL NNZ) */
     int *start;
-    /**/
+    /* row end pointer */
     int *end;
-    /**/
+    /* secondary structure for matrix entry info */
     sparse_matrix_entry *entries;
 } sparse_matrix;
 
@@ -1759,8 +1782,9 @@ typedef struct
     /* TRUE if far neighbor list needs
      * to be reallocated, FALSE otherwise */
     int far_nbrs;
-    /**/
-    int H;
+    /* TRUE if charge matrix needs
+     * to be reallocated, FALSE otherwise */
+    int cm;
     /**/
     int Htop;
     /**/
@@ -1831,14 +1855,14 @@ typedef struct
     /**/
     int *done_after;
 
-    /* QEq storage */
-    /**/
+    /* charge matrix storage */
+    /* charge matrix */
     sparse_matrix H;
-    /**/
+    /* preconditioner */
     sparse_matrix L;
-    /**/
+    /* preconditioner */
     sparse_matrix U;
-    /**/
+    /* preconditioner */
     real *Hdia_inv;
     /**/
     real *b_s;

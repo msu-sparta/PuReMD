@@ -13,12 +13,12 @@ extern "C" void Setup_Cuda_Environment(int rank, int nprocs, int gpus_per_node)
 
     if ( flag != cudaSuccess || deviceCount < 1 )
     {
-        fprintf( stderr, "ERROR: no CUDA capable device(s) found. Terminating...\n" );
+        fprintf( stderr, "[ERROR] no CUDA capable device(s) found. Terminating...\n" );
         exit( CANNOT_INITIALIZE );
     }
     else if ( deviceCount < gpus_per_node || gpus_per_node < 1 )
     {
-        fprintf( stderr, "ERROR: invalid number of CUDA capable devices requested (gpus_per_node = %d). Terminating...\n",
+        fprintf( stderr, "[ERROR] invalid number of CUDA capable devices requested (gpus_per_node = %d). Terminating...\n",
                 gpus_per_node );
         exit( INVALID_INPUT );
     }

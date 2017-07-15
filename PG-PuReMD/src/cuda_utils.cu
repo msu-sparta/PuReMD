@@ -10,7 +10,7 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
 
     if ( retVal != cudaSuccess )
     {
-        fprintf( stderr, "ERROR: failed to allocate memory on device for resouce %s\n", msg );
+        fprintf( stderr, "[ERROR] failed to allocate memory on device for resouce %s\n", msg );
         fprintf( stderr, "CUDA API error code: %d, requested memory size (in bytes): %lu\n", 
                 retVal, size );
         exit( INSUFFICIENT_MEMORY );
@@ -22,7 +22,7 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
 
         if( retVal != cudaSuccess )
         {
-            fprintf( stderr, "ERROR: failed to memset memory on device for resource %s\n", msg );
+            fprintf( stderr, "[ERROR] failed to memset memory on device for resource %s\n", msg );
             fprintf( stderr, "CUDA API error code: %d, requested memory size (in bytes): %lu\n", 
                     retVal, size );
             exit( INSUFFICIENT_MEMORY );
@@ -46,7 +46,7 @@ extern "C" void cuda_free( void *ptr, const char *msg )
     if( retVal != cudaSuccess )
     {
         fprintf( stderr,
-                "WARNING: failed to release memory on device for resource %s\nCUDA API error code: %d, memory address: %ld\n", 
+                "[WARNING] failed to release memory on device for resource %s\nCUDA API error code: %d, memory address: %ld\n", 
                 msg, retVal, (long int) ptr );
         return;
     }  
@@ -62,7 +62,7 @@ extern "C" void cuda_memset( void *ptr, int data, size_t count, const char *msg 
     if( retVal != cudaSuccess )
     {
         fprintf( stderr,
-                "ERROR: failed to memset memory on device for resource %s\nCUDA API error code: %d\n", 
+                "[ERROR] failed to memset memory on device for resource %s\nCUDA API error code: %d\n", 
                 msg, retVal );
         exit( INSUFFICIENT_MEMORY );
     }
@@ -86,7 +86,7 @@ extern "C" void copy_host_device( void *host, void *dev, size_t size,
     if( retVal != cudaSuccess )
     {
         fprintf( stderr,
-                "ERROR: could not copy resource %s from host to device\nCUDA API error code: %d n",
+                "[ERROR] could not copy resource %s from host to device\nCUDA API error code: %d n",
                 msg, retVal );
         exit( INSUFFICIENT_MEMORY );
     }
@@ -102,7 +102,7 @@ extern "C" void copy_device( void *dest, void *src, size_t size, const char *msg
     if( retVal != cudaSuccess )
     {
         fprintf( stderr,
-                "ERROR: could not copy resource %s from device to device\nCUDA API error code: %d\n",
+                "[ERROR] could not copy resource %s from device to device\nCUDA API error code: %d\n",
                 msg, retVal );
         exit( INSUFFICIENT_MEMORY );
     }
@@ -140,7 +140,7 @@ extern "C" void print_device_mem_usage( )
     if ( retVal != cudaSuccess )
     {
         fprintf( stderr,
-                "WARNING: could not get message usage info from device\nCUDA API error code: %d\n",
+                "[WARNING] could not get message usage info from device\nCUDA API error code: %d\n",
                 retVal );
         return;
     }

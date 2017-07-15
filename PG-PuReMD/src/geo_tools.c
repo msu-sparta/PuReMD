@@ -524,15 +524,15 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
     if (me == MASTER_NODE)
     {
         /* Writing Box information */
-        gamma = acos( (system->big_box.box[0][0] * system->big_box.box[1][0] +
+        gamma = ACOS( (system->big_box.box[0][0] * system->big_box.box[1][0] +
                        system->big_box.box[0][1] * system->big_box.box[1][1] +
                        system->big_box.box[0][2] * system->big_box.box[1][2]) /
                       (system->big_box.box_norms[0] * system->big_box.box_norms[1]) );
-        beta  = acos( (system->big_box.box[0][0] * system->big_box.box[2][0] +
+        beta  = ACOS( (system->big_box.box[0][0] * system->big_box.box[2][0] +
                        system->big_box.box[0][1] * system->big_box.box[2][1] +
                        system->big_box.box[0][2] * system->big_box.box[2][2]) /
                       (system->big_box.box_norms[0] * system->big_box.box_norms[2]) );
-        alpha = acos( (system->big_box.box[2][0] * system->big_box.box[1][0] +
+        alpha = ACOS( (system->big_box.box[2][0] * system->big_box.box[1][0] +
                        system->big_box.box[2][1] * system->big_box.box[1][1] +
                        system->big_box.box[2][2] * system->big_box.box[1][2]) /
                       (system->big_box.box_norms[2] * system->big_box.box_norms[1]) );
@@ -610,8 +610,8 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
     }
     */
 
-    free(buffer);
-    free(line);
+    sfree( buffer, "Write_PDB::buffer" );
+    sfree( line, "Write_PDB::line" );
 
     return SUCCESS;
 }

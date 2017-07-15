@@ -75,7 +75,7 @@ void Dev_Make_List( int n, int num_intrs, int type, reax_list *l )
             break;
 
         default:
-            fprintf( stderr, "ERROR: no %d dev_list type defined!\n", l->type );
+            fprintf( stderr, "[ERROR] no %d dev_list type defined!\n", l->type );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 }
@@ -107,7 +107,7 @@ void Dev_Delete_List( reax_list *l )
             cuda_free( l->select.three_body_list, "dev_list:three_bodies" );
             break;
         default:
-            fprintf (stderr, "ERROR no %d dev_list type defined !\n", l->type);
+            fprintf (stderr, "[ERROR] no %d dev_list type defined !\n", l->type);
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 }

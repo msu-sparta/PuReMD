@@ -144,12 +144,12 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 &dcos_theta_di, &dcos_theta_dj, &dcos_theta_dk );
 
                         /* hyrogen bond energy */
-                        sin_theta2 = sin( theta / 2.0 );
+                        sin_theta2 = SIN( theta / 2.0 );
                         sin_xhz4 = SQR(sin_theta2);
                         sin_xhz4 *= sin_xhz4;
                         cos_xhz1 = ( 1.0 - cos_theta );
-                        exp_hb2 = exp( -hbp->p_hb2 * bo_ij->BO );
-                        exp_hb3 = exp( -hbp->p_hb3 * ( hbp->r0_hb / r_jk +
+                        exp_hb2 = EXP( -hbp->p_hb2 * bo_ij->BO );
+                        exp_hb3 = EXP( -hbp->p_hb3 * ( hbp->r0_hb / r_jk +
                                     r_jk / hbp->r0_hb - 2.0 ) );
 
                         e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;

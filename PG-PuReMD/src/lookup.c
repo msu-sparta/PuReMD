@@ -70,10 +70,10 @@ void Natural_Cubic_Spline( const real *h, const real *f,
 
     /* allocate space for the linear system */
     a = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    b = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    c = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    d = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    v = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
+    b = (real*) smalloc( n * sizeof(real), "cubic_spline:b" );
+    c = (real*) smalloc( n * sizeof(real), "cubic_spline:c" );
+    d = (real*) smalloc( n * sizeof(real), "cubic_spline:d" );
+    v = (real*) smalloc( n * sizeof(real), "cubic_spline:v" );
 
     /* build the linear system */
     a[0] = a[1] = a[n - 1] = 0;
@@ -120,28 +120,36 @@ void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
 
     /* allocate space for the linear system */
     a = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    b = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    c = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    d = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
-    v = (real*) smalloc( n * sizeof(real), "cubic_spline:a" );
+    b = (real*) smalloc( n * sizeof(real), "cubic_spline:b" );
+    c = (real*) smalloc( n * sizeof(real), "cubic_spline:c" );
+    d = (real*) smalloc( n * sizeof(real), "cubic_spline:d" );
+    v = (real*) smalloc( n * sizeof(real), "cubic_spline:v" );
 
     /* build the linear system */
     a[0] = 0;
     for ( i = 1; i < n; ++i )
+    {
         a[i] = h[i - 1];
+    }
 
     b[0] = 2 * h[0];
     for ( i = 1; i < n; ++i )
+    {
         b[i] = 2 * (h[i - 1] + h[i]);
+    }
 
     c[n - 1] = 0;
     for ( i = 0; i < n - 1; ++i )
+    {
         c[i] = h[i];
+    }
 
     d[0] = 6 * (f[1] - f[0]) / h[0] - 6 * v0;
     d[n - 1] = 6 * vlast - 6 * (f[n - 1] - f[n - 2] / h[n - 2]);
     for ( i = 1; i < n - 1; ++i )
+    {
         d[i] = 6 * ((f[i + 1] - f[i]) / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
+    }
 
     Tridiagonal_Solve( &(a[0]), &(b[0]), &(c[0]), &(d[0]), &(v[0]), n );
 
@@ -186,7 +194,7 @@ void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 
 
 int Init_Lookup_Tables( reax_system *system, control_params *control,
-                        real *Tap, mpi_datatypes *mpi_data, char *msg )
+        real *Tap, mpi_datatypes *mpi_data, char *msg )
 {
     int i, j, r;
     int num_atom_types;
@@ -215,15 +223,9 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
-    //SUDHIR
-    /*
-    LR = (LR_lookup_table**)
-    smalloc( num_atom_types * sizeof(LR_lookup_table*), "lookup:LR" );
-    for( i = 0; i < num_atom_types; ++i )
-    LR[i] = (LR_lookup_table*)
-    smalloc(num_atom_types * sizeof(LR_lookup_table), "lookup:LR[i]");
-    */
-    LR = (LR_lookup_table*) malloc(num_atom_types * num_atom_types * sizeof(LR_lookup_table));
+    LR = (LR_lookup_table*) smalloc(
+            num_atom_types * num_atom_types * sizeof(LR_lookup_table),
+            "Init_Lookup_Tables::LR" );
 
     /* most atom types in ffield file will not exist in the current
        simulation. to avoid unnecessary lookup table space, determine
@@ -243,8 +245,11 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
     /* fill in the lookup table entries for existing atom types.
        only lower half should be enough. */
     for ( i = 0; i < num_atom_types; ++i )
+    {
         if ( aggregated[i] )
+        {
             for ( j = i; j < num_atom_types; ++j )
+            {
                 if ( aggregated[j] )
                 {
 
@@ -289,25 +294,28 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
                     }
 
                     Natural_Cubic_Spline( &h[1], &fh[1],
-                                          &(LR[ index_lr (i, j, num_atom_types) ].H[1]), control->tabulate + 1 );
+                            &(LR[ index_lr (i, j, num_atom_types) ].H[1]), control->tabulate + 1 );
 
                     Complete_Cubic_Spline( &h[1], &fvdw[1], v0_vdw, vlast_vdw,
-                                           &(LR[ index_lr (i, j, num_atom_types) ].vdW[1]), control->tabulate + 1 );
+                            &(LR[ index_lr (i, j, num_atom_types) ].vdW[1]), control->tabulate + 1 );
                     Natural_Cubic_Spline( &h[1], &fCEvd[1],
-                                          &(LR[ index_lr (i, j, num_atom_types) ].CEvd[1]), control->tabulate + 1 );
+                            &(LR[ index_lr (i, j, num_atom_types) ].CEvd[1]), control->tabulate + 1 );
 
                     Complete_Cubic_Spline( &h[1], &fele[1], v0_ele, vlast_ele,
-                                           &(LR[ index_lr (i, j, num_atom_types) ].ele[1]), control->tabulate + 1 );
+                            &(LR[ index_lr (i, j, num_atom_types) ].ele[1]), control->tabulate + 1 );
                     Natural_Cubic_Spline( &h[1], &fCEclmb[1],
-                                          &(LR[ index_lr (i, j, num_atom_types) ].CEclmb[1]), control->tabulate + 1 );
+                            &(LR[ index_lr (i, j, num_atom_types) ].CEclmb[1]), control->tabulate + 1 );
                 }
+            }
+        }
+    }
 
-    free(h);
-    free(fh);
-    free(fvdw);
-    free(fCEvd);
-    free(fele);
-    free(fCEclmb);
+    sfree( h, "Init_Lookup_Tables::h" );
+    sfree( fh, "Init_Lookup_Tables::fh" );
+    sfree( fvdw, "Init_Lookup_Tables::fvdw" );
+    sfree( fCEvd, "Init_Lookup_Tables::fCEvd" );
+    sfree( fele, "Init_Lookup_Tables::fele" );
+    sfree( fCEclmb, "Init_Lookup_Tables::fCEclmb" );
 
 #ifdef HAVE_CUDA
     //copy the LR_Table to the device here.

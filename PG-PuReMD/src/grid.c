@@ -235,9 +235,9 @@ void Reorder_GridCells( grid *g )
     int i, j, k, x, y, z, top;
     ivec dblock, nblocks;
 
-    dblock[0] = 1; //3; //4; //(int)(ceil( sqrt(g->ncells[0]) ));
-    dblock[1] = 1; //3; //4; //(int)(ceil( sqrt(g->ncells[1]) ));
-    dblock[2] = 1; //3; //4; //(int)(ceil( sqrt(g->ncells[2]) ));
+    dblock[0] = 1; //3; //4; //(int)(CEIL( SQRT(g->ncells[0]) ));
+    dblock[1] = 1; //3; //4; //(int)(CEIL( SQRT(g->ncells[1]) ));
+    dblock[2] = 1; //3; //4; //(int)(CEIL( SQRT(g->ncells[2]) ));
     nblocks[0] = (int)(CEIL( (real)g->ncells[0] / dblock[0] ));
     nblocks[1] = (int)(CEIL( (real)g->ncells[1] / dblock[1] ));
     nblocks[2] = (int)(CEIL( (real)g->ncells[2] / dblock[2] ));

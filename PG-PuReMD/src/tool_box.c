@@ -327,26 +327,26 @@ void* smalloc( size_t n, const char *name )
 
     if ( n == 0 )
     {
-        fprintf( stderr, "ERROR: failed to allocate %zu bytes for array %s.\n",
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
 #endif
 
     ptr = malloc( n );
 
     if ( ptr == NULL )
     {
-        fprintf( stderr, "ERROR: failed to allocate %zu bytes for array %s.\n",
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: successfuly assigned pointer for %s\n", name );
+    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
 #endif
 
     return ptr;
@@ -366,19 +366,19 @@ void* srealloc( void *ptr, size_t n, const char *name )
 
     if ( n == 0 )
     {
-        fprintf( stderr, "ERROR: failed to reallocate %zu bytes for array %s.\n",
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
                 n, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
     if ( ptr == NULL )
     {
-        fprintf( stderr, "INFO: trying to allocate %zu NEW bytes for array %s.\n",
+        fprintf( stderr, "[INFO] trying to allocate %zu NEW bytes for array %s.\n",
                 n, name );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
 #endif
 
     new_ptr = realloc( ptr, n );
@@ -387,13 +387,13 @@ void* srealloc( void *ptr, size_t n, const char *name )
      * but we needed more memory, so abort */
     if ( new_ptr == NULL )
     {
-        fprintf( stderr, "ERROR: failed to reallocate %zu bytes for array %s.\n",
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
                 n, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: successfuly assigned pointer for %s\n", name );
+    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
 #endif
 
     return new_ptr;
@@ -414,26 +414,26 @@ void* scalloc( size_t n, size_t size, const char *name )
 
     if ( n == 0 )
     {
-        fprintf( stderr, "ERROR: failed to allocate %zu bytes for array %s.\n",
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n * size, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
 #endif
 
     ptr = calloc( n, size );
 
     if ( ptr == NULL )
     {
-        fprintf( stderr, "ERROR: failed to allocate %zu bytes for array %s.\n",
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n * size, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: successfuly assigned pointer for %s\n", name );
+    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
 #endif
 
     return ptr;
@@ -449,19 +449,19 @@ void sfree( void *ptr, const char *name )
 {
     if ( ptr == NULL )
     {
-        fprintf( stderr, "WARNING: trying to free the already NULL pointer %s!\n",
+        fprintf( stderr, "[WARNING] trying to free the already NULL pointer %s!\n",
                 name );
         return;
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: freeing memory for %s\n", name );
+    fprintf( stderr, "[INFO] freeing memory for %s\n", name );
 #endif
 
     free( ptr );
 
 #if defined(DEBUG)
-    fprintf( stderr, "INFO: successfuly freed memory from pointer for %s\n", name );
+    fprintf( stderr, "[INFO] successfuly freed memory from pointer for %s\n", name );
 #endif
 
     ptr = NULL;

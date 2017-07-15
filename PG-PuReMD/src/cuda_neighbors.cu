@@ -863,6 +863,23 @@ void Cuda_Init_Bond_Indices( reax_system *system )
 }
 
 
+void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
+{
+    int blocks;
+
+    /* init indices */
+    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, system->N );
+
+    /* init end_indices */
+    blocks = system->N / DEF_BLOCK_SIZE + 
+        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_cm_entries, H->start, H->end, system->N );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+}
+
+
 void Cuda_Init_Three_Body_Indices( int *indices, int entries )
 {
     reax_list *thbody = *dev_lists + THREE_BODIES;

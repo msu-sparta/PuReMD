@@ -176,9 +176,11 @@ extern "C" void cuda_charges_st( reax_system *system, storage *workspace,
 
 CUDA_GLOBAL void k_update_q( reax_atom *my_atoms, real *q, int n, int N )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
 
-    if ( i >= (N-n) )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= (N - n) )
     {
         return;
     }
@@ -198,7 +200,7 @@ void cuda_charges_updateq( reax_system *system, real *q )
         (( (system->N - system->n) % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
     k_update_q <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, dev_q, system->n, system->N);
+        ( system->d_my_atoms, dev_q, system->n, system->N );
     cudaThreadSynchronize( );
     cudaCheckError( );
 }

@@ -1,53 +1,73 @@
+#include "reax_types.h"
+
 #include "cuda_validation.h"
 
 #include "cuda_utils.h"
-#include "list.h"
-#include "reax_types.h"
 
 #include "index_utils.h"
+#include "list.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
-bool check_zero (real p1, real p2)
+bool check_zero( real p1, real p2 )
 {
-    if (abs (p1 - p2) >= GPU_TOLERANCE)
+    if ( FABS(p1 - p2) >= GPU_TOLERANCE )
+    {
         return true;
+    }
     else 
+    {
         return false;
+    }
 }
 
 
-bool check_zero (rvec p1, rvec p2)
+bool check_zero( rvec p1, rvec p2 )
 {
 
-    if (((abs (p1[0] - p2[0])) >= GPU_TOLERANCE) ||
-            ((abs (p1[1] - p2[1])) >= GPU_TOLERANCE) ||
-            ((abs (p1[2] - p2[2])) >= GPU_TOLERANCE ))
+    if ( ((FABS(p1[0] - p2[0])) >= GPU_TOLERANCE) ||
+            ((FABS(p1[1] - p2[1])) >= GPU_TOLERANCE) ||
+            ((FABS(p1[2] - p2[2])) >= GPU_TOLERANCE) )
+    {
         return true;
-    else return false;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 
-bool check_zero_rvec2 (rvec2 p1, rvec2 p2)
+bool check_zero_rvec2( rvec2 p1, rvec2 p2 )
 {
 
-    if (((abs (p1[0] - p2[0])) >= GPU_TOLERANCE) ||
-            ((abs (p1[1] - p2[1])) >= GPU_TOLERANCE ))
+    if ( ((FABS(p1[0] - p2[0])) >= GPU_TOLERANCE) ||
+            ((FABS(p1[1] - p2[1])) >= GPU_TOLERANCE) )
+    {
         return true;
-    else return false;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 
-bool check_same (ivec p1, ivec p2)
+bool check_same( ivec p1, ivec p2 )
 {
     if ( (p1[0] == p2[0]) || (p1[1] == p2[1]) || (p1[2] == p2[2]) )
+    {
         return true;
+    }
     else 
+    {
         return false;
+    }
 }
 
 
-void print_bond_data (bond_order_data *s)
+void print_bond_data( bond_order_data *s )
 {
     /*   
          fprintf (stderr, "Bond_Order_Data BO (%f ) BO_s (%f ) BO_pi (%f ) BO_pi2 (%f ) ", 
@@ -56,13 +76,13 @@ void print_bond_data (bond_order_data *s)
          s->BO_pi,
          s->BO_pi2 );
      */
-    fprintf (stderr, " Cdbo (%e) ", s->Cdbo );
-    fprintf (stderr, " Cdbopi (%e) ", s->Cdbopi );
-    fprintf (stderr, " Cdbopi2 (%e) ", s->Cdbopi2 );
+    fprintf( stderr, " Cdbo (%e) ", s->Cdbo );
+    fprintf( stderr, " Cdbopi (%e) ", s->Cdbopi );
+    fprintf( stderr, " Cdbopi2 (%e) ", s->Cdbopi2 );
 }
 
 
-int validate_neighbors (reax_system *system, reax_list **lists)
+int validate_neighbors( reax_system *system, reax_list **lists )
 {
     reax_list *far_nbrs = *lists + FAR_NBRS;
     reax_list *d_nbrs = *dev_lists + FAR_NBRS;
@@ -772,7 +792,7 @@ int validate_bonds (reax_system *system, storage *workspace, reax_list **lists)
     return SUCCESS;
 }
 
-int validate_workspace (reax_system *system, storage *workspace)
+int validate_workspace( reax_system *system, storage *workspace )
 {
     int miscount;
     int count, tcount;
@@ -847,13 +867,15 @@ int validate_workspace (reax_system *system, storage *workspace)
             count ++;
         }    
     }
-    free (deltap_boc);
+    free( deltap_boc );
     fprintf (stderr, "Deltap_boc mismatch count %d\n", count);
 
 
     rvec *dDeltap_self;
-    dDeltap_self = (rvec *) calloc (system->N, sizeof (rvec) );
-    copy_host_device (dDeltap_self, dev_workspace->dDeltap_self, system->N * sizeof (rvec), cudaMemcpyDeviceToHost, "ddeltap_self");
+    dDeltap_self = (rvec *) scalloc( system->N, sizeof (rvec),
+            "validate_workspace::dDeltap_self" );
+    copy_host_device( dDeltap_self, dev_workspace->dDeltap_self,
+            system->N * sizeof (rvec), cudaMemcpyDeviceToHost, "ddeltap_self" );
 
     count = 0; 
     for (int i = 0; i < system->N; i++ )
@@ -1622,16 +1644,16 @@ int print_sparse_matrix (sparse_matrix *H)
     sparse_matrix test;
     int index, count;
 
-    test.start = (int *) malloc (sizeof (int) * (H->cap)); 
-    test.end = (int *) malloc (sizeof (int) * (H->cap)); 
+    test.start = (int *) malloc (sizeof (int) * (H->n)); 
+    test.end = (int *) malloc (sizeof (int) * (H->n)); 
 
     test.entries = (sparse_matrix_entry *) malloc (sizeof (sparse_matrix_entry) * (H->m));
     memset (test.entries, 0xFF, sizeof (sparse_matrix_entry) * H->m);
 
     copy_host_device ( test.entries, dev_workspace->H.entries, 
             sizeof (sparse_matrix_entry) * H->m, cudaMemcpyDeviceToHost, "H:m");
-    copy_host_device ( test.start, dev_workspace->H.start, sizeof (int)* (H->cap), cudaMemcpyDeviceToHost, "H:start");
-    copy_host_device ( test.end , dev_workspace->H.end, sizeof (int) * (H->cap), cudaMemcpyDeviceToHost, "H:end");
+    copy_host_device ( test.start, dev_workspace->H.start, sizeof (int)* (H->n), cudaMemcpyDeviceToHost, "H:start");
+    copy_host_device ( test.end , dev_workspace->H.end, sizeof (int) * (H->n), cudaMemcpyDeviceToHost, "H:end");
 
     count = 0; 
     for (int i = 0; i < 1; i++) {

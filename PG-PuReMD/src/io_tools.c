@@ -22,23 +22,23 @@
 #include "reax_types.h"
 #include "index_utils.h"
 #if defined(PURE_REAX)
-#include "io_tools.h"
-#include "basic_comm.h"
-#include "list.h"
-#include "reset_tools.h"
-#include "system_props.h"
-#include "tool_box.h"
-#include "traj.h"
-#include "vector.h"
+  #include "io_tools.h"
+  #include "basic_comm.h"
+  #include "list.h"
+  #include "reset_tools.h"
+  #include "system_props.h"
+  #include "tool_box.h"
+  #include "traj.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_io_tools.h"
-#include "reax_basic_comm.h"
-#include "reax_list.h"
-#include "reax_reset_tools.h"
-#include "reax_system_props.h"
-#include "reax_tool_box.h"
-#include "reax_traj.h"
-#include "reax_vector.h"
+  #include "reax_io_tools.h"
+  #include "reax_basic_comm.h"
+  #include "reax_list.h"
+  #include "reax_reset_tools.h"
+  #include "reax_system_props.h"
+  #include "reax_tool_box.h"
+  #include "reax_traj.h"
+  #include "reax_vector.h"
 #endif
 
 
@@ -798,7 +798,7 @@ void Print_My_Atoms( reax_system *system )
     sprintf( fname, "my_atoms.%d", system->my_rank );
     if ( (fh = fopen( fname, "w" )) == NULL )
     {
-        fprintf( stderr, "error in opening my_atoms file" );
+        fprintf( stderr, "[ERROR] cannot open my_atoms file" );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
@@ -826,7 +826,7 @@ void Print_My_Ext_Atoms( reax_system *system )
     sprintf( fname, "my_ext_atoms.%d", system->my_rank );
     if ( (fh = fopen( fname, "w" )) == NULL )
     {
-        fprintf( stderr, "error in opening my_ext_atoms file" );
+        fprintf( stderr, "[ERROR] cannot open my_ext_atoms file" );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 

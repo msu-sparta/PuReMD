@@ -36,27 +36,31 @@
 
 /* calculates the theta angle between i-j-k */
 void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-                      real *theta, real *cos_theta )
+        real *theta, real *cos_theta )
 {
     (*cos_theta) = Dot( dvec_ji, dvec_jk, 3 ) / ( d_ji * d_jk );
-    if ( *cos_theta > 1. ) *cos_theta  = 1.0;
-    if ( *cos_theta < -1. ) *cos_theta  = -1.0;
+    if ( *cos_theta > 1.0 )
+    {
+        *cos_theta  = 1.0;
+    }
+    if ( *cos_theta < -1.0 )
+    {
+        *cos_theta  = -1.0;
+    }
 
-    (*theta) = acos( *cos_theta );
+    (*theta) = ACOS( *cos_theta );
 }
 
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
 void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-                           rvec* dcos_theta_di,
-                           rvec* dcos_theta_dj,
-                           rvec* dcos_theta_dk )
+        rvec* dcos_theta_di, rvec* dcos_theta_dj, rvec* dcos_theta_dk )
 {
     int t;
     real sqr_d_ji = SQR(d_ji);
     real sqr_d_jk = SQR(d_jk);
     real inv_dists = 1.0 / (d_ji * d_jk);
-    real inv_dists3 = pow( inv_dists, 3 );
+    real inv_dists3 = POW( inv_dists, 3.0 );
     real dot_dvecs = Dot( dvec_ji, dvec_jk, 3 );
     real Cdot_inv3 = dot_dvecs * inv_dists3;
 
@@ -138,7 +142,7 @@ void Valence_Angles( reax_system *system, control_params *control,
             temp = SQR( bo_jt->BO );
             temp *= temp;
             temp *= temp;
-            prod_SBO *= exp( -temp );
+            prod_SBO *= EXP( -temp );
         }
 
         /* modifications to match Adri's code - 09/01/09 */
@@ -171,7 +175,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         else
             SBO2 = 2, CSBO2 = 0;
 
-        expval6 = exp( p_val6 * workspace->Delta_boc[j] );
+        expval6 = EXP( p_val6 * workspace->Delta_boc[j] );
 
         for ( pi = start_j; pi < end_j; ++pi )
         {
@@ -229,20 +233,21 @@ void Valence_Angles( reax_system *system, control_params *control,
                     p_ijk    = &( thb_intrs->select.three_body_list[num_thb_intrs] );
 
                     Calculate_Theta( pbond_ij->dvec, pbond_ij->d,
-                                     pbond_jk->dvec, pbond_jk->d,
-                                     &theta, &cos_theta );
+                            pbond_jk->dvec, pbond_jk->d, &theta, &cos_theta );
 
                     Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d,
-                                          pbond_jk->dvec, pbond_jk->d,
-                                          &(p_ijk->dcos_di), &(p_ijk->dcos_dj),
-                                          &(p_ijk->dcos_dk) );
+                            pbond_jk->dvec, pbond_jk->d,
+                            &(p_ijk->dcos_di), &(p_ijk->dcos_dj),
+                            &(p_ijk->dcos_dk) );
                     p_ijk->thb = k;
                     p_ijk->pthb = pk;
                     p_ijk->theta = theta;
 
-                    sin_theta = sin( theta );
+                    sin_theta = SIN( theta );
                     if ( sin_theta < 1.0e-5 )
+                    {
                         sin_theta = 1.0e-5;
+                    }
 
                     ++num_thb_intrs;
 
@@ -292,15 +297,15 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 p_val7 = thbp->p_val7;
                                 theta_00 = thbp->theta_00;
 
-                                exp3ij = exp( -p_val3 * pow( BOA_ij, p_val4 ) );
+                                exp3ij = EXP( -p_val3 * pow( BOA_ij, p_val4 ) );
                                 f7_ij = 1.0 - exp3ij;
                                 Cf7ij = p_val3 * p_val4 * pow( BOA_ij, p_val4 - 1.0 ) * exp3ij;
 
-                                exp3jk = exp( -p_val3 * pow( BOA_jk, p_val4 ) );
+                                exp3jk = EXP( -p_val3 * pow( BOA_jk, p_val4 ) );
                                 f7_jk = 1.0 - exp3jk;
                                 Cf7jk = p_val3 * p_val4 * pow( BOA_jk, p_val4 - 1.0 ) * exp3jk;
 
-                                expval7 = exp( -p_val7 * workspace->Delta_boc[j] );
+                                expval7 = EXP( -p_val7 * workspace->Delta_boc[j] );
                                 trm8 = 1.0 + expval6 + expval7;
                                 f8_Dj = p_val5 - ( (p_val5 - 1.0) * (2.0 + expval6) / trm8 );
                                 Cf8j = ( (1.0 - p_val5) / SQR(trm8) ) *
@@ -308,10 +313,10 @@ void Valence_Angles( reax_system *system, control_params *control,
                                          (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ) );
 
                                 theta_0 = 180.0 - theta_00 * (1.0 -
-                                                              exp(-p_val10 * (2.0 - SBO2)));
+                                                              EXP(-p_val10 * (2.0 - SBO2)));
                                 theta_0 = DEG2RAD( theta_0 );
 
-                                expval2theta  = exp( -p_val2 * SQR(theta_0 - theta) );
+                                expval2theta  = EXP( -p_val2 * SQR(theta_0 - theta) );
                                 if ( p_val1 >= 0 )
                                     expval12theta = p_val1 * (1.0 - expval2theta);
                                 else // To avoid linear Me-H-Me angles (6/6/06)
@@ -324,7 +329,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                                          expval2theta * (theta_0 - theta);
 
                                 Ctheta_0 = p_val10 * DEG2RAD(theta_00) *
-                                           exp( -p_val10 * (2.0 - SBO2) );
+                                           EXP( -p_val10 * (2.0 - SBO2) );
 
                                 CEval5 = -CEval4 * Ctheta_0 * CSBO2;
                                 CEval6 = CEval5 * dSBO1;
@@ -342,10 +347,10 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 p_pen3 = system->reax_param.gp.l[20];
                                 p_pen4 = system->reax_param.gp.l[21];
 
-                                exp_pen2ij = exp( -p_pen2 * SQR( BOA_ij - 2.0 ) );
-                                exp_pen2jk = exp( -p_pen2 * SQR( BOA_jk - 2.0 ) );
-                                exp_pen3 = exp( -p_pen3 * workspace->Delta[j] );
-                                exp_pen4 = exp(  p_pen4 * workspace->Delta[j] );
+                                exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
+                                exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
+                                exp_pen3 = EXP( -p_pen3 * workspace->Delta[j] );
+                                exp_pen4 = EXP(  p_pen4 * workspace->Delta[j] );
                                 trm_pen34 = 1.0 + exp_pen3 + exp_pen4;
                                 f9_Dj = ( 2.0 + exp_pen3 ) / trm_pen34;
                                 Cf9j = ( -p_pen3 * exp_pen3 * trm_pen34 -
@@ -369,13 +374,13 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 p_coa3 = system->reax_param.gp.l[38];
                                 p_coa4 = system->reax_param.gp.l[30];
 
-                                exp_coa2 = exp( p_coa2 * workspace->Delta_boc[j] );
+                                exp_coa2 = EXP( p_coa2 * workspace->Delta_boc[j] );
                                 data->my_en.e_coa += e_coa =
                                                          p_coa1 / (1. + exp_coa2) *
-                                                         exp( -p_coa3 * SQR(workspace->total_bond_order[i] - BOA_ij) ) *
-                                                         exp( -p_coa3 * SQR(workspace->total_bond_order[k] - BOA_jk) ) *
-                                                         exp( -p_coa4 * SQR(BOA_ij - 1.5) ) *
-                                                         exp( -p_coa4 * SQR(BOA_jk - 1.5) );
+                                                         EXP( -p_coa3 * SQR(workspace->total_bond_order[i] - BOA_ij) ) *
+                                                         EXP( -p_coa3 * SQR(workspace->total_bond_order[k] - BOA_jk) ) *
+                                                         EXP( -p_coa4 * SQR(BOA_ij - 1.5) ) *
+                                                         EXP( -p_coa4 * SQR(BOA_jk - 1.5) );
 
                                 CEcoa1 = -2 * p_coa4 * (BOA_ij - 1.5) * e_coa;
                                 CEcoa2 = -2 * p_coa4 * (BOA_jk - 1.5) * e_coa;

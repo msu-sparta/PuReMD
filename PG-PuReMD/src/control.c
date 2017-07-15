@@ -20,17 +20,18 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "control.h"
-#include "tool_box.h"
+  #include "control.h"
+  #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_control.h"
-#include "reax_tool_box.h"
+  #include "reax_control.h"
+  #include "reax_tool_box.h"
 #endif
 
 
 char Read_Control_File( char *control_file, control_params* control,
-                        output_controls *out_control )
+        output_controls *out_control )
 {
     FILE *fp;
     char *s, **tmp;
@@ -40,7 +41,8 @@ char Read_Control_File( char *control_file, control_params* control,
     /* open control file */
     if ( (fp = fopen( control_file, "r" ) ) == NULL )
     {
-        fprintf( stderr, "error opening the control file! terminating...\n" );
+        fprintf( stderr, "[ERROR] cannot open the control file (%s)! terminating...\n",
+              control_file );
         MPI_Abort( MPI_COMM_WORLD,  FILE_NOT_FOUND );
     }
 
@@ -108,11 +110,11 @@ char Read_Control_File( char *control_file, control_params* control,
     control->restrict_type = 0;
 
     /* memory allocations */
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
+    s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
+    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
     for (i = 0; i < MAX_TOKENS; i++)
     {
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
+        tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::tmp[i]" );
     }
 
     /* read control parameters file */
@@ -437,14 +439,14 @@ char Read_Control_File( char *control_file, control_params* control,
         }
         else
         {
-            fprintf( stderr, "WARNING: unknown parameter %s\n", tmp[0] );
+            fprintf( stderr, "[WARNING] unknown parameter %s\n", tmp[0] );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
     }
 
     if ( ferror( fp ) )
     {
-        fprintf( stderr, "ERROR: parsing control file failed (I/O error). TERMINATING...\n" );
+        fprintf( stderr, "[ERROR] parsing control file failed (I/O error). TERMINATING...\n" );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
@@ -461,14 +463,10 @@ char Read_Control_File( char *control_file, control_params* control,
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        free( tmp[i] );
+        sfree( tmp[i], "Read_Control_File::tmp[i]" );
     }
-    free( tmp );
-    free( s );
-
-    // fprintf( stderr,"%d %d %10.5f %d %10.5f %10.5f\n",
-    //   control->ensemble, control->nsteps, control->dt,
-    //   control->tabulate, control->T, control->P );
+    sfree( tmp, "Read_Control_File::tmp" );
+    sfree( s, "Read_Control_File::s" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "control file read\n" );

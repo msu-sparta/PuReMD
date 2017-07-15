@@ -612,9 +612,10 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
     if ( i >= 300 )
     {
-        fprintf( stderr, "WARNING: dual CG convergence failed! (%d steps)\n", i );
-        fprintf( stderr, "\ts lin solve error: %f\n", SQRT(sig_new[0]) / b_norm[0] );
-        fprintf( stderr, "\tt lin solve error: %f\n", SQRT(sig_new[1]) / b_norm[1] );
+        fprintf( stderr, "[WARNING] p%d: dual CG convergence failed! (%d steps)\n",
+                system->my_rank, i );
+        fprintf( stderr, "    [INFO] s lin solve error: %f\n", SQRT(sig_new[0]) / b_norm[0] );
+        fprintf( stderr, "    [INFO] t lin solve error: %f\n", SQRT(sig_new[1]) / b_norm[1] );
     }
 
 #if defined(CG_PERFORMANCE)
@@ -924,7 +925,7 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H, real
 #if defined(DEBUG)
     //if( system->my_rank == MASTER_NODE ) {
     fprintf( stderr, "p%d CG:sig_new=%24.15e,d_norm=%24.15e,q_norm=%24.15e\n",
-             system->my_rank, sqrt(sig_new),
+             system->my_rank, SQRT(sig_new),
              Parallel_Norm(workspace->d, system->n, mpi_data->world),
              Parallel_Norm(workspace->q, system->n, mpi_data->world) );
     //Vector_Print( stderr, "d", workspace->d, system->N );
@@ -987,7 +988,7 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H, real
 #if defined(DEBUG)
         if ( system->my_rank == MASTER_NODE )
             fprintf(stderr, "p%d CG iter%d: sig_new = %24.15e\n",
-                    system->my_rank, i, sqrt(sig_new) );
+                    system->my_rank, i, SQRT(sig_new) );
         MPI_Barrier( mpi_data->world );
 #endif
 #if defined(CG_PERFORMANCE)

@@ -353,26 +353,26 @@ int MPI_Not_GPU_Validate_Lists( reax_system *system, storage *workspace,
         //    comp = dev_workspace->H.m;
 
         total_sp_entries += end_index [i] - index[i];
-        if (end_index [i] - index[i] > system->max_sparse_entries)
-        {
-            fprintf( stderr, "step%d-sparsemat-chk failed: i=%d start(i)=%d end(i)=%d \n",
-                     step, i, index[i], end_index[i] );
-            return FAILURE;
-        }
-        else if (end_index[i] >= workspace->H.m)
-        {
-            //SUDHIR_FIX_SPARSE_MATRIX
-            //TODO move this carver
-            fprintf (stderr, "p:%d - step%d-sparsemat-chk failed (exceed limits): i=%d start(i)=%d end(i)=%d \n",
-                     system->my_rank, step, i, index[i], end_index[i]);
-            //TODO move this carver
-            return FAILURE;
-        }
-        else
-        {
-            if (max_sp_entries <= end_index[i] - index [i])
-                max_sp_entries = end_index[i] - index [i];
-        }
+//        if (end_index [i] - index[i] > system->max_sparse_entries)
+//        {
+//            fprintf( stderr, "step%d-sparsemat-chk failed: i=%d start(i)=%d end(i)=%d \n",
+//                     step, i, index[i], end_index[i] );
+//            return FAILURE;
+//        }
+//        else if (end_index[i] >= workspace->H.m)
+//        {
+//            //SUDHIR_FIX_SPARSE_MATRIX
+//            //TODO move this carver
+//            fprintf (stderr, "p:%d - step%d-sparsemat-chk failed (exceed limits): i=%d start(i)=%d end(i)=%d \n",
+//                     system->my_rank, step, i, index[i], end_index[i]);
+//            //TODO move this carver
+//            return FAILURE;
+//        }
+//        else
+//        {
+//            if (max_sp_entries <= end_index[i] - index [i])
+//                max_sp_entries = end_index[i] - index [i];
+//        }
     }
     //if (max_sp_entries <= end_index[i] - index [i])
     //    max_sp_entries = end_index[i] - index [i];
@@ -1205,7 +1205,7 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                 nbr_pj->d = rvec_Norm_Sqr( nbr_pj->dvec );
                 if ( nbr_pj->d <= SQR(cutoff) )
                 {
-                    nbr_pj->d = sqrt(nbr_pj->d);
+                    nbr_pj->d = SQRT(nbr_pj->d);
                     flag = 1;
                 }
                 else
@@ -1368,7 +1368,7 @@ void Host_Estimate_Sparse_Matrix( reax_atom *my_atoms, control_params *control,
                 //if( nbr_pj->d <= (cutoff) ) {
                 if ( nbr_pj->d <= SQR(cutoff) )
                 {
-                    nbr_pj->d = sqrt(nbr_pj->d);
+                    nbr_pj->d = SQRT(nbr_pj->d);
                     flag = 1;
                 }
                 else
@@ -1547,7 +1547,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     }
 
     fprintf( stderr, "HOST SPARSE MATRIX ENTRIES: %d \n",  *Htop );
-    *Htop = MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES );
+    *Htop = MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_CM_ENTRIES );
 
     hbond_count = 0;
     for ( i = 0; i < system->n; ++i )
@@ -1669,21 +1669,21 @@ void Estimate_Storages( reax_system *system, control_params *control,
                     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
                     {
                         C12 = twbp->p_bo1 * pow( r_ij / twbp->r_s, twbp->p_bo2 );
-                        BO_s = (1.0 + control->bo_cut) * exp( C12 );
+                        BO_s = (1.0 + control->bo_cut) * EXP( C12 );
                     }
                     else BO_s = C12 = 0.0;
 
                     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
                     {
                         C34 = twbp->p_bo3 * pow( r_ij / twbp->r_p, twbp->p_bo4 );
-                        BO_pi = exp( C34 );
+                        BO_pi = EXP( C34 );
                     }
                     else BO_pi = C34 = 0.0;
 
                     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
                     {
                         C56 = twbp->p_bo5 * pow( r_ij / twbp->r_pp, twbp->p_bo6 );
-                        BO_pi2 = exp( C56 );
+                        BO_pi2 = EXP( C56 );
                     }
                     else BO_pi2 = C56 = 0.0;
 
@@ -1700,7 +1700,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
         }
     }
 
-    *Htop = (int)(MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES ));
+    *Htop = (int)(MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_CM_ENTRIES ));
 
     // Set max sparse entries, needed for first iteration of validate_list
     system->max_sparse_entries = *Htop * SAFE_ZONE;

@@ -48,7 +48,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
         if ( (fres = fopen( fname, "wb" )) == NULL )
         {
-            fprintf( stderr, "ERROR: can't open the restart file! terminating...\n" );
+            fprintf( stderr, "[ERROR] can't open the restart file! terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
         }
 
@@ -112,7 +112,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
         fclose( fres );
     }
 
-    free(buffer);
+    sfree( buffer, "Write_Binary_Restart::buffer" );
 }
 
 
@@ -138,7 +138,7 @@ void Write_Restart( reax_system *system, control_params *control,
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
         if ( (fres = fopen( fname, "w" )) == NULL )
         {
-            fprintf( stderr, "ERROR: can't open the restart file! terminating...\n" );
+            fprintf( stderr, "[ERROR] can't open the restart file! terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
         }
 
@@ -207,8 +207,8 @@ void Write_Restart( reax_system *system, control_params *control,
         fprintf( fres, "%s", buffer );
         fclose( fres );
     }
-    free(buffer);
-    free(line);
+    sfree( buffer, "Write_Restart::buffer" );
+    sfree( line, "Write_Restart::line" );
 }
 
 
@@ -252,7 +252,7 @@ void Read_Binary_Restart( char *res_file, reax_system *system,
 
     if ( (fres = fopen(res_file, "rb")) == NULL )
     {
-        fprintf( stderr, "ERROR: cannot open the restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] cannot open the restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
@@ -369,15 +369,15 @@ void Read_Restart( char *res_file, reax_system *system,
 
     if ( (fres = fopen(res_file, "r")) == NULL )
     {
-        fprintf( stderr, "ERROR: cannot open the restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] cannot open the restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
+    s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Restart::s" );
+    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Restart::tmp" );
     for (i = 0; i < MAX_TOKENS; i++)
     {
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
+        tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Restart::tmp[i]" );
     }
 
     //read first header lines
@@ -385,7 +385,7 @@ void Read_Restart( char *res_file, reax_system *system,
     c = Tokenize( s, &tmp );
     if ( c != 7 )
     {
-        fprintf( stderr, "ERROR: invalid format in restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
     data->prev_steps = atoi(tmp[0]);
@@ -401,7 +401,7 @@ void Read_Restart( char *res_file, reax_system *system,
     c = Tokenize( s, &tmp );
     if ( c != 3 )
     {
-        fprintf( stderr, "ERROR: invalid format in restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
     box[0][0] = atof(tmp[0]);
@@ -411,7 +411,7 @@ void Read_Restart( char *res_file, reax_system *system,
     c = Tokenize( s, &tmp );
     if ( c != 3 )
     {
-        fprintf( stderr, "ERROR: invalid format in restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
     box[1][0] = atof(tmp[0]);
@@ -421,7 +421,7 @@ void Read_Restart( char *res_file, reax_system *system,
     c = Tokenize( s, &tmp );
     if ( c != 3 )
     {
-        fprintf( stderr, "ERROR: invalid format in restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
     box[2][0] = atof(tmp[0]);
@@ -466,7 +466,7 @@ void Read_Restart( char *res_file, reax_system *system,
         c = Tokenize( s, &tmp );
         if ( c != 9 )
         {
-            fprintf( stderr, "ERROR: invalid format in restart file! terminating...\n" );
+            fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
         orig_id_temp = atoi(tmp[0]);
@@ -496,10 +496,10 @@ void Read_Restart( char *res_file, reax_system *system,
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        free( tmp[i] );
+        sfree( tmp[i], "Read_Restart::tmp[i]" );
     }
-    free( tmp );
-    free( s );
+    sfree( tmp, "Read_Restart::tmp" );
+    sfree( s, "Read_Restart::s" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run

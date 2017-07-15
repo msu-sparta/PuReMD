@@ -123,7 +123,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
     real val, dval;
     int *Ltop;
 
-    Ltop = (int*) malloc((A->n) * sizeof(int));
+    Ltop = (int*) smalloc( A->n * sizeof(int), "ICHOLT::Ltop" );
 
     // clear data structures
     Utop = 0;
@@ -267,40 +267,46 @@ void Init_MatVec( reax_system *system, simulation_data *data,
     int i; //, fillin;
     reax_atom *atom;
 
-    /*if( (data->step - data->prev_steps) % control->refactor == 0 ||
-        workspace->L == NULL ) {
-      //Print_Linear_System( system, control, workspace, data->step );
-      Sort_Matrix_Rows( workspace->H );
-      fprintf( stderr, "H matrix sorted\n" );
-      Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
-      fprintf( stderr, "drop tolerances calculated\n" );
-      if( workspace->L == NULL ) {
-        fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
-
-        if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin ) == 0 ||
-      Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin ) == 0 ) {
-    fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
-    MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-        }
-
-        workspace->L->n = workspace->H->n;
-        workspace->U->n = workspace->H->n;
-    #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: n=%d, fillin = %d\n",
-           system->my_rank, workspace->L->n, fillin );
-        fprintf( stderr, "p%d: allocated memory: L = U = %ldMB\n",
-                 system->my_rank,fillin*sizeof(sparse_matrix_entry)/(1024*1024) );
-    #endif
-      }
-
-      ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
-    #if defined(DEBUG_FOCUS)
-      fprintf( stderr, "p%d: icholt finished\n", system->my_rank );
-      //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-      //Print_Sparse_Matrix2( workspace->L, fname );
-      //Print_Sparse_Matrix( U );
-    #endif
-    }*/
+//    if( (data->step - data->prev_steps) % control->refactor == 0 ||
+//            workspace->L == NULL )
+//    {
+////        Print_Linear_System( system, control, workspace, data->step );
+//        Sort_Matrix_Rows( workspace->H );
+//        fprintf( stderr, "H matrix sorted\n" );
+//
+//        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
+//        fprintf( stderr, "drop tolerances calculated\n" );
+//
+//        if( workspace->L == NULL )
+//        {
+//            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
+//
+//            if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin ) == 0 ||
+//                    Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin ) == 0 )
+//            {
+//                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+//                MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+//            }
+//
+//            workspace->L->n = workspace->H->n;
+//            workspace->U->n = workspace->H->n;
+//
+//#if defined(DEBUG_FOCUS)
+//            fprintf( stderr, "p%d: n=%d, fillin = %d\n",x
+//                    system->my_rank, workspace->L->n, fillin );
+//            fprintf( stderr, "p%d: allocated memory: L = U = %ldMB\n",
+//                    system->my_rank,fillin*sizeof(sparse_matrix_entry)/(1024*1024) );
+//#endif
+//        }
+//
+//      ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+//#if defined(DEBUG_FOCUS)
+//    fprintf( stderr, "p%d: icholt finished\n", system->my_rank );
+////    sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+////    Print_Sparse_Matrix2( workspace->L, fname );
+////    Print_Sparse_Matrix( U );
+//#endif
+//    }
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -330,7 +336,7 @@ void Init_MatVec( reax_system *system, simulation_data *data,
         workspace->x[i][0] = 4 * (atom->s[0] + atom->s[2]) - (6 * atom->s[1] + atom->s[3]);
         //workspace->x[i][1] = 4*(atom->t[0]+atom->t[2])-(6*atom->t[1]+atom->t[3]);
 
-        // fprintf(stderr, "i=%d s=%f t=%f\n", i, workspace->s[i], workspace->t[i]);
+//        fprintf(stderr, "i=%d s=%f t=%f\n", i, workspace->s[i], workspace->t[i]);
     }
 }
 
@@ -345,7 +351,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
     real *q;
 
     scale = sizeof(real) / sizeof(void);
-    q = (real*) malloc(system->N * sizeof(real));
+    q = (real*) smalloc( system->N * sizeof(real), "Calculate_Charges::q" );
 
     //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
     //t_sum = Parallel_Vector_Acc(workspace->t, system->n, mpi_data->world);
@@ -396,7 +402,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         system->my_atoms[i].q = q[i];
     }
 
-    free(q);
+    sfree( q, "Calculate_Charges::q" );
 }
 
 

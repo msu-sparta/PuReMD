@@ -53,5 +53,5 @@ double GRandom(double mean, double sigma)
         rsq = v1 * v1 + v2 * v2;
     }
 
-    return mean + v1 * sigma * sqrt(-2.0 * log(rsq) / rsq);
+    return mean + v1 * sigma * SQRT(-2.0 * LOG(rsq) / rsq);
 }

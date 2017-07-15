@@ -56,8 +56,7 @@ CUDA_DEVICE real Calculate_Omega( rvec dvec_ij, real r_ij,
     rvec_Cross( cross_jk_kl, dvec_jk, dvec_kl );
     unnorm_sin_omega = -r_jk * rvec_Dot( dvec_ij, cross_jk_kl );
 
-    omega = atan2( unnorm_sin_omega, unnorm_cos_omega ); 
-
+    omega = ATAN2( unnorm_sin_omega, unnorm_cos_omega ); 
 
     /* derivatives */
     /* coef for adjusments to cos_theta's */
@@ -76,16 +75,24 @@ CUDA_DEVICE real Calculate_Omega( rvec dvec_ij, real r_ij,
 
 
     poem = 2.0 * r_ij * r_kl * sin_ijk * sin_jkl;
-    if( poem < 1e-20 ) poem = 1e-20;
+    if ( poem < 1e-20 )
+    {
+        poem = 1e-20;
+    }
 
     tel  = SQR( r_ij ) + SQR( r_jk ) + SQR( r_kl ) - SQR( r_li ) - 
         2.0 * ( r_ij * r_jk * cos_ijk - r_ij * r_kl * cos_ijk * cos_jkl + 
                 r_jk * r_kl * cos_jkl );
 
     arg  = tel / poem;
-    if( arg >  1.0 ) arg =  1.0;
-    if( arg < -1.0 ) arg = -1.0;
-
+    if ( arg >  1.0 )
+    {
+        arg =  1.0;
+    }
+    if ( arg < -1.0 )
+    {
+        arg = -1.0;
+    }
 
     /* fprintf( out_control->etor, 
        "%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f\n",
@@ -107,10 +114,22 @@ CUDA_DEVICE real Calculate_Omega( rvec dvec_ij, real r_ij,
        -p_jkl->dcos_dk[0]/sin_jkl, -p_jkl->dcos_dk[1]/sin_jkl, 
        -p_jkl->dcos_dk[2]/sin_jkl );*/
 
-    if( sin_ijk >= 0 && sin_ijk <= MIN_SINE ) sin_ijk = MIN_SINE;
-    else if( sin_ijk <= 0 && sin_ijk >= -MIN_SINE ) sin_ijk = -MIN_SINE;
-    if( sin_jkl >= 0 && sin_jkl <= MIN_SINE ) sin_jkl = MIN_SINE;
-    else if( sin_jkl <= 0 && sin_jkl >= -MIN_SINE ) sin_jkl = -MIN_SINE;
+    if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE )
+    {
+        sin_ijk = MIN_SINE;
+    }
+    else if ( sin_ijk <= 0 && sin_ijk >= -MIN_SINE )
+    {
+        sin_ijk = -MIN_SINE;
+    }
+    if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE )
+    {
+        sin_jkl = MIN_SINE;
+    }
+    else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE )
+    {
+        sin_jkl = -MIN_SINE;
+    }
 
     // dcos_omega_di
     rvec_ScaledSum( dcos_omega_di, (htra-arg*hnra)/r_ij, dvec_ij, -1., dvec_li );
@@ -140,16 +159,10 @@ CUDA_DEVICE real Calculate_Omega( rvec dvec_ij, real r_ij,
 }
 
 
-
-CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, 
-        global_parameters gp, 
-        four_body_header *d_fbp, 
-        control_params *control, 
-        reax_list p_bonds, reax_list p_thb_intrs, 
-        storage p_workspace, 
-        int n, int num_atom_types, 
-        real *data_e_tor, real *data_e_con, 
-        rvec *data_ext_press )
+CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp, 
+        four_body_header *d_fbp, control_params *control, reax_list p_bonds,
+        reax_list p_thb_intrs, storage p_workspace, int n, int num_atom_types, 
+        real *data_e_tor, real *data_e_con, rvec *data_ext_press )
 {
     int i, j, k, l, pi, pj, pk, pl, pij, plk, natoms;
     int type_i, type_j, type_k, type_l;
@@ -211,7 +224,8 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
     start_j = Dev_Start_Index(j, bonds);
     end_j = Dev_End_Index(j, bonds);
 
-    for( pk = start_j; pk < end_j; ++pk ) {
+    for ( pk = start_j; pk < end_j; ++pk )
+    {
         pbond_jk = &( bonds->select.bond_list[pk] );
         k = pbond_jk->nbr;
         bo_jk = &( pbond_jk->bo_data );
@@ -220,8 +234,9 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
         /* see if there are any 3-body interactions involving j&k
            where j is the central atom. Otherwise there is no point in
            trying to form a 4-body interaction out of this neighborhood */
-        if( my_atoms[j].orig_id < my_atoms[k].orig_id && 
-                bo_jk->BO > control->thb_cut/*0*/ && Dev_Num_Entries(pk, thb_intrs) ) {
+        if ( my_atoms[j].orig_id < my_atoms[k].orig_id && 
+                bo_jk->BO > control->thb_cut/*0*/ && Dev_Num_Entries(pk, thb_intrs) )
+        {
             start_k = Dev_Start_Index(k, bonds);
             end_k = Dev_End_Index(k, bonds);               
             pj = pbond_jk->sym_index; // pj points to j on k's list
@@ -229,7 +244,8 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
             /* do the same check as above: 
                are there any 3-body interactions involving k&j 
                where k is the central atom */
-            if( Dev_Num_Entries(pj, thb_intrs) ) {
+            if ( Dev_Num_Entries(pj, thb_intrs) )
+            {
                 type_k = my_atoms[k].type;
                 Delta_k = workspace->Delta_boc[k];
                 r_jk = pbond_jk->d;
@@ -246,16 +262,17 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
                 exp_tor34_inv = 1.0 / (1.0 + exp_tor3_DjDk + exp_tor4_DjDk);
                 f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
 
-
                 /* pick i up from j-k interaction where j is the central atom */
-                for( pi = start_pk; pi < end_pk; ++pi ) {
+                for ( pi = start_pk; pi < end_pk; ++pi )
+                {
                     p_ijk = &( thb_intrs->select.three_body_list[pi] );
                     pij = p_ijk->pthb; // pij is pointer to i on j's bond_list
                     pbond_ij = &( bonds->select.bond_list[pij] );
                     bo_ij = &( pbond_ij->bo_data );
 
 
-                    if( bo_ij->BO > control->thb_cut/*0*/ ) {
+                    if ( bo_ij->BO > control->thb_cut/*0*/ )
+                    {
                         i = p_ijk->thb;
                         type_i = my_atoms[i].type;
                         r_ij = pbond_ij->d;
@@ -266,17 +283,24 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
                         cos_ijk = COS( theta_ijk );
                         //tan_ijk_i = 1. / TAN( theta_ijk );
                         if( sin_ijk >= 0 && sin_ijk <= MIN_SINE ) 
+                        {
                             tan_ijk_i = cos_ijk / MIN_SINE;
+                        }
                         else if( sin_ijk <= 0 && sin_ijk >= -MIN_SINE ) 
+                        {
                             tan_ijk_i = cos_ijk / -MIN_SINE;
-                        else tan_ijk_i = cos_ijk / sin_ijk;
+                        }
+                        else
+                        {
+                            tan_ijk_i = cos_ijk / sin_ijk;
+                        }
 
                         exp_tor2_ij = EXP( -p_tor2 * BOA_ij );
                         exp_cot2_ij = EXP( -p_cot2 * SQR(BOA_ij -1.5) );
 
 
                         /* pick l up from j-k interaction where k is the central atom */
-                        for( pl = start_pj; pl < end_pj; ++pl ) {
+                        for ( pl = start_pj; pl < end_pj; ++pl ) {
                             p_jkl = &( thb_intrs->select.three_body_list[pl] );
                             l = p_jkl->thb;
                             plk = p_jkl->pthb; //pointer to l on k's bond_list!
@@ -286,10 +310,10 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
                             fbh = &(d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)]);
                             fbp = &(d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)].prm[0]);
 
-
-                            if( i != l && fbh->cnt && 
+                            if ( i != l && fbh->cnt && 
                                     bo_kl->BO > control->thb_cut/*0*/ &&
-                                    bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut/*0*/ ){
+                                    bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut/*0*/ )
+                            {
                                 ++num_frb_intrs;
                                 r_kl = pbond_kl->d;
                                 BOA_kl = bo_kl->BO - control->thb_cut;
@@ -298,11 +322,18 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
                                 sin_jkl = SIN( theta_jkl );
                                 cos_jkl = COS( theta_jkl );
                                 //tan_jkl_i = 1. / TAN( theta_jkl );
-                                if( sin_jkl >= 0 && sin_jkl <= MIN_SINE ) 
+                                if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE ) 
+                                {
                                     tan_jkl_i = cos_jkl / MIN_SINE;
-                                else if( sin_jkl <= 0 && sin_jkl >= -MIN_SINE ) 
+                                }
+                                else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE ) 
+                                {
                                     tan_jkl_i = cos_jkl / -MIN_SINE;
-                                else tan_jkl_i = cos_jkl /sin_jkl;
+                                }
+                                else
+                                {
+                                    tan_jkl_i = cos_jkl /sin_jkl;
+                                }
 
                                 rvec_ScaledSum( dvec_li, 1., my_atoms[i].x, 
                                         -1., my_atoms[l].x );
@@ -310,14 +341,11 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
 
 
                                 /* omega and its derivative */
-                                omega = Calculate_Omega( pbond_ij->dvec, r_ij, 
-                                        pbond_jk->dvec, r_jk, 
-                                        pbond_kl->dvec, r_kl,
-                                        dvec_li, r_li,
-                                        p_ijk, p_jkl,
+                                omega = Calculate_Omega( pbond_ij->dvec, r_ij,
+                                        pbond_jk->dvec, r_jk, pbond_kl->dvec, r_kl,
+                                        dvec_li, r_li, p_ijk, p_jkl,
                                         dcos_omega_di, dcos_omega_dj,
-                                        dcos_omega_dk, dcos_omega_dl,
-                                        NULL);
+                                        dcos_omega_dk, dcos_omega_dl, NULL );
 
                                 cos_omega = COS( omega );
                                 cos2omega = COS( 2. * omega );
@@ -402,9 +430,10 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
                                 pbond_jk->ta_CdDelta += CEtors3;
                                 bo_ij->Cdbo += (CEtors4 + CEconj1);
                                 bo_jk->Cdbo += (CEtors5 + CEconj2);
-                                myatomicAdd ( &pbond_kl->ta_Cdbo, (CEtors6 + CEconj3));
+                                myatomicAdd( &pbond_kl->ta_Cdbo, CEtors6 + CEconj3 );
 
-                                if( control->virial == 0 ) {
+                                if ( control->virial == 0 )
+                                {
                                     /* dcos_theta_ijk */
                                     //rvec_ScaledAdd( workspace->f[i], 
                                     atomic_rvecScaledAdd( pbond_ij->ta_f, 
@@ -438,7 +467,8 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
                                     atomic_rvecScaledAdd( pbond_kl->ta_f,
                                             CEtors9 + CEconj6, dcos_omega_dl );
                                 }
-                                else {
+                                else
+                                {
                                     ivec_Sum(rel_box_jl, pbond_jk->rel_box, pbond_kl->rel_box);
 
                                     /* dcos_theta_ijk */
@@ -605,33 +635,37 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms,
 }
 
 CUDA_GLOBAL void Cuda_Torsion_Angles_PostProcess ( reax_atom *my_atoms, 
-        storage p_workspace, 
-        reax_list p_bonds, int N )
+        storage p_workspace, reax_list p_bonds, int N )
 {
     int i, pj;
-
     bond_data *pbond;
     bond_data *sym_index_bond;
     bond_order_data *bo_data;
-
-    reax_list *bonds = &p_bonds;
-    storage *workspace = &p_workspace;
+    reax_list *bonds;
+    storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    if ( i >= N) return;
 
-    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj ){
+    if ( i >= N )
+    {
+        return;
+    }
 
+    bonds = &p_bonds;
+    workspace = &p_workspace;
+
+    for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    {
         pbond = &(bonds->select.bond_list[pj]);
         bo_data = &pbond->bo_data;
         sym_index_bond = &( bonds->select.bond_list[ pbond->sym_index ] ); 
 
-        workspace->CdDelta [i] += sym_index_bond->ta_CdDelta;
+        workspace->CdDelta[i] += sym_index_bond->ta_CdDelta;
 
         bo_data->Cdbo += pbond->ta_Cdbo;
 
-        //update f vector
-        //rvec_Add (my_atoms [i].f, sym_index_bond->ta_f ); 
+        /* update f vector */
+//        rvec_Add( my_atoms [i].f, sym_index_bond->ta_f ); 
         rvec_Add (workspace->f[i], sym_index_bond->ta_f ); 
     }
 }
