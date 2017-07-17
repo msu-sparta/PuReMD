@@ -25,14 +25,25 @@
 #include "reax_types.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void Generate_Initial_Velocities( reax_system *, real );
+
+int Init_MPI_Datatypes( reax_system *, storage *, mpi_datatypes *, char * );
+
 void Initialize( reax_system*, control_params*, simulation_data*,
         storage*, reax_list**, output_controls*, mpi_datatypes* );
 
 void Pure_Initialize( reax_system*, control_params*, simulation_data*,
         storage*, reax_list**, output_controls*, mpi_datatypes* );
 
-void Cuda_Initialize( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
+void Init_Taper( control_params *,  storage * );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

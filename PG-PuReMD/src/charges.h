@@ -25,11 +25,16 @@
 #include "reax_types.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void QEq( reax_system*, control_params*, simulation_data*,
         storage*, output_controls*, mpi_datatypes* );
 
-void Cuda_QEq( reax_system*, control_params*, simulation_data*,
-        storage*, output_controls*, mpi_datatypes* );
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

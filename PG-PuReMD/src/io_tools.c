@@ -20,7 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
-#include "index_utils.h"
+
 #if defined(PURE_REAX)
   #include "io_tools.h"
   #include "basic_comm.h"
@@ -40,6 +40,8 @@
   #include "reax_traj.h"
   #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 print_interaction Print_Interactions[NUM_INTRS];

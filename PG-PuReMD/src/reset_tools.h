@@ -24,10 +24,10 @@
 
 #include "reax_types.h"
 
+
 #ifdef __cplusplus
 extern "C"  {
 #endif
-
 
 void Reset_Pressures( simulation_data* );
 
@@ -49,9 +49,9 @@ void Reset( reax_system*, control_params*, simulation_data*, storage*, reax_list
 void Reset_Test_Forces( reax_system*, storage* );
 #endif
 
-
 #ifdef __cplusplus
 }
 #endif
+
 
 #endif

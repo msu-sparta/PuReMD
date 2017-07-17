@@ -21,7 +21,6 @@
 
 #include "reax_types.h"
 
-#include "index_utils.h"
 #if defined(PURE_REAX)
   #include "torsion_angles.h"
   #include "bond_orders.h"
@@ -35,6 +34,8 @@
   #include "reax_tool_box.h"
   #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 #define MIN_SINE 1e-10
 

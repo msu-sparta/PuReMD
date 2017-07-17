@@ -20,7 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
-#include "index_utils.h"
+
 #if defined(PURE_REAX)
   #include "nonbonded.h"
   #include "bond_orders.h"
@@ -34,10 +34,12 @@
   #include "reax_vector.h"
 #endif
 
+#include "index_utils.h"
+
 
 void vdW_Coulomb_Energy( reax_system *system, control_params *control,
-                         simulation_data *data, storage *workspace,
-                         reax_list **lists, output_controls *out_control )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control )
 {
     int i, j, pj, natoms;
     int start_i, end_i, orig_i, orig_j;

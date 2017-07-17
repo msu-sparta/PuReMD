@@ -19,7 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "restart.h"
+
 #include "allocate.h"
 #include "box.h"
 #include "tool_box.h"

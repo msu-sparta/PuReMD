@@ -20,25 +20,27 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
-#include "index_utils.h"
+
 #if defined(PURE_REAX)
-#include "bonds.h"
-#include "bond_orders.h"
-#include "list.h"
-#include "tool_box.h"
-#include "vector.h"
+  #include "bonds.h"
+  #include "bond_orders.h"
+  #include "list.h"
+  #include "tool_box.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_bonds.h"
-#include "reax_bond_orders.h"
-#include "reax_list.h"
-#include "reax_tool_box.h"
-#include "reax_vector.h"
+  #include "reax_bonds.h"
+  #include "reax_bond_orders.h"
+  #include "reax_list.h"
+  #include "reax_tool_box.h"
+  #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 void Bonds( reax_system *system, control_params *control,
-            simulation_data *data, storage *workspace, reax_list **lists,
-            output_controls *out_control )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control )
 {
     int i, j, pj, natoms;
     int start_i, end_i;

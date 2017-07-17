@@ -32,7 +32,7 @@
 #endif
 
 #ifdef HAVE_CUDA
-  #include "cuda_copy.h"
+  #include "cuda/cuda_copy.h"
 #endif
 
 

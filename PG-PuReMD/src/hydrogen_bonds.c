@@ -21,8 +21,6 @@
 
 #include "reax_types.h"
 
-#include "index_utils.h"
-
 #if defined(PURE_REAX)
   #include "hydrogen_bonds.h"
   #include "bond_orders.h"
@@ -36,6 +34,8 @@
   #include "reax_valence_angles.h"
   #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 // DANIEL

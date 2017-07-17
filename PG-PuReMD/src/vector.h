@@ -136,6 +136,7 @@ CUDA_HOST_DEVICE static inline void rvec_Copy( rvec dest, rvec src )
     dest[2] = src[2];
 }
 
+
 CUDA_HOST_DEVICE static inline void rvec_Scale( rvec ret, real c, rvec v )
 {
     ret[0] = c * v[0];
@@ -497,8 +498,8 @@ CUDA_HOST_DEVICE static inline void rtensor_Transpose( rtensor ret, rtensor t )
 CUDA_HOST_DEVICE static inline real rtensor_Det( rtensor t )
 {
     return ( t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1] ) +
-             t[0][1] * (t[1][2] * t[2][0] - t[1][0] * t[2][2] ) +
-             t[0][2] * (t[1][0] * t[2][1] - t[1][1] * t[2][0] ) );
+            t[0][1] * (t[1][2] * t[2][0] - t[1][0] * t[2][2] ) +
+            t[0][2] * (t[1][0] * t[2][1] - t[1][1] * t[2][0] ) );
 }
 
 

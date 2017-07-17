@@ -96,6 +96,14 @@
 #define FABS   fabs
 #define FMOD   fmod
 
+/* transcendental constant pi */
+#if defined(M_PI)
+  /* GNU C library (libc), defined in math.h */
+  #define PI (M_PI)
+#else
+  #define PI            3.14159265
+#endif
+
 #define SQR(x)        ((x)*(x))
 #define CUBE(x)       ((x)*(x)*(x))
 #define DEG2RAD(a)    ((a)*PI/180.0)
@@ -104,13 +112,6 @@
 #define MIN(x,y)      (((x) < (y)) ? (x) : (y))
 #define MAX3(x,y,z)   MAX( MAX(x,y), z)
 
-/* transcendental constant pi */
-#if defined(M_PI)
-  /* GNU C library (libc), defined in math.h */
-  #define PI (M_PI)
-#else
-  #define PI            3.14159265
-#endif
 /* ??? */
 #define C_ele          332.06371
 /* ??? */

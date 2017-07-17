@@ -26,7 +26,17 @@
 
 //extern LR_lookup_table **LR;
 
+
+#ifdef _cplusplus
+extern "C" {
+#endif
+
 int Init_Lookup_Tables( reax_system*, control_params*, real *,
-                        mpi_datatypes*, char* );
+        mpi_datatypes*, char* );
+
+#ifdef _cplusplus
+}
+#endif
+
 
 #endif

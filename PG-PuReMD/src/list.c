@@ -22,11 +22,11 @@
 #include "reax_types.h"
 
 #if defined(PURE_REAX)
-#include "list.h"
-#include "tool_box.h"
+  #include "list.h"
+  #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_list.h"
-#include "reax_tool_box.h"
+  #include "reax_list.h"
+  #include "reax_tool_box.h"
 #endif
 
 

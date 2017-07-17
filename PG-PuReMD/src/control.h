@@ -24,6 +24,16 @@
 
 #include "reax_types.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char Read_Control_File( char*, control_params*, output_controls* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

@@ -19,13 +19,15 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "neighbors.h"
+
+#include "index_utils.h"
 #include "io_tools.h"
 #include "list.h"
 #include "tool_box.h"
 #include "vector.h"
-
-#include "index_utils.h"
 
 
 int compare_far_nbrs( const void *p1, const void *p2 )

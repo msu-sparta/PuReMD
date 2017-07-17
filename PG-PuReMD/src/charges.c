@@ -19,6 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "charges.h"
 
 #include "allocate.h"
@@ -26,12 +28,6 @@
 #include "io_tools.h"
 #include "lin_alg.h"
 #include "tool_box.h"
-
-#ifdef HAVE_CUDA
-  #include "cuda_charges.h"
-  #include "cuda_lin_alg.h"
-  #include "cuda_validation.h"
-#endif
 
 
 int compare_matrix_entry(const void *v1, const void *v2)
@@ -406,46 +402,6 @@ void Calculate_Charges( reax_system *system, storage *workspace,
 }
 
 
-#ifdef HAVE_CUDA
-void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
-        mpi_datatypes *mpi_data )
-{
-    int i, scale;
-    real u;//, s_sum, t_sum;
-    rvec2 my_sum, all_sum;
-    reax_atom *atom;
-    real *q;
-
-    my_sum[0] = 0.0;
-    my_sum[1] = 0.0;
-    scale = sizeof(real) / sizeof(void);
-    q = (real *) host_scratch;
-    memset( q, 0, system->N * sizeof (real));
-
-    cuda_charges_x( system, my_sum );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "Device: my_sum[0]: %f, my_sum[1]: %f\n",
-            my_sum[0], my_sum[1] );
-#endif
-
-    MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-
-    u = all_sum[0] / all_sum[1];
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "Device: u: %f \n", u );
-#endif
-
-    cuda_charges_st( system, workspace, q, u );
-
-    Dist( system, mpi_data, q, MPI_DOUBLE, scale, real_packer );
-
-    cuda_charges_updateq( system, q );
-}
-#endif
-
-
 void QEq( reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, output_controls *out_control,
         mpi_datatypes *mpi_data )
@@ -504,57 +460,3 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     }
 #endif
 }
-
-
-#ifdef HAVE_CUDA
-void Cuda_QEq( reax_system *system, control_params *control, simulation_data
-        *data, storage *workspace, output_controls *out_control, mpi_datatypes
-        *mpi_data )
-{
-    int s_matvecs, t_matvecs;
-
-    Cuda_Init_MatVec( system, workspace );
-
-    //if (data->step > 0) {
-    //    compare_rvec2 (workspace->b, dev_workspace->b, system->n, "b");
-    //    compare_rvec2 (workspace->x, dev_workspace->x, system->n, "x");
-    // compare_array (workspace->b_s, dev_workspace->b_s, system->n, "b_s");
-    // compare_array (workspace->b_t, dev_workspace->b_t, system->n, "b_t");
-    //}
-
-//#ifdef __CUDA_DEBUG__
-//  Init_MatVec( system, data, control, workspace, mpi_data );
-//#endif
-
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initialized qEq\n", system->my_rank );
-    //Print_Linear_System( system, control, workspace, data->step );
-#endif
-
-    //MATRIX CHANGES
-    s_matvecs = Cuda_dual_CG(system, workspace, &dev_workspace->H,
-            dev_workspace->b, control->q_err, dev_workspace->x, mpi_data,
-            out_control->log, data);
-    t_matvecs = 0;
-    //fprintf (stderr, "Device: First CG complated with iterations: %d \n", s_matvecs);
-
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
-#endif
-
-    Cuda_Calculate_Charges( system, workspace, mpi_data );
-
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: computed charges\n", system->my_rank );
-    //Print_Charges( system );
-#endif
-
-#if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.s_matvecs += s_matvecs;
-        data->timing.t_matvecs += t_matvecs;
-    }
-#endif
-}
-#endif

@@ -24,14 +24,24 @@
 
 #include "reax_types.h"
 
+
+#ifdef _cplusplus
+extern "C" {
+#endif
+
 void vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
-                         storage*, reax_list**, output_controls* );
+        storage*, reax_list**, output_controls* );
 
 void Tabulated_vdW_Coulomb_Energy( reax_system*, control_params*,
-                                   simulation_data*, storage*,
-                                   reax_list**, output_controls* );
+        simulation_data*, storage*, reax_list**, output_controls* );
 
 void Compute_Polarization_Energy( reax_system*, simulation_data* );
 
 void LR_vdW_Coulomb( reax_system*, real *, int, int, real, LR_data* );
+
+#ifdef _cplusplus
+}
+#endif
+
+
 #endif

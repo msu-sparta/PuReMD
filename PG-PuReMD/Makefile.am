@@ -34,25 +34,25 @@ include_HEADERS = src/reax_types.h src/index_utils.h \
 	src/integrate.h src/init_md.h
 
 if USE_CUDA
-bin_pg_puremd_SOURCES += src/cuda_utils.cu src/cuda_allocate.cu src/cuda_environment.cu \
-      src/cuda_system_props.cu src/cuda_reduction.cu src/center_mass.cu \
-      src/cuda_copy.cu src/cuda_reset_tools.cu src/cuda_list.cu \
-      src/cuda_neighbors.cu src/cuda_bond_orders.cu src/cuda_bonds.cu \
-      src/cuda_multi_body.cu src/cuda_valence_angles.cu \
-      src/cuda_torsion_angles.cu src/cuda_hydrogen_bonds.cu src/cuda_forces.cu \
-      src/cuda_charges.cu src/cuda_lin_alg.cu \
-      src/cuda_nonbonded.cu src/cuda_integrate.cu src/cuda_post_evolve.cu \
-      src/cuda_init_md.cu src/cuda_validation.cu src/cuda_lookup.cu
-include_HEADERS += src/cuda_helpers.h src/cuda_shuffle.h \
-      src/cuda_utils.h src/cuda_allocate.h src/cuda_environment.h \
-      src/cuda_system_props.h src/cuda_reduction.h src/center_mass.h \
-      src/cuda_copy.h src/cuda_reset_tools.h src/cuda_list.h \
-      src/cuda_neighbors.h src/cuda_bond_orders.h src/cuda_bonds.h \
-      src/cuda_multi_body.h src/cuda_valence_angles.h \
-      src/cuda_torsion_angles.h src/cuda_hydrogen_bonds.h src/cuda_forces.h \
-      src/cuda_charges.h src/cuda_lin_alg.h \
-      src/cuda_nonbonded.h src/cuda_integrate.h src/cuda_post_evolve.h \
-      src/cuda_init_md.h src/cuda_validation.h src/cuda_lookup.h
+bin_pg_puremd_SOURCES += src/cuda/cuda_utils.cu src/cuda/cuda_allocate.cu src/cuda/cuda_environment.cu \
+      src/cuda/cuda_system_props.cu src/cuda/cuda_reduction.cu \
+      src/cuda/cuda_copy.cu src/cuda/cuda_reset_tools.cu src/cuda/cuda_list.cu \
+      src/cuda/cuda_neighbors.cu src/cuda/cuda_bond_orders.cu src/cuda/cuda_bonds.cu \
+      src/cuda/cuda_multi_body.cu src/cuda/cuda_valence_angles.cu \
+      src/cuda/cuda_torsion_angles.cu src/cuda/cuda_hydrogen_bonds.cu src/cuda/cuda_forces.cu \
+      src/cuda/cuda_charges.cu src/cuda/cuda_lin_alg.cu \
+      src/cuda/cuda_nonbonded.cu src/cuda/cuda_integrate.cu src/cuda/cuda_post_evolve.cu \
+      src/cuda/cuda_init_md.cu src/cuda/cuda_validation.cu src/cuda/cuda_lookup.cu
+include_HEADERS += src/cuda/cuda_helpers.h src/cuda/cuda_shuffle.h \
+      src/cuda/cuda_utils.h src/cuda/cuda_allocate.h src/cuda/cuda_environment.h \
+      src/cuda/cuda_system_props.h src/cuda/cuda_reduction.h \
+      src/cuda/cuda_copy.h src/cuda/cuda_reset_tools.h src/cuda/cuda_list.h \
+      src/cuda/cuda_neighbors.h src/cuda/cuda_bond_orders.h src/cuda/cuda_bonds.h \
+      src/cuda/cuda_multi_body.h src/cuda/cuda_valence_angles.h \
+      src/cuda/cuda_torsion_angles.h src/cuda/cuda_hydrogen_bonds.h src/cuda/cuda_forces.h \
+      src/cuda/cuda_charges.h src/cuda/cuda_lin_alg.h \
+      src/cuda/cuda_nonbonded.h src/cuda/cuda_integrate.h src/cuda/cuda_post_evolve.h \
+      src/cuda/cuda_init_md.h src/cuda/cuda_validation.h src/cuda/cuda_lookup.h
 
 # dummy source to cause C linking
 nodist_EXTRA_bin_pg_puremd_SOURCES = src/dummy.c

@@ -24,19 +24,28 @@
 
 #include "reax_types.h"
 
+
+#ifdef _cplusplus
+extern "C" {
+#endif
+
 /* System random number generator used linear congruance method with
    large periodicity for generation of pseudo random number. function
    Random returns this random number appropriately scaled so that
    0 <= Random(range) < range */
-double Random(double);
+double Random( double );
 
 /* This function seeds the system pseudo random number generator with
    current time. Use this function once in the begining to initialize
    the system */
-void Randomize();
+void Randomize( );
 
 /* GRandom return random number with gaussian distribution with mean
    and standard deviation "sigma" */
-double GRandom(double, double);
+double GRandom( double, double );
+
+#ifdef _cplusplus
+}
+#endif
 
 #endif

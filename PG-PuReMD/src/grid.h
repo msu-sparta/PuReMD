@@ -24,10 +24,24 @@
 
 #include "reax_types.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void Setup_New_Grid( reax_system*, control_params*, MPI_Comm );
+
 void Update_Grid( reax_system*, control_params*, MPI_Comm );
+
 void Bin_My_Atoms( reax_system*, reallocate_data* );
+
 void Reorder_My_Atoms( reax_system*, storage* );
+
 void Bin_Boundary_Atoms( reax_system* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

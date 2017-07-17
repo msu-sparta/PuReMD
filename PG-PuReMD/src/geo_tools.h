@@ -29,10 +29,6 @@
 // CUSTOM ATOM: serial element name x y z
 #define CUSTOM_ATOM_FORMAT " %d %s %s %lf %lf %lf"
 
-char Read_Geo( char*, reax_system*, control_params*,
-               simulation_data*, storage*, mpi_datatypes* );
-
-
 /*PDB format :
 http://www.rcsb.org/pdb/file_formats/pdb/pdbguide2.2/guide2.2_frame.html
 
@@ -114,10 +110,23 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 #define PDB_ATOM_FORMAT_O_LENGTH 81
 #define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+char Read_Geo( char*, reax_system*, control_params*,
+        simulation_data*, storage*, mpi_datatypes* );
+
 char Read_PDB( char*, reax_system*, control_params*,
-               simulation_data*, storage*, mpi_datatypes* );
+        simulation_data*, storage*, mpi_datatypes* );
 
 char Write_PDB( reax_system*, reax_list*, simulation_data*,
-                control_params*, mpi_datatypes*, output_controls* );
+        control_params*, mpi_datatypes*, output_controls* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

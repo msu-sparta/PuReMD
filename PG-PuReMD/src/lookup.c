@@ -21,12 +21,6 @@
 
 #include "reax_types.h"
 
-#include "index_utils.h"
-
-#ifdef HAVE_CUDA
-  #include "cuda_lookup.h"
-#endif
-
 #if defined(PURE_REAX)
   #include "lookup.h"
   #include "nonbonded.h"
@@ -35,6 +29,12 @@
   #include "reax_lookup.h"
   #include "reax_nonbonded.h"
   #include "reax_tool_box.h"
+#endif
+
+#include "index_utils.h"
+
+#ifdef HAVE_CUDA
+  #include "cuda/cuda_lookup.h"
 #endif
 
 

@@ -19,6 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "comm_tools.h"
 
 #include "grid.h"

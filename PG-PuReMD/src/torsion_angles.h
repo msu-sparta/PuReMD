@@ -24,7 +24,17 @@
 
 #include "reax_types.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void Torsion_Angles( reax_system*, control_params*, simulation_data*,
-                     storage*, reax_list**, output_controls* );
+        storage*, reax_list**, output_controls* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

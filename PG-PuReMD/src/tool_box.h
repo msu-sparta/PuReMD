@@ -29,7 +29,6 @@
 extern "C" {
 #endif
 
-
 /* from comm_tools.h */
 int SumScan( int, int, int, MPI_Comm );
 
@@ -75,7 +74,6 @@ void* srealloc( void *, size_t, const char * );
 void *scalloc( size_t, size_t, const char* );
 
 void sfree( void*, const char* );
-
 
 #ifdef __cplusplus
 }
@@ -226,5 +224,6 @@ static inline real DistSqr_to_Special_Point( rvec cp, rvec x )
     return d_sqr;
 }
 #endif
+
 
 #endif

@@ -19,7 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "analyze.h"
+
 #include "box.h"
 #include "list.h"
 #include "vector.h"

@@ -22,9 +22,7 @@
 #ifndef __TRAJ_H__
 #define __TRAJ_H__
 
-
 #include "reax_types.h"
-
 
 #define MAX_TRJ_LINE_LEN     120
 #define MAX_TRJ_BUFFER_SIZE  (MAX_TRJ_LINE_LEN * 100)
@@ -80,12 +78,20 @@ enum ANGLE_LINE_OPTS
 };
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int Init_Traj( reax_system*, control_params*, output_controls*, mpi_datatypes*, char* );
 
 int End_Traj( int, output_controls* );
 
 int Append_Frame( reax_system*, control_params*, simulation_data*, reax_list**,
         output_controls*, mpi_datatypes* );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

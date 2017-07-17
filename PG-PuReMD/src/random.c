@@ -19,6 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "random.h"
 
 /* System random number generator used linear congruance method with

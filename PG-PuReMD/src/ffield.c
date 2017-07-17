@@ -20,7 +20,8 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
-  #if defined(PURE_REAX)
+
+#if defined(PURE_REAX)
   #include "ffield.h"
   #include "tool_box.h"
 #elif defined(LAMMPS_REAX)

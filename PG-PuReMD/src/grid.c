@@ -19,14 +19,16 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "grid.h"
+
 #include "allocate.h"
+#include "index_utils.h"
 #include "io_tools.h"
 #include "reset_tools.h"
 #include "tool_box.h"
 #include "vector.h"
-
-#include "index_utils.h"
 
 
 /* determines the exchange boundaries with nbrs in terms of gcells */

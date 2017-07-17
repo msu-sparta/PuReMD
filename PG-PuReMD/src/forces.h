@@ -28,6 +28,10 @@
 extern interaction_function Interaction_Functions[NUM_INTRS];
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void Init_Force_Functions( control_params* );
 
 int Compute_Forces( reax_system*, control_params*, simulation_data*,
@@ -36,10 +40,11 @@ int Compute_Forces( reax_system*, control_params*, simulation_data*,
 void Estimate_Storages( reax_system*, control_params*, reax_list**,
         int*, int*, int*, int* );
 
-int Cuda_Compute_Forces( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
-
 int validate_device( reax_system *, simulation_data *, storage *, reax_list ** );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

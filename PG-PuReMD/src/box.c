@@ -19,7 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "box.h"
+
 #include "comm_tools.h"
 #include "io_tools.h"
 #include "system_props.h"

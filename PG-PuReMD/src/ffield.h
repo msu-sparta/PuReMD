@@ -24,6 +24,16 @@
 
 #include "reax_types.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char Read_Force_Field( char*, reax_interaction*, control_params* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

@@ -40,13 +40,13 @@
 #include "vector.h"
 
 #ifdef HAVE_CUDA
-  #include "cuda_copy.h"
-  #include "cuda_environment.h"
-  #include "cuda_neighbors.h"
-  #include "cuda_post_evolve.h"
-  #include "cuda_reset_tools.h"
-  #include "cuda_utils.h"
-  #include "cuda_validation.h"
+  #include "cuda/cuda_copy.h"
+  #include "cuda/cuda_environment.h"
+  #include "cuda/cuda_neighbors.h"
+  #include "cuda/cuda_post_evolve.h"
+  #include "cuda/cuda_reset_tools.h"
+  #include "cuda/cuda_utils.h"
+  #include "cuda/cuda_validation.h"
 #endif
 
 evolve_function Evolve;
@@ -152,25 +152,6 @@ int Cuda_Post_Evolve( reax_system* system, control_params* control,
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
     return SUCCESS;
-}
-#endif
-
-
-#ifdef HAVE_CUDA
-void init_blocks( reax_system *system )
-{
-    compute_blocks( &BLOCKS, &BLOCK_SIZE, system->n );
-    compute_nearest_pow_2( BLOCKS, &BLOCKS_POW_2 );
-
-    compute_blocks( &BLOCKS_N, &BLOCK_SIZE, system->N );
-    compute_nearest_pow_2( BLOCKS_N, &BLOCKS_POW_2_N );
-
-    compute_matvec_blocks( &MATVEC_BLOCKS, system->N );
-
-#if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, " MATVEC_BLOCKS: %d BLOCKSIZE: %d  - N:%d \n",
-            MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, system->N );
-#endif
 }
 #endif
 

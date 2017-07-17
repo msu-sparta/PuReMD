@@ -21,8 +21,6 @@
 
 #include "reax_types.h"
 
-#include "index_utils.h"
-
 #if defined(PURE_REAX)
   #include "reset_tools.h"
   #include "list.h"
@@ -34,6 +32,8 @@
   #include "reax_tool_box.h"
   #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 void Reset_Atoms( reax_system* system, control_params *control )

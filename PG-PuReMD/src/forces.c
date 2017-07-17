@@ -21,15 +21,6 @@
 
 #include "reax_types.h"
 
-#include "index_utils.h"
-#ifdef HAVE_CUDA
-  #include "cuda_forces.h"
-  #include "cuda_lin_alg.h"
-  #include "cuda_neighbors.h"
-  #include "cuda_utils.h"
-  #include "cuda_validation.h"
-#endif
-
 #if defined(PURE_REAX)
   #include "forces.h"
   #include "bond_orders.h"
@@ -63,11 +54,7 @@
   #include "reax_vector.h"
 #endif
 
-
-#ifdef HAVE_CUDA
-void Cuda_Total_Forces( reax_system *, control_params *, simulation_data *, storage * );
-void Cuda_Total_Forces_PURE( reax_system *, storage * );
-#endif
+#include "index_utils.h"
 
 
 interaction_function Interaction_Functions[NUM_INTRS];
@@ -219,41 +206,6 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 
 #endif
 }
-
-
-#ifdef HAVE_CUDA
-void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, mpi_datatypes *mpi_data )
-{
-    rvec *f;
-
-    f = (rvec *) host_scratch;
-    memset( f, 0, sizeof(rvec) * system->N );
-
-    Cuda_Total_Forces( system, control, data, workspace );
-
-#if defined(PURE_REAX)
-    /* now all forces are computed to their partially-final values
-     * based on the neighbors information each processor has had.
-     * final values of force on each atom needs to be computed by adding up
-     * all partially-final pieces */
-
-    //MVAPICH2
-    copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N ,
-            cudaMemcpyDeviceToHost, "total_force:f:get" );
-
-    Coll( system, mpi_data, f, mpi_data->mpi_rvec,
-          sizeof(rvec) / sizeof(void), rvec_unpacker );
-
-    copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N,
-            cudaMemcpyHostToDevice, "total_force:f:put" );
-
-    Cuda_Total_Forces_PURE( system, dev_workspace );
-#endif
-
-}
-#endif
 
 
 // Essentially no-cuda copies of cuda kernels, to be used only in the mpi-not-gpu version
@@ -1849,173 +1801,6 @@ int Compute_Forces( reax_system *system, control_params *control,
 
     return ret;
 }
-
-
-#ifdef HAVE_CUDA
-int Cuda_Compute_Forces( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
-{
-    int charge_flag, retVal;
-
-#if defined(LOG_PERFORMANCE)
-    real t_start = 0;
-
-    //MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_start = Get_Time( );
-    }
-#endif
-
-    retVal = SUCCESS;
-
-    /********* init forces ************/
-    if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
-    {
-        charge_flag = TRUE;
-    }
-    else
-    {
-        charge_flag = FALSE;
-    }
-
-    if ( charge_flag == TRUE )
-    {
-        retVal = Cuda_Init_Forces( system, control, data, workspace, lists, out_control );
-
-//        int i;
-//        static reax_list **temp_lists;
-//       
-//        if ( data->step == 0 )
-//        {
-//            temp_lists = (reax_list **) smalloc( LIST_N * sizeof (reax_list *), "temp_lists" );
-//            for ( i = 0; i < LIST_N; ++i )
-//            {
-//                temp_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-//                temp_lists[i]->allocated = FALSE;
-//            }
-//            Make_List( (*dev_lists + BONDS)->n, (*dev_lists + BONDS)->num_intrs,
-//                    TYP_BOND, *temp_lists + BONDS );
-//            Make_List( (*dev_lists + HBONDS)->n, (*dev_lists + HBONDS)->num_intrs,
-//                    TYP_HBOND, *temp_lists + HBONDS );
-//        }
-//        else
-//        {
-//            Delete_List( *temp_lists + BONDS );
-//            Make_List( (*dev_lists + BONDS)->n, (*dev_lists + BONDS)->num_intrs,
-//                    TYP_BOND, *temp_lists + BONDS );
-//            Delete_List( *temp_lists + HBONDS );
-//            Make_List( (*dev_lists + HBONDS)->n, (*dev_lists + HBONDS)->num_intrs,
-//                    TYP_HBOND, *temp_lists + HBONDS );
-//
-//        }
-//        Output_Sync_Lists( *temp_lists + BONDS, *dev_lists + BONDS, TYP_BOND );
-//        Print_Bonds( system, temp_lists, control );
-//        Output_Sync_Lists( *temp_lists + HBONDS, *dev_lists + HBONDS, TYP_HBOND );
-//        Print_HBonds( system, temp_lists, control, data->step );
-//        Print_HBond_Indices( system, temp_lists, control, data->step );
-//        exit( 0 );
-    }
-    else
-    {
-        retVal = Cuda_Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
-    }
-
-    if ( retVal == SUCCESS )
-    {
-        //validate_sparse_matrix( system, workspace );
-
-#if defined(LOG_PERFORMANCE)
-        //MPI_Barrier( MPI_COMM_WORLD );
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.init_forces) );
-        }
-#endif
-
-        /********* bonded interactions ************/
-        retVal = Cuda_Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
-
-#if defined(LOG_PERFORMANCE)
-        //MPI_Barrier( MPI_COMM_WORLD );
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.bonded) );
-        }
-#endif
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: completed bonded\n",
-                 system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-    }
-
-    if ( retVal == SUCCESS )
-    {
-    /**************** charges ************************/
-#if defined(PURE_REAX)
-        if ( charge_flag == TRUE )
-        {
-            Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
-        }
-
-#if defined(LOG_PERFORMANCE)
-        //MPI_Barrier( MPI_COMM_WORLD );
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.qEq) );
-        }
-#endif
-
-#if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-#endif //PURE_REAX
-
-        /********* nonbonded interactions ************/
-        Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
-                lists, out_control, mpi_data );
-
-#if defined(LOG_PERFORMANCE)
-        //MPI_Barrier( MPI_COMM_WORLD );
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.nonb) );
-        }
-#endif
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
-                system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
-        /*********** total force ***************/
-        Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
-
-#if defined(LOG_PERFORMANCE)
-        //MPI_Barrier( MPI_COMM_WORLD );
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.bonded) );
-        }
-#endif
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: total forces computed\n",
-                system->my_rank, data->step );
-        //Print_Total_Force( system, data, workspace );
-        MPI_Barrier( MPI_COMM_WORLD );
-
-#endif
-
-//        Print_Forces( system );
-    }
-
-    return retVal;
-}
-#endif
 
 
 int validate_device( reax_system *system, simulation_data *data,

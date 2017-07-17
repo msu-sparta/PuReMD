@@ -24,10 +24,10 @@
 
 #include "reax_types.h"
 
+
 #ifdef __cplusplus
 extern "C"  {
 #endif
-
 
 int PreAllocate_Space( reax_system*, control_params*, storage* );
 
@@ -53,9 +53,9 @@ void Deallocate_MPI_Buffers( mpi_datatypes * );
 void ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
         reax_list**, mpi_datatypes* );
 
-
 #ifdef __cplusplus
 }
 #endif
+
 
 #endif

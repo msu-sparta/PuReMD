@@ -21,10 +21,6 @@
 
 #include "reax_types.h"
 
-#ifdef HAVE_CUDA
-  #include "cuda_system_props.h"
-#endif
-
 #if defined(PURE_REAX)
   #include "system_props.h"
   #include "tool_box.h"
@@ -33,6 +29,10 @@
   #include "reax_system_props.h"
   #include "reax_tool_box.h"
   #include "reax_vector.h"
+#endif
+
+#ifdef HAVE_CUDA
+  #include "cuda/cuda_system_props.h"
 #endif
 
 
@@ -84,29 +84,6 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
     }
 
     MPI_Allreduce( &data->my_en.e_kin,  &data->sys_en.e_kin,
-                   1, MPI_DOUBLE, MPI_SUM, comm );
-
-    data->therm.T = (2. * data->sys_en.e_kin) / (data->N_f * K_B);
-
-    // avoid T being an absolute zero, might cause F.P.E!
-    if ( FABS(data->therm.T) < ALMOST_ZERO )
-        data->therm.T = ALMOST_ZERO;
-}
-
-
-#ifdef HAVE_CUDA
-void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
-        MPI_Comm comm )
-{
-    int i;
-    rvec p;
-    real m;
-
-    data->my_en.e_kin = 0.0;
-
-    dev_compute_kinetic_energy( system, data, &data->my_en.e_kin );
-
-    MPI_Allreduce( &data->my_en.e_kin,  &data->sys_en.e_kin,
             1, MPI_DOUBLE, MPI_SUM, comm );
 
     data->therm.T = (2. * data->sys_en.e_kin) / (data->N_f * K_B);
@@ -117,7 +94,6 @@ void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
         data->therm.T = ALMOST_ZERO;
     }
 }
-#endif
 
 
 void Compute_System_Energy( reax_system *system, simulation_data *data,
@@ -130,7 +106,7 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
 
 #ifdef HAVE_CUDA
     //Cuda Wrapper here
-    dev_sync_simulation_data ( data );
+    dev_sync_simulation_data( data );
 #endif
 
     my_en[0] = data->my_en.e_bond;
@@ -203,23 +179,6 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data,
 
     data->inv_M = 1. / data->M;
 }
-
-
-#ifdef HAVE_CUDA
-void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
-        MPI_Comm comm  )
-{
-    int  i;
-    real tmp;
-
-    //compute local total mass of the system
-    dev_compute_total_mass( system, &tmp );
-
-    MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
-
-    data->inv_M = 1. / data->M;
-}
-#endif
 
 
 void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
@@ -340,112 +299,6 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
              data->avcm[0], data->avcm[1], data->avcm[2] );
 #endif
 }
-
-
-#ifdef HAVE_CUDA
-void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
-        mpi_datatypes *mpi_data, MPI_Comm comm )
-{
-    int i;
-    real m, det; //xx, xy, xz, yy, yz, zz;
-    real tmp_mat[6], tot_mat[6];
-    rvec my_xcm, my_vcm, my_amcm, my_avcm;
-    rvec tvec, diff;
-    rtensor mat, inv;
-
-    rvec_MakeZero( my_xcm );  // position of CoM
-    rvec_MakeZero( my_vcm );  // velocity of CoM
-    rvec_MakeZero( my_amcm ); // angular momentum of CoM
-    rvec_MakeZero( my_avcm ); // angular velocity of CoM
-
-    /* Compute the position, vel. and ang. momentum about the centre of mass */
-    dev_compute_momentum ( system, my_xcm, my_vcm, my_amcm );
-
-    MPI_Allreduce( my_xcm, data->xcm, 3, MPI_DOUBLE, MPI_SUM, comm );
-    MPI_Allreduce( my_vcm, data->vcm, 3, MPI_DOUBLE, MPI_SUM, comm );
-    MPI_Allreduce( my_amcm, data->amcm, 3, MPI_DOUBLE, MPI_SUM, comm );
-
-    rvec_Scale( data->xcm, data->inv_M, data->xcm );
-    rvec_Scale( data->vcm, data->inv_M, data->vcm );
-    rvec_Cross( tvec, data->xcm, data->vcm );
-    rvec_ScaledAdd( data->amcm, -data->M, tvec );
-    data->etran_cm = 0.5 * data->M * rvec_Norm_Sqr( data->vcm );
-
-    /* Calculate and then invert the inertial tensor */
-    for ( i = 0; i < 6; ++i )
-    {
-        tmp_mat[i] = 0;
-    }
-
-    dev_compute_inertial_tensor( system, tmp_mat, my_xcm );
-
-    MPI_Reduce( tmp_mat, tot_mat, 6, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        mat[0][0] = tot_mat[3] + tot_mat[5];  // yy + zz;
-        mat[0][1] = mat[1][0] = -tot_mat[1];  // -xy;
-        mat[0][2] = mat[2][0] = -tot_mat[2];  // -xz;
-        mat[1][1] = tot_mat[0] + tot_mat[5];  // xx + zz;
-        mat[2][1] = mat[1][2] = -tot_mat[4];  // -yz;
-        mat[2][2] = tot_mat[0] + tot_mat[3];  // xx + yy;
-
-        /* invert the inertial tensor */
-        det = ( mat[0][0] * mat[1][1] * mat[2][2] +
-                mat[0][1] * mat[1][2] * mat[2][0] +
-                mat[0][2] * mat[1][0] * mat[2][1] ) -
-              ( mat[0][0] * mat[1][2] * mat[2][1] +
-                mat[0][1] * mat[1][0] * mat[2][2] +
-                mat[0][2] * mat[1][1] * mat[2][0] );
-
-        inv[0][0] = mat[1][1] * mat[2][2] - mat[1][2] * mat[2][1];
-        inv[0][1] = mat[0][2] * mat[2][1] - mat[0][1] * mat[2][2];
-        inv[0][2] = mat[0][1] * mat[1][2] - mat[0][2] * mat[1][1];
-        inv[1][0] = mat[1][2] * mat[2][0] - mat[1][0] * mat[2][2];
-        inv[1][1] = mat[0][0] * mat[2][2] - mat[0][2] * mat[2][0];
-        inv[1][2] = mat[0][2] * mat[1][0] - mat[0][0] * mat[1][2];
-        inv[2][0] = mat[1][0] * mat[2][1] - mat[2][0] * mat[1][1];
-        inv[2][1] = mat[2][0] * mat[0][1] - mat[0][0] * mat[2][1];
-        inv[2][2] = mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
-
-        if ( det > ALMOST_ZERO )
-        {
-            rtensor_Scale( inv, 1. / det, inv );
-        }
-        else
-        {
-            rtensor_MakeZero( inv );
-        }
-
-        /* Compute the angular velocity about the centre of mass */
-        rtensor_MatVec( data->avcm, inv, data->amcm );
-    }
-
-    MPI_Bcast( data->avcm, 3, MPI_DOUBLE, MASTER_NODE, comm );
-
-    /* Compute the rotational energy */
-    data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
-
-#if defined(DEBUG)
-    fprintf( stderr, "xcm:  %24.15e %24.15e %24.15e\n",
-             data->xcm[0], data->xcm[1], data->xcm[2] );
-    fprintf( stderr, "vcm:  %24.15e %24.15e %24.15e\n",
-             data->vcm[0], data->vcm[1], data->vcm[2] );
-    fprintf( stderr, "amcm: %24.15e %24.15e %24.15e\n",
-             data->amcm[0], data->amcm[1], data->amcm[2] );
-    /* fprintf( stderr, "mat:  %f %f %f\n     %f %f %f\n     %f %f %f\n",
-       mat[0][0], mat[0][1], mat[0][2],
-       mat[1][0], mat[1][1], mat[1][2],
-       mat[2][0], mat[2][1], mat[2][2] );
-       fprintf( stderr, "inv:  %g %g %g\n     %g %g %g\n     %g %g %g\n",
-       inv[0][0], inv[0][1], inv[0][2],
-       inv[1][0], inv[1][1], inv[1][2],
-       inv[2][0], inv[2][1], inv[2][2] ); */
-    fprintf( stderr, "avcm: %24.15e %24.15e %24.15e\n",
-             data->avcm[0], data->avcm[1], data->avcm[2] );
-#endif
-}
-#endif
 
 
 /* IMPORTANT: This function assumes that current kinetic energy

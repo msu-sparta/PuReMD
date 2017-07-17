@@ -20,7 +20,6 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
-#include "index_utils.h"
 
 #if defined(PURE_REAX)
   #include "allocate.h"
@@ -35,6 +34,8 @@
   #include "reax_tool_box.h"
   #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 /* allocate space for my_atoms

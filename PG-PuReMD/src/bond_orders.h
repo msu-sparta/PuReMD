@@ -24,6 +24,7 @@
 
 #include "reax_types.h"
 
+
 typedef struct
 {
     real C1dbo, C2dbo, C3dbo;
@@ -32,28 +33,45 @@ typedef struct
     real C1dDelta, C2dDelta, C3dDelta;
 } dbond_coefficients;
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef TEST_FORCES
 void Get_dBO( reax_system*, reax_list**, int, int, real, rvec* );
+
 void Get_dBOpinpi2( reax_system*, reax_list**,
-                    int, int, real, real, rvec*, rvec* );
+        int, int, real, real, rvec*, rvec* );
 
 void Add_dBO( reax_system*, reax_list**, int, int, real, rvec* );
+
 void Add_dBOpinpi2( reax_system*, reax_list**,
-                    int, int, real, real, rvec*, rvec* );
+        int, int, real, real, rvec*, rvec* );
 
 void Add_dBO_to_Forces( reax_system*, reax_list**, int, int, real );
+
 void Add_dBOpinpi2_to_Forces( reax_system*, reax_list**,
-                              int, int, real, real );
+        int, int, real, real );
 
 void Add_dDelta( reax_system*, reax_list**, int, real, rvec* );
+
 void Add_dDelta_to_Forces( reax_system *, reax_list**, int, real );
 #endif
 
 void Add_dBond_to_Forces( int, int, storage*, reax_list** );
-void Add_dBond_to_Forces_NPT( int, int, simulation_data*,
-                              storage*, reax_list** );
-int BOp(storage*, reax_list*, real, int, int, far_neighbor_data*,
-        single_body_parameters*, single_body_parameters*, two_body_parameters*);
+
+void Add_dBond_to_Forces_NPT( int, int, simulation_data*, storage*, reax_list** );
+
+int BOp( storage*, reax_list*, real, int, int, far_neighbor_data*,
+        single_body_parameters*, single_body_parameters*, two_body_parameters* );
+
 void BO( reax_system*, control_params*, simulation_data*,
-         storage*, reax_list**, output_controls* );
+        storage*, reax_list**, output_controls* );
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif

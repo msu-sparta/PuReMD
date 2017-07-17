@@ -24,6 +24,11 @@
 
 #include "reax_types.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int Velocity_Verlet_NVE( reax_system*, control_params*, simulation_data*,
         storage*, reax_list**, output_controls*, mpi_datatypes* );
 
@@ -49,9 +54,9 @@ int Velocity_Verlet_Flexible_NPT( reax_system*, control_params*,
                 output_controls*, mpi_datatypes* );
 */
 
-//CUDA SPECIFIC FUNCTIONS
-int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
