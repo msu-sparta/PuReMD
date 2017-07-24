@@ -40,7 +40,8 @@ void Temperature_Control( control_params *control, simulation_data *data )
 {
     real tmp;
 
-    if ( control->T_mode == 1 ) // step-wise temperature control
+    /* step-wise temperature control */
+    if ( control->T_mode == 1 )
     {
         if ((data->step - data->prev_steps) % ((int)(control->T_freq / control->dt)) == 0)
         {
@@ -54,7 +55,8 @@ void Temperature_Control( control_params *control, simulation_data *data )
             }
         }
     }
-    else if ( control->T_mode == 2 )  // constant slope control
+    /* constant slope control */
+    else if ( control->T_mode == 2 )
     {
         tmp = control->T_rate * control->dt / control->T_freq;
 
@@ -105,7 +107,6 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
     my_en[13] = data->my_en.e_kin;
 
 #ifdef HAVE_CUDA
-    //Cuda Wrapper here
     dev_sync_simulation_data( data );
 #endif
 
@@ -166,7 +167,7 @@ void Compute_System_Energy( reax_system *system, simulation_data *data,
 void Compute_Total_Mass( reax_system *system, simulation_data *data,
         MPI_Comm comm  )
 {
-    int  i;
+    int i;
     real tmp;
 
     tmp = 0;
@@ -268,8 +269,13 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         inv[2][2] = mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
 
         if ( det > ALMOST_ZERO )
+        {
             rtensor_Scale( inv, 1. / det, inv );
-        else rtensor_MakeZero( inv );
+        }
+        else
+        {
+            rtensor_MakeZero( inv );
+        }
 
         /* Compute the angular velocity about the centre of mass */
         rtensor_MatVec( data->avcm, inv, data->amcm );
@@ -345,16 +351,18 @@ void Compute_Pressure( reax_system* system, control_params *control,
         }
     }
 
-    /* sum up internal and external pressure */
 #if defined(DEBUG)
     fprintf(stderr, "p%d:p_int(%10.5f %10.5f %10.5f)p_ext(%10.5f %10.5f %10.5f)\n",
             system->my_rank, int_press[0], int_press[1], int_press[2],
             data->my_ext_press[0], data->my_ext_press[1], data->my_ext_press[2] );
 #endif
+
+    /* sum up internal and external pressure */
     MPI_Allreduce( int_press, data->int_press,
-                   3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
+            3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
     MPI_Allreduce( data->my_ext_press, data->ext_press,
-                   3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
+            3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",
              system->my_rank,
@@ -365,20 +373,21 @@ void Compute_Pressure( reax_system* system, control_params *control,
 #endif
 
     /* kinetic contribution */
-    data->kin_press = 2.*(E_CONV * data->sys_en.e_kin) / (3.*big_box->V * P_CONV);
+    data->kin_press = 2. * (E_CONV * data->sys_en.e_kin)
+        / (3. * big_box->V * P_CONV);
 
     /* Calculate total pressure in each direction */
     data->tot_press[0] = data->kin_press -
-                         (( data->int_press[0] + data->ext_press[0] ) /
-                          ( big_box->box_norms[1] * big_box->box_norms[2] * P_CONV ));
+        (( data->int_press[0] + data->ext_press[0] ) /
+         ( big_box->box_norms[1] * big_box->box_norms[2] * P_CONV ));
 
     data->tot_press[1] = data->kin_press -
-                         (( data->int_press[1] + data->ext_press[1] ) /
-                          ( big_box->box_norms[0] * big_box->box_norms[2] * P_CONV ));
+        (( data->int_press[1] + data->ext_press[1] ) /
+         ( big_box->box_norms[0] * big_box->box_norms[2] * P_CONV ));
 
     data->tot_press[2] = data->kin_press -
-                         (( data->int_press[2] + data->ext_press[2] ) /
-                          ( big_box->box_norms[0] * big_box->box_norms[1] * P_CONV ));
+        (( data->int_press[2] + data->ext_press[2] ) /
+         ( big_box->box_norms[0] * big_box->box_norms[1] * P_CONV ));
 
     /* Average pressure for the whole box */
     data->iso_bar.P =

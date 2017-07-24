@@ -766,7 +766,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     }
 #endif
 
-    for ( i = 1; i < 300; ++i )
+    for ( i = 1; i < 1000; ++i )
     {
         //MVAPICH2
 //#ifdef __CUDA_DEBUG__
@@ -948,7 +948,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         Cuda_RvecCopy_To( dev_workspace->x, dev_workspace->s, 0, system->n );
     }
 
-    if ( i >= 300 )
+    if ( i >= 1000 )
     {
         fprintf( stderr, "[WARNING] p%d: dual CG convergence failed! (%d steps)\n",
                 system->my_rank, i );

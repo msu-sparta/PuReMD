@@ -1554,12 +1554,12 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 
         /* reduction for ext_pres */
         rvec_spad = (rvec *) (spad + 6 * system->N);
-        k_reduction_rvec <<<BLOCKS_N, BLOCK_SIZE, sizeof(rvec) * BLOCK_SIZE >>>
+        k_reduction_rvec <<< BLOCKS_N, BLOCK_SIZE, sizeof(rvec) * BLOCK_SIZE >>>
             ( rvec_spad, rvec_spad + system->N,  system->N );
         cudaThreadSynchronize( );
         cudaCheckError( );
 
-        k_reduction_rvec <<<1, BLOCKS_POW_2_N, sizeof(rvec) * BLOCKS_POW_2_N >>>
+        k_reduction_rvec <<< 1, BLOCKS_POW_2_N, sizeof(rvec) * BLOCKS_POW_2_N >>>
             ( rvec_spad + system->N, &((simulation_data *)data->d_simulation_data)->my_ext_press, BLOCKS_N );
         cudaThreadSynchronize ();
         cudaCheckError( );
@@ -1692,7 +1692,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                 ( system->d_my_atoms, *dev_workspace, *(*dev_lists + HBONDS) );
 //            Cuda_Hydrogen_Bonds_HNbrs_BL <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
 //                    HB_POST_PROC_BLOCK_SIZE * sizeof(rvec) >>>
-                ( system->d_my_atoms, *dev_workspace, *(*dev_lists + HBONDS), system->N );
+//                ( system->d_my_atoms, *dev_workspace, *(*dev_lists + HBONDS), system->N );
             cudaThreadSynchronize( );
             cudaCheckError( );
 

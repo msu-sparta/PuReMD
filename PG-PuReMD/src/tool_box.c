@@ -78,57 +78,6 @@ void SumScanB( int n, int me, int wsize, int root, MPI_Comm comm, int *nbuf )
 }
 
 
-/************** taken from box.c **************/
-void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
-{
-    int i, j;
-    real tmp;
-
-#if defined(DEBUG)
-    fprintf( stderr, ">x1: (%lf, %lf, %lf)\n",x1[0],x1[1],x1[2] );
-#endif
-
-    if ( flag > 0 )
-    {
-        for (i = 0; i < 3; i++)
-        {
-            tmp = 0.0;
-            for (j = 0; j < 3; j++)
-            {
-                tmp += box->trans[i][j] * x1[j];
-            }
-            x2[i] = tmp;
-        }
-    }
-    else
-    {
-        for (i = 0; i < 3; i++)
-        {
-            tmp = 0.0;
-            for (j = 0; j < 3; j++)
-            {
-                tmp += box->trans_inv[i][j] * x1[j];
-            }
-            x2[i] = tmp;
-        }
-    }
-
-#if defined(DEBUG)
-    fprintf( stderr, ">x2: (%lf, %lf, %lf)\n", x2[0], x2[1], x2[2] );
-#endif
-}
-
-
-void Transform_to_UnitBox( rvec x1, simulation_box *box, char flag, rvec x2 )
-{
-    Transform( x1, box, flag, x2 );
-
-    x2[0] /= box->box_norms[0];
-    x2[1] /= box->box_norms[1];
-    x2[2] /= box->box_norms[2];
-}
-
-
 /* determine whether point p is inside the box */
 void Fit_to_Periodic_Box( simulation_box *box, rvec *p )
 {

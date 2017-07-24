@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __CUDA_INTEGRATE_H_
-#define __CUDA_INTEGRATE_H_
+#ifndef __CUDA_BOX_H__
+#define __CUDA_BOX_H__
 
 #include "../reax_types.h"
 
@@ -29,23 +29,8 @@
 extern "C" {
 #endif
 
-void bNVP_scale_velocities( reax_system *, real, rvec );
-
-int Cuda_Velocity_Verlet_NVE( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
-
-int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
-
-int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
-
-int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
+void Cuda_Scale_Box( reax_system *, control_params *,
+        simulation_data *, mpi_datatypes *);
 
 #ifdef __cplusplus
 }

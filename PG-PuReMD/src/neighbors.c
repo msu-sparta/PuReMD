@@ -112,22 +112,23 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                 cutoff = SQR(g->cutoff[index_grid_3d(i, j, k, g)]);
 
                 /* pick up an atom from the current cell */
-                for (l = g->str[index_grid_3d(i, j, k, g)]; l < g->end[index_grid_3d(i, j, k, g)]; ++l )
+                for ( l = g->str[index_grid_3d(i, j, k, g)]; l < g->end[index_grid_3d(i, j, k, g)]; ++l )
                 {
                     atom1 = &(system->my_atoms[l]);
                     Set_Start_Index( l, num_far, far_nbrs );
 
                     itr = 0;
+                    /* search through neighbor grid cell candidates of current cell */
                     while ( (g->nbrs_x[index_grid_nbrs(i, j, k, itr, g)][0]) >= 0 )
                     {
 
-                        ivec_Copy (nbrs_x, g->nbrs_x[index_grid_nbrs(i, j, k, itr, g)]);
-                        gcj = &( g->cells [ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g) ] );
+                        ivec_Copy( nbrs_x, g->nbrs_x[index_grid_nbrs(i, j, k, itr, g)] );
+                        gcj = &( g->cells[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g) ] );
 
                         if ( g->str[index_grid_3d(i, j, k, g)] <= g->str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)] &&
                                 (DistSqr_to_Special_Point(g->nbrs_cp[index_grid_nbrs(i, j, k, itr, g)], atom1->x) <= cutoff) )
                         {
-                            /* pick up another atom from the neighbor cell */
+                            /* pick up another atom from the neighbor grid cell */
                             for ( m = g->str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)];
                                     m < g->end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], g)]; ++m )
                             {
@@ -217,10 +218,7 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
         {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
-                //SUDHIR
-                //gci = &(g->cells[i][j][k]);
                 gci = &(g->cells[ index_grid_3d(i, j, k, g) ]);
-                //cutoff = SQR(gci->cutoff);
                 cutoff = SQR(g->cutoff[ index_grid_3d(i, j, k, g) ]);
 
                 //fprintf( stderr, "gridcell %d %d %d\n", i, j, k );
@@ -279,15 +277,12 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
         }
     }
 
-#if defined(DEBUG)
-    fprintf (stderr, "Total number of host neighbors: %d \n", num_far);
-#endif
-
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: estimate nbrs done - num_far=%d\n",
              system->my_rank, num_far );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
     return MAX( num_far * SAFE_ZONE, MIN_CAP * MIN_NBRS );
 }
 

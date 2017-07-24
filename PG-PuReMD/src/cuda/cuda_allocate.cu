@@ -80,46 +80,46 @@ void dev_alloc_grid( reax_system *system )
     cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total,
             TRUE, "dev_alloc_grid::grid->rel_box" );
 
-    /*
-       int block_size = 512;
-       int blocks = (host->max_nbrs) / block_size + ((host->max_nbrs) % block_size == 0 ? 0 : 1); 
-
-       Init_Nbrs <<<blocks, block_size>>>
-       (nbrs_x, host->max_nbrs );
-       cudaThreadSynchronize (); 
-       cudaCheckError ();
-
-       cuda_malloc ((void **)& device->cells, 
-       sizeof (grid_cell) * total, 
-       TRUE, "grid:cells");
-       fprintf (stderr, " Device cells address --> %ld \n", device->cells );
-       cuda_malloc ((void **) &device->order, sizeof (ivec) * (host->total + 1), TRUE, "grid:order");
-
-       local_cell.top = local_cell.mark = local_cell.str = local_cell.end = 0;
-       fprintf (stderr, "Total cells to be allocated -- > %d \n", total );
-       for (int i = 0; i < total; i++) {
-    //fprintf (stderr, "Address of the local atom -> %ld  \n", &local_cell);
-
-    cuda_malloc ((void **) &local_cell.atoms, sizeof (int) * host->max_atoms, 
-    TRUE, "alloc:grid:cells:atoms");
-    //fprintf (stderr, "Allocated address of the atoms --> %ld  (%d)\n", local_cell.atoms, host->max_atoms );
-
-    cuda_malloc ((void **) &local_cell.nbrs_x, sizeof (ivec) * host->max_nbrs, 
-    TRUE, "alloc:grid:cells:nbrs_x" );
-    copy_device (local_cell.nbrs_x, nbrs_x, host->max_nbrs * sizeof (ivec), "grid:nbrs_x");    
-    //fprintf (stderr, "Allocated address of the nbrs_x--> %ld \n", local_cell.nbrs_x);
-
-    cuda_malloc ((void **) &local_cell.nbrs_cp, sizeof (rvec) * host->max_nbrs, 
-    TRUE, "alloc:grid:cells:nbrs_cp" );
-    //fprintf (stderr, "Allocated address of the nbrs_cp--> %ld \n", local_cell.nbrs_cp);
-
-    //cuda_malloc ((void **) &local_cell.nbrs, sizeof (grid_cell *) * host->max_nbrs , 
-    //                TRUE, "alloc:grid:cells:nbrs" );
-    //fprintf (stderr, "Allocated address of the nbrs--> %ld \n", local_cell.nbrs);
-
-    copy_host_device (&local_cell, &device->cells[i], sizeof (grid_cell), cudaMemcpyHostToDevice, "grid:cell-alloc");
-    }
-     */
+//    int block_size = 512;
+//    int blocks = (host->max_nbrs) / block_size + ((host->max_nbrs) % block_size == 0 ? 0 : 1); 
+//
+//    Init_Nbrs <<< blocks, block_size >>>
+//        ( nbrs_x, host->max_nbrs );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+//
+//    cuda_malloc( (void **)& device->cells, sizeof(grid_cell) * total,
+//            TRUE, "grid:cells");
+//    fprintf( stderr, " Device cells address --> %ld \n", device->cells );
+//    cuda_malloc( (void **) &device->order,
+//            sizeof(ivec) * (host->total + 1), TRUE, "grid:order" );
+//
+//    local_cell.top = local_cell.mark = local_cell.str = local_cell.end = 0;
+//    fprintf( stderr, "Total cells to be allocated -- > %d \n", total );
+//    for (int i = 0; i < total; i++)
+//    {
+//        //fprintf( stderr, "Address of the local atom -> %ld  \n", &local_cell );
+//
+//        cuda_malloc( (void **) &local_cell.atoms, sizeof(int) * host->max_atoms,
+//                TRUE, "alloc:grid:cells:atoms" );
+//        //fprintf( stderr, "Allocated address of the atoms --> %ld  (%d)\n", local_cell.atoms, host->max_atoms );
+//
+//        cuda_malloc( (void **) &local_cell.nbrs_x, sizeof(ivec) * host->max_nbrs,
+//                TRUE, "alloc:grid:cells:nbrs_x" );
+//        copy_device( local_cell.nbrs_x, nbrs_x, host->max_nbrs * sizeof(ivec), "grid:nbrs_x" );
+//        //fprintf( stderr, "Allocated address of the nbrs_x--> %ld \n", local_cell.nbrs_x );
+//
+//        cuda_malloc( (void **) &local_cell.nbrs_cp, sizeof(rvec) * host->max_nbrs,
+//                TRUE, "alloc:grid:cells:nbrs_cp" );
+//        //fprintf( stderr, "Allocated address of the nbrs_cp--> %ld \n", local_cell.nbrs_cp );
+//
+//        //cuda_malloc( (void **) &local_cell.nbrs, sizeof(grid_cell *) * host->max_nbrs,
+//        //                TRUE, "alloc:grid:cells:nbrs" );
+//        //fprintf( stderr, "Allocated address of the nbrs--> %ld \n", local_cell.nbrs );
+//
+//        copy_host_device( &local_cell, &device->cells[i], sizeof(grid_cell),
+//                cudaMemcpyHostToDevice, "grid:cell-alloc" );
+//    }
 }
 
 
@@ -757,7 +757,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     if ( renbr && realloc->gcell_atoms > -1 )
     {
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms);
+        fprintf( stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms );
 #endif
 
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
@@ -769,7 +769,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                     // reallocate g->atoms
                     sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, "g:atoms" );
                     g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int*)
-                            scalloc(realloc->gcell_atoms, sizeof(int), "g:atoms");
+                            scalloc( realloc->gcell_atoms, sizeof(int), "g:atoms" );
                 }
             }
         }

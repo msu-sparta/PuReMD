@@ -29,14 +29,16 @@
 extern "C" {
 #endif
 
+void Make_Consistent( simulation_box* );
+
 /* initializes simulation boxes */
 void Setup_Big_Box( real, real, real, real, real, real, simulation_box* );
 
 void Init_Box( rtensor, simulation_box* );
 
-//void Setup_My_Box( reax_system*, control_params* );
+void Setup_My_Box( reax_system*, control_params* );
 
-//void Setup_My_Ext_Box( reax_system*, control_params* );
+void Setup_My_Ext_Box( reax_system*, control_params* );
 
 void Setup_Environment( reax_system*, control_params*, mpi_datatypes* );
 

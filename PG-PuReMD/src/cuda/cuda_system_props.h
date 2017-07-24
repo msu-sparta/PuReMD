@@ -28,6 +28,9 @@ void Cuda_Compute_Kinetic_Energy( reax_system*, simulation_data*, MPI_Comm );
 void Cuda_Compute_Center_of_Mass( reax_system*, simulation_data*,
         mpi_datatypes*, MPI_Comm );
 
+void Cuda_Compute_Pressure( reax_system *, control_params *,
+        simulation_data *, mpi_datatypes * );
+
 #ifdef __cplusplus
 }
 #endif

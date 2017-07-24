@@ -17,7 +17,6 @@
   #include "../comm_tools.h"
   #include "../grid.h"
   #include "../init_md.h"
-  #include "../integrate.h"
   #include "../io_tools.h"
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +34,6 @@ extern "C" {
   #include "../reax_comm_tools.h"
   #include "../reax_grid.h"
   #include "../reax_init_md.h"
-  #include "../reax_integrate.h"
   #include "../reax_io_tools.h"
   #include "../reax_list.h"
   #include "../reax_lookup.h"
@@ -138,7 +136,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     {
     case NVE:
         data->N_f = 3 * system->bigN;
-        Cuda_Evolve = Velocity_Verlet_NVE;
+        Cuda_Evolve = Cuda_Velocity_Verlet_NVE;
         control->virial = 0;
         break;
 
@@ -151,7 +149,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     case nhNVT:
         fprintf( stderr, "[WARNING] Nose-Hoover NVT is still under testing.\n" );
         data->N_f = 3 * system->bigN + 1;
-        Cuda_Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
+        Cuda_Evolve = Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
         if ( !control->restart || (control->restart && control->random_vel) )
         {
@@ -165,7 +163,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     case sNPT: /* Semi-Isotropic NPT */
         data->N_f = 3 * system->bigN + 4;
-        Cuda_Evolve = Velocity_Verlet_Berendsen_NPT;
+        Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -175,7 +173,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     case iNPT: /* Isotropic NPT */
         data->N_f = 3 * system->bigN + 2;
-        Cuda_Evolve = Velocity_Verlet_Berendsen_NPT;
+        Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -185,7 +183,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     case NPT: /* Anisotropic NPT */
         data->N_f = 3 * system->bigN + 9;
-        Cuda_Evolve = Velocity_Verlet_Berendsen_NPT;
+        Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
 
         fprintf( stderr, "p%d: init_simulation_data: option not yet implemented\n",

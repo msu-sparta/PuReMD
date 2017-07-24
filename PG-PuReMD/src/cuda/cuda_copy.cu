@@ -32,18 +32,18 @@ void Sync_Grid( grid *host, grid *device )
     ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
     copy_host_device( host->str, device->str, sizeof(int) * total,
-            cudaMemcpyHostToDevice, "grid:str");
+            cudaMemcpyHostToDevice, "grid:str" );
     copy_host_device( host->end, device->end, sizeof(int) * total,
-            cudaMemcpyHostToDevice, "grid:end");
+            cudaMemcpyHostToDevice, "grid:end" );
     copy_host_device( host->cutoff, device->cutoff, sizeof(real) * total,
-            cudaMemcpyHostToDevice, "grid:cutoff");
+            cudaMemcpyHostToDevice, "grid:cutoff" );
     copy_host_device( host->nbrs_x, device->nbrs_x, sizeof(ivec) * total *
-            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x");
+            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x" );
     copy_host_device( host->nbrs_cp, device->nbrs_cp, sizeof(rvec) * total *
-            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp");
+            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp" );
 
     copy_host_device( host->rel_box, device->rel_box, sizeof(ivec) * total,
-            cudaMemcpyHostToDevice, "grid:rel_box");
+            cudaMemcpyHostToDevice, "grid:rel_box" );
 
     device->max_nbrs = host->max_nbrs;
 }

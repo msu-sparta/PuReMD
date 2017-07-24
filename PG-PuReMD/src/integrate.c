@@ -64,8 +64,10 @@ int Velocity_Verlet_NVE( reax_system* system, control_params* control,
         {
             atom = &(system->my_atoms[i]);
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+            /* Compute x(t + dt) */
             rvec_ScaledSum( dx, dt, atom->v, 0.5 * dt_sqr * -F_CONV * inv_m, atom->f );
             rvec_Add( system->my_atoms[i].x, dx );
+            /* Compute v(t + dt/2) */
             rvec_ScaledAdd( atom->v, 0.5 * dt * -F_CONV * inv_m, atom->f );
         }
         verlet_part1_done = TRUE;
@@ -232,7 +234,7 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
 {
     int i, steps, renbr, ret;
     static int verlet_part1_done = FALSE;
-    real inv_m, dt, lambda;
+    real inv_m, dt, dt_sqr, lambda;
     rvec dx;
     reax_atom *atom;
 
@@ -243,6 +245,7 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
+    dt_sqr = SQR(dt);
 
     ReAllocate( system, control, data, workspace, lists, mpi_data );
 
@@ -253,10 +256,8 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
         {
             atom = &(system->my_atoms[i]);
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
-            /* Compute x(t + dt) */
-            rvec_ScaledSum( dx, dt, atom->v, 0.5 * -F_CONV * inv_m * SQR(dt), atom->f );
+            rvec_ScaledSum( dx, dt, atom->v, 0.5 * -F_CONV * inv_m * dt_sqr, atom->f );
             rvec_Add( atom->x, dx );
-            /* Compute v(t + dt/2) */
             rvec_ScaledAdd( atom->v, 0.5 * -F_CONV * inv_m * dt, atom->f );
         }
 

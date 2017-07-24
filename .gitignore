@@ -1,4 +1,6 @@
+# PuReMD
 *.log
+*.prs
 *.pot
 *.trj
 

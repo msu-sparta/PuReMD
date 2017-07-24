@@ -220,7 +220,7 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
     my_sum[1] = 0.0;
     scale = sizeof(real) / sizeof(void);
     q = (real *) host_scratch;
-    memset( q, 0, system->N * sizeof (real));
+    memset( q, 0, system->N * sizeof(real) );
 
     cuda_charges_x( system, my_sum );
 
@@ -270,9 +270,9 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
 #endif
 
     //MATRIX CHANGES
-    s_matvecs = Cuda_dual_CG(system, workspace, &dev_workspace->H,
+    s_matvecs = Cuda_dual_CG( system, workspace, &dev_workspace->H,
             dev_workspace->b, control->q_err, dev_workspace->x, mpi_data,
-            out_control->log, data);
+            out_control->log, data );
     t_matvecs = 0;
     //fprintf (stderr, "Device: First CG complated with iterations: %d \n", s_matvecs);
 

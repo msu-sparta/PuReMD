@@ -35,7 +35,7 @@ include_HEADERS = src/reax_types.h src/index_utils.h \
 
 if USE_CUDA
 bin_pg_puremd_SOURCES += src/cuda/cuda_utils.cu src/cuda/cuda_allocate.cu src/cuda/cuda_environment.cu \
-      src/cuda/cuda_system_props.cu src/cuda/cuda_reduction.cu \
+      src/cuda/cuda_system_props.cu src/cuda/cuda_reduction.cu src/cuda/cuda_box.cu \
       src/cuda/cuda_copy.cu src/cuda/cuda_reset_tools.cu src/cuda/cuda_list.cu \
       src/cuda/cuda_neighbors.cu src/cuda/cuda_bond_orders.cu src/cuda/cuda_bonds.cu \
       src/cuda/cuda_multi_body.cu src/cuda/cuda_valence_angles.cu \
@@ -45,7 +45,7 @@ bin_pg_puremd_SOURCES += src/cuda/cuda_utils.cu src/cuda/cuda_allocate.cu src/cu
       src/cuda/cuda_init_md.cu src/cuda/cuda_validation.cu src/cuda/cuda_lookup.cu
 include_HEADERS += src/cuda/cuda_helpers.h src/cuda/cuda_shuffle.h \
       src/cuda/cuda_utils.h src/cuda/cuda_allocate.h src/cuda/cuda_environment.h \
-      src/cuda/cuda_system_props.h src/cuda/cuda_reduction.h \
+      src/cuda/cuda_system_props.h src/cuda/cuda_reduction.h src/cuda/cuda_box.h \
       src/cuda/cuda_copy.h src/cuda/cuda_reset_tools.h src/cuda/cuda_list.h \
       src/cuda/cuda_neighbors.h src/cuda/cuda_bond_orders.h src/cuda/cuda_bonds.h \
       src/cuda/cuda_multi_body.h src/cuda/cuda_valence_angles.h \

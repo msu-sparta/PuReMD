@@ -1,11 +1,12 @@
 
 #include "cuda_system_props.h"
 
+#include "cuda_copy.h"
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
-#include "cuda_copy.h"
 #include "cuda_shuffle.h"
 
+#include "../tool_box.h"
 #include "../vector.h"
 
 
@@ -622,18 +623,18 @@ extern "C" void dev_compute_total_mass( reax_system *system, real *local_val )
     real *block_mass = (real *) scratch;
     cuda_memset( block_mass, 0, sizeof(real) * (1 + BLOCKS_POW_2), "total_mass:tmp" );
 
-    k_compute_total_mass <<<BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
-        (system->reax_param.d_sbp, system->d_my_atoms, block_mass, system->n);
+    k_compute_total_mass <<< BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, block_mass, system->n );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    k_reduction <<<1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
-        (block_mass, block_mass + BLOCKS_POW_2, BLOCKS_POW_2);
+    k_reduction <<< 1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
+        ( block_mass, block_mass + BLOCKS_POW_2, BLOCKS_POW_2 );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    copy_host_device (local_val, block_mass + BLOCKS_POW_2, sizeof(real), 
-            cudaMemcpyDeviceToHost, "total_mass:tmp");
+    copy_host_device( local_val, block_mass + BLOCKS_POW_2, sizeof(real), 
+            cudaMemcpyDeviceToHost, "total_mass:tmp" );
 }
 
 
@@ -655,9 +656,9 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
     __syncthreads( );
 
-    for(int z = 16; z >=1; z/=2)
+    for(int z = 16; z >= 1; z /= 2)
     {
-        sdata += shfl( sdata, z);
+        sdata += shfl( sdata, z );
     }
 
     if (threadIdx.x % 32 == 0)
@@ -715,27 +716,28 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 #endif
 }
 
+
 extern "C" void dev_compute_kinetic_energy( reax_system *system,
         simulation_data *data, real *local_val )
 {
     real *block_energy = (real *) scratch;
     cuda_memset( block_energy, 0, sizeof(real) * (BLOCKS_POW_2 + 1), "kinetic_energy:tmp" );
 
-    k_compute_kinetic_energy <<<BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
-        (system->reax_param.d_sbp, system->d_my_atoms, block_energy, system->n);
+    k_compute_kinetic_energy <<< BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, block_energy, system->n );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    k_reduction <<<1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
-        (block_energy, block_energy + BLOCKS_POW_2, BLOCKS_POW_2);
+    k_reduction <<< 1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
+        ( block_energy, block_energy + BLOCKS_POW_2, BLOCKS_POW_2 );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
+    //copy_host_device( local_val, &((simulation_data *)data->d_simulation_data)->my_en.e_kin, 
     copy_host_device( local_val, block_energy + BLOCKS_POW_2,
-            //copy_host_device (local_val, &((simulation_data *)data->d_simulation_data)->my_en.e_kin, 
             sizeof(real), cudaMemcpyDeviceToHost, "kinetic_energy:tmp" );
-            //copy_device (block_energy + BLOCKS_POW_2, &((simulation_data *)data->d_simulation_data)->my_en.e_kin,
-            //        sizeof (real), "kinetic_energy");
+    //copy_device( block_energy + BLOCKS_POW_2, &((simulation_data *)data->d_simulation_data)->my_en.e_kin,
+    //        sizeof(real), "kinetic_energy" );
 }
 
 
@@ -884,20 +886,16 @@ extern "C" void dev_sync_simulation_data( simulation_data *data )
 void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
         MPI_Comm comm )
 {
-    int i;
-    rvec p;
-    real m;
-
     data->my_en.e_kin = 0.0;
 
     dev_compute_kinetic_energy( system, data, &data->my_en.e_kin );
 
-    MPI_Allreduce( &data->my_en.e_kin,  &data->sys_en.e_kin,
+    MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin,
             1, MPI_DOUBLE, MPI_SUM, comm );
 
-    data->therm.T = (2. * data->sys_en.e_kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
 
-    // avoid T being an absolute zero, might cause F.P.E!
+    /* avoid T being an absolute zero, might cause F.P.E! */
     if ( FABS(data->therm.T) < ALMOST_ZERO )
     {
         data->therm.T = ALMOST_ZERO;
@@ -908,10 +906,9 @@ void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
         MPI_Comm comm  )
 {
-    int  i;
     real tmp;
 
-    //compute local total mass of the system
+    /* compute local total mass of the system */
     dev_compute_total_mass( system, &tmp );
 
     MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
@@ -924,10 +921,10 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         mpi_datatypes *mpi_data, MPI_Comm comm )
 {
     int i;
-    real m, det; //xx, xy, xz, yy, yz, zz;
+    real det; //xx, xy, xz, yy, yz, zz;
     real tmp_mat[6], tot_mat[6];
     rvec my_xcm, my_vcm, my_amcm, my_avcm;
-    rvec tvec, diff;
+    rvec tvec;
     rtensor mat, inv;
 
     rvec_MakeZero( my_xcm );  // position of CoM
@@ -1024,3 +1021,116 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 }
 
 
+CUDA_GLOBAL void k_compute_pressure( reax_atom *my_atoms, simulation_box *big_box,
+        rvec *int_press, int n )
+{
+    reax_atom *p_atom;
+    rvec tx;
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
+    {
+        return;
+    }
+
+    p_atom = &( my_atoms[i] );
+    rvec_MakeZero( int_press[i] );
+
+    /* transform x into unit box coordinates, store in tx */
+    Transform_to_UnitBox( p_atom->x, big_box, 1, tx );
+
+    /* this atom's contribution to internal pressure */
+    rvec_Multiply( int_press[i], p_atom->f, tx );
+}
+
+
+/* IMPORTANT: This function assumes that current kinetic energy
+ * the system is already computed
+ *
+ * IMPORTANT: In Klein's paper, it is stated that a dU/dV term needs
+ *  to be added when there are long-range interactions or long-range
+ *  corrections to short-range interactions present.
+ *  We may want to add that for more accuracy.
+ */
+void Cuda_Compute_Pressure( reax_system* system, control_params *control,
+        simulation_data* data, mpi_datatypes *mpi_data )
+{
+    int blocks, block_size, blocks_n, blocks_pow_2_n;
+    rvec *rvec_spad;
+    rvec int_press;
+    simulation_box *big_box;
+    
+    rvec_spad = (rvec *) scratch;
+    big_box = &(system->big_box);
+
+    /* 0: both int and ext, 1: ext only, 2: int only */
+    if ( control->press_mode == 0 || control->press_mode == 2 )
+    {
+        blocks = system->n / DEF_BLOCK_SIZE + 
+            ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+        compute_blocks( &blocks_n, &block_size, system->n );
+        compute_nearest_pow_2( blocks_n, &blocks_pow_2_n );
+
+        k_compute_pressure <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->d_my_atoms, system->d_big_box, rvec_spad,
+              system->n );
+
+        k_reduction_rvec <<< blocks_n, block_size, sizeof(rvec) * block_size >>>
+            ( rvec_spad, rvec_spad + system->n,  system->n );
+        cudaThreadSynchronize( );
+        cudaCheckError( );
+
+        k_reduction_rvec <<< 1, blocks_pow_2_n, sizeof(rvec) * blocks_pow_2_n >>>
+            ( rvec_spad + system->n, rvec_spad + system->n + blocks_n, blocks_n );
+        cudaThreadSynchronize ();
+        cudaCheckError( );
+
+        copy_host_device( &int_press, rvec_spad + system->n + blocks_n, sizeof(rvec), 
+                cudaMemcpyDeviceToHost, "Cuda_Compute_Pressure::d_int_press" );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "p%d:p_int(%10.5f %10.5f %10.5f)p_ext(%10.5f %10.5f %10.5f)\n",
+            system->my_rank, int_press[0], int_press[1], int_press[2],
+            data->my_ext_press[0], data->my_ext_press[1], data->my_ext_press[2] );
+#endif
+
+    /* sum up internal and external pressure */
+    MPI_Allreduce( int_press, data->int_press,
+            3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
+    MPI_Allreduce( data->my_ext_press, data->ext_press,
+            3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
+
+#if defined(DEBUG)
+    fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",
+             system->my_rank,
+             data->int_press[0], data->int_press[1], data->int_press[2] );
+    fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",
+             system->my_rank,
+             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
+#endif
+
+    /* kinetic contribution */
+    data->kin_press = 2.0 * (E_CONV * data->sys_en.e_kin)
+        / (3.0 * big_box->V * P_CONV);
+
+    /* Calculate total pressure in each direction */
+    data->tot_press[0] = data->kin_press -
+        (( data->int_press[0] + data->ext_press[0] ) /
+         ( big_box->box_norms[1] * big_box->box_norms[2] * P_CONV ));
+
+    data->tot_press[1] = data->kin_press -
+        (( data->int_press[1] + data->ext_press[1] ) /
+         ( big_box->box_norms[0] * big_box->box_norms[2] * P_CONV ));
+
+    data->tot_press[2] = data->kin_press -
+        (( data->int_press[2] + data->ext_press[2] ) /
+         ( big_box->box_norms[0] * big_box->box_norms[1] * P_CONV ));
+
+    /* Average pressure for the whole box */
+    data->iso_bar.P =
+        ( data->tot_press[0] + data->tot_press[1] + data->tot_press[2] ) / 3.0;
+}

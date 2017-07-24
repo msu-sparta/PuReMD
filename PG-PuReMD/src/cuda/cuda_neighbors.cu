@@ -68,8 +68,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
     atom1 = &(my_atoms[l]);
     num_far = Dev_Start_Index( l, &far_nbrs );
 
-    //get the coordinates of the atom and 
-    //compute the grid cell
+    /* get the coordinates of the atom and compute the grid cell */
     if ( l < n )
     {
         for ( i = 0; i < 3; i++ )
@@ -115,7 +114,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
 
         /* if neighboring grid cell is further in the "positive" direction AND within cutoff */
         if ( g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs (i, j, k, itr, &g)], atom1->x) <= cutoff )
+                Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
         {
             /* pick up another atom from the neighbor cell */
             for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 

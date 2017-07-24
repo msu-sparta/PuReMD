@@ -215,7 +215,7 @@ void Find_Neighbor_GridCells( grid *g, control_params *control )
                             //gc->nbrs[top] = &(g->cells[cj[0]][cj[1]][cj[2]]);
                             //gc->nbrs[top] = &(g->cells[ index_grid_3d(cj[0],cj[1],cj[2],g) ]);
                             ivec_Copy( g->nbrs_x[index_grid_nbrs(ci[0], ci[1], ci[2], top, g)], cj );
-                            //fprintf (stderr, " index: %d - %d \n", index_grid_nbrs (ci[0], ci[1], ci[2], top, g), g->total * g->max_nbrs);
+                            //fprintf( stderr, " index: %d - %d \n", index_grid_nbrs (ci[0], ci[1], ci[2], top, g), g->total * g->max_nbrs );
                             Find_Closest_Point( /*ext_box,*/ g, ci, cj, g->nbrs_cp[index_grid_nbrs (ci[0], ci[1], ci[2], top, g)] );
                             //fprintf( stderr, "cp: %f %f %f\n",
                             //       gc->nbrs_cp[top][0], gc->nbrs_cp[top][1],
@@ -787,13 +787,14 @@ void Bin_Boundary_Atoms( reax_system *system )
     Get_Boundary_GCell( g, base, atoms[start].x, &gc, &cur_min, &cur_max, gcell_cood );
     g->str[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = start;
     gc->top = 1;
+
     /* error check */
     if ( is_Within_GCell( atoms[start].x, ext_box->min, ext_box->max ) == FALSE )
     {
         fprintf( stderr, "p%d: (start):ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
                  system->my_rank, start,
                  atoms[start].x[0], atoms[start].x[1], atoms[start].x[2] );
-//        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
     for ( i = start + 1; i < end; i++ )
@@ -804,7 +805,7 @@ void Bin_Boundary_Atoms( reax_system *system )
             fprintf( stderr, "p%d: (middle) ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
                     system->my_rank, i,
                     atoms[i].x[0], atoms[i].x[1], atoms[i].x[2] );
-//            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
 
         if ( is_Within_GCell( atoms[i].x, cur_min, cur_max ) == TRUE )
@@ -815,6 +816,7 @@ void Bin_Boundary_Atoms( reax_system *system )
         {
             g->end[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = i;
             Get_Boundary_GCell( g, base, atoms[i].x, &gc, &cur_min, &cur_max, gcell_cood );
+
             /* sanity check! */
             if ( gc->top != 0 )
             {
@@ -824,8 +826,9 @@ void Bin_Boundary_Atoms( reax_system *system )
                          atoms[i].x[0], atoms[i].x[1], atoms[i].x[2],
                          gc->min[0], gc->min[1], gc->min[2],
                          gc->max[0], gc->max[1], gc->max[2] );
-//                MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+                MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             }
+
             g->str[index_grid_3d( gcell_cood[0], gcell_cood[1], gcell_cood[2], g )] = i;
             gc->top = 1;
         }
