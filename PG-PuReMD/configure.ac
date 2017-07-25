@@ -67,7 +67,11 @@ CC="$MPICC"
 CFLAGS="$CFLAGS"
 AC_CHECK_DECL([OPEN_MPI], [mpi_vendor="OpenMPI"],
 	     [], [#include "mpi.h"])
+# MPICH v2
 AC_CHECK_DECL([MPICH2], [mpi_vendor="MPICH"],
+	     [], [#include "mpi.h"])
+# MPICH v3
+AC_CHECK_DECL([MPICH_VERSION], [mpi_vendor="MPICH"],
 	     [], [#include "mpi.h"])
 CC="$sav_CC"
 CFLAGS="$sav_CFLAGS"
