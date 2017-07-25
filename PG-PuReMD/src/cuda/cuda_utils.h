@@ -43,7 +43,7 @@ static inline void __cudaCheckError( const char *file, const int line )
         exit( RUNTIME_ERROR );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     /* More careful checking. However, this will affect performance. */
     err = cudaDeviceSynchronize( );
     if( cudaSuccess != err )

@@ -117,9 +117,9 @@ int Init_Output_Files( reax_system *system, control_params *control,
             sprintf( temp, "%s.log", control->sim_name );
             if ( (out_control->log = fopen( temp, "w" )) != NULL )
             {
-                fprintf( out_control->log, "%6s%8s%8s%8s%8s%8s%8s%8s%8s\n",
+                fprintf( out_control->log, "%6s%8s%8s%8s%8s%8s%8s%8s%8s%8s\n",
                          "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
-                         "qeq", "matvecs" );
+                         "charges", "l iters", "retries" );
                 fflush( out_control->log );
             }
             else
@@ -1156,9 +1156,9 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 
 
 void Print_Total_Force( reax_system *system, simulation_data *data,
-                        storage *workspace )
+        storage *workspace )
 {
-    int    i;
+    int i;
 
     fprintf( stderr, "step: %d\n", data->step );
     fprintf( stderr, "%6s\t%-38s\n", "atom", "atom.f[0,1,2]");
@@ -1179,10 +1179,10 @@ void Output_Results( reax_system *system, control_params *control,
     real t_elapsed, denom;
 #endif
 
-    if ((out_control->energy_update_freq > 0 &&
+    if ( (out_control->energy_update_freq > 0 &&
             data->step % out_control->energy_update_freq == 0) ||
             (out_control->write_steps > 0 &&
-             data->step % out_control->write_steps == 0))
+             data->step % out_control->write_steps == 0) )
     {
         /* update system-wide energies */
         Compute_System_Energy( system, data, MPI_COMM_WORLD );
@@ -1192,7 +1192,7 @@ void Output_Results( reax_system *system, control_params *control,
                 out_control->energy_update_freq > 0 &&
                 data->step % out_control->energy_update_freq == 0 )
         {
-#if defined(DEBUG) && defined(DEBUG_FOCUS)
+#if !defined(DEBUG) && !defined(DEBUG_FOCUS)
             fprintf( out_control->out,
                      "%-6d%14.2f%14.2f%14.2f%11.2f%13.2f%13.5f\n",
                      data->step, data->sys_en.e_tot, data->sys_en.e_pot,
@@ -1229,19 +1229,21 @@ void Output_Results( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
             t_elapsed = Get_Timing_Info( data->timing.total );
             if ( data->step - data->prev_steps > 0 )
+            {
                 denom = 1.0 / out_control->energy_update_freq;
-            else denom = 1;
+            }
+            else
+            {
+                denom = 1;
+            }
 
-            fprintf( out_control->log, "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%6d\n",
-                     data->step,
-                     t_elapsed * denom,
-                     data->timing.comm * denom,
-                     data->timing.nbrs * denom,
-                     data->timing.init_forces * denom,
-                     data->timing.bonded * denom,
-                     data->timing.nonb * denom,
-                     data->timing.qEq * denom,
-                     (int)((data->timing.s_matvecs + data->timing.t_matvecs)*denom) );
+            fprintf( out_control->log, "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8d%8d\n",
+                    data->step, t_elapsed * denom, data->timing.comm * denom,
+                    data->timing.nbrs * denom, data->timing.init_forces * denom,
+                    data->timing.bonded * denom, data->timing.nonb * denom,
+                    data->timing.cm * denom,
+                    (int)((data->timing.s_matvecs + data->timing.t_matvecs) * denom),
+                    data->timing.num_retries );
 
             Reset_Timing( &(data->timing) );
             fflush( out_control->log );

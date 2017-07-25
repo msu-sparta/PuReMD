@@ -252,14 +252,10 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
 
     Cuda_Generate_Neighbor_Lists( system, data, workspace, dev_lists );
 
-    /* estimate storage for bonds and hbonds */
+    /* estimate storage for bonds, hbonds, and sparse matrix */
     Cuda_Estimate_Storages( system, control, dev_lists, &(dev_workspace->H), data->step );
 
-    /* estimate storage for charge sparse matrix */
-//    Cuda_Estimate_Storage_Sparse_Matrix( system, control, data, dev_lists );
-
     dev_alloc_matrix( &(dev_workspace->H), system->total_cap, system->total_cm_entries );
-
     Cuda_Init_Sparse_Matrix_Indices( system, &(dev_workspace->H) );
 
     //MATRIX CHANGES
@@ -277,7 +273,6 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
     if ( control->hbond_cut > 0.0 &&  system->numH > 0 )
     {
         Dev_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, *dev_lists + HBONDS );
-//        Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, *lists + HBONDS );
 
         Cuda_Init_HBond_Indices( system );
 
@@ -290,7 +285,6 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
 
     /* bonds list */
     Dev_Make_List( system->total_cap, system->total_bonds, TYP_BOND, *dev_lists + BONDS );
-//    Make_List( system->total_cap, system->total_bonds, TYP_BOND, *lists + BONDS );
 
     Cuda_Init_Bond_Indices( system );
 

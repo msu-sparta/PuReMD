@@ -186,7 +186,7 @@ void Update_Timing_Info( real *t_start, real *timing )
     struct timeval tim;
     real t_end;
 
-    gettimeofday(&tim, NULL );
+    gettimeofday( &tim, NULL );
 
     t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
     *timing += (t_end - *t_start);

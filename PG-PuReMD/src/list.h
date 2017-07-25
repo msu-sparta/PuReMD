@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -35,7 +35,7 @@ void Make_List( int, int, int, reax_list* );
 
 void Delete_List( reax_list* );
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

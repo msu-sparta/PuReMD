@@ -577,13 +577,8 @@ void Cuda_Reallocate_Bonds_List( reax_list *bonds, size_t n, size_t num_intrs )
 
 void Cuda_Reallocate_Thbodies_List( reax_list *thbodies, size_t n, size_t num_intrs )
 {
-    /* delete three-body list */
     Dev_Delete_List( thbodies );
-//    Delete_List( thbodies );
-
-    /* recreate Three-body list */
     Dev_Make_List( n, num_intrs, TYP_THREE_BODY, thbodies );
-//    Make_List( n, num_intrs, TYP_THREE_BODY, thbodies );
 
 }
 

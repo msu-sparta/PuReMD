@@ -1456,11 +1456,13 @@ typedef struct
     /* non-bonded force calculation time */
     real nonb;
     /* atomic charge distribution calculation time */
-    real qEq;
+    real cm;
     /* num. of steps in iterative linear solver for charge distribution (QEq, first solve) */
-    int  s_matvecs;
+    int s_matvecs;
     /* num. of steps in iterative linear solver for charge distribution (QEq, second solve) */
-    int  t_matvecs;
+    int t_matvecs;
+    /* num. of retries in main sim. loop */
+    int num_retries;
 } reax_timing;
 
 

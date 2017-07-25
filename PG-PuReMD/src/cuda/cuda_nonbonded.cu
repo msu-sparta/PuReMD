@@ -30,13 +30,12 @@
 #include "../vector.h"
 
 
-//CUDA_GLOBAL void __launch_bounds__ (960) ker_vdW_coulomb_energy(    
-CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms, 
+//CUDA_GLOBAL void __launch_bounds__ (960) k_vdW_coulomb_energy(    
+CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms, 
         two_body_parameters *tbp, global_parameters gp, control_params *control, 
         storage p_workspace, reax_list p_far_nbrs, int n, int N, int num_atom_types, 
         real *data_e_vdW, real *data_e_ele, rvec *data_ext_press )
 {
-
 #if defined(__SM_35__)
     real sh_vdw;
     real sh_ele;
@@ -44,13 +43,11 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
 #else
     extern __shared__ real _vdw[];
     extern __shared__ real _ele[];
-    extern __shared__ rvec _force [];
-
+    extern __shared__ rvec _force[];
     real *sh_vdw;
     real *sh_ele;
     rvec *sh_force;
 #endif
-
     int i, j, pj, natoms;
     int start_i, end_i, orig_i, orig_j;
     real p_vdW1, p_vdW1i;
@@ -64,12 +61,13 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
     far_neighbor_data *nbr_pj;
     reax_list *far_nbrs;
     storage *workspace = &( p_workspace );
-    // rtensor temp_rtensor, total_rtensor;
+    int thread_id;
+    int warpid;
+    int laneid; 
 
-    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    int warpid = thread_id / VDW_KER_THREADS_PER_ATOM;
-    int laneid = thread_id & (VDW_KER_THREADS_PER_ATOM -1); 
-
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    warpid = thread_id / VDW_KER_THREADS_PER_ATOM;
+    laneid = thread_id & (VDW_KER_THREADS_PER_ATOM -1); 
 #if defined(__SM_35__)
     sh_vdw = 0.0;
     sh_ele = 0.0;
@@ -83,12 +81,11 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
     sh_ele[threadIdx.x] = 0.0;
     rvec_MakeZero ( sh_force [threadIdx.x] );
 #endif
-
     //i = blockIdx.x * blockDim.x + threadIdx.x;
     //if (i >= N) return;
     i = warpid;
 
-    if (i < N)
+    if ( i < N )
     {
         natoms = n;
         far_nbrs = &( p_far_nbrs );
@@ -97,18 +94,18 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
         e_core = 0;
         e_vdW = 0;
 
-        data_e_vdW [i] = 0;
-        data_e_ele [i] = 0;
+        data_e_vdW[i] = 0;
+        data_e_ele[i] = 0;
 
         //for( i = 0; i < natoms; ++i ) {
         start_i = Dev_Start_Index(i, far_nbrs);
-        end_i   = Dev_End_Index(i, far_nbrs);
-        orig_i  = my_atoms[i].orig_id;
+        end_i = Dev_End_Index(i, far_nbrs);
+        orig_i = my_atoms[i].orig_id;
         //fprintf( stderr, "i:%d, start_i: %d, end_i: %d\n", i, start_i, end_i );
 
         //for( pj = start_i; pj < end_i; ++pj )
         pj = start_i + laneid;
-        while (pj < end_i)
+        while ( pj < end_i )
         {
 
             nbr_pj = &(far_nbrs->select.far_nbr_list[pj]);
@@ -133,18 +130,18 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
                 Tap = Tap * r_ij + workspace->Tap[1];
                 Tap = Tap * r_ij + workspace->Tap[0];
 
-                dTap = 7*workspace->Tap[7] * r_ij + 6*workspace->Tap[6];
+                dTap = 7 * workspace->Tap[7] * r_ij + 6 * workspace->Tap[6];
                 dTap = dTap * r_ij + 5*workspace->Tap[5];
                 dTap = dTap * r_ij + 4*workspace->Tap[4];
                 dTap = dTap * r_ij + 3*workspace->Tap[3];
                 dTap = dTap * r_ij + 2*workspace->Tap[2];
-                dTap += workspace->Tap[1]/r_ij;
+                dTap += workspace->Tap[1] / r_ij;
 
-                /*vdWaals Calculations*/
-                if(gp.vdw_type==1 || gp.vdw_type==3)
-                { // shielding
-                    powr_vdW1 = POW(r_ij, p_vdW1);
-                    powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1);
+                /* shielding vdWaals Calculations */
+                if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
+                {
+                    powr_vdW1 = POW( r_ij, p_vdW1 );
+                    powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
 
                     fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
                     exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
@@ -152,44 +149,47 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
 
                     e_vdW = twbp->D * (exp1 - 2.0 * exp2);      
 
-                    //data_e_vdW [i] += Tap * e_vdW;
-                    //     data_e_vdW [i] += Tap * e_vdW / 2.0;
+                    //data_e_vdW[i] += Tap * e_vdW;
+                    //data_e_vdW[i] += Tap * e_vdW / 2.0;
 #if defined(__SM_35__)
-                    sh_vdw  += Tap * e_vdW / 2.0;
+                    sh_vdw += Tap * e_vdW / 2.0;
 #else
-                    sh_vdw [threadIdx.x] += Tap * e_vdW / 2.0;
+                    sh_vdw[threadIdx.x] += Tap * e_vdW / 2.0;
 #endif
 
-                    dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) * 
-                        POW(r_ij, p_vdW1 - 2.0);
+                    dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) *
+                        POW( r_ij, p_vdW1 - 2.0 );
 
                     CEvd = dTap * e_vdW - 
                         Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
                 }
-                else{ // no shielding
+                /* no shielding */
+                else
+                {
                     exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
                     exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
 
                     e_vdW = twbp->D * (exp1 - 2.0 * exp2);
 
-                    //data_e_vdW [i] += Tap * e_vdW;
-                    //data_e_vdW [i] += Tap * e_vdW / 2.0;
+                    //data_e_vdW[i] += Tap * e_vdW;
+                    //data_e_vdW[i] += Tap * e_vdW / 2.0;
 #if defined(__SM_35__)
                     sh_vdw += Tap * e_vdW / 2.0;
 #else
-                    sh_vdw [threadIdx.x] += Tap * e_vdW / 2.0;
+                    sh_vdw[threadIdx.x] += Tap * e_vdW / 2.0;
 #endif
 
                     CEvd = dTap * e_vdW - 
                         Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2);
                 }
 
-                if(gp.vdw_type==2 || gp.vdw_type==3)
-                { // innner wall
+                /* inner wall */
+                if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
+                {
                     e_core = twbp->ecore * EXP(twbp->acore * (1.0-(r_ij/twbp->rcore)));
 
-                    //data_e_vdW [i] += Tap * e_core;
-                    //data_e_vdW [i] += Tap * e_core / 2.0;
+                    //data_e_vdW[i] += Tap * e_core;
+                    //data_e_vdW[i] += Tap * e_core / 2.0;
 #if defined(__SM_35__)
                     sh_vdw += Tap * e_core / 2.0;
 #else
@@ -201,46 +201,53 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
                 }
 
                 /*Coulomb Calculations*/
-                dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
-                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+                dr3gamij_1 = r_ij * r_ij * r_ij + twbp->gamma;
+                dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
 
                 tmp = Tap / dr3gamij_3;
-                //data_e_ele [i] += e_ele = C_ele * my_atoms[i].q * my_atoms[j].q * tmp;
+                //data_e_ele[i] += e_ele = C_ele * my_atoms[i].q * my_atoms[j].q * tmp;
                 e_ele = C_ele * my_atoms[i].q * my_atoms[j].q * tmp;
-                //data_e_ele [i] += e_ele;
-                //data_e_ele [i] += e_ele  / 2.0;
+                //data_e_ele[i] += e_ele;
+                //data_e_ele[i] += e_ele  / 2.0;
 #if defined(__SM_35__)
                 sh_ele += e_ele  / 2.0;
 #else
-                sh_ele [ threadIdx.x ] += e_ele  / 2.0;
+                sh_ele[ threadIdx.x ] += e_ele  / 2.0;
 #endif
-
 
                 CEclmb = C_ele * my_atoms[i].q * my_atoms[j].q * 
                     ( dTap -  Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
+
                 // fprintf( fout, "%5d %5d %10.6f %10.6f\n",
                 //   MIN( system->my_atoms[i].orig_id, system->my_atoms[j].orig_id ),
                 //   MAX( system->my_atoms[i].orig_id, system->my_atoms[j].orig_id ), 
                 //   CEvd, CEclmb );                  
 
-                if( control->virial == 0 ) {
+                if ( control->virial == 0 )
+                {
                     if ( i < j ) 
+                    {
                         //rvec_ScaledAdd( workspace->f[i], -(CEvd + CEclmb), nbr_pj->dvec );
 #if defined (__SM_35__)
                         rvec_ScaledAdd( sh_force, -(CEvd + CEclmb), nbr_pj->dvec );
 #else
                         rvec_ScaledAdd( sh_force[ threadIdx.x ], -(CEvd + CEclmb), nbr_pj->dvec );
 #endif
+                    }
                     else 
+                    {
                         //rvec_ScaledAdd( workspace->f[i], +(CEvd + CEclmb), nbr_pj->dvec );
 #if defined (__SM_35__)
                         rvec_ScaledAdd( sh_force , +(CEvd + CEclmb), nbr_pj->dvec );
 #else
-                        rvec_ScaledAdd( sh_force [ threadIdx.x ], +(CEvd + CEclmb), nbr_pj->dvec );
+                        rvec_ScaledAdd( sh_force[ threadIdx.x ], +(CEvd + CEclmb), nbr_pj->dvec );
 #endif
                         //rvec_ScaledAdd( workspace->f[j], +(CEvd + CEclmb), nbr_pj->dvec );
+                    }
                 }
-                else { /* NPT, iNPT or sNPT */
+                /* NPT, iNPT or sNPT */
+                else
+                {
                     /* for pressure coupling, terms not related to bond order 
                        derivatives are added directly into pressure vector/tensor */
                     rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
@@ -274,6 +281,7 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
                         r_ij, system->my_atoms[i].q, system->my_atoms[j].q, 
                         e_ele, data->my_en.e_ele );
 #endif
+
 #ifdef TEST_FORCES
                 rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
                 rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
@@ -289,7 +297,8 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
     } // if i < N
 
 #if defined( __SM_35__)
-    for (int x = VDW_KER_THREADS_PER_ATOM >> 1; x >= 1; x/=2){
+    for ( int x = VDW_KER_THREADS_PER_ATOM >> 1; x >= 1; x/=2 )
+    {
         sh_vdw += shfl( sh_vdw, x);
         sh_ele += shfl( sh_ele, x );
         sh_force[0] += shfl( sh_force[0], x );
@@ -297,57 +306,64 @@ CUDA_GLOBAL void ker_vdW_coulomb_energy( reax_atom *my_atoms,
         sh_force[2] += shfl( sh_force[2], x );
     }
 
-    if (laneid == 0) {
+    if ( laneid == 0 )
+    {
         data_e_vdW[i] += sh_vdw;
         data_e_ele[i] += sh_ele;
-        rvec_Add (workspace->f[i], sh_force );
+        rvec_Add( workspace->f[i], sh_force );
     }
 
 #else
 
-    __syncthreads ();
+    __syncthreads( );
 
-    if (laneid < 16) {
+    if (laneid < 16)
+    {
         sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 16];
         sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 16];
-        rvec_Add (sh_force [threadIdx.x], sh_force [threadIdx.x + 16] );
+        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 16] );
     }
-    __syncthreads ();
-    if (laneid < 8) {
+    __syncthreads( );
+    if (laneid < 8)
+    {
         sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 8];
         sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 8];
-        rvec_Add (sh_force [threadIdx.x], sh_force [threadIdx.x + 8] );
+        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 8] );
     }
-    __syncthreads ();
-    if (laneid < 4) {
+    __syncthreads( );
+    if (laneid < 4)
+    {
         sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 4];
         sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 4];
-        rvec_Add (sh_force [threadIdx.x], sh_force [threadIdx.x + 4] );
+        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 4] );
     }
-    __syncthreads ();
-    if (laneid < 2) {
+    __syncthreads( );
+    if (laneid < 2)
+    {
         sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 2];
         sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 2];
-        rvec_Add (sh_force [threadIdx.x], sh_force [threadIdx.x + 2] );
+        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 2] );
     }
-    __syncthreads ();
-    if (laneid < 1) {
+    __syncthreads( );
+    if (laneid < 1)
+    {
         sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 1];
         sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 1];
-        rvec_Add (sh_force [threadIdx.x], sh_force [threadIdx.x + 1] );
+        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 1] );
     }
-    __syncthreads ();
-    if (laneid == 0) {
+    __syncthreads( );
+    if (laneid == 0)
+    {
         data_e_vdW[i] += sh_vdw[threadIdx.x];
         data_e_ele[i] += sh_ele[threadIdx.x];
-        rvec_Add (workspace->f[i], sh_force [ threadIdx.x ]);
+        rvec_Add( workspace->f[i], sh_force[ threadIdx.x ] );
     }
 #endif
 
 }
 
 
-CUDA_GLOBAL void ker_tabulated_vdW_coulomb_energy( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_tabulated_vdW_coulomb_energy( reax_atom *my_atoms, 
         global_parameters gp, control_params *control, 
         storage p_workspace, reax_list p_far_nbrs, 
         LR_lookup_table *t_LR, int n, int N, int num_atom_types, 
@@ -364,27 +380,30 @@ CUDA_GLOBAL void ker_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
     far_neighbor_data *nbr_pj;
     reax_list *far_nbrs;
     LR_lookup_table *t;
+    storage *workspace;
 
-    storage *workspace = &( p_workspace );
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
+    if ( i >= N )
+    {
+        return;
+    }
+
+    workspace = &( p_workspace );
     natoms = n;
     far_nbrs = &( p_far_nbrs );
     steps = step - prev_steps;
     update_freq = energy_update_freq;
     update_energies = update_freq > 0 && steps % update_freq == 0;
     e_ele = e_vdW = 0;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= N) return;
-
-    data_e_vdW [i] = 0;
-    data_e_ele [i] = 0;
+    data_e_vdW[i] = 0;
+    data_e_ele[i] = 0;
 
     //for( i = 0; i < natoms; ++i ) {
-    type_i  = my_atoms[i].type;
+    type_i = my_atoms[i].type;
     start_i = Dev_Start_Index(i,far_nbrs);
-    end_i   = Dev_End_Index(i,far_nbrs);
-    orig_i  = my_atoms[i].orig_id;
+    end_i = Dev_End_Index(i,far_nbrs);
+    orig_i = my_atoms[i].orig_id;
 
     for( pj = start_i; pj < end_i; ++pj )
     {
@@ -404,18 +423,22 @@ CUDA_GLOBAL void ker_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
             tmin  = MIN( type_i, type_j );
             tmax  = MAX( type_i, type_j );
 
-            t = &( t_LR[ index_lr (tmin, tmax, num_atom_types) ]);    
+            t = &( t_LR[ index_lr(tmin, tmax, num_atom_types) ]);    
 
-            // table = &( LR[type_i][type_j] ); 
+            //table = &( LR[type_i][type_j] ); 
 
             /* Cubic Spline Interpolation */
             r = (int)(r_ij * t->inv_dx);
-            if( r == 0 )  ++r;
+            if( r == 0 )
+            {
+                ++r;
+            }
             base = (real)(r+1) * t->dx;
             dif = r_ij - base;
             //fprintf(stderr, "r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif);
 
-            if( update_energies ) {
+            if ( update_energies )
+            {
                 e_vdW = ((t->vdW[r].d*dif + t->vdW[r].c)*dif + t->vdW[r].b)*dif + 
                     t->vdW[r].a;
 
@@ -423,28 +446,35 @@ CUDA_GLOBAL void ker_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
                     t->ele[r].a;
                 e_ele *= my_atoms[i].q * my_atoms[j].q;
 
-                //data_e_vdW [i] += e_vdW;
-                data_e_vdW [i] += e_vdW / 2.0;
-                //data_e_ele [i] += e_ele;
-                data_e_ele [i] += e_ele / 2.0;
+                //data_e_vdW[i] += e_vdW;
+                data_e_vdW[i] += e_vdW / 2.0;
+                //data_e_ele[i] += e_ele;
+                data_e_ele[i] += e_ele / 2.0;
             }    
 
-            CEvd = ((t->CEvd[r].d*dif + t->CEvd[r].c)*dif + t->CEvd[r].b)*dif + 
+            CEvd = ((t->CEvd[r].d * dif + t->CEvd[r].c) * dif + t->CEvd[r].b) * dif + 
                 t->CEvd[r].a;
 
-            CEclmb = ((t->CEclmb[r].d*dif+t->CEclmb[r].c)*dif+t->CEclmb[r].b)*dif + 
+            CEclmb = ((t->CEclmb[r].d * dif + t->CEclmb[r].c) * dif + t->CEclmb[r].b) * dif + 
                 t->CEclmb[r].a;
             CEclmb *= my_atoms[i].q * my_atoms[j].q;
 
-            if( control->virial == 0 ) {
+            if( control->virial == 0 )
+            {
                 if ( i < j ) 
+                {
                     rvec_ScaledAdd( workspace->f[i], -(CEvd + CEclmb), nbr_pj->dvec );
+                }
                 else 
+                {
                     rvec_ScaledAdd( workspace->f[i], +(CEvd + CEclmb), nbr_pj->dvec );
+                }
                 //rvec_ScaledAdd( workspace->f[i], -(CEvd + CEclmb), nbr_pj->dvec );
                 //rvec_ScaledAdd( workspace->f[j], +(CEvd + CEclmb), nbr_pj->dvec );
             }
-            else { // NPT, iNPT or sNPT
+            /* NPT, iNPT or sNPT */
+            else
+            {
                 /* for pressure coupling, terms not related to bond order derivatives
                    are added directly into pressure vector/tensor */
                 rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
@@ -467,6 +497,7 @@ CUDA_GLOBAL void ker_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
                     r_ij, system->my_atoms[i].q, system->my_atoms[j].q, 
                     e_ele, data->my_en.e_ele );
 #endif
+
 #ifdef TEST_FORCES
             rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
             rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
@@ -479,25 +510,25 @@ CUDA_GLOBAL void ker_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void ker_pol_energy( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_pol_energy( reax_atom *my_atoms, 
         single_body_parameters *sbp, int n, real *data_e_pol )
 {
-    int type_i;
+    int i, type_i;
     real q;
 
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if ( i >= n) return;
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    data_e_pol [i] = 0;
+    if ( i >= n )
+    {
+        return;
+    }
 
-    //for( i = 0; i < system->n; i++ ) {
     q = my_atoms[i].q;
     type_i = my_atoms[i].type;
 
-    data_e_pol[i] += 
+    data_e_pol[i] = 
         KCALpMOL_to_EV * (sbp[type_i].chi * q + 
                 (sbp[type_i].eta / 2.) * SQR(q));
-    //}
 }
 
 
@@ -505,17 +536,18 @@ void Cuda_Compute_Polarization_Energy( reax_system *system, simulation_data *dat
 {
     int blocks;
     real *spad = (real *) scratch;
+
     cuda_memset( spad, 0, sizeof(real) * 2 * system->n, "pol_energy" );
 
     blocks = system->n / DEF_BLOCK_SIZE + 
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    ker_pol_energy <<< blocks, DEF_BLOCK_SIZE >>>
+
+    k_pol_energy <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           system->n, spad );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    /* reduction for polarization energy */
     Cuda_Reduction_Sum( spad,
             &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
             system->n );
@@ -526,22 +558,23 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data,  reax_list **lists,
         output_controls *out_control, bool isTabulated )
 {
-    int blocks;
-    int rblocks;
+    int blocks, rblocks, update_energy;
     int size = (2 * system->N + 2 * system->N ) * sizeof(real) +
         2 * system->N * sizeof(rvec);
-
     rvec *spad_rvec;
     real *spad = (real *) scratch;
-    cuda_memset (spad, 0, size, "pol_energy");
 
+    update_energy = (out_control->energy_update_freq > 0
+            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
     rblocks = system->N / DEF_BLOCK_SIZE + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     blocks = ((system->N * VDW_KER_THREADS_PER_ATOM) / DEF_BLOCK_SIZE) 
         + (((system->N * VDW_KER_THREADS_PER_ATOM) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    if (!isTabulated)
+    cuda_memset( spad, 0, size, "pol_energy" );
+
+    if ( !isTabulated )
     {
-        ker_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE, DEF_BLOCK_SIZE * (2 * sizeof(real) + sizeof(rvec)) >>>
+        k_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE, DEF_BLOCK_SIZE * (2 * sizeof(real) + sizeof(rvec)) >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *)control->d_control_params, 
               *(dev_workspace), *(*dev_lists + FAR_NBRS), 
@@ -552,7 +585,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     }
     else
     {
-        ker_tabulated_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE >>>
+        k_tabulated_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *)control->d_control_params, 
               *(dev_workspace), *(*dev_lists + FAR_NBRS), 
@@ -567,14 +600,20 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     }
 
     /* reduction for vdw */
-    Cuda_Reduction_Sum( spad,
-            &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-            system->N );
+    if ( update_energy == TRUE )
+    {
+        Cuda_Reduction_Sum( spad,
+                &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+                system->N );
+    }
 
-    /* reduction for  ele */
-    Cuda_Reduction_Sum( spad + 2 * system->N,
-            &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
-            system->N );
+    /* reduction for ele */
+    if ( update_energy == TRUE )
+    {
+        Cuda_Reduction_Sum( spad + 2 * system->N,
+                &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+                system->N );
+    }
 
     /* reduction for ext_press */
     spad_rvec = (rvec *) (spad + 4 * system->N);
@@ -588,5 +627,8 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    Cuda_Compute_Polarization_Energy( system, data );
+    if ( update_energy == TRUE )
+    {
+        Cuda_Compute_Polarization_Energy( system, data );
+    }
 }

@@ -109,7 +109,7 @@ void Post_Evolve( reax_system* system, control_params* control,
     int i;
     rvec diff, cross;
 
-    /* remove trans & rot velocity of the center of mass from system */
+    /* remove translational and rotational velocity of the center of mass from system */
     if ( control->ensemble != NVE && control->remove_CoM_vel &&
             data->step % control->remove_CoM_vel == 0 )
     {
@@ -118,17 +118,17 @@ void Post_Evolve( reax_system* system, control_params* control,
 
         for ( i = 0; i < system->n; i++ )
         {
-            /* remove translational vel */
+            /* remove translational term */
             rvec_ScaledAdd( system->my_atoms[i].v, -1., data->vcm );
 
-            /* remove rotational */
+            /* remove rotational term */
             rvec_ScaledSum( diff, 1., system->my_atoms[i].x, -1., data->xcm );
             rvec_Cross( cross, data->avcm, diff );
             rvec_ScaledAdd( system->my_atoms[i].v, -1., cross );
         }
     }
 
-    /* compute kinetic energy of the system */
+    /* compute kinetic energy of system */
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 }
 
@@ -183,27 +183,6 @@ int main( int argc, char* argv[] )
 
 #ifdef HAVE_CUDA
 
-    /* Remove this debug information later */
-#if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, " Size of LR Lookup table %d \n", sizeof(LR_lookup_table) );
-#endif
-
-#if defined( __SM_35__)
-    fprintf( stderr, " nbrs block size: %d \n", NBRS_BLOCK_SIZE );
-    fprintf( stderr, " nbrs threads per atom: %d \n", NB_KER_THREADS_PER_ATOM );
-
-    fprintf( stderr, " hbonds block size: %d \n", HB_BLOCK_SIZE );
-    fprintf( stderr, " hbonds threads per atom: %d \n", HB_KER_THREADS_PER_ATOM );
-
-    fprintf( stderr, " vdw block size: %d \n", VDW_BLOCK_SIZE );
-    fprintf( stderr, " vdw threads per atom: %d \n", VDW_KER_THREADS_PER_ATOM );
-
-    fprintf( stderr, " matvec block size: %d \n", MATVEC_BLOCK_SIZE );
-    fprintf( stderr, " matvec threads per atom: %d \n", MATVEC_KER_THREADS_PER_ROW);
-
-    fprintf( stderr, " General block size: %d \n", DEF_BLOCK_SIZE );
-#endif
-
     /* allocate main data structures */
     system = (reax_system *) smalloc( sizeof(reax_system), "system" );
     control = (control_params *) smalloc( sizeof(control_params), "control" );
@@ -249,17 +228,11 @@ int main( int argc, char* argv[] )
     Read_System( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
     /* setup the CUDA Device for this process */
     Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
 
 #if defined(DEBUG)
     print_device_mem_usage( );
-    fprintf( stderr, "p%d: Total number of GPUs on this node -- %d\n", system->my_rank, my_device_id);
 #endif
 
     /* init the blocks sizes for cuda kernels */
@@ -278,65 +251,29 @@ int main( int argc, char* argv[] )
     Pure_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
 
-//#if defined(DEBUG)
+#if defined(DEBUG)
     print_device_mem_usage( );
-//#endif
+#endif
 
     /* init the blocks sizes for cuda kernels */
     init_blocks( system );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-    //END OF FIRST STEP
-
-    // compute f_0
+    /* compute f_0 */
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, TRUE );
     Sync_Atoms( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
     init_blocks( system );
 
-#if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, "p%d: Comm_Atoms synchronized \n", system->my_rank );
-#endif
-
-    //Second step
     Cuda_Reset( system, control, data, workspace, lists );
 
 #if defined(__CUDA_DEBUG__)
     Reset( system, control, data, workspace, lists );
 #endif
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: Cuda_Reset done...\n", system->my_rank );
-#endif
-
-    //Third Step
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
 #if defined(__CUDA_DEBUG__)
     Generate_Neighbor_Lists( system, data, workspace, lists );
-#endif
-
-//    reax_list **temp_lists = (reax_list **) smalloc( LIST_N * sizeof (reax_list *), "temp_lists" );
-//    for ( i = 0; i < LIST_N; ++i )
-//    {
-//        temp_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-//        temp_lists[i]->allocated = FALSE;
-//    }
-//    Make_List( (*dev_lists + FAR_NBRS)->n, (*dev_lists + FAR_NBRS)->num_intrs,
-//            TYP_FAR_NEIGHBOR, (*temp_lists + FAR_NBRS) );
-//    Output_Sync_Lists( (*temp_lists + FAR_NBRS), (*dev_lists + FAR_NBRS), TYP_FAR_NEIGHBOR );
-//    Print_Far_Neighbors( system, temp_lists, control );
-
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
-#endif
-
-    //Fourth Step
-#if defined(DEBUG)
-    fprintf( stderr, " Host Compute Forces begin.... \n" );
 #endif
 
 #if defined(__CUDA_DEBUG__)
@@ -347,19 +284,11 @@ int main( int argc, char* argv[] )
     Cuda_Compute_Forces( system, control, data, workspace, lists,
             out_control, mpi_data );
 
-#if defined(DEBUG)
-    fprintf (stderr, "p%d: Cuda_Compute_Forces done...\n", system->my_rank );
-#endif
-
 #if defined (__CUDA_DEBUG__)
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 #endif
 
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-
-#if defined(DEBUG)
-    fprintf (stderr, "p%d: Cuda_Compute_Kinetic_Energy done ... \n", system->my_rank);
-#endif
 
 #if defined(__CUDA_DEBUG__)
     validate_device( system, data, workspace, lists );
@@ -368,16 +297,13 @@ int main( int argc, char* argv[] )
 #if !defined(__CUDA_DEBUG__)
     Output_Results( system, control, data, lists, out_control, mpi_data );
 #endif
-#if defined(DEBUG)
-    fprintf (stderr, "p%d: Output_Results done ... \n", system->my_rank);
-#endif
 
 #if defined(DEBUG)
-    fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
+    fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-    // start the simulation
+    /* begin main simulation loop */
     ++data->step;
     retries = 0;
     while ( data->step <= control->nsteps && retries < MAX_RETRIES )
@@ -423,20 +349,18 @@ int main( int argc, char* argv[] )
         fprintf( stderr, " Post Evolve time: %f \n", t_end );
 #endif
 
-#if !defined(__CUDA_DEBUG__)
         if ( ret == SUCCESS )
         {
+            data->timing.num_retries = retries;
+
+#if !defined(__CUDA_DEBUG__)
             Output_Results( system, control, data, lists, out_control, mpi_data );
-        }
 #endif
 
-//        if ( ret == SUCCESS )
-//        {
-//            Analysis(system, control, data, workspace, lists, out_control, mpi_data);
-//        }
+//        Analysis(system, control, data, workspace, lists, out_control, mpi_data);
 
         /* dump restart info */
-//        if ( ret == SUCCESS && out_control->restart_freq &&
+//        if ( out_control->restart_freq &&
 //                (data->step-data->prev_steps) % out_control->restart_freq == 0 )
 //        {
 //            if( out_control->restart_format == WRITE_ASCII )
@@ -449,8 +373,6 @@ int main( int argc, char* argv[] )
 //            }
 //        }
 
-        if ( ret == SUCCESS )
-        {
 #if defined(DEBUG)
             fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
             MPI_Barrier( MPI_COMM_WORLD );
@@ -462,7 +384,9 @@ int main( int argc, char* argv[] )
         else
         {
             ++retries;
+#if defined(DEBUG)
             fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
+#endif
         }
     }
 
@@ -576,16 +500,12 @@ int main( int argc, char* argv[] )
 
         if ( ret == SUCCESS )
         {
+            data->timing.num_retries = retries;
+
             Output_Results( system, control, data, lists, out_control, mpi_data );
-        }
 
-        if ( ret == SUCCESS )
-        {
 //            Analysis(system, control, data, workspace, lists, out_control, mpi_data);
-        }
 
-        if ( ret == SUCCESS )
-        {
             /* dump restart info */
             if ( out_control->restart_freq &&
                     (data->step - data->prev_steps) % out_control->restart_freq == 0 )
@@ -599,10 +519,7 @@ int main( int argc, char* argv[] )
                     Write_Binary_Restart( system, control, data, out_control, mpi_data );
                 }
             }
-        }
 
-        if ( ret == SUCCESS )
-        {
 #if defined(DEBUG)
             fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
             MPI_Barrier( mpi_data->world );

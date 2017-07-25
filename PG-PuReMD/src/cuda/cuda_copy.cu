@@ -3,6 +3,7 @@
 
 #include "cuda_utils.h"
 
+#include "../list.h"
 #include "../vector.h"
 
 
@@ -133,11 +134,11 @@ void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
     fprintf( stderr, " Trying to copy *%d* list from device to host \n", type );
 #endif
 
-//    if ( host->allocated == TRUE )
-//    {
-//        Delete_List( host );
-//    }
-//    Make_List( device->n, device->num_intrs, type, host );
+    if ( host->allocated == TRUE )
+    {
+        Delete_List( host );
+    }
+    Make_List( device->n, device->num_intrs, type, host );
 
     copy_host_device( host->index, device->index, sizeof(int) * device->n,
             cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->index" );

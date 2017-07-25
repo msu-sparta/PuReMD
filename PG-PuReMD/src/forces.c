@@ -1751,7 +1751,7 @@ int Compute_Forces( reax_system *system, control_params *control,
         //MPI_Barrier( MPI_COMM_WORLD );
         if ( system->my_rank == MASTER_NODE )
         {
-            Update_Timing_Info( &t_start, &(data->timing.qEq) );
+            Update_Timing_Info( &t_start, &(data->timing.cm) );
         }
 #endif
 #if defined(DEBUG_FOCUS)
