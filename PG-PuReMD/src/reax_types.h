@@ -198,11 +198,12 @@
 #endif
 
 /**************** RESOURCE CONSTANTS **********************/
+/* 20 MB */
+#define HOST_SCRATCH_SIZE               (1024 * 1024 * 20)
 #ifdef HAVE_CUDA
 /* 20 MB */
 #define DEVICE_SCRATCH_SIZE             (1024 * 1024 * 20)
 /* 20 MB */
-#define HOST_SCRATCH_SIZE               (1024 * 1024 * 20)
 #define RES_SCRATCH                     0x90
 
 /* BLOCK SIZES for kernels */

@@ -1655,7 +1655,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     *Htop = (int)(MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_CM_ENTRIES ));
 
     // Set max sparse entries, needed for first iteration of validate_list
-    system->max_sparse_entries = *Htop * SAFE_ZONE;
+    system->total_cm_entries = *Htop * SAFE_ZONE;
 
     for ( i = 0; i < system->n; ++i )
     {

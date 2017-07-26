@@ -42,9 +42,12 @@
 #ifdef HAVE_CUDA
   #include "cuda/cuda_copy.h"
   #include "cuda/cuda_environment.h"
+  #include "cuda/cuda_forces.h"
+  #include "cuda/cuda_init_md.h"
   #include "cuda/cuda_neighbors.h"
   #include "cuda/cuda_post_evolve.h"
   #include "cuda/cuda_reset_tools.h"
+  #include "cuda/cuda_system_props.h"
   #include "cuda/cuda_utils.h"
   #include "cuda/cuda_validation.h"
 #endif
@@ -173,7 +176,9 @@ int main( int argc, char* argv[] )
     mpi_datatypes *mpi_data;
     int i, ret, retries;
     real t_start = 0, t_elapsed;
+#if defined(DEBUG)
     real t_begin, t_end;
+#endif
 
     if ( argc != 4 )
     {

@@ -68,10 +68,10 @@ CFLAGS="$CFLAGS"
 AC_CHECK_DECL([OPEN_MPI], [mpi_vendor="OpenMPI"],
 	     [], [#include "mpi.h"])
 # MPICH v2
-AC_CHECK_DECL([MPICH2], [mpi_vendor="MPICH"],
+AC_CHECK_DECL([MPICH2], [mpi_vendor="MPICH2"],
 	     [], [#include "mpi.h"])
 # MPICH v3
-AC_CHECK_DECL([MPICH_VERSION], [mpi_vendor="MPICH"],
+AC_CHECK_DECL([MPICH_VERSION], [mpi_vendor="MPICH3"],
 	     [], [#include "mpi.h"])
 CC="$sav_CC"
 CFLAGS="$sav_CFLAGS"
@@ -86,7 +86,7 @@ then
 	AC_MSG_NOTICE([OpenMPI found])
 	AC_MSG_NOTICE([MPI_CFLAGS=$MPI_CFLAGS])
 	AC_MSG_NOTICE([MPI_LIBS=$MPI_LIBS])
-elif test "$mpi_vendor" = "MPICH"
+elif test "$mpi_vendor" = "MPICH2" || test "$mpi_vendor" = "MPICH3"
 then
 	# build MPI_CFLAGS
 	tmp=`$MPICC -compile-info | awk '{$1=""; print $0 }'`
