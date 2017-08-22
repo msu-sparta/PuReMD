@@ -146,7 +146,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
  * A: stored in CSR
  * A_t: stored in CSR
  */
-void Transpose( const sparse_matrix const *A, sparse_matrix const *A_t )
+void Transpose( const sparse_matrix * const A, sparse_matrix const *A_t )
 {
     unsigned int i, j, pj, *A_t_top;
 
@@ -1022,156 +1022,160 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
  *   Matrices have non-zero diagonals
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 static void apply_preconditioner( const static_storage * const workspace, const control_params * const control,
-                                  const real * const y, real * const x, const int fresh_pre )
+        const real * const y, real * const x, const int fresh_pre )
 {
     int i, si;
 
-    switch ( control->cm_solver_pre_app_type )
+    /* no preconditioning */
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
     {
-    case NONE_PA:
-        break;
-    case TRI_SOLVE_PA:
-        switch ( control->cm_solver_pre_comp_type )
-        {
-        case DIAG_PC:
-            diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
-            break;
-        case ICHOLT_PC:
-        case ILU_PAR_PC:
-        case ILUT_PAR_PC:
-            tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
-            tri_solve( workspace->U, x, x, workspace->U->n, UPPER );
-            break;
-        default:
-            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-        }
-        break;
-    case TRI_SOLVE_LEVEL_SCHED_PA:
-        switch ( control->cm_solver_pre_comp_type )
-        {
-        case DIAG_PC:
-            diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
-            break;
-        case ICHOLT_PC:
-        case ILU_PAR_PC:
-        case ILUT_PAR_PC:
-            tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
-            tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
-            break;
-        default:
-            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-        }
-        break;
-    case TRI_SOLVE_GC_PA:
-        switch ( control->cm_solver_pre_comp_type )
-        {
-        case DIAG_PC:
-            fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-        case ICHOLT_PC:
-        case ILU_PAR_PC:
-        case ILUT_PAR_PC:
-            #pragma omp master
-            {
-                memcpy( y_p, y, sizeof(real) * workspace->H->n );
-            }
-
-            #pragma omp barrier
-
-            permute_vector( y_p, workspace->H->n, FALSE, LOWER );
-            tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
-            tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
-            permute_vector( x, workspace->H->n, TRUE, UPPER );
-        break;
-        default:
-            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-        }
-        break;
-    case JACOBI_ITER_PA:
-        switch ( control->cm_solver_pre_comp_type )
-        {
-        case DIAG_PC:
-            fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-        case ICHOLT_PC:
-        case ILU_PAR_PC:
-        case ILUT_PAR_PC:
-            #pragma omp master
-            {
-                if ( Dinv_L == NULL )
-                {
-                    if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
-                    {
-                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                        exit( INSUFFICIENT_MEMORY );
-                    }
-                }
-            }
-
-            #pragma omp barrier
-
-            /* construct D^{-1}_L */
-            if ( fresh_pre == TRUE )
-            {
-                #pragma omp for schedule(static)
-                for ( i = 0; i < workspace->L->n; ++i )
-                {
-                    si = workspace->L->start[i + 1] - 1;
-                    Dinv_L[i] = 1. / workspace->L->val[si];
-                }
-            }
-
-            jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
-
-            #pragma omp master
-            {
-                if ( Dinv_U == NULL )
-                {
-                    if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
-                    {
-                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                        exit( INSUFFICIENT_MEMORY );
-                    }
-                }
-            }
-
-            #pragma omp barrier
-
-            /* construct D^{-1}_U */
-            if ( fresh_pre == TRUE )
-            {
-                #pragma omp for schedule(static)
-                for ( i = 0; i < workspace->U->n; ++i )
-                {
-                    si = workspace->U->start[i];
-                    Dinv_U[i] = 1. / workspace->U->val[si];
-                }
-            }
-
-            jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
-            break;
-        default:
-            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-        }
-        break;
-    default:
-        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
-
+        Vector_Copy( x, y, workspace->H->n );
     }
+    else
+    {
+        switch ( control->cm_solver_pre_app_type )
+        {
+        case TRI_SOLVE_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+                diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                break;
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+                tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+                tri_solve( workspace->U, x, x, workspace->U->n, UPPER );
+                break;
+            default:
+                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            }
+            break;
+        case TRI_SOLVE_LEVEL_SCHED_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+                diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                break;
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+                tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
+                break;
+            default:
+                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            }
+            break;
+        case TRI_SOLVE_GC_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+                #pragma omp master
+                {
+                    memcpy( y_p, y, sizeof(real) * workspace->H->n );
+                }
 
-    return;
+                #pragma omp barrier
+
+                permute_vector( y_p, workspace->H->n, FALSE, LOWER );
+                tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
+                tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
+                permute_vector( x, workspace->H->n, TRUE, UPPER );
+            break;
+            default:
+                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            }
+            break;
+        case JACOBI_ITER_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+                #pragma omp master
+                {
+                    if ( Dinv_L == NULL )
+                    {
+                        if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
+                        {
+                            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                            exit( INSUFFICIENT_MEMORY );
+                        }
+                    }
+                }
+
+                #pragma omp barrier
+
+                /* construct D^{-1}_L */
+                if ( fresh_pre == TRUE )
+                {
+                    #pragma omp for schedule(static)
+                    for ( i = 0; i < workspace->L->n; ++i )
+                    {
+                        si = workspace->L->start[i + 1] - 1;
+                        Dinv_L[i] = 1. / workspace->L->val[si];
+                    }
+                }
+
+                jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+
+                #pragma omp master
+                {
+                    if ( Dinv_U == NULL )
+                    {
+                        if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
+                        {
+                            fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                            exit( INSUFFICIENT_MEMORY );
+                        }
+                    }
+                }
+
+                #pragma omp barrier
+
+                /* construct D^{-1}_U */
+                if ( fresh_pre == TRUE )
+                {
+                    #pragma omp for schedule(static)
+                    for ( i = 0; i < workspace->U->n; ++i )
+                    {
+                        si = workspace->U->start[i];
+                        Dinv_U[i] = 1. / workspace->U->val[si];
+                    }
+                }
+
+                jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+                break;
+            default:
+                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            }
+            break;
+        default:
+            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+        }
+    }
 }
 
 
@@ -1384,7 +1388,8 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 #pragma omp master
                 {
                     time_start = Get_Time( );
-                    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+                    if ( control->cm_solver_pre_comp_type == NONE_PC ||
+                            control->cm_solver_pre_comp_type == DIAG_PC )
                     {
                         /* Givens rotations on the upper-Hessenberg matrix to make it U */
                         for ( i = 0; i <= j; i++ )

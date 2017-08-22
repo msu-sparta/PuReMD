@@ -32,7 +32,7 @@ typedef enum
 } TRIANGULARITY;
 
 
-void Transpose( const sparse_matrix const *, sparse_matrix const * );
+void Transpose( const sparse_matrix * const, sparse_matrix const * );
 void Transpose_I( sparse_matrix * const );
 
 void tri_solve( const sparse_matrix * const, const real * const,

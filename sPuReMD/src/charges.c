@@ -32,6 +32,13 @@
 #endif
 
 
+typedef struct
+{
+    unsigned int j;
+    real val;
+} sparse_matrix_entry;
+
+
 #if defined(TEST_MAT)
 static sparse_matrix * create_test_mat( void )
 {
@@ -85,7 +92,7 @@ static sparse_matrix * create_test_mat( void )
 static int compare_matrix_entry(const void *v1, const void *v2)
 {
     /* larger element has larger column index */
-    return *(unsigned int *)v1 - *(unsigned int *)v2;
+    return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
 }
 
 
@@ -97,51 +104,41 @@ static int compare_matrix_entry(const void *v1, const void *v2)
  */
 static void Sort_Matrix_Rows( sparse_matrix * const A )
 {
-    unsigned int i, j, k, si, ei, *temp_j;
-    real *temp_val;
+    unsigned int i, j, si, ei;
+    sparse_matrix_entry *temp;
 
-    #pragma omp parallel default(none) private(i, j, k, si, ei, temp_j, temp_val) shared(stderr)
+//    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
     {
-        if ( ( temp_j = (unsigned int*) malloc( A->n * sizeof(unsigned int)) ) == NULL
-                || ( temp_val = (real*) malloc( A->n * sizeof(real)) ) == NULL )
+        if ( ( temp = (sparse_matrix_entry *) malloc( A->n * sizeof(sparse_matrix_entry)) ) == NULL )
         {
             fprintf( stderr, "Not enough space for matrix row sort. Terminating...\n" );
             exit( INSUFFICIENT_MEMORY );
         }
 
         /* sort each row of A using column indices */
-        #pragma omp for schedule(guided)
+//        #pragma omp for schedule(guided)
         for ( i = 0; i < A->n; ++i )
         {
             si = A->start[i];
             ei = A->start[i + 1];
-            memcpy( temp_j, A->j + si, sizeof(unsigned int) * (ei - si) );
-            memcpy( temp_val, A->val + si, sizeof(real) * (ei - si) );
 
-            //TODO: consider implementing single custom one-pass sort instead of using qsort + manual sort
-            /* polymorphic sort in standard C library using column indices */
-            qsort( temp_j, ei - si, sizeof(unsigned int), compare_matrix_entry );
-
-            /* manually sort vals */
             for ( j = 0; j < (ei - si); ++j )
             {
-                for ( k = 0; k < (ei - si); ++k )
-                {
-                    if ( A->j[si + j] == temp_j[k] )
-                    {
-                        A->val[si + k] = temp_val[j];
-                        break;
-                    }
-
-                }
+                (temp + j)->j = A->j[si + j];
+                (temp + j)->val = A->val[si + j];
             }
 
-            /* copy sorted column indices */
-            memcpy( A->j + si, temp_j, sizeof(unsigned int) * (ei - si) );
+            /* polymorphic sort in standard C library using column indices */
+            qsort( temp, ei - si, sizeof(sparse_matrix_entry), compare_matrix_entry );
+
+            for ( j = 0; j < (ei - si); ++j )
+            {
+                A->j[si + j] = (temp + j)->j;
+                A->val[si + j] = (temp + j)->val;
+            }
         }
 
-        free( temp_val );
-        free( temp_j );
+        free( temp );
     }
 }
 
@@ -1500,45 +1497,49 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 
     switch ( control->cm_solver_pre_comp_type )
     {
-    case DIAG_PC:
-        data->timing.cm_solver_pre_comp +=
-            diag_pre_comp( Hptr, workspace->Hdia_inv );
-        break;
+        case NONE_PC:
+            break;
 
-    case ICHOLT_PC:
-        data->timing.cm_solver_pre_comp +=
-            ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
-        break;
+        case DIAG_PC:
+            data->timing.cm_solver_pre_comp +=
+                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            break;
 
-    case ILU_PAR_PC:
-        data->timing.cm_solver_pre_comp +=
-            ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
-        break;
+        case ICHOLT_PC:
+            data->timing.cm_solver_pre_comp +=
+                ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            break;
 
-    case ILUT_PAR_PC:
-        data->timing.cm_solver_pre_comp +=
-            ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                    workspace->L, workspace->U );
-        break;
+        case ILU_PAR_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
+            break;
 
-    case ILU_SUPERLU_MT_PC:
+        case ILUT_PAR_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
+                        workspace->L, workspace->U );
+            break;
+
+        case ILU_SUPERLU_MT_PC:
 #if defined(HAVE_SUPERLU_MT)
-        data->timing.cm_solver_pre_comp +=
-            SuperLU_Factorize( Hptr, workspace->L, workspace->U );
+            data->timing.cm_solver_pre_comp +=
+                SuperLU_Factorize( Hptr, workspace->L, workspace->U );
 #else
-        fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
-        exit( INVALID_INPUT );
+            fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
 #endif
-        break;
+            break;
 
-    default:
-        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        default:
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
 #if defined(DEBUG)
-    if ( control->cm_solver_pre_comp_type != DIAG_PC )
+    if ( control->cm_solver_pre_comp_type != NONE_PC && 
+            control->cm_solver_pre_comp_type != DIAG_PC )
     {
         fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
@@ -1840,47 +1841,51 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     
     switch ( control->cm_solver_pre_comp_type )
     {
-    case DIAG_PC:
-        data->timing.cm_solver_pre_comp +=
-            diag_pre_comp( Hptr, workspace->Hdia_inv );
-        break;
+        case NONE_PC:
+            break;
 
-    case ICHOLT_PC:
-        data->timing.cm_solver_pre_comp +=
-            ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
-        break;
+        case DIAG_PC:
+            data->timing.cm_solver_pre_comp +=
+                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            break;
 
-    case ILU_PAR_PC:
-        data->timing.cm_solver_pre_comp +=
-            ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
-        break;
+        case ICHOLT_PC:
+            data->timing.cm_solver_pre_comp +=
+                ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            break;
 
-    case ILUT_PAR_PC:
-        data->timing.cm_solver_pre_comp +=
-            ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                    workspace->L, workspace->U );
-        break;
+        case ILU_PAR_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
+            break;
 
-    case ILU_SUPERLU_MT_PC:
+        case ILUT_PAR_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
+                        workspace->L, workspace->U );
+            break;
+
+        case ILU_SUPERLU_MT_PC:
 #if defined(HAVE_SUPERLU_MT)
-        data->timing.cm_solver_pre_comp +=
-            SuperLU_Factorize( Hptr, workspace->L, workspace->U );
+            data->timing.cm_solver_pre_comp +=
+                SuperLU_Factorize( Hptr, workspace->L, workspace->U );
 #else
-        fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
-        exit( INVALID_INPUT );
+            fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
 #endif
-        break;
+            break;
 
-    default:
-        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        default:
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
     Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
 
 #if defined(DEBUG)
-    if ( control->cm_solver_pre_comp_type != DIAG_PC )
+    if ( control->cm_solver_pre_comp_type != NONE_PC && 
+            control->cm_solver_pre_comp_type != DIAG_PC )
     {
         fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
@@ -1939,48 +1944,52 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     
     switch ( control->cm_solver_pre_comp_type )
     {
-    case DIAG_PC:
-        data->timing.cm_solver_pre_comp +=
-            diag_pre_comp( Hptr, workspace->Hdia_inv );
-        break;
+        case NONE_PC:
+            break;
 
-    case ICHOLT_PC:
-        data->timing.cm_solver_pre_comp +=
-            ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
-        break;
+        case DIAG_PC:
+            data->timing.cm_solver_pre_comp +=
+                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            break;
 
-    case ILU_PAR_PC:
-        data->timing.cm_solver_pre_comp +=
-            ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
-        break;
+        case ICHOLT_PC:
+            data->timing.cm_solver_pre_comp +=
+                ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            break;
 
-    case ILUT_PAR_PC:
-        data->timing.cm_solver_pre_comp +=
-            ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                    workspace->L, workspace->U );
-        break;
+        case ILU_PAR_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILU_PAR( Hptr, control->cm_solver_pre_comp_sweeps, workspace->L, workspace->U );
+            break;
 
-    case ILU_SUPERLU_MT_PC:
+        case ILUT_PAR_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
+                        workspace->L, workspace->U );
+            break;
+
+        case ILU_SUPERLU_MT_PC:
 #if defined(HAVE_SUPERLU_MT)
-        data->timing.cm_solver_pre_comp +=
-            SuperLU_Factorize( Hptr, workspace->L, workspace->U );
+            data->timing.cm_solver_pre_comp +=
+                SuperLU_Factorize( Hptr, workspace->L, workspace->U );
 #else
-        fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
-        exit( INVALID_INPUT );
+            fprintf( stderr, "SuperLU MT support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
 #endif
-        break;
+            break;
 
-    default:
-        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        default:
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
     Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
     Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
 #if defined(DEBUG)
-    if ( control->cm_solver_pre_comp_type != DIAG_PC )
+    if ( control->cm_solver_pre_comp_type != NONE_PC || 
+            control->cm_solver_pre_comp_type != DIAG_PC )
     {
         fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
@@ -2030,109 +2039,112 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
     switch ( control->cm_solver_pre_comp_type )
     {
-    case DIAG_PC:
-        if ( workspace->Hdia_inv == NULL )
-        {
-            if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
-            {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
-        }
-        break;
+        case NONE_PC:
+            break;
 
-    case ICHOLT_PC:
-        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+        case DIAG_PC:
+            if ( workspace->Hdia_inv == NULL )
+            {
+                if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            break;
+
+        case ICHOLT_PC:
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "drop tolerances calculated\n" );
+            fprintf( stderr, "drop tolerances calculated\n" );
 #endif
 
-        fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
+            fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
 
 #if defined(DEBUG)
-        fprintf( stderr, "fillin = %d\n", fillin );
-        fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                 fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
+            fprintf( stderr, "fillin = %d\n", fillin );
+            fprintf( stderr, "allocated memory: L = U = %ldMB\n",
+                     fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
 #endif
 
-        if ( workspace->L == NULL )
-        {
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
+            if ( workspace->L == NULL )
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+
             }
-
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
-
-    case ILU_PAR_PC:
-        if ( workspace->L == NULL )
-        {
-            /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            else
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                //TODO: reallocate
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
+            break;
 
-    case ILUT_PAR_PC:
-        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+        case ILU_PAR_PC:
+            if ( workspace->L == NULL )
+            {
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            else
+            {
+                //TODO: reallocate
+            }
+            break;
+
+        case ILUT_PAR_PC:
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "drop tolerances calculated\n" );
+            fprintf( stderr, "drop tolerances calculated\n" );
 #endif
 
-        if ( workspace->L == NULL )
-        {
-            /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            if ( workspace->L == NULL )
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
-
-    case ILU_SUPERLU_MT_PC:
-        if ( workspace->L == NULL )
-        {
-            /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            else
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                //TODO: reallocate
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
+            break;
 
-    default:
-        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        case ILU_SUPERLU_MT_PC:
+            if ( workspace->L == NULL )
+            {
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            else
+            {
+                //TODO: reallocate
+            }
+            break;
+
+        default:
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 }
 
@@ -2174,109 +2186,112 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
     switch ( control->cm_solver_pre_comp_type )
     {
-    case DIAG_PC:
-        if ( workspace->Hdia_inv == NULL )
-        {
-            if ( ( workspace->Hdia_inv = (real *) calloc( system->N_cm, sizeof( real ) ) ) == NULL )
-            {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
-        }
-        break;
+        case NONE_PC:
+            break;
 
-    case ICHOLT_PC:
-        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+        case DIAG_PC:
+            if ( workspace->Hdia_inv == NULL )
+            {
+                if ( ( workspace->Hdia_inv = (real *) calloc( system->N_cm, sizeof( real ) ) ) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            break;
+
+        case ICHOLT_PC:
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "drop tolerances calculated\n" );
+            fprintf( stderr, "drop tolerances calculated\n" );
 #endif
 
-        fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
+            fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
 
 #if defined(DEBUG)
-        fprintf( stderr, "fillin = %d\n", fillin );
-        fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                 fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
+            fprintf( stderr, "fillin = %d\n", fillin );
+            fprintf( stderr, "allocated memory: L = U = %ldMB\n",
+                     fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
 #endif
 
-        if ( workspace->L == NULL )
-        {
-            if ( Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), system->N_cm, fillin + system->N_cm ) == FAILURE )
+            if ( workspace->L == NULL )
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                if ( Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), system->N_cm, fillin + system->N_cm ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+
             }
-
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
-
-    case ILU_PAR_PC:
-        if ( workspace->L == NULL )
-        {
-            /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            else
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                //TODO: reallocate
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
+            break;
 
-    case ILUT_PAR_PC:
-        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+        case ILU_PAR_PC:
+            if ( workspace->L == NULL )
+            {
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            else
+            {
+                //TODO: reallocate
+            }
+            break;
+
+        case ILUT_PAR_PC:
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "drop tolerances calculated\n" );
+            fprintf( stderr, "drop tolerances calculated\n" );
 #endif
 
-        if ( workspace->L == NULL )
-        {
-            /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            if ( workspace->L == NULL )
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
-
-    case ILU_SUPERLU_MT_PC:
-        if ( workspace->L == NULL )
-        {
-            /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            else
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                //TODO: reallocate
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
+            break;
 
-    default:
-        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        case ILU_SUPERLU_MT_PC:
+            if ( workspace->L == NULL )
+            {
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            else
+            {
+                //TODO: reallocate
+            }
+            break;
+
+        default:
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
     Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -2321,108 +2336,111 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
     switch ( control->cm_solver_pre_comp_type )
     {
-    case DIAG_PC:
-        if ( workspace->Hdia_inv == NULL )
-        {
-            if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
-            {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
-        }
-        break;
+        case NONE_PC:
+            break;
 
-    case ICHOLT_PC:
-        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+        case DIAG_PC:
+            if ( workspace->Hdia_inv == NULL )
+            {
+                if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            break;
+
+        case ICHOLT_PC:
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "drop tolerances calculated\n" );
+            fprintf( stderr, "drop tolerances calculated\n" );
 #endif
 
-        fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
+            fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
 
 #if defined(DEBUG)
-        fprintf( stderr, "fillin = %d\n", fillin );
-        fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                 fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
+            fprintf( stderr, "fillin = %d\n", fillin );
+            fprintf( stderr, "allocated memory: L = U = %ldMB\n",
+                     fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
 #endif
 
-        if ( workspace->L == NULL )
-        {
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
+            if ( workspace->L == NULL )
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
-
-    case ILU_PAR_PC:
-        if ( workspace->L == NULL )
-        {
-            /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            else
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                //TODO: reallocate
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
+            break;
 
-    case ILUT_PAR_PC:
-        Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+        case ILU_PAR_PC:
+            if ( workspace->L == NULL )
+            {
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            else
+            {
+                //TODO: reallocate
+            }
+            break;
+
+        case ILUT_PAR_PC:
+            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "drop tolerances calculated\n" );
+            fprintf( stderr, "drop tolerances calculated\n" );
 #endif
 
-        if ( workspace->L == NULL )
-        {
-            /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            if ( workspace->L == NULL )
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
-
-    case ILU_SUPERLU_MT_PC:
-        if ( workspace->L == NULL )
-        {
-            /* factors have sparsity pattern as H */
-            if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
-                    Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+            else
             {
-                fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
+                //TODO: reallocate
             }
-        }
-        else
-        {
-            //TODO: reallocate
-        }
-        break;
+            break;
 
-    default:
-        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        case ILU_SUPERLU_MT_PC:
+            if ( workspace->L == NULL )
+            {
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
+            }
+            else
+            {
+                //TODO: reallocate
+            }
+            break;
+
+        default:
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
     Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -2505,7 +2523,8 @@ static void QEq( reax_system * const system, control_params * const control,
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
                 out_control->log,
-                ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
+                (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters += GMRES( workspace, control, data, workspace->H,
                 workspace->b_t, control->cm_solver_q_err, workspace->t[0],
                 out_control->log, FALSE );
@@ -2514,7 +2533,9 @@ static void QEq( reax_system * const system, control_params * const control,
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                out_control->log, (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
+                out_control->log,
+                (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters += GMRES_HouseHolder( workspace, control, data, workspace->H,
                 workspace->b_t, control->cm_solver_q_err, workspace->t[0],
                 out_control->log, 0 );

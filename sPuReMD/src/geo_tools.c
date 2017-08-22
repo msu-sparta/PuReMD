@@ -503,7 +503,11 @@ char Write_PDB( reax_system* system, list* bonds, simulation_data *data,
                  "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
                  1.0, 0.0, "0", name, "  " );
+
+#if defined(DEBUG)
         fprintf( stderr, "PDB NAME <%s>\n", p_atom->name );
+#endif
+
         strncpy( buffer + i * PDB_ATOM_FORMAT_O_LENGTH, line,
                  PDB_ATOM_FORMAT_O_LENGTH );
     }
