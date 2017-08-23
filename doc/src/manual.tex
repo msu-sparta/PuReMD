@@ -1,21 +1,33 @@
-%%
-%% This is the PuReMD manual.
-%%
+%% PuReMD manual
+
 \documentclass{article}
 
 \usepackage{hyperref}
+\usepackage{minted}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily,
+  mathescape
+}
 
 
-\title{PuReMD Manual \\
-  (Purdue Reactive Molecular Dynamics Program)}
+\title{Manual for PuReMD: \\
+  {\bf Pu}rdue {\bf Re}active {\bf M}olecular {\bf D}ynamics Program}
 
-\author{Hasan Metin Aktulga}
+\author{
+  H. Metin Aktulga \\
+  \texttt{hma@cse.msu.edu} \\
+  \and
+  Kurt A. O'Hearn \\
+  \texttt{ohearnku@msu.edu}
+}
 
 \begin{document}
 
 \maketitle
 
-This manual is for the two simulation programs which have
+This manual is for the PuReMD software which has
 come to existence as a result of our ReaxFF realization efforts. 
 Our initial efforts have led to the SerialReax program, which is a 
 sequential implementation for ReaxFF. SerialReax has helped us in verifying 
@@ -38,13 +50,14 @@ manual, we take PuReMD as our basis and describe it first. In a following
 section, we describe the extras that come with SerialReax which we hope 
 to incorporate into PuReMD in the near future.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{Input Files}
 \label{sec:puremd_inp}
 
 PuReMD expects 3 input files: a geometry file describing the system to be 
 simulated, a force field file containing ReaxFF parameters and a control 
 file to manage simulation variables.
+
 
 \subsection{Geometry File}
 \label{sec:puremd_geo}
@@ -59,9 +72,9 @@ restart from an earlier simulation check-point using a restart file
 \label{sec:puremd_pdb}
 
 For detailed and up-to-date information on the PDB format, please visit 
-\url{http://www.wwpdb.org/docs.html}. Input files of various other formats 
+\href{http://www.wwpdb.org/docs.html}{here}. Input files of various other formats 
 can easily be converted to the pdb format using the freely available 
-OpenBabel software: (\url{http://openbabel.sourceforge.net/wiki/Main_Page}).
+\href{http://openbabel.sourceforge.net/wiki/Main_Page}{OpenBabel software}).
 
 In the geometry file, each atom is assigned a unique serial id to be
 able to identify atoms easily during the simulation. PDB format limits the 
@@ -79,16 +92,14 @@ follows: The first line describes the simulation box and the second line
 gives the total number of atoms in the system. These initial two lines need 
 to be followed by a single line for each atom describing it in detail. 
 Here is what a custom geo file looks like:
-\begin{verbatim}
+\begin{lstlisting}
 BOXGEO x_len y_len z_len alpha beta gamma
 N
 1 ele1  name1  x1 y1 z1
 2 ele2  name2  x2 y2 z2
-.
-.
-.
+$\vdots$
 N eleN  nameN  xN yN zN 
-\end{verbatim}
+\end{lstlisting}
 
 First three floating point numbers on the first line give the length of 
 the simulation box in x, y, z dimensions, the remaining ones are for the 
@@ -114,8 +125,9 @@ of 6 fields:
 
 Force field file contains the ReaxFF parameters to be used during 
 the simulation. Adri van Duin is the main developer and distributor 
-for Reax force fields, you can see his contact info at 
-\url{http://www.mne.psu.edu/vanduin/}.
+for Reax force fields, you can see his contact info
+\href{http://www.mne.psu.edu/vanduin}{here}.
+
 
 \subsection{Control File} 
 \label{sec:puremd_control}
@@ -123,21 +135,62 @@ for Reax force fields, you can see his contact info at
 Parameters in the control file allow the user to tune various simulation 
 options. Parameter names are case-sensitive but their order is not important 
 (except that {\tt ensemble\_type} needs to precede both {\tt p\_mass} and 
-{\tt pressure}). Described below are the fields that you might use in a 
-control file. If a parameter is missing from the control file, its default 
+{\tt pressure}). The table below lists all parameters names which the
+software recognizes, and each parameter is described in further detail
+below. If a parameter is missing from the control file, its default 
 value (as given in each parameter's description below) will be assumed.
 Each parameter must be specified in a single line, first token should be
 the parameter and the second token should be an appropriate value. 
 Comments regarding a parameter can be included after the value field 
 on the same line.
 
+\begin{center}
+\begin{tabular}{|c|c|} \hline
+  \hyperref[sec:simulation_name]{simulation\_name} & \hyperref[sec:ensemble_type]{ensemble\_type} \\ \hline
+  \hyperref[sec:nsteps]{nsteps} & \hyperref[sec:dt]{dt} \\ \hline
+  \hyperref[sec:reposition_atoms]{reposition\_atoms} & \hyperref[sec:restrict_bonds]{restrict\_bonds} \\ \hline
+  \hyperref[sec:tabulate_long_range]{tabulate\_long\_range} & \hyperref[sec:energy_update_freq]{energy\_update\_freq} \\ \hline
+  \hyperref[sec:remove_CoM_vel]{remove\_CoM\_vel} & \hyperref[sec:nbrhood_cutoff]{nbrhood\_cutoff} \\ \hline
+  \hyperref[sec:bond_graph_cutoff]{bond\_graph\_cutoff} & \hyperref[sec:thb_cutoff]{thb\_cutoff} \\ \hline
+  \hyperref[sec:hbond_cutoff]{hbond\_cutoff} & \hyperref[sec:charge_method]{charge\_method} \\ \hline
+  \hyperref[sec:cm_q_net]{cm\_q\_net} & \hyperref[sec:cm_solver_type]{cm\_solver\_type} \\ \hline
+  \hyperref[sec:cm_solver_max_iters]{cm\_solver\_max\_iters} & \hyperref[sec:cm_solver_restart]{cm\_solver\_restart} \\ \hline
+  \hyperref[sec:cm_solver_q_err]{cm\_solver\_q\_err} & \hyperref[sec:cm_domain_sparsity]{cm\_domain\_sparsity} \\ \hline
+  \hyperref[sec:cm_solver_pre_comp_type]{cm\_solver\_pre\_comp\_type} & \hyperref[sec:cm_solver_pre_comp_refactor]{cm\_solver\_pre\_comp\_refactor} \\ \hline
+  \hyperref[sec:cm_solver_pre_comp_droptol]{cm\_solver\_pre\_comp\_droptol} & \hyperref[sec:cm_solver_pre_comp_sweeps]{cm\_solver\_pre\_comp\_sweeps} \\ \hline
+  \hyperref[sec:cm_solver_pre_app_type]{cm\_solver\_pre\_app\_type} & \hyperref[sec:cm_solver_pre_app_jacobi_iters]{cm\_solver\_pre\_app\_jacobi\_iters} \\ \hline
+  \hyperref[sec:temp_init]{temp\_init} & \hyperref[sec:temp_final]{temp\_final} \\ \hline
+  \hyperref[sec:t_mass]{t\_mass} & \hyperref[sec:t_mode]{t\_mode} \\ \hline
+  \hyperref[sec:t_rate]{t\_rate} & \hyperref[sec:t_freq]{t\_freq} \\ \hline
+  \hyperref[sec:pressure]{pressure} & \hyperref[sec:p_mass]{p\_mass} \\ \hline
+  \hyperref[sec:compress]{compress} & \hyperref[sec:press_mode]{press\_mode} \\ \hline
+  \hyperref[sec:geo_format]{geo\_format} & \hyperref[sec:write_freq]{write\_freq} \\ \hline
+  \hyperref[sec:traj_compress]{traj\_compress} & \hyperref[sec:traj_format]{traj\_format} \\ \hline
+  \hyperref[sec:traj_title]{traj\_title} & \hyperref[sec:atom_info]{atom\_info} \\ \hline
+  \hyperref[sec:atom_forces]{atom\_forces} & \hyperref[sec:atom_velocities]{atom\_velocities} \\ \hline
+  \hyperref[sec:bond_info]{bond\_info} & \hyperref[sec:angle_info]{angle\_info} \\ \hline
+  \hyperref[sec:test_forces]{test\_forces} & \hyperref[sec:molec_anal]{molec\_anal} \\ \hline
+  \hyperref[sec:freq_molec_anal]{freq\_molec\_anal} & \hyperref[sec:dipole_anal]{dipole\_anal} \\ \hline
+  \hyperref[sec:freq_dipole_anal]{freq\_dipole\_anal} & \hyperref[sec:diffusion_coef]{diffusion\_coef} \\ \hline
+  \hyperref[sec:freq_diffusion_coef]{freq\_diffusion\_coef} & \hyperref[sec:restrict_type]{restrict\_type} \\ \hline
+  \hyperref[sec:restart_format]{restart\_format} & \hyperref[sec:restart_freq]{restart\_freq} \\ \hline
+\end{tabular}
+\end{center}
+
+\subsubsection{simulation\_name}
+\label{sec:simulation_name}
+
 \begin{verbatim}
   simulation_name    test_puremd
 \end{verbatim}
 Output files produced by PuReMD will be in 
 {\tt simulation\_name.some\_extension} format. Output files will be 
-discussed in more detail in Section~\ref{sec:puremd_output}. Default value 
-is {\tt simulate}.
+discussed in more detail in Section~\ref{sec:puremd_output}.
+
+Default: {\tt default.sim}
+
+\subsubsection{ensemble\_type}
+\label{sec:ensemble_type}
 
 \begin{verbatim}
   ensemble_type    1
@@ -153,28 +206,51 @@ PuReMD. Supported ensembles are as follows:
   \item 5: NPT: anisotropic NPT with Parrinello-Rehman coupling 
     (under development)
 \end{itemize}
-{\tt ensemble\_type} is NVE by default.
+
+Default: 0 (NVE)
+
+\subsubsection{nsteps}
+\label{sec:nsteps}
 
 \begin{verbatim}
   nsteps     1000
+\end{verbatim}
+{\tt nsteps} controls the total number of steps for the simulation.
+
+Default: 0
+
+\subsubsection{dt}
+\label{sec:dt}
+
+\begin{verbatim}
   dt         0.25
 \end{verbatim}
-{\tt nsteps} controls the total number of steps for the simulation and 
-{\tt dt} controls the length of each time step (measured in femtoseconds). 
-Number of steps is 0 by default and time step length is 0.25~fs.
+{\tt dt} controls the length of each time step (in femtoseconds). 
+
+Default: 0.25
+
+\subsubsection{proc\_by\_dim}
+\label{sec:proc_by_dim}
 
 \begin{verbatim}
   proc_by_dim     1 1 3
 \end{verbatim}
-PuReMD uses the domain decomposition technique to distribute the load
-among processors, it currently does not have dynamic load balancing.
+The distributed memory version of PuReMD uses the
+domain decomposition technique to distribute the load
+among processors. It currently does not have dynamic load balancing.
 {\tt proc\_by\_dim} denotes the desired decomposition of the simulation 
 box into subdomains (first integer is the number of equal-length 
 partitions in x dimension, second integer is for y dimension and 
 the last one is for z dimension). Each subdomain is subsequently assigned 
 to a single processor. PuReMD constructs a 3D torus based on the 
-{\tt proc\_by\_dim} parameter. The default is to use a single processor. 
-SerialReax does not accept the {\tt proc\_by\_dim} parameter.
+{\tt proc\_by\_dim} parameter.
+
+Default: 1 1 1 (single processor)
+
+Note: shared memory versions of PuReMD do not accept this parameter.
+
+\subsubsection{geo\_format}
+\label{sec:geo_format}
 
 \begin{verbatim}
   geo_format     0
@@ -193,7 +269,13 @@ to 2 (for ASCII restarts) or 3 (for binary restarts) and providing the name
 of the restart file as an argument to PuReMD (instead of the GEO file name).
 Then PuReMD will read the box geometry, positions and velocities for all 
 atoms in the system from the restart file and continue execution from thereon. 
-Default is the custom geometry format.
+
+Default: 0 (custom format)
+
+\subsubsection{restart\_format}
+\label{sec:restart_format}
+\subsubsection{restart\_freq}
+\label{sec:restart_freq}
 
 \begin{verbatim}
   restart_format   1
@@ -210,6 +292,11 @@ parameter is set to a positive integer. A restart file is named as follows:
 {\tt simulation\_name.resS} where {\tt S} denotes the step that the restart 
 file is written.
 
+Defaults: 0 (ASCII), 0
+
+\subsubsection{tabulate\_long\_range}
+\label{sec:tabulate_long_range}
+
 \begin{verbatim}
   tabulate_long_range    10000
 \end{verbatim}
@@ -225,7 +312,12 @@ the appropriate interpolation function is located and energy and forces
 between the atom pair is approximated by means of cubic spline interpolation.
 This method gives significant speed-up compared to computing everything from 
 scratch each time and with only 10000 sample points it is able to provide 
-results with an accuracy at machine precision level. Default is no tabulation.
+results with an accuracy at machine precision level.
+
+Default: 0 (no tabulation)
+
+\subsubsection{energy\_update\_freq}
+\label{sec:energy_update_freq}
 
 \begin{verbatim}
   energy_update_freq     10
@@ -233,8 +325,12 @@ results with an accuracy at machine precision level. Default is no tabulation.
 This option controls the frequency of writes into output files described 
 in detail in Section~\ref{sec:puremd_output} (except for the trajectory 
 and restart files which are controlled by other parameters explained
-separately). The default value for this parameter is 0, meaning there will 
-not be any energies and performance logs output.
+separately).
+
+Default: 0 (no energies in performance logs)
+
+\subsubsection{remove\_CoM\_vel}
+\label{sec:remove_CoM_vel}
 
 \begin{verbatim}
   remove_CoM_vel     500
@@ -243,8 +339,15 @@ Removal of translational and rotational velocities around the center of
 mass needs to be done for NVT and NPT type ensembles to remove the 
 nonphysical effects of scaling velocities. In case of NVE, this is  
 unnecessary and is not done regardless of the value of {\tt remove\_CoM\_vel}.
-The default is to remove translational and rotational velocities at 
-every 250 steps.
+
+Default: 25
+
+\subsubsection{nbrhood\_cutoff}
+\label{sec:nbrhood_cutoff}
+\subsubsection{thb\_cutoff}
+\label{sec:thb_cutoff}
+\subsubsection{hbond\_cutoff}
+\label{sec:hbond_cutoff}
 
 \begin{verbatim}
   nbrhood_cutoff     5.0     
@@ -253,20 +356,25 @@ every 250 steps.
 \end{verbatim}
 These cutoff parameters are crucial for the correctness and efficiency
 of PuReMD. Normally, bonded interactions are truncated after 4-5~\AA\ in 
-ReaxFF and this is controlled by the {\tt nbrhood\_cutoff} parameter 
-whose default value is 4~\AA.
+ReaxFF and this is controlled by the {\tt nbrhood\_cutoff} parameter.
 
 {\tt thb\_cutoff} sets the bond strength threshold for valence angle 
 interactions. Bonds which are weaker than {\tt thb\_cutoff} will not 
-be included in valence angle interactions. Default for {\tt thb\_cutoff} 
-is 0.001.
+be included in valence angle interactions.
 
 {\tt hbond\_cutoff} controls the distance between the donor and acceptor 
 atoms in a hydrogen bond interaction. Its typical value is from 6\AA\ to 
 7.5~\AA. If {\tt hbond\_cutoff} is set to 0, hydrogen bond interactions 
 will be turned off completely (could be useful for improved
 performance in simulations where it is known apriori that there are no 
-hydrogen bonding interactions). Default is to set {\tt hbond\_cutoff} to 0.
+hydrogen bonding interactions).
+
+Defaults: 4.0, 0.001, 0.0
+
+\subsubsection{reneighbor}
+\label{sec:reneighbor}
+\subsubsection{vlist\_buffer}
+\label{sec:vlist_buffer}
 
 \begin{verbatim}
   reneighbor     10
@@ -275,25 +383,133 @@ hydrogen bonding interactions). Default is to set {\tt hbond\_cutoff} to 0.
 PuReMD features delayed neighbor generation by using Verlet lists. 
 {\tt reneighbor} controls the reneighboring frequency and {\tt vlist\_buffer} 
 controls the buffer space beyond the maximum ReaxFF interaction cutoff. 
-By default, {\tt vlist\_buffer} is set to 0 and reneighboring is done at 
-every step.
+
+Defaults: 1 (reneighbor every step), 0
+
+\subsubsection{charge\_method}
+\label{sec:charge_method}
+\subsubsection{cm\_q\_net}
+\label{sec:cm_q_net}
+\subsubsection{cm\_solver\_type}
+\label{sec:cm_solver_type}
+\subsubsection{cm\_solver\_max\_iters}
+\label{sec:cm_solver_max_iters}
+\subsubsection{cm\_solver\_restart}
+\label{sec:cm_solver_restart}
+\subsubsection{cm\_solver\_q\_err}
+\label{sec:cm_solver_q_err}
+\subsubsection{cm\_solver\_sparsity\_enabled}
+\label{sec:cm_solver_sparsity_enabled}
+\subsubsection{cm\_solver\_sparsity}
+\label{sec:cm_solver_sparsity}
+\subsubsection{cm\_solver\_pre\_comp\_type}
+\label{sec:cm_solver_pre_comp_type}
+\subsubsection{cm\_solver\_pre\_comp\_sweeps}
+\label{sec:cm_solver_pre_comp_sweeps}
+\subsubsection{cm\_solver\_pre\_comp\_refactor}
+\label{sec:cm_solver_pre_comp_refactor}
+\subsubsection{cm\_solver\_pre\_comp\_droptol}
+\label{sec:cm_solver_pre_comp_droptol}
+\subsubsection{cm\_solver\_pre\_app\_type}
+\label{sec:cm_solver_pre_app_type}
+\subsubsection{cm\_solver\_pre\_app\_jacobi\_iters}
+\label{sec:cm_solver_pre_app_jacobi_iters}
 
 \begin{verbatim}
-  q_err        1e-6
-  qeq_freq     1
+  charge_method                     0
+  cm_q_net                          0.0
+  cm_solver_type                    0
+  cm_solver_max_iters               20
+  cm_solver_restart                 100
+  cm_solver_q_err                   1e-6
+  cm_domain_sparsity                1.0
+  cm_solver_pre_comp_type           1
+  cm_solver_pre_comp_refactor       1000
+  cm_solver_pre_comp_droptol        0.0
+  cm_solver_pre_comp_sweeps         3
+  cm_solver_pre_app_type            0
+  cm_solver_pre_app_jacobi_iters    50
 \end{verbatim}
-PuReMD uses a preconditioned conjugate gradients (PCG) solver with a 
-diagonal preconditioner for the QEq problem. {\tt q\_err} denotes the 
-stopping criteria for the PCG solver, the norm of the relative residual. 
-A lower threshold would yield more accurate equilibration of charges at 
-the expense of an increase in computation time. A threshold of $10^{-6}$ 
-should be good enough for most cases and this is the default value.
+PuReMD uses one of several charge methods for dynamically
+determining atomic charges. Unpinning these charge methods
+are iterative linear solvers with optional preconditioning.
 
-{\tt qeq\_freq} can be used to perform charge equilibration at every 
+{\tt charge\_method} controls which charge method is used.
+The options are charge equilibration
+(0), electronegivity equilibration (1), or atom-condensed Kohn-Sham
+approximated to second order (2).
+
+{\tt cm\_q\_net} controls the net system charge.
+
+{\tt cm\_solver\_type} controls which linear solver is used. Options
+are GMRES with restarts (0), Householder GMRES with restarts (1),
+conjugant gradient (2), and steepest descent (3).
+
+{\tt cm\_solver\_max\_iters} controls the maximum number of iterations
+the solver is allowed to perform in order to achieve convergence of
+the solution to within the reqiured tolerance.
+
+{\tt cm\_solver\_restart} controls the maximum number of inner iterations
+that GMRES-based solvers are allowed before performing a restart.
+
+{\tt cm\_solver\_q\_err} sets the the solution tolerance for the solver.
+
+{\tt cm\_solver\_sparsity} sets the sparsification ratio of the charge matrix
+used to compute the preconditioner. Specifically, an additional distance-based
+cutoff is applied to compute elements of the (sparsified) charge matrix, and
+this matrix is in turn used to compute a preconditioner. The value of this
+parameter is multipled by the current neighbor cutoff value to obtain the new
+cutoff; hence, a value between 0.0 and 1.0, exclusive, is expected.
+
+{\tt cm\_solver\_pre\_comp\_type} sets the type of preconditioner to be
+computed. Options are none (0), Jacobi/diagonal inverse (1), incomplete
+Cholesky with dual thresholding (2), incomplete LU computed in an iterative
+fashion (3), and iterative incomplete LU single thresholding (4).
+
+{\tt cm\_solver\_pre\_comp\_refactor} sets the number of simulation steps
+after which to recompute the preconditioner.
+
+{\tt cm\_solver\_pre\_comp\_droptol} sets the dropping tolerance for
+computing incompute Cholesky or LU preconditioners.
+
+{\tt cm\_solver\_pre\_comp\_sweeps} sets the number of sweeps (iterations)
+to perform when computing incompute LU iteratively.
+
+{\tt cm\_solver\_pre\_app\_type} determines the type of method used
+to apply the preconditioner in the case of two-sided preconditioning
+(incomplete Cholesky and LU). Specifically, the application of the
+approximate triangular factors requires solving triangular linear systems,
+and this parameter controls how this is performed. Options are serial solve
+forward/backword substitution (0), solve via level scheduling (1), solve
+via graph coloring (3), or approximate solve via Jacobi iteration (4).
+
+{\tt cm\_solver\_pre\_app\_jacobi\_iters} controls how many iterations
+are performed for each approximate triangular solve via Jacobi iteration.
+
+{\tt cm\_solver\_freq} can be used to compute charges at every 
 few steps instead of the default behaviour of performing it at every 
-step. Although doing QEq less frequently would save important 
+step. Although doing this less frequently would save important 
 computational time, it is not recommended. Because this might cause wild 
 fluctuations in energies and forces.
+
+Defaults: 
+
+Notes:
+\begin{enumerate}
+  \item Only the shared memory versions of PuReMD contain all the solvers,
+    while only CG with diagonal inverse preconditioning is contained in the
+    distributed memory versions.
+  \item The full set of preconditioning options is implemented in the shared
+    memory non-GPU version of PuReMD. The other versions contain only diagonal
+    inverse preconditioning.
+\end{enumerate}
+
+\subsubsection{temp\_init}
+\label{sec:temp_init}
+\subsubsection{temp\_final}
+\label{sec:temp_final}
+\subsubsection{t\_mass}
+\label{sec:t_mass}
 
 \begin{verbatim}
   temp_init    0.0
@@ -307,11 +523,19 @@ is controlled via the {\tt temp\_init} parameter including the NVE ensemble.
 for {\tt temp\_final}. PuReMD features both Berendsen~\cite{ref:berendsen} 
 and Nose-Hoover~\cite{ref:klein} type thermostats as was mentioned while 
 explaining the {\tt ensemble\_type} parameter.
-\emph{Important note: Nose-Hoover thermostat in PuReMD is still under testing.}
 
-{\tt t\_mass} is the thermal inertia given in femtoseconds. Suggested (and 
-the default) value of {\tt t\_mass} is 500.0, and 0.166 for the Berendsen 
-thermostat, and for the Nose-Hoover thermostat, respectively.
+{\tt t\_mass} is the thermal inertia given in femtoseconds. Suggested
+value of {\tt t\_mass} is 500.0 and 0.166 for the Berendsen 
+thermostat and the Nose-Hoover thermostats, respectively.
+
+Defaults: 0.0, 300.0, 0.16666
+
+Note: Nose-Hoover thermostat is still under testing
+
+\subsubsection{pressure}
+\label{sec:pressure}
+\subsubsection{p\_mass}
+\label{sec:p_mass}
 
 \begin{verbatim}
   pressure      0.000101 0.000101 0.000101
@@ -332,22 +556,45 @@ to control pressure. For the sNPT ensemble, {\tt pressure} parameter
 expects 3 floating point numbers to control pressure on each dimension.
 Same things apply for {\tt p\_mass} as well.
 
+Defaults: 0.000101325, 5000.0
+
+\subsubsection{write\_freq}
+\label{sec:write_freq}
+\subsubsection{traj\_format}
+\label{sec:traj_format}
+
 \begin{verbatim}
   write_freq     100
-  traj_method      1
+  traj_format      1
 \end{verbatim}
 Trajectory of the simulation will be output to the trajectory file 
 (which will automatically be named as {\tt simulation\_name.trj}) at 
 every {\tt write\_freq} steps. For making analysis easier, the trajectory 
-file is written as an ASCII file. By default, no trajectory file
-is written.
+file is written as an ASCII file.
 
-PuReMD can output trajectories either using simple MPI send/receives 
+The distributed memory version of PuReMD
+can output trajectories either using simple MPI send/receives 
 (option 0 which is the default) or using MPI I/O calls (option 1) which 
 are part of the MPI-2 standard. The latter option is supposed to be more 
 efficient (not verified by tests though) but may not be available in some 
 MPI implementations. {\tt traj\_method} option is not applicable to 
 SerialReax simulations.
+
+Defaults: 0 (no trajectory file written), 0 (simple I/O)
+
+
+\subsubsection{traj\_title}
+\label{sec:traj_title}
+\subsubsection{atom\_info}
+\label{sec:atom_info}
+\subsubsection{atom\_forces}
+\label{sec:atom_forces}
+\subsubsection{atom\_velocities}
+\label{sec:atom_velocities}
+\subsubsection{bond\_info}
+\label{sec:bond_info}
+\subsubsection{angle\_info}
+\label{sec:angle_info}
 
 \begin{verbatim}
   traj_title          TEST
@@ -370,8 +617,7 @@ box geometry is standard. However, the latter parts of the frame can be
 customized using {\tt atom\_info}, {\tt atom\_forces}, {\tt atom\_velocities}, 
 {\tt bond\_info} and {\tt angle\_info} parameters which are already
 self-explanatory. The ordering is atoms section, bonds section and angles 
-section assuming that they are all present. By default, all atom, bond and 
-angle information outputting is turned off.
+section assuming that they are all present.
 
 One nice property of the custom trajectory format is that each part of 
 the trajectory is prepended by a number that can be used to skip that part.
@@ -384,7 +630,7 @@ within a trajectory frame as well, making it easy to skip parts which are
 not of interest to a particular trajectory analysis procedure. So the 
 general layout of our custom trajectory format is as follows (assuming 
 all trajectory options are turned on):
-\begin{verbatim}
+\begin{lstlisting}
 CHARS_TO_SKIP_SECTION
 trajectory header
 CHARS_TO_SKIP_ATOM_DESCS NUM_LINES
@@ -397,9 +643,7 @@ CHARS_TO_SKIP_BOND_LINES NUM_BOND_LINES
 frame1 bond info
 CHARS_TO_SKIP_ANGLE_LINES NUM_ANGLE_LINES
 frame1 angle info
-.
-.
-.
+$\vdots$
 CHARS_TO_SKIP_FRAME_HEADER
 frameN header
 CHARS_TO_SKIP_ATOM_LINES NUM_ATOM_LINES
@@ -408,11 +652,11 @@ CHARS_TO_SKIP_BOND_LINES NUM_BOND_LINES
 frameN bond info
 CHARS_TO_SKIP_ANGLE_LINES NUM_ANGLE_LINES
 frameN angle info
-\end{verbatim}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{lstlisting}
+
+Defaults: default\_title, 0, 0, 0, 0, 0 (all off)
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{SerialReax Extras}
 \label{sec:serialreax_extras}
 
@@ -420,27 +664,27 @@ In this section, we explain the parameters found in SerialReax but not in
 PuReMD. Our work towards adding the same functionalities into PuReMD is 
 underway.
 
-In addition to the PCG solver, SerialReax features a preconditioned GMRES 
-(PGMRES) solver and an incomplete LU factorization (ILU) based  
-preconditioning scheme. An ILU factorization essentially does the 
-same thing as an LU factorization but small terms in the matrix are dropped
-to expedite the factorization and to prevent a huge number of fill-ins in the
-factor matrices. Following are the extra control parameters found in 
-SerialReax regarding the QEq solver:
-\begin{verbatim}
-  ilu_refactor        100
-  ilu_droptol         0.01
-\end{verbatim}
-{\tt ilu\_droptol} sets the threshold for dropping small terms in the 
-resulting ILU factors. Suggested (and the default) value for 
-{\tt ilu\_droptol} is $10^{-2}$. Despite the drop rules, ILU factorization 
-is still a costly operation. So a user can choose to perform it at 
-every {\tt ilu\_refactor} steps. The fact that atoms move very slowly in an 
-MD simulation allows the use of same ILU factors as preconditioners in the 
-subsequent steps with little performance loss. For liquids, this frequency 
-can be on the order of 100-200 steps, for solids it can go up to thousands 
-of steps depending on how fast atoms are moving. The default for 
-{\tt ilu\_refactor} is 100.
+%In addition to the PCG solver, SerialReax features a preconditioned GMRES 
+%(PGMRES) solver and an incomplete LU factorization (ILU) based  
+%preconditioning scheme. An ILU factorization essentially does the 
+%same thing as an LU factorization but small terms in the matrix are dropped
+%to expedite the factorization and to prevent a huge number of fill-ins in the
+%factor matrices. Following are the extra control parameters found in 
+%SerialReax regarding the QEq solver:
+%\begin{verbatim}
+%  ilu_refactor        100
+%  ilu_droptol         0.01
+%\end{verbatim}
+%{\tt ilu\_droptol} sets the threshold for dropping small terms in the 
+%resulting ILU factors. Suggested (and the default) value for 
+%{\tt ilu\_droptol} is $10^{-2}$. Despite the drop rules, ILU factorization 
+%is still a costly operation. So a user can choose to perform it at 
+%every {\tt ilu\_refactor} steps. The fact that atoms move very slowly in an 
+%MD simulation allows the use of same ILU factors as preconditioners in the 
+%subsequent steps with little performance loss. For liquids, this frequency 
+%can be on the order of 100-200 steps, for solids it can go up to thousands 
+%of steps depending on how fast atoms are moving. The default for 
+%{\tt ilu\_refactor} is 100.
 
 \begin{verbatim}
   t_mode        0
@@ -542,28 +786,56 @@ in molecular analysis.
 \section{Compilation and Execution}
 \label{sec:puremd_execute}
 
-PuReMD is distributed in the {\tt tar.gz} compression format which can 
+PuReMD is distributed in the \mintinline{bash}{tar.gz} compression format which can 
 be extracted under a Unix system with the following command:
-\begin{verbatim}
-  gtar xvzf PuReMD.tar.gz
-\end{verbatim}
+\mint{bash}{tar -xvf PuReMD.tar.gz}
 
-This results in the creation of a new directory, named {\tt PuReMD}, will appear in the working 
-directory. It contains the source code directory ({\tt src}) 
-along with a directory for sample systems ({\tt examples}).
+This results in the creation of a new directory, named \mintinline{bash}{PuReMD}, which will
+appear in the working directory. The base directory contains a configure script
+along with the necessary makefiles to compile a particular version of the
+software; these steps are elaborated further below.  (For developers only: see
+the documentation on the Gitlab server for how to generate these files using
+the GNU Autotools) In addition, there is also a directory with several sample
+systems and force field files (\mintinline{bash}{data/benchmarks}), and a
+directory with relevant documentation including this user manual
+({\mintinline{bash}{doc}).
 
-PuReMD can be compiled by switching to the {\tt src} directory and 
-running {\tt make}. The executable, {\tt puremd}, will be created inside 
-the source directory. The Makefile that comes in the distribution assumes 
-OpenMPI as the default MPI implementation and {\tt mpicc} as the default 
-MPI compiler. In case you have a different MPI implementation, 
-please set your MPI compiler in the Makefile appropriately. 
+To build PuReMD, you must run the following sequence of commands:
+\begin{minted}{bash}
+  ./configure
+  make
+  make install # optional
+\end{minted}
+
+Upon successful compilation, a binary executable file will be located
+in \mintinline{bash}{*/bin}, where \mintinline{bash}{*} is one of the
+following directories:
+\begin{minted}{bash}
+  sPuReMD    # serial/OpenMP shared memory code
+  PuReMD-GPU # GPU shared memory code
+  PuReMD     # MPI distributed memory code
+  PG-PuReMD  # MPI+GPU shared memory code
+\end{minted}
+
+There are several different versions of PuReMD which can be compiled,
+and these versions can be enabled or disabled via the following options
+to the configure script:
+\begin{minted}{bash}
+  --enable-serial=yes  # build serial shared memory version
+  --enable-openmp=yes  # build OpenMP shared memory version
+  --enable-gpu=yes     # build GPU shared memory version
+  --enable-mpi=yes     # build MPI distributed memory version
+  --enable-mpi-gpu=yes # build MPI+GPU distributed memory version
+\end{minted}
+Furthermore, run \mintinline{bash}{./configure --help} to see the full list
+of variables and options which can be set.
 
 PuReMD requires 3 input files as mentioned in section~\ref{sec:puremd_inp}. 
-For example, the command to run {\tt puremd} with OpenMPI is as follows:
-\begin{verbatim}
-  mpirun -np #p -machinefile m.txt puremd geo ffield control
-\end{verbatim}
+For example, the command to run \mintinline{bash}{puremd} with OpenMPI is as follows:
+\begin{minted}{bash}
+  mpirun -np num_procs -machinefile m.txt PuReMD/bin/puremd
+    path/to/geo path/to/ffield path/to/control
+\end{minted}
 
 SerialReax comes in a similar distribution format and Makefile,
 so instructions for compiling and running PuReMD is applicable for 
@@ -623,7 +895,7 @@ by its unique extension:
 Apart from these, there might be some text printed to \emph{stderr} 
 for debugging purposes. If you encounter some problems with the code
 (like a segmentation fault or unexpected termination of the code),
-please contact \href{mailto:haktulga@cs.purdue.edu}{haktulga@cs.purdue.edu} with the error message 
+please contact \href{mailto:hma@cse.msu.edu}{here} with the error message 
 printed to \emph{stderr} and your input files.
 
 In addition to the output files above, SerialReax can output another

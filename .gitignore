@@ -15,6 +15,7 @@
 *.log
 *.toc
 *.pdf
+_minted-*
 
 # ViM, emacs, nano, leafpad
 *.swp

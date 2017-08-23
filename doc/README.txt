@@ -21,7 +21,7 @@
 -------------------------------------------------------------------------
 -------------------------------------------------------------------------
 -------------   Instructions to get started with the codebase   ---------
--------------				PuReMD Package Release 1.0.0.0			 ---------
+-------------         PuReMD Package Release 1.0.0.0            ---------
 -------------------------------------------------------------------------
 -------------------------------------------------------------------------
 
@@ -29,10 +29,10 @@ VERSION - 1003
 
 1. Following package for Purdue Reactive Molecular Dynamics (PuReMD) 
 consists of the following implementations: 
-	a) serial (single cpu) implementation  -	sPuReMD
-	b) GPU (single GPU) implementation		 -	PuReMD-GPU
-	c) Parallel CPU (cluster of CPUs) implementation		- PuReMD
-	d) Parallel GPU (cluster of GPUs) implementation		- PG-PuReMD
+	a) serial (single cpu) implementation -	sPuReMD
+	b) GPU (single GPU) implementation - PuReMD-GPU
+	c) Parallel CPU (cluster of CPUs) implementation - PuReMD
+	d) Parallel GPU (cluster of GPUs) implementation - PG-PuReMD
 
 2. In the current implemtations only limited ensembles are supported
 in the GPU implementations (CPU implementations supports a wide array of 
