@@ -32,12 +32,10 @@ inline int Vector_isZero( const real * const v, const unsigned int k )
 {
     unsigned int i;
 
-    #pragma omp master
+    #pragma omp single
     {
         ret = TRUE;
     }
-
-    #pragma omp barrier
 
     #pragma omp for reduction(&&: ret) schedule(static)
     for ( i = 0; i < k; ++i )
@@ -114,16 +112,19 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 
 
 void Vector_Print( FILE * const fout, const char * const vname, const real * const v,
-                   const unsigned int k )
+        const unsigned int k )
 {
     unsigned int i;
 
-    fprintf( fout, "%s:\n", vname );
+    if ( vname != NULL )
+    {
+        fprintf( fout, "%s:\n", vname );
+    }
+
     for ( i = 0; i < k; ++i )
     {
         fprintf( fout, "%24.15e\n", v[i] );
     }
-    fprintf( fout, "\n" );
 }
 
 
@@ -131,13 +132,10 @@ inline real Dot( const real * const v1, const real * const v2, const unsigned in
 {
     unsigned int i;
 
-    #pragma omp master
+    #pragma omp single
     {
         ret2 = ZERO;
     }
-
-    #pragma omp barrier
-
 
     #pragma omp for reduction(+: ret2) schedule(static)
     for ( i = 0; i < k; ++i )
@@ -153,17 +151,15 @@ inline real Norm( const real * const v1, const unsigned int k )
 {
     unsigned int i;
 
-    #pragma omp master
+    #pragma omp single
     {
         ret2 = ZERO;
     }
 
-    #pragma omp barrier
-
     #pragma omp for reduction(+: ret2) schedule(static)
     for ( i = 0; i < k; ++i )
     {
-        ret2 +=  SQR( v1[i] );
+        ret2 += SQR( v1[i] );
     }
 
     return SQRT( ret2 );

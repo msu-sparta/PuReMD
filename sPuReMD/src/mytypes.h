@@ -116,9 +116,6 @@
 #define MAX_dT              4.00
 #define MIN_dT              0.00
 
-#define MAX_ITR             10
-#define RESTART             50
-
 #define ZERO           0.000000000000000e+00
 #define ALMOST_ZERO    1e-10
 #define NEG_INF       -1e10
@@ -197,6 +194,11 @@ enum geo_formats
     CUSTOM = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5,
 };
 
+enum charge_method
+{
+    QEQ_CM = 0, EE_CM = 1, ACKS2_CM = 2,
+};
+
 enum solver
 {
     GMRES_S = 0, GMRES_H_S = 1, CG_S = 2, SDM_S = 3,
@@ -204,16 +206,16 @@ enum solver
 
 enum pre_comp
 {
-    DIAG_PC = 0, ICHOLT_PC = 1, ILU_PAR_PC = 2, ILUT_PAR_PC = 3, ILU_SUPERLU_MT_PC = 4,
+    NONE_PC = 0, DIAG_PC = 1, ICHOLT_PC = 2, ILU_PAR_PC = 3, ILUT_PAR_PC = 4, ILU_SUPERLU_MT_PC = 5,
 };
 
 enum pre_app
 {
-    NONE_PA = 0, TRI_SOLVE_PA = 1, TRI_SOLVE_LEVEL_SCHED_PA = 2, TRI_SOLVE_GC_PA = 3, JACOBI_ITER_PA = 4,
+    TRI_SOLVE_PA = 0, TRI_SOLVE_LEVEL_SCHED_PA = 1, TRI_SOLVE_GC_PA = 2, JACOBI_ITER_PA = 3,
 };
 
 
-/* Global params mapping */
+/* Force field global params mapping */
 /*
 l[0]  = p_boc1
 l[1]  = p_boc2
@@ -249,7 +251,7 @@ l[30] = p_coa4
 l[31] = p_ovun4
 l[32] = p_ovun3
 l[33] = p_val8
-l[34] = N/A
+l[34] = ACKS2 bond softness
 l[35] = N/A
 l[36] = N/A
 l[37] = version number
@@ -296,6 +298,7 @@ typedef struct
     real b_o_131;
     real b_o_132;
     real b_o_133;
+    real b_s_acks2; /* bond softness for ACKS2 */
 
     /* Line four in the field file */
     real p_ovun2;
@@ -454,10 +457,17 @@ typedef struct
 
 typedef struct
 {
+    /* number of atoms */
     int N;
+    /* dimension of the N x N sparse charge method matrix H */
+    int N_cm;
+    /* atom info */
     reax_atom *atoms;
+    /* atomic interaction parameters */
     reax_interaction reaxprm;
+    /* simulation space (a.k.a. box) parameters */
     simulation_box box;
+    /* grid structure used for binning atoms and tracking neighboring bins */
     grid g;
 } reax_system;
 
@@ -517,16 +527,20 @@ typedef struct
     int freq_diffusion_coef;
     int restrict_type;
 
-    unsigned int qeq_solver_type;
-    real qeq_solver_q_err;
-    real qeq_domain_sparsity;
-    unsigned int qeq_domain_sparsify_enabled;
-    unsigned int pre_comp_type;
-    unsigned int pre_comp_refactor;
-    real pre_comp_droptol;
-    unsigned int pre_comp_sweeps;
-    unsigned int pre_app_type;
-    unsigned int pre_app_jacobi_iters;
+    unsigned int charge_method;
+    unsigned int cm_solver_type;
+    real cm_q_net;
+    unsigned int cm_solver_max_iters;
+    unsigned int cm_solver_restart;
+    real cm_solver_q_err;
+    real cm_domain_sparsity;
+    unsigned int cm_domain_sparsify_enabled;
+    unsigned int cm_solver_pre_comp_type;
+    unsigned int cm_solver_pre_comp_refactor;
+    real cm_solver_pre_comp_droptol;
+    unsigned int cm_solver_pre_comp_sweeps;
+    unsigned int cm_solver_pre_app_type;
+    unsigned int cm_solver_pre_app_jacobi_iters;
 
     int molec_anal;
     int freq_molec_anal;
@@ -586,15 +600,15 @@ typedef struct
     real init_forces;
     real bonded;
     real nonb;
-    real QEq;
-    real QEq_sort_mat_rows;
-    real pre_comp;
-    real pre_app;
-    int solver_iters;
-    real solver_spmv;
-    real solver_vector_ops;
-    real solver_orthog;
-    real solver_tri_solve;
+    real cm;
+    real cm_sort_mat_rows;
+    real cm_solver_pre_comp;
+    real cm_solver_pre_app;
+    int cm_solver_iters;
+    real cm_solver_spmv;
+    real cm_solver_vector_ops;
+    real cm_solver_orthog;
+    real cm_solver_tri_solve;
 } reax_timing;
 
 
@@ -768,7 +782,7 @@ typedef struct
     real *nlp, *nlp_temp, *Clp, *vlpex;
     rvec *dDeltap_self;
 
-    /* QEq storage */
+    /* charge method storage */
     sparse_matrix *H, *H_sp, *L, *U;
     real *droptol;
     real *w;

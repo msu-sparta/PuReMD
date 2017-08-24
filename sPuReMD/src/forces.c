@@ -30,8 +30,15 @@
 #include "list.h"
 #include "print_utils.h"
 #include "system_props.h"
-#include "qeq.h"
+#include "charges.h"
 #include "vector.h"
+
+
+typedef enum
+{
+    DIAGONAL = 0,
+    OFF_DIAGONAL = 1,
+} MATRIX_ENTRY_POSITION;
 
 
 void Dummy_Interaction( reax_system *system, control_params *control,
@@ -126,9 +133,10 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 #endif
 
     t_start = Get_Time( );
-    QEq( system, control, data, workspace, lists[FAR_NBRS], out_control );
+    Compute_Charges( system, control, data, workspace, lists[FAR_NBRS], out_control );
     t_elapsed = Get_Timing_Info( t_start );
-    data->timing.QEq += t_elapsed;
+    data->timing.cm += t_elapsed;
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "qeq - " );
 #endif
@@ -264,6 +272,374 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
 }
 
 
+static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
+        control_params *control, int i, int j,
+        real r_ij, MATRIX_ENTRY_POSITION pos )
+{
+    int r;
+    real base, dif, val, ret = 0.0;
+    LR_lookup_table *t;
+
+    switch ( control->charge_method )
+    {
+    case QEQ_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                t = &( LR
+                        [MIN( system->atoms[i].type, system->atoms[j].type )]
+                        [MAX( system->atoms[i].type, system->atoms[j].type )] );
+
+                /* cubic spline interpolation */
+                r = (int)(r_ij * t->inv_dx);
+                if ( r == 0 )  ++r;
+                base = (real)(r + 1) * t->dx;
+                dif = r_ij - base;
+                val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
+                      t->ele[r].a;
+                val *= EV_to_KCALpMOL / C_ele;
+
+                ret = ((i == j) ? 0.5 : 1.0) * val;
+            break;
+            case DIAGONAL:
+                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+            break;
+            default:
+                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    case EE_CM:
+        //TODO
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+            break;
+            case DIAGONAL:
+            break;
+            default:
+                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    case ACKS2_CM:
+        //TODO
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+            break;
+            case DIAGONAL:
+            break;
+            default:
+                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    default:
+        fprintf( stderr, "Invalid charge method. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    return ret;
+}
+
+
+static inline real Init_Charge_Matrix_Entry( reax_system *system,
+        control_params *control, int i, int j,
+        real r_ij, MATRIX_ENTRY_POSITION pos )
+{
+    real Tap, gamij, dr3gamij_1, dr3gamij_3, ret = 0.0;
+
+    switch ( control->charge_method )
+    {
+    case QEQ_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                Tap = control->Tap7 * r_ij + control->Tap6;
+                Tap = Tap * r_ij + control->Tap5;
+                Tap = Tap * r_ij + control->Tap4;
+                Tap = Tap * r_ij + control->Tap3;
+                Tap = Tap * r_ij + control->Tap2;
+                Tap = Tap * r_ij + control->Tap1;
+                Tap = Tap * r_ij + control->Tap0;
+
+                /* shielding */
+                dr3gamij_1 = ( r_ij * r_ij * r_ij +
+                        system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
+                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
+            break;
+
+            case DIAGONAL:
+                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+            break;
+
+            default:
+                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    case EE_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                if ( r_ij < control->r_cut && r_ij > 0.001 )
+                {
+                    Tap = control->Tap7 * r_ij + control->Tap6;
+                    Tap = Tap * r_ij + control->Tap5;
+                    Tap = Tap * r_ij + control->Tap4;
+                    Tap = Tap * r_ij + control->Tap3;
+                    Tap = Tap * r_ij + control->Tap2;
+                    Tap = Tap * r_ij + control->Tap1;
+                    Tap = Tap * r_ij + control->Tap0;
+
+                    gamij = SQRT( system->reaxprm.sbp[system->atoms[i].type].gamma
+                            * system->reaxprm.sbp[system->atoms[j].type].gamma );
+                    /* shielding */
+                    dr3gamij_1 = POW( r_ij, 3.0 ) + 1.0 / POW( gamij, 3.0 );
+                    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                    ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
+                }
+            break;
+
+            case DIAGONAL:
+                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+            break;
+
+            default:
+                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    case ACKS2_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                if ( r_ij < control->r_cut && r_ij > 0.001 )
+                {
+                    Tap = control->Tap7 * r_ij + control->Tap6;
+                    Tap = Tap * r_ij + control->Tap5;
+                    Tap = Tap * r_ij + control->Tap4;
+                    Tap = Tap * r_ij + control->Tap3;
+                    Tap = Tap * r_ij + control->Tap2;
+                    Tap = Tap * r_ij + control->Tap1;
+                    Tap = Tap * r_ij + control->Tap0;
+
+                    gamij = SQRT( system->reaxprm.sbp[system->atoms[i].type].gamma
+                            * system->reaxprm.sbp[system->atoms[j].type].gamma );
+                    /* shielding */
+                    dr3gamij_1 = POW( r_ij, 3.0 ) + 1.0 / POW( gamij, 3.0 );
+                    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                    ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
+                }
+            break;
+
+            case DIAGONAL:
+                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+            break;
+
+            default:
+                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    default:
+        fprintf( stderr, "Invalid charge method. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    return ret;
+}
+
+
+static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
+        control_params *control, list *far_nbrs,
+        sparse_matrix * H, sparse_matrix * H_sp,
+        int * Htop, int * H_sp_top )
+{
+    int i, j, pj;
+    real d, xcut, bond_softness, * X_diag;
+
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            break;
+
+        case EE_CM:
+            H->start[system->N_cm - 1] = *Htop;
+            H_sp->start[system->N_cm - 1] = *H_sp_top;
+
+            for ( i = 0; i < system->N_cm - 1; ++i )
+            {
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            H->j[*Htop] = system->N_cm - 1;
+            H->val[*Htop] = 0.0;
+            *Htop = *Htop + 1;
+
+            H_sp->j[*H_sp_top] = system->N_cm - 1;
+            H_sp->val[*H_sp_top] = 0.0;
+            *H_sp_top = *H_sp_top + 1;
+            break;
+
+        case ACKS2_CM:
+            if ( (X_diag = (real*) calloc(system->N, sizeof(real))) == NULL )
+            {
+                fprintf( stderr, "not enough memory for charge matrix. terminating.\n" );
+                exit( INSUFFICIENT_MEMORY );
+            }
+
+            H->start[system->N] = *Htop;
+            H_sp->start[system->N] = *H_sp_top;
+
+            for ( i = 0; i < system->N; ++i )
+            {
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            H->j[*Htop] = system->N;
+            H->val[*Htop] = 0.0;
+            *Htop = *Htop + 1;
+
+            H_sp->j[*H_sp_top] = system->N;
+            H_sp->val[*H_sp_top] = 0.0;
+            *H_sp_top = *H_sp_top + 1;
+
+            for ( i = 0; i < system->N; ++i )
+            {
+                H->start[system->N + i + 1] = *Htop;
+                H_sp->start[system->N + i + 1] = *H_sp_top;
+
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+
+                for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
+                {
+                    if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+                    {
+                        j = far_nbrs->select.far_nbr_list[pj].nbr;
+
+                        xcut = ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
+                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 )
+                            / 2.0;
+
+                        if ( far_nbrs->select.far_nbr_list[pj].d < xcut &&
+                                far_nbrs->select.far_nbr_list[pj].d > 0.001 )
+                        {
+                            d = far_nbrs->select.far_nbr_list[pj].d / xcut;
+                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 ) * POW( 1.0 - d, 6.0 );
+
+                            H->j[*Htop] = system->N + j + 1;
+                            H->val[*Htop] = MAX( 0.0, bond_softness );
+                            *Htop = *Htop + 1;
+
+                            H_sp->j[*H_sp_top] = system->N + j + 1;
+                            H_sp->val[*H_sp_top] = MAX( 0.0, bond_softness );
+                            *H_sp_top = *H_sp_top + 1;
+
+                            X_diag[i] -= bond_softness;
+                            X_diag[j] -= bond_softness;
+                        }
+                    }
+                }
+
+                H->j[*Htop] = system->N + i + 1;
+                H->val[*Htop] = 0.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = system->N + i + 1;
+                H_sp->val[*H_sp_top] = 0.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            H->start[system->N_cm - 1] = *Htop;
+            H_sp->start[system->N_cm - 1] = *H_sp_top;
+
+            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+            {
+                for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
+                {
+                    if ( H->j[pj] == i )
+                    {
+                        H->val[pj] = X_diag[i - system->N - 1];
+                        break;
+                    }
+                }
+
+                for ( pj = H_sp->start[i]; pj < H_sp->start[i + 1]; ++pj )
+                {
+                    if ( H_sp->j[pj] == i )
+                    {
+                        H_sp->val[pj] = X_diag[i - system->N - 1];
+                        break;
+                    }
+                }
+            }
+
+            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+            {
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            H->j[*Htop] = system->N_cm - 1;
+            H->val[*Htop] = 0.0;
+            *Htop = *Htop + 1;
+
+            H_sp->j[*H_sp_top] = system->N_cm - 1;
+            H_sp->val[*H_sp_top] = 0.0;
+            *H_sp_top = *H_sp_top + 1;
+
+            free( X_diag );
+            break;
+
+        default:
+            break;
+    }
+}
+
+
 void Init_Forces( reax_system *system, control_params *control,
                   simulation_data *data, static_storage *workspace,
                   list **lists, output_controls *out_control )
@@ -274,9 +650,7 @@ void Init_Forces( reax_system *system, control_params *control,
     int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top, jhb_top;
     int flag, flag_sp;
-    real r_ij, r2, self_coef;
-    real dr3gamij_1, dr3gamij_3, Tap;
-    //real val, dif, base;
+    real r_ij, r2;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
@@ -286,7 +660,6 @@ void Init_Forces( reax_system *system, control_params *control,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
-    //LR_lookup_table *t;
     reax_atom *atom_i, *atom_j;
     bond_data *ibond, *jbond;
     bond_order_data *bo_ij, *bo_ji;
@@ -316,8 +689,11 @@ void Init_Forces( reax_system *system, control_params *control,
         btop_i = End_Index( i, bonds );
         sbp_i = &(system->reaxprm.sbp[type_i]);
         ihb = ihb_top = -1;
+
         if ( control->hb_cut > 0 && (ihb = sbp_i->p_hbond) == 1 )
+        {
             ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+        }
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
@@ -360,22 +736,10 @@ void Init_Forces( reax_system *system, control_params *control,
                 r_ij = nbr_pj->d;
                 sbp_j = &(system->reaxprm.sbp[type_j]);
                 twbp = &(system->reaxprm.tbp[type_i][type_j]);
-                self_coef = (i == j) ? 0.5 : 1.0;
-
-                /* H matrix entry */
-                Tap = control->Tap7 * r_ij + control->Tap6;
-                Tap = Tap * r_ij + control->Tap5;
-                Tap = Tap * r_ij + control->Tap4;
-                Tap = Tap * r_ij + control->Tap3;
-                Tap = Tap * r_ij + control->Tap2;
-                Tap = Tap * r_ij + control->Tap1;
-                Tap = Tap * r_ij + control->Tap0;
-
-                dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
-                dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
 
                 H->j[Htop] = j;
-                H->val[Htop] = self_coef * Tap * EV_to_KCALpMOL / dr3gamij_3;
+                H->val[Htop] = Init_Charge_Matrix_Entry( system, control, i, j, 
+                        r_ij, OFF_DIAGONAL );
                 ++Htop;
 
                 /* H_sp matrix entry */
@@ -542,27 +906,33 @@ void Init_Forces( reax_system *system, control_params *control,
 
         /* diagonal entry */
         H->j[Htop] = i;
-        H->val[Htop] = system->reaxprm.sbp[type_i].eta;
+        H->val[Htop] = Init_Charge_Matrix_Entry( system, control, i, j,
+                r_ij, DIAGONAL );
         ++Htop;
 
-        /* diagonal entry */
         H_sp->j[H_sp_top] = i;
         H_sp->val[H_sp_top] = H->val[Htop - 1];
         ++H_sp_top;
 
         Set_End_Index( i, btop_i, bonds );
         if ( ihb == 1 )
+        {
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
+        }
         //fprintf( stderr, "%d bonds start: %d, end: %d\n",
         //     i, Start_Index( i, bonds ), End_Index( i, bonds ) );
     }
 
+    Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
+            H, H_sp, &Htop, &H_sp_top );
+
+    // mark the end of j list
+    H->start[system->N_cm] = Htop;
+    H_sp->start[system->N_cm] = H_sp_top;
+
 //    printf("Htop = %d\n", Htop);
 //    printf("H_sp_top = %d\n", H_sp_top);
 
-    // mark the end of j list
-    H->start[i] = Htop;
-    H_sp->start[i] = H_sp_top;
     /* validate lists - decide if reallocation is required! */
     Validate_Lists( workspace, lists,
                     data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
@@ -583,11 +953,9 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
-    int tmin, tmax, r;
     int ihb, jhb, ihb_top, jhb_top;
     int flag, flag_sp;
-    real r_ij, r2, self_coef;
-    real val, dif, base;
+    real r_ij, r2;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
@@ -597,7 +965,6 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
-    LR_lookup_table *t;
     reax_atom *atom_i, *atom_j;
     bond_data *ibond, *jbond;
     bond_order_data *bo_ij, *bo_ji;
@@ -671,22 +1038,10 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 r_ij = nbr_pj->d;
                 sbp_j = &(system->reaxprm.sbp[type_j]);
                 twbp = &(system->reaxprm.tbp[type_i][type_j]);
-                self_coef = (i == j) ? 0.5 : 1.0;
-                tmin  = MIN( type_i, type_j );
-                tmax  = MAX( type_i, type_j );
-                t = &( LR[tmin][tmax] );
-
-                /* cubic spline interpolation */
-                r = (int)(r_ij * t->inv_dx);
-                if ( r == 0 )  ++r;
-                base = (real)(r + 1) * t->dx;
-                dif = r_ij - base;
-                val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
-                      t->ele[r].a;
-                val *= EV_to_KCALpMOL / C_ele;
 
                 H->j[Htop] = j;
-                H->val[Htop] = self_coef * val;
+                H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control, i, j, 
+                        r_ij, OFF_DIAGONAL );
                 ++Htop;
 
                 /* H_sp matrix entry */
@@ -825,10 +1180,10 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
         /* diagonal entry */
         H->j[Htop] = i;
-        H->val[Htop] = system->reaxprm.sbp[type_i].eta;
+        H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control, i, j,
+                r_ij, DIAGONAL );
         ++Htop;
 
-        /* diagonal entry */
         H_sp->j[H_sp_top] = i;
         H_sp->val[H_sp_top] = H->val[Htop - 1];
         ++H_sp_top;
@@ -850,14 +1205,13 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
              data->step, Htop, num_bonds, num_hbonds );
     //Print_Bonds( system, bonds, "sbonds.out" );
     //Print_Bond_List2( system, bonds, "sbonds.out" );
-    //Print_Sparse_Matrix2( H, "H.out" );
+    //Print_Sparse_Matrix2( H, "H.out", NULL );
 #endif
 }
 
 
 void Estimate_Storage_Sizes( reax_system *system, control_params *control,
-                             list **lists, int *Htop, int *hb_top,
-                             int *bond_top, int *num_3body )
+        list **lists, int *Htop, int *hb_top, int *bond_top, int *num_3body )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -979,6 +1333,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     }
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.init_forces += t_elapsed;
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "init_forces - ");
 #endif

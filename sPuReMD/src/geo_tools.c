@@ -381,9 +381,9 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
             //       system->my_atoms[top].q, occupancy, temp_factor,
             //       seg_id, element );
 
-            //fprintf( stderr, "atom( %8.3f %8.3f %8.3f ) --> p%d\n",
-            // system->my_atoms[top].x[0], system->my_atoms[top].x[1],
-            // system->my_atoms[top].x[2], system->my_rank );
+//            fprintf( stderr, "atom( %8.3f %8.3f %8.3f )\n",
+//                    atom->x[0], atom->x[1],
+//                    atom->x[2] );
 
             c++;
         }
@@ -503,7 +503,11 @@ char Write_PDB( reax_system* system, list* bonds, simulation_data *data,
                  "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
                  1.0, 0.0, "0", name, "  " );
+
+#if defined(DEBUG)
         fprintf( stderr, "PDB NAME <%s>\n", p_atom->name );
+#endif
+
         strncpy( buffer + i * PDB_ATOM_FORMAT_O_LENGTH, line,
                  PDB_ATOM_FORMAT_O_LENGTH );
     }

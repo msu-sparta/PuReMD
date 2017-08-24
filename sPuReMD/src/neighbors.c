@@ -390,7 +390,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     // fprintf( stderr, "atoms sorted - " );
 
 #ifdef REORDER_ATOMS
-    Cluster_Atoms( system, workspace );
+    Cluster_Atoms( system, workspace, control );
     // fprintf( stderr, "atoms clustered - " );
 #endif
 

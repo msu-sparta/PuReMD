@@ -60,7 +60,7 @@ if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
 fi
 
 # Check for OpenMP support.
-if test "x$BUILD_OPENMP" = "xyes"; then
+if test "x${BUILD_OPENMP}" = "xyes"; then
 	AC_OPENMP
 	if test "x${OPENMP_CFLAGS}" = "x"; then
 		AC_MSG_WARN([
@@ -70,7 +70,7 @@ if test "x$BUILD_OPENMP" = "xyes"; then
 	  -----------------------------------------------])
 	else
 		# bug due to recent Intel compiler change (?)
-		if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
+		if test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 			OPENMP_CFLAGS="-qopenmp"
 		fi
 		AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")

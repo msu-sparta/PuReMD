@@ -24,9 +24,6 @@
 
 #include "mytypes.h"
 
-struct timeval tim;
-real t_end;
-
 /* from box.h */
 void Transform( rvec, simulation_box*, char, rvec );
 void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
