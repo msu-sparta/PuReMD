@@ -58,6 +58,7 @@ char Read_Control_File( char *control_file, control_params* control,
     control->geo_format = 1;
     control->gpus_per_node = 1;
 
+    control->random_vel = 0;
     control->restart          = 0;
     out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;

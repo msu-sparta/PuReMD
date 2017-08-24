@@ -49,13 +49,14 @@ CUDA_DEVICE real Dev_DistSqr_to_Special_Point( rvec cp, rvec x )
 
 /* Generate far neighbor lists by scanning the atoms list and applying cutoffs */
 CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms, 
-        simulation_box my_ext_box, grid g, reax_list far_nbrs, int n, int N )
+        simulation_box my_ext_box, grid g, reax_list far_nbrs_list, int n, int N,
+        int *far_nbrs, int *max_far_nbrs, int *realloc_far_nbrs )
 {
-    int i, j, k, l, m, itr, num_far;
+    int i, j, k, l, m, itr, num_far, my_num_far;
     real d, cutoff;
     ivec c, nbrs_x;
     rvec dvec;
-    far_neighbor_data *nbr_data;//, *my_start;
+    far_neighbor_data *nbr_data;
     reax_atom *atom1, *atom2;
 
     l = blockIdx.x * blockDim.x  + threadIdx.x;
@@ -65,8 +66,8 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
         return;
     }
 
-    atom1 = &(my_atoms[l]);
-    num_far = Dev_Start_Index( l, &far_nbrs );
+    atom1 = &( my_atoms[l] );
+    num_far = Dev_Start_Index( l, &far_nbrs_list );
 
     /* get the coordinates of the atom and compute the grid cell */
     if ( l < n )
@@ -132,7 +133,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
                     if ( d <= cutoff )
                     { 
                         /* commit far neighbor to list */
-                        nbr_data = &(far_nbrs.select.far_nbr_list[num_far]);
+                        nbr_data = &(far_nbrs_list.select.far_nbr_list[num_far]);
                         nbr_data->nbr = m;
                         nbr_data->d = SQRT( d );
                         rvec_Copy( nbr_data->dvec, dvec );
@@ -176,7 +177,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
                     if ( d <= cutoff )
                     {
                         /* commit far neighbor to list */
-                        nbr_data = &(far_nbrs.select.far_nbr_list[num_far]);
+                        nbr_data = &(far_nbrs_list.select.far_nbr_list[num_far]);
                         nbr_data->nbr = m;
                         nbr_data->d = SQRT( d );
                         rvec_Copy( nbr_data->dvec, dvec );
@@ -193,7 +194,14 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
         ++itr;
     }   
 
-    Dev_Set_End_Index( l, num_far, &far_nbrs );
+    Dev_Set_End_Index( l, num_far, &far_nbrs_list );
+
+    /* reallocation check */
+    my_num_far = num_far - Dev_Start_Index( l, &far_nbrs_list );
+    if ( my_num_far > max_far_nbrs[l] )
+    {
+        *realloc_far_nbrs = TRUE;
+    }
 }
 
 
@@ -421,10 +429,10 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
 }
 
 
-void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data, 
+int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data, 
         storage *workspace, reax_list **lists )
 {
-    int i, blocks;
+    int blocks, ret, ret_far_nbr;
 #if defined(LOG_PERFORMANCE)
     real t_start = 0, t_elapsed = 0;
 
@@ -434,12 +442,20 @@ void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     }
 #endif
 
+    /* reset reallocation flag on device */
+    /* careful: this wrapper around cudaMemset(...) performs a byte-wide assignment
+     * to the provided literal */
+    cuda_memset( system->d_realloc_far_nbrs, FALSE, sizeof(int), 
+            "Cuda_Generate_Neighbor_Lists::d_realloc_far_nbrs" );
+
     /* one thread per atom implementation */
     blocks = (system->N / NBRS_BLOCK_SIZE) +
         ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+
     k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-          *(*dev_lists + FAR_NBRS), system->n, system->N );
+          *(*dev_lists + FAR_NBRS), system->n, system->N,
+          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
@@ -454,6 +470,13 @@ void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 //    cudaThreadSynchronize( );
 //    cudaCheckError( );
 
+    /* check reallocation flag on device */
+    copy_host_device( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
+            cudaMemcpyDeviceToHost, "Cuda_Generate_Neighbor_Lists::d_realloc_far_nbrs" );
+
+    ret = (ret_far_nbr == FALSE) ? SUCCESS : FAILURE;
+    dev_workspace->realloc.far_nbrs = ret_far_nbr;
+
 #if defined(LOG_PERFORMANCE)
     if( system->my_rank == MASTER_NODE )
     {
@@ -467,19 +490,20 @@ void Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
             system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
+    return ret;
 }
 
 
 /* Estimate the number of far neighbors per atom (GPU) */
 CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms, 
         simulation_box my_ext_box, grid g, int n, int N, int total_cap,
-        int *far_nbrs, int *max_far_nbrs, int *realloc_far_nbrs )
+        int *far_nbrs, int *max_far_nbrs )
 {
     int i, j, k, l, m, itr, num_far;
     real d, cutoff;
     ivec c, nbrs_x;
     rvec dvec;
-    far_neighbor_data *nbr_data;
     reax_atom *atom1, *atom2;
 
     l = blockIdx.x * blockDim.x  + threadIdx.x;
@@ -604,13 +628,8 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
         num_far = MIN_NBRS;
     }
 
-    if ( num_far > max_far_nbrs[l] )
-    {
-        max_far_nbrs[l] = MAX( (int)(num_far * SAFE_ZONE), MIN_NBRS );
-        *realloc_far_nbrs = TRUE;
-    }
-
     far_nbrs[l] = num_far;
+    max_far_nbrs[l] = MAX( (int)(num_far * SAFE_ZONE), MIN_NBRS );
 }
 
 
@@ -619,17 +638,9 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
  * system: atomic system info
  * returns: SUCCESS if reallocation of the far neighbors list is necessary
  *  based on current per-atom far neighbor limits, FAILURE otherwise */
-int Cuda_Estimate_Neighbors( reax_system *system, int step )
+void Cuda_Estimate_Neighbors( reax_system *system )
 {
-    int blocks, ret, ret_far_nbr;
-    reax_list *far_nbrs;
-
-    ret = SUCCESS;
-
-    /* careful: this wrapper around cudaMemset(...) performs a byte-wide assignment
-     * to the provided literal */
-    cuda_memset( system->d_realloc_far_nbrs, FALSE, sizeof(int), 
-            "Cuda_Estimate_Neighbors::d_realloc_far_nbrs" );
+    int blocks;
 
     blocks = system->total_cap / DEF_BLOCK_SIZE + 
         ((system->total_cap % DEF_BLOCK_SIZE == 0) ? 0 : 1);
@@ -637,249 +648,12 @@ int Cuda_Estimate_Neighbors( reax_system *system, int step )
     k_estimate_neighbors <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,
-          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
+          system->d_far_nbrs, system->d_max_far_nbrs );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    /* check reallocation flag on device */
-    copy_host_device( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Estimate_Neighbors::d_realloc_far_nbrs" );
-
-    if ( ret_far_nbr == TRUE )
-    {
-        Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,
-                system->total_cap );
-
-        copy_host_device( &(system->total_far_nbrs), system->d_total_far_nbrs, sizeof(int), 
-                cudaMemcpyDeviceToHost, "Cuda_Estimate_Neighbors::d_total_far_nbrs" );
-
-        if ( step > 0 )
-        {
-            dev_workspace->realloc.far_nbrs = TRUE;
-        }
-        ret = FAILURE;
-    }
-
-    return ret;
-}
-
-
-CUDA_GLOBAL void k_init_end_index( int * intr_cnt, int *indices, int *end_indices, int N )
-{
-    int i;
-
-    i = blockIdx.x * blockDim.x  + threadIdx.x;
-
-    if ( i >= N )
-    {
-        return;
-    }
-
-    end_indices[i] = indices[i] + intr_cnt[i];
-}
-
-
-CUDA_GLOBAL void k_setup_hindex( reax_atom *my_atoms, int N )
-{
-    int i;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= N )
-    {
-        return;
-    }
-
-    my_atoms[i].Hindex = i;
-}
-
-
-CUDA_GLOBAL void k_setup_hindex_part1( reax_atom *my_atoms, int * hindex, int n )
-{
-    int i;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= n )
-    {
-        return;
-    }
-
-    hindex[i] = my_atoms[i].Hindex;
-}
-
-
-CUDA_GLOBAL void k_setup_hindex_part2( reax_atom *my_atoms, int * hindex, int n )
-{
-    int i;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= n )
-    {
-        return;
-    }
-
-    if ( hindex[i + 1] - hindex[i] > 0 )
-    {
-        my_atoms[i].Hindex = hindex[i];
-    }
-    else
-    {
-        my_atoms[i].Hindex = -1;
-    }
-}
-
-
-CUDA_GLOBAL void k_init_hbond_indices( reax_atom * atoms, single_body_parameters *sbp,
-        int *hbonds, int *max_hbonds, int *indices, int *end_indices, int N )
-{
-    int i, hindex, my_hbonds;
-
-    i = blockIdx.x * blockDim.x  + threadIdx.x;
-
-    if ( i >= N )
-    {
-        return;
-    }
-
-    hindex = atoms[i].Hindex;
-
-    if ( sbp[ atoms[i].type ].p_hbond == H_ATOM || 
-            sbp[ atoms[i].type ].p_hbond == H_BONDING_ATOM )
-    {
-        my_hbonds = hbonds[i];
-        indices[hindex] = max_hbonds[i];
-        end_indices[hindex] = indices[hindex] + hbonds[i];
-    }
-    else
-    {
-        my_hbonds = 0;
-        indices[hindex] = 0;
-        end_indices[hindex] = 0;
-    }
-    atoms[i].num_hbonds = my_hbonds;
-
-//    hindex = atoms[i].Hindex;
-//
-//    if ( hindex >= 0 )
-//    {
-//        my_hbonds = hbonds[i];
-//        indices[hindex] = max_hbonds[i];
-//        end_indices[hindex] = indices[hindex] + hbonds[i];
-//    }
-//    else
-//    {
-//        my_hbonds = 0;
-//    }
-//    atoms[i].num_hbonds = my_hbonds;
-}
-
-
-/* Initialize indices for far neighbors list post reallocation
- *
- * system: atomic system info. */
-void Cuda_Init_Neighbor_Indices( reax_system *system )
-{
-    int blocks;
-    reax_list *far_nbrs = *dev_lists + FAR_NBRS;
-
-    /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_far_nbrs, far_nbrs->index, system->total_cap );
-
-    /* init end_indices */
-    blocks = system->N / DEF_BLOCK_SIZE + 
-        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_far_nbrs, far_nbrs->index, far_nbrs->end_index, system->N );
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-}
-
-
-void Cuda_Init_HBond_Indices( reax_system *system )
-{
-    int blocks;
-    int *temp;
-    reax_list *hbonds = *dev_lists + HBONDS;
-
-    temp = (int *) scratch;
-//    cuda_memset( temp, 0, 2 * (system->N + 1) * sizeof(int), 
-//            "Cuda_Init_HBond_Indices::temp" );
-
-    /* init Hindices */
-    blocks = system->N / DEF_BLOCK_SIZE + 
-        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-    k_setup_hindex <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->N );
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-
-//    blocks = system->n / DEF_BLOCK_SIZE + 
-//        ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-//
-//    k_setup_hindex_part1 <<< blocks, DEF_BLOCK_SIZE >>>
-//        ( system->d_my_atoms, temp, system->n );
-//    cudaThreadSynchronize( );
-//    cudaCheckError( );
-//
-//    Cuda_Scan_Excl_Sum( temp, temp + system->n + 1, system->n + 1 );
-//
-//    k_setup_hindex_part2 <<< blocks, DEF_BLOCK_SIZE >>>
-//        ( system->d_my_atoms, temp + system->n + 1, system->n );
-//    cudaThreadSynchronize( );
-//    cudaCheckError( );
-
-    /* init indices and end_indices */
-    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap );
-
-    k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
-          hbonds->index, hbonds->end_index, system->N );
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-}
-
-
-void Cuda_Init_Bond_Indices( reax_system *system )
-{
-    int blocks;
-    reax_list *bonds = *dev_lists + BONDS;
-
-    /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_bonds, bonds->index, system->total_cap );
-
-    /* init end_indices */
-    blocks = system->N / DEF_BLOCK_SIZE + 
-        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_bonds, bonds->index, bonds->end_index, system->N );
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-}
-
-
-void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
-{
-    int blocks;
-
-    /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, system->N );
-
-    /* init end_indices */
-    blocks = system->N / DEF_BLOCK_SIZE + 
-        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_cm_entries, H->start, H->end, system->N );
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-}
-
-
-void Cuda_Init_Three_Body_Indices( int *indices, int entries )
-{
-    reax_list *thbody = *dev_lists + THREE_BODIES;
-
-    Cuda_Scan_Excl_Sum( indices, thbody->index, entries );
+    Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,
+            system->total_cap );
+    copy_host_device( &(system->total_far_nbrs), system->d_total_far_nbrs, sizeof(int), 
+            cudaMemcpyDeviceToHost, "Cuda_Estimate_Neighbors::d_total_far_nbrs" );
 }

@@ -14,6 +14,7 @@ CUDA_GLOBAL void Cuda_Calculate_BO_init( reax_atom *my_atoms,
 {
     int i, type_i;
     single_body_parameters *sbp_i;
+    storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -22,11 +23,11 @@ CUDA_GLOBAL void Cuda_Calculate_BO_init( reax_atom *my_atoms,
         return;
     }
 
-    storage *workspace = & (p_workspace);
+    workspace = &( p_workspace );
 
     /* Calculate Deltaprime, Deltaprime_boc values */
     type_i = my_atoms[i].type;
-    sbp_i = &(sbp[type_i]);
+    sbp_i = &( sbp[type_i] );
     workspace->Deltap[i] = workspace->total_bond_order[i] - sbp_i->valency;
     workspace->Deltap_boc[i] = 
         workspace->total_bond_order[i] - sbp_i->valency_val;
@@ -40,18 +41,20 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
         int num_atom_types, int N )
 {
     int i, j, pj, type_i, type_j;
-    int start_i, end_i, sym_index, num_bonds;
+    int start_i, end_i;
+//    int sym_index;
     real val_i, Deltap_i, Deltap_boc_i;
     real val_j, Deltap_j, Deltap_boc_j;
     real f1, f2, f3, f4, f5, f4f5, exp_f4, exp_f5;
     real exp_p1i, exp_p2i, exp_p1j, exp_p2j;
     real temp, u1_ij, u1_ji, Cf1A_ij, Cf1B_ij, Cf1_ij, Cf1_ji;
-    real Cf45_ij, Cf45_ji, p_lp1; //u_ij, u_ji
+    real Cf45_ij, Cf45_ji;
     real A0_ij, A1_ij, A2_ij, A2_ji, A3_ij, A3_ji;
-    real explp1, p_boc1, p_boc2;
-    single_body_parameters *sbp_i, *sbp_j;
+    real p_boc1, p_boc2;
+    single_body_parameters *sbp_i;
     two_body_parameters *twbp;
-    bond_order_data *bo_ij, *bo_ji;
+    bond_order_data *bo_ij;
+//    bond_order_data *bo_ji;
     storage *workspace;
     reax_list *bonds;
 
@@ -64,24 +67,8 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
 
     workspace = &(p_workspace);
     bonds = &(p_bonds);
-    num_bonds = 0; 
     p_boc1 = gp.l[0];
     p_boc2 = gp.l[1];
-
-    /* Calculate Deltaprime, Deltaprime_boc values */
-    /*
-    //for( i = 0; i < system->N; ++i ) {
-    type_i = my_atoms[i].type;
-    sbp_i = &(sbp[type_i]);
-    workspace->Deltap[i] = workspace->total_bond_order[i] - sbp_i->valency;
-    workspace->Deltap_boc[i] = 
-    workspace->total_bond_order[i] - sbp_i->valency_val;
-
-    //fprintf( stdout, "%d(%d) %24.15f\n", 
-    //     i, workspace->bond_mark[i], workspace->total_bond_order[i] );
-    workspace->total_bond_order[i] = 0; 
-    //}
-     */
 
     /* Corrected Bond Order calculations */
     //for( i = 0; i < system->N; ++i ) {
@@ -103,10 +90,6 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
         bo_ij = &( bonds->select.bond_list[pj].bo_data );
         // fprintf( stderr, "\tj:%d - ubo: %8.3f\n", j+1, bo_ij->BO );
 
-        //TODO
-        //TODO
-        //TODO
-        //TODO
         //TODO
         //if( i < j || workspace->bond_mark[j] > 3 ) {
         if( i < j )
@@ -231,12 +214,6 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
                     f4f5 = f4 * f5;
 
                     /* Bond Order pages 8-9, derivative of f4 and f5 */
-                    /*temp = twbp->p_boc5 - 
-                      twbp->p_boc3 * twbp->p_boc4 * SQR( bo_ij->BO );
-                      u_ij = temp + twbp->p_boc3 * Deltap_boc_i;
-                      u_ji = temp + twbp->p_boc3 * Deltap_boc_j;
-                      Cf45_ij = Cf45( u_ij, u_ji ) / f4f5;
-                      Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;*/
                     Cf45_ij = -f4 * exp_f4;
                     Cf45_ji = -f5 * exp_f5;
                 }
@@ -390,7 +367,8 @@ CUDA_GLOBAL void Cuda_Update_Uncorrected_BO( storage p_workspace,
             bo_ij->BO_pi = bo_ji->BO_pi;
             bo_ij->BO_pi2 = bo_ji->BO_pi2;
 
-            workspace->total_bond_order[i] += bo_ij->BO;// now keeps total_BO
+            // now keeps total_BO
+            workspace->total_bond_order[i] += bo_ij->BO;
         }
     }
 }
@@ -401,9 +379,8 @@ CUDA_GLOBAL void Cuda_Update_Workspace_After_BO( reax_atom *my_atoms,
         storage p_workspace, int N )
 {
     int j, type_j;
-    real explp1;
-    real p_lp1;
-    single_body_parameters *sbp_i, *sbp_j;
+    real explp1, p_lp1;
+    single_body_parameters *sbp_j;
     storage *workspace;
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -465,7 +442,6 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     rvec temp, ext_press;
     ivec rel_box;
     int pk, k, j;
-    rvec tf_f;
 
     /* Initializations */
     nbr_j = &(bonds->select.bond_list[pj]);
@@ -635,7 +611,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
-    int pk, k, j;
+    int pk, j;
     rvec tf_f;
 
     rvec_MakeZero( tf_f );
@@ -680,7 +656,6 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
         {
             nbr_k = &(bonds->select.bond_list[pk]);
-            k = nbr_k->nbr;
             rvec_MakeZero( tf_f );
 
             /*2nd,dBO*/
@@ -725,7 +700,6 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
         {
             nbr_k = &(bonds->select.bond_list[pk]);
-            k = nbr_k->nbr;
             rvec_MakeZero( tf_f );
 
             /*3rd, dBO*/

@@ -350,11 +350,11 @@ int Write_Header( reax_system *system, control_params *control,
     {
         out_control->trj_offset = 0;
         Set_My_Trajectory_View( out_control->trj,
-                                out_control->trj_offset, mpi_data->header_line,
-                                mpi_data->world, system->my_rank,
-                                my_hdr_lines, num_hdr_lines );
+                out_control->trj_offset, mpi_data->header_line,
+                mpi_data->world, system->my_rank,
+                my_hdr_lines, num_hdr_lines );
         MPI_File_write_all( out_control->trj, out_control->buffer,
-                            num_hdr_lines, mpi_data->header_line, &status );
+                num_hdr_lines, mpi_data->header_line, &status );
         out_control->trj_offset = (num_hdr_lines) * HEADER_LINE_LEN;
     }
     else
@@ -411,10 +411,10 @@ int Write_Init_Desc( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                                mpi_data->init_desc_line, mpi_data->world,
-                                me, system->n, system->bigN );
+                mpi_data->init_desc_line, mpi_data->world,
+                me, system->n, system->bigN );
         MPI_File_write( out_control->trj, out_control->buffer, system->n,
-                        mpi_data->init_desc_line, &status );
+                mpi_data->init_desc_line, &status );
         out_control->trj_offset += system->bigN * INIT_DESC_LEN;
     }
     else
@@ -446,12 +446,12 @@ int Init_Traj( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data, char *msg )
 {
     char fname[MAX_STR];
-    int  atom_line_len[ NR_OPT_ATOM ] = { 0, 0, 0, 0,
-                                          ATOM_BASIC_LEN, ATOM_wV_LEN,
-                                          ATOM_wF_LEN, ATOM_FULL_LEN
-                                        };
-    int  bond_line_len[ NR_OPT_BOND ] = { 0, BOND_BASIC_LEN, BOND_FULL_LEN };
-    int  angle_line_len[ NR_OPT_ANGLE ] = { 0, ANGLE_BASIC_LEN };
+    int atom_line_len[ NR_OPT_ATOM ] = { 0, 0, 0, 0,
+        ATOM_BASIC_LEN, ATOM_wV_LEN,
+        ATOM_wF_LEN, ATOM_FULL_LEN
+    };
+    int bond_line_len[ NR_OPT_BOND ] = { 0, BOND_BASIC_LEN, BOND_FULL_LEN };
+    int angle_line_len[ NR_OPT_ANGLE ] = { 0, ANGLE_BASIC_LEN };
 
     /* generate trajectory name */
     sprintf( fname, "%s.trj", control->sim_name );
@@ -531,11 +531,15 @@ int Init_Traj( reax_system *system, control_params *control,
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initiated trajectory\n", system->my_rank );
 #endif
+
     Write_Header( system, control, out_control, mpi_data );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: header written\n", system->my_rank );
 #endif
+
     Write_Init_Desc( system, control, out_control, mpi_data );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: atom descriptions written\n", system->my_rank );
 #endif
@@ -669,11 +673,11 @@ int Write_Frame_Header( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                                mpi_data->header_line, mpi_data->world,
-                                me, my_frm_hdr_lines, num_frm_hdr_lines );
+                mpi_data->header_line, mpi_data->world,
+                me, my_frm_hdr_lines, num_frm_hdr_lines );
 
         MPI_File_write_all(out_control->trj, out_control->buffer, my_frm_hdr_lines,
-                           mpi_data->header_line, &status);
+                mpi_data->header_line, &status);
         out_control->trj_offset += (num_frm_hdr_lines) * HEADER_LINE_LEN;
     }
     else
@@ -756,10 +760,10 @@ int Write_Atoms( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                                mpi_data->atom_line, mpi_data->world,
-                                me, system->n, system->bigN );
+                mpi_data->atom_line, mpi_data->world,
+                me, system->n, system->bigN );
         MPI_File_write( out_control->trj, out_control->buffer, system->n,
-                        mpi_data->atom_line, &status );
+                mpi_data->atom_line, &status );
         out_control->trj_offset += (system->bigN) * out_control->atom_line_len;
     }
     else
@@ -869,10 +873,10 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                                mpi_data->bond_line, mpi_data->world,
-                                me, my_bonds, num_bonds );
+                mpi_data->bond_line, mpi_data->world,
+                me, my_bonds, num_bonds );
         MPI_File_write( out_control->trj, out_control->buffer, my_bonds,
-                        mpi_data->bond_line, &status );
+                mpi_data->bond_line, &status );
         out_control->trj_offset += num_bonds * line_len;
     }
     else
@@ -990,10 +994,10 @@ int Write_Angles( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                                mpi_data->angle_line, mpi_data->world,
-                                me, my_angles, num_angles );
+                mpi_data->angle_line, mpi_data->world,
+                me, my_angles, num_angles );
         MPI_File_write( out_control->trj, out_control->buffer, my_angles,
-                        mpi_data->angle_line, &status );
+                mpi_data->angle_line, &status );
         out_control->trj_offset += num_angles * line_len;
     }
     else

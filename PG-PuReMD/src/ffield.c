@@ -31,7 +31,7 @@
 
 
 int Read_Force_Field( char *ffield_file, reax_interaction *reax,
-        control_params *control )
+        reax_system *system, control_params *control )
 {
     FILE *fp;
     char *s;
@@ -45,7 +45,8 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
     /* open force field file */
     if ( (fp = fopen( ffield_file, "r" ) ) == NULL )
     {
-        fprintf( stderr, "[ERROR] cannot open force filed file! terminating...\n" );
+        fprintf( stderr, "[ERROR] p%d: cannot open force field file! terminating...\n",
+              system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
@@ -67,7 +68,8 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
     n = atoi(tmp[0]);
     if ( n < 1 )
     {
-        fprintf( stderr, "[WARNING] number of globals in ffield file is 0!\n" );
+        fprintf( stderr, "[WARNING] p%d: number of globals in ffield file is 0!\n",
+              system->my_rank );
         return SUCCESS;
     }
 
@@ -146,7 +148,8 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
         }
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "Atom Name in the force field : %s \n", reax->sbp[i].name );
+        fprintf( stderr, "p%d: Atom Name in the force field : %s \n",
+                system->my_rank, reax->sbp[i].name );
 #endif
 
         val = atof(tmp[1]);
@@ -233,20 +236,20 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 3 )
                 {
-                    fprintf( stderr, "[WARNING] inconsistent vdWaals-parameters\n"
+                    fprintf( stderr, "[WARNING] p%d: inconsistent vdWaals-parameters\n"
                             "Force field parameters for element %s\n"
                             "indicate inner wall+shielding, but earlier\n"
                             "atoms indicate different vdWaals-method.\n"
                             "This may cause division-by-zero errors.\n"
                             "Keeping vdWaals-setting for earlier atoms.\n",
-                            reax->sbp[i].name );
+                            system->my_rank, reax->sbp[i].name );
                 }
                 else
                 {
                     reax->gp.vdw_type = 3;
 #if defined(DEBUG)
-                    fprintf( stderr, "vdWaals type for element %s: Shielding+inner-wall",
-                             reax->sbp[i].name );
+                    fprintf( stderr, "p%d: vdWaals type for element %s: Shielding+inner-wall",
+                            system->my_rank, reax->sbp[i].name );
 #endif
                 }
             }
@@ -255,7 +258,8 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 2 )
                 {
-                    fprintf( stderr, "[WARNING] inconsistent vdWaals-parameters\n" );
+                    fprintf( stderr, "[WARNING] p%d: inconsistent vdWaals-parameters\n",
+                            system->my_rank );
                     fprintf( stderr, "    [INFO] Force field parameters for element %s\n", reax->sbp[i].name );
                     fprintf( stderr, "    [INFO] indicate inner wall without shielding, but earlier\n" );
                     fprintf( stderr, "    [INFO] atoms indicate different vdWaals-method.\n" );
@@ -266,8 +270,8 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
                 {
                     reax->gp.vdw_type = 2;
 #if defined(DEBUG)
-                    fprintf( stderr, "vdWaals type for element%s: No Shielding,inner-wall",
-                            reax->sbp[i].name );
+                    fprintf( stderr, "p%d: vdWaals type for element%s: No Shielding,inner-wall",
+                            system->my_rank, reax->sbp[i].name );
 #endif
                 }
             }
@@ -279,34 +283,34 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
             if ( reax->sbp[i].gamma_w > 0.5 )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 1 )
-                    fprintf( stderr, "[WARNING] inconsistent vdWaals-parameters\n" \
+                    fprintf( stderr, "[WARNING] p%d: inconsistent vdWaals-parameters\n" \
                             "    [INFO] Force field parameters for element %s\n"        \
                             "    [INFO] indicate  shielding without inner wall, but earlier\n" \
                             "    [INFO] atoms indicate different vdWaals-method.\n"     \
                             "    [INFO] This may cause division-by-zero errors.\n"      \
                             "    [INFO] Keeping vdWaals-setting for earlier atoms.\n",
-                            reax->sbp[i].name );
+                            system->my_rank, reax->sbp[i].name );
                 else
                 {
                     reax->gp.vdw_type = 1;
 #if defined(DEBUG)
-                    fprintf( stderr, "vdWaals type for element%s: Shielding,no inner-wall",
-                            reax->sbp[i].name );
+                    fprintf( stderr, "p%d, vdWaals type for element%s: Shielding,no inner-wall",
+                            system->my_rank, reax->sbp[i].name );
 #endif
                 }
             }
             else
             {
-                fprintf( stderr, "[ERROR] inconsistent vdWaals-parameters\n"\
+                fprintf( stderr, "[ERROR] p%d: inconsistent vdWaals-parameters\n" \
                          "    [INFO] No shielding or inner-wall set for element %s\n",
-                         reax->sbp[i].name );
+                         system->my_rank, reax->sbp[i].name );
                 MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             }
         }
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "vdWaals type: %d\n", reax->gp.vdw_type );
+    fprintf( stderr, "p%d: vdWaals type: %d\n", system->my_rank, reax->gp.vdw_type );
 #endif
 
     /* Equate vval3 to valf for first-row elements (25/10/2004) */
@@ -315,8 +319,8 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
         if ( reax->sbp[i].mass < 21 &&
                 reax->sbp[i].valency_val != reax->sbp[i].valency_boc )
         {
-            fprintf( stderr, "[WARNING] changed valency_val to valency_boc for atom type %s\n",
-                    reax->sbp[i].name );
+            fprintf( stderr, "[WARNING] p%d: changed valency_val to valency_boc for atom type %s\n",
+                    system->my_rank, reax->sbp[i].name );
             reax->sbp[i].valency_val = reax->sbp[i].valency_boc;
         }
     }
@@ -764,7 +768,7 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
     sfree( tor_flag, "READ_FFIELD" );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "force field read\n" );
+    fprintf( stderr, "p%d: force field read\n", system->my_rank );
 #endif
 
     return SUCCESS;

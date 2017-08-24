@@ -304,12 +304,12 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
                                           comm );
                 }
 
-    free(h);
-    free(fh);
-    free(fvdw);
-    free(fCEvd);
-    free(fele);
-    free(fCEclmb);
+    sfree(h, "h");
+    sfree(fh, "fh");
+    sfree(fvdw, "fvdw");
+    sfree(fCEvd, "fCEvd");
+    sfree(fele, "fele");
+    sfree(fCEclmb, "cCEclmb");
 
     return 1;
 }

@@ -634,25 +634,19 @@ void Print_Grid( grid* g, FILE *out )
     fprintf( out, "\t---------------------------------\n" );
 
     fprintf( stderr, "GCELL MARKS:\n" );
-    //SUDHIR
-    //gc_type = g->cells[0][0][0].type;
-    gc_type = g->cells[ index_grid_3d (0, 0, 0, g) ].type;
+    gc_type = g->cells[ index_grid_3d(0, 0, 0, g) ].type;
     ivec_MakeZero( gc_str );
 
     x = y = z = 0;
     for ( x = 0; x < g->ncells[0]; ++x )
         for ( y = 0; y < g->ncells[1]; ++y )
             for ( z = 0; z < g->ncells[2]; ++z )
-                //SUDHIR
-                //if( g->cells[x][y][z].type != gc_type ){
                 if ( g->cells[ index_grid_3d(x, y, z, g) ].type != gc_type )
                 {
                     fprintf( stderr,
                              "\tgcells from(%2d %2d %2d) to (%2d %2d %2d): %d - %s\n",
                              gc_str[0], gc_str[1], gc_str[2], x, y, z,
                              gc_type, gcell_type_text[gc_type] );
-                    //SUDHIR
-                    //gc_type = g->cells[x][y][z].type;
                     gc_type = g->cells[ index_grid_3d(x, y, z, g) ].type;
                     gc_str[0] = x;
                     gc_str[1] = y;
@@ -728,8 +722,6 @@ void Print_Native_GCells( reax_system *system )
         for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
             for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
             {
-                //SUDHIR
-                //gc = &( g->cells[i][j][k] );
                 gc = &( g->cells[ index_grid_3d(i, j, k, g) ] );
 
                 fprintf( f, "p%d gcell(%2d %2d %2d) of type %d(%s)\n",
@@ -770,8 +762,6 @@ void Print_All_GCells( reax_system *system )
         for ( j = 0; j < g->ncells[1]; j++ )
             for ( k = 0; k < g->ncells[2]; k++ )
             {
-                //SUDHIR
-                //gc = &( g->cells[i][j][k] );
                 gc = &( g->cells[ index_grid_3d(i, j, k, g) ] );
 
                 fprintf( f, "p%d gcell(%2d %2d %2d) of type %d(%s)\n",

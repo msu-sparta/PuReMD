@@ -23,6 +23,8 @@ void dev_sync_simulation_data( simulation_data * );
 
 void Cuda_Compute_Total_Mass( reax_system*, simulation_data*, MPI_Comm );
 
+void Cuda_Generate_Initial_Velocities( reax_system *, real );
+
 void Cuda_Compute_Kinetic_Energy( reax_system*, simulation_data*, MPI_Comm );
 
 void Cuda_Compute_Center_of_Mass( reax_system*, simulation_data*,

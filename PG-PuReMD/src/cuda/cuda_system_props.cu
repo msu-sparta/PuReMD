@@ -3,8 +3,10 @@
 
 #include "cuda_copy.h"
 #include "cuda_utils.h"
+#include "cuda_random.h"
 #include "cuda_reduction.h"
 #include "cuda_shuffle.h"
+#include "cuda_vector.h"
 
 #include "../tool_box.h"
 #include "../vector.h"
@@ -27,32 +29,35 @@ CUDA_GLOBAL void center_of_mass_blocks( single_body_parameters *sbp, reax_atom *
     rvec tmp;
     real m;
 
-    rvec_MakeZero (xcm [threadIdx.x]);
-    rvec_MakeZero (vcm [vcm_id + threadIdx.x]);
-    rvec_MakeZero (amcm[amcm_id + threadIdx.x]);
-    rvec_MakeZero (tmp);
+    rvec_MakeZero(xcm[threadIdx.x]);
+    rvec_MakeZero(vcm[vcm_id + threadIdx.x]);
+    rvec_MakeZero(amcm[amcm_id + threadIdx.x]);
+    rvec_MakeZero(tmp);
 
-    if (i < n){
+    if ( i < n )
+    {
         m = sbp [ atoms[i].type ].mass;
         rvec_ScaledAdd (xcm [threadIdx.x], m, atoms [i].x);
         rvec_ScaledAdd (vcm [vcm_id + threadIdx.x], m, atoms [i].v);
         rvec_Cross (tmp, atoms[i].x, atoms [i].v);
         rvec_ScaledAdd (amcm[amcm_id + threadIdx.x], m, tmp);
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 ) { 
-
-        if ((threadIdx.x < offset)) {
+    for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 )
+    { 
+        if ((threadIdx.x < offset))
+        {
             index = threadIdx.x + offset;
             rvec_Add (xcm [threadIdx.x], xcm[index]);
             rvec_Add (vcm [vcm_id  + threadIdx.x], vcm[vcm_id + index]);
             rvec_Add (amcm[amcm_id + threadIdx.x], amcm[amcm_id + index]);
         } 
-        __syncthreads ();
+        __syncthreads( );
     }
 
-    if ((threadIdx.x == 0)){
+    if ((threadIdx.x == 0))
+    {
         rvec_Copy (res_xcm[blockIdx.x], xcm[0]);
         rvec_Copy (res_vcm[blockIdx.x], vcm[vcm_id]);
         rvec_Copy (res_amcm[blockIdx.x], amcm[amcm_id]);
@@ -880,6 +885,53 @@ extern "C" void dev_compute_inertial_tensor( reax_system *system, real *local_re
 extern "C" void dev_sync_simulation_data( simulation_data *data )
 {
     Output_Sync_Simulation_Data( data, (simulation_data *)data->d_simulation_data );
+}
+
+
+CUDA_GLOBAL void k_generate_initial_velocities( single_body_parameters *sbp, reax_atom *my_atoms, 
+        real T, int n )
+{
+    int i;
+    real m, scale, norm;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
+    {
+        return;
+    }
+
+    if ( T <= 0.1 )
+    {
+        rvec_MakeZero( my_atoms[i].v );
+    }
+    else
+    {
+        cuda_rvec_Random( my_atoms[i].v );
+
+        norm = rvec_Norm_Sqr( my_atoms[i].v );
+        m = sbp[ my_atoms[i].type ].mass;
+        scale = SQRT( m * norm / (3.0 * K_B * T) );
+
+        rvec_Scale( my_atoms[i].v, 1. / scale, my_atoms[i].v );
+    }
+}
+
+
+void Cuda_Generate_Initial_Velocities( reax_system *system, real T )
+{
+    int blocks;
+
+    blocks = system->n / DEF_BLOCK_SIZE + 
+        ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+    if ( T > 0.1 )
+    {
+        Cuda_Randomize( );
+    }
+
+    k_generate_initial_velocities <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, T, system->n );
 }
 
 

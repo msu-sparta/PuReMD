@@ -763,8 +763,8 @@ void Comm_Atoms( reax_system *system, control_params *control,
         Reorder_My_Atoms( system, workspace );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d updated local atoms, n=%d\n",
-                 system->my_rank, system->n );
+        fprintf( stderr, "p%d, step %d: updated local atoms, n=%d\n",
+                 system->my_rank, data->step, system->n );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
@@ -777,8 +777,8 @@ void Comm_Atoms( reax_system *system, control_params *control,
                 Sort_Boundary_Atoms, Unpack_Exchange_Message, TRUE );
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: exchanged boundary atoms, N=%d\n",
-                 system->my_rank, system->N );
+        fprintf( stderr, "p%d, step %d: exchanged boundary atoms, N=%d\n",
+                 system->my_rank, data->step, system->N );
         for ( i = 0; i < MAX_NBRS; ++i )
         {
             fprintf( stderr, "p%d: nbr%d(p%d) str=%d cnt=%d end=%d\n",

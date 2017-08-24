@@ -73,7 +73,7 @@ void Read_System( char *geo_file, char *ffield_file, char *control_file,
         storage *workspace, output_controls *out_control, mpi_datatypes *mpi_data )
 {
     /* ffield file */
-    Read_Force_Field( ffield_file, &(system->reax_param), control );
+    Read_Force_Field( ffield_file, &(system->reax_param), system, control );
 
     /* control file */
     Read_Control_File( control_file, control, out_control );
@@ -240,7 +240,7 @@ int main( int argc, char* argv[] )
     print_device_mem_usage( );
 #endif
 
-    /* init the blocks sizes for cuda kernels */
+    /* init blocks sizes */
     init_blocks( system );
 
     /* measure total simulation time after input is read */
@@ -397,7 +397,7 @@ int main( int argc, char* argv[] )
 
     if ( retries >= MAX_RETRIES )
     {
-        fprintf( stderr, "Maximum retries reached for this step (%d). Terminating...\n",
+        fprintf( stderr, "[ERROR] Maximum retries reached for this step (%d). Terminating...\n",
               retries );
         MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
     }

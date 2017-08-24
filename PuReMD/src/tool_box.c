@@ -48,7 +48,7 @@ int SumScan( int n, int me, int root, MPI_Comm comm )
 
         MPI_Scatter( nbuf, 1, MPI_INT, &my_order, 1, MPI_INT, root, comm );
 
-        free( nbuf );
+        sfree( nbuf, "nbuf" );
     }
     else
     {

@@ -355,7 +355,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
     for ( i = system->n; i < system->N; ++i )
         system->my_atoms[i].q = q[i];
 
-    free(q);
+    sfree(q, "q");
 }
 
 

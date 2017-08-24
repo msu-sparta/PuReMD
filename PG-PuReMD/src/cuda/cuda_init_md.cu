@@ -56,8 +56,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         mpi_datatypes *mpi_data, char *msg )
 {
-    int i, ret;
-    reax_atom *atom;
+    int i;
     int nrecv[MAX_NBRS];
 
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
@@ -111,7 +110,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     /* initialize velocities so that desired init T can be attained */
     if ( !control->restart || (control->restart && control->random_vel) )
     {
-        Generate_Initial_Velocities( system, control->T_init );
+        Cuda_Generate_Initial_Velocities( system, control->T_init );
     }
 
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
@@ -228,15 +227,11 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
 }
 
 
-int Cuda_Init_Lists( reax_system *system, control_params *control,
+void Cuda_Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data, char *msg )
 {
-    int ret;
-    int Htop;
-   
-    /* ignore returned error, as system->d_max_far_nbrs was not valid */
-    ret = Cuda_Estimate_Neighbors( system, data->step );
+    Cuda_Estimate_Neighbors( system );
 
     Dev_Make_List( system->total_cap, system->total_far_nbrs,
             TYP_FAR_NEIGHBOR, *dev_lists + FAR_NBRS );
@@ -253,27 +248,21 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Generate_Neighbor_Lists( system, data, workspace, dev_lists );
 
     /* estimate storage for bonds, hbonds, and sparse matrix */
-    Cuda_Estimate_Storages( system, control, dev_lists, &(dev_workspace->H), data->step );
+    Cuda_Estimate_Storages( system, control, dev_lists,
+            TRUE, TRUE, TRUE, data->step );
 
     dev_alloc_matrix( &(dev_workspace->H), system->total_cap, system->total_cm_entries );
     Cuda_Init_Sparse_Matrix_Indices( system, &(dev_workspace->H) );
 
-    //MATRIX CHANGES
-    //workspace->L = NULL;
-    //workspace->U = NULL;
-
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p:%d - allocated H matrix: max_entries: %d, cap: %d \n",
-            system->my_rank, system->total_cm_entries, dev_workspace->H.m );
-    fprintf( stderr, "p%d: allocated H matrix: Htop=%d, space=%dMB\n",
-            system->my_rank, Htop,
-            (int)(Htop * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
+    fprintf( stderr, "p:%d - allocated H matrix: max_entries: %d, space=%dMB\n",
+            system->my_rank, system->total_cm_entries,
+            (int)(system->total_cm_entries * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
 #endif
 
     if ( control->hbond_cut > 0.0 &&  system->numH > 0 )
     {
         Dev_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, *dev_lists + HBONDS );
-
         Cuda_Init_HBond_Indices( system );
 
 #if defined(DEBUG_FOCUS)
@@ -285,7 +274,6 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
 
     /* bonds list */
     Dev_Make_List( system->total_cap, system->total_bonds, TYP_BOND, *dev_lists + BONDS );
-
     Cuda_Init_Bond_Indices( system );
 
 #if defined(DEBUG_FOCUS)
@@ -295,10 +283,8 @@ int Cuda_Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list: since a more accurate estimate of the num.
-     * of three body interactions requires that bond orders have
+     * three body interactions requires that bond orders have
      * been computed, delay estimation until for computation */
-
-    return SUCCESS;
 }
 
 
@@ -308,7 +294,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
         mpi_datatypes *mpi_data )
 {
     char msg[MAX_STR];
-    real t_start, t_end;
 
     /* HOST/DEVICE SCRATCH */
     Cuda_Init_ScratchArea( );
@@ -348,20 +333,11 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     fprintf( stderr, "p%d: initialized workspace\n", system->my_rank );
 #endif
 
-    //Sync the taper here from host to device.
-
     /* CONTROL */
     dev_alloc_control( control );
 
     /* LISTS */
-    if ( Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data, msg ) ==
-            FAILURE )
-    {
-        fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
-        fprintf( stderr, "p%d: system could not be initialized! terminating.\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data, msg );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized lists\n", system->my_rank );

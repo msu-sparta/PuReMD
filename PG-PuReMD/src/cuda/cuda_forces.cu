@@ -30,19 +30,187 @@ CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params *control )
 }
 
 
+CUDA_GLOBAL void k_init_end_index( int * intr_cnt, int *indices, int *end_indices, int N )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x  + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    end_indices[i] = indices[i] + intr_cnt[i];
+}
+
+
+CUDA_GLOBAL void k_setup_hindex( reax_atom *my_atoms, int N )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    my_atoms[i].Hindex = i;
+}
+
+
+CUDA_GLOBAL void k_init_hbond_indices( reax_atom * atoms, single_body_parameters *sbp,
+        int *hbonds, int *max_hbonds, int *indices, int *end_indices, int N )
+{
+    int i, hindex, my_hbonds;
+
+    i = blockIdx.x * blockDim.x  + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    hindex = atoms[i].Hindex;
+
+    if ( sbp[ atoms[i].type ].p_hbond == H_ATOM || 
+            sbp[ atoms[i].type ].p_hbond == H_BONDING_ATOM )
+    {
+        my_hbonds = hbonds[i];
+        indices[hindex] = max_hbonds[i];
+        end_indices[hindex] = indices[hindex] + hbonds[i];
+    }
+    else
+    {
+        my_hbonds = 0;
+        indices[hindex] = 0;
+        end_indices[hindex] = 0;
+    }
+    atoms[i].num_hbonds = my_hbonds;
+}
+
+
+/* Initialize indices for far neighbors list post reallocation
+ *
+ * system: atomic system info. */
+void Cuda_Init_Neighbor_Indices( reax_system *system )
+{
+    int blocks;
+    reax_list *far_nbrs = *dev_lists + FAR_NBRS;
+
+    /* init indices */
+    Cuda_Scan_Excl_Sum( system->d_max_far_nbrs, far_nbrs->index, system->total_cap );
+
+    /* init end_indices */
+    blocks = system->N / DEF_BLOCK_SIZE + 
+        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_far_nbrs, far_nbrs->index, far_nbrs->end_index, system->N );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+}
+
+
+/* Initialize indices for far hydrogen bonds list post reallocation
+ *
+ * system: atomic system info. */
+void Cuda_Init_HBond_Indices( reax_system *system )
+{
+    int blocks;
+    int *temp;
+    reax_list *hbonds = *dev_lists + HBONDS;
+
+    temp = (int *) scratch;
+
+    /* init Hindices */
+    blocks = system->N / DEF_BLOCK_SIZE + 
+        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+    k_setup_hindex <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, system->N );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+
+    /* init indices and end_indices */
+    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap );
+
+    k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
+          hbonds->index, hbonds->end_index, system->N );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+}
+
+
+/* Initialize indices for far bonds list post reallocation
+ *
+ * system: atomic system info. */
+void Cuda_Init_Bond_Indices( reax_system *system )
+{
+    int blocks;
+    reax_list *bonds = *dev_lists + BONDS;
+
+    /* init indices */
+    Cuda_Scan_Excl_Sum( system->d_max_bonds, bonds->index, system->total_cap );
+
+    /* init end_indices */
+    blocks = system->N / DEF_BLOCK_SIZE + 
+        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_bonds, bonds->index, bonds->end_index, system->N );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+}
+
+
+/* Initialize indices for charge matrix post reallocation
+ *
+ * system: atomic system info.
+ * H: charge matrix */
+void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
+{
+    int blocks;
+
+    /* init indices */
+    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, system->N );
+
+    /* init end_indices */
+    blocks = system->N / DEF_BLOCK_SIZE + 
+        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_cm_entries, H->start, H->end, system->N );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+}
+
+
+/* Initialize indices for three body list post reallocation
+ *
+ * indices: list indices
+ * entries: num. of entries in list */
+void Cuda_Init_Three_Body_Indices( int *indices, int entries )
+{
+    reax_list *thbody = *dev_lists + THREE_BODIES;
+
+    Cuda_Scan_Excl_Sum( indices, thbody->index, entries );
+}
+
+
 CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms, 
         single_body_parameters *sbp, two_body_parameters *tbp,
         control_params *control, reax_list far_nbrs, 
-        int num_atom_types, int n, int N, int Hcap, int total_cap,
-        int *cm_entries, int *max_cm_entries, int *realloc_cm_entries,
-        int *bonds, int *max_bonds, int *realloc_bonds,
-        int *hbonds, int *max_hbonds, int *realloc_hbonds )
+        int num_atom_types, int n, int N, int total_cap,
+        int *cm_entries, int *max_cm_entries,
+        int *bonds, int *max_bonds,
+        int *hbonds, int *max_hbonds )
 {
     int i, j, pj; 
     int start_i, end_i;
     int type_i, type_j;
     int ihb, jhb;
     int local;
+    int my_bonds, my_hbonds, my_cm_entries;
     real cutoff;
     real r_ij, r2; 
     real C12, C34, C56;
@@ -59,6 +227,10 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
         return;
     }
 
+    my_bonds = 0;
+    my_hbonds = 0;
+    my_cm_entries = 0;
+
     if ( i < N )
     {
         atom_i = &(my_atoms[i]);
@@ -71,7 +243,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
         { 
             local = TRUE;
             cutoff = control->nonb_cut;
-            ++cm_entries[i];
+            ++my_cm_entries;
 //            ihb = sbp_i->p_hbond;
         }   
         else
@@ -100,18 +272,18 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                 {
                     if ( i < j && (j < n || atom_i->orig_id < atom_j->orig_id) )
                     {
-                        ++cm_entries[i];
+                        ++my_cm_entries;
                     }
                     else if ( i > j && (j < n || atom_j->orig_id > atom_i->orig_id) )
                     {
-                        ++cm_entries[i];
+                        ++my_cm_entries;
                     }
                 }
                 else
                 {
                     if ( i > j && j < n && atom_j->orig_id < atom_i->orig_id )
                     {
-                        ++cm_entries[i];
+                        ++my_cm_entries;
                     }
                 }
 
@@ -120,7 +292,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                 if ( control->hbond_cut > 0.0 && nbr_pj->d <= control->hbond_cut 
                         && ihb == H_BONDING_ATOM && jhb == H_ATOM && i >= n && j < n )
                 {
-                    ++hbonds[i];
+                    ++my_hbonds;
                 }
 
 //                if ( i >= n )
@@ -148,13 +320,13 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                          * atom j: H bonding atom */
                         if( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                         {
-                            ++hbonds[i];
+                            ++my_hbonds;
                         }
                         /* atom i: H bonding atom, native
                          * atom j: H atom, native */
                         else if( ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n )
                         {
-                            ++hbonds[i];
+                            ++my_hbonds;
                         }
                     }
                 }
@@ -199,158 +371,90 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
 
                     if ( BO >= control->bo_cut )
                     {
-                        ++bonds[i];
-//                        atomicAdd( bonds + j, 1 );
+                        ++my_bonds;
                     }
                 }
             }
         }
     }
-    else
-    {
-        bonds[i] = MIN_BONDS;
-        hbonds[i] = 0;
-    }
 
-    if ( bonds[i] > max_bonds[i] )
-    {
-        max_bonds[i] = MAX( (int)(bonds[i] * 2), MIN_BONDS );
-        *realloc_bonds = TRUE;
-    }
+    bonds[i] = my_bonds;
+    max_bonds[i] = MAX( (int)(my_bonds * 2), MIN_BONDS );
 
-    if ( hbonds[i] > max_hbonds[i] )
-    {
-        max_hbonds[i] = MAX( (int)(hbonds[i] * SAFE_ZONE), MIN_HBONDS );
-        *realloc_hbonds = TRUE;
-    }
+    hbonds[i] = my_hbonds;
+    max_hbonds[i] = MAX( (int)(my_hbonds * SAFE_ZONE), MIN_HBONDS );
 
-    if ( cm_entries[i] > max_cm_entries[i] )
-    {
-        max_cm_entries[i] = MAX( (int)(cm_entries[i] * SAFE_ZONE), MIN_CM_ENTRIES );
-        *realloc_cm_entries = TRUE;
-    }
+    cm_entries[i] = my_cm_entries;
+    max_cm_entries[i] = MAX( (int)(my_cm_entries * SAFE_ZONE), MIN_CM_ENTRIES );
 }
 
 
-/* Copy num. of bonds/hbonds per atom into atom structs (used for MPI messaging)
- *
- * my_atoms: atom structs
- * N: num. of atoms (native + ghost)
- * hbonds: num. of hydrogen bonds per atom
- * bonds: num. of bonds per atom */
-CUDA_GLOBAL void k_init_system_atoms( reax_atom *my_atoms, int N, 
-        int *hbonds, int *bonds )
+void Cuda_Estimate_Storages( reax_system *system, control_params *control, 
+        reax_list **lists, int realloc_bonds, int realloc_hbonds, int realloc_cm,
+        int step )
 {
-    int i;
-    
-    i = blockIdx.x * blockDim.x + threadIdx.x;
+    int blocks;
 
-    if ( i >= N )
-    {
-        return;
-    }
-
-    my_atoms[i].num_bonds = bonds[i];
-    my_atoms[i].num_hbonds = hbonds[i];
-}
-
-
-int Cuda_Estimate_Storages( reax_system *system, control_params *control, 
-        reax_list **lists, sparse_matrix *H, int step )
-{
-    int i, ret, ret_bonds, ret_hbonds, ret_cm;
-    int blocks = 0;
-
-    ret = SUCCESS;
-
-    /* careful: this wrapper around cudaMemset(...) performs a byte-wide assignment
-     * to the provided literal */
-    cuda_memset( system->d_realloc_bonds, FALSE, sizeof(int), 
-            "Cuda_Estimate_Storages::d_realloc_bonds" );
-    cuda_memset( system->d_realloc_hbonds, FALSE, sizeof(int), 
-            "Cuda_Estimate_Storages::d_realloc_hbonds" );
-    cuda_memset( system->d_realloc_cm_entries, FALSE, sizeof(int), 
-            "Cuda_Estimate_Storages::d_realloc_cm_entries" );
-    cuda_memset( system->d_bonds, 0, system->total_cap * sizeof(int), 
-            "Cuda_Estimate_Storages::d_bonds" );
-    cuda_memset( system->d_hbonds, 0, system->total_cap * sizeof(int), 
-            "Cuda_Estimate_Storages::d_hbonds" );
-    cuda_memset( system->d_cm_entries, 0, system->total_cap * sizeof(int), 
-            "Cuda_Estimate_Storages::d_cm_entries" );
- 
-    blocks = (int)CEIL( (real)system->total_cap / ST_BLOCK_SIZE );
+    blocks = system->total_cap / ST_BLOCK_SIZE + 
+        (((system->total_cap % ST_BLOCK_SIZE == 0)) ? 0 : 1);
 
     k_estimate_storages <<< blocks, ST_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
           (control_params *)control->d_control_params,
           *(*dev_lists + FAR_NBRS), system->reax_param.num_atom_types,
-          system->n, system->N, system->Hcap, system->total_cap,
-          system->d_cm_entries, system->d_max_cm_entries, system->d_realloc_cm_entries,
-          system->d_bonds, system->d_max_bonds, system->d_realloc_bonds,
-          system->d_hbonds, system->d_max_hbonds, system->d_realloc_hbonds );
+          system->n, system->N, system->total_cap,
+          system->d_cm_entries, system->d_max_cm_entries,
+          system->d_bonds, system->d_max_bonds,
+          system->d_hbonds, system->d_max_hbonds );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
-    /* check reallocation flags on device */
-    copy_host_device( &ret_bonds, system->d_realloc_bonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_realloc_bonds" );
-    copy_host_device( &ret_hbonds, system->d_realloc_hbonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_realloc_hbonds" );
-    copy_host_device( &ret_cm, system->d_realloc_cm_entries, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_realloc_cm_entries" );
-
-    if ( ret_bonds == TRUE )
+    if ( realloc_bonds == TRUE )
     {
         Cuda_Reduction_Sum( system->d_max_bonds, system->d_total_bonds,
                 system->total_cap );
-
         copy_host_device( &(system->total_bonds), system->d_total_bonds, sizeof(int), 
                 cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_bonds" );
-
-        if ( step > 0 )
-        {
-            dev_workspace->realloc.bonds = TRUE;
-        }
-        ret = FAILURE;
     }
 
-    if ( system->numH > 0 && control->hbond_cut > 0.0 && ret_hbonds == TRUE )
+    if ( system->numH > 0 && control->hbond_cut > 0.0 )
     {
-        Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
-                system->total_cap );
-
-        copy_host_device( &(system->total_hbonds), system->d_total_hbonds, sizeof(int), 
-                cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_hbonds" );
-
-        if ( step > 0 )
+        if ( realloc_hbonds == TRUE )
         {
-            dev_workspace->realloc.hbonds = TRUE;
+            Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
+                    system->total_cap );
+            copy_host_device( &(system->total_hbonds), system->d_total_hbonds, sizeof(int), 
+                    cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_hbonds" );
         }
-        ret = FAILURE;
     }
     else
     {
-        /* if number of hydrogen atoms is 0, disable hydrogen bond functionality */
-        if ( system->numH == 0 && step == 0 )
+        if ( step == 0 )
         {
-            fprintf( stderr, "[WARNING] DISABLING HYDROGEN BONDS\n" );
+#if defined(DEBUG)
+            if ( system->numH == 0 )
+            {
+                fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: NO HYDROGEN ATOMS FOUND\n" );
+            }
+#endif
+
+#if defined(DEBUG)
+            if ( control->hbond_cut <= 0.0 )
+            {
+                fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: BOND CUTOFF LENGTH IS ZERO\n" );
+            }
+#endif
+
             control->hbond_cut = 0.0;
             k_disable_hydrogen_bonding <<< 1, 1 >>> ( (control_params *)control->d_control_params );
         }
     }
 
-    if ( ret_cm == TRUE )
+    if ( realloc_cm == TRUE )
     {
         Cuda_Reduction_Sum( system->d_max_cm_entries, system->d_total_cm_entries, system->total_cap );
-
         copy_host_device( &(system->total_cm_entries), system->d_total_cm_entries, sizeof(int),
-                cudaMemcpyDeviceToHost, "d_total_cm_entries" );
-
-        if ( step > 0 )
-        {
-            dev_workspace->realloc.cm = TRUE;
-        }
-        ret = FAILURE;
+                cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_cm_entries" );
     }
 
 #if defined(DEBUG)
@@ -359,13 +463,6 @@ int Cuda_Estimate_Storages( reax_system *system, control_params *control,
     fprintf( stderr, " TOTAL DEVICE HBOND COUNT: %d \n", system->total_hbonds );
     fprintf( stderr, " TOTAL DEVICE SPARSE COUNT: %d \n", system->total_cm_entries );
 #endif
-
-    k_init_system_atoms <<< blocks, ST_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->N, system->d_hbonds, system->d_bonds );
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-
-    return ret;
 }
 
 
@@ -375,6 +472,7 @@ int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params *contr
     int ret;
 
     ret = SUCCESS;
+
     cuda_memset( thbody, 0, system->total_bonds * sizeof(int), "scratch::thbody" );
 
     Estimate_Cuda_Valence_Angles <<< BLOCKS_N, BLOCK_SIZE >>>
@@ -390,16 +488,29 @@ int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params *contr
 
     if ( step == 0 )
     {
+        system->total_thbodies = MAX( (int)(system->total_thbodies * SAFE_ZONE), MIN_3BODIES );
+        system->total_thbodies_indices = system->total_bonds;
+
         /* create Three-body list */
-        Dev_Make_List( system->total_bonds, system->total_thbodies,
+        Dev_Make_List( system->total_thbodies_indices, system->total_thbodies,
                 TYP_THREE_BODY, *dev_lists + THREE_BODIES );
     }
 
     if ( system->total_thbodies > (*dev_lists + THREE_BODIES)->num_intrs ||
-            (*dev_lists + THREE_BODIES)->n < system->total_bonds )
+            system->total_bonds > (*dev_lists + THREE_BODIES)->n )
     {
-        system->total_thbodies = (*dev_lists + THREE_BODIES)->num_intrs * SAFE_ZONE;
-        dev_workspace->realloc.num_3body = system->total_thbodies;
+        if ( system->total_thbodies > (*dev_lists + THREE_BODIES)->num_intrs )
+        {
+            system->total_thbodies = MAX( (int)((*dev_lists + THREE_BODIES)->num_intrs * SAFE_ZONE),
+                    system->total_thbodies );
+        }
+        if ( system->total_bonds > (*dev_lists + THREE_BODIES)->n )
+        {
+            system->total_thbodies_indices = MAX( (int)((*dev_lists + THREE_BODIES)->n * SAFE_ZONE),
+                    system->total_bonds );
+        }
+
+        dev_workspace->realloc.thbody = TRUE;
         ret = FAILURE;
     }
 
@@ -491,14 +602,17 @@ CUDA_GLOBAL void k_print_hbond_info( reax_atom *my_atoms, single_body_parameters
 
 CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp, 
         two_body_parameters *tbp, storage workspace, control_params *control, 
-        reax_list far_nbrs, reax_list bonds, reax_list hbonds, 
-        LR_lookup_table *t_LR, int n, int N, int num_atom_types, int renbr )
+        reax_list far_nbrs_list, reax_list bonds_list, reax_list hbonds_list, 
+        LR_lookup_table *t_LR, int n, int N, int num_atom_types, int renbr,
+        int *cm_entries, int *max_cm_entries, int *realloc_cm_entries,
+        int *bonds, int *max_bonds, int *realloc_bonds,
+        int *hbonds, int *max_hbonds, int *realloc_hbonds )
 {
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
-    int Htop;
-    int btop_i, ihb, jhb, ihb_top;
+    int Htop, btop_i, ihb, jhb, ihb_top;
+    int my_bonds, my_hbonds, my_cm_entries;
     int local, flag, flag2, flag3;
     real r_ij, cutoff;
     single_body_parameters *sbp_i, *sbp_j;
@@ -519,9 +633,9 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
 
     atom_i = &(my_atoms[i]);
     type_i = atom_i->type;
-    start_i = Dev_Start_Index( i, &far_nbrs );
-    end_i = Dev_End_Index( i, &far_nbrs );
-    btop_i = Dev_Start_Index( i, &bonds );
+    start_i = Dev_Start_Index( i, &far_nbrs_list );
+    end_i = Dev_End_Index( i, &far_nbrs_list );
+    btop_i = Dev_Start_Index( i, &bonds_list );
     sbp_i = &(sbp[type_i]);
 
     if ( i < n )
@@ -557,7 +671,7 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
 
         if ( ihb == H_ATOM || ihb == H_BONDING_ATOM )
         {
-            ihb_top = Dev_Start_Index( atom_i->Hindex, &hbonds );
+            ihb_top = Dev_Start_Index( atom_i->Hindex, &hbonds_list );
         }
         else
         {
@@ -568,7 +682,7 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
     /* update i-j distance - check if j is within cutoff */
     for ( pj = start_i; pj < end_i; ++pj )
     {
-        nbr_pj = &( far_nbrs.select.far_nbr_list[pj] );
+        nbr_pj = &( far_nbrs_list.select.far_nbr_list[pj] );
         j = nbr_pj->nbr;
         atom_j = &(my_atoms[j]);
 
@@ -641,13 +755,13 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
             if ( control->hbond_cut > 0.0 && nbr_pj->d <= control->hbond_cut
                     && ihb == H_BONDING_ATOM && jhb == H_ATOM && i >= n && j < n ) 
             {
-                hbonds.select.hbond_list[ihb_top].nbr = j;
-                hbonds.select.hbond_list[ihb_top].scl = -1;
-                hbonds.select.hbond_list[ihb_top].ptr = nbr_pj;
+                hbonds_list.select.hbond_list[ihb_top].nbr = j;
+                hbonds_list.select.hbond_list[ihb_top].scl = -1;
+                hbonds_list.select.hbond_list[ihb_top].ptr = nbr_pj;
 
                 //CUDA SPECIFIC
-                hbonds.select.hbond_list[ihb_top].sym_index = -1;
-                rvec_MakeZero( hbonds.select.hbond_list[ihb_top].hb_f );
+                hbonds_list.select.hbond_list[ihb_top].sym_index = -1;
+                rvec_MakeZero( hbonds_list.select.hbond_list[ihb_top].hb_f );
 
                 ++ihb_top;
             }
@@ -727,21 +841,21 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
                      * atom j: H bonding atom */
                     if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                     {
-                        hbonds.select.hbond_list[ihb_top].nbr = j;
+                        hbonds_list.select.hbond_list[ihb_top].nbr = j;
 
                         if ( i < j )
                         {
-                            hbonds.select.hbond_list[ihb_top].scl = 1;
+                            hbonds_list.select.hbond_list[ihb_top].scl = 1;
                         }
                         else
                         {
-                            hbonds.select.hbond_list[ihb_top].scl = -1;
+                            hbonds_list.select.hbond_list[ihb_top].scl = -1;
                         }
-                        hbonds.select.hbond_list[ihb_top].ptr = nbr_pj;
+                        hbonds_list.select.hbond_list[ihb_top].ptr = nbr_pj;
 
                         //CUDA SPECIFIC
-                        hbonds.select.hbond_list[ihb_top].sym_index = -1;
-                        rvec_MakeZero( hbonds.select.hbond_list[ihb_top].hb_f );
+                        hbonds_list.select.hbond_list[ihb_top].sym_index = -1;
+                        rvec_MakeZero( hbonds_list.select.hbond_list[ihb_top].hb_f );
 
                         ++ihb_top;
                     }
@@ -750,13 +864,13 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
                     else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n )
                     {
                         //jhb_top = End_Index( atom_j->Hindex, hbonds );
-                        hbonds.select.hbond_list[ihb_top].nbr = j;
-                        hbonds.select.hbond_list[ihb_top].scl = -1;
-                        hbonds.select.hbond_list[ihb_top].ptr = nbr_pj;
+                        hbonds_list.select.hbond_list[ihb_top].nbr = j;
+                        hbonds_list.select.hbond_list[ihb_top].scl = -1;
+                        hbonds_list.select.hbond_list[ihb_top].ptr = nbr_pj;
 
                         //CUDA SPECIFIC
-                        hbonds.select.hbond_list[ihb_top].sym_index = -1;
-                        rvec_MakeZero( hbonds.select.hbond_list[ihb_top].hb_f );
+                        hbonds_list.select.hbond_list[ihb_top].sym_index = -1;
+                        rvec_MakeZero( hbonds_list.select.hbond_list[ihb_top].hb_f );
 
                         ++ihb_top;
                     }
@@ -765,11 +879,10 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
 
             /* uncorrected bond orders */
             if ( nbr_pj->d <= control->bond_cut &&
-                    Dev_BOp( bonds, control->bo_cut, i, btop_i, nbr_pj,
+                    Dev_BOp( bonds_list, control->bo_cut, i, btop_i, nbr_pj,
                         sbp_i, sbp_j, twbp, workspace.dDeltap_self,
                         workspace.total_bond_order ) == TRUE )
             {
-                //num_bonds += 2;
                 ++btop_i;
 
                 /* TODO: Need to do later... since i and j are parallel */
@@ -785,15 +898,40 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
         }
     }
 
-    Dev_Set_End_Index( i, btop_i, &bonds );
+    Dev_Set_End_Index( i, btop_i, &bonds_list );
     H->end[i] = Htop;
 //    if( local == TRUE )
 //    {
         if ( control->hbond_cut > 0.0 && ihb_top > 0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM) )
         {
-            Dev_Set_End_Index( atom_i->Hindex, ihb_top, &hbonds );
+            Dev_Set_End_Index( atom_i->Hindex, ihb_top, &hbonds_list );
         }
 //    }
+
+    my_bonds = btop_i - Dev_Start_Index( i, &bonds_list );
+    my_hbonds = ihb_top - Dev_Start_Index( atom_i->Hindex, &hbonds_list );
+    my_cm_entries = Htop - H->start[i];
+
+    /* copy (h)bond info to atom structure
+     * (needed for atom ownership transfer via MPI) */
+    my_atoms[i].num_bonds = my_bonds;
+    my_atoms[i].num_hbonds = my_hbonds;
+
+    /* reallocation checks */
+    if ( my_bonds > max_bonds[i] )
+    {
+        *realloc_bonds = TRUE;
+    }
+
+    if ( my_hbonds > max_hbonds[i] )
+    {
+        *realloc_hbonds = TRUE;
+    }
+
+    if ( my_cm_entries > max_cm_entries[i] )
+    {
+        *realloc_cm_entries = TRUE;
+    }
 }
 
 
@@ -859,17 +997,21 @@ CUDA_GLOBAL void New_fix_sym_hbond_indices( reax_atom *my_atoms, reax_list hbond
     int nbr, nbrstart, nbrend;
     int start, end;
     hbond_data *ihbond, *jhbond;
-    int __THREADS_PER_ATOM__ = HB_KER_SYM_THREADS_PER_ATOM;
-    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    int warp_id = thread_id / __THREADS_PER_ATOM__;
-    int lane_id = thread_id & (__THREADS_PER_ATOM__ - 1);
-    int my_bucket = threadIdx.x / __THREADS_PER_ATOM__;
+    int __THREADS_PER_ATOM__;
+    int thread_id;
+    int warp_id;
+    int lane_id;
+
+    __THREADS_PER_ATOM__ = HB_KER_SYM_THREADS_PER_ATOM;
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    warp_id = thread_id / __THREADS_PER_ATOM__;
 
     if ( warp_id > N )
     {
         return;
     }
 
+    lane_id = thread_id & (__THREADS_PER_ATOM__ - 1);
     i = warp_id;
     start = Dev_Start_Index( my_atoms[i].Hindex, &hbonds );
     end = Dev_End_Index( my_atoms[i].Hindex, &hbonds );
@@ -932,38 +1074,6 @@ CUDA_GLOBAL void k_update_hbonds( reax_atom *my_atoms, reax_list hbonds, int n )
 }
 
 
-int Cuda_Validate_Lists( reax_system *system, storage *workspace,
-        reax_list **lists, control_params *control, 
-        int step, int numH )
-{
-    int blocks;
-    int ret;
-
-    blocks = system->n / DEF_BLOCK_SIZE + 
-        ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-    ret = SUCCESS;
-
-    k_update_bonds <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, *(*lists + BONDS), system->n );
-    cudaThreadSynchronize( );
-    cudaCheckError( );
-
-    if ( control->hbond_cut > 0.0 && system->numH > 0 )
-    {
-        k_update_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
-            ( system->d_my_atoms, *(*lists + HBONDS), system->n );
-        cudaThreadSynchronize( );
-        cudaCheckError( );
-    }
-
-    /* 3bodies list: since a more accurate estimate of the num.
-     * of three body interactions requires that bond orders have
-     * been computed, delay validation until for computation */
-
-    return ret;
-}
-
-
 CUDA_GLOBAL void k_print_forces( reax_atom *my_atoms, rvec *f, int n )
 {
     int i; 
@@ -997,23 +1107,69 @@ static void Print_Forces( reax_system *system )
 }
 
 
-CUDA_GLOBAL void k_init_bond_orders( reax_atom *my_atoms, reax_list far_nbrs, 
-        reax_list bonds, real *total_bond_order, int N )
+CUDA_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list p_hbonds, int n, int rank, int step )
 {
-    int i, j, pj; 
-    int start_i, end_i;
-    int type_i, type_j;
-    far_neighbor_data *nbr_pj;
-    reax_atom *atom_i, *atom_j;
+    int i, k, pj, start, end; 
+    reax_list *hbonds;
+    hbond_data *hbond_list, *hbond_jk;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i >= N)
+    if ( i >= n )
     {
         return;
     }
 
-    atom_i = &(my_atoms[i]);
+    hbonds = &( p_hbonds );
+    start = Dev_Start_Index( my_atoms[i].Hindex, hbonds );
+    end = Dev_End_Index( my_atoms[i].Hindex, hbonds );
+    hbond_list = hbonds->select.hbond_list;
+
+    for ( pj = start; pj < end; ++pj )
+    {
+        k = hbond_list[pj].nbr;
+        hbond_jk = &( hbond_list[pj] );
+
+        printf( "p%03d, step %05d: %8d: %8d, %24.15f, %24.15f, %24.15f\n",
+                rank, step, my_atoms[i].Hindex, k,
+                hbond_jk->hb_f[0],
+                hbond_jk->hb_f[1],
+                hbond_jk->hb_f[2] );
+    }
+}
+
+
+static void Print_HBonds( reax_system *system, int step )
+{
+    int blocks;
+    
+    blocks = (system->n) / DEF_BLOCK_SIZE + 
+        (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
+
+    k_print_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, *(*dev_lists + HBONDS), system->n, system->my_rank, step );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+}
+
+
+CUDA_GLOBAL void k_init_bond_orders( reax_atom *my_atoms, reax_list far_nbrs, 
+        reax_list bonds, real *total_bond_order, int N )
+{
+    int i, pj; 
+//    int j; 
+    int start_i, end_i;
+//    far_neighbor_data *nbr_pj;
+//    reax_atom *atom_i, *atom_j;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+//    atom_i = &(my_atoms[i]);
     start_i = Dev_Start_Index(i, &far_nbrs);
     end_i = Dev_End_Index(i, &far_nbrs);
 
@@ -1068,51 +1224,75 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control ) 
 {
-    int i, ret, Htop;
+    int ret, ret_bonds, ret_hbonds, ret_cm;
     int blocks, hblocks;
 
-    ret = Cuda_Estimate_Storages( system, control, dev_lists, &(dev_workspace->H), data->step );
+    /* init the workspace (bond_mark) */
+//    cuda_memset( dev_workspace->bond_mark, 0, sizeof(int) * system->n, "bond_mark" );
+//
+//    blocks = (system->N - system->n) / DEF_BLOCK_SIZE + 
+//       (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+//    k_init_bond_mark <<< blocks, DEF_BLOCK_SIZE >>>
+//       ( system->n, (system->N - system->n), dev_workspace->bond_mark );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+
+    /* main kernel */
+    blocks = (system->N) / DEF_BLOCK_SIZE + 
+        (((system->N % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
+
+//    k_init_bond_orders <<< blocks, DEF_BLOCK_SIZE >>>
+//        ( system->d_my_atoms, *(*dev_lists + FAR_NBRS), *(*dev_lists + BONDS),
+//          dev_workspace->total_bond_order, system->N );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+//
+//    k_print_hbond_info <<< blocks, DEF_BLOCK_SIZE >>>
+//        ( system->d_my_atoms, system->reax_param.d_sbp,
+//          (control_params *)control->d_control_params,
+//          *(*dev_lists + HBONDS), system->N );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
+
+    /* reset reallocation flags on device */
+    cuda_memset( system->d_realloc_bonds, FALSE, sizeof(int), 
+            "Cuda_Init_Forces::d_realloc_bonds" );
+    cuda_memset( system->d_realloc_hbonds, FALSE, sizeof(int), 
+            "Cuda_Init_Forces::d_realloc_hbonds" );
+    cuda_memset( system->d_realloc_cm_entries, FALSE, sizeof(int), 
+            "Cuda_Init_Forces::d_realloc_cm_entries" );
+
+    k_init_forces <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, system->reax_param.d_sbp,
+          system->reax_param.d_tbp, *dev_workspace,
+          (control_params *)control->d_control_params,
+          *(*dev_lists + FAR_NBRS), *(*dev_lists + BONDS),
+          *(*dev_lists + HBONDS), d_LR, system->n,
+          system->N, system->reax_param.num_atom_types,
+          (((data->step-data->prev_steps) % control->reneighbor) == 0),
+          system->d_cm_entries, system->d_max_cm_entries, system->d_realloc_cm_entries,
+          system->d_bonds, system->d_max_bonds, system->d_realloc_bonds,
+          system->d_hbonds, system->d_max_hbonds, system->d_realloc_hbonds );
+    cudaThreadSynchronize( );
+    cudaCheckError( );
+
+    /* check reallocation flags on device */
+    copy_host_device( &ret_bonds, system->d_realloc_bonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_bonds" );
+    copy_host_device( &ret_hbonds, system->d_realloc_hbonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_hbonds" );
+    copy_host_device( &ret_cm, system->d_realloc_cm_entries, sizeof(int), 
+            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_cm_entries" );
+
+    ret = (ret_bonds == FALSE && ret_hbonds == FALSE && ret_cm == FALSE) ? SUCCESS : FAILURE;
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] p%d, step %d: ret = %d, ret_bonds = %d, ret_hbonds = %d, ret_cm = %d\n",
+            system->my_rank, data->step, ret, ret_bonds, ret_hbonds, ret_cm );
+#endif
 
     if ( ret == SUCCESS )
     {
-//        /* init the workspace (bond_mark) */
-//        cuda_memset( dev_workspace->bond_mark, 0, sizeof(int) * system->n, "bond_mark" );
-//
-//        blocks = (system->N - system->n) / DEF_BLOCK_SIZE + 
-//           (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-//        k_init_bond_mark <<< blocks, DEF_BLOCK_SIZE >>>
-//           ( system->n, (system->N - system->n), dev_workspace->bond_mark );
-//        cudaThreadSynchronize( );
-//        cudaCheckError( );
-
-        /* main kernel */
-        blocks = (system->N) / DEF_BLOCK_SIZE + 
-            (((system->N % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
-
-//        k_init_bond_orders <<< blocks, DEF_BLOCK_SIZE >>>
-//            ( system->d_my_atoms, *(*dev_lists + FAR_NBRS), *(*dev_lists + BONDS),
-//              dev_workspace->total_bond_order, system->N );
-//        cudaThreadSynchronize( );
-//        cudaCheckError( );
-
-//        k_print_hbond_info <<< blocks, DEF_BLOCK_SIZE >>>
-//            ( system->d_my_atoms, system->reax_param.d_sbp,
-//              (control_params *)control->d_control_params,
-//              *(*dev_lists + HBONDS), system->N );
-//        cudaThreadSynchronize( );
-//        cudaCheckError( );
-
-        k_init_forces <<< blocks, DEF_BLOCK_SIZE >>>
-            ( system->d_my_atoms, system->reax_param.d_sbp,
-              system->reax_param.d_tbp, *dev_workspace,
-              (control_params *)control->d_control_params,
-              *(*dev_lists + FAR_NBRS), *(*dev_lists + BONDS),
-              *(*dev_lists + HBONDS), d_LR, system->n,
-              system->N, system->reax_param.num_atom_types,
-              (((data->step-data->prev_steps) % control->reneighbor) == 0) );
-        cudaThreadSynchronize( );
-        cudaCheckError( );
-
         /* fix sym_index and dbond_index */
         New_fix_sym_dbond_indices <<< blocks, BLOCK_SIZE >>> 
             ( *(*dev_lists + BONDS), system->N );
@@ -1137,10 +1317,15 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 //            ( *(*dev_lists + BONDS), *dev_workspace, system->N );
 //        cudaThreadSynchronize( );
 //        cudaCheckError( );
+    }
+    else
+    {
+        Cuda_Estimate_Storages( system, control, dev_lists,
+               ret_bonds, ret_hbonds, ret_cm, data->step );
 
-        /* validate lists */
-        ret = Cuda_Validate_Lists( system, workspace, dev_lists, control,
-                data->step, system->numH );
+        dev_workspace->realloc.bonds = ret_bonds;
+        dev_workspace->realloc.hbonds = ret_hbonds;
+        dev_workspace->realloc.cm = ret_cm;
     }
 
     return ret;
@@ -1160,12 +1345,14 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, 
         reax_list **lists, output_controls *out_control )
 {
-    int i, hbs, hnbrs_blocks, update_energy, ret;
+    int hbs, hnbrs_blocks, update_energy, ret;
     int *thbody;
     static int compute_bonded_part1 = FALSE;
-    real t_start, t_elapsed;
     real *spad = (real *) scratch;
     rvec *rvec_spad;
+#if defined(DEBUG)
+    real t_start, t_elapsed;
+#endif
 
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
@@ -1174,9 +1361,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     if ( compute_bonded_part1 == FALSE )
     {
         /* 1. Bond Order Interactions */
+#if defined(DEBUG)
         t_start = Get_Time( );
 
-#if defined(DEBUG)
         fprintf( stderr, " Begin Bonded Forces ... %d x %d\n",
                 BLOCKS_N, BLOCK_SIZE );
 #endif
@@ -1206,16 +1393,19 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cudaThreadSynchronize( );
         cudaCheckError( );
 
+#if defined(DEBUG)
         t_elapsed = Get_Timing_Info( t_start );
 
-#if defined(DEBUG)
         fprintf( stderr, "Bond Orders... return value --> %d --- Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
         fprintf( stderr, "Cuda_Calculate_Bond_Orders Done... \n" );
 #endif
 
         /* 2. Bond Energy Interactions */
+#if defined(DEBUG)
         t_start = Get_Time( );
+#endif
+
         cuda_memset( spad, 0, system->N * (2 * sizeof(real)) , "scratch" );
 
         Cuda_Bonds <<< BLOCKS, BLOCK_SIZE, sizeof(real)* BLOCK_SIZE >>>
@@ -1232,16 +1422,19 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                     system->n );
         }
 
+#if defined(DEBUG)
         t_elapsed = Get_Timing_Info( t_start );
 
-#if defined(DEBUG)
         fprintf( stderr, "Cuda_Bond_Energy ... return value --> %d --- Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
         fprintf( stderr, "Cuda_Bond_Energy Done... \n" );
 #endif
 
         /* 3. Atom Energy Interactions */
+#if defined(DEBUG)
         t_start = Get_Time( );
+#endif
+
         cuda_memset( spad, 0, ( 6 * sizeof(real) * system->n ), "scratch" );
 
         Cuda_Atom_Energy <<< BLOCKS, BLOCK_SIZE >>>
@@ -1282,9 +1475,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                     system->n );
         }
 
+#if defined(DEBUG)
         t_elapsed = Get_Timing_Info( t_start );
 
-#if defined(DEBUG)
         fprintf( stderr, "test_LonePair_postprocess ... return value --> %d --- Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
         fprintf( stderr, "test_LonePair_postprocess Done... \n");
@@ -1294,7 +1487,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     }
 
     /* 4. Valence Angles Interactions */
+#if defined(DEBUG)
     t_start = Get_Time( );
+#endif
 
     thbody = (int *) scratch;
     ret = Cuda_Estimate_Storage_Three_Body( system, control, data->step,
@@ -1310,9 +1505,10 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        Cuda_Init_Three_Body_Indices( thbody, system->total_bonds );
+        Cuda_Init_Three_Body_Indices( thbody, system->total_thbodies_indices );
 
         cuda_memset( spad, 0, 6 * sizeof(real) * system->N + sizeof(rvec) * system->N * 2, "scratch" );
+
         Cuda_Valence_Angles <<< BLOCKS_N, BLOCK_SIZE >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               system->reax_param.d_sbp, system->reax_param.d_thbp, 
@@ -1367,19 +1563,22 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cudaThreadSynchronize( );
         cudaCheckError( );
 
+#if defined(DEBUG)
         t_elapsed = Get_Timing_Info( t_start );
 
-#if defined(DEBUG)
         fprintf( stderr, "Three_Body_Interactions ...  Timing %lf \n",
                 t_elapsed );
         fprintf( stderr, "Three_Body_Interactions Done... \n" );
 #endif
 
         /* 5. Torsion Angles Interactions */
+#if defined(DEBUG)
         t_start = Get_Time( );
-        cuda_memset( spad, 0,
-                4 * sizeof(real) * system->n + sizeof(rvec) * system->n * 2,
+#endif
+
+        cuda_memset( spad, 0, 4 * sizeof(real) * system->n + sizeof(rvec) * system->n * 2,
                 "scratch" );
+
         Cuda_Torsion_Angles <<< BLOCKS, BLOCK_SIZE >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(*dev_lists + BONDS),
@@ -1426,9 +1625,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cudaThreadSynchronize( );
         cudaCheckError( );
 
+#if defined(DEBUG)
         t_elapsed = Get_Timing_Info( t_start );
 
-#if defined(DEBUG)
         fprintf( stderr, "Four_Body_post process return value --> %d --- Four body Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
         fprintf( stderr, " Four_Body_ Done... \n");
@@ -1437,7 +1636,10 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         /* 6. Hydrogen Bonds Interactions */
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
         {
+#if defined(DEBUG)
             t_start = Get_Time( );
+#endif
+
             cuda_memset( spad, 0,
                     2 * sizeof(real) * system->n + sizeof(rvec) * system->n * 2, "scratch" );
 
@@ -1452,9 +1654,14 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                       (control_params *) control->d_control_params,
                       *dev_workspace, *(*dev_lists + BONDS), *(*dev_lists + HBONDS),
                       system->n, system->reax_param.num_atom_types,
-                      spad, (rvec *) (spad + 2 * system->n) );
+                      spad, (rvec *) (spad + 2 * system->n), system->my_rank, data->step );
             cudaThreadSynchronize( );
             cudaCheckError( );
+
+//            if ( data->step == 10 )
+//            {
+//                Print_HBonds( system, data->step );
+//            }
 
             /* reduction for E_HB */
             if ( update_energy == TRUE )
@@ -1498,9 +1705,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             cudaThreadSynchronize( );
             cudaCheckError( );
 
+#if defined(DEBUG)
             t_elapsed = Get_Timing_Info( t_start );
 
-#if defined(DEBUG)
             fprintf( stderr,
                     "Hydrogen bonds return value --> %d --- HydrogenBonds Timing %lf \n",
                     cudaGetLastError( ), t_elapsed );
@@ -1564,6 +1771,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int charge_flag, retVal;
+    static int init_forces_done = FALSE;
 
 #if defined(LOG_PERFORMANCE)
     real t_start = 0;
@@ -1587,13 +1795,21 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         charge_flag = FALSE;
     }
 
-    if ( charge_flag == TRUE )
+    if ( init_forces_done == FALSE )
     {
-        retVal = Cuda_Init_Forces( system, control, data, workspace, lists, out_control );
-    }
-    else
-    {
-        retVal = Cuda_Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
+        if ( charge_flag == TRUE )
+        {
+            retVal = Cuda_Init_Forces( system, control, data, workspace, lists, out_control );
+        }
+        else
+        {
+            retVal = Cuda_Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
+        }
+
+        if ( retVal == SUCCESS )
+        {
+            init_forces_done = TRUE;
+        }
     }
 
     if ( retVal == SUCCESS )
@@ -1647,6 +1863,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
 #endif //PURE_REAX
 
         /********* nonbonded interactions ************/
@@ -1660,6 +1877,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
             Update_Timing_Info( &t_start, &(data->timing.nonb) );
         }
 #endif
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
                 system->my_rank, data->step );
@@ -1676,6 +1894,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
             Update_Timing_Info( &t_start, &(data->timing.bonded) );
         }
 #endif
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d @ step%d: total forces computed\n",
                 system->my_rank, data->step );
@@ -1683,6 +1902,8 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         MPI_Barrier( MPI_COMM_WORLD );
 
 #endif
+
+        init_forces_done = FALSE;
     }
 
     return retVal;

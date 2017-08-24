@@ -7,12 +7,8 @@
 
 AM_V_NVCC = $(AM_V_NVCC_@AM_V@)
 AM_V_NVCC_ = $(AM_V_NVCC_@AM_DEFAULT_V@)
-AM_V_NVCC_0 = @echo "  NVCC" $@;
-
-# these are default values for the maximun register count parameter
-# passed to nvcc compiler (you might need to change it sometimes; all you need
-# is to set it as an environment variable).
-MAX_REG_COUNT ?=48
+AM_V_NVCC_0 = @echo "  NVCC    " $@;
+AM_V_NVCC_1 =
 
 .cu.o:
-	$(AM_V_NVCC)$(NVCC) $(NVCCFLAGS) -maxrregcount=$(MAX_REG_COUNT) -o $@ -c $<
+	$(AM_V_NVCC)$(NVCC) $(NVCCFLAGS) -o $@ -c $<

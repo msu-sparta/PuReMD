@@ -570,18 +570,18 @@ void Cuda_RvecCopy_To(rvec2 *dst, real *src, int index, int n)
 
 void Cuda_Dual_Matvec( sparse_matrix *H, rvec2 *a, rvec2 *b, int n, int size )
 {
-    int blocks;
+//    int blocks;
 
-    blocks = (n / DEF_BLOCK_SIZE) + 
-        (( n % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+//    blocks = (n / DEF_BLOCK_SIZE) + 
+//        (( n % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
 
     cuda_memset( b, 0, sizeof(rvec2) * size, "dual_matvec:result" );
 
-    //One thread per row implementation
-    //k_dual_matvec <<< blocks, DEF_BLOCK_SIZE >>>
-    //        (*H, a, b, n);
-    //cudaThreadSynchronize ();
-    //cudaCheckError ();
+    /* one thread per row implementation */
+//    k_dual_matvec <<< blocks, DEF_BLOCK_SIZE >>>
+//        ( *H, a, b, n );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
 
     //One warp per row implementation
 #if defined(__SM_35__)
@@ -628,16 +628,16 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout,
         simulation_data *data )
 {
-    int  i, j, n, N, matvecs, scale;
+    int i, n, matvecs, scale;
+//    int j, N;
     rvec2 tmp, alpha, beta;
     rvec2 my_sum, norm_sqr, b_norm, my_dot;
     rvec2 sig_old, sig_new;
     MPI_Comm comm;
     rvec2 *spad = (rvec2 *) host_scratch;
-    int a;
 
     n = system->n;
-    N = system->N;
+//    N = system->N;
     comm = mpi_data->world;
     matvecs = 0;
     scale = sizeof(rvec2) / sizeof(void);
@@ -679,7 +679,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     //originally we were using only H->n which was system->n (init_md.c)
     //Cuda_Dual_Matvec ( H, x, dev_workspace->q2, H->n, system->total_cap);
     
-    Cuda_Dual_Matvec ( H, x, dev_workspace->q2, system->N, system->total_cap);
+    Cuda_Dual_Matvec( H, x, dev_workspace->q2, system->N, system->total_cap );
 
 //  compare_rvec2 (workspace->q2, dev_workspace->q2, N, "q2");
 
@@ -693,7 +693,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     
     copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
             cudaMemcpyDeviceToHost, "CG:q2:get" );
-    Coll(system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+    Coll( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker );
     copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
             cudaMemcpyHostToDevice,"CG:q2:put" );
 
@@ -730,8 +730,9 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //  fprintf (stderr, "cg: my_sum[ %f, %f] \n", my_sum[0], my_sum[1]);
 //#endif
 
-    my_sum[0] = my_sum[1] = 0;
-    Cuda_Norm (b, n, my_sum);
+    my_sum[0] = 0;
+    my_sum[1] = 0;
+    Cuda_Norm( b, n, my_sum );
 
 //  fprintf (stderr, "cg: my_sum[ %f, %f] \n", my_sum[0], my_sum[1]);
 
@@ -750,8 +751,9 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //  fprintf( stderr, "my_dot: %f %f\n", my_dot[0], my_dot[1] );
 //#endif
 
-    my_dot[0] = my_dot[1] = 0;
-    Cuda_Dot (dev_workspace->r2, dev_workspace->d2, my_dot, n);
+    my_dot[0] = 0;
+    my_dot[1] = 0;
+    Cuda_Dot( dev_workspace->r2, dev_workspace->d2, my_dot, n );
 
 // fprintf( stderr, "my_dot: %f %f\n", my_dot[0], my_dot[1] );
     
@@ -841,7 +843,8 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
-        my_dot[0] = my_dot[1] = 0;
+        my_dot[0] = 0;
+        my_dot[1] = 0;
 
 //#ifdef __CUDA_DEBUG__
 //    for( j = 0; j < system->n; ++j ) {
@@ -861,7 +864,8 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 //       fprintf( stderr, "H:my_dot: %f %f\n", my_dot[0], my_dot[1] );
 //#endif
 
-        my_dot[0] = my_dot[1] = 0;
+        my_dot[0] = 0;
+        my_dot[1] = 0;
         Cuda_DualCG_Preconditioner( dev_workspace, x, alpha, system->n, my_dot );
 
         //fprintf( stderr, "D:my_dot: %f %f\n", my_dot[0], my_dot[1] );
@@ -971,9 +975,10 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
         *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
-    int  i, j, scale;
+    int  i, scale;
+//    int j;
     real tmp, alpha, beta, b_norm;
-    real sig_old, sig_new, sig0;
+    real sig_old, sig_new;
     real *spad = (real *) host_scratch;
 
     scale = sizeof(real) / sizeof(void);
@@ -1027,8 +1032,6 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
     sig_new = Parallel_Dot( spad, spad + system->total_cap, system->n,
             mpi_data->world );
 
-    sig0 = sig_new;
-
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
@@ -1036,7 +1039,7 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
     }
 #endif
 
-    for ( i = 1; i < 300 && SQRT(sig_new) / b_norm > tol; ++i )
+    for ( i = 1; i < 1000 && SQRT(sig_new) / b_norm > tol; ++i )
     {
         //MVAPICH2
         copy_host_device( spad, dev_workspace->d, sizeof(real) * system->total_cap,
@@ -1101,12 +1104,6 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
             Update_Timing_Info( &t_start, &dot_time );
         }
 #endif
-    }
-
-    if ( i >= 300 )
-    {
-        fprintf( stderr, "CG convergence failed!\n" );
-        return i;
     }
 
     return i;

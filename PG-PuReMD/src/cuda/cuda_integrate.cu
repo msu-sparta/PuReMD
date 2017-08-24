@@ -284,7 +284,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int steps, renbr, ret;
-    static int verlet_part1_done = FALSE, estimate_nbrs_done = 0;
+    static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt;
 #if defined(DEBUG)
     real t_over_start, t_over_elapsed;
@@ -300,11 +300,10 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
     ret = SUCCESS;
 
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
-
     if ( verlet_part1_done == FALSE )
     {
         update_velocity_part1( system, dt );
+
         verlet_part1_done = TRUE;
 
 #if defined(DEBUG_FOCUS)
@@ -321,43 +320,38 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
         Sync_Atoms( system );
 
-        /* synch the Grid to the Device here */
+        /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
         init_blocks( system );
-
-#if defined(__CUDA_DEBUG_LOG__)
-        fprintf( stderr, "p:%d - Matvec BLocks: %d, blocksize: %d \n",
-                system->my_rank, MATVEC_BLOCKS, MATVEC_BLOCK_SIZE );
-#endif
     }
+
+    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
 
     Cuda_Reset( system, control, data, workspace, lists );
 
-    if ( renbr )
+    if ( renbr && far_nbrs_done == FALSE )
     {
 #if defined(DEBUG)
         t_over_start  = Get_Time( );
 #endif
 
-        if ( estimate_nbrs_done == 0 )
-        {
-            //TODO: move far_nbrs reallocation checks outside of renbr frequency check
-            ret = Cuda_Estimate_Neighbors( system, data->step );
-            estimate_nbrs_done = 1;
-        }
+        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
-        if ( ret == SUCCESS && estimate_nbrs_done == 1 )
+        if ( ret != SUCCESS )
         {
-            Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
-            estimate_nbrs_done = 2;
+            Cuda_Estimate_Neighbors( system );
+        }
+        if ( ret == SUCCESS )
+        {
+            far_nbrs_done = TRUE;
+        }
     
 #if defined(DEBUG)
-            t_over_elapsed = Get_Timing_Info( t_over_start );
-            fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
-                    system->my_rank, data->step, t_over_elapsed );
+        t_over_elapsed = Get_Timing_Info( t_over_start );
+        fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
+                system->my_rank, data->step, t_over_elapsed );
 #endif
-        }
     }
 
     if ( ret == SUCCESS )
@@ -371,7 +365,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         update_velocity_part2( system, dt );
 
         verlet_part1_done = FALSE;
-        estimate_nbrs_done = 0;
+        far_nbrs_done = FALSE;
     }
     
 #if defined(DEBUG_FOCUS)
@@ -389,7 +383,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 {
     int itr, steps, renbr, ret;
     real *d_my_ekin, *d_total_my_ekin;
-    static int verlet_part1_done = FALSE, estimate_nbrs_done = 0;
+    static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt, dt_sqr;
     real my_ekin, new_ekin;
     real G_xi_new, v_xi_new, v_xi_old;
@@ -405,8 +399,6 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     therm = &( data->therm );
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
-
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
 
     if ( verlet_part1_done == FALSE )
     {
@@ -431,46 +423,44 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
         Sync_Atoms( system );
 
-        /* synch the Grid to the Device here */
+        /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
         init_blocks( system );
     }
 
+    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+
     Cuda_Reset( system, control, data, workspace, lists );
 
-    if ( renbr )
+    if ( renbr && far_nbrs_done == FALSE )
     {
 #if defined(DEBUG)
         t_over_start  = Get_Time( );
 #endif
 
-        if ( estimate_nbrs_done == 0 )
+        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+
+        if ( ret != SUCCESS )
         {
-            //TODO: move far_nbrs reallocation checks outside of renbr frequency check
-            ret = Cuda_Estimate_Neighbors( system, data->step );
-            fprintf( stderr, "Cuda_Estimate_Neighbors (%d)\n", ret );
-            estimate_nbrs_done = 1;
+            Cuda_Estimate_Neighbors( system );
+        }
+        if ( ret == SUCCESS )
+        {
+            far_nbrs_done = TRUE;
         }
 
-        if ( ret == SUCCESS && estimate_nbrs_done == 1 )
-        {
-            Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
-            estimate_nbrs_done = 2;
-    
 #if defined(DEBUG)
-            t_over_elapsed = Get_Timing_Info( t_over_start );
-            fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
-                    system->my_rank, data->step, t_over_elapsed );
+        t_over_elapsed = Get_Timing_Info( t_over_start );
+        fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
+                system->my_rank, data->step, t_over_elapsed );
 #endif
-        }
     }
 
     if ( ret == SUCCESS )
     {
         ret = Cuda_Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
-        fprintf( stderr, "Cuda_Compute_Forces (%d)\n", ret );
     }
 
     if ( ret == SUCCESS )
@@ -514,7 +504,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
                 "Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein::d_my_ekin" );
 
         verlet_part1_done = FALSE;
-        estimate_nbrs_done = 0;
+        far_nbrs_done = FALSE;
     }
     
 #if defined(DEBUG_FOCUS)
@@ -534,7 +524,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int steps, renbr, ret;
-    static int verlet_part1_done = FALSE, estimate_nbrs_done = 0;
+    static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt, lambda;
 #if defined(DEBUG)
     real t_over_start, t_over_elapsed;
@@ -550,18 +540,19 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
     ret = SUCCESS;
 
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
-
     if ( verlet_part1_done == FALSE )
     {
         /* velocity verlet, 1st part */
         update_velocity_part1( system, dt );
+
         verlet_part1_done = TRUE;
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
+        Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
 
         if ( renbr )
         {
@@ -576,39 +567,38 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
         init_blocks( system );
-
-#if defined(__CUDA_DEBUG_LOG__)
-        fprintf( stderr, "p:%d - Matvec BLocks: %d, blocksize: %d \n",
-                system->my_rank, MATVEC_BLOCKS, MATVEC_BLOCK_SIZE );
-#endif
-    }
     
-    Cuda_Reset( system, control, data, workspace, lists );
+        Cuda_Reset( system, control, data, workspace, lists );
+    }
+    else
+    {
+        Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+    
+        Cuda_Reset( system, control, data, workspace, lists );
+    }
 
-    if ( renbr )
+    if ( renbr && far_nbrs_done == FALSE )
     {
 #if defined(DEBUG)
-        t_over_start  = Get_Time ();
+        t_over_start  = Get_Time( );
 #endif
 
-        if ( estimate_nbrs_done == 0 )
-        {
-            //TODO: move far_nbrs reallocation checks outside of renbr frequency check
-            ret = Cuda_Estimate_Neighbors( system, data->step );
-            estimate_nbrs_done = 1;
-        }
+        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
-        if ( ret == SUCCESS && estimate_nbrs_done == 1 )
+        if ( ret != SUCCESS )
         {
-            Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
-            estimate_nbrs_done = 2;
-    
+            Cuda_Estimate_Neighbors( system );
+        }
+        if ( ret == SUCCESS )
+        {
+            far_nbrs_done = TRUE;
+        }
+        
 #if defined(DEBUG)
-            t_over_elapsed  = Get_Timing_Info( t_over_start );
-            fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
-                    system->my_rank, data->step, t_over_elapsed );
+        t_over_elapsed  = Get_Timing_Info( t_over_start );
+        fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
+                system->my_rank, data->step, t_over_elapsed );
 #endif
-        }
     }
 
     if ( ret == SUCCESS )
@@ -653,7 +643,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 #endif
 
         verlet_part1_done = FALSE;
-        estimate_nbrs_done = 0;
+        far_nbrs_done = FALSE;
     }
 
     return ret;
@@ -668,7 +658,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int steps, renbr, ret;
-    static int verlet_part1_done = FALSE, estimate_nbrs_done = 0;
+    static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt;
 #if defined(DEBUG)
     real t_over_start, t_over_elapsed;
@@ -684,11 +674,10 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
     ret = SUCCESS;
 
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
-
     if ( verlet_part1_done == FALSE )
     {
         update_velocity_part1( system, dt );
+
         verlet_part1_done = TRUE;
 
 #if defined(DEBUG_FOCUS)
@@ -711,32 +700,32 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         init_blocks( system );
     }
 
+    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+
     Cuda_Reset( system, control, data, workspace, lists );
 
-    if ( renbr )
+    if ( renbr && far_nbrs_done == FALSE )
     {
 #if defined(DEBUG)
         t_over_start  = Get_Time( );
 #endif
 
-        if ( estimate_nbrs_done == 0 )
-        {
-            //TODO: move far_nbrs reallocation checks outside of renbr frequency check
-            ret = Cuda_Estimate_Neighbors( system, data->step );
-            estimate_nbrs_done = 1;
-        }
+        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
-        if ( ret == SUCCESS && estimate_nbrs_done == 1 )
+        if ( ret != SUCCESS )
         {
-            Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
-            estimate_nbrs_done = 2;
+            Cuda_Estimate_Neighbors( system );
+        }
+        if ( ret == SUCCESS )
+        {
+            far_nbrs_done = TRUE;
+        }
     
 #if defined(DEBUG)
-            t_over_elapsed = Get_Timing_Info( t_over_start );
-            fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
-                    system->my_rank, data->step, t_over_elapsed );
+        t_over_elapsed = Get_Timing_Info( t_over_start );
+        fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
+                system->my_rank, data->step, t_over_elapsed );
 #endif
-        }
     }
 
     if ( ret == SUCCESS )
@@ -749,12 +738,12 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
     {
         update_velocity_part2( system, dt );
 
-        verlet_part1_done = FALSE;
-        estimate_nbrs_done = 0;
-
         Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
         Cuda_Compute_Pressure( system, control, data, mpi_data );
         Cuda_Scale_Box( system, control, data, mpi_data );
+
+        verlet_part1_done = FALSE;
+        far_nbrs_done = FALSE;
     }
     
 #if defined(DEBUG_FOCUS)

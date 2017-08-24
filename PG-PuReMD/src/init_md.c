@@ -105,7 +105,7 @@ void Generate_Initial_Velocities( reax_system *system, real T )
     }
     else
     {
-        Randomize();
+        Randomize( );
 
         for ( i = 0; i < system->n; i++ )
         {

@@ -19,34 +19,47 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __RANDOM_H_
-#define __RANDOM_H_
+#include "cuda_random.h"
 
-#include "reax_types.h"
-
-
-#ifdef _cplusplus
-extern "C" {
-#endif
 
 /* System random number generator used linear congruance method with
    large periodicity for generation of pseudo random number. function
    Random returns this random number appropriately scaled so that
    0 <= Random(range) < range */
-double Random( double );
+CUDA_DEVICE double Cuda_Random( double range )
+{
+    //TODO: use cuRAND
+//    return (random( ) * range) / 2147483647L;
+    return 0.0;
+}
+
 
 /* This function seeds the system pseudo random number generator with
    current time. Use this function once in the begining to initialize
    the system */
-void Randomize( );
+void Cuda_Randomize( )
+{
+    //TODO: use cuRAND
+//    curandState_t state;
+//
+//    curand_init( time(NULL), 0, 0, &state );
+}
+
 
 /* GRandom return random number with gaussian distribution with mean
    and standard deviation "sigma" */
-double GRandom( double, double );
+CUDA_DEVICE double Cuda_GRandom( double mean, double sigma )
+{
+    double v1 = Cuda_Random(2.0) - 1.0;
+    double v2 = Cuda_Random(2.0) - 1.0;
+    double rsq = v1 * v1 + v2 * v2;
 
-#ifdef _cplusplus
+    while (rsq >= 1.0 || rsq == 0.0)
+    {
+        v1 = Cuda_Random(2.0) - 1.0;
+        v2 = Cuda_Random(2.0) - 1.0;
+        rsq = v1 * v1 + v2 * v2;
+    }
+
+    return mean + v1 * sigma * SQRT(-2.0 * LOG(rsq) / rsq);
 }
-#endif
-
-
-#endif

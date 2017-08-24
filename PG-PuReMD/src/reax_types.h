@@ -198,12 +198,12 @@
 #endif
 
 /**************** RESOURCE CONSTANTS **********************/
-/* 20 MB */
-#define HOST_SCRATCH_SIZE               (1024 * 1024 * 20)
+/* 500 MB */
+#define HOST_SCRATCH_SIZE               (1024 * 1024 * 500)
 #ifdef HAVE_CUDA
-/* 20 MB */
-#define DEVICE_SCRATCH_SIZE             (1024 * 1024 * 20)
-/* 20 MB */
+/* 500 MB */
+#define DEVICE_SCRATCH_SIZE             (1024 * 1024 * 500)
+/* 500 MB */
 #define RES_SCRATCH                     0x90
 
 /* BLOCK SIZES for kernels */
@@ -433,21 +433,21 @@ typedef real rvec4[4];
 /* header used in restart file */
 typedef struct
 {
-    /**/
+    /* current simulation time step */
     int step;
-    /**/
+    /* total num. atoms in simulation */
     int bigN;
-    /**/
+    /* thermostat temperature */
     real T;
-    /**/
+    /* thrmostat ??? */
     real xi;
-    /**/
+    /* thrmostat ??? */
     real v_xi;
-    /**/
+    /* thrmostat ??? */
     real v_xi_old;
-    /**/
+    /* thrmostat ??? */
     real G_xi;
-    /**/
+    /* ??? */
     rtensor box;
 } restart_header;
 
@@ -1238,6 +1238,8 @@ typedef struct
     /* TRUE if charge matrix requires reallocation, FALSE otherwise (GPU) */
     int *d_realloc_cm_entries;
 
+    /* total num. three body list indices */
+    int total_thbodies_indices;
     /* total num. three body interactions */
     int total_thbodies;
     /* total num. three body interactions (GPU) */
@@ -1802,6 +1804,8 @@ typedef struct
     int num_bonds;
     /* TRUE if three body list needs
      * to be reallocated, FALSE otherwise */
+    int thbody;
+    /**/
     int num_3body;
     /**/
     int gcell_atoms;

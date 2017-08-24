@@ -165,9 +165,9 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
         reax_list p_thb_intrs, storage p_workspace, int n, int num_atom_types, 
         real *data_e_tor, real *data_e_con, rvec *data_ext_press )
 {
-    int i, j, k, l, pi, pj, pk, pl, pij, plk, natoms;
+    int i, j, k, l, pi, pj, pk, pl, pij, plk;
     int type_i, type_j, type_k, type_l;
-    int start_j, end_j, start_k, end_k;
+    int start_j, end_j;
     int start_pj, end_pj, start_pk, end_pk;
     int num_frb_intrs = 0;
 
@@ -217,9 +217,6 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
     // sprintf( fname, "tor%d.out", system->my_rank );
     // ftor = fopen( fname, "w" );
 
-    //natoms = system->n;
-
-    //for( j = 0; j < natoms; ++j ) {
     type_j = my_atoms[j].type;
     Delta_j = workspace->Delta_boc[j];
     start_j = Dev_Start_Index(j, bonds);
@@ -236,10 +233,8 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
            where j is the central atom. Otherwise there is no point in
            trying to form a 4-body interaction out of this neighborhood */
         if ( my_atoms[j].orig_id < my_atoms[k].orig_id && 
-                bo_jk->BO > control->thb_cut/*0*/ && Dev_Num_Entries(pk, thb_intrs) )
+                bo_jk->BO > control->thb_cut && Dev_Num_Entries(pk, thb_intrs) )
         {
-            start_k = Dev_Start_Index(k, bonds);
-            end_k = Dev_End_Index(k, bonds);               
             pj = pbond_jk->sym_index; // pj points to j on k's list
 
             /* do the same check as above: 
@@ -272,7 +267,7 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
                     bo_ij = &( pbond_ij->bo_data );
 
 
-                    if ( bo_ij->BO > control->thb_cut/*0*/ )
+                    if ( bo_ij->BO > control->thb_cut )
                     {
                         i = p_ijk->thb;
                         type_i = my_atoms[i].type;
@@ -312,8 +307,8 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
                             fbp = &(d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)].prm[0]);
 
                             if ( i != l && fbh->cnt && 
-                                    bo_kl->BO > control->thb_cut/*0*/ &&
-                                    bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut/*0*/ )
+                                    bo_kl->BO > control->thb_cut &&
+                                    bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
                             {
                                 ++num_frb_intrs;
                                 r_kl = pbond_kl->d;
@@ -340,7 +335,6 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
                                         -1., my_atoms[l].x );
                                 r_li = rvec_Norm( dvec_li );                 
 
-
                                 /* omega and its derivative */
                                 omega = Calculate_Omega( pbond_ij->dvec, r_ij,
                                         pbond_jk->dvec, r_jk, pbond_kl->dvec, r_kl,
@@ -365,7 +359,8 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
                                         fbp->V2 * exp_tor1 * (1.0 - cos2omega) +
                                         fbp->V3 * (1.0 + cos3omega) );
 
-                                data_e_tor [j] += e_tor = fn10 * sin_ijk * sin_jkl * CV;
+                                e_tor = fn10 * sin_ijk * sin_jkl * CV;
+                                data_e_tor[j] += e_tor;
 
                                 dfn11 = (-p_tor3 * exp_tor3_DjDk +
                                         (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk) *
@@ -398,9 +393,9 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
 
                                 /* 4-body conjugation energy */
                                 fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
-                                data_e_con [j] += e_con =
-                                    fbp->p_cot1 * fn12 * 
+                                e_con = fbp->p_cot1 * fn12 * 
                                     (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+                                data_e_con[j] += e_con;
 
                                 Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2 * 
                                     (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);

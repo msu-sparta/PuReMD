@@ -19,21 +19,26 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __FFIELD_H_
-#define __FFIELD_H_
+#ifndef __CUDA_RANDOM_H_
+#define __CUDA_RANDOM_H_
 
-#include "reax_types.h"
+#include "../reax_types.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/* System random number generator used linear congruance method with
+   large periodicity for generation of pseudo random number. function
+   Random returns this random number appropriately scaled so that
+   0 <= Random(range) < range */
+CUDA_DEVICE double Cuda_Random( double );
 
-int Read_Force_Field( char*, reax_interaction*, reax_system *, control_params* );
+/* This function seeds the system pseudo random number generator with
+   current time. Use this function once in the begining to initialize
+   the system */
+void Cuda_Randomize( );
 
-#ifdef __cplusplus
-}
-#endif
+/* GRandom return random number with gaussian distribution with mean
+   and standard deviation "sigma" */
+CUDA_DEVICE double Cuda_GRandom( double, double );
 
 
 #endif

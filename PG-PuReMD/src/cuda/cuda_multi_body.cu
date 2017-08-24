@@ -41,9 +41,9 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
-    real p_lp1, p_lp2, p_lp3;
+    real p_lp2, p_lp3;
     real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
-    single_body_parameters *sbp_i, *sbp_j;
+    single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij; 
@@ -59,7 +59,6 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     storage *workspace = &( p_workspace );
 
     /* Initialize parameters */
-    p_lp1 = gp.l[15];
     p_lp3 = gp.l[5];
     p_ovun3 = gp.l[32];
     p_ovun4 = gp.l[31];
@@ -78,8 +77,8 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     inv_expvd2 = 1. / (1. + expvd2 );
 
     /* calculate the energy */
-    data_elp [i] += e_lp = 
-        p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
+    e_lp = p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
+    data_elp[i] += e_lp;
 
     dElp = p_lp2 * inv_expvd2 + 
         75 * p_lp2 * workspace->Delta_lp[i] * expvd2 * SQR(inv_expvd2);
@@ -117,14 +116,16 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
                     twbp = &( tbp[index_tbp (type_i,type_j, num_atom_types) ]);
                     bo_ij = &( bonds->select.bond_list[pj].bo_data );
                     Di = workspace->Delta[i];
-                    vov3 = bo_ij->BO - Di - 0.040*POW(Di, 4.);
+                    vov3 = bo_ij->BO - Di - 0.040 * POW(Di, 4.);
 
                     if ( vov3 > 3. )
                     {
-                        data_elp [i] += e_lph = p_lp3 * SQR(vov3-3.0);
+                        e_lph = p_lp3 * SQR( vov3 - 3.0 );
+                        data_elp[i] += e_lph;
 
-                        deahu2dbo = 2.*p_lp3*(vov3 - 3.);
-                        deahu2dsbo = 2.*p_lp3*(vov3 - 3.)*(-1. - 0.16*POW(Di, 3.));
+                        deahu2dbo = 2. * p_lp3 * (vov3 - 3.);
+                        deahu2dsbo = 2. * p_lp3 * (vov3 - 3.) *
+                            (-1. - 0.16 * POW(Di, 3.));
 
                         bo_ij->Cdbo += deahu2dbo;
                         workspace->CdDelta[i] += deahu2dsbo;
@@ -167,18 +168,11 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
         j = bonds->select.bond_list[pj].nbr;
         type_j = my_atoms[j].type;
         bo_ij = &(bonds->select.bond_list[pj].bo_data);
-        sbp_j = &(sbp[ type_j ]);
         twbp = &(tbp[ index_tbp(type_i, type_j, num_atom_types )]);
 
         sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
         sum_ovun2 += (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j])*
             ( bo_ij->BO_pi + bo_ij->BO_pi2 );
-
-        /*fprintf( stdout, "%4d%4d%12.6f%12.6f%12.6f\n",
-          i+1, j+1,      
-          dfvl * workspace->Delta_lp_temp[j], 
-          sbp_j->nlp_opt,
-          workspace->nlp_temp[j] );*/
     }
 
     exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );
@@ -192,7 +186,8 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     DlpVi = 1.0 / (Delta_lpcorr + sbp_i->valency + 1e-8);
     CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
-    data_eov [i] += e_ov = sum_ovun1 * CEover1;
+    e_ov = sum_ovun1 * CEover1;
+    data_eov[i] += e_ov;
 
     CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 *
         (1.0 - Delta_lpcorr * ( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ));
@@ -212,8 +207,8 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     inv_exp_ovun2n = 1.0 / (1.0 + exp_ovun2n);
     inv_exp_ovun8 = 1.0 / (1.0 + exp_ovun8);
 
-    data_eun [i] += e_un =
-        -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
+    e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
+    data_eun[i] += e_un;
 
     CEunder1 = inv_exp_ovun2n * 
         ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8 +
@@ -330,8 +325,9 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
 CUDA_GLOBAL void Cuda_Atom_Energy_PostProcess( reax_list p_bonds, 
         storage p_workspace, int n )
 {
-    int i,pj;
-    bond_data *pbond, *sbond;
+    int i, pj;
+    bond_data *sbond;
+//    bond_data *pbond;
     bond_data *sym_index_bond;
     reax_list *bonds;
     storage *workspace;
@@ -348,11 +344,9 @@ CUDA_GLOBAL void Cuda_Atom_Energy_PostProcess( reax_list p_bonds,
 
     for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
     {
-        /*
-           pbond = &(bonds->select.bond_list[pj]);
-           dbond_index_bond = &( bonds->select.bond_list[ pbond->dbond_index ] );
-           workspace->CdDelta [i] += dbond_index_bond->ae_CdDelta;
-         */
+//        pbond = &(bonds->select.bond_list[pj]);
+//        dbond_index_bond = &( bonds->select.bond_list[ pbond->dbond_index ] );
+//        workspace->CdDelta[i] += dbond_index_bond->ae_CdDelta;
 
         sbond = &(bonds->select.bond_list[pj]);
         sym_index_bond = &( bonds->select.bond_list[ sbond->sym_index ]); 

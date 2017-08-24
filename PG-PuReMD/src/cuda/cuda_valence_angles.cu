@@ -37,7 +37,8 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 {
     int i, j, pi, k, pk, t;
     int type_i, type_j, type_k;
-    int start_j, end_j, start_pk, end_pk;
+    int start_j, end_j;
+//    int start_pk, end_pk;
     int cnt, num_thb_intrs;
     real temp, temp_bo_jt, pBOjt7;
     real p_val1, p_val2, p_val3, p_val4, p_val5;
@@ -54,12 +55,12 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
     real Cf7ij, Cf7jk, Cf8j, Cf9j;
     real f7_ij, f7_jk, f8_Dj, f9_Dj;
     real Ctheta_0, theta_0, theta_00, theta, cos_theta, sin_theta;
-    real r_ij, r_jk;
     real BOA_ij, BOA_jk;
     rvec force, ext_press;
     three_body_header *thbh;
     three_body_parameters *thbp;
-    three_body_interaction_data *p_ijk, *p_kji;
+    three_body_interaction_data *p_ijk;
+//    three_body_interaction_data *p_kji;
     bond_data *pbond_ij, *pbond_jk, *pbond_jt;
     bond_order_data *bo_ij, *bo_jk, *bo_jt;
     reax_list *bonds;
@@ -146,17 +147,14 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
         bo_ij = &(pbond_ij->bo_data);
         BOA_ij = bo_ij->BO - control->thb_cut;
 
-        //if( BOA_ij/*bo_ij->BO*/ > 0.0) {
         if ( BOA_ij > 0.0 &&
                 ( j < n || pbond_ij->nbr < n ) )
         {
             i = pbond_ij->nbr;
-            r_ij = pbond_ij->d;
             type_i = my_atoms[i].type;
 
-            /* first copy 3-body intrs from previously computed ones where i>k.
-               in the second for-loop below,
-               we compute only new 3-body intrs where i < k */
+            /* first copy 3-body intrs from previously computed ones where i > k;
+               in the second for-loop below, compute only new 3-body intrs where i < k */
 
             // The copy loop commented out because strange asynchronous issues started to surface
             // Each kernel now manually generates everything
@@ -234,7 +232,6 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                 if ( j < n && BOA_jk > 0.0 &&
                         bo_ij->BO * bo_jk->BO > SQR(control->thb_cut) )
                 {
-                    r_jk = pbond_jk->d;
                     thbh = &( d_thbh[ index_thbp(type_i, type_j, type_k, num_atom_types) ] );
 
                     for ( cnt = 0; cnt < thbh->cnt; ++cnt )
@@ -274,7 +271,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                             {
                                 expval12theta = p_val1 * (1.0 - expval2theta);
                             }
-                            // To avoid linear Me-H-Me angles (6/6/06)
+                            /* to avoid linear Me-H-Me angles (6/6/06) */
                             else
                             {
                                 expval12theta = p_val1 * -expval2theta;
@@ -340,13 +337,13 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
                             exp_coa2 = EXP( p_coa2 * workspace->Delta_boc[j] );
 
-                            /* Similar to above comment regarding if statement */
+                            /* similar to above comment regarding if statement */
                             if ( pk < pi )
                             {
                                 e_coa =
                                     p_coa1 / (1. + exp_coa2) *
-                                    EXP( -p_coa3 * SQR(workspace->total_bond_order[i]-BOA_ij) ) *
-                                    EXP( -p_coa3 * SQR(workspace->total_bond_order[k]-BOA_jk) ) *
+                                    EXP( -p_coa3 * SQR(workspace->total_bond_order[i] - BOA_ij) ) *
+                                    EXP( -p_coa3 * SQR(workspace->total_bond_order[k] - BOA_jk) ) *
                                     EXP( -p_coa4 * SQR(BOA_ij - 1.5) ) *
                                     EXP( -p_coa4 * SQR(BOA_jk - 1.5) );
                                 data_e_coa[j] += e_coa;
@@ -356,9 +353,9 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                             CEcoa2 = -2 * p_coa4 * (BOA_jk - 1.5) * e_coa;
                             CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1 + exp_coa2);
                             CEcoa4 = -2 * p_coa3 *
-                                (workspace->total_bond_order[i]-BOA_ij) * e_coa;
+                                (workspace->total_bond_order[i] - BOA_ij) * e_coa;
                             CEcoa5 = -2 * p_coa3 *
-                                (workspace->total_bond_order[k]-BOA_jk) * e_coa;
+                                (workspace->total_bond_order[k] - BOA_jk) * e_coa;
                             /* END COALITION ENERGY */
 
                             /* FORCES */
@@ -562,7 +559,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_PostProcess( reax_atom *atoms,
 CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *my_atoms,
         control_params *control, reax_list p_bonds, int n, int N, int *count )
 {
-    int i, j, k, pi, pk;
+    int j, pi, pk;
     int start_j, end_j;
     int num_thb_intrs;
     real BOA_ij, BOA_jk;
@@ -590,12 +587,9 @@ CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *my_atoms,
         bo_ij = &(pbond_ij->bo_data);
         BOA_ij = bo_ij->BO - control->thb_cut;
 
-        //if( BOA_ij/*bo_ij->BO*/ > 0.0) {
         if ( BOA_ij > 0.0 &&
                 ( j < n || pbond_ij->nbr < n ) )
         {
-            i = pbond_ij->nbr;
-
             for ( pk = start_j; pk < end_j; ++pk )
             {
                 if ( pk == pi )

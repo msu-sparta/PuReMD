@@ -210,10 +210,9 @@ void cuda_charges_updateq( reax_system *system, real *q )
 void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int i, scale;
+    int scale;
     real u;//, s_sum, t_sum;
     rvec2 my_sum, all_sum;
-    reax_atom *atom;
     real *q;
 
     my_sum[0] = 0.0;

@@ -19,21 +19,23 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __FFIELD_H_
-#define __FFIELD_H_
+#ifndef __CUDA_VECTOR_H_
+#define __CUDA_VECTOR_H_
 
-#include "reax_types.h"
+#include "../reax_types.h"
+
+#include "cuda_random.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-int Read_Force_Field( char*, reax_interaction*, reax_system *, control_params* );
-
-#ifdef __cplusplus
+CUDA_DEVICE static inline void cuda_rvec_Random( rvec v )
+{
+//    v[0] = Cuda_Random( 2.0 ) - 1.0;
+//    v[1] = Cuda_Random( 2.0 ) - 1.0;
+//    v[2] = Cuda_Random( 2.0 ) - 1.0;
+    v[0] = 0.0;
+    v[1] = 0.0;
+    v[2] = 0.0;
 }
-#endif
 
 
 #endif
