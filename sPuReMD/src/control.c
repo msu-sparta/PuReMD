@@ -66,7 +66,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->max_far_nbrs = 1000;
     control->bo_cut = 0.01;
     control->thb_cut = 0.001;
-    control->hb_cut = 7.50;
+    control->hb_cut = 0.0;
 
     control->tabulate = 0;
 
@@ -105,9 +105,9 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->remove_CoM_vel = 25;
 
     out_control->debug_level = 0;
-    out_control->energy_update_freq = 10;
+    out_control->energy_update_freq = 0;
 
-    out_control->write_steps = 100;
+    out_control->write_steps = 0;
     out_control->traj_compress = 0;
     out_control->write = fprintf;
     out_control->traj_format = 0;

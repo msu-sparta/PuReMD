@@ -2522,49 +2522,34 @@ static void QEq( reax_system * const system, control_params * const control,
     case GMRES_S:
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                out_control->log,
                 (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters += GMRES( workspace, control, data, workspace->H,
-                workspace->b_t, control->cm_solver_q_err, workspace->t[0],
-                out_control->log, FALSE );
+                workspace->b_t, control->cm_solver_q_err, workspace->t[0], FALSE );
         break;
 
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                out_control->log,
                 (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters += GMRES_HouseHolder( workspace, control, data, workspace->H,
-                workspace->b_t, control->cm_solver_q_err, workspace->t[0],
-                out_control->log, 0 );
+                workspace->b_t, control->cm_solver_q_err, workspace->t[0], 0 );
         break;
 
     case CG_S:
         iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                    workspace->s[0], out_control->log ) + 1;
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters += CG( workspace, control, workspace->H, workspace->b_t, control->cm_solver_q_err,
-                     workspace->t[0], out_control->log ) + 1;
-//            iters = CG( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
-//                    workspace->L, workspace->U, workspace->s[0], control->cm_solver_pre_app_type,
-//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
-//            iters += CG( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
-//                    workspace->L, workspace->U, workspace->t[0], control->cm_solver_pre_app_type,
-//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
+                workspace->t[0], FALSE ) + 1;
         break;
 
     case SDM_S:
         iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                     workspace->s[0], out_control->log ) + 1;
+                     workspace->s[0] ) + 1;
         iters += SDM( workspace,control,  workspace->H, workspace->b_t, control->cm_solver_q_err,
-                      workspace->t[0], out_control->log ) + 1;
-//            iters = SDM( workspace, workspace->H, workspace->b_s, control->cm_solver_q_err,
-//                    workspace->L, workspace->U, workspace->s[0], control->cm_solver_pre_app_type,
-//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
-//            iters += SDM( workspace, workspace->H, workspace->b_t, control->cm_solver_q_err,
-//                    workspace->L, workspace->U, workspace->t[0], control->cm_solver_pre_app_type,
-//                    control->cm_solver_pre_app_jacobi_iters, out_control->log ) + 1;
+                      workspace->t[0] ) + 1;
         break;
 
     default:
@@ -2624,25 +2609,26 @@ static void EE( reax_system * const system, control_params * const control,
     case GMRES_S:
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                out_control->log,
-                ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
+                (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         break;
 
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                out_control->log,
-                (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
+                control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
         break;
 
     case CG_S:
         iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                workspace->s[0], out_control->log ) + 1;
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     case SDM_S:
         iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                workspace->s[0], out_control->log ) + 1;
+                workspace->s[0] ) + 1;
         break;
 
     default:
@@ -2696,25 +2682,26 @@ static void ACKS2( reax_system * const system, control_params * const control,
     case GMRES_S:
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                out_control->log,
-                ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
+                (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         break;
 
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                out_control->log,
-                (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
+                (control->cm_solver_pre_comp_refactor > 0 &&
+                 data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
         break;
 
     case CG_S:
         iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                workspace->s[0], out_control->log ) + 1;
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     case SDM_S:
         iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                workspace->s[0], out_control->log ) + 1;
+                workspace->s[0] ) + 1;
         break;
 
     default:
@@ -2742,11 +2729,16 @@ void Compute_Charges( reax_system * const system, control_params * const control
     char fname[200];
     FILE * fp;
 
-    if ( data->step == 0 || data->step == 10 || data->step == 50 || data->step == 100 )
+    if ( data->step >= 100 )
     {
         sprintf( fname, "s_%d_%s.out", data->step, control->sim_name );
         fp = fopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
+        fclose( fp );
+
+        sprintf( fname, "t_%d_%s.out", data->step, control->sim_name );
+        fp = fopen( fname, "w" );
+        Vector_Print( fp, NULL, workspace->t[0], system->N_cm );
         fclose( fp );
     }
 #endif
@@ -2772,18 +2764,20 @@ void Compute_Charges( reax_system * const system, control_params * const control
     }
 
 #if defined(DEBUG_FOCUS)
-    if ( data->step == 0 || data->step == 10 || data->step == 50 || data->step == 100 )
+    if ( data->step >= 100 )
     {
-        if ( data->step == 0 )
-        {
-            sprintf( fname, "H_%d_%s.out", data->step, control->sim_name );
-            Print_Sparse_Matrix2( workspace->H, fname, NULL );
-            Print_Sparse_Matrix_Binary( workspace->H, fname );
-        }
+        sprintf( fname, "H_%d_%s.out", data->step, control->sim_name );
+        Print_Sparse_Matrix2( workspace->H, fname, NULL );
+//        Print_Sparse_Matrix_Binary( workspace->H, fname );
 
-        sprintf( fname, "b_%d_%s.out", data->step, control->sim_name );
+        sprintf( fname, "b_s_%d_%s.out", data->step, control->sim_name );
         fp = fopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
+        fclose( fp );
+
+        sprintf( fname, "b_t_%d_%s.out", data->step, control->sim_name );
+        fp = fopen( fname, "w" );
+        Vector_Print( fp, NULL, workspace->b_t, system->N_cm );
         fclose( fp );
     }
 #endif

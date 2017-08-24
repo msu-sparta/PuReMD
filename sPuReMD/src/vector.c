@@ -166,7 +166,7 @@ inline real Norm( const real * const v1, const unsigned int k )
     #pragma omp for reduction(+: ret2) schedule(static)
     for ( i = 0; i < k; ++i )
     {
-        ret2 +=  SQR( v1[i] );
+        ret2 += SQR( v1[i] );
     }
 
     return SQRT( ret2 );
