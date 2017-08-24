@@ -2011,7 +2011,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs )
 {
-    int i, fillin;
+    int fillin;
     real time;
     sparse_matrix *Hptr;
 
@@ -2156,7 +2156,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs )
 {
-    int i, fillin;
+    int fillin;
     real time;
     sparse_matrix *Hptr;
 
@@ -2305,7 +2305,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         simulation_data * const data, static_storage * const workspace,
         const list * const far_nbrs )
 {
-    int i, fillin;
+    int fillin;
     real time;
     sparse_matrix *Hptr;
 
@@ -2547,9 +2547,10 @@ static void QEq( reax_system * const system, control_params * const control,
 
     case SDM_S:
         iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                     workspace->s[0] ) + 1;
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters += SDM( workspace,control,  workspace->H, workspace->b_t, control->cm_solver_q_err,
-                      workspace->t[0] ) + 1;
+                      workspace->t[0], FALSE ) + 1;
         break;
 
     default:
@@ -2628,7 +2629,8 @@ static void EE( reax_system * const system, control_params * const control,
 
     case SDM_S:
         iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                workspace->s[0] ) + 1;
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     default:
@@ -2689,8 +2691,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
     case GMRES_H_S:
         iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-                (control->cm_solver_pre_comp_refactor > 0 &&
-                 data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
+                control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
         break;
 
     case CG_S:
@@ -2701,7 +2703,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
     case SDM_S:
         iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
-                workspace->s[0] ) + 1;
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     default:

@@ -428,7 +428,9 @@ void Init_Workspace( reax_system *system, control_params *control,
             break;
 
         case SDM_S:
-            //TODO
+            workspace->r = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->d = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->q = (real *) calloc( system->N_cm, sizeof( real ) );
             break;
 
         default:

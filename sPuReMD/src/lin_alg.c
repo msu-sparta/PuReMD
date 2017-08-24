@@ -1764,53 +1764,58 @@ int CG( const static_storage * const workspace, const control_params * const con
 /* Steepest Descent */
 int SDM( const static_storage * const workspace, const control_params * const control,
         const sparse_matrix * const H, const real * const b, const real tol,
-        real * const x )
+        real * const x, const int fresh_pre )
 {
-    int  i, j, N;
-    real tmp, alpha, beta, b_norm;
-    real sig0, sig;
+    int i, itr, N;
+    real tmp, alpha, b_norm;
+    real sig;
 
     N = H->n;
-    b_norm = Norm( b, N );
 
-    Sparse_MatVec( H, x, workspace->q );
-    Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, N );
-    for ( j = 0; j < N; ++j )
+    #pragma omp parallel default(none) private(i, tmp, alpha, b_norm, sig) \
+        shared(itr, N)
     {
-        workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
-    }
+        b_norm = Norm( b, N );
 
-    sig = Dot( workspace->r, workspace->d, N );
-    sig0 = sig;
+        Sparse_MatVec( H, x, workspace->q );
+        Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->q, N );
 
-    for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / b_norm > tol; ++i )
-    {
-        Sparse_MatVec( H, workspace->d, workspace->q );
+        apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre );
 
         sig = Dot( workspace->r, workspace->d, N );
-        tmp = Dot( workspace->d, workspace->q, N );
-        alpha = sig / tmp;
 
-        Vector_Add( x, alpha, workspace->d, N );
-        Vector_Add( workspace->r, -alpha, workspace->q, N );
-        for ( j = 0; j < N; ++j )
+        for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / b_norm > tol; ++i )
         {
-            workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+            Sparse_MatVec( H, workspace->d, workspace->q );
+
+            sig = Dot( workspace->r, workspace->d, N );
+
+            /* ensure each thread gets a local copy of
+             * the function return value
+             * (which is stored as global inside the function)
+             * before proceeding */
+            #pragma omp barrier
+
+            tmp = Dot( workspace->d, workspace->q, N );
+            alpha = sig / tmp;
+
+            Vector_Add( x, alpha, workspace->d, N );
+            Vector_Add( workspace->r, -alpha, workspace->q, N );
+
+            apply_preconditioner( workspace, control, workspace->r, workspace->d, FALSE );
         }
 
-        //fprintf( stderr, "d_norm:%24.15e, q_norm:%24.15e, tmp:%24.15e\n",
-        //Norm(workspace->d,N), Norm(workspace->q,N), tmp );
+        #pragma omp single
+        itr = i;
     }
 
-    fprintf( stderr, "SDM took %d iterations\n", i );
-
-    if ( i >= 300 )
+    if ( itr >= control->cm_solver_max_iters  )
     {
-        fprintf( stderr, "SDM convergence failed!\n" );
-        return i;
+        fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", itr );
+        return itr;
     }
 
-    return i;
+    return itr;
 }
 
 
