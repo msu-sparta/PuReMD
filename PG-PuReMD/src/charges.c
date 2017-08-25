@@ -263,7 +263,7 @@ void Init_MatVec( reax_system *system, simulation_data *data,
     int i; //, fillin;
     reax_atom *atom;
 
-//    if( (data->step - data->prev_steps) % control->refactor == 0 ||
+//    if( (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 ||
 //            workspace->L == NULL )
 //    {
 ////        Print_Linear_System( system, control, workspace, data->step );
@@ -421,14 +421,14 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     //MATRIX CHANGES
     s_matvecs = dual_CG( system, workspace, &workspace->H, workspace->b,
-            control->q_err, workspace->x, mpi_data, out_control->log, data );
+            control->cm_solver_q_err, workspace->x, mpi_data, out_control->log, data );
     t_matvecs = 0;
     //fprintf (stderr, "Host: First CG complated with iterations: %d \n", s_matvecs);
 
     //s_matvecs = CG(system, workspace, workspace->H, workspace->b_s, //newQEq sCG
-    // control->q_err, workspace->s, mpi_data, out_control->log );
+    // control->cm_solver_q_err, workspace->s, mpi_data, out_control->log );
     //s_matvecs = PCG( system, workspace, workspace->H, workspace->b_s,
-    //   control->q_err, workspace->L, workspace->U, workspace->s,
+    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->s,
     //   mpi_data, out_control->log );
 
 #if defined(DEBUG)
@@ -436,9 +436,9 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 #endif
 
     //t_matvecs = CG(system, workspace, workspace->H, workspace->b_t, //newQEq sCG
-    // control->q_err, workspace->t, mpi_data, out_control->log );
+    // control->cm_solver_q_err, workspace->t, mpi_data, out_control->log );
     //t_matvecs = PCG( system, workspace, workspace->H, workspace->b_t,
-    //   control->q_err, workspace->L, workspace->U, workspace->t,
+    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->t,
     //   mpi_data, out_control->log );
 
 #if defined(DEBUG)

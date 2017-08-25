@@ -277,24 +277,6 @@
 
 
 /******************* ENUMERATIONS *************************/
-/* geometry file format */
-enum geo_formats
-{
-    CUSTOM = 0,
-    PDB = 1,
-    ASCII_RESTART = 2,
-    BINARY_RESTART = 3,
-    GF_N = 4,
-};
-
-/* restart file format */
-enum restart_formats
-{
-    WRITE_ASCII = 0,
-    WRITE_BINARY = 1,
-    RF_N = 2,
-};
-
 /* ensemble type */
 enum ensembles
 {
@@ -367,6 +349,57 @@ enum errors
     INVALID_GEO = -17,
     MAX_RETRIES_REACHED = -18,
     RUNTIME_ERROR = -19,
+};
+
+/* restart file format */
+enum restart_formats
+{
+    WRITE_ASCII = 0,
+    WRITE_BINARY = 1,
+    RF_N = 2,
+};
+
+/* geometry file format */
+enum geo_formats
+{
+    CUSTOM = 0,
+    PDB = 1,
+    ASCII_RESTART = 2,
+    BINARY_RESTART = 3,
+    GF_N = 4,
+};
+
+enum charge_method
+{
+    QEQ_CM = 0,
+    EE_CM = 1,
+    ACKS2_CM = 2,
+};
+
+enum solver
+{
+    GMRES_S = 0,
+    GMRES_H_S = 1,
+    CG_S = 2,
+    SDM_S = 3,
+};
+
+enum pre_comp
+{
+    NONE_PC = 0,
+    DIAG_PC = 1,
+    ICHOLT_PC = 2,
+    ILU_PAR_PC = 3,
+    ILUT_PAR_PC = 4,
+    ILU_SUPERLU_MT_PC = 5,
+};
+
+enum pre_app
+{
+    TRI_SOLVE_PA = 0,
+    TRI_SOLVE_LEVEL_SCHED_PA = 1,
+    TRI_SOLVE_GC_PA = 2,
+    JACOBI_ITER_PA = 3,
 };
 
 /* ??? */
@@ -1274,8 +1307,9 @@ typedef struct
     /* format of geometry input file */
     int geo_format;
     /* format of restart file */
-    int  restart;
+    int restart;
 
+    /**/
     int restrict_bonds;
     /* flag to control if center of mass velocity is removed */
     int remove_CoM_vel;
@@ -1313,18 +1347,40 @@ typedef struct
     /* flag to control if force computations are tablulated */
     int tabulate;
 
+    /**/
+    unsigned int charge_method;
     /* frequency (in terms of simulation time steps) at which to
      * re-compute atomic charge distribution */
     int charge_freq;
+    /**/
+    unsigned int cm_solver_type;
+    /**/
+    real cm_q_net;
+    /**/
+    unsigned int cm_solver_max_iters;
+    /**/
+    unsigned int cm_solver_restart;
     /* error tolerance of solution produced by charge distribution
      * sparse iterative linear solver */
-    real q_err;
+    real cm_solver_q_err;
+    /**/
+    real cm_domain_sparsity;
+    /**/
+    unsigned int cm_domain_sparsify_enabled;
+    /**/
+    unsigned int cm_solver_pre_comp_type;
     /* frequency (in terms of simulation time steps) at which to recompute
      * incomplete factorizations */
-    int refactor;
+    unsigned int cm_solver_pre_comp_refactor;
     /* drop tolerance of incomplete factorization schemes (ILUT, ICHOLT, etc.)
      * used for preconditioning the iterative linear solver used in charge distribution */
-    real droptol;
+    real cm_solver_pre_comp_droptol;
+    /**/
+    unsigned int cm_solver_pre_comp_sweeps;
+    /**/
+    unsigned int cm_solver_pre_app_type;
+    /**/
+    unsigned int cm_solver_pre_app_jacobi_iters;
 
     /* initial temperature of simulation, in Kelvin */
     real T_init;

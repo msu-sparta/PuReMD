@@ -273,7 +273,7 @@ int Write_Header( reax_system *system, control_params *control,
                  control->thb_cut );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
-        sprintf( out_control->line, SCI_LINE, "QEq_tolerance:", control->q_err );
+        sprintf( out_control->line, SCI_LINE, "QEq_tolerance:", control->cm_solver_q_err );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         /* temperature controls */

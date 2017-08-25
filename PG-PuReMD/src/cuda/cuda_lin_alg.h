@@ -51,11 +51,11 @@ void Cuda_Dual_Matvec( sparse_matrix *, rvec2 *, rvec2 *, int , int );
 
 void Cuda_Matvec( sparse_matrix *, real *, real *, int , int );
 
-int Cuda_dual_CG( reax_system*, storage*, sparse_matrix*,
+int Cuda_dual_CG( reax_system*, control_params*, storage*, sparse_matrix*,
         rvec2*, real, rvec2*, mpi_datatypes*, FILE* , simulation_data * );
 
-int Cuda_CG( reax_system*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes*, FILE* );
+int Cuda_CG( reax_system*, control_params*, storage*, sparse_matrix*,
+        real*, real, real*, mpi_datatypes* );
 
 #ifdef __cplusplus
 }

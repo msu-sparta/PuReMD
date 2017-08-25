@@ -598,35 +598,35 @@ void Cuda_Dual_Matvec( sparse_matrix *H, rvec2 *a, rvec2 *b, int n, int size )
 
 void Cuda_Matvec( sparse_matrix *H, real *a, real *b, int n, int size )
 {
-    int blocks;
+//    int blocks;
 
-    blocks = (n / DEF_BLOCK_SIZE) + 
-        (( n % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+//    blocks = (n / DEF_BLOCK_SIZE) + 
+//        (( n % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
 
     cuda_memset( b, 0, sizeof(real) * size, "dual_matvec:result" );
 
-    //one thread per row implementation
-    //k_matvec <<< blocks, DEF_BLOCK_SIZE >>>
-    //        (*H, a, b, n);
-    //cudaThreadSynchronize ();
-    //cudaCheckError ();
+    /* one thread per row implementation */
+//    k_matvec <<< blocks, DEF_BLOCK_SIZE >>>
+//        ( *H, a, b, n );
+//    cudaThreadSynchronize( );
+//    cudaCheckError( );
 
 #if defined(__SM_35__)
     k_matvec_csr <<< MATVEC_BLOCKS, MATVEC_BLOCK_SIZE >>>
 #else
     k_matvec_csr <<< MATVEC_BLOCKS, MATVEC_BLOCK_SIZE,
-                 sizeof(real) * MATVEC_BLOCK_SIZE>>>
+                 sizeof(real) * MATVEC_BLOCK_SIZE >>>
 #endif
-                     (*H, a, b, n);
+         ( *H, a, b, n );
 
     cudaThreadSynchronize( );
     cudaCheckError( );
 }
 
 
-int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
-        rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout,
-        simulation_data *data )
+int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspace,
+        sparse_matrix *H, rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data,
+        FILE *fout, simulation_data *data )
 {
     int i, n, matvecs, scale;
 //    int j, N;
@@ -768,7 +768,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     }
 #endif
 
-    for ( i = 1; i < 1000; ++i )
+    for ( i = 1; i < control->cm_solver_max_iters; ++i )
     {
         //MVAPICH2
 //#ifdef __CUDA_DEBUG__
@@ -921,8 +921,8 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         //compare_array (workspace->b_t, dev_workspace->b_t, system->n, "b_t");
         //compare_array (workspace->t, dev_workspace->t, system->n, "t");
 
-        matvecs = Cuda_CG( system, workspace, H, dev_workspace->b_t, tol, dev_workspace->t,
-                mpi_data, fout );
+        matvecs = Cuda_CG( system, control, workspace, H, dev_workspace->b_t, tol, dev_workspace->t,
+                mpi_data );
 
         //fprintf (stderr, " Cuda_CG1: iterations --> %d \n", matvecs );
         //for( j = 0; j < n; ++j )
@@ -942,8 +942,8 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
         //fprintf (stderr, "Getting started with Cuda_CG2 \n");
 
-        matvecs = Cuda_CG( system, workspace, H, dev_workspace->b_s, tol, dev_workspace->s,
-                mpi_data, fout );
+        matvecs = Cuda_CG( system, control, workspace, H, dev_workspace->b_s, tol, dev_workspace->s,
+                mpi_data );
 
         //fprintf (stderr, " Cuda_CG2: iterations --> %d \n", matvecs );
         //for( j = 0; j < system->n; ++j )
@@ -952,7 +952,7 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         Cuda_RvecCopy_To( dev_workspace->x, dev_workspace->s, 0, system->n );
     }
 
-    if ( i >= 1000 )
+    if ( i >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] p%d: dual CG convergence failed! (%d steps)\n",
                 system->my_rank, i );
@@ -972,8 +972,8 @@ int Cuda_dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 }
 
 
-int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
-        *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
+int Cuda_CG( reax_system *system, control_params *control, storage *workspace,
+        sparse_matrix *H, real *b, real tol, real *x, mpi_datatypes* mpi_data )
 {
     int  i, scale;
 //    int j;
@@ -1039,7 +1039,7 @@ int Cuda_CG( reax_system *system, storage *workspace, sparse_matrix *H, real
     }
 #endif
 
-    for ( i = 1; i < 1000 && SQRT(sig_new) / b_norm > tol; ++i )
+    for ( i = 1; i < control->cm_solver_max_iters && SQRT(sig_new) / b_norm > tol; ++i )
     {
         //MVAPICH2
         copy_host_device( spad, dev_workspace->d, sizeof(real) * system->total_cap,

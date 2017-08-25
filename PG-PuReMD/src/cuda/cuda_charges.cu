@@ -269,8 +269,8 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
 #endif
 
     //MATRIX CHANGES
-    s_matvecs = Cuda_dual_CG( system, workspace, &dev_workspace->H,
-            dev_workspace->b, control->q_err, dev_workspace->x, mpi_data,
+    s_matvecs = Cuda_dual_CG( system, control, workspace, &dev_workspace->H,
+            dev_workspace->b, control->cm_solver_q_err, dev_workspace->x, mpi_data,
             out_control->log, data );
     t_matvecs = 0;
     //fprintf (stderr, "Device: First CG complated with iterations: %d \n", s_matvecs);
