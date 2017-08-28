@@ -42,8 +42,8 @@ typedef enum
 
 
 void Dummy_Interaction( reax_system *system, control_params *control,
-                        simulation_data *data, static_storage *workspace,
-                        list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
 }
 
@@ -56,9 +56,14 @@ void Init_Bonded_Force_Functions( control_params *control )
     //*/Dummy_Interaction;
     Interaction_Functions[3] = Three_Body_Interactions; //*/Dummy_Interaction;
     Interaction_Functions[4] = Four_Body_Interactions;  //*/Dummy_Interaction;
-    if ( control->hb_cut > 0 )
+    if ( control->hb_cut > 0.0 )
+    {
         Interaction_Functions[5] = Hydrogen_Bonds; //*/Dummy_Interaction;
-    else Interaction_Functions[5] = Dummy_Interaction;
+    }
+    else
+    {
+        Interaction_Functions[5] = Dummy_Interaction;
+    }
     Interaction_Functions[6] = Dummy_Interaction; //empty
     Interaction_Functions[7] = Dummy_Interaction; //empty
     Interaction_Functions[8] = Dummy_Interaction; //empty
@@ -67,12 +72,12 @@ void Init_Bonded_Force_Functions( control_params *control )
 
 
 void Compute_Bonded_Forces( reax_system *system, control_params *control,
-                            simulation_data *data, static_storage *workspace,
-                            list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
 
     int i;
-    // real t_start, t_end, t_elapsed;
+    //real t_start, t_end, t_elapsed;
 
 #ifdef TEST_ENERGY
     /* Mark beginning of a new timestep in each energy file */
@@ -107,11 +112,13 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
     /* Implement all the function calls as function pointers */
     for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
     {
-        (Interaction_Functions[i])(system, control, data, workspace,
-                                   lists, out_control);
+        (Interaction_Functions[i])( system, control, data, workspace,
+                lists, out_control );
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "f%d-", i );
 #endif
+
 #ifdef TEST_FORCES
         (Print_Interactions[i])(system, control, data, workspace,
                                 lists, out_control);
@@ -121,10 +128,11 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
 
 
 void Compute_NonBonded_Forces( reax_system *system, control_params *control,
-                               simulation_data *data, static_storage *workspace,
-                               list** lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list** lists, output_controls *out_control )
 {
     real t_start, t_elapsed;
+
 #ifdef TEST_ENERGY
     fprintf( out_control->evdw, "step: %d\n%6s%6s%12s%12s%12s\n",
              data->step, "atom1", "atom2", "r12", "evdw", "total" );
@@ -148,7 +156,7 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
     else
     {
         Tabulated_vdW_Coulomb_Energy( system, control, data, workspace,
-                                      lists, out_control );
+                lists, out_control );
     }
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "nonb forces - " );
@@ -156,7 +164,7 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 
 #ifdef TEST_FORCES
     Print_vdW_Coulomb_Forces( system, control, data, workspace,
-                              lists, out_control );
+            lists, out_control );
 #endif
 }
 
@@ -164,26 +172,57 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 /* This version of Compute_Total_Force computes forces from coefficients
    accumulated by all interaction functions. Saves enormous time & space! */
 void Compute_Total_Force( reax_system *system, control_params *control,
-                          simulation_data *data, static_storage *workspace,
-                          list **lists )
+        simulation_data *data, static_storage *workspace, list **lists )
 {
-    int i, pj;
-    list *bonds = (*lists) + BONDS;
+    int i;
+    list *bonds;
 
-    for ( i = 0; i < system->N; ++i )
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-            if ( i < bonds->select.bond_list[pj].nbr )
+    bonds = (*lists) + BONDS;
+
+    #pragma omp parallel default(shared)
+    {
+        int pj;
+#ifdef _OPENMP
+        int j;
+#endif
+
+        #pragma omp for schedule(static)
+        for ( i = 0; i < system->N; ++i )
+        {
+            for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
             {
-                if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT)
-                    Add_dBond_to_Forces( i, pj, system, data, workspace, lists );
-                else
-                    Add_dBond_to_Forces_NPT( i, pj, system, data, workspace, lists );
+                if ( i < bonds->select.bond_list[pj].nbr )
+                {
+                    if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT)
+                    {
+                        Add_dBond_to_Forces( i, pj, system, data, workspace, lists );
+                    }
+                    else
+                    {
+                        Add_dBond_to_Forces_NPT( i, pj, system, data, workspace, lists );
+                    }
+                }
             }
+        }
+
+#ifdef _OPENMP
+        #pragma omp barrier
+
+        #pragma omp for schedule(static)
+        for ( i = 0; i < system->N; ++i )
+        {
+            for ( j = 0; j < control->num_threads; ++j )
+            {
+                rvec_Add( system->atoms[i].f, workspace->f_local[j * system->N + i] );
+            }
+        }
+#endif
+    }
 }
 
 
 void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
-                     int Hmax, int Htop, int num_bonds, int num_hbonds )
+        int Hmax, int Htop, int num_bonds, int num_hbonds )
 {
     int i, flag;
     list *bonds, *hbonds;
@@ -208,12 +247,16 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
     flag = -1;
     workspace->realloc.num_bonds = num_bonds;
     for ( i = 0; i < n - 1; ++i )
+    {
         if ( End_Index(i, bonds) >= Start_Index(i + 1, bonds) - 2 )
         {
             workspace->realloc.bonds = 1;
             if ( End_Index(i, bonds) > Start_Index(i + 1, bonds) )
+            {
                 flag = i;
+            }
         }
+    }
 
     if ( flag > -1 )
     {
@@ -241,13 +284,17 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
         flag = -1;
         workspace->realloc.num_hbonds = num_hbonds;
         for ( i = 0; i < workspace->num_H - 1; ++i )
+        {
             if ( Num_Entries(i, hbonds) >=
                     (Start_Index(i + 1, hbonds) - Start_Index(i, hbonds)) * DANGER_ZONE )
             {
                 workspace->realloc.hbonds = 1;
                 if ( End_Index(i, hbonds) > Start_Index(i + 1, hbonds) )
+                {
                     flag = i;
+                }
             }
+        }
 
         if ( flag > -1 )
         {
@@ -520,11 +567,11 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             for ( i = 0; i < system->N; ++i )
             {
                 H->j[*Htop] = i;
-                H->val[*Htop] = 1.0;
+                H->val[*Htop] = -1.0;
                 *Htop = *Htop + 1;
 
                 H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = 1.0;
+                H_sp->val[*H_sp_top] = -1.0;
                 *H_sp_top = *H_sp_top + 1;
             }
 
@@ -542,11 +589,11 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 H_sp->start[system->N + i + 1] = *H_sp_top;
 
                 H->j[*Htop] = i;
-                H->val[*Htop] = 1.0;
+                H->val[*Htop] = -1.0;
                 *Htop = *Htop + 1;
 
                 H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = 1.0;
+                H_sp->val[*H_sp_top] = -1.0;
                 *H_sp_top = *H_sp_top + 1;
 
                 for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
@@ -615,11 +662,11 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             for ( i = system->N + 1; i < system->N_cm - 1; ++i )
             {
                 H->j[*Htop] = i;
-                H->val[*Htop] = 1.0;
+                H->val[*Htop] = -1.0;
                 *Htop = *Htop + 1;
 
                 H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = 1.0;
+                H_sp->val[*H_sp_top] = -1.0;
                 *H_sp_top = *H_sp_top + 1;
             }
 
@@ -641,8 +688,8 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
 
 void Init_Forces( reax_system *system, control_params *control,
-                  simulation_data *data, static_storage *workspace,
-                  list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -935,7 +982,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
     /* validate lists - decide if reallocation is required! */
     Validate_Lists( workspace, lists,
-                    data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
+            data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d: Htop = %d, num_bonds = %d, num_hbonds = %d\n",
@@ -946,8 +993,8 @@ void Init_Forces( reax_system *system, control_params *control,
 
 
 void Init_Forces_Tab( reax_system *system, control_params *control,
-                      simulation_data *data, static_storage *workspace,
-                      list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1317,8 +1364,8 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
 
 
 void Compute_Forces( reax_system *system, control_params *control,
-                     simulation_data *data, static_storage *workspace,
-                     list** lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list** lists, output_controls *out_control )
 {
     real t_start, t_elapsed;
 
@@ -1342,21 +1389,23 @@ void Compute_Forces( reax_system *system, control_params *control,
     Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.bonded += t_elapsed;
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "bonded_forces - ");
 #endif
 
     t_start = Get_Time( );
     Compute_NonBonded_Forces( system, control, data, workspace,
-                              lists, out_control );
+            lists, out_control );
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.nonb += t_elapsed;
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "nonbondeds - ");
 #endif
 
     Compute_Total_Force( system, control, data, workspace, lists );
-    //Print_Total_Force( system, control, data, workspace, lists, out_control );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "totalforces - ");
     //Print_Total_Force( system, control, data, workspace, lists, out_control );
@@ -1366,6 +1415,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     Print_Total_Force( system, control, data, workspace, lists, out_control );
     Compare_Total_Forces( system, control, data, workspace, lists, out_control );
 #endif
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "forces - ");
 #endif

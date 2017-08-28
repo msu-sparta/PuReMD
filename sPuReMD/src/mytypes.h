@@ -477,10 +477,10 @@ typedef struct
 {
     char sim_name[MAX_STR];
     char restart_from[MAX_STR];
-    int  restart;
-    int  random_vel;
+    int restart;
+    int random_vel;
 
-    int  reposition_atoms;
+    int reposition_atoms;
 
     /* ensemble values:
        0 : NVE
@@ -488,11 +488,11 @@ typedef struct
        2 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic
        3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
        4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic */
-    int  ensemble;
-    int  nsteps;
-    int  periodic_boundaries;
-    int  restrict_bonds;
-    int  tabulate;
+    int ensemble;
+    int nsteps;
+    int periodic_boundaries;
+    int restrict_bonds;
+    int tabulate;
     ivec periodic_images;
     real dt;
 
@@ -546,7 +546,11 @@ typedef struct
     int freq_molec_anal;
     real bg_cut;
     int num_ignored;
-    int  ignore[MAX_ATOM_TYPES];
+    int ignore[MAX_ATOM_TYPES];
+
+#ifdef _OPENMP
+    int num_threads;
+#endif
 } control_params;
 
 
@@ -772,6 +776,7 @@ typedef struct
     int gcell_atoms;
 } reallocate_data;
 
+
 typedef struct
 {
     /* bond order related storage */
@@ -797,7 +802,7 @@ typedef struct
     real **h, **rn, **v;
     /* CG related storage */
     real *r, *d, *q, *p;
-    int   s_dims, t_dims;
+    int s_dims, t_dims;
 
     int num_H;
     int *hbond_index; // for hydrogen bonds
@@ -810,10 +815,15 @@ typedef struct
     rvec *x_old;
 
     /* storage space for bond restrictions */
-    int  *map_serials;
-    int  *orig_id;
-    int  *restricted;
+    int *map_serials;
+    int *orig_id;
+    int *restricted;
     int **restricted_list;
+
+#ifdef _OPENMP
+    /* local forces per thread */
+    rvec *f_local;
+#endif
 
     reallocate_data realloc;
 

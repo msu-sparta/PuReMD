@@ -84,11 +84,27 @@ void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 
 void Reset_Workspace( reax_system *system, static_storage *workspace )
 {
+#ifdef _OPENMP
+    int i, tid;
+#endif
+
     memset( workspace->total_bond_order, 0, system->N * sizeof( real ) );
     memset( workspace->dDeltap_self, 0, system->N * sizeof( rvec ) );
 
     memset( workspace->CdDelta, 0, system->N * sizeof( real ) );
     //memset( workspace->virial_forces, 0, system->N * sizeof( rvec ) );
+
+#ifdef _OPENMP
+    #pragma omp parallel private(i, tid)
+    {
+        tid = omp_get_thread_num( );
+
+        for ( i = 0; i < system->N; ++i )
+        {
+            rvec_MakeZero( workspace->f_local[tid * system->N + i] );
+        }
+    }
+#endif
 
 #ifdef TEST_FORCES
     memset( workspace->dDelta, 0, sizeof(rvec) * system->N );
@@ -111,7 +127,9 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
     }
 
     if ( control->hb_cut > 0 )
+    {
         for ( i = 0; i < system->N; ++i )
+        {
             if ( system->reaxprm.sbp[system->atoms[i].type].p_hbond == 1)
             {
                 tmp = Start_Index( workspace->hbond_index[i], hbonds );
@@ -120,11 +138,13 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
                    i, Start_Index( workspace->hbond_index[i], hbonds ),
                    End_Index( workspace->hbond_index[i], hbonds ) );*/
             }
+        }
+    }
 }
 
 
 void Reset( reax_system *system, control_params *control,
-            simulation_data *data, static_storage *workspace, list **lists  )
+        simulation_data *data, static_storage *workspace, list **lists  )
 {
     Reset_Atoms( system );
 
@@ -132,7 +152,9 @@ void Reset( reax_system *system, control_params *control,
 
     if ( control->ensemble == NPT || control->ensemble == sNPT ||
             control->ensemble == iNPT )
+    {
         Reset_Pressures( data );
+    }
 
     Reset_Workspace( system, workspace );
 

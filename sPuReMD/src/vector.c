@@ -315,7 +315,9 @@ inline int rvec_isZero( const rvec v )
 
 inline void rvec_MakeZero( rvec v )
 {
-    v[0] = v[1] = v[2] = ZERO;
+    v[0] = ZERO;
+    v[1] = ZERO;
+    v[2] = ZERO;
 }
 
 

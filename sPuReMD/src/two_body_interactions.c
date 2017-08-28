@@ -27,19 +27,10 @@
 
 
 void Bond_Energy( reax_system *system, control_params *control,
-                  simulation_data *data, static_storage *workspace,
-                  list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
-    int i, j, pj;
-    int start_i, end_i;
-    int type_i, type_j;
-    real ebond, pow_BOs_be2, exp_be12, CEbo;
-    real gp3, gp4, gp7, gp10, gp37;
-    real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
-    real decobdbo, decobdboua, decobdboub;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    bond_order_data *bo_ij;
+    real gp3, gp4, gp7, gp10, gp37, ebond_total;
     list *bonds;
 
     bonds = (*lists) + BONDS;
@@ -48,299 +39,350 @@ void Bond_Energy( reax_system *system, control_params *control,
     gp7 = system->reaxprm.gp.l[7];
     gp10 = system->reaxprm.gp.l[10];
     gp37 = (int) system->reaxprm.gp.l[37];
+    ebond_total = 0.0;
 
-    for ( i = 0; i < system->N; ++i )
-    {
-        start_i = Start_Index(i, bonds);
-        end_i = End_Index(i, bonds);
-        //fprintf( stderr, "i=%d start=%d end=%d\n", i, start_i, end_i );
-        for ( pj = start_i; pj < end_i; ++pj )
-            if ( i < bonds->select.bond_list[pj].nbr )
-            {
-                /* set the pointers */
-                j = bonds->select.bond_list[pj].nbr;
-                type_i = system->atoms[i].type;
-                type_j = system->atoms[j].type;
-                sbp_i = &( system->reaxprm.sbp[type_i] );
-                sbp_j = &( system->reaxprm.sbp[type_j] );
-                twbp = &( system->reaxprm.tbp[type_i][type_j] );
-                bo_ij = &( bonds->select.bond_list[pj].bo_data );
+    #pragma omp parallel default(shared) reduction(+: ebond_total)
+    { 
+        int i, j, pj;
+        int start_i, end_i;
+        int type_i, type_j;
+        real ebond, pow_BOs_be2, exp_be12, CEbo;
+        real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
+        real decobdbo, decobdboua, decobdboub;
+        single_body_parameters *sbp_i, *sbp_j;
+        two_body_parameters *twbp;
+        bond_order_data *bo_ij;
 
-                /* calculate the constants */
-                pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
-                exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
-                CEbo = -twbp->De_s * exp_be12 *
-                       ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
-
-                /* calculate the Bond Energy */
-                data->E_BE += ebond =
-                                  -twbp->De_s * bo_ij->BO_s * exp_be12
-                                  - twbp->De_p * bo_ij->BO_pi
-                                  - twbp->De_pp * bo_ij->BO_pi2;
-
-                /* calculate derivatives of Bond Orders */
-                bo_ij->Cdbo += CEbo;
-                bo_ij->Cdbopi -= (CEbo + twbp->De_p);
-                bo_ij->Cdbopi2 -= (CEbo + twbp->De_pp);
-
-#ifdef TEST_ENERGY
-                fprintf( out_control->ebond, "%6d%6d%24.15e%24.15e\n",
-                         workspace->orig_id[i], workspace->orig_id[j],
-                         // i+1, j+1,
-                         bo_ij->BO, ebond/*, data->E_BE*/ );
-                /* fprintf( out_control->ebond, "%6d%6d%12.6f%12.6f%12.6f\n",
-                   workspace->orig_id[i], workspace->orig_id[j],
-                   CEbo, -twbp->De_p, -twbp->De_pp );*/
-#endif
-#ifdef TEST_FORCES
-                Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
-                Add_dBOpinpi2( system, lists, i, pj,
-                               -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
-                               workspace->f_be, workspace->f_be );
-#endif
-
-                /* Stabilisation terminal triple bond */
-                if ( bo_ij->BO >= 1.00 )
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < system->N; ++i )
+        {
+            start_i = Start_Index(i, bonds);
+            end_i = End_Index(i, bonds);
+            //fprintf( stderr, "i=%d start=%d end=%d\n", i, start_i, end_i );
+            for ( pj = start_i; pj < end_i; ++pj )
+                if ( i < bonds->select.bond_list[pj].nbr )
                 {
-                    if ( gp37 == 2 ||
-                            (sbp_i->mass == 12.0000 && sbp_j->mass == 15.9990) ||
-                            (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) )
-                    {
-                        // ba = SQR(bo_ij->BO - 2.50);
-                        exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.50) );
-                        //oboa=abo(j1)-boa;
-                        //obob=abo(j2)-boa;
-                        exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
-                        exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
-                        //ovoab=abo(j1)-aval(it1)+abo(j2)-aval(it2);
-                        exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
-                        hulpov = 1.0 / (1.0 + 25.0 * exphuov);
+                    /* set the pointers */
+                    j = bonds->select.bond_list[pj].nbr;
+                    type_i = system->atoms[i].type;
+                    type_j = system->atoms[j].type;
+                    sbp_i = &( system->reaxprm.sbp[type_i] );
+                    sbp_j = &( system->reaxprm.sbp[type_j] );
+                    twbp = &( system->reaxprm.tbp[type_i][type_j] );
+                    bo_ij = &( bonds->select.bond_list[pj].bo_data );
 
-                        estriph = gp10 * exphu * hulpov * (exphua1 + exphub1);
-                        //estrain(j1) = estrain(j1) + 0.50*estriph;
-                        //estrain(j2) = estrain(j2) + 0.50*estriph;
-                        data->E_BE += estriph;
+                    /* calculate the constants */
+                    pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
+                    exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
+                    CEbo = -twbp->De_s * exp_be12 *
+                           ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
 
-                        decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1) *
-                                   ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.50) );
-                        decobdboua = -gp10 * exphu * hulpov *
-                                     (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
-                        decobdboub = -gp10 * exphu * hulpov *
-                                     (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                    /* calculate the Bond Energy */
+                    ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
+                        - twbp->De_p * bo_ij->BO_pi
+                        - twbp->De_pp * bo_ij->BO_pi2;
 
-                        bo_ij->Cdbo += decobdbo;
-                        workspace->CdDelta[i] += decobdboua;
-                        workspace->CdDelta[j] += decobdboub;
+                    ebond_total += ebond;
+
+                    /* calculate derivatives of Bond Orders */
+                    bo_ij->Cdbo += CEbo;
+                    bo_ij->Cdbopi -= (CEbo + twbp->De_p);
+                    bo_ij->Cdbopi2 -= (CEbo + twbp->De_pp);
+
 #ifdef TEST_ENERGY
-                        fprintf( out_control->ebond,
-                                 "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                                 workspace->orig_id[i], workspace->orig_id[j],
-                                 //i+1, j+1,
-                                 estriph, decobdbo, decobdboua, decobdboub );
+                    fprintf( out_control->ebond, "%6d%6d%24.15e%24.15e\n",
+                             workspace->orig_id[i], workspace->orig_id[j],
+                             // i+1, j+1,
+                             bo_ij->BO, ebond/*, data->E_BE*/ );
+                    /* fprintf( out_control->ebond, "%6d%6d%12.6f%12.6f%12.6f\n",
+                       workspace->orig_id[i], workspace->orig_id[j],
+                       CEbo, -twbp->De_p, -twbp->De_pp );*/
 #endif
+
 #ifdef TEST_FORCES
-                        Add_dBO( system, lists, i, pj, decobdbo, workspace->f_be );
-                        Add_dDelta( system, lists, i, decobdboua, workspace->f_be );
-                        Add_dDelta( system, lists, j, decobdboub, workspace->f_be );
+                    Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
+                    Add_dBOpinpi2( system, lists, i, pj,
+                                   -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
+                                   workspace->f_be, workspace->f_be );
 #endif
+
+                    /* Stabilisation terminal triple bond */
+                    if ( bo_ij->BO >= 1.00 )
+                    {
+                        if ( gp37 == 2 ||
+                                (sbp_i->mass == 12.0000 && sbp_j->mass == 15.9990) ||
+                                (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) )
+                        {
+                            // ba = SQR(bo_ij->BO - 2.50);
+                            exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.50) );
+                            //oboa=abo(j1)-boa;
+                            //obob=abo(j2)-boa;
+                            exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
+                            exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
+                            //ovoab=abo(j1)-aval(it1)+abo(j2)-aval(it2);
+                            exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
+                            hulpov = 1.0 / (1.0 + 25.0 * exphuov);
+
+                            estriph = gp10 * exphu * hulpov * (exphua1 + exphub1);
+                            //estrain(j1) = estrain(j1) + 0.50*estriph;
+                            //estrain(j2) = estrain(j2) + 0.50*estriph;
+                            ebond_total += estriph;
+
+                            decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1) *
+                                       ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.50) );
+                            decobdboua = -gp10 * exphu * hulpov *
+                                         (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                            decobdboub = -gp10 * exphu * hulpov *
+                                         (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+
+                            bo_ij->Cdbo += decobdbo;
+                            workspace->CdDelta[i] += decobdboua;
+                            workspace->CdDelta[j] += decobdboub;
+
+#ifdef TEST_ENERGY
+                            fprintf( out_control->ebond,
+                                     "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
+                                     workspace->orig_id[i], workspace->orig_id[j],
+                                     //i+1, j+1,
+                                     estriph, decobdbo, decobdboua, decobdboub );
+#endif
+
+#ifdef TEST_FORCES
+                            Add_dBO( system, lists, i, pj, decobdbo, workspace->f_be );
+                            Add_dDelta( system, lists, i, decobdboua, workspace->f_be );
+                            Add_dDelta( system, lists, j, decobdboub, workspace->f_be );
+#endif
+                        }
                     }
                 }
-            }
+        }
     }
+
+    data->E_BE += ebond_total;
 }
 
 
 void vdW_Coulomb_Energy( reax_system *system, control_params *control,
-                         simulation_data *data, static_storage *workspace,
-                         list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
-    int  i, j, pj;
-    int  start_i, end_i;
-    real self_coef;
     real p_vdW1, p_vdW1i;
-    real powr_vdW1, powgi_vdW1;
-    real tmp, r_ij, fn13, exp1, exp2;
-    real Tap, dTap, dfn13, CEvd, CEclmb;
-    real dr3gamij_1, dr3gamij_3;
-    real e_ele, e_vdW, e_core, de_core;
-    rvec temp, ext_press;
-    // rtensor temp_rtensor, total_rtensor;
-    two_body_parameters *twbp;
-    far_neighbor_data *nbr_pj;
     list *far_nbrs;
+    real e_vdW_total, e_ele_total;
 
     p_vdW1 = system->reaxprm.gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
     far_nbrs = (*lists) + FAR_NBRS;
-    e_ele = 0;
-    e_vdW = 0;
-    e_core = 0;
-    de_core = 0;
+    e_vdW_total = 0.0;
+    e_ele_total = 0.0;
 
-    for ( i = 0; i < system->N; ++i )
+    #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
     {
-        start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
-        // fprintf( stderr, "i: %d, start: %d, end: %d\n",
-        //     i, start_i, end_i );
+        int i, j, pj;
+        int start_i, end_i;
+        real self_coef;
+        real powr_vdW1, powgi_vdW1;
+        real tmp, r_ij, fn13, exp1, exp2;
+        real Tap, dTap, dfn13, CEvd, CEclmb;
+        real dr3gamij_1, dr3gamij_3;
+        real e_ele, e_vdW, e_core, de_core;
+        rvec temp, ext_press;
+        //rtensor temp_rtensor, total_rtensor;
+        two_body_parameters *twbp;
+        far_neighbor_data *nbr_pj;
+#ifdef _OPENMP
+        int tid;
 
-        for ( pj = start_i; pj < end_i; ++pj )
-            if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+        tid = omp_get_thread_num( );
+#endif
+
+        e_ele = 0;
+        e_vdW = 0;
+        e_core = 0;
+        de_core = 0;
+
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < system->N; ++i )
+        {
+            start_i = Start_Index( i, far_nbrs );
+            end_i = End_Index( i, far_nbrs );
+
+            for ( pj = start_i; pj < end_i; ++pj )
             {
-                nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
-                j = nbr_pj->nbr;
-                r_ij = nbr_pj->d;
-                twbp = &(system->reaxprm.tbp[ system->atoms[i].type ]
-                         [ system->atoms[j].type ]);
-                self_coef = (i == j) ? 0.5 : 1.0; // for supporting small boxes!
-
-                /* Calculate Taper and its derivative */
-                // Tap = nbr_pj->Tap;   -- precomputed during compte_H
-                Tap = control->Tap7 * r_ij + control->Tap6;
-                Tap = Tap * r_ij + control->Tap5;
-                Tap = Tap * r_ij + control->Tap4;
-                Tap = Tap * r_ij + control->Tap3;
-                Tap = Tap * r_ij + control->Tap2;
-                Tap = Tap * r_ij + control->Tap1;
-                Tap = Tap * r_ij + control->Tap0;
-
-                dTap = 7 * control->Tap7 * r_ij + 6 * control->Tap6;
-                dTap = dTap * r_ij + 5 * control->Tap5;
-                dTap = dTap * r_ij + 4 * control->Tap4;
-                dTap = dTap * r_ij + 3 * control->Tap3;
-                dTap = dTap * r_ij + 2 * control->Tap2;
-                dTap += control->Tap1 / r_ij;
-
-                /*vdWaals Calculations*/
-                if (system->reaxprm.gp.vdw_type == 1 || system->reaxprm.gp.vdw_type == 3)
+                if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
                 {
-                    // shielding
-                    powr_vdW1 = POW(r_ij, p_vdW1);
-                    powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1);
+                    nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
+                    j = nbr_pj->nbr;
+                    r_ij = nbr_pj->d;
+                    twbp = &(system->reaxprm.tbp[ system->atoms[i].type ]
+                             [ system->atoms[j].type ]);
+                    self_coef = (i == j) ? 0.5 : 1.0; // for supporting small boxes!
 
-                    fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-                    exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                    exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
+                    /* Calculate Taper and its derivative */
+                    // Tap = nbr_pj->Tap;   -- precomputed during compte_H
+                    Tap = control->Tap7 * r_ij + control->Tap6;
+                    Tap = Tap * r_ij + control->Tap5;
+                    Tap = Tap * r_ij + control->Tap4;
+                    Tap = Tap * r_ij + control->Tap3;
+                    Tap = Tap * r_ij + control->Tap2;
+                    Tap = Tap * r_ij + control->Tap1;
+                    Tap = Tap * r_ij + control->Tap0;
 
-                    data->E_vdW += e_vdW =
-                                       self_coef * Tap * twbp->D * (exp1 - 2.0 * exp2);
+                    dTap = 7 * control->Tap7 * r_ij + 6 * control->Tap6;
+                    dTap = dTap * r_ij + 5 * control->Tap5;
+                    dTap = dTap * r_ij + 4 * control->Tap4;
+                    dTap = dTap * r_ij + 3 * control->Tap3;
+                    dTap = dTap * r_ij + 2 * control->Tap2;
+                    dTap += control->Tap1 / r_ij;
 
-                    dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) *
-                            POW(r_ij, p_vdW1 - 2.0);
+                    /* vdWaals Calculations */
+                    if ( system->reaxprm.gp.vdw_type == 1 || system->reaxprm.gp.vdw_type == 3 )
+                    {
+                        /* shielding */
+                        powr_vdW1 = POW( r_ij, p_vdW1 );
+                        powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
 
-                    CEvd = self_coef * ( dTap * twbp->D * (exp1 - 2 * exp2) -
-                                         Tap * twbp->D * (twbp->alpha / twbp->r_vdW) *
-                                         (exp1 - exp2) * dfn13 );
-                }
-                else  // no shielding
-                {
-                    exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                    exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
+                        fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
+                        exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
+                        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
 
-                    data->E_vdW += e_vdW =
-                                       self_coef * Tap * twbp->D * (exp1 - 2.0 * exp2);
+                        e_vdW = self_coef * Tap * twbp->D * (exp1 - 2.0 * exp2);
+                        e_vdW_total += e_vdW;
 
-                    CEvd = self_coef * ( dTap * twbp->D * (exp1 - 2.0 * exp2) -
-                                         Tap * twbp->D * (twbp->alpha / twbp->r_vdW) *
-                                         (exp1 - exp2) );
-                }
+                        dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) *
+                            POW( r_ij, p_vdW1 - 2.0 );
 
-                if (system->reaxprm.gp.vdw_type == 2 || system->reaxprm.gp.vdw_type == 3)
-                {
-                    // innner wall
-                    e_core = twbp->ecore * EXP(twbp->acore * (1.0 - (r_ij / twbp->rcore)));
-                    e_vdW += self_coef * Tap * e_core;
-                    data->E_vdW += self_coef * Tap * e_core;
+                        CEvd = self_coef * ( dTap * twbp->D * (exp1 - 2 * exp2) -
+                                Tap * twbp->D * (twbp->alpha / twbp->r_vdW) *
+                                (exp1 - exp2) * dfn13 );
+                    }
+                    /* no shielding */
+                    else
+                    {
+                        exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
+                        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
 
-                    de_core = -(twbp->acore / twbp->rcore) * e_core;
-                    CEvd += self_coef * ( dTap * e_core + Tap * de_core );
-                }
+                        e_vdW = self_coef * Tap * twbp->D * (exp1 - 2.0 * exp2);
+                        e_vdW_total += e_vdW;
 
-                /*Coulomb Calculations*/
-                dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
-                dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+                        CEvd = self_coef * ( dTap * twbp->D * (exp1 - 2.0 * exp2) -
+                                Tap * twbp->D * (twbp->alpha / twbp->r_vdW) *
+                                (exp1 - exp2) );
+                    }
 
-                tmp = Tap / dr3gamij_3;
-                //tmp = Tap * nbr_pj->inv_dr3gamij_3; -- precomputed during compte_H
-                data->E_Ele += e_ele =
-                                   self_coef * C_ele * system->atoms[i].q * system->atoms[j].q * tmp;
+                    if ( system->reaxprm.gp.vdw_type == 2 || system->reaxprm.gp.vdw_type == 3 )
+                    {
+                        /* innner wall */
+                        e_core = twbp->ecore * EXP(twbp->acore * (1.0 - (r_ij / twbp->rcore)));
+                        e_vdW += self_coef * Tap * e_core;
+                        e_vdW_total += self_coef * Tap * e_core;
 
+                        de_core = -(twbp->acore / twbp->rcore) * e_core;
+                        CEvd += self_coef * ( dTap * e_core + Tap * de_core );
+                    }
 
-                CEclmb = self_coef * C_ele * system->atoms[i].q * system->atoms[j].q *
-                         ( dTap -  Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
-                /*CEclmb = self_coef*C_ele*system->atoms[i].q*system->atoms[j].q*
-                  ( dTap- Tap*r_ij*nbr_pj->inv_dr3gamij_1 )*nbr_pj->inv_dr3gamij_3;*/
+                    /* Coulomb Calculations */
+                    dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
+                    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
+                    tmp = Tap / dr3gamij_3;
+                    e_ele = self_coef * C_ele * system->atoms[i].q * system->atoms[j].q * tmp;
+                    e_ele_total += e_ele;
 
-                if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT )
-                {
-                    rvec_ScaledAdd( system->atoms[i].f,
-                                    -(CEvd + CEclmb), nbr_pj->dvec );
-                    rvec_ScaledAdd( system->atoms[j].f,
-                                    +(CEvd + CEclmb), nbr_pj->dvec );
-                }
-                else   // NPT, iNPT or sNPT
-                {
-                    /* for pressure coupling, terms not related to bond order
-                       derivatives are added directly into pressure vector/tensor */
-                    rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
+                    CEclmb = self_coef * C_ele * system->atoms[i].q * system->atoms[j].q *
+                             ( dTap -  Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
 
-                    rvec_ScaledAdd( system->atoms[i].f, -1., temp );
-                    rvec_Add( system->atoms[j].f, temp );
+                    if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT )
+                    {
+#ifndef _OPENMP
+                        rvec_ScaledAdd( system->atoms[i].f,
+                                -(CEvd + CEclmb), nbr_pj->dvec );
+                        rvec_ScaledAdd( system->atoms[j].f,
+                                +(CEvd + CEclmb), nbr_pj->dvec );
+#else
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i],
+                                -(CEvd + CEclmb), nbr_pj->dvec );
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + j],
+                                +(CEvd + CEclmb), nbr_pj->dvec );
+#endif
+                    }
+                    /* NPT, iNPT or sNPT */
+                    else
+                    {
+                        /* for pressure coupling, terms not related to bond order
+                           derivatives are added directly into pressure vector/tensor */
+                        rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
 
-                    rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
-                    rvec_Add( data->ext_press, ext_press );
+#ifndef _OPENMP
+                        rvec_ScaledAdd( system->atoms[i].f, -1., temp );
+                        rvec_Add( system->atoms[j].f, temp );
+#else
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1., temp );
+                        rvec_Add( workspace->f_local[tid * system->N + j], temp );
+#endif
 
-                    /*fprintf( stderr, "nonbonded(%d,%d): rel_box (%f %f %f)",
-                      i,j,nbr_pj->rel_box[0],nbr_pj->rel_box[1],nbr_pj->rel_box[2] );
+                        rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
+                        #pragma omp critical
+                        {
+                            rvec_Add( data->ext_press, ext_press );
+                        }
 
-                      fprintf( stderr, "force(%f %f %f)", temp[0], temp[1], temp[2] );
+                        /*fprintf( stderr, "nonbonded(%d,%d): rel_box (%f %f %f)",
+                          i,j,nbr_pj->rel_box[0],nbr_pj->rel_box[1],nbr_pj->rel_box[2] );
 
-                      fprintf( stderr, "ext_press (%12.6f %12.6f %12.6f)\n",
-                      data->ext_press[0], data->ext_press[1], data->ext_press[2] );*/
+                          fprintf( stderr, "force(%f %f %f)", temp[0], temp[1], temp[2] );
 
-                    /* This part is intended for a fully-flexible box */
-                    /* rvec_OuterProduct( temp_rtensor, nbr_pj->dvec,
-                       system->atoms[i].x );
-                       rtensor_Scale( total_rtensor,
-                       F_C * -(CEvd + CEclmb), temp_rtensor );
-                       rvec_OuterProduct( temp_rtensor,
-                       nbr_pj->dvec, system->atoms[j].x );
-                       rtensor_ScaledAdd( total_rtensor,
-                       F_C * +(CEvd + CEclmb), temp_rtensor );
+                          fprintf( stderr, "ext_press (%12.6f %12.6f %12.6f)\n",
+                          data->ext_press[0], data->ext_press[1], data->ext_press[2] );*/
 
-                       if( nbr_pj->imaginary )
-                       // This is an external force due to an imaginary nbr
-                       rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
-                       else
-                       // This interaction is completely internal
-                       rtensor_Add( data->flex_bar.P, total_rtensor ); */
-                }
+                        /* This part is intended for a fully-flexible box */
+                        /* rvec_OuterProduct( temp_rtensor, nbr_pj->dvec,
+                           system->atoms[i].x );
+                           rtensor_Scale( total_rtensor,
+                           F_C * -(CEvd + CEclmb), temp_rtensor );
+                           rvec_OuterProduct( temp_rtensor,
+                           nbr_pj->dvec, system->atoms[j].x );
+                           rtensor_ScaledAdd( total_rtensor,
+                           F_C * +(CEvd + CEclmb), temp_rtensor );
+
+                           if( nbr_pj->imaginary )
+                           // This is an external force due to an imaginary nbr
+                           rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
+                           else
+                           // This interaction is completely internal
+                           rtensor_Add( data->flex_bar.P, total_rtensor ); */
+                    }
 
 #ifdef TEST_ENERGY
-                rvec_MakeZero( temp );
-                rvec_ScaledAdd( temp, +CEvd, nbr_pj->dvec );
-                fprintf( out_control->evdw,
-                         "%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
-                         //i+1, j+1,
-                         MIN( workspace->orig_id[i], workspace->orig_id[j] ),
-                         MAX( workspace->orig_id[i], workspace->orig_id[j] ),
-                         r_ij, e_vdW, temp[0], temp[1], temp[2]/*, data->E_vdW*/ );
+                    rvec_MakeZero( temp );
+                    rvec_ScaledAdd( temp, +CEvd, nbr_pj->dvec );
+                    fprintf( out_control->evdw,
+                             "%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
+                             //i+1, j+1,
+                             MIN( workspace->orig_id[i], workspace->orig_id[j] ),
+                             MAX( workspace->orig_id[i], workspace->orig_id[j] ),
+                             r_ij, e_vdW, temp[0], temp[1], temp[2]/*, e_vdW_total*/ );
 
-                fprintf( out_control->ecou, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                         MIN( workspace->orig_id[i], workspace->orig_id[j] ),
-                         MAX( workspace->orig_id[i], workspace->orig_id[j] ),
-                         r_ij, system->atoms[i].q, system->atoms[j].q,
-                         e_ele/*, data->E_Ele*/ );
+                    fprintf( out_control->ecou, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
+                             MIN( workspace->orig_id[i], workspace->orig_id[j] ),
+                             MAX( workspace->orig_id[i], workspace->orig_id[j] ),
+                             r_ij, system->atoms[i].q, system->atoms[j].q,
+                             e_ele/*, e_ele_total*/ );
 #endif
+
 #ifdef TEST_FORCES
-                rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
 #endif
+                }
             }
+        }
     }
+
+    data->E_vdW = e_vdW_total;
+    data->E_Ele = e_ele_total;
 
     // fclose( fout );
 
@@ -350,7 +392,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
 
 void LR_vdW_Coulomb( reax_system *system, control_params *control,
-                     int i, int j, real r_ij, LR_data *lr )
+        int i, int j, real r_ij, LR_data *lr )
 {
     real p_vdW1 = system->reaxprm.gp.l[28];
     real p_vdW1i = 1.0 / p_vdW1;
@@ -399,14 +441,14 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
     dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) * POW(r_ij, p_vdW1 - 2.0);
 
     lr->CEvd = dTap * twbp->D * (exp1 - 2 * exp2) -
-               Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
+        Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
 
-    /*vdWaals Calculations*/
-    if (system->reaxprm.gp.vdw_type == 1 || system->reaxprm.gp.vdw_type == 3)
+    /* vdWaals Calculations */
+    if ( system->reaxprm.gp.vdw_type == 1 || system->reaxprm.gp.vdw_type == 3 )
     {
         // shielding
-        powr_vdW1 = POW(r_ij, p_vdW1);
-        powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1);
+        powr_vdW1 = POW( r_ij, p_vdW1 );
+        powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
 
         fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
         exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
@@ -415,12 +457,13 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
         lr->e_vdW = Tap * twbp->D * (exp1 - 2.0 * exp2);
 
         dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) *
-                POW(r_ij, p_vdW1 - 2.0);
+            POW( r_ij, p_vdW1 - 2.0 );
 
         lr->CEvd = dTap * twbp->D * (exp1 - 2.0 * exp2) -
-                   Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
+            Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
     }
-    else  // no shielding
+    /* no shielding */
+    else
     {
         exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
         exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
@@ -428,10 +471,10 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
         lr->e_vdW = Tap * twbp->D * (exp1 - 2.0 * exp2);
 
         lr->CEvd = dTap * twbp->D * (exp1 - 2.0 * exp2) -
-                   Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2);
+            Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2);
     }
 
-    if (system->reaxprm.gp.vdw_type == 2 || system->reaxprm.gp.vdw_type == 3)
+    if ( system->reaxprm.gp.vdw_type == 2 || system->reaxprm.gp.vdw_type == 3 )
     {
         // innner wall
         e_core = twbp->ecore * EXP(twbp->acore * (1.0 - (r_ij / twbp->rcore)));
@@ -443,7 +486,7 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
 
     /* Coulomb calculations */
     dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
-    dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
     tmp = Tap / dr3gamij_3;
     lr->H = EV_to_KCALpMOL * tmp;
@@ -465,106 +508,144 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
 
 
 void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
-                                   simulation_data *data,
-                                   static_storage *workspace, list **lists,
-                                   output_controls *out_control )
+        simulation_data *data, static_storage *workspace, list **lists,
+        output_controls *out_control )
 {
-    int i, j, pj, r, steps, update_freq, update_energies;
-    int type_i, type_j, tmin, tmax;
-    int start_i, end_i;
-    real r_ij, self_coef, base, dif;
-    real e_vdW, e_ele;
-    real CEvd, CEclmb;
-    rvec temp, ext_press;
-    far_neighbor_data *nbr_pj;
-    list *far_nbrs = (*lists) + FAR_NBRS;
-    LR_lookup_table *t;
+    int steps, update_freq, update_energies;
+    list *far_nbrs;
+    real e_vdW_total, e_ele_total;
 
+    far_nbrs = (*lists) + FAR_NBRS;
     steps = data->step - data->prev_steps;
     update_freq = out_control->energy_update_freq;
     update_energies = update_freq > 0 && steps % update_freq == 0;
+    e_vdW_total = 0.0;
+    e_ele_total = 0.0;
 
-    for ( i = 0; i < system->N; ++i )
+    #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
     {
-        type_i  = system->atoms[i].type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
+        int i, j, pj, r;
+        int type_i, type_j, tmin, tmax;
+        int start_i, end_i;
+        real r_ij, self_coef, base, dif;
+        real e_vdW, e_ele;
+        real CEvd, CEclmb;
+        rvec temp, ext_press;
+        far_neighbor_data *nbr_pj;
+        LR_lookup_table *t;
+#ifdef _OPENMP
+        int tid;
 
-        for ( pj = start_i; pj < end_i; ++pj )
-            if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+        tid = omp_get_thread_num( );
+#endif
+
+        #pragma omp for schedule(guided)
+        for ( i = 0; i < system->N; ++i )
+        {
+            type_i = system->atoms[i].type;
+            start_i = Start_Index(i, far_nbrs);
+            end_i = End_Index(i, far_nbrs);
+
+            for ( pj = start_i; pj < end_i; ++pj )
             {
-                nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
-                j      = nbr_pj->nbr;
-                type_j = system->atoms[j].type;
-                r_ij   = nbr_pj->d;
-                self_coef = (i == j) ? 0.5 : 1.0;
-                tmin  = MIN( type_i, type_j );
-                tmax  = MAX( type_i, type_j );
-                t = &( LR[tmin][tmax] );
-
-                /* Cubic Spline Interpolation */
-                r = (int)(r_ij * t->inv_dx);
-                if ( r == 0 )  ++r;
-                base = (real)(r + 1) * t->dx;
-                dif = r_ij - base;
-                //fprintf(stderr, "r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif);
-
-                if ( update_energies )
+                if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
                 {
-                    e_vdW = ((t->vdW[r].d * dif + t->vdW[r].c) * dif + t->vdW[r].b) * dif +
-                            t->vdW[r].a;
-                    e_vdW *= self_coef;
+                    nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
+                    j = nbr_pj->nbr;
+                    type_j = system->atoms[j].type;
+                    r_ij = nbr_pj->d;
+                    self_coef = (i == j) ? 0.5 : 1.0;
+                    tmin = MIN( type_i, type_j );
+                    tmax = MAX( type_i, type_j );
+                    t = &( LR[tmin][tmax] );
 
-                    e_ele = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
-                            t->ele[r].a;
-                    e_ele *= self_coef * system->atoms[i].q * system->atoms[j].q;
+                    /* Cubic Spline Interpolation */
+                    r = (int)(r_ij * t->inv_dx);
+                    if ( r == 0 )
+                    {
+                        ++r;
+                    }
+                    base = (real)(r + 1) * t->dx;
+                    dif = r_ij - base;
+                    //fprintf(stderr, "r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif);
 
-                    data->E_vdW += e_vdW;
-                    data->E_Ele += e_ele;
-                }
+                    if ( update_energies )
+                    {
+                        e_vdW = ((t->vdW[r].d * dif + t->vdW[r].c) * dif + t->vdW[r].b) * dif +
+                                t->vdW[r].a;
+                        e_vdW *= self_coef;
 
-                CEvd = ((t->CEvd[r].d * dif + t->CEvd[r].c) * dif + t->CEvd[r].b) * dif +
-                       t->CEvd[r].a;
-                CEvd *= self_coef;
-                //CEvd = (3*t->vdW[r].d*dif + 2*t->vdW[r].c)*dif + t->vdW[r].b;
+                        e_ele = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
+                                t->ele[r].a;
+                        e_ele *= self_coef * system->atoms[i].q * system->atoms[j].q;
 
-                CEclmb = ((t->CEclmb[r].d * dif + t->CEclmb[r].c) * dif + t->CEclmb[r].b) * dif +
-                         t->CEclmb[r].a;
-                CEclmb *= self_coef * system->atoms[i].q * system->atoms[j].q;
+                        e_vdW_total += e_vdW;
+                        e_ele_total += e_ele;
+                    }
 
-                if ( control->ensemble == NVE || control->ensemble == NVT  || control->ensemble == bNVT)
-                {
-                    rvec_ScaledAdd( system->atoms[i].f, -(CEvd + CEclmb), nbr_pj->dvec );
-                    rvec_ScaledAdd( system->atoms[j].f, +(CEvd + CEclmb), nbr_pj->dvec );
-                }
-                else   // NPT, iNPT or sNPT
-                {
-                    /* for pressure coupling, terms not related to bond order
-                       derivatives are added directly into pressure vector/tensor */
-                    rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
-                    rvec_ScaledAdd( system->atoms[i].f, -1., temp );
-                    rvec_Add( system->atoms[j].f, temp );
-                    rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
-                    rvec_Add( data->ext_press, ext_press );
-                }
+                    CEvd = ((t->CEvd[r].d * dif + t->CEvd[r].c) * dif + t->CEvd[r].b) * dif +
+                           t->CEvd[r].a;
+                    CEvd *= self_coef;
+                    //CEvd = (3*t->vdW[r].d*dif + 2*t->vdW[r].c)*dif + t->vdW[r].b;
+
+                    CEclmb = ((t->CEclmb[r].d * dif + t->CEclmb[r].c) * dif + t->CEclmb[r].b) * dif +
+                             t->CEclmb[r].a;
+                    CEclmb *= self_coef * system->atoms[i].q * system->atoms[j].q;
+
+                    if ( control->ensemble == NVE || control->ensemble == NVT  || control->ensemble == bNVT)
+                    {
+#ifndef _OPENMP
+                        rvec_ScaledAdd( system->atoms[i].f, -(CEvd + CEclmb), nbr_pj->dvec );
+                        rvec_ScaledAdd( system->atoms[j].f, +(CEvd + CEclmb), nbr_pj->dvec );
+#else
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i],
+                                -(CEvd + CEclmb), nbr_pj->dvec );
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + j],
+                                +(CEvd + CEclmb), nbr_pj->dvec );
+#endif
+                    }
+                    else   // NPT, iNPT or sNPT
+                    {
+                        /* for pressure coupling, terms not related to bond order
+                           derivatives are added directly into pressure vector/tensor */
+                        rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
+#ifndef _OPENMP
+                        rvec_ScaledAdd( system->atoms[i].f, -1., temp );
+                        rvec_Add( system->atoms[j].f, temp );
+#else
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1., temp );
+                        rvec_Add( workspace->f_local[tid * system->N + j], temp );
+#endif
+                        rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
+                        #pragma omp critical
+                        {
+                        rvec_Add( data->ext_press, ext_press );
+                        }
+                    }
 
 #ifdef TEST_ENERGY
-                fprintf(out_control->evdw, "%6d%6d%24.15e%24.15e%24.15e\n",
-                        workspace->orig_id[i], workspace->orig_id[j],
-                        r_ij, e_vdW, data->E_vdW );
-                fprintf(out_control->ecou, "%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
-                        workspace->orig_id[i], workspace->orig_id[j],
-                        r_ij, system->atoms[i].q, system->atoms[j].q,
-                        e_ele, data->E_Ele );
+                    fprintf( out_control->evdw, "%6d%6d%24.15e%24.15e%24.15e\n",
+                            workspace->orig_id[i], workspace->orig_id[j],
+                            r_ij, e_vdW, data->E_vdW );
+                    fprintf( out_control->ecou, "%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
+                            workspace->orig_id[i], workspace->orig_id[j],
+                            r_ij, system->atoms[i].q, system->atoms[j].q,
+                            e_ele, data->E_Ele );
 #endif
+
 #ifdef TEST_FORCES
-                rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
 #endif
+                }
             }
+        }
     }
+
+    data->E_vdW += e_vdW_total;
+    data->E_Ele += e_ele_total;
 }
 
 

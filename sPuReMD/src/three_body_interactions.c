@@ -28,11 +28,17 @@
 
 /* calculates the theta angle between i-j-k */
 void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-                      real *theta, real *cos_theta )
+        real *theta, real *cos_theta )
 {
     (*cos_theta) = rvec_Dot( dvec_ji, dvec_jk ) / ( d_ji * d_jk );
-    if ( *cos_theta > 1. ) *cos_theta  = 1.0;
-    if ( *cos_theta < -1. ) *cos_theta  = -1.0;
+    if ( *cos_theta > 1.0 )
+    {
+        *cos_theta  = 1.0;
+    }
+    if ( *cos_theta < -1.0 )
+    {
+        *cos_theta  = -1.0;
+    }
 
     (*theta) = ACOS( *cos_theta );
 }
@@ -40,27 +46,26 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
 void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-                           rvec* dcos_theta_di, rvec* dcos_theta_dj,
-                           rvec* dcos_theta_dk )
+        rvec* dcos_theta_di, rvec* dcos_theta_dj, rvec* dcos_theta_dk )
 {
-    int  t;
-    real sqr_d_ji   = SQR(d_ji);
-    real sqr_d_jk   = SQR(d_jk);
-    real inv_dists  = 1.0 / (d_ji * d_jk);
+    int t;
+    real sqr_d_ji = SQR(d_ji);
+    real sqr_d_jk = SQR(d_jk);
+    real inv_dists = 1.0 / (d_ji * d_jk);
     real inv_dists3 = POW( inv_dists, 3 );
-    real dot_dvecs  = rvec_Dot( dvec_ji, dvec_jk );
+    real dot_dvecs = rvec_Dot( dvec_ji, dvec_jk );
     real Cdot_inv3  = dot_dvecs * inv_dists3;
 
     for ( t = 0; t < 3; ++t )
     {
         (*dcos_theta_di)[t] = dvec_jk[t] * inv_dists -
-                              Cdot_inv3 * sqr_d_jk * dvec_ji[t];
+            Cdot_inv3 * sqr_d_jk * dvec_ji[t];
 
         (*dcos_theta_dj)[t] = -(dvec_jk[t] + dvec_ji[t]) * inv_dists +
-                              Cdot_inv3 * ( sqr_d_jk * dvec_ji[t] + sqr_d_ji * dvec_jk[t] );
+            Cdot_inv3 * ( sqr_d_jk * dvec_ji[t] + sqr_d_ji * dvec_jk[t] );
 
         (*dcos_theta_dk)[t] = dvec_ji[t] * inv_dists -
-                              Cdot_inv3 * sqr_d_ji * dvec_jk[t];
+            Cdot_inv3 * sqr_d_ji * dvec_jk[t];
     }
 
     /*fprintf( stderr,
@@ -72,13 +77,13 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 /* this is a 3-body interaction in which the main role is
    played by j which sits in the middle of the other two. */
 void Three_Body_Interactions( reax_system *system, control_params *control,
-                              simulation_data *data, static_storage *workspace,
-                              list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
-    int  i, j, pi, k, pk, t;
-    int  type_i, type_j, type_k;
-    int  start_j, end_j, start_pk, end_pk;
-    int  flag, cnt, num_thb_intrs;
+    int i, j, pi, k, pk, t;
+    int type_i, type_j, type_k;
+    int start_j, end_j, start_pk, end_pk;
+    int flag, cnt, num_thb_intrs;
 
     real temp, temp_bo_jt, pBOjt7;
     real p_val1, p_val2, p_val3, p_val4, p_val5;
@@ -591,8 +596,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
 
 void Hydrogen_Bonds( reax_system *system, control_params *control,
-                     simulation_data *data, static_storage *workspace,
-                     list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
     int i, j, k, pi, pk, itr, top;
     int type_i, type_j, type_k;
@@ -625,14 +630,16 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
        so in this function i->X, j->H, k->Z when we map
        variables onto the ones in the handout.*/
     for ( j = 0; j < system->N; ++j )
-        if ( system->reaxprm.sbp[system->atoms[j].type].p_hbond == 1 ) // j must be H
+    {
+        /* j must be H */
+        if ( system->reaxprm.sbp[system->atoms[j].type].p_hbond == 1 )
         {
             /*set j's variables */
-            type_j  = system->atoms[j].type;
-            start_j = Start_Index(j, bonds);
-            end_j   = End_Index(j, bonds);
+            type_j = system->atoms[j].type;
+            start_j = Start_Index( j, bonds );
+            end_j = End_Index( j, bonds );
             hb_start_j = Start_Index( workspace->hbond_index[j], hbonds );
-            hb_end_j   = End_Index  ( workspace->hbond_index[j], hbonds );
+            hb_end_j = End_Index( workspace->hbond_index[j], hbonds );
 
             top = 0;
             for ( pi = start_j; pi < end_j; ++pi )
@@ -644,7 +651,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                 if ( system->reaxprm.sbp[type_i].p_hbond == 2 &&
                         bo_ij->BO >= HB_THRESHOLD )
+                {
                     hblist[top++] = pi;
+                }
             }
 
             // fprintf( stderr, "j: %d, top: %d, hb_start_j: %d, hb_end_j:%d\n",
@@ -674,11 +683,10 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         ++num_hb_intrs;
 
                         Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
-                                         &theta, &cos_theta );
+                                &theta, &cos_theta );
                         /* the derivative of cos(theta) */
                         Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
-                                              &dcos_theta_di, &dcos_theta_dj,
-                                              &dcos_theta_dk );
+                                &dcos_theta_di, &dcos_theta_dj, &dcos_theta_dk );
 
                         /* hydrogen bond energy*/
                         sin_theta2 = SIN( theta / 2.0 );
@@ -687,15 +695,15 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         cos_xhz1 = ( 1.0 - cos_theta );
                         exp_hb2 = EXP( -hbp->p_hb2 * bo_ij->BO );
                         exp_hb3 = EXP( -hbp->p_hb3 * ( hbp->r0_hb / r_jk +
-                                                       r_jk / hbp->r0_hb - 2.0 ) );
+                                    r_jk / hbp->r0_hb - 2.0 ) );
 
-                        data->E_HB += e_hb =
-                                          hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
+                        e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
+                        data->E_HB += e_hb;
 
                         CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
                         CEhb2 = -hbp->p_hb1 / 2.0 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
                         CEhb3 = -hbp->p_hb3 * e_hb * (-hbp->r0_hb / SQR(r_jk) +
-                                                      1.0 / hbp->r0_hb);
+                                1.0 / hbp->r0_hb);
 
                         /* hydrogen bond forces */
                         bo_ij->Cdbo += CEhb1;   // dbo term
@@ -703,11 +711,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         if ( control->ensemble == NVE || control->ensemble == NVT  || control->ensemble == bNVT)
                         {
                             rvec_ScaledAdd( system->atoms[i].f,
-                                            +CEhb2, dcos_theta_di ); //dcos terms
+                                    +CEhb2, dcos_theta_di ); //dcos terms
                             rvec_ScaledAdd( system->atoms[j].f,
-                                            +CEhb2, dcos_theta_dj );
+                                    +CEhb2, dcos_theta_dj );
                             rvec_ScaledAdd( system->atoms[k].f,
-                                            +CEhb2, dcos_theta_dk );
+                                    +CEhb2, dcos_theta_dk );
                             //dr terms
                             rvec_ScaledAdd( system->atoms[j].f, -CEhb3 / r_jk, dvec_jk );
                             rvec_ScaledAdd( system->atoms[k].f, +CEhb3 / r_jk, dvec_jk );
@@ -777,6 +785,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                  r_jk, theta, bo_ij->BO, e_hb, data->E_HB );
 
 #endif
+
 #ifdef TEST_FORCES
                         // dbo term
                         Add_dBO( system, lists, j, pi, +CEhb1, workspace->f_hb );
@@ -792,6 +801,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 }
             }
         }
+    }
 
     /* fprintf( stderr, "hydbonds: ext_press (%23.15e %23.15e %23.15e)\n",
        data->ext_press[0], data->ext_press[1], data->ext_press[2] ); */

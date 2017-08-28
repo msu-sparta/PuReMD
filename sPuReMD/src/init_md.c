@@ -73,7 +73,7 @@ void Generate_Initial_Velocities( reax_system *system, real T )
 
 
 void Init_System( reax_system *system, control_params *control,
-                  simulation_data *data )
+        simulation_data *data )
 {
     int i;
     rvec dx;
@@ -124,8 +124,8 @@ void Init_System( reax_system *system, control_params *control,
 
 
 void Init_Simulation_Data( reax_system *system, control_params *control,
-                           simulation_data *data, output_controls *out_control,
-                           evolve_function *Evolve )
+        simulation_data *data, output_controls *out_control,
+        evolve_function *Evolve )
 {
 
     Reset_Simulation_Data( data );
@@ -169,9 +169,9 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
         if ( !control->restart )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin -
-                                                 data->N_f * K_B * control->T );
+                    data->N_f * K_B * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
-            data->iso_bar.eps = 0.33333 * log(system->box.volume);
+            data->iso_bar.eps = 1.0 / 3.0 * LOG( system->box.volume );
             //data->inv_W = 1. / (data->N_f*K_B*control->T*SQR(control->Tau_P));
             //Compute_Pressure( system, data, workspace );
         }
@@ -444,6 +444,10 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->f_old = (rvec *) malloc( system->N * sizeof( rvec ) );
     workspace->v_const = (rvec *) malloc( system->N * sizeof( rvec ) );
 
+#ifdef _OPENMP
+    workspace->f_local = (rvec *) malloc( control->num_threads * system->N * sizeof( rvec ) );
+#endif
+
     /* storage for analysis */
     if ( control->molec_anal || control->diffusion_coef )
     {
@@ -496,11 +500,14 @@ void Init_Workspace( reax_system *system, control_params *control,
 
 
 void Init_Lists( reax_system *system, control_params *control,
-                 simulation_data *data, static_storage *workspace,
-                 list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
-    int i, num_nbrs, num_hbonds, num_bonds, num_3body, Htop, max_nnz;
+    int i, num_nbrs, num_bonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
+#if defined(DEBUG_FOCUS)
+    int num_hbonds;
+#endif
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
 
@@ -579,9 +586,9 @@ void Init_Lists( reax_system *system, control_params *control,
 
         Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
                 hb_top, (*lists) + HBONDS );
-        num_hbonds = hb_top[system->N - 1];
 
 #if defined(DEBUG_FOCUS)
+        num_hbonds = hb_top[system->N - 1];
         fprintf( stderr, "estimated storage - num_hbonds: %d\n", num_hbonds );
         fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
                  num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
@@ -597,10 +604,6 @@ void Init_Lists( reax_system *system, control_params *control,
     fprintf( stderr, "memory allocated: bonds = %ldMB\n",
              num_bonds * sizeof(bond_data) / (1024 * 1024) );
 #endif
-
-//fprintf (stderr, " **** sizeof 3 body : %d \n", sizeof (three_body_interaction_data));
-//fprintf (stderr, " **** num_3body : %d \n", num_3body);
-//fprintf (stderr, " **** num_bonds : %d \n", num_bonds);
 
     /* 3bodies list */
     if (!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists) + THREE_BODIES))
@@ -860,12 +863,21 @@ void Init_Out_Controls(reax_system *system, control_params *control,
 }
 
 
-void Initialize(reax_system *system, control_params *control,
-                simulation_data *data, static_storage *workspace, list **lists,
-                output_controls *out_control, evolve_function *Evolve)
+void Initialize( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, list **lists,
+        output_controls *out_control, evolve_function *Evolve )
 {
     real start, end;
-    Randomize();
+
+#ifdef _OPENMP
+    #pragma omp parallel default(shared)
+    {
+        #pragma omp single
+        control->num_threads = omp_get_num_threads( );
+    }
+#endif
+
+    Randomize( );
 
     Init_System( system, control, data );
 
@@ -879,17 +891,18 @@ void Initialize(reax_system *system, control_params *control,
 
     /* These are done in forces.c, only forces.c can see all those functions */
     Init_Bonded_Force_Functions( control );
+
 #ifdef TEST_FORCES
     Init_Force_Test_Functions( );
 #endif
 
     if ( control->tabulate )
     {
-        start = Get_Time ();
+        start = Get_Time( );
         Make_LR_Lookup_Table( system, control );
-        end = Get_Timing_Info (start);
+        end = Get_Timing_Info( start );
 
-        //fprintf (stderr, "Time for LR Lookup Table calculation is %f \n", end );
+        //fprintf( stderr, "Time for LR Lookup Table calculation is %f \n", end );
     }
 
 #if defined(DEBUG_FOCUS)
