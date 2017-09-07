@@ -34,6 +34,10 @@
 #include "vector.h"
 
 
+/* File scope variables */
+static interaction_function Interaction_Functions[NO_OF_INTERACTIONS];
+
+
 typedef enum
 {
     DIAGONAL = 0,
@@ -179,14 +183,18 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 
     bonds = (*lists) + BONDS;
 
+#ifdef _OPENMP
     #pragma omp parallel default(shared)
+#endif
     {
         int pj;
 #ifdef _OPENMP
         int j;
 #endif
 
+#ifdef _OPENMP
         #pragma omp for schedule(static)
+#endif
         for ( i = 0; i < system->N; ++i )
         {
             for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
@@ -402,7 +410,9 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
         control_params *control, int i, int j,
         real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    real Tap, gamij, dr3gamij_1, dr3gamij_3, ret = 0.0;
+    real Tap, gamij, dr3gamij_1, dr3gamij_3, ret;
+
+    ret = 0.0;
 
     switch ( control->charge_method )
     {
@@ -701,7 +711,6 @@ void Init_Forces( reax_system *system, control_params *control,
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
-    real p_boc1, p_boc2;
     sparse_matrix *H, *H_sp;
     list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
@@ -714,7 +723,6 @@ void Init_Forces( reax_system *system, control_params *control,
     far_nbrs = *lists + FAR_NBRS;
     bonds = *lists + BONDS;
     hbonds = *lists + HBONDS;
-
     H = workspace->H;
     H_sp = workspace->H_sp;
     Htop = 0;
@@ -722,8 +730,6 @@ void Init_Forces( reax_system *system, control_params *control,
     num_bonds = 0;
     num_hbonds = 0;
     btop_i = btop_j = 0;
-    p_boc1 = system->reaxprm.gp.l[0];
-    p_boc2 = system->reaxprm.gp.l[1];
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -825,28 +831,40 @@ void Init_Forces( reax_system *system, control_params *control,
                 /* uncorrected bond orders */
                 if ( far_nbrs->select.far_nbr_list[pj].d <= control->nbr_cut )
                 {
-                    r2 = SQR(r_ij);
+                    r2 = SQR( r_ij );
 
                     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
                     {
                         C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
                         BO_s = (1.0 + control->bo_cut) * EXP( C12 );
                     }
-                    else BO_s = C12 = 0.0;
+                    else
+                    {
+                        BO_s = 0.0;
+                        C12 = 0.0;
+                    }
 
                     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
                     {
                         C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
                         BO_pi = EXP( C34 );
                     }
-                    else BO_pi = C34 = 0.0;
+                    else
+                    {
+                        BO_pi = 0.0;
+                        C34 = 0.0;
+                    }
 
                     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
                     {
                         C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
                         BO_pi2 = EXP( C56 );
                     }
-                    else BO_pi2 = C56 = 0.0;
+                    else
+                    {
+                        BO_pi2 = 0.0;
+                        C56 = 0.0;
+                    }
 
                     /* Initially BO values are the uncorrected ones, page 1 */
                     BO = BO_s + BO_pi + BO_pi2;
@@ -888,13 +906,13 @@ void Init_Forces( reax_system *system, control_params *control,
 
                         /* Only dln_BOp_xx wrt. dr_i is stored here, note that
                            dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
-                        rvec_Scale(bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec);
-                        rvec_Scale(bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec);
-                        rvec_Scale(bo_ij->dln_BOp_pi2,
-                                   -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec);
-                        rvec_Scale(bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s);
-                        rvec_Scale(bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
-                        rvec_Scale(bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
+                        rvec_Scale( bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
+                        rvec_Scale( bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
+                        rvec_Scale( bo_ij->dln_BOp_pi2,
+                                   -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+                        rvec_Scale( bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s );
+                        rvec_Scale( bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
+                        rvec_Scale( bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
 
                         /* Only dBOp wrt. dr_i is stored here, note that
                            dBOp/dr_i = -dBOp/dr_j and all others are 0 */
@@ -913,8 +931,12 @@ void Init_Forces( reax_system *system, control_params *control,
                         bo_ji->BO -= control->bo_cut;
                         workspace->total_bond_order[i] += bo_ij->BO; //currently total_BOp
                         workspace->total_bond_order[j] += bo_ji->BO; //currently total_BOp
-                        bo_ij->Cdbo = bo_ij->Cdbopi = bo_ij->Cdbopi2 = 0.0;
-                        bo_ji->Cdbo = bo_ji->Cdbopi = bo_ji->Cdbopi2 = 0.0;
+                        bo_ij->Cdbo = 0.0;
+                        bo_ij->Cdbopi = 0.0;
+                        bo_ij->Cdbopi2 = 0.0;
+                        bo_ji->Cdbo = 0.0;
+                        bo_ji->Cdbopi = 0.0;
+                        bo_ji->Cdbopi2 = 0.0;
 
                         /*fprintf( stderr, "%d %d %g %g %g\n",
                           i+1, j+1, bo_ij->BO, bo_ij->BO_pi, bo_ij->BO_pi2 );*/
@@ -953,7 +975,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
         /* diagonal entry */
         H->j[Htop] = i;
-        H->val[Htop] = Init_Charge_Matrix_Entry( system, control, i, j,
+        H->val[Htop] = Init_Charge_Matrix_Entry( system, control, i, i,
                 r_ij, DIAGONAL );
         ++Htop;
 
@@ -966,8 +988,6 @@ void Init_Forces( reax_system *system, control_params *control,
         {
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
         }
-        //fprintf( stderr, "%d bonds start: %d, end: %d\n",
-        //     i, Start_Index( i, bonds ), End_Index( i, bonds ) );
     }
 
     Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
@@ -976,9 +996,6 @@ void Init_Forces( reax_system *system, control_params *control,
     // mark the end of j list
     H->start[system->N_cm] = Htop;
     H_sp->start[system->N_cm] = H_sp_top;
-
-//    printf("Htop = %d\n", Htop);
-//    printf("H_sp_top = %d\n", H_sp_top);
 
     /* validate lists - decide if reallocation is required! */
     Validate_Lists( workspace, lists,
@@ -1006,7 +1023,6 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
-    real p_boc1, p_boc2;
     sparse_matrix *H, *H_sp;
     list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
@@ -1027,8 +1043,6 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
     num_bonds = 0;
     num_hbonds = 0;
     btop_i = btop_j = 0;
-    p_boc1 = system->reaxprm.gp.l[0];
-    p_boc2 = system->reaxprm.gp.l[1];
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1075,7 +1089,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 {
                     flag_sp = 1;
                 }
-                nbr_pj->d = sqrt(nbr_pj->d);
+                nbr_pj->d = SQRT( nbr_pj->d );
                 flag = 1;
             }
 
@@ -1127,28 +1141,40 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 /* uncorrected bond orders */
                 if ( far_nbrs->select.far_nbr_list[pj].d <= control->nbr_cut )
                 {
-                    r2 = SQR(r_ij);
+                    r2 = SQR( r_ij );
 
                     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
                     {
                         C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
                         BO_s = (1.0 + control->bo_cut) * EXP( C12 );
                     }
-                    else BO_s = C12 = 0.0;
+                    else
+                    {
+                        BO_s = 0.0;
+                        C12 = 0.0;
+                    }
 
                     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
                     {
                         C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
                         BO_pi = EXP( C34 );
                     }
-                    else BO_pi = C34 = 0.0;
+                    else
+                    {
+                        BO_pi = 0.0;
+                        C34 = 0.0;
+                    }
 
                     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
                     {
                         C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
                         BO_pi2 = EXP( C56 );
                     }
-                    else BO_pi2 = C56 = 0.0;
+                    else
+                    {
+                        BO_pi2 = 0.0;
+                        C56 = 0.0;
+                    }
 
                     /* Initially BO values are the uncorrected ones, page 1 */
                     BO = BO_s + BO_pi + BO_pi2;
@@ -1191,13 +1217,13 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
                         /* Only dln_BOp_xx wrt. dr_i is stored here, note that
                            dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
-                        rvec_Scale(bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec);
-                        rvec_Scale(bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec);
-                        rvec_Scale(bo_ij->dln_BOp_pi2,
-                                   -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec);
-                        rvec_Scale(bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s);
-                        rvec_Scale(bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
-                        rvec_Scale(bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
+                        rvec_Scale( bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
+                        rvec_Scale( bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
+                        rvec_Scale( bo_ij->dln_BOp_pi2,
+                                   -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+                        rvec_Scale( bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s );
+                        rvec_Scale( bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
+                        rvec_Scale( bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
 
                         /* Only dBOp wrt. dr_i is stored here, note that
                            dBOp/dr_i = -dBOp/dr_j and all others are 0 */
@@ -1216,8 +1242,12 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                         bo_ji->BO -= control->bo_cut;
                         workspace->total_bond_order[i] += bo_ij->BO; //currently total_BOp
                         workspace->total_bond_order[j] += bo_ji->BO; //currently total_BOp
-                        bo_ij->Cdbo = bo_ij->Cdbopi = bo_ij->Cdbopi2 = 0.0;
-                        bo_ji->Cdbo = bo_ji->Cdbopi = bo_ji->Cdbopi2 = 0.0;
+                        bo_ij->Cdbo = 0.0;
+                        bo_ij->Cdbopi = 0.0;
+                        bo_ij->Cdbopi2 = 0.0;
+                        bo_ji->Cdbo = 0.0;
+                        bo_ji->Cdbopi = 0.0;
+                        bo_ji->Cdbopi2 = 0.0;
 
                         Set_End_Index( j, btop_j + 1, bonds );
                     }
@@ -1237,15 +1267,17 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
         Set_End_Index( i, btop_i, bonds );
         if ( ihb == 1 )
+        {
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
+        }
     }
 
     // mark the end of j list
     H->start[i] = Htop;
     H_sp->start[i] = H_sp_top;
     /* validate lists - decide if reallocation is required! */
-    Validate_Lists( workspace, lists,
-                    data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
+    Validate_Lists( workspace, lists, data->step, system->N,
+            H->m, Htop, num_bonds, num_hbonds );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d: Htop = %d, num_bonds = %d, num_hbonds = %d\n",
@@ -1264,10 +1296,9 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int ihb, jhb;
-    real r_ij, r2;
+    real r_ij;
     real C12, C34, C56;
     real BO, BO_s, BO_pi, BO_pi2;
-    real p_boc1, p_boc2;
     list *far_nbrs;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -1275,8 +1306,6 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
     reax_atom *atom_i, *atom_j;
 
     far_nbrs = *lists + FAR_NBRS;
-    p_boc1 = system->reaxprm.gp.l[0];
-    p_boc2 = system->reaxprm.gp.l[1];
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1315,7 +1344,6 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
                 if ( nbr_pj->d <= control->nbr_cut )
                 {
                     r_ij = nbr_pj->d;
-                    r2 = SQR(r_ij);
 
                     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
                     {

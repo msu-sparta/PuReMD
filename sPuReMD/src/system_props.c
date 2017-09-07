@@ -25,7 +25,7 @@
 
 
 void Temperature_Control( control_params *control, simulation_data *data,
-                          output_controls *out_control )
+        output_controls *out_control )
 {
     real tmp;
 
@@ -34,17 +34,24 @@ void Temperature_Control( control_params *control, simulation_data *data,
         if ( (data->step - data->prev_steps) %
                 ((int)(control->T_freq / control->dt)) == 0 )
         {
-            if ( fabs( control->T - control->T_final ) >= fabs( control->T_rate ) )
+            if ( FABS( control->T - control->T_final ) >= FABS( control->T_rate ) )
+            {
                 control->T += control->T_rate;
-            else control->T = control->T_final;
+            }
+            else
+            {
+                control->T = control->T_final;
+            }
         }
     }
     else if ( control->T_mode == 2 )  // constant slope control
     {
         tmp = control->T_rate * control->dt / control->T_freq;
 
-        if ( fabs( control->T - control->T_final ) >= fabs( tmp ) )
+        if ( FABS( control->T - control->T_final ) >= FABS( tmp ) )
+        {
             control->T += tmp;
+        }
     }
 }
 
@@ -53,18 +60,19 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data )
 {
     int i;
 
-    data->M = 0;
+    data->M = 0.0;
 
     for ( i = 0; i < system->N; i++ )
+    {
         data->M += system->reaxprm.sbp[ system->atoms[i].type ].mass;
+    }
 
-    //fprintf ( stderr, "Compute_total_Mass -->%f<-- \n", data->M );
-    data->inv_M = 1. / data->M;
+    data->inv_M = 1.0 / data->M;
 }
 
 
 void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
-                             FILE *fout )
+        FILE *fout )
 {
     int i;
     real m, xx, xy, xz, yy, yz, zz, det;
@@ -76,7 +84,6 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     rvec_MakeZero( data->amcm ); // angular momentum of CoM
     rvec_MakeZero( data->avcm ); // angular velocity of CoM
 
-
     /* Compute the position, velocity and angular momentum about the CoM */
     for ( i = 0; i < system->N; ++i )
     {
@@ -87,15 +94,6 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
         rvec_Cross( tvec, system->atoms[i].x, system->atoms[i].v );
         rvec_ScaledAdd( data->amcm, m, tvec );
-
-        /*fprintf( fout,"%3d  %g %g %g\n",
-          i+1,
-          system->atoms[i].v[0], system->atoms[i].v[1], system->atoms[i].v[2]  );
-          fprintf( fout, "vcm:  %g %g %g\n",
-          data->vcm[0], data->vcm[1], data->vcm[2] );
-        */
-        /* fprintf( stderr, "amcm: %12.6f %12.6f %12.6f\n",
-           data->amcm[0], data->amcm[1], data->amcm[2] ); */
     }
 
     rvec_Scale( data->xcm, data->inv_M, data->xcm );
@@ -147,10 +145,14 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     inv[2][1] = mat[2][0] * mat[0][1] - mat[0][0] * mat[2][1];
     inv[2][2] = mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
 
-    if ( fabs(det) > ALMOST_ZERO )
+    if ( FABS(det) > ALMOST_ZERO )
+    {
         rtensor_Scale( inv, 1. / det, inv );
+    }
     else
+    {
         rtensor_MakeZero( inv );
+    }
 
     /* Compute the angular velocity about the centre of mass */
     rtensor_MatVec( data->avcm, inv, data->amcm );
@@ -186,7 +188,7 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 
     data->E_Kin = 0.0;
 
-    for (i = 0; i < system->N; i++)
+    for ( i = 0; i < system->N; i++ )
     {
         m = system->reaxprm.sbp[system->atoms[i].type].mass;
 
@@ -200,8 +202,10 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 
     data->therm.T = (2. * data->E_Kin) / (data->N_f * K_B);
 
-    if ( fabs(data->therm.T) < ALMOST_ZERO ) /* avoid T being an absolute zero! */
+    if ( FABS(data->therm.T) < ALMOST_ZERO ) /* avoid T being an absolute zero! */
+    {
         data->therm.T = ALMOST_ZERO;
+    }
 }
 
 
@@ -214,8 +218,7 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
  *  We may want to add that for more accuracy.
  */
 void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
-                                 simulation_data* data,
-                                 output_controls *out_control )
+        simulation_data* data, output_controls *out_control )
 {
     int i;
     reax_atom *p_atom;
@@ -273,8 +276,7 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
 }
 
 
-void Compute_Pressure_Isotropic_Klein( reax_system* system,
-                                       simulation_data* data )
+void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* data )
 {
     int i;
     reax_atom *p_atom;
@@ -301,7 +303,7 @@ void Compute_Pressure_Isotropic_Klein( reax_system* system,
 
 
 void Compute_Pressure( reax_system* system, simulation_data* data,
-                       static_storage *workspace )
+        static_storage *workspace )
 {
     int i;
     reax_atom *p_atom;

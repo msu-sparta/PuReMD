@@ -169,11 +169,13 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
     e_tor_total = 0.0;
     e_con_total = 0.0;
 
+#ifdef _OPENMP
     #pragma omp parallel default(shared) reduction(+: e_tor_total, e_con_total)
+#endif
     {
         int i, j, k, l, pi, pj, pk, pl, pij, plk;
         int type_i, type_j, type_k, type_l;
-        int start_j, end_j, start_k, end_k;
+        int start_j, end_j;
         int start_pj, end_pj, start_pk, end_pk;
 #ifdef TEST_FORCES
         int num_frb_intrs = 0;
@@ -208,9 +210,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
         rvec *f_i, *f_j, *f_k, *f_l;
 #ifdef _OPENMP
         int tid = omp_get_thread_num( );
-#endif
 
         #pragma omp for schedule(static)
+#endif
         for ( j = 0; j < system->N; ++j )
         {
             type_j = system->atoms[j].type;
@@ -238,11 +240,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                 /* see if there are any 3-body interactions involving j&k
                 where j is the central atom. Otherwise there is no point in
                  trying to form a 4-body interaction out of this neighborhood */
-                if ( j < k && bo_jk->BO > control->thb_cut/*0*/ &&
+                if ( j < k && bo_jk->BO > control->thb_cut &&
                         Num_Entries(pk, thb_intrs) )
                 {
-                    start_k = Start_Index(k, bonds);
-                    end_k = End_Index(k, bonds);
                     pj = pbond_jk->sym_index; // pj points to j on k's list
 
                     /* do the same check as above: are there any 3-body interactions
@@ -264,7 +264,6 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                         exp_tor4_DjDk = EXP( p_tor4  * (Delta_j + Delta_k) );
                         exp_tor34_inv = 1.0 / (1.0 + exp_tor3_DjDk + exp_tor4_DjDk);
                         f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
-
 
                         /* pick i up from j-k interaction where j is the centre atom */
                         for ( pi = start_pk; pi < end_pk; ++pi )
@@ -320,8 +319,8 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                     fbp = &(system->reaxprm.fbp[type_i][type_j]
                                             [type_k][type_l].prm[0]);
 
-                                    if ( i != l && fbh->cnt && bo_kl->BO > control->thb_cut/*0*/ &&
-                                            bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut/*0*/ )
+                                    if ( i != l && fbh->cnt && bo_kl->BO > control->thb_cut &&
+                                            bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
                                     {
 #ifdef _OPENMP
                                         f_l = &(workspace->f_local[tid * system->N + l]);
@@ -369,7 +368,7 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                         /* end omega calculations */
 
                                         /* torsion energy */
-                                        exp_tor1 = EXP(fbp->p_tor1 * SQR(2. - bo_jk->BO_pi - f11_DjDk));
+                                        exp_tor1 = EXP( fbp->p_tor1 * SQR(2. - bo_jk->BO_pi - f11_DjDk) );
                                         exp_tor2_kl = EXP( -p_tor2 * BOA_kl );
                                         exp_cot2_kl = EXP( -p_cot2 * SQR(BOA_kl - 1.5) );
                                         fn10 = (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk) *
@@ -386,32 +385,32 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                         e_tor_total += e_tor;
 
                                         dfn11 = (-p_tor3 * exp_tor3_DjDk +
-                                                 (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk) *
-                                                 (2. + exp_tor3_DjDk) * exp_tor34_inv) * exp_tor34_inv;
+                                                (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk) *
+                                                (2. + exp_tor3_DjDk) * exp_tor34_inv) * exp_tor34_inv;
 
                                         CEtors1 = sin_ijk * sin_jkl * CV;
 
                                         CEtors2 = -fn10 * 2.0 * fbp->p_tor1 * fbp->V2 * exp_tor1 *
-                                                  (2.0 - bo_jk->BO_pi - f11_DjDk) * (1.0 - SQR(cos_omega)) *
-                                                  sin_ijk * sin_jkl;
+                                            (2.0 - bo_jk->BO_pi - f11_DjDk) * (1.0 - SQR(cos_omega)) *
+                                            sin_ijk * sin_jkl;
 
                                         CEtors3 = CEtors2 * dfn11;
 
                                         CEtors4 = CEtors1 * p_tor2 * exp_tor2_ij *
-                                                  (1.0 - exp_tor2_jk) * (1.0 - exp_tor2_kl);
+                                            (1.0 - exp_tor2_jk) * (1.0 - exp_tor2_kl);
 
                                         CEtors5 = CEtors1 * p_tor2 * exp_tor2_jk *
-                                                  (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_kl);
+                                            (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_kl);
 
                                         CEtors6 = CEtors1 * p_tor2 * exp_tor2_kl *
-                                                  (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk);
+                                            (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk);
 
                                         cmn = -fn10 * CV;
                                         CEtors7 = cmn * sin_jkl * tan_ijk_i;
                                         CEtors8 = cmn * sin_ijk * tan_jkl_i;
                                         CEtors9 = fn10 * sin_ijk * sin_jkl *
-                                                  (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega +
-                                                   1.5 * fbp->V3 * (cos2omega + 2. * SQR(cos_omega)));
+                                            (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega +
+                                             1.5 * fbp->V3 * (cos2omega + 2. * SQR(cos_omega)));
                                         //cmn = -fn10 * CV;
                                         //CEtors7 = cmn * sin_jkl * cos_ijk;
                                         //CEtors8 = cmn * sin_ijk * cos_jkl;
@@ -419,7 +418,6 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                         //  (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega +
                                         //   fbp->V3 * (6*SQR(cos_omega) - 1.50));
                                         /* end  of torsion energy */
-
 
                                         /* 4-body conjugation energy */
                                         fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
@@ -459,11 +457,29 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                         //    sin_jkl, cos_jkl, tan_jkl_i );
 
                                         /* forces */
+#ifdef _OPENMP
+                                        #pragma omp atomic
+#endif
                                         bo_jk->Cdbopi += CEtors2;
+#ifdef _OPENMP
+                                        #pragma omp atomic
+#endif
                                         workspace->CdDelta[j] += CEtors3;
+#ifdef _OPENMP
+                                        #pragma omp atomic
+#endif
                                         workspace->CdDelta[k] += CEtors3;
+#ifdef _OPENMP
+                                        #pragma omp atomic
+#endif
                                         bo_ij->Cdbo += (CEtors4 + CEconj1);
+#ifdef _OPENMP
+                                        #pragma omp atomic
+#endif
                                         bo_jk->Cdbo += (CEtors5 + CEconj2);
+#ifdef _OPENMP
+                                        #pragma omp atomic
+#endif
                                         bo_kl->Cdbo += (CEtors6 + CEconj3);
 
                                         if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT )
@@ -502,7 +518,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_dk );
                                             rvec_Add( *f_i, force );
                                             rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                                            #pragma omp critical
+#ifdef _OPENMP
+                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#endif
                                             {
                                                 rvec_Add( data->ext_press, ext_press );
                                             }
@@ -512,7 +530,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_di );
                                             rvec_Add( *f_k, force );
                                             rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
-                                            #pragma omp critical
+#ifdef _OPENMP
+                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#endif
                                             {
                                                 rvec_Add( data->ext_press, ext_press );
                                             }
@@ -523,7 +543,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                             rvec_Add( *f_k, force );
                                             rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
-                                            #pragma omp critical
+#ifdef _OPENMP
+                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#endif
                                             {
                                                 rvec_Add( data->ext_press, ext_press );
                                             }
@@ -531,7 +553,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dk );
                                             rvec_Add( *f_l, force );
                                             rvec_iMultiply( ext_press, rel_box_jl, force );
-                                            #pragma omp critical
+#ifdef _OPENMP
+                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#endif
                                             {
                                                 rvec_Add( data->ext_press, ext_press );
                                             }
@@ -540,7 +564,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_di );
                                             rvec_Add( *f_i, force );
                                             rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                                            #pragma omp critical
+#ifdef _OPENMP
+                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#endif
                                             {
                                                 rvec_Add( data->ext_press, ext_press );
                                             }
@@ -550,7 +576,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dk );
                                             rvec_Add( *f_k, force );
                                             rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
-                                            #pragma omp critical
+#ifdef _OPENMP
+                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#endif
                                             {
                                                 rvec_Add( data->ext_press, ext_press );
                                             }
@@ -558,7 +586,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dl );
                                             rvec_Add( *f_l, force );
                                             rvec_iMultiply( ext_press, rel_box_jl, force );
-                                            #pragma omp critical
+#ifdef _OPENMP
+                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#endif
                                             {
                                                 rvec_Add( data->ext_press, ext_press );
                                             }

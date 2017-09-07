@@ -190,7 +190,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
                  itr, G_xi_new, v_xi_new, v_xi_old );
 #endif
     }
-    while ( fabs(v_xi_new - v_xi_old ) > 1e-5 );
+    while ( FABS(v_xi_new - v_xi_old ) > 1e-5 );
 
     therm->v_xi_old = therm->v_xi;
     therm->v_xi = v_xi_new;
@@ -672,7 +672,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
                  "itr %d E_kin: %8.3f veps_n:%8.3f veps_o:%8.3f vxi_n:%8.3f vxi_o: %8.3f\n",
                  itr, E_kin, v_eps_new, v_eps_old, v_xi_new, v_xi_old );
     }
-    while ( fabs(v_eps_new - v_eps_old) + fabs(v_xi_new - v_xi_old) > 2e-3 );
+    while ( FABS(v_eps_new - v_eps_old) + FABS(v_xi_new - v_xi_old) > 2e-3 );
 
 
     therm->v_xi_old = therm->v_xi;

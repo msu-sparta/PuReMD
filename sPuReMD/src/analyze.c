@@ -20,11 +20,41 @@
   ----------------------------------------------------------------------*/
 
 #include "analyze.h"
+
 #include "box.h"
 #include "list.h"
 #include "vector.h"
 
+
 #define MAX_FRAGMENT_TYPES 100
+
+
+enum atoms
+{
+    C_ATOM = 0,
+    H_ATOM = 1,
+    O_ATOM = 2,
+    N_ATOM = 3,
+    S_ATOM = 4,
+    SI_ATOM = 5,
+    GE_ATOM = 6,
+    X_ATOM = 7,
+};
+
+enum molecule_type
+{
+    UNKNOWN = 0,
+    WATER = 1,
+};
+
+
+typedef struct
+{
+    int atom_count;
+    int atom_list[MAX_MOLECULE_SIZE];
+    int mtypes[MAX_ATOM_TYPES];
+} molecule;
+
 
 // copy bond list into old bond list
 void Copy_Bond_List( reax_system *system, control_params *control,
@@ -772,9 +802,9 @@ void Calculate_Drift( reax_system *system, control_params *control,
             Distance_on_T3_Gen( workspace->x_old[i], system->atoms[i].x,
                                 &(system->box), driftvec );
 
-            if ( fabs( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
-                    fabs( driftvec[1] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
-                    fabs( driftvec[2] ) >= system->box.box_norms[0] / 2.0 - 2.0 )
+            if ( FABS( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
+                    FABS( driftvec[1] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
+                    FABS( driftvec[2] ) >= system->box.box_norms[0] / 2.0 - 2.0 )
             {
                 /* the atom has moved almost half the box size.
                    exclude it from further drift computations as it might have an

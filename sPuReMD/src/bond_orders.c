@@ -29,7 +29,7 @@
 inline real Cf45( real p1, real p2 )
 {
     return  -EXP(-p2 / 2) /
-            ( SQR( EXP(-p1 / 2) + EXP(p1 / 2) ) * (EXP(-p2 / 2) + EXP(p2 / 2)) );
+        ( SQR( EXP(-p1 / 2) + EXP(p1 / 2) ) * (EXP(-p2 / 2) + EXP(p2 / 2)) );
 }
 
 
@@ -188,7 +188,6 @@ void Add_dDelta_to_Forces( reax_system *system, list **lists, int i, real C )
 void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
         int *top )
 {
-    /* Initializations */
     int j, k, l, start_i, end_i, end_j;
     rvec dDeltap_self, dBOp;
     list *bonds, *dBOs;
@@ -196,34 +195,20 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
     bond_order_data *bo_ij;
     dbond_data *top_dbo;
 
+    /* Initializations */
     bonds = (*lists) + BONDS;
     dBOs = (*lists) + DBO;
-
     j = bonds->select.bond_list[pj].nbr;
     bo_ij = &(bonds->select.bond_list[pj].bo_data);
-
-    /*rvec due_j[1000], due_i[1000];
-      rvec due_j_pi[1000], due_i_pi[1000];
-
-      memset(due_j, 0, sizeof(rvec)*1000 );
-      memset(due_i, 0, sizeof(rvec)*1000 );
-      memset(due_j_pi, 0, sizeof(rvec)*1000 );
-      memset(due_i_pi, 0, sizeof(rvec)*1000 );*/
-
-    //fprintf( stderr,"dbo %d-%d\n",workspace->orig_id[i],workspace->orig_id[j] );
-
-    start_i = Start_Index(i, bonds);
-    end_i = End_Index(i, bonds);
-
-    l = Start_Index(j, bonds);
-    end_j = End_Index(j, bonds);
-
+    start_i = Start_Index( i, bonds );
+    end_i = End_Index( i, bonds );
+    l = Start_Index( j, bonds );
+    end_j = End_Index( j, bonds );
     top_dbo = &(dBOs->select.dbo_list[ (*top) ]);
 
     for ( k = start_i; k < end_i; ++k )
     {
         nbr_k = &(bonds->select.bond_list[k]);
-        //fprintf( stderr, "\tnbr_k = %d\n", workspace->orig_id[nbr_k->nbr] );
 
         for ( ; l < end_j && bonds->select.bond_list[l].nbr < nbr_k->nbr; ++l )
         {
@@ -232,12 +217,10 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
             nbr_l = &(bonds->select.bond_list[l]);
             top_dbo->wrt = nbr_l->nbr;
             rvec_Copy( dBOp, nbr_l->bo_data.dBOp );
-            //fprintf( stderr,"\t\tnbr_l = %d\n",workspace->orig_id[nbr_l->nbr] );
 
             rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, dBOp );  // dBO, 3rd
             rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );  // dBOpi, 4th
             rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );// dBOpipi, 4th
-            //rvec_ScaledAdd(due_j[top_dbo->wrt],-bo_ij->BO*bo_ij->A2_ji, dBOp);
 
             if ( nbr_l->nbr == i )
             {
@@ -248,24 +231,19 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
                 rvec_ScaledAdd( top_dbo->dBO, bo_ij->C2dbo, dDeltap_self ); //2nd
 
                 /* dBOpi */
-                rvec_ScaledAdd(top_dbo->dBOpi, bo_ij->C1dbopi, bo_ij->dln_BOp_pi); //1
-                rvec_ScaledAdd(top_dbo->dBOpi, bo_ij->C2dbopi, bo_ij->dBOp); //2nd
-                rvec_ScaledAdd(top_dbo->dBOpi, bo_ij->C3dbopi, dDeltap_self); //3rd
+                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C1dbopi, bo_ij->dln_BOp_pi ); //1
+                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C2dbopi, bo_ij->dBOp ); //2nd
+                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C3dbopi, dDeltap_self ); //3rd
 
                 /* dBOpp, 1st */
-                rvec_ScaledAdd(top_dbo->dBOpi2, bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2);
-                rvec_ScaledAdd(top_dbo->dBOpi2, bo_ij->C2dbopi2, bo_ij->dBOp); //2nd
-                rvec_ScaledAdd(top_dbo->dBOpi2, bo_ij->C3dbopi2, dDeltap_self); //3rd
+                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2 );
+                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C2dbopi2, bo_ij->dBOp ); //2nd
+                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, dDeltap_self ); //3rd
 
-                /* do the adjustments on i */
-                //rvec_ScaledAdd( due_i[i],
-                //bo_ij->A0_ij + bo_ij->BO * bo_ij->A1_ij, bo_ij->dBOp );//1st,dBO
-                //rvec_ScaledAdd( due_i[i], bo_ij->BO * bo_ij->A2_ij,
-                //dDeltap_self ); //2nd, dBO
             }
 
-            //rvec_Add( workspace->dDelta[nbr_l->nbr], top_dbo->dBO );
-            ++(*top), ++top_dbo;
+            ++(*top);
+            ++top_dbo;
         }
 
         /* Now we are processing neighbor k of i. */
@@ -275,11 +253,6 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
         rvec_Scale( top_dbo->dBO, -bo_ij->C2dbo, dBOp );      //dBO-2
         rvec_Scale( top_dbo->dBOpi, -bo_ij->C3dbopi, dBOp );  //dBOpi-3
         rvec_Scale( top_dbo->dBOpi2, -bo_ij->C3dbopi2, dBOp );//dBOpp-3
-        //rvec_ScaledAdd(due_i[top_dbo->wrt],-bo_ij->BO*bo_ij->A2_ij,dBOp);//dBO-2
-
-        // fprintf( stderr, "\tnbr_k = %d, nbr_l = %d, l = %d, end_j = %d\n",
-        //      workspace->orig_id[nbr_k->nbr],
-        //       workspace->orig_id[bonds->select.bond_list[l].nbr], l, end_j );
 
         if ( l < end_j && bonds->select.bond_list[l].nbr == nbr_k->nbr )
         {
@@ -291,9 +264,6 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
             rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );  //dBOpi,4th
             rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );//dBOpp.4th
             ++l;
-
-            //rvec_ScaledAdd( due_j[top_dbo->wrt], -bo_ij->BO * bo_ij->A2_ji,
-            //nbr_l->bo_data.dBOp ); //3rd, dBO
         }
         else if ( k == pj )
         {
@@ -304,22 +274,16 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
             rvec_ScaledAdd( top_dbo->dBO, bo_ij->C3dbo, dDeltap_self );// 3rd, dBO
 
             /* dBOpi, 1st */
-            rvec_ScaledAdd(top_dbo->dBOpi, -bo_ij->C1dbopi, bo_ij->dln_BOp_pi);
-            rvec_ScaledAdd(top_dbo->dBOpi, -bo_ij->C2dbopi, bo_ij->dBOp);    //2nd
+            rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C1dbopi, bo_ij->dln_BOp_pi );
+            rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C2dbopi, bo_ij->dBOp );    //2nd
             rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C4dbopi, dDeltap_self );  //4th
 
             /* dBOpi2, 1st */
-            rvec_ScaledAdd(top_dbo->dBOpi2, -bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2 );
-            rvec_ScaledAdd(top_dbo->dBOpi2, -bo_ij->C2dbopi2, bo_ij->dBOp ); //2nd
-            rvec_ScaledAdd(top_dbo->dBOpi2, bo_ij->C4dbopi2, dDeltap_self ); //4th
-
-            //rvec_ScaledAdd( due_j[j], -(bo_ij->A0_ij + bo_ij->BO*bo_ij->A1_ij),
-            //bo_ij->dBOp ); //1st, dBO
-            //rvec_ScaledAdd( due_j[j], bo_ij->BO * bo_ij->A2_ji,
-            //workspace->dDeltap_self[j] ); //3rd, dBO
+            rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2 );
+            rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C2dbopi2, bo_ij->dBOp ); //2nd
+            rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C4dbopi2, dDeltap_self ); //4th
         }
 
-        // rvec_Add( workspace->dDelta[nbr_k->nbr], top_dbo->dBO );
         ++(*top), ++top_dbo;
     }
 
@@ -330,14 +294,10 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
         nbr_l = &(bonds->select.bond_list[l]);
         top_dbo->wrt = nbr_l->nbr;
         rvec_Copy( dBOp, nbr_l->bo_data.dBOp );
-        //fprintf( stderr,"\tl=%d, nbr_l=%d\n",l,workspace->orig_id[nbr_l->nbr] );
 
         rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, dBOp );      //3rd, dBO
         rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );  //4th, dBOpi
         rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );//4th, dBOpp
-
-        // rvec_ScaledAdd( due_j[top_dbo->wrt], -bo_ij->BO * bo_ij->A2_ji,
-        // nbr_l->bo_data.dBOp );
 
         if ( nbr_l->nbr == i )
         {
@@ -357,23 +317,10 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
             rvec_ScaledAdd(top_dbo->dBOpi2, bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2);
             rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C2dbopi2, bo_ij->dBOp ); //2nd
             rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, dDeltap_self );//3rd
-
-            //rvec_ScaledAdd( due_i[i], bo_ij->A0_ij + bo_ij->BO * bo_ij->A1_ij,
-            //bo_ij->dBOp );  /*1st, dBO*/
-            //rvec_ScaledAdd( due_i[i], bo_ij->BO * bo_ij->A2_ij,
-            //dDeltap_self ); /*2nd, dBO*/
         }
 
-        // rvec_Add( workspace->dDelta[nbr_l->nbr], top_dbo->dBO );
         ++(*top), ++top_dbo;
     }
-
-    /*for( k = 0; k < 21; ++k ){
-      fprintf( stderr, "%d %d %d, due_i:[%g %g %g]\n",
-      i+1, j+1, k+1, due_i[k][0], due_i[k][1], due_i[k][2] );
-      fprintf( stderr, "%d %d %d, due_j:[%g %g %g]\n",
-      i+1, j+1, k+1, due_j[k][0], due_j[k][1], due_j[k][2] );
-      }*/
 }
 #endif
 
@@ -447,7 +394,9 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         rvec_Add( *f_k, temp );
         /* pressure */
         rvec_iMultiply( ext_press, nbr_k->rel_box, temp );
-        #pragma omp critical
+#ifdef _OPENMP
+        #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
+#endif
         {
             rvec_Add( data->ext_press, ext_press );
         }
@@ -483,7 +432,6 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     rvec_Add( *f_i, temp );
     /* ext pressure due to i dropped, counting force on j only will be enough */
 
-
     /****************************************************************************
      * forces and pressure related to atom j                                    *
      * first neighbors of atom j                                                *
@@ -510,7 +458,9 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         {
             ivec_Sum( rel_box, nbr_k->rel_box, nbr_j->rel_box );//k's rel_box  wrt i
             rvec_iMultiply( ext_press, rel_box, temp );
-            #pragma omp critical
+#ifdef _OPENMP
+            #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
+#endif
             {
                 rvec_Add( data->ext_press, ext_press );
             }
@@ -547,7 +497,9 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     rvec_Add( *f_j, temp );
     /* pressure */
     rvec_iMultiply( ext_press, nbr_j->rel_box, temp );
-    #pragma omp critical
+#ifdef _OPENMP
+    #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
+#endif
     {
         rvec_Add( data->ext_press, ext_press );
     }
@@ -773,7 +725,9 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
     p_boc2 = system->reaxprm.gp.l[1];
     bonds = (*lists) + BONDS;
 
+#ifdef _OPENMP
     #pragma omp parallel default(shared)
+#endif
     {
         int i, j, pj, type_i, type_j;
         int start_i, end_i;
@@ -791,15 +745,22 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
         single_body_parameters *sbp_i, *sbp_j;
 #if defined(TEST_FORCES)
         int k, pk, start_j, end_j;
-        int top_dbo = 0, top_dDelta = 0;
+        int top_dbo, top_dDelta;
         dbond_data *pdbo;
         dDelta_data *ptop_dDelta;
-        list *dDeltas = (*lists) + DDELTA;
-        list *dBOs = (*lists) + DBO;
+        list *dDeltas;
+        list *dBOs;
+
+        top_dbo = 0;
+        top_dDelta = 0;
+        dDeltas = (*lists) + DDELTA;
+        dBOs = (*lists) + DBO;
 #endif
 
         /* Calculate Deltaprime, Deltaprime_boc values */
+#ifdef _OPENMP
         #pragma omp for schedule(static)
+#endif
         for ( i = 0; i < system->N; ++i )
         {
             type_i = system->atoms[i].type;
@@ -807,14 +768,18 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
             workspace->Deltap[i] = workspace->total_bond_order[i] - sbp_i->valency;
             workspace->Deltap_boc[i] =
                 workspace->total_bond_order[i] - sbp_i->valency_val;
-            workspace->total_bond_order[i] = 0;
+            workspace->total_bond_order[i] = 0.0;
         }
 
         /* wait until initialization complete */
+#ifdef _OPENMP
         #pragma omp barrier
+#endif
 
         /* Corrected Bond Order calculations */
+#ifdef _OPENMP
         #pragma omp for schedule(guided)
+#endif
         for ( i = 0; i < system->N; ++i )
         {
             type_i = system->atoms[i].type;
@@ -841,6 +806,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                        workspace->reverse_map[i], workspace->reverse_map[j],
                        twbp->ovc, twbp->v13cor, bo_ij->BO ); */
 #endif
+
                     if ( twbp->ovc < 0.001 && twbp->v13cor < 0.001 )
                     {
                         /* There is no correction to bond orders nor to derivatives of
@@ -912,15 +878,13 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                             //Cf1_ij = -Cf1A_ij * p_boc1 * exp_p1i +
                             //          Cf1B_ij * exp_p2i / ( exp_p2i + exp_p2j );
                             Cf1_ij = 0.50 * ( -p_boc1 * exp_p1i / u1_ij -
-                                              ((val_i + f2) / SQR(u1_ij)) *
-                                              ( -p_boc1 * exp_p1i +
-                                                exp_p2i / ( exp_p2i + exp_p2j ) ) +
-                                              -p_boc1 * exp_p1i / u1_ji -
-                                              ((val_j + f2) / SQR(u1_ji)) * ( -p_boc1 * exp_p1i +
-                                                      exp_p2i / ( exp_p2i + exp_p2j ) ));
+                                    ((val_i + f2) / SQR(u1_ij)) * ( -p_boc1 * exp_p1i +
+                                    exp_p2i / ( exp_p2i + exp_p2j ) ) + -p_boc1 * exp_p1i / u1_ji -
+                                    ((val_j + f2) / SQR(u1_ji)) * ( -p_boc1 * exp_p1i +
+                                    exp_p2i / ( exp_p2i + exp_p2j ) ));
 
                             Cf1_ji = -Cf1A_ij * p_boc1 * exp_p1j +
-                                     Cf1B_ij * exp_p2j / ( exp_p2i + exp_p2j );
+                                Cf1B_ij * exp_p2j / ( exp_p2i + exp_p2j );
                         }
                         else
                         {
@@ -960,17 +924,17 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                         /* Bond Order page 10, derivative of total bond order */
                         A0_ij = f1 * f4f5;
                         A1_ij = -2 * twbp->p_boc3 * twbp->p_boc4 * bo_ij->BO *
-                                (Cf45_ij + Cf45_ji);
+                            (Cf45_ij + Cf45_ji);
                         A2_ij = Cf1_ij / f1 + twbp->p_boc3 * Cf45_ij;
                         A2_ji = Cf1_ji / f1 + twbp->p_boc3 * Cf45_ji;
                         A3_ij = A2_ij + Cf1_ij / f1;
                         A3_ji = A2_ji + Cf1_ji / f1;
 
                         /* find corrected bond order values and their deriv coefs */
-                        bo_ij->BO    = bo_ij->BO    * A0_ij;
+                        bo_ij->BO = bo_ij->BO * A0_ij;
                         bo_ij->BO_pi = bo_ij->BO_pi * A0_ij * f1;
                         bo_ij->BO_pi2 = bo_ij->BO_pi2 * A0_ij * f1;
-                        bo_ij->BO_s  = bo_ij->BO - ( bo_ij->BO_pi + bo_ij->BO_pi2 );
+                        bo_ij->BO_s = bo_ij->BO - ( bo_ij->BO_pi + bo_ij->BO_pi2 );
 
                         bo_ij->C1dbo = A0_ij + bo_ij->BO * A1_ij;
                         bo_ij->C2dbo = bo_ij->BO * A2_ij;
@@ -1074,9 +1038,13 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
         }
 
         /* wait for bo_ij to be updated */
+#ifdef _OPENMP
         #pragma omp barrier
+#endif
 
+#ifdef _OPENMP
         #pragma omp for schedule(guided)
+#endif
         for ( i = 0; i < system->N; ++i )
         {
             type_i = system->atoms[i].type;
@@ -1124,11 +1092,15 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
         }
 
         /* need to wait for total_bond_order to be accumulated */
+#ifdef _OPENMP
         #pragma omp barrier
+#endif
 
         /* Calculate some helper variables that are  used at many places
            throughout force calculations */
+#ifdef _OPENMP
         #pragma omp for schedule(guided)
+#endif
         for ( j = 0; j < system->N; ++j )
         {
             type_j = system->atoms[j].type;
@@ -1139,7 +1111,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
             workspace->Delta_boc[j] = workspace->total_bond_order[j] -
                 sbp_j->valency_boc;
 
-            workspace->vlpex[j] =  workspace->Delta_e[j] -
+            workspace->vlpex[j] = workspace->Delta_e[j] -
                 2.0 * (int)(workspace->Delta_e[j] / 2.0);
             explp1 = EXP(-p_lp1 * SQR(2.0 + workspace->vlpex[j]));
             workspace->nlp[j] = explp1 - (int)(workspace->Delta_e[j] / 2.0);
@@ -1148,14 +1120,14 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
             /* Adri uses different dDelta_lp values than the ones in notes... */
             workspace->dDelta_lp[j] = workspace->Clp[j];
             //workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5-workspace->Clp[j]) *
-            //((fabs(workspace->Delta_e[j]/2.0 -
+            //((FABS(workspace->Delta_e[j]/2.0 -
             //       (int)(workspace->Delta_e[j]/2.0)) < 0.1) ? 1 : 0 );
 
             if ( sbp_j->mass > 21.0 )
             {
                 workspace->nlp_temp[j] = 0.5 * (sbp_j->valency_e - sbp_j->valency);
                 workspace->Delta_lp_temp[j] = sbp_j->nlp_opt - workspace->nlp_temp[j];
-                workspace->dDelta_lp_temp[j] = 0.;
+                workspace->dDelta_lp_temp[j] = 0.0;
             }
             else
             {

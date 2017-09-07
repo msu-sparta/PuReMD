@@ -26,11 +26,8 @@
 #include "vector.h"
 
 
-void LonePair_OverUnder_Coordination_Energy( reax_system *system,
-        control_params *control,
-        simulation_data *data,
-        static_storage *workspace,
-        list **lists,
+void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, list **lists,
         output_controls *out_control )
 {
     int i, j, pj, type_i, type_j;
@@ -44,8 +41,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system,
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
     real p_lp1, p_lp2, p_lp3;
     real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
-
-    single_body_parameters *sbp_i, *sbp_j;
+    single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij;
@@ -152,18 +148,11 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system,
             j = bonds->select.bond_list[pj].nbr;
             type_j = system->atoms[j].type;
             bo_ij = &(bonds->select.bond_list[pj].bo_data);
-            sbp_j = &(system->reaxprm.sbp[ type_j ]);
             twbp = &(system->reaxprm.tbp[ type_i ][ type_j ]);
 
             sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
             sum_ovun2 += (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]) *
                          ( bo_ij->BO_pi + bo_ij->BO_pi2 );
-
-            /*fprintf( stdout, "%4d%4d%23.15e%23.15e%23.15e\n",
-            i+1, j+1,
-            dfvl * workspace->Delta_lp_temp[j],
-            sbp_j->nlp_opt,
-            workspace->nlp_temp[j] );*/
         }
 
         exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );

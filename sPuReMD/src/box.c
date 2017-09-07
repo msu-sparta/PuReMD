@@ -190,9 +190,13 @@ void Update_Box( rtensor box_tensor, simulation_box* box )
 {
     int i, j;
 
-    for (i = 0; i < 3; i++)
-        for (j = 0; j < 3; j++)
+    for ( i = 0; i < 3; i++ )
+    {
+        for ( j = 0; j < 3; j++ )
+        {
             box->box[i][j] = box_tensor[i][j];
+        }
+    }
 
     Make_Consistent( box );
 }
@@ -240,15 +244,20 @@ void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
     {
         tmp = x[i] + dx[i];
         if ( tmp <= -box->box_norms[i] || tmp >= box->box_norms[i] )
+        {
             tmp = FMOD( tmp, box->box_norms[i] );
+        }
 
-        if ( tmp < 0 ) tmp += box->box_norms[i];
+        if ( tmp < 0 )
+        {
+            tmp += box->box_norms[i];
+        }
         x[i] = tmp;
     }
 }
 
 
-real Sq_Distance_on_T3(rvec x1, rvec x2, simulation_box* box, rvec r)
+real Sq_Distance_on_T3( rvec x1, rvec x2, simulation_box* box, rvec r )
 {
     real norm = 0.0;
     real d, tmp;
@@ -262,9 +271,13 @@ real Sq_Distance_on_T3(rvec x1, rvec x2, simulation_box* box, rvec r)
         if ( tmp >= SQR( box->box_norms[i] / 2.0 ) )
         {
             if (x2[i] > x1[i])
+            {
                 d -= box->box_norms[i];
+            }
             else
+            {
                 d += box->box_norms[i];
+            }
 
             r[i] = d;
             norm += SQR(d);
@@ -323,7 +336,9 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
     {
         tmp = 0.0;
         for ( j = 0; j < 3; j++ )
+        {
             tmp += box->g[i][j] * x2[j];
+        }
         dist += x1[i] * tmp;
     }
 
@@ -332,7 +347,7 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
 
 
 int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
-                       real cutoff, far_neighbor_data *data )
+        real cutoff, far_neighbor_data *data )
 {
     real norm_sqr, d, tmp;
     int i;
@@ -368,9 +383,9 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
         }
     }
 
-    if ( norm_sqr <= SQR(cutoff) )
+    if ( norm_sqr <= SQR( cutoff ) )
     {
-        data->d = sqrt(norm_sqr);
+        data->d = SQRT( norm_sqr );
         return 1;
     }
 
@@ -382,13 +397,11 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
    If so, this neighborhood is added to the list of far neighbors.
    Periodic boundary conditions do not apply. */
 void Get_NonPeriodic_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
-                                    control_params *control,
-                                    far_neighbor_data *new_nbrs, int *count )
+        control_params *control, far_neighbor_data *new_nbrs, int *count )
 {
     real norm_sqr;
 
     rvec_ScaledSum( new_nbrs[0].dvec, 1.0, x2, -1.0, x1 );
-
     norm_sqr = rvec_Norm_Sqr( new_nbrs[0].dvec );
 
     if ( norm_sqr <= SQR( control->vlist_cut ) )
@@ -399,7 +412,10 @@ void Get_NonPeriodic_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
         ivec_MakeZero( new_nbrs[0].rel_box );
         // rvec_MakeZero( new_nbrs[0].ext_factor );
     }
-    else *count = 0;
+    else
+    {
+        *count = 0;
+    }
 }
 
 
@@ -408,9 +424,7 @@ void Get_NonPeriodic_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
    If the periodic distance between x1 and x2 is than vlist_cut, this
    neighborhood is added to the list of far neighbors. */
 void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
-        control_params *control,
-        far_neighbor_data *periodic_nbrs,
-        int *count )
+        control_params *control, far_neighbor_data *periodic_nbrs, int *count )
 {
     real norm_sqr, d, tmp;
     int i;
@@ -456,7 +470,10 @@ void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
         *count = 1;
         periodic_nbrs[0].d = SQRT( norm_sqr );
     }
-    else *count = 0;
+    else
+    {
+        *count = 0;
+    }
 }
 
 
@@ -468,9 +485,7 @@ void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
    periodic images of x2 that are two boxs away!!!
 */
 void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box,
-        control_params *control,
-        far_neighbor_data *periodic_nbrs,
-        int *count )
+        control_params *control, far_neighbor_data *periodic_nbrs, int *count )
 {
     int i, j, k;
     int imax, jmax, kmax;
@@ -489,13 +504,16 @@ void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box
 
 
     for ( i = -imax; i <= imax; ++i )
-        if (fabs(d_i = ((x2[0] + i * box->box_norms[0]) - x1[0])) <= control->vlist_cut)
+    {
+        if (FABS(d_i = ((x2[0] + i * box->box_norms[0]) - x1[0])) <= control->vlist_cut)
         {
             for ( j = -jmax; j <= jmax; ++j )
-                if (fabs(d_j = ((x2[1] + j * box->box_norms[1]) - x1[1])) <= control->vlist_cut)
+            {
+                if (FABS(d_j = ((x2[1] + j * box->box_norms[1]) - x1[1])) <= control->vlist_cut)
                 {
                     for ( k = -kmax; k <= kmax; ++k )
-                        if (fabs(d_k = ((x2[2] + k * box->box_norms[2]) - x1[2])) <= control->vlist_cut)
+                    {
+                        if (FABS(d_k = ((x2[2] + k * box->box_norms[2]) - x1[2])) <= control->vlist_cut)
                         {
                             sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
                             if ( sqr_norm <= SQR(control->vlist_cut) )
@@ -533,8 +551,11 @@ void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box
                                 ++(*count);
                             }
                         }
+                    }
                 }
+            }
         }
+    }
 }
 
 
@@ -586,7 +607,9 @@ void Print_Box( simulation_box* box, FILE *out )
     {
         fprintf( out, "{" );
         for ( j = 0; j < 3; ++j )
+        {
             fprintf( out, "%8.3f ", box->box[i][j] );
+        }
         fprintf( out, "}" );
     }
     fprintf( out, "}\n" );
@@ -600,7 +623,9 @@ void Print_Box( simulation_box* box, FILE *out )
     {
         fprintf( out, "{" );
         for ( j = 0; j < 3; ++j )
+        {
             fprintf( out, "%8.3f ", box->trans[i][j] );
+        }
         fprintf( out, "}" );
     }
     fprintf( out, "}\n" );
@@ -610,7 +635,9 @@ void Print_Box( simulation_box* box, FILE *out )
     {
         fprintf( out, "{" );
         for ( j = 0; j < 3; ++j )
+        {
             fprintf( out, "%8.3f ", box->trans_inv[i][j] );
+        }
         fprintf( out, "}" );
     }
     fprintf( out, "}\n" );

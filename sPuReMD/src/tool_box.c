@@ -383,6 +383,21 @@ int Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 }
 
 
+void Deallocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+{
+    int i;
+
+    for ( i = 0; i < MAX_TOKENS; i++ )
+    {
+        free( (*tokens)[i] );
+    }
+
+    free( *line );
+    free( *backup );
+    free( *tokens );
+}
+
+
 int Tokenize( char* s, char*** tok )
 {
     char test[MAX_LINE];

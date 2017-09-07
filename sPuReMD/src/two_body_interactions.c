@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "two_body_interactions.h"
+
 #include "bond_orders.h"
 #include "list.h"
 #include "lookup.h"
@@ -30,6 +31,7 @@ void Bond_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         list **lists, output_controls *out_control )
 {
+    int i;
     real gp3, gp4, gp7, gp10, gp37, ebond_total;
     list *bonds;
 
@@ -41,9 +43,11 @@ void Bond_Energy( reax_system *system, control_params *control,
     gp37 = (int) system->reaxprm.gp.l[37];
     ebond_total = 0.0;
 
-    #pragma omp parallel default(shared) reduction(+: ebond_total)
+#ifdef _OPENMP
+//    #pragma omp parallel default(shared) reduction(+: ebond_total)
+#endif
     { 
-        int i, j, pj;
+        int j, pj;
         int start_i, end_i;
         int type_i, type_j;
         real ebond, pow_BOs_be2, exp_be12, CEbo;
@@ -53,13 +57,16 @@ void Bond_Energy( reax_system *system, control_params *control,
         two_body_parameters *twbp;
         bond_order_data *bo_ij;
 
-        #pragma omp for schedule(guided)
+#ifdef _OPENMP
+//        #pragma omp for schedule(guided)
+#endif
         for ( i = 0; i < system->N; ++i )
         {
             start_i = Start_Index(i, bonds);
             end_i = End_Index(i, bonds);
-            //fprintf( stderr, "i=%d start=%d end=%d\n", i, start_i, end_i );
+
             for ( pj = start_i; pj < end_i; ++pj )
+            {
                 if ( i < bonds->select.bond_list[pj].nbr )
                 {
                     /* set the pointers */
@@ -81,7 +88,6 @@ void Bond_Energy( reax_system *system, control_params *control,
                     ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
                         - twbp->De_p * bo_ij->BO_pi
                         - twbp->De_pp * bo_ij->BO_pi2;
-
                     ebond_total += ebond;
 
                     /* calculate derivatives of Bond Orders */
@@ -93,10 +99,7 @@ void Bond_Energy( reax_system *system, control_params *control,
                     fprintf( out_control->ebond, "%6d%6d%24.15e%24.15e\n",
                              workspace->orig_id[i], workspace->orig_id[j],
                              // i+1, j+1,
-                             bo_ij->BO, ebond/*, data->E_BE*/ );
-                    /* fprintf( out_control->ebond, "%6d%6d%12.6f%12.6f%12.6f\n",
-                       workspace->orig_id[i], workspace->orig_id[j],
-                       CEbo, -twbp->De_p, -twbp->De_pp );*/
+                             bo_ij->BO, ebond );
 #endif
 
 #ifdef TEST_FORCES
@@ -113,7 +116,7 @@ void Bond_Energy( reax_system *system, control_params *control,
                                 (sbp_i->mass == 12.0000 && sbp_j->mass == 15.9990) ||
                                 (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) )
                         {
-                            // ba = SQR(bo_ij->BO - 2.50);
+                            //ba = SQR(bo_ij->BO - 2.50);
                             exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.50) );
                             //oboa=abo(j1)-boa;
                             //obob=abo(j2)-boa;
@@ -129,11 +132,11 @@ void Bond_Energy( reax_system *system, control_params *control,
                             ebond_total += estriph;
 
                             decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1) *
-                                       ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.50) );
+                                ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.50) );
                             decobdboua = -gp10 * exphu * hulpov *
-                                         (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                                (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
                             decobdboub = -gp10 * exphu * hulpov *
-                                         (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                                (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
                             bo_ij->Cdbo += decobdbo;
                             workspace->CdDelta[i] += decobdboua;
@@ -155,6 +158,7 @@ void Bond_Energy( reax_system *system, control_params *control,
                         }
                     }
                 }
+            }
         }
     }
 
@@ -166,6 +170,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         list **lists, output_controls *out_control )
 {
+    int i;
     real p_vdW1, p_vdW1i;
     list *far_nbrs;
     real e_vdW_total, e_ele_total;
@@ -176,9 +181,11 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     e_vdW_total = 0.0;
     e_ele_total = 0.0;
 
+#ifdef _OPENMP
     #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
+#endif
     {
-        int i, j, pj;
+        int j, pj;
         int start_i, end_i;
         real self_coef;
         real powr_vdW1, powgi_vdW1;
@@ -196,12 +203,14 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         tid = omp_get_thread_num( );
 #endif
 
-        e_ele = 0;
-        e_vdW = 0;
-        e_core = 0;
-        de_core = 0;
+        e_ele = 0.0;
+        e_vdW = 0.0;
+        e_core = 0.0;
+        de_core = 0.0;
 
+#ifdef _OPENMP
         #pragma omp for schedule(guided)
+#endif
         for ( i = 0; i < system->N; ++i )
         {
             start_i = Start_Index( i, far_nbrs );
@@ -273,7 +282,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     if ( system->reaxprm.gp.vdw_type == 2 || system->reaxprm.gp.vdw_type == 3 )
                     {
                         /* innner wall */
-                        e_core = twbp->ecore * EXP(twbp->acore * (1.0 - (r_ij / twbp->rcore)));
+                        e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
                         e_vdW += self_coef * Tap * e_core;
                         e_vdW_total += self_coef * Tap * e_core;
 
@@ -322,7 +331,9 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 #endif
 
                         rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
-                        #pragma omp critical
+#ifdef _OPENMP
+                        #pragma omp critical (vdW_Coulomb_Energy_ext_press)
+#endif
                         {
                             rvec_Add( data->ext_press, ext_press );
                         }
@@ -522,7 +533,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     e_vdW_total = 0.0;
     e_ele_total = 0.0;
 
+#ifdef _OPENMP
     #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
+#endif
     {
         int i, j, pj, r;
         int type_i, type_j, tmin, tmax;
@@ -537,9 +550,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         int tid;
 
         tid = omp_get_thread_num( );
-#endif
 
         #pragma omp for schedule(guided)
+#endif
         for ( i = 0; i < system->N; ++i )
         {
             type_i = system->atoms[i].type;
@@ -617,7 +630,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         rvec_Add( workspace->f_local[tid * system->N + j], temp );
 #endif
                         rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
-                        #pragma omp critical
+#ifdef _OPENMP
+                        #pragma omp critical (Tabulated_vdW_Coulomb_Energy_ext_press)
+#endif
                         {
                         rvec_Add( data->ext_press, ext_press );
                         }

@@ -24,10 +24,18 @@
 
 #include "mytypes.h"
 
+
+/* Function pointer definitions */
+typedef real (*lookup_function)(real);
+
+
 void Make_Lookup_Table( real, real, int, lookup_function, lookup_table* );
-int  Lookup_Index_Of( real, lookup_table* );
+
+int Lookup_Index_Of( real, lookup_table* );
+
 real Lookup( real, lookup_table* );
 
 void Make_LR_Lookup_Table( reax_system*, control_params* );
+
 
 #endif
