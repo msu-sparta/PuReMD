@@ -1,6 +1,7 @@
 ACLOCAL_AMFLAGS = -I ../m4
 
 bin_PROGRAMS = bin/spuremd
+
 bin_spuremd_SOURCES = src/ffield.c src/grid.c src/list.c src/lookup.c src/print_utils.c \
 		  src/reset_utils.c src/restart.c src/random.c src/tool_box.c src/traj.c \
 		  src/vector.c src/allocate.c src/analyze.c src/box.c src/system_props.c src/control.c \
@@ -16,3 +17,17 @@ include_HEADERS = src/mytypes.h src/ffield.h src/grid.h src/list.h src/lookup.h 
 		  src/single_body_interactions.h src/two_body_interactions.h \
 		  src/three_body_interactions.h src/four_body_interactions.h src/forces.h \
 		  src/integrate.h src/init_md.h
+
+check_PROGRAMS =
+TESTS =
+
+if BUILD_TEST
+check_PROGRAMS += tests/test_vector
+TESTS += $(check_PROGRAMS)
+
+tests_test_vector_SOURCES = tests/test_vector.cpp
+tests_test_vector_CPPFLAGS = -Isrc $(GTEST_CPPFLAGS)
+tests_test_vector_CXXFLAGS = $(GTEST_CXXFLAGS)
+tests_test_vector_LDFLAGS = $(GTEST_LDFLAGS) $(GTEST_LIBS)
+tests_test_vector_LDADD = -lgtest
+endif

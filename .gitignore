@@ -49,6 +49,7 @@ libtool
 Makefile
 Makefile.in
 stamp-h1
+test-driver
 
 # Compiled languages (C,C++,Fortran,...)
 *.o

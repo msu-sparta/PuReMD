@@ -129,6 +129,46 @@ then
 	CFLAGS="${CFLAGS} ${GPROF_FLAGS}"
 fi
 
+# Tests using Google C++ testing framework (gtest)
+AC_LANG_PUSH([C++])
+AC_PROG_CXX([icpc g++ clang++ CC])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+  [[#ifndef __cplusplus
+    #error "broken C++"
+    #endif]])],,
+  [CXX=;])
+if test "x${CXX}" != "x"
+then
+	AC_CHECK_HEADER([gtest/gtest.h], [HAVE_GTEST_H="yes"])
+	if test "x${HAVE_GTEST_H}" != "xyes"
+	then
+		AC_MSG_WARN([gtest.h not found. Unable to build tests. Continuing...])
+	else
+		ACX_PTHREAD([have_pthread=yes])
+
+		# define gtest variables 
+		if test "x${have_pthread}" = "xyes"; then
+			GTEST_CPPFLAGS="-DGTEST_HAS_PTHREAD=1"
+			GTEST_CXXFLAGS="$PTHREAD_CFLAGS"
+			GTEST_LDFLAGS=
+			GTEST_LIBS="$PTHREAD_LIBS"
+		else
+			GTEST_CPPFLAGS="-DGTEST_HAS_PTHREAD=0"
+			GTEST_CXXFLAGS=
+			GTEST_LDFLAGS=
+			GTEST_LIBS=
+		fi
+		AC_SUBST([GTEST_CPPFLAGS])
+		AC_SUBST([GTEST_CXXFLAGS])
+		AC_SUBST([GTEST_LDFLAGS])
+		AC_SUBST([GTEST_LIBS])
+	fi
+else
+	AC_MSG_WARN([C++ compiler not found. Unable to build tests. Continuing...])
+fi
+AM_CONDITIONAL([BUILD_TEST], [test "x${HAVE_GTEST_H}" = "xyes"])
+AC_LANG_POP([C++])
+
 AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
