@@ -24,14 +24,20 @@
 
 #include "mytypes.h"
 
+
 char Make_List( int, int, int, list* );
-void Delete_List( list* );
 
-int  Num_Entries(int, list*);
-int  Start_Index( int, list* );
-int  End_Index( int, list* );
+void Delete_List( int, list* );
 
-void Set_Start_Index(int, int, list*);
-void Set_End_Index(int, int, list*);
+int Num_Entries( int, list* );
+
+int Start_Index( int, list* );
+
+int End_Index( int, list* );
+
+void Set_Start_Index( int, int, list* );
+
+void Set_End_Index( int, int, list* );
+
 
 #endif

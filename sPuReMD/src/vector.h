@@ -24,6 +24,7 @@
 
 #include "mytypes.h"
 
+
 int Vector_isZero( const real * const, const unsigned int );
 void Vector_MakeZero( real * const, const unsigned int );
 void Vector_Copy( real * const, const real * const, const unsigned int );
@@ -79,5 +80,6 @@ void ivec_Copy( ivec, const ivec );
 void ivec_Scale( ivec, const real, const ivec );
 void ivec_rScale( ivec, const real, const rvec );
 void ivec_Sum( ivec, const ivec, const ivec );
+
 
 #endif

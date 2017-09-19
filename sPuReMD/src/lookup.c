@@ -20,10 +20,12 @@
   ----------------------------------------------------------------------*/
 
 #include "lookup.h"
+
 #include "two_body_interactions.h"
 
-void Make_Lookup_Table(real xmin, real xmax, int n,
-        lookup_function f, lookup_table* t)
+
+void Make_Lookup_Table( real xmin, real xmax, int n,
+        lookup_function f, lookup_table* t )
 {
     int i;
 
@@ -36,7 +38,9 @@ void Make_Lookup_Table(real xmin, real xmax, int n,
     t->y = (real*) malloc(n * sizeof(real));
 
     for (i = 0; i < n; i++)
+    {
         t->y[i] = f(i * t->dx + t->xmin);
+    }
 
     // fprintf(stdout,"dx = %lf\n",t->dx);
     // for(i=0; i < n; i++)
@@ -363,20 +367,20 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
      LR_vdW_Coulomb( system, control, i, j, rand_dist, &y );
      LR_Lookup( &(LR[i][j]), rand_dist, &y_spline );
 
-     evdw_abserr = fabs(y.e_vdW - y_spline.e_vdW);
-     evdw_relerr = fabs(evdw_abserr / y.e_vdW);
-     fvdw_abserr = fabs(y.CEvd - y_spline.CEvd);
-     fvdw_relerr = fabs(fvdw_abserr / y.CEvd);
-     eele_abserr = fabs(y.e_ele - y_spline.e_ele);
-     eele_relerr = fabs(eele_abserr / y.e_ele);
-     fele_abserr = fabs(y.CEclmb - y_spline.CEclmb);
-     fele_relerr = fabs(fele_abserr / y.CEclmb);
+     evdw_abserr = FABS(y.e_vdW - y_spline.e_vdW);
+     evdw_relerr = FABS(evdw_abserr / y.e_vdW);
+     fvdw_abserr = FABS(y.CEvd - y_spline.CEvd);
+     fvdw_relerr = FABS(fvdw_abserr / y.CEvd);
+     eele_abserr = FABS(y.e_ele - y_spline.e_ele);
+     eele_relerr = FABS(eele_abserr / y.e_ele);
+     fele_abserr = FABS(y.CEclmb - y_spline.CEclmb);
+     fele_relerr = FABS(fele_abserr / y.CEclmb);
 
      if( evdw_relerr > 1e-10 || eele_relerr > 1e-10 ){
      fprintf( stderr, "rand_dist = %24.15e\n", rand_dist );
      fprintf( stderr, "%24.15e  %24.15e  %24.15e  %24.15e\n",
      y.H, y_spline.H,
-     fabs(y.H-y_spline.H), fabs((y.H-y_spline.H)/y.H) );
+     FABS(y.H-y_spline.H), FABS((y.H-y_spline.H)/y.H) );
 
      fprintf( stderr, "%24.15e  %24.15e  %24.15e  %24.15e\n",
      y.e_vdW, y_spline.e_vdW, evdw_abserr, evdw_relerr );

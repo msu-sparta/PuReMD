@@ -41,11 +41,13 @@ void Generate_Initial_Velocities( reax_system *system, real T )
     int i;
     real scale, norm;
 
-
     if ( T <= 0.1 )
     {
-        for (i = 0; i < system->N; i++)
+        for ( i = 0; i < system->N; i++ )
+        {
             rvec_MakeZero( system->atoms[i].v );
+        }
+
 #if defined(DEBUG)
         fprintf( stderr, "no random velocities...\n" );
 #endif
@@ -73,13 +75,15 @@ void Generate_Initial_Velocities( reax_system *system, real T )
 
 
 void Init_System( reax_system *system, control_params *control,
-                  simulation_data *data )
+        simulation_data *data )
 {
     int i;
     rvec dx;
 
     if ( !control->restart )
+    {
         Reset_Atoms( system );
+    }
 
     Compute_Total_Mass( system, data );
     Compute_Center_of_Mass( system, data, stderr );
@@ -117,21 +121,26 @@ void Init_System( reax_system *system, control_params *control,
 
     /* Initialize velocities so that desired init T can be attained */
     if ( !control->restart || (control->restart && control->random_vel) )
+    {
         Generate_Initial_Velocities( system, control->T_init );
+    }
 
     Setup_Grid( system );
 }
 
 
 void Init_Simulation_Data( reax_system *system, control_params *control,
-                           simulation_data *data, output_controls *out_control,
-                           evolve_function *Evolve )
+        simulation_data *data, output_controls *out_control,
+        evolve_function *Evolve )
 {
 
     Reset_Simulation_Data( data );
 
     if ( !control->restart )
-        data->step = data->prev_steps = 0;
+    {
+        data->step = 0;
+        data->prev_steps = 0;
+    }
 
     switch ( control->ensemble )
     {
@@ -169,9 +178,9 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
         if ( !control->restart )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin -
-                                                 data->N_f * K_B * control->T );
+                    data->N_f * K_B * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
-            data->iso_bar.eps = 0.33333 * log(system->box.volume);
+            data->iso_bar.eps = 1.0 / 3.0 * LOG( system->box.volume );
             //data->inv_W = 1. / (data->N_f*K_B*control->T*SQR(control->Tau_P));
             //Compute_Pressure( system, data, workspace );
         }
@@ -328,8 +337,6 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->b_t      = (real *) calloc( system->N_cm, sizeof( real ) );
     workspace->b_prc    = (real *) calloc( system->N_cm * 2, sizeof( real ) );
     workspace->b_prm    = (real *) calloc( system->N_cm * 2, sizeof( real ) );
-    //TODO: check if unused
-    //workspace->s_t      = (real *) calloc( cm_lin_sys_size * 2, sizeof( real ) );
     workspace->s        = (real**) calloc( 5, sizeof( real* ) );
     workspace->t        = (real**) calloc( 5, sizeof( real* ) );
     for ( i = 0; i < 5; ++i )
@@ -444,6 +451,10 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->f_old = (rvec *) malloc( system->N * sizeof( rvec ) );
     workspace->v_const = (rvec *) malloc( system->N * sizeof( rvec ) );
 
+#ifdef _OPENMP
+    workspace->f_local = (rvec *) malloc( control->num_threads * system->N * sizeof( rvec ) );
+#endif
+
     /* storage for analysis */
     if ( control->molec_anal || control->diffusion_coef )
     {
@@ -496,11 +507,14 @@ void Init_Workspace( reax_system *system, control_params *control,
 
 
 void Init_Lists( reax_system *system, control_params *control,
-                 simulation_data *data, static_storage *workspace,
-                 list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
-    int i, num_nbrs, num_hbonds, num_bonds, num_3body, Htop, max_nnz;
+    int i, num_nbrs, num_bonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
+#if defined(DEBUG_FOCUS)
+    int num_hbonds;
+#endif
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
 
@@ -579,9 +593,9 @@ void Init_Lists( reax_system *system, control_params *control,
 
         Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
                 hb_top, (*lists) + HBONDS );
-        num_hbonds = hb_top[system->N - 1];
 
 #if defined(DEBUG_FOCUS)
+        num_hbonds = hb_top[system->N - 1];
         fprintf( stderr, "estimated storage - num_hbonds: %d\n", num_hbonds );
         fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
                  num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
@@ -597,10 +611,6 @@ void Init_Lists( reax_system *system, control_params *control,
     fprintf( stderr, "memory allocated: bonds = %ldMB\n",
              num_bonds * sizeof(bond_data) / (1024 * 1024) );
 #endif
-
-//fprintf (stderr, " **** sizeof 3 body : %d \n", sizeof (three_body_interaction_data));
-//fprintf (stderr, " **** num_3body : %d \n", num_3body);
-//fprintf (stderr, " **** num_bonds : %d \n", num_bonds);
 
     /* 3bodies list */
     if (!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists) + THREE_BODIES))
@@ -634,8 +644,8 @@ void Init_Lists( reax_system *system, control_params *control,
 }
 
 
-void Init_Out_Controls(reax_system *system, control_params *control,
-                       static_storage *workspace, output_controls *out_control)
+void Init_Out_Controls( reax_system *system, control_params *control,
+        static_storage *workspace, output_controls *out_control )
 {
     char temp[1000];
 
@@ -860,12 +870,23 @@ void Init_Out_Controls(reax_system *system, control_params *control,
 }
 
 
-void Initialize(reax_system *system, control_params *control,
-                simulation_data *data, static_storage *workspace, list **lists,
-                output_controls *out_control, evolve_function *Evolve)
+void Initialize( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, list **lists,
+        output_controls *out_control, evolve_function *Evolve )
 {
+#if defined(DEBUG)
     real start, end;
-    Randomize();
+#endif
+
+#ifdef _OPENMP
+    #pragma omp parallel default(shared)
+    {
+        #pragma omp single
+        control->num_threads = omp_get_num_threads( );
+    }
+#endif
+
+    Randomize( );
 
     Init_System( system, control, data );
 
@@ -879,20 +900,399 @@ void Initialize(reax_system *system, control_params *control,
 
     /* These are done in forces.c, only forces.c can see all those functions */
     Init_Bonded_Force_Functions( control );
+
 #ifdef TEST_FORCES
     Init_Force_Test_Functions( );
 #endif
 
     if ( control->tabulate )
     {
-        start = Get_Time ();
-        Make_LR_Lookup_Table( system, control );
-        end = Get_Timing_Info (start);
+#if defined(DEBUG)
+        start = Get_Time( );
+#endif
 
-        //fprintf (stderr, "Time for LR Lookup Table calculation is %f \n", end );
+        Make_LR_Lookup_Table( system, control );
+
+#if defined(DEBUG)
+        end = Get_Timing_Info( start );
+
+        fprintf( stderr, "Time for LR Lookup Table calculation is %f \n", end );
+#endif
     }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "data structures have been initialized...\n" );
 #endif
+}
+
+
+void Finalize_System( reax_system *system, control_params *control,
+        simulation_data *data )
+{
+    int i, j, k;
+    reax_interaction *reax;
+
+    reax = &( system->reaxprm );
+
+    Finalize_Grid( system );
+
+    free( reax->gp.l );
+
+    for ( i = 0; i < reax->num_atom_types; i++ )
+    {
+        for ( j = 0; j < reax->num_atom_types; j++ )
+        {
+            for ( k = 0; k < reax->num_atom_types; k++ )
+            {
+                free( reax->fbp[i][j][k] );
+            }
+
+            free( reax->thbp[i][j] );
+            free( reax->hbp[i][j] );
+            free( reax->fbp[i][j] );
+        }
+
+        free( reax->tbp[i] );
+        free( reax->thbp[i] );
+        free( reax->hbp[i] );
+        free( reax->fbp[i] );
+    }
+
+    free( reax->sbp );
+    free( reax->tbp );
+    free( reax->thbp );
+    free( reax->hbp );
+    free( reax->fbp );
+
+    free( system->atoms );
+}
+
+
+void Finalize_Simulation_Data( reax_system *system, control_params *control,
+        simulation_data *data, output_controls *out_control )
+{
+}
+
+
+void Finalize_Workspace( reax_system *system, control_params *control,
+        static_storage *workspace )
+{
+    int i;
+
+    free( workspace->hbond_index );
+    free( workspace->total_bond_order );
+    free( workspace->Deltap );
+    free( workspace->Deltap_boc );
+    free( workspace->dDeltap_self );
+    free( workspace->Delta );
+    free( workspace->Delta_lp );
+    free( workspace->Delta_lp_temp );
+    free( workspace->dDelta_lp );
+    free( workspace->dDelta_lp_temp );
+    free( workspace->Delta_e );
+    free( workspace->Delta_boc );
+    free( workspace->nlp );
+    free( workspace->nlp_temp );
+    free( workspace->Clp );
+    free( workspace->CdDelta );
+    free( workspace->vlpex );
+
+    Deallocate_Matrix( workspace->H );
+    Deallocate_Matrix( workspace->H_sp );
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Deallocate_Matrix( workspace->L );
+        Deallocate_Matrix( workspace->U );
+    }
+
+    for ( i = 0; i < 5; ++i )
+    {
+        free( workspace->s[i] );
+        free( workspace->t[i] );
+    }
+
+    free( workspace->Hdia_inv );
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        free( workspace->droptol );
+    }
+    //TODO: check if unused
+    //free( workspace->w );
+    //TODO: check if unused
+    free( workspace->b );
+    free( workspace->b_s );
+    free( workspace->b_t );
+    free( workspace->b_prc );
+    free( workspace->b_prm );
+    free( workspace->s );
+    free( workspace->t );
+
+    switch ( control->cm_solver_type )
+    {
+        /* GMRES storage */
+        case GMRES_S:
+        case GMRES_H_S:
+            for ( i = 0; i < control->cm_solver_restart + 1; ++i )
+            {
+                free( workspace->h[i] );
+                free( workspace->rn[i] );
+                free( workspace->v[i] );
+            }
+
+            free( workspace->y );
+            free( workspace->z );
+            free( workspace->g );
+            free( workspace->h );
+            free( workspace->hs );
+            free( workspace->hc );
+            free( workspace->rn );
+            free( workspace->v );
+
+            free( workspace->r );
+            free( workspace->d );
+            free( workspace->q );
+            free( workspace->p );
+            break;
+
+        /* CG storage */
+        case CG_S:
+            free( workspace->r );
+            free( workspace->d );
+            free( workspace->q );
+            free( workspace->p );
+            break;
+
+        case SDM_S:
+            free( workspace->r );
+            free( workspace->d );
+            free( workspace->q );
+            break;
+
+        default:
+            fprintf( stderr, "Unknown charge method linear solver type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+    }
+
+    /* integrator storage */
+    free( workspace->a );
+    free( workspace->f_old );
+    free( workspace->v_const );
+
+#ifdef _OPENMP
+    free( workspace->f_local );
+#endif
+
+    /* storage for analysis */
+    if ( control->molec_anal || control->diffusion_coef )
+    {
+        free( workspace->mark );
+        free( workspace->old_mark );
+    }
+    else
+    {
+        free( workspace->mark );
+    }
+
+    if ( control->diffusion_coef )
+    {
+        free( workspace->x_old );
+    }
+    else
+    {
+        free( workspace->x_old );
+    }
+
+    free( workspace->orig_id );
+
+    /* space for keeping restriction info, if any */
+    if ( control->restrict_bonds )
+    {
+        for ( i = 0; i < system->N; ++i )
+        {
+            free( workspace->restricted_list[i] );
+        }
+
+        free( workspace->restricted );
+        free( workspace->restricted_list );
+    }
+
+#ifdef TEST_FORCES
+    free( workspace->dDelta );
+    free( workspace->f_ele );
+    free( workspace->f_vdw );
+    free( workspace->f_bo );
+    free( workspace->f_be );
+    free( workspace->f_lp );
+    free( workspace->f_ov );
+    free( workspace->f_un );
+    free( workspace->f_ang );
+    free( workspace->f_coa );
+    free( workspace->f_pen );
+    free( workspace->f_hb );
+    free( workspace->f_tor );
+    free( workspace->f_con );
+#endif
+}
+
+
+void Finalize_Lists( list **lists )
+{
+    Delete_List( TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS );
+    Delete_List( TYP_HBOND, (*lists) + HBONDS );
+    Delete_List( TYP_BOND, (*lists) + BONDS );
+    Delete_List( TYP_THREE_BODY, (*lists) + THREE_BODIES );
+
+#ifdef TEST_FORCES
+    Delete_List( TYP_DDELTA, (*lists) + DDELTA );
+    Delete_List( TYP_DBO, (*lists) + DBO );
+#endif
+}
+
+
+void Finalize_Out_Controls( reax_system *system, control_params *control,
+        static_storage *workspace, output_controls *out_control )
+{
+    /* close trajectory file */
+    if ( out_control->write_steps > 0 )
+    {
+        fclose( out_control->trj );
+    }
+
+    if ( out_control->energy_update_freq > 0 )
+    {
+        /* close out file */
+        fclose( out_control->out );
+
+        /* close potentials file */
+        fclose( out_control->pot );
+
+        /* close log file */
+        fclose( out_control->log );
+    }
+
+    /* close pressure file */
+    if ( control->ensemble == NPT ||
+            control->ensemble == iNPT ||
+            control->ensemble == sNPT )
+    {
+        fclose( out_control->prs );
+    }
+
+    /* close molecular analysis file */
+    if ( control->molec_anal )
+    {
+        fclose( out_control->mol );
+    }
+
+    /* close electric dipole moment analysis file */
+    if ( control->dipole_anal )
+    {
+        fclose( out_control->dpl );
+    }
+
+    /* close diffusion coef analysis file */
+    if ( control->diffusion_coef )
+    {
+        fclose( out_control->drft );
+    }
+
+
+#ifdef TEST_ENERGY
+    /* close bond energy file */
+    fclose( out_control->ebond );
+
+    /* close lone-pair energy file */
+    fclose( out_control->elp );
+
+    /* close overcoordination energy file */
+    fclose( out_control->eov );
+
+    /* close undercoordination energy file */
+    fclose( out_control->eun );
+
+    /* close angle energy file */
+    fclose( out_control->eval );
+
+    /* close penalty energy file */
+    fclose( out_control->epen );
+
+    /* close coalition energy file */
+    fclose( out_control->ecoa );
+
+    /* close hydrogen bond energy file */
+    fclose( out_control->ehb );
+
+    /* close torsion energy file */
+    fclose( out_control->etor );
+
+    /* close conjugation energy file */
+    fclose( out_control->econ );
+
+    /* close vdWaals energy file */
+    fclose( out_control->evdw );
+
+    /* close coulomb energy file */
+    fclose( out_control->ecou );
+#endif
+
+
+#ifdef TEST_FORCES
+    /* close bond orders file */
+    fclose( out_control->fbo );
+
+    /* close bond orders derivatives file */
+    fclose( out_control->fdbo );
+
+    /* close bond forces file */
+    fclose( out_control->fbond );
+
+    /* close lone-pair forces file */
+    fclose( out_control->flp );
+
+    /* close overcoordination forces file */
+    fclose( out_control->fatom );
+
+    /* close angle forces file */
+    fclose( out_control->f3body );
+
+    /* close hydrogen bond forces file */
+    fclose( out_control->fhb );
+
+    /* close torsion forces file */
+    fclose( out_control->f4body );
+
+    /* close nonbonded forces file */
+    fclose( out_control->fnonb );
+
+    /* close total force file */
+    fclose( out_control->ftot );
+
+    /* close coulomb forces file */
+    fclose( out_control->ftot2 );
+#endif
+}
+
+
+void Finalize( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, list **lists,
+        output_controls *out_control )
+{
+    if ( control->tabulate )
+    {
+//        Finalize_LR_Lookup_Table( system, control );
+    }
+
+    Finalize_Out_Controls( system, control, workspace, out_control );
+
+    Finalize_Lists( lists );
+
+    Finalize_Workspace( system, control, workspace );
+
+    Finalize_Simulation_Data( system, control, data, out_control );
+
+    Finalize_System( system, control, data );
 }

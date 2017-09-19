@@ -107,7 +107,9 @@ static void Sort_Matrix_Rows( sparse_matrix * const A )
     unsigned int i, j, si, ei;
     sparse_matrix_entry *temp;
 
+#ifdef _OPENMP
 //    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
+#endif
     {
         if ( ( temp = (sparse_matrix_entry *) malloc( A->n * sizeof(sparse_matrix_entry)) ) == NULL )
         {
@@ -116,7 +118,9 @@ static void Sort_Matrix_Rows( sparse_matrix * const A )
         }
 
         /* sort each row of A using column indices */
+#ifdef _OPENMP
 //        #pragma omp for schedule(guided)
+#endif
         for ( i = 0; i < A->n; ++i )
         {
             si = A->start[i];
@@ -153,7 +157,9 @@ static void Calculate_Droptol( const sparse_matrix * const A,
     unsigned int tid;
 #endif
 
+#ifdef _OPENMP
     #pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local, stderr)
+#endif
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
@@ -185,10 +191,14 @@ static void Calculate_Droptol( const sparse_matrix * const A,
 #endif
         }
 
+#ifdef _OPENMP
         #pragma omp barrier
+#endif
 
         /* calculate sqaure of the norm of each row */
+#ifdef _OPENMP
         #pragma omp for schedule(static)
+#endif
         for ( i = 0; i < A->n; ++i )
         {
             for ( k = A->start[i]; k < A->start[i + 1] - 1; ++k )
@@ -214,9 +224,9 @@ static void Calculate_Droptol( const sparse_matrix * const A,
 #endif
         }
 
+#ifdef _OPENMP
         #pragma omp barrier
 
-#ifdef _OPENMP
         #pragma omp for schedule(static)
         for ( i = 0; i < A->n; ++i )
         {
@@ -226,13 +236,15 @@ static void Calculate_Droptol( const sparse_matrix * const A,
                 droptol[i] += droptol_local[k * A->n + i];
             }
         }
-#endif
 
         #pragma omp barrier
+#endif
 
         /* calculate local droptol for each row */
         //fprintf( stderr, "droptol: " );
+#ifdef _OPENMP
         #pragma omp for schedule(static)
+#endif
         for ( i = 0; i < A->n; ++i )
         {
             //fprintf( stderr, "%f-->", droptol[i] );
@@ -246,19 +258,20 @@ static void Calculate_Droptol( const sparse_matrix * const A,
 
 static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol )
 {
-    int i, j, pj;
+    int i, pj;
     int fillin;
     real val;
 
     fillin = 0;
 
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) private(i, j, pj, val) reduction(+: fillin)
+        default(none) private(i, pj, val) reduction(+: fillin)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            j = A->j[pj];
             val = A->val[pj];
 
             if ( FABS(val) > droptol[i] )
@@ -304,7 +317,7 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
 #ifdef _OPENMP
     //TODO: set as global parameter and use
     #pragma omp parallel \
-    default(none) shared(nprocs)
+        default(none) shared(nprocs)
     {
         #pragma omp master
         {
@@ -578,8 +591,10 @@ static real diag_pre_comp( const sparse_matrix * const H, real * const Hdia_inv 
 
     start = Get_Time( );
 
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
         default(none) private(i)
+#endif
     for ( i = 0; i < H->n; ++i )
     {
         if ( H->val[H->start[i + 1] - 1] != 0.0 )
@@ -749,6 +764,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
  * Edmond Chow and Aftab Patel
  * Fine-Grained Parallel Incomplete LU Factorization
  * SIAM J. Sci. Comp. */
+#if defined(TESTING)
 static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                        sparse_matrix * const U_t, sparse_matrix * const U )
 {
@@ -768,8 +784,10 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         exit( INSUFFICIENT_MEMORY );
     }
 
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) shared(D_inv, D) private(i)
+        default(none) shared(D_inv, D) private(i)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
@@ -780,10 +798,12 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     memset( Utop, 0, sizeof(unsigned int) * (A->n + 1) );
 
     /* to get convergence, A must have unit diagonal, so apply
-     * transformation DAD, where D = D(1./sqrt(D(A))) */
+     * transformation DAD, where D = D(1./SQRT(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
+#ifdef _OPENMP
     #pragma omp parallel for schedule(guided) \
-    default(none) shared(DAD, D_inv, D) private(i, pj)
+        default(none) shared(DAD, D_inv, D) private(i, pj)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
@@ -806,8 +826,10 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero */
+#ifdef _OPENMP
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD, stderr) private(sum, ei_x, ei_y, k) firstprivate(x, y)
+            default(none) shared(DAD, stderr) private(sum, ei_x, ei_y, k) firstprivate(x, y)
+#endif
         for ( j = 0; j < A->start[A->n]; ++j )
         {
             sum = ZERO;
@@ -879,8 +901,10 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     /* apply inverse transformation D^{-1}U^{T},
      * since DAD \approx U^{T}U, so
      * D^{-1}DADD^{-1} = A \approx D^{-1}U^{T}UD^{-1} */
+#ifdef _OPENMP
     #pragma omp parallel for schedule(guided) \
-    default(none) shared(D_inv) private(i, pj)
+        default(none) shared(D_inv) private(i, pj)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
@@ -907,6 +931,7 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     return Get_Timing_Info( start );
 }
+#endif
 
 
 /* Fine-grained (parallel) incomplete LU factorization
@@ -936,8 +961,10 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         exit( INSUFFICIENT_MEMORY );
     }
 
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) shared(D, D_inv) private(i)
+        default(none) shared(D, D_inv) private(i)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
@@ -946,10 +973,12 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     }
 
     /* to get convergence, A must have unit diagonal, so apply
-     * transformation DAD, where D = D(1./sqrt(abs(D(A)))) */
+     * transformation DAD, where D = D(1./SQRT(abs(D(A)))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) shared(DAD, D) private(i, pj)
+        default(none) shared(DAD, D) private(i, pj)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
@@ -974,7 +1003,9 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     memcpy( U->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
 
     /* L has unit diagonal, by convention */
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) default(none) private(i)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         L->val[L->start[i + 1] - 1] = 1.0;
@@ -983,8 +1014,10 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero in L */
+#ifdef _OPENMP
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+#endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1033,8 +1066,10 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
             }
         }
 
+#ifdef _OPENMP
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
+#endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1084,8 +1119,10 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     /* apply inverse transformation:
      * since DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) shared(DAD, D_inv) private(i, pj)
+        default(none) shared(DAD, D_inv) private(i, pj)
+#endif
     for ( i = 0; i < DAD->n; ++i )
     {
         for ( pj = DAD->start[i]; pj < DAD->start[i + 1]; ++pj )
@@ -1146,8 +1183,10 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
         exit( INSUFFICIENT_MEMORY );
     }
 
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) shared(D, D_inv) private(i)
+        default(none) shared(D, D_inv) private(i)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
@@ -1155,10 +1194,12 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     }
 
     /* to get convergence, A must have unit diagonal, so apply
-     * transformation DAD, where D = D(1./sqrt(D(A))) */
+     * transformation DAD, where D = D(1./SQRT(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) shared(DAD, D) private(i, pj)
+        default(none) shared(DAD, D) private(i, pj)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
@@ -1183,8 +1224,10 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     memcpy( U_temp->val, DAD->val, sizeof(real) * (DAD->start[DAD->n]) );
 
     /* L has unit diagonal, by convention */
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) private(i) shared(L_temp)
+        default(none) private(i) shared(L_temp)
+#endif
     for ( i = 0; i < A->n; ++i )
     {
         L_temp->val[L_temp->start[i + 1] - 1] = 1.0;
@@ -1193,8 +1236,10 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     for ( i = 0; i < sweeps; ++i )
     {
         /* for each nonzero in L */
+#ifdef _OPENMP
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+#endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1243,8 +1288,10 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
             }
         }
 
+#ifdef _OPENMP
         #pragma omp parallel for schedule(static) \
-        default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+#endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
         {
             sum = ZERO;
@@ -1294,8 +1341,10 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     /* apply inverse transformation:
      * since DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) shared(DAD, L_temp, U_temp, D_inv) private(i, pj)
+        default(none) shared(DAD, L_temp, U_temp, D_inv) private(i, pj)
+#endif
     for ( i = 0; i < DAD->n; ++i )
     {
         for ( pj = DAD->start[i]; pj < DAD->start[i + 1]; ++pj )
@@ -1374,8 +1423,10 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
 
     /* extrapolation for s & t */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-    default(none) private(i, s_tmp, t_tmp)
+        default(none) private(i, s_tmp, t_tmp)
+#endif
     for ( i = 0; i < system->N_cm; ++i )
     {
         // no extrapolation
@@ -1426,8 +1477,10 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
 
     /* extrapolation for s */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
+#ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
         default(none) private(i, s_tmp)
+#endif
     for ( i = 0; i < system->N_cm; ++i )
     {
         // no extrapolation
@@ -2724,10 +2777,9 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 
 void Compute_Charges( reax_system * const system, control_params * const control,
-                      simulation_data * const data, static_storage * const workspace,
-                      const list * const far_nbrs, const output_controls * const out_control )
+        simulation_data * const data, static_storage * const workspace,
+        const list * const far_nbrs, const output_controls * const out_control )
 {
-    int i;
 #if defined(DEBUG_FOCUS)
     char fname[200];
     FILE * fp;

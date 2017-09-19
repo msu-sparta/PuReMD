@@ -21,7 +21,8 @@
 
 #include "list.h"
 
-char Make_List(int n, int num_intrs, int type, list* l)
+
+char Make_List( int n, int num_intrs, int type, list* l )
 {
     char success = 1;
 
@@ -31,10 +32,16 @@ char Make_List(int n, int num_intrs, int type, list* l)
     l->index = (int*) malloc( n * sizeof(int) );
     l->end_index = (int*) malloc( n * sizeof(int) );
 
-    if (l->index == NULL) success = 0;
-    if (l->end_index == NULL) success = 0;
+    if ( l->index == NULL )
+    {
+        success = 0;
+    }
+    if ( l->end_index == NULL )
+    {
+        success = 0;
+    }
 
-    switch (type)
+    switch ( type )
     {
     case TYP_VOID:
         l->select.v = (void *) malloc(l->num_intrs * sizeof(void));
@@ -86,7 +93,6 @@ char Make_List(int n, int num_intrs, int type, list* l)
     default:
         l->select.v = (void *) malloc(l->num_intrs * sizeof(void));
         if (l->select.v == NULL) success = 0;
-        l->type = TYP_VOID;
         break;
     }
 
@@ -94,46 +100,66 @@ char Make_List(int n, int num_intrs, int type, list* l)
 }
 
 
-void Delete_List(list* l)
+void Delete_List( int type, list* l )
 {
     if ( l->index != NULL )
-        free(l->index);
+    {
+        free( l->index );
+    }
     if ( l->end_index != NULL )
-        free(l->end_index);
+    {
+        free( l->end_index );
+    }
 
-    switch (l->type)
+    switch ( type )
     {
     case TYP_VOID:
         if ( l->select.v != NULL )
-            free(l->select.v);
+        {
+            free( l->select.v );
+        }
         break;
     case TYP_THREE_BODY:
         if ( l->select.three_body_list != NULL )
-            free(l->select.three_body_list);
+        {
+            free( l->select.three_body_list );
+        }
         break;
     case TYP_BOND:
         if ( l->select.bond_list != NULL )
-            free(l->select.bond_list);
+        {
+            free( l->select.bond_list );
+        }
         break;
     case TYP_DBO:
         if ( l->select.dbo_list != NULL )
-            free(l->select.dbo_list);
+        {
+            free( l->select.dbo_list );
+        }
         break;
     case TYP_DDELTA:
         if ( l->select.dDelta_list != NULL )
-            free(l->select.dDelta_list);
+        {
+            free( l->select.dDelta_list );
+        }
         break;
     case TYP_FAR_NEIGHBOR:
         if ( l->select.far_nbr_list != NULL )
-            free(l->select.far_nbr_list);
+        {
+            free( l->select.far_nbr_list );
+        }
         break;
     case TYP_NEAR_NEIGHBOR:
         if ( l->select.near_nbr_list != NULL )
-            free(l->select.near_nbr_list);
+        {
+            free( l->select.near_nbr_list );
+        }
         break;
     case TYP_HBOND:
         if ( l->select.hbond_list != NULL )
-            free(l->select.hbond_list);
+        {
+            free( l->select.hbond_list );
+        }
         break;
 
     default:
@@ -143,27 +169,32 @@ void Delete_List(list* l)
 
 }
 
-inline int Num_Entries(int i, list* l)
+
+inline int Num_Entries( int i, list* l )
 {
     return l->end_index[i] - l->index[i];
 }
 
-inline int Start_Index(int i, list *l )
+
+inline int Start_Index( int i, list *l )
 {
     return l->index[i];
 }
+
 
 inline int End_Index( int i, list *l )
 {
     return l->end_index[i];
 }
 
-inline void Set_Start_Index(int i, int val, list *l)
+
+inline void Set_Start_Index( int i, int val, list *l )
 {
     l->index[i] = val;
 }
 
-inline void Set_End_Index(int i, int val, list *l)
+
+inline void Set_End_Index( int i, int val, list *l )
 {
     l->end_index[i] = val;
 }

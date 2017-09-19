@@ -33,11 +33,12 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     int c, i, j, k, l, m, n, o, p, cnt;
     real val;
 
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
+    s = (char*) malloc( sizeof(char) * MAX_LINE );
+    tmp = (char**) malloc( sizeof(char*) * MAX_TOKENS );
     for (i = 0; i < MAX_TOKENS; i++)
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_TOKEN_LEN);
-
+    {
+        tmp[i] = (char*) malloc( sizeof(char) * MAX_TOKEN_LEN );
+    }
 
     /* reading first header comment */
     fgets( s, MAX_LINE, fp );
@@ -56,7 +57,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     }
 
     reax->gp.n_global = n;
-    reax->gp.l = (real*) malloc(sizeof(real) * n);
+    reax->gp.l = (real*) malloc( sizeof(real) * n );
 
     /* see mytypes.h for mapping between l[i] and the lambdas used in ff */
     for (i = 0; i < n; i++)
@@ -397,55 +398,55 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
                                    (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
 
             reax->tbp[i][j].p_boc3 =
-                sqrt(reax->sbp[i].b_o_132 *
+                SQRT(reax->sbp[i].b_o_132 *
                      reax->sbp[j].b_o_132);
 
             reax->tbp[j][i].p_boc3 =
-                sqrt(reax->sbp[j].b_o_132 *
+                SQRT(reax->sbp[j].b_o_132 *
                      reax->sbp[i].b_o_132);
 
             reax->tbp[i][j].p_boc4 =
-                sqrt(reax->sbp[i].b_o_131 *
+                SQRT(reax->sbp[i].b_o_131 *
                      reax->sbp[j].b_o_131);
             reax->tbp[j][i].p_boc4 =
-                sqrt(reax->sbp[j].b_o_131 *
+                SQRT(reax->sbp[j].b_o_131 *
                      reax->sbp[i].b_o_131);
 
             reax->tbp[i][j].p_boc5 =
-                sqrt(reax->sbp[i].b_o_133 *
+                SQRT(reax->sbp[i].b_o_133 *
                      reax->sbp[j].b_o_133);
             reax->tbp[j][i].p_boc5 =
-                sqrt(reax->sbp[j].b_o_133 *
+                SQRT(reax->sbp[j].b_o_133 *
                      reax->sbp[i].b_o_133);
 
             reax->tbp[i][j].D =
-                sqrt(reax->sbp[i].epsilon *
+                SQRT(reax->sbp[i].epsilon *
                      reax->sbp[j].epsilon);
 
             reax->tbp[j][i].D =
-                sqrt(reax->sbp[j].epsilon *
+                SQRT(reax->sbp[j].epsilon *
                      reax->sbp[i].epsilon);
 
             reax->tbp[i][j].alpha =
-                sqrt(reax->sbp[i].alpha *
+                SQRT(reax->sbp[i].alpha *
                      reax->sbp[j].alpha);
 
             reax->tbp[j][i].alpha =
-                sqrt(reax->sbp[j].alpha *
+                SQRT(reax->sbp[j].alpha *
                      reax->sbp[i].alpha);
 
             reax->tbp[i][j].r_vdW =
-                2.0 * sqrt(reax->sbp[i].r_vdw * reax->sbp[j].r_vdw);
+                2.0 * SQRT(reax->sbp[i].r_vdw * reax->sbp[j].r_vdw);
 
             reax->tbp[j][i].r_vdW =
-                2.0 * sqrt(reax->sbp[j].r_vdw * reax->sbp[i].r_vdw);
+                2.0 * SQRT(reax->sbp[j].r_vdw * reax->sbp[i].r_vdw);
 
             reax->tbp[i][j].gamma_w =
-                sqrt(reax->sbp[i].gamma_w *
+                SQRT(reax->sbp[i].gamma_w *
                      reax->sbp[j].gamma_w);
 
             reax->tbp[j][i].gamma_w =
-                sqrt(reax->sbp[j].gamma_w *
+                SQRT(reax->sbp[j].gamma_w *
                      reax->sbp[i].gamma_w);
 
             reax->tbp[i][j].gamma =
@@ -717,7 +718,9 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* deallocate helper storage */
     for ( i = 0; i < MAX_TOKENS; i++ )
+    {
         free( tmp[i] );
+    }
     free( tmp );
     free( s );
 
@@ -727,13 +730,17 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
         for ( j = 0; j < reax->num_atom_types; j++ )
         {
             for ( k = 0; k < reax->num_atom_types; k++ )
+            {
                 free( tor_flag[i][j][k] );
+            }
 
             free( tor_flag[i][j] );
         }
 
         free( tor_flag[i] );
     }
+
+    free( tor_flag );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "force field read\n" );

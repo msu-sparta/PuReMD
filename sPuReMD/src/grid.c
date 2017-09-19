@@ -69,7 +69,8 @@ void Allocate_Space_for_Grid( reax_system *system )
     grid *g;
 
     g = &(system->g);
-    g->max_nbrs = (2 * g->spread[0] + 1) * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
+    g->max_nbrs = (2 * g->spread[0] + 1)
+        * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
 
     /* allocate space for the new grid */
     g->atoms = (int****) calloc( g->ncell[0], sizeof( int*** ));
@@ -156,6 +157,8 @@ void Deallocate_Grid_Space( grid *g )
 
             free( g->atoms[i][j] );
             free( g->top[i][j] );
+            free( g->start[i][j] );
+            free( g->end[i][j] );
             free( g->mark[i][j] );
             free( g->nbrs[i][j] );
             free( g->nbrs_cp[i][j] );
@@ -163,6 +166,8 @@ void Deallocate_Grid_Space( grid *g )
 
         free( g->atoms[i] );
         free( g->top[i] );
+        free( g->start[i] );
+        free( g->end[i] );
         free( g->mark[i] );
         free( g->nbrs[i] );
         free( g->nbrs_cp[i] );
@@ -170,6 +175,8 @@ void Deallocate_Grid_Space( grid *g )
 
     free( g->atoms );
     free( g->top );
+    free( g->start );
+    free( g->end );
     free( g->mark );
     free( g->nbrs );
     free( g->nbrs_cp );
@@ -481,6 +488,12 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
     {
         workspace->realloc.gcell_atoms = MAX(max_atoms * SAFE_ZONE, MIN_GCELL_POPL);
     }
+}
+
+
+void Finalize_Grid( reax_system* system )
+{
+    Deallocate_Grid_Space( &( system->g ) );
 }
 
 

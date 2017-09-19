@@ -135,6 +135,9 @@ void static Read_System( char * const geo_file,
         exit( INVALID_GEO );
     }
 
+    fclose( ffield );
+    fclose( ctrl );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "input files have been read...\n" );
     Print_Box( &(system->box), stderr );
@@ -168,10 +171,10 @@ int main(int argc, char* argv[])
     lists = (list*) malloc( sizeof(list) * LIST_N );
 
     Read_System( argv[1], argv[2], argv[3], &system, &control,
-                 &data, &workspace, &out_control );
+            &data, &workspace, &out_control );
 
     Initialize( &system, &control, &data, &workspace, &lists,
-                &out_control, &Evolve );
+            &out_control, &Evolve );
 
     /* compute f_0 */
     //if( control.restart == 0 ) {
@@ -195,13 +198,15 @@ int main(int argc, char* argv[])
         }
         Evolve( &system, &control, &data, &workspace, &lists, &out_control );
         Post_Evolve( &system, &control, &data, &workspace, &lists, &out_control );
-        Output_Results(&system, &control, &data, &workspace, &lists, &out_control);
+        Output_Results( &system, &control, &data, &workspace, &lists, &out_control );
         Analysis( &system, &control, &data, &workspace, &lists, &out_control );
 
         steps = data.step - data.prev_steps;
         if ( steps && out_control.restart_freq &&
                 steps % out_control.restart_freq == 0 )
+        {
             Write_Restart( &system, &control, &data, &workspace, &out_control );
+        }
     }
 
     if ( out_control.write_steps > 0 )
@@ -213,6 +218,11 @@ int main(int argc, char* argv[])
     data.timing.end = Get_Time( );
     data.timing.elapsed = Get_Timing_Info( data.timing.start );
     fprintf( out_control.log, "total: %.2f secs\n", data.timing.elapsed );
+
+    Finalize( &system, &control, &data, &workspace, &lists,
+            &out_control );
+
+    free( lists );
 
     return SUCCESS;
 }

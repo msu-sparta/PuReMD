@@ -118,7 +118,7 @@ AC_ARG_ENABLE([timing],
 		[enable timing measurements and reporting @<:@default: no@:>@])],
 	[timing_enabled=${enableval}], [timing_enabled=no]
 )
-if test "x$timing_enabled" = "xyes"
+if test "x${timing_enabled}" = "xyes"
 then
 	export BUILD_TIMING="yes"
 fi
@@ -128,7 +128,7 @@ AC_ARG_WITH([superlu-mt],
 			    [enable usage of SuperLU MT for QEq preconditioner computation @<:@default: no@:>@])],
             [package_superlu_mt=${withval}], [package_superlu_mt=no])
 
-if test "x$package_superlu_mt" != "xno"
+if test "x${package_superlu_mt}" != "xno"
 then
 	export BUILD_SUPERLU_MT="${package_superlu_mt}"
 fi

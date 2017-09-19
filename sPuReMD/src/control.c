@@ -95,9 +95,9 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->P[0] = 0.000101325;
     control->P[1] = 0.000101325;
     control->P[2] = 0.000101325;
-    control->Tau_P[0]  = 500.0;
-    control->Tau_P[1]  = 500.0;
-    control->Tau_P[2]  = 500.0;
+    control->Tau_P[0] = 500.0;
+    control->Tau_P[1] = 500.0;
+    control->Tau_P[2] = 500.0;
     control->Tau_PT = 500.0;
     control->compressibility = 1.0;
     control->press_mode = 0;
@@ -139,8 +139,10 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     /* memory allocations */
     s = (char*) malloc(sizeof(char) * MAX_LINE);
     tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
-    for (i = 0; i < MAX_TOKENS; i++)
+    for ( i = 0; i < MAX_TOKENS; i++ )
+    {
         tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
+    }
 
     /* read control parameters file */
     while (fgets(s, MAX_LINE, fp))
@@ -319,7 +321,9 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             control->T_init = val;
 
             if ( control->T_init < 0.001 )
+            {
                 control->T_init = 0.001;
+            }
         }
         else if ( strcmp(tmp[0], "temp_final") == 0 )
         {
@@ -327,12 +331,15 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             control->T_final = val;
 
             if ( control->T_final < 0.1 )
+            {
                 control->T_final = 0.1;
+            }
         }
         else if ( strcmp(tmp[0], "t_mass") == 0 )
         {
             val = atof(tmp[1]);
-            control->Tau_T = val * 1.e-3;    // convert t_mass from fs to ps
+            /* convert t_mass from fs to ps */
+            control->Tau_T = val * 1.e-3;
         }
         else if ( strcmp(tmp[0], "t_mode") == 0 )
         {
@@ -549,9 +556,13 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     /* determine target T */
     if ( control->T_mode == 0 )
+    {
         control->T = control->T_final;
-    else control->T = control->T_init;
-
+    }
+    else
+    {
+        control->T = control->T_init;
+    }
 
     /* near neighbor and far neighbor cutoffs */
     control->bo_cut = 0.01 * system->reaxprm.gp.l[29];
