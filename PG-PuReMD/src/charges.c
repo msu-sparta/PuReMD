@@ -258,7 +258,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
 
 
 void Init_MatVec( reax_system *system, simulation_data *data,
-        control_params *control,  storage *workspace, mpi_datatypes *mpi_data )
+        control_params *control, storage *workspace, mpi_datatypes *mpi_data )
 {
     int i; //, fillin;
     reax_atom *atom;
@@ -308,12 +308,8 @@ void Init_MatVec( reax_system *system, simulation_data *data,
     {
         atom = &( system->my_atoms[i] );
 
-        /* init pre-conditioner for H and init solution vectors */
+        /* initialize diagonal inverse preconditioner vectors */
         workspace->Hdia_inv[i] = 1. / system->reax_param.sbp[ atom->type ].eta;
-        workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
-        workspace->b_t[i] = -1.0;
-        workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
-        workspace->b[i][1] = -1.0;
 
         /* linear extrapolation for s and for t */
         // newQEq: no extrapolation!
@@ -333,6 +329,79 @@ void Init_MatVec( reax_system *system, simulation_data *data,
         //workspace->x[i][1] = 4*(atom->t[0]+atom->t[2])-(6*atom->t[1]+atom->t[3]);
 
 //        fprintf(stderr, "i=%d s=%f t=%f\n", i, workspace->s[i], workspace->t[i]);
+    }
+
+    /* initialize solution vectors for linear solves in charge method */
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            for ( i = 0; i < system->n; ++i )
+            {
+                atom = &( system->my_atoms[i] );
+
+                workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b_t[i] = -1.0;
+                workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b[i][1] = -1.0;
+            }
+            break;
+
+        case EE_CM:
+            for ( i = 0; i < system->n; ++i )
+            {
+                atom = &( system->my_atoms[i] );
+
+                workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
+            }
+
+            if ( system->my_rank == 0 )
+            {
+                workspace->b_s[system->n] = control->cm_q_net;
+                workspace->b[system->n][0] = control->cm_q_net;
+            }
+            break;
+
+        case ACKS2_CM:
+            for ( i = 0; i < system->n; ++i )
+            {
+                atom = &( system->my_atoms[i] );
+
+                workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
+            }
+
+            if ( system->my_rank == 0 )
+            {
+                workspace->b_s[system->n] = control->cm_q_net;
+                workspace->b[system->n][0] = control->cm_q_net;
+            }
+
+            for ( i = system->n + 1; i < system->N_cm; ++i )
+            {
+                atom = &( system->my_atoms[i] );
+
+                workspace->b_s[i] = 0.0;
+
+                //TODO: check if unused (redundant)
+                workspace->b[i][0] = 0.0;
+            }
+
+            if ( system->my_rank == 0 )
+            {
+                workspace->b_s[system->n] = control->cm_q_net;
+                workspace->b[system->n][0] = control->cm_q_net;
+            }
+            break;
+
+        default:
+            fprintf( stderr, "Unknown charge method type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 }
 
@@ -359,7 +428,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
     }
 
 #if defined(DEBUG)
-    fprintf (stderr, "Host : my_sum[0]: %f and %f \n", my_sum[0], my_sum[1]);
+    fprintf( stderr, "Host : my_sum[0]: %f and %f \n", my_sum[0], my_sum[1] );
 #endif
 
     MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
@@ -367,7 +436,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
     u = all_sum[0] / all_sum[1];
 
 #if defined(DEBUG)
-    fprintf (stderr, "Host : u: %f \n", u);
+    fprintf( stderr, "Host : u: %f \n", u );
 #endif
 
     for ( i = 0; i < system->n; ++i )

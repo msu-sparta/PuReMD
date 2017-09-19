@@ -36,10 +36,10 @@ int GMRES_HouseHolder( reax_system*, storage*, sparse_matrix*,
         real*, real, real*, mpi_datatypes*, FILE* );
 
 int dual_CG( reax_system*, storage*, sparse_matrix*,
-        rvec2*, real, rvec2*, mpi_datatypes*, FILE* , simulation_data *);
+        rvec2*, real, rvec2*, mpi_datatypes*, FILE* , simulation_data * );
 
 int CG( reax_system*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes*, FILE* );
+        real*, real, real*, mpi_datatypes* );
 
 int PCG( reax_system*, storage*, sparse_matrix*, real*, real,
         sparse_matrix*, sparse_matrix*, real*, mpi_datatypes*, FILE* );

@@ -1159,8 +1159,11 @@ typedef struct
     int N;
     /* num. atoms within simulation */
     int bigN;
+    /* dimension of sparse charge method matrix */
+    int N_cm;
     /* num. hydrogen atoms */
     int numH;
+    /* num. hydrogen atoms (GPU) */
     int *d_numH;
     /**/
     int local_cap;

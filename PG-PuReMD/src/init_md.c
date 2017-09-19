@@ -117,16 +117,16 @@ void Generate_Initial_Velocities( reax_system *system, real T )
 
             rvec_Scale( system->my_atoms[i].v, 1. / scale, system->my_atoms[i].v );
 
-            // fprintf( stderr, "v = %f %f %f\n",
-            // system->my_atoms[i].v[0],
-            // system->my_atoms[i].v[1],
-            // system->my_atoms[i].v[2] );
-
-            // fprintf( stderr, "scale = %f\n", scale );
-            // fprintf( stderr, "v = %f %f %f\n",
-            // system->my_atoms[i].v[0],
-            // system->my_atoms[i].v[1],
-            // system->my_atoms[i].v[2] );
+//            fprintf( stderr, "v = %f %f %f\n",
+//                    system->my_atoms[i].v[0],
+//                    system->my_atoms[i].v[1],
+//                    system->my_atoms[i].v[2] );
+//
+//            fprintf( stderr, "scale = %f\n", scale );
+//            fprintf( stderr, "v = %f %f %f\n",
+//                    system->my_atoms[i].v[0],
+//                    system->my_atoms[i].v[1],
+//                    system->my_atoms[i].v[2] );
         }
     }
 }

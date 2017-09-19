@@ -44,7 +44,8 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 
     for ( i = 0; i < N; ++i )
     {
-        b[i][0] = b[i][1] = 0;
+        b[i][0] = 0;
+        b[i][1] = 0;
     }
 
     /* perform multiplication */
@@ -76,13 +77,11 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
         *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout,
         simulation_data *data )
 {
-    int  i, j, n, N, matvecs, scale;
+    int i, j, n, N, matvecs, scale;
     rvec2 tmp, alpha, beta;
     rvec2 my_sum, norm_sqr, b_norm, my_dot;
     rvec2 sig_old, sig_new;
     MPI_Comm comm;
-
-    int a;
 
     n = system->n;
     N = system->N;
@@ -100,13 +99,13 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
 #endif
 
 #ifdef HAVE_CUDA
-    check_zeros_host( x, system->N, "x" );
+    check_zeros_host( x, N, "x" );
 #endif
 
     Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
 
 #ifdef HAVE_CUDA
-    check_zeros_host( x, system->N, "x" );
+    check_zeros_host( x, N, "x" );
 #endif
 
     dual_Sparse_MatVec( H, x, workspace->q2, N );
@@ -121,7 +120,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
         Update_Timing_Info( &t_start, &matvec_time );
 #endif
 
-    for ( j = 0; j < system->n; ++j )
+    for ( j = 0; j < n; ++j )
     {
         /* residual */
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
@@ -168,7 +167,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
     for ( i = 1; i < 300; ++i )
     {
         Dist(system, mpi_data, workspace->d2, mpi_data->mpi_rvec2, scale, rvec2_packer);
-        //print_host_rvec2 (workspace->d2, N);
+        //print_host_rvec2( workspace->d2, N );
 
         dual_Sparse_MatVec( H, workspace->d2, workspace->q2, N );
 
@@ -193,7 +192,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
         my_dot[0] = my_dot[1] = 0;
-        for ( j = 0; j < system->n; ++j )
+        for ( j = 0; j < n; ++j )
         {
             /* update x */
             x[j][0] += alpha[0] * workspace->d2[j][0];
@@ -225,7 +224,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
 
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
-        for ( j = 0; j < system->n; ++j )
+        for ( j = 0; j < n; ++j )
         {
             /* d = p + beta * d */
             workspace->d2[j][0] = workspace->p2[j][0] + beta[0] * workspace->d2[j][0];
@@ -240,7 +239,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
             workspace->t[j] = workspace->x[j][1];
         }
         matvecs = CG( system, workspace, H, workspace->b_t, tol, workspace->t,
-                      mpi_data, fout );
+                mpi_data );
 
 #if defined(DEBUG)
         fprintf (stderr, " CG1: iterations --> %d \n", matvecs );
@@ -258,13 +257,13 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
             workspace->s[j] = workspace->x[j][0];
         }
         matvecs = CG( system, workspace, H, workspace->b_s, tol, workspace->s,
-                      mpi_data, fout );
+                mpi_data );
 
 #if defined(DEBUG)
         fprintf (stderr, " CG2: iterations --> %d \n", matvecs );
 #endif
 
-        for ( j = 0; j < system->n; ++j )
+        for ( j = 0; j < n; ++j )
         {
             workspace->x[j][0] = workspace->s[j];
         }
@@ -313,7 +312,7 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 
 
 int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data, FILE *fout)
+        real tol, real *x, mpi_datatypes* mpi_data )
 {
     int  i, j, scale;
     real tmp, alpha, beta, b_norm;
@@ -762,7 +761,7 @@ int sCG( reax_system *system, storage *workspace, sparse_matrix *H,
 
 
 int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
-           real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
+        real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -883,8 +882,8 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
 
 
 int GMRES_HouseHolder( reax_system *system, storage *workspace,
-                       sparse_matrix *H, real *b, real tol, real *x,
-                       mpi_datatypes* mpi_data, FILE *fout )
+        sparse_matrix *H, real *b, real tol, real *x,
+        mpi_datatypes* mpi_data, FILE *fout )
 {
     int  i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
