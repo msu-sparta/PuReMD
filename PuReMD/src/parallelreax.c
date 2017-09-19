@@ -233,13 +233,13 @@ int main( int argc, char* argv[] )
     MPI_Finalize();
 
     /* de-allocate data structures */
-    free( system );
-    free( control );
-    free( data );
-    free( workspace );
-    free( lists );
-    free( out_control );
-    free( mpi_data );
+    sfree( system, "system" );
+    sfree( control, "control" );
+    sfree( data, "data" );
+    sfree( workspace, "workspace" );
+    sfree( lists, "lists" );
+    sfree( out_control, "out_control" );
+    sfree( mpi_data, "mpi_data" );
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
 //  Integrate_Results(control);

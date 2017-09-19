@@ -75,7 +75,7 @@ int Reallocate_Output_Buffer( output_controls *out_control, int req_space,
                               MPI_Comm comm )
 {
     if ( out_control->buffer_len > 0 )
-        free( out_control->buffer );
+        sfree( out_control->buffer, "out_control->buffer" );
 
     out_control->buffer_len = (int)(req_space * SAFE_ZONE);
     out_control->buffer = (char*) malloc(out_control->buffer_len * sizeof(char));
@@ -1122,8 +1122,8 @@ int End_Traj( int my_rank, output_controls *out_control )
         fclose( out_control->strj );
 #endif
 
-    free( out_control->buffer );
-    free( out_control->line );
+    sfree( out_control->buffer, "out_control->buffer" );
+    sfree( out_control->line, "out_control->line" );
 
     return SUCCESS;
 }

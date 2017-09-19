@@ -36,10 +36,10 @@
 #include "cuda_forces.h"
 #include "cuda_grid.h"
 #include "cuda_neighbors.h"
-#include "cuda_QEq.h"
+#include "cuda_qeq.h"
 #include "cuda_reset_utils.h"
 #include "cuda_system_props.h"
-#include "validation.h"
+#include "cuda_validation.h"
 
 
 GLOBAL void Cuda_Velocity_Verlet_NVE_atoms1 (reax_atom *atoms, 

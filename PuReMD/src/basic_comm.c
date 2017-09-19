@@ -299,7 +299,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
                  workspace->id_all, workspace->rcounts, workspace->displs,
                  MPI_INT, MASTER_NODE, mpi_data->world );
 
-    free( id_list );
+    sfree( id_list, "id_list" );
 
 #if defined(DEBUG)
     if ( system->my_rank == MASTER_NODE )

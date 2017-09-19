@@ -23,28 +23,25 @@
 
 #include "mytypes.h"
 
+
 typedef void (*print_interaction)(reax_system*, control_params*, simulation_data*,
-                                  static_storage*, list**, output_controls*);
+        static_storage*, list**, output_controls*);
+
 extern print_interaction Print_Interactions[NO_OF_INTERACTIONS];
 
-char *Get_Element( reax_system*, int );
 
-char *Get_Atom_Name( reax_system*, int );
+void Print_Near_Neighbors( reax_system*, control_params*, static_storage*, list** );
 
-void Print_Near_Neighbors( reax_system*, control_params*, static_storage*,
-                           list** );
-
-void Print_Far_Neighbors( reax_system*, control_params*, static_storage*,
-                          list** );
+void Print_Far_Neighbors( reax_system*, control_params*, static_storage*, list** );
 
 void Print_Total_Force( reax_system*, control_params*, simulation_data*,
-                        static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 
 void Output_Results( reax_system*, control_params*, simulation_data*,
-                     static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 
 void Print_Bond_Orders( reax_system*, control_params*, simulation_data*,
-                        static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 
 void Print_Linear_System( reax_system*, control_params*, static_storage*, int );
 
@@ -61,23 +58,23 @@ void Print_Bond_List2( reax_system*, list*, char* );
 
 #ifdef TEST_FORCES
 void Dummy_Printer( reax_system*, control_params*, simulation_data*,
-                    static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 void Print_Bond_Forces( reax_system*, control_params*, simulation_data*,
-                        static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 void Print_LonePair_Forces( reax_system*, control_params*, simulation_data*,
-                            static_storage*, list**, output_controls* );
-void Print_OverUnderCoor_Forces(reax_system*, control_params*, simulation_data*,
-                                static_storage*, list**, output_controls*);
+        static_storage*, list**, output_controls* );
+void Print_OverUnderCoor_Forces(reax_system*, control_params*,
+        simulation_data*, static_storage*, list**, output_controls*);
 void Print_Three_Body_Forces( reax_system*, control_params*, simulation_data*,
-                              static_storage*, list**, output_controls* );
-void Print_Hydrogen_Bond_Forces(reax_system*, control_params*, simulation_data*,
-                                static_storage*, list**, output_controls*);
+        static_storage*, list**, output_controls* );
+void Print_Hydrogen_Bond_Forces(reax_system*, control_params*,
+        simulation_data*, static_storage*, list**, output_controls*);
 void Print_Four_Body_Forces( reax_system*, control_params*, simulation_data*,
-                             static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 void Print_vdW_Coulomb_Forces( reax_system*, control_params*, simulation_data*,
-                               static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 void Compare_Total_Forces( reax_system*, control_params*, simulation_data*,
-                           static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 void Init_Force_Test_Functions( );
 #endif
 

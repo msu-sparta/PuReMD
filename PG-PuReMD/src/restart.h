@@ -24,6 +24,7 @@
 
 #include "reax_types.h"
 
+
 #define RESTART_HEADER "%8d%12d%8.3f%8.3f%8.3f%8.3f%8.3f\n%15.5f%15.5f%15.5f\n%15.5f%15.5f%15.5f\n%15.5f%15.5f%15.5f\n"
 #define RESTART_HEADER_LINE_LEN 200
 /* step, system->bigN, data->therm.T, data->therm.xi,
@@ -39,16 +40,26 @@
 #define READ_RESTART_HEADER " %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf"
 #define READ_RESTART_LINE " %d %d %s %lf %lf %lf %lf %lf %lf"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Write_Binary_Restart( reax_system*, control_params*,
-                           simulation_data*, output_controls*, mpi_datatypes* );
+        simulation_data*, output_controls*, mpi_datatypes* );
 
 void Write_Restart( reax_system*, control_params*,
-                    simulation_data*, output_controls*, mpi_datatypes* );
+        simulation_data*, output_controls*, mpi_datatypes* );
 
 void Read_Binary_Restart( char*, reax_system*, control_params*,
-                          simulation_data*, storage*, mpi_datatypes* );
+        simulation_data*, storage*, mpi_datatypes* );
 
 void Read_Restart( char*, reax_system*, control_params*,
-                   simulation_data*, storage*, mpi_datatypes* );
+        simulation_data*, storage*, mpi_datatypes* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

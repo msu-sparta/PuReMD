@@ -69,7 +69,8 @@ void Allocate_Space_for_Grid( reax_system *system )
     grid *g;
 
     g = &(system->g);
-    g->max_nbrs = (2 * g->spread[0] + 1) * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
+    g->max_nbrs = (2 * g->spread[0] + 1)
+        * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
 
     /* allocate space for the new grid */
     g->atoms = (int****) calloc( g->ncell[0], sizeof( int*** ));
@@ -156,6 +157,8 @@ void Deallocate_Grid_Space( grid *g )
 
             free( g->atoms[i][j] );
             free( g->top[i][j] );
+            free( g->start[i][j] );
+            free( g->end[i][j] );
             free( g->mark[i][j] );
             free( g->nbrs[i][j] );
             free( g->nbrs_cp[i][j] );
@@ -163,6 +166,8 @@ void Deallocate_Grid_Space( grid *g )
 
         free( g->atoms[i] );
         free( g->top[i] );
+        free( g->start[i] );
+        free( g->end[i] );
         free( g->mark[i] );
         free( g->nbrs[i] );
         free( g->nbrs_cp[i] );
@@ -170,6 +175,8 @@ void Deallocate_Grid_Space( grid *g )
 
     free( g->atoms );
     free( g->top );
+    free( g->start );
+    free( g->end );
     free( g->mark );
     free( g->nbrs );
     free( g->nbrs_cp );
@@ -484,6 +491,12 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
 }
 
 
+void Finalize_Grid( reax_system* system )
+{
+    Deallocate_Grid_Space( &( system->g ) );
+}
+
+
 static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 {
     dest->type = src->type;
@@ -494,13 +507,12 @@ static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 
 
 void Copy_Storage( reax_system *system, static_storage *workspace,
-                   int top, int old_id, int old_type,
-                   int *num_H, real **v, real **s, real **t,
-                   int *orig_id, rvec *f_old )
+        control_params *control, int top, int old_id, int old_type, int *num_H,
+        real **v, real **s, real **t, int *orig_id, rvec *f_old )
 {
     int i;
 
-    for ( i = 0; i < RESTART + 1; ++i )
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
         v[i][top] = workspace->v[i][old_id];
     }
@@ -529,11 +541,11 @@ void Copy_Storage( reax_system *system, static_storage *workspace,
 }
 
 
-void Free_Storage( static_storage *workspace )
+void Free_Storage( static_storage *workspace, control_params * control )
 {
     int i;
 
-    for ( i = 0; i < RESTART + 1; ++i )
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
         free( workspace->v[i] );
     }
@@ -566,7 +578,8 @@ void Assign_New_Storage( static_storage *workspace,
 }
 
 
-void Cluster_Atoms( reax_system *system, static_storage *workspace )
+void Cluster_Atoms( reax_system *system, static_storage *workspace,
+        control_params *control )
 {
     int         i, j, k, l, top, old_id, num_H;
     reax_atom  *old_atom;
@@ -591,8 +604,8 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
         t[i] = (real *) calloc( system->N, sizeof( real ) );
     }
 
-    v = (real**) calloc( RESTART + 1, sizeof( real* ) );
-    for ( i = 0; i < RESTART + 1; ++i )
+    v = (real**) calloc( control->cm_solver_restart + 1, sizeof( real* ) );
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
         v[i] = (real *) calloc( system->N, sizeof( real ) );
     }
@@ -614,8 +627,8 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
                     // fprintf( stderr, "%d <-- %d\n", top, old_id );
 
                     reax_atom_Copy( &(new_atoms[top]), old_atom );
-                    Copy_Storage( system, workspace, top, old_id, old_atom->type,
-                                  &num_H, v, s, t, orig_id, f_old );
+                    Copy_Storage( system, workspace, control, top, old_id, old_atom->type,
+                            &num_H, v, s, t, orig_id, f_old );
                     ++top;
                 }
 
@@ -626,7 +639,7 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace )
 
 
     free( system->atoms );
-    Free_Storage( workspace );
+    Free_Storage( workspace, control );
 
     system->atoms = new_atoms;
     Assign_New_Storage( workspace, v, s, t, orig_id, f_old );

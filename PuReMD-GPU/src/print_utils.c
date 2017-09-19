@@ -19,9 +19,11 @@
   ----------------------------------------------------------------------*/
 
 #include "print_utils.h"
+
+#include "geo_tools.h"
 #include "list.h"
-#include "pdb_tools.h"
 #include "system_props.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
@@ -374,18 +376,6 @@ void Init_Force_Test_Functions( )
 #endif
 
 
-char *Get_Element( reax_system *system, int i )
-{
-    return &( system->reaxprm.sbp[system->atoms[i].type].name[0] );
-}
-
-
-char *Get_Atom_Name( reax_system *system, int i )
-{
-    return &(system->atoms[i].name[0]);
-}
-
-
 /* near nbrs contain both i-j, j-i nbrhood info */
 void Print_Near_Neighbors( reax_system *system, control_params *control,
                            static_storage *workspace, list **lists )
@@ -625,35 +615,48 @@ void Output_Results( reax_system *system, control_params *control,
                  data->E_vdW, data->E_Ele, data->E_Pol );
 #endif
 
-#ifdef __PRINT_CPU_RESULTS__
+#ifndef HAVE_CUDA
         t_elapsed = Get_Timing_Info( data->timing.total );
         if ( data->step == data->prev_steps )
             f_update = 1;
         else f_update = out_control->energy_update_freq;
 
-        fprintf( out_control->log, "%6d%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f\n",
+        fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                  data->step, t_elapsed / f_update,
                  data->timing.nbrs / f_update,
                  data->timing.init_forces / f_update,
                  data->timing.bonded / f_update,
                  data->timing.nonb / f_update,
                  data->timing.QEq / f_update,
-                 (double)data->timing.matvecs / f_update );
+                 data->timing.QEq_sort_mat_rows / f_update,
+                 (double)data->timing.solver_iters / f_update,
+                 data->timing.pre_comp / f_update,
+                 data->timing.pre_app / f_update,
+                 data->timing.solver_spmv / f_update,
+                 data->timing.solver_vector_ops / f_update,
+                 data->timing.solver_orthog / f_update,
+                 data->timing.solver_tri_solve / f_update );
 #else
         t_elapsed = Get_Timing_Info( d_timing.total );
         if ( data->step == data->prev_steps )
             f_update = 1;
         else f_update = out_control->energy_update_freq;
 
-        fprintf( out_control->log, "%6d%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f%10.2f\n",
+        fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                  data->step, t_elapsed / f_update,
-                 d_timing.nbrs / f_update,
-                 d_timing.init_forces / f_update,
-                 d_timing.bonded / f_update,
-                 d_timing.nonb / f_update,
-                 d_timing.QEq / f_update,
-                 (double)d_timing.matvecs / f_update );
-
+                 d_timing->timing.nbrs / f_update,
+                 d_timing->timing.init_forces / f_update,
+                 d_timing->timing.bonded / f_update,
+                 d_timing->timing.nonb / f_update,
+                 d_timing->timing.QEq / f_update,
+                 d_timing->timing.QEq_sort_mat_rows / f_update,
+                 (double)d_timing->timing.solver_iters / f_update,
+                 d_timing->timing.pre_comp / f_update,
+                 d_timing->timing.pre_app / f_update,
+                 d_timing->timing.solver_spmv / f_update,
+                 d_timing->timing.solver_vector_ops / f_update,
+                 d_timing->timing.solver_orthog / f_update,
+                 d_timing->timing.solver_tri_solve / f_update );
 #endif
 
         //fprintf (stderr, " total %10.5f \n", t_elapsed);
@@ -673,16 +676,32 @@ void Output_Results( reax_system *system, control_params *control,
         data->timing.init_forces = 0;
         data->timing.bonded = 0;
         data->timing.nonb = 0;
-        data->timing.QEq = 0;
-        data->timing.matvecs = 0;
+        data->timing.QEq = ZERO;
+        data->timing.QEq_sort_mat_rows = ZERO;
+        data->timing.pre_comp = ZERO;
+        data->timing.pre_app = ZERO;
+        data->timing.solver_iters = 0;
+        data->timing.solver_spmv = ZERO;
+        data->timing.solver_vector_ops = ZERO;
+        data->timing.solver_orthog = ZERO;
+        data->timing.solver_tri_solve = ZERO;
 
+#ifdef HAVE_CUDA
         d_timing.total = Get_Time( );
         d_timing.nbrs = 0;
         d_timing.init_forces = 0;
         d_timing.bonded = 0;
         d_timing.nonb = 0;
-        d_timing.QEq = 0;
-        d_timing.matvecs = 0;
+        d_timing->timing.QEq = ZERO;
+        d_timing->timing.QEq_sort_mat_rows = ZERO;
+        d_timing->timing.pre_comp = ZERO;
+        d_timing->timing.pre_app = ZERO;
+        d_timing->timing.solver_iters = 0;
+        d_timing->timing.solver_spmv = ZERO;
+        d_timing->timing.solver_vector_ops = ZERO;
+        d_timing->timing.solver_orthog = ZERO;
+        d_timing->timing.solver_tri_solve = ZERO;
+#endif
 
         fflush( out_control->out );
         fflush( out_control->pot );
@@ -716,16 +735,16 @@ void Output_Results( reax_system *system, control_params *control,
     if ( out_control->write_steps > 0 &&
             data->step % out_control->write_steps == 0 )
     {
-        // t_start = Get_Time( );
+        //t_start = Get_Time( );
         out_control->append_traj_frame( system, control, data,
                                         workspace, lists, out_control );
 
-        //Write_PDB( system, control, data, workspace, *lists+BONDS, out_control );
-        // t_elapsed = Get_Timing_Info( t_start );
-        // fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
+        //Write_PDB( system, *lists+BONDS, data, control, workspace, out_control );
+        //t_elapsed = Get_Timing_Info( t_start );
+        //fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
     }
 
-    // fprintf( stderr, "output_results... done\n" );
+    //fprintf( stderr, "output_results... done\n" );
 }
 
 
@@ -759,23 +778,46 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     sprintf( fname, "%s.H%d.out", control->sim_name, step );
     out = fopen( fname, "w" );
-    H = &workspace->H;
+    H = workspace->H;
 
     for ( i = 0; i < system->N; ++i )
     {
         for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
         {
             fprintf( out, "%6d%6d %24.15e\n",
-                     workspace->orig_id[i], workspace->orig_id[H->entries[j].j],
-                     H->entries[j].val );
+                     workspace->orig_id[i], workspace->orig_id[H->j[j]],
+                     H->val[j] );
 
             fprintf( out, "%6d%6d %24.15e\n",
-                     workspace->orig_id[H->entries[j].j], workspace->orig_id[i],
-                     H->entries[j].val );
+                     workspace->orig_id[H->j[j]], workspace->orig_id[i],
+                     H->val[j] );
         }
         // the diagonal entry
         fprintf( out, "%6d%6d %24.15e\n",
-                 workspace->orig_id[i], workspace->orig_id[i], H->entries[j].val );
+                 workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
+    }
+
+    fclose( out );
+
+    sprintf( fname, "%s.H_sp%d.out", control->sim_name, step );
+    out = fopen( fname, "w" );
+    H = workspace->H_sp;
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
+        {
+            fprintf( out, "%6d%6d %24.15e\n",
+                     workspace->orig_id[i], workspace->orig_id[H->j[j]],
+                     H->val[j] );
+
+            fprintf( out, "%6d%6d %24.15e\n",
+                     workspace->orig_id[H->j[j]], workspace->orig_id[i],
+                     H->val[j] );
+        }
+        // the diagonal entry
+        fprintf( out, "%6d%6d %24.15e\n",
+                 workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
     }
 
     fclose( out );
@@ -834,11 +876,11 @@ void Print_Sparse_Matrix( sparse_matrix *A )
 {
     int i, j;
 
-    for ( i = 0; i < 10; ++i )
+    for ( i = 0; i < A->n; ++i )
     {
         fprintf( stderr, "i:%d  j(val):", i );
         for ( j = A->start[i]; j < A->start[i + 1]; ++j )
-            fprintf( stderr, "%d(%.4f) ", A->entries[j].j, A->entries[j].val );
+            fprintf( stderr, "%d(%.4f) ", A->j[j], A->val[j] );
         fprintf( stderr, "\n" );
     }
 }
@@ -850,8 +892,14 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname )
     FILE *f = fopen( fname, "w" );
 
     for ( i = 0; i < A->n; ++i )
+    {
         for ( j = A->start[i]; j < A->start[i + 1]; ++j )
-            fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
+        {
+            //fprintf( f, "%d%d %.15e\n", A->entries[j].j, i, A->entries[j].val );
+            //Convert 0-based to 1-based (for Matlab)
+            fprintf( f, "%6d%6d %24.15e\n", i+1, A->j[j]+1, A->val[j] );
+        }
+    }
 
     fclose(f);
 }

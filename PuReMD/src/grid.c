@@ -515,7 +515,7 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
     }
 
     /* deallocate old storage */
-    free( system->my_atoms );
+    sfree( system->my_atoms, "system->my_atoms" );
     /* start using clustered storages */
     system->my_atoms = new_atoms;
     system->n = top;

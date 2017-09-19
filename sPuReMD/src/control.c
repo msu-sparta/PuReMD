@@ -66,20 +66,24 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->max_far_nbrs = 1000;
     control->bo_cut = 0.01;
     control->thb_cut = 0.001;
-    control->hb_cut = 7.50;
+    control->hb_cut = 0.0;
 
     control->tabulate = 0;
 
-    control->qeq_solver_type = GMRES_S;
-    control->qeq_solver_q_err = 0.000001;
-    control->qeq_domain_sparsify_enabled = FALSE;
-    control->qeq_domain_sparsity = 1.0;
-    control->pre_comp_type = ICHOLT_PC;
-    control->pre_comp_sweeps = 3;
-    control->pre_comp_refactor = 100;
-    control->pre_comp_droptol = 0.01;
-    control->pre_app_type = TRI_SOLVE_PA;
-    control->pre_app_jacobi_iters = 50;
+    control->charge_method = QEQ_CM;
+    control->cm_q_net = 0.0;
+    control->cm_solver_type = GMRES_S;
+    control->cm_solver_max_iters = 100;
+    control->cm_solver_restart = 50;
+    control->cm_solver_q_err = 0.000001;
+    control->cm_domain_sparsify_enabled = FALSE;
+    control->cm_domain_sparsity = 1.0;
+    control->cm_solver_pre_comp_type = ICHOLT_PC;
+    control->cm_solver_pre_comp_sweeps = 3;
+    control->cm_solver_pre_comp_refactor = 100;
+    control->cm_solver_pre_comp_droptol = 0.01;
+    control->cm_solver_pre_app_type = TRI_SOLVE_PA;
+    control->cm_solver_pre_app_jacobi_iters = 50;
 
     control->T_init = 0.;
     control->T_final = 300.;
@@ -91,9 +95,9 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->P[0] = 0.000101325;
     control->P[1] = 0.000101325;
     control->P[2] = 0.000101325;
-    control->Tau_P[0]  = 500.0;
-    control->Tau_P[1]  = 500.0;
-    control->Tau_P[2]  = 500.0;
+    control->Tau_P[0] = 500.0;
+    control->Tau_P[1] = 500.0;
+    control->Tau_P[2] = 500.0;
     control->Tau_PT = 500.0;
     control->compressibility = 1.0;
     control->press_mode = 0;
@@ -101,9 +105,9 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->remove_CoM_vel = 25;
 
     out_control->debug_level = 0;
-    out_control->energy_update_freq = 10;
+    out_control->energy_update_freq = 0;
 
-    out_control->write_steps = 100;
+    out_control->write_steps = 0;
     out_control->traj_compress = 0;
     out_control->write = fprintf;
     out_control->traj_format = 0;
@@ -135,8 +139,10 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     /* memory allocations */
     s = (char*) malloc(sizeof(char) * MAX_LINE);
     tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
-    for (i = 0; i < MAX_TOKENS; i++)
+    for ( i = 0; i < MAX_TOKENS; i++ )
+    {
         tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
+    }
 
     /* read control parameters file */
     while (fgets(s, MAX_LINE, fp))
@@ -240,51 +246,74 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             val = atof( tmp[1] );
             control->hb_cut = val;
         }
-        else if ( strcmp(tmp[0], "qeq_solver_type") == 0 )
+        else if ( strcmp(tmp[0], "charge_method") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->qeq_solver_type = ival;
+            control->charge_method = ival;
         }
-        else if ( strcmp(tmp[0], "qeq_solver_q_err") == 0 )
+        else if ( strcmp(tmp[0], "cm_q_net") == 0 )
         {
             val = atof( tmp[1] );
-            control->qeq_solver_q_err = val;
+            control->cm_q_net = val;
         }
-        else if ( strcmp(tmp[0], "qeq_domain_sparsity") == 0 )
+        else if ( strcmp(tmp[0], "cm_solver_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_max_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_max_iters = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_restart") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_restart = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_q_err") == 0 )
         {
             val = atof( tmp[1] );
-            control->qeq_domain_sparsity = val;
-            control->qeq_domain_sparsify_enabled = TRUE;
+            control->cm_solver_q_err = val;
         }
-        else if ( strcmp(tmp[0], "pre_comp_type") == 0 )
-        {
-            ival = atoi( tmp[1] );
-            control->pre_comp_type = ival;
-        }
-        else if ( strcmp(tmp[0], "pre_comp_refactor") == 0 )
-        {
-            ival = atoi( tmp[1] );
-            control->pre_comp_refactor = ival;
-        }
-        else if ( strcmp(tmp[0], "pre_comp_droptol") == 0 )
+        else if ( strcmp(tmp[0], "cm_domain_sparsity") == 0 )
         {
             val = atof( tmp[1] );
-            control->pre_comp_droptol = val;
+            control->cm_domain_sparsity = val;
+            if ( val < 1.0 )
+            {
+                control->cm_domain_sparsify_enabled = TRUE;
+            }
         }
-        else if ( strcmp(tmp[0], "pre_comp_sweeps") == 0 )
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->pre_comp_sweeps = ival;
+            control->cm_solver_pre_comp_type = ival;
         }
-        else if ( strcmp(tmp[0], "pre_app_type") == 0 )
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_refactor") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->pre_app_type = ival;
+            control->cm_solver_pre_comp_refactor = ival;
         }
-        else if ( strcmp(tmp[0], "pre_app_jacobi_iters") == 0 )
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_droptol") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_solver_pre_comp_droptol = val;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_sweeps") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->pre_app_jacobi_iters = ival;
+            control->cm_solver_pre_comp_sweeps = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_app_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_app_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_app_jacobi_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_app_jacobi_iters = ival;
         }
         else if ( strcmp(tmp[0], "temp_init") == 0 )
         {
@@ -292,7 +321,9 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             control->T_init = val;
 
             if ( control->T_init < 0.001 )
+            {
                 control->T_init = 0.001;
+            }
         }
         else if ( strcmp(tmp[0], "temp_final") == 0 )
         {
@@ -300,12 +331,15 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             control->T_final = val;
 
             if ( control->T_final < 0.1 )
+            {
                 control->T_final = 0.1;
+            }
         }
         else if ( strcmp(tmp[0], "t_mass") == 0 )
         {
             val = atof(tmp[1]);
-            control->Tau_T = val * 1.e-3;    // convert t_mass from fs to ps
+            /* convert t_mass from fs to ps */
+            control->Tau_T = val * 1.e-3;
         }
         else if ( strcmp(tmp[0], "t_mode") == 0 )
         {
@@ -522,15 +556,19 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     /* determine target T */
     if ( control->T_mode == 0 )
+    {
         control->T = control->T_final;
-    else control->T = control->T_init;
-
+    }
+    else
+    {
+        control->T = control->T_init;
+    }
 
     /* near neighbor and far neighbor cutoffs */
     control->bo_cut = 0.01 * system->reaxprm.gp.l[29];
     control->r_low  = system->reaxprm.gp.l[11];
     control->r_cut  = system->reaxprm.gp.l[12];
-    control->r_sp_cut  = control->r_cut * control->qeq_domain_sparsity;
+    control->r_sp_cut  = control->r_cut * control->cm_domain_sparsity;
     control->vlist_cut += control->r_cut;
 
     system->g.cell_size = control->vlist_cut / 2.;

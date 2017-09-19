@@ -20,32 +20,34 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "control.h"
-#include "tool_box.h"
+  #include "control.h"
+  #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_control.h"
-#include "reax_tool_box.h"
+  #include "reax_control.h"
+  #include "reax_tool_box.h"
 #endif
 
 
 char Read_Control_File( char *control_file, control_params* control,
-                        output_controls *out_control )
+        output_controls *out_control )
 {
     FILE *fp;
     char *s, **tmp;
-    int   c, i, ival;
-    real  val;
+    int c, i, ival;
+    real val;
 
     /* open control file */
     if ( (fp = fopen( control_file, "r" ) ) == NULL )
     {
-        fprintf( stderr, "error opening the control file! terminating...\n" );
+        fprintf( stderr, "[ERROR] cannot open the control file (%s)! terminating...\n",
+              control_file );
         MPI_Abort( MPI_COMM_WORLD,  FILE_NOT_FOUND );
     }
 
     /* assign default values */
-    strcpy( control->sim_name, "simulate" );
+    strcpy( control->sim_name, "default.sim" );
     control->ensemble        = NVE;
     control->nsteps          = 0;
     control->dt              = 0.25;
@@ -54,8 +56,9 @@ char Read_Control_File( char *control_file, control_params* control,
     control->procs_by_dim[1] = 1;
     control->procs_by_dim[2] = 1;
     control->geo_format = 1;
-    control->gpus_per_node = 1;   //hpcc
+    control->gpus_per_node = 1;
 
+    control->random_vel = 0;
     control->restart          = 0;
     out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;
@@ -66,18 +69,29 @@ char Read_Control_File( char *control_file, control_params* control,
     out_control->energy_update_freq = 0;
 
     control->reneighbor = 1;
-    control->vlist_cut = control->nonb_cut;
     control->bond_cut = 5.0;
+    control->vlist_cut = control->nonb_cut;
     control->bg_cut = 0.3;
     control->thb_cut = 0.001;
     control->hbond_cut = 0.0;
 
     control->tabulate = 0;
 
-    control->qeq_freq = 1;
-    control->q_err = 1e-6;
-    control->refactor = 100;
-    control->droptol = 1e-2;;
+    control->charge_method = QEQ_CM;
+    control->charge_freq = 1;
+    control->cm_q_net = 0.0;
+    control->cm_solver_type = GMRES_S;
+    control->cm_solver_max_iters = 100;
+    control->cm_solver_restart = 50;
+    control->cm_solver_q_err = 0.000001;
+    control->cm_domain_sparsify_enabled = FALSE;
+    control->cm_domain_sparsity = 1.0;
+    control->cm_solver_pre_comp_type = DIAG_PC;
+    control->cm_solver_pre_comp_sweeps = 3;
+    control->cm_solver_pre_comp_refactor = 100;
+    control->cm_solver_pre_comp_droptol = 0.01;
+    control->cm_solver_pre_app_type = TRI_SOLVE_PA;
+    control->cm_solver_pre_app_jacobi_iters = 50;
 
     control->T_init = 0.;
     control->T_final = 300.;
@@ -108,15 +122,16 @@ char Read_Control_File( char *control_file, control_params* control,
     control->restrict_type = 0;
 
     /* memory allocations */
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
+    s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
+    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
     for (i = 0; i < MAX_TOKENS; i++)
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
+    {
+        tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::tmp[i]" );
+    }
 
     /* read control parameters file */
-    while (!feof(fp))
+    while( fgets( s, MAX_LINE, fp ) )
     {
-        fgets( s, MAX_LINE, fp );
         c = Tokenize( s, &tmp );
         //fprintf( stderr, "%s\n", s );
 
@@ -139,10 +154,10 @@ char Read_Control_File( char *control_file, control_params* control,
             val = atof(tmp[1]);
             control->dt = val * 1.e-3;  // convert dt from fs to ps!
         }
-        else if (strcmp(tmp[0], "gpus_per_node") == 0)      //hpcc
+        else if ( strcmp(tmp[0], "gpus_per_node") == 0 )
         {
-            val = atoi(tmp[1]);
-            control->gpus_per_node = val;
+            ival = atoi(tmp[1]);
+            control->gpus_per_node = ival;
         }
         else if ( strcmp(tmp[0], "proc_by_dim") == 0 )
         {
@@ -154,7 +169,7 @@ char Read_Control_File( char *control_file, control_params* control,
             control->procs_by_dim[2] = ival;
 
             control->nprocs = control->procs_by_dim[0] * control->procs_by_dim[1] *
-                              control->procs_by_dim[2];
+                    control->procs_by_dim[2];
         }
         //else if( strcmp(tmp[0], "restart") == 0 ) {
         //  ival = atoi(tmp[1]);
@@ -243,25 +258,79 @@ char Read_Control_File( char *control_file, control_params* control,
             ival = atoi( tmp[1] );
             control->tabulate = ival;
         }
-        else if ( strcmp(tmp[0], "qeq_freq") == 0 )
+        else if ( strcmp(tmp[0], "charge_method") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->qeq_freq = ival;
+            control->charge_method = ival;
         }
-        else if ( strcmp(tmp[0], "q_err") == 0 )
-        {
-            val = atof( tmp[1] );
-            control->q_err = val;
-        }
-        else if ( strcmp(tmp[0], "ilu_refactor") == 0 )
+        else if ( strcmp(tmp[0], "charge_freq") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->refactor = ival;
+            control->charge_freq = ival;
         }
-        else if ( strcmp(tmp[0], "ilu_droptol") == 0 )
+        else if ( strcmp(tmp[0], "cm_q_net") == 0 )
         {
             val = atof( tmp[1] );
-            control->droptol = val;
+            control->cm_q_net = val;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_max_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_max_iters = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_restart") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_restart = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_q_err") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_solver_q_err = val;
+        }
+        else if ( strcmp(tmp[0], "cm_domain_sparsity") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_domain_sparsity = val;
+            if ( val < 1.0 )
+            {
+                control->cm_domain_sparsify_enabled = TRUE;
+            }
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_comp_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_refactor") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_comp_refactor = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_droptol") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_solver_pre_comp_droptol = val;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_sweeps") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_comp_sweeps = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_app_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_app_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_app_jacobi_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_app_jacobi_iters = ival;
         }
         else if ( strcmp(tmp[0], "temp_init") == 0 )
         {
@@ -269,7 +338,9 @@ char Read_Control_File( char *control_file, control_params* control,
             control->T_init = val;
 
             if ( control->T_init < 0.1 )
+            {
                 control->T_init = 0.1;
+            }
         }
         else if ( strcmp(tmp[0], "temp_final") == 0 )
         {
@@ -277,7 +348,9 @@ char Read_Control_File( char *control_file, control_params* control,
             control->T_final = val;
 
             if ( control->T_final < 0.1 )
+            {
                 control->T_final = 0.1;
+            }
         }
         else if ( strcmp(tmp[0], "t_mass") == 0 )
         {
@@ -401,7 +474,9 @@ char Read_Control_File( char *control_file, control_params* control,
         {
             control->num_ignored = atoi(tmp[1]);
             for ( i = 0; i < control->num_ignored; ++i )
+            {
                 control->ignore[atoi(tmp[i + 2])] = 1;
+            }
         }
         else if ( strcmp(tmp[0], "dipole_anal") == 0 )
         {
@@ -430,25 +505,34 @@ char Read_Control_File( char *control_file, control_params* control,
         }
         else
         {
-            fprintf( stderr, "WARNING: unknown parameter %s\n", tmp[0] );
-            MPI_Abort( MPI_COMM_WORLD, 15 );
+            fprintf( stderr, "[WARNING] unknown parameter %s\n", tmp[0] );
+            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
+    }
+
+    if ( ferror( fp ) )
+    {
+        fprintf( stderr, "[ERROR] parsing control file failed (I/O error). TERMINATING...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
     /* determine target T */
     if ( control->T_mode == 0 )
+    {
         control->T = control->T_final;
-    else control->T = control->T_init;
+    }
+    else
+    {
+        control->T = control->T_init;
+    }
 
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
-        free( tmp[i] );
-    free( tmp );
-    free( s );
-
-    // fprintf( stderr,"%d %d %10.5f %d %10.5f %10.5f\n",
-    //   control->ensemble, control->nsteps, control->dt,
-    //   control->tabulate, control->T, control->P );
+    {
+        sfree( tmp[i], "Read_Control_File::tmp[i]" );
+    }
+    sfree( tmp, "Read_Control_File::tmp" );
+    sfree( s, "Read_Control_File::s" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "control file read\n" );

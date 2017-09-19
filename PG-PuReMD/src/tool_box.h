@@ -24,55 +24,57 @@
 
 #include "reax_types.h"
 
-/* from comm_tools.h */
-int SumScan( int, int, int, MPI_Comm );
-void SumScanB( int, int, int, int, MPI_Comm, int* );
 
-/* from box.h */
-void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
-void Fit_to_Periodic_Box( simulation_box*, rvec* );
-static inline void Box_Touch_Point( simulation_box*, ivec, rvec );
-static inline int  is_Inside_Box( simulation_box*, rvec );
-static inline int  iown_midpoint( simulation_box*, rvec, rvec );
-
-/* from grid.h */
-static inline void GridCell_Closest_Point( grid_cell*, grid_cell*, ivec, ivec, rvec );
-static inline void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
-static inline real DistSqr_between_Special_Points( rvec, rvec );
-static inline real DistSqr_to_Special_Point( rvec, rvec );
-static inline int Relative_Coord_Encoding( ivec );
-
-/* from geo_tools.h */
-void Make_Point( real, real, real, rvec* );
-int is_Valid_Serial( storage*, int );
-int Check_Input_Range( int, int, int, char* );
-void Trim_Spaces( char* );
-
-/* from system_props.h */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* from comm_tools.h */
+int SumScan( int, int, int, MPI_Comm );
+
+void SumScanB( int, int, int, int, MPI_Comm, int* );
+
+void Fit_to_Periodic_Box( simulation_box*, rvec* );
+
+/* from geo_tools.h */
+void Make_Point( real, real, real, rvec* );
+
+int is_Valid_Serial( storage*, int );
+
+int Check_Input_Range( int, int, int, char* );
+
+void Trim_Spaces( char* );
+
+/* from system_props.h */
 real Get_Time( );
+
 real Get_Timing_Info( real );
+
 void Update_Timing_Info( real*, real* );
+
+/* from io_tools.h */
+int Get_Atom_Type( reax_interaction*, char* );
+
+char *Get_Element( reax_system*, int );
+
+char *Get_Atom_Name( reax_system*, int );
+
+void Allocate_Tokenizer_Space( char**, char**, char*** );
+
+int Tokenize( const char*, char*** );
+
+/* from lammps */
+void *smalloc( size_t, const char* );
+
+void* srealloc( void *, size_t, const char * );
+
+void *scalloc( size_t, size_t, const char* );
+
+void sfree( void*, const char* );
 
 #ifdef __cplusplus
 }
 #endif
-
-
-/* from io_tools.h */
-int   Get_Atom_Type( reax_interaction*, char* );
-char *Get_Element( reax_system*, int );
-char *Get_Atom_Name( reax_system*, int );
-int   Allocate_Tokenizer_Space( char**, char**, char*** );
-int   Tokenize( char*, char*** );
-
-/* from lammps */
-void *smalloc( long, char* );
-void *scalloc( int, int, char* );
-void sfree( void*, char* );
 
 
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
@@ -83,12 +85,20 @@ static inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
     int d;
 
     for ( d = 0; d < 3; ++d )
+    {
         if ( rl[d] == -1 )
+        {
             tp[d] = box->min[d];
+        }
         else if ( rl[d] == 0 )
+        {
             tp[d] = NEG_INF - 1.;
+        }
         else
+        {
             tp[d] = box->max[d];
+        }
+    }
 }
 
 
@@ -99,9 +109,11 @@ static inline int is_Inside_Box( simulation_box *box, rvec p )
     if ( p[0] < box->min[0] || p[0] >= box->max[0] ||
             p[1] < box->min[1] || p[1] >= box->max[1] ||
             p[2] < box->min[2] || p[2] >= box->max[2] )
-        return 0;
+    {
+        return FALSE;
+    }
 
-    return 1;
+    return TRUE;
 }
 
 
@@ -116,9 +128,11 @@ static inline int iown_midpoint( simulation_box *box, rvec p1, rvec p2 )
     if ( midp[0] < box->min[0] || midp[0] >= box->max[0] ||
             midp[1] < box->min[1] || midp[1] >= box->max[1] ||
             midp[2] < box->min[2] || midp[2] >= box->max[2] )
-        return 0;
+    {
+        return FALSE;
+    }
 
-    return 1;
+    return TRUE;
 }
 
 
@@ -128,14 +142,21 @@ static inline void GridCell_Closest_Point( grid_cell *gci, grid_cell *gcj,
     int  d;
 
     for ( d = 0; d < 3; d++ )
+    {
         if ( cj[d] > ci[d] )
+        {
             cp[d] = gcj->min[d];
+        }
         else if ( cj[d] == ci[d] )
+        {
             cp[d] = NEG_INF - 1.;
+        }
         else
+        {
             cp[d] = gcj->max[d];
+        }
+    }
 }
-
 
 
 static inline void GridCell_Touch_Point( grid_cell *gc, ivec rl, rvec fp )
@@ -143,12 +164,20 @@ static inline void GridCell_Touch_Point( grid_cell *gc, ivec rl, rvec fp )
     int d;
 
     for ( d = 0; d < 3; ++d )
+    {
         if ( rl[d] == -1 )
+        {
             fp[d] = gc->min[d];
+        }
         else if ( rl[d] == 0 )
+        {
             fp[d] = NEG_INF - 1.;
+        }
         else
+        {
             fp[d] = gc->max[d];
+        }
+    }
 }
 
 
@@ -159,8 +188,12 @@ static inline real DistSqr_to_CP( rvec cp, rvec x )
     real d_sqr = 0;
 
     for ( i = 0; i < 3; ++i )
+    {
         if ( cp[i] > NEG_INF )
+        {
             d_sqr += SQR( cp[i] - x[i] );
+        }
+    }
 
     return d_sqr;
 }
@@ -171,17 +204,68 @@ static inline int Relative_Coord_Encoding( ivec c )
     return 9 * (c[0] + 1) + 3 * (c[1] + 1) + (c[2] + 1);
 }
 
+
 static inline real DistSqr_to_Special_Point( rvec cp, rvec x )
 {
     int  i;
     real d_sqr = 0;
 
     for ( i = 0; i < 3; ++i )
+    {
         if ( cp[i] > NEG_INF )
+        {
             d_sqr += SQR( cp[i] - x[i] );
+        }
+    }
 
     return d_sqr;
 }
+
+
+/************** taken from box.c **************/
+CUDA_HOST_DEVICE static inline void Transform( rvec x1,
+        simulation_box *box, char flag, rvec x2 )
+{
+    int i, j;
+    real tmp;
+
+    if ( flag > 0 )
+    {
+        for ( i = 0; i < 3; i++ )
+        {
+            tmp = 0.0;
+            for ( j = 0; j < 3; j++ )
+            {
+                tmp += box->trans[i][j] * x1[j];
+            }
+            x2[i] = tmp;
+        }
+    }
+    else
+    {
+        for ( i = 0; i < 3; i++ )
+        {
+            tmp = 0.0;
+            for ( j = 0; j < 3; j++ )
+            {
+                tmp += box->trans_inv[i][j] * x1[j];
+            }
+            x2[i] = tmp;
+        }
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline void Transform_to_UnitBox( rvec x1,
+        simulation_box *box, char flag, rvec x2 )
+{
+    Transform( x1, box, flag, x2 );
+
+    x2[0] /= box->box_norms[0];
+    x2[1] /= box->box_norms[1];
+    x2[2] /= box->box_norms[2];
+}
 #endif
+
 
 #endif

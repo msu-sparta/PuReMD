@@ -439,9 +439,9 @@ char Read_Control_File( char *control_file, control_params* control,
 
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
-        free( tmp[i] );
-    free( tmp );
-    free( s );
+        sfree( tmp[i], "tmp[i]" );
+    sfree( tmp, "tmp" );
+    sfree( s, "s" );
 
     // fprintf( stderr,"%d %d %10.5f %d %10.5f %10.5f\n",
     //   control->ensemble, control->nsteps, control->dt,

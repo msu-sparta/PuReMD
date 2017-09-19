@@ -24,7 +24,17 @@
 
 #include "reax_types.h"
 
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void Analysis( reax_system*, control_params*, simulation_data*, storage*,
-               reax_list**, output_controls*, mpi_datatypes* );
+        reax_list**, output_controls*, mpi_datatypes* );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

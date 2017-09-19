@@ -28,10 +28,6 @@
 extern "C"  {
 #endif
 
-real Get_Time( );
-
-real Get_Timing_Info( real );
-
 void Temperature_Control( control_params*, simulation_data*, output_controls* );
 
 void Compute_Total_Mass( reax_system*, simulation_data* );

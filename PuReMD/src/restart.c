@@ -111,7 +111,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
         fclose( fres );
     }
 
-    free(buffer);
+    sfree(buffer, "buffer");
 }
 
 
@@ -206,8 +206,8 @@ void Write_Restart( reax_system *system, control_params *control,
         fprintf( fres, "%s", buffer );
         fclose( fres );
     }
-    free(buffer);
-    free(line);
+    sfree(buffer, "buffer");
+    sfree(line, "line");
 }
 
 
@@ -467,9 +467,9 @@ void Read_Restart( char *res_file, reax_system *system,
     fclose( fres );
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
-        free( tmp[i] );
-    free( tmp );
-    free( s );
+        sfree( tmp[i], "tmp[i]" );
+    sfree( tmp, "tmp" );
+    sfree( s, "s" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run

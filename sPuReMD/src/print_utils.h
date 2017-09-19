@@ -55,7 +55,9 @@ void Print_Soln( static_storage*, real*, real*, real*, int );
 
 void Print_Sparse_Matrix( sparse_matrix* );
 
-void Print_Sparse_Matrix2( sparse_matrix*, char* );
+void Print_Sparse_Matrix2( sparse_matrix*, char*, char* );
+
+void Print_Sparse_Matrix_Binary( sparse_matrix*, char* );
 
 void Print_Bonds( reax_system*, list*, char* );
 void Print_Bond_List2( reax_system*, list*, char* );

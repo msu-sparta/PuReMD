@@ -1,4 +1,6 @@
+# PuReMD
 *.log
+*.prs
 *.pot
 *.trj
 
@@ -15,10 +17,13 @@
 *.log
 *.toc
 *.pdf
+_minted-*
 
 # ViM, emacs, nano, leafpad
+tags
 *.swp
 *~
+tags
 
 # Python
 *.pyc
@@ -44,6 +49,7 @@ libtool
 Makefile
 Makefile.in
 stamp-h1
+test-driver
 
 # Compiled languages (C,C++,Fortran,...)
 *.o
@@ -54,7 +60,12 @@ stamp-h1
 *.tab.c
 *.tab.h
 
+# PBS/torque job logs
+*.o[0-9]*
+*.e[0-9]*
+
 # General
 *.tar.gz
 *.pdf
 */bin
+*.txt

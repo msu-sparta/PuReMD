@@ -32,14 +32,18 @@ inline int Vector_isZero( const real * const v, const unsigned int k )
 {
     unsigned int i;
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         ret = TRUE;
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
 
     #pragma omp for reduction(&&: ret) schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
         if ( FABS( v[i] ) > ALMOST_ZERO )
@@ -47,6 +51,10 @@ inline int Vector_isZero( const real * const v, const unsigned int k )
             ret = FALSE;
         }
     }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+#endif
 
     return ret;
 }
@@ -56,7 +64,9 @@ inline void Vector_MakeZero( real * const v, const unsigned int k )
 {
     unsigned int i;
 
+#ifdef _OPENMP
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
         v[i] = ZERO;
@@ -68,7 +78,9 @@ inline void Vector_Copy( real * const dest, const real * const v, const unsigned
 {
     unsigned int i;
 
+#ifdef _OPENMP
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
         dest[i] = v[i];
@@ -80,7 +92,9 @@ inline void Vector_Scale( real * const dest, const real c, const real * const v,
 {
     unsigned int i;
 
+#ifdef _OPENMP
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i];
@@ -93,7 +107,9 @@ inline void Vector_Sum( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
+#ifdef _OPENMP
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
         dest[i] = c * v[i] + d * y[i];
@@ -105,7 +121,9 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 {
     unsigned int i;
 
+#ifdef _OPENMP
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
         dest[i] += c * v[i];
@@ -114,16 +132,19 @@ inline void Vector_Add( real * const dest, const real c, const real * const v, c
 
 
 void Vector_Print( FILE * const fout, const char * const vname, const real * const v,
-                   const unsigned int k )
+        const unsigned int k )
 {
     unsigned int i;
 
-    fprintf( fout, "%s:\n", vname );
+    if ( vname != NULL )
+    {
+        fprintf( fout, "%s:\n", vname );
+    }
+
     for ( i = 0; i < k; ++i )
     {
         fprintf( fout, "%24.15e\n", v[i] );
     }
-    fprintf( fout, "\n" );
 }
 
 
@@ -131,19 +152,26 @@ inline real Dot( const real * const v1, const real * const v2, const unsigned in
 {
     unsigned int i;
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         ret2 = ZERO;
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
 
-
     #pragma omp for reduction(+: ret2) schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
         ret2 += v1[i] * v2[i];
     }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+#endif
 
     return ret2;
 }
@@ -153,20 +181,37 @@ inline real Norm( const real * const v1, const unsigned int k )
 {
     unsigned int i;
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         ret2 = ZERO;
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
 
     #pragma omp for reduction(+: ret2) schedule(static)
+#endif
     for ( i = 0; i < k; ++i )
     {
-        ret2 +=  SQR( v1[i] );
+        ret2 += SQR( v1[i] );
     }
 
-    return SQRT( ret2 );
+#ifdef _OPENMP
+    #pragma omp barrier
+
+    #pragma omp single
+#endif
+    {
+        ret2 = SQRT( ret2 );
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+#endif
+
+    return ret2;
 }
 
 
@@ -307,9 +352,9 @@ inline real rvec_Norm( const rvec v )
 
 inline int rvec_isZero( const rvec v )
 {
-    if ( fabs(v[0]) > ALMOST_ZERO ||
-            fabs(v[1]) > ALMOST_ZERO ||
-            fabs(v[2]) > ALMOST_ZERO )
+    if ( FABS(v[0]) > ALMOST_ZERO ||
+            FABS(v[1]) > ALMOST_ZERO ||
+            FABS(v[2]) > ALMOST_ZERO )
     {
         return FALSE;
     }
@@ -319,7 +364,9 @@ inline int rvec_isZero( const rvec v )
 
 inline void rvec_MakeZero( rvec v )
 {
-    v[0] = v[1] = v[2] = ZERO;
+    v[0] = ZERO;
+    v[1] = ZERO;
+    v[2] = ZERO;
 }
 
 

@@ -766,9 +766,9 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
 
     /* deallocate helper storage */
     for ( i = 0; i < MAX_TOKENS; i++ )
-        free( tmp[i] );
-    free( tmp );
-    free( s );
+        sfree( tmp[i], "tmp[i]" );
+    sfree( tmp, "tmp" );
+    sfree( s, "s" );
 
 
     /* deallocate tor_flag */
@@ -777,12 +777,12 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         for ( j = 0; j < reax->num_atom_types; j++ )
         {
             for ( k = 0; k < reax->num_atom_types; k++ )
-                free( tor_flag[i][j][k] );
+                sfree( tor_flag[i][j][k], "tor_flag[i][j][k]" );
 
-            free( tor_flag[i][j] );
+            sfree( tor_flag[i][j], "tor_flag[i][j]" );
         }
 
-        free( tor_flag[i] );
+        sfree( tor_flag[i], "tor_flag[i]" );
     }
 
 

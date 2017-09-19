@@ -20,43 +20,42 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "ffield.h"
-#include "tool_box.h"
+  #include "ffield.h"
+  #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_ffield.h"
-#include "reax_tool_box.h"
+  #include "reax_ffield.h"
+  #include "reax_tool_box.h"
 #endif
 
 
-char Read_Force_Field( char *ffield_file, reax_interaction *reax,
-                       control_params *control )
+int Read_Force_Field( char *ffield_file, reax_interaction *reax,
+        reax_system *system, control_params *control )
 {
-    FILE    *fp;
-    char    *s;
-    char   **tmp;
-    //SUDHIR
-    //char ****tor_flag;
+    FILE *fp;
+    char *s;
+    char **tmp;
     char *tor_flag;
-    int      c, i, j, k, l, m, n, o, p, cnt;
-    real     val;
-
-    //SUDHIR
+    int c, i, j, k, l, m, n, o, p, cnt;
+    real val;
     int __N;
     int index1, index2;
 
     /* open force field file */
     if ( (fp = fopen( ffield_file, "r" ) ) == NULL )
     {
-        fprintf( stderr, "error opening the force filed file! terminating...\n" );
+        fprintf( stderr, "[ERROR] p%d: cannot open force field file! terminating...\n",
+              system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
+    s = (char*) smalloc( sizeof(char) * MAX_LINE, "READ_FFIELD" );
+    tmp = (char**) smalloc( sizeof(char*)*MAX_TOKENS, "READ_FFIELD");
     for (i = 0; i < MAX_TOKENS; i++)
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_TOKEN_LEN);
-
+    {
+        tmp[i] = (char*) smalloc( sizeof(char) * MAX_TOKEN_LEN, "READ_FFIELD" );
+    }
 
     /* reading first header comment */
     fgets( s, MAX_LINE, fp );
@@ -67,14 +66,15 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
 
     /* reading the number of global parameters */
     n = atoi(tmp[0]);
-    if (n < 1)
+    if ( n < 1 )
     {
-        fprintf( stderr, "WARNING: number of globals in ffield file is 0!\n" );
-        return 1;
+        fprintf( stderr, "[WARNING] p%d: number of globals in ffield file is 0!\n",
+              system->my_rank );
+        return SUCCESS;
     }
 
     reax->gp.n_global = n;
-    reax->gp.l = (real*) malloc(sizeof(real) * n);
+    reax->gp.l = (real*) smalloc( sizeof(real) * n, "READ_FFIELD" );
 
     /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
     for (i = 0; i < n; i++)
@@ -86,7 +86,7 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         reax->gp.l[i] = val;
     }
 
-    control->bo_cut    = 0.01 * reax->gp.l[29];
+    control->bo_cut = 0.01 * reax->gp.l[29];
     control->nonb_low  = reax->gp.l[11];
     control->nonb_cut  = reax->gp.l[12];
 
@@ -101,81 +101,41 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
     fgets(s, MAX_LINE, fp);
 
     /* Allocating structures in reax_interaction */
-    /*
-    reax->sbp = (single_body_parameters*)
-      scalloc( reax->num_atom_types, sizeof(single_body_parameters), "sbp" );
-    reax->tbp = (two_body_parameters**)
-      scalloc( reax->num_atom_types, sizeof(two_body_parameters*), "tbp" );
-    reax->thbp= (three_body_header***)
-      scalloc( reax->num_atom_types, sizeof(three_body_header**), "thbp" );
-    reax->hbp = (hbond_parameters***)
-      scalloc( reax->num_atom_types, sizeof(hbond_parameters**), "hbp" );
-    reax->fbp = (four_body_header****)
-      scalloc( reax->num_atom_types, sizeof(four_body_header***), "fbp" );
-    tor_flag  = (char****)
-      scalloc( reax->num_atom_types, sizeof(char***), "tor_flag" );
-
-    for( i = 0; i < reax->num_atom_types; i++ ) {
-      reax->tbp[i] = (two_body_parameters*)
-        scalloc( reax->num_atom_types, sizeof(two_body_parameters), "tbp[i]" );
-      reax->thbp[i]= (three_body_header**)
-        scalloc( reax->num_atom_types, sizeof(three_body_header*), "thbp[i]" );
-      reax->hbp[i] = (hbond_parameters**)
-        scalloc( reax->num_atom_types, sizeof(hbond_parameters*), "hbp[i]" );
-      reax->fbp[i] = (four_body_header***)
-        scalloc( reax->num_atom_types, sizeof(four_body_header**), "fbp[i]" );
-      tor_flag[i]  = (char***)
-        scalloc( reax->num_atom_types, sizeof(char**), "tor_flag[i]" );
-
-      for( j = 0; j < reax->num_atom_types; j++ ) {
-        reax->thbp[i][j]= (three_body_header*)
-    scalloc( reax->num_atom_types, sizeof(three_body_header), "thbp[i,j]" );
-        reax->hbp[i][j] = (hbond_parameters*)
-    scalloc( reax->num_atom_types, sizeof(hbond_parameters), "hbp[i,j]" );
-        reax->fbp[i][j] = (four_body_header**)
-    scalloc( reax->num_atom_types, sizeof(four_body_header*), "fbp[i,j]" );
-        tor_flag[i][j]  = (char**)
-    scalloc( reax->num_atom_types, sizeof(char*), "tor_flag[i,j]" );
-
-        for (k=0; k < reax->num_atom_types; k++) {
-    reax->fbp[i][j][k] = (four_body_header*)
-      scalloc(reax->num_atom_types, sizeof(four_body_header), "fbp[i,j,k]");
-    tor_flag[i][j][k]  = (char*)
-      scalloc( reax->num_atom_types, sizeof(char), "tor_flag[i,j,k]" );
-        }
-      }
-    }
-    */
-
     __N = reax->num_atom_types;
 
     reax->sbp = (single_body_parameters*)
-                calloc( reax->num_atom_types, sizeof(single_body_parameters) );
+        scalloc( reax->num_atom_types, sizeof(single_body_parameters),
+                "Read_Force_Field::reax->sbp" );
 
     reax->tbp = (two_body_parameters*)
-                calloc( pow (reax->num_atom_types, 2), sizeof(two_body_parameters) );
+        scalloc( POW(reax->num_atom_types, 2), sizeof(two_body_parameters),
+              "Read_Force_Field::reax->tbp" );
 
     reax->thbp = (three_body_header*)
-                 calloc( pow (reax->num_atom_types, 3), sizeof(three_body_header) );
+        scalloc( POW(reax->num_atom_types, 3), sizeof(three_body_header),
+              "Read_Force_Field::reax->thbp" );
+
     reax->hbp = (hbond_parameters*)
-                calloc( pow (reax->num_atom_types, 3), sizeof(hbond_parameters) );
+        scalloc( POW(reax->num_atom_types, 3), sizeof(hbond_parameters),
+              "Read_Force_Field::reax->hbp" );
 
     reax->fbp = (four_body_header*)
-                calloc( pow (reax->num_atom_types, 4), sizeof(four_body_header) );
+        scalloc( POW(reax->num_atom_types, 4), sizeof(four_body_header),
+              "Read_Force_Field::reax->fbp" );
 
-    tor_flag  = (char*)
-                calloc( pow (reax->num_atom_types, 4), sizeof(char) );
+    tor_flag  = (char*) scalloc( POW(reax->num_atom_types, 4), sizeof(char),
+           "Read_Force_Field::tor_flag" );
 
-
-    // vdWaals type: 1: Shielded Morse, no inner-wall
-    //               2: inner wall, no shielding
-    //               3: inner wall+shielding
+    /* vdWaals type:
+     * 1: Shielded Morse, no inner-wall
+     * 2: inner wall, no shielding
+     * 3: inner wall+shielding */
     reax->gp.vdw_type = 0;
 
     /* reading single atom parameters */
     /* there are 4 lines of each single atom parameters in ff files. these
-       parameters later determine some of the pair and triplet parameters using
-       combination rules. */
+     * parameters later determine some of the pair and triplet parameters using
+     * combination rules. */
     for ( i = 0; i < reax->num_atom_types; i++ )
     {
         /* line one */
@@ -183,26 +143,31 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         c = Tokenize( s, &tmp );
 
         for ( j = 0; j < (int)(strlen(tmp[0])); ++j )
+        {
             reax->sbp[i].name[j] = toupper( tmp[0][j] );
+        }
 
-        //fprintf( stderr, "Atom Name in the force field : %s \n", reax->sbp[i].name);
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: Atom Name in the force field : %s \n",
+                system->my_rank, reax->sbp[i].name );
+#endif
 
         val = atof(tmp[1]);
-        reax->sbp[i].r_s        = val;
+        reax->sbp[i].r_s = val;
         val = atof(tmp[2]);
-        reax->sbp[i].valency    = val;
+        reax->sbp[i].valency = val;
         val = atof(tmp[3]);
-        reax->sbp[i].mass       = val;
+        reax->sbp[i].mass = val;
         val = atof(tmp[4]);
-        reax->sbp[i].r_vdw      = val;
+        reax->sbp[i].r_vdw = val;
         val = atof(tmp[5]);
-        reax->sbp[i].epsilon    = val;
+        reax->sbp[i].epsilon = val;
         val = atof(tmp[6]);
-        reax->sbp[i].gamma      = val;
+        reax->sbp[i].gamma = val;
         val = atof(tmp[7]);
-        reax->sbp[i].r_pi       = val;
+        reax->sbp[i].r_pi = val;
         val = atof(tmp[8]);
-        reax->sbp[i].valency_e  = val;
+        reax->sbp[i].valency_e = val;
         reax->sbp[i].nlp_opt = 0.5 * (reax->sbp[i].valency_e - reax->sbp[i].valency);
 
         /* line two */
@@ -210,36 +175,36 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         c = Tokenize( s, &tmp );
 
         val = atof(tmp[0]);
-        reax->sbp[i].alpha      = val;
+        reax->sbp[i].alpha = val;
         val = atof(tmp[1]);
-        reax->sbp[i].gamma_w    = val;
+        reax->sbp[i].gamma_w = val;
         val = atof(tmp[2]);
         reax->sbp[i].valency_boc = val;
         val = atof(tmp[3]);
-        reax->sbp[i].p_ovun5    = val;
+        reax->sbp[i].p_ovun5 = val;
         val = atof(tmp[4]);
         val = atof(tmp[5]);
-        reax->sbp[i].chi        = val;
+        reax->sbp[i].chi = val;
         val = atof(tmp[6]);
-        reax->sbp[i].eta        = 2.0 * val;
+        reax->sbp[i].eta = 2.0 * val;
         val = atof(tmp[7]);
-        reax->sbp[i].p_hbond = (int) val;
+        reax->sbp[i].p_hbond = (int)val;
 
         /* line 3 */
         fgets( s, MAX_LINE, fp );
         c = Tokenize( s, &tmp );
 
         val = atof(tmp[0]);
-        reax->sbp[i].r_pi_pi    = val;
+        reax->sbp[i].r_pi_pi = val;
         val = atof(tmp[1]);
-        reax->sbp[i].p_lp2      = val;
+        reax->sbp[i].p_lp2 = val;
         val = atof(tmp[2]);
         val = atof(tmp[3]);
-        reax->sbp[i].b_o_131    = val;
+        reax->sbp[i].b_o_131 = val;
         val = atof(tmp[4]);
-        reax->sbp[i].b_o_132    = val;
+        reax->sbp[i].b_o_132 = val;
         val = atof(tmp[5]);
-        reax->sbp[i].b_o_133    = val;
+        reax->sbp[i].b_o_133 = val;
         val = atof(tmp[6]);
         val = atof(tmp[7]);
 
@@ -248,96 +213,104 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         c = Tokenize( s, &tmp );
 
         val = atof(tmp[0]);
-        reax->sbp[i].p_ovun2    = val;
+        reax->sbp[i].p_ovun2 = val;
         val = atof(tmp[1]);
-        reax->sbp[i].p_val3     = val;
+        reax->sbp[i].p_val3 = val;
         val = atof(tmp[2]);
         val = atof(tmp[3]);
         reax->sbp[i].valency_val = val;
         val = atof(tmp[4]);
-        reax->sbp[i].p_val5     = val;
+        reax->sbp[i].p_val5 = val;
         val = atof(tmp[5]);
-        reax->sbp[i].rcore2     = val;
+        reax->sbp[i].rcore2 = val;
         val = atof(tmp[6]);
-        reax->sbp[i].ecore2     = val;
+        reax->sbp[i].ecore2 = val;
         val = atof(tmp[7]);
-        reax->sbp[i].acore2     = val;
+        reax->sbp[i].acore2 = val;
 
-
-        if ( reax->sbp[i].rcore2 > 0.01 && reax->sbp[i].acore2 > 0.01 ) // Inner-wall
+        /* Inner-wall */
+        if ( reax->sbp[i].rcore2 > 0.01 && reax->sbp[i].acore2 > 0.01 )
         {
-            if ( reax->sbp[i].gamma_w > 0.5 ) // Shielding vdWaals
+            /* Shielding vdWaals */
+            if ( reax->sbp[i].gamma_w > 0.5 )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 3 )
-                    fprintf( stderr, "Warning: inconsistent vdWaals-parameters\n" \
-                             "Force field parameters for element %s\n"        \
-                             "indicate inner wall+shielding, but earlier\n"   \
-                             "atoms indicate different vdWaals-method.\n"     \
-                             "This may cause division-by-zero errors.\n"      \
-                             "Keeping vdWaals-setting for earlier atoms.\n",
-                             reax->sbp[i].name );
+                {
+                    fprintf( stderr, "[WARNING] p%d: inconsistent vdWaals-parameters\n"
+                            "Force field parameters for element %s\n"
+                            "indicate inner wall+shielding, but earlier\n"
+                            "atoms indicate different vdWaals-method.\n"
+                            "This may cause division-by-zero errors.\n"
+                            "Keeping vdWaals-setting for earlier atoms.\n",
+                            system->my_rank, reax->sbp[i].name );
+                }
                 else
                 {
                     reax->gp.vdw_type = 3;
 #if defined(DEBUG)
-                    fprintf( stderr, "vdWaals type for element %s: Shielding+inner-wall",
-                             reax->sbp[i].name );
+                    fprintf( stderr, "p%d: vdWaals type for element %s: Shielding+inner-wall",
+                            system->my_rank, reax->sbp[i].name );
 #endif
                 }
             }
-            else    // No shielding vdWaals parameters present
+            /* No shielding vdWaals parameters present */
+            else
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 2 )
-                    fprintf( stderr, "Warning: inconsistent vdWaals-parameters\n" \
-                             "Force field parameters for element %s\n"        \
-                             "indicate inner wall without shielding, but earlier\n" \
-                             "atoms indicate different vdWaals-method.\n"     \
-                             "This may cause division-by-zero errors.\n"      \
-                             "Keeping vdWaals-setting for earlier atoms.\n",
-                             reax->sbp[i].name );
+                {
+                    fprintf( stderr, "[WARNING] p%d: inconsistent vdWaals-parameters\n",
+                            system->my_rank );
+                    fprintf( stderr, "    [INFO] Force field parameters for element %s\n", reax->sbp[i].name );
+                    fprintf( stderr, "    [INFO] indicate inner wall without shielding, but earlier\n" );
+                    fprintf( stderr, "    [INFO] atoms indicate different vdWaals-method.\n" );
+                    fprintf( stderr, "    [INFO] This may cause division-by-zero errors.\n" );
+                    fprintf( stderr, "    [INFO] Keeping vdWaals-setting for earlier atoms.\n" );
+                }
                 else
                 {
                     reax->gp.vdw_type = 2;
 #if defined(DEBUG)
-                    fprintf( stderr, "vdWaals type for element%s: No Shielding,inner-wall",
-                             reax->sbp[i].name );
+                    fprintf( stderr, "p%d: vdWaals type for element%s: No Shielding,inner-wall",
+                            system->my_rank, reax->sbp[i].name );
 #endif
                 }
             }
         }
-        else  // No Inner wall parameters present
+        /* No Inner wall parameters present */
+        else
         {
-            if ( reax->sbp[i].gamma_w > 0.5 ) // Shielding vdWaals
+            /* Shielding vdWaals */
+            if ( reax->sbp[i].gamma_w > 0.5 )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 1 )
-                    fprintf( stderr, "Warning: inconsistent vdWaals-parameters\n" \
-                             "Force field parameters for element %s\n"        \
-                             "indicate  shielding without inner wall, but earlier\n" \
-                             "atoms indicate different vdWaals-method.\n"     \
-                             "This may cause division-by-zero errors.\n"      \
-                             "Keeping vdWaals-setting for earlier atoms.\n",
-                             reax->sbp[i].name );
+                    fprintf( stderr, "[WARNING] p%d: inconsistent vdWaals-parameters\n" \
+                            "    [INFO] Force field parameters for element %s\n"        \
+                            "    [INFO] indicate  shielding without inner wall, but earlier\n" \
+                            "    [INFO] atoms indicate different vdWaals-method.\n"     \
+                            "    [INFO] This may cause division-by-zero errors.\n"      \
+                            "    [INFO] Keeping vdWaals-setting for earlier atoms.\n",
+                            system->my_rank, reax->sbp[i].name );
                 else
                 {
                     reax->gp.vdw_type = 1;
 #if defined(DEBUG)
-                    fprintf( stderr, "vdWaals type for element%s: Shielding,no inner-wall",
-                             reax->sbp[i].name );
+                    fprintf( stderr, "p%d, vdWaals type for element%s: Shielding,no inner-wall",
+                            system->my_rank, reax->sbp[i].name );
 #endif
                 }
             }
             else
             {
-                fprintf( stderr, "Error: inconsistent vdWaals-parameters\n"\
-                         "No shielding or inner-wall set for element %s\n",
-                         reax->sbp[i].name );
+                fprintf( stderr, "[ERROR] p%d: inconsistent vdWaals-parameters\n" \
+                         "    [INFO] No shielding or inner-wall set for element %s\n",
+                         system->my_rank, reax->sbp[i].name );
                 MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             }
         }
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "vdWaals type: %d\n", reax->gp.vdw_type );
+    fprintf( stderr, "p%d: vdWaals type: %d\n", system->my_rank, reax->gp.vdw_type );
 #endif
 
     /* Equate vval3 to valf for first-row elements (25/10/2004) */
@@ -346,8 +319,8 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         if ( reax->sbp[i].mass < 21 &&
                 reax->sbp[i].valency_val != reax->sbp[i].valency_boc )
         {
-            fprintf( stderr, "Warning: changed valency_val to valency_boc for %s\n",
-                     reax->sbp[i].name );
+            fprintf( stderr, "[WARNING] p%d: changed valency_val to valency_boc for atom type %s\n",
+                    system->my_rank, reax->sbp[i].name );
             reax->sbp[i].valency_val = reax->sbp[i].valency_boc;
         }
     }
@@ -368,35 +341,33 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
-
         index1 = j * __N + k;
         index2 = k * __N + j;
 
         if (j < reax->num_atom_types && k < reax->num_atom_types)
         {
-
             val = atof(tmp[2]);
-            reax->tbp[ index1 ].De_s      = val;
-            reax->tbp[ index2 ].De_s      = val;
+            reax->tbp[ index1 ].De_s = val;
+            reax->tbp[ index2 ].De_s = val;
             val = atof(tmp[3]);
-            reax->tbp[ index1 ].De_p      = val;
-            reax->tbp[ index2 ].De_p      = val;
+            reax->tbp[ index1 ].De_p = val;
+            reax->tbp[ index2 ].De_p = val;
             val = atof(tmp[4]);
-            reax->tbp[ index1 ].De_pp     = val;
-            reax->tbp[ index2 ].De_pp     = val;
+            reax->tbp[ index1 ].De_pp = val;
+            reax->tbp[ index2 ].De_pp = val;
             val = atof(tmp[5]);
-            reax->tbp[ index1 ].p_be1     = val;
-            reax->tbp[ index2 ].p_be1     = val;
+            reax->tbp[ index1 ].p_be1 = val;
+            reax->tbp[ index2 ].p_be1 = val;
             val = atof(tmp[6]);
-            reax->tbp[ index1 ].p_bo5     = val;
-            reax->tbp[ index2 ].p_bo5     = val;
+            reax->tbp[ index1 ].p_bo5 = val;
+            reax->tbp[ index2 ].p_bo5 = val;
             val = atof(tmp[7]);
-            reax->tbp[ index1 ].v13cor    = val;
-            reax->tbp[ index2 ].v13cor    = val;
+            reax->tbp[ index1 ].v13cor = val;
+            reax->tbp[ index2 ].v13cor = val;
 
             val = atof(tmp[8]);
-            reax->tbp[ index1 ].p_bo6     = val;
-            reax->tbp[ index2 ].p_bo6     = val;
+            reax->tbp[ index1 ].p_bo6 = val;
+            reax->tbp[ index2 ].p_bo6 = val;
             val = atof(tmp[9]);
             reax->tbp[ index1 ].p_ovun1 = val;
             reax->tbp[ index2 ].p_ovun1 = val;
@@ -406,127 +377,109 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
             c = Tokenize(s, &tmp);
 
             val = atof(tmp[0]);
-            reax->tbp[ index1 ].p_be2     = val;
-            reax->tbp[ index2 ].p_be2     = val;
+            reax->tbp[ index1 ].p_be2 = val;
+            reax->tbp[ index2 ].p_be2 = val;
             val = atof(tmp[1]);
-            reax->tbp[ index1 ].p_bo3     = val;
-            reax->tbp[ index2 ].p_bo3     = val;
+            reax->tbp[ index1 ].p_bo3 = val;
+            reax->tbp[ index2 ].p_bo3 = val;
             val = atof(tmp[2]);
-            reax->tbp[ index1 ].p_bo4     = val;
-            reax->tbp[ index2 ].p_bo4     = val;
+            reax->tbp[ index1 ].p_bo4 = val;
+            reax->tbp[ index2 ].p_bo4 = val;
             val = atof(tmp[3]);
 
             val = atof(tmp[4]);
-            reax->tbp[ index1 ].p_bo1     = val;
-            reax->tbp[ index2 ].p_bo1     = val;
+            reax->tbp[ index1 ].p_bo1 = val;
+            reax->tbp[ index2 ].p_bo1 = val;
             val = atof(tmp[5]);
-            reax->tbp[ index1 ].p_bo2     = val;
-            reax->tbp[ index2 ].p_bo2     = val;
+            reax->tbp[ index1 ].p_bo2 = val;
+            reax->tbp[ index2 ].p_bo2 = val;
             val = atof(tmp[6]);
-            reax->tbp[ index1 ].ovc       = val;
-            reax->tbp[ index2 ].ovc       = val;
+            reax->tbp[ index1 ].ovc = val;
+            reax->tbp[ index2 ].ovc = val;
 
             val = atof(tmp[7]);
         }
     }
 
     /* calculating combination rules and filling up remaining fields. */
-
     for (i = 0; i < reax->num_atom_types; i++)
+    {
         for (j = i; j < reax->num_atom_types; j++)
         {
-
-            //SUDHIR
             index1 = i * __N + j;
             index2 = j * __N + i;
 
-            reax->tbp[index1].r_s = 0.5 *
-                                    (reax->sbp[i].r_s + reax->sbp[j].r_s);
-            reax->tbp[index2].r_s = 0.5 *
-                                    (reax->sbp[j].r_s + reax->sbp[i].r_s);
+            reax->tbp[index1].r_s =
+                0.5 * (reax->sbp[i].r_s + reax->sbp[j].r_s);
+            reax->tbp[index2].r_s =
+                0.5 * (reax->sbp[j].r_s + reax->sbp[i].r_s);
 
-            reax->tbp[index1].r_p = 0.5 *
-                                    (reax->sbp[i].r_pi + reax->sbp[j].r_pi);
-            reax->tbp[index2].r_p = 0.5 *
-                                    (reax->sbp[j].r_pi + reax->sbp[i].r_pi);
+            reax->tbp[index1].r_p =
+                0.5 * (reax->sbp[i].r_pi + reax->sbp[j].r_pi);
+            reax->tbp[index2].r_p =
+                0.5 * (reax->sbp[j].r_pi + reax->sbp[i].r_pi);
 
-            reax->tbp[index1].r_pp = 0.5 *
-                                     (reax->sbp[i].r_pi_pi + reax->sbp[j].r_pi_pi);
-            reax->tbp[index2].r_pp = 0.5 *
-                                     (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
-
+            reax->tbp[index1].r_pp =
+                0.5 * (reax->sbp[i].r_pi_pi + reax->sbp[j].r_pi_pi);
+            reax->tbp[index2].r_pp =
+                0.5 * (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
 
             reax->tbp[index1].p_boc3 =
-                sqrt(reax->sbp[i].b_o_132 *
-                     reax->sbp[j].b_o_132);
+                SQRT(reax->sbp[i].b_o_132 * reax->sbp[j].b_o_132);
             reax->tbp[index2].p_boc3 =
-                sqrt(reax->sbp[j].b_o_132 *
-                     reax->sbp[i].b_o_132);
+                SQRT(reax->sbp[j].b_o_132 * reax->sbp[i].b_o_132);
 
             reax->tbp[index1].p_boc4 =
-                sqrt(reax->sbp[i].b_o_131 *
-                     reax->sbp[j].b_o_131);
+                SQRT(reax->sbp[i].b_o_131 * reax->sbp[j].b_o_131);
             reax->tbp[index2].p_boc4 =
-                sqrt(reax->sbp[j].b_o_131 *
-                     reax->sbp[i].b_o_131);
+                SQRT(reax->sbp[j].b_o_131 * reax->sbp[i].b_o_131);
 
             reax->tbp[index1].p_boc5 =
-                sqrt(reax->sbp[i].b_o_133 *
-                     reax->sbp[j].b_o_133);
+                SQRT(reax->sbp[i].b_o_133 * reax->sbp[j].b_o_133);
             reax->tbp[index2].p_boc5 =
-                sqrt(reax->sbp[j].b_o_133 *
-                     reax->sbp[i].b_o_133);
-
+                SQRT(reax->sbp[j].b_o_133 * reax->sbp[i].b_o_133);
 
             reax->tbp[index1].D =
-                sqrt(reax->sbp[i].epsilon *
-                     reax->sbp[j].epsilon);
+                SQRT(reax->sbp[i].epsilon * reax->sbp[j].epsilon);
 
             reax->tbp[index2].D =
-                sqrt(reax->sbp[j].epsilon *
-                     reax->sbp[i].epsilon);
+                SQRT(reax->sbp[j].epsilon * reax->sbp[i].epsilon);
 
             reax->tbp[index1].alpha =
-                sqrt(reax->sbp[i].alpha *
-                     reax->sbp[j].alpha);
+                SQRT(reax->sbp[i].alpha * reax->sbp[j].alpha);
 
             reax->tbp[index2].alpha =
-                sqrt(reax->sbp[j].alpha *
-                     reax->sbp[i].alpha);
+                SQRT(reax->sbp[j].alpha * reax->sbp[i].alpha);
 
             reax->tbp[index1].r_vdW =
-                2.0 * sqrt(reax->sbp[i].r_vdw * reax->sbp[j].r_vdw);
+                2.0 * SQRT(reax->sbp[i].r_vdw * reax->sbp[j].r_vdw);
 
             reax->tbp[index2].r_vdW =
-                2.0 * sqrt(reax->sbp[j].r_vdw * reax->sbp[i].r_vdw);
+                2.0 * SQRT(reax->sbp[j].r_vdw * reax->sbp[i].r_vdw);
 
             reax->tbp[index1].gamma_w =
-                sqrt(reax->sbp[i].gamma_w *
-                     reax->sbp[j].gamma_w);
+                SQRT(reax->sbp[i].gamma_w * reax->sbp[j].gamma_w);
 
             reax->tbp[index2].gamma_w =
-                sqrt(reax->sbp[j].gamma_w *
-                     reax->sbp[i].gamma_w);
+                SQRT(reax->sbp[j].gamma_w * reax->sbp[i].gamma_w);
 
             reax->tbp[index1].gamma =
-                POW(reax->sbp[i].gamma *
-                    reax->sbp[j].gamma, -1.5);
+                POW(reax->sbp[i].gamma * reax->sbp[j].gamma, -1.5);
 
             reax->tbp[index2].gamma =
-                POW(reax->sbp[j].gamma *
-                    reax->sbp[i].gamma, -1.5);
+                POW(reax->sbp[j].gamma * reax->sbp[i].gamma, -1.5);
 
-            // additions for additional vdWaals interaction types - inner core
+            /* additions for additional vdWaals interaction types - inner core */
             reax->tbp[index1].rcore = reax->tbp[index2].rcore =
-                                          sqrt( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
+                SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
 
             reax->tbp[index1].ecore = reax->tbp[index2].ecore =
-                                          sqrt( reax->sbp[i].ecore2 * reax->sbp[j].ecore2 );
+                SQRT( reax->sbp[i].ecore2 * reax->sbp[j].ecore2 );
 
             reax->tbp[index1].acore = reax->tbp[index2].acore =
-                                          sqrt( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
+                SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
         }
-
+    }
 
     /* next line is number of two body offdiagonal combinations and comments */
     /* these are two body offdiagonal terms that are different from the
@@ -543,7 +496,6 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
 
-        //SUDHIR
         index1 = j * __N + k;
         index2 = k * __N + j;
 
@@ -593,17 +545,19 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         }
     }
 
-
     /* 3-body parameters -
        supports multi-well potentials (upto MAX_3BODY_PARAM in mytypes.h) */
     /* clear entries first */
     for ( i = 0; i < reax->num_atom_types; ++i )
+    {
         for ( j = 0; j < reax->num_atom_types; ++j )
+        {
             for ( k = 0; k < reax->num_atom_types; ++k )
-                //reax->thbp[i][j][k].cnt = 0;
-                //SUDHIR
+            {
                 reax->thbp[i * __N * __N + j * __N + k].cnt = 0;
-
+            }
+        }
+    }
 
     /* next line is number of 3-body params and some comments */
     fgets( s, MAX_LINE, fp );
@@ -618,8 +572,6 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
         m = atoi(tmp[2]) - 1;
-
-        //SUDHIR
         index1 = j * __N * __N + k * __N + m;
         index2 = m * __N * __N + k * __N + j;
 
@@ -660,28 +612,30 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         }
     }
 
-
     /* 4-body parameters are entered in compact form. i.e. 0-X-Y-0
-       correspond to any type of pair of atoms in 1 and 4
-       position. However, explicit X-Y-Z-W takes precedence over the
-       default description.
-       supports multi-well potentials (upto MAX_4BODY_PARAM in mytypes.h)
-       IMPORTANT: for now, directions on how to read multi-entries from ffield
-       is not clear */
+     * correspond to any type of pair of atoms in 1 and 4
+     * position. However, explicit X-Y-Z-W takes precedence over the
+     * default description.
+     * supports multi-well potentials (upto MAX_4BODY_PARAM in mytypes.h)
+     * IMPORTANT: for now, directions on how to read multi-entries from ffield
+     * is not clear */
 
     /* clear all entries first */
     for ( i = 0; i < reax->num_atom_types; ++i )
+    {
         for ( j = 0; j < reax->num_atom_types; ++j )
+        {
             for ( k = 0; k < reax->num_atom_types; ++k )
+            {
                 for ( m = 0; m < reax->num_atom_types; ++m )
                 {
-                    //reax->fbp[i][j][k][m].cnt = 0;
-                    //tor_flag[i][j][k][m] = 0;
-                    //SUDHIR
                     reax->fbp[i * __N * __N * __N + j * __N * __N + k * __N + m].cnt = 0;
                     tor_flag[i * __N * __N * __N + j * __N * __N + k * __N + m] = 0;
 
                 }
+            }
+        }
+    }
 
     /* next line is number of 4-body params and some comments */
     fgets( s, MAX_LINE, fp );
@@ -697,16 +651,14 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         k = atoi(tmp[1]) - 1;
         m = atoi(tmp[2]) - 1;
         n = atoi(tmp[3]) - 1;
-
-        //SUDHIR
         index1 = j * __N * __N * __N + k * __N * __N + m * __N + n;
         index2 = n * __N * __N * __N + m * __N * __N + k * __N + j;
 
-
-        if (j >= 0 && n >= 0)   // this means the entry is not in compact form
+        /* this means the entry is not in compact form */
+        if (j >= 0 && n >= 0)
         {
-            if (j < reax->num_atom_types && k < reax->num_atom_types &&
-                    m < reax->num_atom_types && n < reax->num_atom_types)
+            if ( j < reax->num_atom_types && k < reax->num_atom_types &&
+                    m < reax->num_atom_types && n < reax->num_atom_types )
             {
                 /* these flags ensure that this entry take precedence
                    over the compact form entries */
@@ -715,9 +667,6 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
 
                 reax->fbp[index1].cnt = 1;
                 reax->fbp[index2].cnt = 1;
-                /* cnt = reax->fbp[j][k][m][n].cnt;
-                   reax->fbp[j][k][m][n].cnt++;
-                   reax->fbp[n][m][k][j].cnt++; */
 
                 val = atof(tmp[4]);
                 reax->fbp[index1].prm[0].V1 = val;
@@ -740,22 +689,20 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
                 reax->fbp[index2].prm[0].p_cot1 = val;
             }
         }
-        else   /* This means the entry is of the form 0-X-Y-0 */
+        /* This means the entry is of the form 0-X-Y-0 */
+        else
         {
             if ( k < reax->num_atom_types && m < reax->num_atom_types )
+            {
                 for ( p = 0; p < reax->num_atom_types; p++ )
+                {
                     for ( o = 0; o < reax->num_atom_types; o++ )
                     {
-
-                        //SUDHIR
                         index1 = p * __N * __N * __N + k * __N * __N + m * __N + o;
                         index2 = o * __N * __N * __N + m * __N * __N + k * __N + p;
 
                         reax->fbp[index1].cnt = 1;
                         reax->fbp[index2].cnt = 1;
-                        /* cnt = reax->fbp[p][k][m][o].cnt;
-                           reax->fbp[p][k][m][o].cnt++;
-                           reax->fbp[o][m][k][p].cnt++; */
 
                         if (tor_flag[index1] == 0)
                         {
@@ -775,10 +722,10 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
                             reax->fbp[index2].prm[0].p_cot1 = atof(tmp[8]);
                         }
                     }
+                }
+            }
         }
     }
-
-
 
     /* next line is number of hydrogen bond params and some comments */
     fgets( s, MAX_LINE, fp );
@@ -793,9 +740,7 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
         m = atoi(tmp[2]) - 1;
-        //SUDHIR
         index1 = j * __N * __N + k * __N + m;
-
 
         if ( j < reax->num_atom_types && m < reax->num_atom_types )
         {
@@ -813,33 +758,17 @@ char Read_Force_Field( char *ffield_file, reax_interaction *reax,
         }
     }
 
-
     /* deallocate helper storage */
     for ( i = 0; i < MAX_TOKENS; i++ )
-        free( tmp[i] );
-    free( tmp );
-    free( s );
-
-
-    /* deallocate tor_flag */
-    /*
-    for( i = 0; i < reax->num_atom_types; i++ ) {
-      for( j = 0; j < reax->num_atom_types; j++ ) {
-        for( k = 0; k < reax->num_atom_types; k++ )
-    free( tor_flag[i][j][k] );
-
-        free( tor_flag[i][j] );
-      }
-
-      free( tor_flag[i] );
+    {
+        sfree( tmp[i], "READ_FFIELD" );
     }
-    */
-    free( tor_flag );
-
-
+    sfree( tmp, "READ_FFIELD" );
+    sfree( s, "READ_FFIELD" );
+    sfree( tor_flag, "READ_FFIELD" );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "force field read\n" );
+    fprintf( stderr, "p%d: force field read\n", system->my_rank );
 #endif
 
     return SUCCESS;

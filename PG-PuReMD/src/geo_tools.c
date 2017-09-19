@@ -19,7 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "geo_tools.h"
+
 #include "allocate.h"
 #include "box.h"
 #include "tool_box.h"
@@ -127,7 +130,7 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
                 element[j] = toupper( element[j] );
             //CHAD FIX
             atom->type = Get_Atom_Type( &(system->reax_param), element );
-            strcpy( atom->name, name );
+            strncpy( atom->name, name, MAX_ATOM_NAME_LEN );
             rvec_Copy( atom->x, x );
             rvec_MakeZero( atom->v );
             rvec_MakeZero( atom->f );
@@ -254,22 +257,21 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
 
 char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
-               simulation_data *data, storage *workspace,
-               mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
 
-    FILE  *pdb;
+    FILE *pdb;
     char **tmp;
-    char  *s, *s1;
-    char   descriptor[9], serial[9];
-    char   atom_name[9], res_name[9], res_seq[9];
-    char   s_x[9], s_y[9], s_z[9];
-    char   occupancy[9], temp_factor[9];
-    char   seg_id[9], element[9], charge[9];
-    char   alt_loc, chain_id, icode;
-    char  *endptr = NULL;
-    int    i, c, c1, pdb_serial, top;
-    rvec   x;
+    char *s, *s1;
+    char descriptor[9], serial[9];
+    char atom_name[9], res_name[9], res_seq[9];
+    char s_x[9], s_y[9], s_z[9];
+    char occupancy[9], temp_factor[9];
+    char seg_id[9], element[9], charge[9];
+    char alt_loc, chain_id, icode;
+    char *endptr = NULL;
+    int i, c, c1, pdb_serial, top;
+    rvec x;
     reax_atom *atom;
 
 
@@ -281,12 +283,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     }
 
     /* allocate memory for tokenizing pdb lines */
-    if ( Allocate_Tokenizer_Space( &s, &s1, &tmp ) == FAILURE )
-    {
-        fprintf( stderr, "Allocate_Tokenizer_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
+    Allocate_Tokenizer_Space( &s, &s1, &tmp );
 
     /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )
@@ -398,8 +395,8 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
             /* if the point is inside my_box, add it to my lists */
             Make_Point( strtod( &s_x[0], &endptr ),
-                        strtod( &s_y[0], &endptr ),
-                        strtod( &s_z[0], &endptr ), &x );
+                    strtod( &s_y[0], &endptr ),
+                    strtod( &s_z[0], &endptr ), &x );
 
             Fit_to_Periodic_Box( &(system->big_box), &x );
 
@@ -412,7 +409,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
                 Trim_Spaces( element );
                 atom->type = Get_Atom_Type( &(system->reax_param), element );
-                strcpy( atom->name, atom_name );
+                strncpy( atom->name, atom_name, MAX_ATOM_NAME_LEN );
 
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );
@@ -530,15 +527,15 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
     if (me == MASTER_NODE)
     {
         /* Writing Box information */
-        gamma = acos( (system->big_box.box[0][0] * system->big_box.box[1][0] +
+        gamma = ACOS( (system->big_box.box[0][0] * system->big_box.box[1][0] +
                        system->big_box.box[0][1] * system->big_box.box[1][1] +
                        system->big_box.box[0][2] * system->big_box.box[1][2]) /
                       (system->big_box.box_norms[0] * system->big_box.box_norms[1]) );
-        beta  = acos( (system->big_box.box[0][0] * system->big_box.box[2][0] +
+        beta  = ACOS( (system->big_box.box[0][0] * system->big_box.box[2][0] +
                        system->big_box.box[0][1] * system->big_box.box[2][1] +
                        system->big_box.box[0][2] * system->big_box.box[2][2]) /
                       (system->big_box.box_norms[0] * system->big_box.box_norms[2]) );
-        alpha = acos( (system->big_box.box[2][0] * system->big_box.box[1][0] +
+        alpha = ACOS( (system->big_box.box[2][0] * system->big_box.box[1][0] +
                        system->big_box.box[2][1] * system->big_box.box[1][1] +
                        system->big_box.box[2][2] * system->big_box.box[1][2]) /
                       (system->big_box.box_norms[2] * system->big_box.box_norms[1]) );
@@ -616,8 +613,8 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
     }
     */
 
-    free(buffer);
-    free(line);
+    sfree( buffer, "Write_PDB::buffer" );
+    sfree( line, "Write_PDB::line" );
 
     return SUCCESS;
 }

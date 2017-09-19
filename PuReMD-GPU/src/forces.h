@@ -23,12 +23,14 @@
 
 #include "mytypes.h"
 
+
 void Init_Bonded_Force_Functions( control_params* );
 
 void Compute_Forces( reax_system*, control_params*, simulation_data*,
-                     static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 
 void Estimate_Storage_Sizes( reax_system*, control_params*, list**,
-                             int*, int*, int*, int* );
+        int*, int*, int*, int* );
+
 
 #endif

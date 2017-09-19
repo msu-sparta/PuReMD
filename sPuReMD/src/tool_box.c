@@ -290,6 +290,8 @@ void Trim_Spaces( char *element )
 /************ from system_props.c *************/
 real Get_Time( )
 {
+    struct timeval tim;
+
     gettimeofday(&tim, NULL );
     return ( tim.tv_sec + (tim.tv_usec / 1000000.0) );
 }
@@ -297,6 +299,9 @@ real Get_Time( )
 
 real Get_Timing_Info( real t_start )
 {
+    struct timeval tim;
+    real t_end;
+
     gettimeofday(&tim, NULL );
     t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
     return (t_end - t_start);
@@ -305,6 +310,9 @@ real Get_Timing_Info( real t_start )
 
 void Update_Timing_Info( real *t_start, real *timing )
 {
+    struct timeval tim;
+    real t_end;
+
     gettimeofday(&tim, NULL );
     t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
     *timing += (t_end - *t_start);
@@ -372,6 +380,21 @@ int Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
     }
 
     return SUCCESS;
+}
+
+
+void Deallocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+{
+    int i;
+
+    for ( i = 0; i < MAX_TOKENS; i++ )
+    {
+        free( (*tokens)[i] );
+    }
+
+    free( *line );
+    free( *backup );
+    free( *tokens );
 }
 
 

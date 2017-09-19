@@ -28,12 +28,6 @@
     #define GLOBAL __global__
     #define HOST_DEVICE __host__ __device__
 
-    #include <cuda_runtime.h>
-    #include <cuda.h>
-    #include <cuda_runtime_api.h>
-
-    #include <cublas_v2.h>
-    #include <cusparse_v2.h>
     #if __CUDA_ARCH__ < 600
       #define MYATOMICADD myAtomicAdd
     #else
@@ -55,14 +49,25 @@
   #include "config.h"
 #endif
 
-#include "math.h"
-//#include "random.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "sys/time.h"
-#include "time.h"
-#include "zlib.h"
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
+#include <time.h>
+
+#ifdef _OPENMP
+  #include <omp.h>
+#endif
+
+#ifdef HAVE_CUDA
+  #include <cuda_runtime.h>
+  #include <cuda.h>
+  #include <cuda_runtime_api.h>
+
+  #include <cublas_v2.h>
+  #include <cusparse_v2.h>
+#endif
 
 //#define DEBUG_FOCUS
 //#define TEST_FORCES
@@ -75,6 +80,7 @@
 #define TRUE  1
 #define FALSE 0
 
+#define LOG    log
 #define EXP    exp
 #define SQRT   sqrt
 #define POW    pow
@@ -82,6 +88,8 @@
 #define COS    cos
 #define SIN    sin
 #define TAN    tan
+#define FABS   fabs
+#define FMOD   fmod
 
 #define SQR(x)        ((x)*(x))
 #define CUBE(x)       ((x)*(x)*(x))
@@ -89,6 +97,15 @@
 #define RAD2DEG(a)    ((a)*180.0/PI)
 #define MAX( x, y )   (((x) > (y)) ? (x) : (y))
 #define MIN( x, y )   (((x) < (y)) ? (x) : (y))
+
+/* NaN IEEE 754 representation for C99 in math.h
+ * Note: function choice must match REAL typedef below */
+#ifdef NAN
+  #define IS_NAN_REAL(a) (isnan(a))
+#else
+  #warn "No support for NaN"
+  #define NAN_REAL(a) (0)
+#endif
 
 #define PI            3.14159265
 #define C_ele          332.06371
@@ -106,7 +123,11 @@
 #define AVOGNR          6.0221367e23
 #define P_CONV          1.0e-24 * AVOGNR * JOULES_to_CAL
 
-#define MAX_STR             100      // MAX STRing length (used for naming)
+#define MAX_STR             1024
+#define MAX_LINE            1024
+#define MAX_TOKENS          1024
+#define MAX_TOKEN_LEN       1024
+
 #define MAX_ATOM_ID         100000
 #define MAX_RESTRICT        15
 #define MAX_MOLECULE_SIZE   20
@@ -124,23 +145,7 @@
 #define MAX_ITR             10
 #define RESTART             50
 
-#define FILE_NOT_FOUND_ERR    10
-#define UNKNOWN_ATOM_TYPE_ERR 11
-#define CANNOT_OPEN_OUTFILE   12
-#define INIT_ERR              13
-#define INSUFFICIENT_SPACE    14
-#define UNKNOWN_OPTION        15
-#define INVALID_INPUT         16
-
-#define C_ATOM  0
-#define H_ATOM  1
-#define O_ATOM  2
-#define N_ATOM  3
-#define S_ATOM  4
-#define SI_ATOM 5
-#define GE_ATOM 6
-#define X_ATOM  7
-
+/* tolerance used for validating GPU results against host */
 #define GPU_TOLERANCE   1e-5
 
 #define ZERO           0.000000000000000e+00
@@ -157,6 +162,7 @@
 #define DANGER_ZONE 0.95
 #define LOOSE_ZONE  0.75
 
+//TODO: make enum
 #define RES_GRID_ATOMS      0x01
 #define RES_GRID_TOP        0x02
 #define RES_GRID_MARK       0x03
@@ -165,17 +171,21 @@
 #define RES_GRID_NBRS       0x06
 #define RES_GRID_NBRS_CP    0x07
 
+//TODO: make enum
 #define RES_SYSTEM_ATOMS            0x10
 #define RES_SYSTEM_SIMULATION_BOX   0x11
 
+//TODO: make enum
 #define RES_REAX_INT_SBP    0x20
 #define RES_REAX_INT_TBP    0x21
 #define RES_REAX_INT_THBP   0x22
 #define RES_REAX_INT_HBP    0x23
 #define RES_REAX_INT_FBP    0x24
 
+//TODO: make enum
 #define RES_SIMULATION_DATA 0x30
 
+//TODO: make enum
 #define RES_STORAGE                    0x401
 #define RES_STORAGE_HBOND_INDEX        0x402
 #define RES_STORAGE_TOTAL_BOND_ORDER   0x403
@@ -229,13 +239,17 @@
 #define RES_STORAGE_RESTRICTED_LIST    0x432
 #define RES_STORAGE_ORIG_ID                0x433
 
+//TODO: make enum
 #define RES_CONTROL_PARAMS  0x50
 
+//TODO: make enum
 #define RES_GLOBAL_PARAMS       0x60
 
+//TODO: make enum
 #define RES_SPARSE_MATRIX_INDEX     0x70
 #define RES_SPARSE_MATRIX_ENTRY     0x71
 
+//TODO: make enum
 #define RES_LR_LOOKUP_Y             0x80
 #define RES_LR_LOOKUP_H             0x81
 #define RES_LR_LOOKUP_VDW               0x82
@@ -244,6 +258,7 @@
 #define RES_LR_LOOKUP_CECLMB            0x85
 #define RES_LR_LOOKUP_TABLE         0x86
 
+//TODO: make enum
 #define RES_SCRATCH                     0x90
 
 #define LIST_INDEX                      0x00
@@ -314,17 +329,78 @@ typedef real rvec[3];
 typedef int  ivec[3];
 typedef real rtensor[3][3];
 
-enum {NVE, NVT, NPT, sNPT, iNPT, ensNR, bNVT};
-enum {FAR_NBRS, NEAR_NBRS, THREE_BODIES, BONDS, OLD_BONDS,
-      HBONDS, DBO, DDELTA, LIST_N
-     };
-enum {TYP_VOID, TYP_THREE_BODY, TYP_BOND, TYP_HBOND, TYP_DBO,
-      TYP_DDELTA, TYP_FAR_NEIGHBOR, TYP_NEAR_NEIGHBOR, TYP_N
-     };
-enum {UNKNOWN, WATER};
-enum {NO_ANALYSIS, FRAGMENTS, REACTIONS, NUM_ANALYSIS};
-enum {WRITE_ASCII, WRITE_BINARY, RF_N};
-enum {XYZ, PDB, BGF, ASCII_RESTART, BINARY_RESTART, GF_N};
+/* config params */
+enum ensemble
+{
+    NVE = 0, NVT = 1, NPT = 2, sNPT = 3, iNPT = 4, ensNR = 5, bNVT = 6,
+};
+
+enum interaction_list_offets
+{
+    FAR_NBRS = 0, NEAR_NBRS = 1, THREE_BODIES = 2, BONDS = 3, OLD_BONDS = 4,
+    HBONDS = 5, DBO = 6, DDELTA = 7, LIST_N = 8,
+};
+
+enum interaction_type
+{
+    TYP_VOID = 0, TYP_THREE_BODY = 1, TYP_BOND = 2, TYP_HBOND = 3, TYP_DBO = 4,
+    TYP_DDELTA = 5, TYP_FAR_NEIGHBOR = 6, TYP_NEAR_NEIGHBOR = 7, TYP_N = 8,
+};
+
+enum errors
+{
+    FILE_NOT_FOUND = -10,
+    UNKNOWN_ATOM_TYPE = -11,
+    CANNOT_OPEN_FILE = -12,
+    CANNOT_INITIALIZE = -13,
+    INSUFFICIENT_MEMORY = -14,
+    UNKNOWN_OPTION = -15,
+    INVALID_INPUT = -16,
+    INVALID_GEO = -17,
+    NUMERIC_BREAKDOWN = -18,
+    RUNTIME_ERROR = -19,
+};
+
+enum atoms
+{
+    C_ATOM = 0, H_ATOM = 1, O_ATOM = 2, N_ATOM = 3,
+    S_ATOM = 4, SI_ATOM = 5, GE_ATOM = 6, X_ATOM = 7,
+};
+
+enum molecule_type
+{
+    UNKNOWN = 0, WATER = 1,
+};
+
+enum molecular_analysis_type
+{
+    NO_ANALYSIS = 0, FRAGMENTS = 1, REACTIONS = 2, NUM_ANALYSIS = 3,
+};
+
+enum restart_format
+{
+    WRITE_ASCII = 0, WRITE_BINARY = 1, RF_N = 2,
+};
+
+enum geo_formats
+{
+    CUSTOM = 0, PDB = 1, BGF = 2, ASCII_RESTART = 3, BINARY_RESTART = 4, GF_N = 5,
+};
+
+enum solver
+{
+    GMRES_S = 0, GMRES_H_S = 1, CG_S = 2, SDM_S = 3,
+};
+
+enum pre_comp
+{
+    DIAG_PC = 0, ICHOLT_PC = 1, ILU_PAR_PC = 2, ILUT_PAR_PC = 3, ILU_SUPERLU_MT_PC = 4,
+};
+
+enum pre_app
+{
+    NONE_PA = 0, TRI_SOLVE_PA = 1, TRI_SOLVE_LEVEL_SCHED_PA = 2, TRI_SOLVE_GC_PA = 3, JACOBI_ITER_PA = 4,
+};
 
 
 /* Global params mapping */
@@ -502,33 +578,36 @@ typedef struct
 {
     int num_atom_types;
     global_parameters gp;
-    global_parameters d_gp;
-
     single_body_parameters *sbp;
-    single_body_parameters *d_sbp;
-
     two_body_parameters *tbp;
-    two_body_parameters *d_tbp;
-
     three_body_header *thbp;
-    three_body_header *d_thbp;
-
     hbond_parameters *hbp;
-    hbond_parameters *d_hbp;
-
     four_body_header *fbp;
-    four_body_header *d_fbp;
 
+#ifdef HAVE_CUDA
+    global_parameters d_gp;
+    single_body_parameters *d_sbp;
+    two_body_parameters *d_tbp;
+    three_body_header *d_thbp;
+    hbond_parameters *d_hbp;
+    four_body_header *d_fbp;
+#endif
 } reax_interaction;
 
 
 typedef struct
 {
-    rvec x;        /* Position, velocity, force on atom */
+    /* Position, velocity, force on atom */
+    rvec x;
     rvec v;
     rvec f;
-    real q;              /* Charge on the atom */
-    int  type;           /* Type of this atom */
+
+    /* Charge on the atom */
+    real q;
+
+    /* Type of this atom */
+    int type;
+
     char name[5];
     char spare[7];
 } reax_atom;
@@ -561,9 +640,6 @@ typedef struct
     rvec len;
     rvec inv_len;
 
-    //CUDA
-    int    max_cuda_nbrs; //TODO remove this not used anymore
-
     int   *atoms;
     int   *top;
     int   *mark;
@@ -578,7 +654,16 @@ typedef struct
 {
     int N;
 
-    //CUDA
+    reax_atom *atoms;
+    reax_interaction reaxprm;
+    simulation_box box;
+    grid g;
+
+#ifdef HAVE_CUDA
+    reax_atom *d_atoms;
+    simulation_box *d_box;
+    grid d_g;
+
     //int max_thb_intrs;
     int max_sparse_matrix_entries;
     int num_nbrs;
@@ -586,17 +671,7 @@ typedef struct
     int num_hbonds;
     int num_thbodies;
     int init_thblist;
-
-    reax_atom *atoms;
-    reax_atom *d_atoms;
-
-    reax_interaction reaxprm;
-
-    simulation_box box;
-    simulation_box *d_box;
-
-    grid g;
-    grid d_g;
+#endif
 } reax_system;
 
 
@@ -616,23 +691,22 @@ typedef struct
        2 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic
        3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
        4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic */
-    int  ensemble;
-    int  nsteps;
-    int  periodic_boundaries;
-    int  restrict_bonds;
-    int  tabulate;
+    int ensemble;
+    int nsteps;
+    int periodic_boundaries;
+    int restrict_bonds;
+    int tabulate;
     ivec periodic_images;
     real dt;
 
     int reneighbor;
     real vlist_cut;
     real nbr_cut;
-    real r_cut, r_low; // upper and lower taper
+    real r_cut, r_sp_cut, r_low; // upper, reduced upper, and lower taper
     real bo_cut;
     real thb_cut;
     real hb_cut;
     real Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
-    real q_err;
     int  max_far_nbrs;
 
     real T_init, T_final, T;
@@ -656,16 +730,26 @@ typedef struct
     int freq_diffusion_coef;
     int restrict_type;
 
-    int refactor;
-    real droptol;
+    unsigned int qeq_solver_type;
+    real qeq_solver_q_err;
+    real qeq_domain_sparsity;
+    unsigned int qeq_domain_sparsify_enabled;
+    unsigned int pre_comp_type;
+    unsigned int pre_comp_refactor;
+    real pre_comp_droptol;
+    unsigned int pre_comp_sweeps;
+    unsigned int pre_app_type;
+    unsigned int pre_app_jacobi_iters;
 
     int molec_anal;
     int freq_molec_anal;
     real bg_cut;
     int num_ignored;
-    int  ignore[MAX_ATOM_TYPES];
+    int ignore[MAX_ATOM_TYPES];
 
+#ifdef HAVE_CUDA
     void *d_control;
+#endif
 } control_params;
 
 
@@ -720,7 +804,14 @@ typedef struct
     real bonded;
     real nonb;
     real QEq;
-    int  matvecs;
+    real QEq_sort_mat_rows;
+    real pre_comp;
+    real pre_app;
+    int solver_iters;
+    real solver_spmv;
+    real solver_vector_ops;
+    real solver_orthog;
+    real solver_tri_solve;
 } reax_timing;
 
 
@@ -776,9 +867,11 @@ typedef struct
     rvec tot_press;
 
     reax_timing timing;
-    //CUDA
+
+#ifdef HAVE_CUDA
     reax_timing d_timing;
     void *d_simulation_data;
+#endif
 } simulation_data;
 
 
@@ -789,8 +882,9 @@ typedef struct
     real theta, cos_theta;
     rvec dcos_di, dcos_dj, dcos_dk;
 
-    //CUDA
+#ifdef HAVE_CUDA
     int i, j, k;
+#endif
 } three_body_interaction_data;
 
 
@@ -813,9 +907,11 @@ typedef struct
     rvec dvec;
     // real H; //, Tap, inv_dr3gamij_1, inv_dr3gamij_3;
 
-    //CUDA
+#ifdef HAVE_CUDA
     //int sym_index;
     //rvec h_f;
+#endif
+
     char spare[16];
 } far_neighbor_data;
 
@@ -868,6 +964,7 @@ typedef struct
     rvec dvec;
     bond_order_data bo_data;
 
+#ifdef HAVE_CUDA
     //single body -- lone pair
     real scratch;
 
@@ -887,42 +984,47 @@ typedef struct
 
     //compute_total_forces
     rvec t_f;
+#endif
 } bond_data;
 
 
+/* compressed row storage (crs) format
+ * See, e.g.,
+ *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
+ *
+ *   m: number of nonzeros (NNZ) ALLOCATED
+ *   n: number of rows
+ *   start: row pointer (last element contains ACTUAL NNZ)
+ *   j: column index for corresponding matrix entry
+ *   val: matrix entry
+ * */
 typedef struct
 {
-    int j;
-    real val;
-} sparse_matrix_entry;
-
-
-typedef struct
-{
-    int n, m;
-    int *start;
-    //CUDA
-    int *end;
-    sparse_matrix_entry *entries;
-
-    int *j;
+    unsigned int n, m;
+    unsigned int *start;
+#ifdef HAVE_CUDA
+    unsigned int *end;
+#endif
+    unsigned int *j;
     real *val;
-
 } sparse_matrix;
 
 
 typedef struct
 {
-    int estimate_nbrs;
     int num_far;
     int Htop;
     int hbonds;
     int num_hbonds;
     int bonds;
     int num_bonds;
-    int thbody;
     int num_3body;
     int gcell_atoms;
+
+#ifdef HAVE_CUDA
+    int estimate_nbrs;
+    int thbody;
+#endif
 } reallocate_data;
 
 
@@ -937,7 +1039,7 @@ typedef struct
     rvec *dDeltap_self;
 
     /* QEq storage */
-    sparse_matrix H, L, U;
+    sparse_matrix *H, *H_sp, *L, *U;
     real *droptol;
     real *w;
     real *Hdia_inv;
@@ -990,6 +1092,7 @@ typedef struct
 } static_storage;
 
 
+/* interaction lists */
 typedef struct
 {
     int n;
@@ -1127,25 +1230,25 @@ typedef void (*evolve_function)(reax_system*, control_params*,
         list**, output_controls*);
 
 typedef real (*lookup_function)(real);
-extern lookup_table Exp, Sqrt, Cube_Root, Four_Third_Root, Cos, Sin, ACos;
 
+extern lookup_table Exp, Sqrt, Cube_Root, Four_Third_Root, Cos, Sin, ACos;
 extern LR_lookup_table *LR;
 
-
 typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*,
-        control_params*, far_neighbor_data*,
-        int*);
+        control_params*, far_neighbor_data*, int*);
 
-/* CUDA structures */
+extern reax_timing d_timing;
+
+#ifdef HAVE_CUDA
 extern list *dev_lists;
 extern static_storage *dev_workspace;
 extern LR_lookup_table *d_LR;
-extern reax_timing d_timing;
 
-//Scratch Pad usage.
+/* scratch Pad usage */
 extern void *scratch;
 extern int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
 extern int MATVEC_BLOCKS;
+#endif
 
 
 #endif

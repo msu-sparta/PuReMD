@@ -20,23 +20,24 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "tool_box.h"
+  #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_tool_box.h"
+  #include "reax_tool_box.h"
 #endif
 
 
 /************** taken from comm_tools.c **************/
 int SumScan( int n, int me, int root, MPI_Comm comm )
 {
-    int  i, my_order, wsize;;
+    int i, my_order, wsize;
     int *nbuf = NULL;
 
     if ( me == root )
     {
         MPI_Comm_size( comm, &wsize );
-        nbuf = (int *) calloc( wsize, sizeof(int) );
+        nbuf = (int *) scalloc( wsize, sizeof(int), "SumScan:nbuf" );
 
         MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
 
@@ -47,7 +48,7 @@ int SumScan( int n, int me, int root, MPI_Comm comm )
 
         MPI_Scatter( nbuf, 1, MPI_INT, &my_order, 1, MPI_INT, root, comm );
 
-        free( nbuf );
+        sfree( nbuf, "SumScan:nbuf" );
     }
     else
     {
@@ -61,59 +62,19 @@ int SumScan( int n, int me, int root, MPI_Comm comm )
 
 void SumScanB( int n, int me, int wsize, int root, MPI_Comm comm, int *nbuf )
 {
-    int  i;
+    int i;
 
     MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
 
     if ( me == root )
     {
         for ( i = 0; i < wsize - 1; ++i )
+        {
             nbuf[i + 1] += nbuf[i];
+        }
     }
 
     MPI_Bcast( nbuf, wsize, MPI_INT, root, comm );
-}
-
-
-/************** taken from box.c **************/
-void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
-{
-    int i, j;
-    real tmp;
-
-    //  printf(">x1: (%lf, %lf, %lf)\n",x1[0],x1[1],x1[2]);
-
-    if (flag > 0)
-    {
-        for (i = 0; i < 3; i++)
-        {
-            tmp = 0.0;
-            for (j = 0; j < 3; j++)
-                tmp += box->trans[i][j] * x1[j];
-            x2[i] = tmp;
-        }
-    }
-    else
-    {
-        for (i = 0; i < 3; i++)
-        {
-            tmp = 0.0;
-            for (j = 0; j < 3; j++)
-                tmp += box->trans_inv[i][j] * x1[j];
-            x2[i] = tmp;
-        }
-    }
-    //  printf(">x2: (%lf, %lf, %lf)\n", x2[0], x2[1], x2[2]);
-}
-
-
-void Transform_to_UnitBox( rvec x1, simulation_box *box, char flag, rvec x2 )
-{
-    Transform( x1, box, flag, x2 );
-
-    x2[0] /= box->box_norms[0];
-    x2[1] /= box->box_norms[1];
-    x2[2] /= box->box_norms[2];
 }
 
 
@@ -128,138 +89,20 @@ void Fit_to_Periodic_Box( simulation_box *box, rvec *p )
         {
             /* handle lower coords */
             while ( (*p)[i] < box->min[i] )
+            {
                 (*p)[i] += box->box_norms[i];
+            }
         }
         else if ( (*p)[i] >= box->max[i] )
         {
             /* handle higher coords */
             while ( (*p)[i] >= box->max[i] )
+            {
                 (*p)[i] -= box->box_norms[i];
+            }
         }
     }
 }
-
-#if defined(SUDHIR)
-/* determine the touch point, tp, of a box to
-   its neighbor denoted by the relative coordinate rl */
-inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
-{
-    int d;
-
-    for ( d = 0; d < 3; ++d )
-        if ( rl[d] == -1 )
-            tp[d] = box->min[d];
-        else if ( rl[d] == 0 )
-            tp[d] = NEG_INF - 1.;
-        else
-            tp[d] = box->max[d];
-}
-
-
-/* determine whether point p is inside the box */
-/* assumes orthogonal box */
-inline int is_Inside_Box( simulation_box *box, rvec p )
-{
-    if ( p[0] < box->min[0] || p[0] >= box->max[0] ||
-            p[1] < box->min[1] || p[1] >= box->max[1] ||
-            p[2] < box->min[2] || p[2] >= box->max[2] )
-        return 0;
-
-    return 1;
-}
-
-
-inline int iown_midpoint( simulation_box *box, rvec p1, rvec p2 )
-{
-    rvec midp;
-
-    midp[0] = (p1[0] + p2[0]) / 2;
-    midp[1] = (p1[1] + p2[1]) / 2;
-    midp[2] = (p1[2] + p2[2]) / 2;
-
-    if ( midp[0] < box->min[0] || midp[0] >= box->max[0] ||
-            midp[1] < box->min[1] || midp[1] >= box->max[1] ||
-            midp[2] < box->min[2] || midp[2] >= box->max[2] )
-        return 0;
-
-    return 1;
-}
-
-
-
-/**************** from grid.c ****************/
-/* finds the closest point of grid cell cj to ci.
-   no need to consider periodic boundary conditions as in the serial case
-   because the box of a process is not periodic in itself */
-inline void GridCell_Closest_Point( grid_cell *gci, grid_cell *gcj,
-                                    ivec ci, ivec cj, rvec cp )
-{
-    int  d;
-
-    for ( d = 0; d < 3; d++ )
-        if ( cj[d] > ci[d] )
-            cp[d] = gcj->min[d];
-        else if ( cj[d] == ci[d] )
-            cp[d] = NEG_INF - 1.;
-        else
-            cp[d] = gcj->max[d];
-}
-
-
-
-inline void GridCell_to_Box_Points( grid_cell *gc, ivec rl, rvec cp, rvec fp )
-{
-    int d;
-
-    for ( d = 0; d < 3; ++d )
-        if ( rl[d] == -1 )
-        {
-            cp[d] = gc->min[d];
-            fp[d] = gc->max[d];
-        }
-        else if ( rl[d] == 0 )
-        {
-            cp[d] = fp[d] = NEG_INF - 1.;
-        }
-        else
-        {
-            cp[d] = gc->max[d];
-            fp[d] = gc->min[d];
-        }
-}
-
-
-inline real DistSqr_between_Special_Points( rvec sp1, rvec sp2 )
-{
-    int  i;
-    real d_sqr = 0;
-
-    for ( i = 0; i < 3; ++i )
-        if ( sp1[i] > NEG_INF && sp2[i] > NEG_INF )
-            d_sqr += SQR( sp1[i] - sp2[i] );
-
-    return d_sqr;
-}
-
-
-inline real DistSqr_to_Special_Point( rvec cp, rvec x )
-{
-    int  i;
-    real d_sqr = 0;
-
-    for ( i = 0; i < 3; ++i )
-        if ( cp[i] > NEG_INF )
-            d_sqr += SQR( cp[i] - x[i] );
-
-    return d_sqr;
-}
-
-
-inline int Relative_Coord_Encoding( ivec c )
-{
-    return 9 * (c[0] + 1) + 3 * (c[1] + 1) + (c[2] + 1);
-}
-#endif
 
 
 /************** from geo_tools.c *****************/
@@ -271,20 +114,18 @@ void Make_Point( real x, real y, real z, rvec* p )
 }
 
 
-
 int is_Valid_Serial( storage *workspace, int serial )
 {
-    // if( workspace->map_serials[ serial ] < 0 )
-    // {
-    // fprintf( stderr, "CONECT line includes invalid pdb serial number %d.\n",
-    // serial );
-    // fprintf( stderr, "Please correct the input file.Terminating...\n" );
-    //  MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
-    // }
+//    if( workspace->map_serials[ serial ] < 0 )
+//    {
+//        fprintf( stderr, "CONECT line includes invalid pdb serial number %d.\n",
+//                serial );
+//        fprintf( stderr, "Please correct the input file.Terminating...\n" );
+//        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+//    }
 
     return SUCCESS;
 }
-
 
 
 int Check_Input_Range( int val, int lo, int hi, char *message )
@@ -304,36 +145,49 @@ void Trim_Spaces( char *element )
 {
     int i, j;
 
-    for ( i = 0; element[i] == ' '; ++i ); // skip initial space chars
+    // skip initial space chars
+    for ( i = 0; element[i] == ' '; ++i );
 
     for ( j = i; j < (int)(strlen(element)) && element[j] != ' '; ++j )
-        element[j - i] = toupper( element[j] ); // make uppercase, offset to 0
-    element[j - i] = 0; // finalize the string
+    {
+        // make uppercase, offset to 0
+        element[j - i] = toupper( element[j] );
+    }
+    // finalize the string
+    element[j - i] = 0;
 }
 
 
 /************ from system_props.c *************/
-struct timeval tim;
-real t_end;
-
 real Get_Time( )
 {
-    gettimeofday(&tim, NULL );
+    struct timeval tim;
+
+    gettimeofday( &tim, NULL );
+
     return ( tim.tv_sec + (tim.tv_usec / 1000000.0) );
 }
 
 
 real Get_Timing_Info( real t_start )
 {
+    struct timeval tim;
+    real t_end;
+
     gettimeofday(&tim, NULL );
     t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
+
     return (t_end - t_start);
 }
 
 
 void Update_Timing_Info( real *t_start, real *timing )
 {
-    gettimeofday(&tim, NULL );
+    struct timeval tim;
+    real t_end;
+
+    gettimeofday( &tim, NULL );
+
     t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
     *timing += (t_end - *t_start);
     *t_start = t_end;
@@ -346,8 +200,12 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
     int i;
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
+    {
         if ( !strcmp( reax_param->sbp[i].name, s ) )
+        {
             return i;
+        }
+    }
 
     fprintf( stderr, "Unknown atom type %s. Terminating...\n", s );
     MPI_Abort( MPI_COMM_WORLD, UNKNOWN_ATOM_TYPE );
@@ -356,12 +214,10 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
 }
 
 
-
 char *Get_Element( reax_system *system, int i )
 {
     return &( system->reax_param.sbp[system->my_atoms[i].type].name[0] );
 }
-
 
 
 char *Get_Atom_Name( reax_system *system, int i )
@@ -370,30 +226,24 @@ char *Get_Atom_Name( reax_system *system, int i )
 }
 
 
-
-int Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 {
     int i;
 
-    if ( (*line = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-        return FAILURE;
+    *line = (char*) smalloc( sizeof(char) * MAX_LINE, "Tokenizer:line" );
 
-    if ( (*backup = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-        return FAILURE;
+    *backup = (char*) smalloc( sizeof(char) * MAX_LINE, "Tokenizer:backup" );
 
-    if ( (*tokens = (char**) malloc( sizeof(char*) * MAX_TOKENS )) == NULL )
-        return FAILURE;
+    *tokens = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Tokenizer:tokens" );
 
     for ( i = 0; i < MAX_TOKENS; i++ )
-        if ( ((*tokens)[i] = (char*) malloc(sizeof(char) * MAX_TOKEN_LEN)) == NULL )
-            return FAILURE;
-
-    return SUCCESS;
+    {
+        (*tokens)[i] = (char*) smalloc(sizeof(char) * MAX_TOKEN_LEN, "Tokenizer:tokens[i]" );
+    }
 }
 
 
-
-int Tokenize( char* s, char*** tok )
+int Tokenize( const char* s, char*** tok )
 {
     char test[MAX_LINE];
     char *sep = "\t \n!=";
@@ -413,77 +263,155 @@ int Tokenize( char* s, char*** tok )
 
 
 /***************** taken from lammps ************************/
-/* safe malloc */
-void* smalloc( long n, char *name )
+/* Safe wrapper around libc malloc
+ *
+ * n: num. of bytes to allocated
+ * name: message with details about pointer, used for warnings/errors
+ *
+ * returns: ptr to allocated memory
+ * */
+void* smalloc( size_t n, const char *name )
 {
     void *ptr;
 
-    if ( n <= 0 )
+    if ( n == 0 )
     {
-        fprintf( stderr, "WARNING: trying to allocate %ld bytes for array %s. ",
-                 n, name );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
-    }
-    //printf("requesting memory for %s \n", name);
-    //malloc( n );
-    //printf("successfuly requested memory for %s \n", name);
-    ptr = malloc( n );
-    // printf("successfuly assigned pointer for %s \n", name);
-    if ( ptr == NULL )
-    {
-        fprintf( stderr, "ERROR: failed to allocate %ld bytes for array %s",
-                 n, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+#endif
+
+    ptr = malloc( n );
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n, name );
+        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
+#endif
 
     return ptr;
 }
 
 
-/* safe calloc */
-void *scalloc( int n, int size, char *name )
+/* Safe wrapper around libc realloc
+ *
+ * n: num. of bytes to reallocated
+ * name: message with details about pointer, used for warnings/errors
+ *
+ * returns: ptr to reallocated memory
+ * */
+void* srealloc( void *ptr, size_t n, const char *name )
+{
+    void *new_ptr;
+
+    if ( n == 0 )
+    {
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
+                n, name );
+        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+    }
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[INFO] trying to allocate %zu NEW bytes for array %s.\n",
+                n, name );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+#endif
+
+    new_ptr = realloc( ptr, n );
+
+    /* technically, ptr is still allocated and valid in this case,
+     * but we needed more memory, so abort */
+    if ( new_ptr == NULL )
+    {
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
+                n, name );
+        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
+#endif
+
+    return new_ptr;
+}
+
+
+/* Safe wrapper around libc calloc
+ *
+ * n: num. of elements to allocated (each of size bytes)
+ * size: num. of bytes per element
+ * name: message with details about pointer, used for warnings/errors
+ *
+ * returns: ptr to allocated memory, all bits initialized to zeros
+ * */
+void* scalloc( size_t n, size_t size, const char *name )
 {
     void *ptr;
 
-    if ( n <= 0 )
+    if ( n == 0 )
     {
-        fprintf( stderr, "WARNING: trying to allocate %d elements for array %s. ",
-                 n, name );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n * size, name );
+        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
 
-    if ( size <= 0 )
-    {
-        fprintf( stderr, "WARNING: elements size for array %s is %d. ",
-                 name, size );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
-    }
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+#endif
 
     ptr = calloc( n, size );
+
     if ( ptr == NULL )
     {
-        fprintf( stderr, "ERROR: failed to allocate %d bytes for array %s",
-                 n * size, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n * size, name );
         MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
     }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
+#endif
 
     return ptr;
 }
 
 
-/* safe free */
-void sfree( void *ptr, char *name )
+/* Safe wrapper around libc free
+ *
+ * ptr: pointer to dynamically allocated memory which will be deallocated
+ * name: message with details about pointer, used for warnings/errors
+ * */
+void sfree( void *ptr, const char *name )
 {
     if ( ptr == NULL )
     {
-        fprintf( stderr, "WARNING: trying to free the already NULL pointer %s!\n",
-                 name );
+        fprintf( stderr, "[WARNING] trying to free the already NULL pointer %s!\n",
+                name );
         return;
     }
 
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] freeing memory for %s\n", name );
+#endif
+
     free( ptr );
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] successfuly freed memory from pointer for %s\n", name );
+#endif
+
     ptr = NULL;
 }

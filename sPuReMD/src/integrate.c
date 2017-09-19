@@ -20,13 +20,14 @@
   ----------------------------------------------------------------------*/
 
 #include "integrate.h"
+
 #include "allocate.h"
 #include "box.h"
 #include "forces.h"
 #include "grid.h"
 #include "neighbors.h"
 #include "print_utils.h"
-#include "QEq.h"
+#include "charges.h"
 #include "reset_utils.h"
 #include "restart.h"
 #include "system_props.h"
@@ -34,10 +35,9 @@
 #include "list.h"
 
 
-
 void Velocity_Verlet_NVE(reax_system* system, control_params* control,
-                         simulation_data *data, static_storage *workspace,
-                         list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
     int i, steps, renbr;
     real inv_m, dt, dt_sqr;
@@ -47,6 +47,7 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
     dt_sqr = SQR(dt);
     steps = data->step - data->prev_steps;
     renbr = (steps % control->reneighbor == 0);
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d: ", data->step );
 #endif
@@ -56,12 +57,13 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                        0.5 * dt_sqr * -F_CONV * inv_m, system->atoms[i].f );
+                0.5 * dt_sqr * -F_CONV * inv_m, system->atoms[i].f );
         Inc_on_T3( system->atoms[i].x, dx, &( system->box ) );
 
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "verlet1 - ");
 #endif
@@ -69,16 +71,19 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
     Reallocate( system, workspace, lists, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
+    {
         Generate_Neighbor_Lists( system, control, data, workspace,
-                                 lists, out_control );
+                lists, out_control );
+    }
     Compute_Forces( system, control, data, workspace, lists, out_control );
 
     for ( i = 0; i < system->N; i++ )
     {
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "verlet2\n");
 #endif
@@ -86,11 +91,8 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
 
 
 
-void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system,
-        control_params* control,
-        simulation_data *data,
-        static_storage *workspace,
-        list **lists,
+void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* control,
+        simulation_data *data, static_storage *workspace, list **lists,
         output_controls *out_control )
 {
     int i, itr, steps, renbr;
@@ -104,6 +106,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system,
     therm = &( data->therm );
     steps = data->step - data->prev_steps;
     renbr = (steps % control->reneighbor == 0);
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d: ", data->step );
 #endif
@@ -114,7 +117,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
         rvec_ScaledSum( dx, dt - 0.5 * dt_sqr * therm->v_xi, system->atoms[i].v,
-                        0.5 * dt_sqr * inv_m * -F_CONV, system->atoms[i].f );
+                0.5 * dt_sqr * inv_m * -F_CONV, system->atoms[i].f );
 
         Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
 
@@ -122,6 +125,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system,
     }
     /* Compute xi(t + dt) */
     therm->xi += ( therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "verlet1 - " );
 #endif
@@ -129,8 +133,10 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system,
     Reallocate( system, workspace, lists, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
+    {
         Generate_Neighbor_Lists( system, control, data, workspace,
-                                 lists, out_control );
+                lists, out_control );
+    }
     /* Calculate Forces at time (t + dt) */
     Compute_Forces( system, control, data, workspace, lists, out_control );
 
@@ -184,7 +190,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system,
                  itr, G_xi_new, v_xi_new, v_xi_old );
 #endif
     }
-    while ( fabs(v_xi_new - v_xi_old ) > 1e-5 );
+    while ( FABS(v_xi_new - v_xi_old ) > 1e-5 );
 
     therm->v_xi_old = therm->v_xi;
     therm->v_xi = v_xi_new;
@@ -483,7 +489,7 @@ void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
-    /* QEq( system, control, workspace, lists[FAR_NBRS], out_control );
+    /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
     Compute_Forces( system, control, data, workspace, lists, out_control );
@@ -589,7 +595,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
-    /* QEq( system, control, workspace, lists[FAR_NBRS], out_control );
+    /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
     Compute_Forces( system, control, data, workspace, lists, out_control );
@@ -666,7 +672,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
                  "itr %d E_kin: %8.3f veps_n:%8.3f veps_o:%8.3f vxi_n:%8.3f vxi_o: %8.3f\n",
                  itr, E_kin, v_eps_new, v_eps_old, v_xi_new, v_xi_old );
     }
-    while ( fabs(v_eps_new - v_eps_old) + fabs(v_xi_new - v_xi_old) > 2e-3 );
+    while ( FABS(v_eps_new - v_eps_old) + FABS(v_xi_new - v_xi_old) > 2e-3 );
 
 
     therm->v_xi_old = therm->v_xi;

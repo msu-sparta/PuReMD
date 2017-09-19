@@ -24,7 +24,12 @@
 
 #include "mytypes.h"
 
+
 void Initialize( reax_system*, control_params*, simulation_data*,
-                 static_storage*, list**, output_controls*, evolve_function* );
+        static_storage*, list**, output_controls*, evolve_function* );
+
+void Finalize( reax_system*, control_params*, simulation_data*,
+        static_storage*, list**, output_controls* );
+
 
 #endif

@@ -21,23 +21,19 @@
 
 #include "reax_types.h"
 
-#include "index_utils.h"
-
-#ifdef HAVE_CUDA
-#include "cuda_reset_tools.h"
-#endif
-
 #if defined(PURE_REAX)
-#include "reset_tools.h"
-#include "list.h"
-#include "tool_box.h"
-#include "vector.h"
+  #include "reset_tools.h"
+  #include "list.h"
+  #include "tool_box.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_reset_tools.h"
-#include "reax_list.h"
-#include "reax_tool_box.h"
-#include "reax_vector.h"
+  #include "reax_reset_tools.h"
+  #include "reax_list.h"
+  #include "reax_tool_box.h"
+  #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 void Reset_Atoms( reax_system* system, control_params *control )
@@ -46,15 +42,17 @@ void Reset_Atoms( reax_system* system, control_params *control )
     reax_atom *atom;
 
     system->numH = 0;
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
+    {
         //TODO
         for ( i = 0; i < system->N; ++i )
         {
             atom = &(system->my_atoms[i]);
-            //if( system->reax_param.sbp[ atom->type ].p_hbond == 1 )
+            //if( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
             atom->Hindex = system->numH++;
             //else atom->Hindex = -1;
         }
+    }
 }
 
 
@@ -114,10 +112,12 @@ void Reset_Timing( reax_timing *rt )
     rt->init_forces = 0;
     rt->bonded = 0;
     rt->nonb = 0;
-    rt->qEq = 0;
+    rt->cm = 0;
     rt->s_matvecs = 0;
     rt->t_matvecs = 0;
+    rt->num_retries = 0;
 }
+
 
 #ifdef TEST_FORCES
 void Reset_Test_Forces( reax_system *system, storage *workspace )
@@ -158,7 +158,9 @@ void Reset_Grid( grid *g )
     int i, j, k;
 
     for ( i = 0; i < g->ncells[0]; i++ )
+    {
         for ( j = 0; j < g->ncells[1]; j++ )
+        {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 /*
@@ -166,10 +168,12 @@ void Reset_Grid( grid *g )
                 g->cells[i][j][k].str = 0;
                 g->cells[i][j][k].end = 0;
                 */
-                g->cells[ index_grid_3d (i, j, k, g) ].top = 0;
-                //g->cells[ index_grid_3d (i, j, k, g) ].str = 0;
-                //g->cells[ index_grid_3d (i, j, k, g) ].end = 0;
+                g->cells[ index_grid_3d(i, j, k, g) ].top = 0;
+                //g->cells[ index_grid_3d(i, j, k, g) ].str = 0;
+                //g->cells[ index_grid_3d(i, j, k, g) ].end = 0;
             }
+        }
+    }
 }
 
 
@@ -178,7 +182,9 @@ void Reset_Out_Buffers( mpi_out_data *out_buf, int n )
     int i;
 
     for ( i = 0; i < n; ++i )
+    {
         out_buf[i].cnt = 0;
+    }
 }
 
 
@@ -202,13 +208,14 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
             total_bonds += system->my_atoms[i].num_bonds;
         }
 //	Print_List(*lists + BONDS);
+
         /* is reallocation needed? */
         if ( total_bonds >= bonds->num_intrs * DANGER_ZONE )
         {
             workspace->realloc.bonds = 1;
             if ( total_bonds >= bonds->num_intrs )
             {
-                fprintf(stderr,
+                fprintf( stderr,
                         "p%d: not enough space for bonds! total=%d allocated=%d\n",
                         system->my_rank, total_bonds, bonds->num_intrs );
                 MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
@@ -263,14 +270,16 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
 
 
 void Reset( reax_system *system, control_params *control,
-            simulation_data *data, storage *workspace, reax_list **lists )
+        simulation_data *data, storage *workspace, reax_list **lists )
 {
     Reset_Atoms( system, control );
 
     Reset_Simulation_Data( data );
 
     if ( control->virial )
+    {
         Reset_Pressures( data );
+    }
 
     Reset_Workspace( system, workspace );
 
@@ -282,26 +291,3 @@ void Reset( reax_system *system, control_params *control,
 #endif
 
 }
-
-
-#ifdef HAVE_CUDA
-void Cuda_Reset( reax_system *system, control_params *control,
-                 simulation_data *data, storage *workspace, reax_list **lists )
-{
-    Cuda_Reset_Atoms (system, control);
-
-    Reset_Simulation_Data (data);
-
-    if (control->virial)
-        Reset_Pressures ( data );
-
-    Cuda_Reset_Workspace ( system, workspace );
-
-    Cuda_Reset_Neighbor_Lists ( system, control, workspace, lists );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-}
-#endif

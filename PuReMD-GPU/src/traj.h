@@ -25,6 +25,7 @@
 
 #include <zlib.h>
 
+
 #define BLOCK_MARK "REAX_BLOCK_MARK "
 #define BLOCK_MARK_LEN 16
 
@@ -74,11 +75,27 @@
 #define SIZE_INFO_LEN3 33
 
 
-enum ATOM_LINE_OPTS {OPT_NOATOM = 0, OPT_ATOM_BASIC = 4, OPT_ATOM_wF = 5,
-                     OPT_ATOM_wV = 6, OPT_ATOM_FULL = 7
-                    };
-enum BOND_LINE_OPTS {OPT_NOBOND, OPT_BOND_BASIC, OPT_BOND_FULL};
-enum ANGLE_LINE_OPTS {OPT_NOANGLE, OPT_ANGLE_BASIC};
+enum ATOM_LINE_OPTS
+{
+    OPT_NOATOM = 0,
+    OPT_ATOM_BASIC = 4,
+    OPT_ATOM_wF = 5,
+    OPT_ATOM_wV = 6,
+    OPT_ATOM_FULL = 7,
+};
+
+enum BOND_LINE_OPTS
+{
+    OPT_NOBOND = 0,
+    OPT_BOND_BASIC = 1,
+    OPT_BOND_FULL = 2,
+};
+
+enum ANGLE_LINE_OPTS
+{
+    OPT_NOANGLE = 0,
+    OPT_ANGLE_BASIC = 1,
+};
 
 
 struct
@@ -143,10 +160,8 @@ int Skip_Next_Block( gzFile, int*);
   No. of torsion entries (int)
   Torsion info lines as per torsion format.
 */
-int Write_Custom_Header( reax_system*, control_params*,
-                         static_storage*, output_controls* );
-int Write_xyz_Header   ( reax_system*, control_params*,
-                         static_storage*, output_controls* );
+int Write_Custom_Header( reax_system*, control_params*, static_storage*, output_controls* );
+int Write_xyz_Header   ( reax_system*, control_params*, static_storage*, output_controls* );
 
 /*
   Write_Traj_Header( gzfile file,
@@ -168,7 +183,7 @@ char Write_Traj_Header( FILE*, int, char**, char**, control_params* );
           char** various flags);
 */
 int Push_Traj_Frame( /*gzfile*/ FILE*, reax_system*, control_params*,
-                                simulation_data*, static_storage*, list**, char** );
+        simulation_data*, static_storage*, list**, char** );
 
 /*
   Append_Traj_Frame( gzfile file,
@@ -180,11 +195,11 @@ int Push_Traj_Frame( /*gzfile*/ FILE*, reax_system*, control_params*,
                 char** various flags);
 */
 int Append_Custom_Frame( reax_system*, control_params*, simulation_data*,
-                         static_storage*, list**, output_controls* );
+        static_storage*, list**, output_controls* );
 int Append_xyz_Frame   ( reax_system*, control_params*, simulation_data*,
-                         static_storage*, list**, output_controls* );
-
+        static_storage*, list**, output_controls* );
 
 void Read_Traj( output_controls*, char * );
+
 
 #endif

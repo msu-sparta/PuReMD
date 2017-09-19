@@ -56,7 +56,7 @@ int PreAllocate_Space( reax_system *system, control_params *control,
 
 void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 {
-    Delete_List( far_nbrs );
+    Delete_List( TYP_FAR_NEIGHBOR, far_nbrs );
 
     if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs ))
     {
@@ -73,6 +73,7 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 }
 
 
+/* dynamic allocation of memory for matrix in CSR format */
 int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
@@ -86,8 +87,8 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
     H->n = n;
     H->m = m;
 
-    if ( (H->start = (unsigned int*) malloc(sizeof(int) * (n + 1))) == NULL
-            || (H->j = (unsigned int*) malloc(sizeof(int) * m)) == NULL
+    if ( (H->start = (unsigned int*) malloc(sizeof(unsigned int) * (n + 1))) == NULL
+            || (H->j = (unsigned int*) malloc(sizeof(unsigned int) * m)) == NULL
             || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
     {
         return FAILURE;
@@ -97,6 +98,7 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 }
 
 
+/* deallocate memory for matrix in CSR format */
 void Deallocate_Matrix( sparse_matrix *H )
 {
     free(H->start);
@@ -186,7 +188,7 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
         }
     }
 
-    Delete_List( hbonds );
+    Delete_List( TYP_HBOND, hbonds );
 
     Allocate_HBond_List( n, num_h, h_index, hb_top, hbonds );
 
@@ -247,7 +249,7 @@ int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
         bond_top[i] = MAX( Num_Entries( i, bonds ) * 2, MIN_BONDS );
     }
 
-    Delete_List( bonds );
+    Delete_List( TYP_BOND, bonds );
 
     Allocate_Bond_List( n, bond_top, bonds );
     *num_bonds = bond_top[n - 1];
@@ -278,7 +280,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
 
     if ( realloc->Htop > 0 )
     {
-        Reallocate_Matrix(&(workspace->H), system->N, realloc->Htop * SAFE_ZONE, "H");
+        Reallocate_Matrix(&(workspace->H), system->N_cm, realloc->Htop * SAFE_ZONE, "H");
         realloc->Htop = -1;
 
         Deallocate_Matrix( workspace->L );
@@ -304,7 +306,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
 
     if ( realloc->num_3body > 0 )
     {
-        Delete_List( (*lists) + THREE_BODIES );
+        Delete_List( TYP_THREE_BODY, (*lists) + THREE_BODIES );
 
         if ( num_bonds == -1 )
             num_bonds = ((*lists) + BONDS)->num_intrs;

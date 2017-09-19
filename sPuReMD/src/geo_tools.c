@@ -214,21 +214,21 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
 
 char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
-               simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace )
 {
 
-    FILE  *pdb;
+    FILE *pdb;
     char **tmp;
-    char  *s, *s1;
-    char   descriptor[9], serial[9];
-    char   atom_name[9], res_name[9], res_seq[9];
-    char   s_x[9], s_y[9], s_z[9];
-    char   occupancy[9], temp_factor[9];
-    char   seg_id[9], element[9], charge[9];
-    char   alt_loc, chain_id, icode;
-    char  *endptr = NULL;
-    int    i, c, c1, pdb_serial, top;
-    rvec   x;
+    char *s, *s1;
+    char descriptor[9], serial[9];
+    char atom_name[9], res_name[9], res_seq[9];
+    char s_x[9], s_y[9], s_z[9];
+    char occupancy[9], temp_factor[9];
+    char seg_id[9], element[9], charge[9];
+    char alt_loc, chain_id, icode;
+    char *endptr = NULL;
+    int i, c, c1, pdb_serial, top;
+    rvec x;
     reax_atom *atom;
 
     /* open pdb file */
@@ -266,8 +266,9 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "starting to read the pdb file\n" );
 #endif
+
     fseek( pdb, 0, SEEK_SET );
-    c  = 0;
+    c = 0;
     c1 = 0;
     top = 0;
     s[0] = 0;
@@ -381,9 +382,9 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
             //       system->my_atoms[top].q, occupancy, temp_factor,
             //       seg_id, element );
 
-            //fprintf( stderr, "atom( %8.3f %8.3f %8.3f ) --> p%d\n",
-            // system->my_atoms[top].x[0], system->my_atoms[top].x[1],
-            // system->my_atoms[top].x[2], system->my_rank );
+//            fprintf( stderr, "atom( %8.3f %8.3f %8.3f )\n",
+//                    atom->x[0], atom->x[1],
+//                    atom->x[2] );
 
             c++;
         }
@@ -424,7 +425,9 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
         /* clear previous input line */
         s[0] = 0;
         for ( i = 0; i < c1; ++i )
+        {
             tmp[i][0] = 0;
+        }
     }
     if ( ferror( pdb ) )
     {
@@ -432,6 +435,8 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     }
 
     fclose( pdb );
+
+    Deallocate_Tokenizer_Space( &s, &s1, &tmp );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "finished reading the pdb file\n" );
@@ -483,7 +488,7 @@ char Write_PDB( reax_system* system, list* bonds, simulation_data *data,
                   (system->box.box_norms[2] * system->box.box_norms[1]) );
 
     /*open pdb and write header*/
-    sprintf(fname, "%s-%d.pdb", control->sim_name, data->step);
+    sprintf( fname, "%s-%d.pdb", control->sim_name, data->step );
     pdb = fopen(fname, "w");
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
              "CRYST1",
@@ -503,7 +508,11 @@ char Write_PDB( reax_system* system, list* bonds, simulation_data *data,
                  "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
                  1.0, 0.0, "0", name, "  " );
+
+#if defined(DEBUG)
         fprintf( stderr, "PDB NAME <%s>\n", p_atom->name );
+#endif
+
         strncpy( buffer + i * PDB_ATOM_FORMAT_O_LENGTH, line,
                  PDB_ATOM_FORMAT_O_LENGTH );
     }
@@ -533,8 +542,8 @@ char Write_PDB( reax_system* system, list* bonds, simulation_data *data,
     }
     */
 
-    free(buffer);
-    free(line);
+    free( buffer );
+    free( line );
 
     return SUCCESS;
 }

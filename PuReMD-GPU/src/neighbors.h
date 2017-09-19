@@ -30,10 +30,8 @@ void Generate_Neighbor_Lists( reax_system*, control_params*, simulation_data*,
 int Estimate_NumNeighbors( reax_system*, control_params*,
    static_storage*, list** );
 
-int Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
 
-
-static inline HOST_DEVICE int index_grid_debug (int x, int y, int z, int blocksize)
+static inline HOST_DEVICE int index_grid_debug( int x, int y, int z, int blocksize )
 {
     return x * 8 * 8 * blocksize +  
         y * 8 * blocksize +  

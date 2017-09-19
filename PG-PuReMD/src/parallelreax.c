@@ -20,6 +20,8 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
+#include "allocate.h"
 #include "analyze.h"
 #include "comm_tools.h"
 #include "control.h"
@@ -38,10 +40,16 @@
 #include "vector.h"
 
 #ifdef HAVE_CUDA
-#include "cuda_environment.h"
-#include "cuda_post_evolve.h"
-
-#include "validation.h"
+  #include "cuda/cuda_copy.h"
+  #include "cuda/cuda_environment.h"
+  #include "cuda/cuda_forces.h"
+  #include "cuda/cuda_init_md.h"
+  #include "cuda/cuda_neighbors.h"
+  #include "cuda/cuda_post_evolve.h"
+  #include "cuda/cuda_reset_tools.h"
+  #include "cuda/cuda_system_props.h"
+  #include "cuda/cuda_utils.h"
+  #include "cuda/cuda_validation.h"
 #endif
 
 evolve_function Evolve;
@@ -49,17 +57,15 @@ evolve_function Cuda_Evolve;
 LR_lookup_table *LR;
 LR_lookup_table *d_LR;
 
-////////////////////////////
-//CUDA SPECIFIC DECLARATIONS
-////////////////////////////
-reax_list   **dev_lists;
-storage         *dev_workspace;
-void            *scratch;
-void            *host_scratch;
+/* CUDA SPECIFIC DECLARATIONS */
+reax_list **dev_lists;
+storage *dev_workspace;
+void *scratch;
+void *host_scratch;
 
-int         BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
-int         BLOCKS_N, BLOCKS_POW_2_N;
-int         MATVEC_BLOCKS;
+int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
+int BLOCKS_N, BLOCKS_POW_2_N;
+int MATVEC_BLOCKS;
 
 
 void Read_System( char *geo_file, char *ffield_file, char *control_file,
@@ -67,7 +73,7 @@ void Read_System( char *geo_file, char *ffield_file, char *control_file,
         storage *workspace, output_controls *out_control, mpi_datatypes *mpi_data )
 {
     /* ffield file */
-    Read_Force_Field( ffield_file, &(system->reax_param), control );
+    Read_Force_Field( ffield_file, &(system->reax_param), system, control );
 
     /* control file */
     Read_Control_File( control_file, control, out_control );
@@ -106,7 +112,7 @@ void Post_Evolve( reax_system* system, control_params* control,
     int i;
     rvec diff, cross;
 
-    /* remove trans & rot velocity of the center of mass from system */
+    /* remove translational and rotational velocity of the center of mass from system */
     if ( control->ensemble != NVE && control->remove_CoM_vel &&
             data->step % control->remove_CoM_vel == 0 )
     {
@@ -115,23 +121,23 @@ void Post_Evolve( reax_system* system, control_params* control,
 
         for ( i = 0; i < system->n; i++ )
         {
-            /* remove translational vel */
+            /* remove translational term */
             rvec_ScaledAdd( system->my_atoms[i].v, -1., data->vcm );
 
-            /* remove rotational */
+            /* remove rotational term */
             rvec_ScaledSum( diff, 1., system->my_atoms[i].x, -1., data->xcm );
             rvec_Cross( cross, data->avcm, diff );
             rvec_ScaledAdd( system->my_atoms[i].v, -1., cross );
         }
     }
 
-    /* compute kinetic energy of the system */
+    /* compute kinetic energy of system */
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 }
 
 
 #ifdef HAVE_CUDA
-void Cuda_Post_Evolve( reax_system* system, control_params* control,
+int Cuda_Post_Evolve( reax_system* system, control_params* control,
         simulation_data* data, storage* workspace, reax_list** lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
@@ -142,37 +148,20 @@ void Cuda_Post_Evolve( reax_system* system, control_params* control,
         /* compute velocity of the center of mass */
         Cuda_Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
 
-        post_evolve_velocities (system, data);
+        post_evolve_velocities( system, data );
     }
 
     /* compute kinetic energy of the system */
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+
+    return SUCCESS;
 }
 #endif
 
 
-#ifdef HAVE_CUDA
-void init_blocks(reax_system *system)
+static void usage( char* argv[] )
 {
-    compute_blocks( &BLOCKS, &BLOCK_SIZE, system->n );
-    compute_nearest_pow_2( BLOCKS, &BLOCKS_POW_2 );
-
-    compute_blocks( &BLOCKS_N, &BLOCK_SIZE, system->N );
-    compute_nearest_pow_2( BLOCKS_N, &BLOCKS_POW_2_N );
-
-    compute_matvec_blocks( &MATVEC_BLOCKS, system->N );
-
-#if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, " MATVEC_BLOCKS: %d BLOCKSIZE: %d  - N:%d \n",
-            MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, system->N );
-#endif
-}
-#endif
-
-
-static void usage(char* argv[])
-{
-    fprintf(stderr, "usage: ./%s geometry ffield control\n", argv[0]);
+    fprintf( stderr, "usage: ./%s geometry ffield control\n", argv[0] );
 }
 
 
@@ -185,38 +174,19 @@ int main( int argc, char* argv[] )
     reax_list **lists;
     output_controls *out_control;
     mpi_datatypes *mpi_data;
-    int i;
+    int i, ret, retries;
     real t_start = 0, t_elapsed;
+#if defined(DEBUG)
     real t_begin, t_end;
+#endif
 
     if ( argc != 4 )
     {
-        usage(argv);
+        usage( argv );
         exit( INVALID_INPUT );
     }
 
 #ifdef HAVE_CUDA
-
-    /* Remove this debug information later */
-#if defined(__CUDA_DEBUG_LOG__)
-    fprintf (stderr, " Size of LR Lookup table %d \n", sizeof (LR_lookup_table) );
-#endif
-
-#if defined( __SM_35__)
-    fprintf (stderr, " nbrs block size: %d \n", NBRS_BLOCK_SIZE);
-    fprintf (stderr, " nbrs threads per atom: %d \n",  NB_KER_THREADS_PER_ATOM);
-
-    fprintf (stderr, " hbonds block size: %d \n",  HB_BLOCK_SIZE);
-    fprintf (stderr, " hbonds threads per atom: %d \n",  HB_KER_THREADS_PER_ATOM);
-
-    fprintf (stderr, " vdw block size: %d \n",  VDW_BLOCK_SIZE);
-    fprintf (stderr, " vdw threads per atom: %d \n",  VDW_KER_THREADS_PER_ATOM);
-
-    fprintf (stderr, " matvec block size: %d \n",  MATVEC_BLOCK_SIZE);
-    fprintf (stderr, " matvec threads per atom: %d \n",  MATVEC_KER_THREADS_PER_ROW);
-
-    fprintf (stderr, " General block size: %d \n",  DEF_BLOCK_SIZE);
-#endif
 
     /* allocate main data structures */
     system = (reax_system *) smalloc( sizeof(reax_system), "system" );
@@ -227,9 +197,8 @@ int main( int argc, char* argv[] )
     for ( i = 0; i < LIST_N; ++i )
     {
         lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        lists[i]->allocated = 0;
+        lists[i]->allocated = FALSE;
 
-        //initialize here TODO
         lists[i]->n = 0;
         lists[i]->num_intrs = 0;
         lists[i]->index = NULL;
@@ -238,47 +207,40 @@ int main( int argc, char* argv[] )
     }
     out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
     mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
+    mpi_data->in1_buffer = NULL;
+    mpi_data->in2_buffer = NULL;
 
-    /* allocate the cuda auxiliary data structures */
+    /* allocate auxiliary data structures (GPU) */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
     dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
         dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        dev_lists[i]->allocated = 0;
+        dev_lists[i]->allocated = FALSE;
+        lists[i]->n = 0; 
+        lists[i]->num_intrs = 0;
+        lists[i]->index = NULL;
+        lists[i]->end_index = NULL;
+        lists[i]->select.v = NULL;
     }
-
-    /* Initialize member variables */
-    system->init_thblist = FALSE;
 
     /* setup MPI environment */
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
-    system->wsize = control->nprocs;
-    system->global_offset = (int *)scalloc(system->wsize + 1, sizeof(int), "global_offset");
-
-    /* setup the CUDA Device for this process can be on the same machine
-    * or on a different machine, for now use the rank to compute the device
-    * This will only work on a single machine with 2 GPUs */
-    Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
-    //Cleanup_Cuda_Environment ();
-    //
-#if defined(DEBUG)
-    print_device_mem_usage ();
-    fprintf( stderr, "p%d: Total number of GPUs on this node -- %d\n", system->my_rank, my_device_id);
-#endif
 
     /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
 
+    /* setup the CUDA Device for this process */
+    Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
+
 #if defined(DEBUG)
-    fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
-    MPI_Barrier( MPI_COMM_WORLD );
+    print_device_mem_usage( );
 #endif
 
-    /* init the blocks sizes for cuda kernels */
+    /* init blocks sizes */
     init_blocks( system );
 
     /* measure total simulation time after input is read */
@@ -295,66 +257,37 @@ int main( int argc, char* argv[] )
 #endif
 
 #if defined(DEBUG)
-    print_device_mem_usage ();
+    print_device_mem_usage( );
 #endif
 
     /* init the blocks sizes for cuda kernels */
     init_blocks( system );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-    //END OF FIRST STEP
-
-    // compute f_0
-    Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
+    /* compute f_0 */
+    Comm_Atoms( system, control, data, workspace, lists, mpi_data, TRUE );
     Sync_Atoms( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
-    init_blocks (system);
+    init_blocks( system );
 
-#if defined(__CUDA_DENUG_LOG__)
-    fprintf( stderr, "p%d: Comm_Atoms synchronized \n", system->my_rank );
-#endif
-
-    //Second step
-    Cuda_Reset ( system, control, data, workspace, lists );
+    Cuda_Reset( system, control, data, workspace, lists );
 
 #if defined(__CUDA_DEBUG__)
     Reset( system, control, data, workspace, lists );
 #endif
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: Cuda_Reset done...\n", system->my_rank );
-#endif
 
-    //Third Step
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
 #if defined(__CUDA_DEBUG__)
     Generate_Neighbor_Lists( system, data, workspace, lists );
 #endif
 
-#if defined(DEBUG)
-    fprintf (stderr, "p%d: Cuda_Generate_Neighbor_Lists done...\n", system->my_rank );
-#endif
-
-
-    //Fourth Step
-#if defined(DEBUG)
-    fprintf (stderr, " Host Compute Forces begin.... \n");
-#endif
-
 #if defined(__CUDA_DEBUG__)
     Compute_Forces( system, control, data, workspace,
-                    lists, out_control, mpi_data );
+            lists, out_control, mpi_data );
 #endif
 
     Cuda_Compute_Forces( system, control, data, workspace, lists,
             out_control, mpi_data );
-
-#if defined(DEBUG)
-    fprintf (stderr, "p%d: Cuda_Compute_Forces done...\n", system->my_rank );
-#endif
 
 #if defined (__CUDA_DEBUG__)
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
@@ -362,30 +295,27 @@ int main( int argc, char* argv[] )
 
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
-#if defined(DEBUG)
-    fprintf (stderr, "p%d: Cuda_Compute_Kinetic_Energy done ... \n", system->my_rank);
-#endif
-
 #if defined(__CUDA_DEBUG__)
-    validate_device (system, data, workspace, lists);
+    validate_device( system, data, workspace, lists );
 #endif
 
 #if !defined(__CUDA_DEBUG__)
     Output_Results( system, control, data, lists, out_control, mpi_data );
 #endif
-#if defined(DEBUG)
-    fprintf (stderr, "p%d: Output_Results done ... \n", system->my_rank);
-#endif
 
 #if defined(DEBUG)
-    fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
+    fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-    // start the simulation
-    for ( ++data->step; data->step <= control->nsteps; data->step++ )
+    /* begin main simulation loop */
+    ++data->step;
+    retries = 0;
+    while ( data->step <= control->nsteps && retries < MAX_RETRIES )
     {
-        if ( control->T_mode )
+        ret = SUCCESS;
+
+        if ( control->T_mode && retries == 0 )
         {
             Temperature_Control( control, data );
         }
@@ -395,11 +325,11 @@ int main( int argc, char* argv[] )
 #endif
 
 #if defined(__CUDA_DEBUG__)
-        Evolve( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = Evolve( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
-
-        Cuda_Evolve( system, control, data, workspace, lists, out_control, mpi_data );
-
+    
+        ret = Cuda_Evolve( system, control, data, workspace, lists, out_control, mpi_data );
+    
 #if defined(DEBUG)
         t_end = Get_Timing_Info( t_begin );
         fprintf( stderr, " Evolve time: %f \n", t_end );
@@ -409,7 +339,11 @@ int main( int argc, char* argv[] )
         t_begin = Get_Time();
 #endif
 
-        Cuda_Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
+        if ( ret == SUCCESS )
+        {
+            ret = Cuda_Post_Evolve( system, control, data, workspace, lists,
+                    out_control, mpi_data );
+        }
 
 #if defined(__CUDA_DEBUG__)
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
@@ -420,35 +354,60 @@ int main( int argc, char* argv[] )
         fprintf( stderr, " Post Evolve time: %f \n", t_end );
 #endif
 
+        if ( ret == SUCCESS )
+        {
+            data->timing.num_retries = retries;
+
 #if !defined(__CUDA_DEBUG__)
-        Output_Results( system, control, data, lists, out_control, mpi_data );
+            Output_Results( system, control, data, lists, out_control, mpi_data );
 #endif
 
-        //Analysis(system, control, data, workspace, lists, out_control, mpi_data);
+//        Analysis(system, control, data, workspace, lists, out_control, mpi_data);
 
-        // dump restart info
-//    if( out_control->restart_freq &&
-//  (data->step-data->prev_steps) % out_control->restart_freq == 0 ) {
-//      if( out_control->restart_format == WRITE_ASCII )
-//  Write_Restart( system, control, data, out_control, mpi_data );
-//      else if( out_control->restart_format == WRITE_BINARY )
-//  Write_Binary_Restart( system, control, data, out_control, mpi_data );
-//    }
+        /* dump restart info */
+//        if ( out_control->restart_freq &&
+//                (data->step-data->prev_steps) % out_control->restart_freq == 0 )
+//        {
+//            if( out_control->restart_format == WRITE_ASCII )
+//            {
+//                Write_Restart( system, control, data, out_control, mpi_data );
+//            }
+//            else if( out_control->restart_format == WRITE_BINARY )
+//            {
+//                Write_Binary_Restart( system, control, data, out_control, mpi_data );
+//            }
+//        }
 
 #if defined(DEBUG)
-        fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
+            fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
+            MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
+            ++data->step;
+            retries = 0;
+        }
+        else
+        {
+            ++retries;
+#if defined(DEBUG)
+            fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
+#endif
+        }
+    }
+
+    if ( retries >= MAX_RETRIES )
+    {
+        fprintf( stderr, "[ERROR] Maximum retries reached for this step (%d). Terminating...\n",
+              retries );
+        MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
     }
 
 #if defined(__CUDA_DEBUG__)
-    // vaildate the results in debug mode
-    validate_device (system, data, workspace, lists);
+    /* vaildate the results in debug mode */
+    validate_device( system, data, workspace, lists );
 #endif
 
 #else 
-
     /* allocate main data structures */
     system = (reax_system *) smalloc( sizeof(reax_system), "system" );
     control = (control_params *) smalloc( sizeof(control_params), "control" );
@@ -458,10 +417,9 @@ int main( int argc, char* argv[] )
     lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list*), "lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
+        // initialize here
 	lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        lists[i]->allocated = 0;
-
-        //initialize here TODO
+        lists[i]->allocated = FALSE;
         lists[i]->n = 0; 
         lists[i]->num_intrs = 0;
         lists[i]->index = NULL;
@@ -471,25 +429,20 @@ int main( int argc, char* argv[] )
     out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
     mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
 
+    //TODO: remove?
     /* allocate the cuda auxiliary data structures */
     dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
-    dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
+    dev_lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list *), "dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
         dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        dev_lists[i]->allocated = 0;
+        dev_lists[i]->allocated = FALSE;
     }
-
-    /* Initialize member variables */
-    system->init_thblist = FALSE;
 
     /* setup MPI environment */
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
-    system->wsize = control->nprocs;
-    system->global_offset = (int*) scalloc( system->wsize + 1,
-            sizeof(int), "global_offset" );
 
     /* read system config files */
     Read_System( argv[1], argv[2], argv[3], system, control,
@@ -515,7 +468,7 @@ int main( int argc, char* argv[] )
 #endif
 
     /* compute f_0 */
-    Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
+    Comm_Atoms( system, control, data, workspace, lists, mpi_data, TRUE );
     Reset( system, control, data, workspace, lists );
 
 #if defined(DEBUG)
@@ -533,36 +486,64 @@ int main( int argc, char* argv[] )
 #endif
 
     /* start the simulation */
-    for ( ++data->step; data->step <= control->nsteps; data->step++ )
+    retries = 0;
+    while ( data->step <= control->nsteps && retries < MAX_RETRIES )
     {
-        if ( control->T_mode )
+        ret = SUCCESS;
+
+        if ( control->T_mode && retries == 0 )
         {
             Temperature_Control( control, data );
         }
 
-        Evolve( system, control, data, workspace, lists, out_control, mpi_data );
-        Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
-        Output_Results( system, control, data, lists, out_control, mpi_data );
-        //Analysis(system, control, data, workspace, lists, out_control, mpi_data);
+        ret = Evolve( system, control, data, workspace, lists, out_control, mpi_data );
 
-        /* dump restart info */
-        if ( out_control->restart_freq &&
-                (data->step - data->prev_steps) % out_control->restart_freq == 0 )
+        if ( ret == SUCCESS )
         {
-            if ( out_control->restart_format == WRITE_ASCII )
-            {
-                Write_Restart( system, control, data, out_control, mpi_data );
-            }
-            else if ( out_control->restart_format == WRITE_BINARY )
-            {
-                Write_Binary_Restart( system, control, data, out_control, mpi_data );
-            }
+            Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
         }
 
+        if ( ret == SUCCESS )
+        {
+            data->timing.num_retries = retries;
+
+            Output_Results( system, control, data, lists, out_control, mpi_data );
+
+//            Analysis(system, control, data, workspace, lists, out_control, mpi_data);
+
+            /* dump restart info */
+            if ( out_control->restart_freq &&
+                    (data->step - data->prev_steps) % out_control->restart_freq == 0 )
+            {
+                if ( out_control->restart_format == WRITE_ASCII )
+                {
+                    Write_Restart( system, control, data, out_control, mpi_data );
+                }
+                else if ( out_control->restart_format == WRITE_BINARY )
+                {
+                    Write_Binary_Restart( system, control, data, out_control, mpi_data );
+                }
+            }
+
 #if defined(DEBUG)
-        fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
-        MPI_Barrier( mpi_data->world );
+            fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
+            MPI_Barrier( mpi_data->world );
 #endif
+
+            ++data->step;
+            retries = 0;
+        }
+        else
+        {
+            ++retries;
+            fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
+        }
+    }
+
+    if ( retries >= MAX_RETRIES )
+    {
+        fprintf( stderr, "Maximum retries reached for this step. Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
     }
     
 #endif
@@ -574,31 +555,22 @@ int main( int argc, char* argv[] )
         fprintf( out_control->out, "Total Simulation Time: %.2f secs\n", t_elapsed );
     }
 
-    // Write_PDB( &system, &(lists[BOND]), &out_control );
+//    Write_PDB( &system, &(lists[BOND]), &out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
 
-    //Cleanup_Cuda_Environment ();
+    MPI_Finalize( );
 
-    MPI_Finalize();
-
-    /* de-allocate data structures */
-    //for( i = 0; i < LIST_N; ++i ) {
-    //if (lists[i]->index) free (lists[i]->index);
-    //if (lists[i]->end_index) free (lists[i]->end_index);
-    //if (lists[i]->select.v) free (lists[i]->select.v);
-    //free (lists[i] );
-    //}
-
-    free( system );
-    free( control );
-    free( data );
-    free( workspace );
-    free( lists );
-    free( out_control );
-    free( mpi_data );
+    /* deallocate data structures */
+    sfree( system, "main::system" );
+    sfree( control, "main::control" );
+    sfree( data, "main::data" );
+    sfree( workspace, "main::workspace" );
+    sfree( lists, "main::lists" );
+    sfree( out_control, "main::out_control" );
+    sfree( mpi_data, "main::mpi_data" );
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
-//  Integrate_Results(control);
+//    Integrate_Results(control);
 #endif
 
 #if defined(DEBUG)

@@ -3,8 +3,7 @@
 
 AC_PREREQ([2.69])
 
-AC_INIT([Purdue Molecular Dynamics Suite], [1.0], [ohearnku@msu.edu hma@msu.edu])
-: ${CFLAGS=""}
+AC_INIT([PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
 AM_INIT_AUTOMAKE([1.15 -Wall -Werror])
 # Enable silent build rules by default.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERBOSITY],[1])])
@@ -46,23 +45,25 @@ AC_ARG_ENABLE([mpi-gpu],
 			      [enable MPI+CUDA (multi GPU) support @<:@default: no@:>@])],
 	      [pack_mpi_gpu_enabled=${enableval}], [pack_mpi_gpu_enabled=no])
 
-if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; then
+if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes" || test "x${pack_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([sPuReMD])
 	if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" != "xyes"; then
 		export BUILD_OPENMP="no"
 	else
-		export BUILD_OPENMP="yes"
+		if test "x${pack_gpu_enabled}" = "xyes"; then
+			export BUILD_GPU="yes"
+		else
+			export BUILD_OPENMP="yes"
+		fi
 	fi
 fi
 AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_GPU], [test "x${pack_gpu_enabled}" = "xyes"])
+
 if test "x${pack_mpi_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PuReMD])
 fi
 AM_CONDITIONAL([BUILD_MPI], [test "x${pack_mpi_enabled}" = "xyes"])
-if test "x${pack_gpu_enabled}" = "xyes"; then
-	AC_CONFIG_SUBDIRS([PuReMD-GPU])
-fi
-AM_CONDITIONAL([BUILD_GPU], [test "x${pack_gpu_enabled}" = "xyes"])
 if test "x${pack_mpi_not_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"; then
 	AC_CONFIG_SUBDIRS([PG-PuReMD])
 	if test "x${pack_mpi_not_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" != "xyes"; then
@@ -117,7 +118,7 @@ AC_ARG_ENABLE([timing],
 		[enable timing measurements and reporting @<:@default: no@:>@])],
 	[timing_enabled=${enableval}], [timing_enabled=no]
 )
-if test "x$timing_enabled" = "xyes"
+if test "x${timing_enabled}" = "xyes"
 then
 	export BUILD_TIMING="yes"
 fi
@@ -127,7 +128,7 @@ AC_ARG_WITH([superlu-mt],
 			    [enable usage of SuperLU MT for QEq preconditioner computation @<:@default: no@:>@])],
             [package_superlu_mt=${withval}], [package_superlu_mt=no])
 
-if test "x$package_superlu_mt" != "xno"
+if test "x${package_superlu_mt}" != "xno"
 then
 	export BUILD_SUPERLU_MT="${package_superlu_mt}"
 fi

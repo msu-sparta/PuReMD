@@ -623,8 +623,8 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
     }
     */
 
-    free(buffer);
-    free(line);
+    sfree(buffer, "buffer");
+    sfree(line, "line");
 
     return SUCCESS;
 }

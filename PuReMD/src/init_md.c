@@ -675,8 +675,8 @@ int  Init_Lists( reax_system *system, control_params *control,
              bond_cap * MAX_BONDS * 3 * sizeof(dbond_data) / (1024 * 1024) );
 #endif
 
-    free( hb_top );
-    free( bond_top );
+    sfree( hb_top, "hb_top" );
+    sfree( bond_top, "bond_top" );
 
     return SUCCESS;
 }
@@ -779,8 +779,8 @@ int  Init_Lists( reax_system *system, control_params *control,
              bond_cap * MAX_BONDS * 3 * sizeof(dbond_data) / (1024 * 1024) );
 #endif
 
-    free( hb_top );
-    free( bond_top );
+    sfree( hb_top, "hb_top" );
+    sfree( bond_top, "bond_top" );
 
     return SUCCESS;
 }

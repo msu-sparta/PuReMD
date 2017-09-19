@@ -26,72 +26,85 @@
 #include "random.h"
 
 
+/* global to make OpenMP shared (Vector_isZero) */
+unsigned int ret;
+/* global to make OpenMP shared (Dot, Norm) */
+real ret2;
+
+
 #ifdef __cplusplus
 extern "C"  {
 #endif
 
-int  Vector_isZero( real*, int );
-void Vector_MakeZero( real*, int );
-void Vector_Copy( real*, real*, int );
-//void Vector_Scale( real*, real, real*, int );
-//void Vector_Sum( real*, real, real*, real, real*, int );
-//void Vector_Add( real*, real, real*, int );
-void Vector_Print( FILE*, char*, real*, int );
-real Norm( real*, int );
+int Vector_isZero( const real * const, const unsigned int );
+void Vector_MakeZero( real * const, const unsigned int );
+void Vector_Copy( real * const, const real * const, const unsigned int );
+void Vector_Print( FILE * const, const char * const, const real * const, const unsigned int );
+real Norm( const real * const, const unsigned int );
 
-void rvec_Sum( rvec, rvec, rvec );
-real rvec_ScaledDot( real, rvec, real, rvec );
-void rvec_Multiply( rvec, rvec, rvec );
-void rvec_Divide( rvec, rvec, rvec );
-void rvec_iDivide( rvec, rvec, ivec );
-void rvec_Invert( rvec, rvec );
-void rvec_OuterProduct( rtensor, rvec, rvec );
-int  rvec_isZero( rvec );
+void rvec_Sum( rvec, const rvec, const rvec );
+real rvec_ScaledDot( const real, const rvec, const real, const rvec );
+void rvec_Multiply( rvec, const rvec, const rvec );
+void rvec_Divide( rvec, const rvec, const rvec );
+void rvec_iDivide( rvec, const rvec, const ivec );
+void rvec_Invert( rvec, const rvec );
+void rvec_OuterProduct( rtensor, const rvec, const rvec );
+int rvec_isZero( const rvec );
 
 void rtensor_MakeZero( rtensor );
 void rtensor_Multiply( rtensor, rtensor, rtensor );
-void rtensor_MatVec( rvec, rtensor, rvec );
-void rtensor_Scale( rtensor, real, rtensor );
+void rtensor_MatVec( rvec, rtensor, const rvec );
+void rtensor_Scale( rtensor, const real, rtensor );
 void rtensor_Add( rtensor, rtensor );
-void rtensor_ScaledAdd( rtensor, real, rtensor );
+void rtensor_ScaledAdd( rtensor, const real, rtensor );
 void rtensor_Sum( rtensor, rtensor, rtensor );
-void rtensor_ScaledSum( rtensor, real, rtensor, real, rtensor );
-void rtensor_Scale( rtensor, real, rtensor );
+void rtensor_ScaledSum( rtensor, const real, rtensor, const real, rtensor );
+void rtensor_Scale( rtensor, const real, rtensor );
 void rtensor_Copy( rtensor, rtensor );
 void rtensor_Identity( rtensor );
 void rtensor_Transpose( rtensor, rtensor );
 real rtensor_Det( rtensor );
 real rtensor_Trace( rtensor );
 
-void Print_rTensor(FILE*, rtensor);
+void Print_rTensor(FILE * const, rtensor);
 
-int  ivec_isZero( ivec );
-int  ivec_isEqual( ivec, ivec );
+int ivec_isZero( const ivec );
+int ivec_isEqual( const ivec, const ivec );
 void ivec_MakeZero( ivec );
-void ivec_rScale( ivec, real, rvec );
+void ivec_rScale( ivec, const real, const rvec );
 
 
-static inline HOST_DEVICE real Dot( real* v1, real* v2, int k )
+static inline HOST_DEVICE real Dot( const real * const v1, const real * const v2, const unsigned int k )
 {
-    real ret = 0;
+    unsigned int i;
 
-    for ( --k; k >= 0; --k )
-        ret +=  v1[k] * v2[k];
+    #pragma omp master
+    {
+        ret2 = ZERO;
+    }
 
-    return ret;
+    #pragma omp barrier
+
+
+    #pragma omp for reduction(+: ret2) schedule(static)
+    for ( i = 0; i < k; ++i )
+    {
+        ret2 += v1[i] * v2[i];
+    }
+
+    return ret2;
 }
 
 
-/////////////////////////////
-//rvec functions
-/////////////////////////////
 static inline HOST_DEVICE void rvec_MakeZero( rvec v )
 {
-    v[0] = v[1] = v[2] = ZERO;
+    v[0] = ZERO;
+    v[1] = ZERO;
+    v[2] = ZERO;
 }
 
 
-static inline HOST_DEVICE void rvec_Add( rvec ret, rvec v )
+static inline HOST_DEVICE void rvec_Add( rvec ret, const rvec v )
 {
     ret[0] += v[0];
     ret[1] += v[1];
@@ -99,13 +112,15 @@ static inline HOST_DEVICE void rvec_Add( rvec ret, rvec v )
 }
 
 
-static inline HOST_DEVICE void rvec_Copy( rvec dest, rvec src )
+static inline HOST_DEVICE void rvec_Copy( rvec dest, const rvec src )
 {
-    dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
+    dest[0] = src[0];
+    dest[1] = src[1];
+    dest[2] = src[2];
 }
 
 
-static inline HOST_DEVICE void rvec_Cross( rvec ret, rvec v1, rvec v2 )
+static inline HOST_DEVICE void rvec_Cross( rvec ret, const rvec v1, const rvec v2 )
 {
     ret[0] = v1[1] * v2[2] - v1[2] * v2[1];
     ret[1] = v1[2] * v2[0] - v1[0] * v2[2];
@@ -113,13 +128,16 @@ static inline HOST_DEVICE void rvec_Cross( rvec ret, rvec v1, rvec v2 )
 }
 
 
-static inline HOST_DEVICE void rvec_ScaledAdd( rvec ret, real c, rvec v )
+static inline HOST_DEVICE void rvec_ScaledAdd( rvec ret, const real c, const rvec v )
 {
-    ret[0] += c * v[0], ret[1] += c * v[1], ret[2] += c * v[2];
+    ret[0] += c * v[0];
+    ret[1] += c * v[1];
+    ret[2] += c * v[2];
 }
 
 
-static inline HOST_DEVICE void rvec_ScaledSum( rvec ret, real c1, rvec v1 , real c2, rvec v2 )
+static inline HOST_DEVICE void rvec_ScaledSum( rvec ret, const real c1, const rvec v1,
+        const real c2, const rvec v2 )
 {
     ret[0] = c1 * v1[0] + c2 * v2[0];
     ret[1] = c1 * v1[1] + c2 * v2[1];
@@ -135,25 +153,27 @@ static inline HOST_DEVICE void rvec_Random( rvec v )
 }
 
 
-static inline HOST_DEVICE real rvec_Norm_Sqr( rvec v )
+static inline HOST_DEVICE real rvec_Norm_Sqr( const rvec v )
 {
     return SQR(v[0]) + SQR(v[1]) + SQR(v[2]);
 }
 
 
-static inline HOST_DEVICE void rvec_Scale( rvec ret, real c, rvec v )
+static inline HOST_DEVICE void rvec_Scale( rvec ret, const real c, const rvec v )
 {
-    ret[0] = c * v[0], ret[1] = c * v[1], ret[2] = c * v[2];
+    ret[0] = c * v[0];
+    ret[1] = c * v[1];
+    ret[2] = c * v[2];
 }
 
 
-static inline HOST_DEVICE real rvec_Dot( rvec v1, rvec v2 )
+static inline HOST_DEVICE real rvec_Dot( const rvec v1, const rvec v2 )
 {
     return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
 }
 
 
-static inline HOST_DEVICE void rvec_iMultiply( rvec r, ivec v1, rvec v2 )
+static inline HOST_DEVICE void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
 {
     r[0] = v1[0] * v2[0];
     r[1] = v1[1] * v2[1];
@@ -161,22 +181,21 @@ static inline HOST_DEVICE void rvec_iMultiply( rvec r, ivec v1, rvec v2 )
 }
 
 
-static inline HOST_DEVICE real rvec_Norm( rvec v )
+static inline HOST_DEVICE real rvec_Norm( const rvec v )
 {
     return SQRT( SQR(v[0]) + SQR(v[1]) + SQR(v[2]) );
 }
 
 
-/////////////////
-//ivec functions
-/////////////////
-static inline HOST_DEVICE void ivec_Copy( ivec dest , ivec src )
+static inline HOST_DEVICE void ivec_Copy( ivec dest , const ivec src )
 {
-    dest[0] = src[0], dest[1] = src[1], dest[2] = src[2];
+    dest[0] = src[0];
+    dest[1] = src[1];
+    dest[2] = src[2];
 }
 
 
-static inline HOST_DEVICE void ivec_Scale( ivec dest, real C, ivec src )
+static inline HOST_DEVICE void ivec_Scale( ivec dest, const real C, const ivec src )
 {
     dest[0] = C * src[0];
     dest[1] = C * src[1];
@@ -184,7 +203,7 @@ static inline HOST_DEVICE void ivec_Scale( ivec dest, real C, ivec src )
 }
 
 
-static inline HOST_DEVICE void ivec_Sum( ivec dest, ivec v1, ivec v2 )
+static inline HOST_DEVICE void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
 {
     dest[0] = v1[0] + v2[0];
     dest[1] = v1[1] + v2[1];
@@ -192,27 +211,43 @@ static inline HOST_DEVICE void ivec_Sum( ivec dest, ivec v1, ivec v2 )
 }
 
 
-/////////////////
-//vector functions
-/////////////////
-static inline HOST_DEVICE void Vector_Sum( real* dest, real c, real* v, real d, real* y, int k )
+static inline HOST_DEVICE void Vector_Sum( real * const dest, const real c,
+        const real * const v, const real d, const real * const y,
+        const unsigned int k )
 {
-    for (k--; k >= 0; k--)
-        dest[k] = c * v[k] + d * y[k];
+    unsigned int i;
+
+    #pragma omp for schedule(static)
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = c * v[i] + d * y[i];
+    }
 }
 
 
-static inline HOST_DEVICE void Vector_Scale( real* dest, real c, real* v, int k )
+static inline HOST_DEVICE void Vector_Scale( real * const dest, const real c,
+        const real * const v, const unsigned int k )
 {
-    for (k--; k >= 0; k--)
-        dest[k] = c * v[k];
+    unsigned int i;
+
+    #pragma omp for schedule(static)
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = c * v[i];
+    }
 }
 
 
-static inline HOST_DEVICE void Vector_Add( real* dest, real c, real* v, int k )
+static inline HOST_DEVICE void Vector_Add( real * const dest, const real c,
+        const real * const v, const unsigned int k )
 {
-    for (k--; k >= 0; k--)
-        dest[k] += c * v[k];
+    unsigned int i;
+
+    #pragma omp for schedule(static)
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] += c * v[i];
+    }
 }
 
 #ifdef __cplusplus

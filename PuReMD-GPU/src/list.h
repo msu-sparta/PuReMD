@@ -24,7 +24,7 @@
 #include "mytypes.h"
 
 
-char Make_List( int, int, int, list* );
+int Make_List( int, int, int, list* );
 void Delete_List( list* );
 
 

@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "neighbors.h"
+
 #include "box.h"
 #include "grid.h"
 #include "list.h"
@@ -27,6 +28,10 @@
 #include "system_props.h"
 #include "vector.h"
 
+
+/* Function pointer definitions */
+typedef void (*get_far_neighbors_function)(rvec, rvec, simulation_box*,
+        control_params*, far_neighbor_data*, int*);
 
 
 static inline real DistSqr_to_CP( rvec cp, rvec x )
@@ -47,14 +52,14 @@ static inline real DistSqr_to_CP( rvec cp, rvec x )
 
 
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
-                              simulation_data *data, static_storage *workspace,
-                              list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
-    int  i, j, k, l, m, itr;
-    int  x, y, z;
-    int  atom1, atom2, max;
-    int  num_far;
-    int  *nbr_atoms;
+    int i, j, k, l, m, itr;
+    int x, y, z;
+    int atom1, atom2, max;
+    int num_far;
+    int *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
     grid *g;
@@ -390,7 +395,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     // fprintf( stderr, "atoms sorted - " );
 
 #ifdef REORDER_ATOMS
-    Cluster_Atoms( system, workspace );
+    Cluster_Atoms( system, workspace, control );
     // fprintf( stderr, "atoms clustered - " );
 #endif
 

@@ -22,20 +22,23 @@
 
 #include "analyze.h"
 #include "box.h"
+#include "control.h"
+#include "ffield.h"
 #include "forces.h"
+#include "geo_tools.h"
 #include "grid.h"
 #include "init_md.h"
 #include "integrate.h"
 #include "neighbors.h"
-#include "param.h"
-#include "pdb_tools.h"
 #include "print_utils.h"
 #include "reset_utils.h"
 #include "restart.h"
 #include "system_props.h"
 #include "traj.h"
+#include "tool_box.h"
 #include "vector.h"
 
+#ifdef HAVE_CUDA
 #include "cuda_environment.h"
 #include "cuda_forces.h"
 #include "cuda_init_md.h"
@@ -43,9 +46,9 @@
 #include "cuda_post_evolve.h"
 #include "cuda_reset_utils.h"
 #include "cuda_system_props.h"
-
 #ifdef __BUILD_DEBUG__
-  #include "validation.h"
+  #include "cuda_validation.h"
+#endif
 #endif
 
 
@@ -69,9 +72,12 @@ int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
 int MATVEC_BLOCKS;
 
 
-void Post_Evolve( reax_system* system, control_params* control, 
-        simulation_data* data, static_storage* workspace, 
-        list** lists, output_controls *out_control )
+static void Post_Evolve( reax_system * const system,
+        control_params * const control,
+        simulation_data * const data,
+        static_storage * const workspace,
+        list ** const lists,
+        output_controls * const out_control )
 {
     int i;
     rvec diff, cross;
@@ -110,15 +116,27 @@ void Post_Evolve( reax_system* system, control_params* control,
 }
 
 
-void Read_System( char *geof, char *ff, char *ctrlf, 
-        reax_system *system, control_params *control, 
-        simulation_data *data, static_storage *workspace, 
-        output_controls *out_control )
+void static Read_System( char * const geo_file,
+        char * const ffield_file,
+        char * const control_file,
+        reax_system * const system,
+        control_params * const control,
+        simulation_data * const data,
+        static_storage * const workspace,
+        output_controls * const out_control )
 {
     FILE *ffield, *ctrl;
 
-    ffield = fopen( ff, "r" );
-    ctrl = fopen( ctrlf, "r" );
+    if ( (ffield = fopen( ffield_file, "r" )) == NULL )
+    {
+        fprintf( stderr, "Error opening the ffield file!\n" );
+        exit( FILE_NOT_FOUND );
+    }
+    if ( (ctrl = fopen( control_file, "r" )) == NULL )
+    {
+        fprintf( stderr, "Error opening the ffield file!\n" );
+        exit( FILE_NOT_FOUND );
+    }
 
     /* ffield file */
     Read_Force_Field( ffield, &(system->reaxprm) );
@@ -127,32 +145,31 @@ void Read_System( char *geof, char *ff, char *ctrlf,
     Read_Control_File( ctrl, system, control, out_control );
 
     /* geo file */
-    if( control->geo_format == XYZ )
+    if( control->geo_format == CUSTOM )
     {
-        fprintf( stderr, "xyz input is not implemented yet\n" );
-        exit( 1 );
+        Read_Geo( geo_file, system, control, data, workspace );
     }
     else if( control->geo_format == PDB ) 
     {
-        Read_PDB( geof, system, control, data, workspace );
+        Read_PDB( geo_file, system, control, data, workspace );
     }
     else if( control->geo_format == BGF ) 
     {
-        Read_BGF( geof, system, control, data, workspace );
+        Read_BGF( geo_file, system, control, data, workspace );
     }
     else if( control->geo_format == ASCII_RESTART )
     {
-        Read_ASCII_Restart( geof, system, control, data, workspace );
+        Read_ASCII_Restart( geo_file, system, control, data, workspace );
         control->restart = 1;
     }
     else if( control->geo_format == BINARY_RESTART ) {
-        Read_Binary_Restart( geof, system, control, data, workspace );
+        Read_Binary_Restart( geo_file, system, control, data, workspace );
         control->restart = 1;
     }
     else
     {
         fprintf( stderr, "unknown geo file format. terminating!\n" );
-        exit( 1 );
+        exit( INVALID_GEO );
     }  
 
 #if defined(DEBUG_FOCUS)
@@ -172,7 +189,14 @@ void Init_Data_Structures( simulation_data *data )
 }
 
 
-int main( int argc, char* argv[] )
+static void usage(char* argv[])
+{
+    fprintf(stderr, "usage: ./%s geometry ffield control\n", argv[0]);
+}
+
+
+#ifdef HAVE_CUDA
+static void gpu_main( int argc, char* argv[] )
 {
     reax_system system;
     control_params control;
@@ -183,7 +207,6 @@ int main( int argc, char* argv[] )
     evolve_function Evolve;
     evolve_function Cuda_Evolve;
     int steps;
-
     real t_start, t_elapsed;
     real *results = NULL;
 
@@ -259,8 +282,8 @@ int main( int argc, char* argv[] )
 #ifdef __BUILD_DEBUG__
     if( !validate_device (&system, &data, &workspace, &lists) )
     {
-        fprintf (stderr, " Results does not match between Device and host @ step --> %d \n", data.step);
-        exit (1);
+        fprintf( stderr, " Results does not match between Device and host @ step --> %d \n", data.step );
+        exit( 1 );
     }
 #endif
 
@@ -331,6 +354,92 @@ int main( int argc, char* argv[] )
     fprintf( out_control.log, "total: %.2f secs\n", data.timing.elapsed );
 
     Cleanup_Cuda_Environment( );
+}
 
-    return 0;
+
+#else
+static void cpu_main( int argc, char* argv[] )
+{
+    reax_system system;
+    control_params control;
+    simulation_data data;
+    static_storage workspace;
+    list *lists;
+    output_controls out_control;
+    evolve_function Evolve;
+    int steps;
+
+    if ( argc != 4 )
+    {
+        usage(argv);
+        exit( INVALID_INPUT );
+    }
+
+    lists = (list*) malloc( sizeof(list) * LIST_N );
+
+    Read_System( argv[1], argv[2], argv[3], &system, &control,
+            &data, &workspace, &out_control );
+
+    Initialize( &system, &control, &data, &workspace, &lists,
+            &out_control, &Evolve );
+
+    /* compute f_0 */
+    //if( control.restart == 0 ) {
+    Reset( &system, &control, &data, &workspace, &lists );
+    Generate_Neighbor_Lists( &system, &control, &data, &workspace,
+            &lists, &out_control );
+
+    //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
+    Compute_Forces(&system, &control, &data, &workspace, &lists, &out_control);
+    Compute_Kinetic_Energy( &system, &data );
+    Output_Results(&system, &control, &data, &workspace, &lists, &out_control);
+    ++data.step;
+    //}
+
+
+    for ( ; data.step <= control.nsteps; data.step++ )
+    {
+        if ( control.T_mode )
+        {
+            Temperature_Control( &control, &data, &out_control );
+        }
+        Evolve( &system, &control, &data, &workspace, &lists, &out_control );
+        Post_Evolve( &system, &control, &data, &workspace, &lists, &out_control );
+        Output_Results(&system, &control, &data, &workspace, &lists, &out_control);
+        Analysis( &system, &control, &data, &workspace, &lists, &out_control );
+
+        steps = data.step - data.prev_steps;
+        if ( steps && out_control.restart_freq &&
+                steps % out_control.restart_freq == 0 )
+            Write_Restart( &system, &control, &data, &workspace, &out_control );
+    }
+
+    if ( out_control.write_steps > 0 )
+    {
+        fclose( out_control.trj );
+        Write_PDB( &system, &(lists[BONDS]), &data, &control, &workspace, &out_control );
+    }
+
+    data.timing.end = Get_Time( );
+    data.timing.elapsed = Get_Timing_Info( data.timing.start );
+    fprintf( out_control.log, "total: %.2f secs\n", data.timing.elapsed );
+}
+#endif
+
+
+int main( int argc, char* argv[] )
+{
+    if ( argc != 4 )
+    {
+        usage(argv);
+        exit( INVALID_INPUT );
+    }
+
+#ifdef HAVE_CUDA
+    gpu_main( argc, argv );
+#else
+    cpu_main( argc, argv );
+#endif
+
+    return SUCCESS;
 }

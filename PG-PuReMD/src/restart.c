@@ -19,7 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "reax_types.h"
+
 #include "restart.h"
+
 #include "allocate.h"
 #include "box.h"
 #include "tool_box.h"
@@ -27,10 +30,10 @@
 
 
 void Write_Binary_Restart( reax_system *system, control_params *control,
-                           simulation_data *data, output_controls *out_control,
-                           mpi_datatypes *mpi_data )
+        simulation_data *data, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
-    int  i, me, np, cnt, top;
+    int i, me, np, cnt, top;
     char fname[MAX_STR];
     FILE *fres;
     restart_header res_header;
@@ -48,7 +51,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
         if ( (fres = fopen( fname, "wb" )) == NULL )
         {
-            fprintf( stderr, "ERROR: can't open the restart file! terminating...\n" );
+            fprintf( stderr, "[ERROR] can't open the restart file! terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
         }
 
@@ -65,11 +68,13 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 
         /* master needs to allocate space for all atoms */
         buffer = (restart_atom*)
-                 scalloc( system->bigN, sizeof(restart_atom), "restart:buffer" );
+            scalloc( system->bigN, sizeof(restart_atom), "restart:buffer" );
     }
     else
+    {
         buffer = (restart_atom*)
-                 scalloc( system->n, sizeof(restart_atom), "restart:buffer" );
+            scalloc( system->n, sizeof(restart_atom), "restart:buffer" );
+    }
 
     /* fill in the buffers */
     for ( i = 0 ; i < system->n; ++i )
@@ -92,6 +97,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     {
         top = system->n;
         for ( i = 0; i < np; ++i )
+        {
             if ( i != MASTER_NODE )
             {
                 MPI_Recv( buffer + top, system->bigN - top, mpi_data->restart_atom_type,
@@ -99,6 +105,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
                 MPI_Get_count( &status, mpi_data->restart_atom_type, &cnt );
                 top += cnt;
             }
+        }
     }
 
     /* master node dumps out the restart file */
@@ -108,15 +115,15 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
         fclose( fres );
     }
 
-    free(buffer);
+    sfree( buffer, "Write_Binary_Restart::buffer" );
 }
 
 
 void Write_Restart( reax_system *system, control_params *control,
-                    simulation_data *data, output_controls *out_control,
-                    mpi_datatypes *mpi_data )
+        simulation_data *data, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
-    int  i, me, np, buffer_len, buffer_req, cnt;
+    int i, me, np, buffer_len, buffer_req, cnt;
     char fname[MAX_STR];
     FILE *fres;
     char *line;
@@ -134,7 +141,7 @@ void Write_Restart( reax_system *system, control_params *control,
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
         if ( (fres = fopen( fname, "w" )) == NULL )
         {
-            fprintf( stderr, "ERROR: can't open the restart file! terminating...\n" );
+            fprintf( stderr, "[ERROR] can't open the restart file! terminating...\n" );
             MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
         }
 
@@ -153,7 +160,9 @@ void Write_Restart( reax_system *system, control_params *control,
         buffer_req = system->bigN * RESTART_LINE_LEN + 1;
     }
     else
+    {
         buffer_req = system->n * RESTART_LINE_LEN + 1;
+    }
 
     buffer = (char*) smalloc(sizeof(char) * buffer_req, "restart:buffer");
     line[0] = 0;
@@ -177,19 +186,21 @@ void Write_Restart( reax_system *system, control_params *control,
     if ( me != MASTER_NODE )
     {
         MPI_Send( buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
-                  np * RESTART_LINE_LEN + me, mpi_data->world );
+                np * RESTART_LINE_LEN + me, mpi_data->world );
     }
     else
     {
         buffer_len = system->n * RESTART_LINE_LEN;
         for ( i = 0; i < np; ++i )
+        {
             if ( i != MASTER_NODE )
             {
-                MPI_Recv(buffer + buffer_len, buffer_req - buffer_len,
-                         MPI_CHAR, i, np * RESTART_LINE_LEN + i, mpi_data->world, &status);
+                MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
+                        MPI_CHAR, i, np * RESTART_LINE_LEN + i, mpi_data->world, &status );
                 MPI_Get_count( &status, MPI_CHAR, &cnt );
                 buffer_len += cnt;
             }
+        }
         buffer[buffer_len] = 0;
     }
 
@@ -199,8 +210,8 @@ void Write_Restart( reax_system *system, control_params *control,
         fprintf( fres, "%s", buffer );
         fclose( fres );
     }
-    free(buffer);
-    free(line);
+    sfree( buffer, "Write_Restart::buffer" );
+    sfree( line, "Write_Restart::line" );
 }
 
 
@@ -217,7 +228,9 @@ void Count_Binary_Restart_Atoms( FILE *fres, reax_system *system )
         /* if the point is inside my_box, add it to my lists */
         Fit_to_Periodic_Box( &(system->big_box), &(res_atom.x) );
         if ( is_Inside_Box(&(system->my_box), res_atom.x) )
+        {
             ++system->n;
+        }
     }
     system->N = system->n;
 
@@ -231,8 +244,8 @@ void Count_Binary_Restart_Atoms( FILE *fres, reax_system *system )
 
 
 void Read_Binary_Restart( char *res_file, reax_system *system,
-                          control_params *control, simulation_data *data,
-                          storage *workspace, mpi_datatypes *mpi_data )
+        control_params *control, simulation_data *data,
+        storage *workspace, mpi_datatypes *mpi_data )
 {
     int i, top;
     FILE *fres;
@@ -242,7 +255,7 @@ void Read_Binary_Restart( char *res_file, reax_system *system,
 
     if ( (fres = fopen(res_file, "rb")) == NULL )
     {
-        fprintf( stderr, "ERROR: cannot open the restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] cannot open the restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
@@ -330,7 +343,9 @@ void Count_Restart_Atoms( FILE *fres, reax_system *system )
         Fit_to_Periodic_Box( &(system->big_box), &x_temp );
         /* if the point is inside my_box, add it to my lists */
         if ( is_Inside_Box(&(system->my_box), x_temp) )
+        {
             ++system->n;
+        }
     }
     system->N = system->n;
 
@@ -344,8 +359,8 @@ void Count_Restart_Atoms( FILE *fres, reax_system *system )
 
 
 void Read_Restart( char *res_file, reax_system *system,
-                   control_params *control, simulation_data *data,
-                   storage *workspace, mpi_datatypes *mpi_data )
+        control_params *control, simulation_data *data,
+        storage *workspace, mpi_datatypes *mpi_data )
 {
     int i, c, top;
     FILE *fres;
@@ -357,19 +372,25 @@ void Read_Restart( char *res_file, reax_system *system,
 
     if ( (fres = fopen(res_file, "r")) == NULL )
     {
-        fprintf( stderr, "ERROR: cannot open the restart file! terminating...\n" );
+        fprintf( stderr, "[ERROR] cannot open the restart file! terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
+    s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Restart::s" );
+    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Restart::tmp" );
     for (i = 0; i < MAX_TOKENS; i++)
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
-
+    {
+        tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Restart::tmp[i]" );
+    }
 
     //read first header lines
     fgets( s, MAX_LINE, fres );
     c = Tokenize( s, &tmp );
+    if ( c != 7 )
+    {
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+    }
     data->prev_steps = atoi(tmp[0]);
     system->bigN = atoi(tmp[1]);
     data->therm.T = atof(tmp[2]);
@@ -381,16 +402,31 @@ void Read_Restart( char *res_file, reax_system *system,
     //read box lines
     fgets( s, MAX_LINE, fres );
     c = Tokenize( s, &tmp );
+    if ( c != 3 )
+    {
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+    }
     box[0][0] = atof(tmp[0]);
     box[0][1] = atof(tmp[1]);
     box[0][2] = atof(tmp[2]);
     fgets( s, MAX_LINE, fres );
     c = Tokenize( s, &tmp );
+    if ( c != 3 )
+    {
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+    }
     box[1][0] = atof(tmp[0]);
     box[1][1] = atof(tmp[1]);
     box[1][2] = atof(tmp[2]);
     fgets( s, MAX_LINE, fres );
     c = Tokenize( s, &tmp );
+    if ( c != 3 )
+    {
+        fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+    }
     box[2][0] = atof(tmp[0]);
     box[2][1] = atof(tmp[1]);
     box[2][2] = atof(tmp[2]);
@@ -421,7 +457,9 @@ void Read_Restart( char *res_file, reax_system *system,
     /* go back to the start of file to read actual atom info */
     rewind( fres );
     for (i = 0; i < 4; i++)
+    {
         fgets( s, MAX_LINE, fres );
+    }
 
     /*process atoms*/
     top = 0;
@@ -429,6 +467,11 @@ void Read_Restart( char *res_file, reax_system *system,
     {
         fgets( s, MAX_LINE, fres );
         c = Tokenize( s, &tmp );
+        if ( c != 9 )
+        {
+            fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
+            MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+        }
         orig_id_temp = atoi(tmp[0]);
         type_temp = atoi(tmp[1]);
         strncpy(name_temp, tmp[2], 8);
@@ -452,11 +495,14 @@ void Read_Restart( char *res_file, reax_system *system,
         }
     }
     fclose( fres );
+
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
-        free( tmp[i] );
-    free( tmp );
-    free( s );
+    {
+        sfree( tmp[i], "Read_Restart::tmp[i]" );
+    }
+    sfree( tmp, "Read_Restart::tmp" );
+    sfree( s, "Read_Restart::s" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run

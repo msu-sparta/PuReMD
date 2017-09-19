@@ -36,10 +36,10 @@
 #include "cuda_three_body_interactions.h"
 #include "cuda_four_body_interactions.h"
 #include "cuda_list.h"
-#include "cuda_QEq.h"
+#include "cuda_qeq.h"
 #include "cuda_reduction.h"
 #include "cuda_system_props.h"
-#include "validation.h"
+#include "cuda_validation.h"
 
 #include "cudaProfiler.h"
 

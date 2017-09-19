@@ -20,24 +20,26 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
-#include "index_utils.h"
+
 #if defined(PURE_REAX)
-#include "nonbonded.h"
-#include "bond_orders.h"
-#include "list.h"
-#include "vector.h"
+  #include "nonbonded.h"
+  #include "bond_orders.h"
+  #include "list.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_nonbonded.h"
-#include "reax_bond_orders.h"
-#include "reax_list.h"
-#include "reax_lookup.h"
-#include "reax_vector.h"
+  #include "reax_nonbonded.h"
+  #include "reax_bond_orders.h"
+  #include "reax_list.h"
+  #include "reax_lookup.h"
+  #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 void vdW_Coulomb_Energy( reax_system *system, control_params *control,
-                         simulation_data *data, storage *workspace,
-                         reax_list **lists, output_controls *out_control )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control )
 {
     int i, j, pj, natoms;
     int start_i, end_i, orig_i, orig_j;
@@ -142,7 +144,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                 /*Coulomb Calculations*/
                 dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
-                dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 tmp = Tap / dr3gamij_3;
                 data->my_en.e_ele += e_ele =
@@ -450,7 +452,7 @@ void LR_vdW_Coulomb( reax_system *system, real *workspace_Tap,
 
     /* Coulomb calculations */
     dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
-    dr3gamij_3 = POW( dr3gamij_1 , 0.33333333333333 );
+    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
     tmp = Tap / dr3gamij_3;
     lr->H = EV_to_KCALpMOL * tmp;

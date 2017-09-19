@@ -20,23 +20,25 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
-#include "index_utils.h"
+
 #if defined(PURE_REAX)
-#include "multi_body.h"
-#include "bond_orders.h"
-#include "list.h"
-#include "vector.h"
+  #include "multi_body.h"
+  #include "bond_orders.h"
+  #include "list.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_multi_body.h"
-#include "reax_bond_orders.h"
-#include "reax_list.h"
-#include "reax_vector.h"
+  #include "reax_multi_body.h"
+  #include "reax_bond_orders.h"
+  #include "reax_list.h"
+  #include "reax_vector.h"
 #endif
+
+#include "index_utils.h"
 
 
 void Atom_Energy( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control )
 {
     int i, j, pj, type_i, type_j;
     real Delta_lpcorr, dfvl;
@@ -139,7 +141,6 @@ void Atom_Energy( reax_system *system, control_params *control,
                     }
                 }
     }
-
 
     for ( i = 0; i < system->n; ++i )
     {

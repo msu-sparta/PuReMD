@@ -1,0 +1,4 @@
+[submodule "PG-PuReMD/src/cub"]
+	path = PG-PuReMD/src/cub
+	url = https://github.com/NVlabs/cub.git
+	branch = 89de7ab20167909bc2c4f8acd397671c47cf3c0d
