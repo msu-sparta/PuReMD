@@ -42,7 +42,7 @@ bin_pg_puremd_SOURCES += src/cuda/cuda_utils.cu src/cuda/cuda_allocate.cu src/cu
       src/cuda/cuda_torsion_angles.cu src/cuda/cuda_hydrogen_bonds.cu src/cuda/cuda_forces.cu \
       src/cuda/cuda_charges.cu src/cuda/cuda_lin_alg.cu \
       src/cuda/cuda_nonbonded.cu src/cuda/cuda_integrate.cu src/cuda/cuda_post_evolve.cu \
-      src/cuda/cuda_init_md.cu src/cuda/cuda_validation.cu src/cuda/cuda_lookup.cu
+      src/cuda/cuda_init_md.cu src/cuda/cuda_lookup.cu
 include_HEADERS += src/cuda/cuda_helpers.h src/cuda/cuda_shuffle.h \
       src/cuda/cuda_utils.h src/cuda/cuda_allocate.h src/cuda/cuda_environment.h \
       src/cuda/cuda_system_props.h src/cuda/cuda_reduction.h src/cuda/cuda_box.h src/cuda/cuda_list.h \
@@ -52,7 +52,12 @@ include_HEADERS += src/cuda/cuda_helpers.h src/cuda/cuda_shuffle.h \
       src/cuda/cuda_torsion_angles.h src/cuda/cuda_hydrogen_bonds.h src/cuda/cuda_forces.h \
       src/cuda/cuda_charges.h src/cuda/cuda_lin_alg.h \
       src/cuda/cuda_nonbonded.h src/cuda/cuda_integrate.h src/cuda/cuda_post_evolve.h \
-      src/cuda/cuda_init_md.h src/cuda/cuda_validation.h src/cuda/cuda_lookup.h
+      src/cuda/cuda_init_md.h src/cuda/cuda_lookup.h
+
+if DEBUG
+bin_pg_puremd_SOURCES += src/cuda/cuda_validation.cu
+include_HEADERS += src/cuda/cuda_validation.h
+endif
 
 # dummy source to cause C linking
 nodist_EXTRA_bin_pg_puremd_SOURCES = src/dummy.c

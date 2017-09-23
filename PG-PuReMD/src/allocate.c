@@ -117,7 +117,6 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     sfree( workspace->Clp, "Clp" );
     sfree( workspace->vlpex, "vlpex" );
     sfree( workspace->bond_mark, "bond_mark" );
-    sfree( workspace->done_after, "done_after" );
 
     /* QEq storage */
     sfree( workspace->Hdia_inv, "Hdia_inv" );
@@ -245,7 +244,6 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     workspace->Clp = (real*) smalloc( total_real, "Clp" );
     workspace->vlpex = (real*) smalloc( total_real, "vlpex" );
     workspace->bond_mark = (int*) scalloc(total_cap, sizeof(int), "bond_mark");
-    workspace->done_after = (int*) scalloc(total_cap, sizeof(int), "done_after");
 
     /* charge method storage */
     switch ( control->charge_method )

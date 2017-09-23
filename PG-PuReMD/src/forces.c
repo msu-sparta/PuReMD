@@ -800,7 +800,6 @@ int Init_Forces( reax_system *system, control_params *control,
     {
         /* put ghost atoms to an infinite distance */
         workspace->bond_mark[i] = 1000;
-        //workspace->done_after[i] = Start_Index( i, far_nbrs );
     }
 
     H = &(workspace->H); //MATRIX CHANGES
@@ -969,8 +968,6 @@ int Init_Forces( reax_system *system, control_params *control,
                     else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
                     {
                         workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
-                        //if( workspace->bond_mark[i] == 1000 )
-                        //  workspace->done_after[i] = pj;
                     }
 
                     //fprintf( stdout, "%d%d - %d(%d) %d(%d)\n",
@@ -1005,7 +1002,6 @@ int Init_Forces( reax_system *system, control_params *control,
 
     /*for( i = system->n; i < system->N; ++i ) {
       start_i = Start_Index(i, far_nbrs);
-      end_i = workspace->done_after[i];
 
       if( workspace->bond_mark[i] >= 2 && start_i < end_i ) {
         atom_i = &(system->my_atoms[i]);
@@ -1088,7 +1084,6 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
     for ( i = system->n; i < system->N; ++i )
     {
         workspace->bond_mark[i] = 1000; // put ghost atoms to an infinite distance
-        //workspace->done_after[i] = Start_Index( i, far_nbrs );
     }
 
     num_bonds = 0;
@@ -1214,15 +1209,13 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                     ++btop_i;
 
                     if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
+                    {
                         workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
+                    }
                     else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
                     {
                         workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
-                        //if( workspace->bond_mark[i] == 1000 )
-                        //  workspace->done_after[i] = pj;
                     }
-                    //fprintf( stdout, "%d%d - %d(%d) %d(%d)\n",
-                    //   i , j, i, workspace->bond_mark[i], j, workspace->bond_mark[j] );
                 }
             }
         }

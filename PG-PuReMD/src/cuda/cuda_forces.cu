@@ -15,7 +15,9 @@
 #include "cuda_torsion_angles.h"
 #include "cuda_utils.h"
 #include "cuda_valence_angles.h"
-#include "cuda_validation.h"
+#if defined(DEBUG)
+  #include "cuda_validation.h"
+#endif
 
 #include "../basic_comm.h"
 #include "../forces.h"
@@ -1849,7 +1851,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 #if defined(PURE_REAX)
         if ( charge_flag == TRUE )
         {
-            Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
+            Cuda_Compute_Charges( system, control, data, workspace, out_control, mpi_data );
         }
 
 #if defined(LOG_PERFORMANCE)

@@ -28,7 +28,7 @@
 #include "tool_box.h"
 #include "vector.h"
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA) && defined(DEBUG)
   #include "cuda/cuda_validation.h"
 #endif
 
@@ -98,13 +98,13 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
     }
 #endif
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA) && defined(DEBUG)
     check_zeros_host( x, N, "x" );
 #endif
 
     Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA) && defined(DEBUG)
     check_zeros_host( x, N, "x" );
 #endif
 

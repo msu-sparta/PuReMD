@@ -1919,8 +1919,6 @@ typedef struct
     rvec *dDeltap_self;
     /**/
     int *bond_mark;
-    /**/
-    int *done_after;
 
     /* charge matrix storage */
     /* charge matrix */

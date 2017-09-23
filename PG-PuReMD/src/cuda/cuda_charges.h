@@ -37,7 +37,7 @@ void cuda_charges_st( reax_system *, storage *, real *, real );
 
 void cuda_charges_updateq( reax_system *, real * );
 
-void Cuda_QEq( reax_system*, control_params*, simulation_data*,
+void Cuda_Compute_Charges( reax_system*, control_params*, simulation_data*,
         storage*, output_controls*, mpi_datatypes* );
 
 

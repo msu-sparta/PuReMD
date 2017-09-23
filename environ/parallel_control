@@ -21,7 +21,7 @@ hbond_cutoff             7.50                   ! cutoff distance for hydrogen b
 charge_method                     0             ! charge method: 0 = QEq, 1 = EEM, 2 = ACKS2
 charge_freq                       1             ! frequency (sim step) at which atomic charges are computed
 cm_q_net                          0.0           ! net system charge
-cm_solver_type                    0             ! iterative linear solver for charge method: 0 = GMRES, 1 = GMRES_H, 2 = CG, 3 = SDM
+cm_solver_type                    2             ! iterative linear solver for charge method: 0 = GMRES, 1 = GMRES_H, 2 = CG, 3 = SDM
 cm_solver_max_iters               1000          ! max solver iterations
 cm_solver_restart                 100           ! inner iterations of GMRES before restarting
 cm_solver_q_err                   1e-6          ! relative residual norm threshold used in solver
