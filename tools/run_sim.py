@@ -176,7 +176,7 @@ class TestCase():
 
         if cnt == int(param['nsteps']):
             fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-                param['nsteps'], param['cm_solver_type'], param['cm_solver_q_err'], param['cm_domain_sparsity'],
+                param['nsteps'], param['charge_method'], param['cm_solver_type'], param['cm_solver_q_err'], param['cm_domain_sparsity'],
                 param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'], param['cm_solver_pre_comp_sweeps'],
                 param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
                 cm, param['threads'], time))
@@ -212,10 +212,10 @@ if __name__ == '__main__':
     control_dir = path.join(base_dir, 'environ')
     data_dir = path.join(base_dir, 'data/benchmarks')
 
-    header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
-    header_str = ['Data Set', 'Steps', 'QType', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
+    header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
+    header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
             'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
-    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
 
     params = {
             'ensemble_type': ['0'],
