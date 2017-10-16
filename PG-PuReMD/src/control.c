@@ -47,7 +47,7 @@ char Read_Control_File( char *control_file, control_params* control,
     }
 
     /* assign default values */
-    strcpy( control->sim_name, "simulate" );
+    strcpy( control->sim_name, "default.sim" );
     control->ensemble        = NVE;
     control->nsteps          = 0;
     control->dt              = 0.25;
@@ -77,10 +77,21 @@ char Read_Control_File( char *control_file, control_params* control,
 
     control->tabulate = 0;
 
+    control->charge_method = QEQ_CM;
     control->charge_freq = 1;
-    control->q_err = 1e-6;
-    control->refactor = 100;
-    control->droptol = 1e-2;;
+    control->cm_q_net = 0.0;
+    control->cm_solver_type = GMRES_S;
+    control->cm_solver_max_iters = 100;
+    control->cm_solver_restart = 50;
+    control->cm_solver_q_err = 0.000001;
+    control->cm_domain_sparsify_enabled = FALSE;
+    control->cm_domain_sparsity = 1.0;
+    control->cm_solver_pre_comp_type = DIAG_PC;
+    control->cm_solver_pre_comp_sweeps = 3;
+    control->cm_solver_pre_comp_refactor = 100;
+    control->cm_solver_pre_comp_droptol = 0.01;
+    control->cm_solver_pre_app_type = TRI_SOLVE_PA;
+    control->cm_solver_pre_app_jacobi_iters = 50;
 
     control->T_init = 0.;
     control->T_final = 300.;
@@ -247,25 +258,79 @@ char Read_Control_File( char *control_file, control_params* control,
             ival = atoi( tmp[1] );
             control->tabulate = ival;
         }
+        else if ( strcmp(tmp[0], "charge_method") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->charge_method = ival;
+        }
         else if ( strcmp(tmp[0], "charge_freq") == 0 )
         {
             ival = atoi( tmp[1] );
             control->charge_freq = ival;
         }
-        else if ( strcmp(tmp[0], "q_err") == 0 )
+        else if ( strcmp(tmp[0], "cm_q_net") == 0 )
         {
             val = atof( tmp[1] );
-            control->q_err = val;
+            control->cm_q_net = val;
         }
-        else if ( strcmp(tmp[0], "ilu_refactor") == 0 )
+        else if ( strcmp(tmp[0], "cm_solver_type") == 0 )
         {
             ival = atoi( tmp[1] );
-            control->refactor = ival;
+            control->cm_solver_type = ival;
         }
-        else if ( strcmp(tmp[0], "ilu_droptol") == 0 )
+        else if ( strcmp(tmp[0], "cm_solver_max_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_max_iters = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_restart") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_restart = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_q_err") == 0 )
         {
             val = atof( tmp[1] );
-            control->droptol = val;
+            control->cm_solver_q_err = val;
+        }
+        else if ( strcmp(tmp[0], "cm_domain_sparsity") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_domain_sparsity = val;
+            if ( val < 1.0 )
+            {
+                control->cm_domain_sparsify_enabled = TRUE;
+            }
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_comp_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_refactor") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_comp_refactor = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_droptol") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_solver_pre_comp_droptol = val;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_sweeps") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_comp_sweeps = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_app_type") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_app_type = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_app_jacobi_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_pre_app_jacobi_iters = ival;
         }
         else if ( strcmp(tmp[0], "temp_init") == 0 )
         {

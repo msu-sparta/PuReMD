@@ -24,7 +24,9 @@
 #include "cuda_lin_alg.h"
 #include "cuda_reduction.h"
 #include "cuda_utils.h"
-#include "cuda_validation.h"
+#if defined(DEBUG)
+  #include "cuda_validation.h"
+#endif
 
 #include "../basic_comm.h"
 
@@ -259,32 +261,30 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
     // compare_array (workspace->b_t, dev_workspace->b_t, system->n, "b_t");
     //}
 
-//#ifdef __CUDA_DEBUG__
-//  Init_MatVec( system, data, control, workspace, mpi_data );
-//#endif
+    switch ( control->cm_solver_type )
+    {
+    case GMRES_S:
+    case GMRES_H_S:
+    case SDM_S:
+        fprintf( stderr, "Unsupported QEq solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initialized qEq\n", system->my_rank );
-    //Print_Linear_System( system, control, workspace, data->step );
-#endif
+    case CG_S:
+        s_matvecs = Cuda_dual_CG( system, control, workspace, &dev_workspace->H,
+                dev_workspace->b, control->cm_solver_q_err, dev_workspace->x, mpi_data,
+                out_control->log, data );
+        t_matvecs = 0;
+        break;
 
-    //MATRIX CHANGES
-    s_matvecs = Cuda_dual_CG( system, workspace, &dev_workspace->H,
-            dev_workspace->b, control->q_err, dev_workspace->x, mpi_data,
-            out_control->log, data );
-    t_matvecs = 0;
-    //fprintf (stderr, "Device: First CG complated with iterations: %d \n", s_matvecs);
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
-#endif
+    default:
+        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
 
     Cuda_Calculate_Charges( system, workspace, mpi_data );
-
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: computed charges\n", system->my_rank );
-    //Print_Charges( system );
-#endif
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -293,4 +293,114 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
         data->timing.t_matvecs += t_matvecs;
     }
 #endif
+}
+
+
+void Cuda_EE( reax_system *system, control_params *control, simulation_data
+        *data, storage *workspace, output_controls *out_control, mpi_datatypes
+        *mpi_data )
+{
+    int s_matvecs, t_matvecs;
+
+    Cuda_Init_MatVec( system, workspace );
+
+    switch ( control->cm_solver_type )
+    {
+    case GMRES_S:
+    case GMRES_H_S:
+    case SDM_S:
+        fprintf( stderr, "Unsupported QEq solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+
+    case CG_S:
+        s_matvecs = Cuda_CG( system, control, workspace, &dev_workspace->H,
+                dev_workspace->b_s, control->cm_solver_q_err, dev_workspace->s, mpi_data );
+        t_matvecs = 0;
+        break;
+
+
+    default:
+        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    Cuda_Calculate_Charges( system, workspace, mpi_data );
+
+#if defined(LOG_PERFORMANCE)
+    if ( system->my_rank == MASTER_NODE )
+    {
+        data->timing.s_matvecs += s_matvecs;
+        data->timing.t_matvecs += t_matvecs;
+    }
+#endif
+}
+
+
+void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
+        *data, storage *workspace, output_controls *out_control, mpi_datatypes
+        *mpi_data )
+{
+    int s_matvecs, t_matvecs;
+
+    Cuda_Init_MatVec( system, workspace );
+
+    switch ( control->cm_solver_type )
+    {
+    case GMRES_S:
+    case GMRES_H_S:
+    case SDM_S:
+        fprintf( stderr, "Unsupported QEq solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+
+    case CG_S:
+        s_matvecs = Cuda_CG( system, control, workspace, &dev_workspace->H,
+                dev_workspace->b_s, control->cm_solver_q_err, dev_workspace->s, mpi_data );
+        t_matvecs = 0;
+        break;
+
+
+    default:
+        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    Cuda_Calculate_Charges( system, workspace, mpi_data );
+
+#if defined(LOG_PERFORMANCE)
+    if ( system->my_rank == MASTER_NODE )
+    {
+        data->timing.s_matvecs += s_matvecs;
+        data->timing.t_matvecs += t_matvecs;
+    }
+#endif
+}
+
+
+void Cuda_Compute_Charges( reax_system *system, control_params *control, simulation_data
+        *data, storage *workspace, output_controls *out_control, mpi_datatypes
+        *mpi_data )
+{
+    switch ( control->charge_method )
+    {
+    case QEQ_CM:
+        Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
+        break;
+
+    case EE_CM:
+        Cuda_EE( system, control, data, workspace, out_control, mpi_data );
+        break;
+
+    case ACKS2_CM:
+        Cuda_ACKS2( system, control, data, workspace, out_control, mpi_data );
+        break;
+
+    default:
+        fprintf( stderr, "Invalid charge method. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
 }

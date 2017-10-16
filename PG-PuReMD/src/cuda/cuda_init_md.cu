@@ -10,7 +10,9 @@
 #include "cuda_reset_tools.h"
 #include "cuda_system_props.h"
 #include "cuda_utils.h"
-#include "cuda_validation.h"
+#if defined(DEBUG)
+  #include "cuda_validation.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "../box.h"

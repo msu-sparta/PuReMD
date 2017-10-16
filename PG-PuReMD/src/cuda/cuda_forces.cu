@@ -15,7 +15,9 @@
 #include "cuda_torsion_angles.h"
 #include "cuda_utils.h"
 #include "cuda_valence_angles.h"
-#include "cuda_validation.h"
+#if defined(DEBUG)
+  #include "cuda_validation.h"
+#endif
 
 #include "../basic_comm.h"
 #include "../forces.h"
@@ -212,7 +214,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
     int local;
     int my_bonds, my_hbonds, my_cm_entries;
     real cutoff;
-    real r_ij, r2; 
+    real r_ij; 
     real C12, C34, C56;
     real BO, BO_s, BO_pi, BO_pi2;
     single_body_parameters *sbp_i, *sbp_j;
@@ -334,8 +336,6 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                 /* uncorrected bond orders */
                 if ( nbr_pj->d <= control->bond_cut )
                 {
-                    r2 = SQR( r_ij );
-
                     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
                     {
                         C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
@@ -1074,6 +1074,7 @@ CUDA_GLOBAL void k_update_hbonds( reax_atom *my_atoms, reax_list hbonds, int n )
 }
 
 
+#if defined(DEBUG)
 CUDA_GLOBAL void k_print_forces( reax_atom *my_atoms, rvec *f, int n )
 {
     int i; 
@@ -1151,6 +1152,7 @@ static void Print_HBonds( reax_system *system, int step )
     cudaThreadSynchronize( );
     cudaCheckError( );
 }
+#endif
 
 
 CUDA_GLOBAL void k_init_bond_orders( reax_atom *my_atoms, reax_list far_nbrs, 
@@ -1345,7 +1347,8 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, 
         reax_list **lists, output_controls *out_control )
 {
-    int hbs, hnbrs_blocks, update_energy, ret;
+    int update_energy, ret;
+//    int hbs, hnbrs_blocks;
     int *thbody;
     static int compute_bonded_part1 = FALSE;
     real *spad = (real *) scratch;
@@ -1643,8 +1646,8 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             cuda_memset( spad, 0,
                     2 * sizeof(real) * system->n + sizeof(rvec) * system->n * 2, "scratch" );
 
-            hbs = (system->n * HB_KER_THREADS_PER_ATOM / HB_BLOCK_SIZE) + 
-                (((system->n * HB_KER_THREADS_PER_ATOM) % HB_BLOCK_SIZE) == 0 ? 0 : 1);
+//            hbs = (system->n * HB_KER_THREADS_PER_ATOM / HB_BLOCK_SIZE) + 
+//                (((system->n * HB_KER_THREADS_PER_ATOM) % HB_BLOCK_SIZE) == 0 ? 0 : 1);
 
             Cuda_Hydrogen_Bonds <<< BLOCKS, BLOCK_SIZE >>>
 //            Cuda_Hydrogen_Bonds_MT <<< hbs, HB_BLOCK_SIZE, 
@@ -1694,8 +1697,8 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             cudaCheckError( );
 
             /* post process step2 */
-            hnbrs_blocks = (system->N * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
-                (((system->N * HB_POST_PROC_KER_THREADS_PER_ATOM) % HB_POST_PROC_BLOCK_SIZE) == 0 ? 0 : 1);
+//            hnbrs_blocks = (system->N * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
+//                (((system->N * HB_POST_PROC_KER_THREADS_PER_ATOM) % HB_POST_PROC_BLOCK_SIZE) == 0 ? 0 : 1);
 
             Cuda_Hydrogen_Bonds_HNbrs <<< system->N, 32, 32 * sizeof(rvec) >>>
                 ( system->d_my_atoms, *dev_workspace, *(*dev_lists + HBONDS) );
@@ -1848,7 +1851,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 #if defined(PURE_REAX)
         if ( charge_flag == TRUE )
         {
-            Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
+            Cuda_Compute_Charges( system, control, data, workspace, out_control, mpi_data );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -1898,7 +1901,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d @ step%d: total forces computed\n",
                 system->my_rank, data->step );
-        //Print_Total_Force( system, data, workspace );
+//        Print_Total_Force( system, data, workspace );
         MPI_Barrier( MPI_COMM_WORLD );
 
 #endif

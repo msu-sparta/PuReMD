@@ -133,18 +133,20 @@ if test "x$BUILD_GPU" = "xyes"; then
 
         NVCCFLAGS=
 	NVCCFLAGS+=" -ccbin=$CXX"
-	if test "BUILD_DEBUG" = "true"
+	if test "x${BUILD_DEBUG}" = "xtrue"
 	then
 		NVCCFLAGS+=" -g -G"
+
 	fi
 	AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
 else
 	AM_CONDITIONAL(USE_CUDA, test "x" = "xyes")
 fi
+AM_CONDITIONAL(DEBUG, test "x${BUILD_DEBUG}" = "xtrue")
 
 if test "BUILD_PROF" = "true"
 then
-	if test "x$BUILD_GPU" = "xyes"; then
+	if test "x${BUILD_GPU}" = "xyes"; then
 		NVCCFLAGS+=" --compiler-options ${gprof_flags}"
 	else
 		CFLAGS+=" ${gprof_flags}"

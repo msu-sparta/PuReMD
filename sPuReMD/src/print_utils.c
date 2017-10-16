@@ -584,7 +584,7 @@ void Output_Results( reax_system *system, control_params *control,
     e_pol = 0.0;
 
 #ifdef _OPENMP
-    #pragma omp parallel for default(none) private(q, type_i,) shared(system) \
+    #pragma omp parallel for default(none) private(q, type_i) shared(system) \
         reduction(+: e_pol) schedule(static)
 #endif
     for ( i = 0; i < system->N; i++ )

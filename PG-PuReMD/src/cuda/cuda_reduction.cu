@@ -662,8 +662,8 @@ CUDA_GLOBAL void k_norm_rvec2( const rvec2 *input, rvec2 *per_block_results,
 }
 
 
-CUDA_GLOBAL void k_dot_rvec2(const rvec2 *a, rvec2 *b, rvec2 *res,
-        const size_t n)
+CUDA_GLOBAL void k_dot_rvec2( const rvec2 *a, rvec2 *b, rvec2 *res,
+        const size_t n )
 {
 #if defined(__SM_35__)
     extern __shared__ rvec2 my_dot2[];
@@ -746,11 +746,13 @@ CUDA_GLOBAL void k_dot_rvec2(const rvec2 *a, rvec2 *b, rvec2 *res,
 //vector functions
 //////////////////////////////////////////////////
 CUDA_GLOBAL void k_vector_sum( real* dest, real c, real* v, real d, real* y,
-        int k )
+        int n )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
 
-    if( i >= k )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
     {
         return;
     }
@@ -759,11 +761,13 @@ CUDA_GLOBAL void k_vector_sum( real* dest, real c, real* v, real d, real* y,
 }
 
 
-CUDA_GLOBAL void k_vector_mul( real* dest, real* v, real* y, int k )
+CUDA_GLOBAL void k_vector_mul( real* dest, real* v, real* y, int n )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
 
-    if( i >= k )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
     {
         return;
     }
@@ -772,11 +776,13 @@ CUDA_GLOBAL void k_vector_mul( real* dest, real* v, real* y, int k )
 }
 
 
-CUDA_GLOBAL void k_rvec2_mul( rvec2* dest, rvec2* v, rvec2* y, int k )
+CUDA_GLOBAL void k_rvec2_mul( rvec2* dest, rvec2* v, rvec2* y, int n )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
 
-    if( i >= k )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
     {
         return;
     }
@@ -787,12 +793,13 @@ CUDA_GLOBAL void k_rvec2_mul( rvec2* dest, rvec2* v, rvec2* y, int k )
 
 
 CUDA_GLOBAL void k_rvec2_pbetad( rvec2 *dest, rvec2 *a, 
-        real beta0, real beta1, 
-        rvec2 *b, int n )
+        real beta0, real beta1, rvec2 *b, int n )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i;
 
-    if( i >= n )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
     {
         return;
     }

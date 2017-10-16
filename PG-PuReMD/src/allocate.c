@@ -89,7 +89,7 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
         return;
     }
 
-    workspace->allocated = 0;
+    workspace->allocated = FALSE;
 
     /* communication storage */
     for ( i = 0; i < MAX_NBRS; ++i )
@@ -117,7 +117,6 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     sfree( workspace->Clp, "Clp" );
     sfree( workspace->vlpex, "vlpex" );
     sfree( workspace->bond_mark, "bond_mark" );
-    sfree( workspace->done_after, "done_after" );
 
     /* QEq storage */
     sfree( workspace->Hdia_inv, "Hdia_inv" );
@@ -213,7 +212,7 @@ void Allocate_Workspace( reax_system *system, control_params *control,
 {
     int i, total_real, total_rvec, local_rvec;
 
-    workspace->allocated = 1;
+    workspace->allocated = TRUE;
     total_real = total_cap * sizeof(real);
     total_rvec = total_cap * sizeof(rvec);
     local_rvec = local_cap * sizeof(rvec);
@@ -245,9 +244,25 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     workspace->Clp = (real*) smalloc( total_real, "Clp" );
     workspace->vlpex = (real*) smalloc( total_real, "vlpex" );
     workspace->bond_mark = (int*) scalloc(total_cap, sizeof(int), "bond_mark");
-    workspace->done_after = (int*) scalloc(total_cap, sizeof(int), "done_after");
 
-    /* QEq storage */
+    /* charge method storage */
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            system->N_cm = system->N;
+            break;
+        case EE_CM:
+            system->N_cm = system->N + 1;
+            break;
+        case ACKS2_CM:
+            system->N_cm = 2 * system->N + 2;
+            break;
+        default:
+            fprintf( stderr, "[ERROR] Unknown charge method type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+    }
+
     workspace->Hdia_inv = (real*) scalloc( total_cap, sizeof(real), "Hdia_inv" );
     workspace->b_s = (real*) scalloc( total_cap, sizeof(real), "b_s" );
     workspace->b_t = (real*) scalloc( total_cap, sizeof(real), "b_t" );
@@ -255,39 +270,56 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     workspace->b_prm = (real*) scalloc( total_cap, sizeof(real), "b_prm" );
     workspace->s = (real*) scalloc( total_cap, sizeof(real), "s" );
     workspace->t = (real*) scalloc( total_cap, sizeof(real), "t" );
-    workspace->droptol = (real*) scalloc( total_cap, sizeof(real), "droptol" );
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        workspace->droptol = (real*) scalloc( total_cap, sizeof(real), "droptol" );
+    }
     workspace->b = (rvec2*) scalloc( total_cap, sizeof(rvec2), "b" );
     workspace->x = (rvec2*) scalloc( total_cap, sizeof(rvec2), "x" );
 
-    /* GMRES storage */
-    workspace->y = (real*) scalloc( RESTART + 1, sizeof(real), "y" );
-    workspace->z = (real*) scalloc( RESTART + 1, sizeof(real), "z" );
-    workspace->g = (real*) scalloc( RESTART + 1, sizeof(real), "g" );
-    //SUHDIR
-    //workspace->h = (real**) scalloc( RESTART+1, sizeof(real*), "h" );
-    workspace->h = (real *) scalloc ( (RESTART + 1) * (RESTART + 1), sizeof (real), "h");
-    workspace->hs = (real*) scalloc( RESTART + 1, sizeof(real), "hs" );
-    workspace->hc = (real*) scalloc( RESTART + 1, sizeof(real), "hc" );
-    //SUDHIR
-    //workspace->v = (real**) scalloc( RESTART+1, sizeof(real*), "v" );
-    workspace->v = (real *) scalloc ( (RESTART + 1) * (RESTART + 1), sizeof (real), "v");
+    switch ( control->cm_solver_type )
+    {
+        /* GMRES storage */
+        case GMRES_S:
+        case GMRES_H_S:
+            workspace->y = (real*) scalloc( RESTART + 1, sizeof(real), "y" );
+            workspace->z = (real*) scalloc( RESTART + 1, sizeof(real), "z" );
+            workspace->g = (real*) scalloc( RESTART + 1, sizeof(real), "g" );
+            workspace->h = (real *) scalloc ( (RESTART + 1) * (RESTART + 1), sizeof (real), "h");
+            workspace->hs = (real*) scalloc( RESTART + 1, sizeof(real), "hs" );
+            workspace->hc = (real*) scalloc( RESTART + 1, sizeof(real), "hc" );
+            workspace->v = (real *) scalloc ( (RESTART + 1) * (RESTART + 1), sizeof (real), "v");
+            break;
 
-    /*
-    for( i = 0; i < RESTART+1; ++i ) {
-      workspace->h[i] = (real*) scalloc( RESTART+1, sizeof(real), "h[i]" );
-      workspace->v[i] = (real*) scalloc( total_cap, sizeof(real), "v[i]" );
+        /* CG storage */
+        case CG_S:
+            workspace->r = (real*) scalloc( total_cap, sizeof(real), "r" );
+            workspace->d = (real*) scalloc( total_cap, sizeof(real), "d" );
+            workspace->q = (real*) scalloc( total_cap, sizeof(real), "q" );
+            workspace->p = (real*) scalloc( total_cap, sizeof(real), "p" );
+            workspace->r2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "r2" );
+            workspace->d2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "d2" );
+            workspace->q2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "q2" );
+            workspace->p2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "p2" );
+            break;
+
+        case SDM_S:
+            workspace->r = (real*) scalloc( total_cap, sizeof(real), "r" );
+            workspace->d = (real*) scalloc( total_cap, sizeof(real), "d" );
+            workspace->q = (real*) scalloc( total_cap, sizeof(real), "q" );
+            workspace->p = (real*) scalloc( total_cap, sizeof(real), "p" );
+            workspace->r2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "r2" );
+            workspace->d2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "d2" );
+            workspace->q2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "q2" );
+            workspace->p2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "p2" );
+            break;
+
+        default:
+            fprintf( stderr, "Unknown charge method linear solver type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
-    */
-
-    /* CG storage */
-    workspace->r = (real*) scalloc( total_cap, sizeof(real), "r" );
-    workspace->d = (real*) scalloc( total_cap, sizeof(real), "d" );
-    workspace->q = (real*) scalloc( total_cap, sizeof(real), "q" );
-    workspace->p = (real*) scalloc( total_cap, sizeof(real), "p" );
-    workspace->r2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "r2" );
-    workspace->d2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "d2" );
-    workspace->q2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "q2" );
-    workspace->p2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "p2" );
 
     /* integrator storage */
     workspace->v_const = (rvec*) smalloc( local_rvec, "v_const" );

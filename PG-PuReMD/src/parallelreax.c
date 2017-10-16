@@ -49,8 +49,11 @@
   #include "cuda/cuda_reset_tools.h"
   #include "cuda/cuda_system_props.h"
   #include "cuda/cuda_utils.h"
-  #include "cuda/cuda_validation.h"
+  #if defined(DEBUG)
+    #include "cuda/cuda_validation.h"
+  #endif
 #endif
+
 
 evolve_function Evolve;
 evolve_function Cuda_Evolve;
