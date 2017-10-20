@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "mytypes.h"
+
 #include "analyze.h"
 #include "control.h"
 #include "ffield.h"
@@ -31,15 +32,13 @@
 #include "reset_utils.h"
 #include "restart.h"
 #include "system_props.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
-static void Post_Evolve( reax_system * const system,
-        control_params * const control,
-        simulation_data * const data,
-        static_storage * const workspace,
-        list ** const lists,
-        output_controls * const out_control )
+static void Post_Evolve( reax_system * const system, control_params * const control,
+        simulation_data * const data, static_storage * const workspace,
+        list ** const lists, output_controls * const out_control )
 {
     int i;
     rvec diff, cross;
@@ -145,13 +144,13 @@ void static Read_System( char * const geo_file,
 }
 
 
-static void usage(char* argv[])
+static void usage( char* argv[] )
 {
     fprintf(stderr, "usage: ./%s geometry ffield control\n", argv[0]);
 }
 
 
-int main(int argc, char* argv[])
+int main( int argc, char* argv[] )
 {
     reax_system system;
     control_params control;
@@ -222,7 +221,7 @@ int main(int argc, char* argv[])
     Finalize( &system, &control, &data, &workspace, &lists,
             &out_control );
 
-    free( lists );
+    sfree( lists, "main::lists" );
 
     return SUCCESS;
 }

@@ -22,8 +22,6 @@
 #include "lin_alg.h"
 
 #include "allocate.h"
-#include "list.h"
-#include "print_utils.h"
 #include "tool_box.h"
 #include "vector.h"
 
@@ -81,11 +79,10 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     Vector_MakeZero( b, n );
 
 #ifdef _OPENMP
-    tid = omp_get_thread_num();
+    tid = omp_get_thread_num( );
 
     #pragma omp master
     {
-
         /* keep b_local for program duration to avoid allocate/free
          * overhead per Sparse_MatVec call*/
         if ( b_local == NULL )
@@ -101,8 +98,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
     Vector_MakeZero( (real * const)b_local, omp_get_num_threads() * n );
 
-#endif
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < n; ++i )
     {
         si = A->start[i];
@@ -128,6 +125,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
         b[i] += A->val[k] * x[i];
 #endif
     }
+
 #ifdef _OPENMP
     #pragma omp for schedule(static)
     for ( i = 0; i < n; ++i )
@@ -138,7 +136,6 @@ static void Sparse_MatVec( const sparse_matrix * const A,
         }
     }
 #endif
-
 }
 
 
@@ -186,7 +183,7 @@ void Transpose( const sparse_matrix * const A, sparse_matrix const *A_t )
         }
     }
 
-    free( A_t_top );
+    sfree( A_t_top, "Transpose::A_t_top" );
 }
 
 
@@ -226,7 +223,9 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
 {
     unsigned int i;
 
+#ifdef _OPENMP
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < N; ++i )
     {
         x[i] = y[i] * Hdia_inv[i];
@@ -251,7 +250,9 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
     int i, pj, j, si, ei;
     real val;
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         if ( tri == LOWER )
         {
@@ -286,6 +287,10 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
             }
         }
     }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+#endif
 }
 
 
@@ -307,7 +312,9 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
 {
     int i, j, pj, local_row, local_level;
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         if ( tri == LOWER )
         {
@@ -407,14 +414,18 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
         }
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
+#endif
 
     /* perform substitutions by level */
     if ( tri == LOWER )
     {
         for ( i = 0; i < levels; ++i )
         {
+#ifdef _OPENMP
             #pragma omp for schedule(static)
+#endif
             for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
             {
                 local_row = level_rows[j];
@@ -432,7 +443,9 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
     {
         for ( i = 0; i < levels; ++i )
         {
+#ifdef _OPENMP
             #pragma omp for schedule(static)
+#endif
             for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
             {
                 local_row = level_rows[j];
@@ -447,7 +460,9 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
         }
     }
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         /* save level info for re-use if performing repeated triangular solves via preconditioning */
         if ( tri == LOWER )
@@ -466,7 +481,9 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
         }
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
+#endif
 }
 
 
@@ -527,7 +544,9 @@ static void compute_H_full( const sparse_matrix * const H )
  */
 void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
 {
+#ifdef _OPENMP
     #pragma omp parallel
+#endif
     {
 #define MAX_COLOR (500)
         int i, pj, v;
@@ -542,7 +561,9 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
         num_thread = 1;
 #endif
 
-        #pragma omp master
+#ifdef _OPENMP
+        #pragma omp single
+#endif
         {
             memset( color, 0, sizeof(unsigned int) * A->n );
             recolor_cnt = A->n;
@@ -552,7 +573,9 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
          * for which coloring is to be used for */
         if ( tri == LOWER )
         {
+#ifdef _OPENMP
             #pragma omp for schedule(static)
+#endif
             for ( i = 0; i < A->n; ++i )
             {
                 to_color[i] = i;
@@ -560,7 +583,9 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
         }
         else
         {
+#ifdef _OPENMP
             #pragma omp for schedule(static)
+#endif
             for ( i = 0; i < A->n; ++i )
             {
                 to_color[i] = A->n - 1 - i;
@@ -574,14 +599,18 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             exit( INSUFFICIENT_MEMORY );
         }
 
+#ifdef _OPENMP
         #pragma omp barrier
+#endif
 
         while ( recolor_cnt > 0 )
         {
             memset( fb_color, -1, sizeof(int) * MAX_COLOR );
 
             /* color vertices */
+#ifdef _OPENMP
             #pragma omp for schedule(static)
+#endif
             for ( i = 0; i < recolor_cnt; ++i )
             {
                 v = to_color[i];
@@ -607,16 +636,22 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             temp = recolor_cnt;
             recolor_cnt_local = 0;
 
+#ifdef _OPENMP
             #pragma omp barrier
+#endif
 
-            #pragma omp master
+#ifdef _OPENMP
+            #pragma omp single
+#endif
             {
                 recolor_cnt = 0;
             }
-	    
+
+#ifdef _OPENMP
             #pragma omp barrier
 
             #pragma omp for schedule(static)
+#endif
             for ( i = 0; i < temp; ++i )
             {
                 v = to_color[i];
@@ -634,21 +669,25 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             }
 
             /* count thread-local conflicts and compute offsets for copying into shared buffer */
-	    conflict_cnt[tid + 1] = recolor_cnt_local;
+            conflict_cnt[tid + 1] = recolor_cnt_local;
 
+#ifdef _OPENMP
             #pragma omp barrier
 
             #pragma omp master
+#endif
             {
                 conflict_cnt[0] = 0;
                 for ( i = 1; i < num_thread + 1; ++i )
                 {
-	            conflict_cnt[i] += conflict_cnt[i - 1];
+                    conflict_cnt[i] += conflict_cnt[i - 1];
                 }
                 recolor_cnt = conflict_cnt[num_thread];
             }
 
+#ifdef _OPENMP
             #pragma omp barrier
+#endif
 
             /* copy thread-local conflicts into shared buffer */
             for ( i = 0; i < recolor_cnt_local; ++i )
@@ -657,22 +696,38 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
                 color[conflict_local[i]] = 0;
             }
 
+#ifdef _OPENMP
             #pragma omp barrier
 
-            #pragma omp master
+            #pragma omp single
+#endif
             {
                 temp_ptr = to_color;
                 to_color = conflict;
                 conflict = temp_ptr;
             }
 
+#ifdef _OPENMP
             #pragma omp barrier
+#endif
         }
 
-        free( conflict_local );
-        free( fb_color );
+        sfree( conflict_local, "graph_coloring::conflict_local" );
+        sfree( fb_color, "graph_coloring::fb_color" );
 
+//#if defined(DEBUG)
+//#ifdef _OPENMP
+//    #pragma omp master
+//#endif
+//    {
+//        for ( i = 0; i < A->n; ++i )
+//            printf("Vertex: %5d, Color: %5d\n", i, color[i] );
+//    }
+//#endif
+
+#ifdef _OPENMP
         #pragma omp barrier
+#endif
     }
 }
 
@@ -729,7 +784,9 @@ static void permute_vector( real * const x, const unsigned int n, const int inve
 {
     unsigned int i;
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         if ( x_p == NULL )
         {
@@ -750,20 +807,26 @@ static void permute_vector( real * const x, const unsigned int n, const int inve
         }
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
 
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < n; ++i )
     {
         x_p[i] = x[mapping[i]];
     }
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         memcpy( x, x_p, sizeof(real) * n );
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
+#endif
 }
 
 
@@ -974,7 +1037,9 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
 
     iter = 0;
 
-    #pragma omp master
+#ifdef _OPENMP
+    #pragma omp single
+#endif
     {
         if ( Dinv_b == NULL )
         {
@@ -1002,12 +1067,16 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
         }
     }
 
+#ifdef _OPENMP
     #pragma omp barrier
+#endif
 
     Vector_MakeZero( rp, R->n );
 
     /* precompute and cache, as invariant in loop below */
+#ifdef _OPENMP
     #pragma omp for schedule(static)
+#endif
     for ( i = 0; i < R->n; ++i )
     {
         Dinv_b[i] = Dinv[i] * b[i];
@@ -1016,7 +1085,9 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
     do
     {
         // x_{k+1} = G*x_{k} + Dinv*b;
+#ifdef _OPENMP
         #pragma omp for schedule(guided)
+#endif
         for ( i = 0; i < R->n; ++i )
         {
             if (tri == LOWER)
@@ -1042,14 +1113,18 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
             rp2[i] += Dinv_b[i];
         }
 
-        #pragma omp master
+#ifdef _OPENMP
+        #pragma omp single
+#endif
         {
             rp3 = rp;
             rp = rp2;
             rp2 = rp3;
         }
 
+#ifdef _OPENMP
         #pragma omp barrier
+#endif
 
         ++iter;
     }
@@ -1130,12 +1205,16 @@ static void apply_preconditioner( const static_storage * const workspace, const 
             case ICHOLT_PC:
             case ILU_PAR_PC:
             case ILUT_PAR_PC:
-                #pragma omp master
+#ifdef _OPENMP
+                #pragma omp single
+#endif
                 {
                     memcpy( y_p, y, sizeof(real) * workspace->H->n );
                 }
 
+#ifdef _OPENMP
                 #pragma omp barrier
+#endif
 
                 permute_vector( y_p, workspace->H->n, FALSE, LOWER );
                 tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
@@ -1158,7 +1237,9 @@ static void apply_preconditioner( const static_storage * const workspace, const 
             case ICHOLT_PC:
             case ILU_PAR_PC:
             case ILUT_PAR_PC:
-                #pragma omp master
+#ifdef _OPENMP
+                #pragma omp single
+#endif
                 {
                     if ( Dinv_L == NULL )
                     {
@@ -1170,12 +1251,16 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     }
                 }
 
+#ifdef _OPENMP
                 #pragma omp barrier
+#endif
 
                 /* construct D^{-1}_L */
                 if ( fresh_pre == TRUE )
                 {
+#ifdef _OPENMP
                     #pragma omp for schedule(static)
+#endif
                     for ( i = 0; i < workspace->L->n; ++i )
                     {
                         si = workspace->L->start[i + 1] - 1;
@@ -1185,7 +1270,9 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 
                 jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
 
-                #pragma omp master
+#ifdef _OPENMP
+                #pragma omp single
+#endif
                 {
                     if ( Dinv_U == NULL )
                     {
@@ -1197,12 +1284,16 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     }
                 }
 
+#ifdef _OPENMP
                 #pragma omp barrier
+#endif
 
                 /* construct D^{-1}_U */
                 if ( fresh_pre == TRUE )
                 {
+#ifdef _OPENMP
                     #pragma omp for schedule(static)
+#endif
                     for ( i = 0; i < workspace->U->n; ++i )
                     {
                         si = workspace->U->start[i];
@@ -1238,9 +1329,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
     N = H->n;
 
+#ifdef _OPENMP
     #pragma omp parallel default(none) private(i, j, k, itr, bnorm, ret_temp) \
         shared(N, cc, tmp1, tmp2, temp, time_start, g_itr, g_j, stderr)
+#endif
     {
+        j = 0;
+        itr = 0;
+
         #pragma omp master
         {
             time_start = Get_Time( );
@@ -1253,7 +1349,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
         if ( control->cm_solver_pre_comp_type == DIAG_PC )
         {
-            /* apply preconditioner to RHS */
+            /* apply preconditioner to residual */
             #pragma omp master
             {
                 time_start = Get_Time( );
@@ -1340,6 +1436,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             {
                 workspace->g[0] = ret_temp;
             }
+
+            #pragma omp barrier
+
             Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
             #pragma omp master
             {
@@ -1355,6 +1454,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     time_start = Get_Time( );
                 }
                 Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
+
                 #pragma omp master
                 {
                     data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
@@ -1365,6 +1465,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     time_start = Get_Time( );
                 }
                 apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], FALSE );
+
                 #pragma omp master
                 {
                     data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
@@ -1380,7 +1481,11 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     for ( i = 0; i <= j; i++ )
                     {
                         workspace->h[i][j] = Dot( workspace->v[i], workspace->v[j + 1], N );
+
+                        #pragma omp barrier
+
                         Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
+
                     }
                     #pragma omp master
                     {
@@ -1394,9 +1499,12 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     #pragma omp master
                     {
                         time_start = Get_Time( );
+                    }
+                    #pragma omp single
+                    {
                         for ( i = 0; i < j - 1; i++ )
                         {
-                            workspace->h[i][j] = 0;
+                            workspace->h[i][j] = 0.0;
                         }
                     }
 
@@ -1407,6 +1515,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                         {
                             workspace->h[i][j] = ret_temp;
                         }
+
+                        #pragma omp barrier
+
                         Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
                     }
                     #pragma omp master
@@ -1424,15 +1535,16 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 {
                     workspace->h[j + 1][j] = ret_temp;
                 }
+
+                #pragma omp barrier
+
                 Vector_Scale( workspace->v[j + 1],
-                              1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
+                        1.0 / workspace->h[j + 1][j], workspace->v[j + 1], N );
+
                 #pragma omp master
                 {
                     data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
                 }
-#if defined(DEBUG)
-                fprintf( stderr, "%d-%d: orthogonalization completed.\n", itr, j );
-#endif
 
                 #pragma omp master
                 {
@@ -1487,22 +1599,18 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     tmp2 = -workspace->hs[j] * workspace->g[j];
                     workspace->g[j] = tmp1;
                     workspace->g[j + 1] = tmp2;
+
                     data->timing.cm_solver_orthog += Get_Timing_Info( time_start );
                 }
 
                 #pragma omp barrier
-
-                //fprintf( stderr, "h: " );
-                //for( i = 0; i <= j+1; ++i )
-                //fprintf( stderr, "%.6f ", workspace->h[i][j] );
-                //fprintf( stderr, "\n" );
-                //fprintf( stderr, "res: %.15e\n", workspace->g[j+1] );
             }
 
             /* solve Hy = g: H is now upper-triangular, do back-substitution */
             #pragma omp master
             {
                 time_start = Get_Time( );
+
                 for ( i = j - 1; i >= 0; i-- )
                 {
                     temp = workspace->g[i];
@@ -1513,18 +1621,22 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
                     workspace->y[i] = temp / workspace->h[i][i];
                 }
+
                 data->timing.cm_solver_tri_solve += Get_Timing_Info( time_start );
 
                 /* update x = x_0 + Vy */
                 time_start = Get_Time( );
             }
+
             Vector_MakeZero( workspace->p, N );
+
             for ( i = 0; i < j; i++ )
             {
                 Vector_Add( workspace->p, workspace->y[i], workspace->v[i], N );
             }
 
             Vector_Add( x, 1., workspace->p, N );
+
             #pragma omp master
             {
                 data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
@@ -1559,11 +1671,12 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         const sparse_matrix * const H, const real * const b, real tol,
         real * const x, const int fresh_pre )
 {
-    int  i, j, k, itr, N;
+    int i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
     real v[10000], z[control->cm_solver_restart + 2][10000], w[control->cm_solver_restart + 2];
     real u[control->cm_solver_restart + 2][10000];
 
+    j = 0;
     N = H->n;
     bnorm = Norm( b, N );
 
@@ -1597,7 +1710,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         // fprintf( stderr, "\n\n%12.6f\n", w[0] );
 
         /* GMRES inner-loop */
-        for ( j = 0; j < control->cm_solver_restart && fabs( w[j] ) / bnorm > tol; j++ )
+        for ( j = 0; j < control->cm_solver_restart && FABS( w[j] ) / bnorm > tol; j++ )
         {
             /* compute v_j */
             Vector_Scale( z[j], -2 * u[j][j], u[j], N );
@@ -1653,7 +1766,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
             }
 
             /* apply the new Givens rotation to H and right-hand side */
-            if ( fabs(v[j + 1]) >= ALMOST_ZERO )
+            if ( FABS(v[j + 1]) >= ALMOST_ZERO )
             {
                 cc = SQRT( SQR( v[j] ) + SQR( v[j + 1] ) );
                 workspace->hc[j] = v[j] / cc;
@@ -1730,7 +1843,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         }
 
         /* stopping condition */
-        if ( fabs( w[j] ) / bnorm <= tol )
+        if ( FABS( w[j] ) / bnorm <= tol )
         {
             break;
         }
@@ -1906,7 +2019,7 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 
     }
 
-    free( e );
+    sfree( e, "condest::e" );
 
     return c;
 }

@@ -28,7 +28,7 @@
 #include "tool_box.h"
 #include "vector.h"
 #if defined(HAVE_SUPERLU_MT)
-#include "slu_mt_ddefs.h"
+  #include "slu_mt_ddefs.h"
 #endif
 
 
@@ -142,7 +142,7 @@ static void Sort_Matrix_Rows( sparse_matrix * const A )
             }
         }
 
-        free( temp );
+        sfree( temp, "Sort_Matrix_Rows::temp" );
     }
 }
 
@@ -287,7 +287,7 @@ static int Estimate_LU_Fill( const sparse_matrix * const A, const real * const d
 
 #if defined(HAVE_SUPERLU_MT)
 static real SuperLU_Factorize( const sparse_matrix * const A,
-                               sparse_matrix * const L, sparse_matrix * const U )
+        sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, pj, count, *Ltop, *Utop, r;
     sparse_matrix *A_t;
@@ -554,9 +554,9 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
       ------------------------------------------------------------*/
     pxgstrf_finalize( &superlumt_options, &AC_S );
     Deallocate_Matrix( A_t );
-    free( xa );
-    free( asub );
-    free( a );
+    sfree( xa, "SuperLU_Factorize::xa" );
+    sfree( asub, "SuperLU_Factorize::asub" );
+    sfree( a, "SuperLU_Factorize::a" );
     SUPERLU_FREE( perm_r );
     SUPERLU_FREE( perm_c );
     SUPERLU_FREE( ((NCformat *)A_S.Store)->rowind );
@@ -574,8 +574,8 @@ static real SuperLU_Factorize( const sparse_matrix * const A,
     }
     StatFree(&Gstat);
 
-    free( Utop );
-    free( Ltop );
+    sfree( Utop, "SuperLU_Factorize::Utop" );
+    sfree( Ltop, "SuperLU_Factorize::Ltop" );
 
     //TODO: return iters
     return 0.;
@@ -750,9 +750,9 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
 //    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
 
-    free( tmp_val );
-    free( tmp_j );
-    free( Utop );
+    sfree( tmp_val, "ICHOLT::tmp_val" );
+    sfree( tmp_j, "ICHOLT::tmp_j" );
+    sfree( Utop, "ICHOLT::Utop" );
 
     return Get_Timing_Info( start );
 }
@@ -766,7 +766,7 @@ static real ICHOLT( const sparse_matrix * const A, const real * const droptol,
  * SIAM J. Sci. Comp. */
 #if defined(TESTING)
 static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
-                       sparse_matrix * const U_t, sparse_matrix * const U )
+        sparse_matrix * const U_t, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x = 0, y = 0, ei_x, ei_y;
     real *D, *D_inv, sum, start;
@@ -925,9 +925,9 @@ static real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 #endif
 
     Deallocate_Matrix( DAD );
-    free(D_inv);
-    free(D);
-    free(Utop);
+    sfree( D_inv, "ICHOL_PAR::D_inv" );
+    sfree( D, "ICHOL_PAR::D" );
+    sfree( Utop, "ICHOL_PAR::Utop" );
 
     return Get_Timing_Info( start );
 }
@@ -1141,8 +1141,8 @@ static real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 #endif
 
     Deallocate_Matrix( DAD );
-    free( D_inv );
-    free( D );
+    sfree( D_inv, "ILU_PAR::D_inv" );
+    sfree( D, "ILU_PAR::D_inv" );
 
     return Get_Timing_Info( start );
 }
@@ -1407,8 +1407,8 @@ static real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     Deallocate_Matrix( U_temp );
     Deallocate_Matrix( L_temp );
     Deallocate_Matrix( DAD );
-    free( D_inv );
-    free( D );
+    sfree( D_inv, "ILUT_PAR::D_inv" );
+    sfree( D, "ILUT_PAR::D_inv" );
 
     return Get_Timing_Info( start );
 }
@@ -2540,6 +2540,12 @@ static void Calculate_Charges_EE( const reax_system * const system,
     for ( i = 0; i < system->N; ++i )
     {
         system->atoms[i].q = workspace->s[0][i];
+
+#if defined(DEBUG_FOCUS)
+        printf( "atom %4d: %f\n", i, system->atoms[i].q );
+        printf( "  x[0]: %10.5f, x[1]: %10.5f, x[2]:  %10.5f\n",
+               system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );
+#endif
     }
 }
 

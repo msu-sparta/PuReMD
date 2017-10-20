@@ -20,7 +20,9 @@
   ----------------------------------------------------------------------*/
 
 #include "grid.h"
+
 #include "reset_utils.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
@@ -39,9 +41,10 @@ int Estimate_GCell_Population( reax_system* system )
         j = (int)(system->atoms[l].x[1] * g->inv_len[1]);
         k = (int)(system->atoms[l].x[2] * g->inv_len[2]);
         g->top[i][j][k]++;
-        // fprintf( stderr, "\tatom%-6d (%8.3f%8.3f%8.3f) --> (%3d%3d%3d)\n",
-        // l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
-        // i, j, k );
+
+//        fprintf( stderr, "\tatom%-6d (%8.3f%8.3f%8.3f) --> (%3d%3d%3d)\n",
+//                l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
+//                i, j, k );
     }
 
     max_atoms = 0;
@@ -59,7 +62,7 @@ int Estimate_GCell_Population( reax_system* system )
         }
     }
 
-    return MAX(max_atoms * SAFE_ZONE, MIN_GCELL_POPL);
+    return MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
 }
 
 
@@ -107,8 +110,8 @@ void Allocate_Space_for_Grid( reax_system *system )
                 g->mark[i][j][k] = 0;
                 g->start[i][j][k] = 0;
                 g->end[i][j][k] = 0;
-                g->nbrs[i][j][k] = (ivec*) calloc( g->max_nbrs, sizeof( ivec ) );
-                g->nbrs_cp[i][j][k] = (rvec*) calloc( g->max_nbrs, sizeof( rvec ) );
+                g->nbrs[i][j][k] = (ivec*) malloc( g->max_nbrs * sizeof( ivec ) );
+                g->nbrs_cp[i][j][k] = (rvec*) malloc( g->max_nbrs * sizeof( rvec ) );
 
                 for ( l = 0; l < g->max_nbrs; ++l )
                 {
@@ -116,22 +119,28 @@ void Allocate_Space_for_Grid( reax_system *system )
                     g->nbrs[i][j][k][l][1] = -1;
                     g->nbrs[i][j][k][l][2] = -1;
 
-                    g->nbrs_cp[i][j][k][l][0] = -1;
-                    g->nbrs_cp[i][j][k][l][1] = -1;
-                    g->nbrs_cp[i][j][k][l][2] = -1;
+                    g->nbrs_cp[i][j][k][l][0] = -1.0;
+                    g->nbrs_cp[i][j][k][l][1] = -1.0;
+                    g->nbrs_cp[i][j][k][l][2] = -1.0;
                 }
             }
         }
     }
 
     g->max_atoms = Estimate_GCell_Population( system );
+
     for ( i = 0; i < g->ncell[0]; i++ )
     {
         for ( j = 0; j < g->ncell[1]; j++ )
         {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
-                g->atoms[i][j][k] = (int*) calloc( g->max_atoms, sizeof(int) );
+                g->atoms[i][j][k] = (int*) malloc( g->max_atoms * sizeof( int ) );
+
+                for ( l = 0; l < g->max_atoms; ++l )
+                {
+                    g->atoms[i][j][k][l] = -1;
+                }
             }
         }
     }
@@ -150,36 +159,36 @@ void Deallocate_Grid_Space( grid *g )
         {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
-                free( g->atoms[i][j][k] );
-                free( g->nbrs[i][j][k] );
-                free( g->nbrs_cp[i][j][k] );
+                sfree( g->atoms[i][j][k], "Deallocate_Grid_Space::g->atoms[i][j][k]" );
+                sfree( g->nbrs[i][j][k], "Deallocate_Grid_Space::g->nbrs[i][j][k]" );
+                sfree( g->nbrs_cp[i][j][k], "Deallocate_Grid_Space::g->nbrs_cp[i][j][k]" );
             }
 
-            free( g->atoms[i][j] );
-            free( g->top[i][j] );
-            free( g->start[i][j] );
-            free( g->end[i][j] );
-            free( g->mark[i][j] );
-            free( g->nbrs[i][j] );
-            free( g->nbrs_cp[i][j] );
+            sfree( g->atoms[i][j], "Deallocate_Grid_Space::g->atoms[i][j]" );
+            sfree( g->top[i][j], "Deallocate_Grid_Space::g->top[i][j]" );
+            sfree( g->mark[i][j], "Deallocate_Grid_Space::g->mark[i][j]" );
+            sfree( g->start[i][j], "Deallocate_Grid_Space::g->start[i][j]" );
+            sfree( g->end[i][j], "Deallocate_Grid_Space::g->end[i][j]" );
+            sfree( g->nbrs[i][j], "Deallocate_Grid_Space::g->nbrs[i][j]" );
+            sfree( g->nbrs_cp[i][j], "Deallocate_Grid_Space::g->nbrs_cp[i][j]" );
         }
 
-        free( g->atoms[i] );
-        free( g->top[i] );
-        free( g->start[i] );
-        free( g->end[i] );
-        free( g->mark[i] );
-        free( g->nbrs[i] );
-        free( g->nbrs_cp[i] );
+        sfree( g->atoms[i], "Deallocate_Grid_Space::g->atoms[i]" );
+        sfree( g->top[i], "Deallocate_Grid_Space::g->top[i]" );
+        sfree( g->mark[i], "Deallocate_Grid_Space::g->mark[i]" );
+        sfree( g->start[i], "Deallocate_Grid_Space::g->start[i]" );
+        sfree( g->end[i], "Deallocate_Grid_Space::g->end[i]" );
+        sfree( g->nbrs[i], "Deallocate_Grid_Space::g->nbrs[i]" );
+        sfree( g->nbrs_cp[i], "Deallocate_Grid_Space::g->nbrs_cp[i]" );
     }
 
-    free( g->atoms );
-    free( g->top );
-    free( g->start );
-    free( g->end );
-    free( g->mark );
-    free( g->nbrs );
-    free( g->nbrs_cp );
+    sfree( g->atoms, "Deallocate_Grid_Space::g->atoms" );
+    sfree( g->top, "Deallocate_Grid_Space::g->top" );
+    sfree( g->mark, "Deallocate_Grid_Space::g->mark" );
+    sfree( g->start, "Deallocate_Grid_Space::g->start" );
+    sfree( g->end, "Deallocate_Grid_Space::g->end" );
+    sfree( g->nbrs, "Deallocate_Grid_Space::g->nbrs" );
+    sfree( g->nbrs_cp, "Deallocate_Grid_Space::g->nbrs_cp" );
 }
 
 
@@ -425,7 +434,8 @@ void Update_Grid( reax_system* system )
             }
         }
     }
-    else   /* at least one of ncell has changed */
+    /* at least one of ncell has changed */
+    else
     {
         Deallocate_Grid_Space( g );
         /* update number of grid cells */
@@ -437,6 +447,7 @@ void Update_Grid( reax_system* system )
 
         Allocate_Space_for_Grid( system );
         Find_Neighbor_GridCells( g );
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "updated grid: " );
         fprintf( stderr, "ncell[%d %d %d] ",
@@ -463,6 +474,7 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
         k = (int)(system->atoms[l].x[2] * g->inv_len[2]);
         g->atoms[i][j][k][g->top[i][j][k]] = l;
         g->top[i][j][k]++;
+
         // fprintf( stderr, "\tatom%-6d (%8.3f%8.3f%8.3f) --> (%3d%3d%3d)\n",
         // l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
         // i, j, k );
@@ -486,7 +498,8 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
     /* check if current gcell->max_atoms is safe */
     if ( max_atoms >= g->max_atoms * SAFE_ZONE )
     {
-        workspace->realloc.gcell_atoms = MAX(max_atoms * SAFE_ZONE, MIN_GCELL_POPL);
+        workspace->realloc.gcell_atoms = MAX( max_atoms * SAFE_ZONE,
+                MIN_GCELL_POPL );
     }
 }
 
@@ -547,33 +560,29 @@ void Free_Storage( static_storage *workspace, control_params * control )
 
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
-        free( workspace->v[i] );
+        sfree( workspace->v[i], "Free_Storage::workspace->v[i]" );
     }
-    free( workspace->v );
+    sfree( workspace->v, "Free_Storage::workspace->v" );
 
     for ( i = 0; i < 3; ++i )
     {
-        free( workspace->s[i] );
-        free( workspace->t[i] );
+        sfree( workspace->s[i], "Free_Storage::workspace->s[i]" );
+        sfree( workspace->t[i], "Free_Storage::workspace->t[i]" );
     }
-    free( workspace->s );
-    free( workspace->t );
+    sfree( workspace->s, "Free_Storage::workspace->s" );
+    sfree( workspace->t, "Free_Storage::workspace->t" );
 
-    free( workspace->orig_id );
+    sfree( workspace->orig_id, "Free_Storage::workspace->orig_id" );
 }
 
 
 void Assign_New_Storage( static_storage *workspace,
-                         real **v, real **s, real **t,
-                         int *orig_id, rvec *f_old )
+        real **v, real **s, real **t, int *orig_id, rvec *f_old )
 {
     workspace->v = v;
-
     workspace->s = s;
     workspace->t = t;
-
     workspace->orig_id = orig_id;
-
     workspace->f_old = f_old;
 }
 
@@ -581,14 +590,14 @@ void Assign_New_Storage( static_storage *workspace,
 void Cluster_Atoms( reax_system *system, static_storage *workspace,
         control_params *control )
 {
-    int         i, j, k, l, top, old_id, num_H;
+    int i, j, k, l, top, old_id, num_H;
     reax_atom  *old_atom;
-    grid       *g;
+    grid *g;
     reax_atom  *new_atoms;
-    int        *orig_id ;
-    real       **v;
-    real       **s, **t;
-    rvec       *f_old;
+    int *orig_id ;
+    real **v;
+    real **s, **t;
+    rvec *f_old;
 
     num_H = 0;
     g = &( system->g );
@@ -638,7 +647,7 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
     }
 
 
-    free( system->atoms );
+    sfree( system->atoms, "Cluster_Atoms::system->atoms" );
     Free_Storage( workspace, control );
 
     system->atoms = new_atoms;

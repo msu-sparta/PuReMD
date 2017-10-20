@@ -21,6 +21,8 @@
 
 #include "list.h"
 
+#include "tool_box.h"
+
 
 char Make_List( int n, int num_intrs, int type, list* l )
 {
@@ -104,11 +106,11 @@ void Delete_List( int type, list* l )
 {
     if ( l->index != NULL )
     {
-        free( l->index );
+        sfree( l->index, "Delete_List::l->index" );
     }
     if ( l->end_index != NULL )
     {
-        free( l->end_index );
+        sfree( l->end_index, "Delete_List::l->end_index" );
     }
 
     switch ( type )
@@ -116,54 +118,55 @@ void Delete_List( int type, list* l )
     case TYP_VOID:
         if ( l->select.v != NULL )
         {
-            free( l->select.v );
+            sfree( l->select.v, "Delete_List::l->select.v" );
         }
         break;
     case TYP_THREE_BODY:
         if ( l->select.three_body_list != NULL )
         {
-            free( l->select.three_body_list );
+            sfree( l->select.three_body_list, "Delete_List::l->select.three_body_list" );
         }
         break;
     case TYP_BOND:
         if ( l->select.bond_list != NULL )
         {
-            free( l->select.bond_list );
+            sfree( l->select.bond_list, "Delete_List::l->select.bond_list" );
         }
         break;
     case TYP_DBO:
         if ( l->select.dbo_list != NULL )
         {
-            free( l->select.dbo_list );
+            sfree( l->select.dbo_list, "Delete_List::l->select.dbo_list" );
         }
         break;
     case TYP_DDELTA:
         if ( l->select.dDelta_list != NULL )
         {
-            free( l->select.dDelta_list );
+            sfree( l->select.dDelta_list, "Delete_List::l->select.dDelta_list" );
         }
         break;
     case TYP_FAR_NEIGHBOR:
         if ( l->select.far_nbr_list != NULL )
         {
-            free( l->select.far_nbr_list );
+            sfree( l->select.far_nbr_list, "Delete_List::l->select.far_nbr_list" );
         }
         break;
     case TYP_NEAR_NEIGHBOR:
         if ( l->select.near_nbr_list != NULL )
         {
-            free( l->select.near_nbr_list );
+            sfree( l->select.near_nbr_list, "Delete_List::l->select.near_nbr_list" );
         }
         break;
     case TYP_HBOND:
         if ( l->select.hbond_list != NULL )
         {
-            free( l->select.hbond_list );
+            sfree( l->select.hbond_list, "Delete_List::l->select.hbond_list" );
         }
         break;
 
     default:
-        // Report fatal error
+        fprintf( stderr, "[ERROR] unknown list type. Terminating...\n" );
+        exit( INVALID_INPUT );
         break;
     }
 

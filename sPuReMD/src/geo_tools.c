@@ -19,13 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include <ctype.h>
-
 #include "geo_tools.h"
+
 #include "allocate.h"
 #include "box.h"
-#include "list.h"
-#include "restart.h"
 #include "tool_box.h"
 #include "vector.h"
 
@@ -59,7 +56,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 
 
 char Read_Geo( char* geo_file, reax_system* system, control_params *control,
-               simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace )
 {
 
     FILE *geo;
@@ -128,22 +125,28 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
 
 int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 {
+    int ret;
     char *cryst;
-    char  line[MAX_LINE + 1];
-    char  descriptor[9];
-    char  s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
-    char  s_group[12], s_zValue[12];
+    char line[MAX_LINE + 1];
+    char descriptor[9];
+    char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
+    char s_group[12], s_zValue[12];
+
+    /* set the pointer to the beginning of the file */
+    fseek( geo, 0, SEEK_SET );
 
     /* initialize variables */
-    fseek( geo, 0, SEEK_SET ); // set the pointer to the beginning of the file
+    ret = FAILURE;
 
     switch ( geo_format )
     {
         case PDB:
             cryst = "CRYST1";
             break;
+
         default:
             cryst = "BOX";
+            break;
     }
 
     /* locate the cryst line in the geo file, read it and
@@ -153,25 +156,28 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
         if ( strncmp( line, cryst, 6 ) == 0 )
         {
             if ( geo_format == PDB )
+            {
                 sscanf( line, PDB_CRYST1_FORMAT,
                         &descriptor[0],
                         &s_a[0], &s_b[0], &s_c[0],
                         &s_alpha[0], &s_beta[0], &s_gamma[0],
                         &s_group[0], &s_zValue[0] );
 
-            /* compute full volume tensor from the angles */
-            Setup_Box( atof(s_a),  atof(s_b), atof(s_c),
-                    atof(s_alpha), atof(s_beta), atof(s_gamma),
-                    &(system->box) );
-            return SUCCESS;
+                /* compute full volume tensor from the angles */
+                Setup_Box( atof(s_a),  atof(s_b), atof(s_c),
+                        atof(s_alpha), atof(s_beta), atof(s_gamma),
+                        &(system->box) );
+
+                ret = SUCCESS;
+            }
         }
     }
     if ( ferror( geo ) )
     {
-        return FAILURE;
+        ret = FAILURE;
     }
 
-    return FAILURE;
+    return ret;
 }
 
 
@@ -200,8 +206,10 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
             s_y[8] = 0;
             strncpy( s_z, line + 46, 8 );
             s_z[8] = 0;
+
             Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
-                        strtod( s_z, &endptr ), &x );
+                    strtod( s_z, &endptr ), &x );
+
             Fit_to_Periodic_Box( &(system->box), &x );
         }
     }
@@ -372,20 +380,6 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
             atom->q = 0;
 
             top++;
-            // fprintf( stderr, "p%d: %6d%2d x:%8.3f%8.3f%8.3f"
-            //                  "q:%8.3f occ:%s temp:%s seg:%s elmnt:%s\n",
-            //       system->my_rank,
-            //       c, system->my_atoms[top].type,
-            //       system->my_atoms[top].x[0],
-            //       system->my_atoms[top].x[1],
-            //       system->my_atoms[top].x[2],
-            //       system->my_atoms[top].q, occupancy, temp_factor,
-            //       seg_id, element );
-
-//            fprintf( stderr, "atom( %8.3f %8.3f %8.3f )\n",
-//                    atom->x[0], atom->x[1],
-//                    atom->x[2] );
-
             c++;
         }
 
@@ -542,15 +536,15 @@ char Write_PDB( reax_system* system, list* bonds, simulation_data *data,
     }
     */
 
-    free( buffer );
-    free( line );
+    sfree( buffer, "Write_PDB::buffer" );
+    sfree( line, "Write_PDB::line" );
 
     return SUCCESS;
 }
 
 
 char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
-               simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace )
 {
     FILE *bgf;
     char **tokens;
@@ -738,9 +732,9 @@ char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
                     &s_gamma[0] );
 
             /* Compute full volume tensor from the angles */
-            Setup_Box( atof(s_a),  atof(s_b), atof(s_c),
-                                 atof(s_alpha), atof(s_beta), atof(s_gamma),
-                                 &(system->box) );
+            Setup_Box( atof(s_a), atof(s_b), atof(s_c),
+                    atof(s_alpha), atof(s_beta), atof(s_gamma),
+                    &(system->box) );
         }
         else if (!strncmp( tokens[0], "CONECT", 6 ))
         {

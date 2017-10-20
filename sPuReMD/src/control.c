@@ -580,10 +580,10 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        free( tmp[i] );
+        sfree( tmp[i], "Read_Control_File::tmp[i]" );
     }
-    free( tmp );
-    free( s );
+    sfree( tmp, "Read_Control_File::tmp" );
+    sfree( s, "Read_Control_File::s" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr,

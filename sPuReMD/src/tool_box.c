@@ -389,12 +389,12 @@ void Deallocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        free( (*tokens)[i] );
+        sfree( (*tokens)[i], "Deallocate_Tokenizer_Space::tokens[i]" );
     }
 
-    free( *line );
-    free( *backup );
-    free( *tokens );
+    sfree( *line, "Deallocate_Tokenizer_Space::line" );
+    sfree( *backup, "Deallocate_Tokenizer_Space::backup" );
+    sfree( *tokens, "Deallocate_Tokenizer_Space::tokens" );
 }
 
 
@@ -418,74 +418,161 @@ int Tokenize( char* s, char*** tok )
 
 
 /***************** taken from lammps ************************/
-/* safe malloc */
-void *smalloc( long n, char *name )
+/* Safe wrapper around libc malloc
+ *
+ * n: num. of bytes to allocated
+ * name: message with details about pointer, used for warnings/errors
+ *
+ * returns: ptr to allocated memory
+ * */
+void *smalloc( size_t n, const char *name )
 {
     void *ptr;
 
-    if ( n <= 0 )
+    if ( n == 0 )
     {
-        fprintf( stderr, "WARNING: trying to allocate %ld bytes for array %s. ",
-                 n, name );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
-    }
-
-    ptr = malloc( n );
-    if ( ptr == NULL )
-    {
-        fprintf( stderr, "ERROR: failed to allocate %ld bytes for array %s",
-                 n, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n, name );
         exit( INSUFFICIENT_MEMORY );
     }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fflush( stderr );
+#endif
+
+    ptr = malloc( n );
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n, name );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] address: %p [SMALLOC]\n", (void *) ptr );
+    fflush( stderr );
+#endif
 
     return ptr;
 }
 
 
-/* safe calloc */
-void *scalloc( int n, int size, char *name )
+/* Safe wrapper around libc realloc
+ *
+ * n: num. of bytes to reallocated
+ * name: message with details about pointer, used for warnings/errors
+ *
+ * returns: ptr to reallocated memory
+ * */
+void* srealloc( void *ptr, size_t n, const char *name )
+{
+    void *new_ptr;
+
+    if ( n == 0 )
+    {
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
+                n, name );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[INFO] trying to allocate %zu NEW bytes for array %s.\n",
+                n, name );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fflush( stderr );
+#endif
+
+    new_ptr = realloc( ptr, n );
+
+    /* technically, ptr may still be allocated and valid,
+     * but we needed more memory, so abort */
+    if ( new_ptr == NULL )
+    {
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
+                n, name );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] address: %p [SREALLOC]\n", (void *) new_ptr );
+    fflush( stderr );
+#endif
+
+    return new_ptr;
+}
+
+
+/* Safe wrapper around libc calloc
+ *
+ * n: num. of elements to allocated (each of size bytes)
+ * size: num. of bytes per element
+ * name: message with details about pointer, used for warnings/errors
+ *
+ * returns: ptr to allocated memory, all bits initialized to zeros
+ * */
+void* scalloc( size_t n, size_t size, const char *name )
 {
     void *ptr;
 
-    if ( n <= 0 )
+    if ( n == 0 )
     {
-        fprintf( stderr, "WARNING: trying to allocate %d elements for array %s. ",
-                 n, name );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
-    }
-
-    if ( size <= 0 )
-    {
-        fprintf( stderr, "WARNING: elements size for array %s is %d. ",
-                 name, size );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
-    }
-
-    ptr = calloc( n, size );
-    if ( ptr == NULL )
-    {
-        fprintf( stderr, "ERROR: failed to allocate %d bytes for array %s",
-                 n * size, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n * size, name );
         exit( INSUFFICIENT_MEMORY );
     }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fflush( stderr );
+#endif
+
+    ptr = calloc( n, size );
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
+                n * size, name );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] address: %p [SCALLOC]\n", (void *) ptr );
+    fflush( stderr );
+#endif
 
     return ptr;
 }
 
 
 /* safe free */
-void sfree( void *ptr, char *name )
+/* Safe wrapper around libc free
+ *
+ * ptr: pointer to dynamically allocated memory which will be deallocated
+ * name: message with details about pointer, used for warnings/errors
+ * */
+void sfree( void *ptr, const char *name )
 {
     if ( ptr == NULL )
     {
-        fprintf( stderr, "WARNING: trying to free the already NULL pointer %s!\n",
-                 name );
+        fprintf( stderr, "[WARNING] trying to free the already NULL pointer %s!\n",
+                name );
         return;
     }
 
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] trying to free pointer %s\n", name );
+    fflush( stderr );
+    fprintf( stderr, "[INFO] address: %p [SFREE]\n", (void *) ptr );
+    fflush( stderr );
+#endif
+
     free( ptr );
+
     ptr = NULL;
 }

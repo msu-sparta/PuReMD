@@ -162,10 +162,10 @@ void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
         exit( INVALID_INPUT );
     }
 
-    c_alpha = COS(DEG2RAD(alpha));
-    c_beta  = COS(DEG2RAD(beta));
-    c_gamma = COS(DEG2RAD(gamma));
-    s_gamma = SIN(DEG2RAD(gamma));
+    c_alpha = COS( DEG2RAD(alpha) );
+    c_beta  = COS( DEG2RAD(beta) );
+    c_gamma = COS( DEG2RAD(gamma) );
+    s_gamma = SIN( DEG2RAD(gamma) );
     zi = (c_alpha - c_beta * c_gamma) / s_gamma;
 
     box->box[0][0] = a;
@@ -177,6 +177,7 @@ void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
     box->box[2][0] = c * c_beta;
     box->box[2][1] = c * zi;
     box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
+
 #if defined(DEBUG)
     fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
              box->box[0][0], box->box[1][1], box->box[2][2] );
@@ -215,7 +216,7 @@ void Update_Box_Isotropic( simulation_box *box, real mu )
     box->box[2][2] *= mu;
 
     box->volume = box->box[0][0] * box->box[1][1] * box->box[2][2];
-    Make_Consistent(box/*, periodic*/);
+    Make_Consistent( box );
 }
 
 
@@ -231,7 +232,7 @@ void Update_Box_SemiIsotropic( simulation_box *box, rvec mu )
     box->box[2][2] *= mu[2];
 
     box->volume = box->box[0][0] * box->box[1][1] * box->box[2][2];
-    Make_Consistent(box);
+    Make_Consistent( box );
 }
 
 
@@ -240,18 +241,20 @@ void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
     int i;
     real tmp;
 
-    for (i = 0; i < 3; i++)
+    for ( i = 0; i < 3; i++ )
     {
         tmp = x[i] + dx[i];
+
         if ( tmp <= -box->box_norms[i] || tmp >= box->box_norms[i] )
         {
             tmp = FMOD( tmp, box->box_norms[i] );
         }
 
-        if ( tmp < 0 )
+        if ( tmp < 0.0 )
         {
             tmp += box->box_norms[i];
         }
+
         x[i] = tmp;
     }
 }
@@ -349,15 +352,16 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
 int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
         real cutoff, far_neighbor_data *data )
 {
-    real norm_sqr, d, tmp;
+    real norm_sqr, d, tmp, ret;
     int i;
 
-    norm_sqr = 0;
+    norm_sqr = 0.0;
+    ret = FALSE;
 
     for ( i = 0; i < 3; i++ )
     {
         d = x2[i] - x1[i];
-        tmp = SQR(d);
+        tmp = SQR( d );
 
         if ( tmp >= SQR( box->box_norms[i] / 2.0 ) )
         {
@@ -373,7 +377,7 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
             }
 
             data->dvec[i] = d;
-            norm_sqr += SQR(d);
+            norm_sqr += SQR( d );
         }
         else
         {
@@ -386,10 +390,10 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
     if ( norm_sqr <= SQR( cutoff ) )
     {
         data->d = SQRT( norm_sqr );
-        return 1;
+        ret = TRUE;
     }
 
-    return 0;
+    return ret;
 }
 
 

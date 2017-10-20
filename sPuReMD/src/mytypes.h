@@ -891,7 +891,6 @@ typedef struct
     sparse_matrix *L;
     sparse_matrix *U;
     real *droptol;
-    real *w;
     real *Hdia_inv;
     real *b;
     real *b_s;

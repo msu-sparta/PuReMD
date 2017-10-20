@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "allocate.h"
+
 #include "list.h"
 #include "tool_box.h"
 
@@ -101,10 +102,10 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 /* deallocate memory for matrix in CSR format */
 void Deallocate_Matrix( sparse_matrix *H )
 {
-    free(H->start);
-    free(H->j);
-    free(H->val);
-    free(H);
+    sfree( H->start, "Deallocate_Matrix::H->start" );
+    sfree( H->j, "Deallocate_Matrix::H->j" );
+    sfree( H->val, "Deallocate_Matrix::H->val" );
+    sfree( H, "Deallocate_Matrix::H" );
 }
 
 
@@ -130,7 +131,7 @@ int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
 
 
 int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
-                         list *hbonds )
+        list *hbonds )
 {
     int i, num_hbonds;
 
@@ -179,7 +180,8 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "reallocating hbonds\n" );
 #endif
-    hb_top = calloc( n, sizeof(int) );
+
+    hb_top = (int *) calloc( n, sizeof(int) );
     for ( i = 0; i < n; ++i )
     {
         if ( h_index[i] >= 0 )
@@ -192,7 +194,7 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
 
     Allocate_HBond_List( n, num_h, h_index, hb_top, hbonds );
 
-    free( hb_top );
+    sfree( hb_top, "Reallocate_HBonds_List::hb_top" );
 
     return SUCCESS;
 }
@@ -241,8 +243,10 @@ int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "reallocating bonds\n" );
 #endif
-    bond_top = calloc( n, sizeof(int) );
+
+    bond_top = (int *) calloc( n, sizeof(int) );
     *est_3body = 0;
+
     for ( i = 0; i < n; ++i )
     {
         *est_3body += SQR( Num_Entries( i, bonds ) );
@@ -254,14 +258,14 @@ int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
     Allocate_Bond_List( n, bond_top, bonds );
     *num_bonds = bond_top[n - 1];
 
-    free( bond_top );
+    sfree( bond_top, "Reallocate_Bonds_List::bond_top" );
 
     return SUCCESS;
 }
 
 
 void Reallocate( reax_system *system, static_storage *workspace, list **lists,
-                 int nbr_flag )
+        int nbr_flag )
 {
     int i, j, k;
     int num_bonds, est_3body;
@@ -334,15 +338,21 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
 #if defined(DEBUG_FOCUS)
         fprintf(stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms);
 #endif
+
         for ( i = 0; i < g->ncell[0]; i++ )
+        {
             for ( j = 0; j < g->ncell[1]; j++ )
+            {
                 for ( k = 0; k < g->ncell[2]; k++ )
                 {
                     // reallocate g->atoms
-                    free( g->atoms[i][j][k] );
+                    sfree( g->atoms[i][j][k], "Reallocate::g->atoms[i][j][k]" );
                     g->atoms[i][j][k] = (int*)
-                                        calloc(workspace->realloc.gcell_atoms, sizeof(int));
+                        calloc(workspace->realloc.gcell_atoms, sizeof(int));
                 }
+            }
+        }
+
         realloc->gcell_atoms = -1;
     }
 }

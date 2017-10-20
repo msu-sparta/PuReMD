@@ -23,14 +23,14 @@
 
 #include "box.h"
 #include "bond_orders.h"
-#include "single_body_interactions.h"
-#include "two_body_interactions.h"
-#include "three_body_interactions.h"
+#include "charges.h"
 #include "four_body_interactions.h"
 #include "list.h"
-#include "print_utils.h"
 #include "system_props.h"
-#include "charges.h"
+#include "single_body_interactions.h"
+#include "three_body_interactions.h"
+#include "tool_box.h"
+#include "two_body_interactions.h"
 #include "vector.h"
 
 
@@ -162,6 +162,7 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
         Tabulated_vdW_Coulomb_Energy( system, control, data, workspace,
                 lists, out_control );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "nonb forces - " );
 #endif
@@ -338,6 +339,9 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
     switch ( control->charge_method )
     {
     case QEQ_CM:
+    //TODO: tabulate other portions of matrices for EE, ACKS2?
+    case EE_CM:
+    case ACKS2_CM:
         switch ( pos )
         {
             case OFF_DIAGONAL:
@@ -347,48 +351,23 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
 
                 /* cubic spline interpolation */
                 r = (int)(r_ij * t->inv_dx);
-                if ( r == 0 )  ++r;
+                if ( r == 0 ) 
+                {
+                    ++r;
+                }
                 base = (real)(r + 1) * t->dx;
                 dif = r_ij - base;
                 val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
-                      t->ele[r].a;
+                    t->ele[r].a;
                 val *= EV_to_KCALpMOL / C_ele;
 
                 ret = ((i == j) ? 0.5 : 1.0) * val;
             break;
+
             case DIAGONAL:
                 ret = system->reaxprm.sbp[system->atoms[i].type].eta;
             break;
-            default:
-                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
-                exit( INVALID_INPUT );
-            break;
-        }
-        break;
 
-    case EE_CM:
-        //TODO
-        switch ( pos )
-        {
-            case OFF_DIAGONAL:
-            break;
-            case DIAGONAL:
-            break;
-            default:
-                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
-                exit( INVALID_INPUT );
-            break;
-        }
-        break;
-
-    case ACKS2_CM:
-        //TODO
-        switch ( pos )
-        {
-            case OFF_DIAGONAL:
-            break;
-            case DIAGONAL:
-            break;
             default:
                 fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
                 exit( INVALID_INPUT );
@@ -417,6 +396,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
     switch ( control->charge_method )
     {
     case QEQ_CM:
+    case EE_CM:
+    case ACKS2_CM:
         switch ( pos )
         {
             case OFF_DIAGONAL:
@@ -434,76 +415,6 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
-            break;
-
-            case DIAGONAL:
-                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
-            break;
-
-            default:
-                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
-                exit( INVALID_INPUT );
-            break;
-        }
-        break;
-
-    case EE_CM:
-        switch ( pos )
-        {
-            case OFF_DIAGONAL:
-                if ( r_ij < control->r_cut && r_ij > 0.001 )
-                {
-                    Tap = control->Tap7 * r_ij + control->Tap6;
-                    Tap = Tap * r_ij + control->Tap5;
-                    Tap = Tap * r_ij + control->Tap4;
-                    Tap = Tap * r_ij + control->Tap3;
-                    Tap = Tap * r_ij + control->Tap2;
-                    Tap = Tap * r_ij + control->Tap1;
-                    Tap = Tap * r_ij + control->Tap0;
-
-                    gamij = SQRT( system->reaxprm.sbp[system->atoms[i].type].gamma
-                            * system->reaxprm.sbp[system->atoms[j].type].gamma );
-                    /* shielding */
-                    dr3gamij_1 = POW( r_ij, 3.0 ) + 1.0 / POW( gamij, 3.0 );
-                    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
-
-                    ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
-                }
-            break;
-
-            case DIAGONAL:
-                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
-            break;
-
-            default:
-                fprintf( stderr, "[Init_forces] Invalid matrix position. Terminating...\n" );
-                exit( INVALID_INPUT );
-            break;
-        }
-        break;
-
-    case ACKS2_CM:
-        switch ( pos )
-        {
-            case OFF_DIAGONAL:
-                if ( r_ij < control->r_cut && r_ij > 0.001 )
-                {
-                    Tap = control->Tap7 * r_ij + control->Tap6;
-                    Tap = Tap * r_ij + control->Tap5;
-                    Tap = Tap * r_ij + control->Tap4;
-                    Tap = Tap * r_ij + control->Tap3;
-                    Tap = Tap * r_ij + control->Tap2;
-                    Tap = Tap * r_ij + control->Tap1;
-                    Tap = Tap * r_ij + control->Tap0;
-
-                    gamij = SQRT( system->reaxprm.sbp[system->atoms[i].type].gamma
-                            * system->reaxprm.sbp[system->atoms[j].type].gamma );
-                    /* shielding */
-                    dr3gamij_1 = POW( r_ij, 3.0 ) + 1.0 / POW( gamij, 3.0 );
-                    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
-
-                    ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
-                }
             break;
 
             case DIAGONAL:
@@ -688,7 +599,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             H_sp->val[*H_sp_top] = 0.0;
             *H_sp_top = *H_sp_top + 1;
 
-            free( X_diag );
+            sfree( X_diag, "Init_Charge_Matrix_Remaining_Entries::X_diag" );
             break;
 
         default:

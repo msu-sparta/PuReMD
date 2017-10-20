@@ -21,6 +21,7 @@
 
 #include "lookup.h"
 
+#include "tool_box.h"
 #include "two_body_interactions.h"
 
 
@@ -89,49 +90,58 @@ void Natural_Cubic_Spline( const real *h, const real *f,
     v = (real*) malloc( n * sizeof(real) );
 
     /* build the linear system */
-    a[0] = a[1] = a[n - 1] = 0;
+    a[0] = 0.0;
+    a[1] = 0.0;
+    a[n - 1] = 0.0;
     for ( i = 2; i < n - 1; ++i )
     {
         a[i] = h[i - 1];
     }
 
-    b[0] = b[n - 1] = 0;
+    b[0] = 0.0;
+    b[n - 1] = 0.0;
     for ( i = 1; i < n - 1; ++i )
     {
-        b[i] = 2 * (h[i - 1] + h[i]);
+        b[i] = 2.0 * (h[i - 1] + h[i]);
     }
 
-    c[0] = c[n - 2] = c[n - 1] = 0;
+    c[0] = 0.0;
+    c[n - 2] = 0.0;
+    c[n - 1] = 0.0;
     for ( i = 1; i < n - 2; ++i )
     {
         c[i] = h[i];
     }
 
-    d[0] = d[n - 1] = 0;
+    d[0] = 0.0;
+    d[n - 1] = 0.0;
     for ( i = 1; i < n - 1; ++i )
     {
-        d[i] = 6 * ((f[i + 1] - f[i]) / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
+        d[i] = 6.0 * ((f[i + 1] - f[i])
+                / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
     }
 
     /*fprintf( stderr, "i  a        b        c        d\n" );
       for( i = 0; i < n; ++i )
       fprintf( stderr, "%d  %f  %f  %f  %f\n", i, a[i], b[i], c[i], d[i] );*/
-    v[0] = 0;
-    v[n - 1] = 0;
-    Tridiagonal_Solve( &(a[1]), &(b[1]), &(c[1]), &(d[1]), &(v[1]), n - 2 );
+    v[0] = 0.0;
+    v[n - 1] = 0.0;
+    Tridiagonal_Solve( a + 1, b + 1, c + 1, d + 1, v + 1, n - 2 );
 
     for ( i = 1; i < n; ++i )
     {
-        coef[i - 1].d = (v[i] - v[i - 1]) / (6 * h[i - 1]);
-        coef[i - 1].c = v[i] / 2;
-        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1] * (2 * v[i] + v[i - 1]) / 6;
+        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
+        coef[i - 1].c = v[i] / 2.0;
+        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1]
+            * (2.0 * v[i] + v[i - 1]) / 6.0;
         coef[i - 1].a = f[i];
     }
 
-    /*fprintf( stderr, "i  v  coef\n" );
-      for( i = 0; i < n; ++i )
-      fprintf( stderr, "%d  %f  %f  %f  %f  %f\n",
-      i, v[i], coef[i].a, coef[i].b, coef[i].c, coef[i].d ); */
+    sfree( a, "Natural_Cubic_Spline::a" );
+    sfree( b, "Natural_Cubic_Spline::b" );
+    sfree( c, "Natural_Cubic_Spline::c" );
+    sfree( d, "Natural_Cubic_Spline::d" );
+    sfree( v, "Natural_Cubic_Spline::v" );
 }
 
 
@@ -150,49 +160,51 @@ void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
     v = (real*) malloc( n * sizeof(real) );
 
     /* build the linear system */
-    a[0] = 0;
+    a[0] = 0.0;
     for ( i = 1; i < n; ++i )
     {
         a[i] = h[i - 1];
     }
 
-    b[0] = 2 * h[0];
+    b[0] = 2.0 * h[0];
     for ( i = 1; i < n; ++i )
     {
-        b[i] = 2 * (h[i - 1] + h[i]);
+        b[i] = 2.0 * (h[i - 1] + h[i]);
     }
 
-    c[n - 1] = 0;
+    c[n - 1] = 0.0;
     for ( i = 0; i < n - 1; ++i )
     {
         c[i] = h[i];
     }
 
-    d[0] = 6 * (f[1] - f[0]) / h[0] - 6 * v0;
-    d[n - 1] = 6 * vlast - 6 * (f[n - 1] - f[n - 2] / h[n - 2]);
+    d[0] = 6.0 * (f[1] - f[0]) / h[0] - 6.0 * v0;
+    d[n - 1] = 6.0 * vlast - 6.0 * (f[n - 1] - f[n - 2] / h[n - 2]);
     for ( i = 1; i < n - 1; ++i )
     {
-        d[i] = 6 * ((f[i + 1] - f[i]) / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
+        d[i] = 6.0 * ((f[i + 1] - f[i])
+                / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
     }
 
     /*fprintf( stderr, "i  a        b        c        d\n" );
       for( i = 0; i < n; ++i )
       fprintf( stderr, "%d  %f  %f  %f  %f\n", i, a[i], b[i], c[i], d[i] );*/
-    Tridiagonal_Solve( &(a[0]), &(b[0]), &(c[0]), &(d[0]), &(v[0]), n );
-    // Tridiagonal_Solve( &(a[1]), &(b[1]), &(c[1]), &(d[1]), &(v[1]), n-2 );
+
+    Tridiagonal_Solve( a, b, c, d, v, n );
 
     for ( i = 1; i < n; ++i )
     {
-        coef[i - 1].d = (v[i] - v[i - 1]) / (6 * h[i - 1]);
-        coef[i - 1].c = v[i] / 2;
-        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1] * (2 * v[i] + v[i - 1]) / 6;
+        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
+        coef[i - 1].c = v[i] / 2.0;
+        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1] * (2.0 * v[i] + v[i - 1]) / 6.0;
         coef[i - 1].a = f[i];
     }
 
-    /*fprintf( stderr, "i  v  coef\n" );
-      for( i = 0; i < n; ++i )
-      fprintf( stderr, "%d  %f  %f  %f  %f  %f\n",
-      i, v[i], coef[i].a, coef[i].b, coef[i].c, coef[i].d ); */
+    sfree( a, "Complete_Cubic_Spline::a" );
+    sfree( b, "Complete_Cubic_Spline::b" );
+    sfree( c, "Complete_Cubic_Spline::c" );
+    sfree( d, "Complete_Cubic_Spline::d" );
+    sfree( v, "Complete_Cubic_Spline::v" );
 }
 
 
@@ -248,12 +260,12 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 
     num_atom_types = system->reaxprm.num_atom_types;
     dr = control->r_cut / control->tabulate;
-    h = (real*) malloc( (control->tabulate + 1) * sizeof(real) );
-    fh = (real*) malloc( (control->tabulate + 1) * sizeof(real) );
-    fvdw = (real*) malloc( (control->tabulate + 1) * sizeof(real) );
-    fCEvd = (real*) malloc( (control->tabulate + 1) * sizeof(real) );
-    fele = (real*) malloc( (control->tabulate + 1) * sizeof(real) );
-    fCEclmb = (real*) malloc( (control->tabulate + 1) * sizeof(real) );
+    h = (real*) calloc( (control->tabulate + 1), sizeof(real) );
+    fh = (real*) calloc( (control->tabulate + 1), sizeof(real) );
+    fvdw = (real*) calloc( (control->tabulate + 1), sizeof(real) );
+    fCEvd = (real*) calloc( (control->tabulate + 1), sizeof(real) );
+    fele = (real*) calloc( (control->tabulate + 1), sizeof(real) );
+    fCEclmb = (real*) calloc( (control->tabulate + 1), sizeof(real) );
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
@@ -291,17 +303,17 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
                     LR[i][j].dx = dr;
                     LR[i][j].inv_dx = control->tabulate / control->r_cut;
                     LR[i][j].y = (LR_data*)
-                                 malloc(LR[i][j].n * sizeof(LR_data));
+                        malloc( LR[i][j].n * sizeof(LR_data) );
                     LR[i][j].H = (cubic_spline_coef*)
-                                 malloc(LR[i][j].n * sizeof(cubic_spline_coef));
+                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
                     LR[i][j].vdW = (cubic_spline_coef*)
-                                   malloc(LR[i][j].n * sizeof(cubic_spline_coef));
+                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
                     LR[i][j].CEvd = (cubic_spline_coef*)
-                                    malloc(LR[i][j].n * sizeof(cubic_spline_coef));
+                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
                     LR[i][j].ele = (cubic_spline_coef*)
-                                   malloc(LR[i][j].n * sizeof(cubic_spline_coef));
+                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
                     LR[i][j].CEclmb = (cubic_spline_coef*)
-                                      malloc(LR[i][j].n * sizeof(cubic_spline_coef));
+                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {
@@ -325,31 +337,39 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
                         }
                     }
 
-                    /*fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fh" );
-                      for( r = 1; r <= control->tabulate; ++r )
-                      fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fh[r] ); */
                     Natural_Cubic_Spline( &h[1], &fh[1],
-                                          &(LR[i][j].H[1]), control->tabulate + 1 );
+                            &(LR[i][j].H[1]), control->tabulate + 1 );
 
-                    /*fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fvdw" );
-                      for( r = 1; r <= control->tabulate; ++r )
-                      fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fvdw[r] );
-                      fprintf( stderr, "v0_vdw: %f, vlast_vdw: %f\n", v0_vdw, vlast_vdw );
-                    */
+//                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fh" );
+//                    for( r = 1; r <= control->tabulate; ++r )
+//                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fh[r] );
+
                     Complete_Cubic_Spline( &h[1], &fvdw[1], v0_vdw, vlast_vdw,
-                                           &(LR[i][j].vdW[1]), control->tabulate + 1 );
-                    Natural_Cubic_Spline( &h[1], &fCEvd[1],
-                                          &(LR[i][j].CEvd[1]), control->tabulate + 1 );
+                            &(LR[i][j].vdW[1]), control->tabulate + 1 );
 
-                    /*fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
-                      for( r = 1; r <= control->tabulate; ++r )
-                      fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fele[r] );
-                      fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
-                    */
+//                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fvdw" );
+//                    for( r = 1; r <= control->tabulate; ++r )
+//                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fvdw[r] );
+//                    fprintf( stderr, "v0_vdw: %f, vlast_vdw: %f\n", v0_vdw, vlast_vdw );
+
+                    Natural_Cubic_Spline( &h[1], &fCEvd[1],
+                            &(LR[i][j].CEvd[1]), control->tabulate + 1 );
+
+//                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
+//                    for( r = 1; r <= control->tabulate; ++r )
+//                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fele[r] );
+//                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
+
                     Complete_Cubic_Spline( &h[1], &fele[1], v0_ele, vlast_ele,
-                                           &(LR[i][j].ele[1]), control->tabulate + 1 );
+                            &(LR[i][j].ele[1]), control->tabulate + 1 );
+
+//                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
+//                    for( r = 1; r <= control->tabulate; ++r )
+//                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fele[r] );
+//                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
+
                     Natural_Cubic_Spline( &h[1], &fCEclmb[1],
-                                          &(LR[i][j].CEclmb[1]), control->tabulate + 1 );
+                            &(LR[i][j].CEclmb[1]), control->tabulate + 1 );
                 }
             }
         }
@@ -403,12 +423,54 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
              fprintf( stderr, "eele_maxerr: %24.15e\n", eele_maxerr );
     *******/
 
-    free(h);
-    free(fh);
-    free(fvdw);
-    free(fCEvd);
-    free(fele);
-    free(fCEclmb);
+    sfree( h, "Make_LR_Lookup_Table::h" );
+    sfree( fh, "Make_LR_Lookup_Table::fh" );
+    sfree( fvdw, "Make_LR_Lookup_Table::fvdw" );
+    sfree( fCEvd, "Make_LR_Lookup_Table::fCEvd" );
+    sfree( fele, "Make_LR_Lookup_Table::fele" );
+    sfree( fCEclmb, "Make_LR_Lookup_Table::fCEclmb" );
+}
+
+
+void Finalize_LR_Lookup_Table( reax_system *system, control_params *control )
+{
+    int i, j;
+    int num_atom_types;
+    int existing_types[MAX_ATOM_TYPES];
+
+    num_atom_types = system->reaxprm.num_atom_types;
+
+    for ( i = 0; i < MAX_ATOM_TYPES; ++i )
+    {
+        existing_types[i] = 0;
+    }
+    for ( i = 0; i < system->N; ++i )
+    {
+        existing_types[ system->atoms[i].type ] = 1;
+    }
+
+    for ( i = 0; i < num_atom_types; ++i )
+    {
+        if ( existing_types[i] )
+        {
+            for ( j = i; j < num_atom_types; ++j )
+            {
+                if ( existing_types[j] )
+                {
+                    sfree( LR[i][j].y, "Finalize_LR_Lookup_Table::LR[i][j].y" );
+                    sfree( LR[i][j].H, "Finalize_LR_Lookup_Table::LR[i][j].H" );
+                    sfree( LR[i][j].vdW, "Finalize_LR_Lookup_Table::LR[i][j].vdW" );
+                    sfree( LR[i][j].CEvd, "Finalize_LR_Lookup_Table::LR[i][j].CEvd" );
+                    sfree( LR[i][j].ele, "Finalize_LR_Lookup_Table::LR[i][j].ele" );
+                    sfree( LR[i][j].CEclmb, "Finalize_LR_Lookup_Table::LR[i][j].CEclmb" );
+                }
+            }
+        }
+
+        sfree( LR[i], "Finalize_LR_Lookup_Table::LR[i]" );
+    }
+
+    sfree( LR, "Finalize_LR_Lookup_Table::LR" );
 }
 
 

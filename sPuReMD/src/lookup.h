@@ -37,5 +37,7 @@ real Lookup( real, lookup_table* );
 
 void Make_LR_Lookup_Table( reax_system*, control_params* );
 
+void Finalize_LR_Lookup_Table( reax_system *, control_params * );
+
 
 #endif

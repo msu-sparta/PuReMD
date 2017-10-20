@@ -168,9 +168,15 @@ void Reset_Grid( grid *g )
     int i, j, k;
 
     for ( i = 0; i < g->ncell[0]; i++ )
+    {
         for ( j = 0; j < g->ncell[1]; j++ )
+        {
             for ( k = 0; k < g->ncell[2]; k++ )
+            {
                 g->top[i][j][k] = 0;
+            }
+        }
+    }
 }
 
 

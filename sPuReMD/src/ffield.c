@@ -457,6 +457,29 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
                 POW(reax->sbp[j].gamma *
                     reax->sbp[i].gamma, -1.5);
 
+            reax->tbp[i][j].acore =
+                SQRT( reax->sbp[i].acore2 *
+                    reax->sbp[j].acore2 );
+
+            reax->tbp[j][i].acore =
+                SQRT( reax->sbp[j].acore2 *
+                    reax->sbp[i].acore2 );
+
+            reax->tbp[i][j].ecore =
+                SQRT( reax->sbp[i].ecore2 *
+                    reax->sbp[j].ecore2 );
+
+            reax->tbp[j][i].ecore =
+                SQRT( reax->sbp[j].ecore2 *
+                    reax->sbp[i].ecore2 );
+
+            reax->tbp[i][j].rcore =
+                SQRT( reax->sbp[i].rcore2 *
+                    reax->sbp[j].rcore2 );
+
+            reax->tbp[j][i].rcore =
+                SQRT( reax->sbp[j].rcore2 *
+                    reax->sbp[i].rcore2 );
         }
 
     /* next line is number of 2-body offdiagonal combinations and some comments */
@@ -719,10 +742,10 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     /* deallocate helper storage */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        free( tmp[i] );
+        sfree( tmp[i], "Read_Force_Field::tmp[i]" );
     }
-    free( tmp );
-    free( s );
+    sfree( tmp, "Read_Force_Field::tmp" );
+    sfree( s, "Read_Force_Field::s" );
 
     /* deallocate tor_flag */
     for ( i = 0; i < reax->num_atom_types; i++ )
@@ -731,16 +754,16 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
         {
             for ( k = 0; k < reax->num_atom_types; k++ )
             {
-                free( tor_flag[i][j][k] );
+                sfree( tor_flag[i][j][k], "Read_Force_Field::tor_flag[i][j][k]" );
             }
 
-            free( tor_flag[i][j] );
+            sfree( tor_flag[i][j], "Read_Force_Field::tor_flag[i][j]" );
         }
 
-        free( tor_flag[i] );
+        sfree( tor_flag[i], "Read_Force_Field::tor_flag[i]" );
     }
 
-    free( tor_flag );
+    sfree( tor_flag, "Read_Force_Field::tor_flag" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "force field read\n" );

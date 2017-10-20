@@ -116,10 +116,10 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                                 {
                                     nbr_data = &(far_nbrs->select.far_nbr_list[num_far]);
                                     //fprintf (stderr, " %f %f %f \n", nbr_data->dvec[0], nbr_data->dvec[1], nbr_data->dvec[2]);
-                                    if (Are_Far_Neighbors(system->atoms[atom1].x,
-                                                          system->atoms[atom2].x,
-                                                          &(system->box), control->vlist_cut,
-                                                          nbr_data))
+                                    if ( Are_Far_Neighbors(system->atoms[atom1].x,
+                                                system->atoms[atom2].x,
+                                                &(system->box), control->vlist_cut,
+                                                nbr_data) )
                                     {
                                         nbr_data->nbr = atom2;
                                         ++num_far;
@@ -231,10 +231,10 @@ int Estimate_NumNeighbors( reax_system *system, control_params *control,
                                 //if( nbrs[itr+1][0] >= 0 || atom1 > atom2 ) {
                                 if ( atom1 > atom2 )
                                 {
-                                    if (Are_Far_Neighbors(system->atoms[atom1].x,
-                                                          system->atoms[atom2].x,
-                                                          &(system->box), control->vlist_cut,
-                                                          &nbr_data))
+                                    if ( Are_Far_Neighbors(system->atoms[atom1].x,
+                                                system->atoms[atom2].x,
+                                                &(system->box), control->vlist_cut,
+                                                &nbr_data) )
                                         ++num_far;
                                 }
                             }

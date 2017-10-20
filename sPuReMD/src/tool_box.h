@@ -24,45 +24,68 @@
 
 #include "mytypes.h"
 
+
 /* from box.h */
 void Transform( rvec, simulation_box*, char, rvec );
+
 void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
+
 void Fit_to_Periodic_Box( simulation_box*, rvec* );
+
 //void Box_Touch_Point( simulation_box*, ivec, rvec );
-//int  is_Inside_Box( simulation_box*, rvec );
-//int  iown_midpoint( simulation_box*, rvec, rvec );
+
+//int is_Inside_Box( simulation_box*, rvec );
+
+//int iown_midpoint( simulation_box*, rvec, rvec );
 
 /* from grid.h */
-/*
-void GridCell_Closest_Point( grid_cell*, grid_cell*, ivec, ivec, rvec );
-void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
-real DistSqr_between_Special_Points( rvec, rvec );
-real DistSqr_to_Special_Point( rvec, rvec );
-int Relative_Coord_Encoding( ivec );
-*/
+//void GridCell_Closest_Point( grid_cell*, grid_cell*, ivec, ivec, rvec );
+
+//void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
+
+//real DistSqr_between_Special_Points( rvec, rvec );
+
+//real DistSqr_to_Special_Point( rvec, rvec );
+
+//int Relative_Coord_Encoding( ivec );
 
 /* from geo_tools.h */
 void Make_Point( real, real, real, rvec* );
+
 int is_Valid_Serial( static_storage*, int );
+
 int Check_Input_Range( int, int, int, char* );
+
 void Trim_Spaces( char* );
 
 /* from system_props.h */
 real Get_Time( );
+
 real Get_Timing_Info( real );
+
 void Update_Timing_Info( real*, real* );
 
 /* from io_tools.h */
 int Get_Atom_Type( reax_interaction*, char* );
+
 char *Get_Element( reax_system*, int );
+
 char *Get_Atom_Name( reax_system*, int );
+
 int Allocate_Tokenizer_Space( char**, char**, char*** );
+
 void Deallocate_Tokenizer_Space( char **, char **, char *** );
+
 int Tokenize( char*, char*** );
 
 /* from lammps */
-void *smalloc( long, char* );
-void *scalloc( int, int, char* );
-void sfree( void*, char* );
+void *smalloc( size_t, const char * );
+
+void* srealloc( void *, size_t, const char * );
+
+void* scalloc( size_t, size_t, const char * );
+
+void sfree( void *, const char * );
+
 
 #endif

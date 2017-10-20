@@ -20,19 +20,18 @@
   ----------------------------------------------------------------------*/
 
 #include "init_md.h"
+
 #include "allocate.h"
 #include "box.h"
 #include "forces.h"
 #include "grid.h"
 #include "integrate.h"
-#include "lin_alg.h"
 #include "neighbors.h"
 #include "list.h"
 #include "lookup.h"
-#include "print_utils.h"
 #include "reset_utils.h"
 #include "system_props.h"
-#include "traj.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
@@ -639,8 +638,8 @@ void Init_Lists( reax_system *system, control_params *control,
     }
 #endif
 
-    free( hb_top );
-    free( bond_top );
+    sfree( hb_top, "Init_Lists::hb_top" );
+    sfree( bond_top, "Init_Lists::bond_top" );
 }
 
 
@@ -936,7 +935,7 @@ void Finalize_System( reax_system *system, control_params *control,
 
     Finalize_Grid( system );
 
-    free( reax->gp.l );
+    sfree( reax->gp.l, "Finalize_System::reax->gp.l" );
 
     for ( i = 0; i < reax->num_atom_types; i++ )
     {
@@ -944,27 +943,27 @@ void Finalize_System( reax_system *system, control_params *control,
         {
             for ( k = 0; k < reax->num_atom_types; k++ )
             {
-                free( reax->fbp[i][j][k] );
+                sfree( reax->fbp[i][j][k], "Finalize_System::reax->fbp[i][j][k]" );
             }
 
-            free( reax->thbp[i][j] );
-            free( reax->hbp[i][j] );
-            free( reax->fbp[i][j] );
+            sfree( reax->thbp[i][j], "Finalize_System::reax->thbp[i][j]" );
+            sfree( reax->hbp[i][j], "Finalize_System::reax->hbp[i][j]" );
+            sfree( reax->fbp[i][j], "Finalize_System::reax->fbp[i][j]" );
         }
 
-        free( reax->tbp[i] );
-        free( reax->thbp[i] );
-        free( reax->hbp[i] );
-        free( reax->fbp[i] );
+        sfree( reax->tbp[i], "Finalize_System::reax->tbp[i]" );
+        sfree( reax->thbp[i], "Finalize_System::reax->thbp[i]" );
+        sfree( reax->hbp[i], "Finalize_System::reax->hbp[i]" );
+        sfree( reax->fbp[i], "Finalize_System::reax->fbp[i]" );
     }
 
-    free( reax->sbp );
-    free( reax->tbp );
-    free( reax->thbp );
-    free( reax->hbp );
-    free( reax->fbp );
+    sfree( reax->sbp, "Finalize_System::reax->sbp" );
+    sfree( reax->tbp, "Finalize_System::reax->tbp" );
+    sfree( reax->thbp, "Finalize_System::reax->thbp" );
+    sfree( reax->hbp, "Finalize_System::reax->hbp" );
+    sfree( reax->fbp, "Finalize_System::reax->fbp" );
 
-    free( system->atoms );
+    sfree( system->atoms, "Finalize_System::system->atoms" );
 }
 
 
@@ -979,23 +978,23 @@ void Finalize_Workspace( reax_system *system, control_params *control,
 {
     int i;
 
-    free( workspace->hbond_index );
-    free( workspace->total_bond_order );
-    free( workspace->Deltap );
-    free( workspace->Deltap_boc );
-    free( workspace->dDeltap_self );
-    free( workspace->Delta );
-    free( workspace->Delta_lp );
-    free( workspace->Delta_lp_temp );
-    free( workspace->dDelta_lp );
-    free( workspace->dDelta_lp_temp );
-    free( workspace->Delta_e );
-    free( workspace->Delta_boc );
-    free( workspace->nlp );
-    free( workspace->nlp_temp );
-    free( workspace->Clp );
-    free( workspace->CdDelta );
-    free( workspace->vlpex );
+    sfree( workspace->hbond_index, "Finalize_Workspace::workspace->hbond_index" );
+    sfree( workspace->total_bond_order, "Finalize_Workspace::workspace->total_bond_order" );
+    sfree( workspace->Deltap, "Finalize_Workspace::workspace->Deltap" );
+    sfree( workspace->Deltap_boc, "Finalize_Workspace::workspace->Deltap_boc" );
+    sfree( workspace->dDeltap_self, "Finalize_Workspace::workspace->dDeltap_self" );
+    sfree( workspace->Delta, "Finalize_Workspace::workspace->Delta" );
+    sfree( workspace->Delta_lp, "Finalize_Workspace::workspace->Delta_lp" );
+    sfree( workspace->Delta_lp_temp, "Finalize_Workspace::workspace->Delta_lp_temp" );
+    sfree( workspace->dDelta_lp, "Finalize_Workspace::workspace->dDelta_lp" );
+    sfree( workspace->dDelta_lp_temp, "Finalize_Workspace::workspace->dDelta_lp_temp" );
+    sfree( workspace->Delta_e, "Finalize_Workspace::workspace->Delta_e" );
+    sfree( workspace->Delta_boc, "Finalize_Workspace::workspace->Delta_boc" );
+    sfree( workspace->nlp, "Finalize_Workspace::workspace->nlp" );
+    sfree( workspace->nlp_temp, "Finalize_Workspace::workspace->nlp_temp" );
+    sfree( workspace->Clp, "Finalize_Workspace::workspace->Clp" );
+    sfree( workspace->CdDelta, "Finalize_Workspace::workspace->CdDelta" );
+    sfree( workspace->vlpex, "Finalize_Workspace::workspace->vlpex" );
 
     Deallocate_Matrix( workspace->H );
     Deallocate_Matrix( workspace->H_sp );
@@ -1009,26 +1008,29 @@ void Finalize_Workspace( reax_system *system, control_params *control,
 
     for ( i = 0; i < 5; ++i )
     {
-        free( workspace->s[i] );
-        free( workspace->t[i] );
+        sfree( workspace->s[i], "Finalize_Workspace::workspace->s[i]" );
+        sfree( workspace->t[i], "Finalize_Workspace::workspace->t[i]" );
     }
 
-    free( workspace->Hdia_inv );
+    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+    {
+        sfree( workspace->Hdia_inv, "Finalize_Workspace::workspace->Hdia_inv" );
+    }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
-        free( workspace->droptol );
+        sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
     }
     //TODO: check if unused
-    //free( workspace->w );
+    //sfree( workspace->w, "Finalize_Workspace::workspace->w" );
     //TODO: check if unused
-    free( workspace->b );
-    free( workspace->b_s );
-    free( workspace->b_t );
-    free( workspace->b_prc );
-    free( workspace->b_prm );
-    free( workspace->s );
-    free( workspace->t );
+    sfree( workspace->b, "Finalize_Workspace::workspace->b" );
+    sfree( workspace->b_s, "Finalize_Workspace::workspace->b_s" );
+    sfree( workspace->b_t, "Finalize_Workspace::workspace->b_t" );
+    sfree( workspace->b_prc, "Finalize_Workspace::workspace->b_prc" );
+    sfree( workspace->b_prm, "Finalize_Workspace::workspace->b_prm" );
+    sfree( workspace->s, "Finalize_Workspace::workspace->s" );
+    sfree( workspace->t, "Finalize_Workspace::workspace->t" );
 
     switch ( control->cm_solver_type )
     {
@@ -1037,38 +1039,38 @@ void Finalize_Workspace( reax_system *system, control_params *control,
         case GMRES_H_S:
             for ( i = 0; i < control->cm_solver_restart + 1; ++i )
             {
-                free( workspace->h[i] );
-                free( workspace->rn[i] );
-                free( workspace->v[i] );
+                sfree( workspace->h[i], "Finalize_Workspace::workspace->h[i]" );
+                sfree( workspace->rn[i], "Finalize_Workspace::workspace->rn[i]" );
+                sfree( workspace->v[i], "Finalize_Workspace::workspace->v[i]" );
             }
 
-            free( workspace->y );
-            free( workspace->z );
-            free( workspace->g );
-            free( workspace->h );
-            free( workspace->hs );
-            free( workspace->hc );
-            free( workspace->rn );
-            free( workspace->v );
+            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
+            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
+            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
+            sfree( workspace->h, "Finalize_Workspace::workspace->h" );
+            sfree( workspace->hs, "Finalize_Workspace::workspace->hs" );
+            sfree( workspace->hc, "Finalize_Workspace::workspace->hc" );
+            sfree( workspace->rn, "Finalize_Workspace::workspace->rn" );
+            sfree( workspace->v, "Finalize_Workspace::workspace->v" );
 
-            free( workspace->r );
-            free( workspace->d );
-            free( workspace->q );
-            free( workspace->p );
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
             break;
 
         /* CG storage */
         case CG_S:
-            free( workspace->r );
-            free( workspace->d );
-            free( workspace->q );
-            free( workspace->p );
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
             break;
 
         case SDM_S:
-            free( workspace->r );
-            free( workspace->d );
-            free( workspace->q );
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
             break;
 
         default:
@@ -1078,63 +1080,56 @@ void Finalize_Workspace( reax_system *system, control_params *control,
     }
 
     /* integrator storage */
-    free( workspace->a );
-    free( workspace->f_old );
-    free( workspace->v_const );
+    sfree( workspace->a, "Finalize_Workspace::workspace->a" );
+    sfree( workspace->f_old, "Finalize_Workspace::workspace->f_old" );
+    sfree( workspace->v_const, "Finalize_Workspace::workspace->v_const" );
 
 #ifdef _OPENMP
-    free( workspace->f_local );
+    sfree( workspace->f_local, "Finalize_Workspace::workspace->f_local" );
 #endif
 
     /* storage for analysis */
     if ( control->molec_anal || control->diffusion_coef )
     {
-        free( workspace->mark );
-        free( workspace->old_mark );
-    }
-    else
-    {
-        free( workspace->mark );
+        sfree( workspace->mark, "Finalize_Workspace::workspace->mark" );
+        sfree( workspace->old_mark, "Finalize_Workspace::workspace->old_mark" );
     }
 
     if ( control->diffusion_coef )
     {
-        free( workspace->x_old );
-    }
-    else
-    {
-        free( workspace->x_old );
+        sfree( workspace->x_old, "Finalize_Workspace::workspace->x_old" );
     }
 
-    free( workspace->orig_id );
+    sfree( workspace->orig_id, "Finalize_Workspace::workspace->orig_id" );
 
     /* space for keeping restriction info, if any */
     if ( control->restrict_bonds )
     {
         for ( i = 0; i < system->N; ++i )
         {
-            free( workspace->restricted_list[i] );
+            sfree( workspace->restricted_list[i],
+                    "Finalize_Workspace::workspace->restricted_list[i]" );
         }
 
-        free( workspace->restricted );
-        free( workspace->restricted_list );
+        sfree( workspace->restricted, "Finalize_Workspace::workspace->restricted" );
+        sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
     }
 
 #ifdef TEST_FORCES
-    free( workspace->dDelta );
-    free( workspace->f_ele );
-    free( workspace->f_vdw );
-    free( workspace->f_bo );
-    free( workspace->f_be );
-    free( workspace->f_lp );
-    free( workspace->f_ov );
-    free( workspace->f_un );
-    free( workspace->f_ang );
-    free( workspace->f_coa );
-    free( workspace->f_pen );
-    free( workspace->f_hb );
-    free( workspace->f_tor );
-    free( workspace->f_con );
+    sfree( workspace->dDelta, "Finalize_Workspace::workspace->dDelta" );
+    sfree( workspace->f_ele, "Finalize_Workspace::workspace->f_ele" );
+    sfree( workspace->f_vdw, "Finalize_Workspace::workspace->f_vdw" );
+    sfree( workspace->f_bo, "Finalize_Workspace::workspace->f_bo" );
+    sfree( workspace->f_be, "Finalize_Workspace::workspace->f_be" );
+    sfree( workspace->f_lp, "Finalize_Workspace::workspace->f_lp" );
+    sfree( workspace->f_ov, "Finalize_Workspace::workspace->f_ov" );
+    sfree( workspace->f_un, "Finalize_Workspace::workspace->f_un" );
+    sfree( workspace->f_ang, "Finalize_Workspace::workspace->f_ang" );
+    sfree( workspace->f_coa, "Finalize_Workspace::workspace->f_coa" );
+    sfree( workspace->f_pen, "Finalize_Workspace::workspace->f_pen" );
+    sfree( workspace->f_hb, "Finalize_Workspace::workspace->f_hb" );
+    sfree( workspace->f_tor, "Finalize_Workspace::workspace->f_tor" );
+    sfree( workspace->f_con, "Finalize_Workspace::workspace->f_con" );
 #endif
 }
 
@@ -1159,19 +1154,31 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
     /* close trajectory file */
     if ( out_control->write_steps > 0 )
     {
-        fclose( out_control->trj );
+        if ( out_control->trj )
+        {
+            fclose( out_control->trj );
+        }
     }
 
     if ( out_control->energy_update_freq > 0 )
     {
         /* close out file */
-        fclose( out_control->out );
+        if ( out_control->out )
+        {
+            fclose( out_control->out );
+        }
 
         /* close potentials file */
-        fclose( out_control->pot );
+        if ( out_control->pot )
+        {
+            fclose( out_control->pot );
+        }
 
         /* close log file */
-        fclose( out_control->log );
+        if ( out_control->log )
+        {
+            fclose( out_control->log );
+        }
     }
 
     /* close pressure file */
@@ -1179,7 +1186,10 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
             control->ensemble == iNPT ||
             control->ensemble == sNPT )
     {
-        fclose( out_control->prs );
+        if ( out_control->prs )
+        {
+            fclose( out_control->prs );
+        }
     }
 
     /* close molecular analysis file */
@@ -1203,76 +1213,145 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
 
 #ifdef TEST_ENERGY
     /* close bond energy file */
-    fclose( out_control->ebond );
+    if ( out_control->ebond )
+    {
+        fclose( out_control->ebond );
+    }
 
     /* close lone-pair energy file */
-    fclose( out_control->elp );
+    if ( out_control->help )
+    {
+        fclose( out_control->elp );
+    }
 
     /* close overcoordination energy file */
-    fclose( out_control->eov );
+    if ( out_control->eov )
+    {
+        fclose( out_control->eov );
+    }
 
     /* close undercoordination energy file */
-    fclose( out_control->eun );
+    if ( out_control->eun )
+    {
+        fclose( out_control->eun );
+    }
 
     /* close angle energy file */
-    fclose( out_control->eval );
+    if ( out_control->eval )
+    {
+        fclose( out_control->eval );
+    }
 
     /* close penalty energy file */
-    fclose( out_control->epen );
+    if ( out_control->epen )
+    {
+        fclose( out_control->epen );
+    }
 
     /* close coalition energy file */
-    fclose( out_control->ecoa );
+    if ( out_control->ecoa )
+    {
+        fclose( out_control->ecoa );
+    }
 
     /* close hydrogen bond energy file */
-    fclose( out_control->ehb );
+    if ( out_control->ehb )
+    {
+        fclose( out_control->ehb );
+    }
 
     /* close torsion energy file */
-    fclose( out_control->etor );
+    if ( out_control->etor )
+    {
+        fclose( out_control->etor );
+    }
 
     /* close conjugation energy file */
-    fclose( out_control->econ );
+    if ( out_control->econ )
+    {
+        fclose( out_control->econ );
+    }
 
     /* close vdWaals energy file */
-    fclose( out_control->evdw );
+    if ( out_control->evdw )
+    {
+        fclose( out_control->evdw );
+    }
 
     /* close coulomb energy file */
-    fclose( out_control->ecou );
+    if ( out_control->ecou )
+    {
+        fclose( out_control->ecou );
+    }
 #endif
 
 
 #ifdef TEST_FORCES
     /* close bond orders file */
-    fclose( out_control->fbo );
+    if ( out_control->fbo )
+    {
+        fclose( out_control->fbo );
+    }
 
     /* close bond orders derivatives file */
-    fclose( out_control->fdbo );
+    if ( out_control->fdbo )
+    {
+        fclose( out_control->fdbo );
+    }
 
     /* close bond forces file */
-    fclose( out_control->fbond );
+    if ( out_control->fbond )
+    {
+        fclose( out_control->fbond );
+    }
 
     /* close lone-pair forces file */
-    fclose( out_control->flp );
+    if ( out_control->flp )
+    {
+        fclose( out_control->flp );
+    }
 
     /* close overcoordination forces file */
-    fclose( out_control->fatom );
+    if ( out_control->fatom )
+    {
+        fclose( out_control->fatom );
+    }
 
     /* close angle forces file */
-    fclose( out_control->f3body );
+    if ( out_control->f3body )
+    {
+        fclose( out_control->f3body );
+    }
 
     /* close hydrogen bond forces file */
-    fclose( out_control->fhb );
+    if ( out_control->fhb )
+    {
+        fclose( out_control->fhb );
+    }
 
     /* close torsion forces file */
-    fclose( out_control->f4body );
+    if ( out_control->f4body )
+    {
+        fclose( out_control->f4body );
+    }
 
     /* close nonbonded forces file */
-    fclose( out_control->fnonb );
+    if ( out_control->fnonb )
+    {
+        fclose( out_control->fnonb );
+    }
 
     /* close total force file */
-    fclose( out_control->ftot );
+    if ( out_control->ftot )
+    {
+        fclose( out_control->ftot );
+    }
 
     /* close coulomb forces file */
-    fclose( out_control->ftot2 );
+    if ( out_control->ftot2 )
+    {
+        fclose( out_control->ftot2 );
+    }
 #endif
 }
 
@@ -1283,7 +1362,7 @@ void Finalize( reax_system *system, control_params *control,
 {
     if ( control->tabulate )
     {
-//        Finalize_LR_Lookup_Table( system, control );
+        Finalize_LR_Lookup_Table( system, control );
     }
 
     Finalize_Out_Controls( system, control, workspace, out_control );

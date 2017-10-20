@@ -217,8 +217,8 @@ void Print_Molecule( reax_system *system, molecule *m, int mode, char *s )
 
 
 void Analyze_Molecules( reax_system *system, control_params *control,
-                        simulation_data *data, static_storage *workspace,
-                        list **lists, FILE *fout )
+        simulation_data *data, static_storage *workspace,
+        list **lists, FILE *fout )
 {
     int atom, i, j, k, l, flag;
     int *mark = workspace->mark;
@@ -304,8 +304,8 @@ void Analyze_Molecules( reax_system *system, control_params *control,
 
     Copy_Bond_List( system, control, lists );
 
-    //free( mark );
-    //free( old_mark );
+    //sfree( mark, "Analyze_Molecules::mark" );
+    //sfree( old_mark, "Analyze_Molecules::old_mark" );
 
     fprintf( fout, "\n" );
     fflush( fout );

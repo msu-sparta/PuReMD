@@ -436,8 +436,8 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
 
 
     /* vdWaals calculations */
-    powr_vdW1 = POW(r_ij, p_vdW1);
-    powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1);
+    powr_vdW1 = POW( r_ij, p_vdW1 );
+    powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
 
     fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
     exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
@@ -449,7 +449,8 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
        Tap, r_ij, fn13, twbp->D, Tap * twbp->D * (exp1 - 2.0 * exp2),
        powgi_vdW1, p_vdW1, twbp->alpha, twbp->r_vdW, exp1, exp2); */
 
-    dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) * POW(r_ij, p_vdW1 - 2.0);
+    dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 )
+        * POW( r_ij, p_vdW1 - 2.0 );
 
     lr->CEvd = dTap * twbp->D * (exp1 - 2 * exp2) -
         Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
