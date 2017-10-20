@@ -95,14 +95,14 @@ void Natural_Cubic_Spline( const real *h, const real *f,
     a[n - 1] = 0.0;
     for ( i = 2; i < n - 1; ++i )
     {
-        a[i] = h[i - 1];
+        a[i] = h[i];
     }
 
     b[0] = 0.0;
     b[n - 1] = 0.0;
     for ( i = 1; i < n - 1; ++i )
     {
-        b[i] = 2.0 * (h[i - 1] + h[i]);
+        b[i] = 2.0 * (h[i] + h[i + 1]);
     }
 
     c[0] = 0.0;
@@ -110,15 +110,15 @@ void Natural_Cubic_Spline( const real *h, const real *f,
     c[n - 1] = 0.0;
     for ( i = 1; i < n - 2; ++i )
     {
-        c[i] = h[i];
+        c[i] = h[i + 1];
     }
 
     d[0] = 0.0;
     d[n - 1] = 0.0;
     for ( i = 1; i < n - 1; ++i )
     {
-        d[i] = 6.0 * ((f[i + 1] - f[i])
-                / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
+        d[i] = 6.0 * ((f[i + 2] - f[i + 1])
+                / h[i + 1] - (f[i + 1] - f[i]) / h[i]);
     }
 
     /*fprintf( stderr, "i  a        b        c        d\n" );
@@ -130,11 +130,11 @@ void Natural_Cubic_Spline( const real *h, const real *f,
 
     for ( i = 1; i < n; ++i )
     {
-        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
+        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i]);
         coef[i - 1].c = v[i] / 2.0;
-        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1]
+        coef[i - 1].b = (f[i + 1] - f[i]) / h[i] + h[i]
             * (2.0 * v[i] + v[i - 1]) / 6.0;
-        coef[i - 1].a = f[i];
+        coef[i - 1].a = f[i + 1];
     }
 
     sfree( a, "Natural_Cubic_Spline::a" );
@@ -163,27 +163,27 @@ void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
     a[0] = 0.0;
     for ( i = 1; i < n; ++i )
     {
-        a[i] = h[i - 1];
+        a[i] = h[i];
     }
 
-    b[0] = 2.0 * h[0];
+    b[0] = 2.0 * h[1];
     for ( i = 1; i < n; ++i )
     {
-        b[i] = 2.0 * (h[i - 1] + h[i]);
+        b[i] = 2.0 * (h[i] + h[i + 1]);
     }
 
     c[n - 1] = 0.0;
     for ( i = 0; i < n - 1; ++i )
     {
-        c[i] = h[i];
+        c[i] = h[i + 1];
     }
 
-    d[0] = 6.0 * (f[1] - f[0]) / h[0] - 6.0 * v0;
-    d[n - 1] = 6.0 * vlast - 6.0 * (f[n - 1] - f[n - 2] / h[n - 2]);
+    d[0] = 6.0 * (f[2] - f[1]) / h[1] - 6.0 * v0;
+    d[n - 1] = 6.0 * vlast - 6.0 * (f[n] - f[n - 1] / h[n - 1]);
     for ( i = 1; i < n - 1; ++i )
     {
-        d[i] = 6.0 * ((f[i + 1] - f[i])
-                / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
+        d[i] = 6.0 * ((f[i + 2] - f[i + 1])
+                / h[i + 1] - (f[i + 1] - f[i]) / h[i]);
     }
 
     /*fprintf( stderr, "i  a        b        c        d\n" );
@@ -194,10 +194,10 @@ void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
 
     for ( i = 1; i < n; ++i )
     {
-        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
+        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i]);
         coef[i - 1].c = v[i] / 2.0;
-        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1] * (2.0 * v[i] + v[i - 1]) / 6.0;
-        coef[i - 1].a = f[i];
+        coef[i - 1].b = (f[i + 1] - f[i]) / h[i] + h[i] * (2.0 * v[i] + v[i - 1]) / 6.0;
+        coef[i - 1].a = f[i + 1];
     }
 
     sfree( a, "Complete_Cubic_Spline::a" );
@@ -337,14 +337,14 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
                         }
                     }
 
-                    Natural_Cubic_Spline( &h[1], &fh[1],
+                    Natural_Cubic_Spline( h, fh,
                             &(LR[i][j].H[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fh" );
 //                    for( r = 1; r <= control->tabulate; ++r )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fh[r] );
 
-                    Complete_Cubic_Spline( &h[1], &fvdw[1], v0_vdw, vlast_vdw,
+                    Complete_Cubic_Spline( h, fvdw, v0_vdw, vlast_vdw,
                             &(LR[i][j].vdW[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fvdw" );
@@ -352,7 +352,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fvdw[r] );
 //                    fprintf( stderr, "v0_vdw: %f, vlast_vdw: %f\n", v0_vdw, vlast_vdw );
 
-                    Natural_Cubic_Spline( &h[1], &fCEvd[1],
+                    Natural_Cubic_Spline( h, fCEvd,
                             &(LR[i][j].CEvd[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
@@ -360,7 +360,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fele[r] );
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
-                    Complete_Cubic_Spline( &h[1], &fele[1], v0_ele, vlast_ele,
+                    Complete_Cubic_Spline( h, fele, v0_ele, vlast_ele,
                             &(LR[i][j].ele[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
@@ -368,7 +368,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fele[r] );
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
-                    Natural_Cubic_Spline( &h[1], &fCEclmb[1],
+                    Natural_Cubic_Spline( h, fCEclmb,
                             &(LR[i][j].CEclmb[1]), control->tabulate + 1 );
                 }
             }
