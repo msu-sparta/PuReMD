@@ -26,16 +26,16 @@
 #include "vector.h"
 
 
-inline real Cf45( real p1, real p2 )
+static inline real Cf45( real p1, real p2 )
 {
-    return  -EXP(-p2 / 2) /
-        ( SQR( EXP(-p1 / 2) + EXP(p1 / 2) ) * (EXP(-p2 / 2) + EXP(p2 / 2)) );
+    return  -EXP(-p2 / 2.0) /
+        ( SQR( EXP(-p1 / 2.0) + EXP(p1 / 2.0) ) * (EXP(-p2 / 2.0) + EXP(p2 / 2.0)) );
 }
 
 
 #ifdef TEST_FORCES
 void Get_dBO( reax_system *system, list **lists,
-              int i, int pj, real C, rvec *v )
+        int i, int pj, real C, rvec *v )
 {
     list *bonds = (*lists) + BONDS;
     list *dBOs = (*lists) + DBO;
@@ -46,13 +46,15 @@ void Get_dBO( reax_system *system, list **lists,
     end_pj = End_Index(pj, dBOs);
 
     for ( k = start_pj; k < end_pj; ++k )
+    {
         rvec_Scale( v[dBOs->select.dbo_list[k].wrt],
-                    C, dBOs->select.dbo_list[k].dBO );
+                C, dBOs->select.dbo_list[k].dBO );
+    }
 }
 
 
 void Get_dBOpinpi2( reax_system *system, list **lists,
-                    int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
+        int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
     list *bonds = (*lists) + BONDS;
     list *dBOs = (*lists) + DBO;
@@ -73,7 +75,7 @@ void Get_dBOpinpi2( reax_system *system, list **lists,
 
 
 void Add_dBO( reax_system *system, list **lists,
-              int i, int pj, real C, rvec *v )
+        int i, int pj, real C, rvec *v )
 {
     list *bonds = (*lists) + BONDS;
     list *dBOs = (*lists) + DBO;
@@ -86,14 +88,15 @@ void Add_dBO( reax_system *system, list **lists,
     //fprintf( stderr, "i=%d j=%d start=%d end=%d\n", i, pj, start_pj, end_pj );
 
     for ( k = start_pj; k < end_pj; ++k )
+    {
         rvec_ScaledAdd( v[dBOs->select.dbo_list[k].wrt],
-                        C, dBOs->select.dbo_list[k].dBO );
-
+                C, dBOs->select.dbo_list[k].dBO );
+    }
 }
 
 
 void Add_dBOpinpi2( reax_system *system, list **lists,
-                    int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
+        int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
     list *bonds = (*lists) + BONDS;
     list *dBOs = (*lists) + DBO;
@@ -125,13 +128,15 @@ void Add_dBO_to_Forces( reax_system *system, list **lists,
     end_pj = End_Index(pj, dBOs);
 
     for ( k = start_pj; k < end_pj; ++k )
+    {
         rvec_ScaledAdd( system->atoms[dBOs->select.dbo_list[k].wrt].f,
-                        C, dBOs->select.dbo_list[k].dBO );
+                C, dBOs->select.dbo_list[k].dBO );
+    }
 }
 
 
 void Add_dBOpinpi2_to_Forces( reax_system *system, list **lists,
-                              int i, int pj, real Cpi, real Cpi2 )
+        int i, int pj, real Cpi, real Cpi2 )
 {
     list *bonds = (*lists) + BONDS;
     list *dBOs = (*lists) + DBO;
@@ -679,7 +684,7 @@ int Locate_Symmetric_Bond( list *bonds, int i, int j )
 }
 
 
-inline void Copy_Neighbor_Data( bond_data *dest, near_neighbor_data *src )
+static inline void Copy_Neighbor_Data( bond_data *dest, near_neighbor_data *src )
 {
     dest->nbr = src->nbr;
     dest->d = src->d;
@@ -689,7 +694,7 @@ inline void Copy_Neighbor_Data( bond_data *dest, near_neighbor_data *src )
 }
 
 
-inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data *src )
+static inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data *src )
 {
     dest->BO = src->BO;
     dest->BO_s = src->BO_s;

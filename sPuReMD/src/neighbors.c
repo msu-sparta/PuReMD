@@ -26,6 +26,7 @@
 #include "list.h"
 #include "reset_utils.h"
 #include "system_props.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
@@ -292,8 +293,8 @@ int compare_far_nbrs(const void *v1, const void *v2)
 }
 
 
-inline void Set_Far_Neighbor( far_neighbor_data *dest, int nbr, real d, real C,
-                              rvec dvec, ivec rel_box/*, rvec ext_factor*/ )
+static inline void Set_Far_Neighbor( far_neighbor_data *dest, int nbr, real d, real C,
+        rvec dvec, ivec rel_box/*, rvec ext_factor*/ )
 {
     dest->nbr = nbr;
     dest->d = d;
@@ -303,8 +304,8 @@ inline void Set_Far_Neighbor( far_neighbor_data *dest, int nbr, real d, real C,
 }
 
 
-inline void Set_Near_Neighbor(near_neighbor_data *dest, int nbr, real d, real C,
-                              rvec dvec, ivec rel_box/*, rvec ext_factor*/)
+static inline void Set_Near_Neighbor(near_neighbor_data *dest, int nbr, real d, real C,
+        rvec dvec, ivec rel_box/*, rvec ext_factor*/)
 {
     dest->nbr = nbr;
     dest->d = d;
@@ -316,7 +317,7 @@ inline void Set_Near_Neighbor(near_neighbor_data *dest, int nbr, real d, real C,
 
 /* In case bond restrictions are applied, this method checks if
    atom1 and atom2 are allowed to bond with each other */
-inline int can_Bond( static_storage *workspace, int atom1, int atom2 )
+static inline int can_Bond( static_storage *workspace, int atom1, int atom2 )
 {
     int i;
 
@@ -348,7 +349,7 @@ inline int can_Bond( static_storage *workspace, int atom1, int atom2 )
 
 
 /* check if atom2 is on atom1's near neighbor list */
-inline int is_Near_Neighbor( list *near_nbrs, int atom1, int atom2 )
+static inline int is_Near_Neighbor( list *near_nbrs, int atom1, int atom2 )
 {
     int i;
 
@@ -602,8 +603,6 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
     fprintf( stderr, "Near neighbors/atom: %d (compare to 150)\n",
              num_near / system->N );
-    fprintf( stderr, "Far neighbors per atom: %d (compare to %d)\n",
-             num_far / system->N, control->max_far_nbrs );
 #endif
 
     //fprintf( stderr, "step%d: num of nearnbrs = %6d   num of farnbrs: %6d\n",
@@ -617,8 +616,8 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
 
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
-                              simulation_data *data, static_storage *workspace,
-                              list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        list **lists, output_controls *out_control )
 {
     int  i, j, k, l, m, itr;
     int  x, y, z;

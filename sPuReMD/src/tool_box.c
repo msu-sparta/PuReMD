@@ -106,7 +106,7 @@ void Fit_to_Periodic_Box( simulation_box *box, rvec *p )
 /* determine the touch point, tp, of a box to
    its neighbor denoted by the relative coordinate rl */
 /*
-inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
+static inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
 {
     int d;
 
@@ -124,7 +124,7 @@ inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
 /* determine whether point p is inside the box */
 /* assumes orthogonal box */
 /*
-inline int is_Inside_Box( simulation_box *box, rvec p )
+static inline int is_Inside_Box( simulation_box *box, rvec p )
 {
     if ( p[0] < box->min[0] || p[0] >= box->max[0] ||
             p[1] < box->min[1] || p[1] >= box->max[1] ||
@@ -137,7 +137,7 @@ inline int is_Inside_Box( simulation_box *box, rvec p )
 
 
 /*
-inline int iown_midpoint( simulation_box *box, rvec p1, rvec p2 )
+static inline int iown_midpoint( simulation_box *box, rvec p1, rvec p2 )
 {
     rvec midp;
 
@@ -160,7 +160,7 @@ inline int iown_midpoint( simulation_box *box, rvec p1, rvec p2 )
    no need to consider periodic boundary conditions as in the serial case
    because the box of a process is not periodic in itself */
 /*
-inline void GridCell_Closest_Point( grid_cell *gci, grid_cell *gcj,
+static inline void GridCell_Closest_Point( grid_cell *gci, grid_cell *gcj,
         ivec ci, ivec cj, rvec cp )
 {
     int  d;
@@ -175,7 +175,7 @@ inline void GridCell_Closest_Point( grid_cell *gci, grid_cell *gcj,
 }
 
 
-inline void GridCell_to_Box_Points( grid_cell *gc, ivec rl, rvec cp, rvec fp )
+static inline void GridCell_to_Box_Points( grid_cell *gc, ivec rl, rvec cp, rvec fp )
 {
     int d;
 
@@ -197,7 +197,7 @@ inline void GridCell_to_Box_Points( grid_cell *gc, ivec rl, rvec cp, rvec fp )
 }
 
 
-inline real DistSqr_between_Special_Points( rvec sp1, rvec sp2 )
+static inline real DistSqr_between_Special_Points( rvec sp1, rvec sp2 )
 {
     int  i;
     real d_sqr = 0;
@@ -214,7 +214,7 @@ inline real DistSqr_between_Special_Points( rvec sp1, rvec sp2 )
 }
 
 
-inline real DistSqr_to_Special_Point( rvec cp, rvec x )
+static inline real DistSqr_to_Special_Point( rvec cp, rvec x )
 {
     int  i;
     real d_sqr = 0;
@@ -231,7 +231,7 @@ inline real DistSqr_to_Special_Point( rvec cp, rvec x )
 }
 
 
-inline int Relative_Coord_Encoding( ivec c )
+static inline int Relative_Coord_Encoding( ivec c )
 {
     return 9 * (c[0] + 1) + 3 * (c[1] + 1) + (c[2] + 1);
 }

@@ -63,7 +63,6 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->nbr_cut = 4.;
     control->r_cut = 10.;
     control->r_sp_cut = 10.;
-    control->max_far_nbrs = 1000;
     control->bo_cut = 0.01;
     control->thb_cut = 0.001;
     control->hb_cut = 0.0;

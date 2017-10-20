@@ -389,7 +389,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
         control_params *control, int i, int j,
         real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    real Tap, gamij, dr3gamij_1, dr3gamij_3, ret;
+    real Tap, dr3gamij_1, dr3gamij_3, ret;
 
     ret = 0.0;
 

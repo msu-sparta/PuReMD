@@ -25,61 +25,914 @@
 #include "mytypes.h"
 
 
-int Vector_isZero( const real * const, const unsigned int );
-void Vector_MakeZero( real * const, const unsigned int );
-void Vector_Copy( real * const, const real * const, const unsigned int );
-void Vector_Scale( real * const, const real, const real * const, const unsigned int );
-void Vector_Sum( real * const, const real, const real * const, const real, const real * const, const unsigned int );
-void Vector_Add( real * const, const real, const real * const, const unsigned int );
+/* file scope to make OpenMP shared (Vector_isZero) */
+static unsigned int ret_omp;
+/* file scope to make OpenMP shared (Dot, Norm) */
+static real ret2_omp;
+
+
 void Vector_Print( FILE * const, const char * const, const real * const, const unsigned int );
-real Dot( const real * const, const real * const, const unsigned int );
-real Norm( const real * const, const unsigned int );
 
-void rvec_Copy( rvec, const rvec );
-void rvec_Scale( rvec, const real, const rvec );
-void rvec_Add( rvec, const rvec );
-void rvec_ScaledAdd( rvec, const real, const rvec );
-void rvec_Sum( rvec, const rvec, const rvec );
-void rvec_ScaledSum( rvec, const real, const rvec, const real, const rvec );
-real rvec_Dot( const rvec, const rvec );
-real rvec_ScaledDot( const real, const rvec, const real, const rvec );
-void rvec_Multiply( rvec, const rvec, const rvec );
-void rvec_iMultiply( rvec, const ivec, const rvec );
-void rvec_Divide( rvec, const rvec, const rvec );
-void rvec_iDivide( rvec, const rvec, const ivec );
-void rvec_Invert( rvec, const rvec );
-void rvec_Cross( rvec, const rvec, const rvec );
-void rvec_OuterProduct( rtensor, const rvec, const rvec );
-real rvec_Norm_Sqr( const rvec );
-real rvec_Norm( const rvec );
-int rvec_isZero( const rvec );
-void rvec_MakeZero( rvec );
-void rvec_Random( rvec );
+void Print_rTensor( FILE * const, rtensor );
 
-void rtensor_MakeZero( rtensor );
-void rtensor_Multiply( rtensor, rtensor, rtensor );
-void rtensor_MatVec( rvec, rtensor, const rvec );
-void rtensor_Scale( rtensor, const real, rtensor );
-void rtensor_Add( rtensor, rtensor );
-void rtensor_ScaledAdd( rtensor, const real, rtensor );
-void rtensor_Sum( rtensor, rtensor, rtensor );
-void rtensor_ScaledSum( rtensor, const real, rtensor, const real, rtensor );
-void rtensor_Scale( rtensor, const real, rtensor );
-void rtensor_Copy( rtensor, rtensor );
-void rtensor_Identity( rtensor );
-void rtensor_Transpose( rtensor, rtensor );
-real rtensor_Det( rtensor );
-real rtensor_Trace( rtensor );
 
-void Print_rTensor(FILE * const, rtensor);
+static inline int Vector_isZero( const real * const v, const unsigned int k )
+{
+    unsigned int i;
 
-int ivec_isZero( const ivec );
-int ivec_isEqual( const ivec, const ivec );
-void ivec_MakeZero( ivec );
-void ivec_Copy( ivec, const ivec );
-void ivec_Scale( ivec, const real, const ivec );
-void ivec_rScale( ivec, const real, const rvec );
-void ivec_Sum( ivec, const ivec, const ivec );
+#ifdef _OPENMP
+    #pragma omp single
+#endif
+    {
+        ret_omp = TRUE;
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+
+    #pragma omp for simd reduction(&&: ret_omp) schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        if ( FABS( v[i] ) > ALMOST_ZERO )
+        {
+            ret_omp = FALSE;
+        }
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+#endif
+
+    return ret_omp;
+}
+
+
+static inline void Vector_MakeZero( real * const v, const unsigned int k )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp for simd schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        v[i] = ZERO;
+    }
+}
+
+
+static inline void Vector_Copy( real * const dest, const real * const v, const unsigned int k )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp for simd schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = v[i];
+    }
+}
+
+
+static inline void Vector_Scale( real * const dest, const real c, const real * const v,
+        const unsigned int k )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp for simd schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = c * v[i];
+    }
+}
+
+
+static inline void Vector_Sum( real * const dest, const real c, const real * const v,
+        const real d, const real * const y, const unsigned int k )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp for simd schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = c * v[i] + d * y[i];
+    }
+}
+
+
+static inline void Vector_Add( real * const dest, const real c, const real * const v,
+        const unsigned int k )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp for simd schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] += c * v[i];
+    }
+}
+
+
+static inline real Dot( const real * const v1, const real * const v2,
+        const unsigned int k )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp single
+#endif
+    {
+        ret2_omp = ZERO;
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+
+    #pragma omp for simd reduction(+: ret2_omp) schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        ret2_omp += v1[i] * v2[i];
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+#endif
+
+    return ret2_omp;
+}
+
+
+static inline real Norm( const real * const v1, const unsigned int k )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp single
+#endif
+    {
+        ret2_omp = ZERO;
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+
+    #pragma omp for simd reduction(+: ret2_omp) schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        ret2_omp += SQR( v1[i] );
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+
+    #pragma omp single
+#endif
+    {
+        ret2_omp = SQRT( ret2_omp );
+    }
+
+#ifdef _OPENMP
+    #pragma omp barrier
+#endif
+
+    return ret2_omp;
+}
+
+
+static inline void rvec_Copy( rvec dest, const rvec src )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = src[i];
+    }
+
+//    dest[0] = src[0];
+//    dest[1] = src[1];
+//    dest[2] = src[2];
+}
+
+static inline void rvec_Scale( rvec ret, const real c, const rvec v )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = c * v[i];
+    }
+
+//    ret[0] = c * v[0];
+//    ret[1] = c * v[1];
+//    ret[2] = c * v[2];
+}
+
+
+static inline void rvec_Add( rvec ret, const rvec v )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] += v[i];
+    }
+
+//    ret[0] += v[0];
+//    ret[1] += v[1];
+//    ret[2] += v[2];
+}
+
+
+static inline void rvec_ScaledAdd( rvec ret, const real c, const rvec v )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] += c * v[i];
+    }
+
+//    ret[0] += c * v[0];
+//    ret[1] += c * v[1];
+//    ret[2] += c * v[2];
+}
+
+
+static inline void rvec_Sum( rvec ret, const rvec v1 , const rvec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = v1[i] + v2[i];
+    }
+
+//    ret[0] = v1[0] + v2[0];
+//    ret[1] = v1[1] + v2[1];
+//    ret[2] = v1[2] + v2[2];
+}
+
+
+static inline void rvec_ScaledSum( rvec ret, const real c1, const rvec v1,
+        const real c2, const rvec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = c1 * v1[i] + c2 * v2[i];
+    }
+
+//    ret[0] = c1 * v1[0] + c2 * v2[0];
+//    ret[1] = c1 * v1[1] + c2 * v2[1];
+//    ret[2] = c1 * v1[2] + c2 * v2[2];
+}
+
+
+static inline real rvec_Dot( const rvec v1, const rvec v2 )
+{
+    int i;
+    real ret;
+
+    ret = 0.0;
+
+#ifdef _OPENMP
+    #pragma omp simd reduction(+: ret)
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret += v1[i] * v2[i];
+    }
+
+    return ret;
+
+//    return (v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]);
+}
+
+
+static inline real rvec_ScaledDot( const real c1, const rvec v1,
+        const real c2, const rvec v2 )
+{
+    int i;
+    real ret;
+
+    ret = 0.0;
+
+#ifdef _OPENMP
+    #pragma omp simd reduction(+: ret)
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret += v1[i] * v2[i];
+    }
+
+    return c1 * c2 * ret;
+
+//    return (c1 * c2) * (v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]);
+}
+
+
+static inline void rvec_Multiply( rvec r, const rvec v1, const rvec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] * v2[i];
+    }
+
+//    r[0] = v1[0] * v2[0];
+//    r[1] = v1[1] * v2[1];
+//    r[2] = v1[2] * v2[2];
+}
+
+
+static inline void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] * v2[i];
+    }
+
+//    r[0] = v1[0] * v2[0];
+//    r[1] = v1[1] * v2[1];
+//    r[2] = v1[2] * v2[2];
+}
+
+
+static inline void rvec_Divide( rvec r, const rvec v1, const rvec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] / v2[i];
+    }
+
+//    r[0] = v1[0] / v2[0];
+//    r[1] = v1[1] / v2[1];
+//    r[2] = v1[2] / v2[2];
+}
+
+
+static inline void rvec_iDivide( rvec r, const rvec v1, const ivec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] / v2[i];
+    }
+
+//    r[0] = v1[0] / v2[0];
+//    r[1] = v1[1] / v2[1];
+//    r[2] = v1[2] / v2[2];
+}
+
+
+static inline void rvec_Invert( rvec r, const rvec v )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = 1.0 / v[i];
+    }
+
+//    r[0] = 1.0 / v[0];
+//    r[1] = 1.0 / v[1];
+//    r[2] = 1.0 / v[2];
+}
+
+
+static inline void rvec_Cross( rvec ret, const rvec v1, const rvec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = v1[(i + 1) % 3] * v2[(i + 2) % 3] - v1[(i + 2) % 3] * v2[(i + 1) % 3];
+    }
+
+//    ret[0] = v1[1] * v2[2] - v1[2] * v2[1];
+//    ret[1] = v1[2] * v2[0] - v1[0] * v2[2];
+//    ret[2] = v1[0] * v2[1] - v1[1] * v2[0];
+}
+
+
+static inline void rvec_OuterProduct( rtensor r, const rvec v1, const rvec v2 )
+{
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            r[i][j] = v1[i] * v2[j];
+        }
+    }
+}
+
+
+static inline real rvec_Norm_Sqr( const rvec v )
+{
+    int i;
+    real ret;
+
+    ret = 0.0;
+
+#ifdef _OPENMP
+    #pragma omp simd reduction(+: ret)
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret += SQR( v[i] );
+    }
+
+    return ret;
+
+//    return SQR(v[0]) + SQR(v[1]) + SQR(v[2]);
+}
+
+
+static inline real rvec_Norm( const rvec v )
+{
+    int i;
+    real ret;
+
+    ret = 0.0;
+
+#ifdef _OPENMP
+    #pragma omp simd reduction(+: ret)
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret += SQR( v[i] );
+    }
+
+    return SQRT( ret );
+
+//    return SQRT( SQR(v[0]) + SQR(v[1]) + SQR(v[2]) );
+}
+
+
+static inline int rvec_isZero( const rvec v )
+{
+    int i, ret;
+
+    ret = TRUE;
+
+#ifdef _OPENMP
+    #pragma omp simd reduction(&&: ret)
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret = (FABS( v[i] ) > ALMOST_ZERO) && ret;
+    }
+
+    return ret;
+
+//    if ( FABS(v[0]) > ALMOST_ZERO ||
+//            FABS(v[1]) > ALMOST_ZERO ||
+//            FABS(v[2]) > ALMOST_ZERO )
+//    {
+//        return FALSE;
+//    }
+//    return TRUE;
+}
+
+
+static inline void rvec_MakeZero( rvec v )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        v[i] = ZERO;
+    }
+
+//    v[0] = ZERO;
+//    v[1] = ZERO;
+//    v[2] = ZERO;
+}
+
+
+static inline void rvec_Random( rvec v )
+{
+    v[0] = Random(2.0) - 1.0;
+    v[1] = Random(2.0) - 1.0;
+    v[2] = Random(2.0) - 1.0;
+}
+
+
+static inline void rtensor_Multiply( rtensor ret, rtensor m1, rtensor m2 )
+{
+    unsigned int i, j, k;
+    rtensor temp;
+
+    // check if the result matrix is the same as one of m1, m2.
+    // if so, we cannot modify the contents of m1 or m2, so
+    // we have to use a temp matrix.
+    if ( ret == m1 || ret == m2 )
+    {
+        for ( i = 0; i < 3; ++i )
+        {
+            for ( j = 0; j < 3; ++j )
+            {
+                temp[i][j] = 0;
+                for ( k = 0; k < 3; ++k )
+                {
+                    temp[i][j] += m1[i][k] * m2[k][j];
+                }
+            }
+        }
+
+        for ( i = 0; i < 3; ++i )
+        {
+            for ( j = 0; j < 3; ++j )
+            {
+                ret[i][j] = temp[i][j];
+            }
+        }
+    }
+    else
+    {
+        for ( i = 0; i < 3; ++i )
+        {
+            for ( j = 0; j < 3; ++j )
+            {
+                ret[i][j] = 0;
+                for ( k = 0; k < 3; ++k )
+                {
+                    ret[i][j] += m1[i][k] * m2[k][j];
+                }
+            }
+        }
+    }
+}
+
+
+static inline void rtensor_MatVec( rvec ret, rtensor m, const rvec v )
+{
+    unsigned int i;
+    rvec temp;
+
+    // if ret is the same vector as v, we cannot modify the
+    // contents of v until all computation is finished.
+    if ( ret == v )
+    {
+        for ( i = 0; i < 3; ++i )
+        {
+            temp[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2];
+        }
+
+        for ( i = 0; i < 3; ++i )
+        {
+            ret[i] = temp[i];
+        }
+    }
+    else
+    {
+        for ( i = 0; i < 3; ++i )
+        {
+            ret[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2];
+        }
+    }
+}
+
+
+static inline void rtensor_Scale( rtensor ret, const real c, rtensor m )
+{
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] = c * m[i][j];
+        }
+    }
+}
+
+
+static inline void rtensor_Add( rtensor ret, rtensor t )
+{
+    int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] += t[i][j];
+        }
+    }
+}
+
+
+static inline void rtensor_ScaledAdd( rtensor ret, const real c, rtensor t )
+{
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] += c * t[i][j];
+        }
+    }
+}
+
+
+static inline void rtensor_Sum( rtensor ret, rtensor t1, rtensor t2 )
+{
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] = t1[i][j] + t2[i][j];
+        }
+    }
+}
+
+
+static inline void rtensor_ScaledSum( rtensor ret, const real c1, rtensor t1,
+        const real c2, rtensor t2 )
+{
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] = c1 * t1[i][j] + c2 * t2[i][j];
+        }
+    }
+}
+
+
+static inline void rtensor_Copy( rtensor ret, rtensor t )
+{
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] = t[i][j];
+        }
+    }
+}
+
+
+static inline void rtensor_Identity( rtensor t )
+{
+    t[0][0] = 1.0;
+    t[1][1] = 1.0;
+    t[2][2] = 1.0;
+    t[0][1] = ZERO;
+    t[0][2] = ZERO;
+    t[1][0] = ZERO;
+    t[1][2] = ZERO;
+    t[2][0] = ZERO;
+    t[2][1] = ZERO;
+}
+
+
+static inline void rtensor_MakeZero( rtensor t )
+{
+    t[0][0] = ZERO;
+    t[0][1] = ZERO;
+    t[0][2] = ZERO;
+    t[1][0] = ZERO;
+    t[1][1] = ZERO;
+    t[1][2] = ZERO;
+    t[2][0] = ZERO;
+    t[2][1] = ZERO;
+    t[2][2] = ZERO;
+}
+
+
+static inline void rtensor_Transpose( rtensor ret, rtensor t )
+{
+    ret[0][0] = t[0][0];
+    ret[1][1] = t[1][1];
+    ret[2][2] = t[2][2];
+
+    ret[0][1] = t[1][0];
+    ret[0][2] = t[2][0];
+
+    ret[1][0] = t[0][1];
+    ret[1][2] = t[2][1];
+
+    ret[2][0] = t[0][2];
+    ret[2][1] = t[1][2];
+}
+
+
+static inline real rtensor_Det( rtensor t )
+{
+    return ( t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1] ) +
+            t[0][1] * (t[1][2] * t[2][0] - t[1][0] * t[2][2] ) +
+            t[0][2] * (t[1][0] * t[2][1] - t[1][1] * t[2][0] ) );
+}
+
+
+static inline real rtensor_Trace( rtensor t )
+{
+    return (t[0][0] + t[1][1] + t[2][2]);
+}
+
+
+static inline void ivec_MakeZero( ivec v )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        v[i] = 0;
+    }
+
+//    v[0] = 0;
+//    v[1] = 0;
+//    v[2] = 0;
+}
+
+
+static inline void ivec_Copy( ivec dest, const ivec src )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = src[i];
+    }
+
+//    dest[0] = src[0];
+//    dest[1] = src[1];
+//    dest[2] = src[2];
+}
+
+
+static inline void ivec_Scale( ivec dest, const real C, const ivec src )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = C * src[i];
+    }
+
+//    dest[0] = C * src[0];
+//    dest[1] = C * src[1];
+//    dest[2] = C * src[2];
+}
+
+
+static inline void ivec_rScale( ivec dest, const real C, const rvec src )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = (int)(C * src[i]);
+    }
+
+//    dest[0] = (int)(C * src[0]);
+//    dest[1] = (int)(C * src[1]);
+//    dest[2] = (int)(C * src[2]);
+}
+
+
+static inline int ivec_isZero( const ivec v )
+{
+    int i, ret;
+
+    ret = TRUE;
+
+#ifdef _OPENMP
+    #pragma omp simd reduction(&&: ret)
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret = (v[i] == 0) && ret;
+    }
+
+    return ret;
+
+//    if ( v[0] == 0 && v[1] == 0 && v[2] == 0 )
+//    {
+//        return TRUE;
+//    }
+//    return FALSE;
+}
+
+
+static inline int ivec_isEqual( const ivec v1, const ivec v2 )
+{
+    int i, ret;
+
+    ret = TRUE;
+
+#ifdef _OPENMP
+    #pragma omp simd reduction(&&: ret)
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        ret = (v1[i] == v2[i]) && ret;
+    }
+
+    return ret;
+
+//    if ( v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2] )
+//    {
+//        return TRUE;
+//    }
+//
+//    return FALSE;
+}
+
+
+static inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = v1[i] * v2[i];
+    }
+
+//    dest[0] = v1[0] + v2[0];
+//    dest[1] = v1[1] + v2[1];
+//    dest[2] = v1[2] + v2[2];
+}
 
 
 #endif

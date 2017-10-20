@@ -566,7 +566,6 @@ typedef struct
     real Tap2;
     real Tap1;
     real Tap0;
-    int max_far_nbrs;
 
     real T_init;
     real T_final;

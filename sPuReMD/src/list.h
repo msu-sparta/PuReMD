@@ -29,15 +29,35 @@ char Make_List( int, int, int, list* );
 
 void Delete_List( int, list* );
 
-int Num_Entries( int, list* );
 
-int Start_Index( int, list* );
+static inline int Num_Entries( int i, list* l )
+{
+    return l->end_index[i] - l->index[i];
+}
 
-int End_Index( int, list* );
 
-void Set_Start_Index( int, int, list* );
+static inline int Start_Index( int i, list *l )
+{
+    return l->index[i];
+}
 
-void Set_End_Index( int, int, list* );
+
+static inline int End_Index( int i, list *l )
+{
+    return l->end_index[i];
+}
+
+
+static inline void Set_Start_Index( int i, int val, list *l )
+{
+    l->index[i] = val;
+}
+
+
+static inline void Set_End_Index( int i, int val, list *l )
+{
+    l->end_index[i] = val;
+}
 
 
 #endif

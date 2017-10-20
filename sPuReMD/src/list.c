@@ -46,55 +46,82 @@ char Make_List( int n, int num_intrs, int type, list* l )
     switch ( type )
     {
     case TYP_VOID:
-        l->select.v = (void *) malloc(l->num_intrs * sizeof(void));
-        if (l->select.v == NULL) success = 0;
+        l->select.v = (void *) malloc( l->num_intrs * sizeof(void) );
+        if ( l->select.v == NULL )
+        {
+            success = 0;
+        }
         break;
 
     case TYP_THREE_BODY:
         l->select.three_body_list = (three_body_interaction_data*)
-                                    malloc(l->num_intrs * sizeof(three_body_interaction_data));
-        if (l->select.three_body_list == NULL) success = 0;
+            malloc( l->num_intrs * sizeof(three_body_interaction_data) );
+        if ( l->select.three_body_list == NULL )
+        {
+            success = 0;
+        }
         break;
 
     case TYP_BOND:
         l->select.bond_list = (bond_data*)
                               malloc(l->num_intrs * sizeof(bond_data));
-        if (l->select.bond_list == NULL) success = 0;
+        if ( l->select.bond_list == NULL )
+        {
+            success = 0;
+        }
         break;
 
     case TYP_DBO:
         l->select.dbo_list = (dbond_data*)
-                             malloc(l->num_intrs * sizeof(dbond_data));
-        if (l->select.dbo_list == NULL) success = 0;
+            malloc( l->num_intrs * sizeof(dbond_data) );
+        if ( l->select.dbo_list == NULL )
+        {
+            success = 0;
+        }
         break;
 
     case TYP_DDELTA:
         l->select.dDelta_list = (dDelta_data*)
-                                malloc(l->num_intrs * sizeof(dDelta_data));
-        if (l->select.dDelta_list == NULL) success = 0;
+            malloc( l->num_intrs * sizeof(dDelta_data) );
+        if ( l->select.dDelta_list == NULL )
+        {
+            success = 0;
+        }
         break;
 
     case TYP_FAR_NEIGHBOR:
         l->select.far_nbr_list = (far_neighbor_data*)
-                                 malloc(l->num_intrs * sizeof(far_neighbor_data));
-        if (l->select.far_nbr_list == NULL) success = 0;
+            malloc( l->num_intrs * sizeof(far_neighbor_data) );
+        if (l->select.far_nbr_list == NULL)
+        {
+            success = 0;
+        }
         break;
 
     case TYP_NEAR_NEIGHBOR:
         l->select.near_nbr_list = (near_neighbor_data*)
-                                  malloc(l->num_intrs * sizeof(near_neighbor_data));
-        if (l->select.near_nbr_list == NULL) success = 0;
+            malloc( l->num_intrs * sizeof(near_neighbor_data) );
+        if ( l->select.near_nbr_list == NULL )
+        {
+            success = 0;
+        }
         break;
 
     case TYP_HBOND:
         l->select.hbond_list = (hbond_data*)
-                               malloc( l->num_intrs * sizeof(hbond_data) );
-        if (l->select.hbond_list == NULL) success = 0;
+            malloc( l->num_intrs * sizeof(hbond_data) );
+        if ( l->select.hbond_list == NULL )
+        {
+            success = 0;
+        }
         break;
 
     default:
-        l->select.v = (void *) malloc(l->num_intrs * sizeof(void));
-        if (l->select.v == NULL) success = 0;
+        l->select.v = (void *) malloc( l->num_intrs * sizeof(void) );
+        if ( l->select.v == NULL )
+        {
+            success = 0;
+        }
         break;
     }
 
@@ -170,34 +197,4 @@ void Delete_List( int type, list* l )
         break;
     }
 
-}
-
-
-inline int Num_Entries( int i, list* l )
-{
-    return l->end_index[i] - l->index[i];
-}
-
-
-inline int Start_Index( int i, list *l )
-{
-    return l->index[i];
-}
-
-
-inline int End_Index( int i, list *l )
-{
-    return l->end_index[i];
-}
-
-
-inline void Set_Start_Index( int i, int val, list *l )
-{
-    l->index[i] = val;
-}
-
-
-inline void Set_End_Index( int i, int val, list *l )
-{
-    l->end_index[i] = val;
 }
