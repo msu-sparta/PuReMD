@@ -278,7 +278,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
     if ( realloc->num_far > 0 && nbr_flag )
     {
         Reallocate_Neighbor_List( (*lists) + FAR_NBRS,
-                                  system->N, realloc->num_far * SAFE_ZONE );
+                system->N, realloc->num_far * SAFE_ZONE );
         realloc->num_far = -1;
     }
 
