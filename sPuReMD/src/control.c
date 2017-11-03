@@ -30,7 +30,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         output_controls *out_control )
 {
     char *s, **tmp;
-    int c, i;
+    int i;
     real val;
     int ival;
 
@@ -136,17 +136,18 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->restrict_type = 0;
 
     /* memory allocations */
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
+    s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
+    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
+        tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE,
+                "Read_Control_File::tmp[i]" );
     }
 
     /* read control parameters file */
     while (fgets(s, MAX_LINE, fp))
     {
-        c = Tokenize(s, &tmp);
+        Tokenize(s, &tmp);
 
         if ( strcmp(tmp[0], "simulation_name") == 0 )
         {

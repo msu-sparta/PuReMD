@@ -274,14 +274,14 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
         exit( INSUFFICIENT_MEMORY );
     }
 
-    if ( End_Index(i, bonds) >= bonds->num_intrs - 2 )
+    if ( End_Index(i, bonds) >= bonds->total_intrs - 2 )
     {
         workspace->realloc.bonds = 1;
 
-        if ( End_Index(i, bonds) > bonds->num_intrs )
+        if ( End_Index(i, bonds) > bonds->total_intrs )
         {
             fprintf( stderr, "step%d-bondchk failed: i=%d end(i)=%d bond_end=%d\n",
-                     step, flag, End_Index(i, bonds), bonds->num_intrs );
+                     step, flag, End_Index(i, bonds), bonds->total_intrs );
             exit( INSUFFICIENT_MEMORY );
         }
     }
@@ -313,14 +313,14 @@ void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
         }
 
         if ( Num_Entries(i, hbonds) >=
-                (hbonds->num_intrs - Start_Index(i, hbonds)) * DANGER_ZONE )
+                (hbonds->total_intrs - Start_Index(i, hbonds)) * DANGER_ZONE )
         {
             workspace->realloc.hbonds = 1;
 
-            if ( End_Index(i, hbonds) > hbonds->num_intrs )
+            if ( End_Index(i, hbonds) > hbonds->total_intrs )
             {
                 fprintf( stderr, "step%d-hbondchk failed: i=%d end(i)=%d hbondend=%d\n",
-                         step, flag, End_Index(i, hbonds), hbonds->num_intrs );
+                         step, flag, End_Index(i, hbonds), hbonds->total_intrs );
                 exit( INSUFFICIENT_MEMORY );
             }
         }

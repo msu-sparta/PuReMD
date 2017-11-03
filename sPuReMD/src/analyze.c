@@ -23,6 +23,7 @@
 
 #include "box.h"
 #include "list.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
@@ -848,14 +849,17 @@ void Calculate_Density_3DMesh( reax_system *system, simulation_data *data,
              mesh_dims[0], mesh_dims[1], mesh_dims[2] );
 
     /* allocate counter for each mesh cell */
-    cell_counter = (int ***) calloc( mesh_dims[0], sizeof(int) );
+    cell_counter = (int ***) scalloc( mesh_dims[0], sizeof(int),
+           "Calculate_Density_3DMesh::cell_counter" );
 
     for ( i = 0; i < mesh_dims[0]; ++i )
     {
-        cell_counter[i] = (int **) calloc( mesh_dims[1], sizeof(int) );
+        cell_counter[i] = (int **) scalloc( mesh_dims[1], sizeof(int),
+               "Calculate_Density_3DMesh::cell_counter[i]" );
 
         for ( j = 0; j < mesh_dims[1]; ++j )
-            cell_counter[i][j] = (int *) calloc( mesh_dims[2], sizeof(int) );
+            cell_counter[i][j] = (int *) scalloc( mesh_dims[2], sizeof(int),
+                   "Calculate_Density_3DMesh::cell_counter[i][j]" );
     }
 
 
@@ -902,7 +906,8 @@ void Calculate_Density_Slice( reax_system *system, simulation_data *data,
 
     /* allocate counter */
     num_slices = system->box.box_norms[2] / slice_thickness + 1.;
-    slice_occ = (int*) calloc( num_slices, sizeof(int) );
+    slice_occ = (int*) scalloc( num_slices, sizeof(int),
+           "Calculate_Density_Slice::slice_occ" );
 
     /* distribute atoms to slices */
     for ( i = 0; i < system->N; ++i )
