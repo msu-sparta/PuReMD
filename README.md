@@ -11,6 +11,16 @@ This repository contains the development version of the
 
 ## Developer
 
+To build, the following versions of software are required:
+
+- git
+- Autoconf v2.69+
+- Automake v1.15+
+- OpenMP v4.0+ compliant compiler (OpenMP versions only)
+- MPI v2+ compliant library (MPI versions only)
+- CUDA v6.0+ (CUDA versions only)
+
+Instructions:
 ```bash
 	git clone https://gitlab.msu.edu/SParTA/PuReMD.git
 	cd PuReMD
@@ -30,6 +40,7 @@ To build tarball releases after configuring a specific build target, run the fol
 ## User
 
 ```bash
+	# Download release tarball
 	tar -xvf puremd-1.0.tar.gz
 	cd puremd-1.0
 	./configure
