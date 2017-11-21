@@ -24,108 +24,68 @@
 #include "tool_box.h"
 
 
-char Make_List( int n, int num_intrs, int type, list* l )
+void Make_List( int n, int total_intrs, int type, list* l )
 {
-    char success = 1;
-
     l->n = n;
-    l->num_intrs = num_intrs;
+    l->total_intrs = total_intrs;
 
-    l->index = (int*) malloc( n * sizeof(int) );
-    l->end_index = (int*) malloc( n * sizeof(int) );
-
-    if ( l->index == NULL )
-    {
-        success = 0;
-    }
-    if ( l->end_index == NULL )
-    {
-        success = 0;
-    }
+    l->index = (int*) smalloc( n * sizeof(int), "Make_List::l->index" );
+    l->end_index = (int*) smalloc( n * sizeof(int), "Make_List::l->end_index" );
 
     switch ( type )
     {
     case TYP_VOID:
-        l->select.v = (void *) malloc( l->num_intrs * sizeof(void) );
-        if ( l->select.v == NULL )
-        {
-            success = 0;
-        }
+        l->select.v = (void *) smalloc( l->total_intrs * sizeof(void),
+                "Make_List::l->select.v" );
         break;
 
     case TYP_THREE_BODY:
         l->select.three_body_list = (three_body_interaction_data*)
-            malloc( l->num_intrs * sizeof(three_body_interaction_data) );
-        if ( l->select.three_body_list == NULL )
-        {
-            success = 0;
-        }
+            smalloc( l->total_intrs * sizeof(three_body_interaction_data),
+                    "Make_List::l->select.three_body_list" );
         break;
 
     case TYP_BOND:
         l->select.bond_list = (bond_data*)
-                              malloc(l->num_intrs * sizeof(bond_data));
-        if ( l->select.bond_list == NULL )
-        {
-            success = 0;
-        }
+            smalloc( l->total_intrs * sizeof(bond_data),
+                    "Make_List::l->select.bond_list" );
         break;
 
     case TYP_DBO:
         l->select.dbo_list = (dbond_data*)
-            malloc( l->num_intrs * sizeof(dbond_data) );
-        if ( l->select.dbo_list == NULL )
-        {
-            success = 0;
-        }
+            smalloc( l->total_intrs * sizeof(dbond_data),
+                    "Make_List::l->select.dbo_list" );
         break;
 
     case TYP_DDELTA:
         l->select.dDelta_list = (dDelta_data*)
-            malloc( l->num_intrs * sizeof(dDelta_data) );
-        if ( l->select.dDelta_list == NULL )
-        {
-            success = 0;
-        }
+            smalloc( l->total_intrs * sizeof(dDelta_data),
+                    "Make_List::l->select.dDelta_list" );
         break;
 
     case TYP_FAR_NEIGHBOR:
         l->select.far_nbr_list = (far_neighbor_data*)
-            malloc( l->num_intrs * sizeof(far_neighbor_data) );
-        if (l->select.far_nbr_list == NULL)
-        {
-            success = 0;
-        }
+            smalloc( l->total_intrs * sizeof(far_neighbor_data),
+                    "Make_List::l->select.far_nbr_list" );
         break;
 
     case TYP_NEAR_NEIGHBOR:
         l->select.near_nbr_list = (near_neighbor_data*)
-            malloc( l->num_intrs * sizeof(near_neighbor_data) );
-        if ( l->select.near_nbr_list == NULL )
-        {
-            success = 0;
-        }
+            smalloc( l->total_intrs * sizeof(near_neighbor_data),
+                    "Make_List::l->select.near_nbr_list" );
         break;
 
     case TYP_HBOND:
         l->select.hbond_list = (hbond_data*)
-            malloc( l->num_intrs * sizeof(hbond_data) );
-        if ( l->select.hbond_list == NULL )
-        {
-            success = 0;
-        }
+            smalloc( l->total_intrs * sizeof(hbond_data),
+                    "Make_List::l->select.hbond_list" );
         break;
 
     default:
-        l->select.v = (void *) malloc( l->num_intrs * sizeof(void) );
-        if ( l->select.v == NULL )
-        {
-            success = 0;
-        }
+        l->select.v = (void *) smalloc( l->total_intrs * sizeof(void),
+                "Make_List::l->select.v" );
         break;
     }
-
-    return success;
 }
 
 

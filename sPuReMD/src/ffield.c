@@ -30,7 +30,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     char *s;
     char **tmp;
     char ****tor_flag;
-    int c, i, j, k, l, m, n, o, p, cnt;
+    int i, j, k, l, m, n, o, p, cnt;
     real val;
 
     s = (char*) malloc( sizeof(char) * MAX_LINE );
@@ -46,7 +46,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* line 2 is number of global parameters */
     fgets( s, MAX_LINE, fp );
-    c = Tokenize( s, &tmp );
+    Tokenize( s, &tmp );
 
     /* reading the number of global parameters */
     n = atoi(tmp[0]);
@@ -63,7 +63,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     for (i = 0; i < n; i++)
     {
         fgets(s, MAX_LINE, fp);
-        c = Tokenize(s, &tmp);
+        Tokenize(s, &tmp);
 
         val = (real) atof(tmp[0]);
 
@@ -73,7 +73,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of atom types and some comments */
     fgets( s, MAX_LINE, fp );
-    c = Tokenize( s, &tmp );
+    Tokenize( s, &tmp );
     reax->num_atom_types = atoi(tmp[0]);
 
 
@@ -144,7 +144,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     {
         /* line one */
         fgets( s, MAX_LINE, fp );
-        c = Tokenize( s, &tmp );
+        Tokenize( s, &tmp );
 
         for ( j = 0; j < strlen( tmp[0] ); ++j )
             reax->sbp[i].name[j] = toupper( tmp[0][j] );
@@ -169,7 +169,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
         /* line two */
         fgets( s, MAX_LINE, fp );
-        c = Tokenize( s, &tmp );
+        Tokenize( s, &tmp );
 
         val = atof(tmp[0]);
         reax->sbp[i].alpha      = val;
@@ -193,7 +193,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
         /* line 3 */
         fgets( s, MAX_LINE, fp );
-        c = Tokenize( s, &tmp );
+        Tokenize( s, &tmp );
 
         val = atof(tmp[0]);
         reax->sbp[i].r_pi_pi    = val;
@@ -212,7 +212,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
         /* line 4  */
         fgets( s, MAX_LINE, fp );
-        c = Tokenize( s, &tmp );
+        Tokenize( s, &tmp );
 
         val = atof(tmp[0]);
         reax->sbp[i].p_ovun2    = val;
@@ -305,7 +305,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of two body combination and some comments */
     fgets(s, MAX_LINE, fp);
-    c = Tokenize(s, &tmp);
+    Tokenize(s, &tmp);
     l = atoi(tmp[0]);
 
     /* a line of comments */
@@ -315,7 +315,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     {
         /* line 1 */
         fgets(s, MAX_LINE, fp);
-        c = Tokenize(s, &tmp);
+        Tokenize(s, &tmp);
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -351,7 +351,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
             /* line 2 */
             fgets(s, MAX_LINE, fp);
-            c = Tokenize(s, &tmp);
+            Tokenize(s, &tmp);
 
             val = atof(tmp[0]);
             reax->tbp[j][k].p_be2     = val;
@@ -486,13 +486,13 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     /* these are two body offdiagonal terms that are different from the
        combination rules defined above */
     fgets(s, MAX_LINE, fp);
-    c = Tokenize(s, &tmp);
+    Tokenize(s, &tmp);
     l = atoi(tmp[0]);
 
     for (i = 0; i < l; i++)
     {
         fgets(s, MAX_LINE, fp);
-        c = Tokenize(s, &tmp);
+        Tokenize(s, &tmp);
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -553,13 +553,13 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of 3-body params and some comments */
     fgets( s, MAX_LINE, fp );
-    c = Tokenize( s, &tmp );
+    Tokenize( s, &tmp );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
         fgets(s, MAX_LINE, fp);
-        c = Tokenize(s, &tmp);
+        Tokenize(s, &tmp);
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -623,13 +623,13 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of 4-body params and some comments */
     fgets( s, MAX_LINE, fp );
-    c = Tokenize( s, &tmp );
+    Tokenize( s, &tmp );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
         fgets( s, MAX_LINE, fp );
-        c = Tokenize( s, &tmp );
+        Tokenize( s, &tmp );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -710,13 +710,13 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of hydrogen bond params and some comments */
     fgets( s, MAX_LINE, fp );
-    c = Tokenize( s, &tmp );
+    Tokenize( s, &tmp );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
         fgets( s, MAX_LINE, fp );
-        c = Tokenize( s, &tmp );
+        Tokenize( s, &tmp );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;

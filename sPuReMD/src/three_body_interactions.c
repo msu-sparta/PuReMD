@@ -640,13 +640,13 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
     data->E_Pen += e_pen_total;
     data->E_Coa += e_coa_total;
 
-    if ( num_thb_intrs >= thb_intrs->num_intrs * DANGER_ZONE )
+    if ( num_thb_intrs >= thb_intrs->total_intrs * DANGER_ZONE )
     {
         workspace->realloc.num_3body = num_thb_intrs;
-        if ( num_thb_intrs > thb_intrs->num_intrs )
+        if ( num_thb_intrs > thb_intrs->total_intrs )
         {
             fprintf( stderr, "step%d-ran out of space on angle_list: top=%d, max=%d",
-                     data->step, num_thb_intrs, thb_intrs->num_intrs );
+                     data->step, num_thb_intrs, thb_intrs->total_intrs );
             exit( INSUFFICIENT_MEMORY );
         }
     }

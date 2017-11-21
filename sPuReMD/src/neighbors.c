@@ -141,13 +141,13 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         }
     }
 
-    if ( num_far > far_nbrs->num_intrs * DANGER_ZONE )
+    if ( num_far > far_nbrs->total_intrs * DANGER_ZONE )
     {
         workspace->realloc.num_far = num_far;
-        if ( num_far > far_nbrs->num_intrs )
+        if ( num_far > far_nbrs->total_intrs )
         {
             fprintf( stderr, "step%d-ran out of space on far_nbrs: top=%d, max=%d",
-                     data->step, num_far, far_nbrs->num_intrs );
+                     data->step, num_far, far_nbrs->total_intrs );
             exit( INSUFFICIENT_MEMORY );
         }
     }
@@ -559,9 +559,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     // fprintf( stderr, "restrictions applied-" );
 
 
-    /* verify nbrlists, count num_intrs, sort nearnbrs */
-    near_nbrs->num_intrs = 0;
-    far_nbrs->num_intrs = 0;
+    /* verify nbrlists, count total_intrs, sort nearnbrs */
+    near_nbrs->total_intrs = 0;
+    far_nbrs->total_intrs = 0;
     for ( i = 0; i < system->N - 1; ++i )
     {
         if ( End_Index(i, near_nbrs) > Start_Index(i + 1, near_nbrs) )
@@ -572,7 +572,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
             exit( RUNTIME_ERROR );
         }
 
-        near_nbrs->num_intrs += Num_Entries(i, near_nbrs);
+        near_nbrs->total_intrs += Num_Entries(i, near_nbrs);
 
         if ( End_Index(i, far_nbrs) > Start_Index(i + 1, far_nbrs) )
         {
@@ -582,7 +582,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
             exit( RUNTIME_ERROR );
         }
 
-        far_nbrs->num_intrs += Num_Entries(i, far_nbrs);
+        far_nbrs->total_intrs += Num_Entries(i, far_nbrs);
     }
 
     for ( i = 0; i < system->N; ++i )
@@ -723,7 +723,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         }
     }
 
-    far_nbrs->num_intrs = num_far;
+    far_nbrs->total_intrs = num_far;
     fprintf( stderr, "nbrs done, num_far: %d\n", num_far );
 
 #if defined(DEBUG)

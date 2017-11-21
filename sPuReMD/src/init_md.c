@@ -517,11 +517,7 @@ void Init_Lists( reax_system *system, control_params *control,
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
 
-    if ( !Make_List(system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS) )
-    {
-        fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
-        exit( CANNOT_INITIALIZE );
-    }
+    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
@@ -612,11 +608,7 @@ void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list */
-    if (!Make_List(num_bonds, num_3body, TYP_THREE_BODY, (*lists) + THREE_BODIES))
-    {
-        fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
-        exit( CANNOT_INITIALIZE );
-    }
+    Make_List( num_bonds, num_3body, TYP_THREE_BODY, (*lists) + THREE_BODIES );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
@@ -625,17 +617,9 @@ void Init_Lists( reax_system *system, control_params *control,
 #endif
 
 #ifdef TEST_FORCES
-    if (!Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA ))
-    {
-        fprintf( stderr, "Problem in initializing dDelta list. Terminating!\n" );
-        exit( CANNOT_INITIALIZE );
-    }
+    Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA );
 
-    if ( !Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, (*lists) + DBO ) )
-    {
-        fprintf( stderr, "Problem in initializing dBO list. Terminating!\n" );
-        exit( CANNOT_INITIALIZE );
-    }
+    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, (*lists) + DBO );
 #endif
 
     sfree( hb_top, "Init_Lists::hb_top" );

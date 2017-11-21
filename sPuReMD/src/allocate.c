@@ -59,15 +59,11 @@ void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
 {
     Delete_List( TYP_FAR_NEIGHBOR, far_nbrs );
 
-    if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs ))
-    {
-        fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
-        exit( CANNOT_INITIALIZE );
-    }
+    Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "num_far = %d, far_nbrs = %d -> reallocating!\n",
-             num_intrs, far_nbrs->num_intrs );
+             num_intrs, far_nbrs->total_intrs );
     fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
              num_intrs * sizeof(far_neighbor_data) / (1024 * 1024) );
 #endif
@@ -79,7 +75,8 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
 
-    if ( (*pH = (sparse_matrix*) malloc(sizeof(sparse_matrix))) == NULL )
+    if ( (*pH = (sparse_matrix*) smalloc( sizeof(sparse_matrix),
+                    "Allocate_Matrix::pH" )) == NULL )
     {
         return FAILURE;
     }
@@ -88,9 +85,12 @@ int Allocate_Matrix( sparse_matrix **pH, int n, int m )
     H->n = n;
     H->m = m;
 
-    if ( (H->start = (unsigned int*) malloc(sizeof(unsigned int) * (n + 1))) == NULL
-            || (H->j = (unsigned int*) malloc(sizeof(unsigned int) * m)) == NULL
-            || (H->val = (real*) malloc(sizeof(real) * m)) == NULL )
+    if ( (H->start = (unsigned int*) smalloc( sizeof(unsigned int) * (n + 1),
+                    "Allocate_Matrix::H->start" )) == NULL
+            || (H->j = (unsigned int*) smalloc( sizeof(unsigned int) * m,
+                    "Allocate_Matrix::H->j" )) == NULL
+            || (H->val = (real*) smalloc( sizeof(real) * m,
+                    "Allocate_Matrix::H->val" )) == NULL )
     {
         return FAILURE;
     }
@@ -143,11 +143,7 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
     }
     num_hbonds = hb_top[n - 1];
 
-    if ( !Make_List(num_h, num_hbonds, TYP_HBOND, hbonds ) )
-    {
-        fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
-        exit( CANNOT_INITIALIZE );
-    }
+    Make_List( num_h, num_hbonds, TYP_HBOND, hbonds );
 
     for ( i = 0; i < n; ++i )
     {
@@ -181,7 +177,7 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
     fprintf( stderr, "reallocating hbonds\n" );
 #endif
 
-    hb_top = (int *) calloc( n, sizeof(int) );
+    hb_top = (int *) scalloc( n, sizeof(int), "Reallocate_HBonds_List::hb_top" );
     for ( i = 0; i < n; ++i )
     {
         if ( h_index[i] >= 0 )
@@ -212,11 +208,7 @@ int Allocate_Bond_List( int n, int *bond_top, list *bonds )
     }
     num_bonds = bond_top[n - 1];
 
-    if ( !Make_List(n, num_bonds, TYP_BOND, bonds ) )
-    {
-        fprintf( stderr, "not enough space for bonds list. terminating!\n" );
-        exit( CANNOT_INITIALIZE );
-    }
+    Make_List( n, num_bonds, TYP_BOND, bonds );
 
     Set_Start_Index( 0, 0, bonds );
     Set_End_Index( 0, 0, bonds );
@@ -244,7 +236,7 @@ int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
     fprintf( stderr, "reallocating bonds\n" );
 #endif
 
-    bond_top = (int *) calloc( n, sizeof(int) );
+    bond_top = (int *) scalloc( n, sizeof(int), "Reallocate_Bonds_List::hb_top" );
     *est_3body = 0;
 
     for ( i = 0; i < n; ++i )
@@ -313,15 +305,11 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
         Delete_List( TYP_THREE_BODY, (*lists) + THREE_BODIES );
 
         if ( num_bonds == -1 )
-            num_bonds = ((*lists) + BONDS)->num_intrs;
+            num_bonds = ((*lists) + BONDS)->total_intrs;
         realloc->num_3body *= SAFE_ZONE;
 
-        if ( !Make_List( num_bonds, realloc->num_3body,
-                         TYP_THREE_BODY, (*lists) + THREE_BODIES ) )
-        {
-            fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
-            exit( CANNOT_INITIALIZE );
-        }
+        Make_List( num_bonds, realloc->num_3body,
+                TYP_THREE_BODY, (*lists) + THREE_BODIES );
         realloc->num_3body = -1;
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "reallocating 3 bodies\n" );
@@ -348,7 +336,8 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
                     // reallocate g->atoms
                     sfree( g->atoms[i][j][k], "Reallocate::g->atoms[i][j][k]" );
                     g->atoms[i][j][k] = (int*)
-                        calloc(workspace->realloc.gcell_atoms, sizeof(int));
+                        scalloc( workspace->realloc.gcell_atoms, sizeof(int),
+                                "Reallocate::g->atoms[i][j][k]" );
                 }
             }
         }

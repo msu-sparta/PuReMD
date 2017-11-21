@@ -963,19 +963,34 @@ typedef struct
 /* interaction lists */
 typedef struct
 {
+    /* num. entries in list */
     int n;
-    int num_intrs;
+    /* sum of max. interactions per atom */
+    int total_intrs;
+    /* starting position of atom's interactions */
     int *index;
+    /* ending position of atom's interactions */
     int *end_index;
+    /* max. num. of interactions per atom */
+    int *max_intrs;
+    /* interaction list (polymorphic via union dereference) */
     union
     {
+        /* typeless interaction list */
         void *v;
+        /* three body interaction list */
         three_body_interaction_data *three_body_list;
+        /* bond interaction list */
         bond_data *bond_list;
+        /* bond interaction list */
         dbond_data *dbo_list;
+        /* test forces interaction list */
         dDelta_data *dDelta_list;
+        /* far neighbor interaction list */
         far_neighbor_data *far_nbr_list;
+        /* near neighbor interaction list */
         near_neighbor_data *near_nbr_list;
+        /* hydrogen bond interaction list */
         hbond_data *hbond_list;
     } select;
 } list;
