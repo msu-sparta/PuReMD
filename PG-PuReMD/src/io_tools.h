@@ -32,7 +32,7 @@ extern "C" {
 int Init_Output_Files( reax_system*, control_params*,
         output_controls*, mpi_datatypes*, char* );
 
-int Close_Output_Files( reax_system*, control_params*,
+void Close_Output_Files( reax_system*, control_params*,
         output_controls*, mpi_datatypes* );
 
 void Print_Box( simulation_box*, char*, FILE* );

@@ -183,10 +183,12 @@ int main( int argc, char* argv[] )
     real t_begin, t_end;
 #endif
 
+    MPI_Init( &argc, &argv );
+
     if ( argc != 4 )
     {
         usage( argv );
-        exit( INVALID_INPUT );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
 #ifdef HAVE_CUDA
@@ -228,7 +230,6 @@ int main( int argc, char* argv[] )
     }
 
     /* setup MPI environment */
-    MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
 
@@ -443,7 +444,6 @@ int main( int argc, char* argv[] )
     }
 
     /* setup MPI environment */
-    MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
 
@@ -561,17 +561,6 @@ int main( int argc, char* argv[] )
 //    Write_PDB( &system, &(lists[BOND]), &out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
 
-    MPI_Finalize( );
-
-    /* deallocate data structures */
-    sfree( system, "main::system" );
-    sfree( control, "main::control" );
-    sfree( data, "main::data" );
-    sfree( workspace, "main::workspace" );
-    sfree( lists, "main::lists" );
-    sfree( out_control, "main::out_control" );
-    sfree( mpi_data, "main::mpi_data" );
-
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
 //    Integrate_Results(control);
 #endif
@@ -579,6 +568,25 @@ int main( int argc, char* argv[] )
 #if defined(DEBUG)
     fprintf( stderr, "p%d has reached the END\n", system->my_rank );
 #endif
+
+    MPI_Finalized( &ret );
+    if ( !ret )
+    { 
+        MPI_Finalize( );
+    }
+
+    /* deallocate data structures */
+    sfree( mpi_data, "main::mpi_data" );
+    sfree( out_control, "main::out_control" );
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        sfree( lists[i], "main::lists[i]" );
+    }
+    sfree( lists, "main::lists" );
+    sfree( workspace, "main::workspace" );
+    sfree( data, "main::data" );
+    sfree( control, "main::control" );
+    sfree( system, "main::system" );
 
     return 0;
 }

@@ -161,6 +161,12 @@ char Read_Control_File( char *control_file, control_params* control,
         }
         else if ( strcmp(tmp[0], "proc_by_dim") == 0 )
         {
+            if ( c < 4 )
+            {
+                fprintf( stderr, "invalid number of control file parameters (procs_by_dim). terminating!\n" );
+                MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+            }
+
             ival = atoi(tmp[1]);
             control->procs_by_dim[0] = ival;
             ival = atoi(tmp[2]);

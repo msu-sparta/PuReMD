@@ -58,7 +58,9 @@ int Init_Output_Files( reax_system *system, control_params *control,
     {
         ret = Init_Traj( system, control, out_control, mpi_data, msg );
         if ( ret == FAILURE )
+        {
             return ret;
+        }
     }
 
     if ( system->my_rank == MASTER_NODE )
@@ -470,30 +472,58 @@ int Init_Output_Files( reax_system *system, control_params *control,
 
 
 /************************ close output files ************************/
-int Close_Output_Files( reax_system *system, control_params *control,
+void Close_Output_Files( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     if ( out_control->write_steps > 0 )
+    {
         End_Traj( system->my_rank, out_control );
+    }
 
     if ( system->my_rank == MASTER_NODE )
     {
         if ( out_control->energy_update_freq > 0 )
         {
-            fclose( out_control->out );
-            fclose( out_control->pot );
+            if ( out_control->out )
+            {
+                fclose( out_control->out );
+            }
+            if ( out_control->pot )
+            {
+                fclose( out_control->pot );
+            }
+
 #if defined(LOG_PERFORMANCE)
-            fclose( out_control->log );
+            if ( out_control->log )
+            {
+                fclose( out_control->log );
+            }
 #endif
         }
 
         if ( control->ensemble == NPT || control->ensemble == iNPT ||
                 control->ensemble == sNPT )
-            fclose( out_control->prs );
+        {
+            if ( out_control->prs )
+            {
+                fclose( out_control->prs );
+            }
+        }
 
-        if ( control->dipole_anal ) fclose( out_control->dpl );
-        if ( control->diffusion_coef ) fclose( out_control->drft );
-        if ( control->molecular_analysis ) fclose( out_control->mol );
+        if ( control->dipole_anal )
+        {
+            fclose( out_control->dpl );
+        }
+
+        if ( control->diffusion_coef )
+        {
+            fclose( out_control->drft );
+        }
+
+        if ( control->molecular_analysis )
+        {
+            fclose( out_control->mol );
+        }
     }
 
 #ifdef TEST_ENERGY
@@ -541,8 +571,6 @@ int Close_Output_Files( reax_system *system, control_params *control,
     fclose( out_control->nlist );
 #endif
 #endif
-
-    return SUCCESS;
 }
 
 
@@ -673,8 +701,11 @@ void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
 
     /* loop over neighbor processes */
     for ( r[0] = -1; r[0] <= 1; ++r[0])
+    {
         for ( r[1] = -1; r[1] <= 1; ++r[1] )
+        {
             for ( r[2] = -1; r[2] <= 1; ++r[2] )
+            {
                 if ( (nbr = Relative_Coord_Encoding( r )) != MYSELF )
                 {
                     nbr_pr = &(my_nbrs[nbr]);
@@ -696,8 +727,11 @@ void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
                              nbr_pr->end_recv[0], nbr_pr->end_recv[1],
                              nbr_pr->end_recv[2] );
                 }
+            }
+        }
+    }
 
-    fclose(f);
+    fclose( f );
 }
 
 
@@ -719,7 +753,9 @@ void Print_Native_GCells( reax_system *system )
     g = &(system->my_grid);
 
     for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
+    {
         for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
+        {
             for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
             {
                 gc = &( g->cells[ index_grid_3d(i, j, k, g) ] );
@@ -733,20 +769,24 @@ void Print_Native_GCells( reax_system *system )
 
                 //for( l = gc->str; l < gc->end; ++l )
                 for ( l = g->str[index_grid_3d(i, j, k, g)]; l < g->end[index_grid_3d(i, j, k, g)]; ++l )
+                {
                     fprintf( f, "%5d", system->my_atoms[l].orig_id );
+                }
                 fprintf( f, "\n" );
             }
+        }
+    }
 
-    fclose(f);
+    fclose( f );
 }
 
 
 void Print_All_GCells( reax_system *system )
 {
-    int        i, j, k, l;
-    char       fname[100];
-    FILE      *f;
-    grid      *g;
+    int i, j, k, l;
+    char fname[100];
+    FILE *f;
+    grid *g;
     grid_cell *gc;
     char gcell_type_text[10][12] =
     {
@@ -759,7 +799,9 @@ void Print_All_GCells( reax_system *system )
     g = &(system->my_grid);
 
     for ( i = 0; i < g->ncells[0]; i++ )
+    {
         for ( j = 0; j < g->ncells[1]; j++ )
+        {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 gc = &( g->cells[ index_grid_3d(i, j, k, g) ] );
@@ -773,11 +815,15 @@ void Print_All_GCells( reax_system *system )
 
                 //for( l = gc->str; l < gc->end; ++l )
                 for ( l = g->str[index_grid_3d(i, j, k, g)]; l < g->end[index_grid_3d(i, j, k, g)]; ++l )
+                {
                     fprintf( f, "%5d", system->my_atoms[l].orig_id );
+                }
                 fprintf( f, "\n" );
             }
+        }
+    }
 
-    fclose(f);
+    fclose( f );
 }
 
 
@@ -798,12 +844,14 @@ void Print_My_Atoms( reax_system *system )
     //   system->my_rank, system->n );
 
     for ( i = 0; i < system->n; ++i )
+    {
         fprintf( fh, "p%-2d %-5d %2d %24.15e%24.15e%24.15e\n",
                  system->my_rank,
                  system->my_atoms[i].orig_id, system->my_atoms[i].type,
                  system->my_atoms[i].x[0],
                  system->my_atoms[i].x[1],
                  system->my_atoms[i].x[2] );
+    }
 
     fclose( fh );
 }
@@ -826,12 +874,14 @@ void Print_My_Ext_Atoms( reax_system *system )
     //   system->my_rank, system->n );
 
     for ( i = 0; i < system->N; ++i )
+    {
         fprintf( fh, "p%-2d %-5d imprt%-5d %2d %24.15e%24.15e%24.15e\n",
                  system->my_rank, system->my_atoms[i].orig_id,
                  system->my_atoms[i].imprt_id, system->my_atoms[i].type,
                  system->my_atoms[i].x[0],
                  system->my_atoms[i].x[1],
                  system->my_atoms[i].x[2] );
+    }
 
     fclose( fh );
 }
@@ -840,13 +890,13 @@ void Print_My_Ext_Atoms( reax_system *system )
 void Print_Far_Neighbors( reax_system *system, reax_list **lists,
         control_params *control )
 {
-    char  fname[100];
-    int   i, j, id_i, id_j, nbr, natoms;
+    char fname[100];
+    int i, j, id_i, id_j, nbr, natoms;
     FILE *fout;
     reax_list *far_nbrs;
 
     sprintf( fname, "%s.far_nbrs.%d", control->sim_name, system->my_rank );
-    fout      = fopen( fname, "w" );
+    fout = fopen( fname, "w" );
     far_nbrs = (*lists) + FAR_NBRS;
     natoms = system->N;
 
@@ -996,14 +1046,16 @@ void Print_LinSys_Soln( reax_system *system, real *x, real *b_prm, real *b )
 {
     int i;
     char fname[100];
-    FILE  *fout;
+    FILE *fout;
 
     sprintf( fname, "qeq.%d.out", system->my_rank );
     fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->n; ++i )
+    {
         fprintf( fout, "%6d%10.4f%10.4f%10.4f\n",
                  system->my_atoms[i].orig_id, x[i], b_prm[i], b[i] );
+    }
 
     fclose( fout );
 }
@@ -1011,19 +1063,21 @@ void Print_LinSys_Soln( reax_system *system, real *x, real *b_prm, real *b )
 
 void Print_Charges( reax_system *system )
 {
-    int    i;
-    char   fname[100];
-    FILE  *fout;
+    int i;
+    char fname[100];
+    FILE *fout;
 
     sprintf( fname, "q.%d.out", system->my_rank );
     fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->n; ++i )
+    {
         fprintf( fout, "%6d %10.7f %10.7f %10.7f\n",
                  system->my_atoms[i].orig_id,
                  system->my_atoms[i].s[0],
                  system->my_atoms[i].t[0],
                  system->my_atoms[i].q );
+    }
 
     fclose( fout );
 }
@@ -1134,12 +1188,16 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
             nbr = bonds->select.bond_list[pj].nbr;
             id_j = system->my_atoms[nbr].orig_id;
             if ( id_i < id_j )
+            {
                 temp[num++] = id_j;
+            }
         }
 
-        qsort(&temp, num, sizeof(int), fn_qsort_intcmp);
-        for (j = 0; j < num; j++)
+        qsort( &temp, num, sizeof(int), fn_qsort_intcmp );
+        for ( j = 0; j < num; j++ )
+        {
             fprintf(f, "%6d", temp[j] );
+        }
         fprintf(f, "\n");
     }
 }
@@ -1255,7 +1313,7 @@ void Output_Results( reax_system *system, control_params *control,
                          data->tot_press[0], data->tot_press[1], data->tot_press[2],
                          system->big_box.V );
 
-                fflush( out_control->prs);
+                fflush( out_control->prs );
             }
 
             fflush( out_control->out );

@@ -204,7 +204,7 @@ void Setup_My_Box( reax_system *system, control_params *control )
     for ( d = 0; d < 3; ++d )
     {
         my_box->min[d] = big_box->box_norms[d] * system->my_coords[d] /
-                         control->procs_by_dim[d];
+            control->procs_by_dim[d];
         my_box->box[d][d] = big_box->box_norms[d] / control->procs_by_dim[d];
         //my_box->max[d] = big_box->box_norms[d] * (system->my_coords[d] + 1) /
         //control->procs_by_dim[d];

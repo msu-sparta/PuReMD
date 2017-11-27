@@ -427,7 +427,7 @@ void Init_Workspace( reax_system *system, control_params *control,
 
 
 /************** setup communication data structures  **************/
-int Init_MPI_Datatypes( reax_system *system, storage *workspace,
+void Init_MPI_Datatypes( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data, char *msg )
 {
     int i, block[11];
@@ -442,12 +442,19 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     /* setup the world */
     mpi_data->world = MPI_COMM_WORLD;
 
-    /* mpi_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, name,
-                   x, v, f_old, s, t] */
-    block[0] = block[1] = block[2] = block[3] = block[4] = 1;
+    /* mpi_atom: orig_id, imprt_id, type, num_bonds, num_hbonds, name,
+     * x, v, f_old, s, t */
+    block[0] = 1;
+    block[1] = 1;
+    block[2] = 1;
+    block[3] = 1;
+    block[4] = 1;
     block[5] = MAX_ATOM_NAME_LEN;
-    block[6] = block[7] = block[8] = 3;
-    block[9] = block[10] = 4;
+    block[6] = 3;
+    block[7] = 3;
+    block[8] = 3;
+    block[9] = 4;
+    block[10] = 4;
 
 //    MPI_Get_address( &sample, &base );
 //    MPI_Get_address( &(sample.orig_id), disp + 0 );
@@ -477,15 +484,27 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     disp[9] = offsetof( mpi_atom, s );
     disp[10] = offsetof( mpi_atom, t );
 
-    type[0] = type[1] = type[2] = type[3] = type[4] = MPI_INT;
+    type[0] = MPI_INT;
+    type[1] = MPI_INT;
+    type[2] = MPI_INT;
+    type[3] = MPI_INT;
+    type[4] = MPI_INT;
     type[5] = MPI_CHAR;
-    type[6] = type[7] = type[8] = type[9] = type[10] = MPI_DOUBLE;
+    type[6] = MPI_DOUBLE;
+    type[7] = MPI_DOUBLE;
+    type[8] = MPI_DOUBLE;
+    type[9] = MPI_DOUBLE;
+    type[10] = MPI_DOUBLE;
 
     MPI_Type_create_struct( 11, block, disp, type, &(mpi_data->mpi_atom_type) );
     MPI_Type_commit( &(mpi_data->mpi_atom_type) );
 
     /* boundary_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, x] */
-    block[0] = block[1] = block[2] = block[3] = block[4] = 1;
+    block[0] = 1;
+    block[1] = 1;
+    block[2] = 1;
+    block[3] = 1;
+    block[4] = 1;
     block[5] = 3;
 
 //    MPI_Get_address( &b_sample, &base );
@@ -506,7 +525,11 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     disp[4] = offsetof( boundary_atom, num_hbonds );
     disp[5] = offsetof( boundary_atom, x );
 
-    type[0] = type[1] = type[2] = type[3] = type[4] = MPI_INT;
+    type[0] = MPI_INT;
+    type[1] = MPI_INT;
+    type[2] = MPI_INT;
+    type[3] = MPI_INT;
+    type[4] = MPI_INT;
     type[5] = MPI_DOUBLE;
 
     MPI_Type_create_struct( 6, block, disp, type, &(mpi_data->boundary_atom_type) );
@@ -545,9 +568,11 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     MPI_Type_commit( &(mpi_data->mpi_rvec2) );
 
     /* restart_atom - [orig_id, type, name, x, v] */
-    block[0] = block[1] = 1 ;
+    block[0] = 1;
+    block[1] = 1 ;
     block[2] = MAX_ATOM_NAME_LEN;
-    block[3] = block[4] = 3;
+    block[3] = 3;
+    block[4] = 3;
 
 //    MPI_Get_address( &r_sample, &base );
 //    MPI_Get_address( &(r_sample.orig_id), disp + 0 );
@@ -565,14 +590,14 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     disp[3] = offsetof( restart_atom, x );
     disp[4] = offsetof( restart_atom, v );
 
-    type[0] = type[1] = MPI_INT;
+    type[0] = MPI_INT;
+    type[1] = MPI_INT;
     type[2] = MPI_CHAR;
-    type[3] = type[4] = MPI_DOUBLE;
+    type[3] = MPI_DOUBLE;
+    type[4] = MPI_DOUBLE;
 
     MPI_Type_create_struct( 5, block, disp, type, &(mpi_data->restart_atom_type) );
     MPI_Type_commit( &(mpi_data->restart_atom_type) );
-
-    return SUCCESS;
 }
 
 
@@ -703,14 +728,7 @@ void Initialize( reax_system *system, control_params *control,
 
     char msg[MAX_STR];
 
-    if ( Init_MPI_Datatypes( system, workspace, mpi_data, msg ) == FAILURE )
-    {
-        fprintf( stderr, "p%d: init_mpi_datatypes: could not create datatypes\n",
-                 system->my_rank );
-        fprintf( stderr, "p%d: mpi_data couldn't be initialized! terminating.\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Init_MPI_Datatypes( system, workspace, mpi_data, msg );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized mpi datatypes\n", system->my_rank );
@@ -865,14 +883,7 @@ void Initialize( reax_system *system, control_params *control,
     fprintf( stderr, "p%d: initialized workspace\n", system->my_rank );
 #endif
 
-    if ( Init_MPI_Datatypes( system, workspace, mpi_data, msg ) == FAILURE )
-    {
-        fprintf( stderr, "p%d: init_mpi_datatypes: could not create datatypes\n",
-                 system->my_rank );
-        fprintf( stderr, "p%d: mpi_data couldn't be initialized! terminating.\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Init_MPI_Datatypes( system, workspace, mpi_data, msg );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized mpi datatypes\n", system->my_rank );

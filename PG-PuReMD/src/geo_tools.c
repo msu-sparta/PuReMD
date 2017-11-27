@@ -162,10 +162,10 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
 int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 {
     char *cryst;
-    char  line[MAX_LINE + 1];
-    char  descriptor[9];
-    char  s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
-    char  s_group[12], s_zValue[12];
+    char line[MAX_LINE + 1];
+    char descriptor[9];
+    char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
+    char s_group[12], s_zValue[12];
 
     /* initialize variables */
     fseek( geo, 0, SEEK_SET ); // set the pointer to the beginning of the file
@@ -181,23 +181,24 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 
     /* locate the cryst line in the geo file, read it and
        initialize the big box */
-    while ( !feof( geo ) )
+    while ( fgets( line, MAX_LINE, geo ) )
     {
-        fgets( line, MAX_LINE, geo );
-
         if ( strncmp( line, cryst, 6 ) == 0 )
         {
             if ( geo_format == PDB )
+            {
                 sscanf( line, PDB_CRYST1_FORMAT,
                         &descriptor[0],
                         &s_a[0], &s_b[0], &s_c[0],
                         &s_alpha[0], &s_beta[0], &s_gamma[0],
                         &s_group[0], &s_zValue[0] );
+            }
 
             /* compute full volume tensor from the angles */
             Setup_Big_Box( atof(s_a),  atof(s_b), atof(s_c),
-                           atof(s_alpha), atof(s_beta), atof(s_gamma),
-                           &(system->big_box) );
+                    atof(s_alpha), atof(s_beta), atof(s_gamma),
+                    &(system->big_box) );
+
             return SUCCESS;
         }
     }
@@ -215,13 +216,13 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
     /* initialize variables */
     fseek( geo, 0, SEEK_SET ); /* set the pointer to the beginning of the file */
-    system->bigN = system->n = system->N = 0;
+    system->bigN = 0;
+    system->n = 0;
+    system->N = 0;
 
     /* increment number of atoms for each line denoting an atom desc */
-    while ( !feof( geo ) )
+    while ( fgets( line, MAX_LINE, geo ) )
     {
-        fgets( line, MAX_LINE, geo );
-
         if ( strncmp( line, "ATOM", 4 ) == 0 ||
                 strncmp( line, "HETATM", 6 ) == 0 )
         {
@@ -239,9 +240,13 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
             /* if the point is inside my_box, add it to my lists */
             if ( is_Inside_Box(&(system->my_box), x) )
+            {
                 ++system->n;
-            //if( is_Inside_Box(&(system->my_ext_box), x) )
-            //  ++system->N;
+            }
+//            if ( is_Inside_Box(&(system->my_ext_box), x) )
+//            {
+//              ++system->N;
+//            }
         }
     }
 
@@ -307,18 +312,19 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     fprintf( stderr, "p%d: starting to read the pdb file\n", system->my_rank );
 #endif
     fseek( pdb, 0, SEEK_SET );
-    c  = 0;
+    c = 0;
     c1 = 0;
     top = 0;
-    while ( !feof( pdb ) )
-    {
-        /* clear previous input line */
-        s[0] = 0;
-        for ( i = 0; i < c1; ++i )
-            tmp[i][0] = 0;
 
+    s[0] = 0;
+    for ( i = 0; i < c1; ++i )
+    {
+        tmp[i][0] = 0;
+    }
+
+    while ( fgets( s, MAX_LINE, pdb ) )
+    {
         /* read new line and tokenize it */
-        fgets( s, MAX_LINE, pdb );
         strncpy( s1, s, MAX_LINE - 1 );
         c1 = Tokenize( s, &tmp );
 
@@ -400,7 +406,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
             Fit_to_Periodic_Box( &(system->big_box), &x );
 
-            if ( is_Inside_Box( &(system->my_box), x ) )
+            if ( is_Inside_Box( &(system->my_box), x ) == TRUE )
             {
                 /* store orig_id, type, name and coord info of the new atom */
                 atom = &(system->my_atoms[top]);
@@ -473,6 +479,13 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
                 //          workspace->restricted_list[ratom][i] );
                 // fprintf( stderr, "\n" );
             }
+        }
+
+        /* clear previous input line */
+        s[0] = 0;
+        for ( i = 0; i < c1; ++i )
+        {
+            tmp[i][0] = 0;
         }
     }
 
