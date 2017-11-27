@@ -488,11 +488,11 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             for ( i = 0; i < system->N; ++i )
             {
                 H->j[*Htop] = i;
-                H->val[*Htop] = -1.0;
+                H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
 
                 H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = -1.0;
+                H_sp->val[*H_sp_top] = 1.0;
                 *H_sp_top = *H_sp_top + 1;
             }
 
@@ -510,11 +510,11 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 H_sp->start[system->N + i + 1] = *H_sp_top;
 
                 H->j[*Htop] = i;
-                H->val[*Htop] = -1.0;
+                H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
 
                 H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = -1.0;
+                H_sp->val[*H_sp_top] = 1.0;
                 *H_sp_top = *H_sp_top + 1;
 
                 for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
@@ -583,11 +583,11 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             for ( i = system->N + 1; i < system->N_cm - 1; ++i )
             {
                 H->j[*Htop] = i;
-                H->val[*Htop] = -1.0;
+                H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
 
                 H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = -1.0;
+                H_sp->val[*H_sp_top] = 1.0;
                 *H_sp_top = *H_sp_top + 1;
             }
 
