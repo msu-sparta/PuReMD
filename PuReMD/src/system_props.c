@@ -56,7 +56,7 @@ void Temperature_Control( control_params *control, simulation_data *data )
 
 
 void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
-                             MPI_Comm comm )
+        MPI_Comm comm )
 {
     int i;
     rvec p;
@@ -64,7 +64,7 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 
     data->my_en.e_kin = 0.0;
     data->sys_en.e_kin = 0.0;
-    data->therm.T = 0;
+    data->therm.T = 0.0;
 
     for ( i = 0; i < system->n; i++ )
     {
@@ -75,13 +75,15 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
     }
 
     MPI_Allreduce( &data->my_en.e_kin,  &data->sys_en.e_kin,
-                   1, MPI_DOUBLE, MPI_SUM, comm );
+            1, MPI_DOUBLE, MPI_SUM, comm );
 
-    data->therm.T = (2. * data->sys_en.e_kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
 
     // avoid T being an absolute zero, might cause F.P.E!
-    if ( fabs(data->therm.T) < ALMOST_ZERO )
+    if ( fabs( data->therm.T ) < ALMOST_ZERO )
+    {
         data->therm.T = ALMOST_ZERO;
+    }
 }
 
 

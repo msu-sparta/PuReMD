@@ -59,9 +59,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     bond_data *bond_list;
     hbond_data *hbond_list;
 
-    bonds = (*lists) + BONDS;
+    bonds = lists[BONDS];
     bond_list = bonds->bond_list;
-    hbonds = (*lists) + HBONDS;
+    hbonds = lists[HBONDS];
     hbond_list = hbonds->hbond_list;
 
     /* loops below discover the Hydrogen bonds between i-j-k triplets.

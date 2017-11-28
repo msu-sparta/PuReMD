@@ -553,8 +553,8 @@ int  Init_Lists( reax_system *system, control_params *control,
              system->my_rank, system->local_cap, system->total_cap );
 #endif
 
-    if (!Make_List( system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR,
-                    *lists + FAR_NBRS, comm ))
+    if ( !Make_List( system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR,
+                lists[FAR_NBRS], comm ) )
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -605,7 +605,7 @@ int  Init_Lists( reax_system *system, control_params *control,
         total_hbonds = MAX( total_hbonds * SAFER_ZONE, MIN_CAP * MIN_HBONDS );
 
         if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND,
-                         *lists + HBONDS, comm ) )
+                         lists[HBONDS], comm ) )
         {
             fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
             MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -618,7 +618,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    //Allocate_Bond_List( system->N, bond_top, (*lists)+BONDS );
+    //Allocate_Bond_List( system->N, bond_top, lists[BONDS] );
     //num_bonds = bond_top[system->N-1];
     total_bonds = 0;
     for ( i = 0; i < system->N; ++i )
@@ -629,7 +629,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     bond_cap = MAX( total_bonds * SAFE_ZONE, MIN_CAP * MIN_BONDS );
 
     if ( !Make_List( system->total_cap, bond_cap, TYP_BOND,
-                     *lists + BONDS, comm ) )
+                     lists[BONDS], comm ) )
     {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -643,7 +643,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     /* 3bodies list */
     cap_3body = MAX( num_3body * SAFE_ZONE, MIN_3BODIES );
     if ( !Make_List( bond_cap, cap_3body, TYP_THREE_BODY,
-                     *lists + THREE_BODIES, comm ) )
+                     lists[THREE_BODIES], comm ) )
     {
         fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -656,7 +656,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 
 #if defined(TEST_FORCES)
     if ( !Make_List( system->total_cap, bond_cap * 8, TYP_DDELTA,
-                     *lists + DDELTAS, comm ) )
+                     lists[DDELTAS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dDelta list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -665,7 +665,7 @@ int  Init_Lists( reax_system *system, control_params *control,
              system->my_rank, bond_cap * 30,
              bond_cap * 8 * sizeof(dDelta_data) / (1024 * 1024) );
 
-    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, *lists + DBOS, comm ) )
+    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, lists[DBOS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dBO list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -709,7 +709,7 @@ int  Init_Lists( reax_system *system, control_params *control,
         total_hbonds = (int)(MAX( total_hbonds * SAFER_ZONE, MIN_CAP * MIN_HBONDS ));
 
         if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND,
-                         *lists + HBONDS, comm ) )
+                         lists[HBONDS], comm ) )
         {
             fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
             MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -722,7 +722,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    //Allocate_Bond_List( system->N, bond_top, (*lists)+BONDS );
+    //Allocate_Bond_List( system->N, bond_top, lists[BONDS] );
     //num_bonds = bond_top[system->N-1];
     total_bonds = 0;
     for ( i = 0; i < system->N; ++i )
@@ -733,7 +733,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     bond_cap = (int)(MAX( total_bonds * SAFE_ZONE, MIN_CAP * MIN_BONDS ));
 
     if ( !Make_List( system->total_cap, bond_cap, TYP_BOND,
-                     *lists + BONDS, comm ) )
+                     lists[BONDS], comm ) )
     {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -747,7 +747,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     /* 3bodies list */
     cap_3body = (int)(MAX( num_3body * SAFE_ZONE, MIN_3BODIES ));
     if ( !Make_List( bond_cap, cap_3body, TYP_THREE_BODY,
-                     *lists + THREE_BODIES, comm ) )
+                     lists[THREE_BODIES], comm ) )
     {
         fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -760,7 +760,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 
 #if defined(TEST_FORCES)
     if ( !Make_List( system->total_cap, bond_cap * 8, TYP_DDELTA,
-                     *lists + DDELTAS, comm ) )
+                     lists[DDELTAS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dDelta list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -769,7 +769,7 @@ int  Init_Lists( reax_system *system, control_params *control,
              system->my_rank, bond_cap * 30,
              bond_cap * 8 * sizeof(dDelta_data) / (1024 * 1024) );
 
-    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, (*lists) + DBOS, comm ) )
+    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, lists[DBOS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dBO list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );

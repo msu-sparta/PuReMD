@@ -191,8 +191,8 @@ void Torsion_Angles( reax_system *system, control_params *control,
     real p_tor3 = system->reax_param.gp.l[24];
     real p_tor4 = system->reax_param.gp.l[25];
     real p_cot2 = system->reax_param.gp.l[27];
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *thb_intrs = (*lists) + THREE_BODIES;
+    reax_list *bonds = lists[BONDS];
+    reax_list *thb_intrs = lists[THREE_BODIES];
     // char  fname[100];
     // FILE *ftor;
 

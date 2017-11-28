@@ -22,15 +22,15 @@
 #ifndef __REAX_TYPES_H_
 #define __REAX_TYPES_H_
 
-#include "ctype.h"
-#include "math.h"
-#include "mpi.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "sys/time.h"
-#include "time.h"
-#include "zlib.h"
+#include <ctype.h>
+#include <math.h>
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
+#include <time.h>
+#include <zlib.h>
 
 /************* SOME DEFS - crucial for reax_types.h *********/
 
@@ -678,8 +678,11 @@ typedef struct
 {
     int thb;
     int pthb; // pointer to the third body on the central atom's nbrlist
-    real theta, cos_theta;
-    rvec dcos_di, dcos_dj, dcos_dk;
+    real theta;
+    real cos_theta;
+    rvec dcos_di;
+    rvec dcos_dj;
+    rvec dcos_dk;
 } three_body_interaction_data;
 
 
@@ -715,12 +718,28 @@ typedef struct
 
 typedef struct
 {
-    real BO, BO_s, BO_pi, BO_pi2;
-    real Cdbo, Cdbopi, Cdbopi2;
-    real C1dbo, C2dbo, C3dbo;
-    real C1dbopi, C2dbopi, C3dbopi, C4dbopi;
-    real C1dbopi2, C2dbopi2, C3dbopi2, C4dbopi2;
-    rvec dBOp, dln_BOp_s, dln_BOp_pi, dln_BOp_pi2;
+    real BO;
+    real BO_s;
+    real BO_pi;
+    real BO_pi2;
+    real Cdbo;
+    real Cdbopi;
+    real Cdbopi2;
+    real C1dbo;
+    real C2dbo;
+    real C3dbo;
+    real C1dbopi;
+    real C2dbopi;
+    real C3dbopi;
+    real C4dbopi;
+    real C1dbopi2;
+    real C2dbopi2;
+    real C3dbopi2;
+    real C4dbopi2;
+    rvec dBOp;
+    rvec dln_BOp_s;
+    rvec dln_BOp_pi;
+    rvec dln_BOp_pi2;
 } bond_order_data;
 
 typedef struct
@@ -729,7 +748,7 @@ typedef struct
     int sym_index;
     int dbond_index;
     ivec rel_box;
-    //  rvec ext_factor;
+//    rvec ext_factor;
     real d;
     rvec dvec;
     bond_order_data bo_data;
@@ -867,15 +886,15 @@ typedef struct
     int *end_index;
 
     int type;
-    list_type select;
+//    list_type select;
 
     void *v;
     three_body_interaction_data *three_body_list;
-    bond_data          *bond_list;
-    dbond_data         *dbo_list;
-    dDelta_data        *dDelta_list;
-    far_neighbor_data  *far_nbr_list;
-    hbond_data         *hbond_list;
+    bond_data *bond_list;
+    dbond_data *dbo_list;
+    dDelta_data *dDelta_list;
+    far_neighbor_data *far_nbr_list;
+    hbond_data *hbond_list;
 } reax_list;
 
 

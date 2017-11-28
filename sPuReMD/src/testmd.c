@@ -223,5 +223,5 @@ int main( int argc, char* argv[] )
 
     sfree( lists, "main::lists" );
 
-    return SUCCESS;
+    return 0;
 }

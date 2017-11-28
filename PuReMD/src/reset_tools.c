@@ -74,7 +74,11 @@ void Reset_Energies( energy_data *en )
 
 void Reset_Temperatures( simulation_data *data )
 {
-    data->therm.T = 0;
+    data->therm.T = 0.0;
+    data->therm.xi = 0.0;
+    data->therm.v_xi = 0.0;
+    data->therm.v_xi_old = 0.0;
+    data->therm.G_xi = 0.0;
 }
 
 
@@ -181,7 +185,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
     /* bonds list */
     if ( system->N > 0 )
     {
-        bonds = (*lists) + BONDS;
+        bonds = lists[BONDS];
         total_bonds = 0;
 
         /* reset start-end indexes */
@@ -212,7 +216,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
     /* hbonds list */
     if ( control->hbond_cut > 0 && system->numH > 0 )
     {
-        hbonds = (*lists) + HBONDS;
+        hbonds = lists[HBONDS];
         total_hbonds = 0;
 
         /* reset start-end indexes */

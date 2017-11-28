@@ -1097,10 +1097,10 @@ int Append_Frame( reax_system *system, control_params *control,
         Write_Atoms( system, control, out_control, mpi_data );
 
     if ( out_control->write_bonds )
-        Write_Bonds( system, control, (*lists + BONDS), out_control, mpi_data );
+        Write_Bonds( system, control, lists[BONDS], out_control, mpi_data );
 
     if ( out_control->write_angles )
-        Write_Angles( system, control, (*lists + BONDS), (*lists + THREE_BODIES),
+        Write_Angles( system, control, lists[BONDS], lists[THREE_BODIES],
                       out_control, mpi_data );
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: appended frame %d\n", system->my_rank, data->step );

@@ -142,7 +142,7 @@ void Compute_Total_Force( reax_system *system, control_params *control,
                           reax_list **lists, mpi_datatypes *mpi_data )
 {
     int i, pj;
-    reax_list *bonds = (*lists) + BONDS;
+    reax_list *bonds = lists[BONDS];
 
     for ( i = 0; i < system->N; ++i )
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
@@ -194,7 +194,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     /* bond list */
     if ( N > 0 )
     {
-        bonds = *lists + BONDS;
+        bonds = lists[BONDS];
 
         for ( i = 0; i < N; ++i )
         {
@@ -221,7 +221,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     /* hbonds list */
     if ( numH > 0 )
     {
-        hbonds = *lists + HBONDS;
+        hbonds = lists[HBONDS];
 
         for ( i = 0; i < n; ++i )
         {
@@ -337,9 +337,9 @@ void Init_Forces( reax_system *system, control_params *control,
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
 
-    far_nbrs = *lists + FAR_NBRS;
-    bonds = *lists + BONDS;
-    hbonds = *lists + HBONDS;
+    far_nbrs = lists[FAR_NBRS];
+    bonds = lists[BONDS];
+    hbonds = lists[HBONDS];
 
     for ( i = 0; i < system->n; ++i )
         workspace->bond_mark[i] = 0;
@@ -605,9 +605,9 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
 
-    far_nbrs = *lists + FAR_NBRS;
-    bonds = *lists + BONDS;
-    hbonds = *lists + HBONDS;
+    far_nbrs = lists[FAR_NBRS];
+    bonds = lists[BONDS];
+    hbonds = lists[HBONDS];
 
     for ( i = 0; i < system->n; ++i )
         workspace->bond_mark[i] = 0;
@@ -791,7 +791,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
 
-    far_nbrs = *lists + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     *Htop = 0;
     memset( hb_top, 0, sizeof(int) * system->local_cap );
     memset( bond_top, 0, sizeof(int) * system->total_cap );

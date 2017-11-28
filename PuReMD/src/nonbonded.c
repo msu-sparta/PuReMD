@@ -52,7 +52,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     // rtensor temp_rtensor, total_rtensor;
 
     natoms = system->n;
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     p_vdW1 = system->reax_param.gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
     e_core = 0;
@@ -230,7 +230,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     LR_lookup_table *t;
 
     natoms = system->n;
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     steps = data->step - data->prev_steps;
     update_freq = out_control->energy_update_freq;
     update_energies = update_freq > 0 && steps % update_freq == 0;

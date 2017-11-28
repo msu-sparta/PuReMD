@@ -51,7 +51,7 @@ void Bonds( reax_system *system, control_params *control,
     bond_order_data *bo_ij;
     reax_list *bonds;
 
-    bonds = (*lists) + BONDS;
+    bonds = lists[BONDS];
     gp3 = system->reax_param.gp.l[3];
     gp4 = system->reax_param.gp.l[4];
     gp7 = system->reax_param.gp.l[7];

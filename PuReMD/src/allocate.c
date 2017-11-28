@@ -814,7 +814,7 @@ void ReAllocate( reax_system *system, control_params *control,
     /* far neighbors */
     if ( renbr )
     {
-        far_nbrs = *lists + FAR_NBRS;
+        far_nbrs = lists[FAR_NBRS];
 
         if ( Nflag || realloc->num_far >= far_nbrs->num_intrs * DANGER_ZONE )
         {
@@ -878,7 +878,7 @@ void ReAllocate( reax_system *system, control_params *control,
 
         if ( Hflag || realloc->hbonds )
         {
-            ret = Reallocate_HBonds_List( system, (*lists) + HBONDS, comm );
+            ret = Reallocate_HBonds_List( system, lists[HBONDS], comm );
             realloc->hbonds = 0;
 #if defined(DEBUG_FOCUS)
             fprintf(stderr, "p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
@@ -891,7 +891,7 @@ void ReAllocate( reax_system *system, control_params *control,
     num_bonds = est_3body = -1;
     if ( Nflag || realloc->bonds )
     {
-        Reallocate_Bonds_List( system, (*lists) + BONDS, &num_bonds,
+        Reallocate_Bonds_List( system, lists[BONDS], &num_bonds,
                                &est_3body, comm );
         realloc->bonds = 0;
         realloc->num_3body = MAX( realloc->num_3body, est_3body );
@@ -911,15 +911,15 @@ void ReAllocate( reax_system *system, control_params *control,
                  (int)(realloc->num_3body * sizeof(three_body_interaction_data) /
                        (1024 * 1024)) );
 #endif
-        Delete_List( (*lists) + THREE_BODIES, comm );
+        Delete_List( lists[THREE_BODIES], comm );
 
         if ( num_bonds == -1 )
-            num_bonds = ((*lists) + BONDS)->num_intrs;
+            num_bonds = lists[BONDS]->num_intrs;
 
         realloc->num_3body = (int)(MAX(realloc->num_3body * SAFE_ZONE, MIN_3BODIES));
 
         if ( !Make_List( num_bonds, realloc->num_3body, TYP_THREE_BODY,
-                         (*lists) + THREE_BODIES, comm ) )
+                         lists[THREE_BODIES], comm ) )
         {
             fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
             MPI_Abort( comm, CANNOT_INITIALIZE );

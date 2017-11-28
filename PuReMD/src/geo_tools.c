@@ -212,10 +212,8 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
     system->bigN = system->n = system->N = 0;
 
     /* increment number of atoms for each line denoting an atom desc */
-    while ( !feof( geo ) )
+    while ( fgets( line, MAX_LINE, geo ) )
     {
-        fgets( line, MAX_LINE, geo );
-
         if ( strncmp( line, "ATOM", 4 ) == 0 ||
                 strncmp( line, "HETATM", 6 ) == 0 )
         {

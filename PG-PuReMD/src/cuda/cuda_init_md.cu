@@ -301,14 +301,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     Cuda_Init_ScratchArea( );
 
     /* MPI_DATATYPES */
-    if ( Init_MPI_Datatypes( system, workspace, mpi_data, msg ) == FAILURE )
-    {
-        fprintf( stderr, "p%d: init_mpi_datatypes: could not create datatypes\n",
-                 system->my_rank );
-        fprintf( stderr, "p%d: mpi_data couldn't be initialized! terminating.\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Init_MPI_Datatypes( system, workspace, mpi_data, msg );
 
     /* SYSTEM */
     if ( Cuda_Init_System( system, control, data, workspace, mpi_data, msg ) == FAILURE )

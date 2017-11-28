@@ -89,8 +89,8 @@ void Analyze_Fragments( reax_system *system, control_params *control,
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
     int  fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
-    reax_list *new_bonds = (*lists) + BONDS;
-    //list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = lists[BONDS];
+    //list *old_bonds = lists[OLD_BONDS];
 
     /* fragment analysis */
     fprintf( fout, "step%d fragments\n", data->step );

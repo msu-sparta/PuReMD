@@ -53,7 +53,7 @@ void Atom_Energy( reax_system *system, control_params *control,
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij;
-    reax_list *bonds = (*lists) + BONDS;
+    reax_list *bonds = lists[BONDS];
 
     /* Initialize parameters */
     p_lp1 = system->reax_param.gp.l[15];

@@ -24,40 +24,40 @@
 
 #include "reax_types.h"
 
-int  Make_List( int, int, int, reax_list*, MPI_Comm );
+
+int Make_List( int, int, int, reax_list*, MPI_Comm );
+
 void Delete_List( reax_list*, MPI_Comm );
 
-inline int  Num_Entries(int, reax_list*);
-inline int  Start_Index( int, reax_list* );
-inline int  End_Index( int, reax_list* );
-inline void Set_Start_Index(int, int, reax_list*);
-inline void Set_End_Index(int, int, reax_list*);
 
-#if defined(LAMMPS_REAX)
-inline int Num_Entries( int i, reax_list *l )
+static inline int Num_Entries( int i, reax_list *l )
 {
     return l->end_index[i] - l->index[i];
 }
 
-inline int Start_Index( int i, reax_list *l )
+
+static inline int Start_Index( int i, reax_list *l )
 {
     return l->index[i];
 }
 
-inline int End_Index( int i, reax_list *l )
+
+static inline int End_Index( int i, reax_list *l )
 {
     return l->end_index[i];
 }
 
-inline void Set_Start_Index( int i, int val, reax_list *l )
+
+static inline void Set_Start_Index( int i, int val, reax_list *l )
 {
     l->index[i] = val;
 }
 
-inline void Set_End_Index( int i, int val, reax_list *l )
+
+static inline void Set_End_Index( int i, int val, reax_list *l )
 {
     l->end_index[i] = val;
 }
-#endif // LAMMPS_REAX
+
 
 #endif
