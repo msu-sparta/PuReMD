@@ -475,7 +475,7 @@ int main( int argc, char* argv[] )
     Reset( system, control, data, workspace, lists );
 
 #if defined(DEBUG)
-    Print_List(*lists + BONDS);
+    Print_List( lists[BONDS] );
 #endif
 
     Generate_Neighbor_Lists( system, data, workspace, lists );
@@ -558,7 +558,7 @@ int main( int argc, char* argv[] )
         fprintf( out_control->out, "Total Simulation Time: %.2f secs\n", t_elapsed );
     }
 
-//    Write_PDB( &system, &(lists[BOND]), &out_control );
+//    Write_PDB( &system, &(lists[BONDS]), &out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)

@@ -454,7 +454,7 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
     k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-          *(*dev_lists + FAR_NBRS), system->n, system->N,
+          *(dev_lists[FAR_NBRS]), system->n, system->N,
           system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
     cudaThreadSynchronize( );
     cudaCheckError( );
@@ -466,7 +466,7 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 //        //sizeof(int) * (NBRS_BLOCK_SIZE + NBRS_BLOCK_SIZE / NB_KER_THREADS_PER_ATOM) >>>
 //        sizeof(int) * 2 * NBRS_BLOCK_SIZE >>>
 //            ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-//              *(*dev_lists + FAR_NBRS), system->n, system->N );
+//              *(dev_lists[FAR_NBRS]), system->n, system->N );
 //    cudaThreadSynchronize( );
 //    cudaCheckError( );
 

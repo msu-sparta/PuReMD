@@ -82,8 +82,8 @@ void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
 
 
 void Analyze_Fragments( reax_system *system, control_params *control,
-                        simulation_data *data, storage *workspace,
-                        reax_list **lists, FILE *fout, int ignore )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, FILE *fout, int ignore )
 {
     int  atom, i, flag;
     int  *mark = workspace->mark;
@@ -92,8 +92,8 @@ void Analyze_Fragments( reax_system *system, control_params *control,
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
     int  fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
-    reax_list *new_bonds = (*lists) + BONDS;
-    //list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = lists[BONDS];
+    //list *old_bonds = lists[OLD_BONDS];
 
     /* fragment analysis */
     fprintf( fout, "step%d fragments\n", data->step );
@@ -147,9 +147,9 @@ void Analyze_Fragments( reax_system *system, control_params *control,
 
 
 void Analysis( reax_system *system, control_params *control,
-               simulation_data *data, storage *workspace,
-               reax_list **lists, output_controls *out_control,
-               mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
     int steps;
 

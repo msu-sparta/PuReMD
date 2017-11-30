@@ -83,8 +83,8 @@ void print_bond_data( bond_order_data *s )
 
 int validate_neighbors( reax_system *system, reax_list **lists )
 {
-    reax_list *far_nbrs = *lists + FAR_NBRS;
-    reax_list *d_nbrs = *dev_lists + FAR_NBRS;
+    reax_list *far_nbrs = lists[FAR_NBRS];
+    reax_list *d_nbrs = dev_lists[FAR_NBRS];
     far_neighbor_data gpu, cpu;
     int index, count, jicount;
     int hostcount, dijcount, djicount;
@@ -244,14 +244,14 @@ int validate_neighbors( reax_system *system, reax_list **lists )
 }
 
 
-int validate_sym_dbond_indices (reax_system *system, storage *workspace, reax_list **lists)
+int validate_sym_dbond_indices( reax_system *system, storage *workspace, reax_list **lists )
 {
     int start, end, index, count, miscount;
     int hostcount, devicecount, h, d;
     int *d_start, *d_end;
     bond_data *d_bond_data;
-    reax_list *d_bonds = *dev_lists + BONDS;
-    reax_list *bonds = *lists + BONDS;
+    reax_list *d_bonds = dev_lists[BONDS];
+    reax_list *bonds = lists[BONDS];
 
     d_end = (int *)malloc (sizeof (int) * system->N);
     d_start = (int *) malloc (sizeof (int) * system->N );
@@ -460,8 +460,8 @@ int validate_hbonds( reax_system *system, storage *workspace,
     int count, nbr, sym_count, dev_count;
     int *d_start, *d_end, index, d_index;
     hbond_data *data, src, tgt;
-    reax_list *d_hbonds = *dev_lists + HBONDS;
-    reax_list *hbonds = *lists + HBONDS;
+    reax_list *d_hbonds = dev_lists[HBONDS];
+    reax_list *hbonds = lists[HBONDS];
 
     d_end = (int *)malloc (sizeof (int)* d_hbonds->n);
     d_start = (int *) malloc (sizeof (int) * d_hbonds->n );
@@ -628,13 +628,13 @@ int validate_hbonds( reax_system *system, storage *workspace,
     return SUCCESS;
 }
 
-int validate_bonds (reax_system *system, storage *workspace, reax_list **lists)
+int validate_bonds( reax_system *system, storage *workspace, reax_list **lists )
 {
     int start, end, index, count, miscount;
     int *d_start, *d_end;
     bond_data *d_bond_data;
-    reax_list *d_bonds = *dev_lists + BONDS;
-    reax_list *bonds = *lists + BONDS;
+    reax_list *d_bonds = dev_lists[BONDS];
+    reax_list *bonds = lists[BONDS];
 
     d_end = (int *)malloc (sizeof (int) * system->N);
     d_start = (int *) malloc (sizeof (int) * system->N );
@@ -1393,13 +1393,13 @@ int validate_grid (reax_system *system)
     //        fprintf (stderr, " cell miscount: %d \n", miscount);
 }
 
-int validate_three_bodies (reax_system *system, storage *workspace, reax_list **lists)
+int validate_three_bodies( reax_system *system, storage *workspace, reax_list **lists )
 {
-    reax_list *three = *lists + THREE_BODIES;
-    reax_list *bonds = *lists + BONDS;
+    reax_list *three = lists[THREE_BODIES];
+    reax_list *bonds = lists[BONDS];
 
-    reax_list *d_three = *dev_lists + THREE_BODIES;
-    reax_list *d_bonds = *dev_lists + BONDS;
+    reax_list *d_three = dev_lists[THREE_BODIES];
+    reax_list *d_bonds = dev_lists[BONDS];
     bond_data *d_bond_data;
     real *test;
 
@@ -1573,7 +1573,7 @@ int validate_three_bodies (reax_system *system, storage *workspace, reax_list **
 }
 
 
-int validate_atoms (reax_system *system, reax_list **lists)
+int validate_atoms( reax_system *system, reax_list **lists )
 {
 
     int start, end, index, count, miscount;

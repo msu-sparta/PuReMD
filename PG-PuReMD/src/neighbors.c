@@ -98,7 +98,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 #endif
 
     g = &( system->my_grid );
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     num_far = 0;
 
     /* first pick up a cell in the grid */

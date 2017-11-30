@@ -774,7 +774,7 @@ void ReAllocate( reax_system *system, control_params *control,
     /* far neighbors */
     if ( renbr )
     {
-        far_nbrs = *lists + FAR_NBRS;
+        far_nbrs = lists[FAR_NBRS];
 
         if ( Nflag || realloc->far_nbrs >= far_nbrs->num_intrs * DANGER_ZONE )
         {
@@ -842,7 +842,7 @@ void ReAllocate( reax_system *system, control_params *control,
 
         if ( Hflag || realloc->hbonds )
         {
-            Reallocate_HBonds_List( system, (*lists) + HBONDS );
+            Reallocate_HBonds_List( system, lists[HBONDS] );
             realloc->hbonds = 0;
 
 #if defined(DEBUG_FOCUS)
@@ -857,7 +857,7 @@ void ReAllocate( reax_system *system, control_params *control,
     num_bonds = est_3body = -1;
     if ( Nflag || realloc->bonds )
     {
-        Reallocate_Bonds_List( system, (*lists) + BONDS, &num_bonds, &est_3body );
+        Reallocate_Bonds_List( system, lists[BONDS], &num_bonds, &est_3body );
         realloc->bonds = 0;
         realloc->num_3body = MAX( realloc->num_3body, est_3body );
 
@@ -879,17 +879,17 @@ void ReAllocate( reax_system *system, control_params *control,
                 (1024 * 1024)) );
 #endif
 
-        Delete_List( (*lists) + THREE_BODIES );
+        Delete_List( lists[THREE_BODIES] );
 
         if ( num_bonds == -1 )
         {
-            num_bonds = ((*lists) + BONDS)->num_intrs;
+            num_bonds = lists[BONDS]->num_intrs;
         }
 
         realloc->num_3body = MAX( realloc->num_3body * SAFE_ZONE, MIN_3BODIES );
 
         Make_List( num_bonds, realloc->num_3body,
-                TYP_THREE_BODY, (*lists) + THREE_BODIES);
+                TYP_THREE_BODY, lists[THREE_BODIES] );
     }
 
     /* grid */

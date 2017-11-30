@@ -66,9 +66,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     int num_hb_intrs = 0;
 #endif
     
-    bonds = (*lists) + BONDS;
+    bonds = lists[BONDS];
     bond_list = bonds->select.bond_list;
-    hbonds = (*lists) + HBONDS;
+    hbonds = lists[HBONDS];
     hbond_list = hbonds->select.hbond_list;
 
     /* loops below discover the Hydrogen bonds between i-j-k triplets.
@@ -271,9 +271,9 @@ void Old_Hydrogen_Bonds( reax_system *system, control_params *control,
     int num_hb_intrs = 0;
 #endif
 
-    bonds = (*lists) + BONDS;
+    bonds = lists[BONDS];
     bond_list = bonds->select.bond_list;
-    hbonds = (*lists) + HBONDS;
+    hbonds = lists[HBONDS];
     hbond_list = hbonds->select.hbond_list;
 
     /* loops below discover the Hydrogen bonds between i-j-k triplets.

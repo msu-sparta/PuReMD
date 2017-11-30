@@ -897,7 +897,7 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
 
     sprintf( fname, "%s.far_nbrs.%d", control->sim_name, system->my_rank );
     fout = fopen( fname, "w" );
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     natoms = system->N;
 
     for ( i = 0; i < natoms; ++i )
@@ -1090,7 +1090,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     char fname[MAX_STR]; 
     hbond_data *phbond;
     FILE *fout;
-    reax_list *hbonds = (*lists + HBONDS);
+    reax_list *hbonds = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
     fout = fopen( fname, "w" );
@@ -1118,7 +1118,7 @@ void Print_HBond_Indices( reax_system *system, reax_list **lists,
     int i; 
     char fname[MAX_STR]; 
     FILE *fout;
-    reax_list *hbonds = (*lists + HBONDS);
+    reax_list *hbonds = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds_indices.%d.%d", control->sim_name, step, system->my_rank );
     fout = fopen( fname, "w" );
@@ -1141,7 +1141,7 @@ void Print_Bonds( reax_system *system, reax_list **lists,
     bond_data *pbond;
     bond_order_data *bo_ij;
     FILE *fout;
-    reax_list *bonds = (*lists + BONDS);
+    reax_list *bonds = lists[BONDS];
 
     sprintf( fname, "%s.bonds.%d", control->sim_name, system->my_rank );
     fout = fopen( fname, "w" );
@@ -1392,8 +1392,8 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
     int i, pj, pk;
     bond_order_data *bo_ij;
     dbond_data *dbo_k;
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs  = (*lists) + DBOS;
+    reax_list *bonds = lists[BONDS];
+    reax_list *dBOs  = lists[DBOS];
 
     /* bond orders */
     fprintf( out_control->fbo, "step: %d\n", data->step );
@@ -1554,7 +1554,7 @@ void Print_Far_Neighbors_List( reax_system *system, reax_list **lists,
     int temp[500];
     reax_list *far_nbrs;
 
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     fprintf( out_control->flist, "step: %d\n", data->step );
     fprintf( out_control->flist, "%6s\t%-38s\n", "atom", "Far_nbrs_list");
 
@@ -1585,7 +1585,7 @@ void Print_Bond_List( reax_system *system, control_params *control,
         output_controls *out_control)
 {
     int i, j, id_i, id_j, nbr, pj;
-    reax_list *bonds = (*lists) + BONDS;
+    reax_list *bonds = lists[BONDS];
 
     int temp[500];
     int num = 0;

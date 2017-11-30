@@ -826,7 +826,7 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
     blocks = system->N / DEF_BLOCK_SIZE + 
         ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     k_total_forces <<< blocks, DEF_BLOCK_SIZE >>>
-        ( *dev_workspace, *(*dev_lists + BONDS), 
+        ( *dev_workspace, *(dev_lists[BONDS]), 
           (control_params *) control->d_control_params, 
           (simulation_data *)data->d_simulation_data, 
           spad_rvec, system->N );
@@ -849,7 +849,7 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
 
     //do the post processing for the atomic forces here
     k_total_forces_postprocess  <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, *(*dev_lists + BONDS), *dev_workspace, system->N );
+        ( system->d_my_atoms, *(dev_lists[BONDS]), *dev_workspace, system->N );
     cudaThreadSynchronize( ); 
     cudaCheckError( ); 
 }

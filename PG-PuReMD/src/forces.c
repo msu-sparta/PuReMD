@@ -156,7 +156,7 @@ void Compute_Total_Force( reax_system *system, control_params *control,
         mpi_datatypes *mpi_data )
 {
     int i, pj;
-    reax_list *bonds = (*lists) + BONDS;
+    reax_list *bonds = lists[BONDS];
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -258,11 +258,11 @@ int MPI_Not_GPU_Validate_Lists( reax_system *system, storage *workspace,
     //    ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     //ker_update_bonds <<< blocks, DEF_BLOCK_SIZE >>>
-    //    (system->d_my_atoms, *(*lists + BONDS),
+    //    (system->d_my_atoms, lists[BONDS],
     //   system->n);
     //cudaThreadSynchronize ();
     //cudaCheckError ();
-    mpi_not_gpu_update_bonds(system->my_atoms, *(*lists + BONDS), system->n);
+    mpi_not_gpu_update_bonds( system->my_atoms, *lists[BONDS], system->n );
 
     ////////////////////////
     // HBOND ISSUE
@@ -270,11 +270,11 @@ int MPI_Not_GPU_Validate_Lists( reax_system *system, storage *workspace,
     if ((control->hbond_cut > 0) && (system->numH > 0))
     {
         //ker_update_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
-        //    (system->d_my_atoms, *(*lists + HBONDS),
+        //    (system->d_my_atoms, *lists[HBONDS],
         //     system->n);
         //cudaThreadSynchronize ();
         //cudaCheckError ();
-        mpi_not_gpu_update_hbonds(system->my_atoms, *(*lists + HBONDS), system->n);
+        mpi_not_gpu_update_hbonds( system->my_atoms, *lists[HBONDS], system->n );
 
     }
 
@@ -350,7 +350,7 @@ int MPI_Not_GPU_Validate_Lists( reax_system *system, storage *workspace,
     {
         num_bonds = 0;
 
-        bonds = *lists + BONDS;
+        bonds = lists[BONDS];
         //  memset (host_scratch, 0, 2 * bonds->n * sizeof (int));
 
         //  index = (int *) host_scratch;
@@ -417,7 +417,7 @@ int MPI_Not_GPU_Validate_Lists( reax_system *system, storage *workspace,
     // FIX - 4 - added additional check here
     if ((numH > 0) && (control->hbond_cut > 0))
     {
-        hbonds = *lists + HBONDS;
+        hbonds = lists[HBONDS];
         memset (host_scratch, 0, 2 * hbonds->n * sizeof (int) + sizeof (reax_atom) * system->N);
         index = (int *) host_scratch;
         end_index = index + hbonds->n;
@@ -491,7 +491,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     // bond list
     if ( N > 0 )
     {
-        bonds = *lists + BONDS;
+        bonds = lists[BONDS];
 
         for ( i = 0; i < N; ++i )
         {
@@ -518,7 +518,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     // hbonds list
     if ( numH > 0 )
     {
-        hbonds = *lists + HBONDS;
+        hbonds = lists[HBONDS];
 
         for ( i = 0; i < n; ++i )
         {
@@ -560,7 +560,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     /* bond list */
     if ( N > 0 )
     {
-        bonds = *lists + BONDS;
+        bonds = lists[BONDS];
 
         for ( i = 0; i < N; ++i )
         {
@@ -586,7 +586,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
     /* hbonds list */
     if ( numH > 0 )
     {
-        hbonds = *lists + HBONDS;
+        hbonds = lists[HBONDS];
 
         for ( i = 0; i < n; ++i )
         {
@@ -653,7 +653,7 @@ void Validate_Lists( storage *workspace, reax_list **lists,
     if ( N > 0 )
     {
         flag = -1;
-        bonds = *lists + BONDS;
+        bonds = lists[BONDS];
         for ( i = 0; i < N - 1; ++i )
             if ( End_Index(i, bonds) >= Start_Index(i + 1, bonds) - 2 )
             {
@@ -686,7 +686,7 @@ void Validate_Lists( storage *workspace, reax_list **lists,
     if ( numH > 0 )
     {
         flag = -1;
-        hbonds = *lists + HBONDS;
+        hbonds = lists[HBONDS];
         for ( i = 0; i < numH - 1; ++i )
         {
             if ( Num_Entries(i, hbonds) >=
@@ -788,9 +788,9 @@ int Init_Forces( reax_system *system, control_params *control,
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
 
-    far_nbrs = *lists + FAR_NBRS;
-    bonds = *lists + BONDS;
-    hbonds = *lists + HBONDS;
+    far_nbrs = lists[FAR_NBRS];
+    bonds = lists[BONDS];
+    hbonds = lists[HBONDS];
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -1073,9 +1073,9 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
 
-    far_nbrs = *lists + FAR_NBRS;
-    bonds = *lists + BONDS;
-    hbonds = *lists + HBONDS;
+    far_nbrs = lists[FAR_NBRS];
+    bonds = lists[BONDS];
+    hbonds = lists[HBONDS];
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -1386,7 +1386,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
 
-    far_nbrs = *lists + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     *Htop = 0;
     //printf("Hcap: %d \n", system->Hcap);
     memset( hb_top, 0, sizeof(int) * system->Hcap );
@@ -1542,7 +1542,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
 
-    far_nbrs = *lists + FAR_NBRS;
+    far_nbrs = lists[FAR_NBRS];
     *Htop = 0;
     memset( hb_top, 0, sizeof(int) * system->local_cap );
     memset( bond_top, 0, sizeof(int) * system->total_cap );

@@ -555,7 +555,7 @@ void Cuda_Compute_Polarization_Energy( reax_system *system, simulation_data *dat
 
 
 void Cuda_NonBonded_Energy( reax_system *system, control_params *control, 
-        storage *workspace, simulation_data *data,  reax_list **lists,
+        storage *workspace, simulation_data *data, reax_list **lists,
         output_controls *out_control, bool isTabulated )
 {
     int blocks, rblocks, update_energy;
@@ -577,7 +577,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         k_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE, DEF_BLOCK_SIZE * (2 * sizeof(real) + sizeof(rvec)) >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *)control->d_control_params, 
-              *(dev_workspace), *(*dev_lists + FAR_NBRS), 
+              *(dev_workspace), *(dev_lists[FAR_NBRS]), 
               system->n, system->N, system->reax_param.num_atom_types, 
               spad, spad + 2 * system->N, (rvec *)(spad + 4 * system->N));
         cudaThreadSynchronize( );
@@ -588,7 +588,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         k_tabulated_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *)control->d_control_params, 
-              *(dev_workspace), *(*dev_lists + FAR_NBRS), 
+              *(dev_workspace), *(dev_lists[FAR_NBRS]), 
               d_LR, system->n, system->N,
               system->reax_param.num_atom_types, 
               data->step, data->prev_steps, 

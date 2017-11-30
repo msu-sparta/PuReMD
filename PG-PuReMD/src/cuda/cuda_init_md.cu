@@ -236,7 +236,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Estimate_Neighbors( system );
 
     Dev_Make_List( system->total_cap, system->total_far_nbrs,
-            TYP_FAR_NEIGHBOR, *dev_lists + FAR_NBRS );
+            TYP_FAR_NEIGHBOR, dev_lists[FAR_NBRS] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated far_nbrs: num_far=%d, space=%dMB\n",
@@ -264,7 +264,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     if ( control->hbond_cut > 0.0 &&  system->numH > 0 )
     {
-        Dev_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, *dev_lists + HBONDS );
+        Dev_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, dev_lists[HBONDS] );
         Cuda_Init_HBond_Indices( system );
 
 #if defined(DEBUG_FOCUS)
@@ -275,7 +275,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    Dev_Make_List( system->total_cap, system->total_bonds, TYP_BOND, *dev_lists + BONDS );
+    Dev_Make_List( system->total_cap, system->total_bonds, TYP_BOND, dev_lists[BONDS] );
     Cuda_Init_Bond_Indices( system );
 
 #if defined(DEBUG_FOCUS)

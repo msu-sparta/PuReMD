@@ -113,7 +113,7 @@ void Valence_Angles( reax_system *system, control_params *control,
     bond_data *pbond_ij, *pbond_jk, *pbond_jt;
     bond_order_data *bo_ij, *bo_jk, *bo_jt;
     reax_list *bonds = (*lists) + BONDS;
-    reax_list *thb_intrs =  (*lists) + THREE_BODIES;
+    reax_list *thb_intrs =  lists[THREE_BODIES];
 
 
     /* global parameters used in these calculations */

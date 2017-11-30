@@ -615,7 +615,7 @@ int Init_Lists( reax_system *system, control_params *control,
     //        Sort_Boundary_Atoms, Unpack_Exchange_Message, TRUE );
 
     num_nbrs = Estimate_NumNeighbors( system, lists );
-    Make_List( system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR, *lists + FAR_NBRS );
+    Make_List( system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated far_nbrs: num_far=%d, space=%dMB\n",
@@ -658,7 +658,7 @@ int Init_Lists( reax_system *system, control_params *control,
         // DANIEL, to make Mpi_Not_Gpu_Validate_Lists() not complain that max_hbonds is 0
         system->max_hbonds = total_hbonds * SAFER_ZONE;
 
-        Make_List( system->Hcap, total_hbonds, TYP_HBOND, *lists + HBONDS );
+        Make_List( system->Hcap, total_hbonds, TYP_HBOND, lists[HBONDS] );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: allocated hbonds: total_hbonds=%d, space=%dMB\n",
@@ -678,7 +678,7 @@ int Init_Lists( reax_system *system, control_params *control,
     }
     bond_cap = MAX( total_bonds * SAFE_ZONE, MIN_CAP * MIN_BONDS );
 
-    Make_List( system->total_cap, bond_cap, TYP_BOND, *lists + BONDS);
+    Make_List( system->total_cap, bond_cap, TYP_BOND, lists[BONDS] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated bonds: total_bonds=%d, space=%dMB\n",
@@ -688,7 +688,7 @@ int Init_Lists( reax_system *system, control_params *control,
 
     /* 3bodies list */
     cap_3body = MAX( num_3body * SAFE_ZONE, MIN_3BODIES );
-    Make_List(bond_cap, cap_3body, TYP_THREE_BODY, *lists + THREE_BODIES);
+    Make_List( bond_cap, cap_3body, TYP_THREE_BODY, lists[THREE_BODIES] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated 3-body list: num_3body=%d, space=%dMB\n",
@@ -697,13 +697,13 @@ int Init_Lists( reax_system *system, control_params *control,
 #endif
 
 #if defined(TEST_FORCES)
-    Make_List(system->total_cap, bond_cap * 8, TYP_DDELTA, (*lists) + DDELTAS);
+    Make_List( system->total_cap, bond_cap * 8, TYP_DDELTA, lists[DDELTAS] );
 
     fprintf( stderr, "p%d: allocated dDelta list: num_ddelta=%d space=%ldMB\n",
              system->my_rank, bond_cap * 30,
              bond_cap * 8 * sizeof(dDelta_data) / (1024 * 1024) );
 
-    Make_List( bond_cap, bond_cap * 50, TYP_DBO, (*lists) + DBOS);
+    Make_List( bond_cap, bond_cap * 50, TYP_DBO, lists[DBOS] );
 
     fprintf( stderr, "p%d: allocated dbond list: num_dbonds=%d space=%ldMB\n",
              system->my_rank, bond_cap * MAX_BONDS * 3,
