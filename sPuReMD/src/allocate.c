@@ -55,7 +55,7 @@ int PreAllocate_Space( reax_system *system, control_params *control,
 }
 
 
-void Reallocate_Neighbor_List( list *far_nbrs, int n, int num_intrs )
+void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 {
     Delete_List( TYP_FAR_NEIGHBOR, far_nbrs );
 
@@ -131,7 +131,7 @@ int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
 
 
 int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
-        list *hbonds )
+        reax_list *hbonds )
 {
     int i, num_hbonds;
 
@@ -168,7 +168,7 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
 }
 
 
-int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
+int Reallocate_HBonds_List( int n, int num_h, int *h_index, reax_list *hbonds )
 {
     int i;
     int *hb_top;
@@ -196,7 +196,7 @@ int Reallocate_HBonds_List(  int n, int num_h, int *h_index, list *hbonds )
 }
 
 
-int Allocate_Bond_List( int n, int *bond_top, list *bonds )
+int Allocate_Bond_List( int n, int *bond_top, reax_list *bonds )
 {
     int i, num_bonds;
 
@@ -227,7 +227,7 @@ int Allocate_Bond_List( int n, int *bond_top, list *bonds )
 }
 
 
-int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
+int Reallocate_Bonds_List( int n, reax_list *bonds, int *num_bonds, int *est_3body )
 {
     int i;
     int *bond_top;
@@ -256,7 +256,7 @@ int Reallocate_Bonds_List( int n, list *bonds, int *num_bonds, int *est_3body )
 }
 
 
-void Reallocate( reax_system *system, static_storage *workspace, list **lists,
+void Reallocate( reax_system *system, control_params *control, static_storage *workspace, reax_list **lists,
         int nbr_flag )
 {
     int i, j, k;
@@ -285,7 +285,7 @@ void Reallocate( reax_system *system, static_storage *workspace, list **lists,
         workspace->U = NULL;
     }
 
-    if ( realloc->hbonds > 0 )
+    if ( control->hb_cut > 0.0 && realloc->hbonds > 0 )
     {
         Reallocate_HBonds_List(system->N, workspace->num_H, workspace->hbond_index,
                                (*lists) + HBONDS );

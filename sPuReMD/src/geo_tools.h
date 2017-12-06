@@ -123,7 +123,7 @@ char Read_PDB( char*, reax_system*, control_params*,
 char Read_BGF( char*, reax_system*, control_params*,
         simulation_data*, static_storage* );
 
-char Write_PDB( reax_system*, list*, simulation_data*,
+char Write_PDB( reax_system*, reax_list*, simulation_data*,
         control_params*, static_storage*, output_controls* );
 
 #endif

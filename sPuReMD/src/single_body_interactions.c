@@ -27,7 +27,7 @@
 
 
 void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
     int i, j, pj, type_i, type_j;
@@ -45,7 +45,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij;
-    list *bonds = (*lists) + BONDS;
+    reax_list *bonds = (*lists) + BONDS;
 
     /* Initialize parameters */
     p_lp1 = system->reaxprm.gp.l[15];

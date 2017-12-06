@@ -507,7 +507,7 @@ void Init_Workspace( reax_system *system, control_params *control,
 
 void Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i, num_nbrs, num_bonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
@@ -531,6 +531,7 @@ void Init_Lists( reax_system *system, control_params *control,
     num_3body = 0;
     Estimate_Storage_Sizes( system, control, lists, &Htop,
             hb_top, bond_top, &num_3body );
+    num_3body = MAX( num_3body, MIN_BONDS );
 
     switch ( control->charge_method )
     {
@@ -570,7 +571,7 @@ void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     workspace->num_H = 0;
-    if ( control->hb_cut > 0 )
+    if ( control->hb_cut > 0.0 )
     {
         /* init H indexes */
         for ( i = 0; i < system->N; ++i )
@@ -586,8 +587,15 @@ void Init_Lists( reax_system *system, control_params *control,
             }
         }
 
-        Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
-                hb_top, (*lists) + HBONDS );
+        if ( workspace->num_H == 0 )
+        {
+            control->hb_cut = 0.0;
+        }
+        else
+        {
+            Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
+                    hb_top, (*lists) + HBONDS );
+        }
 
 #if defined(DEBUG_FOCUS)
         num_hbonds = hb_top[system->N - 1];
@@ -854,8 +862,9 @@ void Init_Out_Controls( reax_system *system, control_params *control,
 
 
 void Initialize( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists,
-        output_controls *out_control, evolve_function *Evolve )
+        simulation_data *data, static_storage *workspace, reax_list **lists,
+        output_controls *out_control, evolve_function *Evolve,
+        const int output_enabled )
 {
 #if defined(DEBUG)
     real start, end;
@@ -879,7 +888,10 @@ void Initialize( reax_system *system, control_params *control,
 
     Init_Lists( system, control, data, workspace, lists, out_control );
 
-    Init_Out_Controls( system, control, workspace, out_control );
+    if ( output_enabled == TRUE )
+    {
+        Init_Out_Controls( system, control, workspace, out_control );
+    }
 
     /* These are done in forces.c, only forces.c can see all those functions */
     Init_Bonded_Force_Functions( control );
@@ -1118,10 +1130,13 @@ void Finalize_Workspace( reax_system *system, control_params *control,
 }
 
 
-void Finalize_Lists( list **lists )
+void Finalize_Lists( control_params *control, reax_list **lists )
 {
     Delete_List( TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS );
-    Delete_List( TYP_HBOND, (*lists) + HBONDS );
+    if ( control->hb_cut > 0.0 )
+    {
+        Delete_List( TYP_HBOND, (*lists) + HBONDS );
+    }
     Delete_List( TYP_BOND, (*lists) + BONDS );
     Delete_List( TYP_THREE_BODY, (*lists) + THREE_BODIES );
 
@@ -1341,17 +1356,20 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
 
 
 void Finalize( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists,
-        output_controls *out_control )
+        simulation_data *data, static_storage *workspace, reax_list **lists,
+        output_controls *out_control, const int output_enabled )
 {
     if ( control->tabulate )
     {
         Finalize_LR_Lookup_Table( system, control );
     }
 
-    Finalize_Out_Controls( system, control, workspace, out_control );
+    if ( output_enabled == TRUE )
+    {
+        Finalize_Out_Controls( system, control, workspace, out_control );
+    }
 
-    Finalize_Lists( lists );
+    Finalize_Lists( control, lists );
 
     Finalize_Workspace( system, control, workspace );
 

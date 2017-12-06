@@ -115,11 +115,11 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
 
 
 void Reset_Neighbor_Lists( reax_system *system, control_params *control,
-                           static_storage *workspace, list **lists )
+                           static_storage *workspace, reax_list **lists )
 {
     int i, tmp;
-    list *bonds = (*lists) + BONDS;
-    list *hbonds = (*lists) + HBONDS;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *hbonds = (*lists) + HBONDS;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -145,7 +145,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
 
 
 void Reset( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists  )
+        simulation_data *data, static_storage *workspace, reax_list **lists  )
 {
     Reset_Atoms( system );
 

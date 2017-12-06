@@ -115,7 +115,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                   static_storage*, void* )) Write_Custom_Header;
     out_control->append_traj_frame =
         (int (*)( reax_system*, control_params*, simulation_data*,
-                  static_storage*, list **, void* )) Append_Custom_Frame;
+                  static_storage*, reax_list **, void* )) Append_Custom_Frame;
 
     strcpy( out_control->traj_title, "default_title" );
     out_control->atom_format = 0;
@@ -450,7 +450,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                               static_storage*, void* )) Write_Custom_Header;
                 out_control->append_traj_frame =
                     (int (*)(reax_system*, control_params*, simulation_data*,
-                             static_storage*, list **, void*)) Append_Custom_Frame;
+                             static_storage*, reax_list **, void*)) Append_Custom_Frame;
             }
             else if ( out_control->traj_format == 1 )
             {
@@ -459,7 +459,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                               static_storage*, void* )) Write_xyz_Header;
                 out_control->append_traj_frame =
                     (int (*)( reax_system*,  control_params*, simulation_data*,
-                              static_storage*, list **, void* )) Append_xyz_Frame;
+                              static_storage*, reax_list **, void* )) Append_xyz_Frame;
             }
         }
         else if ( strcmp(tmp[0], "traj_title") == 0 )

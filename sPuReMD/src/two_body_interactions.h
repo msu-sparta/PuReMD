@@ -25,10 +25,10 @@
 #include <mytypes.h>
 
 void Bond_Energy( reax_system*, control_params*, simulation_data*,
-                  static_storage*, list**, output_controls* );
+                  static_storage*, reax_list**, output_controls* );
 void vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
-                         static_storage*, list**, output_controls* );
+                         static_storage*, reax_list**, output_controls* );
 void LR_vdW_Coulomb( reax_system*, control_params*, int, int, real, LR_data* );
 void Tabulated_vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
-                                   static_storage*, list**, output_controls* );
+                                   static_storage*, reax_list**, output_controls* );
 #endif

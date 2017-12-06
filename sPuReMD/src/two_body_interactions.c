@@ -29,11 +29,11 @@
 
 void Bond_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i;
     real gp3, gp4, gp7, gp10, gp37, ebond_total;
-    list *bonds;
+    reax_list *bonds;
 
     bonds = (*lists) + BONDS;
     gp3 = system->reaxprm.gp.l[3];
@@ -168,11 +168,11 @@ void Bond_Energy( reax_system *system, control_params *control,
 
 void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i;
     real p_vdW1, p_vdW1i;
-    list *far_nbrs;
+    reax_list *far_nbrs;
     real e_vdW_total, e_ele_total;
 
     p_vdW1 = system->reaxprm.gp.l[28];
@@ -520,11 +520,11 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
 
 
 void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
     int steps, update_freq, update_energies;
-    list *far_nbrs;
+    reax_list *far_nbrs;
     real e_vdW_total, e_ele_total;
 
     far_nbrs = (*lists) + FAR_NBRS;

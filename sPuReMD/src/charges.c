@@ -1514,7 +1514,7 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
 static void Compute_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs )
+        const reax_list * const far_nbrs )
 {
     real time;
     sparse_matrix *Hptr;
@@ -1612,7 +1612,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //static void Compute_Preconditioner_EE( const reax_system * const system,
 //        const control_params * const control,
 //        simulation_data * const data, static_storage * const workspace,
-//        const list * const far_nbrs )
+//        const reax_list * const far_nbrs )
 //{
 //    int i, top;
 //    static real * ones = NULL, * x = NULL, * y = NULL;
@@ -1856,7 +1856,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 static void Compute_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs )
+        const reax_list * const far_nbrs )
 {
     real time;
     sparse_matrix *Hptr;
@@ -1958,7 +1958,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs )
+        const reax_list * const far_nbrs )
 {
     real time;
     sparse_matrix *Hptr;
@@ -2062,7 +2062,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 static void Setup_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs )
+        const reax_list * const far_nbrs )
 {
     int fillin;
     real time;
@@ -2207,7 +2207,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 static void Setup_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs )
+        const reax_list * const far_nbrs )
 {
     int fillin;
     real time;
@@ -2356,7 +2356,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs )
+        const reax_list * const far_nbrs )
 {
     int fillin;
     real time;
@@ -2561,7 +2561,7 @@ static void Calculate_Charges_EE( const reax_system * const system,
  */
 static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs, const output_controls * const out_control )
+        const reax_list * const far_nbrs, const output_controls * const out_control )
 {
     int iters;
 
@@ -2650,7 +2650,7 @@ static void QEq( reax_system * const system, control_params * const control,
  */
 static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs, const output_controls * const out_control )
+        const reax_list * const far_nbrs, const output_controls * const out_control )
 {
     int iters;
 
@@ -2722,7 +2722,7 @@ static void EE( reax_system * const system, control_params * const control,
  */
 static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs, const output_controls * const out_control )
+        const reax_list * const far_nbrs, const output_controls * const out_control )
 {
     int iters;
 
@@ -2784,7 +2784,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 void Compute_Charges( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const list * const far_nbrs, const output_controls * const out_control )
+        const reax_list * const far_nbrs, const output_controls * const out_control )
 {
 #if defined(DEBUG_FOCUS)
     char fname[200];

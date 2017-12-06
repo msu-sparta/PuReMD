@@ -25,36 +25,36 @@
 #include "mytypes.h"
 
 
-void Make_List( int, int, int, list* );
+void Make_List( int, int, int, reax_list* );
 
-void Delete_List( int, list* );
+void Delete_List( int, reax_list* );
 
 
-static inline int Num_Entries( int i, list* l )
+static inline int Num_Entries( int i, reax_list* l )
 {
     return l->end_index[i] - l->index[i];
 }
 
 
-static inline int Start_Index( int i, list *l )
+static inline int Start_Index( int i, reax_list *l )
 {
     return l->index[i];
 }
 
 
-static inline int End_Index( int i, list *l )
+static inline int End_Index( int i, reax_list *l )
 {
     return l->end_index[i];
 }
 
 
-static inline void Set_Start_Index( int i, int val, list *l )
+static inline void Set_Start_Index( int i, int val, reax_list *l )
 {
     l->index[i] = val;
 }
 
 
-static inline void Set_End_Index( int i, int val, list *l )
+static inline void Set_End_Index( int i, int val, reax_list *l )
 {
     l->end_index[i] = val;
 }

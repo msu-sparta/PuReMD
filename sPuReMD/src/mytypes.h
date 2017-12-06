@@ -80,7 +80,9 @@
   #define NAN_REAL(a) (0)
 #endif
 
-#define PI            3.14159265
+#if !defined(PI)
+  #define PI            3.14159265
+#endif
 #define C_ele          332.06371
 //#define K_B         503.398008   // kcal/mol/K
 #define K_B             0.831687   // amu A^2 / ps^2 / K
@@ -993,7 +995,7 @@ typedef struct
         /* hydrogen bond interaction list */
         hbond_data *hbond_list;
     } select;
-} list;
+} reax_list;
 
 
 typedef struct
@@ -1025,7 +1027,7 @@ typedef struct
     /* trajectory output function pointer definitions */
     int (* write_header)( reax_system*, control_params*, static_storage*, void* );
     int (* append_traj_frame)(reax_system*, control_params*,
-            simulation_data*, static_storage*, list **, void* );
+            simulation_data*, static_storage*, reax_list **, void* );
     int (* write)( FILE *, const char *, ... );
 
 #ifdef TEST_ENERGY
@@ -1116,11 +1118,11 @@ typedef struct
 
 /* Function pointer definitions */
 typedef void (*interaction_function)(reax_system*, control_params*,
-        simulation_data*, static_storage*, list**, output_controls*);
+        simulation_data*, static_storage*, reax_list**, output_controls*);
 
 typedef void (*evolve_function)(reax_system*, control_params*,
         simulation_data*, static_storage*,
-        list**, output_controls*);
+        reax_list**, output_controls*);
 
 
 /* Global variables */

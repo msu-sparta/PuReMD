@@ -142,7 +142,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
  * A: stored in CSR
  * A_t: stored in CSR
  */
-void Transpose( const sparse_matrix * const A, sparse_matrix const *A_t )
+void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
 {
     unsigned int i, j, pj, *A_t_top;
 

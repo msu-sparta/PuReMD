@@ -8,8 +8,9 @@ AC_INIT([sPuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 # Enable silent build rules by default.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERBOSITY],[1])])
-#LT_PREREQ([2.2])
-#LT_INIT([dlopen])
+AM_PROG_AR
+LT_PREREQ([2.2])
+LT_INIT([dlopen])
 
 AC_LANG([C])
 

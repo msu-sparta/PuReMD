@@ -33,23 +33,23 @@ typedef struct
 } dbond_coefficients;
 
 #ifdef TEST_FORCES
-void Get_dBO( reax_system*, list**, int, int, real, rvec* );
-void Get_dBOpinpi2( reax_system*, list**, int, int, real, real, rvec*, rvec* );
+void Get_dBO( reax_system*, reax_list**, int, int, real, rvec* );
+void Get_dBOpinpi2( reax_system*, reax_list**, int, int, real, real, rvec*, rvec* );
 
-void Add_dBO( reax_system*, list**, int, int, real, rvec* );
-void Add_dBOpinpi2( reax_system*, list**, int, int, real, real, rvec*, rvec* );
+void Add_dBO( reax_system*, reax_list**, int, int, real, rvec* );
+void Add_dBOpinpi2( reax_system*, reax_list**, int, int, real, real, rvec*, rvec* );
 
-void Add_dBO_to_Forces( reax_system*, list**, int, int, real );
-void Add_dBOpinpi2_to_Forces( reax_system*, list**, int, int, real, real );
+void Add_dBO_to_Forces( reax_system*, reax_list**, int, int, real );
+void Add_dBOpinpi2_to_Forces( reax_system*, reax_list**, int, int, real, real );
 
-void Add_dDelta( reax_system*, list**, int, real, rvec* );
-void Add_dDelta_to_Forces( reax_system *, list**, int, real );
+void Add_dDelta( reax_system*, reax_list**, int, real, rvec* );
+void Add_dDelta_to_Forces( reax_system *, reax_list**, int, real );
 #endif
 
 void Add_dBond_to_Forces( int, int, reax_system*, simulation_data*,
-                          static_storage*, list** );
+                          static_storage*, reax_list** );
 void Add_dBond_to_Forces_NPT( int, int, reax_system*, simulation_data*,
-                              static_storage*, list** );
+                              static_storage*, reax_list** );
 void Calculate_Bond_Orders( reax_system*, control_params*, simulation_data*,
-                            static_storage*, list**, output_controls* );
+                            static_storage*, reax_list**, output_controls* );
 #endif

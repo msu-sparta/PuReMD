@@ -154,10 +154,10 @@ real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
 
 void Four_Body_Interactions( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     real p_tor2, p_tor3, p_tor4, p_cot2;
-    list *bonds, *thb_intrs;
+    reax_list *bonds, *thb_intrs;
     real e_tor_total, e_con_total;
 
     p_tor2 = system->reaxprm.gp.l[23];

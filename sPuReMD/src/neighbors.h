@@ -25,8 +25,8 @@
 #include "mytypes.h"
 
 void Generate_Neighbor_Lists( reax_system*, control_params*, simulation_data*,
-                              static_storage*, list**, output_controls* );
+                              static_storage*, reax_list**, output_controls* );
 
 int Estimate_NumNeighbors( reax_system*, control_params*,
-                           static_storage*, list** );
+                           static_storage*, reax_list** );
 #endif

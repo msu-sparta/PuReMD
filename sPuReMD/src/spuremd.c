@@ -36,9 +36,14 @@
 #include "vector.h"
 
 
+static static_storage workspace;
+static reax_list *lists;
+static output_controls out_control;
+
+
 static void Post_Evolve( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        list ** const lists, output_controls * const out_control )
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i;
     rvec diff, cross;
@@ -90,12 +95,14 @@ void static Read_System( char * const geo_file,
 
     if ( (ffield = fopen( ffield_file, "r" )) == NULL )
     {
-        fprintf( stderr, "Error opening the ffield file!\n" );
+        fprintf( stderr, "[ERROR] Error opening the ffield file!\n" );
+        fprintf( stderr, "    [INFO] (%s)\n", ffield_file );
         exit( FILE_NOT_FOUND );
     }
     if ( (ctrl = fopen( control_file, "r" )) == NULL )
     {
-        fprintf( stderr, "Error opening the ffield file!\n" );
+        fprintf( stderr, "[ERROR] Error opening the ffield file!\n" );
+        fprintf( stderr, "    [INFO] (%s)\n", control_file );
         exit( FILE_NOT_FOUND );
     }
 
@@ -130,7 +137,7 @@ void static Read_System( char * const geo_file,
     }
     else
     {
-        fprintf( stderr, "unknown geo file format. terminating!\n" );
+        fprintf( stderr, "[ERROR] unknown geo file format. terminating!\n" );
         exit( INVALID_GEO );
     }
 
@@ -144,84 +151,93 @@ void static Read_System( char * const geo_file,
 }
 
 
-static void usage( char* argv[] )
+int Setup( char ** args, reax_system * const system, control_params * const control,
+        simulation_data * const data )
 {
-    fprintf(stderr, "usage: ./%s geometry ffield control\n", argv[0]);
+    lists = (reax_list*) malloc( sizeof(reax_list) * LIST_N );
+
+    Read_System( args[0], args[1], args[2], system, control,
+            data, &workspace, &out_control );
+
+    return SUCCESS;
 }
 
 
-int main( int argc, char* argv[] )
+int Run( reax_system * const system, control_params * const control, simulation_data * const data,
+      const int output_enabled )
 {
-    reax_system system;
-    control_params control;
-    simulation_data data;
-    static_storage workspace;
-    list *lists;
-    output_controls out_control;
-    evolve_function Evolve;
     int steps;
+    evolve_function Evolve;
 
-    if ( argc != 4 )
-    {
-        usage(argv);
-        exit( INVALID_INPUT );
-    }
-
-    lists = (list*) malloc( sizeof(list) * LIST_N );
-
-    Read_System( argv[1], argv[2], argv[3], &system, &control,
-            &data, &workspace, &out_control );
-
-    Initialize( &system, &control, &data, &workspace, &lists,
-            &out_control, &Evolve );
+    Initialize( system, control, data, &workspace, &lists,
+            &out_control, &Evolve, output_enabled );
 
     /* compute f_0 */
     //if( control.restart == 0 ) {
-    Reset( &system, &control, &data, &workspace, &lists );
-    Generate_Neighbor_Lists( &system, &control, &data, &workspace, 
+    Reset( system, control, data, &workspace, &lists );
+    Generate_Neighbor_Lists( system, control, data, &workspace, 
             &lists, &out_control );
 
     //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
-    Compute_Forces(&system, &control, &data, &workspace, &lists, &out_control);
-    Compute_Kinetic_Energy( &system, &data );
-    Output_Results(&system, &control, &data, &workspace, &lists, &out_control);
-    ++data.step;
+    Compute_Forces( system, control, data, &workspace, &lists, &out_control );
+    Compute_Kinetic_Energy( system, data );
+    if ( output_enabled == TRUE )
+    {
+        Output_Results( system, control, data, &workspace, &lists, &out_control );
+    }
+    ++data->step;
     //}
     //
     
-    for ( ; data.step <= control.nsteps; data.step++ )
+    for ( ; data->step <= control->nsteps; data->step++ )
     {
-        if ( control.T_mode )
+        if ( control->T_mode )
         {
-            Temperature_Control( &control, &data, &out_control );
+            Temperature_Control( control, data, &out_control );
         }
-        Evolve( &system, &control, &data, &workspace, &lists, &out_control );
-        Post_Evolve( &system, &control, &data, &workspace, &lists, &out_control );
-        Output_Results( &system, &control, &data, &workspace, &lists, &out_control );
-        Analysis( &system, &control, &data, &workspace, &lists, &out_control );
 
-        steps = data.step - data.prev_steps;
-        if ( steps && out_control.restart_freq &&
-                steps % out_control.restart_freq == 0 )
+        Evolve( system, control, data, &workspace, &lists, &out_control );
+        Post_Evolve( system, control, data, &workspace, &lists, &out_control );
+
+        if ( output_enabled == TRUE )
         {
-            Write_Restart( &system, &control, &data, &workspace, &out_control );
+            Output_Results( system, control, data, &workspace, &lists, &out_control );
+            Analysis( system, control, data, &workspace, &lists, &out_control );
+        }
+
+        steps = data->step - data->prev_steps;
+        if ( steps && out_control.restart_freq &&
+                steps % out_control.restart_freq == 0 &&
+                output_enabled == TRUE )
+        {
+            Write_Restart( system, control, data, &workspace, &out_control );
         }
     }
 
-    if ( out_control.write_steps > 0 )
+    if ( out_control.write_steps > 0 && output_enabled == TRUE )
     {
         fclose( out_control.trj );
-        Write_PDB( &system, &(lists[BONDS]), &data, &control, &workspace, &out_control );
+        Write_PDB( system, &(lists[BONDS]), data, control, &workspace, &out_control );
     }
 
-    data.timing.end = Get_Time( );
-    data.timing.elapsed = Get_Timing_Info( data.timing.start );
-    fprintf( out_control.log, "total: %.2f secs\n", data.timing.elapsed );
+    data->timing.end = Get_Time( );
+    data->timing.elapsed = Get_Timing_Info( data->timing.start );
+    if ( output_enabled == TRUE )
+    {
+        fprintf( out_control.log, "total: %.2f secs\n", data->timing.elapsed );
+    }
 
-    Finalize( &system, &control, &data, &workspace, &lists,
-            &out_control );
+    return SUCCESS;
+}
+
+
+int Cleanup( reax_system * const system, control_params * const control,
+        simulation_data * const data, const int output_enabled )
+{
+    Finalize( system, control, data, &workspace, &lists, &out_control,
+           output_enabled );
 
     sfree( lists, "main::lists" );
 
-    return 0;
+    return SUCCESS;
 }

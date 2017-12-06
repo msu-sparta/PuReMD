@@ -37,7 +37,7 @@
 
 void Velocity_Verlet_NVE(reax_system* system, control_params* control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i, steps, renbr;
     real inv_m, dt, dt_sqr;
@@ -68,7 +68,7 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
     fprintf( stderr, "verlet1 - ");
 #endif
 
-    Reallocate( system, workspace, lists, renbr );
+    Reallocate( system, control, workspace, lists, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
     {
@@ -92,7 +92,7 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
 
 
 void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* control,
-        simulation_data *data, static_storage *workspace, list **lists,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
     int i, itr, steps, renbr;
@@ -130,7 +130,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
     fprintf( stderr, "verlet1 - " );
 #endif
 
-    Reallocate( system, workspace, lists, renbr );
+    Reallocate( system, control, workspace, lists, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
     {
@@ -209,7 +209,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
         control_params* control,
         simulation_data *data,
         static_storage *workspace,
-        list **lists,
+        reax_list **lists,
         output_controls *out_control )
 {
     int i, steps, renbr;
@@ -248,7 +248,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     fprintf( stderr, "verlet1 - " );
 #endif
 
-    Reallocate( system, workspace, lists, renbr );
+    Reallocate( system, control, workspace, lists, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
     {
@@ -324,7 +324,7 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
         control_params* control,
         simulation_data *data,
         static_storage *workspace,
-        list **lists,
+        reax_list **lists,
         output_controls *out_control )
 {
     int i, d, steps, renbr;
@@ -363,7 +363,7 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
     fprintf( stderr, "verlet1 - " );
 #endif
 
-    Reallocate( system, workspace, lists, renbr );
+    Reallocate( system, control, workspace, lists, renbr );
     Reset( system, control, data, workspace, lists );
     if ( renbr )
     {
@@ -450,7 +450,7 @@ void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
                                      control_params* control,
                                      simulation_data *data,
                                      static_storage *workspace,
-                                     list **lists,
+                                     reax_list **lists,
                                      output_controls *out_control )
 {
     int i;
@@ -524,7 +524,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
                                     control_params* control,
                                     simulation_data *data,
                                     static_storage *workspace,
-                                    list **lists,
+                                    reax_list **lists,
                                     output_controls *out_control )
 {
     int i, itr;
@@ -701,7 +701,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
                                     control_params* control,
                                     simulation_data *data,
                                     static_storage *workspace,
-                                    list **lists,
+                                    reax_list **lists,
                                     output_controls *out_control
                                   )
 {
@@ -739,7 +739,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     fprintf(stderr, "step%d: verlet1 done\n", data->step);
 #endif
 
-    Reallocate( system, workspace, lists, renbr );
+    Reallocate( system, control, workspace, lists, renbr );
     Reset( system, control, data, workspace, lists );
 
     if ( renbr )

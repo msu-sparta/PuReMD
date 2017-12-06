@@ -59,11 +59,11 @@ typedef struct
 
 // copy bond list into old bond list
 void Copy_Bond_List( reax_system *system, control_params *control,
-                     list **lists )
+                     reax_list **lists )
 {
     int i, j, top_old;
-    list *new_bonds = (*lists) + BONDS;
-    list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = (*lists) + BONDS;
+    reax_list *old_bonds = (*lists) + OLD_BONDS;
 
     for ( top_old = 0, i = 0; i < system->N; ++i )
     {
@@ -89,11 +89,11 @@ void Copy_Bond_List( reax_system *system, control_params *control,
 
 
 // ASSUMPTION: Bond lists are sorted
-int Compare_Bond_Lists( int atom, control_params *control, list **lists )
+int Compare_Bond_Lists( int atom, control_params *control, reax_list **lists )
 {
     int oldp, newp;
-    list *new_bonds = (*lists) + BONDS;
-    list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = (*lists) + BONDS;
+    reax_list *old_bonds = (*lists) + OLD_BONDS;
 
     /*fprintf( stdout, "\n%d\nold_bonds:", atom );
       for( oldp = Start_Index( atom, old_bonds );
@@ -168,7 +168,7 @@ int Compare_Bond_Lists( int atom, control_params *control, list **lists )
 
 
 void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
-                   control_params *control, list *bonds, int print,
+                   control_params *control, reax_list *bonds, int print,
                    FILE *fout )
 {
     int i, start, end;
@@ -219,15 +219,15 @@ void Print_Molecule( reax_system *system, molecule *m, int mode, char *s )
 
 void Analyze_Molecules( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, FILE *fout )
+        reax_list **lists, FILE *fout )
 {
     int atom, i, j, k, l, flag;
     int *mark = workspace->mark;
     int *old_mark = workspace->old_mark;
     int num_old, num_new;
     char s[MAX_MOLECULE_SIZE * 10];
-    list *new_bonds = (*lists) + BONDS;
-    list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = (*lists) + BONDS;
+    reax_list *old_bonds = (*lists) + OLD_BONDS;
     molecule old_molecules[20], new_molecules[20];
 
     fprintf( fout, "molecular analysis @ %d\n", data->step );
@@ -314,8 +314,8 @@ void Analyze_Molecules( reax_system *system, control_params *control,
 
 
 void Report_Bond_Change( reax_system *system, control_params *control,
-                         static_storage *workspace,  list *old_bonds,
-                         list *new_bonds, int a1, int a2, int flag,
+                         static_storage *workspace,  reax_list *old_bonds,
+                         reax_list *new_bonds, int a1, int a2, int flag,
                          FILE *fout )
 {
     int i;
@@ -385,8 +385,8 @@ void Report_Bond_Change( reax_system *system, control_params *control,
 
 /* ASSUMPTION: Bond lists are sorted */
 void Compare_Bonding( int atom, reax_system *system, control_params *control,
-                      static_storage *workspace, list *old_bonds,
-                      list *new_bonds, FILE *fout )
+                      static_storage *workspace, reax_list *old_bonds,
+                      reax_list *new_bonds, FILE *fout )
 {
     int oldp, newp;
 
@@ -503,7 +503,7 @@ void Compare_Bonding( int atom, reax_system *system, control_params *control,
 
 
 void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
-                  control_params *control, list *bonds, int ignore )
+                  control_params *control, reax_list *bonds, int ignore )
 {
     int i, t, start, end, nbr;
     real bo;
@@ -529,7 +529,7 @@ void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
 
 void Analyze_Fragments( reax_system *system, control_params *control,
                         simulation_data *data, static_storage *workspace,
-                        list **lists, FILE *fout, int ignore )
+                        reax_list **lists, FILE *fout, int ignore )
 {
     int  atom, i, flag;
     int  *mark = workspace->mark;
@@ -538,8 +538,8 @@ void Analyze_Fragments( reax_system *system, control_params *control,
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
     int  fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
-    list *new_bonds = (*lists) + BONDS;
-    //list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = (*lists) + BONDS;
+    //reax_list *old_bonds = (*lists) + OLD_BONDS;
 
     /* fragment analysis */
     fprintf( fout, "step%d fragments\n", data->step );
@@ -594,14 +594,14 @@ void Analyze_Fragments( reax_system *system, control_params *control,
 
 void Analyze_Silica( reax_system *system, control_params *control,
                      simulation_data *data, static_storage *workspace,
-                     list **lists, FILE *fout )
+                     reax_list **lists, FILE *fout )
 {
     int atom, i, j, k, pi, pk, pk_j, newp, coord;
     int O_SI_O_count, SI_O_SI_count;
     int si_coord[10], ox_coord[10];
     real O_SI_O, SI_O_SI;
-    list *new_bonds = (*lists) + BONDS;
-    list *thb_intrs =  (*lists) + THREE_BODIES;
+    reax_list *new_bonds = (*lists) + BONDS;
+    reax_list *thb_intrs =  (*lists) + THREE_BODIES;
 
     Analyze_Fragments( system, control, data, workspace, lists, fout, 0 );
 
@@ -721,7 +721,7 @@ int Get_Type_of_Molecule( molecule *m )
 
 void Calculate_Dipole_Moment( reax_system *system, control_params *control,
                               simulation_data *data, static_storage *workspace,
-                              list *bonds, FILE *fout )
+                              reax_list *bonds, FILE *fout )
 {
     int i, atom, count;
     molecule m;
@@ -936,7 +936,7 @@ void Calculate_Density_Slice( reax_system *system, simulation_data *data,
 
 void Analysis( reax_system *system, control_params *control,
                simulation_data *data, static_storage *workspace,
-               list **lists, output_controls *out_control )
+               reax_list **lists, output_controls *out_control )
 {
     int steps;
 

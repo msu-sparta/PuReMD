@@ -25,6 +25,6 @@
 #include "mytypes.h"
 
 void Four_Body_Interactions( reax_system*, control_params*, simulation_data*,
-                             static_storage*, list**, output_controls* );
+                             static_storage*, reax_list**, output_controls* );
 
 #endif

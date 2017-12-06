@@ -47,7 +47,7 @@ typedef enum
 
 void Dummy_Interaction( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
 }
 
@@ -77,7 +77,7 @@ void Init_Bonded_Force_Functions( control_params *control )
 
 void Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
 
     int i;
@@ -133,7 +133,7 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
 
 void Compute_NonBonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list** lists, output_controls *out_control )
+        reax_list** lists, output_controls *out_control )
 {
     real t_start, t_elapsed;
 
@@ -177,10 +177,10 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 /* This version of Compute_Total_Force computes forces from coefficients
    accumulated by all interaction functions. Saves enormous time & space! */
 void Compute_Total_Force( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists )
+        simulation_data *data, static_storage *workspace, reax_list **lists )
 {
     int i;
-    list *bonds;
+    reax_list *bonds;
 
     bonds = (*lists) + BONDS;
 
@@ -230,11 +230,11 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 }
 
 
-void Validate_Lists( static_storage *workspace, list **lists, int step, int n,
+void Validate_Lists( static_storage *workspace, reax_list **lists, int step, int n,
         int Hmax, int Htop, int num_bonds, int num_hbonds )
 {
     int i, flag;
-    list *bonds, *hbonds;
+    reax_list *bonds, *hbonds;
 
     bonds = *lists + BONDS;
     hbonds = *lists + HBONDS;
@@ -439,7 +439,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 
 
 static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
-        control_params *control, list *far_nbrs,
+        control_params *control, reax_list *far_nbrs,
         sparse_matrix * H, sparse_matrix * H_sp,
         int * Htop, int * H_sp_top )
 {
@@ -610,7 +610,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
 void Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -623,7 +623,7 @@ void Init_Forces( reax_system *system, control_params *control,
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
     sparse_matrix *H, *H_sp;
-    list *far_nbrs, *bonds, *hbonds;
+    reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
@@ -922,7 +922,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
 void Init_Forces_Tab( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -935,7 +935,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
     sparse_matrix *H, *H_sp;
-    list *far_nbrs, *bonds, *hbonds;
+    reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
@@ -1201,7 +1201,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
 
 void Estimate_Storage_Sizes( reax_system *system, control_params *control,
-        list **lists, int *Htop, int *hb_top, int *bond_top, int *num_3body )
+        reax_list **lists, int *Htop, int *hb_top, int *bond_top, int *num_3body )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1210,7 +1210,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
     real r_ij;
     real C12, C34, C56;
     real BO, BO_s, BO_pi, BO_pi2;
-    list *far_nbrs;
+    reax_list *far_nbrs;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
@@ -1304,7 +1304,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
 
 void Compute_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list** lists, output_controls *out_control )
+        reax_list** lists, output_controls *out_control )
 {
     real t_start, t_elapsed;
 

@@ -31,19 +31,19 @@
 #ifdef TEST_FORCES
 void Dummy_Printer( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
 }
 
 
 void Print_Bond_Orders( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int  i, pj, pk;
     bond_order_data *bo_ij;
-    list *bonds = (*lists) + BONDS;
-    list *dBOs  = (*lists) + DBO;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *dBOs  = (*lists) + DBO;
     dbond_data *dbo_k;
 
     /* bond orders */
@@ -110,7 +110,7 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
 
 void Print_Bond_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i;
 
@@ -128,7 +128,7 @@ void Print_Bond_Forces( reax_system *system, control_params *control,
 
 void Print_LonePair_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i;
 
@@ -147,7 +147,7 @@ void Print_LonePair_Forces( reax_system *system, control_params *control,
 
 
 void Print_OverUnderCoor_Forces( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
     int i;
@@ -187,7 +187,7 @@ void Print_OverUnderCoor_Forces( reax_system *system, control_params *control,
 
 void Print_Three_Body_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int j;
 
@@ -245,7 +245,7 @@ void Print_Three_Body_Forces( reax_system *system, control_params *control,
 
 
 void Print_Hydrogen_Bond_Forces( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, list **lists,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
     int j;
@@ -266,7 +266,7 @@ void Print_Hydrogen_Bond_Forces( reax_system *system, control_params *control,
 
 void Print_Four_Body_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int j;
 
@@ -304,7 +304,7 @@ void Print_Four_Body_Forces( reax_system *system, control_params *control,
 
 void Print_vdW_Coulomb_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int  i;
 
@@ -343,7 +343,7 @@ void Print_vdW_Coulomb_Forces( reax_system *system, control_params *control,
 
 void Compare_Total_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i;
 
@@ -399,12 +399,12 @@ void Init_Force_Test_Functions( )
 
 /* near nbrs contain both i-j, j-i nbrhood info */
 void Print_Near_Neighbors( reax_system *system, control_params *control,
-        static_storage *workspace, list **lists )
+        static_storage *workspace, reax_list **lists )
 {
     int i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
-    list *near_nbrs = &((*lists)[NEAR_NBRS]);
+    reax_list *near_nbrs = &((*lists)[NEAR_NBRS]);
 
     sprintf( fname, "%s.near_nbrs", control->sim_name );
     fout = fopen( fname, "w" );
@@ -433,12 +433,12 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
 
 /* near nbrs contain both i-j, j-i nbrhood info */
 void Print_Near_Neighbors2( reax_system *system, control_params *control,
-        static_storage *workspace, list **lists )
+        static_storage *workspace, reax_list **lists )
 {
     int i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
-    list *near_nbrs = &((*lists)[NEAR_NBRS]);
+    reax_list *near_nbrs = &((*lists)[NEAR_NBRS]);
 
     sprintf( fname, "%s.near_nbrs_lgj", control->sim_name );
     fout = fopen( fname, "w" );
@@ -468,12 +468,12 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
 
 /* far nbrs contain only i-j nbrhood info, no j-i. */
 void Print_Far_Neighbors( reax_system *system, control_params *control,
-        static_storage *workspace, list **lists )
+        static_storage *workspace, reax_list **lists )
 {
     int i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
-    list *far_nbrs = &((*lists)[FAR_NBRS]);
+    reax_list *far_nbrs = &((*lists)[FAR_NBRS]);
 
     sprintf( fname, "%s.far_nbrs", control->sim_name );
     fout = fopen( fname, "w" );
@@ -513,12 +513,12 @@ int fn_qsort_intcmp( const void *a, const void *b )
 
 
 void Print_Far_Neighbors2( reax_system *system, control_params *control,
-        static_storage *workspace, list **lists )
+        static_storage *workspace, reax_list **lists )
 {
     int i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
-    list *far_nbrs = &((*lists)[FAR_NBRS]);
+    reax_list *far_nbrs = &((*lists)[FAR_NBRS]);
 
     sprintf( fname, "%s.far_nbrs_lgj", control->sim_name );
     fout = fopen( fname, "w" );
@@ -548,7 +548,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
 
 void Print_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i;
 #if !defined(TEST_FORCES)
@@ -575,7 +575,7 @@ void Print_Total_Force( reax_system *system, control_params *control,
 
 void Output_Results( reax_system *system, control_params *control,
     simulation_data *data, static_storage *workspace,
-    list **lists, output_controls *out_control )
+    reax_list **lists, output_controls *out_control )
 {
     int i, type_i;
     real e_pol, q, f_update;
@@ -937,7 +937,7 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
 }
 
 
-void Print_Bonds( reax_system *system, list *bonds, char *fname )
+void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
 {
     int i, pj;
     bond_data *pbond;
@@ -962,7 +962,7 @@ void Print_Bonds( reax_system *system, list *bonds, char *fname )
 }
 
 
-void Print_Bond_List2( reax_system *system, list *bonds, char *fname )
+void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 {
     int i, j, id_i, id_j, nbr, pj;
     FILE *f = fopen( fname, "w" );

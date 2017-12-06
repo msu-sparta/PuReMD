@@ -164,7 +164,7 @@ int Write_Custom_Header( reax_system *system, control_params *control,
 
 int Append_Custom_Frame( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i, j, pi, pk, pk_j;
     int write_atoms, write_bonds, write_angles;
@@ -172,8 +172,8 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     int frame_globals_len, num_bonds, num_thb_intrs;
     real P;
     char buffer[2048];
-    list *bonds = (*lists) + BONDS;
-    list *thb_intrs =  (*lists) + THREE_BODIES;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *thb_intrs =  (*lists) + THREE_BODIES;
     bond_data *bo_ij;
 
     /* IMPORTANT: This whole part will go to init_trj after finalized! */
@@ -534,7 +534,7 @@ int Write_xyz_Header( reax_system *system, control_params *control,
 
 int Append_xyz_Frame( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i;
 

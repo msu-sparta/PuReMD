@@ -24,7 +24,7 @@
 #include "tool_box.h"
 
 
-void Make_List( int n, int total_intrs, int type, list* l )
+void Make_List( int n, int total_intrs, int type, reax_list* l )
 {
     l->n = n;
     l->total_intrs = total_intrs;
@@ -89,16 +89,10 @@ void Make_List( int n, int total_intrs, int type, list* l )
 }
 
 
-void Delete_List( int type, list* l )
+void Delete_List( int type, reax_list* l )
 {
-    if ( l->index != NULL )
-    {
-        sfree( l->index, "Delete_List::l->index" );
-    }
-    if ( l->end_index != NULL )
-    {
-        sfree( l->end_index, "Delete_List::l->end_index" );
-    }
+    sfree( l->index, "Delete_List::l->index" );
+    sfree( l->end_index, "Delete_List::l->end_index" );
 
     switch ( type )
     {

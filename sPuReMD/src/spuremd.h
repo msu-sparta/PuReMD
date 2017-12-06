@@ -19,18 +19,20 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __INIT_MD_H_
-#define __INIT_MD_H_
+#ifndef __SPUREMD_H_
+#define __SPUREMD_H_
 
 #include "mytypes.h"
 
 
-void Initialize( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls*, evolve_function*,
-        const int );
+int Setup( char **, reax_system * const, control_params * const,
+        simulation_data * const );
 
-void Finalize( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls*, const int );
+int Run( reax_system * const, control_params * const,
+        simulation_data * const, const int );
+
+int Cleanup( reax_system * const, control_params * const,
+        simulation_data * const, const int );
 
 
 #endif

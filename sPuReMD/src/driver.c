@@ -1,3 +1,4 @@
+
 /*----------------------------------------------------------------------
   SerialReax - Reax Force Field Simulator
 
@@ -19,18 +20,34 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __INIT_MD_H_
-#define __INIT_MD_H_
-
 #include "mytypes.h"
 
-
-void Initialize( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls*, evolve_function*,
-        const int );
-
-void Finalize( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls*, const int );
+#include "spuremd.h"
 
 
-#endif
+static void usage( char * argv[] )
+{
+    fprintf( stderr, "usage: ./%s geometry ffield control\n", argv[0] );
+}
+
+
+int main( int argc, char* argv[] )
+{
+    reax_system system;
+    control_params control;
+    simulation_data data;
+
+    if ( argc != 4 )
+    {
+        usage( argv );
+        exit( INVALID_INPUT );
+    }
+
+    Setup( argv + 1, &system, &control, &data );
+
+    Run( &system, &control, &data, TRUE );
+
+    Cleanup( &system, &control, &data, TRUE );
+
+    return 0;
+}

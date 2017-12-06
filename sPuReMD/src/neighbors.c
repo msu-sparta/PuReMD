@@ -54,7 +54,7 @@ static inline real DistSqr_to_CP( rvec cp, rvec x )
 
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int i, j, k, l, m, itr;
     int x, y, z;
@@ -64,7 +64,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     ivec *nbrs;
     rvec *nbrs_cp;
     grid *g;
-    list *far_nbrs;
+    reax_list *far_nbrs;
     far_neighbor_data *nbr_data;
     real t_start, t_elapsed;
 
@@ -174,7 +174,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
 
 int Estimate_NumNeighbors( reax_system *system, control_params *control,
-                           static_storage *workspace, list **lists )
+                           static_storage *workspace, reax_list **lists )
 {
     int  i, j, k, l, m, itr;
     int  x, y, z;
@@ -349,7 +349,7 @@ static inline int can_Bond( static_storage *workspace, int atom1, int atom2 )
 
 
 /* check if atom2 is on atom1's near neighbor list */
-static inline int is_Near_Neighbor( list *near_nbrs, int atom1, int atom2 )
+static inline int is_Near_Neighbor( reax_list *near_nbrs, int atom1, int atom2 )
 {
     int i;
 
@@ -367,7 +367,7 @@ static inline int is_Near_Neighbor( list *near_nbrs, int atom1, int atom2 )
 
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                               simulation_data *data, static_storage *workspace,
-                              list **lists, output_controls *out_control )
+                              reax_list **lists, output_controls *out_control )
 {
     int  i, j, k;
     int  x, y, z;
@@ -377,9 +377,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     int   c, count;
     int   grid_top;
     grid *g = &( system->g );
-    list *far_nbrs = (*lists) + FAR_NBRS;
+    reax_list *far_nbrs = (*lists) + FAR_NBRS;
     //int   hb_type1, hb_type2;
-    //list *hbonds = (*lists) + HBOND;
+    //reax_list *hbonds = (*lists) + HBOND;
     //int   top_hbond1, top_hbond2;
     get_far_neighbors_function Get_Far_Neighbors;
     far_neighbor_data new_nbrs[125];
@@ -617,7 +617,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     int  i, j, k, l, m, itr;
     int  x, y, z;
@@ -627,7 +627,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     ivec *nbrs;
     rvec *nbrs_cp;
     grid *g;
-    list *far_nbrs;
+    reax_list *far_nbrs;
     get_far_neighbors_function Get_Far_Neighbors;
     far_neighbor_data new_nbrs[125];
 

@@ -25,21 +25,21 @@
 #include "mytypes.h"
 
 void Analysis( reax_system*, control_params*, simulation_data*,
-               static_storage*, list**, output_controls* );
+               static_storage*, reax_list**, output_controls* );
 
-//void Copy_Bond_List( reax_system*, control_params*, list** );
+//void Copy_Bond_List( reax_system*, control_params*, reax_list** );
 
 //void Analyze_Molecules( reax_system*, control_params*, simulation_data*,
-//                        static_storage*, list**, FILE* );
+//                        static_storage*, reax_list**, FILE* );
 
 //void Analyze_Bonding( reax_system*, control_params*, simulation_data*,
-//                      static_storage*, list**, FILE* );
+//                      static_storage*, reax_list**, FILE* );
 
 //void Analyze_Silica( reax_system*, control_params*, simulation_data*,
-//                     static_storage*, list**, FILE* );
+//                     static_storage*, reax_list**, FILE* );
 
 //void Calculate_Dipole_Moment( reax_system*, control_params*, simulation_data*,
-//                              static_storage *, list*, FILE* );
+//                              static_storage *, reax_list*, FILE* );
 
 //void Copy_Positions( reax_system*, static_storage* );
 

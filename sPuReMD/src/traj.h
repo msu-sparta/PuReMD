@@ -164,11 +164,11 @@ char Write_Traj_Header( FILE*, int, char**, char**, control_params* );
           control_params* control,
           simulation_data* data,
           static_storage* workspace,
-          list** lists,
+          reax_list** lists,
           char** various flags);
 */
 int Push_Traj_Frame( /*gzfile*/ FILE*, reax_system*, control_params*,
-                                simulation_data*, static_storage*, list**, char** );
+                                simulation_data*, static_storage*, reax_list**, char** );
 
 /*
   Append_Traj_Frame( gzfile file,
@@ -176,13 +176,13 @@ int Push_Traj_Frame( /*gzfile*/ FILE*, reax_system*, control_params*,
                         control_params* control,
                 simulation_data* data,
                 static_storage* workspace,
-                list** lists,
+                reax_list** lists,
                 char** various flags);
 */
 int Append_Custom_Frame( reax_system*, control_params*, simulation_data*,
-                         static_storage*, list**, output_controls* );
+                         static_storage*, reax_list**, output_controls* );
 int Append_xyz_Frame   ( reax_system*, control_params*, simulation_data*,
-                         static_storage*, list**, output_controls* );
+                         static_storage*, reax_list**, output_controls* );
 
 
 void Read_Traj( output_controls*, char * );

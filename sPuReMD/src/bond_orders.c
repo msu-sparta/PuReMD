@@ -34,11 +34,11 @@ static inline real Cf45( real p1, real p2 )
 
 
 #ifdef TEST_FORCES
-void Get_dBO( reax_system *system, list **lists,
+void Get_dBO( reax_system *system, reax_list **lists,
         int i, int pj, real C, rvec *v )
 {
-    list *bonds = (*lists) + BONDS;
-    list *dBOs = (*lists) + DBO;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *dBOs = (*lists) + DBO;
     int start_pj, end_pj, k;
 
     pj = bonds->select.bond_list[pj].dbond_index;
@@ -53,11 +53,11 @@ void Get_dBO( reax_system *system, list **lists,
 }
 
 
-void Get_dBOpinpi2( reax_system *system, list **lists,
+void Get_dBOpinpi2( reax_system *system, reax_list **lists,
         int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
-    list *bonds = (*lists) + BONDS;
-    list *dBOs = (*lists) + DBO;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *dBOs = (*lists) + DBO;
     dbond_data *dbo_k;
     int start_pj, end_pj, k;
 
@@ -74,11 +74,11 @@ void Get_dBOpinpi2( reax_system *system, list **lists,
 }
 
 
-void Add_dBO( reax_system *system, list **lists,
+void Add_dBO( reax_system *system, reax_list **lists,
         int i, int pj, real C, rvec *v )
 {
-    list *bonds = (*lists) + BONDS;
-    list *dBOs = (*lists) + DBO;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *dBOs = (*lists) + DBO;
     int start_pj, end_pj, k;
 
     pj = bonds->select.bond_list[pj].dbond_index;
@@ -95,11 +95,11 @@ void Add_dBO( reax_system *system, list **lists,
 }
 
 
-void Add_dBOpinpi2( reax_system *system, list **lists,
+void Add_dBOpinpi2( reax_system *system, reax_list **lists,
         int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
-    list *bonds = (*lists) + BONDS;
-    list *dBOs = (*lists) + DBO;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *dBOs = (*lists) + DBO;
     dbond_data *dbo_k;
     int start_pj, end_pj, k;
 
@@ -116,11 +116,11 @@ void Add_dBOpinpi2( reax_system *system, list **lists,
 }
 
 
-void Add_dBO_to_Forces( reax_system *system, list **lists,
+void Add_dBO_to_Forces( reax_system *system, reax_list **lists,
                         int i, int pj, real C )
 {
-    list *bonds = (*lists) + BONDS;
-    list *dBOs = (*lists) + DBO;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *dBOs = (*lists) + DBO;
     int start_pj, end_pj, k;
 
     pj = bonds->select.bond_list[pj].dbond_index;
@@ -135,11 +135,11 @@ void Add_dBO_to_Forces( reax_system *system, list **lists,
 }
 
 
-void Add_dBOpinpi2_to_Forces( reax_system *system, list **lists,
+void Add_dBOpinpi2_to_Forces( reax_system *system, reax_list **lists,
         int i, int pj, real Cpi, real Cpi2 )
 {
-    list *bonds = (*lists) + BONDS;
-    list *dBOs = (*lists) + DBO;
+    reax_list *bonds = (*lists) + BONDS;
+    reax_list *dBOs = (*lists) + DBO;
     dbond_data *dbo_k;
     int start_pj, end_pj, k;
 
@@ -156,9 +156,9 @@ void Add_dBOpinpi2_to_Forces( reax_system *system, list **lists,
 }
 
 
-void Add_dDelta( reax_system *system, list **lists, int i, real C, rvec *v )
+void Add_dDelta( reax_system *system, reax_list **lists, int i, real C, rvec *v )
 {
-    list *dDeltas;
+    reax_list *dDeltas;
     int start, end, k;
 
     dDeltas = &((*lists)[DDELTA]);
@@ -173,9 +173,9 @@ void Add_dDelta( reax_system *system, list **lists, int i, real C, rvec *v )
 }
 
 
-void Add_dDelta_to_Forces( reax_system *system, list **lists, int i, real C )
+void Add_dDelta_to_Forces( reax_system *system, reax_list **lists, int i, real C )
 {
-    list *dDeltas;
+    reax_list *dDeltas;
     int start, end, k;
 
     dDeltas = &((*lists)[DDELTA]);
@@ -190,12 +190,12 @@ void Add_dDelta_to_Forces( reax_system *system, list **lists, int i, real C )
 }
 
 
-void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
+void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
         int *top )
 {
     int j, k, l, start_i, end_i, end_j;
     rvec dDeltap_self, dBOp;
-    list *bonds, *dBOs;
+    reax_list *bonds, *dBOs;
     bond_data *nbr_l, *nbr_k;
     bond_order_data *bo_ij;
     dbond_data *top_dbo;
@@ -331,9 +331,9 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, list **lists,
 
 
 void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
-        simulation_data *data, static_storage *workspace, list **lists )
+        simulation_data *data, static_storage *workspace, reax_list **lists )
 {
-    list *bonds = (*lists) + BONDS;
+    reax_list *bonds = (*lists) + BONDS;
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
@@ -521,9 +521,9 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
 
 
 void Add_dBond_to_Forces( int i, int pj, reax_system *system,
-        simulation_data *data, static_storage *workspace, list **lists )
+        simulation_data *data, static_storage *workspace, reax_list **lists )
 {
-    list *bonds = (*lists) + BONDS;
+    reax_list *bonds = (*lists) + BONDS;
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
@@ -657,7 +657,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
 /* Locate j on i's list.
    This function assumes that j is there for sure!
    And this is the case given our method of neighbor generation*/
-int Locate_Symmetric_Bond( list *bonds, int i, int j )
+int Locate_Symmetric_Bond( reax_list *bonds, int i, int j )
 {
     int start = Start_Index(i, bonds);
     int end = End_Index(i, bonds);
@@ -719,11 +719,11 @@ int compare_bonds( const void *p1, const void *p2 )
    This can either be done in the general coordinator function or here */
 void Calculate_Bond_Orders( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     real p_lp1;
     real p_boc1, p_boc2;
-    list *bonds;
+    reax_list *bonds;
 
     p_lp1 = system->reaxprm.gp.l[15];
     p_boc1 = system->reaxprm.gp.l[0];
@@ -753,8 +753,8 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
         int top_dbo, top_dDelta;
         dbond_data *pdbo;
         dDelta_data *ptop_dDelta;
-        list *dDeltas;
-        list *dBOs;
+        reax_list *dDeltas;
+        reax_list *dBOs;
 
         top_dbo = 0;
         top_dDelta = 0;

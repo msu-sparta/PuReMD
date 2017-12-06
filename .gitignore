@@ -50,9 +50,13 @@ Makefile
 Makefile.in
 stamp-h1
 test-driver
+*.lo
+*.la
 
 # Compiled languages (C,C++,Fortran,...)
 *.o
+*.so
+*.a
 
 # flex/bison files
 *.yy.c
@@ -68,4 +72,6 @@ test-driver
 *.tar.gz
 *.pdf
 */bin
+*/lib
 *.txt
+*.zip

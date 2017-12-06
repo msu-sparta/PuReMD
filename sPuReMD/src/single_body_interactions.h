@@ -26,5 +26,5 @@
 
 void LonePair_OverUnder_Coordination_Energy( reax_system*, control_params*,
         simulation_data*, static_storage*,
-        list**, output_controls* );
+        reax_list**, output_controls* );
 #endif

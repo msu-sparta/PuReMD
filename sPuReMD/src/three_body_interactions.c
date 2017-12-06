@@ -80,10 +80,10 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
    played by j which sits in the middle of the other two. */
 void Three_Body_Interactions( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     real *total_bo;
-    list *bonds, *thb_intrs;
+    reax_list *bonds, *thb_intrs;
     bond_data *bond_list;
     three_body_interaction_data *thb_list;
     real p_pen2, p_pen3, p_pen4;
@@ -667,7 +667,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
 void Hydrogen_Bonds( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control )
 {
     real e_hb_total;
 
@@ -694,7 +694,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         bond_order_data *bo_ij;
         bond_data *pbond_ij;
         far_neighbor_data *nbr_jk;
-        list *bonds, *hbonds;
+        reax_list *bonds, *hbonds;
         bond_data *bond_list;
         hbond_data *hbond_list;
         rvec *f_i, *f_j, *f_k;

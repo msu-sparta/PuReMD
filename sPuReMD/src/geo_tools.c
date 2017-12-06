@@ -444,7 +444,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
    cause trouble, if so we'll have to rethink this approach
    Also, we do not write connect lines yet.
 */
-char Write_PDB( reax_system* system, list* bonds, simulation_data *data,
+char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, static_storage *workspace, output_controls *out_control )
 {
     int i, buffer_req, buffer_len;

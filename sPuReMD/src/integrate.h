@@ -25,25 +25,25 @@
 #include "mytypes.h"
 
 void Velocity_Verlet_NVE( reax_system*, control_params*, simulation_data*,
-                          static_storage*, list**, output_controls* );
+                          static_storage*, reax_list**, output_controls* );
 void Velocity_Verlet_Nose_Hoover_NVT( reax_system*, control_params*,
                                       simulation_data*, static_storage*,
-                                      list**, output_controls* );
+                                      reax_list**, output_controls* );
 void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system*, control_params*,
         simulation_data*, static_storage*,
-        list**, output_controls* );
+        reax_list**, output_controls* );
 void Velocity_Verlet_Flexible_NPT( reax_system*, control_params*,
                                    simulation_data*, static_storage*,
-                                   list**, output_controls* );
+                                   reax_list**, output_controls* );
 void Velocity_Verlet_Isotropic_NPT( reax_system*, control_params*,
                                     simulation_data*, static_storage*,
-                                    list**, output_controls* );
+                                    reax_list**, output_controls* );
 void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system*, control_params*,
         simulation_data*, static_storage*,
-        list**, output_controls* );
+        reax_list**, output_controls* );
 void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system*, control_params*,
         simulation_data*,
-        static_storage*, list**,
+        static_storage*, reax_list**,
         output_controls* );
 
 //upon Adri's request moved from parallel code to serial code
@@ -51,7 +51,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* ,
                                     control_params* ,
                                     simulation_data *,
                                     static_storage *,
-                                    list **,
+                                    reax_list **,
                                     output_controls *
                                   );
 #endif
