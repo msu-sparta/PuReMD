@@ -30,6 +30,41 @@ typedef enum
     UPPER = 1,
 } TRIANGULARITY;
 
+void Sort_Matrix_Rows( sparse_matrix * const );
+
+void Setup_Sparsity_Pattern( const sparse_matrix * const, 
+        const real, sparse_matrix ** );
+
+int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
+
+void Calculate_Droptol( const sparse_matrix * const,
+        real * const, const real );
+
+#if defined(HAVE_SUPERLU_MT)
+real SuperLU_Factorize( const sparse_matrix * const,
+        sparse_matrix * const, sparse_matrix * const );
+#endif
+
+real diag_pre_comp( const sparse_matrix * const, real * const );
+
+real ICHOLT( const sparse_matrix * const, const real * const,
+        sparse_matrix * const, sparse_matrix * const );
+
+#if defined(TESTING)
+real ICHOL_PAR( const sparse_matrix * const, const unsigned int,
+        sparse_matrix * const, sparse_matrix * const );
+#endif
+
+real ILU_PAR( const sparse_matrix * const, const unsigned int,
+        sparse_matrix * const, sparse_matrix * const );
+
+real ILUT_PAR( const sparse_matrix * const, const real *,
+        const unsigned int, sparse_matrix * const, sparse_matrix * const );
+
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+real Sparse_Approx_Inverse( const sparse_matrix * const, const sparse_matrix * const,
+        sparse_matrix ** );
+#endif
 
 void Transpose( const sparse_matrix * const, sparse_matrix * const );
 

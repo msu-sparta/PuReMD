@@ -65,10 +65,10 @@ if test "x${BUILD_OPENMP}" = "xyes"; then
 	AC_OPENMP
 	if test "x${OPENMP_CFLAGS}" = "x"; then
 		AC_MSG_WARN([
-	  -----------------------------------------------
-	   Unable to find OpenMP support on this system.
-	   Building a single-threaded version.
-	  -----------------------------------------------])
+  -----------------------------------------------
+   Unable to find OpenMP support on this system.
+   Building a single-threaded version.
+  -----------------------------------------------])
 	else
 		# bug due to recent Intel compiler change (?)
 		if test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
@@ -128,6 +128,37 @@ fi
 if test "x$BUILD_GPROF" != "x"
 then
 	CFLAGS="${CFLAGS} ${GPROF_FLAGS}"
+fi
+
+# Check for LAPACKE
+AC_CHECK_HEADERS([mkl.h], [MKL_FOUND_HEADERS="yes"])
+if test "x${MKL_FOUND_HEADERS}" = "xyes"
+then
+	AC_SEARCH_LIBS([LAPACKE_dgels], [mkl_intel_ilp64],
+		       [MKL_FOUND_LIBS="yes"], [MKL_FOUND_LIBS="no"],
+		       [-lmkl_sequential -lmkl_core -lpthread -lm -ldl])
+	AS_IF([test "x${MKL_FOUND_LIBS}" != "xyes"],
+	      [AC_MSG_ERROR([Unable to find MKL LAPACKE library.])])
+	LIBS="${LIBS} -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl"
+	AC_DEFINE([HAVE_LAPACKE_MKL], [1], [Define to 1 if you have MKL LAPACKE support enabled.])
+else
+	AC_CHECK_HEADERS([lapacke.h], [LAPACKE_FOUND_HEADERS="yes"])
+	if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"
+	then
+		AC_SEARCH_LIBS([LAPACKE_dgels], [lapacke],
+			       [LAPACKE_FOUND_LIBS="yes"], [LAPACKE_FOUND_LIBS="no"],
+			       [-llapack])
+		AS_IF([test "x${LAPACKE_FOUND_LIBS}" != "xyes"],
+		      [AC_MSG_ERROR([Unable to find LAPACKE library.])])
+		LIBS="${LIBS} -llapack"
+		AC_DEFINE([HAVE_LAPACKE], [1], [Define to 1 if you have LAPACKE support enabled.])
+	else
+		AC_MSG_WARN([
+  -----------------------------------------------
+   Unable to find LAPACKE on this system.
+   Disabling support for dependent methods.
+  -----------------------------------------------])
+	fi
 fi
 
 # Tests using Google C++ testing framework (gtest)

@@ -233,6 +233,7 @@ enum pre_comp
     ILU_PAR_PC = 3,
     ILUT_PAR_PC = 4,
     ILU_SUPERLU_MT_PC = 5,
+    SAI_PC = 6,
 };
 
 enum pre_app
@@ -606,6 +607,7 @@ typedef struct
     unsigned int cm_solver_pre_comp_refactor;
     real cm_solver_pre_comp_droptol;
     unsigned int cm_solver_pre_comp_sweeps;
+    real cm_solver_pre_comp_sai_thres;
     unsigned int cm_solver_pre_app_type;
     unsigned int cm_solver_pre_app_jacobi_iters;
 
@@ -889,6 +891,8 @@ typedef struct
     /* charge method storage */
     sparse_matrix *H;
     sparse_matrix *H_sp;
+    sparse_matrix *H_spar_patt;
+    sparse_matrix *H_app_inv;
     sparse_matrix *L;
     sparse_matrix *U;
     real *droptol;

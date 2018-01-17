@@ -191,7 +191,8 @@ void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
 }
 
 
-void Print_Molecule( reax_system *system, molecule *m, int mode, char *s )
+void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
+       size_t size )
 {
     int j, atom;
 
@@ -202,7 +203,7 @@ void Print_Molecule( reax_system *system, molecule *m, int mode, char *s )
         /* print molecule summary */
         for ( j = 0; j < MAX_ATOM_TYPES; ++j )
             if ( m->mtypes[j] )
-                sprintf( s, "%s%s%d", s, system->reaxprm.sbp[j].name, m->mtypes[j] );
+                snprintf( s, size, "%s%s%d", s, system->reaxprm.sbp[j].name, m->mtypes[j] );
     }
     else if ( mode == 2 )
     {
@@ -210,7 +211,7 @@ void Print_Molecule( reax_system *system, molecule *m, int mode, char *s )
         for ( j = 0; j < m->atom_count; ++j )
         {
             atom = m->atom_list[j];
-            sprintf( s, "%s%s(%d)",
+            snprintf( s, size, "%s%s(%d)",
                      s, system->reaxprm.sbp[ system->atoms[atom].type ].name, atom );
         }
     }
@@ -288,7 +289,8 @@ void Analyze_Molecules( reax_system *system, control_params *control,
                 fprintf( fout, "old molecules: " );
                 for ( i = 0; i < num_old; ++i )
                 {
-                    Print_Molecule( system, &old_molecules[i], 1, &s[0] );
+                    Print_Molecule( system, &old_molecules[i], 1, &s[0],
+                            MAX_MOLECULE_SIZE * 10 );
                     fprintf( fout, "%s\t", s );
                 }
                 fprintf( fout, "\n" );
@@ -296,7 +298,8 @@ void Analyze_Molecules( reax_system *system, control_params *control,
                 fprintf( fout, "new molecules: " );
                 for ( i = 0; i < num_new; ++i )
                 {
-                    Print_Molecule( system, &new_molecules[i], 1, &s[0] );
+                    Print_Molecule( system, &new_molecules[i], 1, &s[0],
+                            MAX_MOLECULE_SIZE * 10 );
                     fprintf( fout, "%s\t", s );
                 }
                 fprintf( fout, "\n" );
@@ -528,15 +531,15 @@ void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
 
 
 void Analyze_Fragments( reax_system *system, control_params *control,
-                        simulation_data *data, static_storage *workspace,
-                        reax_list **lists, FILE *fout, int ignore )
+        simulation_data *data, static_storage *workspace,
+        reax_list **lists, FILE *fout, int ignore )
 {
-    int  atom, i, flag;
-    int  *mark = workspace->mark;
-    int  num_fragments, num_fragment_types;
+    int atom, i, flag;
+    int *mark = workspace->mark;
+    int num_fragments, num_fragment_types;
     char fragment[MAX_ATOM_TYPES];
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
-    int  fragment_count[MAX_FRAGMENT_TYPES];
+    int fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
     reax_list *new_bonds = (*lists) + BONDS;
     //reax_list *old_bonds = (*lists) + OLD_BONDS;
@@ -554,7 +557,7 @@ void Analyze_Fragments( reax_system *system, control_params *control,
             memset( m.mtypes, 0, MAX_ATOM_TYPES * sizeof(int) );
             Visit_Bonds( atom, mark, m.mtypes, system, control, new_bonds, ignore );
             ++num_fragments;
-            Print_Molecule( system, &m, 1, fragment );
+            Print_Molecule( system, &m, 1, fragment, MAX_FRAGMENT_TYPES );
 
             /* check if a similar fragment already exists */
             flag = 0;

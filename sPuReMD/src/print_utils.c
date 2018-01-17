@@ -406,7 +406,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
     FILE *fout;
     reax_list *near_nbrs = &((*lists)[NEAR_NBRS]);
 
-    sprintf( fname, "%s.near_nbrs", control->sim_name );
+    snprintf( fname, MAX_STR, "%s.near_nbrs", control->sim_name );
     fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
@@ -440,7 +440,7 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
     FILE *fout;
     reax_list *near_nbrs = &((*lists)[NEAR_NBRS]);
 
-    sprintf( fname, "%s.near_nbrs_lgj", control->sim_name );
+    snprintf( fname, MAX_STR, "%s.near_nbrs_lgj", control->sim_name );
     fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
@@ -475,7 +475,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
     FILE *fout;
     reax_list *far_nbrs = &((*lists)[FAR_NBRS]);
 
-    sprintf( fname, "%s.far_nbrs", control->sim_name );
+    snprintf( fname, MAX_STR, "%s.far_nbrs", control->sim_name );
     fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
@@ -520,7 +520,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
     FILE *fout;
     reax_list *far_nbrs = &((*lists)[FAR_NBRS]);
 
-    sprintf( fname, "%s.far_nbrs_lgj", control->sim_name );
+    snprintf( fname, MAX_STR, "%s.far_nbrs_lgj", control->sim_name );
     fout = fopen( fname, "w" );
     int num = 0;
     int temp[500];
@@ -553,7 +553,7 @@ void Print_Total_Force( reax_system *system, control_params *control,
     int i;
 #if !defined(TEST_FORCES)
     char temp[1000];
-    sprintf( temp, "%s.ftot", control->sim_name );
+    snprintf( temp, 1000, "%s.ftot", control->sim_name );
     out_control->ftot = fopen( temp, "w" );
 #endif
 
@@ -735,7 +735,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
     sparse_matrix *H;
     FILE *out;
 
-    sprintf( fname, "%s.state%d.out", control->sim_name, step );
+    snprintf( fname, 100, "%s.state%d.out", control->sim_name, step );
     out = fopen( fname, "w" );
 
     for ( i = 0; i < system->N_cm; i++ )
@@ -747,13 +747,13 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  workspace->t[0][i], workspace->b_t[i]  );
     fclose( out );
 
-    // sprintf( fname, "x2_%d", step );
+    // snprintf( fname, 100, "x2_%d", step );
     // out = fopen( fname, "w" );
     // for( i = 0; i < system->N; i++ )
     // fprintf( out, "%g\n", workspace->s_t[i+system->N] );
     // fclose( out );
 
-    sprintf( fname, "%s.H%d.out", control->sim_name, step );
+    snprintf( fname, 100, "%s.H%d.out", control->sim_name, step );
     out = fopen( fname, "w" );
     H = workspace->H;
 
@@ -776,7 +776,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     fclose( out );
 
-    sprintf( fname, "%s.H_sp%d.out", control->sim_name, step );
+    snprintf( fname, 100, "%s.H_sp%d.out", control->sim_name, step );
     out = fopen( fname, "w" );
     H = workspace->H_sp;
 
@@ -799,13 +799,13 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     fclose( out );
 
-    /*sprintf( fname, "%s.b_s%d", control->sim_name, step );
+    /*snprintf( fname, 100, "%s.b_s%d", control->sim_name, step );
       out = fopen( fname, "w" );
       for( i = 0; i < system->N; i++ )
       fprintf( out, "%12.7f\n", workspace->b_s[i] );
       fclose( out );
 
-      sprintf( fname, "%s.b_t%d", control->sim_name, step );
+      snprintf( fname, 100, "%s.b_t%d", control->sim_name, step );
       out = fopen( fname, "w" );
       for( i = 0; i < system->N; i++ )
       fprintf( out, "%12.7f\n", workspace->b_t[i] );
@@ -820,7 +820,7 @@ void Print_Charges( reax_system *system, control_params *control,
     char fname[100];
     FILE *fout;
 
-    sprintf( fname, "%s.q%d", control->sim_name, step );
+    snprintf( fname, 100, "%s.q%d", control->sim_name, step );
     fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
@@ -1002,7 +1002,7 @@ Print_XYZ_Serial( reax_system* system, static_storage *workspace )
     FILE *fout;
     int i;
 
-    sprintf( fname, "READ_PDB.0" );
+    snprintf( fname, 100, "READ_PDB.0" );
     fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->N; i++ )

@@ -23,8 +23,9 @@
 #include "box.h"
 #include "vector.h"
 
+
 void Write_Binary_Restart( reax_system *system, control_params *control,
-                           simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace )
 {
     int  i;
     char fname[MAX_STR];
@@ -33,7 +34,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     restart_header res_header;
     restart_atom res_data;
 
-    sprintf( fname, "%s.res%d", control->sim_name, data->step );
+    snprintf( fname, MAX_STR + 8, "%s.res%d", control->sim_name, data->step );
     fres = fopen( fname, "wb" );
 
     res_header.step = data->step;
@@ -139,14 +140,14 @@ void Read_Binary_Restart( char *fname, reax_system *system,
 
 
 void Write_ASCII_Restart( reax_system *system, control_params *control,
-                          simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace )
 {
     int  i;
     char fname[MAX_STR];
     FILE *fres;
     reax_atom *p_atom;
 
-    sprintf( fname, "%s.res%d", control->sim_name, data->step );
+    snprintf( fname, MAX_STR + 8, "%s.res%d", control->sim_name, data->step );
     fres = fopen( fname, "w" );
 
     fprintf( fres, RESTART_HEADER,
