@@ -233,6 +233,7 @@ enum pre_comp
     ILU_PAR_PC = 3,
     ILUT_PAR_PC = 4,
     ILU_SUPERLU_MT_PC = 5,
+    SAI_PC = 6,
 };
 
 enum pre_app
