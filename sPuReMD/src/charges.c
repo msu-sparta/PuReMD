@@ -204,6 +204,8 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 
         case SAI_PC:
             //TODO: call function
+            data->timing.cm_solver_pre_comp +=
+                SAI_PAR( Hptr, HSPptr, H_AppInv );
             break;
 
         default:
@@ -552,6 +554,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 
         case SAI_PC:
             //TODO: call function
+            data->timing.cm_solver_pre_comp +=
+                SAI_PAR( Hptr, HSPptr, H_AppInv );
             break;
 
         default:
@@ -659,6 +663,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
         case SAI_PC:
             //TODO: call function
+            data->timing.cm_solver_pre_comp +=
+                SAI_PAR( Hptr, HSPptr, H_AppInv );
             break;
 
         default:
@@ -687,8 +693,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 }
 
 
-/* Setup routines before computing the preconditioner for QEq
- */
+
 static void Setup_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
@@ -826,6 +831,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
         case SAI_PC:
             //TODO: call setup function
+            Setup_Sparsity_Pattern( Hptr, workspace->saifilter, HSPptr );
             break;
 
         default:
@@ -977,6 +983,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
         case SAI_PC:
             //TODO: call setup function
+            Setup_Sparsity_Pattern( Hptr, workspace->saifilter, HSPptr );
             break;
 
         default:
@@ -1130,6 +1137,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
         case SAI_PC:
             //TODO: call setup function
+            Setup_Sparsity_Pattern( Hptr, workspace->saifilter, HSPptr );
             break;
 
         default:
