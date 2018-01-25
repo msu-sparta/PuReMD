@@ -482,7 +482,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                   (system->box.box_norms[2] * system->box.box_norms[1]) );
 
     /*open pdb and write header*/
-    sprintf( fname, "%s-%d.pdb", control->sim_name, data->step );
+    snprintf( fname, MAX_STR + 9, "%s-%d.pdb", control->sim_name, data->step );
     pdb = fopen(fname, "w");
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
              "CRYST1",
@@ -498,7 +498,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         p_atom = &(system->atoms[i]);
         strncpy(name, p_atom->name, 8);
         Trim_Spaces(name);
-        sprintf( line, PDB_ATOM_FORMAT_O,
+        snprintf( line, MAX_STR, PDB_ATOM_FORMAT_O,
                  "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
                  1.0, 0.0, "0", name, "  " );

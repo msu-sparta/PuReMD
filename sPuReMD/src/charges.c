@@ -203,9 +203,14 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case SAI_PC:
-            //TODO: call function
+#if defined(HAVE_LAPACK)
             data->timing.cm_solver_pre_comp +=
-                SAI_PAR( Hptr, HSPptr, H_AppInv );
+                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                        &workspace->H_app_inv );
+#else
+            fprintf( stderr, "LAPACK support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
+#endif
             break;
 
         default:
@@ -215,18 +220,22 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     }
 
 #if defined(DEBUG)
+#define SIZE (1000)
+    char fname[SIZE];
+
     if ( control->cm_solver_pre_comp_type != NONE_PC && 
             control->cm_solver_pre_comp_type != DIAG_PC )
     {
         fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
-        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
-        sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
+#undef SIZE
 #endif
 }
 
@@ -455,22 +464,26 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //    }
 //
 //#if defined(DEBUG)
+//#define SIZE (1000)
+//    char fname[SIZE];
+//
 //    if ( control->cm_solver_pre_comp_type != DIAG_PC )
 //    {
 //        fprintf( stderr, "condest = %f\n", condest(workspace->L) );
 //
 //#if defined(DEBUG_FOCUS)
-//        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+//        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->L, fname, NULL );
-//        sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
+//        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->U, fname, NULL );
 //
 //        fprintf( stderr, "icholt-" );
-//        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+//        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->L, fname, NULL );
 //        Print_Sparse_Matrix( U );
 //#endif
 //    }
+//#undef SIZE
 //#endif
 //}
 
@@ -553,9 +566,14 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
 
         case SAI_PC:
-            //TODO: call function
+#if defined(HAVE_LAPACK)
             data->timing.cm_solver_pre_comp +=
-                SAI_PAR( Hptr, HSPptr, H_AppInv );
+                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                        &workspace->H_app_inv );
+#else
+            fprintf( stderr, "LAPACK support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
+#endif
             break;
 
         default:
@@ -567,18 +585,22 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
 
 #if defined(DEBUG)
+#define SIZE (1000)
+    char fname[SIZE];
+
     if ( control->cm_solver_pre_comp_type != NONE_PC && 
             control->cm_solver_pre_comp_type != DIAG_PC )
     {
         fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
-        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
-        sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
+#undef SIZE
 #endif
 }
 
@@ -662,9 +684,14 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case SAI_PC:
-            //TODO: call function
+#if defined(HAVE_LAPACK)
             data->timing.cm_solver_pre_comp +=
-                SAI_PAR( Hptr, HSPptr, H_AppInv );
+                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                        &workspace->H_app_inv );
+#else
+            fprintf( stderr, "LAPACK support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
+#endif
             break;
 
         default:
@@ -677,18 +704,22 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
 #if defined(DEBUG)
+#define SIZE (1000)
+    char fname[SIZE];
+
     if ( control->cm_solver_pre_comp_type != NONE_PC || 
             control->cm_solver_pre_comp_type != DIAG_PC )
     {
         fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
-        sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
-        sprintf( fname, "%s.U%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
+#undef SIZE
 #endif
 }
 
@@ -830,8 +861,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case SAI_PC:
-            //TODO: call setup function
-            Setup_Sparsity_Pattern( Hptr, workspace->saifilter, HSPptr );
+            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
+                    workspace->H_spar_patt );
             break;
 
         default:
@@ -982,8 +1013,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case SAI_PC:
-            //TODO: call setup function
-            Setup_Sparsity_Pattern( Hptr, workspace->saifilter, HSPptr );
+            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
+                    workspace->H_spar_patt );
             break;
 
         default:
@@ -1136,8 +1167,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case SAI_PC:
-            //TODO: call setup function
-            Setup_Sparsity_Pattern( Hptr, workspace->saifilter, HSPptr );
+            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
+                    workspace->H_spar_patt );
             break;
 
         default:
@@ -1437,17 +1468,18 @@ void Compute_Charges( reax_system * const system, control_params * const control
         const reax_list * const far_nbrs, const output_controls * const out_control )
 {
 #if defined(DEBUG_FOCUS)
-    char fname[200];
+#define SIZE (200)
+    char fname[SIZE];
     FILE * fp;
 
     if ( data->step >= 100 )
     {
-        sprintf( fname, "s_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE + 11, "s_%d_%s.out", data->step, control->sim_name );
         fp = fopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
         fclose( fp );
 
-        sprintf( fname, "t_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE + 11, "t_%d_%s.out", data->step, control->sim_name );
         fp = fopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->t[0], system->N_cm );
         fclose( fp );
@@ -1477,19 +1509,20 @@ void Compute_Charges( reax_system * const system, control_params * const control
 #if defined(DEBUG_FOCUS)
     if ( data->step >= 100 )
     {
-        sprintf( fname, "H_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE + 11, "H_%d_%s.out", data->step, control->sim_name );
         Print_Sparse_Matrix2( workspace->H, fname, NULL );
 //        Print_Sparse_Matrix_Binary( workspace->H, fname );
 
-        sprintf( fname, "b_s_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE + 11, "b_s_%d_%s.out", data->step, control->sim_name );
         fp = fopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
         fclose( fp );
 
-        sprintf( fname, "b_t_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE + 11, "b_t_%d_%s.out", data->step, control->sim_name );
         fp = fopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->b_t, system->N_cm );
         fclose( fp );
     }
+#undef SIZE
 #endif
 }

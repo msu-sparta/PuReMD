@@ -31,13 +31,15 @@
 int Write_Custom_Header( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
+#define SIZE1 (2048)
+#define SIZE2 (100)
     int i, header_len, control_block_len, frame_format_len;
     // char buffer[2048];
-    char control_block[2048];
-    char frame_format[2048];
-    char atom_format[100], bond_format[100], angle_format[100];
+    char control_block[SIZE1];
+    char frame_format[SIZE1];
+    char atom_format[SIZE2], bond_format[SIZE2], angle_format[SIZE2];
 
-    sprintf( control_block, CONTROL_BLOCK,
+    snprintf( control_block, SIZE1, CONTROL_BLOCK,
              system->N,
              control->restart,
              control->restart_from,
@@ -80,23 +82,23 @@ int Write_Custom_Header( reax_system *system, control_params *control,
     control_block_len = strlen( control_block );
 
 
-    sprintf( frame_format, "Frame Format: %d\n%s\n%s\n",
+    snprintf( frame_format, SIZE1, "Frame Format: %d\n%s\n%s\n",
              NUM_FRAME_GLOBALS, FRAME_GLOBALS_FORMAT, FRAME_GLOBAL_NAMES );
 
     atom_format[0] = OPT_NOATOM;
     switch ( out_control->atom_format )
     {
     case OPT_ATOM_BASIC:
-        sprintf( atom_format, "Atom_Basic: %s", ATOM_BASIC );
+        snprintf( atom_format, SIZE2, "Atom_Basic: %s", ATOM_BASIC );
         break;
     case OPT_ATOM_wF:
-        sprintf( atom_format, "Atom_wF: %s", ATOM_wF );
+        snprintf( atom_format, SIZE2, "Atom_wF: %s", ATOM_wF );
         break;
     case OPT_ATOM_wV:
-        sprintf( atom_format, "Atom_wV: %s", ATOM_wV );
+        snprintf( atom_format, SIZE2, "Atom_wV: %s", ATOM_wV );
         break;
     case OPT_ATOM_FULL:
-        sprintf( atom_format, "Atom_Full: %s", ATOM_FULL );
+        snprintf( atom_format, SIZE2, "Atom_Full: %s", ATOM_FULL );
         break;
     default:
         break;
@@ -106,18 +108,18 @@ int Write_Custom_Header( reax_system *system, control_params *control,
     bond_format[0] = OPT_NOBOND;
     if ( out_control->bond_info == OPT_BOND_BASIC )
     {
-        sprintf( bond_format, "Bond_Line: %s", BOND_BASIC );
+        snprintf( bond_format, SIZE2, "Bond_Line: %s", BOND_BASIC );
     }
     else if ( out_control->bond_info == OPT_BOND_FULL )
     {
-        sprintf( bond_format, "Bond_Line_Full: %s", BOND_FULL );
+        snprintf( bond_format, SIZE2, "Bond_Line_Full: %s", BOND_FULL );
     }
     strcat( frame_format, bond_format );
 
     angle_format[0] = OPT_NOANGLE;
     if ( out_control->angle_info == OPT_ANGLE_BASIC )
     {
-        sprintf( angle_format, "Angle_Line: %s", ANGLE_BASIC );
+        snprintf( angle_format, SIZE2, "Angle_Line: %s", ANGLE_BASIC );
     }
     strcat( frame_format, angle_format );
 
@@ -158,6 +160,9 @@ int Write_Custom_Header( reax_system *system, control_params *control,
 
     fflush( out_control->trj );
 
+#undef SIZE2
+#undef SIZE1
+
     return 0;
 }
 
@@ -166,12 +171,13 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
+#define SIZE (2048)
     int i, j, pi, pk, pk_j;
     int write_atoms, write_bonds, write_angles;
     int frame_len, atom_line_len, bond_line_len, angle_line_len, rest_of_frame_len;
     int frame_globals_len, num_bonds, num_thb_intrs;
     real P;
-    char buffer[2048];
+    char buffer[SIZE];
     reax_list *bonds = (*lists) + BONDS;
     reax_list *thb_intrs =  (*lists) + THREE_BODIES;
     bond_data *bo_ij;
@@ -290,7 +296,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     }
 
     /* calculate total frame length*/
-    sprintf( buffer, FRAME_GLOBALS,
+    snprintf( buffer, SIZE, FRAME_GLOBALS,
              data->step, data->time,
              data->E_Tot, data->E_Pot, E_CONV * data->E_Kin, data->therm.T,
              P, system->box.volume,
@@ -475,6 +481,8 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     }
 
     fflush( out_control->trj );
+
+#undef SIZE
 
     return 0;
 }

@@ -638,7 +638,8 @@ void Init_Lists( reax_system *system, control_params *control,
 void Init_Out_Controls( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
-    char temp[1000];
+#define TEMP_SIZE (1000)
+    char temp[TEMP_SIZE];
 
     /* Init trajectory file */
     if ( out_control->write_steps > 0 )
@@ -697,11 +698,11 @@ void Init_Out_Controls( reax_system *system, control_params *control,
     /* Init molecular analysis file */
     if ( control->molec_anal )
     {
-        sprintf( temp, "%s.mol", control->sim_name );
+        snprintf( temp, TEMP_SIZE + 4, "%s.mol", control->sim_name );
         out_control->mol = fopen( temp, "w" );
         if ( control->num_ignored )
         {
-            sprintf( temp, "%s.ign", control->sim_name );
+            snprintf( temp, TEMP_SIZE + 4, "%s.ign", control->sim_name );
             out_control->ign = fopen( temp, "w" );
         }
     }
@@ -858,6 +859,8 @@ void Init_Out_Controls( reax_system *system, control_params *control,
        fprintf( stderr, "FILE OPEN ERROR. TERMINATING..." );
        exit( CANNOT_OPEN_FILE );
        }*/
+
+#undef TEMP_SIZE
 }
 
 

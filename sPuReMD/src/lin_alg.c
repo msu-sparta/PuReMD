@@ -24,7 +24,16 @@
 #include "allocate.h"
 #include "tool_box.h"
 #include "vector.h"
+
+#if defined(HAVE_LAPACK)
+/* Intel MKL */
+#if defined(HAVE_LAPACK_MKL)
 #include "mkl_lapacke.h"
+/* reference LAPACK */
+#else
+#include "lapacke.h"
+#endif
+#endif
 
 typedef struct
 {
@@ -176,29 +185,102 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
 }
 
 
-void Setup_Sparsity_Pattern(const sparse_matrix * const A, 
-        real * const saifilter, sparse_matrix * A_SP)
+/* Convert a symmetric, half-sored sparse matrix into
+ * a full-stored sparse matrix
+ *
+ * A: symmetric sparse matrix, lower half stored in CSR
+ * A_full: resultant full sparse matrix in CSR
+ *   If A_full is NULL, allocate space, otherwise do not
+ *
+ * Assumptions:
+ *   A has non-zero diagonals
+ *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
+static void compute_full_sparse_matrix( const sparse_matrix * const A,
+                                        sparse_matrix ** A_full )
+{
+    int count, i, pj;
+    sparse_matrix *A_t;
+
+    if ( *A_full == NULL )
+    {
+        if ( Allocate_Matrix( A_full, A->n, 2 * A->m - A->n ) == FAILURE )
+        {
+            fprintf( stderr, "not enough memory for full A. terminating.\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
+    }
+    if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
+    {
+        fprintf( stderr, "not enough memory for full A. terminating.\n" );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    /* Set up the sparse matrix data structure for A. */
+    Transpose( A, A_t );
+
+    count = 0;
+    for ( i = 0; i < A->n; ++i )
+    {
+        (*A_full)->start[i] = count;
+
+        /* A: symmetric, lower triangular portion only stored */
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+            (*A_full)->val[count] = A->val[pj];
+            (*A_full)->j[count] = A->j[pj];
+            ++count;
+        }
+        /* A^T: symmetric, upper triangular portion only stored;
+         * skip diagonal from A^T, as included from A above */
+        for ( pj = A_t->start[i] + 1; pj < A_t->start[i + 1]; ++pj )
+        {
+            (*A_full)->val[count] = A_t->val[pj];
+            (*A_full)->j[count] = A_t->j[pj];
+            ++count;
+        }
+    }
+    (*A_full)->start[i] = count;
+
+    Deallocate_Matrix( A_t );
+}
+
+
+/* Setup routines for sparse approximate inverse preconditioner
+ *
+ * A: symmetric sparse matrix, lower half stored in CSR
+ * filter: 
+ * A_spar_patt: 
+ *
+ * Assumptions:
+ *   A has non-zero diagonals
+ *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
+void Setup_Sparsity_Pattern( const sparse_matrix * const A,
+                             const real filter, sparse_matrix * A_spar_patt )
 {
     int i, pj, size;
-    real mn, mx, threshold, val;
+    real min, max, threshold, val;
 
-    if( A_SP == NULL )
+    min = 0.0;
+    max = 0.0;
+
+    if ( A_spar_patt == NULL )
     {
-        if( Allocate_Matrix( &A_SP, A->n, A->m ) == NULL )
+        if ( Allocate_Matrix( &A_spar_patt, A->n, A->m ) == FAILURE )
         {
             fprintf( stderr, "[SAI] Not enough memory for preconditioning matrices. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
         }
     }
-    else if( (A_SP->m) < (A->m) )
+    else if ( (A_spar_patt->m) < (A->m) )
     {
-        Deallocate_Matrix( A_SP );
-        if( Allocate_Matrix( &A_SP, A->n, A->m ) == NULL )
+        Deallocate_Matrix( A_spar_patt );
+        if ( Allocate_Matrix( &A_spar_patt, A->n, A->m ) == FAILURE )
         {
             fprintf( stderr, "[SAI] Not enough memory for preconditioning matrices. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
         }
     }
+
     // find min and max element of the matrix
     for ( i = 0; i < A->n; ++i )
     {
@@ -207,58 +289,63 @@ void Setup_Sparsity_Pattern(const sparse_matrix * const A,
             val = A->val[pj];
             if ( pj == 0 )
             {
-                mn = mx = val;
+                min = val;
+                max = val;
             }
             else
             {
-                if ( mn > val )
-                    mn = val;
-                if ( mx < val )
-                    mx = val;
+                if ( min > val )
+                {
+                    min = val;
+                }
+                if ( max < val )
+                {
+                    max = val;
+                }
             }
         }
     }
 
-    threshold = mn + ( mx - mn ) * saifilter;
+    threshold = min + ( max - min ) * filter;
 
     // calculate the nnz of the sparsity pattern
-    /*   for ( size = 0, i = 0; i < A->n; ++i )
-         {   
-         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
-         {
-         if ( threshold <= A->val[pj] )
-         size++;
-         }
-         }*/
+//    for ( size = 0, i = 0; i < A->n; ++i )
+//    {
+//        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+//        {
+//            if ( threshold <= A->val[pj] )
+//                size++;
+//        }
+//    }
+//
+//    if ( Allocate_Matrix( &A_spar_patt, A->n, size ) == NULL )
+//    {
+//        fprintf( stderr, "[SAI] Not enough memory for preconditioning matrices. terminating.\n" );
+//        exit( INSUFFICIENT_MEMORY );
+//    }
 
-    /*if( Allocate_Matrix( &A_SP, A->n, size ) == NULL )
-      {
-      fprintf( stderr, "[SAI] Not enough memory for preconditioning matrices. terminating.\n" );
-      exit( INSUFFICIENT_MEMORY );
-      }*/
-
-    //A_SP->start[A_SP->n] = size;
+    //A_spar_patt->start[A_spar_patt->n] = size;
 
     // fill the sparsity pattern
     for ( size = 0, i = 0; i < A->n; ++i )
     {
-        A_SP->start[i] = size;
+        A_spar_patt->start[i] = size;
 
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
             if ( threshold <= A->val[pj] )
             {
-                A_SP->val[size] = A->val[pj];
-                A_SP->j[size] = A->j[pj];
+                A_spar_patt->val[size] = A->val[pj];
+                A_spar_patt->j[size] = A->j[pj];
                 size++;
             }
         }
     }
-    A_SP->start[A->n] = size;
+    A_spar_patt->start[A->n] = size;
 }
 
 void Calculate_Droptol( const sparse_matrix * const A,
-        real * const droptol, const real dtol )
+                        real * const droptol, const real dtol )
 {
     int i, j, k;
     real val;
@@ -268,13 +355,13 @@ void Calculate_Droptol( const sparse_matrix * const A,
 #endif
 
 #ifdef _OPENMP
-#pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local, stderr)
+    #pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local, stderr)
 #endif
     {
 #ifdef _OPENMP
         tid = omp_get_thread_num();
 
-#pragma omp master
+        #pragma omp master
         {
             /* keep b_local for program duration to avoid allocate/free
              * overhead per Sparse_MatVec call*/
@@ -288,7 +375,7 @@ void Calculate_Droptol( const sparse_matrix * const A,
             }
         }
 
-#pragma omp barrier
+        #pragma omp barrier
 #endif
 
         /* init droptol to 0 */
@@ -302,12 +389,12 @@ void Calculate_Droptol( const sparse_matrix * const A,
         }
 
 #ifdef _OPENMP
-#pragma omp barrier
+        #pragma omp barrier
 #endif
 
         /* calculate sqaure of the norm of each row */
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+        #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < A->n; ++i )
         {
@@ -335,9 +422,9 @@ void Calculate_Droptol( const sparse_matrix * const A,
         }
 
 #ifdef _OPENMP
-#pragma omp barrier
+        #pragma omp barrier
 
-#pragma omp for schedule(static)
+        #pragma omp for schedule(static)
         for ( i = 0; i < A->n; ++i )
         {
             droptol[i] = 0.0;
@@ -347,13 +434,13 @@ void Calculate_Droptol( const sparse_matrix * const A,
             }
         }
 
-#pragma omp barrier
+        #pragma omp barrier
 #endif
 
         /* calculate local droptol for each row */
         //fprintf( stderr, "droptol: " );
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+        #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < A->n; ++i )
         {
@@ -375,7 +462,7 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
     fillin = 0;
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) private(i, pj, val) reduction(+: fillin)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -397,7 +484,7 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
 
 #if defined(HAVE_SUPERLU_MT)
 real SuperLU_Factorize( const sparse_matrix * const A,
-        sparse_matrix * const L, sparse_matrix * const U )
+                        sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, pj, count, *Ltop, *Utop, r;
     sparse_matrix *A_t;
@@ -426,10 +513,10 @@ real SuperLU_Factorize( const sparse_matrix * const A,
     /* Default parameters to control factorization. */
 #ifdef _OPENMP
     //TODO: set as global parameter and use
-#pragma omp parallel \
+    #pragma omp parallel \
     default(none) shared(nprocs)
     {
-#pragma omp master
+        #pragma omp master
         {
             /* SuperLU_MT spawns threads internally, so set and pass parameter */
             nprocs = omp_get_num_threads();
@@ -452,11 +539,11 @@ real SuperLU_Factorize( const sparse_matrix * const A,
     work = NULL;
     lwork = 0;
 
-    //#if defined(DEBUG)
+#if defined(DEBUG)
     fprintf( stderr, "nprocs = %d\n", nprocs );
     fprintf( stderr, "Panel size = %d\n", panel_size );
     fprintf( stderr, "Relax = %d\n", relax );
-    //#endif
+#endif
 
     if ( !(perm_r = intMalloc(A->n)) )
     {
@@ -516,7 +603,7 @@ real SuperLU_Factorize( const sparse_matrix * const A,
     xa[i] = count;
 
     dCompRow_to_CompCol( A->n, A->n, 2 * A->start[A->n] - A->n, a, asub, xa,
-            &at, &atsub, &xat );
+                         &at, &atsub, &xat );
 
     for ( i = 0; i < (2 * A->start[A->n] - A->n); ++i )
         fprintf( stderr, "%6d", asub[i] );
@@ -571,8 +658,8 @@ real SuperLU_Factorize( const sparse_matrix * const A,
        Apply perm_c to the columns of original A to form AC.
        ------------------------------------------------------------*/
     pdgstrf_init( nprocs, fact, trans, refact, panel_size, relax,
-            u, usepr, drop_tol, perm_c, perm_r,
-            work, lwork, &A_S, &AC_S, &superlumt_options, &Gstat );
+                  u, usepr, drop_tol, perm_c, perm_r,
+                  work, lwork, &A_S, &AC_S, &superlumt_options, &Gstat );
 
     for ( i = 0; i < ((NCPformat*)AC_S.Store)->nnz; ++i )
         fprintf( stderr, "%6.1f", ((real*)(((NCPformat*)AC_S.Store)->nzval))[i] );
@@ -593,14 +680,14 @@ real SuperLU_Factorize( const sparse_matrix * const A,
     }
     Gstat.ops[FACT] = flopcnt;
 
-    //#if defined(DEBUG)
+#if defined(DEBUG)
     printf("\n** Result of sparse LU **\n");
     L_S_store = (SCPformat *) L_S.Store;
     U_S_store = (NCPformat *) U_S.Store;
     printf( "No of nonzeros in factor L = " IFMT "\n", L_S_store->nnz );
     printf( "No of nonzeros in factor U = " IFMT "\n", U_S_store->nnz );
     fflush( stdout );
-    //#endif
+#endif
 
     /* convert L and R from SuperLU formats to CSR */
     memset( Ltop, 0, (A->n + 1) * sizeof(int) );
@@ -702,7 +789,7 @@ real diag_pre_comp( const sparse_matrix * const H, real * const Hdia_inv )
     start = Get_Time( );
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) private(i)
 #endif
     for ( i = 0; i < H->n; ++i )
@@ -723,7 +810,7 @@ real diag_pre_comp( const sparse_matrix * const H, real * const Hdia_inv )
 
 /* Incomplete Cholesky factorization with dual thresholding */
 real ICHOLT( const sparse_matrix * const A, const real * const droptol,
-        sparse_matrix * const L, sparse_matrix * const U )
+             sparse_matrix * const L, sparse_matrix * const U )
 {
     int *tmp_j;
     real *tmp_val;
@@ -876,7 +963,7 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
  * SIAM J. Sci. Comp. */
 #if defined(TESTING)
 real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
-        sparse_matrix * const U_t, sparse_matrix * const U )
+                sparse_matrix * const U_t, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x = 0, y = 0, ei_x, ei_y;
     real *D, *D_inv, sum, start;
@@ -895,7 +982,7 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     }
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(D_inv, D) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -911,7 +998,7 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
      * transformation DAD, where D = D(1./SQRT(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
 #ifdef _OPENMP
-#pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(guided) \
     default(none) shared(DAD, D_inv, D) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -937,7 +1024,7 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         /* for each nonzero */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD, stderr) private(sum, ei_x, ei_y, k) firstprivate(x, y)
 #endif
         for ( j = 0; j < A->start[A->n]; ++j )
@@ -992,7 +1079,7 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
                     fprintf( stderr, "Numeric breakdown in ICHOL_PAR. Terminating.\n");
 #if defined(DEBUG_FOCUS)
                     fprintf( stderr, "A(%5d,%5d) = %10.3f\n",
-                            k - 1, A->entries[j].j, A->entries[j].val );
+                             k - 1, A->entries[j].j, A->entries[j].val );
                     fprintf( stderr, "sum = %10.3f\n", sum);
 #endif
                     exit(NUMERIC_BREAKDOWN);
@@ -1012,7 +1099,7 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
      * since DAD \approx U^{T}U, so
      * D^{-1}DADD^{-1} = A \approx D^{-1}U^{T}UD^{-1} */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(guided) \
+    #pragma omp parallel for schedule(guided) \
     default(none) shared(D_inv) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -1055,7 +1142,7 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
  * sweeps: number of loops over non-zeros for computation
  * L / U: factorized triangular matrices (A \approx LU), CSR format */
 real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
-        sparse_matrix * const L, sparse_matrix * const U )
+              sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x, y, ei_x, ei_y;
     real *D, *D_inv, sum, start;
@@ -1072,7 +1159,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     }
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(D, D_inv) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -1086,7 +1173,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
      * transformation DAD, where D = D(1./SQRT(abs(D(A)))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, D) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -1114,7 +1201,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     /* L has unit diagonal, by convention */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) default(none) private(i)
+    #pragma omp parallel for schedule(static) default(none) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1125,7 +1212,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     {
         /* for each nonzero in L */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
 #endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
@@ -1177,7 +1264,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
         }
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD) private(j, k, x, y, ei_x, ei_y, sum)
 #endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
@@ -1230,7 +1317,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
      * since DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, D_inv) private(i, pj)
 #endif
     for ( i = 0; i < DAD->n; ++i )
@@ -1270,7 +1357,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
  * sweeps: number of loops over non-zeros for computation
  * L / U: factorized triangular matrices (A \approx LU), CSR format */
 real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
-        const unsigned int sweeps, sparse_matrix * const L, sparse_matrix * const U )
+               const unsigned int sweeps, sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, j, k, pj, x, y, ei_x, ei_y, Ltop, Utop;
     real *D, *D_inv, sum, start;
@@ -1294,7 +1381,7 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     }
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(D, D_inv) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -1307,7 +1394,7 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
      * transformation DAD, where D = D(1./SQRT(D(A))) */
     memcpy( DAD->start, A->start, sizeof(int) * (A->n + 1) );
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, D) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -1335,7 +1422,7 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
     /* L has unit diagonal, by convention */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) private(i) shared(L_temp)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -1347,7 +1434,7 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     {
         /* for each nonzero in L */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
 #endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
@@ -1399,7 +1486,7 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
         }
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+        #pragma omp parallel for schedule(static) \
         default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
 #endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
@@ -1452,7 +1539,7 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
      * since DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(static) \
     default(none) shared(DAD, L_temp, U_temp, D_inv) private(i, pj)
 #endif
     for ( i = 0; i < DAD->n; ++i )
@@ -1523,59 +1610,65 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
     return Get_Timing_Info( start );
 }
 
-real SAI_PAR( const sparse_matrix * const A, const sparse_matrix * const A_SP,
-        sparse_matrix * A_AppInv)
+
+#if defined(HAVE_LAPACK)
+real Sparse_Approx_Inverse( const sparse_matrix * const A,
+                            const sparse_matrix * const A_spar_patt, sparse_matrix ** A_app_inv )
 {
-    int i, j, k, pj, j_temp, identity_pos;
+    int i, k, pj, j_temp, identity_pos;
     int N, M, d_i, d_j;
+#if defined(HAVE_LAPACK_MKL)
     MKL_int m, n, nrhs, lda, ldb, info;
-    int * pos_i;
-    int * pos_j;
+#else
+    int m, n, nrhs, lda, ldb, info;
+#endif
+    int *pos_i, *pos_j;
     real start;
-    real * e_j;
-    real * dense_matrix;
-    sparse_matrix * A_full;
-    sparse_matrix * A_SP_full;
-    char * I;
-    char * J;
+    real *e_j, *dense_matrix;
+    sparse_matrix *A_full, *A_spar_patt_full;
+    char *I, *J;
 
     start = Get_Time( );
 
-
-    if( (I = (char *) malloc(sizeof(char) * A->n)) == NULL ||
-            (J = (char *) malloc(sizeof(char) * A->n)) == NULL ||
-            (pos_i = (int *) malloc(sizeof(int) * A->n)) == NULL ||
-            (pos_j = (int *) malloc(sizeof(int) * A->n)) == NULL)
+    if ( (I = (char *) smalloc(sizeof(char) * A->n, "Sparse_Approx_Inverse::I")) == NULL ||
+            (J = (char *) smalloc(sizeof(char) * A->n, "Sparse_Approx_Inverse::I")) == NULL ||
+            (pos_i = (int *) smalloc(sizeof(int) * A->n, "Sparse_Approx_Inverse::I")) == NULL ||
+            (pos_j = (int *) smalloc(sizeof(int) * A->n, "Sparse_Approx_Inverse::I")) == NULL )
     {
         exit( INSUFFICIENT_MEMORY );
     }
 
-    for( i = 0; i < A->n; ++i )
-        I[i] = J[i] = pos_i[i] = pos_j[i] = 0;
+    for ( i = 0; i < A->n; ++i )
+    {
+        I[i] = 0;
+        J[i] = 0;
+        pos_i[i] = 0;
+        pos_j[i] = 0;
+    }
 
-    // Get A and A_SP full matrices
-    compute_H_full_for_SAI( A, A_full );
-    compute_H_full_for_SAI( A_SP, A_SP_full );
+    // Get A and A_spar_patt full matrices
+    compute_full_sparse_matrix( A, &A_full );
+    compute_full_sparse_matrix( A_spar_patt, &A_spar_patt_full );
 
-    // A_AppInv will be the same as A_SP_full except the val array
-    if ( Allocate_Matrix( &A_AppInv, A_SP_full->n, A_SP_full->m ) == FAILURE )
+    // A_app_inv will be the same as A_spar_patt_full except the val array
+    if ( Allocate_Matrix( A_app_inv, A_spar_patt_full->n, A_spar_patt_full->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for approximate inverse matrix. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
-    A_AppInv->start[A_AppInv->n] = A_SP_full->start[A_SP_full->n];
+    (*A_app_inv)->start[(*A_app_inv)->n] = A_spar_patt_full->start[A_spar_patt_full->n];
 
-    // For each row of full A_SP
-    for( i = 0; i < A_SP_full->n; ++i )
+    // For each row of full A_spar_patt
+    for ( i = 0; i < A_spar_patt_full->n; ++i )
     {
-
-        // N = A_SP_full->start[i + 1] - A_SP_full->start[i];
-        N = M = 0;
+        // N = A_spar_patt_full->start[i + 1] - A_spar_patt_full->start[i];
+        N = 0;
+        M = 0;
 
         // find column indices of nonzeros (which will be the columns indices of the dense matrix)
-        for( pj = A_SP_full->start[i]; pj < A_SP_full->start[i + 1]; ++pj )
+        for ( pj = A_spar_patt_full->start[i]; pj < A_spar_patt_full->start[i + 1]; ++pj )
         {
-            j_temp = A_SP_full->j[pj];
+            j_temp = A_spar_patt_full->j[pj];
 
             J[j_temp] = 1;
             pos_j[j_temp] = N;
@@ -1583,28 +1676,31 @@ real SAI_PAR( const sparse_matrix * const A, const sparse_matrix * const A_SP,
 
             // for each of those indices
             // search through the row of full A of that index
-            for( k = A_full->start[j_temp]; k < A_full->start[j_temp + 1]; ++k )
+            for ( k = A_full->start[j_temp]; k < A_full->start[j_temp + 1]; ++k )
             {
                 // and accumulate the nonzero column indices to serve as the row indices of the dense matrix
                 I[A_full->j[k]] = 1;
             }
         }
 
-        // enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix 
+        // enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix
         identity_pos = M;
-        for( k = 0; k < A_full->n; k++)
+        for ( k = 0; k < A_full->n; k++)
         {
-            if( I[k] != 0 )
+            if ( I[k] != 0 )
             {
                 pos_i[M] = k;
-                if( k == i )
+                if ( k == i )
+                {
                     identity_pos = M;
+                }
                 ++M;
             }
         }
 
         // allocate memory for NxM dense matrix
-        if( (dense_matrix = (real *) malloc(sizeof(real) * N * M)) == NULL )
+        if ( (dense_matrix = (real *) smalloc(sizeof(real) * N * M,
+                                              "Sparse_Approx_Inverse::dense_matrix")) == NULL )
         {
             exit( INSUFFICIENT_MEMORY );
         }
@@ -1613,74 +1709,89 @@ real SAI_PAR( const sparse_matrix * const A, const sparse_matrix * const A_SP,
         for ( d_i = 0; d_i < M; ++d_i)
         {
             // all rows are initialized to zero
-            for( d_j = 0; d_j < N; ++d_j )
-                dense_matrix[d_i][d_j] = 0.0;
+            for ( d_j = 0; d_j < N; ++d_j )
+            {
+                dense_matrix[d_i * M + d_j] = 0.0;
+            }
 
             // change the value if any of the column indices is seen
-            for ( d_j = A_full->start_[pos_i[d_i]]; d_j < A_full->start[pos_i[d_i + 1]]; ++d_j)
+            for ( d_j = A_full->start[pos_i[d_i]];
+                    d_j < A_full->start[pos_i[d_i + 1]]; ++d_j )
             {
-                if( J[A_full->j[d_j]] == 1 )
+                if ( J[A_full->j[d_j]] == 1 )
                 {
-                    dense_matrix[d_i][pos_j[d_j]] = A_full->val[d_j];
+                    dense_matrix[d_i * M + pos_j[d_j]] = A_full->val[d_j];
                 }
             }
         }
 
-
         /* create the right hand side of the linear equation
            that is the full column of the identity matrix*/
-        if( (e_j = (int *) malloc(sizeof(char) * M)) == NULL )
+        if ( (e_j = (real *) smalloc(sizeof(char) * M,
+                                     "Sparse_Approx_Inverse::M")) == NULL )
         {
             exit( INSUFFICIENT_MEMORY );
         }
-        for( k = 0; k < M; ++k )
+        for ( k = 0; k < M; ++k )
         {
-            e_j[k] = 0;
+            e_j[k] = 0.0;
         }
         e_j[identity_pos] = 1.0;
 
         // call QR-decompostion from LAPACK
-        m = M, n = N, nrhs = 1, lda = N, ldb = 1;
+        m = M;
+        n = N;
+        nrhs = 1;
+        lda = N;
+        ldb = 1;
         /* Executable statements */
         // printf( "LAPACKE_dgels (row-major, high-level) Example Program Results\n" );
         /* Solve the equations A*X = B */
         info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
-                e_j, ldb );
+                              e_j, ldb );
         /* Check for the full rank */
-        if( info > 0 ) {
+        if ( info > 0 )
+        {
             fprintf( stderr, "The diagonal element %i of the triangular factor ", info );
             fprintf( stderr, "of A is zero, so that A does not have full rank;\n" );
             fprintf( stderr, "the least squares solution could not be computed.\n" );
-            exit( 1 );
+            exit( INVALID_INPUT );
         }
         /* Print least squares solution */
         // print_matrix( "Least squares solution", n, nrhs, b, ldb );
 
-        // accumulate the resulting vector to build A_AppInv
-        A_AppInv->start[i] = A_SP_full->start[i];
-        for( k = A_SP_full->start[i]; k < A_SP_full->start[i + 1]; ++k)
+        // accumulate the resulting vector to build A_app_inv
+        (*A_app_inv)->start[i] = A_spar_patt_full->start[i];
+        for ( k = A_spar_patt_full->start[i]; k < A_spar_patt_full->start[i + 1]; ++k)
         {
-            A_Appinv->j[k] = A_SP_full->j[k];
-            A_Appinv->val[k] = e_j[k - A_SP_full->start[i]];
+            (*A_app_inv)->j[k] = A_spar_patt_full->j[k];
+            (*A_app_inv)->val[k] = e_j[k - A_spar_patt_full->start[i]];
         }
 
         //empty variables that will be used next iteration
-        realloc( dense_matrix, 0);
-        realloc( e_j, 0 );
-        for( i = 0; i < A->n; ++i )
-            I[i] = J[i] = pos_i[i] = pos_j[i] = 0;
+        srealloc( dense_matrix, 0, "Sparse_Approx_Inverse::dense_matrix" );
+        srealloc( e_j, 0, "Sparse_Approx_Inverse::e_j"  );
+        for ( i = 0; i < A->n; ++i )
+        {
+            I[i] = 0;
+            J[i] = 0;
+            pos_i[i] = 0;
+            pos_j[i] = 0;
+        }
     }
 
     // Deallocate?
-    Deallocate_Matrix ( A_full );
-    Deallocate_Matrix ( A_SP_full );
-    realloc( I, 0 );
-    realloc( J, 0 );
-    realloc( pos_i, 0 );
-    realloc( pos_j, 0 );
+    Deallocate_Matrix( A_full );
+    Deallocate_Matrix( A_spar_patt_full );
+    srealloc( I, 0, "Sparse_Approx_Inverse::I" );
+    srealloc( J, 0, "Sparse_Approx_Inverse::J" );
+    srealloc( pos_i, 0, "Sparse_Approx_Inverse::pos_i" );
+    srealloc( pos_j, 0, "Sparse_Approx_Inverse::pos_j" );
 
     return Get_Timing_Info( start );
 }
+#endif
+
 
 /* sparse matrix-vector product Ax=b
  * where:
@@ -1688,7 +1799,7 @@ real SAI_PAR( const sparse_matrix * const A, const sparse_matrix * const A_SP,
  *   x: vector
  *   b: vector (result) */
 static void Sparse_MatVec( const sparse_matrix * const A,
-        const real * const x, real * const b )
+                           const real * const x, real * const b )
 {
     int i, j, k, n, si, ei;
     real H;
@@ -1702,7 +1813,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 #ifdef _OPENMP
     tid = omp_get_thread_num( );
 
-#pragma omp single
+    #pragma omp single
     {
         /* keep b_local for program duration to avoid allocate/free
          * overhead per Sparse_MatVec call*/
@@ -1717,7 +1828,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
     Vector_MakeZero( (real * const)b_local, omp_get_num_threads() * n );
 
-#pragma omp for schedule(static)
+    #pragma omp for schedule(static)
 #endif
     for ( i = 0; i < n; ++i )
     {
@@ -1746,7 +1857,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     }
 
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+    #pragma omp for schedule(static)
     for ( i = 0; i < n; ++i )
     {
         for ( j = 0; j < omp_get_num_threads(); ++j )
@@ -1838,12 +1949,12 @@ void Transpose_I( sparse_matrix * const A )
  * N: dimensions of preconditioner and vectors (# rows in H)
  */
 static void diag_pre_app( const real * const Hdia_inv, const real * const y,
-        real * const x, const int N )
+                          real * const x, const int N )
 {
     unsigned int i;
 
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+    #pragma omp for schedule(static)
 #endif
     for ( i = 0; i < N; ++i )
     {
@@ -1864,13 +1975,13 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 void tri_solve( const sparse_matrix * const LU, const real * const y,
-        real * const x, const int N, const TRIANGULARITY tri )
+                real * const x, const int N, const TRIANGULARITY tri )
 {
     int i, pj, j, si, ei;
     real val;
 
 #ifdef _OPENMP
-#pragma omp single
+    #pragma omp single
 #endif
     {
         if ( tri == LOWER )
@@ -1922,13 +2033,13 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 void tri_solve_level_sched( const sparse_matrix * const LU,
-        const real * const y, real * const x, const int N,
-        const TRIANGULARITY tri, int find_levels )
+                            const real * const y, real * const x, const int N,
+                            const TRIANGULARITY tri, int find_levels )
 {
     int i, j, pj, local_row, local_level;
 
 #ifdef _OPENMP
-#pragma omp single
+    #pragma omp single
 #endif
     {
         if ( tri == LOWER )
@@ -2035,7 +2146,7 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
         for ( i = 0; i < levels; ++i )
         {
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+            #pragma omp for schedule(static)
 #endif
             for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
             {
@@ -2055,7 +2166,7 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
         for ( i = 0; i < levels; ++i )
         {
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+            #pragma omp for schedule(static)
 #endif
             for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
             {
@@ -2072,7 +2183,7 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
     }
 
 #ifdef _OPENMP
-#pragma omp single
+    #pragma omp single
 #endif
     {
         /* save level info for re-use if performing repeated triangular solves via preconditioning */
@@ -2120,7 +2231,7 @@ static void compute_H_full( const sparse_matrix * const H )
             H_full->j[count] = H->j[pj];
             ++count;
         }
-        /* H^T: symmetric, upper triangular portion only stored; 
+        /* H^T: symmetric, upper triangular portion only stored;
          * skip diagonal from H^T, as included from H above */
         for ( pj = H_t->start[i] + 1; pj < H_t->start[i + 1]; ++pj )
         {
@@ -2134,46 +2245,6 @@ static void compute_H_full( const sparse_matrix * const H )
     Deallocate_Matrix( H_t );
 }
 
-static void compute_H_full_for_SAI( const sparse_matrix * const H , sparse_matrix * H_new)
-{
-    int count, i, pj;
-    sparse_matrix *H_t;
-
-    if ( Allocate_Matrix( &H_t, H->n, H->m ) == FAILURE ||
-            Allocate_Matrix( &H_new, H->n, 2 * H->m - H->n ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for full H. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-    /* Set up the sparse matrix data structure for A. */
-    Transpose( H, H_t );
-
-    count = 0;
-    for ( i = 0; i < H->n; ++i )
-    {
-        H_new->start[i] = count;
-
-        /* H: symmetric, lower triangular portion only stored */
-        for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
-        {
-            H_new->val[count] = H->val[pj];
-            H_new->j[count] = H->j[pj];
-            ++count;
-        }
-        /* H^T: symmetric, upper triangular portion only stored; 
-         * skip diagonal from H^T, as included from H above */
-        for ( pj = H_t->start[i] + 1; pj < H_t->start[i + 1]; ++pj )
-        {
-            H_new->val[count] = H_t->val[pj];
-            H_new->j[count] = H_t->j[pj];
-            ++count;
-        }
-    }
-    H_new->start[i] = count;
-
-    Deallocate_Matrix( H_t );
-}
 
 /* Iterative greedy shared-memory parallel graph coloring
  *
@@ -2185,14 +2256,14 @@ static void compute_H_full_for_SAI( const sparse_matrix * const H , sparse_matri
  *
  * Reference:
  * Umit V. Catalyurek et al.
- * Graph Coloring Algorithms for Multi-core 
+ * Graph Coloring Algorithms for Multi-core
  *  and Massively Threaded Architectures
  * Parallel Computing, 2012
  */
 void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
 {
 #ifdef _OPENMP
-#pragma omp parallel
+    #pragma omp parallel
 #endif
     {
 #define MAX_COLOR (500)
@@ -2209,7 +2280,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
 #endif
 
 #ifdef _OPENMP
-#pragma omp single
+        #pragma omp single
 #endif
         {
             memset( color, 0, sizeof(unsigned int) * A->n );
@@ -2221,7 +2292,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
         if ( tri == LOWER )
         {
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+            #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < A->n; ++i )
             {
@@ -2231,7 +2302,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
         else
         {
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+            #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < A->n; ++i )
             {
@@ -2247,7 +2318,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
         }
 
 #ifdef _OPENMP
-#pragma omp barrier
+        #pragma omp barrier
 #endif
 
         while ( recolor_cnt > 0 )
@@ -2256,7 +2327,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
 
             /* color vertices */
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+            #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < recolor_cnt; ++i )
             {
@@ -2284,14 +2355,14 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             recolor_cnt_local = 0;
 
 #ifdef _OPENMP
-#pragma omp single
+            #pragma omp single
 #endif
             {
                 recolor_cnt = 0;
             }
 
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+            #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < temp; ++i )
             {
@@ -2313,9 +2384,9 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             conflict_cnt[tid + 1] = recolor_cnt_local;
 
 #ifdef _OPENMP
-#pragma omp barrier
+            #pragma omp barrier
 
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 conflict_cnt[0] = 0;
@@ -2327,7 +2398,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             }
 
 #ifdef _OPENMP
-#pragma omp barrier
+            #pragma omp barrier
 #endif
 
             /* copy thread-local conflicts into shared buffer */
@@ -2338,9 +2409,9 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             }
 
 #ifdef _OPENMP
-#pragma omp barrier
+            #pragma omp barrier
 
-#pragma omp single
+            #pragma omp single
 #endif
             {
                 temp_ptr = to_color;
@@ -2363,7 +2434,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
         //#endif
 
 #ifdef _OPENMP
-#pragma omp barrier
+        #pragma omp barrier
 #endif
     }
 }
@@ -2382,7 +2453,7 @@ void sort_colors( const unsigned int n, const TRIANGULARITY tri )
 
     /* sort vertices by color (ascending within a color)
      *  1) count colors
-     *  2) determine offsets of color ranges 
+     *  2) determine offsets of color ranges
      *  3) sort by color
      *
      *  note: color is 1-based */
@@ -2417,12 +2488,12 @@ void sort_colors( const unsigned int n, const TRIANGULARITY tri )
  * tri: coloring to triangular factor to use (lower/upper)
  */
 static void permute_vector( real * const x, const unsigned int n, const int invert_map,
-        const TRIANGULARITY tri )
+                            const TRIANGULARITY tri )
 {
     unsigned int i;
 
 #ifdef _OPENMP
-#pragma omp single
+    #pragma omp single
 #endif
     {
         if ( x_p == NULL )
@@ -2445,7 +2516,7 @@ static void permute_vector( real * const x, const unsigned int n, const int inve
     }
 
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+    #pragma omp for schedule(static)
 #endif
     for ( i = 0; i < n; ++i )
     {
@@ -2453,7 +2524,7 @@ static void permute_vector( real * const x, const unsigned int n, const int inve
     }
 
 #ifdef _OPENMP
-#pragma omp single
+    #pragma omp single
 #endif
     {
         memcpy( x, x_p, sizeof(real) * n );
@@ -2609,7 +2680,7 @@ sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
     if ( color == NULL )
     {
 #ifdef _OPENMP
-#pragma omp parallel
+        #pragma omp parallel
         {
             num_thread = omp_get_num_threads();
         }
@@ -2619,7 +2690,7 @@ sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
 
         /* internal storage for graph coloring (global to facilitate simultaneous access to OpenMP threads) */
         if ( (color = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
-                (to_color =(unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
+                (to_color = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (conflict = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
                 (conflict_cnt = (unsigned int*) malloc(sizeof(unsigned int) * (num_thread + 1))) == NULL ||
                 (recolor = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
@@ -2661,15 +2732,15 @@ sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
  * Note: Newmann series arises from series expansion of the inverse of
  * the coefficient matrix in the triangular system */
 void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
-        const real * const b, real * const x, const TRIANGULARITY tri, const
-        unsigned int maxiter )
+                  const real * const b, real * const x, const TRIANGULARITY tri, const
+                  unsigned int maxiter )
 {
     unsigned int i, k, si = 0, ei = 0, iter;
 
     iter = 0;
 
 #ifdef _OPENMP
-#pragma omp single
+    #pragma omp single
 #endif
     {
         if ( Dinv_b == NULL )
@@ -2702,7 +2773,7 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
 
     /* precompute and cache, as invariant in loop below */
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+    #pragma omp for schedule(static)
 #endif
     for ( i = 0; i < R->n; ++i )
     {
@@ -2713,7 +2784,7 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
     {
         // x_{k+1} = G*x_{k} + Dinv*b;
 #ifdef _OPENMP
-#pragma omp for schedule(guided)
+        #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < R->n; ++i )
         {
@@ -2741,7 +2812,7 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
         }
 
 #ifdef _OPENMP
-#pragma omp single
+        #pragma omp single
 #endif
         {
             rp3 = rp;
@@ -2769,7 +2840,7 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
  *   Matrices have non-zero diagonals
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 static void apply_preconditioner( const static_storage * const workspace, const control_params * const control,
-        const real * const y, real * const x, const int fresh_pre )
+                                  const real * const y, real * const x, const int fresh_pre )
 {
     int i, si;
 
@@ -2782,157 +2853,157 @@ static void apply_preconditioner( const static_storage * const workspace, const 
     {
         switch ( control->cm_solver_pre_app_type )
         {
-            case TRI_SOLVE_PA:
-                switch ( control->cm_solver_pre_comp_type )
-                {
-                    case DIAG_PC:
-                        diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
-                        break;
-                    case ICHOLT_PC:
-                    case ILU_PAR_PC:
-                    case ILUT_PAR_PC:
-                        tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
-                        tri_solve( workspace->U, x, x, workspace->U->n, UPPER );
-                        break;
-                    case SAI_PC:
-                        //TODO: add code to compute SAI first
-                        //                Sparse_MatVec( SAI, y, x );
-                        break;
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
-                }
+        case TRI_SOLVE_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+                diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
                 break;
-            case TRI_SOLVE_LEVEL_SCHED_PA:
-                switch ( control->cm_solver_pre_comp_type )
-                {
-                    case DIAG_PC:
-                        diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
-                        break;
-                    case ICHOLT_PC:
-                    case ILU_PAR_PC:
-                    case ILUT_PAR_PC:
-                        tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
-                        tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
-                        break;
-                    case SAI_PC:
-                        //TODO: add code to compute SAI first
-                        //                Sparse_MatVec( SAI, y, x );
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
-                }
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+                tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+                tri_solve( workspace->U, x, x, workspace->U->n, UPPER );
                 break;
-            case TRI_SOLVE_GC_PA:
-                switch ( control->cm_solver_pre_comp_type )
-                {
-                    case DIAG_PC:
-                    case SAI_PC:
-                        fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
-                    case ICHOLT_PC:
-                    case ILU_PAR_PC:
-                    case ILUT_PAR_PC:
-#ifdef _OPENMP
-#pragma omp single
-#endif
-                        {
-                            memcpy( y_p, y, sizeof(real) * workspace->H->n );
-                        }
-
-                        permute_vector( y_p, workspace->H->n, FALSE, LOWER );
-                        tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
-                        tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
-                        permute_vector( x, workspace->H->n, TRUE, UPPER );
-                        break;
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
-                }
-                break;
-            case JACOBI_ITER_PA:
-                switch ( control->cm_solver_pre_comp_type )
-                {
-                    case DIAG_PC:
-                    case SAI_PC:
-                        fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
-                    case ICHOLT_PC:
-                    case ILU_PAR_PC:
-                    case ILUT_PAR_PC:
-#ifdef _OPENMP
-#pragma omp single
-#endif
-                        {
-                            if ( Dinv_L == NULL )
-                            {
-                                if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
-                                {
-                                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                                    exit( INSUFFICIENT_MEMORY );
-                                }
-                            }
-                        }
-
-                        /* construct D^{-1}_L */
-                        if ( fresh_pre == TRUE )
-                        {
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-                            for ( i = 0; i < workspace->L->n; ++i )
-                            {
-                                si = workspace->L->start[i + 1] - 1;
-                                Dinv_L[i] = 1. / workspace->L->val[si];
-                            }
-                        }
-
-                        jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
-
-#ifdef _OPENMP
-#pragma omp single
-#endif
-                        {
-                            if ( Dinv_U == NULL )
-                            {
-                                if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
-                                {
-                                    fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                                    exit( INSUFFICIENT_MEMORY );
-                                }
-                            }
-                        }
-
-                        /* construct D^{-1}_U */
-                        if ( fresh_pre == TRUE )
-                        {
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-                            for ( i = 0; i < workspace->U->n; ++i )
-                            {
-                                si = workspace->U->start[i];
-                                Dinv_U[i] = 1. / workspace->U->val[si];
-                            }
-                        }
-
-                        jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
-                        break;
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
-                }
+            case SAI_PC:
+                //TODO: add code to compute SAI first
+                //                Sparse_MatVec( SAI, y, x );
                 break;
             default:
                 fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
                 exit( INVALID_INPUT );
                 break;
+            }
+            break;
+        case TRI_SOLVE_LEVEL_SCHED_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+                diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                break;
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+                tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
+                break;
+            case SAI_PC:
+            //TODO: add code to compute SAI first
+            //                Sparse_MatVec( SAI, y, x );
+            default:
+                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            }
+            break;
+        case TRI_SOLVE_GC_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+            case SAI_PC:
+                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+#ifdef _OPENMP
+                #pragma omp single
+#endif
+            {
+                memcpy( y_p, y, sizeof(real) * workspace->H->n );
+            }
+
+            permute_vector( y_p, workspace->H->n, FALSE, LOWER );
+            tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
+            tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
+            permute_vector( x, workspace->H->n, TRUE, UPPER );
+            break;
+            default:
+                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            }
+            break;
+        case JACOBI_ITER_PA:
+            switch ( control->cm_solver_pre_comp_type )
+            {
+            case DIAG_PC:
+            case SAI_PC:
+                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            case ICHOLT_PC:
+            case ILU_PAR_PC:
+            case ILUT_PAR_PC:
+#ifdef _OPENMP
+                #pragma omp single
+#endif
+            {
+                if ( Dinv_L == NULL )
+                {
+                    if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
+                    {
+                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                        exit( INSUFFICIENT_MEMORY );
+                    }
+                }
+            }
+
+                /* construct D^{-1}_L */
+            if ( fresh_pre == TRUE )
+            {
+#ifdef _OPENMP
+                #pragma omp for schedule(static)
+#endif
+                for ( i = 0; i < workspace->L->n; ++i )
+                {
+                    si = workspace->L->start[i + 1] - 1;
+                    Dinv_L[i] = 1. / workspace->L->val[si];
+                }
+            }
+
+            jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+
+#ifdef _OPENMP
+            #pragma omp single
+#endif
+            {
+                if ( Dinv_U == NULL )
+                {
+                    if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
+                    {
+                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
+                        exit( INSUFFICIENT_MEMORY );
+                    }
+                }
+            }
+
+                /* construct D^{-1}_U */
+            if ( fresh_pre == TRUE )
+            {
+#ifdef _OPENMP
+                #pragma omp for schedule(static)
+#endif
+                for ( i = 0; i < workspace->U->n; ++i )
+                {
+                    si = workspace->U->start[i];
+                    Dinv_U[i] = 1. / workspace->U->val[si];
+                }
+            }
+
+            jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+            break;
+            default:
+                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+            }
+            break;
+        default:
+            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
 
         }
     }
@@ -2941,8 +3012,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 
 /* generalized minimual residual iterative solver for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
-        simulation_data * const data, const sparse_matrix * const H, const real * const b,
-        const real tol, real * const x, const int fresh_pre )
+           simulation_data * const data, const sparse_matrix * const H, const real * const b,
+           const real tol, real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, ret_temp, bnorm, time_start;
@@ -2950,7 +3021,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     N = H->n;
 
 #ifdef _OPENMP
-#pragma omp parallel default(none) private(i, j, k, itr, bnorm, ret_temp) \
+    #pragma omp parallel default(none) private(i, j, k, itr, bnorm, ret_temp) \
     shared(N, cc, tmp1, tmp2, temp, time_start, g_itr, g_j, stderr)
 #endif
     {
@@ -2958,14 +3029,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         itr = 0;
 
 #ifdef _OPENMP
-#pragma omp master
+        #pragma omp master
 #endif
         {
             time_start = Get_Time( );
         }
         bnorm = Norm( b, N );
 #ifdef _OPENMP
-#pragma omp master
+        #pragma omp master
 #endif
         {
             data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
@@ -2975,14 +3046,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         {
             /* apply preconditioner to residual */
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 time_start = Get_Time( );
             }
             apply_preconditioner( workspace, control, b, workspace->b_prc, fresh_pre );
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
@@ -2994,14 +3065,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         {
             /* calculate r0 */
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 time_start = Get_Time( );
             }
             Sparse_MatVec( H, x, workspace->b_prm );
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
@@ -3010,14 +3081,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             if ( control->cm_solver_pre_comp_type == DIAG_PC )
             {
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
                 }
                 apply_preconditioner( workspace, control, workspace->b_prm, workspace->b_prm, FALSE );
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
@@ -3027,14 +3098,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             if ( control->cm_solver_pre_comp_type == DIAG_PC )
             {
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
                 }
                 Vector_Sum( workspace->v[0], 1., workspace->b_prc, -1., workspace->b_prm, N );
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
@@ -3043,14 +3114,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             else
             {
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
                 }
                 Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
@@ -3060,15 +3131,15 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             if ( control->cm_solver_pre_comp_type != DIAG_PC )
             {
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
                 }
                 apply_preconditioner( workspace, control, workspace->v[0], workspace->v[0],
-                        itr == 0 ? fresh_pre : FALSE );
+                                      itr == 0 ? fresh_pre : FALSE );
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
@@ -3076,14 +3147,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
 
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 time_start = Get_Time( );
             }
             ret_temp = Norm( workspace->v[0], N );
 #ifdef _OPENMP
-#pragma omp single
+            #pragma omp single
 #endif
             {
                 workspace->g[0] = ret_temp;
@@ -3091,7 +3162,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
             Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
@@ -3102,7 +3173,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             {
                 /* matvec */
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
@@ -3110,14 +3181,14 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
 
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
                 }
 
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
@@ -3125,7 +3196,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], FALSE );
 
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
@@ -3135,7 +3206,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 //                {
                 /* apply modified Gram-Schmidt to orthogonalize the new residual */
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
@@ -3145,7 +3216,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     ret_temp = Dot( workspace->v[i], workspace->v[j + 1], N );
 
 #ifdef _OPENMP
-#pragma omp single
+                    #pragma omp single
 #endif
                     {
                         workspace->h[i][j] = ret_temp;
@@ -3155,7 +3226,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
                 }
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
@@ -3202,31 +3273,31 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 //                }
 
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
                 }
                 ret_temp = Norm( workspace->v[j + 1], N );
 #ifdef _OPENMP
-#pragma omp single
+                #pragma omp single
 #endif
                 {
                     workspace->h[j + 1][j] = ret_temp;
                 }
 
                 Vector_Scale( workspace->v[j + 1],
-                        1.0 / workspace->h[j + 1][j], workspace->v[j + 1], N );
+                              1.0 / workspace->h[j + 1][j], workspace->v[j + 1], N );
 
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
                 }
 
 #ifdef _OPENMP
-#pragma omp master
+                #pragma omp master
 #endif
                 {
                     time_start = Get_Time( );
@@ -3244,9 +3315,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                         }
 
                         tmp1 =  workspace->hc[i] * workspace->h[i][j] +
-                            workspace->hs[i] * workspace->h[i + 1][j];
+                                workspace->hs[i] * workspace->h[i + 1][j];
                         tmp2 = -workspace->hs[i] * workspace->h[i][j] +
-                            workspace->hc[i] * workspace->h[i + 1][j];
+                               workspace->hc[i] * workspace->h[i + 1][j];
 
                         workspace->h[i][j] = tmp1;
                         workspace->h[i + 1][j] = tmp2;
@@ -3285,13 +3356,13 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 }
 
 #ifdef _OPENMP
-#pragma omp barrier
+                #pragma omp barrier
 #endif
             }
 
             /* solve Hy = g: H is now upper-triangular, do back-substitution */
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 time_start = Get_Time( );
@@ -3323,7 +3394,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             Vector_Add( x, 1., workspace->p, N );
 
 #ifdef _OPENMP
-#pragma omp master
+            #pragma omp master
 #endif
             {
                 data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
@@ -3337,7 +3408,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         }
 
 #ifdef _OPENMP
-#pragma omp master
+        #pragma omp master
 #endif
         {
             g_itr = itr;
@@ -3356,9 +3427,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
 
 int GMRES_HouseHolder( const static_storage * const workspace,
-        const control_params * const control, simulation_data * const data,
-        const sparse_matrix * const H, const real * const b, real tol,
-        real * const x, const int fresh_pre )
+                       const control_params * const control, simulation_data * const data,
+                       const sparse_matrix * const H, const real * const b, real tol,
+                       real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N;
     real cc, tmp1, tmp2, temp, bnorm;
@@ -3565,7 +3636,7 @@ int CG( const static_storage * const workspace, const control_params * const con
     z = workspace->p;
 
 #ifdef _OPENMP
-#pragma omp parallel default(none) private(i, tmp, alpha, beta, b_norm, r_norm, sig_old, sig_new) \
+    #pragma omp parallel default(none) private(i, tmp, alpha, beta, b_norm, r_norm, sig_old, sig_new) \
     shared(itr, N, d, r, p, z)
 #endif
     {
@@ -3601,7 +3672,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         }
 
 #ifdef _OPENMP
-#pragma omp single
+        #pragma omp single
 #endif
         itr = i;
     }
@@ -3618,8 +3689,8 @@ int CG( const static_storage * const workspace, const control_params * const con
 
 /* Steepest Descent */
 int SDM( const static_storage * const workspace, const control_params * const control,
-        const sparse_matrix * const H, const real * const b, const real tol,
-        real * const x, const int fresh_pre )
+         const sparse_matrix * const H, const real * const b, const real tol,
+         real * const x, const int fresh_pre )
 {
     int i, itr, N;
     real tmp, alpha, b_norm;
@@ -3628,14 +3699,14 @@ int SDM( const static_storage * const workspace, const control_params * const co
     N = H->n;
 
 #ifdef _OPENMP
-#pragma omp parallel default(none) private(i, tmp, alpha, b_norm, sig) \
+    #pragma omp parallel default(none) private(i, tmp, alpha, b_norm, sig) \
     shared(itr, N)
 #endif
     {
         b_norm = Norm( b, N );
 
         Sparse_MatVec( H, x, workspace->q );
-        Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->q, N );
+        Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->q, N );
 
         apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre );
 
@@ -3652,7 +3723,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
              * (Dot function has persistent state in the form
              * of a shared global variable for the OpenMP version) */
 #ifdef _OPENMP
-#pragma omp barrier
+            #pragma omp barrier
 #endif
 
             tmp = Dot( workspace->d, workspace->q, N );
@@ -3665,7 +3736,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
         }
 
 #ifdef _OPENMP
-#pragma omp single
+        #pragma omp single
 #endif
         itr = i;
     }

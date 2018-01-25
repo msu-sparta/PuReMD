@@ -32,6 +32,9 @@ typedef enum
 
 void Sort_Matrix_Rows( sparse_matrix * const );
 
+void Setup_Sparsity_Pattern( const sparse_matrix * const, 
+        const real, sparse_matrix * );
+
 int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 
 void Calculate_Droptol( const sparse_matrix * const,
@@ -57,6 +60,11 @@ real ILU_PAR( const sparse_matrix * const, const unsigned int,
 
 real ILUT_PAR( const sparse_matrix * const, const real *,
         const unsigned int, sparse_matrix * const, sparse_matrix * const );
+
+#if defined(HAVE_LAPACK)
+real Sparse_Approx_Inverse( const sparse_matrix * const, const sparse_matrix * const,
+        sparse_matrix ** );
+#endif
 
 void Transpose( const sparse_matrix * const, sparse_matrix * const );
 

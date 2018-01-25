@@ -79,6 +79,7 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->cm_domain_sparsity = 1.0;
     control->cm_solver_pre_comp_type = ICHOLT_PC;
     control->cm_solver_pre_comp_sweeps = 3;
+    control->cm_solver_pre_comp_sai_thres = 0.1;
     control->cm_solver_pre_comp_refactor = 100;
     control->cm_solver_pre_comp_droptol = 0.01;
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
@@ -304,6 +305,11 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             ival = atoi( tmp[1] );
             control->cm_solver_pre_comp_sweeps = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_sai_thres") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->cm_solver_pre_comp_sai_thres = val;
         }
         else if ( strcmp(tmp[0], "cm_solver_pre_app_type") == 0 )
         {
