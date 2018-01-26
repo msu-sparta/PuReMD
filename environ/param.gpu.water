@@ -25,6 +25,7 @@ cm_solver_pre_comp_type           1             ! method used to compute precond
 cm_solver_pre_comp_refactor       1000          ! number of steps before recomputing preconditioner
 cm_solver_pre_comp_droptol        0.0           ! threshold tolerance for dropping values in preconditioner computation, if applicable
 cm_solver_pre_comp_sweeps         3             ! number of sweeps used to compute preconditioner (ILU_PAR)
+cm_solver_pre_comp_sai_thres      0.1           ! ratio of charge matrix NNZ's used to compute preconditioner (SAI)
 cm_solver_pre_app_type            1             ! method used to apply preconditioner
 cm_solver_pre_app_jacobi_iters    50            ! number of Jacobi iterations used for applying precondition, if applicable
 

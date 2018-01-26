@@ -25,9 +25,9 @@
 #include "tool_box.h"
 #include "vector.h"
 
-#if defined(HAVE_LAPACK)
+#if defined(HAVE_LAPACKE)
 /* Intel MKL */
-#if defined(HAVE_LAPACK_MKL)
+#if defined(HAVE_LAPACKE_MKL)
 #include "mkl_lapacke.h"
 /* reference LAPACK */
 #else
@@ -1611,39 +1611,33 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 }
 
 
-#if defined(HAVE_LAPACK)
+#if defined(HAVE_LAPACKE)
 real Sparse_Approx_Inverse( const sparse_matrix * const A,
-                            const sparse_matrix * const A_spar_patt, sparse_matrix ** A_app_inv )
+                            const sparse_matrix * const A_spar_patt,
+                            sparse_matrix ** A_app_inv )
 {
     int i, k, pj, j_temp, identity_pos;
     int N, M, d_i, d_j;
-#if defined(HAVE_LAPACK_MKL)
-    MKL_int m, n, nrhs, lda, ldb, info;
-#else
-    int m, n, nrhs, lda, ldb, info;
-#endif
-    int *pos_i, *pos_j;
+    lapack_int m, n, nrhs, lda, ldb, info;
+    int *pos_x, *pos_y;
     real start;
     real *e_j, *dense_matrix;
     sparse_matrix *A_full, *A_spar_patt_full;
-    char *I, *J;
+    char *X, *Y;
 
     start = Get_Time( );
 
-    if ( (I = (char *) smalloc(sizeof(char) * A->n, "Sparse_Approx_Inverse::I")) == NULL ||
-            (J = (char *) smalloc(sizeof(char) * A->n, "Sparse_Approx_Inverse::I")) == NULL ||
-            (pos_i = (int *) smalloc(sizeof(int) * A->n, "Sparse_Approx_Inverse::I")) == NULL ||
-            (pos_j = (int *) smalloc(sizeof(int) * A->n, "Sparse_Approx_Inverse::I")) == NULL )
-    {
-        exit( INSUFFICIENT_MEMORY );
-    }
+    X = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::X" );
+    Y = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::Y" );
+    pos_x = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_x" );
+    pos_y = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_y" );
 
     for ( i = 0; i < A->n; ++i )
     {
-        I[i] = 0;
-        J[i] = 0;
-        pos_i[i] = 0;
-        pos_j[i] = 0;
+        X[i] = 0;
+        Y[i] = 0;
+        pos_x[i] = 0;
+        pos_y[i] = 0;
     }
 
     // Get A and A_spar_patt full matrices
@@ -1670,8 +1664,8 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
         {
             j_temp = A_spar_patt_full->j[pj];
 
-            J[j_temp] = 1;
-            pos_j[j_temp] = N;
+            Y[j_temp] = 1;
+            pos_y[j_temp] = N;
             ++N;
 
             // for each of those indices
@@ -1679,7 +1673,7 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
             for ( k = A_full->start[j_temp]; k < A_full->start[j_temp + 1]; ++k )
             {
                 // and accumulate the nonzero column indices to serve as the row indices of the dense matrix
-                I[A_full->j[k]] = 1;
+                X[A_full->j[k]] = 1;
             }
         }
 
@@ -1687,9 +1681,9 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
         identity_pos = M;
         for ( k = 0; k < A_full->n; k++)
         {
-            if ( I[k] != 0 )
+            if ( X[k] != 0 )
             {
-                pos_i[M] = k;
+                pos_x[M] = k;
                 if ( k == i )
                 {
                     identity_pos = M;
@@ -1699,11 +1693,8 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
         }
 
         // allocate memory for NxM dense matrix
-        if ( (dense_matrix = (real *) smalloc(sizeof(real) * N * M,
-                                              "Sparse_Approx_Inverse::dense_matrix")) == NULL )
-        {
-            exit( INSUFFICIENT_MEMORY );
-        }
+        smalloc( sizeof(real) * N * M,
+                "Sparse_Approx_Inverse::dense_matrix" );
 
         // fill in the entries of dense matrix
         for ( d_i = 0; d_i < M; ++d_i)
@@ -1715,23 +1706,21 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
             }
 
             // change the value if any of the column indices is seen
-            for ( d_j = A_full->start[pos_i[d_i]];
-                    d_j < A_full->start[pos_i[d_i + 1]]; ++d_j )
+            for ( d_j = A_full->start[pos_x[d_i]];
+                    d_j < A_full->start[pos_x[d_i + 1]]; ++d_j )
             {
-                if ( J[A_full->j[d_j]] == 1 )
+                if ( Y[A_full->j[d_j]] == 1 )
                 {
-                    dense_matrix[d_i * M + pos_j[d_j]] = A_full->val[d_j];
+                    dense_matrix[d_i * M + pos_y[d_j]] = A_full->val[d_j];
                 }
             }
         }
 
         /* create the right hand side of the linear equation
            that is the full column of the identity matrix*/
-        if ( (e_j = (real *) smalloc(sizeof(char) * M,
-                                     "Sparse_Approx_Inverse::M")) == NULL )
-        {
-            exit( INSUFFICIENT_MEMORY );
-        }
+        smalloc( sizeof(char) * M,
+                "Sparse_Approx_Inverse::M" );
+
         for ( k = 0; k < M; ++k )
         {
             e_j[k] = 0.0;
@@ -1748,7 +1737,7 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
         // printf( "LAPACKE_dgels (row-major, high-level) Example Program Results\n" );
         /* Solve the equations A*X = B */
         info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
-                              e_j, ldb );
+                e_j, ldb );
         /* Check for the full rank */
         if ( info > 0 )
         {
@@ -1773,20 +1762,20 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
         srealloc( e_j, 0, "Sparse_Approx_Inverse::e_j"  );
         for ( i = 0; i < A->n; ++i )
         {
-            I[i] = 0;
-            J[i] = 0;
-            pos_i[i] = 0;
-            pos_j[i] = 0;
+            X[i] = 0;
+            Y[i] = 0;
+            pos_x[i] = 0;
+            pos_y[i] = 0;
         }
     }
 
     // Deallocate?
     Deallocate_Matrix( A_full );
     Deallocate_Matrix( A_spar_patt_full );
-    srealloc( I, 0, "Sparse_Approx_Inverse::I" );
-    srealloc( J, 0, "Sparse_Approx_Inverse::J" );
-    srealloc( pos_i, 0, "Sparse_Approx_Inverse::pos_i" );
-    srealloc( pos_j, 0, "Sparse_Approx_Inverse::pos_j" );
+    srealloc( X, 0, "Sparse_Approx_Inverse::X" );
+    srealloc( Y, 0, "Sparse_Approx_Inverse::Y" );
+    srealloc( pos_x, 0, "Sparse_Approx_Inverse::pos_x" );
+    srealloc( pos_y, 0, "Sparse_Approx_Inverse::pos_y" );
 
     return Get_Timing_Info( start );
 }

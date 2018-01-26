@@ -130,6 +130,24 @@ then
 	CFLAGS="${CFLAGS} ${GPROF_FLAGS}"
 fi
 
+# Check for LAPACKE
+AC_CHECK_HEADERS([lapacke.h], [LAPACKE_FOUND_HEADERS="yes"])
+if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"
+then
+	LAPACKE_FOUND_LIBS="yes"
+	AC_SEARCH_LIBS([LAPACKE_dgels], [lapacke],
+		        [], [LAPACKE_FOUND_LIBS="no"], [-llapack])
+	AS_IF([test "x${LAPACKE_FOUND_LIBS}" != "xyes"],
+	      [AC_MSG_ERROR([Unable to find LAPACKE library.])])
+	LIBS="${LIBS} -llapack"
+	AC_DEFINE([HAVE_LAPACKE], [1], [Define to 1 if you have LAPACKE support enabled.])
+else
+	AC_MSG_WARN([
+	  -----------------------------------------------
+	   Unable to find LAPACKE on this system.
+	  -----------------------------------------------])
+fi
+
 # Tests using Google C++ testing framework (gtest)
 AC_LANG_PUSH([C++])
 AC_PROG_CXX([icpc g++ clang++ CC])
