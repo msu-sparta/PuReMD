@@ -1700,7 +1700,7 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
             // all rows are initialized to zero
             for ( d_j = 0; d_j < N; ++d_j )
             {
-                dense_matrix[d_i * M + d_j] = 0.0;
+                dense_matrix[d_i * N + d_j] = 0.0;
             }
 
             // change the value if any of the column indices is seen
@@ -1709,7 +1709,7 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
             {
                 if ( Y[A_full->j[d_j]] == 1 )
                 {
-                    dense_matrix[d_i * M + pos_y[d_j]] = A_full->val[d_j];
+                    dense_matrix[d_i * N + pos_y[d_j]] = A_full->val[d_j];
                 }
             }
         }
