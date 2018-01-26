@@ -203,7 +203,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case SAI_PC:
-#if defined(HAVE_LAPACKE)
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
                 Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
                         &workspace->H_app_inv );
@@ -566,7 +566,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
 
         case SAI_PC:
-#if defined(HAVE_LAPACKE)
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
                 Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
                         &workspace->H_app_inv );
@@ -684,7 +684,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case SAI_PC:
-#if defined(HAVE_LAPACKE)
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
                 Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
                         &workspace->H_app_inv );

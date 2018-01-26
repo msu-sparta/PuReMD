@@ -25,14 +25,12 @@
 #include "tool_box.h"
 #include "vector.h"
 
-#if defined(HAVE_LAPACKE)
 /* Intel MKL */
 #if defined(HAVE_LAPACKE_MKL)
-#include "mkl_lapacke.h"
+  #include "mkl.h"
 /* reference LAPACK */
-#else
-#include "lapacke.h"
-#endif
+#elif defined(HAVE_LAPACKE)
+  #include "lapacke.h"
 #endif
 
 typedef struct
@@ -1611,7 +1609,7 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 }
 
 
-#if defined(HAVE_LAPACKE)
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 real Sparse_Approx_Inverse( const sparse_matrix * const A,
                             const sparse_matrix * const A_spar_patt,
                             sparse_matrix ** A_app_inv )

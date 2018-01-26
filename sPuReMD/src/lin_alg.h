@@ -61,7 +61,7 @@ real ILU_PAR( const sparse_matrix * const, const unsigned int,
 real ILUT_PAR( const sparse_matrix * const, const real *,
         const unsigned int, sparse_matrix * const, sparse_matrix * const );
 
-#if defined(HAVE_LAPACK)
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 real Sparse_Approx_Inverse( const sparse_matrix * const, const sparse_matrix * const,
         sparse_matrix ** );
 #endif
