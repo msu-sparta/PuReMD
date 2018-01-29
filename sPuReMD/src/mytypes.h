@@ -607,7 +607,7 @@ typedef struct
     unsigned int cm_solver_pre_comp_refactor;
     real cm_solver_pre_comp_droptol;
     unsigned int cm_solver_pre_comp_sweeps;
-    unsigned int cm_solver_pre_comp_sai_thres;
+    real cm_solver_pre_comp_sai_thres;
     unsigned int cm_solver_pre_app_type;
     unsigned int cm_solver_pre_app_jacobi_iters;
 

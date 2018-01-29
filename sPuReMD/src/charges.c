@@ -862,7 +862,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
         case SAI_PC:
             Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    workspace->H_spar_patt );
+                    &workspace->H_spar_patt );
             break;
 
         default:
@@ -1014,7 +1014,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
         case SAI_PC:
             Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    workspace->H_spar_patt );
+                    &workspace->H_spar_patt );
             break;
 
         default:
@@ -1168,7 +1168,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
         case SAI_PC:
             Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    workspace->H_spar_patt );
+                    &workspace->H_spar_patt );
             break;
 
         default:

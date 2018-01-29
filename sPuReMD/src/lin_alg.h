@@ -33,7 +33,7 @@ typedef enum
 void Sort_Matrix_Rows( sparse_matrix * const );
 
 void Setup_Sparsity_Pattern( const sparse_matrix * const, 
-        const real, sparse_matrix * );
+        const real, sparse_matrix ** );
 
 int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 

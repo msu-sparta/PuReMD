@@ -321,6 +321,8 @@ void Init_Workspace( reax_system *system, control_params *control,
     workspace->H = NULL;
     workspace->H_sp = NULL;
     workspace->L = NULL;
+    workspace->H_spar_patt = NULL;
+    workspace->H_app_inv = NULL;
     workspace->U = NULL;
     workspace->Hdia_inv = NULL;
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
