@@ -1620,7 +1620,6 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
                             const sparse_matrix * const A_spar_patt,
                             sparse_matrix ** A_app_inv )
 {
-    //trial
     int i, k, pj, j_temp, identity_pos;
     int N, M, d_i, d_j;
     lapack_int m, n, nrhs, lda, ldb, info;
@@ -1631,19 +1630,6 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
     char *X, *Y;
 
     start = Get_Time( );
-
-    X = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::X" );
-    Y = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::Y" );
-    pos_x = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_x" );
-    pos_y = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_y" );
-
-    for ( i = 0; i < A->n; ++i )
-    {
-        X[i] = 0;
-        Y[i] = 0;
-        pos_x[i] = 0;
-        pos_y[i] = 0;
-    }
 
     // Get A and A_spar_patt full matrices
     compute_full_sparse_matrix( A, &A_full );
@@ -1658,130 +1644,152 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
 
     (*A_app_inv)->start[(*A_app_inv)->n] = A_spar_patt_full->start[A_spar_patt_full->n];
 
-    // For each row of full A_spar_patt
-    for ( i = 0; i < A_spar_patt_full->n; ++i )
+#ifdef _OPENMP
+    #pragma omp parallel default(none) \
+    shared(A_full, A_spar_patt_full) private(i, k, pj, j_temp, identity_pos, \
+            N, M, d_i, d_j, m, n, nrhs, lda, ldb, info, X, Y, pos_x, pos_y, e_j, dense_matrix)
+#endif
     {
-        N = 0;
-        M = 0;
+        X = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::X" );
+        Y = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::Y" );
+        pos_x = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_x" );
+        pos_y = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_y" );
 
-        // find column indices of nonzeros (which will be the columns indices of the dense matrix)
-        for ( pj = A_spar_patt_full->start[i]; pj < A_spar_patt_full->start[i + 1]; ++pj )
+        for ( i = 0; i < A->n; ++i )
         {
-
-            j_temp = A_spar_patt_full->j[pj];
-
-            Y[j_temp] = 1;
-            pos_y[j_temp] = N;
-            ++N;
-
-            // for each of those indices
-            // search through the row of full A of that index
-            for ( k = A_full->start[j_temp]; k < A_full->start[j_temp + 1]; ++k )
-            {
-                // and accumulate the nonzero column indices to serve as the row indices of the dense matrix
-                X[A_full->j[k]] = 1;
-            }
+            X[i] = 0;
+            Y[i] = 0;
+            pos_x[i] = 0;
+            pos_y[i] = 0;
         }
 
-        // enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix
-        identity_pos = M;
-        for ( k = 0; k < A_full->n; k++)
+#ifdef _OPENMP
+        #pragma omp for schedule(static)
+#endif
+        for ( i = 0; i < A_spar_patt_full->n; ++i )
         {
-            if ( X[k] != 0 )
-            {
-                pos_x[M] = k;
-                if ( k == i )
-                {
-                    identity_pos = M;
-                }
-                ++M;
-            }
-        }
+            N = 0;
+            M = 0;
 
-        // allocate memory for NxM dense matrix
-        dense_matrix = (real *) smalloc( sizeof(real) * N * M,
-                                         "Sparse_Approx_Inverse::dense_matrix" );
+            // find column indices of nonzeros (which will be the columns indices of the dense matrix)
+            for ( pj = A_spar_patt_full->start[i]; pj < A_spar_patt_full->start[i + 1]; ++pj )
+            {
 
-        // fill in the entries of dense matrix
-        for ( d_i = 0; d_i < M; ++d_i)
-        {
-            // all rows are initialized to zero
-            for ( d_j = 0; d_j < N; ++d_j )
-            {
-                dense_matrix[d_i * N + d_j] = 0.0;
-            }
-            // change the value if any of the column indices is seen
-            for ( d_j = A_full->start[pos_x[d_i]];
-                    d_j < A_full->start[pos_x[d_i + 1]]; ++d_j )
-            {
-                if ( Y[A_full->j[d_j]] == 1 )
+                j_temp = A_spar_patt_full->j[pj];
+
+                Y[j_temp] = 1;
+                pos_y[j_temp] = N;
+                ++N;
+
+                // for each of those indices
+                // search through the row of full A of that index
+                for ( k = A_full->start[j_temp]; k < A_full->start[j_temp + 1]; ++k )
                 {
-                    dense_matrix[d_i * N + pos_y[A_full->j[d_j]]] = A_full->val[d_j];
+                    // and accumulate the nonzero column indices to serve as the row indices of the dense matrix
+                    X[A_full->j[k]] = 1;
                 }
             }
 
+            // enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix
+            identity_pos = M;
+            for ( k = 0; k < A_full->n; k++)
+            {
+                if ( X[k] != 0 )
+                {
+                    pos_x[M] = k;
+                    if ( k == i )
+                    {
+                        identity_pos = M;
+                    }
+                    ++M;
+                }
+            }
+
+            // allocate memory for NxM dense matrix
+            dense_matrix = (real *) smalloc( sizeof(real) * N * M,
+                                             "Sparse_Approx_Inverse::dense_matrix" );
+
+            // fill in the entries of dense matrix
+            for ( d_i = 0; d_i < M; ++d_i)
+            {
+                // all rows are initialized to zero
+                for ( d_j = 0; d_j < N; ++d_j )
+                {
+                    dense_matrix[d_i * N + d_j] = 0.0;
+                }
+                // change the value if any of the column indices is seen
+                for ( d_j = A_full->start[pos_x[d_i]];
+                        d_j < A_full->start[pos_x[d_i + 1]]; ++d_j )
+                {
+                    if ( Y[A_full->j[d_j]] == 1 )
+                    {
+                        dense_matrix[d_i * N + pos_y[A_full->j[d_j]]] = A_full->val[d_j];
+                    }
+                }
+
+            }
+
+            /* create the right hand side of the linear equation
+               that is the full column of the identity matrix*/
+            e_j = (real *) smalloc( sizeof(real) * M,
+                                    "Sparse_Approx_Inverse::e_j" );
+
+            for ( k = 0; k < M; ++k )
+            {
+                e_j[k] = 0.0;
+            }
+            e_j[identity_pos] = 1.0;
+
+            /* Solve the overdetermined system AX = B through the least-squares problem:
+             * min ||B - AX||_2 */
+            m = M;
+            n = N;
+            nrhs = 1;
+            lda = N;
+            ldb = nrhs;
+            info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
+                                  e_j, ldb );
+
+            /* Check for the full rank */
+            if ( info > 0 )
+            {
+                fprintf( stderr, "The diagonal element %i of the triangular factor ", info );
+                fprintf( stderr, "of A is zero, so that A does not have full rank;\n" );
+                fprintf( stderr, "the least squares solution could not be computed.\n" );
+                exit( INVALID_INPUT );
+            }
+
+            /* Print least squares solution */
+            // print_matrix( "Least squares solution", n, nrhs, b, ldb );
+
+            // accumulate the resulting vector to build A_app_inv
+            (*A_app_inv)->start[i] = A_spar_patt_full->start[i];
+            for ( k = A_spar_patt_full->start[i]; k < A_spar_patt_full->start[i + 1]; ++k)
+            {
+                (*A_app_inv)->j[k] = A_spar_patt_full->j[k];
+                (*A_app_inv)->val[k] = e_j[k - A_spar_patt_full->start[i]];
+            }
+
+            //empty variables that will be used next iteration
+            sfree( dense_matrix, "Sparse_Approx_Inverse::dense_matrix" );
+            sfree( e_j, "Sparse_Approx_Inverse::e_j"  );
+            for ( k = 0; k < A->n; ++k )
+            {
+                X[k] = 0;
+                Y[k] = 0;
+                pos_x[k] = 0;
+                pos_y[k] = 0;
+            }
         }
 
-        /* create the right hand side of the linear equation
-           that is the full column of the identity matrix*/
-        e_j = (real *) smalloc( sizeof(real) * M,
-                                "Sparse_Approx_Inverse::e_j" );
-
-        for ( k = 0; k < M; ++k )
-        {
-            e_j[k] = 0.0;
-        }
-        e_j[identity_pos] = 1.0;
-
-        /* Solve the overdetermined system AX = B through the least-squares problem:
-         * min ||B - AX||_2 */
-        m = M;
-        n = N;
-        nrhs = 1;
-        lda = N;
-        ldb = nrhs;
-        info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
-                              e_j, ldb );
-
-        /* Check for the full rank */
-        if ( info > 0 )
-        {
-            fprintf( stderr, "The diagonal element %i of the triangular factor ", info );
-            fprintf( stderr, "of A is zero, so that A does not have full rank;\n" );
-            fprintf( stderr, "the least squares solution could not be computed.\n" );
-            exit( INVALID_INPUT );
-        }
-
-        /* Print least squares solution */
-        // print_matrix( "Least squares solution", n, nrhs, b, ldb );
-
-        // accumulate the resulting vector to build A_app_inv
-        (*A_app_inv)->start[i] = A_spar_patt_full->start[i];
-        for ( k = A_spar_patt_full->start[i]; k < A_spar_patt_full->start[i + 1]; ++k)
-        {
-            (*A_app_inv)->j[k] = A_spar_patt_full->j[k];
-            (*A_app_inv)->val[k] = e_j[k - A_spar_patt_full->start[i]];
-        }
-
-        //empty variables that will be used next iteration
-        sfree( dense_matrix, "Sparse_Approx_Inverse::dense_matrix" );
-        sfree( e_j, "Sparse_Approx_Inverse::e_j"  );
-        for ( k = 0; k < A->n; ++k )
-        {
-            X[k] = 0;
-            Y[k] = 0;
-            pos_x[k] = 0;
-            pos_y[k] = 0;
-        }
+        sfree( pos_y, "Sparse_Approx_Inverse::pos_y" );
+        sfree( pos_x, "Sparse_Approx_Inverse::pos_x" );
+        sfree( Y, "Sparse_Approx_Inverse::Y" );
+        sfree( X, "Sparse_Approx_Inverse::X" );
     }
 
-    // Deallocate
     Deallocate_Matrix( A_full );
     Deallocate_Matrix( A_spar_patt_full );
-    sfree( pos_y, "Sparse_Approx_Inverse::pos_y" );
-    sfree( pos_x, "Sparse_Approx_Inverse::pos_x" );
-    sfree( Y, "Sparse_Approx_Inverse::Y" );
-    sfree( X, "Sparse_Approx_Inverse::X" );
 
     return Get_Timing_Info( start );
 }

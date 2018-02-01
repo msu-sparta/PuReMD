@@ -1006,6 +1006,11 @@ void Finalize_Workspace( reax_system *system, control_params *control,
         Deallocate_Matrix( workspace->L );
         Deallocate_Matrix( workspace->U );
     }
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        Deallocate_Matrix( workspace->H_spar_patt );
+        Deallocate_Matrix( workspace->H_app_inv );
+    }
 
     for ( i = 0; i < 5; ++i )
     {
