@@ -1649,15 +1649,12 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
     compute_full_sparse_matrix( A, &A_full );
     compute_full_sparse_matrix( A_spar_patt, &A_spar_patt_full );
 
-    // char file[100] = "H_spar_patt_full";
-    // Print_Sparse_Matrix2(A_spar_patt_full, file, NULL);
     // A_app_inv will be the same as A_spar_patt_full except the val array
     if ( Allocate_Matrix( A_app_inv, A_spar_patt_full->n, A_spar_patt_full->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for approximate inverse matrix. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
-
 
     (*A_app_inv)->start[(*A_app_inv)->n] = A_spar_patt_full->start[A_spar_patt_full->n];
 
@@ -1736,18 +1733,16 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
         }
         e_j[identity_pos] = 1.0;
 
-        // call QR-decompostion from LAPACK
+        /* Solve the overdetermined system AX = B through the least-squares problem:
+         * min ||B - AX||_2 */
         m = M;
         n = N;
         nrhs = 1;
         lda = N;
-        ldb = 1;
-        /* Executable statements */
-        // printf( "LAPACKE_dgels (row-major, high-level) Example Program Results\n" );
-        /* Solve the equations A*X = B */
-
+        ldb = nrhs;
         info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
                               e_j, ldb );
+
         /* Check for the full rank */
         if ( info > 0 )
         {
@@ -1756,6 +1751,7 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
             fprintf( stderr, "the least squares solution could not be computed.\n" );
             exit( INVALID_INPUT );
         }
+
         /* Print least squares solution */
         // print_matrix( "Least squares solution", n, nrhs, b, ldb );
 
@@ -1782,10 +1778,10 @@ real Sparse_Approx_Inverse( const sparse_matrix * const A,
     // Deallocate
     Deallocate_Matrix( A_full );
     Deallocate_Matrix( A_spar_patt_full );
-    sfree( X, "Sparse_Approx_Inverse::X" );
-    sfree( Y, "Sparse_Approx_Inverse::Y" );
-    sfree( pos_x, "Sparse_Approx_Inverse::pos_x" );
     sfree( pos_y, "Sparse_Approx_Inverse::pos_y" );
+    sfree( pos_x, "Sparse_Approx_Inverse::pos_x" );
+    sfree( Y, "Sparse_Approx_Inverse::Y" );
+    sfree( X, "Sparse_Approx_Inverse::X" );
 
     return Get_Timing_Info( start );
 }
@@ -1876,19 +1872,18 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 static void Sparse_MatVec_full( const sparse_matrix * const A,
                                 const real * const x, real * const b )
 {
-    int i, j;
+    int i, pj;
 
     Vector_MakeZero( b, A->n );
 
 #ifdef _OPENMP
-    #pragma omp for schedule(static) default(none) \
-    private(i, j)
+    #pragma omp for schedule(static) default(none) private(i, j)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
-        for ( j = A->start[i]; j < A->start[i + 1]; ++j )
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
-            b[i] += A->val[j] * x[A->j[j]];
+            b[i] += A->val[pj] * x[A->j[pj]];
         }
     }
 }
@@ -2934,14 +2929,14 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 #ifdef _OPENMP
                 #pragma omp single
 #endif
-                {
-                    memcpy( y_p, y, sizeof(real) * workspace->H->n );
-                }
+            {
+                memcpy( y_p, y, sizeof(real) * workspace->H->n );
+            }
 
-                permute_vector( y_p, workspace->H->n, FALSE, LOWER );
-                tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
-                tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
-                permute_vector( x, workspace->H->n, TRUE, UPPER );
+            permute_vector( y_p, workspace->H->n, FALSE, LOWER );
+            tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
+            tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
+            permute_vector( x, workspace->H->n, TRUE, UPPER );
             break;
             default:
                 fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -3034,7 +3029,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 }
 
 
-/* generalized minimual residual iterative solver for sparse linear systems */
+/* generalized minimual residual method with restarting for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
            simulation_data * const data, const sparse_matrix * const H, const real * const b,
            const real tol, real * const x, const int fresh_pre )
@@ -3043,6 +3038,8 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     real cc, tmp1, tmp2, temp, ret_temp, bnorm, time_start;
 
     N = H->n;
+    g_j = 0;
+    g_itr = 0;
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) private(i, j, k, itr, bnorm, ret_temp) \
@@ -3052,131 +3049,30 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         j = 0;
         itr = 0;
 
-#ifdef _OPENMP
-        #pragma omp master
-#endif
-        {
-            time_start = Get_Time( );
-        }
+        time_start = Get_Time( );
         bnorm = Norm( b, N );
-#ifdef _OPENMP
-        #pragma omp master
-#endif
-        {
-            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
-        }
-
-        if ( control->cm_solver_pre_comp_type == DIAG_PC )
-        {
-            /* apply preconditioner to residual */
-#ifdef _OPENMP
-            #pragma omp master
-#endif
-            {
-                time_start = Get_Time( );
-            }
-            apply_preconditioner( workspace, control, b, workspace->b_prc, fresh_pre );
-#ifdef _OPENMP
-            #pragma omp master
-#endif
-            {
-                data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
-            }
-        }
+        data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
 
         /* GMRES outer-loop */
         for ( itr = 0; itr < control->cm_solver_max_iters; ++itr )
         {
             /* calculate r0 */
-#ifdef _OPENMP
-            #pragma omp master
-#endif
-            {
-                time_start = Get_Time( );
-            }
+            time_start = Get_Time( );
             Sparse_MatVec( H, x, workspace->b_prm );
-#ifdef _OPENMP
-            #pragma omp master
-#endif
-            {
-                data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
-            }
+            data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
 
-            if ( control->cm_solver_pre_comp_type == DIAG_PC )
-            {
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
-                apply_preconditioner( workspace, control, workspace->b_prm, workspace->b_prm, FALSE );
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
-                }
-            }
+            time_start = Get_Time( );
+            Vector_Sum( workspace->b_prc, 1., b, -1., workspace->b_prm, N );
+            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
 
-            if ( control->cm_solver_pre_comp_type == DIAG_PC )
-            {
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
-                Vector_Sum( workspace->v[0], 1., workspace->b_prc, -1., workspace->b_prm, N );
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
-                }
-            }
-            else
-            {
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
-                Vector_Sum( workspace->v[0], 1., b, -1., workspace->b_prm, N );
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
-                }
-            }
+            time_start = Get_Time( );
+            apply_preconditioner( workspace, control, workspace->b_prc, workspace->v[0],
+                                  itr == 0 ? fresh_pre : FALSE );
+            data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
 
-            if ( control->cm_solver_pre_comp_type != DIAG_PC )
-            {
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
-                apply_preconditioner( workspace, control, workspace->v[0], workspace->v[0],
-                                      itr == 0 ? fresh_pre : FALSE );
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
-                }
-            }
-
-#ifdef _OPENMP
-            #pragma omp master
-#endif
-            {
-                time_start = Get_Time( );
-            }
+            time_start = Get_Time( );
             ret_temp = Norm( workspace->v[0], N );
+
 #ifdef _OPENMP
             #pragma omp single
 #endif
@@ -3184,57 +3080,25 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 workspace->g[0] = ret_temp;
             }
 
-            Vector_Scale( workspace->v[0], 1. / workspace->g[0], workspace->v[0], N );
-#ifdef _OPENMP
-            #pragma omp master
-#endif
-            {
-                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
-            }
+            Vector_Scale( workspace->v[0], 1. / ret_temp, workspace->v[0], N );
+            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
 
             /* GMRES inner-loop */
             for ( j = 0; j < control->cm_solver_restart && FABS(workspace->g[j]) / bnorm > tol; j++ )
             {
                 /* matvec */
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
-                Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1] );
+                time_start = Get_Time( );
+                Sparse_MatVec( H, workspace->v[j], workspace->b_prc );
+                data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
 
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
-                }
+                time_start = Get_Time( );
+                apply_preconditioner( workspace, control, workspace->b_prc, workspace->v[j + 1], FALSE );
+                data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
 
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
-                apply_preconditioner( workspace, control, workspace->v[j + 1], workspace->v[j + 1], FALSE );
-
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
-                }
-
-                //                if ( control->cm_solver_pre_comp_type == DIAG_PC )
-                //                {
+//                if ( control->cm_solver_pre_comp_type == DIAG_PC )
+//                {
                 /* apply modified Gram-Schmidt to orthogonalize the new residual */
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
+                time_start = Get_Time( );
                 for ( i = 0; i <= j; i++ )
                 {
                     ret_temp = Dot( workspace->v[i], workspace->v[j + 1], N );
@@ -3249,26 +3113,21 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
 
                 }
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
-                }
+                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
 //                }
 //                else
 //                {
 //                    //TODO: investigate correctness of not explicitly orthogonalizing first few vectors
 //                    /* apply modified Gram-Schmidt to orthogonalize the new residual */
-//#ifdef _OPENMP
-//                    #pragma omp master
-//#endif
+//
+//
+//
 //                    {
 //                        time_start = Get_Time( );
 //                    }
-//#ifdef _OPENMP
+//
 //                    #pragma omp single
-//#endif
+//
 //                    {
 //                        for ( i = 0; i < j - 1; i++ )
 //                        {
@@ -3279,30 +3138,26 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 //                    for ( i = MAX(j - 1, 0); i <= j; i++ )
 //                    {
 //                        ret_temp = Dot( workspace->v[i], workspace->v[j + 1], N );
-//#ifdef _OPENMP
+//
 //                        #pragma omp single
-//#endif
+//
 //                        {
 //                            workspace->h[i][j] = ret_temp;
 //                        }
 //
 //                        Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
 //                    }
-//#ifdef _OPENMP
-//                    #pragma omp master
-//#endif
+//
+//
+//
 //                    {
 //                        data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
 //                    }
 //                }
 
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                }
+                time_start = Get_Time( );
                 ret_temp = Norm( workspace->v[j + 1], N );
+
 #ifdef _OPENMP
                 #pragma omp single
 #endif
@@ -3312,23 +3167,17 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
                 Vector_Scale( workspace->v[j + 1],
                               1.0 / workspace->h[j + 1][j], workspace->v[j + 1], N );
+                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
 
+                time_start = Get_Time( );
+//                    if ( control->cm_solver_pre_comp_type == NONE_PC ||
+//                            control->cm_solver_pre_comp_type == DIAG_PC )
+//                    {
+                /* Givens rotations on the upper-Hessenberg matrix to make it U */
 #ifdef _OPENMP
-                #pragma omp master
+                #pragma omp single
 #endif
                 {
-                    data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
-                }
-
-#ifdef _OPENMP
-                #pragma omp master
-#endif
-                {
-                    time_start = Get_Time( );
-                    //                    if ( control->cm_solver_pre_comp_type == NONE_PC ||
-                    //                            control->cm_solver_pre_comp_type == DIAG_PC )
-                    //                    {
-                    /* Givens rotations on the upper-Hessenberg matrix to make it U */
                     for ( i = 0; i <= j; i++ )
                     {
                         if ( i == j )
@@ -3376,8 +3225,8 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     workspace->g[j] = tmp1;
                     workspace->g[j + 1] = tmp2;
 
-                    data->timing.cm_solver_orthog += Get_Timing_Info( time_start );
                 }
+                data->timing.cm_solver_orthog += Get_Timing_Info( time_start );
 
 #ifdef _OPENMP
                 #pragma omp barrier
@@ -3385,12 +3234,11 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
 
             /* solve Hy = g: H is now upper-triangular, do back-substitution */
+            time_start = Get_Time( );
 #ifdef _OPENMP
-            #pragma omp master
+            #pragma omp single
 #endif
             {
-                time_start = Get_Time( );
-
                 for ( i = j - 1; i >= 0; i-- )
                 {
                     temp = workspace->g[i];
@@ -3401,13 +3249,11 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
                     workspace->y[i] = temp / workspace->h[i][i];
                 }
-
-                data->timing.cm_solver_tri_solve += Get_Timing_Info( time_start );
-
-                /* update x = x_0 + Vy */
-                time_start = Get_Time( );
             }
+            data->timing.cm_solver_tri_solve += Get_Timing_Info( time_start );
 
+            /* update x = x_0 + Vy */
+            time_start = Get_Time( );
             Vector_MakeZero( workspace->p, N );
 
             for ( i = 0; i < j; i++ )
@@ -3416,13 +3262,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
 
             Vector_Add( x, 1., workspace->p, N );
-
-#ifdef _OPENMP
-            #pragma omp master
-#endif
-            {
-                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
-            }
+            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
 
             /* stopping condition */
             if ( FABS(workspace->g[j]) / bnorm <= tol )
@@ -3432,11 +3272,11 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         }
 
 #ifdef _OPENMP
-        #pragma omp master
+        #pragma omp single
 #endif
         {
-            g_itr = itr;
             g_j = j;
+            g_itr = itr;
         }
     }
 

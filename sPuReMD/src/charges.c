@@ -1190,7 +1190,8 @@ static void Calculate_Charges_QEq( const reax_system * const system,
     int i;
     real u, s_sum, t_sum;
 
-    s_sum = t_sum = 0.;
+    s_sum = 0.0;
+    t_sum = 0.0;
     for ( i = 0; i < system->N_cm; ++i )
     {
         s_sum += workspace->s[0][i];
