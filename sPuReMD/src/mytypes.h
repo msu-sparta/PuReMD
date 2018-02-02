@@ -890,8 +890,10 @@ typedef struct
 
     /* charge method storage */
     sparse_matrix *H;
+    sparse_matrix *H_full;
     sparse_matrix *H_sp;
     sparse_matrix *H_spar_patt;
+    sparse_matrix *H_spar_patt_full;
     sparse_matrix *H_app_inv;
     sparse_matrix *L;
     sparse_matrix *U;

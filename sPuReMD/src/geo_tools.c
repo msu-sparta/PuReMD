@@ -247,12 +247,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     }
 
     /* allocate memory for tokenizing pdb lines */
-    if ( Allocate_Tokenizer_Space( &s, &s1, &tmp ) == FAILURE )
-    {
-        fprintf( stderr, "Allocate_Tokenizer_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Tokenizer_Space( &s, &s1, &tmp );
 
     /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )
@@ -567,12 +562,16 @@ char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
     }
 
     /* allocate memory for tokenizing biograf file lines */
-    line   = (char*)  malloc( sizeof(char)  * MAX_LINE );
-    backup = (char*)  malloc( sizeof(char)  * MAX_LINE );
-    tokens = (char**) malloc( sizeof(char*) * MAX_TOKENS );
+    line = (char*) smalloc( sizeof(char)  * MAX_LINE,
+           "Read_BGF::line" );
+    backup = (char*) smalloc( sizeof(char)  * MAX_LINE,
+           "Read_BGF::backup" );
+    tokens = (char**) smalloc( sizeof(char*) * MAX_TOKENS,
+           "Read_BGF::tokens" );
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        tokens[i] = (char*) malloc( sizeof(char) * MAX_TOKEN_LEN );
+        tokens[i] = (char*) smalloc( sizeof(char) * MAX_TOKEN_LEN,
+               "Read_BGF::tokens[i]" );
     }
 
     /* count number of atoms in the pdb file */
@@ -599,20 +598,26 @@ char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
     fclose( bgf );
 
     /* memory allocations for atoms, atom maps, bond restrictions */
-    system->atoms = (reax_atom*) calloc( system->N, sizeof(reax_atom) );
+    system->atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
+            "Read_BGF::system->atoms" );
 
-    workspace->map_serials = (int*) calloc( MAX_ATOM_ID, sizeof(int) );
+    workspace->map_serials = (int*) scalloc( MAX_ATOM_ID, sizeof(int),
+            "Read_BGF::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
         workspace->map_serials[i] = -1;
     }
 
-    workspace->orig_id = (int*) calloc( system->N, sizeof(int) );
-    workspace->restricted  = (int*) calloc( system->N, sizeof(int) );
-    workspace->restricted_list = (int**) calloc( system->N, sizeof(int*) );
+    workspace->orig_id = (int*) scalloc( system->N, sizeof(int),
+            "Read_BGF::workspace->orig_id" );
+    workspace->restricted  = (int*) scalloc( system->N, sizeof(int),
+            "Read_BGF::workspace->restricted" );
+    workspace->restricted_list = (int**) scalloc( system->N, sizeof(int*),
+            "Read_BGF::workspace->restricted_list" );
     for ( i = 0; i < system->N; ++i )
     {
-        workspace->restricted_list[i] = (int*) calloc( MAX_RESTRICT, sizeof(int) );
+        workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT, sizeof(int),
+                "Read_BGF::workspace->restricted_list[i]" );
     }
 
     /* start reading and processing bgf file */

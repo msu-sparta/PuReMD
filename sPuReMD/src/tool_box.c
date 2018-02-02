@@ -352,34 +352,22 @@ char *Get_Atom_Name( reax_system *system, int i )
 }
 
 
-int Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 {
     int i;
 
-    if ( (*line = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-    {
-        return FAILURE;
-    }
-
-    if ( (*backup = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-    {
-        return FAILURE;
-    }
-
-    if ( (*tokens = (char**) malloc( sizeof(char*) * MAX_TOKENS )) == NULL )
-    {
-        return FAILURE;
-    }
+    *line = (char*) smalloc( sizeof(char) * MAX_LINE,
+            "Allocate_Tokenizer_Space::*line" );
+    *backup = (char*) smalloc( sizeof(char) * MAX_LINE,
+            "Allocate_Tokenizer_Space::*backup" );
+    *tokens = (char**) smalloc( sizeof(char*) * MAX_TOKENS,
+            "Allocate_Tokenizer_Space::*tokens" );
 
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        if ( ((*tokens)[i] = (char*) malloc(sizeof(char) * MAX_TOKEN_LEN)) == NULL )
-        {
-            return FAILURE;
-        }
+        (*tokens)[i] = (char*) smalloc(sizeof(char) * MAX_TOKEN_LEN,
+                "Allocate_Tokenizer_Space::(*tokens)[i]" );
     }
-
-    return SUCCESS;
 }
 
 

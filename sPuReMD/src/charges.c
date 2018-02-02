@@ -205,7 +205,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
@@ -259,13 +259,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //
 //    if ( ones == NULL )
 //    {
-//        if ( ( ones = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
-//            ( x = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
-//            ( y = (real*) malloc( system->N * sizeof(real)) ) == NULL )
-//        {
-//            fprintf( stderr, "Not enough space for preconditioner computation. Terminating...\n" );
-//            exit( INSUFFICIENT_MEMORY );
-//        }
+//        ones = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::ones" );
+//        x = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::x" );
+//        y = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::y" );
 //
 //        for ( i = 0; i < system->N; ++i )
 //        {
@@ -568,7 +564,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
@@ -686,7 +682,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
@@ -764,11 +760,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
-                {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
+                workspace->Hdia_inv = (real *) scalloc( Hptr->n, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -861,8 +854,9 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case SAI_PC:
-            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    &workspace->H_spar_patt );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+                    control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -916,11 +910,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                if ( ( workspace->Hdia_inv = (real *) calloc( system->N_cm, sizeof( real ) ) ) == NULL )
-                {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
+                workspace->Hdia_inv = (real *) scalloc( system->N_cm, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -1013,8 +1004,9 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case SAI_PC:
-            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    &workspace->H_spar_patt );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+                    control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -1071,11 +1063,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
-                {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
+                workspace->Hdia_inv = (real *) scalloc( Hptr->n, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -1167,8 +1156,9 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case SAI_PC:
-            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    &workspace->H_spar_patt );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+                    control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -1279,18 +1269,18 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
-        iters += CG( workspace, control, workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += CG( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
                 workspace->t[0], FALSE ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
-        iters += SDM( workspace,control,  workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += SDM( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
                       workspace->t[0], FALSE ) + 1;
         break;
 
@@ -1363,13 +1353,13 @@ static void EE( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
@@ -1437,13 +1427,13 @@ static void ACKS2( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;

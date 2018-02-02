@@ -20,7 +20,9 @@
   ----------------------------------------------------------------------*/
 
 #include "restart.h"
+
 #include "box.h"
+#include "tool_box.h"
 #include "vector.h"
 
 
@@ -101,17 +103,25 @@ void Read_Binary_Restart( char *fname, reax_system *system,
 #endif
 
     /* memory allocations for atoms, atom maps, bond restrictions */
-    system->atoms = (reax_atom*) calloc( system->N, sizeof(reax_atom) );
+    system->atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
+            "Read_Binary_Restart::system->atoms" );
 
-    workspace->map_serials = (int*) calloc( MAX_ATOM_ID, sizeof(int) );
+    workspace->map_serials = (int*) scalloc( MAX_ATOM_ID, sizeof(int),
+            "Read_Binary_Restart::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
         workspace->map_serials[i] = -1;
 
-    workspace->orig_id = (int*) calloc( system->N, sizeof(int) );
-    workspace->restricted  = (int*) calloc( system->N, sizeof(int) );
-    workspace->restricted_list = (int**) calloc( system->N, sizeof(int*) );
+    workspace->orig_id = (int*) scalloc( system->N, sizeof(int),
+            "Read_Binary_Restart::workspace->orig_id" );
+    workspace->restricted  = (int*) scalloc( system->N, sizeof(int),
+            "Read_Binary_Restart::workspace->restricted" );
+    workspace->restricted_list = (int**) scalloc( system->N, sizeof(int*),
+            "Read_Binary_Restart::workspace->restricted_list" );
     for ( i = 0; i < system->N; ++i )
-        workspace->restricted_list[i] = (int*) calloc( MAX_RESTRICT, sizeof(int) );
+    {
+        workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT, sizeof(int),
+                "Read_Binary_Restart::workspace->restricted_list[i]" );
+    }
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -207,17 +217,27 @@ void Read_ASCII_Restart( char *fname, reax_system *system,
 #endif
 
     /* memory allocations for atoms, atom maps, bond restrictions */
-    system->atoms = (reax_atom*) calloc( system->N, sizeof(reax_atom) );
+    system->atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
+            "Read_ASCII_Restart::system->atoms" );
 
-    workspace->map_serials = (int*) calloc( MAX_ATOM_ID, sizeof(int) );
+    workspace->map_serials = (int*) scalloc( MAX_ATOM_ID, sizeof(int),
+            "Read_ASCII_Restart::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
+    {
         workspace->map_serials[i] = -1;
+    }
 
-    workspace->orig_id = (int*) calloc( system->N, sizeof(int) );
-    workspace->restricted  = (int*) calloc( system->N, sizeof(int) );
-    workspace->restricted_list = (int**) calloc( system->N, sizeof(int*) );
+    workspace->orig_id = (int*) scalloc( system->N, sizeof(int),
+            "Read_ASCII_Restart::workspace->orig_id" );
+    workspace->restricted  = (int*) scalloc( system->N, sizeof(int),
+            "Read_ASCII_Restart::workspace->restricted" );
+    workspace->restricted_list = (int**) scalloc( system->N, sizeof(int*),
+            "Read_ASCII_Restart::workspace->restricted_list" );
     for ( i = 0; i < system->N; ++i )
-        workspace->restricted_list[i] = (int*) calloc( MAX_RESTRICT, sizeof(int) );
+    {
+        workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT, sizeof(int),
+                "Read_ASCII_Restart::workspace->restricted_list[i]" );
+    }
 
     for ( i = 0; i < system->N; ++i )
     {

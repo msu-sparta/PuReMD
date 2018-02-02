@@ -476,11 +476,8 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             break;
 
         case ACKS2_CM:
-            if ( (X_diag = (real*) calloc(system->N, sizeof(real))) == NULL )
-            {
-                fprintf( stderr, "not enough memory for charge matrix. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
+            X_diag = (real*) scalloc( system->N, sizeof(real),
+                    "Init_Charge_Matrix_Remaining_Entries::X_diag" );
 
             H->start[system->N] = *Htop;
             H_sp->start[system->N] = *H_sp_top;

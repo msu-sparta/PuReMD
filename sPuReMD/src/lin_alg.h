@@ -32,8 +32,8 @@ typedef enum
 
 void Sort_Matrix_Rows( sparse_matrix * const );
 
-void Setup_Sparsity_Pattern( const sparse_matrix * const, 
-        const real, sparse_matrix ** );
+void setup_sparse_approx_inverse( const sparse_matrix * const, sparse_matrix **, 
+        sparse_matrix **, sparse_matrix **, sparse_matrix **, const real );
 
 int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 
@@ -62,7 +62,7 @@ real ILUT_PAR( const sparse_matrix * const, const real *,
         const unsigned int, sparse_matrix * const, sparse_matrix * const );
 
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-real Sparse_Approx_Inverse( const sparse_matrix * const, const sparse_matrix * const,
+real sparse_approx_inverse( const sparse_matrix * const, const sparse_matrix * const,
         sparse_matrix ** );
 #endif
 
@@ -94,11 +94,11 @@ int GMRES_HouseHolder( const static_storage * const, const control_params * cons
         const int );
 
 int CG( const static_storage * const, const control_params * const,
-        const sparse_matrix * const, const real * const, const real,
-        real * const, const int );
+        simulation_data * const, const sparse_matrix * const, const real * const,
+        const real, real * const, const int );
 
 int SDM( const static_storage * const, const control_params * const,
-        const sparse_matrix * const, const real * const, const real,
+        simulation_data * const, const sparse_matrix * const, const real * const, const real,
         real * const, const int );
 
 real condest( const sparse_matrix * const, const sparse_matrix * const );

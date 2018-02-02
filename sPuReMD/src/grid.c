@@ -76,33 +76,54 @@ void Allocate_Space_for_Grid( reax_system *system )
         * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
 
     /* allocate space for the new grid */
-    g->atoms = (int****) calloc( g->ncell[0], sizeof( int*** ));
-    g->top = (int***) calloc( g->ncell[0], sizeof( int** ));
-    g->mark = (int***) calloc( g->ncell[0], sizeof( int** ));
-    g->start = (int***) calloc( g->ncell[0], sizeof( int** ));
-    g->end = (int***) calloc( g->ncell[0], sizeof( int** ));
-    g->nbrs = (ivec****) calloc( g->ncell[0], sizeof( ivec*** ));
-    g->nbrs_cp = (rvec****) calloc( g->ncell[0], sizeof( rvec*** ));
+    g->atoms = (int****) scalloc( g->ncell[0], sizeof( int*** ),
+            "Allocate_Space_for_Grid::g->atoms" );
+    g->top = (int***) scalloc( g->ncell[0], sizeof( int** ),
+            "Allocate_Space_for_Grid::g->top" );
+    g->mark = (int***) scalloc( g->ncell[0], sizeof( int** ),
+            "Allocate_Space_for_Grid::g->mark" );
+    g->start = (int***) scalloc( g->ncell[0], sizeof( int** ),
+            "Allocate_Space_for_Grid::g->start" );
+    g->end = (int***) scalloc( g->ncell[0], sizeof( int** ),
+            "Allocate_Space_for_Grid::g->end" );
+    g->nbrs = (ivec****) scalloc( g->ncell[0], sizeof( ivec*** ),
+            "Allocate_Space_for_Grid::g->nbrs" );
+    g->nbrs_cp = (rvec****) scalloc( g->ncell[0], sizeof( rvec*** ),
+            "Allocate_Space_for_Grid::g->nbrs_cp" );
 
     for ( i = 0; i < g->ncell[0]; i++ )
     {
-        g->atoms[i] = (int***) calloc( g->ncell[1], sizeof( int** ));
-        g->top [i] = (int**) calloc( g->ncell[1], sizeof( int* ));
-        g->mark[i] = (int**) calloc( g->ncell[1], sizeof( int* ));
-        g->start[i] = (int**) calloc( g->ncell[1], sizeof( int* ));
-        g->end[i] = (int**) calloc( g->ncell[1], sizeof( int* ));
-        g->nbrs[i] = (ivec***) calloc( g->ncell[1], sizeof( ivec** ));
-        g->nbrs_cp[i] = (rvec***) calloc( g->ncell[1], sizeof( rvec** ));
+        g->atoms[i] = (int***) scalloc( g->ncell[1], sizeof( int** ),
+                "Allocate_Space_for_Grid::g->atoms[i]" );
+        g->top [i] = (int**) scalloc( g->ncell[1], sizeof( int* ),
+                "Allocate_Space_for_Grid::g->top[i]" );
+        g->mark[i] = (int**) scalloc( g->ncell[1], sizeof( int* ),
+                "Allocate_Space_for_Grid::g->mark[i]" );
+        g->start[i] = (int**) scalloc( g->ncell[1], sizeof( int* ),
+                "Allocate_Space_for_Grid::g->start[i]" );
+        g->end[i] = (int**) scalloc( g->ncell[1], sizeof( int* ),
+                "Allocate_Space_for_Grid::g->end[i]" );
+        g->nbrs[i] = (ivec***) scalloc( g->ncell[1], sizeof( ivec** ),
+                "Allocate_Space_for_Grid::g->nbrs[i]" );
+        g->nbrs_cp[i] = (rvec***) scalloc( g->ncell[1], sizeof( rvec** ),
+                "Allocate_Space_for_Grid::g->nbrs_cp[i]" );
 
         for ( j = 0; j < g->ncell[1]; j++ )
         {
-            g->atoms[i][j] = (int**) calloc( g->ncell[2], sizeof( int* ));
-            g->top[i][j] = (int*) calloc( g->ncell[2], sizeof( int ));
-            g->mark[i][j] = (int*) calloc( g->ncell[2], sizeof( int ));
-            g->start[i][j] = (int*) calloc( g->ncell[2], sizeof( int ));
-            g->end[i][j] = (int*) calloc( g->ncell[2], sizeof( int ));
-            g->nbrs[i][j] = (ivec**) calloc( g->ncell[2], sizeof( ivec* ));
-            g->nbrs_cp[i][j] = (rvec**) calloc( g->ncell[2], sizeof( rvec* ));
+            g->atoms[i][j] = (int**) scalloc( g->ncell[2], sizeof( int* ),
+                    "Allocate_Space_for_Grid::g->atoms[i][j]" );
+            g->top[i][j] = (int*) scalloc( g->ncell[2], sizeof( int ),
+                    "Allocate_Space_for_Grid::g->top[i][j]" );
+            g->mark[i][j] = (int*) scalloc( g->ncell[2], sizeof( int ),
+                    "Allocate_Space_for_Grid::g->mark[i][j]" );
+            g->start[i][j] = (int*) scalloc( g->ncell[2], sizeof( int ),
+                    "Allocate_Space_for_Grid::g->start[i][j]" );
+            g->end[i][j] = (int*) scalloc( g->ncell[2], sizeof( int ),
+                    "Allocate_Space_for_Grid::g->end[i][j]" );
+            g->nbrs[i][j] = (ivec**) scalloc( g->ncell[2], sizeof( ivec* ),
+                    "Allocate_Space_for_Grid::g->nbrs[i][j]" );
+            g->nbrs_cp[i][j] = (rvec**) scalloc( g->ncell[2], sizeof( rvec* ),
+                    "Allocate_Space_for_Grid::g->nbrs_cp[i][j]" );
 
             for ( k = 0; k < g->ncell[2]; k++ )
             {
@@ -110,8 +131,10 @@ void Allocate_Space_for_Grid( reax_system *system )
                 g->mark[i][j][k] = 0;
                 g->start[i][j][k] = 0;
                 g->end[i][j][k] = 0;
-                g->nbrs[i][j][k] = (ivec*) malloc( g->max_nbrs * sizeof( ivec ) );
-                g->nbrs_cp[i][j][k] = (rvec*) malloc( g->max_nbrs * sizeof( rvec ) );
+                g->nbrs[i][j][k] = (ivec*) smalloc( g->max_nbrs * sizeof( ivec ),
+                       "Allocate_Space_for_Grid::g->nbrs[i][j]][k]" );
+                g->nbrs_cp[i][j][k] = (rvec*) smalloc( g->max_nbrs * sizeof( rvec ),
+                       "Allocate_Space_for_Grid::g->nbrs_cp[i][j]][k]" );
 
                 for ( l = 0; l < g->max_nbrs; ++l )
                 {
@@ -135,7 +158,8 @@ void Allocate_Space_for_Grid( reax_system *system )
         {
             for ( k = 0; k < g->ncell[2]; k++ )
             {
-                g->atoms[i][j][k] = (int*) malloc( g->max_atoms * sizeof( int ) );
+                g->atoms[i][j][k] = (int*) smalloc( g->max_atoms * sizeof( int ),
+                       "Allocate_Space_for_Grid::g->atoms[i][j]][k]" );
 
                 for ( l = 0; l < g->max_atoms; ++l )
                 {
@@ -601,22 +625,31 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
 
     num_H = 0;
     g = &( system->g );
-    new_atoms = (reax_atom*) calloc( system->N, sizeof(reax_atom) );
-    orig_id = (int  *) calloc( system->N, sizeof( int ) );
-    f_old = (rvec*) calloc( system->N, sizeof(rvec) );
+    new_atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
+            "Cluster_Atoms::new_atoms" );
+    orig_id = (int  *) scalloc( system->N, sizeof( int ),
+            "Cluster_Atoms::orig_id" );
+    f_old = (rvec*) scalloc( system->N, sizeof(rvec),
+            "Cluster_Atoms::f_old" );
 
-    s = (real**) calloc( 3, sizeof( real* ) );
-    t = (real**) calloc( 3, sizeof( real* ) );
+    s = (real**) scalloc( 3, sizeof( real* ),
+            "Cluster_Atoms::s" );
+    t = (real**) scalloc( 3, sizeof( real* ),
+            "Cluster_Atoms::t" );
     for ( i = 0; i < 3; ++i )
     {
-        s[i] = (real *) calloc( system->N, sizeof( real ) );
-        t[i] = (real *) calloc( system->N, sizeof( real ) );
+        s[i] = (real *) scalloc( system->N, sizeof( real ),
+                "Cluster_Atoms::s[i]" );
+        t[i] = (real *) scalloc( system->N, sizeof( real ),
+                "Cluster_Atoms::t[i]" );
     }
 
-    v = (real**) calloc( control->cm_solver_restart + 1, sizeof( real* ) );
+    v = (real**) scalloc( control->cm_solver_restart + 1, sizeof( real* ),
+            "Cluster_Atoms::v" );
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
-        v[i] = (real *) calloc( system->N, sizeof( real ) );
+        v[i] = (real *) scalloc( system->N, sizeof( real ),
+                "Cluster_Atoms::v[i]" );
     }
 
     top = 0;

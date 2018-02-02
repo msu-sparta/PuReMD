@@ -33,11 +33,14 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     int i, j, k, l, m, n, o, p, cnt;
     real val;
 
-    s = (char*) malloc( sizeof(char) * MAX_LINE );
-    tmp = (char**) malloc( sizeof(char*) * MAX_TOKENS );
+    s = (char*) smalloc( sizeof(char) * MAX_LINE,
+           "Read_Force_Field::s" );
+    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS,
+           "Read_Force_Field::tmp" );
     for (i = 0; i < MAX_TOKENS; i++)
     {
-        tmp[i] = (char*) malloc( sizeof(char) * MAX_TOKEN_LEN );
+        tmp[i] = (char*) smalloc( sizeof(char) * MAX_TOKEN_LEN,
+               "Read_Force_Field::tmp[i]" );
     }
 
     /* reading first header comment */
@@ -57,7 +60,8 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     }
 
     reax->gp.n_global = n;
-    reax->gp.l = (real*) malloc( sizeof(real) * n );
+    reax->gp.l = (real*) smalloc( sizeof(real) * n,
+           "Read_Force_Field::reax->gp-l" );
 
     /* see mytypes.h for mapping between l[i] and the lambdas used in ff */
     for (i = 0; i < n; i++)
@@ -85,48 +89,65 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* Allocating structures in reax_interaction */
     reax->sbp = (single_body_parameters*)
-                calloc( reax->num_atom_types, sizeof(single_body_parameters) );
+                scalloc( reax->num_atom_types, sizeof(single_body_parameters),
+                        "Read_Force_Field::reax->sbp" );
     reax->tbp = (two_body_parameters**)
-                calloc( reax->num_atom_types, sizeof(two_body_parameters*) );
+                scalloc( reax->num_atom_types, sizeof(two_body_parameters*),
+                        "Read_Force_Field::reax->tbp" );
     reax->thbp = (three_body_header***)
-                 calloc( reax->num_atom_types, sizeof(three_body_header**) );
+                 scalloc( reax->num_atom_types, sizeof(three_body_header**),
+                         "Read_Force_Field::reax->thbp" );
     reax->hbp = (hbond_parameters***)
-                calloc( reax->num_atom_types, sizeof(hbond_parameters**) );
+                scalloc( reax->num_atom_types, sizeof(hbond_parameters**),
+                        "Read_Force_Field::reax->hbp" );
     reax->fbp = (four_body_header****)
-                calloc( reax->num_atom_types, sizeof(four_body_header***) );
+                scalloc( reax->num_atom_types, sizeof(four_body_header***),
+                        "Read_Force_Field::reax->fbp" );
     tor_flag  = (char****)
-                calloc( reax->num_atom_types, sizeof(char***) );
+                scalloc( reax->num_atom_types, sizeof(char***),
+                        "Read_Force_Field::tor_flag" );
 
     for ( i = 0; i < reax->num_atom_types; i++ )
     {
         reax->tbp[i] = (two_body_parameters*)
-                       calloc( reax->num_atom_types, sizeof(two_body_parameters) );
+                       scalloc( reax->num_atom_types, sizeof(two_body_parameters),
+                               "Read_Force_Field::reax->tbp[i]" );
         reax->thbp[i] = (three_body_header**)
-                        calloc( reax->num_atom_types, sizeof(three_body_header*) );
+                        scalloc( reax->num_atom_types, sizeof(three_body_header*),
+                                "Read_Force_Field::reax->thbp[i]" );
         reax->hbp[i] = (hbond_parameters**)
-                       calloc( reax->num_atom_types, sizeof(hbond_parameters*) );
+                       scalloc( reax->num_atom_types, sizeof(hbond_parameters*),
+                               "Read_Force_Field::reax->hbp[i]" );
         reax->fbp[i] = (four_body_header***)
-                       calloc( reax->num_atom_types, sizeof(four_body_header**) );
+                       scalloc( reax->num_atom_types, sizeof(four_body_header**),
+                               "Read_Force_Field::reax->fbp[i]" );
         tor_flag[i]  = (char***)
-                       calloc( reax->num_atom_types, sizeof(char**) );
+                       scalloc( reax->num_atom_types, sizeof(char**),
+                               "Read_Force_Field::tor_flag[i]" );
 
         for ( j = 0; j < reax->num_atom_types; j++ )
         {
             reax->thbp[i][j] = (three_body_header*)
-                               calloc( reax->num_atom_types, sizeof(three_body_header) );
+                               scalloc( reax->num_atom_types, sizeof(three_body_header),
+                                       "Read_Force_Field::reax->thbp[i][j]" );
             reax->hbp[i][j] = (hbond_parameters*)
-                              calloc( reax->num_atom_types, sizeof(hbond_parameters) );
+                              scalloc( reax->num_atom_types, sizeof(hbond_parameters),
+                                      "Read_Force_Field::reax->hbp[i][j]" );
             reax->fbp[i][j] = (four_body_header**)
-                              calloc( reax->num_atom_types, sizeof(four_body_header*) );
+                              scalloc( reax->num_atom_types, sizeof(four_body_header*),
+                                      "Read_Force_Field::reax->fbp[i][j]" );
             tor_flag[i][j]  = (char**)
-                              calloc( reax->num_atom_types, sizeof(char*) );
+                              scalloc( reax->num_atom_types, sizeof(char*),
+                                      "Read_Force_Field::tor_flag[i][j]" );
 
             for (k = 0; k < reax->num_atom_types; k++)
             {
                 reax->fbp[i][j][k] = (four_body_header*)
-                                     calloc( reax->num_atom_types, sizeof(four_body_header) );
+                                     scalloc( reax->num_atom_types, sizeof(four_body_header),
+                                             "Read_Force_Field::reax->fbp[i][j][k]" );
                 tor_flag[i][j][k]  = (char*)
-                                     calloc( reax->num_atom_types, sizeof(char) );
+                                     scalloc( reax->num_atom_types, sizeof(char),
+                                             "Read_Force_Field::tor_flag[i][j][k]" );
             }
         }
     }

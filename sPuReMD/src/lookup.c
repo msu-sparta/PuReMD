@@ -36,7 +36,8 @@ void Make_Lookup_Table( real xmin, real xmax, int n,
     t->dx = (xmax - xmin) / (n - 1);
     t->inv_dx = 1.0 / t->dx;
     t->a = (n - 1) / (xmax - xmin);
-    t->y = (real*) malloc(n * sizeof(real));
+    t->y = (real*) smalloc( n * sizeof(real),
+            "Make_Lookup_Table::t->y" );
 
     for (i = 0; i < n; i++)
     {
@@ -83,11 +84,16 @@ void Natural_Cubic_Spline( const real *h, const real *f,
     real *a, *b, *c, *d, *v;
 
     /* allocate space for the linear system */
-    a = (real*) malloc( n * sizeof(real) );
-    b = (real*) malloc( n * sizeof(real) );
-    c = (real*) malloc( n * sizeof(real) );
-    d = (real*) malloc( n * sizeof(real) );
-    v = (real*) malloc( n * sizeof(real) );
+    a = (real*) smalloc( n * sizeof(real),
+           "Natural_Cubic_Spline::a" );
+    b = (real*) smalloc( n * sizeof(real),
+           "Natural_Cubic_Spline::b" );
+    c = (real*) smalloc( n * sizeof(real),
+           "Natural_Cubic_Spline::c" );
+    d = (real*) smalloc( n * sizeof(real),
+           "Natural_Cubic_Spline::d" );
+    v = (real*) smalloc( n * sizeof(real),
+           "Natural_Cubic_Spline::v" );
 
     /* build the linear system */
     a[0] = 0.0;
@@ -153,11 +159,16 @@ void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
     real *a, *b, *c, *d, *v;
 
     /* allocate space for the linear system */
-    a = (real*) malloc( n * sizeof(real) );
-    b = (real*) malloc( n * sizeof(real) );
-    c = (real*) malloc( n * sizeof(real) );
-    d = (real*) malloc( n * sizeof(real) );
-    v = (real*) malloc( n * sizeof(real) );
+    a = (real*) smalloc( n * sizeof(real),
+           "Complete_Cubic_Spline::a" );
+    b = (real*) smalloc( n * sizeof(real),
+           "Complete_Cubic_Spline::b" );
+    c = (real*) smalloc( n * sizeof(real),
+           "Complete_Cubic_Spline::c" );
+    d = (real*) smalloc( n * sizeof(real),
+           "Complete_Cubic_Spline::d" );
+    v = (real*) smalloc( n * sizeof(real),
+           "Complete_Cubic_Spline::v" );
 
     /* build the linear system */
     a[0] = 0.0;
@@ -260,19 +271,27 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 
     num_atom_types = system->reaxprm.num_atom_types;
     dr = control->r_cut / control->tabulate;
-    h = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fh = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fvdw = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fCEvd = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fele = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fCEclmb = (real*) calloc( (control->tabulate + 1), sizeof(real) );
+    h = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::h" );
+    fh = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fh" );
+    fvdw = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fvdw" );
+    fCEvd = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fCEvd" );
+    fele = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fele" );
+    fCEclmb = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fCEclmb" );
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
-    LR = (LR_lookup_table**) malloc( num_atom_types * sizeof(LR_lookup_table*) );
+    LR = (LR_lookup_table**) smalloc( num_atom_types * sizeof(LR_lookup_table*),
+           "Make_LR_Lookup_Table::LR" );
     for ( i = 0; i < num_atom_types; ++i )
     {
-        LR[i] = (LR_lookup_table*) malloc(num_atom_types * sizeof(LR_lookup_table));
+        LR[i] = (LR_lookup_table*) smalloc( num_atom_types * sizeof(LR_lookup_table),
+                "Make_LR_Lookup_Table::LR[i]");
     }
 
     /* most atom types in ffield file will not exist in the current
@@ -303,17 +322,23 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
                     LR[i][j].dx = dr;
                     LR[i][j].inv_dx = control->tabulate / control->r_cut;
                     LR[i][j].y = (LR_data*)
-                        malloc( LR[i][j].n * sizeof(LR_data) );
+                        smalloc( LR[i][j].n * sizeof(LR_data),
+                              "Make_LR_Lookup_Table::LR[i][j].y" );
                     LR[i][j].H = (cubic_spline_coef*)
-                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
+                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                              "Make_LR_Lookup_Table::LR[i][j].H" );
                     LR[i][j].vdW = (cubic_spline_coef*)
-                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
+                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                              "Make_LR_Lookup_Table::LR[i][j].vdW" );
                     LR[i][j].CEvd = (cubic_spline_coef*)
-                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
+                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                              "Make_LR_Lookup_Table::LR[i][j].CEvd" );
                     LR[i][j].ele = (cubic_spline_coef*)
-                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
+                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                              "Make_LR_Lookup_Table::LR[i][j].ele" );
                     LR[i][j].CEclmb = (cubic_spline_coef*)
-                        malloc( LR[i][j].n * sizeof(cubic_spline_coef) );
+                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                              "Make_LR_Lookup_Table::LR[i][j].CEclmb" );
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {

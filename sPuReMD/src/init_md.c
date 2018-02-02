@@ -279,26 +279,43 @@ void Init_Workspace( reax_system *system, control_params *control,
     int i;
 
     /* Allocate space for hydrogen bond list */
-    workspace->hbond_index = (int *) malloc( system->N * sizeof( int ) );
+    workspace->hbond_index = (int *) smalloc( system->N * sizeof( int ),
+           "Init_Workspace::workspace->hbond_index" );
 
     /* bond order related storage  */
-    workspace->total_bond_order = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Deltap           = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Deltap_boc       = (real *) malloc( system->N * sizeof( real ) );
-    workspace->dDeltap_self     = (rvec *) malloc( system->N * sizeof( rvec ) );
+    workspace->total_bond_order = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->bond_order" );
+    workspace->Deltap = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Deltap" );
+    workspace->Deltap_boc = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Deltap_boc" );
+    workspace->dDeltap_self = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->dDeltap_self" );
 
-    workspace->Delta        = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_lp         = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_lp_temp    = (real *) malloc( system->N * sizeof( real ) );
-    workspace->dDelta_lp        = (real *) malloc( system->N * sizeof( real ) );
-    workspace->dDelta_lp_temp   = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_e          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_boc        = (real *) malloc( system->N * sizeof( real ) );
-    workspace->nlp          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->nlp_temp         = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Clp          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->CdDelta          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->vlpex        = (real *) malloc( system->N * sizeof( real ) );
+    workspace->Delta = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta" );
+    workspace->Delta_lp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_lp" );
+    workspace->Delta_lp_temp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_lp_temp" );
+    workspace->dDelta_lp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->dDelta_lp" );
+    workspace->dDelta_lp_temp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->dDelta_lp_temp" );
+    workspace->Delta_e = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_e" );
+    workspace->Delta_boc = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_boc" );
+    workspace->nlp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->nlp" );
+    workspace->nlp_temp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->nlp_temp" );
+    workspace->Clp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Clp" );
+    workspace->CdDelta = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->CdDelta" );
+    workspace->vlpex = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->vlpex" );
 
     /* charge method storage */
     switch ( control->charge_method )
@@ -328,22 +345,33 @@ void Init_Workspace( reax_system *system, control_params *control,
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
-        workspace->droptol  = (real *) calloc( system->N_cm, sizeof( real ) );
+        workspace->droptol = (real *) scalloc( system->N_cm, sizeof( real ),
+                "Init_Workspace::workspace->droptol" );
     }
     //TODO: check if unused
-    //workspace->w        = (real *) calloc( cm_lin_sys_size, sizeof( real ) );
+    //workspace->w        = (real *) scalloc( cm_lin_sys_size, sizeof( real ),
+    //"Init_Workspace::workspace->droptol" );
     //TODO: check if unused
-    workspace->b        = (real *) calloc( system->N_cm * 2, sizeof( real ) );
-    workspace->b_s      = (real *) calloc( system->N_cm, sizeof( real ) );
-    workspace->b_t      = (real *) calloc( system->N_cm, sizeof( real ) );
-    workspace->b_prc    = (real *) calloc( system->N_cm * 2, sizeof( real ) );
-    workspace->b_prm    = (real *) calloc( system->N_cm * 2, sizeof( real ) );
-    workspace->s        = (real**) calloc( 5, sizeof( real* ) );
-    workspace->t        = (real**) calloc( 5, sizeof( real* ) );
+    workspace->b = (real *) scalloc( system->N_cm * 2, sizeof( real ),
+            "Init_Workspace::workspace->b" );
+    workspace->b_s = (real *) scalloc( system->N_cm, sizeof( real ),
+            "Init_Workspace::workspace->b_s" );
+    workspace->b_t = (real *) scalloc( system->N_cm, sizeof( real ),
+            "Init_Workspace::workspace->b_t" );
+    workspace->b_prc = (real *) scalloc( system->N_cm * 2, sizeof( real ),
+            "Init_Workspace::workspace->b_prc" );
+    workspace->b_prm = (real *) scalloc( system->N_cm * 2, sizeof( real ),
+            "Init_Workspace::workspace->b_prm" );
+    workspace->s = (real**) scalloc( 5, sizeof( real* ),
+            "Init_Workspace::workspace->s" );
+    workspace->t = (real**) scalloc( 5, sizeof( real* ),
+            "Init_Workspace::workspace->t" );
     for ( i = 0; i < 5; ++i )
     {
-        workspace->s[i] = (real *) calloc( system->N_cm, sizeof( real ) );
-        workspace->t[i] = (real *) calloc( system->N_cm, sizeof( real ) );
+        workspace->s[i] = (real *) scalloc( system->N_cm, sizeof( real ),
+                "Init_Workspace::workspace->s[i]" );
+        workspace->t[i] = (real *) scalloc( system->N_cm, sizeof( real ),
+                "Init_Workspace::workspace->t[i]" );
     }
 
     switch ( control->charge_method )
@@ -405,40 +433,62 @@ void Init_Workspace( reax_system *system, control_params *control,
         /* GMRES storage */
         case GMRES_S:
         case GMRES_H_S:
-            workspace->y  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
-            workspace->z  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
-            workspace->g  = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
-            workspace->h  = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
-            workspace->hs = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
-            workspace->hc = (real *)  calloc( control->cm_solver_restart + 1, sizeof( real ) );
-            workspace->rn = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
-            workspace->v  = (real **) calloc( control->cm_solver_restart + 1, sizeof( real*) );
+            workspace->y = (real *) scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                    "Init_Workspace::workspace->y" );
+            workspace->z = (real *) scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                    "Init_Workspace::workspace->z" );
+            workspace->g = (real *) scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                    "Init_Workspace::workspace->g" );
+            workspace->h = (real **) scalloc( control->cm_solver_restart + 1, sizeof( real*),
+                    "Init_Workspace::workspace->h" );
+            workspace->hs = (real *) scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                    "Init_Workspace::workspace->hs" );
+            workspace->hc = (real *) scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                    "Init_Workspace::workspace->hc" );
+            workspace->rn = (real **) scalloc( control->cm_solver_restart + 1, sizeof( real*),
+                    "Init_Workspace::workspace->rn" );
+            workspace->v = (real **) scalloc( control->cm_solver_restart + 1, sizeof( real*),
+                    "Init_Workspace::workspace->v" );
 
             for ( i = 0; i < control->cm_solver_restart + 1; ++i )
             {
-                workspace->h[i]  = (real *) calloc( control->cm_solver_restart + 1, sizeof( real ) );
-                workspace->rn[i] = (real *) calloc( system->N_cm * 2, sizeof( real ) );
-                workspace->v[i]  = (real *) calloc( system->N_cm, sizeof( real ) );
+                workspace->h[i] = (real *) scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                        "Init_Workspace::workspace->h[i]" );
+                workspace->rn[i] = (real *) scalloc( system->N_cm * 2, sizeof( real ),
+                        "Init_Workspace::workspace->rn[i]" );
+                workspace->v[i] = (real *) scalloc( system->N_cm, sizeof( real ),
+                        "Init_Workspace::workspace->v[i]" );
             }
 
-            workspace->r = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->d = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->q = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->p = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->r = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->r" );
+            workspace->d = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->d" );
+            workspace->q = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->q" );
+            workspace->p = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->p" );
             break;
 
         /* CG storage */
         case CG_S:
-            workspace->r = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->d = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->q = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->p = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->r = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->r" );
+            workspace->d = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->d" );
+            workspace->q = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->q" );
+            workspace->p = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->p" );
             break;
 
         case SDM_S:
-            workspace->r = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->d = (real *) calloc( system->N_cm, sizeof( real ) );
-            workspace->q = (real *) calloc( system->N_cm, sizeof( real ) );
+            workspace->r = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->r" );
+            workspace->d = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->d" );
+            workspace->q = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->q" );
             break;
 
         default:
@@ -448,19 +498,25 @@ void Init_Workspace( reax_system *system, control_params *control,
     }
 
     /* integrator storage */
-    workspace->a = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_old = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->v_const = (rvec *) malloc( system->N * sizeof( rvec ) );
+    workspace->a = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->a" );
+    workspace->f_old = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_old" );
+    workspace->v_const = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->v_const" );
 
 #ifdef _OPENMP
-    workspace->f_local = (rvec *) malloc( control->num_threads * system->N * sizeof( rvec ) );
+    workspace->f_local = (rvec *) smalloc( control->num_threads * system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_local" );
 #endif
 
     /* storage for analysis */
     if ( control->molec_anal || control->diffusion_coef )
     {
-        workspace->mark = (int *) calloc( system->N, sizeof(int) );
-        workspace->old_mark = (int *) calloc( system->N, sizeof(int) );
+        workspace->mark = (int *) scalloc( system->N, sizeof(int),
+                "Init_Workspace::workspace->mark" );
+        workspace->old_mark = (int *) scalloc( system->N, sizeof(int),
+                "Init_Workspace::workspace->old_mark" );
     }
     else
     {
@@ -469,7 +525,8 @@ void Init_Workspace( reax_system *system, control_params *control,
 
     if ( control->diffusion_coef )
     {
-        workspace->x_old = (rvec *) calloc( system->N, sizeof( rvec ) );
+        workspace->x_old = (rvec *) scalloc( system->N, sizeof( rvec ),
+                "Init_Workspace::workspace->x_old" );
     }
     else
     {
@@ -477,20 +534,34 @@ void Init_Workspace( reax_system *system, control_params *control,
     }
 
 #ifdef TEST_FORCES
-    workspace->dDelta = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_ele = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_vdw = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_bo = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_be = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_lp = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_ov = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_un = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_ang = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_coa = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_pen = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_hb = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_tor = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_con = (rvec *) malloc( system->N * sizeof( rvec ) );
+    workspace->dDelta = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->dDelta" );
+    workspace->f_ele = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_ele" );
+    workspace->f_vdw = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_vdw" );
+    workspace->f_bo = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_bo" );
+    workspace->f_be = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_be" );
+    workspace->f_lp = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_lp" );
+    workspace->f_ov = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_ov" );
+    workspace->f_un = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_un" );
+    workspace->f_ang = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_ang" );
+    workspace->f_coa = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_coa" );
+    workspace->f_pen = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_pen" );
+    workspace->f_hb = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_hb" );
+    workspace->f_tor = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_tor" );
+    workspace->f_con = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_con" );
 #endif
 
     workspace->realloc.num_far = -1;
@@ -528,8 +599,10 @@ void Init_Lists( reax_system *system, control_params *control,
 
     Generate_Neighbor_Lists(system, control, data, workspace, lists, out_control);
     Htop = 0;
-    hb_top = (int*) calloc( system->N, sizeof(int) );
-    bond_top = (int*) calloc( system->N, sizeof(int) );
+    hb_top = (int*) scalloc( system->N, sizeof(int),
+            "Init_Lists::hb_top" );
+    bond_top = (int*) scalloc( system->N, sizeof(int),
+            "Init_Lists::bond_top" );
     num_3body = 0;
     Estimate_Storage_Sizes( system, control, lists, &Htop,
             hb_top, bond_top, &num_3body );
@@ -1008,7 +1081,9 @@ void Finalize_Workspace( reax_system *system, control_params *control,
     }
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
+        Deallocate_Matrix( workspace->H_full );
         Deallocate_Matrix( workspace->H_spar_patt );
+        Deallocate_Matrix( workspace->H_spar_patt_full );
         Deallocate_Matrix( workspace->H_app_inv );
     }
 
