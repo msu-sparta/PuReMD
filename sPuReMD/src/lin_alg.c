@@ -1894,11 +1894,8 @@ void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
 {
     unsigned int i, j, pj, *A_t_top;
 
-    if ( (A_t_top = (unsigned int*) calloc( A->n + 1, sizeof(unsigned int))) == NULL )
-    {
-        fprintf( stderr, "Not enough space for matrix tranpose. Terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    A_t_top = (unsigned int*) scalloc( A->n + 1, sizeof(unsigned int),
+            "Transpose::A_t_top" );
 
     memset( A_t->start, 0, (A->n + 1) * sizeof(unsigned int) );
 

@@ -271,12 +271,18 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 
     num_atom_types = system->reaxprm.num_atom_types;
     dr = control->r_cut / control->tabulate;
-    h = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fh = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fvdw = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fCEvd = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fele = (real*) calloc( (control->tabulate + 1), sizeof(real) );
-    fCEclmb = (real*) calloc( (control->tabulate + 1), sizeof(real) );
+    h = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::h" );
+    fh = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fh" );
+    fvdw = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fvdw" );
+    fCEvd = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fCEvd" );
+    fele = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fele" );
+    fCEclmb = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+            "Make_LR_Lookup_Table::fCEclmb" );
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
