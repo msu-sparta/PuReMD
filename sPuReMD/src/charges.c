@@ -1279,18 +1279,18 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
-        iters += CG( workspace, control, workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += CG( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
                 workspace->t[0], FALSE ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
-        iters += SDM( workspace,control,  workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += SDM( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
                       workspace->t[0], FALSE ) + 1;
         break;
 
@@ -1363,13 +1363,13 @@ static void EE( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
@@ -1437,13 +1437,13 @@ static void ACKS2( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        iters = CG( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;

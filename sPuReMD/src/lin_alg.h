@@ -94,11 +94,11 @@ int GMRES_HouseHolder( const static_storage * const, const control_params * cons
         const int );
 
 int CG( const static_storage * const, const control_params * const,
-        const sparse_matrix * const, const real * const, const real,
-        real * const, const int );
+        simulation_data * const, const sparse_matrix * const, const real * const,
+        const real, real * const, const int );
 
 int SDM( const static_storage * const, const control_params * const,
-        const sparse_matrix * const, const real * const, const real,
+        simulation_data * const, const sparse_matrix * const, const real * const, const real,
         real * const, const int );
 
 real condest( const sparse_matrix * const, const sparse_matrix * const );

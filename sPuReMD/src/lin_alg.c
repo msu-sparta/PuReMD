@@ -3043,42 +3043,50 @@ int GMRES( const static_storage * const workspace, const control_params * const 
            const real tol, real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
-    real cc, tmp1, tmp2, temp, ret_temp, bnorm, time_start;
+    real cc, tmp1, tmp2, temp, ret_temp, bnorm;
+    real t_start, t_ortho, t_pa, t_spmv, t_ts, t_vops;
 
     N = H->n;
     g_j = 0;
     g_itr = 0;
 
 #ifdef _OPENMP
-    #pragma omp parallel default(none) private(i, j, k, itr, bnorm, ret_temp) \
-    shared(N, cc, tmp1, tmp2, temp, time_start, g_itr, g_j, stderr)
+    #pragma omp parallel default(none) \
+    private(i, j, k, itr, bnorm, ret_temp, t_start) \
+    reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops) \
+    shared(N, cc, tmp1, tmp2, temp, g_itr, g_j, stderr)
 #endif
     {
         j = 0;
         itr = 0;
+        t_ortho = 0.0;
+        t_pa = 0.0;
+        t_spmv = 0.0;
+        t_ts = 0.0;
+        t_vops = 0.0;
 
-        time_start = Get_Time( );
+        t_start = Get_Time( );
         bnorm = Norm( b, N );
-        data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
+        t_vops += Get_Timing_Info( t_start );
 
         /* GMRES outer-loop */
         for ( itr = 0; itr < control->cm_solver_max_iters; ++itr )
         {
             /* calculate r0 */
-            time_start = Get_Time( );
+            t_start = Get_Time( );
             Sparse_MatVec( H, x, workspace->b_prm );
-            data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
+            t_spmv += Get_Timing_Info( t_start );
 
-            time_start = Get_Time( );
+            t_start = Get_Time( );
             Vector_Sum( workspace->b_prc, 1., b, -1., workspace->b_prm, N );
-            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
+            t_vops += Get_Timing_Info( t_start );
 
-            time_start = Get_Time( );
+            t_start = Get_Time( );
             apply_preconditioner( workspace, control, workspace->b_prc, workspace->v[0],
                                   itr == 0 ? fresh_pre : FALSE );
-            data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
+            t_pa += Get_Timing_Info( t_start );
 
-            time_start = Get_Time( );
+            t_start = Get_Time( );
             ret_temp = Norm( workspace->v[0], N );
 
 #ifdef _OPENMP
@@ -3089,24 +3097,24 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
 
             Vector_Scale( workspace->v[0], 1. / ret_temp, workspace->v[0], N );
-            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
+            t_vops += Get_Timing_Info( t_start );
 
             /* GMRES inner-loop */
             for ( j = 0; j < control->cm_solver_restart && FABS(workspace->g[j]) / bnorm > tol; j++ )
             {
                 /* matvec */
-                time_start = Get_Time( );
+                t_start = Get_Time( );
                 Sparse_MatVec( H, workspace->v[j], workspace->b_prc );
-                data->timing.cm_solver_spmv += Get_Timing_Info( time_start );
+                t_spmv += Get_Timing_Info( t_start );
 
-                time_start = Get_Time( );
+                t_start = Get_Time( );
                 apply_preconditioner( workspace, control, workspace->b_prc, workspace->v[j + 1], FALSE );
-                data->timing.cm_solver_pre_app += Get_Timing_Info( time_start );
+                t_pa += Get_Timing_Info( t_start );
 
 //                if ( control->cm_solver_pre_comp_type == DIAG_PC )
 //                {
                 /* apply modified Gram-Schmidt to orthogonalize the new residual */
-                time_start = Get_Time( );
+                t_start = Get_Time( );
                 for ( i = 0; i <= j; i++ )
                 {
                     ret_temp = Dot( workspace->v[i], workspace->v[j + 1], N );
@@ -3121,7 +3129,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
 
                 }
-                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
+                t_vops += Get_Timing_Info( t_start );
 //                }
 //                else
 //                {
@@ -3131,7 +3139,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 //
 //
 //                    {
-//                        time_start = Get_Time( );
+//                        t_start = Get_Time( );
 //                    }
 //
 //                    #pragma omp single
@@ -3159,11 +3167,11 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 //
 //
 //                    {
-//                        data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
+//                        t_vops += Get_Timing_Info( t_start );
 //                    }
 //                }
 
-                time_start = Get_Time( );
+                t_start = Get_Time( );
                 ret_temp = Norm( workspace->v[j + 1], N );
 
 #ifdef _OPENMP
@@ -3175,9 +3183,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
                 Vector_Scale( workspace->v[j + 1],
                               1.0 / workspace->h[j + 1][j], workspace->v[j + 1], N );
-                data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
+                t_vops += Get_Timing_Info( t_start );
 
-                time_start = Get_Time( );
+                t_start = Get_Time( );
 //                    if ( control->cm_solver_pre_comp_type == NONE_PC ||
 //                            control->cm_solver_pre_comp_type == DIAG_PC )
 //                    {
@@ -3234,7 +3242,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     workspace->g[j + 1] = tmp2;
 
                 }
-                data->timing.cm_solver_orthog += Get_Timing_Info( time_start );
+                t_ortho += Get_Timing_Info( t_start );
 
 #ifdef _OPENMP
                 #pragma omp barrier
@@ -3242,7 +3250,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
 
             /* solve Hy = g: H is now upper-triangular, do back-substitution */
-            time_start = Get_Time( );
+            t_start = Get_Time( );
 #ifdef _OPENMP
             #pragma omp single
 #endif
@@ -3258,10 +3266,10 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                     workspace->y[i] = temp / workspace->h[i][i];
                 }
             }
-            data->timing.cm_solver_tri_solve += Get_Timing_Info( time_start );
+            t_ts += Get_Timing_Info( t_start );
 
             /* update x = x_0 + Vy */
-            time_start = Get_Time( );
+            t_start = Get_Time( );
             Vector_MakeZero( workspace->p, N );
 
             for ( i = 0; i < j; i++ )
@@ -3270,7 +3278,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
 
             Vector_Add( x, 1., workspace->p, N );
-            data->timing.cm_solver_vector_ops += Get_Timing_Info( time_start );
+            t_vops += Get_Timing_Info( t_start );
 
             /* stopping condition */
             if ( FABS(workspace->g[j]) / bnorm <= tol )
@@ -3287,6 +3295,20 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             g_itr = itr;
         }
     }
+
+#ifdef _OPENMP
+    data->timing.cm_solver_orthog += t_ortho / control->num_threads;
+    data->timing.cm_solver_pre_app += t_pa / control->num_threads;
+    data->timing.cm_solver_spmv += t_spmv / control->num_threads;
+    data->timing.cm_solver_tri_solve += t_ts / control->num_threads;
+    data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
+#else
+    data->timing.cm_solver_orthog += t_ortho;
+    data->timing.cm_solver_pre_app += t_pa;
+    data->timing.cm_solver_spmv += t_spmv;
+    data->timing.cm_solver_tri_solve += t_ts;
+    data->timing.cm_solver_vector_ops += t_vops;
+#endif
 
     if ( g_itr >= control->cm_solver_max_iters )
     {
@@ -3493,13 +3515,14 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 
 /* Conjugate Gradient */
 int CG( const static_storage * const workspace, const control_params * const control,
-        const sparse_matrix * const H, const real * const b, const real tol,
-        real * const x, const int fresh_pre )
+        simulation_data * const data, const sparse_matrix * const H, const real * const b,
+        const real tol, real * const x, const int fresh_pre )
 {
-    int i, itr, N;
+    int i, g_itr, N;
     real tmp, alpha, beta, b_norm, r_norm;
     real *d, *r, *p, *z;
     real sig_old, sig_new;
+    real t_start, t_pa, t_spmv, t_vops;
 
     N = H->n;
     d = workspace->d;
@@ -3508,86 +3531,140 @@ int CG( const static_storage * const workspace, const control_params * const con
     z = workspace->p;
 
 #ifdef _OPENMP
-    #pragma omp parallel default(none) private(i, tmp, alpha, beta, b_norm, r_norm, sig_old, sig_new) \
-    shared(itr, N, d, r, p, z)
+    #pragma omp parallel default(none) \
+    private(i, tmp, alpha, beta, b_norm, r_norm, sig_old, sig_new, t_start) \
+    reduction(+: t_pa, t_spmv, t_vops) \
+    shared(g_itr, N, d, r, p, z)
 #endif
     {
-        b_norm = Norm( b, N );
+        t_pa = 0.0;
+        t_spmv = 0.0;
+        t_vops = 0.0;
 
+        t_start = Get_Time( );
+        b_norm = Norm( b, N );
+        t_vops += Get_Timing_Info( t_start );
+
+        t_start = Get_Time( );
         Sparse_MatVec( H, x, d );
+        t_spmv += Get_Timing_Info( t_start );
+
+        t_start = Get_Time( );
         Vector_Sum( r, 1.0,  b, -1.0, d, N );
         r_norm = Norm( r, N );
+        t_vops += Get_Timing_Info( t_start );
 
+        t_start = Get_Time( );
         apply_preconditioner( workspace, control, r, z, fresh_pre );
-        Vector_Copy( p, z, N );
+        t_pa += Get_Timing_Info( t_start );
 
+        t_start = Get_Time( );
+        Vector_Copy( p, z, N );
         sig_new = Dot( r, z, N );
+        t_vops += Get_Timing_Info( t_start );
 
         for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
         {
+            t_start = Get_Time( );
             Sparse_MatVec( H, p, d );
+            t_spmv += Get_Timing_Info( t_start );
 
+            t_start = Get_Time( );
             tmp = Dot( d, p, N );
             alpha = sig_new / tmp;
             Vector_Add( x, alpha, p, N );
-
             Vector_Add( r, -alpha, d, N );
             r_norm = Norm( r, N );
+            t_vops += Get_Timing_Info( t_start );
 
+            t_start = Get_Time( );
             apply_preconditioner( workspace, control, r, z, FALSE );
+            t_pa += Get_Timing_Info( t_start );
 
+            t_start = Get_Time( );
             sig_old = sig_new;
             sig_new = Dot( r, z, N );
-
             beta = sig_new / sig_old;
             Vector_Sum( p, 1., z, beta, p, N );
+            t_vops += Get_Timing_Info( t_start );
         }
 
 #ifdef _OPENMP
         #pragma omp single
 #endif
-        itr = i;
+        g_itr = i;
     }
 
-    if ( itr >= control->cm_solver_max_iters )
+#ifdef _OPENMP
+    data->timing.cm_solver_pre_app += t_pa / control->num_threads;
+    data->timing.cm_solver_spmv += t_spmv / control->num_threads;
+    data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
+#else
+    data->timing.cm_solver_pre_app += t_pa;
+    data->timing.cm_solver_spmv += t_spmv;
+    data->timing.cm_solver_vector_ops += t_vops;
+#endif
+
+    if ( g_itr >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", itr );
-        return itr;
+        fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", g_itr );
+        return g_itr;
     }
 
-    return itr;
+    return g_itr;
 }
 
 
 /* Steepest Descent */
 int SDM( const static_storage * const workspace, const control_params * const control,
-         const sparse_matrix * const H, const real * const b, const real tol,
-         real * const x, const int fresh_pre )
+         simulation_data * const data, const sparse_matrix * const H, const real * const b,
+         const real tol, real * const x, const int fresh_pre )
 {
-    int i, itr, N;
+    int i, g_itr, N;
     real tmp, alpha, b_norm;
     real sig;
+    real t_start, t_pa, t_spmv, t_vops;
 
     N = H->n;
 
 #ifdef _OPENMP
-    #pragma omp parallel default(none) private(i, tmp, alpha, b_norm, sig) \
-    shared(itr, N)
+    #pragma omp parallel default(none) \
+    private(i, tmp, alpha, b_norm, sig, t_start) \
+    reduction(+: t_pa, t_spmv, t_vops) \
+    shared(g_itr, N)
 #endif
     {
+        t_pa = 0.0;
+        t_spmv = 0.0;
+        t_vops = 0.0;
+
+        t_start = Get_Time( );
         b_norm = Norm( b, N );
+        t_vops += Get_Timing_Info( t_start );
 
+        t_start = Get_Time( );
         Sparse_MatVec( H, x, workspace->q );
+        t_spmv += Get_Timing_Info( t_start );
+
+        t_start = Get_Time( );
         Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->q, N );
+        t_vops += Get_Timing_Info( t_start );
 
+        t_start = Get_Time( );
         apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre );
+        t_pa += Get_Timing_Info( t_start );
 
+        t_start = Get_Time( );
         sig = Dot( workspace->r, workspace->d, N );
+        t_vops += Get_Timing_Info( t_start );
 
         for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / b_norm > tol; ++i )
         {
+            t_start = Get_Time( );
             Sparse_MatVec( H, workspace->d, workspace->q );
+            t_spmv += Get_Timing_Info( t_start );
 
+            t_start = Get_Time( );
             sig = Dot( workspace->r, workspace->d, N );
 
             /* ensure each thread gets a local copy of
@@ -3603,23 +3680,36 @@ int SDM( const static_storage * const workspace, const control_params * const co
 
             Vector_Add( x, alpha, workspace->d, N );
             Vector_Add( workspace->r, -alpha, workspace->q, N );
+            t_vops += Get_Timing_Info( t_start );
 
+            t_start = Get_Time( );
             apply_preconditioner( workspace, control, workspace->r, workspace->d, FALSE );
+            t_pa += Get_Timing_Info( t_start );
         }
 
 #ifdef _OPENMP
         #pragma omp single
 #endif
-        itr = i;
+        g_itr = i;
     }
 
-    if ( itr >= control->cm_solver_max_iters  )
+#ifdef _OPENMP
+    data->timing.cm_solver_pre_app += t_pa / control->num_threads;
+    data->timing.cm_solver_spmv += t_spmv / control->num_threads;
+    data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
+#else
+    data->timing.cm_solver_pre_app += t_pa;
+    data->timing.cm_solver_spmv += t_spmv;
+    data->timing.cm_solver_vector_ops += t_vops;
+#endif
+
+    if ( g_itr >= control->cm_solver_max_iters  )
     {
-        fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", itr );
-        return itr;
+        fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", g_itr );
+        return g_itr;
     }
 
-    return itr;
+    return g_itr;
 }
 
 
