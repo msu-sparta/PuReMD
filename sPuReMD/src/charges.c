@@ -205,7 +205,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
@@ -564,7 +564,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
@@ -682,7 +682,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                Sparse_Approx_Inverse( Hptr, workspace->H_spar_patt,
+                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
@@ -854,8 +854,9 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case SAI_PC:
-            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    &workspace->H_spar_patt );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+                    control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -1003,8 +1004,9 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case SAI_PC:
-            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    &workspace->H_spar_patt );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+                    control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -1154,8 +1156,9 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case SAI_PC:
-            Setup_Sparsity_Pattern( Hptr, control->cm_solver_pre_comp_sai_thres,
-                    &workspace->H_spar_patt );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+                    control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:

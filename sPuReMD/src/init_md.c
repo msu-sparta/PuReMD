@@ -1081,7 +1081,9 @@ void Finalize_Workspace( reax_system *system, control_params *control,
     }
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
+        Deallocate_Matrix( workspace->H_full );
         Deallocate_Matrix( workspace->H_spar_patt );
+        Deallocate_Matrix( workspace->H_spar_patt_full );
         Deallocate_Matrix( workspace->H_app_inv );
     }
 
