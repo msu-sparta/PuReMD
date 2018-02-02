@@ -148,11 +148,8 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
     //    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
 #endif
     {
-        if ( ( temp = (sparse_matrix_entry *) malloc( A->n * sizeof(sparse_matrix_entry)) ) == NULL )
-        {
-            fprintf( stderr, "Not enough space for matrix row sort. Terminating...\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        temp = (sparse_matrix_entry *) smalloc( A->n * sizeof(sparse_matrix_entry),
+               "Sort_Matrix_Rows::temp" );
 
         /* sort each row of A using column indices */
 #ifdef _OPENMP
@@ -371,11 +368,8 @@ void Calculate_Droptol( const sparse_matrix * const A,
              * overhead per Sparse_MatVec call*/
             if ( droptol_local == NULL )
             {
-                if ( (droptol_local = (real*) malloc( omp_get_num_threads() * A->n * sizeof(real))) == NULL )
-                {
-                    fprintf( stderr, "Not enough space for droptol. Terminating...\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
+                droptol_local = (real*) smalloc( omp_get_num_threads() * A->n * sizeof(real),
+                        "Calculate_Droptol::droptol_local" );
             }
         }
 
@@ -569,15 +563,16 @@ real SuperLU_Factorize( const sparse_matrix * const A,
     {
         SUPERLU_ABORT("Malloc fails for part_super__h[].");
     }
-    if ( ( (a = (real*) malloc( (2 * A->start[A->n] - A->n) * sizeof(real))) == NULL )
-            || ( (asub = (int_t*) malloc( (2 * A->start[A->n] - A->n) * sizeof(int_t))) == NULL )
-            || ( (xa = (int_t*) malloc( (A->n + 1) * sizeof(int_t))) == NULL )
-            || ( (Ltop = (unsigned int*) malloc( (A->n + 1) * sizeof(unsigned int))) == NULL )
-            || ( (Utop = (unsigned int*) malloc( (A->n + 1) * sizeof(unsigned int))) == NULL ) )
-    {
-        fprintf( stderr, "Not enough space for SuperLU factorization. Terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    a = (real*) smalloc( (2 * A->start[A->n] - A->n) * sizeof(real),
+            "SuperLU_Factorize::a" );
+    asub = (int_t*) smalloc( (2 * A->start[A->n] - A->n) * sizeof(int_t),
+            "SuperLU_Factorize::asub" );
+    xa = (int_t*) smalloc( (A->n + 1) * sizeof(int_t),
+            "SuperLU_Factorize::xa" );
+    Ltop = (unsigned int*) smalloc( (A->n + 1) * sizeof(unsigned int),
+            "SuperLU_Factorize::Ltop" );
+    Utop = (unsigned int*) smalloc( (A->n + 1) * sizeof(unsigned int),
+            "SuperLU_Factorize::Utop" );
     if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
@@ -824,13 +819,12 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
     start = Get_Time( );
 
-    if ( ( Utop = (unsigned int*) malloc((A->n + 1) * sizeof(unsigned int)) ) == NULL ||
-            ( tmp_j = (int*) malloc(A->n * sizeof(int)) ) == NULL ||
-            ( tmp_val = (real*) malloc(A->n * sizeof(real)) ) == NULL )
-    {
-        fprintf( stderr, "[ICHOLT] Not enough memory for preconditioning matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Utop = (unsigned int*) smalloc( (A->n + 1) * sizeof(unsigned int),
+            "ICHOLT::Utop" );
+    tmp_j = (int*) smalloc( A->n * sizeof(int),
+            "ICHOLT::Utop" );
+    tmp_val = (real*) smalloc( A->n * sizeof(real),
+            "ICHOLT::Utop" );
 
     // clear variables
     Ltop = 0;
@@ -976,10 +970,10 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
-            ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
-            ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
-            ( Utop = (int*) malloc((A->n + 1) * sizeof(int)) ) == NULL )
+    D = (real*) smalloc( A->n * sizeof(real), "ICHOL_PAR::D" );
+    D_inv = (real*) smalloc( A->n * sizeof(real), "ICHOL_PAR::D_inv" );
+    Utop = (int*) smalloc( (A->n + 1) * sizeof(int), "ICHOL_PAR::Utop" );
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for ICHOL_PAR preconditioning matrices. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -1154,9 +1148,9 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
-            ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
-            ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
+    D = (real*) smalloc( A->n * sizeof(real), "ILU_PAR::D" );
+    D_inv = (real*) smalloc( A->n * sizeof(real), "ILU_PAR::D_inv" );
+    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
     {
         fprintf( stderr, "[ILU_PAR] Not enough memory for preconditioning matrices. Terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
@@ -1377,12 +1371,8 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
         exit( INSUFFICIENT_MEMORY );
     }
 
-    if ( ( D = (real*) malloc(A->n * sizeof(real)) ) == NULL ||
-            ( D_inv = (real*) malloc(A->n * sizeof(real)) ) == NULL )
-    {
-        fprintf( stderr, "not enough memory for ILUT_PAR preconditioning matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    D = (real*) smalloc( A->n * sizeof(real), "ILUT_PAR::D" );
+    D_inv = (real*) smalloc( A->n * sizeof(real), "ILUT_PAR::D_inv" );
 
 #ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
@@ -1822,10 +1812,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
          * overhead per Sparse_MatVec call*/
         if ( b_local == NULL )
         {
-            if ( (b_local = (real*) malloc( omp_get_num_threads() * n * sizeof(real))) == NULL )
-            {
-                exit( INSUFFICIENT_MEMORY );
-            }
+            b_local = (real*) smalloc( omp_get_num_threads() * n * sizeof(real),
+                    "Sparse_MatVec::b_local" );
         }
     }
 
@@ -2087,22 +2075,18 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
 
         if ( row_levels == NULL || level_rows == NULL || level_rows_cnt == NULL )
         {
-            if ( (row_levels = (unsigned int*) malloc((size_t)N * sizeof(unsigned int))) == NULL
-                    || (level_rows = (unsigned int*) malloc((size_t)N * sizeof(unsigned int))) == NULL
-                    || (level_rows_cnt = (unsigned int*) malloc((size_t)(N + 1) * sizeof(unsigned int))) == NULL )
-            {
-                fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
+            row_levels = (unsigned int*) smalloc( (size_t)N * sizeof(unsigned int),
+                    "tri_solve_level_sched::row_levels" );
+            level_rows = (unsigned int*) smalloc( (size_t)N * sizeof(unsigned int),
+                    "tri_solve_level_sched::level_rows" );
+            level_rows_cnt = (unsigned int*) smalloc( (size_t)(N + 1) * sizeof(unsigned int),
+                    "tri_solve_level_sched::level_rows_cnt" );
         }
 
         if ( top == NULL )
         {
-            if ( (top = (unsigned int*) malloc((size_t)(N + 1) * sizeof(unsigned int))) == NULL )
-            {
-                fprintf( stderr, "Not enough space for triangular solve via level scheduling. Terminating...\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
+            top = (unsigned int*) smalloc( (size_t)(N + 1) * sizeof(unsigned int),
+                    "tri_solve_level_sched::top" );
         }
 
         /* find levels (row dependencies in substitutions) */
@@ -2338,12 +2322,10 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             }
         }
 
-        if ( (fb_color = (int*) malloc(sizeof(int) * MAX_COLOR)) == NULL ||
-                (conflict_local = (unsigned int*) malloc(sizeof(unsigned int) * A->n)) == NULL )
-        {
-            fprintf( stderr, "not enough memory for graph coloring. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        fb_color = (int*) smalloc( sizeof(int) * MAX_COLOR,
+                 "graph_coloring::fb_color" );
+        conflict_local = (unsigned int*) smalloc( sizeof(unsigned int) * A->n,
+                "graph_coloring::fb_color" );
 
 #ifdef _OPENMP
         #pragma omp barrier
@@ -2526,11 +2508,7 @@ static void permute_vector( real * const x, const unsigned int n, const int inve
     {
         if ( x_p == NULL )
         {
-            if ( (x_p = (real*) malloc(sizeof(real) * n)) == NULL )
-            {
-                fprintf( stderr, "not enough memory for permuting vector. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
+            x_p = (real*) smalloc( sizeof(real) * n, "permute_vector::x_p" );
         }
 
         if ( invert_map == TRUE )
@@ -2717,16 +2695,25 @@ sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
 #endif
 
         /* internal storage for graph coloring (global to facilitate simultaneous access to OpenMP threads) */
-        if ( (color = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
-                (to_color = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
-                (conflict = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
-                (conflict_cnt = (unsigned int*) malloc(sizeof(unsigned int) * (num_thread + 1))) == NULL ||
-                (recolor = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
-                (color_top = (unsigned int*) malloc(sizeof(unsigned int) * (H->n + 1))) == NULL ||
-                (permuted_row_col = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
-                (permuted_row_col_inv = (unsigned int*) malloc(sizeof(unsigned int) * H->n)) == NULL ||
-                (y_p = (real*) malloc(sizeof(real) * H->n)) == NULL ||
-                (Allocate_Matrix( &H_p, H->n, H->m ) == FAILURE ) ||
+        color = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
+                "setup_graph_coloring::color" );
+        to_color = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
+                "setup_graph_coloring::to_color" );
+        conflict = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
+                "setup_graph_coloring::conflict" );
+        conflict_cnt = (unsigned int*) smalloc( sizeof(unsigned int) * (num_thread + 1),
+                "setup_graph_coloring::conflict_cnt" );
+        recolor = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
+                "setup_graph_coloring::recolor" );
+        color_top = (unsigned int*) smalloc( sizeof(unsigned int) * (H->n + 1),
+                "setup_graph_coloring::color_top" );
+        permuted_row_col = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
+                "setup_graph_coloring::premuted_row_col" );
+        permuted_row_col_inv = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
+                "setup_graph_coloring::premuted_row_col_inv" );
+        y_p = (real*) smalloc( sizeof(real) * H->n,
+                "setup_graph_coloring::y_p" );
+        if ( (Allocate_Matrix( &H_p, H->n, H->m ) == FAILURE ) ||
                 (Allocate_Matrix( &H_full, H->n, 2 * H->m - H->n ) == FAILURE ) )
         {
             fprintf( stderr, "not enough memory for graph coloring. terminating.\n" );
@@ -2773,27 +2760,15 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
     {
         if ( Dinv_b == NULL )
         {
-            if ( (Dinv_b = (real*) malloc(sizeof(real) * R->n)) == NULL )
-            {
-                fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
+            Dinv_b = (real*) smalloc( sizeof(real) * R->n, "jacobi_iter::Dinv_b" );
         }
         if ( rp == NULL )
         {
-            if ( (rp = (real*) malloc(sizeof(real) * R->n)) == NULL )
-            {
-                fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
+            rp = (real*) smalloc( sizeof(real) * R->n, "jacobi_iter::rp" );
         }
         if ( rp2 == NULL )
         {
-            if ( (rp2 = (real*) malloc(sizeof(real) * R->n)) == NULL )
-            {
-                fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                exit( INSUFFICIENT_MEMORY );
-            }
+            rp2 = (real*) smalloc( sizeof(real) * R->n, "jacobi_iter::rp2" );
         }
     }
 
@@ -2969,11 +2944,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
             {
                 if ( Dinv_L == NULL )
                 {
-                    if ( (Dinv_L = (real*) malloc(sizeof(real) * workspace->L->n)) == NULL )
-                    {
-                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                        exit( INSUFFICIENT_MEMORY );
-                    }
+                    Dinv_L = (real*) smalloc( sizeof(real) * workspace->L->n,
+                            "apply_preconditioner::Dinv_L" );
                 }
             }
 
@@ -2998,11 +2970,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
             {
                 if ( Dinv_U == NULL )
                 {
-                    if ( (Dinv_U = (real*) malloc(sizeof(real) * workspace->U->n)) == NULL )
-                    {
-                        fprintf( stderr, "not enough memory for Jacobi iteration matrices. terminating.\n" );
-                        exit( INSUFFICIENT_MEMORY );
-                    }
+                    Dinv_U = (real*) smalloc( sizeof(real) * workspace->U->n,
+                            "apply_preconditioner::Dinv_U" );
                 }
             }
 
@@ -3729,11 +3698,7 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 
     N = L->n;
 
-    if ( (e = (real*) malloc(sizeof(real) * N)) == NULL )
-    {
-        fprintf( stderr, "Not enough memory for condest. Terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    e = (real*) smalloc( sizeof(real) * N, "condest::e" );
 
     memset( e, 1., N * sizeof(real) );
 

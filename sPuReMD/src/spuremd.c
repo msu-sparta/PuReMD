@@ -154,7 +154,8 @@ void static Read_System( char * const geo_file,
 int Setup( char ** args, reax_system * const system, control_params * const control,
         simulation_data * const data )
 {
-    lists = (reax_list*) malloc( sizeof(reax_list) * LIST_N );
+    lists = (reax_list*) smalloc( sizeof(reax_list) * LIST_N,
+           "Setup::lists" );
 
     Read_System( args[0], args[1], args[2], system, control,
             data, &workspace, &out_control );

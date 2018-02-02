@@ -259,13 +259,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //
 //    if ( ones == NULL )
 //    {
-//        if ( ( ones = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
-//            ( x = (real*) malloc( system->N * sizeof(real)) ) == NULL ||
-//            ( y = (real*) malloc( system->N * sizeof(real)) ) == NULL )
-//        {
-//            fprintf( stderr, "Not enough space for preconditioner computation. Terminating...\n" );
-//            exit( INSUFFICIENT_MEMORY );
-//        }
+//        ones = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::ones" );
+//        x = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::x" );
+//        y = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::y" );
 //
 //        for ( i = 0; i < system->N; ++i )
 //        {
@@ -764,11 +760,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
-                {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
+                workspace->Hdia_inv = (real *) scalloc( Hptr->n, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -916,11 +909,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                if ( ( workspace->Hdia_inv = (real *) calloc( system->N_cm, sizeof( real ) ) ) == NULL )
-                {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
+                workspace->Hdia_inv = (real *) scalloc( system->N_cm, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -1071,11 +1061,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                if ( ( workspace->Hdia_inv = (real *) calloc( Hptr->n, sizeof( real ) ) ) == NULL )
-                {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-                    exit( INSUFFICIENT_MEMORY );
-                }
+                workspace->Hdia_inv = (real *) scalloc( Hptr->n, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 

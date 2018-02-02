@@ -279,26 +279,43 @@ void Init_Workspace( reax_system *system, control_params *control,
     int i;
 
     /* Allocate space for hydrogen bond list */
-    workspace->hbond_index = (int *) malloc( system->N * sizeof( int ) );
+    workspace->hbond_index = (int *) smalloc( system->N * sizeof( int ),
+           "Init_Workspace::workspace->hbond_index" );
 
     /* bond order related storage  */
-    workspace->total_bond_order = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Deltap           = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Deltap_boc       = (real *) malloc( system->N * sizeof( real ) );
-    workspace->dDeltap_self     = (rvec *) malloc( system->N * sizeof( rvec ) );
+    workspace->total_bond_order = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->bond_order" );
+    workspace->Deltap = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Deltap" );
+    workspace->Deltap_boc = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Deltap_boc" );
+    workspace->dDeltap_self = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->dDeltap_self" );
 
-    workspace->Delta        = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_lp         = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_lp_temp    = (real *) malloc( system->N * sizeof( real ) );
-    workspace->dDelta_lp        = (real *) malloc( system->N * sizeof( real ) );
-    workspace->dDelta_lp_temp   = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_e          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Delta_boc        = (real *) malloc( system->N * sizeof( real ) );
-    workspace->nlp          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->nlp_temp         = (real *) malloc( system->N * sizeof( real ) );
-    workspace->Clp          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->CdDelta          = (real *) malloc( system->N * sizeof( real ) );
-    workspace->vlpex        = (real *) malloc( system->N * sizeof( real ) );
+    workspace->Delta = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta" );
+    workspace->Delta_lp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_lp" );
+    workspace->Delta_lp_temp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_lp_temp" );
+    workspace->dDelta_lp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->dDelta_lp" );
+    workspace->dDelta_lp_temp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->dDelta_lp_temp" );
+    workspace->Delta_e = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_e" );
+    workspace->Delta_boc = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Delta_boc" );
+    workspace->nlp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->nlp" );
+    workspace->nlp_temp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->nlp_temp" );
+    workspace->Clp = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->Clp" );
+    workspace->CdDelta = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->CdDelta" );
+    workspace->vlpex = (real *) smalloc( system->N * sizeof( real ),
+           "Init_Workspace::workspace->vlpex" );
 
     /* charge method storage */
     switch ( control->charge_method )
@@ -448,12 +465,16 @@ void Init_Workspace( reax_system *system, control_params *control,
     }
 
     /* integrator storage */
-    workspace->a = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_old = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->v_const = (rvec *) malloc( system->N * sizeof( rvec ) );
+    workspace->a = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->a" );
+    workspace->f_old = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_old" );
+    workspace->v_const = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->v_const" );
 
 #ifdef _OPENMP
-    workspace->f_local = (rvec *) malloc( control->num_threads * system->N * sizeof( rvec ) );
+    workspace->f_local = (rvec *) smalloc( control->num_threads * system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_local" );
 #endif
 
     /* storage for analysis */
@@ -477,20 +498,34 @@ void Init_Workspace( reax_system *system, control_params *control,
     }
 
 #ifdef TEST_FORCES
-    workspace->dDelta = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_ele = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_vdw = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_bo = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_be = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_lp = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_ov = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_un = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_ang = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_coa = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_pen = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_hb = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_tor = (rvec *) malloc( system->N * sizeof( rvec ) );
-    workspace->f_con = (rvec *) malloc( system->N * sizeof( rvec ) );
+    workspace->dDelta = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->dDelta" );
+    workspace->f_ele = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_ele" );
+    workspace->f_vdw = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_vdw" );
+    workspace->f_bo = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_bo" );
+    workspace->f_be = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_be" );
+    workspace->f_lp = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_lp" );
+    workspace->f_ov = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_ov" );
+    workspace->f_un = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_un" );
+    workspace->f_ang = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_ang" );
+    workspace->f_coa = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_coa" );
+    workspace->f_pen = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_pen" );
+    workspace->f_hb = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_hb" );
+    workspace->f_tor = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_tor" );
+    workspace->f_con = (rvec *) smalloc( system->N * sizeof( rvec ),
+           "Init_Workspace::workspace->f_con" );
 #endif
 
     workspace->realloc.num_far = -1;
