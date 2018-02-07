@@ -29,7 +29,7 @@
 // CUSTOM ATOM: serial element name x y z
 #define CUSTOM_ATOM_FORMAT " %d %s %s %lf %lf %lf"
 
-char Read_Geo( char*, reax_system*, control_params*,
+char Read_Geo( const char * const, reax_system*, control_params*,
         simulation_data*, static_storage* );
 
 /* PDB format :
@@ -117,10 +117,10 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 
 #define BGF_CRYSTX_FORMAT "%8s%11s%11s%11s%11s%11s%11s"
 
-char Read_PDB( char*, reax_system*, control_params*,
+char Read_PDB( const char * const, reax_system*, control_params*,
         simulation_data*, static_storage* );
 
-char Read_BGF( char*, reax_system*, control_params*,
+char Read_BGF( const char * const, reax_system*, control_params*,
         simulation_data*, static_storage* );
 
 char Write_PDB( reax_system*, reax_list*, simulation_data*,

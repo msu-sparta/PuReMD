@@ -561,6 +561,4 @@ void sfree( void *ptr, const char *name )
 #endif
 
     free( ptr );
-
-    ptr = NULL;
 }

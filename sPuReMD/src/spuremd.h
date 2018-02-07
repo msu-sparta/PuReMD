@@ -22,17 +22,16 @@
 #ifndef __SPUREMD_H_
 #define __SPUREMD_H_
 
-#include "mytypes.h"
+#define SPUREMD_SUCCESS (0)
+#define SPUREMD_FAILURE (-1)
 
 
-int Setup( char **, reax_system * const, control_params * const,
-        simulation_data * const );
+void* setup( const char * const, const char * const,
+        const char * const );
 
-int Run( reax_system * const, control_params * const,
-        simulation_data * const, const int );
+int simulate( const void * const );
 
-int Cleanup( reax_system * const, control_params * const,
-        simulation_data * const, const int );
+int cleanup( const void * const );
 
 
 #endif

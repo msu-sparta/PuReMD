@@ -55,7 +55,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_Geo( char* geo_file, reax_system* system, control_params *control,
+char Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
 
@@ -221,7 +221,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
+char Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
 
@@ -538,7 +538,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 }
 
 
-char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
+char Read_BGF( const char * const bgf_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
     FILE *bgf;
