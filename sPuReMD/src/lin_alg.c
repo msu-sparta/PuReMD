@@ -1699,7 +1699,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
                 }
                 // change the value if any of the column indices is seen
                 for ( d_j = A->start[pos_x[d_i]];
-                        d_j < A->start[pos_x[d_i + 1]]; ++d_j )
+                        d_j < A->start[pos_x[d_i] + 1]; ++d_j )
                 {
                     if ( Y[A->j[d_j]] == 1 )
                     {
