@@ -55,7 +55,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_Geo( char* geo_file, reax_system* system, control_params *control,
+char Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
 
@@ -221,7 +221,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
+char Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
 
@@ -365,7 +365,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
             pdb_serial = (int) strtod( &serial[0], &endptr );
             workspace->orig_id[top] = pdb_serial;
 
-            Trim_Spaces( element );
+            Trim_Spaces( element, 9 );
             atom->type = Get_Atom_Type( &(system->reaxprm), element );
             strcpy( atom->name, atom_name );
 
@@ -492,7 +492,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     {
         p_atom = &(system->atoms[i]);
         strncpy(name, p_atom->name, 8);
-        Trim_Spaces(name);
+        Trim_Spaces( name, 8 );
         snprintf( line, MAX_STR, PDB_ATOM_FORMAT_O,
                  "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
@@ -538,7 +538,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 }
 
 
-char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
+char Read_BGF( const char * const bgf_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
     FILE *bgf;
@@ -711,7 +711,7 @@ char Read_BGF( char* bgf_file, reax_system* system, control_params *control,
 
             /* atom name and type */
             strcpy( system->atoms[atom_cnt].name, atom_name );
-            Trim_Spaces( element );
+            Trim_Spaces( element, 10 );
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &(system->reaxprm), element );
 

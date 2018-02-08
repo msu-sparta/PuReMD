@@ -56,7 +56,7 @@ int is_Valid_Serial( static_storage*, int );
 
 int Check_Input_Range( int, int, int, char* );
 
-void Trim_Spaces( char* );
+void Trim_Spaces( char * const, const size_t );
 
 /* from system_props.h */
 real Get_Time( );

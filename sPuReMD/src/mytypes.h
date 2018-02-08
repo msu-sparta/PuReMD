@@ -1122,6 +1122,26 @@ typedef struct
 } LR_lookup_table;
 
 
+/* Handle for working with an instance of the sPuReMD library */
+typedef struct
+{
+    /* System info. struct pointer */
+    reax_system *system;
+    /* System struct pointer */
+    control_params *control;
+    /* Control parameters struct pointer */
+    simulation_data *data;
+    /* Internal workspace struct pointer */
+    static_storage *workspace;
+    /* Reax interaction list struct pointer */
+    reax_list *lists;
+    /* Output controls struct pointer */
+    output_controls *out_control;
+    /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
+    int output_enabled;
+} spuremd_handle;
+
+
 /* Function pointer definitions */
 typedef void (*interaction_function)(reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls*);

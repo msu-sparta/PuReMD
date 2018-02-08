@@ -20,22 +20,24 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "mytypes.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "spuremd.h"
+
+#define INVALID_INPUT (-1)
 
 
 static void usage( char * argv[] )
 {
-    fprintf( stderr, "usage: ./%s geometry ffield control\n", argv[0] );
+    fprintf( stderr, "usage: ./%s geometry_file force_field_file control_file\n", argv[0] );
 }
 
 
 int main( int argc, char* argv[] )
 {
-    reax_system system;
-    control_params control;
-    simulation_data data;
+    void *handle;
+    int ret;
 
     if ( argc != 4 )
     {
@@ -43,11 +45,18 @@ int main( int argc, char* argv[] )
         exit( INVALID_INPUT );
     }
 
-    Setup( argv + 1, &system, &control, &data );
+    handle = setup( argv[1], argv[2], argv[3] );
+    ret = SPUREMD_FAILURE;
 
-    Run( &system, &control, &data, TRUE );
+    if ( handle != NULL )
+    {
+        ret = simulate( handle );
+    }
 
-    Cleanup( &system, &control, &data, TRUE );
+    if ( ret == SPUREMD_SUCCESS )
+    {
+        ret = cleanup( handle );
+    }
 
-    return 0;
+    return (ret == SPUREMD_SUCCESS) ? 0 : (-1);
 }

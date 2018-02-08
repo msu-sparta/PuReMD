@@ -68,7 +68,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 }
 
 
-void Read_Binary_Restart( char *fname, reax_system *system,
+void Read_Binary_Restart( const char * const fname, reax_system *system,
                           control_params *control, simulation_data *data,
                           static_storage *workspace )
 {
@@ -185,7 +185,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
 }
 
 
-void Read_ASCII_Restart( char *fname, reax_system *system,
+void Read_ASCII_Restart( const char * const fname, reax_system *system,
                          control_params *control, simulation_data *data,
                          static_storage *workspace )
 {

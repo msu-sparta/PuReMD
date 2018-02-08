@@ -56,9 +56,9 @@ typedef struct
 void Write_Restart( reax_system*, control_params*,
                     simulation_data*, static_storage*, output_controls* );
 
-void Read_Binary_Restart( char*, reax_system*, control_params*,
+void Read_Binary_Restart( const char * const, reax_system*, control_params*,
                           simulation_data*, static_storage* );
-void Read_ASCII_Restart( char*, reax_system*, control_params*,
+void Read_ASCII_Restart( const char * const, reax_system*, control_params*,
                          simulation_data*, static_storage* );
 
 #endif

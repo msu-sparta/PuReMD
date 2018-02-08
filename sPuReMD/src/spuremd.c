@@ -19,6 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "spuremd.h"
+
 #include "mytypes.h"
 
 #include "analyze.h"
@@ -34,11 +36,6 @@
 #include "system_props.h"
 #include "tool_box.h"
 #include "vector.h"
-
-
-static static_storage workspace;
-static reax_list *lists;
-static output_controls out_control;
 
 
 static void Post_Evolve( reax_system * const system, control_params * const control,
@@ -82,9 +79,9 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
 }
 
 
-void static Read_System( char * const geo_file,
-        char * const ffield_file,
-        char * const control_file,
+static void Read_System( const char * const geo_file,
+        const char * const ffield_file,
+        const char * const control_file,
         reax_system * const system,
         control_params * const control,
         simulation_data * const data,
@@ -151,94 +148,157 @@ void static Read_System( char * const geo_file,
 }
 
 
-int Setup( char ** args, reax_system * const system, control_params * const control,
-        simulation_data * const data )
+void* setup( const char * const geo_file, const char * const ffield_file,
+        const char * const control_file )
 {
-    lists = (reax_list*) smalloc( sizeof(reax_list) * LIST_N,
-           "Setup::lists" );
+    spuremd_handle *spmd_handle;
 
-    Read_System( args[0], args[1], args[2], system, control,
-            data, &workspace, &out_control );
+    /* top-level allocation */
+    spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
+            "setup::spmd_handle" );
 
-    return SUCCESS;
+    /* second-level allocations */
+    spmd_handle->system = (reax_system*) smalloc( sizeof(reax_system),
+           "Setup::spmd_handle->system" );
+    spmd_handle->control = (control_params*) smalloc( sizeof(control_params),
+           "Setup::spmd_handle->control" );
+    spmd_handle->data = (simulation_data*) smalloc( sizeof(simulation_data),
+           "Setup::spmd_handle->data" );
+    spmd_handle->workspace = (static_storage*) smalloc( sizeof(static_storage),
+           "Setup::spmd_handle->workspace" );
+    spmd_handle->lists = (reax_list*) smalloc( sizeof(reax_list) * LIST_N,
+           "Setup::spmd_handle->lists" );
+    spmd_handle->out_control = (output_controls*) smalloc( sizeof(output_controls),
+           "Setup::spmd_handle->out_control" );
+
+    spmd_handle->output_enabled = TRUE;
+
+    /* parse geometry file */
+    Read_System( geo_file, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control );
+
+    //TODO: if errors detected, set handle to NULL to indicate failure
+
+    return (void*) spmd_handle;
 }
 
 
-int Run( reax_system * const system, control_params * const control, simulation_data * const data,
-      const int output_enabled )
+int simulate( const void * const handle )
 {
-    int steps;
+    int steps, ret;
     evolve_function Evolve;
+    spuremd_handle *spmd_handle;
 
-    Initialize( system, control, data, &workspace, &lists,
-            &out_control, &Evolve, output_enabled );
+    ret = SPUREMD_FAILURE;
 
-    /* compute f_0 */
-    //if( control.restart == 0 ) {
-    Reset( system, control, data, &workspace, &lists );
-    Generate_Neighbor_Lists( system, control, data, &workspace, 
-            &lists, &out_control );
-
-    //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
-    Compute_Forces( system, control, data, &workspace, &lists, &out_control );
-    Compute_Kinetic_Energy( system, data );
-    if ( output_enabled == TRUE )
+    if ( handle != NULL )
     {
-        Output_Results( system, control, data, &workspace, &lists, &out_control );
-    }
-    ++data->step;
-    //}
-    //
-    
-    for ( ; data->step <= control->nsteps; data->step++ )
-    {
-        if ( control->T_mode )
+        spmd_handle = (spuremd_handle*) handle;
+
+        Initialize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                spmd_handle->workspace, &spmd_handle->lists,
+                spmd_handle->out_control, &Evolve,
+                spmd_handle->output_enabled );
+
+        /* compute f_0 */
+        //if( control.restart == 0 ) {
+        Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                spmd_handle->workspace, &spmd_handle->lists );
+        Generate_Neighbor_Lists( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+
+        //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
+        Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+        Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
+        if ( spmd_handle->output_enabled == TRUE )
         {
-            Temperature_Control( control, data, &out_control );
+            Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+        }
+        ++spmd_handle->data->step;
+        //}
+        
+        for ( ; spmd_handle->data->step <= spmd_handle->control->nsteps; spmd_handle->data->step++ )
+        {
+            if ( spmd_handle->control->T_mode )
+            {
+                Temperature_Control( spmd_handle->control, spmd_handle->data,
+                        spmd_handle->out_control );
+            }
+
+            Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+            Post_Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+
+            if ( spmd_handle->output_enabled == TRUE )
+            {
+                Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                        spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                Analysis( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                        spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+            }
+
+            steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
+            if ( steps && spmd_handle->out_control->restart_freq &&
+                    steps % spmd_handle->out_control->restart_freq == 0 &&
+                    spmd_handle->output_enabled == TRUE )
+            {
+                Write_Restart( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                        spmd_handle->workspace, spmd_handle->out_control );
+            }
         }
 
-        Evolve( system, control, data, &workspace, &lists, &out_control );
-        Post_Evolve( system, control, data, &workspace, &lists, &out_control );
-
-        if ( output_enabled == TRUE )
+        if ( spmd_handle->out_control->write_steps > 0 && spmd_handle->output_enabled == TRUE )
         {
-            Output_Results( system, control, data, &workspace, &lists, &out_control );
-            Analysis( system, control, data, &workspace, &lists, &out_control );
+            fclose( spmd_handle->out_control->trj );
+            Write_PDB( spmd_handle->system, &(spmd_handle->lists[BONDS]), spmd_handle->data,
+                    spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
         }
 
-        steps = data->step - data->prev_steps;
-        if ( steps && out_control.restart_freq &&
-                steps % out_control.restart_freq == 0 &&
-                output_enabled == TRUE )
+        spmd_handle->data->timing.end = Get_Time( );
+        spmd_handle->data->timing.elapsed = Get_Timing_Info( spmd_handle->data->timing.start );
+        if ( spmd_handle->output_enabled == TRUE )
         {
-            Write_Restart( system, control, data, &workspace, &out_control );
+            fprintf( spmd_handle->out_control->log, "total: %.2f secs\n", spmd_handle->data->timing.elapsed );
         }
+
+        ret = SPUREMD_SUCCESS;
     }
 
-    if ( out_control.write_steps > 0 && output_enabled == TRUE )
-    {
-        fclose( out_control.trj );
-        Write_PDB( system, &(lists[BONDS]), data, control, &workspace, &out_control );
-    }
-
-    data->timing.end = Get_Time( );
-    data->timing.elapsed = Get_Timing_Info( data->timing.start );
-    if ( output_enabled == TRUE )
-    {
-        fprintf( out_control.log, "total: %.2f secs\n", data->timing.elapsed );
-    }
-
-    return SUCCESS;
+    return ret;
 }
 
 
-int Cleanup( reax_system * const system, control_params * const control,
-        simulation_data * const data, const int output_enabled )
+int cleanup( const void * const handle )
 {
-    Finalize( system, control, data, &workspace, &lists, &out_control,
-           output_enabled );
+    int ret;
+    spuremd_handle *spmd_handle;
 
-    sfree( lists, "main::lists" );
+    ret = SPUREMD_FAILURE;
 
-    return SUCCESS;
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        Finalize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control,
+                spmd_handle->output_enabled );
+
+        sfree( spmd_handle->out_control, "cleanup::spmd_handle->out_control" );
+        sfree( spmd_handle->lists, "cleanup::spmd_handle->lists" );
+        sfree( spmd_handle->workspace, "cleanup::spmd_handle->workspace" );
+        sfree( spmd_handle->data, "cleanup::spmd_handle->data" );
+        sfree( spmd_handle->control, "cleanup::spmd_handle->control" );
+        sfree( spmd_handle->system, "cleanup::spmd_handle->system" );
+
+        sfree( spmd_handle, "cleanup::spmd_handle" );
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
 }

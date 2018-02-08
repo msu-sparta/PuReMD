@@ -19,7 +19,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "mytypes.h"
 #include "tool_box.h"
 
 #include <ctype.h>
@@ -273,13 +272,22 @@ int Check_Input_Range( int val, int lo, int hi, char *message )
 }
 
 
-void Trim_Spaces( char *element )
+void Trim_Spaces( char * const element, const size_t size )
 {
-    int i, j;
+    int i, j, n;
 
-    for ( i = 0; element[i] == ' '; ++i ); // skip initial space chars
+    n = strnlen( element, size );
 
-    for ( j = i; j < (int)(strlen(element)) && element[j] != ' '; ++j )
+    /* buffer not NULL-terminated, abort */
+    if ( n == size )
+    {
+        return;
+    }
+
+    for ( i = 0; element[i] == ' '; ++i )
+        ; // skip initial space chars
+
+    for ( j = i; j < n && element[j] != ' '; ++j )
     {
         element[j - i] = toupper( element[j] ); // make uppercase, offset to 0
     }
@@ -561,6 +569,4 @@ void sfree( void *ptr, const char *name )
 #endif
 
     free( ptr );
-
-    ptr = NULL;
 }

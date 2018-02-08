@@ -3294,6 +3294,12 @@ int GMRES_HouseHolder( const static_storage * const workspace,
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
 #endif
     {
+        t_ortho = 0.0;
+        t_pa = 0.0;
+        t_spmv = 0.0;
+        t_ts = 0.0;
+        t_vops = 0.0;
+
         t_start = Get_Time( );
         bnorm = Norm( b, N );
         t_vops += Get_Timing_Info( t_start );
