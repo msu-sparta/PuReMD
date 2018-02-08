@@ -167,7 +167,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
         fgets( s, MAX_LINE, fp );
         Tokenize( s, &tmp );
 
-        for ( j = 0; j < strlen( tmp[0] ); ++j )
+        for ( j = 0; j < strnlen( tmp[0], MAX_TOKEN_LEN ); ++j )
             reax->sbp[i].name[j] = toupper( tmp[0][j] );
 
         val = atof(tmp[1]);

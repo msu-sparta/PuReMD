@@ -79,7 +79,7 @@ int Write_Custom_Header( reax_system *system, control_params *control,
              control->molec_anal,
              control->freq_molec_anal );
 
-    control_block_len = strlen( control_block );
+    control_block_len = strnlen( control_block, SIZE1 );
 
 
     snprintf( frame_format, SIZE1, "Frame Format: %d\n%s\n%s\n",
@@ -123,7 +123,7 @@ int Write_Custom_Header( reax_system *system, control_params *control,
     }
     strcat( frame_format, angle_format );
 
-    frame_format_len = strlen( frame_format );
+    frame_format_len = strnlen( frame_format, SIZE1 );
 
 
     header_len = HEADER_INIT_LEN + (control_block_len + SIZE_INFO_LEN2) +
@@ -309,7 +309,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
              data->E_Ang, data->E_Pen, data->E_Coa, data->E_HB,
              data->E_Tor, data->E_Con,
              data->E_vdW, data->E_Ele, data->E_Pol );
-    frame_globals_len = strlen( buffer );
+    frame_globals_len = strnlen( buffer, SIZE );
 
     frame_len = frame_globals_len +
                 write_atoms  * SIZE_INFO_LEN3 + system->N * atom_line_len +
@@ -507,7 +507,7 @@ void Read_Traj( output_controls *out_control, char *traj_name )
 
         fprintf( stderr, "read line\n" );
 
-        if ( strlen( size_buffer ) >= SIZE_INFO_LEN3 )
+        if ( strnlen( size_buffer, 50 ) >= SIZE_INFO_LEN3 )
         {
             sscanf( size_buffer, "%d %d %d", &skip_all, &skip_part, &n );
         }

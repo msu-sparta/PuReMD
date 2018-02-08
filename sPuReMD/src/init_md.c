@@ -773,11 +773,11 @@ void Init_Out_Controls( reax_system *system, control_params *control,
     /* Init molecular analysis file */
     if ( control->molec_anal )
     {
-        snprintf( temp, TEMP_SIZE + 4, "%s.mol", control->sim_name );
+        snprintf( temp, TEMP_SIZE, "%.*s.mol", TEMP_SIZE - 5, control->sim_name );
         out_control->mol = fopen( temp, "w" );
         if ( control->num_ignored )
         {
-            snprintf( temp, TEMP_SIZE + 4, "%s.ign", control->sim_name );
+            snprintf( temp, TEMP_SIZE, "%.*s.ign", TEMP_SIZE - 5, control->sim_name );
             out_control->ign = fopen( temp, "w" );
         }
     }

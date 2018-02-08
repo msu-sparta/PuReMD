@@ -21,6 +21,8 @@
 
 #include "analyze.h"
 
+#include <ctype.h>
+
 #include "box.h"
 #include "list.h"
 #include "tool_box.h"
@@ -580,8 +582,12 @@ void Analyze_Fragments( reax_system *system, control_params *control,
 
     /* output the results of fragment analysis */
     for ( i = 0; i < num_fragment_types; ++i )
-        if ( strlen(fragments[i]) )
+    {
+        if ( strnlen(fragments[i], MAX_ATOM_TYPES) )
+        {
             fprintf( fout, "%d of %s\n", fragment_count[i], fragments[i] );
+        }
+    }
     fprintf( fout, "\n" );
     fflush( fout );
 
