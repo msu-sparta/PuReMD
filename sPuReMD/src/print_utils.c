@@ -604,6 +604,7 @@ void Output_Results( reax_system *system, control_params *control,
         data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB +
         data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
 
+
     data->E_Tot = data->E_Pot + E_CONV * data->E_Kin;
 
     /* output energies if it is the time */
@@ -722,6 +723,24 @@ void Output_Results( reax_system *system, control_params *control,
         //Write_PDB( system, *lists+BONDS, data, control, workspace, out_control );
         //t_elapsed = Get_Timing_Info( t_start );
         //fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
+    }
+
+    if ( IS_NAN_REAL(data->E_Pol) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for polarization energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->E_Pot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->E_Tot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
     }
 }
 

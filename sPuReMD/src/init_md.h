@@ -27,7 +27,7 @@
 
 void Initialize( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls*, evolve_function*,
-        const int );
+        interaction_function *, const int );
 
 void Finalize( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls*, const int );

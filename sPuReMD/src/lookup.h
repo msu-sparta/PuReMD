@@ -35,9 +35,11 @@ int Lookup_Index_Of( real, lookup_table* );
 
 real Lookup( real, lookup_table* );
 
-void Make_LR_Lookup_Table( reax_system*, control_params* );
+void Make_LR_Lookup_Table( reax_system*, control_params*,
+       static_storage* );
 
-void Finalize_LR_Lookup_Table( reax_system *, control_params * );
+void Finalize_LR_Lookup_Table( reax_system*, control_params*,
+       static_storage* );
 
 
 #endif

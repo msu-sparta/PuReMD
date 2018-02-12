@@ -871,6 +871,61 @@ typedef struct
 
 typedef struct
 {
+    real H;
+    real e_vdW;
+    real CEvd;
+    real e_ele;
+    real CEclmb;
+} LR_data;
+
+
+typedef struct
+{
+    real a;
+    real b;
+    real c;
+    real d;
+} cubic_spline_coef;
+
+
+typedef struct
+{
+    real xmin;
+    real xmax;
+    int n;
+    real dx;
+    real inv_dx;
+    real a;
+
+    real m;
+    real c;
+
+    real *y;
+} lookup_table;
+
+
+typedef struct
+{
+    real xmin;
+    real xmax;
+    int n;
+    real dx;
+    real inv_dx;
+    real a;
+    real m;
+    real c;
+
+    LR_data *y;
+    cubic_spline_coef *H;
+    cubic_spline_coef *vdW;
+    cubic_spline_coef *CEvd;
+    cubic_spline_coef *ele;
+    cubic_spline_coef *CEclmb;
+} LR_lookup_table;
+
+
+typedef struct
+{
     /* bond order related storage */
     real *total_bond_order;
     real *Deltap;
@@ -947,6 +1002,8 @@ typedef struct
 #endif
 
     reallocate_data realloc;
+
+    LR_lookup_table **LR;
 
 #ifdef TEST_FORCES
     rvec *f_ele;
@@ -1067,59 +1124,15 @@ typedef struct
 } output_controls;
 
 
-typedef struct
-{
-    real H;
-    real e_vdW;
-    real CEvd;
-    real e_ele;
-    real CEclmb;
-} LR_data;
+/* Function pointer definitions */
+typedef void (*interaction_function)(reax_system*, control_params*,
+        simulation_data*, static_storage*, reax_list**, output_controls*);
 
+typedef void (*evolve_function)(reax_system*, control_params*,
+        simulation_data*, static_storage*,
+        reax_list**, output_controls*, interaction_function*);
 
-typedef struct
-{
-    real a;
-    real b;
-    real c;
-    real d;
-} cubic_spline_coef;
-
-
-typedef struct
-{
-    real xmin;
-    real xmax;
-    int n;
-    real dx;
-    real inv_dx;
-    real a;
-
-    real m;
-    real c;
-
-    real *y;
-} lookup_table;
-
-
-typedef struct
-{
-    real xmin;
-    real xmax;
-    int n;
-    real dx;
-    real inv_dx;
-    real a;
-    real m;
-    real c;
-
-    LR_data *y;
-    cubic_spline_coef *H;
-    cubic_spline_coef *vdW;
-    cubic_spline_coef *CEvd;
-    cubic_spline_coef *ele;
-    cubic_spline_coef *CEclmb;
-} LR_lookup_table;
+typedef void (*callback_function)(reax_atom*, simulation_data*, reax_list*);
 
 
 /* Handle for working with an instance of the sPuReMD library */
@@ -1139,20 +1152,11 @@ typedef struct
     output_controls *out_control;
     /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
     int output_enabled;
+    /* */
+    interaction_function interaction_functions[NO_OF_INTERACTIONS];
+    /* Callback for getting simulation state at the end of each time step */
+    callback_function callback;
 } spuremd_handle;
-
-
-/* Function pointer definitions */
-typedef void (*interaction_function)(reax_system*, control_params*,
-        simulation_data*, static_storage*, reax_list**, output_controls*);
-
-typedef void (*evolve_function)(reax_system*, control_params*,
-        simulation_data*, static_storage*,
-        reax_list**, output_controls*);
-
-
-/* Global variables */
-LR_lookup_table **LR;
 
 
 #endif

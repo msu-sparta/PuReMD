@@ -249,7 +249,8 @@ void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 }
 
 
-void Make_LR_Lookup_Table( reax_system *system, control_params *control )
+void Make_LR_Lookup_Table( reax_system *system, control_params *control,
+       static_storage *workspace )
 {
     int i, j, r;
     int num_atom_types;
@@ -286,11 +287,11 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
-    LR = (LR_lookup_table**) smalloc( num_atom_types * sizeof(LR_lookup_table*),
+    workspace->LR = (LR_lookup_table**) smalloc( num_atom_types * sizeof(LR_lookup_table*),
            "Make_LR_Lookup_Table::LR" );
     for ( i = 0; i < num_atom_types; ++i )
     {
-        LR[i] = (LR_lookup_table*) smalloc( num_atom_types * sizeof(LR_lookup_table),
+        workspace->LR[i] = (LR_lookup_table*) smalloc( num_atom_types * sizeof(LR_lookup_table),
                 "Make_LR_Lookup_Table::LR[i]");
     }
 
@@ -316,61 +317,62 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
             {
                 if ( existing_types[j] )
                 {
-                    LR[i][j].xmin = 0;
-                    LR[i][j].xmax = control->r_cut;
-                    LR[i][j].n = control->tabulate + 1;
-                    LR[i][j].dx = dr;
-                    LR[i][j].inv_dx = control->tabulate / control->r_cut;
-                    LR[i][j].y = (LR_data*)
-                        smalloc( LR[i][j].n * sizeof(LR_data),
+                    workspace->LR[i][j].xmin = 0;
+                    workspace->LR[i][j].xmax = control->r_cut;
+                    workspace->LR[i][j].n = control->tabulate + 1;
+                    workspace->LR[i][j].dx = dr;
+                    workspace->LR[i][j].inv_dx = control->tabulate / control->r_cut;
+                    workspace->LR[i][j].y = (LR_data*)
+                        smalloc( workspace->LR[i][j].n * sizeof(LR_data),
                               "Make_LR_Lookup_Table::LR[i][j].y" );
-                    LR[i][j].H = (cubic_spline_coef*)
-                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[i][j].H = (cubic_spline_coef*)
+                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].H" );
-                    LR[i][j].vdW = (cubic_spline_coef*)
-                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[i][j].vdW = (cubic_spline_coef*)
+                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].vdW" );
-                    LR[i][j].CEvd = (cubic_spline_coef*)
-                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[i][j].CEvd = (cubic_spline_coef*)
+                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].CEvd" );
-                    LR[i][j].ele = (cubic_spline_coef*)
-                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[i][j].ele = (cubic_spline_coef*)
+                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].ele" );
-                    LR[i][j].CEclmb = (cubic_spline_coef*)
-                        smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[i][j].CEclmb = (cubic_spline_coef*)
+                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].CEclmb" );
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {
-                        LR_vdW_Coulomb( system, control, i, j, r * dr, &(LR[i][j].y[r]) );
-                        h[r] = LR[i][j].dx;
-                        fh[r] = LR[i][j].y[r].H;
-                        fvdw[r] = LR[i][j].y[r].e_vdW;
-                        fCEvd[r] = LR[i][j].y[r].CEvd;
-                        fele[r] = LR[i][j].y[r].e_ele;
-                        fCEclmb[r] = LR[i][j].y[r].CEclmb;
+                        LR_vdW_Coulomb( system, control, i, j, r * dr,
+                                &(workspace->LR[i][j].y[r]) );
+                        h[r] = workspace->LR[i][j].dx;
+                        fh[r] = workspace->LR[i][j].y[r].H;
+                        fvdw[r] = workspace->LR[i][j].y[r].e_vdW;
+                        fCEvd[r] = workspace->LR[i][j].y[r].CEvd;
+                        fele[r] = workspace->LR[i][j].y[r].e_ele;
+                        fCEclmb[r] = workspace->LR[i][j].y[r].CEclmb;
 
                         if ( r == 1 )
                         {
-                            v0_vdw = LR[i][j].y[r].CEvd;
-                            v0_ele = LR[i][j].y[r].CEclmb;
+                            v0_vdw = workspace->LR[i][j].y[r].CEvd;
+                            v0_ele = workspace->LR[i][j].y[r].CEclmb;
                         }
                         else if ( r == control->tabulate )
                         {
-                            vlast_vdw = LR[i][j].y[r].CEvd;
-                            vlast_ele = LR[i][j].y[r].CEclmb;
+                            vlast_vdw = workspace->LR[i][j].y[r].CEvd;
+                            vlast_ele = workspace->LR[i][j].y[r].CEclmb;
                         }
                     }
 
                     Natural_Cubic_Spline( h, fh,
-                            &(LR[i][j].H[1]), control->tabulate + 1 );
+                            &(workspace->LR[i][j].H[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fh" );
 //                    for( r = 1; r <= control->tabulate; ++r )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fh[r] );
 
                     Complete_Cubic_Spline( h, fvdw, v0_vdw, vlast_vdw,
-                            &(LR[i][j].vdW[1]), control->tabulate + 1 );
+                            &(workspace->LR[i][j].vdW[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fvdw" );
 //                    for( r = 1; r <= control->tabulate; ++r )
@@ -378,7 +380,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 //                    fprintf( stderr, "v0_vdw: %f, vlast_vdw: %f\n", v0_vdw, vlast_vdw );
 
                     Natural_Cubic_Spline( h, fCEvd,
-                            &(LR[i][j].CEvd[1]), control->tabulate + 1 );
+                            &(workspace->LR[i][j].CEvd[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
 //                    for( r = 1; r <= control->tabulate; ++r )
@@ -386,7 +388,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
                     Complete_Cubic_Spline( h, fele, v0_ele, vlast_ele,
-                            &(LR[i][j].ele[1]), control->tabulate + 1 );
+                            &(workspace->LR[i][j].ele[1]), control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
 //                    for( r = 1; r <= control->tabulate; ++r )
@@ -394,7 +396,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
                     Natural_Cubic_Spline( h, fCEclmb,
-                            &(LR[i][j].CEclmb[1]), control->tabulate + 1 );
+                            &(workspace->LR[i][j].CEclmb[1]), control->tabulate + 1 );
                 }
             }
         }
@@ -410,7 +412,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
      for( r = 1; r <= 100; ++r ) {
      rand_dist = (real)rand()/RAND_MAX * control->r_cut;
      LR_vdW_Coulomb( system, control, i, j, rand_dist, &y );
-     LR_Lookup( &(LR[i][j]), rand_dist, &y_spline );
+     LR_Lookup( &(workspace->LR[i][j]), rand_dist, &y_spline );
 
      evdw_abserr = FABS(y.e_vdW - y_spline.e_vdW);
      evdw_relerr = FABS(evdw_abserr / y.e_vdW);
@@ -457,7 +459,8 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control )
 }
 
 
-void Finalize_LR_Lookup_Table( reax_system *system, control_params *control )
+void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
+       static_storage *workspace )
 {
     int i, j;
     int num_atom_types;
@@ -482,20 +485,20 @@ void Finalize_LR_Lookup_Table( reax_system *system, control_params *control )
             {
                 if ( existing_types[j] )
                 {
-                    sfree( LR[i][j].y, "Finalize_LR_Lookup_Table::LR[i][j].y" );
-                    sfree( LR[i][j].H, "Finalize_LR_Lookup_Table::LR[i][j].H" );
-                    sfree( LR[i][j].vdW, "Finalize_LR_Lookup_Table::LR[i][j].vdW" );
-                    sfree( LR[i][j].CEvd, "Finalize_LR_Lookup_Table::LR[i][j].CEvd" );
-                    sfree( LR[i][j].ele, "Finalize_LR_Lookup_Table::LR[i][j].ele" );
-                    sfree( LR[i][j].CEclmb, "Finalize_LR_Lookup_Table::LR[i][j].CEclmb" );
+                    sfree( workspace->LR[i][j].y, "Finalize_LR_Lookup_Table::LR[i][j].y" );
+                    sfree( workspace->LR[i][j].H, "Finalize_LR_Lookup_Table::LR[i][j].H" );
+                    sfree( workspace->LR[i][j].vdW, "Finalize_LR_Lookup_Table::LR[i][j].vdW" );
+                    sfree( workspace->LR[i][j].CEvd, "Finalize_LR_Lookup_Table::LR[i][j].CEvd" );
+                    sfree( workspace->LR[i][j].ele, "Finalize_LR_Lookup_Table::LR[i][j].ele" );
+                    sfree( workspace->LR[i][j].CEclmb, "Finalize_LR_Lookup_Table::LR[i][j].CEclmb" );
                 }
             }
         }
 
-        sfree( LR[i], "Finalize_LR_Lookup_Table::LR[i]" );
+        sfree( workspace->LR[i], "Finalize_LR_Lookup_Table::LR[i]" );
     }
 
-    sfree( LR, "Finalize_LR_Lookup_Table::LR" );
+    sfree( workspace->LR, "Finalize_LR_Lookup_Table::LR" );
 }
 
 

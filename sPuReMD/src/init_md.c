@@ -942,7 +942,7 @@ void Init_Out_Controls( reax_system *system, control_params *control,
 void Initialize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control, evolve_function *Evolve,
-        const int output_enabled )
+        interaction_function *interaction_functions, const int output_enabled )
 {
 #if defined(DEBUG)
     real start, end;
@@ -972,7 +972,7 @@ void Initialize( reax_system *system, control_params *control,
     }
 
     /* These are done in forces.c, only forces.c can see all those functions */
-    Init_Bonded_Force_Functions( control );
+    Init_Bonded_Force_Functions( control, interaction_functions );
 
 #ifdef TEST_FORCES
     Init_Force_Test_Functions( );
@@ -984,7 +984,7 @@ void Initialize( reax_system *system, control_params *control,
         start = Get_Time( );
 #endif
 
-        Make_LR_Lookup_Table( system, control );
+        Make_LR_Lookup_Table( system, control, workspace );
 
 #if defined(DEBUG)
         end = Get_Timing_Info( start );
@@ -1446,7 +1446,7 @@ void Finalize( reax_system *system, control_params *control,
 {
     if ( control->tabulate )
     {
-        Finalize_LR_Lookup_Table( system, control );
+        Finalize_LR_Lookup_Table( system, control, workspace );
     }
 
     if ( output_enabled == TRUE )

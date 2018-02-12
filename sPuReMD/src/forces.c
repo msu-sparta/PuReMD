@@ -34,10 +34,6 @@
 #include "vector.h"
 
 
-/* File scope variables */
-static interaction_function Interaction_Functions[NO_OF_INTERACTIONS];
-
-
 typedef enum
 {
     DIAGONAL = 0,
@@ -52,32 +48,33 @@ void Dummy_Interaction( reax_system *system, control_params *control,
 }
 
 
-void Init_Bonded_Force_Functions( control_params *control )
+void Init_Bonded_Force_Functions( control_params *control,
+        interaction_function *interaction_functions )
 {
-    Interaction_Functions[0] = Calculate_Bond_Orders;
-    Interaction_Functions[1] = Bond_Energy;  //*/Dummy_Interaction;
-    Interaction_Functions[2] = LonePair_OverUnder_Coordination_Energy;
+    interaction_functions[0] = Calculate_Bond_Orders;
+    interaction_functions[1] = Bond_Energy;  //*/Dummy_Interaction;
+    interaction_functions[2] = LonePair_OverUnder_Coordination_Energy;
     //*/Dummy_Interaction;
-    Interaction_Functions[3] = Three_Body_Interactions; //*/Dummy_Interaction;
-    Interaction_Functions[4] = Four_Body_Interactions;  //*/Dummy_Interaction;
+    interaction_functions[3] = Three_Body_Interactions; //*/Dummy_Interaction;
+    interaction_functions[4] = Four_Body_Interactions;  //*/Dummy_Interaction;
     if ( control->hb_cut > 0.0 )
     {
-        Interaction_Functions[5] = Hydrogen_Bonds; //*/Dummy_Interaction;
+        interaction_functions[5] = Hydrogen_Bonds; //*/Dummy_Interaction;
     }
     else
     {
-        Interaction_Functions[5] = Dummy_Interaction;
+        interaction_functions[5] = Dummy_Interaction;
     }
-    Interaction_Functions[6] = Dummy_Interaction; //empty
-    Interaction_Functions[7] = Dummy_Interaction; //empty
-    Interaction_Functions[8] = Dummy_Interaction; //empty
-    Interaction_Functions[9] = Dummy_Interaction; //empty
+    interaction_functions[6] = Dummy_Interaction; //empty
+    interaction_functions[7] = Dummy_Interaction; //empty
+    interaction_functions[8] = Dummy_Interaction; //empty
+    interaction_functions[9] = Dummy_Interaction; //empty
 }
 
 
 void Compute_Bonded_Forces( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace, reax_list **lists,
+        output_controls *out_control, interaction_function *interaction_functions )
 {
 
     int i;
@@ -116,7 +113,7 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
     /* Implement all the function calls as function pointers */
     for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
     {
-        (Interaction_Functions[i])( system, control, data, workspace,
+        (interaction_functions[i])( system, control, data, workspace,
                 lists, out_control );
 
 #if defined(DEBUG_FOCUS)
@@ -329,7 +326,7 @@ void Validate_Lists( static_storage *workspace, reax_list **lists, int step, int
 
 
 static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
-        control_params *control, int i, int j,
+        control_params *control, LR_lookup_table **LR, int i, int j,
         real r_ij, MATRIX_ENTRY_POSITION pos )
 {
     int r;
@@ -1009,8 +1006,8 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 twbp = &(system->reaxprm.tbp[type_i][type_j]);
 
                 H->j[Htop] = j;
-                H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control, i, j, 
-                        r_ij, OFF_DIAGONAL );
+                H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control,
+                        workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                 ++Htop;
 
                 /* H_sp matrix entry */
@@ -1165,8 +1162,8 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
         /* diagonal entry */
         H->j[Htop] = i;
-        H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control, i, j,
-                r_ij, DIAGONAL );
+        H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control, workspace->LR,
+                i, j, r_ij, DIAGONAL );
         ++Htop;
 
         H_sp->j[H_sp_top] = i;
@@ -1301,7 +1298,8 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
 
 void Compute_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list** lists, output_controls *out_control )
+        reax_list** lists, output_controls *out_control,
+        interaction_function *interaction_functions )
 {
     real t_start, t_elapsed;
 
@@ -1322,7 +1320,8 @@ void Compute_Forces( reax_system *system, control_params *control,
 #endif
 
     t_start = Get_Time( );
-    Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Bonded_Forces( system, control, data, workspace, lists, out_control,
+           interaction_functions );
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.bonded += t_elapsed;
 
