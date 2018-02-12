@@ -48,8 +48,6 @@ static inline int Vector_isZero( const real * const v, const unsigned int k )
     }
 
 #ifdef _OPENMP
-    #pragma omp barrier
-
     #pragma omp for simd reduction(&&: ret_omp) schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -59,10 +57,6 @@ static inline int Vector_isZero( const real * const v, const unsigned int k )
             ret_omp = FALSE;
         }
     }
-
-#ifdef _OPENMP
-    #pragma omp barrier
-#endif
 
     return ret_omp;
 }
@@ -154,18 +148,12 @@ static inline real Dot( const real * const v1, const real * const v2,
     }
 
 #ifdef _OPENMP
-    #pragma omp barrier
-
     #pragma omp for simd reduction(+: ret2_omp) schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
     {
         ret2_omp += v1[i] * v2[i];
     }
-
-#ifdef _OPENMP
-    #pragma omp barrier
-#endif
 
     return ret2_omp;
 }
@@ -183,8 +171,6 @@ static inline real Norm( const real * const v1, const unsigned int k )
     }
 
 #ifdef _OPENMP
-    #pragma omp barrier
-
     #pragma omp for simd reduction(+: ret2_omp) schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -193,17 +179,11 @@ static inline real Norm( const real * const v1, const unsigned int k )
     }
 
 #ifdef _OPENMP
-    #pragma omp barrier
-
     #pragma omp single
 #endif
     {
         ret2_omp = SQRT( ret2_omp );
     }
-
-#ifdef _OPENMP
-    #pragma omp barrier
-#endif
 
     return ret2_omp;
 }
@@ -459,7 +439,8 @@ static inline void rvec_Cross( rvec ret, const rvec v1, const rvec v2 )
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        ret[i] = v1[(i + 1) % 3] * v2[(i + 2) % 3] - v1[(i + 2) % 3] * v2[(i + 1) % 3];
+        ret[i] = v1[(i + 1) % 3] * v2[(i + 2) % 3]
+            - v1[(i + 2) % 3] * v2[(i + 1) % 3];
     }
 
 //    ret[0] = v1[1] * v2[2] - v1[2] * v2[1];

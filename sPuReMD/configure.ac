@@ -76,6 +76,7 @@ if test "x${BUILD_OPENMP}" = "xyes"; then
 		fi
 		AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")
 		AC_SUBST(AM_CPPFLAGS, "$OPENMP_CFLAGS")
+		LIBS="${LIBS} -lgomp"
 	fi
 fi
 

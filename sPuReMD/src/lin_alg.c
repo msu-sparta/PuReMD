@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "lin_alg.h"
+
 #include "allocate.h"
 #include "tool_box.h"
 #include "vector.h"
@@ -34,6 +35,7 @@
 #include "lapacke.h"
 #endif
 
+
 typedef struct
 {
     unsigned int j;
@@ -41,39 +43,57 @@ typedef struct
 } sparse_matrix_entry;
 
 
+enum preconditioner_type
+{
+    LEFT = 0,
+    RIGHT = 1,
+};
+
+
 /* global to make OpenMP shared (Sparse_MatVec) */
 #ifdef _OPENMP
-real *b_local = NULL;
+static real *b_local = NULL;
 #endif
 /* global to make OpenMP shared (apply_preconditioner) */
-real *Dinv_L = NULL, *Dinv_U = NULL;
+static real *Dinv_L = NULL;
+static real *Dinv_U = NULL;
 /* global to make OpenMP shared (tri_solve_level_sched) */
-int levels = 1;
-int levels_L = 1, levels_U = 1;
-unsigned int *row_levels_L = NULL, *level_rows_L = NULL, *level_rows_cnt_L = NULL;
-unsigned int *row_levels_U = NULL, *level_rows_U = NULL, *level_rows_cnt_U = NULL;
-unsigned int *row_levels, *level_rows, *level_rows_cnt;
-unsigned int *top = NULL;
+static int levels = 1;
+static int levels_L = 1;
+static int levels_U = 1;
+static unsigned int *row_levels_L = NULL;
+static unsigned int *level_rows_L = NULL;
+static unsigned int *level_rows_cnt_L = NULL;
+static unsigned int *row_levels_U = NULL;
+static unsigned int *level_rows_U = NULL;
+static unsigned int *level_rows_cnt_U = NULL;
+static unsigned int *row_levels;
+static unsigned int *level_rows;
+static unsigned int *level_rows_cnt;
+static unsigned int *top = NULL;
 /* global to make OpenMP shared (graph_coloring) */
-unsigned int *color = NULL;
-unsigned int *to_color = NULL;
-unsigned int *conflict = NULL;
-unsigned int *conflict_cnt = NULL;
-unsigned int *temp_ptr;
-unsigned int *recolor = NULL;
-unsigned int recolor_cnt;
-unsigned int *color_top = NULL;
+static unsigned int *color = NULL;
+static unsigned int *to_color = NULL;
+static unsigned int *conflict = NULL;
+static unsigned int *conflict_cnt = NULL;
+static unsigned int *temp_ptr;
+static unsigned int *recolor = NULL;
+static unsigned int recolor_cnt;
+static unsigned int *color_top = NULL;
 /* global to make OpenMP shared (sort_colors) */
-unsigned int *permuted_row_col = NULL;
-unsigned int *permuted_row_col_inv = NULL;
-real *y_p = NULL;
+static unsigned int *permuted_row_col = NULL;
+static unsigned int *permuted_row_col_inv = NULL;
+static real *y_p = NULL;
 /* global to make OpenMP shared (permute_vector) */
-real *x_p = NULL;
-unsigned int *mapping = NULL;
-sparse_matrix *H_full;
-sparse_matrix *H_p;
+static real *x_p = NULL;
+static unsigned int *mapping = NULL;
+static sparse_matrix *H_full;
+static sparse_matrix *H_p;
 /* global to make OpenMP shared (jacobi_iter) */
-real *Dinv_b = NULL, *rp = NULL, *rp2 = NULL, *rp3 = NULL;
+static real *Dinv_b = NULL;
+static real *rp = NULL;
+static real *rp2 = NULL;
+static real *rp3 = NULL;
 
 
 #if defined(TEST_MAT)
@@ -2734,8 +2754,10 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
                   const real * const b, real * const x, const TRIANGULARITY tri, const
                   unsigned int maxiter )
 {
-    unsigned int i, k, si = 0, ei = 0, iter;
+    unsigned int i, k, si, ei, iter;
 
+    si = 0;
+    ei = 0;
     iter = 0;
 
 #ifdef _OPENMP
@@ -2815,176 +2837,274 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
 }
 
 
-/* Solve triangular system LU*x = y using level scheduling
+/* Apply left-sided preconditioning while solver M^{-1}Ax = M^{-1}b
  *
- * workspace: data struct containing matrices, lower/upper triangular, stored in CSR
+ * workspace: data struct containing matrices, stored in CSR
  * control: data struct containing parameters
- * y: constants in linear system (RHS)
- * x: solution
+ * y: vector to which to apply preconditioning,
+ *  specific to internals of iterative solver being used
+ * x: preconditioned vector (output)
  * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
+ * side: used in determining how to apply preconditioner if the preconditioner is
+ *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
  *
  * Assumptions:
  *   Matrices have non-zero diagonals
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 static void apply_preconditioner( const static_storage * const workspace, const control_params * const control,
-                                  const real * const y, real * const x, const int fresh_pre )
+                                  const real * const y, real * const x, const int fresh_pre,
+                                  const int side )
 {
     int i, si;
 
     /* no preconditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
     {
-        Vector_Copy( x, y, workspace->H->n );
+        if ( x != y )
+        {
+            Vector_Copy( x, y, workspace->H->n );
+        }
     }
     else
     {
-        switch ( control->cm_solver_pre_app_type )
+        switch ( side )
         {
-        case TRI_SOLVE_PA:
-            switch ( control->cm_solver_pre_comp_type )
+        case LEFT:
+            switch ( control->cm_solver_pre_app_type )
             {
-            case DIAG_PC:
-                diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+            case TRI_SOLVE_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                    diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                    tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+                    break;
+                case SAI_PC:
+                    Sparse_MatVec_full( workspace->H_app_inv, y, x );
+                    break;
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
                 break;
-            case ICHOLT_PC:
-            case ILU_PAR_PC:
-            case ILUT_PAR_PC:
-                tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
-                tri_solve( workspace->U, x, x, workspace->U->n, UPPER );
+            case TRI_SOLVE_LEVEL_SCHED_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                    diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                    tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                    break;
+                case SAI_PC:
+                    Sparse_MatVec_full( workspace->H_app_inv, y, x );
+                    break;
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
                 break;
-            case SAI_PC:
-                Sparse_MatVec_full( workspace->H_app_inv, y, x );
+            case TRI_SOLVE_GC_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                case SAI_PC:
+                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+#ifdef _OPENMP
+                    #pragma omp single
+#endif
+                {
+                    memcpy( y_p, y, sizeof(real) * workspace->H->n );
+                }
+
+                permute_vector( y_p, workspace->H->n, FALSE, LOWER );
+                tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
+                break;
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
+                break;
+            case JACOBI_ITER_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                case SAI_PC:
+                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+#ifdef _OPENMP
+                    #pragma omp single
+#endif
+                    {
+                        if ( Dinv_L == NULL )
+                        {
+                            Dinv_L = (real*) smalloc( sizeof(real) * workspace->L->n,
+                                                      "apply_preconditioner::Dinv_L" );
+                        }
+                    }
+
+                        /* construct D^{-1}_L */
+                    if ( fresh_pre == TRUE )
+                    {
+#ifdef _OPENMP
+                        #pragma omp for schedule(static)
+#endif
+                        for ( i = 0; i < workspace->L->n; ++i )
+                        {
+                            si = workspace->L->start[i + 1] - 1;
+                            Dinv_L[i] = 1.0 / workspace->L->val[si];
+                        }
+                    }
+
+                    jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+                break;
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
                 break;
             default:
                 fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
                 exit( INVALID_INPUT );
                 break;
+
             }
             break;
-        case TRI_SOLVE_LEVEL_SCHED_PA:
-            switch ( control->cm_solver_pre_comp_type )
+
+        case RIGHT:
+            switch ( control->cm_solver_pre_app_type )
             {
-            case DIAG_PC:
-                diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+            case TRI_SOLVE_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                case SAI_PC:
+                    if ( x != y )
+                    {
+                        Vector_Copy( x, y, workspace->H->n );
+                    }
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                    tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
+                    break;
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
                 break;
-            case ICHOLT_PC:
-            case ILU_PAR_PC:
-            case ILUT_PAR_PC:
-                tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
-                tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
+            case TRI_SOLVE_LEVEL_SCHED_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                case SAI_PC:
+                    if ( x != y )
+                    {
+                        Vector_Copy( x, y, workspace->H->n );
+                    }
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                    tri_solve_level_sched( workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+                    break;
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
                 break;
-            case SAI_PC:
-                Sparse_MatVec_full( workspace->H_app_inv, y, x );
+            case TRI_SOLVE_GC_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                case SAI_PC:
+                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
+                tri_solve_level_sched( workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+                permute_vector( x, workspace->H->n, TRUE, UPPER );
                 break;
-            default:
-                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                exit( INVALID_INPUT );
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
                 break;
-            }
-            break;
-        case TRI_SOLVE_GC_PA:
-            switch ( control->cm_solver_pre_comp_type )
-            {
-            case DIAG_PC:
-            case SAI_PC:
-                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                exit( INVALID_INPUT );
-                break;
-            case ICHOLT_PC:
-            case ILU_PAR_PC:
-            case ILUT_PAR_PC:
+            case JACOBI_ITER_PA:
+                switch ( control->cm_solver_pre_comp_type )
+                {
+                case DIAG_PC:
+                case SAI_PC:
+                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                case ICHOLT_PC:
+                case ILU_PAR_PC:
+                case ILUT_PAR_PC:
 #ifdef _OPENMP
                 #pragma omp single
 #endif
-            {
-                memcpy( y_p, y, sizeof(real) * workspace->H->n );
-            }
+                {
+                    if ( Dinv_U == NULL )
+                    {
+                        Dinv_U = (real*) smalloc( sizeof(real) * workspace->U->n,
+                                                  "apply_preconditioner::Dinv_U" );
+                    }
+                }
 
-            permute_vector( y_p, workspace->H->n, FALSE, LOWER );
-            tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
-            tri_solve_level_sched( workspace->U, x, x, workspace->U->n, UPPER, fresh_pre );
-            permute_vector( x, workspace->H->n, TRUE, UPPER );
-            break;
+                    /* construct D^{-1}_U */
+                if ( fresh_pre == TRUE )
+                {
+#ifdef _OPENMP
+                    #pragma omp for schedule(static)
+#endif
+                    for ( i = 0; i < workspace->U->n; ++i )
+                    {
+                        si = workspace->U->start[i];
+                        Dinv_U[i] = 1. / workspace->U->val[si];
+                    }
+                }
+
+                jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+                break;
+                default:
+                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    exit( INVALID_INPUT );
+                    break;
+                }
+                break;
             default:
                 fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
                 exit( INVALID_INPUT );
                 break;
+
             }
             break;
-        case JACOBI_ITER_PA:
-            switch ( control->cm_solver_pre_comp_type )
-            {
-            case DIAG_PC:
-            case SAI_PC:
-                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                exit( INVALID_INPUT );
-                break;
-            case ICHOLT_PC:
-            case ILU_PAR_PC:
-            case ILUT_PAR_PC:
-#ifdef _OPENMP
-                #pragma omp single
-#endif
-            {
-                if ( Dinv_L == NULL )
-                {
-                    Dinv_L = (real*) smalloc( sizeof(real) * workspace->L->n,
-                                              "apply_preconditioner::Dinv_L" );
-                }
-            }
-
-                /* construct D^{-1}_L */
-            if ( fresh_pre == TRUE )
-            {
-#ifdef _OPENMP
-                #pragma omp for schedule(static)
-#endif
-                for ( i = 0; i < workspace->L->n; ++i )
-                {
-                    si = workspace->L->start[i + 1] - 1;
-                    Dinv_L[i] = 1. / workspace->L->val[si];
-                }
-            }
-
-            jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
-
-#ifdef _OPENMP
-            #pragma omp single
-#endif
-            {
-                if ( Dinv_U == NULL )
-                {
-                    Dinv_U = (real*) smalloc( sizeof(real) * workspace->U->n,
-                                              "apply_preconditioner::Dinv_U" );
-                }
-            }
-
-                /* construct D^{-1}_U */
-            if ( fresh_pre == TRUE )
-            {
-#ifdef _OPENMP
-                #pragma omp for schedule(static)
-#endif
-                for ( i = 0; i < workspace->U->n; ++i )
-                {
-                    si = workspace->U->start[i];
-                    Dinv_U[i] = 1. / workspace->U->val[si];
-                }
-            }
-
-            jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
-            break;
-            default:
-                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                exit( INVALID_INPUT );
-                break;
-            }
-            break;
-        default:
-            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-
         }
     }
 }
@@ -2996,17 +3116,22 @@ int GMRES( const static_storage * const workspace, const control_params * const 
            const real tol, real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
-    real cc, tmp1, tmp2, temp, ret_temp, bnorm;
+    real cc, tmp1, tmp2, temp, bnorm;
     real t_start, t_ortho, t_pa, t_spmv, t_ts, t_vops;
 
     N = H->n;
     g_j = 0;
     g_itr = 0;
+    t_ortho = 0.0;
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_ts = 0.0;
+    t_vops = 0.0;
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
-    private(i, j, k, itr, bnorm, ret_temp, t_start) \
-    shared(N, cc, tmp1, tmp2, temp, g_itr, g_j, stderr) \
+    private(i, j, k, itr, bnorm, temp, t_start) \
+    shared(N, cc, tmp1, tmp2, g_itr, g_j, stderr) \
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
 #endif
     {
@@ -3031,25 +3156,25 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            Vector_Sum( workspace->b_prc, 1., b, -1., workspace->b_prm, N );
+            Vector_Sum( workspace->b_prc, 1.0, b, -1.0, workspace->b_prm, N );
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            apply_preconditioner( workspace, control, workspace->b_prc, workspace->v[0],
-                                  itr == 0 ? fresh_pre : FALSE );
+            apply_preconditioner( workspace, control, workspace->b_prc, workspace->b_prm,
+                                  itr == 0 ? fresh_pre : FALSE, LEFT );
+            apply_preconditioner( workspace, control, workspace->b_prm, workspace->v[0],
+                                  itr == 0 ? fresh_pre : FALSE, RIGHT );
             t_pa += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            ret_temp = Norm( workspace->v[0], N );
+            temp = Norm( workspace->v[0], N );
 
 #ifdef _OPENMP
             #pragma omp single
 #endif
-            {
-                workspace->g[0] = ret_temp;
-            }
+            workspace->g[0] = temp;
 
-            Vector_Scale( workspace->v[0], 1. / ret_temp, workspace->v[0], N );
+            Vector_Scale( workspace->v[0], 1.0 / temp, workspace->v[0], N );
             t_vops += Get_Timing_Info( t_start );
 
             /* GMRES inner-loop */
@@ -3061,87 +3186,40 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 t_spmv += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
-                apply_preconditioner( workspace, control, workspace->b_prc, workspace->v[j + 1], FALSE );
+                apply_preconditioner( workspace, control, workspace->b_prc,
+                        workspace->b_prm, FALSE, LEFT );
+                apply_preconditioner( workspace, control, workspace->b_prm,
+                        workspace->v[j + 1], FALSE, RIGHT );
                 t_pa += Get_Timing_Info( t_start );
 
-//                if ( control->cm_solver_pre_comp_type == DIAG_PC )
-//                {
                 /* apply modified Gram-Schmidt to orthogonalize the new residual */
                 t_start = Get_Time( );
                 for ( i = 0; i <= j; i++ )
                 {
-                    ret_temp = Dot( workspace->v[i], workspace->v[j + 1], N );
+                    temp = Dot( workspace->v[i], workspace->v[j + 1], N );
 
 #ifdef _OPENMP
                     #pragma omp single
 #endif
-                    {
-                        workspace->h[i][j] = ret_temp;
-                    }
+                    workspace->h[i][j] = temp;
 
-                    Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
+                    Vector_Add( workspace->v[j + 1], -1.0 * temp, workspace->v[i], N );
 
                 }
                 t_vops += Get_Timing_Info( t_start );
-//                }
-//                else
-//                {
-//                    //TODO: investigate correctness of not explicitly orthogonalizing first few vectors
-//                    /* apply modified Gram-Schmidt to orthogonalize the new residual */
-//
-//
-//
-//                    {
-//                        t_start = Get_Time( );
-//                    }
-//
-//                    #pragma omp single
-//
-//                    {
-//                        for ( i = 0; i < j - 1; i++ )
-//                        {
-//                            workspace->h[i][j] = 0.0;
-//                        }
-//                    }
-//
-//                    for ( i = MAX(j - 1, 0); i <= j; i++ )
-//                    {
-//                        ret_temp = Dot( workspace->v[i], workspace->v[j + 1], N );
-//
-//                        #pragma omp single
-//
-//                        {
-//                            workspace->h[i][j] = ret_temp;
-//                        }
-//
-//                        Vector_Add( workspace->v[j + 1], -workspace->h[i][j], workspace->v[i], N );
-//                    }
-//
-//
-//
-//                    {
-//                        t_vops += Get_Timing_Info( t_start );
-//                    }
-//                }
 
                 t_start = Get_Time( );
-                ret_temp = Norm( workspace->v[j + 1], N );
+                temp = Norm( workspace->v[j + 1], N );
 
 #ifdef _OPENMP
                 #pragma omp single
 #endif
-                {
-                    workspace->h[j + 1][j] = ret_temp;
-                }
+                workspace->h[j + 1][j] = temp;
 
-                Vector_Scale( workspace->v[j + 1],
-                              1.0 / workspace->h[j + 1][j], workspace->v[j + 1], N );
+                Vector_Scale( workspace->v[j + 1], 1.0 / temp, workspace->v[j + 1], N );
                 t_vops += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
-//                    if ( control->cm_solver_pre_comp_type == NONE_PC ||
-//                            control->cm_solver_pre_comp_type == DIAG_PC )
-//                    {
                 /* Givens rotations on the upper-Hessenberg matrix to make it U */
 #ifdef _OPENMP
                 #pragma omp single
@@ -3156,50 +3234,23 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                             workspace->hs[j] = workspace->h[j + 1][j] / cc;
                         }
 
-                        tmp1 =  workspace->hc[i] * workspace->h[i][j] +
-                                workspace->hs[i] * workspace->h[i + 1][j];
-                        tmp2 = -workspace->hs[i] * workspace->h[i][j] +
-                               workspace->hc[i] * workspace->h[i + 1][j];
+                        tmp1 = workspace->hc[i] * workspace->h[i][j] +
+                            workspace->hs[i] * workspace->h[i + 1][j];
+                        tmp2 = -1.0 * workspace->hs[i] * workspace->h[i][j] +
+                            workspace->hc[i] * workspace->h[i + 1][j];
 
                         workspace->h[i][j] = tmp1;
                         workspace->h[i + 1][j] = tmp2;
                     }
-//                    }
-//                    else
-//                    {
-//                        //TODO: investigate correctness of not explicitly orthogonalizing first few vectors
-//                        /* Givens rotations on the upper-Hessenberg matrix to make it U */
-//                        for ( i = MAX(j - 1, 0); i <= j; i++ )
-//                        {
-//                            if ( i == j )
-//                            {
-//                                cc = SQRT( SQR(workspace->h[j][j]) + SQR(workspace->h[j + 1][j]) );
-//                                workspace->hc[j] = workspace->h[j][j] / cc;
-//                                workspace->hs[j] = workspace->h[j + 1][j] / cc;
-//                            }
-//
-//                            tmp1 =  workspace->hc[i] * workspace->h[i][j] +
-//                                    workspace->hs[i] * workspace->h[i + 1][j];
-//                            tmp2 = -workspace->hs[i] * workspace->h[i][j] +
-//                                   workspace->hc[i] * workspace->h[i + 1][j];
-//
-//                            workspace->h[i][j] = tmp1;
-//                            workspace->h[i + 1][j] = tmp2;
-//                        }
-//                    }
 
                     /* apply Givens rotations to the rhs as well */
-                    tmp1 =  workspace->hc[j] * workspace->g[j];
-                    tmp2 = -workspace->hs[j] * workspace->g[j];
+                    tmp1 = workspace->hc[j] * workspace->g[j];
+                    tmp2 = -1.0 * workspace->hs[j] * workspace->g[j];
                     workspace->g[j] = tmp1;
                     workspace->g[j + 1] = tmp2;
 
                 }
                 t_ortho += Get_Timing_Info( t_start );
-
-#ifdef _OPENMP
-                #pragma omp barrier
-#endif
             }
 
             /* solve Hy = g: H is now upper-triangular, do back-substitution */
@@ -3230,7 +3281,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 Vector_Add( workspace->p, workspace->y[i], workspace->v[i], N );
             }
 
-            Vector_Add( x, 1., workspace->p, N );
+            Vector_Add( x, 1.0, workspace->p, N );
             t_vops += Get_Timing_Info( t_start );
 
             /* stopping condition */
@@ -3266,10 +3317,10 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] GMRES convergence failed (%d outer iters)\n", g_itr );
-        return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
+        return g_itr * control->cm_solver_restart + g_j;
     }
 
-    return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
+    return g_itr * control->cm_solver_restart + g_j + 1;
 }
 
 
@@ -3279,21 +3330,27 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                        real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
-    real cc, tmp1, tmp2, temp, bnorm, ret_temp;
+    real cc, tmp1, tmp2, temp, bnorm;
     real v[10000], z[control->cm_solver_restart + 2][10000], w[control->cm_solver_restart + 2];
     real u[control->cm_solver_restart + 2][10000];
     real t_start, t_ortho, t_pa, t_spmv, t_ts, t_vops;
 
     j = 0;
     N = H->n;
+    t_ortho = 0.0;
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_ts = 0.0;
+    t_vops = 0.0;
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
-    private(i, j, k, itr, bnorm, ret_temp, t_start) \
-    shared(v, z, w, u, tol, N, cc, tmp1, tmp2, temp, g_itr, g_j, stderr) \
+    private(i, j, k, itr, bnorm, temp, t_start) \
+    shared(v, z, w, u, tol, N, cc, tmp1, tmp2, g_itr, g_j, stderr) \
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
 #endif
     {
+        j = 0;
         t_ortho = 0.0;
         t_pa = 0.0;
         t_spmv = 0.0;
@@ -3319,7 +3376,10 @@ int GMRES_HouseHolder( const static_storage * const workspace,
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            apply_preconditioner( workspace, control, workspace->b_prc, z[0], fresh_pre );
+            apply_preconditioner( workspace, control, workspace->b_prc,
+                    workspace->b_prm, fresh_pre, LEFT );
+            apply_preconditioner( workspace, control, workspace->b_prm,
+                    z[0], fresh_pre, RIGHT );
             t_pa += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3353,7 +3413,10 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                 t_spmv += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
-                apply_preconditioner( workspace, control, workspace->b_prc, v, fresh_pre );
+                apply_preconditioner( workspace, control, workspace->b_prc,
+                        workspace->b_prm, fresh_pre, LEFT );
+                apply_preconditioner( workspace, control, workspace->b_prm,
+                        v, fresh_pre, RIGHT );
                 t_pa += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
@@ -3367,11 +3430,11 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                     /* compute the HouseHolder unit vector u_j+1 */
                     Vector_MakeZero( u[j + 1], j + 1 );
                     Vector_Copy( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) );
-                    ret_temp = Norm( v + (j + 1), N - (j + 1) );
+                    temp = Norm( v + (j + 1), N - (j + 1) );
 #ifdef _OPENMP
                     #pragma omp single
 #endif
-                    u[j + 1][j + 1] += ( v[j + 1] < 0.0 ? -1 : 1 ) * ret_temp;
+                    u[j + 1][j + 1] += ( v[j + 1] < 0.0 ? -1 : 1 ) * temp;
 
 #ifdef _OPENMP
                     #pragma omp barrier
@@ -3380,11 +3443,11 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                     Vector_Scale( u[j + 1], 1 / Norm( u[j + 1], N ), u[j + 1], N );
 
                     /* overwrite v with P_m+1 * v */
-                    ret_temp = 2 * Dot( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) ) * u[j + 1][j + 1];
+                    temp = 2 * Dot( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) ) * u[j + 1][j + 1];
 #ifdef _OPENMP
                     #pragma omp single
 #endif
-                    v[j + 1] -= ret_temp;
+                    v[j + 1] -= temp;
 
 #ifdef _OPENMP
                     #pragma omp barrier
@@ -3523,6 +3586,9 @@ int CG( const static_storage * const workspace, const control_params * const con
     r = workspace->r;
     p = workspace->q;
     z = workspace->p;
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_vops = 0.0;
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
@@ -3549,7 +3615,8 @@ int CG( const static_storage * const workspace, const control_params * const con
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        apply_preconditioner( workspace, control, r, z, fresh_pre );
+        apply_preconditioner( workspace, control, r, d, fresh_pre, LEFT );
+        apply_preconditioner( workspace, control, d, z, fresh_pre, RIGHT );
         t_pa += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3572,7 +3639,8 @@ int CG( const static_storage * const workspace, const control_params * const con
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            apply_preconditioner( workspace, control, r, z, FALSE );
+            apply_preconditioner( workspace, control, r, d, FALSE, LEFT );
+            apply_preconditioner( workspace, control, d, z, FALSE, RIGHT );
             t_pa += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3620,6 +3688,9 @@ int SDM( const static_storage * const workspace, const control_params * const co
     real t_start, t_pa, t_spmv, t_vops;
 
     N = H->n;
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_vops = 0.0;
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
@@ -3645,7 +3716,8 @@ int SDM( const static_storage * const workspace, const control_params * const co
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre );
+        apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre, LEFT );
+        apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre, RIGHT );
         t_pa += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3677,7 +3749,8 @@ int SDM( const static_storage * const workspace, const control_params * const co
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            apply_preconditioner( workspace, control, workspace->r, workspace->d, FALSE );
+            apply_preconditioner( workspace, control, workspace->r, workspace->d, FALSE, LEFT );
+            apply_preconditioner( workspace, control, workspace->r, workspace->d, FALSE, RIGHT );
             t_pa += Get_Timing_Info( t_start );
         }
 

@@ -35,9 +35,10 @@
 #include "list.h"
 
 
-void Velocity_Verlet_NVE(reax_system* system, control_params* control,
+void Velocity_Verlet_NVE(reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control,
+        interaction_function *interaction_functions )
 {
     int i, steps, renbr;
     real inv_m, dt, dt_sqr;
@@ -75,7 +76,8 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
         Generate_Neighbor_Lists( system, control, data, workspace,
                 lists, out_control );
     }
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control,
+           interaction_functions );
 
     for ( i = 0; i < system->N; i++ )
     {
@@ -93,7 +95,7 @@ void Velocity_Verlet_NVE(reax_system* system, control_params* control,
 
 void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
-        output_controls *out_control )
+        output_controls *out_control, interaction_function *interaction_functions )
 {
     int i, itr, steps, renbr;
     real inv_m, coef_v, dt, dt_sqr;
@@ -138,7 +140,8 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
                 lists, out_control );
     }
     /* Calculate Forces at time (t + dt) */
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control,
+           interaction_functions );
 
     /* Compute iteration constants for each atom's velocity */
     for ( i = 0; i < system->N; ++i )
@@ -206,11 +209,9 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
    All box dimensions are scaled by the same amount,
    there is no change in the angles between axes. */
 void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
-        control_params* control,
-        simulation_data *data,
-        static_storage *workspace,
-        reax_list **lists,
-        output_controls *out_control )
+        control_params* control, simulation_data *data, static_storage *workspace,
+        reax_list **lists, output_controls *out_control,
+        interaction_function *interaction_functions )
 {
     int i, steps, renbr;
     real inv_m, dt, lambda, mu;
@@ -256,7 +257,8 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
         Generate_Neighbor_Lists( system, control, data, workspace,
                                  lists, out_control );
     }
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control,
+           interaction_functions );
 
     /* velocity verlet, 2nd part */
     for ( i = 0; i < system->N; i++ )
@@ -321,11 +323,9 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
    All box dimensions are scaled by the same amount,
    there is no change in the angles between axes. */
 void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
-        control_params* control,
-        simulation_data *data,
-        static_storage *workspace,
-        reax_list **lists,
-        output_controls *out_control )
+        control_params* control, simulation_data *data, static_storage *workspace,
+        reax_list **lists, output_controls *out_control,
+        interaction_function *interaction_functions )
 {
     int i, d, steps, renbr;
     real dt, inv_m, lambda;
@@ -371,7 +371,8 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
         Generate_Neighbor_Lists( system, control, data, workspace,
                                  lists, out_control );
     }
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control,
+           interaction_functions );
 
     /* velocity verlet, 2nd part */
     for ( i = 0; i < system->N; i++ )
@@ -452,6 +453,7 @@ void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
                                      static_storage *workspace,
                                      reax_list **lists,
                                      output_controls *out_control )
+        interaction_function *interaction_functions )
 {
     int i;
     real inv_m;
@@ -492,7 +494,8 @@ void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
     /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control,
+           interaction_functions );
     fprintf(out_control->log, "forces\n");
     fflush( out_control->log );
 
@@ -521,11 +524,9 @@ void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
 
 
 void Velocity_Verlet_Isotropic_NPT( reax_system* system,
-                                    control_params* control,
-                                    simulation_data *data,
-                                    static_storage *workspace,
-                                    reax_list **lists,
-                                    output_controls *out_control )
+        control_params* control, simulation_data *data,
+        static_storage *workspace, reax_list **lists,
+        output_controls *out_control )
 {
     int i, itr;
     real deps, v_eps_new = 0, v_eps_old = 0, G_xi_new;
@@ -598,7 +599,8 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists,
+            out_control, interaction_functions );
     fprintf(out_control->log, "forces\n");
     fflush( out_control->log );
 
@@ -698,12 +700,10 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
    All box dimensions are scaled by the same amount,
    there is no change in the angles between axes. */
 void Velocity_Verlet_Berendsen_NVT( reax_system* system,
-                                    control_params* control,
-                                    simulation_data *data,
-                                    static_storage *workspace,
-                                    reax_list **lists,
-                                    output_controls *out_control
-                                  )
+        control_params* control, simulation_data *data,
+        static_storage *workspace, reax_list **lists,
+        output_controls *out_control,
+        interaction_function *interaction_functions )
 {
     int i, steps, renbr;
     real inv_m, dt, lambda;
@@ -746,7 +746,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         Generate_Neighbor_Lists( system, control, data, workspace, lists, out_control );
 
     Compute_Forces( system, control, data, workspace,
-                    lists, out_control );
+            lists, out_control, interaction_functions );
 
     /* velocity verlet, 2nd part */
     for ( i = 0; i < system->N; i++ )

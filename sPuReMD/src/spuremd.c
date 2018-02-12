@@ -21,8 +21,6 @@
 
 #include "spuremd.h"
 
-#include "mytypes.h"
-
 #include "analyze.h"
 #include "control.h"
 #include "ffield.h"
@@ -172,6 +170,7 @@ void* setup( const char * const geo_file, const char * const ffield_file,
            "Setup::spmd_handle->out_control" );
 
     spmd_handle->output_enabled = TRUE;
+    spmd_handle->callback = NULL;
 
     /* parse geometry file */
     Read_System( geo_file, ffield_file, control_file,
@@ -182,6 +181,25 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     //TODO: if errors detected, set handle to NULL to indicate failure
 
     return (void*) spmd_handle;
+}
+
+
+int setup_callback( const void * const handle, const callback_function callback  )
+{
+    int ret;
+    spuremd_handle *spmd_handle;
+
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL && callback != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+        spmd_handle->callback = callback;
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
 }
 
 
@@ -199,20 +217,24 @@ int simulate( const void * const handle )
 
         Initialize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, &spmd_handle->lists,
-                spmd_handle->out_control, &Evolve,
+                spmd_handle->out_control, &Evolve, spmd_handle->interaction_functions,
                 spmd_handle->output_enabled );
 
         /* compute f_0 */
         //if( control.restart == 0 ) {
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, &spmd_handle->lists );
+
         Generate_Neighbor_Lists( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
 
         //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
         Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control,
+                spmd_handle->interaction_functions );
+
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
+
         if ( spmd_handle->output_enabled == TRUE )
         {
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
@@ -230,7 +252,9 @@ int simulate( const void * const handle )
             }
 
             Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control,
+                    spmd_handle->interaction_functions );
+
             Post_Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
 
@@ -250,6 +274,12 @@ int simulate( const void * const handle )
                 Write_Restart( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, spmd_handle->out_control );
             }
+
+            if ( spmd_handle->callback != NULL )
+            {
+                spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
+                        spmd_handle->lists );
+            }
         }
 
         if ( spmd_handle->out_control->write_steps > 0 && spmd_handle->output_enabled == TRUE )
@@ -261,6 +291,7 @@ int simulate( const void * const handle )
 
         spmd_handle->data->timing.end = Get_Time( );
         spmd_handle->data->timing.elapsed = Get_Timing_Info( spmd_handle->data->timing.start );
+
         if ( spmd_handle->output_enabled == TRUE )
         {
             fprintf( spmd_handle->out_control->log, "total: %.2f secs\n", spmd_handle->data->timing.elapsed );
@@ -301,4 +332,21 @@ int cleanup( const void * const handle )
     }
 
     return ret;
+}
+
+
+reax_atom* get_atoms( const void * const handle )
+{
+    spuremd_handle *spmd_handle;
+    reax_atom *atoms;
+
+    atoms = NULL;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+        atoms = spmd_handle->system->atoms;
+    }
+
+    return atoms;
 }

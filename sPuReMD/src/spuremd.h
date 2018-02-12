@@ -26,12 +26,19 @@
 #define SPUREMD_FAILURE (-1)
 
 
+#include "mytypes.h"
+
+
 void* setup( const char * const, const char * const,
         const char * const );
+
+int setup_callback( const void * const, const callback_function );
 
 int simulate( const void * const );
 
 int cleanup( const void * const );
+
+reax_atom* get_atoms( const void * const );
 
 
 #endif
