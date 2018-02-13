@@ -54,6 +54,8 @@ class TestCase():
                     r'(?P<key>cm_solver_pre_comp_refactor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_sweeps': lambda l, x: sub(
                     r'(?P<key>cm_solver_pre_comp_sweeps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_solver_pre_comp_sai_thres': lambda l, x: sub(
+                    r'(?P<key>cm_solver_pre_comp_sai_thres\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_app_type': lambda l, x: sub(
                     r'(?P<key>cm_solver_pre_app_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_app_jacobi_iters': lambda l, x: sub(
@@ -104,6 +106,7 @@ class TestCase():
                 + '_pc' + param_dict['cm_solver_pre_comp_type'] \
                 + '_pctol' + param_dict['cm_solver_pre_comp_droptol'] \
                 + '_pcs' + param_dict['cm_solver_pre_comp_sweeps'] \
+                + '_pcsai' + param_dict['cm_solver_pre_comp_sai_thres'] \
                 + '_pa' + param_dict['cm_solver_pre_app_type'] \
                 + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
 		+ '_t' + param_dict['threads']
@@ -176,9 +179,12 @@ class TestCase():
 
         if cnt == int(param['nsteps']):
             fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-                param['nsteps'], param['charge_method'], param['cm_solver_type'], param['cm_solver_q_err'], param['cm_domain_sparsity'],
-                param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'], param['cm_solver_pre_comp_sweeps'],
-                param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'], pre_comp, pre_app, iters, spmv,
+                param['nsteps'], param['charge_method'], param['cm_solver_type'],
+                param['cm_solver_q_err'], param['cm_domain_sparsity'],
+                param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'],
+                param['cm_solver_pre_comp_sweeps'], param['cm_solver_pre_comp_sai_thres'],
+                param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'],
+                pre_comp, pre_app, iters, spmv,
                 cm, param['threads'], time))
         else:
             print('**WARNING: nsteps not correct in file {0}...'.format(log_file))
@@ -215,7 +221,7 @@ if __name__ == '__main__':
     header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
     header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PreAT', 'PreAJ', 'Pre Comp',
             'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
-    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
 
     params = {
             'ensemble_type': ['0'],
@@ -232,6 +238,7 @@ if __name__ == '__main__':
             'cm_solver_pre_comp_refactor': ['100'],
             'cm_solver_pre_comp_droptol': ['0.0'],
             'cm_solver_pre_comp_sweeps': ['3'],
+            'cm_solver_pre_comp_sai_thres': ['0.1'],
             'cm_solver_pre_app_type': ['2'],
             'cm_solver_pre_app_jacobi_iters': ['30'],
             'threads': ['1'],
