@@ -253,7 +253,11 @@ if __name__ == '__main__':
     # overwrite default params, if supplied via command line args
     if args.params:
         for param in args.params:
-            params[param[0]] = param[1].split(',')
+            if param[0] in params:
+                params[param[0]] = param[1].split(',')
+            else:
+                print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
+                exit(-1)
 
     test_cases = []
     if 'water_6540' in args.data:
