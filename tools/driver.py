@@ -3,6 +3,123 @@
 from ctypes import *
 
 
+class BondOrderData(Structure):
+    _fields_ = [
+            ("BO", c_double),
+            ("BO_s", c_double),
+            ("BO_pi", c_double),
+            ("BO_pi2", c_double),
+            ("Cdbo", c_double),
+            ("Cdbopi", c_double),
+            ("Cdbopi2", c_double),
+            ("C1dbo", c_double),
+            ("C2dbo", c_double),
+            ("C3dbo", c_double),
+            ("C1dbopi", c_double),
+            ("C2dbopi", c_double),
+            ("C3dbopi", c_double),
+            ("C4dbopi", c_double),
+            ("C1dbopi2", c_double),
+            ("C2dbopi2", c_double),
+            ("C3dbopi2", c_double),
+            ("C4dbopi2", c_double),
+            ("dBOp", c_double * 3),
+            ("dln_BOp_s", c_double * 3),
+            ("dln_BOp_pi", c_double * 3),
+            ("dln_BOp_pi2", c_double * 3),
+            ]
+
+
+class ThreeBodyData(Structure):
+    _fields_ = [
+            ("thb", c_int),
+            ("pthb", c_int),
+            ("theta", c_double),
+            ("cos_theta", c_double),
+            ("dcos_di", c_double * 3),
+            ("dcos_dj", c_double * 3),
+            ("dcos_dk", c_double * 3),
+            ]
+
+
+class BondData(Structure):
+    _fields_ = [
+            ("nbr", c_int),
+            ("sym_index", c_int),
+            ("dbond_index", c_int),
+            ("rel_box", c_int * 3),
+            ("d", c_double),
+            ("dvec", c_double * 3),
+            ("bo_data", BondOrderData),
+            ]
+
+
+class DBondData(Structure):
+    _fields_ = [
+            ("wrt", c_int),
+            ("dBO", c_double * 3),
+            ("dBOpi", c_double * 3),
+            ("dBOpi2", c_double * 3),
+            ]
+
+
+class DDeltaData(Structure):
+    _fields_ = [
+            ("wrt", c_int),
+            ("dVal", c_double * 3),
+            ]
+
+
+class FarNbrData(Structure):
+    _fields_ = [
+            ("nbr", c_int),
+            ("rel_box", c_int * 3),
+            ("d", c_double),
+            ("dvec", c_double * 3),
+            ]
+
+
+class NearNbrData(Structure):
+    _fields_ = [
+            ("nbr", c_int),
+            ("rel_box", c_int * 3),
+            ("d", c_double),
+            ("dvec", c_double * 3),
+            ]
+
+
+class HBondData(Structure):
+    _fields_ = [
+            ("nbr", c_int),
+            ("scl", c_int),
+            ("ptr", POINTER(FarNbrData)),
+            ]
+
+
+class ReaxListSelector(Union):
+    _fields_ = [
+            ("v", c_void_p),
+            ("three_body_interaction_data", POINTER(ThreeBodyData)),
+            ("bond_data", POINTER(BondData)),
+            ("dbond_data", POINTER(DBondData)),
+            ("dDelta_data", POINTER(DDeltaData)),
+            ("far_neighbor_data", POINTER(FarNbrData)),
+            ("near_neighbor_data", POINTER(NearNbrData)),
+            ("hbond_data", POINTER(HBondData)),
+            ]
+
+
+class ReaxList(Structure):
+    _fields_ = [
+            ("n", c_int),
+            ("total_intrs", c_int),
+            ("index", POINTER(c_int)),
+            ("end_index", POINTER(c_int)),
+            ("max_intrs", POINTER(c_int)),
+            ("select", ReaxListSelector),
+            ]
+
+
 class Thermostat(Structure):
     _fields_ = [
             ("T", c_double),
@@ -133,10 +250,35 @@ if __name__ == '__main__':
     cleanup.argtypes = [c_void_p]
     cleanup.restype = c_int
 
+    get_atoms = lib.get_atoms
+    get_atoms.argtypes = [c_void_p]
+    get_atoms.restype = POINTER(ReaxAtom)
+
+    CALLBACKFUNC = CFUNCTYPE(None, POINTER(ReaxAtom),
+            POINTER(SimulationData), POINTER(ReaxList))
+
+    def get_simulation_step_results(atoms, data, lists):
+        print("{0:24.15f} {1:24.15f} {2:24.15f}".format(
+            data[0].E_Tot, data[0].E_Kin, data[0].E_Pot))
+
+    setup_callback = lib.setup_callback
+    setup_callback.restype = c_int
+
     handle = setup(b"data/benchmarks/water/water_6540.pdb",
             b"data/benchmarks/water/ffield.water",
             b"environ/param.gpu.water")
 
-    simulate(handle)
+    ret = setup_callback(handle, CALLBACKFUNC(get_simulation_step_results))
+
+    print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
+    ret = simulate(handle)
+
+    atoms = get_atoms(handle)
+
+    print()
+    print("{0:9}|{1:24}|{2:24}|{3:24}|{4:24}".format("Atom Num", "x-Position", "y-Position", "z-Position", "Charge"))
+    for i in range(10):
+        print("{0:9d} {1:24.15f} {2:24.15f} {3:24.15f} {4:24.15f}".format(
+            i + 1, atoms[i].x[0], atoms[i].x[1], atoms[i].x[2], atoms[i].q))
 
     cleanup(handle)
