@@ -79,9 +79,11 @@ class TestCase():
         fp_temp.write(lines)
         fp_temp.close()
 
-    def run(self, bin_file='sPuReMD/bin/spuremd', process_results=False):
-        base_dir = getcwd()
-        bin_path = path.join(base_dir, bin_file)
+    def run(self, binary, process_results=False):
+        args = binary.split()
+        args.append(self.__geo_file)
+        args.append( self.__ffield_file)
+        args.append("")
         env = dict(environ)
 
         write_header = True
@@ -111,14 +113,13 @@ class TestCase():
                 + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
 		+ '_t' + param_dict['threads']
 
-
             if not process_results:
                 self._setup(param_dict, temp_file)
     
                 env['OMP_NUM_THREADS'] = param_dict['threads']
                 start = time()
-                proc_handle = Popen([bin_path, self.__geo_file, self.__ffield_file, temp_file], 
-                    stdout=PIPE, stderr=PIPE, env=env, universal_newlines=True)
+                args[-1] = temp_file
+                proc_handle = Popen(args, stdout=PIPE, stderr=PIPE, env=env, universal_newlines=True)
                 stdout, stderr = proc_handle.communicate()
                 stop = time()
                 if proc_handle.returncode < 0:
@@ -202,6 +203,8 @@ if __name__ == '__main__':
             ]
 
     parser = argparse.ArgumentParser(description='Run molecular dynamics simulations on specified data sets.')
+    parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
+            help='Binary file to run.')
     parser.add_argument('-f', '--out_file', metavar='out_file', default=None, nargs=1,
             help='Output file to write results.')
     parser.add_argument('-r', '--process_results', default=False, action='store_true',
@@ -249,6 +252,11 @@ if __name__ == '__main__':
         result_file = args.out_file[0]
     else:
         result_file = 'result.txt'
+
+    if args.binary:
+        binary = args.binary[0]
+    else:
+        binary  = path.join(base_dir, 'sPuReMD/bin/spuremd')
 
     # overwrite default params, if supplied via command line args
     if args.params:
@@ -342,4 +350,4 @@ if __name__ == '__main__':
                 geo_format=['1'], result_file=result_file))
 
     for test in test_cases:
-        test.run(bin_file='sPuReMD/bin/spuremd', process_results=args.process_results)
+        test.run(binary, process_results=args.process_results)
