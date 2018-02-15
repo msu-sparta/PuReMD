@@ -3317,10 +3317,10 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] GMRES convergence failed (%d outer iters)\n", g_itr );
-        return g_itr * control->cm_solver_restart + g_j;
+        return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
     }
 
-    return g_itr * control->cm_solver_restart + g_j + 1;
+    return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
 }
 
 

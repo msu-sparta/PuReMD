@@ -164,8 +164,8 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
     p_tor3 = system->reaxprm.gp.l[24];
     p_tor4 = system->reaxprm.gp.l[25];
     p_cot2 = system->reaxprm.gp.l[27];
-    bonds = (*lists) + BONDS;
-    thb_intrs = (*lists) + THREE_BODIES;
+    bonds = &(*lists)[BONDS];
+    thb_intrs = &(*lists)[THREE_BODIES];
     e_tor_total = 0.0;
     e_con_total = 0.0;
 

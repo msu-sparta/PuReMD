@@ -37,10 +37,12 @@ static inline real Cf45( real p1, real p2 )
 void Get_dBO( reax_system *system, reax_list **lists,
         int i, int pj, real C, rvec *v )
 {
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs = (*lists) + DBO;
+    reax_list *bonds;
+    reax_list *dBOs;
     int start_pj, end_pj, k;
 
+    bonds = &(*lists)[BONDS];
+    dBOs = &(*lists)[DBO];
     pj = bonds->select.bond_list[pj].dbond_index;
     start_pj = Start_Index(pj, dBOs);
     end_pj = End_Index(pj, dBOs);
@@ -56,11 +58,13 @@ void Get_dBO( reax_system *system, reax_list **lists,
 void Get_dBOpinpi2( reax_system *system, reax_list **lists,
         int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs = (*lists) + DBO;
+    reax_list *bonds;
+    reax_list *dBOs;
     dbond_data *dbo_k;
     int start_pj, end_pj, k;
 
+    bonds = &(*lists)[BONDS];
+    dBOs = &(*lists)[DBO];
     pj = bonds->select.bond_list[pj].dbond_index;
     start_pj = Start_Index(pj, dBOs);
     end_pj = End_Index(pj, dBOs);
@@ -77,10 +81,12 @@ void Get_dBOpinpi2( reax_system *system, reax_list **lists,
 void Add_dBO( reax_system *system, reax_list **lists,
         int i, int pj, real C, rvec *v )
 {
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs = (*lists) + DBO;
+    reax_list *bonds;
+    reax_list *dBOs;
     int start_pj, end_pj, k;
 
+    bonds = &(*lists)[BONDS];
+    dBOs = &(*lists)[DBO];
     pj = bonds->select.bond_list[pj].dbond_index;
     start_pj = Start_Index(pj, dBOs);
     end_pj = End_Index(pj, dBOs);
@@ -98,11 +104,13 @@ void Add_dBO( reax_system *system, reax_list **lists,
 void Add_dBOpinpi2( reax_system *system, reax_list **lists,
         int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs = (*lists) + DBO;
+    reax_list *bonds;
+    reax_list *dBOs;
     dbond_data *dbo_k;
     int start_pj, end_pj, k;
 
+    bonds = &(*lists)[BONDS];
+    dBOs = &(*lists)[DBO];
     pj = bonds->select.bond_list[pj].dbond_index;
     start_pj = Start_Index(pj, dBOs);
     end_pj = End_Index(pj, dBOs);
@@ -119,10 +127,12 @@ void Add_dBOpinpi2( reax_system *system, reax_list **lists,
 void Add_dBO_to_Forces( reax_system *system, reax_list **lists,
                         int i, int pj, real C )
 {
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs = (*lists) + DBO;
+    reax_list *bonds;
+    reax_list *dBOs;
     int start_pj, end_pj, k;
 
+    bonds = &(*lists)[BONDS];
+    dBOs = &(*lists)[DBO];
     pj = bonds->select.bond_list[pj].dbond_index;
     start_pj = Start_Index(pj, dBOs);
     end_pj = End_Index(pj, dBOs);
@@ -138,11 +148,13 @@ void Add_dBO_to_Forces( reax_system *system, reax_list **lists,
 void Add_dBOpinpi2_to_Forces( reax_system *system, reax_list **lists,
         int i, int pj, real Cpi, real Cpi2 )
 {
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs = (*lists) + DBO;
+    reax_list *bonds;
+    reax_list *dBOs;
     dbond_data *dbo_k;
     int start_pj, end_pj, k;
 
+    bonds = &(*lists)[BONDS];
+    dBOs = &(*lists)[DBO];
     pj = bonds->select.bond_list[pj].dbond_index;
     start_pj = Start_Index(pj, dBOs);
     end_pj = End_Index(pj, dBOs);
@@ -201,8 +213,8 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
     dbond_data *top_dbo;
 
     /* Initializations */
-    bonds = (*lists) + BONDS;
-    dBOs = (*lists) + DBO;
+    bonds = &(*lists)[BONDS];
+    dBOs = &(*lists)[DBO];
     j = bonds->select.bond_list[pj].nbr;
     bo_ij = &(bonds->select.bond_list[pj].bo_data);
     start_i = Start_Index( i, bonds );
@@ -333,7 +345,7 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
 void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         simulation_data *data, static_storage *workspace, reax_list **lists )
 {
-    reax_list *bonds = (*lists) + BONDS;
+    reax_list *bonds;
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
@@ -346,6 +358,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
 #endif
 
     /* Initializations */
+    bonds = &(*lists)[BONDS];
     nbr_j = &(bonds->select.bond_list[pj]);
     j = nbr_j->nbr;
     bo_ij = &(nbr_j->bo_data);
@@ -523,7 +536,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
 void Add_dBond_to_Forces( int i, int pj, reax_system *system,
         simulation_data *data, static_storage *workspace, reax_list **lists )
 {
-    reax_list *bonds = (*lists) + BONDS;
+    reax_list *bonds;
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
@@ -534,6 +547,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
 #endif
 
     /* Initializations */
+    bonds = &(*lists)[BONDS];
     nbr_j = &(bonds->select.bond_list[pj]);
     j = nbr_j->nbr;
     bo_ij = &(nbr_j->bo_data);
@@ -728,7 +742,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
     p_lp1 = system->reaxprm.gp.l[15];
     p_boc1 = system->reaxprm.gp.l[0];
     p_boc2 = system->reaxprm.gp.l[1];
-    bonds = (*lists) + BONDS;
+    bonds = &(*lists)[BONDS];
 
 #ifdef _OPENMP
     #pragma omp parallel default(shared)
@@ -758,8 +772,8 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
 
         top_dbo = 0;
         top_dDelta = 0;
-        dDeltas = (*lists) + DDELTA;
-        dBOs = (*lists) + DBO;
+        dDeltas = &(*lists)[DDELTA];
+        dBOs = &(*lists)[DBO];
 #endif
 
         /* Calculate Deltaprime, Deltaprime_boc values */

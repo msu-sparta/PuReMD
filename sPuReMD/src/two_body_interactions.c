@@ -35,7 +35,7 @@ void Bond_Energy( reax_system *system, control_params *control,
     real gp3, gp4, gp7, gp10, gp37, ebond_total;
     reax_list *bonds;
 
-    bonds = (*lists) + BONDS;
+    bonds = &(*lists)[BONDS];
     gp3 = system->reaxprm.gp.l[3];
     gp4 = system->reaxprm.gp.l[4];
     gp7 = system->reaxprm.gp.l[7];
@@ -177,7 +177,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
     p_vdW1 = system->reaxprm.gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = &(*lists)[FAR_NBRS];
     e_vdW_total = 0.0;
     e_ele_total = 0.0;
 
@@ -527,7 +527,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     reax_list *far_nbrs;
     real e_vdW_total, e_ele_total;
 
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = &(*lists)[FAR_NBRS];
     steps = data->step - data->prev_steps;
     update_freq = out_control->energy_update_freq;
     update_energies = update_freq > 0 && steps % update_freq == 0;

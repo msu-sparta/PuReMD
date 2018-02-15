@@ -118,8 +118,11 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
                            static_storage *workspace, reax_list **lists )
 {
     int i, tmp;
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *hbonds = (*lists) + HBONDS;
+    reax_list *bonds;
+    reax_list *hbonds;
+
+    bonds = &(*lists)[BONDS];
+    hbonds = &(*lists)[HBONDS];
 
     for ( i = 0; i < system->N; ++i )
     {

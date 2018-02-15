@@ -42,8 +42,8 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
 {
     int  i, pj, pk;
     bond_order_data *bo_ij;
-    reax_list *bonds = (*lists) + BONDS;
-    reax_list *dBOs  = (*lists) + DBO;
+    reax_list *bonds = &(*lists)[BONDS];
+    reax_list *dBOs  = &(*lists)[DBO];
     dbond_data *dbo_k;
 
     /* bond orders */
@@ -473,7 +473,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
     int i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
-    reax_list *far_nbrs = &((*lists)[FAR_NBRS]);
+    reax_list *far_nbrs = &(*lists)[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.far_nbrs", MAX_STR - 10, control->sim_name );
     fout = fopen( fname, "w" );
@@ -518,7 +518,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
     int i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
-    reax_list *far_nbrs = &((*lists)[FAR_NBRS]);
+    reax_list *far_nbrs = &(*lists)[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.far_nbrs_lgj", MAX_STR - 14, control->sim_name );
     fout = fopen( fname, "w" );
@@ -720,7 +720,7 @@ void Output_Results( reax_system *system, control_params *control,
         out_control->append_traj_frame( system, control, data,
                 workspace, lists, out_control );
 
-        //Write_PDB( system, *lists+BONDS, data, control, workspace, out_control );
+        //Write_PDB( system, &(*lists)[BONDS], data, control, workspace, out_control );
         //t_elapsed = Get_Timing_Info( t_start );
         //fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
     }

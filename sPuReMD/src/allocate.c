@@ -269,7 +269,7 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
 
     if ( realloc->num_far > 0 && nbr_flag )
     {
-        Reallocate_Neighbor_List( (*lists) + FAR_NBRS,
+        Reallocate_Neighbor_List( &(*lists)[FAR_NBRS],
                 system->N, realloc->num_far * SAFE_ZONE );
         realloc->num_far = -1;
     }
@@ -287,29 +287,31 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
 
     if ( control->hb_cut > 0.0 && realloc->hbonds > 0 )
     {
-        Reallocate_HBonds_List(system->N, workspace->num_H, workspace->hbond_index,
-                               (*lists) + HBONDS );
+        Reallocate_HBonds_List( system->N, workspace->num_H, workspace->hbond_index,
+                &(*lists)[HBONDS] );
         realloc->hbonds = -1;
     }
 
     num_bonds = est_3body = -1;
     if ( realloc->bonds > 0 )
     {
-        Reallocate_Bonds_List( system->N, (*lists) + BONDS, &num_bonds, &est_3body );
+        Reallocate_Bonds_List( system->N, &(*lists)[BONDS], &num_bonds, &est_3body );
         realloc->bonds = -1;
         realloc->num_3body = MAX( realloc->num_3body, est_3body );
     }
 
     if ( realloc->num_3body > 0 )
     {
-        Delete_List( TYP_THREE_BODY, (*lists) + THREE_BODIES );
+        Delete_List( TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
 
         if ( num_bonds == -1 )
-            num_bonds = ((*lists) + BONDS)->total_intrs;
+        {
+            num_bonds = (*lists)[BONDS].total_intrs;
+        }
         realloc->num_3body *= SAFE_ZONE;
 
         Make_List( num_bonds, realloc->num_3body,
-                TYP_THREE_BODY, (*lists) + THREE_BODIES );
+                TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
         realloc->num_3body = -1;
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "reallocating 3 bodies\n" );

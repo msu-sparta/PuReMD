@@ -71,9 +71,11 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     t_start = Get_Time( );
     // fprintf( stderr, "\n\tentered nbrs - " );
     g = &( system->g );
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = &(*lists)[FAR_NBRS];
+
     Bin_Atoms( system, workspace );
     // fprintf( stderr, "atoms sorted - " );
+
     num_far = 0;
 
     /* first pick up a cell in the grid */
@@ -365,24 +367,28 @@ static inline int is_Near_Neighbor( reax_list *near_nbrs, int atom1, int atom2 )
     return TRUE;
 }
 
+
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                               simulation_data *data, static_storage *workspace,
                               reax_list **lists, output_controls *out_control )
 {
-    int  i, j, k;
-    int  x, y, z;
-    int  *nbr_atoms;
-    int  atom1, atom2, max;
-    int   num_far;
-    int   c, count;
-    int   grid_top;
-    grid *g = &( system->g );
-    reax_list *far_nbrs = (*lists) + FAR_NBRS;
+    int i, j, k;
+    int x, y, z;
+    int *nbr_atoms;
+    int atom1, atom2, max;
+    int num_far;
+    int c, count;
+    int grid_top;
+    grid *g;
+    reax_list *far_nbrs;
     //int   hb_type1, hb_type2;
-    //reax_list *hbonds = (*lists) + HBOND;
+    //reax_list *hbonds = &(*lists)[HBOND];
     //int   top_hbond1, top_hbond2;
     get_far_neighbors_function Get_Far_Neighbors;
     far_neighbor_data new_nbrs[125];
+
+    g = &( system->g );
+    far_nbrs = &(*lists)[FAR_NBRS];
 
     // fprintf( stderr, "\n\tentered nbrs - " );
     if ( control->ensemble == iNPT || control->ensemble == sNPT ||
@@ -632,7 +638,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     far_neighbor_data new_nbrs[125];
 
     g = &( system->g );
-    far_nbrs = (*lists) + FAR_NBRS;
+    far_nbrs = &(*lists)[FAR_NBRS];
 
     // fprintf( stderr, "\n\tentered nbrs - " );
     if ( control->ensemble == iNPT ||

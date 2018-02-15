@@ -64,8 +64,8 @@ void Copy_Bond_List( reax_system *system, control_params *control,
                      reax_list **lists )
 {
     int i, j, top_old;
-    reax_list *new_bonds = (*lists) + BONDS;
-    reax_list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = &(*lists)[BONDS];
+    reax_list *old_bonds = &(*lists)[OLD_BONDS];
 
     for ( top_old = 0, i = 0; i < system->N; ++i )
     {
@@ -94,8 +94,8 @@ void Copy_Bond_List( reax_system *system, control_params *control,
 int Compare_Bond_Lists( int atom, control_params *control, reax_list **lists )
 {
     int oldp, newp;
-    reax_list *new_bonds = (*lists) + BONDS;
-    reax_list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = &(*lists)[BONDS];
+    reax_list *old_bonds = &(*lists)[OLD_BONDS];
 
     /*fprintf( stdout, "\n%d\nold_bonds:", atom );
       for( oldp = Start_Index( atom, old_bonds );
@@ -229,8 +229,8 @@ void Analyze_Molecules( reax_system *system, control_params *control,
     int *old_mark = workspace->old_mark;
     int num_old, num_new;
     char s[MAX_MOLECULE_SIZE * 10];
-    reax_list *new_bonds = (*lists) + BONDS;
-    reax_list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = &(*lists)[BONDS];
+    reax_list *old_bonds = &(*lists)[OLD_BONDS];
     molecule old_molecules[20], new_molecules[20];
 
     fprintf( fout, "molecular analysis @ %d\n", data->step );
@@ -543,8 +543,8 @@ void Analyze_Fragments( reax_system *system, control_params *control,
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
     int fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
-    reax_list *new_bonds = (*lists) + BONDS;
-    //reax_list *old_bonds = (*lists) + OLD_BONDS;
+    reax_list *new_bonds = &(*lists)[BONDS];
+//    reax_list *old_bonds = &(*lists)[OLD_BONDS];
 
     /* fragment analysis */
     fprintf( fout, "step%d fragments\n", data->step );
@@ -609,14 +609,16 @@ void Analyze_Silica( reax_system *system, control_params *control,
     int O_SI_O_count, SI_O_SI_count;
     int si_coord[10], ox_coord[10];
     real O_SI_O, SI_O_SI;
-    reax_list *new_bonds = (*lists) + BONDS;
-    reax_list *thb_intrs =  (*lists) + THREE_BODIES;
+    reax_list *new_bonds = &(*lists)[BONDS];
+    reax_list *thb_intrs = &(*lists)[THREE_BODIES];
 
     Analyze_Fragments( system, control, data, workspace, lists, fout, 0 );
 
     /* analyze atom coordinations */
     for ( i = 0; i < 10; ++i )
+    {
         si_coord[i] = ox_coord[i] = 0;
+    }
 
     for ( atom = 0; atom < system->N; ++atom )
     {
@@ -624,8 +626,12 @@ void Analyze_Silica( reax_system *system, control_params *control,
 
         for ( newp = Start_Index( atom, new_bonds );
                 newp < End_Index( atom, new_bonds ); ++newp )
+        {
             if ( new_bonds->select.bond_list[newp].bo_data.BO >= control->bg_cut )
+            {
                 ++coord;
+            }
+        }
 
         if ( system->atoms[ atom ].type == SI_ATOM )
         {
@@ -718,11 +724,12 @@ void Analyze_Silica( reax_system *system, control_params *control,
 }
 
 
-
 int Get_Type_of_Molecule( molecule *m )
 {
     if ( m->atom_count == 3 && m->mtypes[1] == 2 && m->mtypes[2] == 1 )
+    {
         return WATER;
+    }
 
     return UNKNOWN;
 }
@@ -982,7 +989,7 @@ void Analysis( reax_system *system, control_params *control,
     /****** Electric Dipole Moment ******/
     if ( control->dipole_anal && steps % control->freq_dipole_anal == 0 )
         Calculate_Dipole_Moment( system, control, data, workspace,
-                                 (*lists) + BONDS, out_control->dpl );
+                &(*lists)[BONDS], out_control->dpl );
 
     /****** Drift ******/
     if ( control->diffusion_coef && steps % control->freq_diffusion_coef == 0 )

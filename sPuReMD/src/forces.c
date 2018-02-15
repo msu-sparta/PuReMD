@@ -150,7 +150,7 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
     fprintf( stderr, "qeq - " );
 #endif
 
-    if ( control->tabulate == 0)
+    if ( control->tabulate <= 0 )
     {
         vdW_Coulomb_Energy( system, control, data, workspace, lists, out_control );
     }
@@ -179,7 +179,7 @@ void Compute_Total_Force( reax_system *system, control_params *control,
     int i;
     reax_list *bonds;
 
-    bonds = (*lists) + BONDS;
+    bonds = &(*lists)[BONDS];
 
 #ifdef _OPENMP
     #pragma omp parallel default(shared)
@@ -233,8 +233,8 @@ void Validate_Lists( static_storage *workspace, reax_list **lists, int step, int
     int i, flag;
     reax_list *bonds, *hbonds;
 
-    bonds = *lists + BONDS;
-    hbonds = *lists + HBONDS;
+    bonds = &(*lists)[BONDS];
+    hbonds = &(*lists)[HBONDS];
 
     /* far neighbors */
     if ( Htop > Hmax * DANGER_ZONE )
@@ -625,23 +625,24 @@ void Init_Forces( reax_system *system, control_params *control,
     bond_data *ibond, *jbond;
     bond_order_data *bo_ij, *bo_ji;
 
-    far_nbrs = *lists + FAR_NBRS;
-    bonds = *lists + BONDS;
-    hbonds = *lists + HBONDS;
+    far_nbrs = &(*lists)[FAR_NBRS];
+    bonds = &(*lists)[BONDS];
+    hbonds = &(*lists)[HBONDS];
     H = workspace->H;
     H_sp = workspace->H_sp;
     Htop = 0;
     H_sp_top = 0;
     num_bonds = 0;
     num_hbonds = 0;
-    btop_i = btop_j = 0;
+    btop_i = 0;
+    btop_j = 0;
 
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &(system->atoms[i]);
         type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
         H->start[i] = Htop;
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
@@ -661,7 +662,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
             flag = 0;
             flag_sp = 0;
-            if ((data->step - data->prev_steps) % control->reneighbor == 0)
+            if ( (data->step - data->prev_steps) % control->reneighbor == 0 )
             {
                 if ( nbr_pj->d <= control->r_cut )
                 {
@@ -678,7 +679,7 @@ void Init_Forces( reax_system *system, control_params *control,
                 }
             }
             else if ((nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &(system->box),
-                                                    nbr_pj->dvec)) <= SQR(control->r_cut))
+                            nbr_pj->dvec)) <= SQR(control->r_cut))
             {
                 if ( nbr_pj->d <= SQR(control->r_sp_cut))
                 {
@@ -738,7 +739,7 @@ void Init_Forces( reax_system *system, control_params *control,
                 {
                     r2 = SQR( r_ij );
 
-                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
+                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
                     {
                         C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
                         BO_s = (1.0 + control->bo_cut) * EXP( C12 );
@@ -749,7 +750,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         C12 = 0.0;
                     }
 
-                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
+                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
                     {
                         C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
                         BO_pi = EXP( C34 );
@@ -760,7 +761,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         C34 = 0.0;
                     }
 
-                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
+                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
                     {
                         C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
                         BO_pi2 = EXP( C56 );
@@ -937,31 +938,34 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
     bond_data *ibond, *jbond;
     bond_order_data *bo_ij, *bo_ji;
 
-    far_nbrs = *lists + FAR_NBRS;
-    bonds = *lists + BONDS;
-    hbonds = *lists + HBONDS;
-
+    far_nbrs = &(*lists)[FAR_NBRS];
+    bonds = &(*lists)[BONDS];
+    hbonds = &(*lists)[HBONDS];
     H = workspace->H;
     H_sp = workspace->H_sp;
     Htop = 0;
     H_sp_top = 0;
     num_bonds = 0;
     num_hbonds = 0;
-    btop_i = btop_j = 0;
+    btop_i = 0;
+    btop_j = 0;
 
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &(system->atoms[i]);
         type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
         H->start[i] = Htop;
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
         sbp_i = &(system->reaxprm.sbp[type_i]);
         ihb = ihb_top = -1;
+
         if ( control->hb_cut > 0 && (ihb = sbp_i->p_hbond) == 1 )
+        {
             ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+        }
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
@@ -971,7 +975,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
             flag = 0;
             flag_sp = 0;
-            if ((data->step - data->prev_steps) % control->reneighbor == 0)
+            if ( (data->step - data->prev_steps) % control->reneighbor == 0 )
             {
                 if (nbr_pj->d <= control->r_cut)
                 {
@@ -988,7 +992,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 }
             }
             else if ((nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &(system->box),
-                                                    nbr_pj->dvec)) <= SQR(control->r_cut))
+                            nbr_pj->dvec)) <= SQR(control->r_cut))
             {
                 if ( nbr_pj->d <= SQR(control->r_sp_cut))
                 {
@@ -1006,8 +1010,8 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 twbp = &(system->reaxprm.tbp[type_i][type_j]);
 
                 H->j[Htop] = j;
-                H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control,
-                        workspace->LR, i, j, r_ij, OFF_DIAGONAL );
+                H->val[Htop] = Init_Charge_Matrix_Entry( system, control, i, j,
+                        r_ij, OFF_DIAGONAL );
                 ++Htop;
 
                 /* H_sp matrix entry */
@@ -1048,7 +1052,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                 {
                     r2 = SQR( r_ij );
 
-                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
+                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
                     {
                         C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
                         BO_s = (1.0 + control->bo_cut) * EXP( C12 );
@@ -1059,7 +1063,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                         C12 = 0.0;
                     }
 
-                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
+                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
                     {
                         C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
                         BO_pi = EXP( C34 );
@@ -1070,7 +1074,7 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                         C34 = 0.0;
                     }
 
-                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
+                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
                     {
                         C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
                         BO_pi2 = EXP( C56 );
@@ -1097,7 +1101,6 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
                         ibond->d = r_ij;
                         jbond->d = r_ij;
                         rvec_Copy( ibond->dvec, nbr_pj->dvec );
-                        //fprintf (stderr, " %f - %f - %f \n", nbr_pj->dvec[0], nbr_pj->dvec[1], nbr_pj->dvec[2]);
                         rvec_Scale( jbond->dvec, -1, nbr_pj->dvec );
                         ivec_Copy( ibond->rel_box, nbr_pj->rel_box );
                         ivec_Scale( jbond->rel_box, -1, nbr_pj->rel_box );
@@ -1162,8 +1165,8 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
 
         /* diagonal entry */
         H->j[Htop] = i;
-        H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control, workspace->LR,
-                i, j, r_ij, DIAGONAL );
+        H->val[Htop] = Init_Charge_Matrix_Entry( system, control, i, i,
+                r_ij, DIAGONAL );
         ++Htop;
 
         H_sp->j[H_sp_top] = i;
@@ -1177,12 +1180,16 @@ void Init_Forces_Tab( reax_system *system, control_params *control,
         }
     }
 
+    Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
+            H, H_sp, &Htop, &H_sp_top );
+
     // mark the end of j list
-    H->start[i] = Htop;
-    H_sp->start[i] = H_sp_top;
+    H->start[system->N_cm] = Htop;
+    H_sp->start[system->N_cm] = H_sp_top;
+
     /* validate lists - decide if reallocation is required! */
-    Validate_Lists( workspace, lists, data->step, system->N,
-            H->m, Htop, num_bonds, num_hbonds );
+    Validate_Lists( workspace, lists,
+            data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d: Htop = %d, num_bonds = %d, num_hbonds = %d\n",
@@ -1304,7 +1311,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     real t_start, t_elapsed;
 
     t_start = Get_Time( );
-    if ( !control->tabulate )
+    if ( control->tabulate <= 0 )
     {
         Init_Forces( system, control, data, workspace, lists, out_control );
     }

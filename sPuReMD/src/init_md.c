@@ -590,7 +590,7 @@ void Init_Lists( reax_system *system, control_params *control,
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
 
-    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS );
+    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, &(*lists)[FAR_NBRS] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
@@ -669,7 +669,7 @@ void Init_Lists( reax_system *system, control_params *control,
         else
         {
             Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
-                    hb_top, (*lists) + HBONDS );
+                    hb_top, &(*lists)[HBONDS] );
         }
 
 #if defined(DEBUG_FOCUS)
@@ -681,7 +681,7 @@ void Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    Allocate_Bond_List( system->N, bond_top, (*lists) + BONDS );
+    Allocate_Bond_List( system->N, bond_top, &(*lists)[BONDS] );
     num_bonds = bond_top[system->N - 1];
 
 #if defined(DEBUG_FOCUS)
@@ -691,7 +691,7 @@ void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list */
-    Make_List( num_bonds, num_3body, TYP_THREE_BODY, (*lists) + THREE_BODIES );
+    Make_List( num_bonds, num_3body, TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
@@ -700,9 +700,9 @@ void Init_Lists( reax_system *system, control_params *control,
 #endif
 
 #ifdef TEST_FORCES
-    Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA );
+    Make_List( system->N, num_bonds * 8, TYP_DDELTA, &(*lists)[DDELTA] );
 
-    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, (*lists) + DBO );
+    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, &(*lists)[DBO] );
 #endif
 
     sfree( hb_top, "Init_Lists::hb_top" );
@@ -1217,17 +1217,17 @@ void Finalize_Workspace( reax_system *system, control_params *control,
 
 void Finalize_Lists( control_params *control, reax_list **lists )
 {
-    Delete_List( TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS );
+    Delete_List( TYP_FAR_NEIGHBOR, &(*lists)[FAR_NBRS] );
     if ( control->hb_cut > 0.0 )
     {
-        Delete_List( TYP_HBOND, (*lists) + HBONDS );
+        Delete_List( TYP_HBOND, &(*lists)[HBONDS] );
     }
-    Delete_List( TYP_BOND, (*lists) + BONDS );
-    Delete_List( TYP_THREE_BODY, (*lists) + THREE_BODIES );
+    Delete_List( TYP_BOND, &(*lists)[BONDS] );
+    Delete_List( TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
 
 #ifdef TEST_FORCES
-    Delete_List( TYP_DDELTA, (*lists) + DDELTA );
-    Delete_List( TYP_DBO, (*lists) + DBO );
+    Delete_List( TYP_DDELTA, &(*lists)[DDELTA] );
+    Delete_List( TYP_DBO, &(*lists)[DBO] );
 #endif
 }
 

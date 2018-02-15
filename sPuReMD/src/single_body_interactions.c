@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "single_body_interactions.h"
+
 #include "bond_orders.h"
 #include "list.h"
 #include "lookup.h"
@@ -45,8 +46,9 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij;
-    reax_list *bonds = (*lists) + BONDS;
+    reax_list *bonds;
 
+    bonds = &(*lists)[BONDS];
     /* Initialize parameters */
     p_lp1 = system->reaxprm.gp.l[15];
     p_lp3 = system->reaxprm.gp.l[5];
