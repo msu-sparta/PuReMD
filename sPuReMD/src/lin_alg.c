@@ -277,14 +277,14 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
 void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix ** A_full,
-                                  sparse_matrix ** A_spar_patt, sparse_matrix **A_spar_patt_full,
-                                  sparse_matrix ** A_app_inv, const real filter )
+              sparse_matrix ** A_spar_patt, sparse_matrix **A_spar_patt_full,
+                    sparse_matrix ** A_app_inv, const real filter )
 {
     int i, pj, size;
-    real min, max, threshold, val;
-
-    min = 0.0;
-    max = 0.0;
+    int left, right, k, p, turn;
+    real pivot, tmp;
+    real threshold;
+    real *list;
 
     if ( *A_spar_patt == NULL )
     {
@@ -304,34 +304,78 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         }
     }
 
-    /* find min and max elements of matrix */
-    for ( i = 0; i < A->n; ++i )
+
+    /* quick-select algorithm for finding the kth greatest element in the matrix*/
+    /* list: values from the matrix*/
+    /* left-right: search space of the quick-select */
+
+    list = (real *) smalloc( sizeof(real) * (A->start[A->n]),"Sparse_Approx_Inverse::list" );
+
+    left = 0;
+    right = A->start[A->n] - 1;
+    k = (int)( (A->start[A->n])*filter );
+    threshold = 0.0;
+
+    for( i = left; i <= right ; ++i )
     {
-        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        list[i] = abs( A->val[i] );
+    }
+
+    turn = 0;
+    while( k ) {
+
+        p  = left;
+        turn = 1 - turn;
+        if( turn == 1)
         {
-            val = A->val[pj];
-            if ( pj == 0 )
+            pivot = list[right];
+        }
+        else
+        {
+            pivot = list[left];
+        }
+        for( i = left + 1 - turn; i <= right-turn; ++i )
+        {
+            if( list[i] > pivot )
             {
-                min = val;
-                max = val;
+                tmp = list[i];
+                list[i] = list[p];
+                list[p] = tmp;
+                p++;
             }
-            else
-            {
-                if ( min > val )
-                {
-                    min = val;
-                }
-                if ( max < val )
-                {
-                    max = val;
-                }
-            }
+        }
+        if(turn == 1)
+        {
+            tmp = list[p];
+            list[p] = list[right];
+            list[right] = tmp;
+        }
+        else
+        {
+            tmp = list[p];
+            list[p] = list[left];
+            list[left] = tmp;
+        }
+
+        if( p == k - 1)
+        {
+            threshold = list[p];
+            break;
+        }
+        else if( p > k - 1 )
+        {
+            right = p - 1;
+        }
+        else
+        {
+            left = p + 1;
         }
     }
 
-    threshold = min + (max - min) * (1.0 - filter);
+    sfree( list, "setup_sparse_approx_inverse::list" );
 
     /* fill sparsity pattern */
+    /* diagonal entries are always included */
     for ( size = 0, i = 0; i < A->n; ++i )
     {
         (*A_spar_patt)->start[i] = size;
@@ -348,17 +392,19 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     }
     (*A_spar_patt)->start[A->n] = size;
 
+
     compute_full_sparse_matrix( A, A_full );
     compute_full_sparse_matrix( *A_spar_patt, A_spar_patt_full );
 
     /* A_app_inv has the same sparsity pattern
-     * as A_spar_patt_full (omit non-zero values) */
+     * * as A_spar_patt_full (omit non-zero values) */
     if ( Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for approximate inverse matrix. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 }
+
 
 void Calculate_Droptol( const sparse_matrix * const A,
                         real * const droptol, const real dtol )
