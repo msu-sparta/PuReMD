@@ -20,8 +20,22 @@ check_PROGRAMS =
 TESTS =
 
 if BUILD_TEST
+check_PROGRAMS += tests/test_spuremd
+check_PROGRAMS += tests/test_lin_alg
 check_PROGRAMS += tests/test_vector
 TESTS += $(check_PROGRAMS)
+
+tests_test_spuremd_SOURCES = tests/test_spuremd.cpp
+tests_test_spuremd_CPPFLAGS = -Isrc $(GTEST_CPPFLAGS)
+tests_test_spuremd_CXXFLAGS = $(GTEST_CXXFLAGS)
+tests_test_spuremd_LDFLAGS = $(GTEST_LDFLAGS) $(GTEST_LIBS)
+tests_test_spuremd_LDADD = lib/libspuremd.la -lgtest
+
+tests_test_lin_alg_SOURCES = tests/test_lin_alg.cpp
+tests_test_lin_alg_CPPFLAGS = -Isrc $(GTEST_CPPFLAGS)
+tests_test_lin_alg_CXXFLAGS = $(GTEST_CXXFLAGS)
+tests_test_lin_alg_LDFLAGS = $(GTEST_LDFLAGS) $(GTEST_LIBS)
+tests_test_lin_alg_LDADD = -lgtest
 
 tests_test_vector_SOURCES = tests/test_vector.cpp
 tests_test_vector_CPPFLAGS = -Isrc $(GTEST_CPPFLAGS)

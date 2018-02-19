@@ -29,6 +29,10 @@
 #include "mytypes.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
 void* setup( const char * const, const char * const,
         const char * const );
 
@@ -39,6 +43,10 @@ int simulate( const void * const );
 int cleanup( const void * const );
 
 reax_atom* get_atoms( const void * const );
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif
