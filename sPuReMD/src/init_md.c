@@ -335,11 +335,14 @@ void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
+    /* sparse matrices */
     workspace->H = NULL;
+    workspace->H_full = NULL;
     workspace->H_sp = NULL;
-    workspace->L = NULL;
+    workspace->H_p = NULL;
     workspace->H_spar_patt = NULL;
     workspace->H_app_inv = NULL;
+    workspace->L = NULL;
     workspace->U = NULL;
     workspace->Hdia_inv = NULL;
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
@@ -348,6 +351,7 @@ void Init_Workspace( reax_system *system, control_params *control,
         workspace->droptol = (real *) scalloc( system->N_cm, sizeof( real ),
                 "Init_Workspace::workspace->droptol" );
     }
+
     //TODO: check if unused
     //workspace->w        = (real *) scalloc( cm_lin_sys_size, sizeof( real ),
     //"Init_Workspace::workspace->droptol" );
@@ -495,6 +499,46 @@ void Init_Workspace( reax_system *system, control_params *control,
             fprintf( stderr, "Unknown charge method linear solver type. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
+    }
+
+    /* graph coloring related */
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        workspace->color = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                                         "setup_graph_coloring::color" );
+        workspace->to_color = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                                            "setup_graph_coloring::to_color" );
+        workspace->conflict = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                                            "setup_graph_coloring::conflict" );
+        workspace->conflict_cnt = (unsigned int*) smalloc( sizeof(unsigned int) * (control->num_threads + 1),
+                                                "setup_graph_coloring::conflict_cnt" );
+        workspace->recolor = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                                           "setup_graph_coloring::recolor" );
+        workspace->color_top = (unsigned int*) smalloc( sizeof(unsigned int) * (system->N_cm + 1),
+                                             "setup_graph_coloring::color_top" );
+        workspace->permuted_row_col = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                           "setup_graph_coloring::premuted_row_col" );
+        workspace->permuted_row_col_inv = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                               "setup_graph_coloring::premuted_row_col_inv" );
+        workspace->y_p = (real*) smalloc( sizeof(real) * system->N_cm,
+                               "setup_graph_coloring::y_p" );
+        workspace->x_p = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::x_p" );
+    }
+    else
+    {
+        workspace->color = NULL;
+        workspace->to_color = NULL;
+        workspace->conflict = NULL;
+        workspace->conflict_cnt = NULL;
+        workspace->temp_ptr = NULL;
+        workspace->recolor = NULL;
+        workspace->recolor_cnt = 0;
+        workspace->color_top = NULL;
+        workspace->permuted_row_col = NULL;
+        workspace->permuted_row_col_inv = NULL;
+        workspace->y_p = NULL;
+        workspace->x_p = NULL;
     }
 
     /* integrator storage */
@@ -954,6 +998,8 @@ void Initialize( reax_system *system, control_params *control,
         #pragma omp single
         control->num_threads = omp_get_num_threads( );
     }
+#else
+    control->num_threads = 1;
 #endif
 
     Randomize( );
@@ -1086,6 +1132,11 @@ void Finalize_Workspace( reax_system *system, control_params *control,
         Deallocate_Matrix( workspace->H_spar_patt_full );
         Deallocate_Matrix( workspace->H_app_inv );
     }
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        Deallocate_Matrix( workspace->H_full );
+        Deallocate_Matrix( workspace->H_p );
+    }
 
     for ( i = 0; i < 5; ++i )
     {
@@ -1158,6 +1209,21 @@ void Finalize_Workspace( reax_system *system, control_params *control,
             fprintf( stderr, "Unknown charge method linear solver type. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
+    }
+
+    /* graph coloring related */
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        sfree( workspace->color, "Finalize_Workspace::workspace->color" );
+        sfree( workspace->to_color, "Finalize_Workspace::workspace->to_color" );
+        sfree( workspace->conflict, "Finalize_Workspace::workspace->conflict" );
+        sfree( workspace->conflict_cnt, "Finalize_Workspace::workspace->conflict_cnt" );
+        sfree( workspace->recolor, "Finalize_Workspace::workspace->recolor" );
+        sfree( workspace->color_top, "Finalize_Workspace::workspace->color_top" );
+        sfree( workspace->permuted_row_col, "Finalize_Workspace::workspace->permuted_row_col" );
+        sfree( workspace->permuted_row_col_inv, "Finalize_Workspace::workspace->permuted_row_col_inv" );
+        sfree( workspace->y_p, "Finalize_Workspace::workspace->y_p" );
+        sfree( workspace->x_p, "Finalize_Workspace::workspace->x_p" );
     }
 
     /* integrator storage */

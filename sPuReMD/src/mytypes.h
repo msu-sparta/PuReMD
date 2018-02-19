@@ -617,9 +617,7 @@ typedef struct
     int num_ignored;
     int ignore[MAX_ATOM_TYPES];
 
-#ifdef _OPENMP
     int num_threads;
-#endif
 } control_params;
 
 
@@ -947,6 +945,7 @@ typedef struct
     sparse_matrix *H;
     sparse_matrix *H_full;
     sparse_matrix *H_sp;
+    sparse_matrix *H_p;
     sparse_matrix *H_spar_patt;
     sparse_matrix *H_spar_patt_full;
     sparse_matrix *H_app_inv;
@@ -971,11 +970,27 @@ typedef struct
     real **h;
     real **rn;
     real **v;
+
     /* CG related storage */
     real *r;
     real *d;
     real *q;
     real *p;
+
+    /* Graph coloring related storage for applying, e.g. ICHOLT and ILU(T),
+     * preconditioners */
+    unsigned int *color;
+    unsigned int *to_color;
+    unsigned int *conflict;
+    unsigned int *conflict_cnt;
+    unsigned int *temp_ptr;
+    unsigned int *recolor;
+    unsigned int recolor_cnt;
+    unsigned int *color_top;
+    unsigned int *permuted_row_col;
+    unsigned int *permuted_row_col_inv;
+    real *y_p;
+    real *x_p;
 
     int num_H;
     int *hbond_index; // for hydrogen bonds

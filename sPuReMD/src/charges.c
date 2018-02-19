@@ -146,25 +146,18 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         Hptr = workspace->H;
     }
 
-    time = Get_Time( );
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
-            Hptr = setup_graph_coloring( workspace->H_sp );
-        }
-        else
-        {
-            Hptr = setup_graph_coloring( workspace->H );
-        }
-
-        Sort_Matrix_Rows( Hptr );
-    }
-    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
-
 #if defined(TEST_MAT)
     Hptr = create_test_mat( );
 #endif
+
+    time = Get_Time( );
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full, &workspace->H_p );
+        Sort_Matrix_Rows( workspace->H_p );
+        Hptr = workspace->H_p;
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -503,27 +496,25 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         Hptr = workspace->H;
     }
 
-    time = Get_Time( );
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
-            Hptr = setup_graph_coloring( workspace->H_sp );
-        }
-        else
-        {
-            Hptr = setup_graph_coloring( workspace->H );
-        }
-
-        Sort_Matrix_Rows( Hptr );
-    }
-    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
-
 #if defined(TEST_MAT)
     Hptr = create_test_mat( );
 #endif
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+    }
+
+    time = Get_Time( );
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full, &workspace->H_p );
+        Sort_Matrix_Rows( workspace->H_p );
+        Hptr = workspace->H_p;
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
     
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -578,7 +569,24 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
     }
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        if ( control->cm_domain_sparsify_enabled == TRUE )
+        {
+            Hptr = workspace->H_sp;
+        }
+        else
+        {
+            Hptr = workspace->H;
+        }
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+    }
 
 #if defined(DEBUG)
 #define SIZE (1000)
@@ -620,28 +628,26 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         Hptr = workspace->H;
     }
 
-    time = Get_Time( );
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
-            Hptr = setup_graph_coloring( workspace->H_sp );
-        }
-        else
-        {
-            Hptr = setup_graph_coloring( workspace->H );
-        }
-
-        Sort_Matrix_Rows( Hptr );
-    }
-    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
-
 #if defined(TEST_MAT)
     Hptr = create_test_mat( );
 #endif
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
-    Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+        Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+    }
+
+    time = Get_Time( );
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full, &workspace->H_p );
+        Sort_Matrix_Rows( workspace->H_p );
+        Hptr = workspace->H_p;
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
     
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -696,8 +702,25 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
     }
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
-    Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        if ( control->cm_domain_sparsify_enabled == TRUE )
+        {
+            Hptr = workspace->H_sp;
+        }
+        else
+        {
+            Hptr = workspace->H;
+        }
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+        Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+    }
 
 #if defined(DEBUG)
 #define SIZE (1000)

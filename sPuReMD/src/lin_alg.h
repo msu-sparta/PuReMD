@@ -81,7 +81,9 @@ void jacobi_iter( const sparse_matrix * const, const real * const,
         const real * const, real * const, const TRIANGULARITY,
         const unsigned int );
 
-sparse_matrix * setup_graph_coloring( sparse_matrix * const );
+void setup_graph_coloring( const control_params * const,
+        static_storage * const, const sparse_matrix * const,
+        sparse_matrix **, sparse_matrix ** );
 
 int GMRES( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
