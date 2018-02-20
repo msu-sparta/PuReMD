@@ -335,11 +335,14 @@ void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
+    /* sparse matrices */
     workspace->H = NULL;
+    workspace->H_full = NULL;
     workspace->H_sp = NULL;
-    workspace->L = NULL;
+    workspace->H_p = NULL;
     workspace->H_spar_patt = NULL;
     workspace->H_app_inv = NULL;
+    workspace->L = NULL;
     workspace->U = NULL;
     workspace->Hdia_inv = NULL;
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
@@ -348,6 +351,7 @@ void Init_Workspace( reax_system *system, control_params *control,
         workspace->droptol = (real *) scalloc( system->N_cm, sizeof( real ),
                 "Init_Workspace::workspace->droptol" );
     }
+
     //TODO: check if unused
     //workspace->w        = (real *) scalloc( cm_lin_sys_size, sizeof( real ),
     //"Init_Workspace::workspace->droptol" );
@@ -497,6 +501,106 @@ void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
+    /* SpMV related */
+#ifdef _OPENMP
+    workspace->b_local = (real*) smalloc( control->num_threads * system->N_cm * sizeof(real),
+            "Init_Workspace::b_local" );
+#endif
+
+    /* level scheduling related */
+    workspace->levels_L = 1;
+    workspace->levels_U = 1;
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
+            control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        workspace->row_levels_L = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::row_levels_L" );
+        workspace->level_rows_L = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::level_rows_L" );
+        workspace->level_rows_cnt_L = (unsigned int*) smalloc( (system->N_cm + 1) * sizeof(unsigned int),
+                "Init_Workspace::level_rows_cnt_L" );
+        workspace->row_levels_U = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::row_levels_U" );
+        workspace->level_rows_U = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::level_rows_U" );
+        workspace->level_rows_cnt_U = (unsigned int*) smalloc( (system->N_cm + 1) * sizeof(unsigned int),
+                "Init_Workspace::level_rows_cnt_U" );
+        workspace->top = (unsigned int*) smalloc( (system->N_cm + 1) * sizeof(unsigned int),
+                "Init_Workspace::top" );
+    }
+    else
+    {
+        workspace->row_levels_L = NULL;
+        workspace->level_rows_L = NULL;
+        workspace->level_rows_cnt_L = NULL;
+        workspace->row_levels_U = NULL;
+        workspace->level_rows_U = NULL;
+        workspace->level_rows_cnt_U = NULL;
+        workspace->top = NULL;
+    }
+
+    /* graph coloring related */
+    workspace->recolor_cnt = 0;
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        workspace->color = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                "Init_Workspace::color" );
+        workspace->to_color = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                "Init_Workspace::to_color" );
+        workspace->conflict = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                "setup_graph_coloring::conflict" );
+        workspace->conflict_cnt = (unsigned int*) smalloc( sizeof(unsigned int) * (control->num_threads + 1),
+                "Init_Workspace::conflict_cnt" );
+        workspace->recolor = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                "Init_Workspace::recolor" );
+        workspace->color_top = (unsigned int*) smalloc( sizeof(unsigned int) * (system->N_cm + 1),
+                "Init_Workspace::color_top" );
+        workspace->permuted_row_col = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                "Init_Workspace::premuted_row_col" );
+        workspace->permuted_row_col_inv = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
+                "Init_Workspace::premuted_row_col_inv" );
+        workspace->y_p = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::y_p" );
+        workspace->x_p = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::x_p" );
+    }
+    else
+    {
+        workspace->color = NULL;
+        workspace->to_color = NULL;
+        workspace->conflict = NULL;
+        workspace->conflict_cnt = NULL;
+        workspace->recolor = NULL;
+        workspace->color_top = NULL;
+        workspace->permuted_row_col = NULL;
+        workspace->permuted_row_col_inv = NULL;
+        workspace->y_p = NULL;
+        workspace->x_p = NULL;
+    }
+
+    /* Jacobi iteration related */
+    if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
+    {
+        workspace->Dinv_L = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::Dinv_L" );
+        workspace->Dinv_U = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::Dinv_U" );
+        workspace->Dinv_b = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::Dinv_b" );
+        workspace->rp = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::rp" );
+        workspace->rp2 = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::rp2" );
+    }
+    else
+    {
+        workspace->Dinv_L = NULL;
+        workspace->Dinv_U = NULL;
+        workspace->Dinv_b = NULL;
+        workspace->rp = NULL;
+        workspace->rp2 = NULL;
+    }
+
     /* integrator storage */
     workspace->a = (rvec *) smalloc( system->N * sizeof( rvec ),
            "Init_Workspace::workspace->a" );
@@ -590,7 +694,7 @@ void Init_Lists( reax_system *system, control_params *control,
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
 
-    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS );
+    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, &(*lists)[FAR_NBRS] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
@@ -669,7 +773,7 @@ void Init_Lists( reax_system *system, control_params *control,
         else
         {
             Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
-                    hb_top, (*lists) + HBONDS );
+                    hb_top, &(*lists)[HBONDS] );
         }
 
 #if defined(DEBUG_FOCUS)
@@ -681,7 +785,7 @@ void Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    Allocate_Bond_List( system->N, bond_top, (*lists) + BONDS );
+    Allocate_Bond_List( system->N, bond_top, &(*lists)[BONDS] );
     num_bonds = bond_top[system->N - 1];
 
 #if defined(DEBUG_FOCUS)
@@ -691,7 +795,7 @@ void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list */
-    Make_List( num_bonds, num_3body, TYP_THREE_BODY, (*lists) + THREE_BODIES );
+    Make_List( num_bonds, num_3body, TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
@@ -700,9 +804,9 @@ void Init_Lists( reax_system *system, control_params *control,
 #endif
 
 #ifdef TEST_FORCES
-    Make_List( system->N, num_bonds * 8, TYP_DDELTA, (*lists) + DDELTA );
+    Make_List( system->N, num_bonds * 8, TYP_DDELTA, &(*lists)[DDELTA] );
 
-    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, (*lists) + DBO );
+    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, &(*lists)[DBO] );
 #endif
 
     sfree( hb_top, "Init_Lists::hb_top" );
@@ -949,11 +1053,13 @@ void Initialize( reax_system *system, control_params *control,
 #endif
 
 #ifdef _OPENMP
-    #pragma omp parallel default(shared)
+    #pragma omp parallel default(none) shared(control)
     {
         #pragma omp single
         control->num_threads = omp_get_num_threads( );
     }
+#else
+    control->num_threads = 1;
 #endif
 
     Randomize( );
@@ -1086,6 +1192,11 @@ void Finalize_Workspace( reax_system *system, control_params *control,
         Deallocate_Matrix( workspace->H_spar_patt_full );
         Deallocate_Matrix( workspace->H_app_inv );
     }
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        Deallocate_Matrix( workspace->H_full );
+        Deallocate_Matrix( workspace->H_p );
+    }
 
     for ( i = 0; i < 5; ++i )
     {
@@ -1160,6 +1271,49 @@ void Finalize_Workspace( reax_system *system, control_params *control,
             break;
     }
 
+    /* SpMV related */
+#ifdef _OPENMP
+    sfree( workspace->b_local, "Finalize_Workspace::b_local" );
+#endif
+
+    /* level scheduling related */
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
+            control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        sfree( workspace->row_levels_L, "Finalize_Workspace::row_levels_L" );
+        sfree( workspace->level_rows_L, "Finalize_Workspace::level_rows_L" );
+        sfree( workspace->level_rows_cnt_L, "Finalize_Workspace::level_rows_cnt_L" );
+        sfree( workspace->row_levels_U, "Finalize_Workspace::row_levels_U" );
+        sfree( workspace->level_rows_U, "Finalize_Workspace::level_rows_U" );
+        sfree( workspace->level_rows_cnt_U, "Finalize_Workspace::level_rows_cnt_U" );
+        sfree( workspace->top, "Finalize_Workspace::top" );
+    }
+
+    /* graph coloring related */
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        sfree( workspace->color, "Finalize_Workspace::workspace->color" );
+        sfree( workspace->to_color, "Finalize_Workspace::workspace->to_color" );
+        sfree( workspace->conflict, "Finalize_Workspace::workspace->conflict" );
+        sfree( workspace->conflict_cnt, "Finalize_Workspace::workspace->conflict_cnt" );
+        sfree( workspace->recolor, "Finalize_Workspace::workspace->recolor" );
+        sfree( workspace->color_top, "Finalize_Workspace::workspace->color_top" );
+        sfree( workspace->permuted_row_col, "Finalize_Workspace::workspace->permuted_row_col" );
+        sfree( workspace->permuted_row_col_inv, "Finalize_Workspace::workspace->permuted_row_col_inv" );
+        sfree( workspace->y_p, "Finalize_Workspace::workspace->y_p" );
+        sfree( workspace->x_p, "Finalize_Workspace::workspace->x_p" );
+    }
+
+    /* Jacobi iteration related */
+    if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
+    {
+        sfree( workspace->Dinv_L, "Finalize_Workspace::Dinv_L" );
+        sfree( workspace->Dinv_U, "Finalize_Workspace::Dinv_U" );
+        sfree( workspace->Dinv_b, "Finalize_Workspace::Dinv_b" );
+        sfree( workspace->rp, "Finalize_Workspace::rp" );
+        sfree( workspace->rp2, "Finalize_Workspace::rp2" );
+    }
+
     /* integrator storage */
     sfree( workspace->a, "Finalize_Workspace::workspace->a" );
     sfree( workspace->f_old, "Finalize_Workspace::workspace->f_old" );
@@ -1217,17 +1371,17 @@ void Finalize_Workspace( reax_system *system, control_params *control,
 
 void Finalize_Lists( control_params *control, reax_list **lists )
 {
-    Delete_List( TYP_FAR_NEIGHBOR, (*lists) + FAR_NBRS );
+    Delete_List( TYP_FAR_NEIGHBOR, &(*lists)[FAR_NBRS] );
     if ( control->hb_cut > 0.0 )
     {
-        Delete_List( TYP_HBOND, (*lists) + HBONDS );
+        Delete_List( TYP_HBOND, &(*lists)[HBONDS] );
     }
-    Delete_List( TYP_BOND, (*lists) + BONDS );
-    Delete_List( TYP_THREE_BODY, (*lists) + THREE_BODIES );
+    Delete_List( TYP_BOND, &(*lists)[BONDS] );
+    Delete_List( TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
 
 #ifdef TEST_FORCES
-    Delete_List( TYP_DDELTA, (*lists) + DDELTA );
-    Delete_List( TYP_DBO, (*lists) + DBO );
+    Delete_List( TYP_DDELTA, &(*lists)[DDELTA] );
+    Delete_List( TYP_DBO, &(*lists)[DBO] );
 #endif
 }
 

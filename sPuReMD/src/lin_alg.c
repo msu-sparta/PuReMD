@@ -50,52 +50,6 @@ enum preconditioner_type
 };
 
 
-/* global to make OpenMP shared (Sparse_MatVec) */
-#ifdef _OPENMP
-static real *b_local = NULL;
-#endif
-/* global to make OpenMP shared (apply_preconditioner) */
-static real *Dinv_L = NULL;
-static real *Dinv_U = NULL;
-/* global to make OpenMP shared (tri_solve_level_sched) */
-static int levels = 1;
-static int levels_L = 1;
-static int levels_U = 1;
-static unsigned int *row_levels_L = NULL;
-static unsigned int *level_rows_L = NULL;
-static unsigned int *level_rows_cnt_L = NULL;
-static unsigned int *row_levels_U = NULL;
-static unsigned int *level_rows_U = NULL;
-static unsigned int *level_rows_cnt_U = NULL;
-static unsigned int *row_levels;
-static unsigned int *level_rows;
-static unsigned int *level_rows_cnt;
-static unsigned int *top = NULL;
-/* global to make OpenMP shared (graph_coloring) */
-static unsigned int *color = NULL;
-static unsigned int *to_color = NULL;
-static unsigned int *conflict = NULL;
-static unsigned int *conflict_cnt = NULL;
-static unsigned int *temp_ptr;
-static unsigned int *recolor = NULL;
-static unsigned int recolor_cnt;
-static unsigned int *color_top = NULL;
-/* global to make OpenMP shared (sort_colors) */
-static unsigned int *permuted_row_col = NULL;
-static unsigned int *permuted_row_col_inv = NULL;
-static real *y_p = NULL;
-/* global to make OpenMP shared (permute_vector) */
-static real *x_p = NULL;
-static unsigned int *mapping = NULL;
-static sparse_matrix *H_full;
-static sparse_matrix *H_p;
-/* global to make OpenMP shared (jacobi_iter) */
-static real *Dinv_b = NULL;
-static real *rp = NULL;
-static real *rp2 = NULL;
-static real *rp3 = NULL;
-
-
 #if defined(TEST_MAT)
 static sparse_matrix * create_test_mat( void )
 {
@@ -225,7 +179,15 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
             exit( INSUFFICIENT_MEMORY );
         }
     }
-
+    else if ( (*A_full)->m < 2 * A->m - A->n )
+    {
+        Deallocate_Matrix( *A_full );
+        if ( Allocate_Matrix( A_full, A->n, 2 * A->m - A->n ) == FAILURE )
+        {
+            fprintf( stderr, "not enough memory for full A. terminating.\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
+    }
 
     if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
     {
@@ -277,14 +239,14 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
 void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix ** A_full,
-                                  sparse_matrix ** A_spar_patt, sparse_matrix **A_spar_patt_full,
-                                  sparse_matrix ** A_app_inv, const real filter )
+              sparse_matrix ** A_spar_patt, sparse_matrix **A_spar_patt_full,
+                    sparse_matrix ** A_app_inv, const real filter )
 {
     int i, pj, size;
-    real min, max, threshold, val;
-
-    min = 0.0;
-    max = 0.0;
+    int left, right, k, p, turn;
+    real pivot, tmp;
+    real threshold;
+    real *list;
 
     if ( *A_spar_patt == NULL )
     {
@@ -304,34 +266,87 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         }
     }
 
-    /* find min and max elements of matrix */
-    for ( i = 0; i < A->n; ++i )
+
+    /* quick-select algorithm for finding the kth greatest element in the matrix*/
+    /* list: values from the matrix*/
+    /* left-right: search space of the quick-select */
+
+    list = (real *) smalloc( sizeof(real) * (A->start[A->n]),"Sparse_Approx_Inverse::list" );
+
+    left = 0;
+    right = A->start[A->n] - 1;
+    k = (int)( (A->start[A->n])*filter );
+    threshold = 0.0;
+
+    for( i = left; i <= right ; ++i )
     {
-        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        list[i] = A->val[i];
+        if(list[i] < 0.0)
         {
-            val = A->val[pj];
-            if ( pj == 0 )
-            {
-                min = val;
-                max = val;
-            }
-            else
-            {
-                if ( min > val )
-                {
-                    min = val;
-                }
-                if ( max < val )
-                {
-                    max = val;
-                }
-            }
+            list[i] = -list[i];
         }
     }
 
-    threshold = min + (max - min) * (1.0 - filter);
+    turn = 0;
+    while( k ) {
+
+        p  = left;
+        turn = 1 - turn;
+        if( turn == 1)
+        {
+            pivot = list[right];
+        }
+        else
+        {
+            pivot = list[left];
+        }
+        for( i = left + 1 - turn; i <= right-turn; ++i )
+        {
+            if( list[i] > pivot )
+            {
+                tmp = list[i];
+                list[i] = list[p];
+                list[p] = tmp;
+                p++;
+            }
+        }
+        if(turn == 1)
+        {
+            tmp = list[p];
+            list[p] = list[right];
+            list[right] = tmp;
+        }
+        else
+        {
+            tmp = list[p];
+            list[p] = list[left];
+            list[left] = tmp;
+        }
+
+        if( p == k - 1)
+        {
+            threshold = list[p];
+            break;
+        }
+        else if( p > k - 1 )
+        {
+            right = p - 1;
+        }
+        else
+        {
+            left = p + 1;
+        }
+    }
+
+    if(threshold < 1.000000)
+    {
+        threshold = 1.000001;
+    }
+
+    sfree( list, "setup_sparse_approx_inverse::list" );
 
     /* fill sparsity pattern */
+    /* diagonal entries are always included */
     for ( size = 0, i = 0; i < A->n; ++i )
     {
         (*A_spar_patt)->start[i] = size;
@@ -352,13 +367,14 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     compute_full_sparse_matrix( *A_spar_patt, A_spar_patt_full );
 
     /* A_app_inv has the same sparsity pattern
-     * as A_spar_patt_full (omit non-zero values) */
+     * * as A_spar_patt_full (omit non-zero values) */
     if ( Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m ) == FAILURE )
     {
         fprintf( stderr, "not enough memory for approximate inverse matrix. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 }
+
 
 void Calculate_Droptol( const sparse_matrix * const A,
                         real * const droptol, const real dtol )
@@ -379,8 +395,6 @@ void Calculate_Droptol( const sparse_matrix * const A,
 
         #pragma omp master
         {
-            /* keep b_local for program duration to avoid allocate/free
-             * overhead per Sparse_MatVec call*/
             if ( droptol_local == NULL )
             {
                 droptol_local = (real*) smalloc( omp_get_num_threads() * A->n * sizeof(real),
@@ -1622,11 +1636,23 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 /* Compute M^{1} \approx A which minimizes
+ *  \sum_{j=1}^{N} ||e_j - Am_j||_2^2
+ *  where: e_j is the j-th column of the NxN identify matrix,
+ *         m_j is the j-th column of the NxN approximate sparse matrix M
+ * 
+ * Internally, use LAPACKE to solve the least-squares problems
  *
  * A: symmetric, sparse matrix, stored in full CSR format
  * A_spar_patt: sparse matrix used as template sparsity pattern
  *   for approximating the inverse, stored in full CSR format
- * A_app_inv: approximate inverse to A, stored in full CSR format (result) */
+ * A_app_inv: approximate inverse to A, stored in full CSR format (result)
+ *
+ * Reference:
+ * Michele Benzi et al.
+ * A Comparative Study of Sparse Approximate Inverse
+ *  Preconditioners
+ * Applied Numerical Mathematics 30, 1999
+ * */
 real sparse_approx_inverse( const sparse_matrix * const A,
                             const sparse_matrix * const A_spar_patt,
                             sparse_matrix ** A_app_inv )
@@ -1719,7 +1745,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
                 }
                 // change the value if any of the column indices is seen
                 for ( d_j = A->start[pos_x[d_i]];
-                        d_j < A->start[pos_x[d_i + 1]]; ++d_j )
+                        d_j < A->start[pos_x[d_i] + 1]; ++d_j )
                 {
                     if ( Y[A->j[d_j]] == 1 )
                     {
@@ -1794,12 +1820,13 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 
 
 /* sparse matrix-vector product Ax = b
- * where:
- *   A: lower triangular matrix, stored in CSR format
- *   x: vector
- *   b: vector (result) */
-static void Sparse_MatVec( const sparse_matrix * const A,
-                           const real * const x, real * const b )
+ *
+ * workspace: storage container for workspace structures
+ * A: lower triangular matrix, stored in CSR format
+ * x: vector
+ * b (output): vector */
+static void Sparse_MatVec( const static_storage * const workspace,
+        const sparse_matrix * const A, const real * const x, real * const b )
 {
     int i, j, k, n, si, ei;
     real H;
@@ -1813,18 +1840,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 #ifdef _OPENMP
     tid = omp_get_thread_num( );
 
-    #pragma omp single
-    {
-        /* keep b_local for program duration to avoid allocate/free
-         * overhead per Sparse_MatVec call*/
-        if ( b_local == NULL )
-        {
-            b_local = (real*) smalloc( omp_get_num_threads() * n * sizeof(real),
-                                       "Sparse_MatVec::b_local" );
-        }
-    }
-
-    Vector_MakeZero( (real * const)b_local, omp_get_num_threads() * n );
+    Vector_MakeZero( workspace->b_local, omp_get_num_threads() * n );
 
     #pragma omp for schedule(static)
 #endif
@@ -1838,8 +1854,8 @@ static void Sparse_MatVec( const sparse_matrix * const A,
             j = A->j[k];
             H = A->val[k];
 #ifdef _OPENMP
-            b_local[tid * n + j] += H * x[i];
-            b_local[tid * n + i] += H * x[j];
+            workspace->b_local[tid * n + j] += H * x[i];
+            workspace->b_local[tid * n + i] += H * x[j];
 #else
             b[j] += H * x[i];
             b[i] += H * x[j];
@@ -1848,7 +1864,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
 
         // the diagonal entry is the last one in
 #ifdef _OPENMP
-        b_local[tid * n + i] += A->val[k] * x[i];
+        workspace->b_local[tid * n + i] += A->val[k] * x[i];
 #else
         b[i] += A->val[k] * x[i];
 #endif
@@ -1860,7 +1876,7 @@ static void Sparse_MatVec( const sparse_matrix * const A,
     {
         for ( j = 0; j < omp_get_num_threads(); ++j )
         {
-            b[i] += b_local[j * n + i];
+            b[i] += workspace->b_local[j * n + i];
         }
     }
 #endif
@@ -2042,6 +2058,7 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
 
 /* Solve triangular system LU*x = y using level scheduling
  *
+ * workspace: storage container for workspace structures
  * LU: lower/upper triangular, stored in CSR
  * y: constants in linear system (RHS)
  * x: solution
@@ -2052,53 +2069,38 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
  * Assumptions:
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
-void tri_solve_level_sched( const sparse_matrix * const LU,
-                            const real * const y, real * const x, const int N,
-                            const TRIANGULARITY tri, int find_levels )
+void tri_solve_level_sched( static_storage * workspace,
+        const sparse_matrix * const LU,
+        const real * const y, real * const x, const int N,
+        const TRIANGULARITY tri, int find_levels )
 {
     int i, j, pj, local_row, local_level;
+    unsigned int *row_levels, *level_rows, *level_rows_cnt;
+    int levels;
+
+    if ( tri == LOWER )
+    {
+        row_levels = workspace->row_levels_L;
+        level_rows = workspace->level_rows_L;
+        level_rows_cnt = workspace->level_rows_cnt_L;
+    }
+    else
+    {
+        row_levels = workspace->row_levels_U;
+        level_rows = workspace->level_rows_U;
+        level_rows_cnt = workspace->level_rows_cnt_U;
+    }
 
 #ifdef _OPENMP
     #pragma omp single
 #endif
     {
-        if ( tri == LOWER )
-        {
-            row_levels = row_levels_L;
-            level_rows = level_rows_L;
-            level_rows_cnt = level_rows_cnt_L;
-            levels = levels_L;
-        }
-        else
-        {
-            row_levels = row_levels_U;
-            level_rows = level_rows_U;
-            level_rows_cnt = level_rows_cnt_U;
-            levels = levels_U;
-        }
-
-        if ( row_levels == NULL || level_rows == NULL || level_rows_cnt == NULL )
-        {
-            row_levels = (unsigned int*) smalloc( (size_t)N * sizeof(unsigned int),
-                                                  "tri_solve_level_sched::row_levels" );
-            level_rows = (unsigned int*) smalloc( (size_t)N * sizeof(unsigned int),
-                                                  "tri_solve_level_sched::level_rows" );
-            level_rows_cnt = (unsigned int*) smalloc( (size_t)(N + 1) * sizeof(unsigned int),
-                             "tri_solve_level_sched::level_rows_cnt" );
-        }
-
-        if ( top == NULL )
-        {
-            top = (unsigned int*) smalloc( (size_t)(N + 1) * sizeof(unsigned int),
-                                           "tri_solve_level_sched::top" );
-        }
-
         /* find levels (row dependencies in substitutions) */
         if ( find_levels == TRUE )
         {
             memset( row_levels, 0, N * sizeof(unsigned int) );
             memset( level_rows_cnt, 0, N * sizeof(unsigned int) );
-            memset( top, 0, N * sizeof(unsigned int) );
+            memset( workspace->top, 0, N * sizeof(unsigned int) );
             levels = 1;
 
             if ( tri == LOWER )
@@ -2115,6 +2117,8 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
                     row_levels[i] = local_level;
                     ++level_rows_cnt[local_level];
                 }
+
+                workspace->levels_L = levels;
 
                 //#if defined(DEBUG)
                 fprintf(stderr, "levels(L): %d\n", levels);
@@ -2136,6 +2140,8 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
                     ++level_rows_cnt[local_level];
                 }
 
+                workspace->levels_U = levels;
+
                 //#if defined(DEBUG)
                 fprintf(stderr, "levels(U): %d\n", levels);
                 fprintf(stderr, "NNZ(U): %d\n", LU->start[N]);
@@ -2145,15 +2151,24 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
             for ( i = 1; i < levels + 1; ++i )
             {
                 level_rows_cnt[i] += level_rows_cnt[i - 1];
-                top[i] = level_rows_cnt[i];
+                workspace->top[i] = level_rows_cnt[i];
             }
 
             for ( i = 0; i < N; ++i )
             {
-                level_rows[top[row_levels[i] - 1]] = i;
-                ++top[row_levels[i] - 1];
+                level_rows[workspace->top[row_levels[i] - 1]] = i;
+                ++workspace->top[row_levels[i] - 1];
             }
         }
+    }
+
+    if ( tri == LOWER )
+    {
+        levels = workspace->levels_L;
+    }
+    else
+    {
+        levels = workspace->levels_U;
     }
 
     /* perform substitutions by level */
@@ -2171,7 +2186,6 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
                 for ( pj = LU->start[local_row]; pj < LU->start[local_row + 1] - 1; ++pj )
                 {
                     x[local_row] -= LU->val[pj] * x[LU->j[pj]];
-
                 }
                 x[local_row] /= LU->val[pj];
             }
@@ -2191,79 +2205,18 @@ void tri_solve_level_sched( const sparse_matrix * const LU,
                 for ( pj = LU->start[local_row] + 1; pj < LU->start[local_row + 1]; ++pj )
                 {
                     x[local_row] -= LU->val[pj] * x[LU->j[pj]];
-
                 }
                 x[local_row] /= LU->val[LU->start[local_row]];
             }
         }
     }
-
-#ifdef _OPENMP
-    #pragma omp single
-#endif
-    {
-        /* save level info for re-use if performing repeated triangular solves via preconditioning */
-        if ( tri == LOWER )
-        {
-            row_levels_L = row_levels;
-            level_rows_L = level_rows;
-            level_rows_cnt_L = level_rows_cnt;
-            levels_L = levels;
-        }
-        else
-        {
-            row_levels_U = row_levels;
-            level_rows_U = level_rows;
-            level_rows_cnt_U = level_rows_cnt;
-            levels_U = levels;
-        }
-    }
-}
-
-
-static void compute_H_full( const sparse_matrix * const H )
-{
-    int count, i, pj;
-    sparse_matrix *H_t;
-
-    if ( Allocate_Matrix( &H_t, H->n, H->m ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for full H. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-    /* Set up the sparse matrix data structure for A. */
-    Transpose( H, H_t );
-
-    count = 0;
-    for ( i = 0; i < H->n; ++i )
-    {
-        H_full->start[i] = count;
-
-        /* H: symmetric, lower triangular portion only stored */
-        for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
-        {
-            H_full->val[count] = H->val[pj];
-            H_full->j[count] = H->j[pj];
-            ++count;
-        }
-        /* H^T: symmetric, upper triangular portion only stored;
-         * skip diagonal from H^T, as included from H above */
-        for ( pj = H_t->start[i] + 1; pj < H_t->start[i + 1]; ++pj )
-        {
-            H_full->val[count] = H_t->val[pj];
-            H_full->j[count] = H_t->j[pj];
-            ++count;
-        }
-    }
-    H_full->start[i] = count;
-
-    Deallocate_Matrix( H_t );
 }
 
 
 /* Iterative greedy shared-memory parallel graph coloring
  *
+ * control: container for control info
+ * workspace: storage container for workspace structures
  * A: matrix to use for coloring, stored in CSR format;
  *   rows represent vertices, columns of entries within a row represent adjacent vertices
  *   (i.e., dependent rows for elimination during LU factorization)
@@ -2276,31 +2229,40 @@ static void compute_H_full( const sparse_matrix * const H )
  *  and Massively Threaded Architectures
  * Parallel Computing, 2012
  */
-void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
+void graph_coloring( const control_params * const control,
+        static_storage * workspace,
+        const sparse_matrix * const A, const TRIANGULARITY tri )
 {
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
     {
-#define MAX_COLOR (500)
         int i, pj, v;
         unsigned int temp, recolor_cnt_local, *conflict_local;
-        int tid, num_thread, *fb_color;
+        int tid, *fb_color;
+        unsigned int *p_to_color, *p_conflict, *p_temp;
 
 #ifdef _OPENMP
-        tid = omp_get_thread_num();
-        num_thread = omp_get_num_threads();
+        tid = omp_get_thread_num( );
 #else
         tid = 0;
-        num_thread = 1;
 #endif
+        p_to_color = workspace->to_color;
+        p_conflict = workspace->conflict;
+
+#ifdef _OPENMP
+        #pragma omp for schedule(static)
+#endif
+        for ( i = 0; i < A->n; ++i )
+        {
+            workspace->color[i] = 0;
+        }
 
 #ifdef _OPENMP
         #pragma omp single
 #endif
         {
-            memset( color, 0, sizeof(unsigned int) * A->n );
-            recolor_cnt = A->n;
+            workspace->recolor_cnt = A->n;
         }
 
         /* ordering of vertices to color depends on triangularity of factor
@@ -2312,7 +2274,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
 #endif
             for ( i = 0; i < A->n; ++i )
             {
-                to_color[i] = i;
+                p_to_color[i] = i;
             }
         }
         else
@@ -2322,57 +2284,56 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
 #endif
             for ( i = 0; i < A->n; ++i )
             {
-                to_color[i] = A->n - 1 - i;
+                p_to_color[i] = A->n - 1 - i;
             }
         }
 
-        fb_color = (int*) smalloc( sizeof(int) * MAX_COLOR,
-                                   "graph_coloring::fb_color" );
+        fb_color = (int*) smalloc( sizeof(int) * A->n,
+                "graph_coloring::fb_color" );
         conflict_local = (unsigned int*) smalloc( sizeof(unsigned int) * A->n,
-                         "graph_coloring::fb_color" );
+                "graph_coloring::fb_color" );
 
-#ifdef _OPENMP
-        #pragma omp barrier
-#endif
-
-        while ( recolor_cnt > 0 )
+        while ( workspace->recolor_cnt > 0 )
         {
-            memset( fb_color, -1, sizeof(int) * MAX_COLOR );
+            memset( fb_color, -1, sizeof(int) * A->n );
 
             /* color vertices */
 #ifdef _OPENMP
             #pragma omp for schedule(static)
 #endif
-            for ( i = 0; i < recolor_cnt; ++i )
+            for ( i = 0; i < workspace->recolor_cnt; ++i )
             {
-                v = to_color[i];
+                v = p_to_color[i];
 
                 /* colors of adjacent vertices are forbidden */
                 for ( pj = A->start[v]; pj < A->start[v + 1]; ++pj )
                 {
                     if ( v != A->j[pj] )
                     {
-                        fb_color[color[A->j[pj]]] = v;
+                        fb_color[workspace->color[A->j[pj]]] = v;
                     }
                 }
 
                 /* search for min. color which is not in conflict with adjacent vertices;
                  * start at 1 since 0 is default (invalid) color for all vertices */
-                for ( pj = 1; fb_color[pj] == v; ++pj );
+                for ( pj = 1; fb_color[pj] == v; ++pj )
+                    ;
 
                 /* assign discovered color (no conflict in neighborhood of adjacent vertices) */
-                color[v] = pj;
+                workspace->color[v] = pj;
             }
 
             /* determine if recoloring required */
-            temp = recolor_cnt;
+            temp = workspace->recolor_cnt;
             recolor_cnt_local = 0;
 
 #ifdef _OPENMP
+            #pragma omp barrier
+
             #pragma omp single
 #endif
             {
-                recolor_cnt = 0;
+                workspace->recolor_cnt = 0;
             }
 
 #ifdef _OPENMP
@@ -2380,12 +2341,12 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
 #endif
             for ( i = 0; i < temp; ++i )
             {
-                v = to_color[i];
+                v = p_to_color[i];
 
                 /* search for color conflicts with adjacent vertices */
                 for ( pj = A->start[v]; pj < A->start[v + 1]; ++pj )
                 {
-                    if ( color[v] == color[A->j[pj]] && v > A->j[pj] )
+                    if ( workspace->color[v] == workspace->color[A->j[pj]] && v > A->j[pj] )
                     {
                         conflict_local[recolor_cnt_local] = v;
                         ++recolor_cnt_local;
@@ -2395,32 +2356,7 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             }
 
             /* count thread-local conflicts and compute offsets for copying into shared buffer */
-            conflict_cnt[tid + 1] = recolor_cnt_local;
-
-#ifdef _OPENMP
-            #pragma omp barrier
-
-            #pragma omp master
-#endif
-            {
-                conflict_cnt[0] = 0;
-                for ( i = 1; i < num_thread + 1; ++i )
-                {
-                    conflict_cnt[i] += conflict_cnt[i - 1];
-                }
-                recolor_cnt = conflict_cnt[num_thread];
-            }
-
-#ifdef _OPENMP
-            #pragma omp barrier
-#endif
-
-            /* copy thread-local conflicts into shared buffer */
-            for ( i = 0; i < recolor_cnt_local; ++i )
-            {
-                conflict[conflict_cnt[tid] + i] = conflict_local[i];
-                color[conflict_local[i]] = 0;
-            }
+            workspace->conflict_cnt[tid + 1] = recolor_cnt_local;
 
 #ifdef _OPENMP
             #pragma omp barrier
@@ -2428,101 +2364,99 @@ void graph_coloring( const sparse_matrix * const A, const TRIANGULARITY tri )
             #pragma omp single
 #endif
             {
-                temp_ptr = to_color;
-                to_color = conflict;
-                conflict = temp_ptr;
+                workspace->conflict_cnt[0] = 0;
+                for ( i = 1; i < control->num_threads + 1; ++i )
+                {
+                    workspace->conflict_cnt[i] += workspace->conflict_cnt[i - 1];
+                }
+                workspace->recolor_cnt = workspace->conflict_cnt[control->num_threads];
             }
+
+            /* copy thread-local conflicts into shared buffer */
+            for ( i = 0; i < recolor_cnt_local; ++i )
+            {
+                p_conflict[workspace->conflict_cnt[tid] + i] = conflict_local[i];
+                workspace->color[conflict_local[i]] = 0;
+            }
+
+#ifdef _OPENMP
+            #pragma omp barrier
+#endif
+            p_temp = p_to_color;
+            p_to_color = p_conflict;
+            p_conflict = p_temp;
         }
 
         sfree( conflict_local, "graph_coloring::conflict_local" );
         sfree( fb_color, "graph_coloring::fb_color" );
-
-        //#if defined(DEBUG)
-        //#ifdef _OPENMP
-        //    #pragma omp master
-        //#endif
-        //    {
-        //        for ( i = 0; i < A->n; ++i )
-        //            printf("Vertex: %5d, Color: %5d\n", i, color[i] );
-        //    }
-        //#endif
-
-#ifdef _OPENMP
-        #pragma omp barrier
-#endif
     }
 }
 
 
-/* Sort coloring
+/* Sort rows by coloring
  *
+ * workspace: storage container for workspace structures
  * n: number of entries in coloring
  * tri: coloring to triangular factor to use (lower/upper)
  */
-void sort_colors( const unsigned int n, const TRIANGULARITY tri )
+void sort_rows_by_colors( const static_storage * const workspace,
+        const unsigned int n, const TRIANGULARITY tri )
 {
     unsigned int i;
 
-    memset( color_top, 0, sizeof(unsigned int) * (n + 1) );
+    memset( workspace->color_top, 0, sizeof(unsigned int) * (n + 1) );
 
     /* sort vertices by color (ascending within a color)
      *  1) count colors
      *  2) determine offsets of color ranges
-     *  3) sort by color
+     *  3) sort rows by color
      *
      *  note: color is 1-based */
     for ( i = 0; i < n; ++i )
     {
-        ++color_top[color[i]];
+        ++workspace->color_top[workspace->color[i]];
     }
     for ( i = 1; i < n + 1; ++i )
     {
-        color_top[i] += color_top[i - 1];
+        workspace->color_top[i] += workspace->color_top[i - 1];
     }
     for ( i = 0; i < n; ++i )
     {
-        permuted_row_col[color_top[color[i] - 1]] = i;
-        ++color_top[color[i] - 1];
+        workspace->permuted_row_col[workspace->color_top[workspace->color[i] - 1]] = i;
+        ++workspace->color_top[workspace->color[i] - 1];
     }
 
     /* invert mapping to get map from current row/column to permuted (new) row/column */
     for ( i = 0; i < n; ++i )
     {
-        permuted_row_col_inv[permuted_row_col[i]] = i;
+        workspace->permuted_row_col_inv[workspace->permuted_row_col[i]] = i;
     }
 }
 
 
 /* Apply permutation Q^T*x or Q*x based on graph coloring
  *
+ * workspace: storage container for workspace structures
  * color: vertex color (1-based); vertices represent matrix rows/columns
  * x: vector to permute (in-place)
  * n: number of entries in x
  * invert_map: if TRUE, use Q^T, otherwise use Q
  * tri: coloring to triangular factor to use (lower/upper)
  */
-static void permute_vector( real * const x, const unsigned int n, const int invert_map,
-                            const TRIANGULARITY tri )
+static void permute_vector( const static_storage * const workspace,
+        real * const x, const unsigned int n, const int invert_map,
+        const TRIANGULARITY tri )
 {
     unsigned int i;
+    unsigned int *mapping;
 
-#ifdef _OPENMP
-    #pragma omp single
-#endif
+    if ( invert_map == TRUE )
     {
-        if ( x_p == NULL )
-        {
-            x_p = (real*) smalloc( sizeof(real) * n, "permute_vector::x_p" );
-        }
-
-        if ( invert_map == TRUE )
-        {
-            mapping = permuted_row_col_inv;
-        }
-        else
-        {
-            mapping = permuted_row_col;
-        }
+        mapping = workspace->permuted_row_col_inv;
+    }
+    else
+    {
+        mapping = workspace->permuted_row_col;
     }
 
 #ifdef _OPENMP
@@ -2530,25 +2464,28 @@ static void permute_vector( real * const x, const unsigned int n, const int inve
 #endif
     for ( i = 0; i < n; ++i )
     {
-        x_p[i] = x[mapping[i]];
+        workspace->x_p[i] = x[mapping[i]];
     }
 
 #ifdef _OPENMP
-    #pragma omp single
+    #pragma omp for schedule(static)
 #endif
+    for ( i = 0; i < n; ++i )
     {
-        memcpy( x, x_p, sizeof(real) * n );
+        x[i] = workspace->x_p[i];
     }
 }
 
 
 /* Apply permutation Q^T*(LU)*Q based on graph coloring
  *
+ * workspace: storage container for workspace structures
  * color: vertex color (1-based); vertices represent matrix rows/columns
  * LU: matrix to permute, stored in CSR format
  * tri: triangularity of LU (lower/upper)
  */
-void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
+void permute_matrix( const static_storage * const workspace,
+        sparse_matrix * const LU, const TRIANGULARITY tri )
 {
     int i, pj, nr, nc;
     sparse_matrix *LUtemp;
@@ -2560,26 +2497,26 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
     }
 
     /* count nonzeros in each row of permuted factor (re-use color_top for counting) */
-    memset( color_top, 0, sizeof(unsigned int) * (LU->n + 1) );
+    memset( workspace->color_top, 0, sizeof(unsigned int) * (LU->n + 1) );
 
     if ( tri == LOWER )
     {
         for ( i = 0; i < LU->n; ++i )
         {
-            nr = permuted_row_col_inv[i];
+            nr = workspace->permuted_row_col_inv[i];
 
             for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
             {
-                nc = permuted_row_col_inv[LU->j[pj]];
+                nc = workspace->permuted_row_col_inv[LU->j[pj]];
 
                 if ( nc <= nr )
                 {
-                    ++color_top[nr + 1];
+                    ++workspace->color_top[nr + 1];
                 }
                 /* correct entries to maintain triangularity (lower) */
                 else
                 {
-                    ++color_top[nc + 1];
+                    ++workspace->color_top[nc + 1];
                 }
             }
         }
@@ -2588,20 +2525,20 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
     {
         for ( i = LU->n - 1; i >= 0; --i )
         {
-            nr = permuted_row_col_inv[i];
+            nr = workspace->permuted_row_col_inv[i];
 
             for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
             {
-                nc = permuted_row_col_inv[LU->j[pj]];
+                nc = workspace->permuted_row_col_inv[LU->j[pj]];
 
                 if ( nc >= nr )
                 {
-                    ++color_top[nr + 1];
+                    ++workspace->color_top[nr + 1];
                 }
                 /* correct entries to maintain triangularity (upper) */
                 else
                 {
-                    ++color_top[nc + 1];
+                    ++workspace->color_top[nc + 1];
                 }
             }
         }
@@ -2609,34 +2546,34 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
 
     for ( i = 1; i < LU->n + 1; ++i )
     {
-        color_top[i] += color_top[i - 1];
+        workspace->color_top[i] += workspace->color_top[i - 1];
     }
 
-    memcpy( LUtemp->start, color_top, sizeof(unsigned int) * (LU->n + 1) );
+    memcpy( LUtemp->start, workspace->color_top, sizeof(unsigned int) * (LU->n + 1) );
 
     /* permute factor */
     if ( tri == LOWER )
     {
         for ( i = 0; i < LU->n; ++i )
         {
-            nr = permuted_row_col_inv[i];
+            nr = workspace->permuted_row_col_inv[i];
 
             for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
             {
-                nc = permuted_row_col_inv[LU->j[pj]];
+                nc = workspace->permuted_row_col_inv[LU->j[pj]];
 
                 if ( nc <= nr )
                 {
-                    LUtemp->j[color_top[nr]] = nc;
-                    LUtemp->val[color_top[nr]] = LU->val[pj];
-                    ++color_top[nr];
+                    LUtemp->j[workspace->color_top[nr]] = nc;
+                    LUtemp->val[workspace->color_top[nr]] = LU->val[pj];
+                    ++workspace->color_top[nr];
                 }
                 /* correct entries to maintain triangularity (lower) */
                 else
                 {
-                    LUtemp->j[color_top[nc]] = nr;
-                    LUtemp->val[color_top[nc]] = LU->val[pj];
-                    ++color_top[nc];
+                    LUtemp->j[workspace->color_top[nc]] = nr;
+                    LUtemp->val[workspace->color_top[nc]] = LU->val[pj];
+                    ++workspace->color_top[nc];
                 }
             }
         }
@@ -2645,24 +2582,24 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
     {
         for ( i = LU->n - 1; i >= 0; --i )
         {
-            nr = permuted_row_col_inv[i];
+            nr = workspace->permuted_row_col_inv[i];
 
             for ( pj = LU->start[i]; pj < LU->start[i + 1]; ++pj )
             {
-                nc = permuted_row_col_inv[LU->j[pj]];
+                nc = workspace->permuted_row_col_inv[LU->j[pj]];
 
                 if ( nc >= nr )
                 {
-                    LUtemp->j[color_top[nr]] = nc;
-                    LUtemp->val[color_top[nr]] = LU->val[pj];
-                    ++color_top[nr];
+                    LUtemp->j[workspace->color_top[nr]] = nc;
+                    LUtemp->val[workspace->color_top[nr]] = LU->val[pj];
+                    ++workspace->color_top[nr];
                 }
                 /* correct entries to maintain triangularity (upper) */
                 else
                 {
-                    LUtemp->j[color_top[nc]] = nr;
-                    LUtemp->val[color_top[nc]] = LU->val[pj];
-                    ++color_top[nc];
+                    LUtemp->j[workspace->color_top[nc]] = nr;
+                    LUtemp->val[workspace->color_top[nc]] = LU->val[pj];
+                    ++workspace->color_top[nc];
                 }
             }
         }
@@ -2680,62 +2617,43 @@ void permute_matrix( sparse_matrix * const LU, const TRIANGULARITY tri )
  *  used for preconditioning (incomplete factorizations computed based on
  *  permuted H)
  *
+ * control: container for control info
+ * workspace: storage container for workspace structures
  * H: symmetric, lower triangular portion only, stored in CSR format;
- *  H is permuted in-place
+ * H_full: symmetric, stored in CSR format;
+ * H_p (output): permuted copy of H based on coloring, lower half stored, CSR format
  */
-sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
+void setup_graph_coloring( const control_params * const control,
+        const static_storage * const workspace, const sparse_matrix * const H,
+        sparse_matrix ** H_full, sparse_matrix ** H_p )
 {
-    int num_thread;
-
-    if ( color == NULL )
+    if ( *H_p == NULL )
     {
-#ifdef _OPENMP
-        #pragma omp parallel
+        if ( Allocate_Matrix( H_p, H->n, H->m ) == FAILURE )
         {
-            num_thread = omp_get_num_threads();
+            fprintf( stderr, "[ERROR] not enough memory for graph coloring. terminating.\n" );
+            exit( INSUFFICIENT_MEMORY );
         }
-#else
-        num_thread = 1;
-#endif
-
-        /* internal storage for graph coloring (global to facilitate simultaneous access to OpenMP threads) */
-        color = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
-                                         "setup_graph_coloring::color" );
-        to_color = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
-                                            "setup_graph_coloring::to_color" );
-        conflict = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
-                                            "setup_graph_coloring::conflict" );
-        conflict_cnt = (unsigned int*) smalloc( sizeof(unsigned int) * (num_thread + 1),
-                                                "setup_graph_coloring::conflict_cnt" );
-        recolor = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
-                                           "setup_graph_coloring::recolor" );
-        color_top = (unsigned int*) smalloc( sizeof(unsigned int) * (H->n + 1),
-                                             "setup_graph_coloring::color_top" );
-        permuted_row_col = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
-                           "setup_graph_coloring::premuted_row_col" );
-        permuted_row_col_inv = (unsigned int*) smalloc( sizeof(unsigned int) * H->n,
-                               "setup_graph_coloring::premuted_row_col_inv" );
-        y_p = (real*) smalloc( sizeof(real) * H->n,
-                               "setup_graph_coloring::y_p" );
-        if ( (Allocate_Matrix( &H_p, H->n, H->m ) == FAILURE ) ||
-                (Allocate_Matrix( &H_full, H->n, 2 * H->m - H->n ) == FAILURE ) )
+    }
+    else if ( (*H_p)->m < H->m )
+    {
+        Deallocate_Matrix( *H_p );
+        if ( Allocate_Matrix( H_p, H->n, H->m ) == FAILURE )
         {
-            fprintf( stderr, "not enough memory for graph coloring. terminating.\n" );
+            fprintf( stderr, "[ERROR] not enough memory for graph coloring. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
         }
     }
 
-    compute_H_full( H );
+    compute_full_sparse_matrix( H, H_full );
 
-    graph_coloring( H_full, LOWER );
-    sort_colors( H_full->n, LOWER );
+    graph_coloring( control, (static_storage *) workspace, *H_full, LOWER );
+    sort_rows_by_colors( workspace, (*H_full)->n, LOWER );
 
-    memcpy( H_p->start, H->start, sizeof(int) * (H->n + 1) );
-    memcpy( H_p->j, H->j, sizeof(int) * (H->start[H->n]) );
-    memcpy( H_p->val, H->val, sizeof(real) * (H->start[H->n]) );
-    permute_matrix( H_p, LOWER );
-
-    return H_p;
+    memcpy( (*H_p)->start, H->start, sizeof(int) * (H->n + 1) );
+    memcpy( (*H_p)->j, H->j, sizeof(int) * (H->start[H->n]) );
+    memcpy( (*H_p)->val, H->val, sizeof(real) * (H->start[H->n]) );
+    permute_matrix( workspace, (*H_p), LOWER );
 }
 
 
@@ -2749,36 +2667,31 @@ sparse_matrix * setup_graph_coloring( sparse_matrix * const H )
  * triangular factors in iterative linear solvers
  *
  * Note: Newmann series arises from series expansion of the inverse of
- * the coefficient matrix in the triangular system */
-void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
-                  const real * const b, real * const x, const TRIANGULARITY tri, const
-                  unsigned int maxiter )
+ * the coefficient matrix in the triangular system
+ *
+ * workspace: storage container for workspace structures
+ * R:
+ * Dinv:
+ * b:
+ * x (output):
+ * tri:
+ * maxiter:
+ * */
+void jacobi_iter( const static_storage * const workspace,
+        const sparse_matrix * const R, const real * const Dinv,
+        const real * const b, real * const x, const TRIANGULARITY tri,
+        const unsigned int maxiter )
 {
     unsigned int i, k, si, ei, iter;
+    real *p1, *p2, *p3;
 
     si = 0;
     ei = 0;
     iter = 0;
+    p1 = workspace->rp;
+    p2 = workspace->rp2;
 
-#ifdef _OPENMP
-    #pragma omp single
-#endif
-    {
-        if ( Dinv_b == NULL )
-        {
-            Dinv_b = (real*) smalloc( sizeof(real) * R->n, "jacobi_iter::Dinv_b" );
-        }
-        if ( rp == NULL )
-        {
-            rp = (real*) smalloc( sizeof(real) * R->n, "jacobi_iter::rp" );
-        }
-        if ( rp2 == NULL )
-        {
-            rp2 = (real*) smalloc( sizeof(real) * R->n, "jacobi_iter::rp2" );
-        }
-    }
-
-    Vector_MakeZero( rp, R->n );
+    Vector_MakeZero( p1, R->n );
 
     /* precompute and cache, as invariant in loop below */
 #ifdef _OPENMP
@@ -2786,12 +2699,12 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
 #endif
     for ( i = 0; i < R->n; ++i )
     {
-        Dinv_b[i] = Dinv[i] * b[i];
+        workspace->Dinv_b[i] = Dinv[i] * b[i];
     }
 
     do
     {
-        // x_{k+1} = G*x_{k} + Dinv*b;
+        /* x_{k+1} = G*x_{k} + Dinv*b */
 #ifdef _OPENMP
         #pragma omp for schedule(guided)
 #endif
@@ -2809,31 +2722,26 @@ void jacobi_iter( const sparse_matrix * const R, const real * const Dinv,
                 ei = R->start[i + 1];
             }
 
-            rp2[i] = 0.;
+            p2[i] = 0.;
 
             for ( k = si; k < ei; ++k )
             {
-                rp2[i] += R->val[k] * rp[R->j[k]];
+                p2[i] += R->val[k] * p1[R->j[k]];
             }
 
-            rp2[i] *= -Dinv[i];
-            rp2[i] += Dinv_b[i];
+            p2[i] *= -Dinv[i];
+            p2[i] += workspace->Dinv_b[i];
         }
 
-#ifdef _OPENMP
-        #pragma omp single
-#endif
-        {
-            rp3 = rp;
-            rp = rp2;
-            rp2 = rp3;
-        }
+        p3 = p1;
+        p1 = p2;
+        p2 = p3;
 
         ++iter;
     }
     while ( iter < maxiter );
 
-    Vector_Copy( x, rp, R->n );
+    Vector_Copy( x, p1, R->n );
 }
 
 
@@ -2901,7 +2809,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-                    tri_solve_level_sched( workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                    tri_solve_level_sched( (static_storage *) workspace,
+                            workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
                     break;
                 case SAI_PC:
                     Sparse_MatVec_full( workspace->H_app_inv, y, x );
@@ -2924,15 +2833,17 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
 #ifdef _OPENMP
-                    #pragma omp single
+                    #pragma omp for schedule(static)
 #endif
-                {
-                    memcpy( y_p, y, sizeof(real) * workspace->H->n );
-                }
+                    for ( i = 0; i < workspace->H->n; ++i )
+                    {
+                        workspace->y_p[i] = y[i];
+                    }
 
-                permute_vector( y_p, workspace->H->n, FALSE, LOWER );
-                tri_solve_level_sched( workspace->L, y_p, x, workspace->L->n, LOWER, fresh_pre );
-                break;
+                    permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+                    tri_solve_level_sched( (static_storage *) workspace,
+                            workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+                    break;
                 default:
                     fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
@@ -2950,18 +2861,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-#ifdef _OPENMP
-                    #pragma omp single
-#endif
-                    {
-                        if ( Dinv_L == NULL )
-                        {
-                            Dinv_L = (real*) smalloc( sizeof(real) * workspace->L->n,
-                                                      "apply_preconditioner::Dinv_L" );
-                        }
-                    }
-
-                        /* construct D^{-1}_L */
+                    /* construct D^{-1}_L */
                     if ( fresh_pre == TRUE )
                     {
 #ifdef _OPENMP
@@ -2970,12 +2870,13 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                         for ( i = 0; i < workspace->L->n; ++i )
                         {
                             si = workspace->L->start[i + 1] - 1;
-                            Dinv_L[i] = 1.0 / workspace->L->val[si];
+                            workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
                         }
                     }
 
-                    jacobi_iter( workspace->L, Dinv_L, y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
-                break;
+                    jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+                            y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+                    break;
                 default:
                     fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
@@ -3027,7 +2928,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-                    tri_solve_level_sched( workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+                    tri_solve_level_sched( (static_storage *) workspace,
+                            workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
                     break;
                 default:
                     fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -3046,9 +2948,10 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-                tri_solve_level_sched( workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
-                permute_vector( x, workspace->H->n, TRUE, UPPER );
-                break;
+                    tri_solve_level_sched( (static_storage *) workspace,
+                            workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+                    permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
+                    break;
                 default:
                     fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
@@ -3066,32 +2969,22 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 case ICHOLT_PC:
                 case ILU_PAR_PC:
                 case ILUT_PAR_PC:
-#ifdef _OPENMP
-                #pragma omp single
-#endif
-                {
-                    if ( Dinv_U == NULL )
-                    {
-                        Dinv_U = (real*) smalloc( sizeof(real) * workspace->U->n,
-                                                  "apply_preconditioner::Dinv_U" );
-                    }
-                }
-
                     /* construct D^{-1}_U */
-                if ( fresh_pre == TRUE )
-                {
-#ifdef _OPENMP
-                    #pragma omp for schedule(static)
-#endif
-                    for ( i = 0; i < workspace->U->n; ++i )
+                    if ( fresh_pre == TRUE )
                     {
-                        si = workspace->U->start[i];
-                        Dinv_U[i] = 1. / workspace->U->val[si];
+#ifdef _OPENMP
+                        #pragma omp for schedule(static)
+#endif
+                        for ( i = 0; i < workspace->U->n; ++i )
+                        {
+                            si = workspace->U->start[i];
+                            workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
+                        }
                     }
-                }
 
-                jacobi_iter( workspace->U, Dinv_U, y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
-                break;
+                    jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
+                            y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+                    break;
                 default:
                     fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
@@ -3152,7 +3045,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         {
             /* calculate r0 */
             t_start = Get_Time( );
-            Sparse_MatVec( H, x, workspace->b_prm );
+            Sparse_MatVec( workspace, H, x, workspace->b_prm );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3182,7 +3075,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             {
                 /* matvec */
                 t_start = Get_Time( );
-                Sparse_MatVec( H, workspace->v[j], workspace->b_prc );
+                Sparse_MatVec( workspace, H, workspace->v[j], workspace->b_prc );
                 t_spmv += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
@@ -3300,27 +3193,19 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         }
     }
 
-#ifdef _OPENMP
     data->timing.cm_solver_orthog += t_ortho / control->num_threads;
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
     data->timing.cm_solver_spmv += t_spmv / control->num_threads;
     data->timing.cm_solver_tri_solve += t_ts / control->num_threads;
     data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
-#else
-    data->timing.cm_solver_orthog += t_ortho;
-    data->timing.cm_solver_pre_app += t_pa;
-    data->timing.cm_solver_spmv += t_spmv;
-    data->timing.cm_solver_tri_solve += t_ts;
-    data->timing.cm_solver_vector_ops += t_vops;
-#endif
 
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] GMRES convergence failed (%d outer iters)\n", g_itr );
-        return g_itr * control->cm_solver_restart + g_j;
+        return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
     }
 
-    return g_itr * control->cm_solver_restart + g_j + 1;
+    return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
 }
 
 
@@ -3368,7 +3253,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         {
             /* compute z = r0 */
             t_start = Get_Time( );
-            Sparse_MatVec( H, x, workspace->b_prm );
+            Sparse_MatVec( workspace, H, x, workspace->b_prm );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3409,7 +3294,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 
                 /* matvec */
                 t_start = Get_Time( );
-                Sparse_MatVec( H, z[j], workspace->b_prc );
+                Sparse_MatVec( workspace, H, z[j], workspace->b_prc );
                 t_spmv += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
@@ -3546,19 +3431,11 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         }
     }
 
-#ifdef _OPENMP
     data->timing.cm_solver_orthog += t_ortho / control->num_threads;
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
     data->timing.cm_solver_spmv += t_spmv / control->num_threads;
     data->timing.cm_solver_tri_solve += t_ts / control->num_threads;
     data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
-#else
-    data->timing.cm_solver_orthog += t_ortho;
-    data->timing.cm_solver_pre_app += t_pa;
-    data->timing.cm_solver_spmv += t_spmv;
-    data->timing.cm_solver_tri_solve += t_ts;
-    data->timing.cm_solver_vector_ops += t_vops;
-#endif
 
     if ( g_itr >= control->cm_solver_max_iters )
     {
@@ -3606,7 +3483,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        Sparse_MatVec( H, x, d );
+        Sparse_MatVec( workspace, H, x, d );
         t_spmv += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3627,7 +3504,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
         {
             t_start = Get_Time( );
-            Sparse_MatVec( H, p, d );
+            Sparse_MatVec( workspace, H, p, d );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3657,15 +3534,9 @@ int CG( const static_storage * const workspace, const control_params * const con
         g_itr = i;
     }
 
-#ifdef _OPENMP
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
     data->timing.cm_solver_spmv += t_spmv / control->num_threads;
     data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
-#else
-    data->timing.cm_solver_pre_app += t_pa;
-    data->timing.cm_solver_spmv += t_spmv;
-    data->timing.cm_solver_vector_ops += t_vops;
-#endif
 
     if ( g_itr >= control->cm_solver_max_iters )
     {
@@ -3708,7 +3579,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        Sparse_MatVec( H, x, workspace->q );
+        Sparse_MatVec( workspace, H, x, workspace->q );
         t_spmv += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3727,7 +3598,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
         for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / b_norm > tol; ++i )
         {
             t_start = Get_Time( );
-            Sparse_MatVec( H, workspace->d, workspace->q );
+            Sparse_MatVec( workspace, H, workspace->d, workspace->q );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3760,15 +3631,9 @@ int SDM( const static_storage * const workspace, const control_params * const co
         g_itr = i;
     }
 
-#ifdef _OPENMP
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
     data->timing.cm_solver_spmv += t_spmv / control->num_threads;
     data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
-#else
-    data->timing.cm_solver_pre_app += t_pa;
-    data->timing.cm_solver_spmv += t_spmv;
-    data->timing.cm_solver_vector_ops += t_vops;
-#endif
 
     if ( g_itr >= control->cm_solver_max_iters  )
     {
