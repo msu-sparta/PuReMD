@@ -308,7 +308,11 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
 
     for( i = left; i <= right ; ++i )
     {
-        list[i] = abs( A->val[i] );
+        list[i] = A->val[i];
+        if(list[i] < 0.0)
+        {
+            list[i] = -list[i];
+        }
     }
 
     turn = 0;
@@ -362,6 +366,11 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         }
     }
 
+    if(threshold < 1.000000)
+    {
+        threshold = 1.000001;
+    }
+
     sfree( list, "setup_sparse_approx_inverse::list" );
 
     /* fill sparsity pattern */
@@ -381,7 +390,6 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         }
     }
     (*A_spar_patt)->start[A->n] = size;
-
 
     compute_full_sparse_matrix( A, A_full );
     compute_full_sparse_matrix( *A_spar_patt, A_spar_patt_full );
