@@ -73,16 +73,18 @@ void Transpose_I( sparse_matrix * const );
 void tri_solve( const sparse_matrix * const, const real * const,
         real * const, const int, const TRIANGULARITY );
 
-void tri_solve_level_sched( const sparse_matrix * const,
+void tri_solve_level_sched( static_storage *,
+        const sparse_matrix * const,
         const real * const, real * const, const int,
         const TRIANGULARITY, int );
 
-void jacobi_iter( const sparse_matrix * const, const real * const,
+void jacobi_iter( const static_storage * const,
+        const sparse_matrix * const, const real * const,
         const real * const, real * const, const TRIANGULARITY,
         const unsigned int );
 
 void setup_graph_coloring( const control_params * const,
-        static_storage * const, const sparse_matrix * const,
+        const static_storage * const, const sparse_matrix * const,
         sparse_matrix **, sparse_matrix ** );
 
 int GMRES( const static_storage * const, const control_params * const,

@@ -501,27 +501,66 @@ void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
+    /* SpMV related */
+#ifdef _OPENMP
+    workspace->b_local = (real*) smalloc( control->num_threads * system->N_cm * sizeof(real),
+            "Init_Workspace::b_local" );
+#endif
+
+    /* level scheduling related */
+    workspace->levels_L = 1;
+    workspace->levels_U = 1;
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
+            control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        workspace->row_levels_L = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::row_levels_L" );
+        workspace->level_rows_L = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::level_rows_L" );
+        workspace->level_rows_cnt_L = (unsigned int*) smalloc( (system->N_cm + 1) * sizeof(unsigned int),
+                "Init_Workspace::level_rows_cnt_L" );
+        workspace->row_levels_U = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::row_levels_U" );
+        workspace->level_rows_U = (unsigned int*) smalloc( system->N_cm * sizeof(unsigned int),
+                "Init_Workspace::level_rows_U" );
+        workspace->level_rows_cnt_U = (unsigned int*) smalloc( (system->N_cm + 1) * sizeof(unsigned int),
+                "Init_Workspace::level_rows_cnt_U" );
+        workspace->top = (unsigned int*) smalloc( (system->N_cm + 1) * sizeof(unsigned int),
+                "Init_Workspace::top" );
+    }
+    else
+    {
+        workspace->row_levels_L = NULL;
+        workspace->level_rows_L = NULL;
+        workspace->level_rows_cnt_L = NULL;
+        workspace->row_levels_U = NULL;
+        workspace->level_rows_U = NULL;
+        workspace->level_rows_cnt_U = NULL;
+        workspace->top = NULL;
+    }
+
     /* graph coloring related */
+    workspace->recolor_cnt = 0;
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
     {
         workspace->color = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
-                                         "setup_graph_coloring::color" );
+                "Init_Workspace::color" );
         workspace->to_color = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
-                                            "setup_graph_coloring::to_color" );
+                "Init_Workspace::to_color" );
         workspace->conflict = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
-                                            "setup_graph_coloring::conflict" );
+                "setup_graph_coloring::conflict" );
         workspace->conflict_cnt = (unsigned int*) smalloc( sizeof(unsigned int) * (control->num_threads + 1),
-                                                "setup_graph_coloring::conflict_cnt" );
+                "Init_Workspace::conflict_cnt" );
         workspace->recolor = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
-                                           "setup_graph_coloring::recolor" );
+                "Init_Workspace::recolor" );
         workspace->color_top = (unsigned int*) smalloc( sizeof(unsigned int) * (system->N_cm + 1),
-                                             "setup_graph_coloring::color_top" );
+                "Init_Workspace::color_top" );
         workspace->permuted_row_col = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
-                           "setup_graph_coloring::premuted_row_col" );
+                "Init_Workspace::premuted_row_col" );
         workspace->permuted_row_col_inv = (unsigned int*) smalloc( sizeof(unsigned int) * system->N_cm,
-                               "setup_graph_coloring::premuted_row_col_inv" );
+                "Init_Workspace::premuted_row_col_inv" );
         workspace->y_p = (real*) smalloc( sizeof(real) * system->N_cm,
-                               "setup_graph_coloring::y_p" );
+                "Init_Workspace::y_p" );
         workspace->x_p = (real*) smalloc( sizeof(real) * system->N_cm,
                 "Init_Workspace::x_p" );
     }
@@ -531,14 +570,35 @@ void Init_Workspace( reax_system *system, control_params *control,
         workspace->to_color = NULL;
         workspace->conflict = NULL;
         workspace->conflict_cnt = NULL;
-        workspace->temp_ptr = NULL;
         workspace->recolor = NULL;
-        workspace->recolor_cnt = 0;
         workspace->color_top = NULL;
         workspace->permuted_row_col = NULL;
         workspace->permuted_row_col_inv = NULL;
         workspace->y_p = NULL;
         workspace->x_p = NULL;
+    }
+
+    /* Jacobi iteration related */
+    if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
+    {
+        workspace->Dinv_L = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::Dinv_L" );
+        workspace->Dinv_U = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::Dinv_U" );
+        workspace->Dinv_b = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::Dinv_b" );
+        workspace->rp = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::rp" );
+        workspace->rp2 = (real*) smalloc( sizeof(real) * system->N_cm,
+                "Init_Workspace::rp2" );
+    }
+    else
+    {
+        workspace->Dinv_L = NULL;
+        workspace->Dinv_U = NULL;
+        workspace->Dinv_b = NULL;
+        workspace->rp = NULL;
+        workspace->rp2 = NULL;
     }
 
     /* integrator storage */
@@ -993,7 +1053,7 @@ void Initialize( reax_system *system, control_params *control,
 #endif
 
 #ifdef _OPENMP
-    #pragma omp parallel default(shared)
+    #pragma omp parallel default(none) shared(control)
     {
         #pragma omp single
         control->num_threads = omp_get_num_threads( );
@@ -1211,6 +1271,24 @@ void Finalize_Workspace( reax_system *system, control_params *control,
             break;
     }
 
+    /* SpMV related */
+#ifdef _OPENMP
+    sfree( workspace->b_local, "Finalize_Workspace::b_local" );
+#endif
+
+    /* level scheduling related */
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
+            control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    {
+        sfree( workspace->row_levels_L, "Finalize_Workspace::row_levels_L" );
+        sfree( workspace->level_rows_L, "Finalize_Workspace::level_rows_L" );
+        sfree( workspace->level_rows_cnt_L, "Finalize_Workspace::level_rows_cnt_L" );
+        sfree( workspace->row_levels_U, "Finalize_Workspace::row_levels_U" );
+        sfree( workspace->level_rows_U, "Finalize_Workspace::level_rows_U" );
+        sfree( workspace->level_rows_cnt_U, "Finalize_Workspace::level_rows_cnt_U" );
+        sfree( workspace->top, "Finalize_Workspace::top" );
+    }
+
     /* graph coloring related */
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
     {
@@ -1224,6 +1302,16 @@ void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->permuted_row_col_inv, "Finalize_Workspace::workspace->permuted_row_col_inv" );
         sfree( workspace->y_p, "Finalize_Workspace::workspace->y_p" );
         sfree( workspace->x_p, "Finalize_Workspace::workspace->x_p" );
+    }
+
+    /* Jacobi iteration related */
+    if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
+    {
+        sfree( workspace->Dinv_L, "Finalize_Workspace::Dinv_L" );
+        sfree( workspace->Dinv_U, "Finalize_Workspace::Dinv_U" );
+        sfree( workspace->Dinv_b, "Finalize_Workspace::Dinv_b" );
+        sfree( workspace->rp, "Finalize_Workspace::rp" );
+        sfree( workspace->rp2, "Finalize_Workspace::rp2" );
     }
 
     /* integrator storage */

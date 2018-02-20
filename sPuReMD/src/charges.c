@@ -771,10 +771,6 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-#if defined(DEBUG)
-    fprintf( stderr, "H matrix sorted\n" );
-#endif
-
     switch ( control->cm_solver_pre_comp_type )
     {
         case NONE_PC:
@@ -791,17 +787,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case ICHOLT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "drop tolerances calculated\n" );
-#endif
-
             fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-
-#if defined(DEBUG)
-            fprintf( stderr, "fillin = %d\n", fillin );
-            fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                     fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
-#endif
 
             if ( workspace->L == NULL )
             {
@@ -838,10 +824,6 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
         case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
-
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "drop tolerances calculated\n" );
-#endif
 
             if ( workspace->L == NULL )
             {
@@ -919,11 +901,12 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
-
-#if defined(DEBUG)
-    fprintf( stderr, "H matrix sorted\n" );
-#endif
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+    }
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -941,17 +924,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case ICHOLT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "drop tolerances calculated\n" );
-#endif
-
             fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-
-#if defined(DEBUG)
-            fprintf( stderr, "fillin = %d\n", fillin );
-            fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                     fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
-#endif
 
             if ( workspace->L == NULL )
             {
@@ -989,10 +962,6 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "drop tolerances calculated\n" );
-#endif
-
             if ( workspace->L == NULL )
             {
                 /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
@@ -1038,7 +1007,12 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
     }
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+    }
 }
 
 
@@ -1071,12 +1045,13 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
-    Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
-
-#if defined(DEBUG)
-    fprintf( stderr, "H matrix sorted\n" );
-#endif
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+        Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+    }
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -1094,17 +1069,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case ICHOLT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "drop tolerances calculated\n" );
-#endif
-
             fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-
-#if defined(DEBUG)
-            fprintf( stderr, "fillin = %d\n", fillin );
-            fprintf( stderr, "allocated memory: L = U = %ldMB\n",
-                     fillin * (sizeof(real) + sizeof(unsigned int)) / (1024 * 1024) );
-#endif
 
             if ( workspace->L == NULL )
             {
@@ -1141,10 +1106,6 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "drop tolerances calculated\n" );
-#endif
-
             if ( workspace->L == NULL )
             {
                 /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
@@ -1190,8 +1151,13 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
     }
 
-    Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
-    Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+        Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+    }
 }
 
 
@@ -1315,10 +1281,6 @@ static void QEq( reax_system * const system, control_params * const control,
 
     data->timing.cm_solver_iters += iters;
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "linsolve-" );
-#endif
-
     Calculate_Charges_QEq( system, workspace );
 
 #if defined(DEBUG_FOCUS)
@@ -1395,10 +1357,6 @@ static void EE( reax_system * const system, control_params * const control,
 
     data->timing.cm_solver_iters += iters;
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "linsolve-" );
-#endif
-
     Calculate_Charges_EE( system, workspace );
 
     // if( data->step == control->nsteps )
@@ -1468,10 +1426,6 @@ static void ACKS2( reax_system * const system, control_params * const control,
     }
 
     data->timing.cm_solver_iters += iters;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "linsolve-" );
-#endif
 
     Calculate_Charges_EE( system, workspace );
 }

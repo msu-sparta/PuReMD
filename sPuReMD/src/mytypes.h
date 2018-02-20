@@ -977,13 +977,29 @@ typedef struct
     real *q;
     real *p;
 
+    /* SpMV related storage */
+#ifdef _OPENMP
+    real *b_local;
+#endif
+
+    /* Level scheduling related storage for applying, e.g. ICHOLT and ILU(T),
+     * preconditioners */
+    int levels_L;
+    int levels_U;
+    unsigned int *row_levels_L;
+    unsigned int *level_rows_L;
+    unsigned int *level_rows_cnt_L;
+    unsigned int *row_levels_U;
+    unsigned int *level_rows_U;
+    unsigned int *level_rows_cnt_U;
+    unsigned int *top;
+
     /* Graph coloring related storage for applying, e.g. ICHOLT and ILU(T),
      * preconditioners */
     unsigned int *color;
     unsigned int *to_color;
     unsigned int *conflict;
     unsigned int *conflict_cnt;
-    unsigned int *temp_ptr;
     unsigned int *recolor;
     unsigned int recolor_cnt;
     unsigned int *color_top;
@@ -991,6 +1007,14 @@ typedef struct
     unsigned int *permuted_row_col_inv;
     real *y_p;
     real *x_p;
+
+    /* Jacobi iteration related storage for applying, e.g. ICHOLT and ILU(T),
+     * preconditioners */
+    real *Dinv_L;
+    real *Dinv_U;
+    real *Dinv_b;
+    real *rp;
+    real *rp2;
 
     int num_H;
     int *hbond_index; // for hydrogen bonds
