@@ -175,7 +175,7 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
     {
         if ( Allocate_Matrix( A_full, A->n, 2 * A->m - A->n ) == FAILURE )
         {
-            fprintf( stderr, "not enough memory for full A. terminating.\n" );
+            fprintf( stderr, "[ERROR] not enough memory for full A. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
         }
     }
@@ -184,14 +184,14 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
         Deallocate_Matrix( *A_full );
         if ( Allocate_Matrix( A_full, A->n, 2 * A->m - A->n ) == FAILURE )
         {
-            fprintf( stderr, "not enough memory for full A. terminating.\n" );
+            fprintf( stderr, "[ERROR] not enough memory for full A. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
         }
     }
 
     if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
     {
-        fprintf( stderr, "not enough memory for full A. terminating.\n" );
+        fprintf( stderr, "[ERROR] not enough memory for full A. terminating.\n" );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -252,7 +252,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     {
         if ( Allocate_Matrix( A_spar_patt, A->n, A->m ) == FAILURE )
         {
-            fprintf( stderr, "[SAI] Not enough memory for preconditioning matrices. terminating.\n" );
+            fprintf( stderr, "[ERROR] Not enough memory for preconditioning matrices. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
         }
     }
@@ -261,7 +261,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         Deallocate_Matrix( *A_spar_patt );
         if ( Allocate_Matrix( A_spar_patt, A->n, A->m ) == FAILURE )
         {
-            fprintf( stderr, "[SAI] Not enough memory for preconditioning matrices. terminating.\n" );
+            fprintf( stderr, "[ERROR] Not enough memory for preconditioning matrices. terminating.\n" );
             exit( INSUFFICIENT_MEMORY );
         }
     }
@@ -366,12 +366,27 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     compute_full_sparse_matrix( A, A_full );
     compute_full_sparse_matrix( *A_spar_patt, A_spar_patt_full );
 
-    /* A_app_inv has the same sparsity pattern
-     * * as A_spar_patt_full (omit non-zero values) */
-    if ( Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m ) == FAILURE )
+    if ( *A_app_inv == NULL )
     {
-        fprintf( stderr, "not enough memory for approximate inverse matrix. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
+        /* A_app_inv has the same sparsity pattern
+         * * as A_spar_patt_full (omit non-zero values) */
+        if ( Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m ) == FAILURE )
+        {
+            fprintf( stderr, "[ERROR] Not enough memory for approximate inverse matrix. terminating.\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
+    }
+    else if ( ((*A_app_inv)->m) < (A->m) )
+    {
+        Deallocate_Matrix( *A_app_inv );
+
+        /* A_app_inv has the same sparsity pattern
+         * * as A_spar_patt_full (omit non-zero values) */
+        if ( Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m ) == FAILURE )
+        {
+            fprintf( stderr, "[ERROR] Not enough memory for approximate inverse matrix. terminating.\n" );
+            exit( INSUFFICIENT_MEMORY );
+        }
     }
 }
 

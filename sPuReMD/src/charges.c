@@ -743,7 +743,6 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 }
 
 
-
 static void Setup_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace,
@@ -794,14 +793,22 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
 
             }
-            else
+            else if ( workspace->L->m < fillin )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -812,13 +819,22 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -827,17 +843,28 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -848,13 +875,22 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -865,7 +901,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         default:
-            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
@@ -931,14 +967,22 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), system->N_cm, fillin + system->N_cm ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
 
             }
-            else
+            else if ( workspace->L->m < fillin + system->N_cm )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                if ( Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), system->N_cm, fillin + system->N_cm ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -949,13 +993,22 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -964,17 +1017,28 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -985,13 +1049,22 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -1002,7 +1075,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         default:
-            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
@@ -1076,13 +1149,22 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < fillin )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, fillin ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, fillin ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -1093,13 +1175,22 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -1108,17 +1199,27 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                /* TODO: safest storage estimate is ILU(0) (same as lower triangular portion of H), could improve later */
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -1129,13 +1230,22 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
                         Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
                 {
-                    fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
                     exit( INSUFFICIENT_MEMORY );
                 }
             }
-            else
+            else if ( workspace->L->m < Hptr->m )
             {
-                //TODO: reallocate
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                /* factors have sparsity pattern as H */
+                if ( Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m ) == FAILURE ||
+                        Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m ) == FAILURE )
+                {
+                    fprintf( stderr, "[ERROR] not enough memory for preconditioning matrices. terminating.\n" );
+                    exit( INSUFFICIENT_MEMORY );
+                }
             }
             break;
 
@@ -1146,7 +1256,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         default:
-            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
@@ -1212,8 +1322,6 @@ static void Calculate_Charges_EE( const reax_system * const system,
 
 
 /* Main driver method for QEq kernel
- *
- * Rough outline:
  *  1) init / setup routines for preconditioning of linear solver
  *  2) compute preconditioner
  *  3) extrapolate charges
@@ -1297,8 +1405,6 @@ static void QEq( reax_system * const system, control_params * const control,
 
 
 /* Main driver method for EE kernel
- *
- * Rough outline:
  *  1) init / setup routines for preconditioning of linear solver
  *  2) compute preconditioner
  *  3) extrapolate charges
@@ -1365,8 +1471,6 @@ static void EE( reax_system * const system, control_params * const control,
 
 
 /* Main driver method for ACKS2 kernel
- *
- * Rough outline:
  *  1) init / setup routines for preconditioning of linear solver
  *  2) compute preconditioner
  *  3) extrapolate charges
@@ -1390,6 +1494,21 @@ static void ACKS2( reax_system * const system, control_params * const control,
 //   Print_Linear_System( system, control, workspace, data->step );
 
     Extrapolate_Charges_EE( system, control, data, workspace );
+
+#if defined(DEBUG_FOCUS)
+#define SIZE (200)
+    char fname[SIZE];
+    FILE * fp;
+
+    if ( data->step % 10 == 0 )
+    {
+        snprintf( fname, SIZE + 11, "s_%d_%s.out", data->step, control->sim_name );
+        fp = fopen( fname, "w" );
+        Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
+        fclose( fp );
+    }
+#undef SIZE
+#endif
 
     switch ( control->cm_solver_type )
     {
@@ -1440,18 +1559,23 @@ void Compute_Charges( reax_system * const system, control_params * const control
     char fname[SIZE];
     FILE * fp;
 
-    if ( data->step >= 100 )
+    if ( data->step % 10 == 0 )
     {
-        snprintf( fname, SIZE + 11, "s_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE + 11, "H_%d_%s.out", data->step, control->sim_name );
+        Print_Sparse_Matrix2( workspace->H, fname, NULL );
+//        Print_Sparse_Matrix_Binary( workspace->H, fname );
+
+        snprintf( fname, SIZE + 11, "b_s_%d_%s.out", data->step, control->sim_name );
         fp = fopen( fname, "w" );
-        Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
+        Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
         fclose( fp );
 
-        snprintf( fname, SIZE + 11, "t_%d_%s.out", data->step, control->sim_name );
-        fp = fopen( fname, "w" );
-        Vector_Print( fp, NULL, workspace->t[0], system->N_cm );
-        fclose( fp );
+//        snprintf( fname, SIZE + 11, "b_t_%d_%s.out", data->step, control->sim_name );
+//        fp = fopen( fname, "w" );
+//        Vector_Print( fp, NULL, workspace->b_t, system->N_cm );
+//        fclose( fp );
     }
+#undef SIZE
 #endif
 
     switch ( control->charge_method )
@@ -1473,24 +1597,4 @@ void Compute_Charges( reax_system * const system, control_params * const control
         exit( INVALID_INPUT );
         break;
     }
-
-#if defined(DEBUG_FOCUS)
-    if ( data->step >= 100 )
-    {
-        snprintf( fname, SIZE + 11, "H_%d_%s.out", data->step, control->sim_name );
-        Print_Sparse_Matrix2( workspace->H, fname, NULL );
-//        Print_Sparse_Matrix_Binary( workspace->H, fname );
-
-        snprintf( fname, SIZE + 11, "b_s_%d_%s.out", data->step, control->sim_name );
-        fp = fopen( fname, "w" );
-        Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
-        fclose( fp );
-
-        snprintf( fname, SIZE + 11, "b_t_%d_%s.out", data->step, control->sim_name );
-        fp = fopen( fname, "w" );
-        Vector_Print( fp, NULL, workspace->b_t, system->N_cm );
-        fclose( fp );
-    }
-#undef SIZE
-#endif
 }
