@@ -56,11 +56,7 @@ static sparse_matrix * create_test_mat( void )
     unsigned int i, n;
     sparse_matrix *H_test;
 
-    if ( Allocate_Matrix( &H_test, 3, 6 ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for test matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &H_test, 3, 6 );
 
     //3x3, SPD, store lower half
     i = 0;
@@ -173,27 +169,15 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
 
     if ( *A_full == NULL )
     {
-        if ( Allocate_Matrix( A_full, A->n, 2 * A->m - A->n ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] not enough memory for full A. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( A_full, A->n, 2 * A->m - A->n );
     }
     else if ( (*A_full)->m < 2 * A->m - A->n )
     {
         Deallocate_Matrix( *A_full );
-        if ( Allocate_Matrix( A_full, A->n, 2 * A->m - A->n ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] not enough memory for full A. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( A_full, A->n, 2 * A->m - A->n );
     }
 
-    if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "[ERROR] not enough memory for full A. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &A_t, A->n, A->m );
 
     /* Set up the sparse matrix data structure for A. */
     Transpose( A, A_t );
@@ -250,20 +234,12 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
 
     if ( *A_spar_patt == NULL )
     {
-        if ( Allocate_Matrix( A_spar_patt, A->n, A->m ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] Not enough memory for preconditioning matrices. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( A_spar_patt, A->n, A->m );
     }
     else if ( ((*A_spar_patt)->m) < (A->m) )
     {
         Deallocate_Matrix( *A_spar_patt );
-        if ( Allocate_Matrix( A_spar_patt, A->n, A->m ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] Not enough memory for preconditioning matrices. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( A_spar_patt, A->n, A->m );
     }
 
 
@@ -370,11 +346,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     {
         /* A_app_inv has the same sparsity pattern
          * * as A_spar_patt_full (omit non-zero values) */
-        if ( Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] Not enough memory for approximate inverse matrix. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
     }
     else if ( ((*A_app_inv)->m) < (A->m) )
     {
@@ -382,11 +354,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
 
         /* A_app_inv has the same sparsity pattern
          * * as A_spar_patt_full (omit non-zero values) */
-        if ( Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] Not enough memory for approximate inverse matrix. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
     }
 }
 
@@ -617,11 +585,7 @@ real SuperLU_Factorize( const sparse_matrix * const A,
                                     "SuperLU_Factorize::Ltop" );
     Utop = (unsigned int*) smalloc( (A->n + 1) * sizeof(unsigned int),
                                     "SuperLU_Factorize::Utop" );
-    if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for preconditioning matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &A_t, A->n, A->m );
 
     /* Set up the sparse matrix data structure for A. */
     Transpose( A, A_t );
@@ -1017,11 +981,7 @@ real ICHOL_PAR( const sparse_matrix * const A, const unsigned int sweeps,
     D = (real*) smalloc( A->n * sizeof(real), "ICHOL_PAR::D" );
     D_inv = (real*) smalloc( A->n * sizeof(real), "ICHOL_PAR::D_inv" );
     Utop = (int*) smalloc( (A->n + 1) * sizeof(int), "ICHOL_PAR::Utop" );
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for ICHOL_PAR preconditioning matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &DAD, A->n, A->m );
 
 #ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
@@ -1194,11 +1154,7 @@ real ILU_PAR( const sparse_matrix * const A, const unsigned int sweeps,
 
     D = (real*) smalloc( A->n * sizeof(real), "ILU_PAR::D" );
     D_inv = (real*) smalloc( A->n * sizeof(real), "ILU_PAR::D_inv" );
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "[ILU_PAR] Not enough memory for preconditioning matrices. Terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &DAD, A->n, A->m );
 
 #ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
@@ -1407,13 +1363,9 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
     start = Get_Time( );
 
-    if ( Allocate_Matrix( &DAD, A->n, A->m ) == FAILURE ||
-            Allocate_Matrix( &L_temp, A->n, A->m ) == FAILURE ||
-            Allocate_Matrix( &U_temp, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for ILUT_PAR preconditioning matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &DAD, A->n, A->m );
+    Allocate_Matrix( &L_temp, A->n, A->m );
+    Allocate_Matrix( &U_temp, A->n, A->m );
 
     D = (real*) smalloc( A->n * sizeof(real), "ILUT_PAR::D" );
     D_inv = (real*) smalloc( A->n * sizeof(real), "ILUT_PAR::D_inv" );
@@ -1976,11 +1928,7 @@ void Transpose_I( sparse_matrix * const A )
 {
     sparse_matrix * A_t;
 
-    if ( Allocate_Matrix( &A_t, A->n, A->m ) == FAILURE )
-    {
-        fprintf( stderr, "not enough memory for transposing matrices. terminating.\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &A_t, A->n, A->m );
 
     Transpose( A, A_t );
 
@@ -2505,11 +2453,7 @@ void permute_matrix( const static_storage * const workspace,
     int i, pj, nr, nc;
     sparse_matrix *LUtemp;
 
-    if ( Allocate_Matrix( &LUtemp, LU->n, LU->m ) == FAILURE )
-    {
-        fprintf( stderr, "Not enough space for graph coloring (factor permutation). Terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &LUtemp, LU->n, LU->m );
 
     /* count nonzeros in each row of permuted factor (re-use color_top for counting) */
     memset( workspace->color_top, 0, sizeof(unsigned int) * (LU->n + 1) );
@@ -2644,20 +2588,12 @@ void setup_graph_coloring( const control_params * const control,
 {
     if ( *H_p == NULL )
     {
-        if ( Allocate_Matrix( H_p, H->n, H->m ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] not enough memory for graph coloring. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( H_p, H->n, H->m );
     }
     else if ( (*H_p)->m < H->m )
     {
         Deallocate_Matrix( *H_p );
-        if ( Allocate_Matrix( H_p, H->n, H->m ) == FAILURE )
-        {
-            fprintf( stderr, "[ERROR] not enough memory for graph coloring. terminating.\n" );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        Allocate_Matrix( H_p, H->n, H->m );
     }
 
     compute_full_sparse_matrix( H, H_full );

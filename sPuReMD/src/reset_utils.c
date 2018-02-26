@@ -36,7 +36,7 @@ void Reset_Atoms( reax_system* system )
 }
 
 
-void Reset_Pressures( simulation_data *data )
+static void Reset_Pressures( simulation_data *data )
 {
     rtensor_MakeZero( data->flex_bar.P );
     data->iso_bar.P = 0.0;
@@ -115,7 +115,7 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
 
 
 void Reset_Neighbor_Lists( reax_system *system, control_params *control,
-                           static_storage *workspace, reax_list **lists )
+        static_storage *workspace, reax_list **lists )
 {
     int i, tmp;
     reax_list *bonds;
@@ -159,10 +159,6 @@ void Reset( reax_system *system, control_params *control,
     Reset_Workspace( system, workspace );
 
     Reset_Neighbor_Lists( system, control, workspace, lists );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "reset - ");
-#endif
 }
 
 

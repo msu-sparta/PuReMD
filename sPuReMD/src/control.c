@@ -19,14 +19,15 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "control.h"
+
 #include <ctype.h>
 
-#include "control.h"
 #include "traj.h"
 #include "tool_box.h"
 
 
-char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
+void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         output_controls *out_control )
 {
     char *s, **tmp;
@@ -599,6 +600,4 @@ char Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     fprintf(stderr, "control file read\n" );
 #endif
-
-    return SUCCESS;
 }

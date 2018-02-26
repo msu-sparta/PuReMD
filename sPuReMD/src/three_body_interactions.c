@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "three_body_interactions.h"
+
 #include "bond_orders.h"
 #include "list.h"
 #include "lookup.h"

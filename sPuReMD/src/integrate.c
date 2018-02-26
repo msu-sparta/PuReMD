@@ -92,7 +92,6 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
 }
 
 
-
 void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control, interaction_function *interaction_functions )
@@ -204,7 +203,6 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
 }
 
 
-
 /* uses Berendsen-type coupling for both T and P.
    All box dimensions are scaled by the same amount,
    there is no change in the angles between axes. */
@@ -220,6 +218,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = (steps % control->reneighbor == 0);
+
 #if defined(DEBUG_FOCUS)
     //fprintf( out_control->prs,
     //         "tau_t: %g  tau_p: %g  dt/tau_t: %g  dt/tau_p: %g\n",
@@ -291,9 +290,13 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     /* temperature scaler */
     lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
+    {
         lambda = MIN_dT;
+    }
     else if (lambda > MAX_dT )
+    {
         lambda = MAX_dT;
+    }
     lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
@@ -446,13 +449,10 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
 /************************************************/
 
 #ifdef ANISOTROPIC
-
-void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
-                                     control_params* control,
-                                     simulation_data *data,
-                                     static_storage *workspace,
-                                     reax_list **lists,
-                                     output_controls *out_control )
+void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
+        control_params* control, simulation_data *data,
+        static_storage *workspace, reax_list **lists,
+        output_controls *out_control,
         interaction_function *interaction_functions )
 {
     int i;
@@ -522,7 +522,6 @@ void Velocity_Verlet_Nose_Hoover_NVT(reax_system* system,
 }
 
 
-
 void Velocity_Verlet_Isotropic_NPT( reax_system* system,
         control_params* control, simulation_data *data,
         static_storage *workspace, reax_list **lists,
@@ -585,7 +584,6 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     //Update_Box_Isotropic( EXP( 3.0 * iso_bar->eps ), &(system->box) );
     Update_Box_Isotropic( &(system->box), EXP( 3.0 * iso_bar->eps ) );
 
-
     // Calculate new forces, f(t + dt)
     Reset( system, control, data, workspace );
     fprintf(out_control->log, "reset-");
@@ -603,7 +601,6 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
             out_control, interaction_functions );
     fprintf(out_control->log, "forces\n");
     fflush( out_control->log );
-
 
     // Compute iteration constants for each atom's velocity and for P_internal
     // Compute kinetic energy for initial velocities of the iteration
@@ -624,7 +621,6 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
                   rvec_Dot( system->atoms[i].v, system->atoms[i].v ) );
     }
 
-
     // Compute initial p_int
     inv_3V = 1.0 / (3.0 * system->box.volume);
     P_int = inv_3V * ( 2.0 * E_kin + P_int_const );
@@ -640,7 +636,6 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
         v_xi_old = v_xi_new;
         v_eps_old = v_eps_new;
 
-
         for ( i = 0; i < system->N; ++i )
         {
             coef_v = 1.0 / (1.0 + 0.5 * dt * exp_deps *
@@ -655,12 +650,10 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
         v_eps_new = coef_v_eps * ( iso_bar->v_eps +
                                    0.5 * dt * ( iso_bar->a_eps + a_eps_new ) );
 
-
         G_xi_new = control->Tau_T * ( 2.0 * E_kin +
                                       SQR( v_eps_old ) / control->Tau_P -
                                       (data->N_f + 1) * K_B * control->T );
         v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
-
 
         E_kin = 0;
         for ( i = 0; i < system->N; ++i )
@@ -669,13 +662,11 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
 
         P_int = inv_3V * ( 2.0 * E_kin + P_int_const );
 
-
         fprintf( out_control->log,
                  "itr %d E_kin: %8.3f veps_n:%8.3f veps_o:%8.3f vxi_n:%8.3f vxi_o: %8.3f\n",
                  itr, E_kin, v_eps_new, v_eps_old, v_xi_new, v_xi_old );
     }
     while ( FABS(v_eps_new - v_eps_old) + FABS(v_xi_new - v_xi_old) > 2e-3 );
-
 
     therm->v_xi_old = therm->v_xi;
     therm->v_xi = v_xi_new;
@@ -696,6 +687,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
 
 #endif
 
+
 /* uses Berendsen-type coupling for both T and P.
    All box dimensions are scaled by the same amount,
    there is no change in the angles between axes. */
@@ -709,7 +701,6 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     real inv_m, dt, lambda;
     rvec dx;
     reax_atom *atom;
-
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d\n", data->step );
@@ -764,9 +755,13 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     Compute_Kinetic_Energy( system, data );
     lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
+    {
         lambda = MIN_dT;
+    }
     else if (lambda > MAX_dT )
+    {
         lambda = MAX_dT;
+    }
     lambda = SQRT( lambda );
 
     fprintf (stderr, "step:%d lambda -> %f \n", data->step, lambda);

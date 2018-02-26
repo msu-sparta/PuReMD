@@ -25,19 +25,17 @@
 #include "mytypes.h"
 
 
+int Shift( int, int, int, grid* );
+
 void Setup_Grid( reax_system* );
 
 void Update_Grid( reax_system* );
 
-void Finalize_Grid( reax_system* );
-
-int  Shift( int, int, int, grid* );
-
-void Cluster_Atoms( reax_system *, static_storage *, control_params * );
-
 void Bin_Atoms( reax_system*, static_storage* );
 
-void Reset_Marks( grid*, ivec*, int );
+void Finalize_Grid( reax_system* );
+
+void Cluster_Atoms( reax_system *, static_storage *, control_params * );
 
 
 #endif

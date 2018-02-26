@@ -35,7 +35,7 @@
 #include "vector.h"
 
 
-void Generate_Initial_Velocities( reax_system *system, real T )
+static void Generate_Initial_Velocities( reax_system *system, real T )
 {
     int i;
     real scale, norm;
@@ -73,7 +73,7 @@ void Generate_Initial_Velocities( reax_system *system, real T )
 }
 
 
-void Init_System( reax_system *system, control_params *control,
+static void Init_System( reax_system *system, control_params *control,
         simulation_data *data )
 {
     int i;
@@ -128,7 +128,7 @@ void Init_System( reax_system *system, control_params *control,
 }
 
 
-void Init_Simulation_Data( reax_system *system, control_params *control,
+static void Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
         evolve_function *Evolve )
 {
@@ -230,7 +230,7 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
 
 
 /* Initialize Taper params */
-void Init_Taper( control_params *control )
+static void Init_Taper( control_params *control )
 {
     real d1, d7;
     real swa, swa2, swa3;
@@ -273,7 +273,7 @@ void Init_Taper( control_params *control )
 }
 
 
-void Init_Workspace( reax_system *system, control_params *control,
+static void Init_Workspace( reax_system *system, control_params *control,
         static_storage *workspace )
 {
     int i;
@@ -682,7 +682,7 @@ void Init_Workspace( reax_system *system, control_params *control,
 }
 
 
-void Init_Lists( reax_system *system, control_params *control,
+static void Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
@@ -728,20 +728,12 @@ void Init_Lists( reax_system *system, control_params *control,
             break;
     }
 
-    if ( Allocate_Matrix( &(workspace->H), system->N_cm, max_nnz ) == FAILURE )
-    {
-        fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &(workspace->H), system->N_cm, max_nnz );
     /* TODO: better estimate for H_sp?
      *   If so, need to refactor Estimate_Storage_Sizes
      *   to use various cut-off distances as parameters
      *   (non-bonded, hydrogen, 3body, etc.) */
-    if ( Allocate_Matrix( &(workspace->H_sp), system->N_cm, max_nnz ) == FAILURE )
-    {
-        fprintf( stderr, "Not enough space for init matrices. Terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    Allocate_Matrix( &(workspace->H_sp), system->N_cm, max_nnz );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - Htop: %d\n", Htop );
@@ -814,7 +806,7 @@ void Init_Lists( reax_system *system, control_params *control,
 }
 
 
-void Init_Out_Controls( reax_system *system, control_params *control,
+static void Init_Out_Controls( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
 #define TEMP_SIZE (1000)
@@ -1105,7 +1097,7 @@ void Initialize( reax_system *system, control_params *control,
 }
 
 
-void Finalize_System( reax_system *system, control_params *control,
+static void Finalize_System( reax_system *system, control_params *control,
         simulation_data *data )
 {
     int i, j, k;
@@ -1147,13 +1139,13 @@ void Finalize_System( reax_system *system, control_params *control,
 }
 
 
-void Finalize_Simulation_Data( reax_system *system, control_params *control,
+static void Finalize_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control )
 {
 }
 
 
-void Finalize_Workspace( reax_system *system, control_params *control,
+static void Finalize_Workspace( reax_system *system, control_params *control,
         static_storage *workspace )
 {
     int i;
@@ -1369,7 +1361,7 @@ void Finalize_Workspace( reax_system *system, control_params *control,
 }
 
 
-void Finalize_Lists( control_params *control, reax_list **lists )
+static void Finalize_Lists( control_params *control, reax_list **lists )
 {
     Delete_List( TYP_FAR_NEIGHBOR, &(*lists)[FAR_NBRS] );
     if ( control->hb_cut > 0.0 )
@@ -1386,7 +1378,7 @@ void Finalize_Lists( control_params *control, reax_list **lists )
 }
 
 
-void Finalize_Out_Controls( reax_system *system, control_params *control,
+static void Finalize_Out_Controls( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
     /* close trajectory file */
@@ -1523,7 +1515,6 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
     }
 #endif
 
-
 #ifdef TEST_FORCES
     /* close bond orders file */
     if ( out_control->fbo )
@@ -1594,6 +1585,9 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
 }
 
 
+/* Deallocate top-level data structures, close file handles, etc.
+ *
+ */
 void Finalize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control, const int output_enabled )

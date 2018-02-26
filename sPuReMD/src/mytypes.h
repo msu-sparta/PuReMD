@@ -27,14 +27,14 @@
   #include "config.h"
 #endif
 
-#include "math.h"
-#include "random.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "sys/time.h"
-#include "time.h"
-#include "zlib.h"
+#include <math.h>
+#include <random.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
+#include <time.h>
+#include <zlib.h>
 
 #ifdef _OPENMP
   #include <omp.h>

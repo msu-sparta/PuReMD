@@ -20,17 +20,17 @@
   ----------------------------------------------------------------------*/
 
 #include "four_body_interactions.h"
+
 #include "bond_orders.h"
 #include "box.h"
 #include "list.h"
 #include "lookup.h"
 #include "vector.h"
-#include "math.h"
 
 #define MIN_SINE 1e-10
 
 
-real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
+static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
         rvec dvec_kl, real r_kl, rvec dvec_li, real r_li,
         three_body_interaction_data *p_ijk,
         three_body_interaction_data *p_jkl,
@@ -118,10 +118,22 @@ real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
        -p_jkl->dcos_dk[1]/sin_jkl,
        -p_jkl->dcos_dk[2]/sin_jkl );*/
 
-    if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE ) sin_ijk = MIN_SINE;
-    else if ( sin_ijk <= 0 && sin_ijk >= -MIN_SINE ) sin_ijk = -MIN_SINE;
-    if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE ) sin_jkl = MIN_SINE;
-    else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE ) sin_jkl = -MIN_SINE;
+    if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE )
+    {
+        sin_ijk = MIN_SINE;
+    }
+    else if ( sin_ijk <= 0 && sin_ijk >= -MIN_SINE )
+    {
+        sin_ijk = -MIN_SINE;
+    }
+    if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE )
+    {
+        sin_jkl = MIN_SINE;
+    }
+    else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE )
+    {
+        sin_jkl = -MIN_SINE;
+    }
 
     // dcos_omega_di
     rvec_ScaledSum( dcos_omega_di, (htra - arg * hnra) / r_ij, dvec_ij, -1., dvec_li );

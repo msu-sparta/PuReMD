@@ -24,6 +24,7 @@
 
 #include "mytypes.h"
 
-char Read_Control_File( FILE*, reax_system*, control_params*, output_controls* );
+
+void Read_Control_File( FILE*, reax_system*, control_params*, output_controls* );
 
 #endif

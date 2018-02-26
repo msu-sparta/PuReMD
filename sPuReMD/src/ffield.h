@@ -23,6 +23,9 @@
 #define __FFIELD_H_
 
 #include "mytypes.h"
-char Read_Force_Field( FILE*, reax_interaction* );
+
+
+void Read_Force_Field( FILE*, reax_interaction* );
+
 
 #endif

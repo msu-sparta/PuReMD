@@ -24,16 +24,17 @@
 
 #include "mytypes.h"
 
-void Setup_Box( real, real, real, real, real, real, simulation_box* );
-
-/* Initializes box from box rtensor */
-void Update_Box(rtensor, simulation_box* /*, int*/);
-void Update_Box_Isotropic(simulation_box*, real /*, int*/);
-void Update_Box_SemiIsotropic( simulation_box*, rvec /*, int*/ );
 
 /* Computes all the transformations,
    metric and other quantities from box rtensor */
-void Make_Consistent(simulation_box*/*, int*/ );
+void Make_Consistent( simulation_box* );
+
+void Setup_Box( real, real, real, real, real, real, simulation_box* );
+
+/* Initializes box from box rtensor */
+void Update_Box( rtensor, simulation_box* );
+void Update_Box_Isotropic( simulation_box*, real );
+void Update_Box_SemiIsotropic( simulation_box*, rvec );
 
 int Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
 void Get_NonPeriodic_Far_Neighbors( rvec, rvec, simulation_box*,

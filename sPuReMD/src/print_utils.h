@@ -24,9 +24,6 @@
 
 #include "mytypes.h"
 
-typedef void (*print_interaction)(reax_system*, control_params*, simulation_data*,
-                                  static_storage*, reax_list**, output_controls*);
-print_interaction Print_Interactions[NO_OF_INTERACTIONS];
 
 char *Get_Element( reax_system*, int );
 
@@ -60,28 +57,39 @@ void Print_Sparse_Matrix2( sparse_matrix*, char*, char* );
 void Print_Sparse_Matrix_Binary( sparse_matrix*, char* );
 
 void Print_Bonds( reax_system*, reax_list*, char* );
+
 void Print_Bond_List2( reax_system*, reax_list*, char* );
 
 #ifdef TEST_FORCES
 void Dummy_Printer( reax_system*, control_params*, simulation_data*,
                     static_storage*, reax_list**, output_controls* );
+
 void Print_Bond_Forces( reax_system*, control_params*, simulation_data*,
                         static_storage*, reax_list**, output_controls* );
+
 void Print_LonePair_Forces( reax_system*, control_params*, simulation_data*,
                             static_storage*, reax_list**, output_controls* );
+
 void Print_OverUnderCoor_Forces(reax_system*, control_params*, simulation_data*,
                                 static_storage*, reax_list**, output_controls*);
+
 void Print_Three_Body_Forces( reax_system*, control_params*, simulation_data*,
                               static_storage*, reax_list**, output_controls* );
+
 void Print_Hydrogen_Bond_Forces(reax_system*, control_params*, simulation_data*,
                                 static_storage*, reax_list**, output_controls*);
+
 void Print_Four_Body_Forces( reax_system*, control_params*, simulation_data*,
                              static_storage*, reax_list**, output_controls* );
+
 void Print_vdW_Coulomb_Forces( reax_system*, control_params*, simulation_data*,
                                static_storage*, reax_list**, output_controls* );
+
 void Compare_Total_Forces( reax_system*, control_params*, simulation_data*,
                            static_storage*, reax_list**, output_controls* );
+
 void Init_Force_Test_Functions( );
 #endif
+
 
 #endif

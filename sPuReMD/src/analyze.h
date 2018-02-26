@@ -24,6 +24,7 @@
 
 #include "mytypes.h"
 
+
 void Analysis( reax_system*, control_params*, simulation_data*,
                static_storage*, reax_list**, output_controls* );
 
@@ -49,5 +50,6 @@ void Analysis( reax_system*, control_params*, simulation_data*,
 //void Calculate_Density_3DMesh( reax_system*, simulation_data*, FILE* );
 
 //void Calculate_Density_Slice( reax_system*, simulation_data*, FILE* );
+
 
 #endif

@@ -20,6 +20,7 @@
   ----------------------------------------------------------------------*/
 
 #include "bond_orders.h"
+
 #include "list.h"
 #include "lookup.h"
 #include "print_utils.h"
@@ -671,7 +672,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
 /* Locate j on i's list.
    This function assumes that j is there for sure!
    And this is the case given our method of neighbor generation*/
-int Locate_Symmetric_Bond( reax_list *bonds, int i, int j )
+static int Locate_Symmetric_Bond( reax_list *bonds, int i, int j )
 {
     int start = Start_Index(i, bonds);
     int end = End_Index(i, bonds);
@@ -722,7 +723,7 @@ static inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data 
 }
 
 
-int compare_bonds( const void *p1, const void *p2 )
+static int compare_bonds( const void *p1, const void *p2 )
 {
     return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
 }

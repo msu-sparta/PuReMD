@@ -506,7 +506,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
 }
 
 
-int fn_qsort_intcmp( const void *a, const void *b )
+static int fn_qsort_intcmp( const void *a, const void *b )
 {
     return ( *(int *)a - * (int *)b);
 }
@@ -743,7 +743,6 @@ void Output_Results( reax_system *system, control_params *control,
         exit( NUMERIC_BREAKDOWN );
     }
 }
-
 
 
 void Print_Linear_System( reax_system *system, control_params *control,

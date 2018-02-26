@@ -24,13 +24,11 @@
 
 #include "mytypes.h"
 
+
 // CUSTOM_BOXGEO: BOXGEO box_x box_y box_z  angle1 angle2 angle3
 #define CUSTOM_BOXGEO_FORMAT " %s %lf %lf %lf %lf %lf %lf"
 // CUSTOM ATOM: serial element name x y z
 #define CUSTOM_ATOM_FORMAT " %d %s %s %lf %lf %lf"
-
-char Read_Geo( const char * const, reax_system*, control_params*,
-        simulation_data*, static_storage* );
 
 /* PDB format :
 http://www.rcsb.org/pdb/file_formats/pdb/pdbguide2.2/guide2.2_frame.html
@@ -117,13 +115,18 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 
 #define BGF_CRYSTX_FORMAT "%8s%11s%11s%11s%11s%11s%11s"
 
-char Read_PDB( const char * const, reax_system*, control_params*,
+
+void Read_Geo( const char * const, reax_system*, control_params*,
         simulation_data*, static_storage* );
 
-char Read_BGF( const char * const, reax_system*, control_params*,
+void Read_PDB( const char * const, reax_system*, control_params*,
         simulation_data*, static_storage* );
 
-char Write_PDB( reax_system*, reax_list*, simulation_data*,
+void Read_BGF( const char * const, reax_system*, control_params*,
+        simulation_data*, static_storage* );
+
+void Write_PDB( reax_system*, reax_list*, simulation_data*,
         control_params*, static_storage*, output_controls* );
+
 
 #endif

@@ -27,8 +27,7 @@
 #include "vector.h"
 
 
-/********************* geo format routines ******************/
-void Count_Geo_Atoms( FILE *geo, reax_system *system )
+static void Count_Geo_Atoms( FILE *geo, reax_system *system )
 {
     int i, serial;
     rvec x;
@@ -45,7 +44,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
         Fit_to_Periodic_Box( &(system->box), &x );
     }
 
-    fseek( geo, 0, SEEK_SET ); // set the pointer to the beginning of the file
+    fseek( geo, 0, SEEK_SET );
     fgets( line, MAX_LINE, geo );
     fgets( line, MAX_LINE, geo );
 
@@ -55,75 +54,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
-        simulation_data *data, static_storage *workspace )
-{
-
-    FILE *geo;
-    char descriptor[9];
-    int i, serial, top;
-    real box_x, box_y, box_z, alpha, beta, gamma;
-    rvec x;
-    char element[3], name[9];
-    reax_atom *atom;
-
-    /* open the geometry file */
-    if ( (geo = fopen(geo_file, "r")) == NULL )
-    {
-        fprintf( stderr, "Error opening the geo file! terminating...\n" );
-        exit( FILE_NOT_FOUND );
-    }
-
-    /* read box information */
-    fscanf( geo, CUSTOM_BOXGEO_FORMAT,
-            descriptor, &box_x, &box_y, &box_z, &alpha, &beta, &gamma );
-    /* initialize the box */
-    Setup_Box( box_x, box_y, box_z, alpha, beta, gamma, &(system->box) );
-
-    /* count my atoms & allocate storage */
-    Count_Geo_Atoms( geo, system );
-    if ( PreAllocate_Space( system, control, workspace ) == FAILURE )
-    {
-        fprintf( stderr, "PreAllocate_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-    /* read in my atom info */
-    top = 0;
-    for ( i = 0; i < system->N; ++i )
-    {
-        fscanf( geo, CUSTOM_ATOM_FORMAT,
-                &serial, element, name, &x[0], &x[1], &x[2] );
-        Fit_to_Periodic_Box( &(system->box), &x );
-#if defined(DEBUG)
-        fprintf( stderr, "atom%d: %s %s %f %f %f\n",
-                 serial, element, name, x[0], x[1], x[2] );
-#endif
-
-        atom = &(system->atoms[top]);
-        workspace->orig_id[i] = serial;
-        atom->type = Get_Atom_Type( &(system->reaxprm), element );
-        strcpy( atom->name, name );
-        rvec_Copy( atom->x, x );
-        rvec_MakeZero( atom->v );
-        rvec_MakeZero( atom->f );
-        atom->q = 0.;
-
-        top++;
-    }
-
-    fclose( geo );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "finished reading the geo file\n" );
-#endif
-
-    return SUCCESS;
-}
-
-
-int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
+static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 {
     int ret;
     char *cryst;
@@ -181,7 +112,64 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 }
 
 
-void Count_PDB_Atoms( FILE *geo, reax_system *system )
+void Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
+        simulation_data *data, static_storage *workspace )
+{
+
+    FILE *geo;
+    char descriptor[9];
+    int i, serial, top;
+    real box_x, box_y, box_z, alpha, beta, gamma;
+    rvec x;
+    char element[3], name[9];
+    reax_atom *atom;
+
+    /* open the geometry file */
+    if ( (geo = fopen(geo_file, "r")) == NULL )
+    {
+        fprintf( stderr, "Error opening the geo file! terminating...\n" );
+        exit( FILE_NOT_FOUND );
+    }
+
+    /* read box information */
+    fscanf( geo, CUSTOM_BOXGEO_FORMAT,
+            descriptor, &box_x, &box_y, &box_z, &alpha, &beta, &gamma );
+    /* initialize the box */
+    Setup_Box( box_x, box_y, box_z, alpha, beta, gamma, &(system->box) );
+
+    /* count my atoms & allocate storage */
+    Count_Geo_Atoms( geo, system );
+    PreAllocate_Space( system, control, workspace );
+
+    /* read in my atom info */
+    top = 0;
+    for ( i = 0; i < system->N; ++i )
+    {
+        fscanf( geo, CUSTOM_ATOM_FORMAT,
+                &serial, element, name, &x[0], &x[1], &x[2] );
+        Fit_to_Periodic_Box( &(system->box), &x );
+#if defined(DEBUG)
+        fprintf( stderr, "atom%d: %s %s %f %f %f\n",
+                 serial, element, name, x[0], x[1], x[2] );
+#endif
+
+        atom = &(system->atoms[top]);
+        workspace->orig_id[i] = serial;
+        atom->type = Get_Atom_Type( &(system->reaxprm), element );
+        strcpy( atom->name, name );
+        rvec_Copy( atom->x, x );
+        rvec_MakeZero( atom->v );
+        rvec_MakeZero( atom->f );
+        atom->q = 0.;
+
+        top++;
+    }
+
+    fclose( geo );
+}
+
+
+static void Count_PDB_Atoms( FILE *geo, reax_system *system )
 {
     char *endptr = NULL;
     char line[MAX_LINE + 1];
@@ -221,7 +209,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
+void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
 
@@ -258,18 +246,9 @@ char Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     }
 
     Count_PDB_Atoms( pdb, system );
-    if ( PreAllocate_Space( system, control, workspace ) == FAILURE )
-    {
-        fprintf( stderr, "PreAllocate_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        exit( INSUFFICIENT_MEMORY );
-    }
+    PreAllocate_Space( system, control, workspace );
 
     /* start reading and processing the pdb file */
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "starting to read the pdb file\n" );
-#endif
-
     fseek( pdb, 0, SEEK_SET );
     c = 0;
     c1 = 0;
@@ -420,26 +399,21 @@ char Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     }
     if ( ferror( pdb ) )
     {
-        return FAILURE;
+        fprintf( stderr, "[ERROR] Unable to read PDB file. Terminating...\n" );
+        exit( INVALID_INPUT );
     }
 
     fclose( pdb );
 
     Deallocate_Tokenizer_Space( &s, &s1, &tmp );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "finished reading the pdb file\n" );
-#endif
-
-    return SUCCESS;
 } 
 
 
 /* PDB serials are written without regard to the order, we'll see if this
-   cause trouble, if so we'll have to rethink this approach
-   Also, we do not write connect lines yet.
-*/
-char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
+ * cause trouble, if so we'll have to rethink this approach
+ * Also, we do not write connect lines yet.
+ * */
+void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, static_storage *workspace, output_controls *out_control )
 {
     int i, buffer_req, buffer_len;
@@ -476,7 +450,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                    system->box.box[2][2] * system->box.box[1][2]) /
                   (system->box.box_norms[2] * system->box.box_norms[1]) );
 
-    /*open pdb and write header*/
+    /* open pdb and write header */
     snprintf( fname, MAX_STR + 9, "%s-%d.pdb", control->sim_name, data->step );
     pdb = fopen(fname, "w");
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
@@ -487,7 +461,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     fprintf( out_control->log, "Box written\n" );
     fflush( out_control->log );
 
-    /*write atom lines to buffer*/
+    /* write atom lines to buffer */
     for ( i = 0; i < system->N; i++)
     {
         p_atom = &(system->atoms[i]);
@@ -508,6 +482,12 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 
     buffer_len = system->N * PDB_ATOM_FORMAT_O_LENGTH;
     buffer[buffer_len] = 0;
+    
+    if ( ferror( pdb ) )
+    {
+        fprintf( stderr, "[ERROR] Unable to write PDB file. Terminating...\n" );
+        exit( INVALID_INPUT );
+    }
 
     fprintf( pdb, "%s", buffer );
     fclose( pdb );
@@ -533,12 +513,10 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 
     sfree( buffer, "Write_PDB::buffer" );
     sfree( line, "Write_PDB::line" );
-
-    return SUCCESS;
 }
 
 
-char Read_BGF( const char * const bgf_file, reax_system* system, control_params *control,
+void Read_BGF( const char * const bgf_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
     FILE *bgf;
@@ -584,17 +562,22 @@ char Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         token_cnt = Tokenize( line, &tokens );
 
         if ( !strcmp( tokens[0], "ATOM" ) || !strcmp( tokens[0], "HETATM" ) )
-            (system->N)++;
+        {
+            ++system->N;
+        }
 
         line[0] = 0;
     }
-    if ( ferror ( bgf ) )
+    if ( ferror( bgf ) )
     {
-        return FAILURE;
+        fprintf( stderr, "[ERROR] Unable to read BGF file. Terminating...\n" );
+        exit( INVALID_INPUT );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "system->N: %d\n", system->N );
 #endif
+
     fclose( bgf );
 
     /* memory allocations for atoms, atom maps, bond restrictions */
@@ -745,7 +728,7 @@ char Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         {
             /* check number of restrictions */
             Check_Input_Range( token_cnt - 2, 0, MAX_RESTRICT,
-                               "CONECT line exceeds max restrictions allowed.\n" );
+                    "CONECT line exceeds max restrictions allowed.\n" );
 
             /* read bond restrictions */
             if ( is_Valid_Serial( workspace, bgf_serial = atoi(tokens[1]) ) )
@@ -777,16 +760,11 @@ char Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             tokens[i][0] = 0;
         }
     }
-    if ( ferror ( bgf ) )
+    if ( ferror( bgf ) )
     {
-        return FAILURE;
+        fprintf( stderr, "[ERROR] Unable to read BGF file. Terminating...\n" );
+        exit( INVALID_INPUT );
     }
 
     fclose( bgf );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "bgf file read\n" );
-#endif
-
-    return SUCCESS;
 }
