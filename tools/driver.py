@@ -227,6 +227,7 @@ class SimulationData(Structure):
 
 class ReaxAtom(Structure):
     _fields_ = [
+            ("type", c_int),
             ("name", c_char * 8),
             ("x", c_double * 3),
             ("v", c_double * 3),
@@ -264,11 +265,17 @@ if __name__ == '__main__':
     setup_callback = lib.setup_callback
     setup_callback.restype = c_int
 
+    set_output_enabled = lib.set_output_enabled
+    set_output_enabled.argtypes = [c_void_p, c_int]
+    set_output_enabled.restype = c_int
+
     handle = setup(b"data/benchmarks/water/water_6540.pdb",
             b"data/benchmarks/water/ffield.water",
             b"environ/param.gpu.water")
 
     ret = setup_callback(handle, CALLBACKFUNC(get_simulation_step_results))
+
+    ret = set_output_enabled(handle, c_int(0))
 
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
     ret = simulate(handle)

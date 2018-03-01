@@ -210,6 +210,57 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 }
 
 
+void Compute_Total_Energy( reax_system* system, simulation_data* data )
+{
+    int i, type_i;
+    real e_pol, q;
+
+    /* Compute Polarization Energy */
+    e_pol = 0.0;
+
+#ifdef _OPENMP
+    #pragma omp parallel for default(none) private(q, type_i) shared(system) \
+        reduction(+: e_pol) schedule(static)
+#endif
+    for ( i = 0; i < system->N; i++ )
+    {
+        q = system->atoms[i].q;
+        type_i = system->atoms[i].type;
+
+        e_pol += ( system->reaxprm.sbp[ type_i ].chi * q +
+                (system->reaxprm.sbp[ type_i ].eta / 2.0) * SQR( q ) ) *
+            KCALpMOL_to_EV;
+    }
+
+    data->E_Pol = e_pol;
+
+    data->E_Pot = data->E_BE + data->E_Ov + data->E_Un  + data->E_Lp +
+        data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB +
+        data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
+
+
+    data->E_Tot = data->E_Pot + E_CONV * data->E_Kin;
+
+    if ( IS_NAN_REAL(data->E_Pol) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for polarization energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->E_Pot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->E_Tot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+}
+
+
 /* IMPORTANT: This function assumes that current kinetic energy and
  *  the center of mass of the system is already computed before.
  *

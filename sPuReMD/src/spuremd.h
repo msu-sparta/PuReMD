@@ -22,11 +22,11 @@
 #ifndef __SPUREMD_H_
 #define __SPUREMD_H_
 
+#include "mytypes.h"
+
+
 #define SPUREMD_SUCCESS (0)
 #define SPUREMD_FAILURE (-1)
-
-
-#include "mytypes.h"
 
 
 #ifdef __cplusplus
@@ -43,6 +43,8 @@ int simulate( const void * const );
 int cleanup( const void * const );
 
 reax_atom* get_atoms( const void * const );
+
+int set_output_enabled( const void * const, const int );
 
 #ifdef __cplusplus
 }
