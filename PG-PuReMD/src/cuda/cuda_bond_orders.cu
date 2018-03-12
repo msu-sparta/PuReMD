@@ -113,15 +113,15 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
                 bo_ij->C2dbo = 0.000000;
                 bo_ij->C3dbo = 0.000000;
 
-                bo_ij->C1dbopi = bo_ij->BO_pi;
-                bo_ij->C2dbopi = 0.000000;
-                bo_ij->C3dbopi = 0.000000;
-                bo_ij->C4dbopi = 0.000000;
+                bo_ij->C1dbopi = 1.0;
+                bo_ij->C2dbopi = 0.0;
+                bo_ij->C3dbopi = 0.0;
+                bo_ij->C4dbopi = 0.0;
 
-                bo_ij->C1dbopi2 = bo_ij->BO_pi2;
-                bo_ij->C2dbopi2 = 0.000000;
-                bo_ij->C3dbopi2 = 0.000000;
-                bo_ij->C4dbopi2 = 0.000000;
+                bo_ij->C1dbopi2 = 1.0;
+                bo_ij->C2dbopi2 = 0.0;
+                bo_ij->C3dbopi2 = 0.0;
+                bo_ij->C4dbopi2 = 0.0;
 
 #ifdef TEST_FORCES
                 pdbo = &(dBOs->select.dbo_list[ top_dbo ]);
@@ -247,12 +247,12 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
                 bo_ij->C2dbo = bo_ij->BO * A2_ij;
                 bo_ij->C3dbo = bo_ij->BO * A2_ji;
 
-                bo_ij->C1dbopi = f1*f1*f4*f5;
+                bo_ij->C1dbopi = f1 * f1 * f4 * f5;
                 bo_ij->C2dbopi = bo_ij->BO_pi * A1_ij;
                 bo_ij->C3dbopi = bo_ij->BO_pi * A3_ij;
                 bo_ij->C4dbopi = bo_ij->BO_pi * A3_ji;
 
-                bo_ij->C1dbopi2 = f1*f1*f4*f5;
+                bo_ij->C1dbopi2 = f1 * f1 * f4 * f5;
                 bo_ij->C2dbopi2 = bo_ij->BO_pi2 * A1_ij;
                 bo_ij->C3dbopi2 = bo_ij->BO_pi2 * A3_ij;
                 bo_ij->C4dbopi2 = bo_ij->BO_pi2 * A3_ji;
