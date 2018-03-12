@@ -549,7 +549,6 @@ typedef struct
     int periodic_boundaries;
     int restrict_bonds;
     int tabulate;
-    ivec periodic_images;
     real dt;
 
     int reneighbor;

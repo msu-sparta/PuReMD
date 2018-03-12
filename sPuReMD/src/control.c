@@ -55,9 +55,6 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->restrict_bonds = 0;
 
     control->periodic_boundaries = 1;
-    control->periodic_images[0] = 0;
-    control->periodic_images[1] = 0;
-    control->periodic_images[2] = 0;
 
     control->reneighbor = 1;
     control->vlist_cut = 0;
@@ -198,15 +195,6 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             ival = atoi( tmp[1] );
             control->periodic_boundaries = ival;
-        }
-        else if ( strcmp(tmp[0], "periodic_images") == 0 )
-        {
-            ival = atoi(tmp[1]);
-            control->periodic_images[0] = ival;
-            ival = atoi(tmp[2]);
-            control->periodic_images[1] = ival;
-            ival = atoi(tmp[3]);
-            control->periodic_images[2] = ival;
         }
         else if ( strcmp(tmp[0], "geo_format") == 0 )
         {
