@@ -247,7 +247,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     /* list: values from the matrix*/
     /* left-right: search space of the quick-select */
 
-    list = (real *) smalloc( sizeof(real) * (A->start[A->n]),"Sparse_Approx_Inverse::list" );
+    list = (real *) smalloc( sizeof(real) * (A->start[A->n]),"setup_sparse_approx_inverse::list" );
 
     left = 0;
     right = A->start[A->n] - 1;
@@ -1603,11 +1603,19 @@ real ILUT_PAR( const sparse_matrix * const A, const real * droptol,
 
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 /* Compute M^{1} \approx A which minimizes
- *  \sum_{j=1}^{N} ||e_j - Am_j||_2^2
- *  where: e_j is the j-th column of the NxN identify matrix,
- *         m_j is the j-th column of the NxN approximate sparse matrix M
+ *  \sum_{j=1}^{N} ||m_j^T*A - e_j^T||_2^2
+ *  where: e_j^T is the j-th row of the NxN identify matrix,
+ *         m_j^T is the j-th row of the NxN approximate sparse matrix M
  * 
- * Internally, use LAPACKE to solve the least-squares problems
+ * Internally, use LAPACKE to solve the independent least-squares problems.
+ * Furthermore, internally solve the related problem
+ *  \sum_{j=1}^{N} ||A*m_j - e_j||_2^2
+ * for j-th columns m_j and e_j, but store the transpose of M to solve
+ * the original problem. That is, for the problems
+ *  min ||M_1*A - I||_F^2 and min ||A*M_2 - I||_F^2,
+ * it can be shown that if A = A^T, M_1 = M_2^T.
+ * Hence, we solve for M_2, and stores its transpose as the result
+ * (more efficient for for CSR matrices, row-major storage).
  *
  * A: symmetric, sparse matrix, stored in full CSR format
  * A_spar_patt: sparse matrix used as template sparsity pattern
@@ -1643,10 +1651,10 @@ real sparse_approx_inverse( const sparse_matrix * const A,
     shared(A_app_inv, stderr)
 #endif
     {
-        X = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::X" );
-        Y = (char *) smalloc( sizeof(char) * A->n, "Sparse_Approx_Inverse::Y" );
-        pos_x = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_x" );
-        pos_y = (int *) smalloc( sizeof(int) * A->n, "Sparse_Approx_Inverse::pos_y" );
+        X = (char *) smalloc( sizeof(char) * A->n, "sparse_approx_inverse::X" );
+        Y = (char *) smalloc( sizeof(char) * A->n, "sparse_approx_inverse::Y" );
+        pos_x = (int *) smalloc( sizeof(int) * A->n, "sparse_approx_inverse::pos_x" );
+        pos_y = (int *) smalloc( sizeof(int) * A->n, "sparse_approx_inverse::pos_y" );
 
         for ( i = 0; i < A->n; ++i )
         {
@@ -1700,7 +1708,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 
             // allocate memory for NxM dense matrix
             dense_matrix = (real *) smalloc( sizeof(real) * N * M,
-                                             "Sparse_Approx_Inverse::dense_matrix" );
+                                             "sparse_approx_inverse::dense_matrix" );
 
             // fill in the entries of dense matrix
             for ( d_i = 0; d_i < M; ++d_i)
@@ -1725,7 +1733,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             /* create the right hand side of the linear equation
                that is the full column of the identity matrix*/
             e_j = (real *) smalloc( sizeof(real) * M,
-                                    "Sparse_Approx_Inverse::e_j" );
+                                    "sparse_approx_inverse::e_j" );
 
             for ( k = 0; k < M; ++k )
             {
@@ -1764,8 +1772,8 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             }
 
             //empty variables that will be used next iteration
-            sfree( dense_matrix, "Sparse_Approx_Inverse::dense_matrix" );
-            sfree( e_j, "Sparse_Approx_Inverse::e_j"  );
+            sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
+            sfree( e_j, "sparse_approx_inverse::e_j"  );
             for ( k = 0; k < A->n; ++k )
             {
                 X[k] = 0;
@@ -1775,10 +1783,10 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             }
         }
 
-        sfree( pos_y, "Sparse_Approx_Inverse::pos_y" );
-        sfree( pos_x, "Sparse_Approx_Inverse::pos_x" );
-        sfree( Y, "Sparse_Approx_Inverse::Y" );
-        sfree( X, "Sparse_Approx_Inverse::X" );
+        sfree( pos_y, "sparse_approx_inverse::pos_y" );
+        sfree( pos_x, "sparse_approx_inverse::pos_x" );
+        sfree( Y, "sparse_approx_inverse::Y" );
+        sfree( X, "sparse_approx_inverse::X" );
     }
 
     return Get_Timing_Info( start );
@@ -2954,7 +2962,8 @@ static void apply_preconditioner( const static_storage * const workspace, const 
 }
 
 
-/* generalized minimual residual method with restarting for sparse linear systems */
+/* Generalized minimual residual method with restarting and
+ * left preconditioning for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
            simulation_data * const data, const sparse_matrix * const H, const real * const b,
            const real tol, real * const x, const int fresh_pre )
