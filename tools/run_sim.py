@@ -13,7 +13,8 @@ from time import time
 
 class TestCase():
     def __init__(self, geo_file, ffield_file, control_file, params={}, result_header_fmt='',
-            result_header='', result_body_fmt='', result_file='results.txt', geo_format='1'):
+            result_header='', result_body_fmt='', result_file='results.txt', geo_format='1',
+            min_step=None, max_step=None):
         self.__geo_file = geo_file
         self.__ffield_file = ffield_file
         self.__control_file = control_file
@@ -65,6 +66,8 @@ class TestCase():
         }
 
         self.__params['geo_format'] = geo_format
+        self.__min_step = min_step
+        self.__max_step = max_step
 
     def _setup(self, param, temp_file):
         fp = open(self.__control_file, 'r')
@@ -106,6 +109,7 @@ class TestCase():
  		+ '_qtol' + param_dict['cm_solver_q_err'] \
  		+ '_qds' + param_dict['cm_domain_sparsity'] \
                 + '_pc' + param_dict['cm_solver_pre_comp_type'] \
+                + '_pcr' + param_dict['cm_solver_pre_comp_refactor'] \
                 + '_pctol' + param_dict['cm_solver_pre_comp_droptol'] \
                 + '_pcs' + param_dict['cm_solver_pre_comp_sweeps'] \
                 + '_pcsai' + param_dict['cm_solver_pre_comp_sai_thres'] \
@@ -131,7 +135,7 @@ class TestCase():
                     print(stderr)
 
             else:
-                self._process_result(fout, param_dict)
+                self._process_result(fout, param_dict, self.__min_step, self.__max_step)
 
         fout.close()
         if path.exists(temp_file):
@@ -139,7 +143,7 @@ class TestCase():
         if path.exists(temp_dir):
             rmdir(temp_dir)
 
-    def _process_result(self, fout, param):
+    def _process_result(self, fout, param, min_step, max_step):
         time = 0.
         cm = 0.
         iters = 0.
@@ -147,6 +151,7 @@ class TestCase():
         pre_app = 0.
         spmv = 0.
         cnt = 0
+        line_cnt = 0
         log_file = param['name'] + '.log'
 
         if not path.exists(log_file):
@@ -156,13 +161,34 @@ class TestCase():
             for line in fp:
                 line = line.split()
                 try:
-                    cm = cm + float(line[6])
-                    iters = iters + float(line[8])
-                    pre_comp = pre_comp + float(line[9])
-                    pre_app = pre_app + float(line[10])
-                    spmv = spmv + float(line[11])
+                    if not min_step and not max_step:
+                        cm = cm + float(line[6])
+                        iters = iters + float(line[8])
+                        pre_comp = pre_comp + float(line[9])
+                        pre_app = pre_app + float(line[10])
+                        spmv = spmv + float(line[11])
+                    elif min_step and not max_step:
+                        if cnt >= min_step:
+                            cm = cm + float(line[6])
+                            iters = iters + float(line[8])
+                            pre_comp = pre_comp + float(line[9])
+                            pre_app = pre_app + float(line[10])
+                            spmv = spmv + float(line[11])
+                    elif min_step and not max_step:
+                        if cnt <= max_step:
+                            cm = cm + float(line[6])
+                            iters = iters + float(line[8])
+                            pre_comp = pre_comp + float(line[9])
+                            pre_app = pre_app + float(line[10])
+                            spmv = spmv + float(line[11])
+                    else:
+                        if cnt >= min_step and cnt <= max_step:
+                            cm = cm + float(line[6])
+                            iters = iters + float(line[8])
+                            pre_comp = pre_comp + float(line[9])
+                            pre_app = pre_app + float(line[10])
+                            spmv = spmv + float(line[11])
                     cnt = cnt + 1
-                    pass
                 except Exception:
                     pass
                 if line[0] == 'total:':
@@ -170,7 +196,7 @@ class TestCase():
                         time = float(line[1])
                     except Exception:
                         pass
-            cnt = cnt - 1
+                line_cnt = line_cnt + 1
             if cnt > 0:
                 cm = cm / cnt
                 iters = iters / cnt
@@ -178,7 +204,8 @@ class TestCase():
                 pre_app = pre_app / cnt
                 spmv = spmv / cnt
 
-        if cnt == int(param['nsteps']):
+        # subtract for header, footer, and extra step (e.g., 100 steps means steps 0 through 100, inclusive)
+        if (line_cnt - 3) == int(param['nsteps']):
             fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
                 param['nsteps'], param['charge_method'], param['cm_solver_type'],
                 param['cm_solver_q_err'], param['cm_domain_sparsity'],
@@ -188,7 +215,8 @@ class TestCase():
                 pre_comp, pre_app, iters, spmv,
                 cm, param['threads'], time))
         else:
-            print('**WARNING: nsteps not correct in file {0}...'.format(log_file))
+            print('**WARNING: nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
+                log_file, int(param['nsteps']), line_cnt - 3))
         fout.flush()
 
 
@@ -211,6 +239,10 @@ if __name__ == '__main__':
             help='Process simulation results only (do not perform simulations).')
     parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
             help='Paramater name and value pairs for the simulation, which multiple values comma delimited.')
+    parser.add_argument('-n', '--min_step', metavar='min_step', default=None, nargs=1,
+            help='Minimum simulation step to begin aggregating results.')
+    parser.add_argument('-x', '--max_step', metavar='max_step', default=None, nargs=1,
+            help='Maxiumum simulation step for aggregating results.')
     parser.add_argument('data', nargs='+',
             choices=DATA, help='Data sets for which to run simulations.')
 
@@ -267,31 +299,43 @@ if __name__ == '__main__':
                 print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                 exit(-1)
 
+    if args.min_step:
+        min_step = int(args.min_step[0])
+    else:
+        min_step = None
+    if args.max_step:
+        max_step = int(args.max_step[0])
+    else:
+        max_step = None
+
     test_cases = []
     if 'water_6540' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'water/water_6540.pdb'),
-                path.join(data_dir, 'water/ffield.water'),
+                path.join(data_dir, 'water/ffield_acks2.water'),
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1'], result_file=result_file))
+                geo_format=['1'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'water_78480' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'water/water_78480.geo'),
-                path.join(data_dir, 'water/ffield.water'),
+                path.join(data_dir, 'water/ffield_acks2.water'),
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0'], result_file=result_file))
+                geo_format=['0'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'water_327000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'water/water_327000.geo'),
-                path.join(data_dir, 'water/ffield.water'),
+                path.join(data_dir, 'water/ffield_acks2.water'),
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0'], result_file=result_file))
+                geo_format=['0'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'bilayer_56800' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'bilayer/bilayer_56800.pdb'),
@@ -299,7 +343,8 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1'], result_file=result_file))
+                geo_format=['1'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'bilayer_340800' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'bilayer/bilayer_340800.geo'),
@@ -307,7 +352,8 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0'], result_file=result_file))
+                geo_format=['0'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'dna_19733' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'dna/dna_19733.pdb'),
@@ -315,7 +361,8 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1'], result_file=result_file))
+                geo_format=['1'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'silica_6000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'silica/silica_6000.pdb'),
@@ -323,7 +370,8 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1'], result_file=result_file))
+                geo_format=['1'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'silica_72000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'silica/silica_72000.geo'),
@@ -331,7 +379,8 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0'], result_file=result_file))
+                geo_format=['0'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'silica_300000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'silica/silica_300000.geo'),
@@ -339,7 +388,8 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['0'], result_file=result_file))
+                geo_format=['0'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'petn_48256' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'petn/petn_48256.pdb'),
@@ -347,7 +397,8 @@ if __name__ == '__main__':
                 path.join(control_dir, 'param.gpu.water'),
                 params=params, result_header_fmt=header_fmt_str,
                 result_header = header_str, result_body_fmt=body_fmt_str,
-                geo_format=['1'], result_file=result_file))
+                geo_format=['1'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
 
     for test in test_cases:
         test.run(binary, process_results=args.process_results)
