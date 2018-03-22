@@ -24,8 +24,10 @@
 
 #include "mytypes.h"
 
+
 void Compute_Charges( reax_system* const, control_params* const, simulation_data* const,
           static_storage* const, const reax_list* const,
           const output_controls* const );
+
 
 #endif

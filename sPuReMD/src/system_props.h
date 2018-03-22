@@ -22,7 +22,7 @@
 #ifndef __SYSTEM_PROP_H_
 #define __SYSTEM_PROP_H_
 
-#include <mytypes.h>
+#include "mytypes.h"
 
 
 void Temperature_Control( control_params*, simulation_data*, output_controls* );
@@ -33,9 +33,13 @@ void Compute_Center_of_Mass( reax_system*, simulation_data*, FILE* );
 
 void Compute_Kinetic_Energy( reax_system*, simulation_data* );
 
-void Compute_Pressure( reax_system*, simulation_data*, static_storage* );
+void Compute_Total_Energy( reax_system*, simulation_data* );
 
 void Compute_Pressure_Isotropic( reax_system*, control_params*, simulation_data*, output_controls* );
+
+void Compute_Pressure_Isotropic_Klein( reax_system*, simulation_data* );
+
+void Compute_Pressure( reax_system*, simulation_data*, static_storage* );
 
 
 #endif

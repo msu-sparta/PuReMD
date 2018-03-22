@@ -60,7 +60,7 @@ typedef struct
 
 
 // copy bond list into old bond list
-void Copy_Bond_List( reax_system *system, control_params *control,
+static void Copy_Bond_List( reax_system *system, control_params *control,
                      reax_list **lists )
 {
     int i, j, top_old;
@@ -91,7 +91,7 @@ void Copy_Bond_List( reax_system *system, control_params *control,
 
 
 // ASSUMPTION: Bond lists are sorted
-int Compare_Bond_Lists( int atom, control_params *control, reax_list **lists )
+static int Compare_Bond_Lists( int atom, control_params *control, reax_list **lists )
 {
     int oldp, newp;
     reax_list *new_bonds = &(*lists)[BONDS];
@@ -169,7 +169,7 @@ int Compare_Bond_Lists( int atom, control_params *control, reax_list **lists )
 }
 
 
-void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
+static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
                    control_params *control, reax_list *bonds, int print,
                    FILE *fout )
 {
@@ -193,7 +193,7 @@ void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
 }
 
 
-void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
+static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
        size_t size )
 {
     int j, atom;
@@ -220,7 +220,7 @@ void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
 }
 
 
-void Analyze_Molecules( reax_system *system, control_params *control,
+static void Analyze_Molecules( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, FILE *fout )
 {
@@ -318,7 +318,7 @@ void Analyze_Molecules( reax_system *system, control_params *control,
 }
 
 
-void Report_Bond_Change( reax_system *system, control_params *control,
+static void Report_Bond_Change( reax_system *system, control_params *control,
                          static_storage *workspace,  reax_list *old_bonds,
                          reax_list *new_bonds, int a1, int a2, int flag,
                          FILE *fout )
@@ -389,7 +389,7 @@ void Report_Bond_Change( reax_system *system, control_params *control,
 
 
 /* ASSUMPTION: Bond lists are sorted */
-void Compare_Bonding( int atom, reax_system *system, control_params *control,
+static void Compare_Bonding( int atom, reax_system *system, control_params *control,
                       static_storage *workspace, reax_list *old_bonds,
                       reax_list *new_bonds, FILE *fout )
 {
@@ -507,7 +507,7 @@ void Compare_Bonding( int atom, reax_system *system, control_params *control,
 }
 
 
-void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
+static void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
                   control_params *control, reax_list *bonds, int ignore )
 {
     int i, t, start, end, nbr;
@@ -531,8 +531,7 @@ void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
 }
 
 
-
-void Analyze_Fragments( reax_system *system, control_params *control,
+static void Analyze_Fragments( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, FILE *fout, int ignore )
 {
@@ -601,7 +600,7 @@ void Analyze_Fragments( reax_system *system, control_params *control,
 }
 
 
-void Analyze_Silica( reax_system *system, control_params *control,
+static void Analyze_Silica( reax_system *system, control_params *control,
                      simulation_data *data, static_storage *workspace,
                      reax_list **lists, FILE *fout )
 {
@@ -724,7 +723,7 @@ void Analyze_Silica( reax_system *system, control_params *control,
 }
 
 
-int Get_Type_of_Molecule( molecule *m )
+static int Get_Type_of_Molecule( molecule *m )
 {
     if ( m->atom_count == 3 && m->mtypes[1] == 2 && m->mtypes[2] == 1 )
     {
@@ -735,7 +734,7 @@ int Get_Type_of_Molecule( molecule *m )
 }
 
 
-void Calculate_Dipole_Moment( reax_system *system, control_params *control,
+static void Calculate_Dipole_Moment( reax_system *system, control_params *control,
                               simulation_data *data, static_storage *workspace,
                               reax_list *bonds, FILE *fout )
 {
@@ -781,7 +780,7 @@ void Calculate_Dipole_Moment( reax_system *system, control_params *control,
 }
 
 
-void Copy_Positions( reax_system *system, static_storage *workspace )
+static void Copy_Positions( reax_system *system, static_storage *workspace )
 {
     int i;
 
@@ -790,7 +789,7 @@ void Copy_Positions( reax_system *system, static_storage *workspace )
 }
 
 
-void Calculate_Drift( reax_system *system, control_params *control,
+static void Calculate_Drift( reax_system *system, control_params *control,
                       simulation_data *data, static_storage *workspace,
                       FILE *fout )
 {
@@ -846,7 +845,7 @@ void Calculate_Drift( reax_system *system, control_params *control,
 }
 
 
-void Calculate_Density_3DMesh( reax_system *system, simulation_data *data,
+static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data,
                                FILE *fout )
 {
     int i, j, k;
@@ -913,7 +912,7 @@ void Calculate_Density_3DMesh( reax_system *system, simulation_data *data,
 }
 
 
-void Calculate_Density_Slice( reax_system *system, simulation_data *data,
+static void Calculate_Density_Slice( reax_system *system, simulation_data *data,
                               FILE *fout )
 {
     real slice_thickness = 0.5;
@@ -957,14 +956,17 @@ void Analysis( reax_system *system, control_params *control,
     int steps;
 
     steps = data->step - data->prev_steps;
-    // fprintf( stderr, "prev_steps: %d\n", data->prev_steps );
 
     if ( steps == 1 )
     {
         if ( control->molec_anal == REACTIONS )
+        {
             Copy_Bond_List( system, control, lists );
+        }
         if ( control->diffusion_coef )
+        {
             Copy_Positions( system, workspace );
+        }
     }
 
     /****** Molecular Analysis ******/
@@ -977,25 +979,29 @@ void Analysis( reax_system *system, control_params *control,
                                out_control->mol, 0 );
             /* discover fragments without the ignored atoms */
             if ( control->num_ignored )
+            {
                 Analyze_Fragments( system, control, data, workspace, lists,
                                    out_control->ign, 1 );
+            }
         }
         else if ( control->molec_anal == REACTIONS )
+        {
             /* discover molecular changes - reactions */
             Analyze_Molecules( system, control, data, workspace,
                                lists, out_control->mol );
+        }
     }
 
     /****** Electric Dipole Moment ******/
     if ( control->dipole_anal && steps % control->freq_dipole_anal == 0 )
+    {
         Calculate_Dipole_Moment( system, control, data, workspace,
                 &(*lists)[BONDS], out_control->dpl );
+    }
 
     /****** Drift ******/
     if ( control->diffusion_coef && steps % control->freq_diffusion_coef == 0 )
+    {
         Calculate_Drift( system, control, data, workspace, out_control->drft );
-
-#if defined(DEBUG)
-    fprintf( stderr, "analysis... done\n" );
-#endif
+    }
 }

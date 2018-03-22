@@ -52,7 +52,7 @@ void Make_Lookup_Table( real xmin, real xmax, int n,
 
 
 /* Fills solution into x. Warning: will modify c and d! */
-void Tridiagonal_Solve( const real *a, const real *b,
+static void Tridiagonal_Solve( const real *a, const real *b,
         real *c, real *d, real *x, unsigned int n)
 {
     int i;
@@ -77,7 +77,7 @@ void Tridiagonal_Solve( const real *a, const real *b,
 }
 
 
-void Natural_Cubic_Spline( const real *h, const real *f,
+static void Natural_Cubic_Spline( const real *h, const real *f,
         cubic_spline_coef *coef, unsigned int n )
 {
     int i;
@@ -151,8 +151,7 @@ void Natural_Cubic_Spline( const real *h, const real *f,
 }
 
 
-
-void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
+static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
         cubic_spline_coef *coef, unsigned int n )
 {
     int i;
@@ -219,7 +218,7 @@ void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
 }
 
 
-void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
+static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 {
     int i;
     real base, dif;
@@ -502,7 +501,7 @@ void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
 }
 
 
-int Lookup_Index_Of( real x, lookup_table* t )
+static int Lookup_Index_Of( real x, lookup_table* t )
 {
     return (int)( t->a * ( x - t->xmin ) );
 }

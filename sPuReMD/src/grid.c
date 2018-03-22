@@ -26,7 +26,7 @@
 #include "vector.h"
 
 
-int Estimate_GCell_Population( reax_system* system )
+static int Estimate_GCell_Population( reax_system* system )
 {
     int i, j, k, l;
     int max_atoms;
@@ -66,7 +66,7 @@ int Estimate_GCell_Population( reax_system* system )
 }
 
 
-void Allocate_Space_for_Grid( reax_system *system )
+static void Allocate_Space_for_Grid( reax_system *system )
 {
     int i, j, k, l;
     grid *g;
@@ -172,7 +172,7 @@ void Allocate_Space_for_Grid( reax_system *system )
 }
 
 
-void Deallocate_Grid_Space( grid *g )
+static void Deallocate_Grid_Space( grid *g )
 {
     int i, j, k;
 
@@ -216,7 +216,7 @@ void Deallocate_Grid_Space( grid *g )
 }
 
 
-int Shift(int p, int dp, int dim, grid *g )
+int Shift( int p, int dp, int dim, grid *g )
 {
     int dim_len = 0;
     int newp = p + dp;
@@ -248,8 +248,8 @@ int Shift(int p, int dp, int dim, grid *g )
 
 /* finds the closest point between two grid cells denoted by c1 and c2.
    periodic boundary conditions are taken into consideration as well. */
-void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
-                         int c2x, int c2y, int c2z, rvec closest_point )
+static void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
+        int c2x, int c2y, int c2z, rvec closest_point )
 {
     int  i, d;
     ivec c1 = { c1x, c1y, c1z };
@@ -294,7 +294,7 @@ void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
 }
 
 
-void Find_Neighbor_GridCells( grid *g )
+static void Find_Neighbor_GridCells( grid *g )
 {
     int i, j, k;
     int di, dj, dk;
@@ -543,7 +543,7 @@ static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 }
 
 
-void Copy_Storage( reax_system *system, static_storage *workspace,
+static void Copy_Storage( reax_system *system, static_storage *workspace,
         control_params *control, int top, int old_id, int old_type, int *num_H,
         real **v, real **s, real **t, int *orig_id, rvec *f_old )
 {
@@ -578,7 +578,7 @@ void Copy_Storage( reax_system *system, static_storage *workspace,
 }
 
 
-void Free_Storage( static_storage *workspace, control_params * control )
+static void Free_Storage( static_storage *workspace, control_params * control )
 {
     int i;
 
@@ -600,7 +600,7 @@ void Free_Storage( static_storage *workspace, control_params * control )
 }
 
 
-void Assign_New_Storage( static_storage *workspace,
+static void Assign_New_Storage( static_storage *workspace,
         real **v, real **s, real **t, int *orig_id, rvec *f_old )
 {
     workspace->v = v;

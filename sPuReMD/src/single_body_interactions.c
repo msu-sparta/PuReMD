@@ -92,7 +92,9 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
         /* correction for C2 */
         if ( system->reaxprm.gp.l[5] > 0.001 &&
                 !strcmp( system->reaxprm.sbp[type_i].name, "C" ) )
+        {
             for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
+            {
                 if ( i < bonds->select.bond_list[pj].nbr )
                 {
                     j = bonds->select.bond_list[pj].nbr;
@@ -128,8 +130,9 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
                     }
 
                 }
+            }
+        }
     }
-
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -138,8 +141,13 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
 
         /* over-coordination energy */
         if ( sbp_i->mass > 21.0 )
+        {
             dfvl = 0.0;
-        else dfvl = 1.0; // only for 1st-row elements
+        }
+        else
+        {
+            dfvl = 1.0; // only for 1st-row elements
+        }
 
         p_ovun2 = sbp_i->p_ovun2;
         sum_ovun1 = 0;
@@ -178,7 +186,6 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
         CEover4 = CEover2 * (dfvl * workspace->Delta_lp_temp[i]) *
                   p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1);
 
-
         /* under-coordination potential */
         p_ovun2 = sbp_i->p_ovun2;
         p_ovun5 = sbp_i->p_ovun5;
@@ -190,7 +197,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
         inv_exp_ovun8 = 1.0 / (1.0 + exp_ovun8);
 
         data->E_Un += e_un =
-                          -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
+            -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
 
         CEunder1 = inv_exp_ovun2n * ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8 +
                                       p_ovun2 * e_un * exp_ovun2n);
@@ -211,7 +218,6 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
         Add_dDelta( system, lists, i, CEunder3, workspace->f_un ); // UnCoor - 1st
 #endif
 
-
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
             pbond = &(bonds->select.bond_list[pj]);
@@ -220,23 +226,20 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
             bo_ij = &(pbond->bo_data);
             twbp  = &(system->reaxprm.tbp[ type_i ][ type_j ]);
 
-
             bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s; // OvCoor - 1st
             workspace->CdDelta[j] += CEover4 * (1.0 - dfvl * workspace->dDelta_lp[j]) *
-                                     (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor - 3a
+                (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor - 3a
             bo_ij->Cdbopi += CEover4 *
-                             (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //OvCoor-3b
+                (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //OvCoor-3b
             bo_ij->Cdbopi2 += CEover4 *
-                              (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //OvCoor-3b
-
+                (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //OvCoor-3b
 
             workspace->CdDelta[j] += CEunder4 * (1.0 - dfvl * workspace->dDelta_lp[j]) *
-                                     (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
+                (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
             bo_ij->Cdbopi += CEunder4 *
-                             (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //UnCoor-2b
+                (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //UnCoor-2b
             bo_ij->Cdbopi2 += CEunder4 *
-                              (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //UnCoor-2b
-
+                (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //UnCoor-2b
 
 #ifdef TEST_ENERGY
             /* fprintf( out_control->eov, "%6d%23.15e%23.15e"

@@ -19,13 +19,14 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "ffield.h"
+
 #include <ctype.h>
 
-#include "ffield.h"
 #include "tool_box.h"
 
 
-char Read_Force_Field( FILE* fp, reax_interaction* reax )
+void Read_Force_Field( FILE* fp, reax_interaction* reax )
 {
     char *s;
     char **tmp;
@@ -46,7 +47,6 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     /* reading first header comment */
     fgets( s, MAX_LINE, fp );
 
-
     /* line 2 is number of global parameters */
     fgets( s, MAX_LINE, fp );
     Tokenize( s, &tmp );
@@ -55,8 +55,8 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     n = atoi(tmp[0]);
     if (n < 1)
     {
-        fprintf( stderr, "WARNING: number of globals in ffield file is 0!\n" );
-        return 1;
+        fprintf( stderr, "[WARNING] number of globals in ffield file is 0!\n" );
+        return;
     }
 
     reax->gp.n_global = n;
@@ -74,18 +74,15 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
         reax->gp.l[i] = val;
     }
 
-
     /* next line is number of atom types and some comments */
     fgets( s, MAX_LINE, fp );
     Tokenize( s, &tmp );
     reax->num_atom_types = atoi(tmp[0]);
 
-
     /* 3 lines of comments */
     fgets(s, MAX_LINE, fp);
     fgets(s, MAX_LINE, fp);
     fgets(s, MAX_LINE, fp);
-
 
     /* Allocating structures in reax_interaction */
     reax->sbp = (single_body_parameters*)
@@ -743,7 +740,7 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
         k = atoi(tmp[1]) - 1;
         m = atoi(tmp[2]) - 1;
 
-        if (j < reax->num_atom_types && m < reax->num_atom_types)
+        if ( j < reax->num_atom_types && m < reax->num_atom_types )
         {
             val = atof(tmp[3]);
             reax->hbp[j][k][m].r0_hb = val;
@@ -785,10 +782,4 @@ char Read_Force_Field( FILE* fp, reax_interaction* reax )
     }
 
     sfree( tor_flag, "Read_Force_Field::tor_flag" );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "force field read\n" );
-#endif
-
-    return SUCCESS;
 }

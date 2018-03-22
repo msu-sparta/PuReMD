@@ -24,14 +24,16 @@
 
 #include "mytypes.h"
 
-void Three_Body_Interactions( reax_system*, control_params*, simulation_data*,
-                              static_storage*, reax_list**, output_controls* );
-
-void Hydrogen_Bonds( reax_system*, control_params*, simulation_data*,
-                     static_storage*, reax_list**, output_controls* );
 
 void Calculate_Theta( rvec, real, rvec, real, real*, real* );
 
 void Calculate_dCos_Theta( rvec, real, rvec, real, rvec*, rvec*, rvec* );
+
+void Three_Body_Interactions( reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+
+void Hydrogen_Bonds( reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+
 
 #endif

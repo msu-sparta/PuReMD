@@ -506,7 +506,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
 }
 
 
-int fn_qsort_intcmp( const void *a, const void *b )
+static int fn_qsort_intcmp( const void *a, const void *b )
 {
     return ( *(int *)a - * (int *)b);
 }
@@ -577,35 +577,8 @@ void Output_Results( reax_system *system, control_params *control,
     simulation_data *data, static_storage *workspace,
     reax_list **lists, output_controls *out_control )
 {
-    int i, type_i;
-    real e_pol, q, f_update;
+    real f_update;
     real t_elapsed = 0;
-
-    /* Compute Polarization Energy */
-    e_pol = 0.0;
-
-#ifdef _OPENMP
-    #pragma omp parallel for default(none) private(q, type_i) shared(system) \
-        reduction(+: e_pol) schedule(static)
-#endif
-    for ( i = 0; i < system->N; i++ )
-    {
-        q = system->atoms[i].q;
-        type_i = system->atoms[i].type;
-
-        e_pol += ( system->reaxprm.sbp[ type_i ].chi * q +
-                (system->reaxprm.sbp[ type_i ].eta / 2.0) * SQR( q ) ) *
-            KCALpMOL_to_EV;
-    }
-
-    data->E_Pol = e_pol;
-
-    data->E_Pot = data->E_BE + data->E_Ov + data->E_Un  + data->E_Lp +
-        data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB +
-        data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
-
-
-    data->E_Tot = data->E_Pot + E_CONV * data->E_Kin;
 
     /* output energies if it is the time */
     if ( out_control->energy_update_freq > 0 &&
@@ -724,26 +697,7 @@ void Output_Results( reax_system *system, control_params *control,
         //t_elapsed = Get_Timing_Info( t_start );
         //fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
     }
-
-    if ( IS_NAN_REAL(data->E_Pol) )
-    {
-        fprintf( stderr, "[ERROR] NaN detected for polarization energy. Terminating...\n" );
-        exit( NUMERIC_BREAKDOWN );
-    }
-
-    if ( IS_NAN_REAL(data->E_Pot) )
-    {
-        fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
-        exit( NUMERIC_BREAKDOWN );
-    }
-
-    if ( IS_NAN_REAL(data->E_Tot) )
-    {
-        fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
-        exit( NUMERIC_BREAKDOWN );
-    }
 }
-
 
 
 void Print_Linear_System( reax_system *system, control_params *control,

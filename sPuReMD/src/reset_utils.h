@@ -24,9 +24,8 @@
 
 #include "mytypes.h"
 
-void Reset_Atoms( reax_system* );
 
-void Reset_Pressures( simulation_data* );
+void Reset_Atoms( reax_system* );
 
 void Reset_Simulation_Data( simulation_data* );
 
@@ -42,10 +41,9 @@ void Reset_Neighbor_Lists( reax_system*, control_params*,
 void Reset( reax_system*, control_params*, simulation_data*,
             static_storage*, reax_list** );
 
-//void Reset_Neighbor_Lists( reax_system*, static_storage*, reax_list** );
-
 void Reset_Grid( grid* );
 
 void Reset_Marks( grid*, ivec*, int );
+
 
 #endif

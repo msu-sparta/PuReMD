@@ -74,6 +74,8 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
             rvec_ScaledAdd( system->atoms[i].v, -1., cross );
         }
     }
+
+    Compute_Total_Energy( system, data );
 }
 
 
@@ -178,8 +180,6 @@ void* setup( const char * const geo_file, const char * const ffield_file,
             spmd_handle->data, spmd_handle->workspace,
             spmd_handle->out_control );
 
-    //TODO: if errors detected, set handle to NULL to indicate failure
-
     return (void*) spmd_handle;
 }
 
@@ -235,10 +235,17 @@ int simulate( const void * const handle )
 
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
 
+        Compute_Total_Energy( spmd_handle->system, spmd_handle->data );
+
         if ( spmd_handle->output_enabled == TRUE )
         {
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+        }
+        if ( spmd_handle->callback != NULL )
+        {
+            spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
+                    spmd_handle->lists );
         }
         ++spmd_handle->data->step;
         //}
@@ -262,11 +269,13 @@ int simulate( const void * const handle )
             {
                 Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+
                 Analysis( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
             }
 
             steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
+
             if ( steps && spmd_handle->out_control->restart_freq &&
                     steps % spmd_handle->out_control->restart_freq == 0 &&
                     spmd_handle->output_enabled == TRUE )
@@ -349,4 +358,22 @@ reax_atom* get_atoms( const void * const handle )
     }
 
     return atoms;
+}
+
+
+int set_output_enabled( const void * const handle, const int enabled )
+{
+    int ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+        spmd_handle->output_enabled = enabled;
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
 }

@@ -259,7 +259,6 @@ int Estimate_NumNeighbors( reax_system *system, control_params *control,
 
 
 #if defined DONE
-
 void Choose_Neighbor_Finder( reax_system *system, control_params *control,
                              get_far_neighbors_function *Get_Far_Neighbors )
 {
@@ -620,7 +619,6 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 }
 
 
-
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -745,7 +743,4 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
              system->N * far_nbrs->intrs_per_unit );
 #endif
 }
-
-
-
 #endif

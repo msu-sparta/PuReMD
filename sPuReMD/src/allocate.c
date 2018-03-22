@@ -24,38 +24,37 @@
 #include "list.h"
 #include "tool_box.h"
 
+
 /* allocate space for atoms */
-int PreAllocate_Space( reax_system *system, control_params *control,
+void PreAllocate_Space( reax_system *system, control_params *control,
         static_storage *workspace )
 {
     int i;
 
     system->atoms = (reax_atom*) scalloc( system->N,
-            sizeof(reax_atom), "atoms" );
+            sizeof(reax_atom), "PreAllocate_Space::system->atoms" );
     workspace->orig_id = (int*) scalloc( system->N,
-            sizeof(int), "orid_id" );
+            sizeof(int), "PreAllocate_Space::workspace->orid_id" );
 
     /* space for keeping restriction info, if any */
     if ( control->restrict_bonds )
     {
         workspace->restricted = (int*) scalloc( system->N,
-                sizeof(int), "restricted_atoms" );
+                sizeof(int), "PreAllocate_Space::workspace->restricted_atoms" );
 
         workspace->restricted_list = (int**) scalloc( system->N,
-                sizeof(int*), "restricted_list" );
+                sizeof(int*), "PreAllocate_Space::workspace->restricted_list" );
 
         for ( i = 0; i < system->N; ++i )
         {
             workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT,
-                    sizeof(int), "restricted_list[i]" );
+                    sizeof(int), "PreAllocate_Space::workspace->restricted_list[i]" );
         }
     }
-
-    return SUCCESS;
 }
 
 
-void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
+static void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 {
     Delete_List( TYP_FAR_NEIGHBOR, far_nbrs );
 
@@ -70,36 +69,36 @@ void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs )
 }
 
 
-/* dynamic allocation of memory for matrix in CSR format */
-int Allocate_Matrix( sparse_matrix **pH, int n, int m )
+/* Dynamic allocation of memory for matrix in CSR format
+ *
+ * pH (output): pointer to sparse matrix for which to allocate
+ * n: dimension of the matrix
+ * m: number of nonzeros to allocate space for in matrix
+ * */
+void Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
 
-    if ( (*pH = (sparse_matrix*) smalloc( sizeof(sparse_matrix),
-                    "Allocate_Matrix::pH" )) == NULL )
-    {
-        return FAILURE;
-    }
+    *pH = (sparse_matrix*) smalloc( sizeof(sparse_matrix),
+            "Allocate_Matrix::pH" );
 
     H = *pH;
     H->n = n;
     H->m = m;
 
-    if ( (H->start = (unsigned int*) smalloc( sizeof(unsigned int) * (n + 1),
-                    "Allocate_Matrix::H->start" )) == NULL
-            || (H->j = (unsigned int*) smalloc( sizeof(unsigned int) * m,
-                    "Allocate_Matrix::H->j" )) == NULL
-            || (H->val = (real*) smalloc( sizeof(real) * m,
-                    "Allocate_Matrix::H->val" )) == NULL )
-    {
-        return FAILURE;
-    }
-
-    return SUCCESS;
+    H->start = (unsigned int*) smalloc( sizeof(unsigned int) * (n + 1),
+            "Allocate_Matrix::H->start" );
+    H->j = (unsigned int*) smalloc( sizeof(unsigned int) * m,
+            "Allocate_Matrix::H->j" );
+    H->val = (real*) smalloc( sizeof(real) * m,
+            "Allocate_Matrix::H->val" );
 }
 
 
-/* deallocate memory for matrix in CSR format */
+/* Deallocate memory for matrix in CSR format
+ *
+ * H (output): pointer to sparse matrix for which to allocate
+ * */
 void Deallocate_Matrix( sparse_matrix *H )
 {
     sfree( H->start, "Deallocate_Matrix::H->start" );
@@ -109,28 +108,15 @@ void Deallocate_Matrix( sparse_matrix *H )
 }
 
 
-int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name )
+static void Reallocate_Matrix( sparse_matrix **H, int n, int m )
 {
     Deallocate_Matrix( *H );
 
-    if ( Allocate_Matrix( H, n, m ) == FAILURE )
-    {
-        fprintf(stderr, "not enough space for %s matrix. terminating!\n", name);
-        exit( INSUFFICIENT_MEMORY );
-    }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "reallocating %s matrix, n = %d, m = %d\n",
-             name, n, m );
-    fprintf( stderr, "memory allocated: %s = %ldMB\n",
-             name, m * sizeof(sparse_matrix_entry) / (1024 * 1024) );
-#endif
-
-    return SUCCESS;
+    Allocate_Matrix( H, n, m );
 }
 
 
-int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
+void Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
         reax_list *hbonds )
 {
     int i, num_hbonds;
@@ -164,18 +150,13 @@ int Allocate_HBond_List( int n, int num_h, int *h_index, int *hb_top,
     fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
              num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
 #endif
-    return SUCCESS;
 }
 
 
-int Reallocate_HBonds_List( int n, int num_h, int *h_index, reax_list *hbonds )
+static void Reallocate_HBonds_List( int n, int num_h, int *h_index, reax_list *hbonds )
 {
     int i;
     int *hb_top;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "reallocating hbonds\n" );
-#endif
 
     hb_top = (int *) scalloc( n, sizeof(int), "Reallocate_HBonds_List::hb_top" );
     for ( i = 0; i < n; ++i )
@@ -191,12 +172,10 @@ int Reallocate_HBonds_List( int n, int num_h, int *h_index, reax_list *hbonds )
     Allocate_HBond_List( n, num_h, h_index, hb_top, hbonds );
 
     sfree( hb_top, "Reallocate_HBonds_List::hb_top" );
-
-    return SUCCESS;
 }
 
 
-int Allocate_Bond_List( int n, int *bond_top, reax_list *bonds )
+void Allocate_Bond_List( int n, int *bond_top, reax_list *bonds )
 {
     int i, num_bonds;
 
@@ -223,11 +202,10 @@ int Allocate_Bond_List( int n, int *bond_top, reax_list *bonds )
     fprintf( stderr, "memory allocated: bonds = %ldMB\n",
              num_bonds * sizeof(bond_data) / (1024 * 1024) );
 #endif
-    return SUCCESS;
 }
 
 
-int Reallocate_Bonds_List( int n, reax_list *bonds, int *num_bonds, int *est_3body )
+static void Reallocate_Bonds_List( int n, reax_list *bonds, int *num_bonds, int *est_3body )
 {
     int i;
     int *bond_top;
@@ -251,8 +229,6 @@ int Reallocate_Bonds_List( int n, reax_list *bonds, int *num_bonds, int *est_3bo
     *num_bonds = bond_top[n - 1];
 
     sfree( bond_top, "Reallocate_Bonds_List::bond_top" );
-
-    return SUCCESS;
 }
 
 
@@ -276,7 +252,8 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
 
     if ( realloc->Htop > 0 )
     {
-        Reallocate_Matrix(&(workspace->H), system->N_cm, realloc->Htop * SAFE_ZONE, "H");
+        Reallocate_Matrix( &(workspace->H), system->N_cm,
+                realloc->Htop * SAFE_ZONE );
         realloc->Htop = -1;
 
         Deallocate_Matrix( workspace->L );
