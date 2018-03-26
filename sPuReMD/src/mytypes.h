@@ -28,13 +28,9 @@
 #endif
 
 #include <math.h>
-#include <random.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
-#include <time.h>
-#include <zlib.h>
 
 #ifdef _OPENMP
   #include <omp.h>
@@ -43,13 +39,13 @@
 //#define DEBUG_FOCUS
 //#define TEST_FORCES
 //#define TEST_ENERGY
-#define REORDER_ATOMS  // turns on nbrgen opt by re-ordering atoms
+#define REORDER_ATOMS  /* turns on nbrgen opt by re-ordering atoms */
 //#define LGJ
 
-#define SUCCESS  1
-#define FAILURE  0
-#define TRUE  1
-#define FALSE 0
+#define SUCCESS (1)
+#define FAILURE (0)
+#define TRUE (1)
+#define FALSE (0)
 
 #define LOG    log
 #define EXP    exp
@@ -81,56 +77,56 @@
 #endif
 
 #if !defined(PI)
-  #define PI            3.14159265
+  #define PI (3.14159265)
 #endif
-#define C_ele          332.06371
-//#define K_B         503.398008   // kcal/mol/K
-#define K_B             0.831687   // amu A^2 / ps^2 / K
+#define C_ele           (332.06371)
+//#define K_B             (503.398008)   // kcal/mol/K
+#define K_B             (0.831687)   // amu A^2 / ps^2 / K
 #define F_CONV          (1e6 / 48.88821291 / 48.88821291)   // --> amu A / ps^2
-#define E_CONV          0.002391   // amu A^2 / ps^2 --> kcal/mol
-#define EV_to_KCALpMOL 14.400000   // ElectronVolt --> KCAL per MOLe
-#define KCALpMOL_to_EV 23.060549   // 23.020000//KCAL per MOLe --> ElectronVolt
-#define ECxA_to_DEBYE   4.803204      // elem. charge * angstrom -> debye conv
-#define CAL_to_JOULES   4.184000      // CALories --> JOULES
-#define JOULES_to_CAL   (1/4.184000)    // JOULES --> CALories
-#define AMU_to_GRAM     1.6605e-24
-#define ANG_to_CM       1.0e-8
-#define AVOGNR          6.0221367e23
+#define E_CONV          (0.002391)   // amu A^2 / ps^2 --> kcal/mol
+#define EV_to_KCALpMOL  (14.400000)   // ElectronVolt --> KCAL per MOLe
+#define KCALpMOL_to_EV  (23.060549)   // 23.020000//KCAL per MOLe --> ElectronVolt
+#define ECxA_to_DEBYE   (4.803204)      // elem. charge * angstrom -> debye conv
+#define CAL_to_JOULES   (4.184000)      // CALories --> JOULES
+#define JOULES_to_CAL   (1.0 / 4.184000)    // JOULES --> CALories
+#define AMU_to_GRAM     (1.6605e-24)
+#define ANG_to_CM       (1.0e-8)
+#define AVOGNR          (6.0221367e23)
 #define P_CONV          (1.0e-24 * AVOGNR * JOULES_to_CAL)
 
-#define MAX_STR             1024
-#define MAX_LINE            1024
-#define MAX_TOKENS          1024
-#define MAX_TOKEN_LEN       1024
+#define MAX_STR             (1024)
+#define MAX_LINE            (1024)
+#define MAX_TOKENS          (1024)
+#define MAX_TOKEN_LEN       (1024)
 
-#define MAX_ATOM_ID         100000
-#define MAX_RESTRICT        15
-#define MAX_MOLECULE_SIZE   20
-#define MAX_ATOM_TYPES      25
+#define MAX_ATOM_ID         (100000)
+#define MAX_RESTRICT        (15)
+#define MAX_MOLECULE_SIZE   (20)
+#define MAX_ATOM_TYPES      (25)
 
-#define MAX_GRID            50
-#define MAX_3BODY_PARAM     5
-#define MAX_4BODY_PARAM     5
-#define NO_OF_INTERACTIONS  10
+#define MAX_GRID            (50)
+#define MAX_3BODY_PARAM     (5)
+#define MAX_4BODY_PARAM     (5)
+#define NO_OF_INTERACTIONS  (10)
 
-#define MAX_dV              1.01
-#define MIN_dV              0.99
-#define MAX_dT              4.00
-#define MIN_dT              0.00
+#define MAX_dV              (1.01)
+#define MIN_dV              (0.99)
+#define MAX_dT              (4.00)
+#define MIN_dT              (0.00)
 
-#define ZERO           0.000000000000000e+00
-#define ALMOST_ZERO    1e-10
-#define NEG_INF       -1e10
-#define NO_BOND        1e-3
-#define HB_THRESHOLD   1e-2
-#define MAX_BONDS      40
-#define MIN_BONDS      15
-#define MIN_HBONDS     50
-#define SAFE_HBONDS    1.4
-#define MIN_GCELL_POPL 50
-#define SAFE_ZONE   1.2
-#define DANGER_ZONE 0.95
-#define LOOSE_ZONE  0.75
+#define ZERO           (0.000000000000000e+00)
+#define ALMOST_ZERO    (1e-10)
+#define NEG_INF        (-1e10)
+#define NO_BOND        (1e-3)
+#define HB_THRESHOLD   (1e-2)
+#define MAX_BONDS      (40)
+#define MIN_BONDS      (15)
+#define MIN_HBONDS     (50)
+#define SAFE_HBONDS    (1.4)
+#define MIN_GCELL_POPL (50)
+#define SAFE_ZONE      (1.2)
+#define DANGER_ZONE    (0.95)
+#define LOOSE_ZONE     (0.75)
 
 
 /* config params */
@@ -251,7 +247,8 @@ typedef int ivec[3];
 typedef real rtensor[3][3];
 
 
-/* Force field global params mapping:
+/* Force field global parameters mapping
+ * (contained in section 1 of file):
  *
  * l[0]  = p_boc1
  * l[1]  = p_boc2
@@ -287,7 +284,7 @@ typedef real rtensor[3][3];
  * l[31] = p_ovun4
  * l[32] = p_ovun3
  * l[33] = p_val8
- * l[34] = ACKS2 bond softness
+ * l[34] = b_s_acks2 (ACKS2 bond softness)
  * l[35] = N/A
  * l[36] = N/A
  * l[37] = version number
@@ -303,11 +300,14 @@ typedef struct
 typedef struct
 {
     /* Line one in field file */
-    char name[15];                     /* Two character atom name */
+    /* Two character atom name */
+    char name[15];
 
     real r_s;
-    real valency;                     /* Valency of the atom */
-    real mass;                        /* Mass of atom */
+    /* Valency of the atom */
+    real valency;
+    /* Mass of atom */
+    real mass;
     real r_vdw;
     real epsilon;
     real gamma;
@@ -322,8 +322,8 @@ typedef struct
     real p_ovun5;
     real chi;
     real eta;
-    /* Determines whether this type of atom participates in H_bonds.
-     * It is 1 for donor H, 2 for acceptors (O,S,N), 0 for others*/
+    /* Determines whether this type of atom participates in H_bonds:
+     * 1 for H donor, 2 for acceptors (O,S,N), 0 for others */
     int p_hbond;
 
     /* Line three in field file */
@@ -358,7 +358,8 @@ typedef struct
     real p_bo6;
     real r_s;
     real r_p;
-    real r_pp;  /* r_o distances in BO formula */
+    /* r_o distances in BO formula */
+    real r_pp;
     real p_boc3;
     real p_boc4;
     real p_boc5;
@@ -383,9 +384,11 @@ typedef struct
     real acore;
 
     /* electrostatic parameters */
-    real gamma; // note: this parameter is gamma^-3 and not gamma.
+    /* note: this parameter is gamma^-3 and not gamma */
+    real gamma;
 
-    real v13cor, ovc;
+    real v13cor;
+    real ovc;
 } two_body_parameters;
 
 
@@ -483,8 +486,11 @@ typedef struct
     rvec side_prop;
     rvec nbr_box_press[27];
 
-    rtensor box, box_inv, old_box;
-    rtensor trans, trans_inv;
+    rtensor box;
+    rtensor box_inv;
+    rtensor old_box;
+    rtensor trans;
+    rtensor trans_inv;
     rtensor g;
 } simulation_box;
 
@@ -501,13 +507,13 @@ typedef struct
     rvec len;
     rvec inv_len;
 
-    int**** atoms;
-    int*** top;
-    int*** mark;
-    int*** start;
-    int*** end;
-    ivec**** nbrs;
-    rvec**** nbrs_cp;
+    int **** atoms;
+    int *** top;
+    int *** mark;
+    int *** start;
+    int *** end;
+    ivec **** nbrs;
+    rvec **** nbrs_cp;
 } grid;
 
 
@@ -554,9 +560,10 @@ typedef struct
     int reneighbor;
     real vlist_cut;
     real nbr_cut;
+    /* upper and lower taper */
     real r_cut;
     real r_sp_cut;
-    real r_low; // upper and lower taper
+    real r_low;
     real bo_cut;
     real thb_cut;
     real hb_cut;
@@ -637,7 +644,6 @@ typedef struct
     real v_eps;
     real v_eps_old;
     real a_eps;
-
 } isotropic_barostat;
 
 
@@ -688,8 +694,10 @@ typedef struct
     int prev_steps;
     real time;
 
-    real M;              /* Total Mass */
-    real inv_M;                      /* 1 / Total Mass */
+    /* Total Mass */
+    real M;
+    /* 1.0 / Total Mass */
+    real inv_M;
 
     rvec xcm;                        /* Center of mass */
     rvec vcm;                        /* Center of mass velocity */
@@ -720,7 +728,7 @@ typedef struct
     real E_Ele;                      /* Total electrostatics energy */
     real E_Pol;                      /* Polarization energy */
 
-    real N_f;                        /*Number of degrees of freedom */
+    real N_f;                        /* Number of degrees of freedom */
     rvec t_scale;
     rtensor p_scale;
     thermostat therm;                /* Used in Nose_Hoover method */
@@ -1038,6 +1046,8 @@ typedef struct
     /* local forces per thread */
     rvec *f_local;
 #endif
+    unsigned int temp_int_omp;
+    real temp_real_omp;
 
     reallocate_data realloc;
 
@@ -1127,7 +1137,7 @@ typedef struct
 
     /* trajectory output function pointer definitions */
     int (* write_header)( reax_system*, control_params*, static_storage*, void* );
-    int (* append_traj_frame)(reax_system*, control_params*,
+    int (* append_traj_frame)( reax_system*, control_params*,
             simulation_data*, static_storage*, reax_list **, void* );
     int (* write)( FILE *, const char *, ... );
 
@@ -1146,7 +1156,6 @@ typedef struct
     FILE *ecou;
 #endif
 
-    FILE *ftot;
 #ifdef TEST_FORCES
     FILE *fbo;
     FILE *fdbo;
@@ -1157,6 +1166,7 @@ typedef struct
     FILE *fhb;
     FILE *f4body;
     FILE *fnonb;
+    FILE *ftot;
     FILE *ftot2;
 #endif
 } output_controls;

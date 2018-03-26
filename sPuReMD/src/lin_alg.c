@@ -29,10 +29,10 @@
 
 /* Intel MKL */
 #if defined(HAVE_LAPACKE_MKL)
-#include "mkl.h"
+  #include "mkl.h"
 /* reference LAPACK */
 #elif defined(HAVE_LAPACKE)
-#include "lapacke.h"
+  #include "lapacke.h"
 #endif
 
 
@@ -3233,7 +3233,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 
             Vector_Copy( u[0], z[0], N );
             u[0][0] += ( u[0][0] < 0.0 ? -1 : 1 ) * w[0];
-            Vector_Scale( u[0], 1 / Norm( u[0], N ), u[0], N );
+            Vector_Scale( u[0], 1.0 / Norm( u[0], N ), u[0], N );
 
             w[0] *= ( u[0][0] < 0.0 ?  1 : -1 );
             t_vops += Get_Timing_Info( t_start );
@@ -3243,12 +3243,13 @@ int GMRES_HouseHolder( const static_storage * const workspace,
             {
                 /* compute v_j */
                 t_start = Get_Time( );
-                Vector_Scale( z[j], -2 * u[j][j], u[j], N );
+                Vector_Scale( z[j], -2.0 * u[j][j], u[j], N );
                 z[j][j] += 1.; /* due to e_j */
 
                 for ( i = j - 1; i >= 0; --i )
                 {
-                    Vector_Add( z[j] + i, -2 * Dot( u[i] + i, z[j] + i, N - i ), u[i] + i, N - i );
+                    Vector_Add( z[j] + i, -2.0 * Dot( u[i] + i, z[j] + i, N - i ),
+                            u[i] + i, N - i );
                 }
                 t_vops += Get_Timing_Info( t_start );
 
@@ -3267,7 +3268,8 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                 t_start = Get_Time( );
                 for ( i = 0; i <= j; ++i )
                 {
-                    Vector_Add( v + i, -2 * Dot( u[i] + i, v + i, N - i ), u[i] + i, N - i );
+                    Vector_Add( v + i, -2.0 * Dot( u[i] + i, v + i, N - i ),
+                                u[i] + i, N - i );
                 }
 
                 if ( !Vector_isZero( v + (j + 1), N - (j + 1) ) )
@@ -3279,16 +3281,17 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 #ifdef _OPENMP
                     #pragma omp single
 #endif
-                    u[j + 1][j + 1] += ( v[j + 1] < 0.0 ? -1 : 1 ) * temp;
+                    u[j + 1][j + 1] += ( v[j + 1] < 0.0 ? -1.0 : 1.0 ) * temp;
 
 #ifdef _OPENMP
                     #pragma omp barrier
 #endif
 
-                    Vector_Scale( u[j + 1], 1 / Norm( u[j + 1], N ), u[j + 1], N );
+                    Vector_Scale( u[j + 1], 1.0 / Norm( u[j + 1], N ), u[j + 1], N );
 
                     /* overwrite v with P_m+1 * v */
-                    temp = 2 * Dot( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) ) * u[j + 1][j + 1];
+                    temp = 2.0 * Dot( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) )
+                           * u[j + 1][j + 1];
 #ifdef _OPENMP
                     #pragma omp single
 #endif
@@ -3299,7 +3302,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 #endif
 
                     Vector_MakeZero( v + (j + 2), N - (j + 2) );
-//                    Vector_Add( v, -2 * Dot( u[j+1], v, N ), u[j+1], N );
+//                    Vector_Add( v, -2.0 * Dot( u[j+1], v, N ), u[j+1], N );
                 }
                 t_vops += Get_Timing_Info( t_start );
 
@@ -3314,7 +3317,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                         tmp1 =  workspace->hc[i] * v[i] + workspace->hs[i] * v[i + 1];
                         tmp2 = -workspace->hs[i] * v[i] + workspace->hc[i] * v[i + 1];
 
-                        v[i]   = tmp1;
+                        v[i] = tmp1;
                         v[i + 1] = tmp2;
                     }
 

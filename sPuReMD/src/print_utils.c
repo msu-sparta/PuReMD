@@ -546,16 +546,12 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
 }
 
 
+#if defined(TEST_FORCES)
 void Print_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
     int i;
-#if !defined(TEST_FORCES)
-    char temp[1000];
-    snprintf( temp, 1000, "%.*s.ftot", 994, control->sim_name );
-    out_control->ftot = fopen( temp, "w" );
-#endif
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -567,10 +563,8 @@ void Print_Total_Force( reax_system *system, control_params *control,
     }
 
     fflush( out_control->ftot );
-#if !defined(TEST_FORCES)
-    fclose( out_control->ftot );
-#endif
 }
+#endif
 
 
 void Output_Results( reax_system *system, control_params *control,

@@ -22,6 +22,7 @@
 #include "control.h"
 
 #include <ctype.h>
+#include <zlib.h>
 
 #include "traj.h"
 #include "tool_box.h"

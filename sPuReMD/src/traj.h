@@ -24,8 +24,6 @@
 
 #include "mytypes.h"
 
-#include <zlib.h>
-
 
 #define BLOCK_MARK "REAX_BLOCK_MARK "
 #define BLOCK_MARK_LEN 16

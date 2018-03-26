@@ -24,6 +24,8 @@
 
 #include "mytypes.h"
 
+#include "random.h"
+
 
 /* file scope to make OpenMP shared (Vector_isZero) */
 static unsigned int ret_omp;
@@ -200,10 +202,6 @@ static inline void rvec_Copy( rvec dest, const rvec src )
     {
         dest[i] = src[i];
     }
-
-//    dest[0] = src[0];
-//    dest[1] = src[1];
-//    dest[2] = src[2];
 }
 
 static inline void rvec_Scale( rvec ret, const real c, const rvec v )
@@ -217,10 +215,6 @@ static inline void rvec_Scale( rvec ret, const real c, const rvec v )
     {
         ret[i] = c * v[i];
     }
-
-//    ret[0] = c * v[0];
-//    ret[1] = c * v[1];
-//    ret[2] = c * v[2];
 }
 
 
@@ -235,10 +229,6 @@ static inline void rvec_Add( rvec ret, const rvec v )
     {
         ret[i] += v[i];
     }
-
-//    ret[0] += v[0];
-//    ret[1] += v[1];
-//    ret[2] += v[2];
 }
 
 
@@ -253,10 +243,6 @@ static inline void rvec_ScaledAdd( rvec ret, const real c, const rvec v )
     {
         ret[i] += c * v[i];
     }
-
-//    ret[0] += c * v[0];
-//    ret[1] += c * v[1];
-//    ret[2] += c * v[2];
 }
 
 
@@ -271,10 +257,6 @@ static inline void rvec_Sum( rvec ret, const rvec v1 , const rvec v2 )
     {
         ret[i] = v1[i] + v2[i];
     }
-
-//    ret[0] = v1[0] + v2[0];
-//    ret[1] = v1[1] + v2[1];
-//    ret[2] = v1[2] + v2[2];
 }
 
 
@@ -290,10 +272,6 @@ static inline void rvec_ScaledSum( rvec ret, const real c1, const rvec v1,
     {
         ret[i] = c1 * v1[i] + c2 * v2[i];
     }
-
-//    ret[0] = c1 * v1[0] + c2 * v2[0];
-//    ret[1] = c1 * v1[1] + c2 * v2[1];
-//    ret[2] = c1 * v1[2] + c2 * v2[2];
 }
 
 
@@ -313,8 +291,6 @@ static inline real rvec_Dot( const rvec v1, const rvec v2 )
     }
 
     return ret;
-
-//    return (v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]);
 }
 
 
@@ -335,8 +311,6 @@ static inline real rvec_ScaledDot( const real c1, const rvec v1,
     }
 
     return c1 * c2 * ret;
-
-//    return (c1 * c2) * (v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]);
 }
 
 
@@ -351,10 +325,6 @@ static inline void rvec_Multiply( rvec r, const rvec v1, const rvec v2 )
     {
         r[i] = v1[i] * v2[i];
     }
-
-//    r[0] = v1[0] * v2[0];
-//    r[1] = v1[1] * v2[1];
-//    r[2] = v1[2] * v2[2];
 }
 
 
@@ -369,10 +339,6 @@ static inline void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
     {
         r[i] = v1[i] * v2[i];
     }
-
-//    r[0] = v1[0] * v2[0];
-//    r[1] = v1[1] * v2[1];
-//    r[2] = v1[2] * v2[2];
 }
 
 
@@ -387,10 +353,6 @@ static inline void rvec_Divide( rvec r, const rvec v1, const rvec v2 )
     {
         r[i] = v1[i] / v2[i];
     }
-
-//    r[0] = v1[0] / v2[0];
-//    r[1] = v1[1] / v2[1];
-//    r[2] = v1[2] / v2[2];
 }
 
 
@@ -405,10 +367,6 @@ static inline void rvec_iDivide( rvec r, const rvec v1, const ivec v2 )
     {
         r[i] = v1[i] / v2[i];
     }
-
-//    r[0] = v1[0] / v2[0];
-//    r[1] = v1[1] / v2[1];
-//    r[2] = v1[2] / v2[2];
 }
 
 
@@ -423,10 +381,6 @@ static inline void rvec_Invert( rvec r, const rvec v )
     {
         r[i] = 1.0 / v[i];
     }
-
-//    r[0] = 1.0 / v[0];
-//    r[1] = 1.0 / v[1];
-//    r[2] = 1.0 / v[2];
 }
 
 
@@ -442,10 +396,6 @@ static inline void rvec_Cross( rvec ret, const rvec v1, const rvec v2 )
         ret[i] = v1[(i + 1) % 3] * v2[(i + 2) % 3]
             - v1[(i + 2) % 3] * v2[(i + 1) % 3];
     }
-
-//    ret[0] = v1[1] * v2[2] - v1[2] * v2[1];
-//    ret[1] = v1[2] * v2[0] - v1[0] * v2[2];
-//    ret[2] = v1[0] * v2[1] - v1[1] * v2[0];
 }
 
 
@@ -479,8 +429,6 @@ static inline real rvec_Norm_Sqr( const rvec v )
     }
 
     return ret;
-
-//    return SQR(v[0]) + SQR(v[1]) + SQR(v[2]);
 }
 
 
@@ -500,8 +448,6 @@ static inline real rvec_Norm( const rvec v )
     }
 
     return SQRT( ret );
-
-//    return SQRT( SQR(v[0]) + SQR(v[1]) + SQR(v[2]) );
 }
 
 
@@ -520,14 +466,6 @@ static inline int rvec_isZero( const rvec v )
     }
 
     return ret;
-
-//    if ( FABS(v[0]) > ALMOST_ZERO ||
-//            FABS(v[1]) > ALMOST_ZERO ||
-//            FABS(v[2]) > ALMOST_ZERO )
-//    {
-//        return FALSE;
-//    }
-//    return TRUE;
 }
 
 
@@ -542,13 +480,11 @@ static inline void rvec_MakeZero( rvec v )
     {
         v[i] = ZERO;
     }
-
-//    v[0] = ZERO;
-//    v[1] = ZERO;
-//    v[2] = ZERO;
 }
 
 
+/* Note: currently not thread-safe since uses random( ) underneath,
+ * change to reentrant version later if needed */
 static inline void rvec_Random( rvec v )
 {
     v[0] = Random(2.0) - 1.0;
@@ -788,10 +724,6 @@ static inline void ivec_MakeZero( ivec v )
     {
         v[i] = 0;
     }
-
-//    v[0] = 0;
-//    v[1] = 0;
-//    v[2] = 0;
 }
 
 
@@ -806,10 +738,6 @@ static inline void ivec_Copy( ivec dest, const ivec src )
     {
         dest[i] = src[i];
     }
-
-//    dest[0] = src[0];
-//    dest[1] = src[1];
-//    dest[2] = src[2];
 }
 
 
@@ -824,10 +752,6 @@ static inline void ivec_Scale( ivec dest, const real C, const ivec src )
     {
         dest[i] = C * src[i];
     }
-
-//    dest[0] = C * src[0];
-//    dest[1] = C * src[1];
-//    dest[2] = C * src[2];
 }
 
 
@@ -842,10 +766,6 @@ static inline void ivec_rScale( ivec dest, const real C, const rvec src )
     {
         dest[i] = (int)(C * src[i]);
     }
-
-//    dest[0] = (int)(C * src[0]);
-//    dest[1] = (int)(C * src[1]);
-//    dest[2] = (int)(C * src[2]);
 }
 
 
@@ -864,12 +784,6 @@ static inline int ivec_isZero( const ivec v )
     }
 
     return ret;
-
-//    if ( v[0] == 0 && v[1] == 0 && v[2] == 0 )
-//    {
-//        return TRUE;
-//    }
-//    return FALSE;
 }
 
 
@@ -888,13 +802,6 @@ static inline int ivec_isEqual( const ivec v1, const ivec v2 )
     }
 
     return ret;
-
-//    if ( v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2] )
-//    {
-//        return TRUE;
-//    }
-//
-//    return FALSE;
 }
 
 
@@ -909,10 +816,6 @@ static inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
     {
         dest[i] = v1[i] * v2[i];
     }
-
-//    dest[0] = v1[0] + v2[0];
-//    dest[1] = v1[1] + v2[1];
-//    dest[2] = v1[2] + v2[2];
 }
 
 
