@@ -23,6 +23,8 @@
 
 #include "list.h"
 
+#include <zlib.h>
+
 
 /************************************************/
 /*      CUSTOM FORMAT ROUTINES                  */

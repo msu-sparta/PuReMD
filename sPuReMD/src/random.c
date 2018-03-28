@@ -21,40 +21,13 @@
 
 #include "random.h"
 
-
-/* System random number generator used linear congruance method with
- * large periodicity for generation of pseudo random number. function
- * Random returns this random number appropriately scaled so that
- * 0 <= Random(range) < range */
-double Random(double range)
-{
-    return (random() * range) / 2147483647L;
-}
+#include <time.h>
 
 
 /* This function seeds the system pseudo random number generator with
  * current time. Use this function once in the begining to initialize
- * the system */
-void Randomize()
+ * the system. */
+void Randomize( )
 {
-    srandom(time(NULL));
-}
-
-
-/* GRandom return random number with gaussian distribution with mean
- * and standard deviation "sigma" */
-double GRandom(double mean, double sigma)
-{
-    double v1 = Random(2.0) - 1.0;
-    double v2 = Random(2.0) - 1.0;
-    double rsq = v1 * v1 + v2 * v2;
-
-    while (rsq >= 1.0 || rsq == 0.0)
-    {
-        v1 = Random(2.0) - 1.0;
-        v2 = Random(2.0) - 1.0;
-        rsq = v1 * v1 + v2 * v2;
-    }
-
-    return mean + v1 * sigma * SQRT(-2.0 * LOG(rsq) / rsq);
+    srandom( time(NULL) );
 }

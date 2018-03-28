@@ -22,6 +22,7 @@
 #include "tool_box.h"
 
 #include <ctype.h>
+#include <sys/time.h>
 
 
 /************** taken from box.c **************/
