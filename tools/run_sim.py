@@ -161,33 +161,15 @@ class TestCase():
             for line in fp:
                 line = line.split()
                 try:
-                    if not min_step and not max_step:
+                    if (not min_step and not max_step) or \
+                    (min_step and not max_step and cnt >= min_step) or \
+                    (not min_step and max_step and cnt <= max_step) or \
+                    (cnt >= min_step and cnt <= max_step):
                         cm = cm + float(line[6])
                         iters = iters + float(line[8])
                         pre_comp = pre_comp + float(line[9])
                         pre_app = pre_app + float(line[10])
                         spmv = spmv + float(line[11])
-                    elif min_step and not max_step:
-                        if cnt >= min_step:
-                            cm = cm + float(line[6])
-                            iters = iters + float(line[8])
-                            pre_comp = pre_comp + float(line[9])
-                            pre_app = pre_app + float(line[10])
-                            spmv = spmv + float(line[11])
-                    elif min_step and not max_step:
-                        if cnt <= max_step:
-                            cm = cm + float(line[6])
-                            iters = iters + float(line[8])
-                            pre_comp = pre_comp + float(line[9])
-                            pre_app = pre_app + float(line[10])
-                            spmv = spmv + float(line[11])
-                    else:
-                        if cnt >= min_step and cnt <= max_step:
-                            cm = cm + float(line[6])
-                            iters = iters + float(line[8])
-                            pre_comp = pre_comp + float(line[9])
-                            pre_app = pre_app + float(line[10])
-                            spmv = spmv + float(line[11])
                     cnt = cnt + 1
                 except Exception:
                     pass
@@ -204,7 +186,8 @@ class TestCase():
                 pre_app = pre_app / cnt
                 spmv = spmv / cnt
 
-        # subtract for header, footer, and extra step (e.g., 100 steps means steps 0 through 100, inclusive)
+        # subtract for header, footer (total time), and extra step
+        # (e.g., 100 steps means steps 0 through 100, inclusive)
         if (line_cnt - 3) == int(param['nsteps']):
             fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
                 param['nsteps'], param['charge_method'], param['cm_solver_type'],
@@ -216,7 +199,7 @@ class TestCase():
                 cm, param['threads'], time))
         else:
             print('**WARNING: nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
-                log_file, int(param['nsteps']), line_cnt - 3))
+                log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
         fout.flush()
 
 
