@@ -76,6 +76,8 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->cm_solver_q_err = 0.000001;
     control->cm_domain_sparsify_enabled = FALSE;
     control->cm_domain_sparsity = 1.0;
+    control->cm_init_guess_extrap1 = 3;
+    control->cm_init_guess_extrap2 = 2;
     control->cm_solver_pre_comp_type = ICHOLT_PC;
     control->cm_solver_pre_comp_sweeps = 3;
     control->cm_solver_pre_comp_sai_thres = 0.1;
@@ -275,6 +277,16 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             {
                 control->cm_domain_sparsify_enabled = TRUE;
             }
+        }
+        else if ( strcmp(tmp[0], "cm_init_guess_extrap1") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_init_guess_extrap1 = ival;
+        }
+        else if ( strcmp(tmp[0], "cm_init_guess_extrap2") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_init_guess_extrap2 = ival;
         }
         else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
         {

@@ -39,7 +39,7 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
     int i;
     real s_tmp, t_tmp;
 
-    /* extrapolation for s & t */
+    /* spline extrapolation for s & t */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
@@ -47,29 +47,61 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
-        // no extrapolation
-        //s_tmp = workspace->s[0][i];
-        //t_tmp = workspace->t[0][i];
+        /* no extrapolation */
+        if ( control->cm_init_guess_extrap1 == 0 )
+        {
+            s_tmp = workspace->s[0][i];
+        }
+        /* linear */
+        else if ( control->cm_init_guess_extrap1 == 1 )
+        {
+            s_tmp = 2 * workspace->s[0][i] - workspace->s[1][i];
+        }
+        /* quadratic */
+        else if ( control->cm_init_guess_extrap1 == 2 )
+        {
+            s_tmp = workspace->s[2][i] + 3 * (workspace->s[0][i]-workspace->s[1][i]);
+        }
+        /* cubic */
+        else if ( control->cm_init_guess_extrap1 == 3 )
+        {
+            s_tmp = 4 * (workspace->s[0][i] + workspace->s[2][i]) -
+                    (6 * workspace->s[1][i] + workspace->s[3][i] );
+        }
+        /* 4th order */
+        else if ( control->cm_init_guess_extrap1 == 4 )
+        {
+            s_tmp = 5 * (workspace->s[0][i] - workspace->s[3][i]) +
+                10 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
+        }
 
-        // linear
-        //s_tmp = 2 * workspace->s[0][i] - workspace->s[1][i];
-        //t_tmp = 2 * workspace->t[0][i] - workspace->t[1][i];
-
-        // quadratic
-        //s_tmp = workspace->s[2][i] + 3 * (workspace->s[0][i]-workspace->s[1][i]);
-        t_tmp = workspace->t[2][i] + 3 * (workspace->t[0][i] - workspace->t[1][i]);
-
-        // cubic
-        s_tmp = 4 * (workspace->s[0][i] + workspace->s[2][i]) -
-                (6 * workspace->s[1][i] + workspace->s[3][i] );
-        //t_tmp = 4 * (workspace->t[0][i] + workspace->t[2][i]) -
-        //  (6 * workspace->t[1][i] + workspace->t[3][i] );
-
-        // 4th order
-        //s_tmp = 5 * (workspace->s[0][i] - workspace->s[3][i]) +
-        //  10 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
-        //t_tmp = 5 * (workspace->t[0][i] - workspace->t[3][i]) +
-        //  10 * (-workspace->t[1][i] + workspace->t[2][i] ) + workspace->t[4][i];
+        /* no extrapolation */
+        if ( control->cm_init_guess_extrap2 == 0 )
+        {
+            t_tmp = workspace->t[0][i];
+        }
+        /* linear */
+        else if ( control->cm_init_guess_extrap2 == 1 )
+        {
+            t_tmp = 2.0 * workspace->t[0][i] - workspace->t[1][i];
+        }
+        /* quadratic */
+        else if ( control->cm_init_guess_extrap2 == 2 )
+        {
+            t_tmp = workspace->t[2][i] + 3 * (workspace->t[0][i] - workspace->t[1][i]);
+        }
+        /* cubic */
+        else if ( control->cm_init_guess_extrap2 == 3 )
+        {
+            t_tmp = 4.0 * (workspace->t[0][i] + workspace->t[2][i]) -
+                (6.0 * workspace->t[1][i] + workspace->t[3][i] );
+        }
+        /* 4th order */
+        else if ( control->cm_init_guess_extrap2 == 4 )
+        {
+            t_tmp = 5.0 * (workspace->t[0][i] - workspace->t[3][i]) +
+                10.0 * (-workspace->t[1][i] + workspace->t[2][i] ) + workspace->t[4][i];
+        }
 
         workspace->s[4][i] = workspace->s[3][i];
         workspace->s[3][i] = workspace->s[2][i];
@@ -93,7 +125,7 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
     int i;
     real s_tmp;
 
-    /* extrapolation for s */
+    /* spline extrapolation for s */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
@@ -101,22 +133,33 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
-        // no extrapolation
-        //s_tmp = workspace->s[0][i];
-
-        // linear
-        //s_tmp = 2 * workspace->s[0][i] - workspace->s[1][i];
-
-        // quadratic
-        //s_tmp = workspace->s[2][i] + 3 * (workspace->s[0][i]-workspace->s[1][i]);
-
-        // cubic
-        s_tmp = 4 * (workspace->s[0][i] + workspace->s[2][i]) -
-                (6 * workspace->s[1][i] + workspace->s[3][i] );
-
-        // 4th order
-        //s_tmp = 5 * (workspace->s[0][i] - workspace->s[3][i]) +
-        //  10 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
+        /* no extrapolation */
+        if ( control->cm_init_guess_extrap1 == 0 )
+        {
+            s_tmp = workspace->s[0][i];
+        }
+        /* linear */
+        else if ( control->cm_init_guess_extrap1 == 1 )
+        {
+            s_tmp = 2.0 * workspace->s[0][i] - workspace->s[1][i];
+        }
+        /* quadratic */
+        else if ( control->cm_init_guess_extrap1 == 2 )
+        {
+            s_tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i]-workspace->s[1][i]);
+        }
+        /* cubic */
+        else if ( control->cm_init_guess_extrap1 == 3 )
+        {
+            s_tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i]) -
+                    (6.0 * workspace->s[1][i] + workspace->s[3][i] );
+        }
+        /* 4th order */
+        else if ( control->cm_init_guess_extrap1 == 4 )
+        {
+            s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i]) +
+                10.0 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
+        }
 
         workspace->s[4][i] = workspace->s[3][i];
         workspace->s[3][i] = workspace->s[2][i];

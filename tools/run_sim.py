@@ -47,6 +47,10 @@ class TestCase():
                     r'(?P<key>cm_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_domain_sparsity': lambda l, x: sub(
                     r'(?P<key>cm_domain_sparsity\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_init_guess_extrap1': lambda l, x: sub(
+                    r'(?P<key>cm_init_guess_extrap1\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'cm_init_guess_extrap2': lambda l, x: sub(
+                    r'(?P<key>cm_init_guess_extrap2\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_type': lambda l, x: sub(
                     r'(?P<key>cm_solver_pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_droptol': lambda l, x: sub(
@@ -252,6 +256,8 @@ if __name__ == '__main__':
             'cm_solver_restart': ['100'],
             'cm_solver_q_err': ['1e-6'],
             'cm_domain_sparsity': ['1.0'],
+            'cm_init_guess_extrap1': ['3'],
+            'cm_init_guess_extrap2': ['2'],
             'cm_solver_pre_comp_type': ['2'],
             'cm_solver_pre_comp_refactor': ['100'],
             'cm_solver_pre_comp_droptol': ['0.0'],

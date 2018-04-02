@@ -609,6 +609,8 @@ typedef struct
     real cm_solver_q_err;
     real cm_domain_sparsity;
     unsigned int cm_domain_sparsify_enabled;
+    unsigned int cm_init_guess_extrap1;
+    unsigned int cm_init_guess_extrap2;
     unsigned int cm_solver_pre_comp_type;
     unsigned int cm_solver_pre_comp_refactor;
     real cm_solver_pre_comp_droptol;
