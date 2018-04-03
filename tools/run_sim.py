@@ -174,7 +174,7 @@ class TestCase():
                         pre_comp = pre_comp + float(line[9])
                         pre_app = pre_app + float(line[10])
                         spmv = spmv + float(line[11])
-                    cnt = cnt + 1
+                        cnt = cnt + 1
                 except Exception:
                     pass
                 if line[0] == 'total:':
