@@ -269,7 +269,12 @@ int simulate( const void * const handle )
             {
                 Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+            }
 
+            Check_Energy( spmd_handle->data );
+
+            if ( spmd_handle->output_enabled == TRUE )
+            {
                 Analysis( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
             }

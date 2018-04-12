@@ -217,8 +217,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
             expval6 = EXP( p_val6 * workspace->Delta_boc[j] );
 
             /* unlike 2-body intrs where we enforce i<j, we cannot put any such
-               restrictions here. such a restriction would prevent us from producing
-               all 4-body intrs correctly */
+             * restrictions here. such a restriction would prevent us from producing
+             * all 4-body intrs correctly */
             for ( pi = start_j; pi < end_j; ++pi )
             {
                 Set_Start_Index( pi, num_thb_intrs, thb_intrs );

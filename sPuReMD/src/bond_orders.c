@@ -730,8 +730,8 @@ static int compare_bonds( const void *p1, const void *p2 )
 
 
 /* A very important and crucial assumption here is that each segment
-   belonging to a different atom in nbrhoods->nbr_list is sorted in its own.
-   This can either be done in the general coordinator function or here */
+ * belonging to a different atom in nbrhoods->nbr_list is sorted in its own.
+ * This can either be done in the general coordinator function or here */
 void Calculate_Bond_Orders( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -1006,7 +1006,8 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                         bo_ij->BO_pi2 = 0.0;
                     }
 
-                    workspace->total_bond_order[i] += bo_ij->BO; // now keeps total_BO
+                    /* now keeps total_BO */
+                    workspace->total_bond_order[i] += bo_ij->BO;
 
 #ifdef TEST_FORCES
                     Set_End_Index( pj, top_dbo, dBOs );
@@ -1087,6 +1088,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                 if ( i < j )
                 {
                     /* computed in previous for-loop */
+                    ;
                 }
                 else
                 {

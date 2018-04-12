@@ -240,7 +240,11 @@ void Compute_Total_Energy( reax_system* system, simulation_data* data )
 
 
     data->E_Tot = data->E_Pot + E_CONV * data->E_Kin;
+}
 
+
+void Check_Energy( simulation_data* data )
+{
     if ( IS_NAN_REAL(data->E_Pol) )
     {
         fprintf( stderr, "[ERROR] NaN detected for polarization energy. Terminating...\n" );
