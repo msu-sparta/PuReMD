@@ -47,7 +47,7 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
-        /* no extrapolation */
+        /* no extrapolation, previous solution as initial guess */
         if ( control->cm_init_guess_extrap1 == 0 )
         {
             s_tmp = workspace->s[0][i];
@@ -74,8 +74,12 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
             s_tmp = 5 * (workspace->s[0][i] - workspace->s[3][i]) +
                 10 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
         }
+        else
+        {
+            s_tmp = 0.0;
+        }
 
-        /* no extrapolation */
+        /* no extrapolation, previous solution as initial guess */
         if ( control->cm_init_guess_extrap2 == 0 )
         {
             t_tmp = workspace->t[0][i];
@@ -101,6 +105,10 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
         {
             t_tmp = 5.0 * (workspace->t[0][i] - workspace->t[3][i]) +
                 10.0 * (-workspace->t[1][i] + workspace->t[2][i] ) + workspace->t[4][i];
+        }
+        else
+        {
+            t_tmp = 0.0;
         }
 
         workspace->s[4][i] = workspace->s[3][i];
@@ -159,6 +167,10 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
         {
             s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i]) +
                 10.0 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
+        }
+        else
+        {
+            s_tmp = 0.0;
         }
 
         workspace->s[4][i] = workspace->s[3][i];

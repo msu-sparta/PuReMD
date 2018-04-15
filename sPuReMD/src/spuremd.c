@@ -242,6 +242,9 @@ int simulate( const void * const handle )
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
         }
+
+        Check_Energy( spmd_handle->data );
+
         if ( spmd_handle->callback != NULL )
         {
             spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,

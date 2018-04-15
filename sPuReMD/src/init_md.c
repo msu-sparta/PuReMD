@@ -169,8 +169,8 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         *Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         break;
 
-
-    case NPT: // Anisotropic NPT
+    /* anisotropic NPT */
+    case NPT:
         fprintf( stderr, "THIS OPTION IS NOT YET IMPLEMENTED! TERMINATING...\n" );
         exit( UNKNOWN_OPTION );
         data->N_f = 3 * system->N + 9;
@@ -186,14 +186,14 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         *Evolve = Velocity_Verlet_Berendsen_Isotropic_NPT;
         break;
 
-
-    case sNPT: // Semi-Isotropic NPT
+    /* semi-isotropic NPT */
+    case sNPT:
         data->N_f = 3 * system->N + 4;
         *Evolve = Velocity_Verlet_Berendsen_SemiIsotropic_NPT;
         break;
 
-
-    case iNPT: // Isotropic NPT
+    /* isotropic NPT */
+    case iNPT:
         data->N_f = 3 * system->N + 2;
         *Evolve = Velocity_Verlet_Berendsen_Isotropic_NPT;
         break;
@@ -201,7 +201,6 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
     case bNVT:
         data->N_f = 3 * system->N + 1;
         *Evolve = Velocity_Verlet_Berendsen_NVT;
-        fprintf (stderr, " Initializing Velocity_Verlet_Berendsen_NVT .... \n");
         break;
 
     default:

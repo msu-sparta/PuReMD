@@ -447,7 +447,6 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /************************************************/
-
 #ifdef ANISOTROPIC
 void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
         control_params* control, simulation_data *data,
@@ -657,8 +656,10 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
 
         E_kin = 0;
         for ( i = 0; i < system->N; ++i )
+        {
             E_kin += (0.5 * system->reaxprm.sbp[system->atoms[i].type].mass *
                       rvec_Dot( system->atoms[i].v, system->atoms[i].v ) );
+        }
 
         P_int = inv_3V * ( 2.0 * E_kin + P_int_const );
 
@@ -684,13 +685,12 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     fprintf(out_control->log, "xi: \tG- %8.3f  v- %8.3f  xi - %8.3f\n",
             therm->G_xi, therm->v_xi, therm->xi);
 }
-
 #endif
 
 
-/* uses Berendsen-type coupling for both T and P.
-   All box dimensions are scaled by the same amount,
-   there is no change in the angles between axes. */
+/* Uses Berendsen-type coupling for both T and P.
+ * All box dimensions are scaled by the same amount,
+ * there is no change in the angles between axes. */
 void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         control_params* control, simulation_data *data,
         static_storage *workspace, reax_list **lists,
@@ -705,6 +705,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d\n", data->step );
 #endif
+
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = (steps % control->reneighbor == 0);
@@ -734,7 +735,9 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     Reset( system, control, data, workspace, lists );
 
     if ( renbr )
+    {
         Generate_Neighbor_Lists( system, control, data, workspace, lists, out_control );
+    }
 
     Compute_Forces( system, control, data, workspace,
             lists, out_control, interaction_functions );
@@ -764,7 +767,9 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     }
     lambda = SQRT( lambda );
 
-    fprintf (stderr, "step:%d lambda -> %f \n", data->step, lambda);
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "step:%d lambda -> %f \n", data->step, lambda );
+#endif
 
     /* Scale velocities and positions at t+dt */
     for ( i = 0; i < system->N; ++i )

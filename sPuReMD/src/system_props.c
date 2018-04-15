@@ -227,9 +227,9 @@ void Compute_Total_Energy( reax_system* system, simulation_data* data )
         q = system->atoms[i].q;
         type_i = system->atoms[i].type;
 
-        e_pol += ( system->reaxprm.sbp[ type_i ].chi * q +
-                (system->reaxprm.sbp[ type_i ].eta / 2.0) * SQR( q ) ) *
-            KCALpMOL_to_EV;
+        e_pol += ( system->reaxprm.sbp[ type_i ].chi * q
+                + (system->reaxprm.sbp[ type_i ].eta / 2.0) * SQR( q ) )
+            * KCALpMOL_to_EV;
     }
 
     data->E_Pol = e_pol;

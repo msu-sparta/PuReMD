@@ -233,6 +233,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
         val = atof(tmp[7]);
         reax->sbp[i].acore2 = val;
 
+        /* inner-wall */
         if ( reax->sbp[i].rcore2 > 0.01 && reax->sbp[i].acore2 > 0.01 ) // Inner-wall
         {
             /* shielding vdWaals */
@@ -392,6 +393,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* calculating combination rules and filling up remaining fields. */
     for (i = 0; i < reax->num_atom_types; i++)
+    {
         for (j = i; j < reax->num_atom_types; j++)
         {
             reax->tbp[i][j].r_s = 0.5 * (reax->sbp[i].r_s + reax->sbp[j].r_s);
@@ -437,6 +439,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
             reax->tbp[i][j].rcore = SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
             reax->tbp[j][i].rcore = SQRT( reax->sbp[j].rcore2 * reax->sbp[i].rcore2 );
         }
+    }
 
     /* next line is number of 2-body offdiagonal combinations and some comments */
     /* these are two body off-diagonal terms that are different from the
