@@ -3162,6 +3162,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] GMRES convergence failed (%d outer iters)\n", g_itr );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", FABS(workspace->g[g_j]) / bnorm );
         return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
     }
 
@@ -3403,6 +3404,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] GMRES convergence failed (%d outer iters)\n", g_itr );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", FABS(w[g_j]) / bnorm );
         return g_itr * (control->cm_solver_restart + 1) + j + 1;
     }
 
@@ -3461,7 +3463,7 @@ int CG( const static_storage * const workspace, const control_params * const con
 
         t_start = Get_Time( );
         Vector_Copy( p, z, N );
-        sig_new = Dot( r, z, N );
+        sig_new = Dot( r, p, N );
         t_vops += Get_Timing_Info( t_start );
 
         for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
@@ -3474,7 +3476,7 @@ int CG( const static_storage * const workspace, const control_params * const con
             tmp = Dot( d, p, N );
             alpha = sig_new / tmp;
             Vector_Add( x, alpha, p, N );
-            Vector_Add( r, -alpha, d, N );
+            Vector_Add( r, -1.0 * alpha, d, N );
             r_norm = Norm( r, N );
             t_vops += Get_Timing_Info( t_start );
 
@@ -3487,7 +3489,7 @@ int CG( const static_storage * const workspace, const control_params * const con
             sig_old = sig_new;
             sig_new = Dot( r, z, N );
             beta = sig_new / sig_old;
-            Vector_Sum( p, 1., z, beta, p, N );
+            Vector_Sum( p, 1.0, z, beta, p, N );
             t_vops += Get_Timing_Info( t_start );
         }
 
@@ -3504,6 +3506,115 @@ int CG( const static_storage * const workspace, const control_params * const con
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", g_itr );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", r_norm / b_norm );
+        return g_itr;
+    }
+
+    return g_itr;
+}
+
+
+/* Bi-conjugate gradient stabalized method with left preconditioning for
+ * solving nonsymmetric linear systems
+ *
+ * workspace: struct containing storage for workspace for the linear solver
+ * control: struct containing parameters governing the simulation and numeric methods
+ * data: struct containing simulation data (e.g., atom info)
+ * H: sparse, symmetric matrix, lower half stored in CSR format
+ * b: right-hand side of the linear system
+ * tol: tolerence compared against the relative residual for determining convergence
+ * x: inital guess
+ * fresh_pre: flag for determining if preconditioners should be recomputed
+ * */
+int BiCGStab( const static_storage * const workspace, const control_params * const control,
+        simulation_data * const data, const sparse_matrix * const H, const real * const b,
+        const real tol, real * const x, const int fresh_pre )
+{
+    int i, g_itr, N;
+    real tmp, alpha, beta, omega, rho, rho_old, sigma, r_norm, b_norm;
+    real t_start, t_pa, t_spmv, t_vops;
+
+    N = H->n;
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_vops = 0.0;
+
+#ifdef _OPENMP
+    #pragma omp parallel default(none) \
+    private(i, tmp, alpha, beta, omega, rho, rho_old, sigma, r_norm, b_norm, t_start) \
+    reduction(+: t_pa, t_spmv, t_vops) \
+    shared(g_itr, N)
+#endif
+    {
+        t_pa = 0.0;
+        t_spmv = 0.0;
+        t_vops = 0.0;
+
+        t_start = Get_Time( );
+        Sparse_MatVec( workspace, H, x, workspace->d );
+        t_spmv += Get_Timing_Info( t_start );
+
+        t_start = Get_Time( );
+        b_norm = Norm( b, N );
+        Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->d, N );
+        t_vops += Get_Timing_Info( t_start );
+
+        t_start = Get_Time( );
+        Vector_Copy( workspace->r_hat, workspace->r, N );
+        r_norm = Norm( workspace->r, N );
+        Vector_Copy( workspace->p, workspace->r, N );
+        rho_old = Dot( workspace->r, workspace->r_hat, N );
+        t_vops += Get_Timing_Info( t_start );
+
+        for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
+        {
+            t_start = Get_Time( );
+            Sparse_MatVec( workspace, H, workspace->p, workspace->d );
+            t_spmv += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            tmp = Dot( workspace->d, workspace->r_hat, N );
+            alpha = rho_old / tmp;
+            Vector_Sum( workspace->q, 1.0, workspace->r, -1.0 * alpha, workspace->d, N );
+            t_vops += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            Sparse_MatVec( workspace, H, workspace->q, workspace->y );
+            t_spmv += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            sigma = Dot( workspace->y, workspace->q, N );
+            tmp = Dot( workspace->y, workspace->y, N );
+            omega = sigma / tmp;
+            Vector_Sum( workspace->z, alpha, workspace->p, omega, workspace->q, N );
+            Vector_Add( x, 1.0, workspace->z, N );
+            Vector_Sum( workspace->r, 1.0, workspace->q, -1.0 * omega, workspace->y, N );
+            r_norm = Norm( workspace->r, N );
+            t_vops += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            rho = Dot( workspace->r, workspace->r_hat, N );
+            beta = (rho / rho_old) * (alpha / omega);
+            Vector_Sum( workspace->z, 1.0, workspace->p, -1.0 * omega, workspace->d, N );
+            Vector_Sum( workspace->p, 1.0, workspace->r, beta, workspace->z, N );
+            rho_old = rho;
+            t_vops += Get_Timing_Info( t_start );
+        }
+
+#ifdef _OPENMP
+        #pragma omp single
+#endif
+        g_itr = i;
+    }
+
+    data->timing.cm_solver_pre_app += t_pa / control->num_threads;
+    data->timing.cm_solver_spmv += t_spmv / control->num_threads;
+    data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
+
+    if ( g_itr >= control->cm_solver_max_iters )
+    {
+        fprintf( stderr, "[WARNING] BiCGStab convergence failed (%d iters)\n", g_itr );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", r_norm / b_norm );
         return g_itr;
     }
 
@@ -3550,8 +3661,8 @@ int SDM( const static_storage * const workspace, const control_params * const co
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre, LEFT );
-        apply_preconditioner( workspace, control, workspace->r, workspace->d, fresh_pre, RIGHT );
+        apply_preconditioner( workspace, control, workspace->r, workspace->q, fresh_pre, LEFT );
+        apply_preconditioner( workspace, control, workspace->q, workspace->d, fresh_pre, RIGHT );
         t_pa += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3583,8 +3694,8 @@ int SDM( const static_storage * const workspace, const control_params * const co
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            apply_preconditioner( workspace, control, workspace->r, workspace->d, FALSE, LEFT );
-            apply_preconditioner( workspace, control, workspace->r, workspace->d, FALSE, RIGHT );
+            apply_preconditioner( workspace, control, workspace->r, workspace->q, FALSE, LEFT );
+            apply_preconditioner( workspace, control, workspace->q, workspace->d, FALSE, RIGHT );
             t_pa += Get_Timing_Info( t_start );
         }
 
@@ -3601,6 +3712,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
     if ( g_itr >= control->cm_solver_max_iters  )
     {
         fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", g_itr );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", SQRT(sig) / b_norm );
         return g_itr;
     }
 

@@ -101,6 +101,10 @@ int CG( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const,
         const real, real * const, const int );
 
+int BiCGStab( const static_storage * const, const control_params * const,
+        simulation_data * const, const sparse_matrix * const, const real * const,
+        const real, real * const, const int );
+
 int SDM( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const, const real,
         real * const, const int );

@@ -352,7 +352,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     }
 
     //TODO: check if unused
-    //workspace->w        = (real *) scalloc( cm_lin_sys_size, sizeof( real ),
+    //workspace->w = (real *) scalloc( cm_lin_sys_size, sizeof( real ),
     //"Init_Workspace::workspace->droptol" );
     //TODO: check if unused
     workspace->b = (real *) scalloc( system->N_cm * 2, sizeof( real ),
@@ -433,7 +433,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
     switch ( control->cm_solver_type )
     {
-        /* GMRES storage */
         case GMRES_S:
         case GMRES_H_S:
             workspace->y = (real *) scalloc( control->cm_solver_restart + 1, sizeof( real ),
@@ -473,7 +472,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
                     "Init_Workspace::workspace->p" );
             break;
 
-        /* CG storage */
         case CG_S:
             workspace->r = (real *) scalloc( system->N_cm, sizeof( real ),
                     "Init_Workspace::workspace->r" );
@@ -492,6 +490,23 @@ static void Init_Workspace( reax_system *system, control_params *control,
                     "Init_Workspace::workspace->d" );
             workspace->q = (real *) scalloc( system->N_cm, sizeof( real ),
                     "Init_Workspace::workspace->q" );
+            break;
+
+        case BiCGStab_S:
+            workspace->r = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->r" );
+            workspace->r_hat = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->r_hat" );
+            workspace->d = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->d" );
+            workspace->q = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->q" );
+            workspace->p = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->p" );
+            workspace->y = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->y" );
+            workspace->z = (real *) scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->z" );
             break;
 
         default:
@@ -1217,7 +1232,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 
     switch ( control->cm_solver_type )
     {
-        /* GMRES storage */
         case GMRES_S:
         case GMRES_H_S:
             for ( i = 0; i < control->cm_solver_restart + 1; ++i )
@@ -1242,7 +1256,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
             sfree( workspace->p, "Finalize_Workspace::workspace->p" );
             break;
 
-        /* CG storage */
         case CG_S:
             sfree( workspace->r, "Finalize_Workspace::workspace->r" );
             sfree( workspace->d, "Finalize_Workspace::workspace->d" );
@@ -1254,6 +1267,16 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
             sfree( workspace->r, "Finalize_Workspace::workspace->r" );
             sfree( workspace->d, "Finalize_Workspace::workspace->d" );
             sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            break;
+
+        case BiCGStab_S:
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->r_hat, "Finalize_Workspace::workspace->r_hat" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
+            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
             break;
 
         default:

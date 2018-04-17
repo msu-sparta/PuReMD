@@ -219,6 +219,7 @@ enum solver
     GMRES_H_S = 1,
     CG_S = 2,
     SDM_S = 3,
+    BiCGStab_S = 4,
 };
 
 enum pre_comp
@@ -980,8 +981,9 @@ typedef struct
     real **rn;
     real **v;
 
-    /* CG related storage */
+    /* CG, SDM, BiCGStab related storage */
     real *r;
+    real *r_hat;
     real *d;
     real *q;
     real *p;

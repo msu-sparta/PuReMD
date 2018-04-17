@@ -1342,6 +1342,14 @@ static void QEq( reax_system * const system, control_params * const control,
                       workspace->t[0], FALSE ) + 1;
         break;
 
+    case BiCGStab_S:
+        iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
+        iters += BiCGStab( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
+                workspace->t[0], FALSE ) + 1;
+        break;
+
     default:
         fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
@@ -1412,6 +1420,12 @@ static void EE( reax_system * const system, control_params * const control,
 
     case SDM_S:
         iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
+        break;
+
+    case BiCGStab_S:
+        iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
@@ -1495,6 +1509,12 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
     case SDM_S:
         iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+                workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
+                 (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
+        break;
+
+    case BiCGStab_S:
+        iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
                  (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         break;
