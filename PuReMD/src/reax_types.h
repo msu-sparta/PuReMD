@@ -800,7 +800,13 @@ typedef struct
     int *bond_mark, *done_after;
 
     /* QEq storage */
-    sparse_matrix *H, *L, *U;
+    sparse_matrix *H;
+    sparse_matrix *L;
+    sparse_matrix *U;
+    sparse_matrix *H_full;
+    sparse_matrix *H_spar_patt;
+    sparse_matrix *H_spar_patt_full;
+    sparse_matrix *H_app_inv;
     real *Hdia_inv, *b_s, *b_t, *b_prc, *b_prm, *s, *t;
     real *droptol;
     rvec2 *b, *x;

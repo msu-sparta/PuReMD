@@ -278,6 +278,32 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 }
 
 
+/* sparse matrix-vector product Ax = b
+ * where:
+ *   A: matrix, stored in CSR format
+ *   x: vector
+ *   b: vector (result) */
+static void Sparse_MatVec_full( const sparse_matrix * const A,
+                                const real * const x, real * const b )
+{
+    //TODO: implement full SpMV in MPI
+//    int i, pj;
+//
+//    Vector_MakeZero( b, A->n );
+//
+//#ifdef _OPENMP
+//    #pragma omp for schedule(static)
+//#endif
+//    for ( i = 0; i < A->n; ++i )
+//    {
+//        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+//        {
+//            b[i] += A->val[pj] * x[A->j[pj]];
+//        }
+//    }
+}
+
+
 int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
         real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
@@ -307,10 +333,13 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 #endif
 
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
+
     for ( j = 0; j < system->n; ++j )
     {
         workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j]; //pre-condition
     }
+    //TODO: apply SAI preconditioner here, comment out diagonal preconditioning above
+//    Sparse_MatVec_full( workspace->H_app_inv, workspace->r, workspace->d );
 
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
@@ -341,11 +370,14 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
         alpha = sig_new / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
+
         /* pre-conditioning */
         for ( j = 0; j < system->n; ++j )
         {
             workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
+        //TODO: apply SAI preconditioner here, comment out diagonal preconditioning above
+//        Sparse_MatVec_full( workspace->H_app_inv, workspace->r, workspace->d );
 
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);

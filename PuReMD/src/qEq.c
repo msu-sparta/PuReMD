@@ -272,6 +272,12 @@ void Init_MatVec( reax_system *system, simulation_data *data,
     #endif
     }*/
 
+    //TODO: fill in code for setting up and computing SAI, see sPuReMD code,
+    //  and remove diagonal preconditioner computation below (workspace->Hdia_inv)
+//    setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+//            &workspace->H_spar_patt_full, &workspace->H_app_inv,
+//            control->cm_solver_pre_comp_sai_thres );
+
     for ( i = 0; i < system->n; ++i )
     {
         atom = &( system->my_atoms[i] );
