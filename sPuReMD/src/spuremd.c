@@ -90,18 +90,8 @@ static void Read_System( const char * const geo_file,
 {
     FILE *ffield, *ctrl;
 
-    if ( (ffield = fopen( ffield_file, "r" )) == NULL )
-    {
-        fprintf( stderr, "[ERROR] Error opening the ffield file!\n" );
-        fprintf( stderr, "    [INFO] (%s)\n", ffield_file );
-        exit( FILE_NOT_FOUND );
-    }
-    if ( (ctrl = fopen( control_file, "r" )) == NULL )
-    {
-        fprintf( stderr, "[ERROR] Error opening the ffield file!\n" );
-        fprintf( stderr, "    [INFO] (%s)\n", control_file );
-        exit( FILE_NOT_FOUND );
-    }
+    ffield = sfopen( ffield_file, "r" );
+    ctrl = sfopen( control_file, "r" );
 
     /* ffield file */
     Read_Force_Field( ffield, &(system->reaxprm) );
@@ -138,8 +128,8 @@ static void Read_System( const char * const geo_file,
         exit( INVALID_GEO );
     }
 
-    fclose( ffield );
-    fclose( ctrl );
+    sfclose( ffield, "Read_System::ffield" );
+    sfclose( ctrl, "Read_System::ctrl" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "input files have been read...\n" );
@@ -301,7 +291,6 @@ int simulate( const void * const handle )
 
         if ( spmd_handle->out_control->write_steps > 0 && spmd_handle->output_enabled == TRUE )
         {
-            fclose( spmd_handle->out_control->trj );
             Write_PDB( spmd_handle->system, &(spmd_handle->lists[BONDS]), spmd_handle->data,
                     spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
         }

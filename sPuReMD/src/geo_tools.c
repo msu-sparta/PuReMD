@@ -125,11 +125,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     reax_atom *atom;
 
     /* open the geometry file */
-    if ( (geo = fopen(geo_file, "r")) == NULL )
-    {
-        fprintf( stderr, "Error opening the geo file! terminating...\n" );
-        exit( FILE_NOT_FOUND );
-    }
+    geo = sfopen( geo_file, "r" );
 
     /* read box information */
     fscanf( geo, CUSTOM_BOXGEO_FORMAT,
@@ -156,7 +152,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         atom = &(system->atoms[top]);
         workspace->orig_id[i] = serial;
         atom->type = Get_Atom_Type( &(system->reaxprm), element );
-        strcpy( atom->name, name );
+        strncpy( atom->name, name, 8 );
         rvec_Copy( atom->x, x );
         rvec_MakeZero( atom->v );
         rvec_MakeZero( atom->f );
@@ -165,7 +161,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         top++;
     }
 
-    fclose( geo );
+    sfclose( geo, "Read_Geo::geo" );
 }
 
 
@@ -212,7 +208,6 @@ static void Count_PDB_Atoms( FILE *geo, reax_system *system )
 void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
-
     FILE *pdb;
     char **tmp;
     char *s, *s1;
@@ -228,11 +223,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     reax_atom *atom;
 
     /* open pdb file */
-    if ( (pdb = fopen(pdb_file, "r")) == NULL )
-    {
-        fprintf( stderr, "fopen: error opening the pdb file! terminating...\n" );
-        exit( FILE_NOT_FOUND );
-    }
+    pdb = sfopen( pdb_file, "r" );
 
     /* allocate memory for tokenizing pdb lines */
     Allocate_Tokenizer_Space( &s, &s1, &tmp );
@@ -346,7 +337,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 
             Trim_Spaces( element, 9 );
             atom->type = Get_Atom_Type( &(system->reaxprm), element );
-            strcpy( atom->name, atom_name );
+            strncpy( atom->name, atom_name, 8 );
 
             rvec_Copy( atom->x, x );
             rvec_MakeZero( atom->v );
@@ -403,7 +394,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
         exit( INVALID_INPUT );
     }
 
-    fclose( pdb );
+    sfclose( pdb, "Read_PDB::pdb" );
 
     Deallocate_Tokenizer_Space( &s, &s1, &tmp );
 } 
@@ -416,72 +407,58 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, static_storage *workspace, output_controls *out_control )
 {
-    int i, buffer_req, buffer_len;
-    //int j, connect[4];
+    int i; 
     char name[8];
-    //real bo;
     real alpha, beta, gamma;
+    rvec x;
     reax_atom *p_atom;
     char fname[MAX_STR];
-    char *line;
-    char *buffer;
+    char buffer[PDB_ATOM_FORMAT_O_LENGTH + 1];
     FILE *pdb;
 
-    /* Allocation */
-    line = (char*) smalloc( sizeof(char) * PDB_ATOM_FORMAT_O_LENGTH, "geo:line" );
-    buffer_req = system->N * PDB_ATOM_FORMAT_O_LENGTH;
-
-    buffer = (char*) smalloc( sizeof(char) * buffer_req, "geo:buffer" );
-
-    pdb = NULL;
-    line[0] = 0;
-    buffer[0] = 0;
     /* Writing Box information */
     gamma = ACOS( (system->box.box[0][0] * system->box.box[1][0] +
-                   system->box.box[0][1] * system->box.box[1][1] +
-                   system->box.box[0][2] * system->box.box[1][2]) /
+                system->box.box[0][1] * system->box.box[1][1] +
+                system->box.box[0][2] * system->box.box[1][2]) /
                   (system->box.box_norms[0] * system->box.box_norms[1]) );
     beta  = ACOS( (system->box.box[0][0] * system->box.box[2][0] +
-                   system->box.box[0][1] * system->box.box[2][1] +
-                   system->box.box[0][2] * system->box.box[2][2]) /
-                  (system->box.box_norms[0] * system->box.box_norms[2]) );
+                system->box.box[0][1] * system->box.box[2][1] +
+                system->box.box[0][2] * system->box.box[2][2]) /
+            (system->box.box_norms[0] * system->box.box_norms[2]) );
     alpha = ACOS( (system->box.box[2][0] * system->box.box[1][0] +
-                   system->box.box[2][1] * system->box.box[1][1] +
-                   system->box.box[2][2] * system->box.box[1][2]) /
-                  (system->box.box_norms[2] * system->box.box_norms[1]) );
+                system->box.box[2][1] * system->box.box[1][1] +
+                system->box.box[2][2] * system->box.box[1][2]) /
+            (system->box.box_norms[2] * system->box.box_norms[1]) );
 
     /* open pdb and write header */
     snprintf( fname, MAX_STR + 9, "%s-%d.pdb", control->sim_name, data->step );
-    pdb = fopen(fname, "w");
+    pdb = sfopen( fname, "w" );
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
              "CRYST1",
              system->box.box_norms[0], system->box.box_norms[1],
              system->box.box_norms[2],
              RAD2DEG(alpha), RAD2DEG(beta), RAD2DEG(gamma), " ", 0 );
-    fprintf( out_control->log, "Box written\n" );
-    fflush( out_control->log );
 
     /* write atom lines to buffer */
     for ( i = 0; i < system->N; i++)
     {
         p_atom = &(system->atoms[i]);
-        strncpy(name, p_atom->name, 8);
+
+        strncpy( name, p_atom->name, 8 );
         Trim_Spaces( name, 8 );
-        snprintf( line, MAX_STR, PDB_ATOM_FORMAT_O,
-                 "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
-                 p_atom->x[0], p_atom->x[1], p_atom->x[2],
-                 1.0, 0.0, "0", name, "  " );
 
-#if defined(DEBUG)
-        fprintf( stderr, "PDB NAME <%s>\n", p_atom->name );
-#endif
+        memcpy( x, p_atom->x, 3 * sizeof(real) );
+        Fit_to_Periodic_Box( &(system->box), &x );
 
-        strncpy( buffer + i * PDB_ATOM_FORMAT_O_LENGTH, line,
-                 PDB_ATOM_FORMAT_O_LENGTH );
+        snprintf( buffer, PDB_ATOM_FORMAT_O_LENGTH, PDB_ATOM_FORMAT_O,
+                "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
+                x[0], x[1], x[2],
+                1.0, 0.0, "0", name, "  " );
+
+        buffer[PDB_ATOM_FORMAT_O_LENGTH] = '\n';
+
+        fprintf( pdb, "%s\n", buffer );
     }
-
-    buffer_len = system->N * PDB_ATOM_FORMAT_O_LENGTH;
-    buffer[buffer_len] = 0;
     
     if ( ferror( pdb ) )
     {
@@ -489,30 +466,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         exit( INVALID_INPUT );
     }
 
-    fprintf( pdb, "%s", buffer );
-    fclose( pdb );
-
-    /* Writing connect information */
-    /*
-    for(i=0; i < system->N; i++) {
-      count = 0;
-      for(j = Start_Index(i, bonds); j < End_Index(i, bonds); ++j) {
-        bo = bonds->bond_list[j].bo_data.BO;
-        if (bo > 0.3) {
-          connect[count] = bonds->bond_list[j].nbr+1;
-          count++;
-        }
-      }
-
-      fprintf( out_control->pdb, "%6s%5d", "CONECT", i+1 );
-      for( k=0; k < count; k++ )
-        fprintf( out_control->pdb, "%5d", connect[k] );
-      fprintf( out_control->pdb, "\n" );
-    }
-    */
-
-    sfree( buffer, "Write_PDB::buffer" );
-    sfree( line, "Write_PDB::line" );
+    sfclose( pdb, "Write_PDB::pdb" );
 }
 
 
@@ -530,14 +484,10 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     char *endptr = NULL;
-    int  i, atom_cnt, token_cnt, bgf_serial, ratom = 0;
+    int i, atom_cnt, token_cnt, bgf_serial, ratom = 0;
 
     /* open biograf file */
-    if ( (bgf = fopen( bgf_file, "r" )) == NULL )
-    {
-        fprintf( stderr, "Error opening the bgf file!\n" );
-        exit( FILE_NOT_FOUND );
-    }
+    bgf = sfopen( bgf_file, "r" );
 
     /* allocate memory for tokenizing biograf file lines */
     line = (char*) smalloc( sizeof(char)  * MAX_LINE,
@@ -561,7 +511,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         tokens[0][0] = 0;
         token_cnt = Tokenize( line, &tokens );
 
-        if ( !strcmp( tokens[0], "ATOM" ) || !strcmp( tokens[0], "HETATM" ) )
+        if ( !strncmp( tokens[0], "ATOM", MAX_TOKEN_LEN )
+                || !strncmp( tokens[0], "HETATM", MAX_TOKEN_LEN ) )
         {
             ++system->N;
         }
@@ -578,7 +529,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     fprintf( stderr, "system->N: %d\n", system->N );
 #endif
 
-    fclose( bgf );
+    sfclose( bgf, "Read_BGF::bgf" );
 
     /* memory allocations for atoms, atom maps, bond restrictions */
     system->atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
@@ -604,11 +555,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     }
 
     /* start reading and processing bgf file */
-    if ( (bgf = fopen( bgf_file, "r" )) == NULL )
-    {
-        fprintf( stderr, "Error opening the bgf file!\n" );
-        exit( FILE_NOT_FOUND );
-    }
+    bgf = sfopen( bgf_file, "r" );
     atom_cnt = 0;
     token_cnt = 0;
 
@@ -693,7 +640,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->atoms[atom_cnt].x[2] = strtod( &s_z[0], &endptr );
 
             /* atom name and type */
-            strcpy( system->atoms[atom_cnt].name, atom_name );
+            strncpy( system->atoms[atom_cnt].name, atom_name, 8 );
             Trim_Spaces( element, 10 );
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &(system->reaxprm), element );
@@ -710,14 +657,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         }
         else if (!strncmp( tokens[0], "CRYSTX", 6 ))
         {
-            sscanf( backup, BGF_CRYSTX_FORMAT,
-                    &descriptor[0],
-                    &s_a[0],
-                    &s_b[0],
-                    &s_c[0],
-                    &s_alpha[0],
-                    &s_beta[0],
-                    &s_gamma[0] );
+            sscanf( backup, BGF_CRYSTX_FORMAT, &descriptor[0],
+                    &s_a[0], &s_b[0], &s_c[0],
+                    &s_alpha[0], &s_beta[0], &s_gamma[0] );
 
             /* Compute full volume tensor from the angles */
             Setup_Box( atof(s_a), atof(s_b), atof(s_c),
@@ -766,5 +708,5 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         exit( INVALID_INPUT );
     }
 
-    fclose( bgf );
+    sfclose( bgf, "Read_BGF::bgf" );
 }

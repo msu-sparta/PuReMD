@@ -37,7 +37,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     restart_atom res_data;
 
     snprintf( fname, MAX_STR + 8, "%s.res%d", control->sim_name, data->step );
-    fres = fopen( fname, "wb" );
+    fres = sfopen( fname, "wb" );
 
     res_header.step = data->step;
     res_header.N = system->N;
@@ -60,7 +60,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
         fwrite( &res_data, sizeof(restart_atom), 1, fres );
     }
 
-    fclose( fres );
+    sfclose( fres, "Write_Binary_Restart::fres" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "write restart - " );
@@ -69,8 +69,8 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 
 
 void Read_Binary_Restart( const char * const fname, reax_system *system,
-                          control_params *control, simulation_data *data,
-                          static_storage *workspace )
+        control_params *control, simulation_data *data,
+        static_storage *workspace )
 {
     int i;
     FILE *fres;
@@ -78,9 +78,9 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     restart_header res_header;
     restart_atom res_data;
 
-    fres = fopen( fname, "rb" );
+    fres = sfopen( fname, "rb" );
 
-    fread(&res_header, sizeof(restart_header), 1, fres);
+    fread( &res_header, sizeof(restart_header), 1, fres );
     data->prev_steps = res_header.step;
     system->N = res_header.N;
     data->therm.T = res_header.T;
@@ -109,7 +109,9 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     workspace->map_serials = (int*) scalloc( MAX_ATOM_ID, sizeof(int),
             "Read_Binary_Restart::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
+    {
         workspace->map_serials[i] = -1;
+    }
 
     workspace->orig_id = (int*) scalloc( system->N, sizeof(int),
             "Read_Binary_Restart::workspace->orig_id" );
@@ -132,7 +134,7 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
 
         p_atom = &( system->atoms[i] );
         p_atom->type = res_data.type;
-        strcpy( p_atom->name, res_data.name );
+        strncpy( p_atom->name, res_data.name, 8 );
         rvec_Copy( p_atom->x, res_data.x );
         rvec_Copy( p_atom->v, res_data.v );
     }
@@ -141,7 +143,7 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     fprintf( stderr, "system->N: %d, i: %d\n", system->N, i );
 #endif
 
-    fclose( fres );
+    sfclose( fres, "Read_Binary_Restart::fres" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run
@@ -158,7 +160,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
     reax_atom *p_atom;
 
     snprintf( fname, MAX_STR + 8, "%s.res%d", control->sim_name, data->step );
-    fres = fopen( fname, "w" );
+    fres = sfopen( fname, "w" );
 
     fprintf( fres, RESTART_HEADER,
              data->step, system->N, data->therm.T, data->therm.xi,
@@ -166,7 +168,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
              system->box.box[0][0], system->box.box[0][1], system->box.box[0][2],
              system->box.box[1][0], system->box.box[1][1], system->box.box[1][2],
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2]);
-    fflush(fres);
+    fflush( fres );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -177,7 +179,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
                  p_atom->v[0], p_atom->v[1], p_atom->v[2] );
     }
 
-    fclose( fres );
+    sfclose( fres, "Write_ASCII_Restart::fres" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "write restart - " );
@@ -186,14 +188,14 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
 
 
 void Read_ASCII_Restart( const char * const fname, reax_system *system,
-                         control_params *control, simulation_data *data,
-                         static_storage *workspace )
+        control_params *control, simulation_data *data,
+        static_storage *workspace )
 {
     int i;
     FILE *fres;
     reax_atom *p_atom;
 
-    fres = fopen( fname, "r" );
+    fres = sfopen( fname, "r" );
 
     /* header */
     fscanf( fres, READ_RESTART_HEADER,
@@ -249,7 +251,7 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
         workspace->map_serials[workspace->orig_id[i]] = i;
     }
 
-    fclose( fres );
+    sfclose( fres, "Read_ASCII_Restart::fres" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run
@@ -258,11 +260,21 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
 
 
 void Write_Restart( reax_system *system, control_params *control,
-                    simulation_data *data, static_storage *workspace,
-                    output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        output_controls *out_control )
 {
-    if ( out_control->restart_format == WRITE_ASCII )
+    switch ( out_control->restart_format )
+    {
+    case WRITE_ASCII:
         Write_ASCII_Restart( system, control, data, workspace );
-    else if ( out_control->restart_format == WRITE_BINARY )
+        break;
+
+    case WRITE_BINARY:
         Write_Binary_Restart( system, control, data, workspace );
+        break;
+
+    default:
+        fprintf( stderr, "[ERROR] invalid restart format\n" );
+        exit( INVALID_INPUT );
+    }
 }

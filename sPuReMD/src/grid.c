@@ -539,7 +539,7 @@ static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
     dest->type = src->type;
     rvec_Copy( dest->x, src->x );
     rvec_Copy( dest->v, src->v );
-    strcpy( dest->name, src->name );
+    strncpy( dest->name, src->name, 8 );
 }
 
 

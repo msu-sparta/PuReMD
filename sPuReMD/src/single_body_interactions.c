@@ -91,7 +91,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
 
         /* correction for C2 */
         if ( system->reaxprm.gp.l[5] > 0.001 &&
-                !strcmp( system->reaxprm.sbp[type_i].name, "C" ) )
+                !strncmp( system->reaxprm.sbp[type_i].name, "C", 15 ) )
         {
             for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
             {
@@ -100,7 +100,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
                     j = bonds->select.bond_list[pj].nbr;
                     type_j = system->atoms[j].type;
 
-                    if ( !strcmp( system->reaxprm.sbp[type_j].name, "C" ) )
+                    if ( !strncmp( system->reaxprm.sbp[type_j].name, "C", 15 ) )
                     {
                         twbp = &( system->reaxprm.tbp[type_i][type_j]);
                         bo_ij = &( bonds->select.bond_list[pj].bo_data );

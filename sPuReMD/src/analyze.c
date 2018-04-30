@@ -319,9 +319,8 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
 
 
 static void Report_Bond_Change( reax_system *system, control_params *control,
-                         static_storage *workspace,  reax_list *old_bonds,
-                         reax_list *new_bonds, int a1, int a2, int flag,
-                         FILE *fout )
+        static_storage *workspace,  reax_list *old_bonds,
+        reax_list *new_bonds, int a1, int a2, int flag, FILE *fout )
 {
     int i;
     int rev1, rev2;
@@ -331,22 +330,36 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
     rev1 = workspace->orig_id[a1];
     rev2 = workspace->orig_id[a2];
 
-    if ( !strcmp( system->atoms[a1].name, "  Si" ) ||
-            !strcmp( system->atoms[a1].name, "   O" ) )
+    if ( !strncmp( system->atoms[a1].name, "  Si", 8 ) ||
+            !strncmp( system->atoms[a1].name, "   O", 8 ) )
+    {
         mol1 = 0;
-    else mol1 = 1;
+    }
+    else
+    {
+        mol1 = 1;
+    }
 
-    if ( !strcmp( system->atoms[a2].name, "  Si" ) ||
-            !strcmp( system->atoms[a2].name, "   O" ) )
+    if ( !strncmp( system->atoms[a2].name, "  Si", 8 ) ||
+            !strncmp( system->atoms[a2].name, "   O", 8 ) )
+    {
         mol2 = 0;
-    else mol2 = 1;
-
+    }
+    else
+    {
+        mol2 = 1;
+    }
 
     if ( mol1 == 0 && mol2 == 0 )   // silica-silica
     {
         if ( flag )
+        {
             fprintf( fout, "silica bond formation:" );
-        else fprintf( fout, "silica bond breakage :" );
+        }
+        else
+        {
+            fprintf( fout, "silica bond breakage :" );
+        }
 
         fprintf( fout, "%5d(%s)-%5d(%s)\n",
                  rev1, system->atoms[a1].name, rev2, system->atoms[a2].name );
@@ -354,8 +367,13 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
     else if ( mol1 == 1 && mol2 == 1 )  // water-water
     {
         if ( flag )
+        {
             fprintf( fout, "water bond formation:" );
-        else fprintf( fout, "water bond breakage :" );
+        }
+        else
+        {
+            fprintf( fout, "water bond breakage :" );
+        }
 
         fprintf( fout, "%5d(%s)-%5d(%s)\n",
                  rev1, system->atoms[a1].name, rev2, system->atoms[a2].name );
@@ -363,26 +381,39 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
     else    // water-silica!
     {
         if ( flag )
+        {
             fprintf( fout, "SILICA-WATER bond formation:" );
-        else fprintf( fout, "SILICA-WATER bond breakage :" );
+        }
+        else
+        {
+            fprintf( fout, "SILICA-WATER bond breakage :" );
+        }
 
         fprintf( fout, "%5d(%s)-%5d(%s)\n",
                  rev1, system->atoms[a1].name, rev2, system->atoms[a2].name );
 
         fprintf( fout, "%5d(%s) was connected to:", rev1, system->atoms[a1].name );
         for ( i = Start_Index(a1, old_bonds); i < End_Index(a1, old_bonds); ++i )
+        {
             if ( old_bonds->select.bond_list[i].bo_data.BO >= control->bg_cut )
+            {
                 fprintf( fout, " %5d(%s)",
                          workspace->orig_id[ old_bonds->select.bond_list[i].nbr ],
                          system->atoms[ old_bonds->select.bond_list[i].nbr ].name );
+            }
+        }
         fprintf( fout, "\n" );
 
         fprintf( fout, "%5d(%s) was connected to:", rev2, system->atoms[a2].name );
         for ( i = Start_Index(a2, old_bonds); i < End_Index(a2, old_bonds); ++i )
+        {
             if ( old_bonds->select.bond_list[i].bo_data.BO >= control->bg_cut )
+            {
                 fprintf( fout, " %5d(%s)",
                          workspace->orig_id[ old_bonds->select.bond_list[i].nbr ],
                          system->atoms[ old_bonds->select.bond_list[i].nbr ].name );
+            }
+        }
         fprintf( fout, "\n" );
     }
 }
@@ -390,8 +421,8 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
 
 /* ASSUMPTION: Bond lists are sorted */
 static void Compare_Bonding( int atom, reax_system *system, control_params *control,
-                      static_storage *workspace, reax_list *old_bonds,
-                      reax_list *new_bonds, FILE *fout )
+        static_storage *workspace, reax_list *old_bonds,
+        reax_list *new_bonds, FILE *fout )
 {
     int oldp, newp;
 
@@ -409,25 +440,29 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
        fprintf( fout, "\n" ); */
 
     for ( oldp = Start_Index( atom, old_bonds );
-            oldp < End_Index( atom, old_bonds ) &&
-            old_bonds->select.bond_list[oldp].nbr < atom;
-            ++oldp );
+            oldp < End_Index( atom, old_bonds )
+            && old_bonds->select.bond_list[oldp].nbr < atom; ++oldp )
+        ;
 
     for ( newp = Start_Index( atom, new_bonds );
-            newp < End_Index( atom, new_bonds ) &&
-            new_bonds->select.bond_list[newp].nbr < atom;
-            ++newp );
+            newp < End_Index( atom, new_bonds )
+            && new_bonds->select.bond_list[newp].nbr < atom; ++newp )
+        ;
 
     while ( oldp < End_Index( atom, old_bonds ) ||
             newp < End_Index( atom, new_bonds ) )
     {
         while ( oldp < End_Index( atom, old_bonds ) &&
                 old_bonds->select.bond_list[oldp].bo_data.BO < control->bg_cut )
+        {
             ++oldp;
+        }
 
         while ( newp < End_Index( atom, new_bonds ) &&
                 new_bonds->select.bond_list[newp].bo_data.BO < control->bg_cut )
+        {
             ++newp;
+        }
 
         /*fprintf( fout, "%d, oldp: %d - %d: %f    newp: %d - %d: %f",
           atom, oldp, old_bonds->select.bond_list[oldp].nbr,
@@ -461,7 +496,10 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
                     ++newp;
                 }
                 else
-                    ++newp, ++oldp;
+                {
+                    ++newp;
+                    ++oldp;
+                }
             }
             else
                 /* there is no other bond in the new list */
@@ -483,6 +521,7 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
         {
             /* there are no more bonds in old_bond list */
             if ( newp < End_Index( atom, new_bonds ) )
+            {
                 /* there is at least one other bond in the new list */
                 while ( newp < End_Index( atom, new_bonds ) )
                 {
@@ -491,12 +530,12 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
                         // fprintf( fout, "%5d-%5d bond formed\n",
                         // atom, new_bonds->select.bond_list[newp].nbr );
                         Report_Bond_Change( system, control, workspace,
-                                            old_bonds, new_bonds, atom,
-                                            new_bonds->select.bond_list[newp].nbr, 1,
-                                            fout );
+                                old_bonds, new_bonds, atom,
+                                new_bonds->select.bond_list[newp].nbr, 1, fout );
                     }
                     ++newp;
                 }
+            }
             else
             {
                 /* there is no other bond in the new list, either --
@@ -516,7 +555,9 @@ static void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
     mark[atom] = 1;
     t = system->atoms[atom].type;
     if ( ignore && control->ignore[t] )
+    {
         return;
+    }
     type[t]++;
 
     start = Start_Index( atom, bonds );
@@ -552,6 +593,7 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
     memset( mark, 0, system->N * sizeof(int) );
 
     for ( atom = 0; atom < system->N; ++atom )
+    {
         if ( !mark[atom] )
         {
             /* discover a new fragment */
@@ -563,21 +605,24 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
             /* check if a similar fragment already exists */
             flag = 0;
             for ( i = 0; i < num_fragment_types; ++i )
-                if ( !strcmp( fragments[i], fragment ) )
+            {
+                if ( !strncmp( fragments[i], fragment, MAX_ATOM_TYPES ) )
                 {
                     ++fragment_count[i];
                     flag = 1;
                     break;
                 }
+            }
 
             if ( flag == 0 )
             {
                 /* it is a new one, add to the fragments list */
-                strcpy( fragments[num_fragment_types], fragment );
+                strncpy( fragments[num_fragment_types], fragment, MAX_ATOM_TYPES );
                 fragment_count[num_fragment_types] = 1;
                 ++num_fragment_types;
             }
         }
+    }
 
     /* output the results of fragment analysis */
     for ( i = 0; i < num_fragment_types; ++i )
@@ -672,8 +717,11 @@ static void Analyze_Silica( reax_system *system, control_params *control,
     SI_O_SI_count = 0;
 
     for ( j = 0; j < system->N; ++j )
+    {
         if ( system->atoms[j].type == O_ATOM || system->atoms[j].type == SI_ATOM )
+        {
             for ( pi = Start_Index(j, new_bonds); pi < End_Index(j, new_bonds); ++pi )
+            {
                 if ( new_bonds->select.bond_list[pi].bo_data.BO >= control->bg_cut )
                 {
                     i = new_bonds->select.bond_list[pi].nbr;
@@ -713,6 +761,9 @@ static void Analyze_Silica( reax_system *system, control_params *control,
                         }
                     }
                 }
+            }
+        }
+    }
 
     fprintf( fout, "\nAverage O-Si-O angle: %8.2f\n",
              RAD2DEG(O_SI_O / O_SI_O_count) );
@@ -735,8 +786,8 @@ static int Get_Type_of_Molecule( molecule *m )
 
 
 static void Calculate_Dipole_Moment( reax_system *system, control_params *control,
-                              simulation_data *data, static_storage *workspace,
-                              reax_list *bonds, FILE *fout )
+        simulation_data *data, static_storage *workspace,
+        reax_list *bonds, FILE *fout )
 {
     int i, atom, count;
     molecule m;
@@ -744,12 +795,11 @@ static void Calculate_Dipole_Moment( reax_system *system, control_params *contro
     rvec tmpvec, mu;
     int *mark = workspace->mark;
 
-    //fprintf( fout, "starting dipole moment calculations...\n" );
-
     mu_sum = 0;
     count = 0;
 
     for ( atom = 0; atom < system->N; ++atom )
+    {
         /* start discovering water molecules from the central O atom */
         if ( !mark[atom] && system->atoms[atom].type == 2 )
         {
@@ -773,6 +823,7 @@ static void Calculate_Dipole_Moment( reax_system *system, control_params *contro
                 mu_sum += rvec_Norm( mu );
             }
         }
+    }
 
     fprintf( fout, "%7d  %10d      %10.5f\n",
              data->step, count, mu_sum / count * ECxA_to_DEBYE );
@@ -785,13 +836,14 @@ static void Copy_Positions( reax_system *system, static_storage *workspace )
     int i;
 
     for ( i = 0; i < system->N; ++i )
+    {
         rvec_Copy( workspace->x_old[i], system->atoms[i].x );
+    }
 }
 
 
 static void Calculate_Drift( reax_system *system, control_params *control,
-                      simulation_data *data, static_storage *workspace,
-                      FILE *fout )
+        simulation_data *data, static_storage *workspace, FILE *fout )
 {
     int i, type;
     int count[MAX_ATOM_TYPES];
@@ -806,6 +858,7 @@ static void Calculate_Drift( reax_system *system, control_params *control,
     }
 
     for ( i = 0; i < system->N; ++i )
+    {
         //if( control->restrict_type == -1 ||
         // system->atoms[i].type == control->restrict_type )
         if ( workspace->x_old[i][0] > -system->box.box_norms[0] &&
@@ -816,7 +869,7 @@ static void Calculate_Drift( reax_system *system, control_params *control,
             ++count[type];
 
             Distance_on_T3_Gen( workspace->x_old[i], system->atoms[i].x,
-                                &(system->box), driftvec );
+                    &(system->box), driftvec );
 
             if ( FABS( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
                     FABS( driftvec[1] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
@@ -835,6 +888,7 @@ static void Calculate_Drift( reax_system *system, control_params *control,
             sum_sqr_drift[type] += drift;
             sum_drift[type]     += SQRT( drift );
         }
+    }
 
     fprintf( fout, "%7d  oxy  %6d  %10.6f\n",
              data->step, count[2], sum_sqr_drift[2] / count[2] );
@@ -846,7 +900,7 @@ static void Calculate_Drift( reax_system *system, control_params *control,
 
 
 static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data,
-                               FILE *fout )
+        FILE *fout )
 {
     int i, j, k;
     int occupied_cells;
@@ -858,7 +912,9 @@ static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data
 
     /* determine the mesh dimensions based on the current box size */
     for ( i = 0; i < 3; ++i )
+    {
         mesh_dims[i] = system->box.box_norms[i] / mesh_cell_lens[i] + 0.99;
+    }
 
     fprintf( stderr, "mesh_dims: %3d  %3d  %3d\n",
              mesh_dims[0], mesh_dims[1], mesh_dims[2] );
@@ -873,8 +929,10 @@ static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data
                "Calculate_Density_3DMesh::cell_counter[i]" );
 
         for ( j = 0; j < mesh_dims[1]; ++j )
+        {
             cell_counter[i][j] = (int *) scalloc( mesh_dims[2], sizeof(int),
                    "Calculate_Density_3DMesh::cell_counter[i][j]" );
+        }
     }
 
 
@@ -892,28 +950,35 @@ static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data
     /* calculate volume occupied */
     occupied_cells = 0;
     for ( i = 0; i < mesh_dims[0]; ++i )
+    {
         for ( j = 0; j < mesh_dims[1]; ++j )
+        {
             for ( k = 0; k < mesh_dims[2]; ++k )
+            {
                 if ( cell_counter[i][j][k] )
+                {
                     ++occupied_cells;
+                }
+            }
+        }
+    }
 
-    occupied_vol =
-        occupied_cells * mesh_cell_lens[0] * mesh_cell_lens[1] * mesh_cell_lens[2];
+    occupied_vol = occupied_cells * mesh_cell_lens[0]
+        * mesh_cell_lens[1] * mesh_cell_lens[2];
 
     fprintf( stderr, "occupied cells: %8d\n", occupied_cells );
     fprintf( stderr, "occupied vol  : %8.2f\n", occupied_vol );
     fprintf( stderr, "system volume : %8.2f\n", system->box.volume );
     fprintf( stderr, "system mass   : %8.2f\n", data->M );
 
-    density = data->M * AMU_to_GRAM / (occupied_vol * POW( ANG_to_CM, 3 ));
+    density = data->M * AMU_to_GRAM / (occupied_vol * POW( ANG_to_CM, 3.0 ));
     fprintf( stderr, "density       : %g\n", density );
     fprintf( stderr, "AMU_to_GRAM   : %g\n", AMU_to_GRAM );
     fprintf( stderr, "ANG_to_CM     : %g\n", ANG_to_CM );
 }
 
 
-static void Calculate_Density_Slice( reax_system *system, simulation_data *data,
-                              FILE *fout )
+static void Calculate_Density_Slice( reax_system *system, simulation_data *data, FILE *fout )
 {
     real slice_thickness = 0.5;
     int *slice_occ;
@@ -936,16 +1001,20 @@ static void Calculate_Density_Slice( reax_system *system, simulation_data *data,
     {
         fprintf( stderr, "occ[%d]: %d\n", i, slice_occ[i] );
         if ( slice_occ[i] > max_occ )
+        {
             max_occ = slice_occ[i];
+        }
     }
 
     /* find luzzatti-interface slice */
     for ( i = 0; i < num_slices; ++i )
+    {
         if ( (real)slice_occ[i] / max_occ > 0.5 )
         {
             fprintf( stderr, "%d - %d is the luzzatti interface\n", i - 1, i );
             break;
         }
+    }
 }
 
 

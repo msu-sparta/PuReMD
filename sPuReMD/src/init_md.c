@@ -829,27 +829,31 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     /* Init trajectory file */
     if ( out_control->write_steps > 0 )
     {
-        strcpy( temp, control->sim_name );
+        strncpy( temp, control->sim_name, TEMP_SIZE );
         strcat( temp, ".trj" );
-        out_control->trj = fopen( temp, "w" );
+        out_control->trj = sfopen( temp, "w" );
         out_control->write_header( system, control, workspace, out_control );
+    }
+    else
+    {
+        out_control->trj = NULL;
     }
 
     if ( out_control->energy_update_freq > 0 )
     {
         /* Init out file */
-        strcpy( temp, control->sim_name );
+        strncpy( temp, control->sim_name, TEMP_SIZE );
         strcat( temp, ".out" );
-        out_control->out = fopen( temp, "w" );
+        out_control->out = sfopen( temp, "w" );
         fprintf( out_control->out, "%-6s%16s%16s%16s%11s%11s%13s%13s%13s\n",
                  "step", "total energy", "poten. energy", "kin. energy",
                  "temp.", "target", "volume", "press.", "target" );
         fflush( out_control->out );
 
         /* Init potentials file */
-        strcpy( temp, control->sim_name );
+        strncpy( temp, control->sim_name, TEMP_SIZE );
         strcat( temp, ".pot" );
-        out_control->pot = fopen( temp, "w" );
+        out_control->pot = sfopen( temp, "w" );
         fprintf( out_control->pot,
                  "%-6s%13s%13s%13s%13s%13s%13s%13s%13s%13s%13s%13s\n",
                  "step", "ebond", "eatom", "elp", "eang", "ecoa", "ehb",
@@ -857,13 +861,19 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         fflush( out_control->pot );
 
         /* Init log file */
-        strcpy( temp, control->sim_name );
+        strncpy( temp, control->sim_name, TEMP_SIZE );
         strcat( temp, ".log" );
-        out_control->log = fopen( temp, "w" );
+        out_control->log = sfopen( temp, "w" );
         fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                  "step", "total", "neighbors", "init", "bonded",
                  "nonbonded", "CM", "CM Sort", "S iters", "Pre Comp", "Pre App",
                  "S spmv", "S vec ops", "S orthog", "S tsolve" );
+    }
+    else
+    {
+        out_control->out = NULL;
+        out_control->pot = NULL;
+        out_control->log = NULL;
     }
 
     /* Init pressure file */
@@ -871,167 +881,184 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
             control->ensemble == iNPT ||
             control->ensemble == sNPT )
     {
-        strcpy( temp, control->sim_name );
+        strncpy( temp, control->sim_name, MAX_STR );
         strcat( temp, ".prs" );
-        out_control->prs = fopen( temp, "w" );
+        out_control->prs = sfopen( temp, "w" );
         fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s%13s\n",
                  "step", "norm_x", "norm_y", "norm_z",
                  "press_x", "press_y", "press_z", "target_p", "volume" );
         fflush( out_control->prs );
+    }
+    else
+    {
+        out_control->prs = NULL;
     }
 
     /* Init molecular analysis file */
     if ( control->molec_anal )
     {
         snprintf( temp, TEMP_SIZE, "%.*s.mol", TEMP_SIZE - 5, control->sim_name );
-        out_control->mol = fopen( temp, "w" );
+        out_control->mol = sfopen( temp, "w" );
         if ( control->num_ignored )
         {
             snprintf( temp, TEMP_SIZE, "%.*s.ign", TEMP_SIZE - 5, control->sim_name );
-            out_control->ign = fopen( temp, "w" );
+            out_control->ign = sfopen( temp, "w" );
         }
+    }
+    else
+    {
+        out_control->mol = NULL;
+        out_control->ign = NULL;
     }
 
     /* Init electric dipole moment analysis file */
     if ( control->dipole_anal )
     {
-        strcpy( temp, control->sim_name );
+        strncpy( temp, control->sim_name, TEMP_SIZE );
         strcat( temp, ".dpl" );
-        out_control->dpl = fopen( temp, "w" );
+        out_control->dpl = sfopen( temp, "w" );
         fprintf( out_control->dpl,
                  "Step      Molecule Count  Avg. Dipole Moment Norm\n" );
         fflush( out_control->dpl );
+    }
+    else
+    {
+        out_control->dpl = NULL;
     }
 
     /* Init diffusion coef analysis file */
     if ( control->diffusion_coef )
     {
-        strcpy( temp, control->sim_name );
+        strncpy( temp, control->sim_name, TEMP_SIZE );
         strcat( temp, ".drft" );
-        out_control->drft = fopen( temp, "w" );
+        out_control->drft = sfopen( temp, "w" );
         fprintf( out_control->drft, "Step     Type Count   Avg Squared Disp\n" );
         fflush( out_control->drft );
+    }
+    else
+    {
+        out_control->drft = NULL;
     }
 
 
 #ifdef TEST_ENERGY
     /* open bond energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".ebond" );
-    out_control->ebond = fopen( temp, "w" );
+    out_control->ebond = sfopen( temp, "w" );
 
     /* open lone-pair energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".elp" );
-    out_control->elp = fopen( temp, "w" );
+    out_control->elp = sfopen( temp, "w" );
 
     /* open overcoordination energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".eov" );
-    out_control->eov = fopen( temp, "w" );
+    out_control->eov = sfopen( temp, "w" );
 
     /* open undercoordination energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".eun" );
-    out_control->eun = fopen( temp, "w" );
+    out_control->eun = sfopen( temp, "w" );
 
     /* open angle energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".eval" );
-    out_control->eval = fopen( temp, "w" );
+    out_control->eval = sfopen( temp, "w" );
 
     /* open penalty energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".epen" );
-    out_control->epen = fopen( temp, "w" );
+    out_control->epen = sfopen( temp, "w" );
 
     /* open coalition energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".ecoa" );
-    out_control->ecoa = fopen( temp, "w" );
+    out_control->ecoa = sfopen( temp, "w" );
 
     /* open hydrogen bond energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".ehb" );
-    out_control->ehb = fopen( temp, "w" );
+    out_control->ehb = sfopen( temp, "w" );
 
     /* open torsion energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".etor" );
-    out_control->etor = fopen( temp, "w" );
+    out_control->etor = sfopen( temp, "w" );
 
     /* open conjugation energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".econ" );
-    out_control->econ = fopen( temp, "w" );
+    out_control->econ = sfopen( temp, "w" );
 
     /* open vdWaals energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".evdw" );
-    out_control->evdw = fopen( temp, "w" );
+    out_control->evdw = sfopen( temp, "w" );
 
     /* open coulomb energy file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".ecou" );
-    out_control->ecou = fopen( temp, "w" );
+    out_control->ecou = sfopen( temp, "w" );
 #endif
 
 
 #ifdef TEST_FORCES
     /* open bond orders file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".fbo" );
-    out_control->fbo = fopen( temp, "w" );
+    out_control->fbo = sfopen( temp, "w" );
 
     /* open bond orders derivatives file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".fdbo" );
-    out_control->fdbo = fopen( temp, "w" );
+    out_control->fdbo = sfopen( temp, "w" );
 
     /* open bond forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".fbond" );
-    out_control->fbond = fopen( temp, "w" );
+    out_control->fbond = sfopen( temp, "w" );
 
     /* open lone-pair forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".flp" );
-    out_control->flp = fopen( temp, "w" );
+    out_control->flp = sfopen( temp, "w" );
 
     /* open overcoordination forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".fatom" );
-    out_control->fatom = fopen( temp, "w" );
+    out_control->fatom = sfopen( temp, "w" );
 
     /* open angle forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".f3body" );
-    out_control->f3body = fopen( temp, "w" );
+    out_control->f3body = sfopen( temp, "w" );
 
     /* open hydrogen bond forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".fhb" );
-    out_control->fhb = fopen( temp, "w" );
+    out_control->fhb = sfopen( temp, "w" );
 
     /* open torsion forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".f4body" );
-    out_control->f4body = fopen( temp, "w" );
+    out_control->f4body = sfopen( temp, "w" );
 
     /* open nonbonded forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".fnonb" );
-    out_control->fnonb = fopen( temp, "w" );
+    out_control->fnonb = sfopen( temp, "w" );
 
     /* open total force file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".ftot" );
-    out_control->ftot = fopen( temp, "w" );
+    out_control->ftot = sfopen( temp, "w" );
 
     /* open coulomb forces file */
-    strcpy( temp, control->sim_name );
+    strncpy( temp, control->sim_name, TEMP_SIZE );
     strcat( temp, ".ftot2" );
-    out_control->ftot2 = fopen( temp, "w" );
+    out_control->ftot2 = sfopen( temp, "w" );
 #endif
 
 
@@ -1406,31 +1433,19 @@ static void Finalize_Out_Controls( reax_system *system, control_params *control,
     /* close trajectory file */
     if ( out_control->write_steps > 0 )
     {
-        if ( out_control->trj )
-        {
-            fclose( out_control->trj );
-        }
+        sfclose( out_control->trj, "Finalize_Out_Controls::out_control->trj" );
     }
 
     if ( out_control->energy_update_freq > 0 )
     {
         /* close out file */
-        if ( out_control->out )
-        {
-            fclose( out_control->out );
-        }
+        sfclose( out_control->out, "Finalize_Out_Controls::out_control->out" );
 
         /* close potentials file */
-        if ( out_control->pot )
-        {
-            fclose( out_control->pot );
-        }
+        sfclose( out_control->pot, "Finalize_Out_Controls::out_control->pot" );
 
         /* close log file */
-        if ( out_control->log )
-        {
-            fclose( out_control->log );
-        }
+        sfclose( out_control->log, "Finalize_Out_Controls::out_control->log" );
     }
 
     /* close pressure file */
@@ -1438,171 +1453,104 @@ static void Finalize_Out_Controls( reax_system *system, control_params *control,
             control->ensemble == iNPT ||
             control->ensemble == sNPT )
     {
-        if ( out_control->prs )
-        {
-            fclose( out_control->prs );
-        }
+        sfclose( out_control->prs, "Finalize_Out_Controls::out_control->prs" );
     }
 
-    /* close molecular analysis file */
     if ( control->molec_anal )
     {
-        fclose( out_control->mol );
+        /* close molecular analysis file */
+        sfclose( out_control->mol, "Finalize_Out_Controls::out_control->mol" );
+
+        if ( control->num_ignored )
+        {
+            sfclose( out_control->ign, "Finalize_Out_Controls::out_control->ign" );
+        }
     }
 
     /* close electric dipole moment analysis file */
     if ( control->dipole_anal )
     {
-        fclose( out_control->dpl );
+        sfclose( out_control->dpl, "Finalize_Out_Controls::out_control->dpl" );
     }
 
     /* close diffusion coef analysis file */
     if ( control->diffusion_coef )
     {
-        fclose( out_control->drft );
+        sfclose( out_control->drft, "Finalize_Out_Controls::out_control->drft" );
     }
 
 
 #ifdef TEST_ENERGY
     /* close bond energy file */
-    if ( out_control->ebond )
-    {
-        fclose( out_control->ebond );
-    }
+    sfclose( out_control->ebond, "Finalize_Out_Controls::out_control->ebond" );
 
     /* close lone-pair energy file */
-    if ( out_control->help )
-    {
-        fclose( out_control->elp );
-    }
+    sfclose( out_control->elp, "Finalize_Out_Controls::out_control->elp" );
 
     /* close overcoordination energy file */
-    if ( out_control->eov )
-    {
-        fclose( out_control->eov );
-    }
+    sfclose( out_control->eov, "Finalize_Out_Controls::out_control->eov" );
 
     /* close undercoordination energy file */
-    if ( out_control->eun )
-    {
-        fclose( out_control->eun );
-    }
+    sfclose( out_control->eun, "Finalize_Out_Controls::out_control->eun" );
 
     /* close angle energy file */
-    if ( out_control->eval )
-    {
-        fclose( out_control->eval );
-    }
+    sfclose( out_control->eval, "Finalize_Out_Controls::out_control->eval" );
 
     /* close penalty energy file */
-    if ( out_control->epen )
-    {
-        fclose( out_control->epen );
-    }
+    sfclose( out_control->epen, "Finalize_Out_Controls::out_control->epen" );
 
     /* close coalition energy file */
-    if ( out_control->ecoa )
-    {
-        fclose( out_control->ecoa );
-    }
+    sfclose( out_control->ecoa, "Finalize_Out_Controls::out_control->ecoa" );
 
     /* close hydrogen bond energy file */
-    if ( out_control->ehb )
-    {
-        fclose( out_control->ehb );
-    }
+    sfclose( out_control->ehb, "Finalize_Out_Controls::out_control->ehb" );
 
     /* close torsion energy file */
-    if ( out_control->etor )
-    {
-        fclose( out_control->etor );
-    }
+    sfclose( out_control->etor, "Finalize_Out_Controls::out_control->etor" );
 
     /* close conjugation energy file */
-    if ( out_control->econ )
-    {
-        fclose( out_control->econ );
-    }
+    sfclose( out_control->econ, "Finalize_Out_Controls::out_control->econ" );
 
     /* close vdWaals energy file */
-    if ( out_control->evdw )
-    {
-        fclose( out_control->evdw );
-    }
+    sfclose( out_control->evdw, "Finalize_Out_Controls::out_control->evdw" );
 
     /* close coulomb energy file */
-    if ( out_control->ecou )
-    {
-        fclose( out_control->ecou );
-    }
+    sfclose( out_control->ecou, "Finalize_Out_Controls::out_control->ecou" );
 #endif
 
 #ifdef TEST_FORCES
     /* close bond orders file */
-    if ( out_control->fbo )
-    {
-        fclose( out_control->fbo );
-    }
+    sfclose( out_control->fbo, "Finalize_Out_Controls::out_control->fbo" );
 
     /* close bond orders derivatives file */
-    if ( out_control->fdbo )
-    {
-        fclose( out_control->fdbo );
-    }
+    sfclose( out_control->fdbo, "Finalize_Out_Controls::out_control->fdbo" );
 
     /* close bond forces file */
-    if ( out_control->fbond )
-    {
-        fclose( out_control->fbond );
-    }
+    sfclose( out_control->fbond, "Finalize_Out_Controls::out_control->fbond" );
 
     /* close lone-pair forces file */
-    if ( out_control->flp )
-    {
-        fclose( out_control->flp );
-    }
+    sfclose( out_control->flp, "Finalize_Out_Controls::out_control->flp" );
 
     /* close overcoordination forces file */
-    if ( out_control->fatom )
-    {
-        fclose( out_control->fatom );
-    }
+    sfclose( out_control->fatom, "Finalize_Out_Controls::out_control->fatom" );
 
     /* close angle forces file */
-    if ( out_control->f3body )
-    {
-        fclose( out_control->f3body );
-    }
+    sfclose( out_control->f3body, "Finalize_Out_Controls::out_control->f3body" );
 
     /* close hydrogen bond forces file */
-    if ( out_control->fhb )
-    {
-        fclose( out_control->fhb );
-    }
+    sfclose( out_control->fhb, "Finalize_Out_Controls::out_control->fhb" );
 
     /* close torsion forces file */
-    if ( out_control->f4body )
-    {
-        fclose( out_control->f4body );
-    }
+    sfclose( out_control->f4body, "Finalize_Out_Controls::out_control->f4body" );
 
     /* close nonbonded forces file */
-    if ( out_control->fnonb )
-    {
-        fclose( out_control->fnonb );
-    }
+    sfclose( out_control->fnonb, "Finalize_Out_Controls::out_control->fnonb" );
 
     /* close total force file */
-    if ( out_control->ftot )
-    {
-        fclose( out_control->ftot );
-    }
+    sfclose( out_control->ftot, "Finalize_Out_Controls::out_control->ftot" );
 
     /* close coulomb forces file */
-    if ( out_control->ftot2 )
-    {
-        fclose( out_control->ftot2 );
-    }
+    sfclose( out_control->ftot2, "Finalize_Out_Controls::out_control->ftot2" );
 #endif
 }
 

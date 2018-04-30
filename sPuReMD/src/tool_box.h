@@ -63,8 +63,6 @@ real Get_Time( );
 
 real Get_Timing_Info( real );
 
-void Update_Timing_Info( real*, real* );
-
 /* from io_tools.h */
 int Get_Atom_Type( reax_interaction*, char* );
 
@@ -87,5 +85,8 @@ void* scalloc( size_t, size_t, const char * );
 
 void sfree( void *, const char * );
 
+FILE * sfopen( const char *, const char * );
+
+void sfclose( FILE *, const char * );
 
 #endif

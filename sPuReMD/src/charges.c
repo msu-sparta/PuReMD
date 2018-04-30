@@ -1478,9 +1478,9 @@ static void ACKS2( reax_system * const system, control_params * const control,
     if ( data->step % 10 == 0 )
     {
         snprintf( fname, SIZE + 11, "s_%d_%s.out", data->step, control->sim_name );
-        fp = fopen( fname, "w" );
+        fp = sfopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
-        fclose( fp );
+        sfclose( fp, "ACKS2::fp" );
     }
 #undef SIZE
 #endif
@@ -1547,14 +1547,14 @@ void Compute_Charges( reax_system * const system, control_params * const control
 //        Print_Sparse_Matrix_Binary( workspace->H, fname );
 
         snprintf( fname, SIZE + 11, "b_s_%d_%s.out", data->step, control->sim_name );
-        fp = fopen( fname, "w" );
+        fp = sfopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
-        fclose( fp );
+        sfclose( fp, "Compute_Charges::fp" );
 
 //        snprintf( fname, SIZE + 11, "b_t_%d_%s.out", data->step, control->sim_name );
-//        fp = fopen( fname, "w" );
+//        fp = sfopen( fname, "w" );
 //        Vector_Print( fp, NULL, workspace->b_t, system->N_cm );
-//        fclose( fp );
+//        sfclose( fp, "Compute_Charges::fp" );
     }
 #undef SIZE
 #endif

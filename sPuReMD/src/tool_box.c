@@ -22,7 +22,7 @@
 #include "tool_box.h"
 
 #include <ctype.h>
-#include <sys/time.h>
+#include <time.h>
 
 
 /************** taken from box.c **************/
@@ -299,33 +299,33 @@ void Trim_Spaces( char * const element, const size_t size )
 /************ from system_props.c *************/
 real Get_Time( )
 {
-    struct timeval tim;
+    int ret;
+    struct timespec t;
 
-    gettimeofday(&tim, NULL );
-    return ( tim.tv_sec + (tim.tv_usec / 1000000.0) );
+    ret = clock_gettime( CLOCK_MONOTONIC, &t );
+
+    if ( ret != 0 )
+    {
+        fprintf( stderr, "[WARNING] non-zero error in measuring time\n" );
+    }
+
+    return t.tv_sec + t.tv_nsec / 1.0e9;
 }
 
 
 real Get_Timing_Info( real t_start )
 {
-    struct timeval tim;
-    real t_end;
+    int ret;
+    struct timespec t_end;
 
-    gettimeofday(&tim, NULL );
-    t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
-    return (t_end - t_start);
-}
+    ret = clock_gettime( CLOCK_MONOTONIC, &t_end );
 
+    if ( ret != 0 )
+    {
+        fprintf( stderr, "[WARNING] non-zero error in measuring time\n" );
+    }
 
-void Update_Timing_Info( real *t_start, real *timing )
-{
-    struct timeval tim;
-    real t_end;
-
-    gettimeofday(&tim, NULL );
-    t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
-    *timing += (t_end - *t_start);
-    *t_start = t_end;
+    return t_end.tv_sec + t_end.tv_nsec / 1.0e9 - t_start;
 }
 
 
@@ -336,7 +336,7 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
     {
-        if ( !strcmp( reax_param->sbp[i].name, s ) )
+        if ( !strncmp( reax_param->sbp[i].name, s, 15 ) )
         {
             return i;
         }
@@ -422,7 +422,7 @@ int Tokenize( char* s, char*** tok )
  *
  * returns: ptr to allocated memory
  * */
-void *smalloc( size_t n, const char *name )
+void * smalloc( size_t n, const char *name )
 {
     void *ptr;
 
@@ -463,7 +463,7 @@ void *smalloc( size_t n, const char *name )
  *
  * returns: ptr to reallocated memory
  * */
-void* srealloc( void *ptr, size_t n, const char *name )
+void * srealloc( void *ptr, size_t n, const char *name )
 {
     void *new_ptr;
 
@@ -513,7 +513,7 @@ void* srealloc( void *ptr, size_t n, const char *name )
  *
  * returns: ptr to allocated memory, all bits initialized to zeros
  * */
-void* scalloc( size_t n, size_t size, const char *name )
+void * scalloc( size_t n, size_t size, const char *name )
 {
     void *ptr;
 
@@ -547,7 +547,6 @@ void* scalloc( size_t n, size_t size, const char *name )
 }
 
 
-/* safe free */
 /* Safe wrapper around libc free
  *
  * ptr: pointer to dynamically allocated memory which will be deallocated
@@ -570,4 +569,67 @@ void sfree( void *ptr, const char *name )
 #endif
 
     free( ptr );
+}
+
+
+/* Safe wrapper around libc fopen
+ *
+ * fname: name of file to be opened
+ * mode: mode in which to open file
+ * */
+FILE * sfopen( const char * fname, const char * mode )
+{
+    FILE * ptr;
+
+    if ( fname == NULL )
+    {
+        fprintf( stderr, "[ERROR] trying to open file\n" );
+        fprintf( stderr, "  [INFO] NULL file name\n" );
+        exit( INVALID_INPUT );
+    }
+    if ( mode == NULL )
+    {
+        fprintf( stderr, "[ERROR] trying to open file\n" );
+        fprintf( stderr, "  [INFO] NULL mode\n" );
+        exit( INVALID_INPUT );
+    }
+
+    ptr = fopen( fname, mode );
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[ERROR] failed to open file %s with mode %s\n",
+              fname, mode );
+        exit( INVALID_INPUT );
+    }
+
+    return ptr;
+}
+
+
+/* Safe wrapper around libc fclose
+ *
+ * fname: name of file to be opened
+ * mode: mode in which to open file
+ * msg: message to be printed in case of error
+ * */
+void sfclose( FILE * fp, const char * msg )
+{
+    int ret;
+
+    if ( fp == NULL )
+    {
+        fprintf( stderr, "[WARNING] trying to close NULL file pointer. Returning...\n" );
+        fprintf( stderr, "  [INFO] %s\n", msg );
+        return;
+    }
+
+    ret = fclose( fp );
+
+    if ( ret != 0 )
+    {
+        fprintf( stderr, "[ERROR] error detected when closing file\n" );
+        fprintf( stderr, "  [INFO] %s\n", msg );
+        exit( INVALID_INPUT );
+    }
 }

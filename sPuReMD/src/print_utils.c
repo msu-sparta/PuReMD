@@ -407,7 +407,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
     reax_list *near_nbrs = &((*lists)[NEAR_NBRS]);
 
     snprintf( fname, MAX_STR, "%.*s.near_nbrs", MAX_STR - 11, control->sim_name );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -427,7 +427,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
         }
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Near_Neighbors::fout" );
 }
 
 
@@ -441,7 +441,7 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
     reax_list *near_nbrs = &((*lists)[NEAR_NBRS]);
 
     snprintf( fname, MAX_STR, "%.*s.near_nbrs_lgj", MAX_STR - 15, control->sim_name );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -462,7 +462,7 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
         fprintf( fout, "\n");
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Near_Neighbors2::fout" );
 }
 
 
@@ -476,7 +476,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
     reax_list *far_nbrs = &(*lists)[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.far_nbrs", MAX_STR - 10, control->sim_name );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -502,7 +502,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
         }
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Far_Neighbors::fout" );
 }
 
 
@@ -521,7 +521,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
     reax_list *far_nbrs = &(*lists)[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.far_nbrs_lgj", MAX_STR - 14, control->sim_name );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w" );
     int num = 0;
     int temp[500];
 
@@ -542,7 +542,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
         fprintf( fout, "\n");
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Far_Neighbors2::fout" );
 }
 
 
@@ -703,7 +703,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
     FILE *out;
 
     snprintf( fname, 100, "%.*s.state%10d.out", 79, control->sim_name, step );
-    out = fopen( fname, "w" );
+    out = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N_cm; i++ )
         fprintf( out, "%6d%2d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
@@ -712,16 +712,16 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  system->atoms[i].x[2],
                  workspace->s[0][i], workspace->b_s[i],
                  workspace->t[0][i], workspace->b_t[i]  );
-    fclose( out );
+    sfclose( out, "Print_Linear_System::out" );
 
     // snprintf( fname, 100, "x2_%d", step );
-    // out = fopen( fname, "w" );
+    // out = sfopen( fname, "w" );
     // for( i = 0; i < system->N; i++ )
     // fprintf( out, "%g\n", workspace->s_t[i+system->N] );
-    // fclose( out );
+    // sfclose( out, "Print_Linear_System::out" );
 
     snprintf( fname, 100, "%.*s.H%10d.out", 83, control->sim_name, step );
-    out = fopen( fname, "w" );
+    out = sfopen( fname, "w" );
     H = workspace->H;
 
     for ( i = 0; i < system->N_cm; ++i )
@@ -741,10 +741,10 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
     }
 
-    fclose( out );
+    sfclose( out, "Print_Linear_System::out" );
 
     snprintf( fname, 100, "%.*s.H_sp%10d.out", 80, control->sim_name, step );
-    out = fopen( fname, "w" );
+    out = sfopen( fname, "w" );
     H = workspace->H_sp;
 
     for ( i = 0; i < system->N_cm; ++i )
@@ -764,19 +764,19 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
     }
 
-    fclose( out );
+    sfclose( out, "Print_Linear_System::out" );
 
     /*snprintf( fname, 100, "%.*s.b_s%10d", 84, control->sim_name, step );
-      out = fopen( fname, "w" );
+      out = sfopen( fname, "w" );
       for( i = 0; i < system->N; i++ )
       fprintf( out, "%12.7f\n", workspace->b_s[i] );
-      fclose( out );
+      sfclose( out, "Print_Linear_System::out" );
 
       snprintf( fname, 100, "%.*s.b_t%10d", 84, control->sim_name, step );
-      out = fopen( fname, "w" );
+      out = sfopen( fname, "w" );
       for( i = 0; i < system->N; i++ )
       fprintf( out, "%12.7f\n", workspace->b_t[i] );
-      fclose( out );*/
+      sfclose( out, "Print_Linear_System::out" );*/
 }
 
 
@@ -788,7 +788,7 @@ void Print_Charges( reax_system *system, control_params *control,
     FILE *fout;
 
     snprintf( fname, 100, "%.*s.q%10d", 87, control->sim_name, step );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -797,7 +797,7 @@ void Print_Charges( reax_system *system, control_params *control,
                  workspace->s[0][i], workspace->t[0][i], system->atoms[i].q );
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Charges::fout" );
 }
 
 
@@ -841,11 +841,11 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
    
     if ( mode == NULL )
     {
-        f = fopen( fname, "w" );
+        f = sfopen( fname, "w" );
     }
     else
     {
-        f = fopen( fname, mode );
+        f = sfopen( fname, mode );
     }
 
     for ( i = 0; i < A->n; ++i )
@@ -863,7 +863,7 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
         fprintf( f, "%6d %6d %24.15e\n", i + 1, A->j[A->start[i + 1] - 1] + 1, A->val[A->start[i + 1] - 1] );
     }
 
-    fclose( f );
+    sfclose( f, "Print_Sparse_Matrix2::f" );
 }
 
 
@@ -874,7 +874,7 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
     int i, j, temp;
     FILE *f;
    
-    f = fopen( fname, "wb" );
+    f = sfopen( fname, "wb" );
 
     /* header: # rows, # nonzeros */
     fwrite( &(A->n), sizeof(unsigned int), 1, f );
@@ -900,7 +900,7 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
         }
     }
 
-    fclose(f);
+    sfclose( f, "Print_Sparse_Matrix_Binary::f" );
 }
 
 
@@ -909,7 +909,7 @@ void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
     int i, pj;
     bond_data *pbond;
     bond_order_data *bo_ij;
-    FILE *f = fopen( fname, "w" );
+    FILE *f = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -925,14 +925,14 @@ void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
         }
     }
 
-    fclose( f );
+    sfclose( f, "Print_Bonds::f" );
 }
 
 
 void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 {
     int i, j, id_i, id_j, nbr, pj;
-    FILE *f = fopen( fname, "w" );
+    FILE *f = sfopen( fname, "w" );
     int temp[500];
     int num = 0;
 
@@ -970,7 +970,7 @@ Print_XYZ_Serial( reax_system* system, static_storage *workspace )
     int i;
 
     snprintf( fname, 100, "READ_PDB.0" );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; i++ )
     {
@@ -981,6 +981,6 @@ Print_XYZ_Serial( reax_system* system, static_storage *workspace )
                  p[2] = system->atoms[i].x[2] );
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_XYZ_Serial::fout" );
 }
 #endif
