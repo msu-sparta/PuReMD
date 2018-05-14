@@ -99,9 +99,9 @@ int validate_neighbors( reax_system *system, reax_list **lists )
             sizeof (int) * system->N, cudaMemcpyDeviceToHost, "far_nbrs:end_index");
 
     far_neighbor_data *data = (far_neighbor_data *) 
-        malloc (sizeof (far_neighbor_data)* d_nbrs->num_intrs);
+        malloc (sizeof (far_neighbor_data)* d_nbrs->max_intrs);
     copy_host_device (data, d_nbrs->select.far_nbr_list, 
-            sizeof (far_neighbor_data) * d_nbrs->num_intrs, cudaMemcpyDeviceToHost, "far_nbr_list");
+            sizeof (far_neighbor_data) * d_nbrs->max_intrs, cudaMemcpyDeviceToHost, "far_nbr_list");
 
     hostcount = dijcount = djicount = 0;
 
@@ -255,12 +255,12 @@ int validate_sym_dbond_indices( reax_system *system, storage *workspace, reax_li
 
     d_end = (int *)malloc (sizeof (int) * system->N);
     d_start = (int *) malloc (sizeof (int) * system->N );
-    d_bond_data = (bond_data *) malloc (sizeof (bond_data) * d_bonds->num_intrs);
+    d_bond_data = (bond_data *) malloc (sizeof (bond_data) * d_bonds->max_intrs);
     //fprintf (stderr, "Num bonds copied from device to host is --> %d \n", system->num_bonds );
 
     copy_host_device (d_start, d_bonds->index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "index");
     copy_host_device (d_end, d_bonds->end_index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "index");
-    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) * d_bonds->num_intrs, cudaMemcpyDeviceToHost, "bond_data");
+    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) * d_bonds->max_intrs, cudaMemcpyDeviceToHost, "bond_data");
 
     count = 0; 
     miscount = 0; 
@@ -471,8 +471,8 @@ int validate_hbonds( reax_system *system, storage *workspace,
     copy_host_device (d_end, d_hbonds->end_index, sizeof (int) * d_hbonds->n, cudaMemcpyDeviceToHost, "end");
 
     //fprintf (stderr, "Copying hbonds to host %d \n", system->num_hbonds);
-    data = (hbond_data *) malloc (sizeof (hbond_data) * d_hbonds->num_intrs);
-    copy_host_device (data, d_hbonds->select.hbond_list, sizeof (hbond_data) * d_hbonds->num_intrs, 
+    data = (hbond_data *) malloc (sizeof (hbond_data) * d_hbonds->max_intrs);
+    copy_host_device (data, d_hbonds->select.hbond_list, sizeof (hbond_data) * d_hbonds->max_intrs, 
             cudaMemcpyDeviceToHost, "hbond_data");
 
     count = 0;
@@ -558,7 +558,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
                 tgt = data[j];
                 nbr = tgt.sym_index;
 
-                if (nbr >= d_hbonds->num_intrs || nbr < 0){
+                if (nbr >= d_hbonds->max_intrs || nbr < 0){
                     fprintf (stderr, "Index out of range for atom: %d sym_index:%d Hbond index: %d, nbr: %d\n", i, nbr, j, data[j].nbr);
                     fprintf (stderr, "atom type: %d \n", system->reax_param.sbp[ system->my_atoms [ data[j].nbr ].type].p_hbond);
                     exit (1);
@@ -638,12 +638,12 @@ int validate_bonds( reax_system *system, storage *workspace, reax_list **lists )
 
     d_end = (int *)malloc (sizeof (int) * system->N);
     d_start = (int *) malloc (sizeof (int) * system->N );
-    d_bond_data = (bond_data *) malloc (sizeof (bond_data) * d_bonds->num_intrs);
+    d_bond_data = (bond_data *) malloc (sizeof (bond_data) * d_bonds->max_intrs);
     //fprintf (stderr, "Num bonds copied from device to host is --> %d \n", system->num_bonds );
 
     copy_host_device (d_start, d_bonds->index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "start");
     copy_host_device (d_end, d_bonds->end_index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "end");
-    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) * d_bonds->num_intrs, 
+    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) * d_bonds->max_intrs, 
             cudaMemcpyDeviceToHost, "bond_data");
 
     count = 0;
@@ -1404,7 +1404,7 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
     real *test;
 
     three_body_interaction_data *data = (three_body_interaction_data *)
-        malloc ( sizeof (three_body_interaction_data) * d_three->num_intrs);
+        malloc ( sizeof (three_body_interaction_data) * d_three->max_intrs);
     int *start = (int *) malloc (sizeof (int) * d_three->n);
     int *end = (int *) malloc (sizeof (int) * d_three->n);
 
@@ -1419,16 +1419,16 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
     copy_host_device ( end, d_three->end_index,
             sizeof (int) * d_three->n, cudaMemcpyDeviceToHost, "three:end");
     copy_host_device ( data, d_three->select.three_body_list,
-            sizeof (three_body_interaction_data) * d_three->num_intrs,
+            sizeof (three_body_interaction_data) * d_three->max_intrs,
             cudaMemcpyDeviceToHost, "three:data");
 
-    d_bond_data = (bond_data *) malloc (sizeof (bond_data)* d_bonds->num_intrs);
+    d_bond_data = (bond_data *) malloc (sizeof (bond_data)* d_bonds->max_intrs);
 
     copy_host_device ( b_start, d_bonds->index,
             sizeof (int) * d_bonds->n, cudaMemcpyDeviceToHost, "bonds:start");
     copy_host_device ( b_end, d_bonds->end_index,
             sizeof (int) * d_bonds->n, cudaMemcpyDeviceToHost, "bonds:end");
-    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) *  d_bonds->num_intrs, 
+    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) *  d_bonds->max_intrs, 
             cudaMemcpyDeviceToHost, "bonds:data");
 
     count = 0;

@@ -88,9 +88,9 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
     MPI_Allreduce( &data->my_en.e_kin,  &data->sys_en.e_kin,
             1, MPI_DOUBLE, MPI_SUM, comm );
 
-    data->therm.T = (2. * data->sys_en.e_kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
 
-    // avoid T being an absolute zero, might cause F.P.E!
+    /* avoid T being an absolute zero, might cause F.P.E! */
     if ( FABS(data->therm.T) < ALMOST_ZERO )
     {
         data->therm.T = ALMOST_ZERO;
@@ -98,12 +98,12 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 }
 
 
-void Compute_System_Energy( reax_system *system, simulation_data *data,
+void Compute_Total_Energy( reax_system *system, simulation_data *data,
         MPI_Comm comm )
 {
     real my_en[15], sys_en[15];
 
-    //TODO remove this is an UGLY fix
+    //TODO: remove this is an UGLY fix
     my_en[13] = data->my_en.e_kin;
 
 #ifdef HAVE_CUDA
@@ -178,7 +178,7 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data,
 
     MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
 
-    data->inv_M = 1. / data->M;
+    data->inv_M = 1.0 / data->M;
 }
 
 
@@ -229,7 +229,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     for ( i = 0; i < system->n; ++i )
     {
         m = system->reax_param.sbp[ system->my_atoms[i].type ].mass;
-        rvec_ScaledSum( diff, 1., system->my_atoms[i].x, -1., data->xcm );
+        rvec_ScaledSum( diff, 1.0, system->my_atoms[i].x, -1.0, data->xcm );
 
         tmp_mat[0]/*my_xx*/ += diff[0] * diff[0] * m;
         tmp_mat[1]/*my_xy*/ += diff[0] * diff[1] * m;
@@ -270,7 +270,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
         if ( det > ALMOST_ZERO )
         {
-            rtensor_Scale( inv, 1. / det, inv );
+            rtensor_Scale( inv, 1.0 / det, inv );
         }
         else
         {
@@ -307,6 +307,28 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 }
 
 
+void Check_Energy( simulation_data* data )
+{
+    if ( IS_NAN_REAL(data->my_en.e_pol) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for polarization energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->my_en.e_pot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->my_en.e_tot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+}
+
+
 /* IMPORTANT: This function assumes that current kinetic energy
  * the system is already computed
  *
@@ -321,7 +343,9 @@ void Compute_Pressure( reax_system* system, control_params *control,
     int i;
     reax_atom *p_atom;
     rvec tmp, tx, int_press;
-    simulation_box *big_box = &(system->big_box);
+    simulation_box *big_box;
+
+    big_box = &system->big_box;
 
     /* Calculate internal pressure */
     rvec_MakeZero( int_press );
@@ -331,7 +355,7 @@ void Compute_Pressure( reax_system* system, control_params *control,
     {
         for ( i = 0; i < system->n; ++i )
         {
-            p_atom = &( system->my_atoms[i] );
+            p_atom = &system->my_atoms[i];
 
             /* transform x into unitbox coordinates */
             Transform_to_UnitBox( p_atom->x, big_box, 1, tx );
@@ -352,7 +376,7 @@ void Compute_Pressure( reax_system* system, control_params *control,
     }
 
 #if defined(DEBUG)
-    fprintf(stderr, "p%d:p_int(%10.5f %10.5f %10.5f)p_ext(%10.5f %10.5f %10.5f)\n",
+    fprintf( stderr, "p%d:p_int(%10.5f %10.5f %10.5f)p_ext(%10.5f %10.5f %10.5f)\n",
             system->my_rank, int_press[0], int_press[1], int_press[2],
             data->my_ext_press[0], data->my_ext_press[1], data->my_ext_press[2] );
 #endif
@@ -373,8 +397,8 @@ void Compute_Pressure( reax_system* system, control_params *control,
 #endif
 
     /* kinetic contribution */
-    data->kin_press = 2. * (E_CONV * data->sys_en.e_kin)
-        / (3. * big_box->V * P_CONV);
+    data->kin_press = 2.0 * (E_CONV * data->sys_en.e_kin)
+        / (3.0 * big_box->V * P_CONV);
 
     /* Calculate total pressure in each direction */
     data->tot_press[0] = data->kin_press -

@@ -14,7 +14,7 @@ void dev_alloc_grid( reax_system * );
 
 void dev_alloc_simulation_data( simulation_data * );
 
-void dev_alloc_workspace( reax_system *, control_params *, storage *, int, int, char * );
+void dev_alloc_workspace( reax_system *, control_params *, storage *, int, int );
 
 void dev_alloc_matrix( sparse_matrix *, int, int );
 

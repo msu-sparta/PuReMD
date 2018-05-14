@@ -33,82 +33,99 @@
 extern "C" {
 
 
-/************* allocate list space ******************/
-void Dev_Make_List( int n, int num_intrs, int type, reax_list *l )
+/* Allocate space for interaction list
+ *
+ * n: num. of elements to be allocated for list
+ * max_intrs: max. num. of interactions for which to allocate space
+ * type: list interaction type
+ * l: pointer to list to be allocated
+ * */
+void Dev_Make_List( int n, int max_intrs, int type, reax_list *l )
 {
+    if ( l->allocated == TRUE )
+    {
+        fprintf( stderr, "[WARNING] attempted to allocate list which was already allocated."
+                " Returning without allocation...\n" );
+        return;
+    }
+
     l->allocated = TRUE;
-
     l->n = n;
-    l->num_intrs = num_intrs;
-
-    cuda_malloc( (void **) &l->index, n * sizeof(int), TRUE, "dev_list:index" );
-    cuda_malloc( (void **) &l->end_index, n * sizeof(int), TRUE, "dev_list:end_index" );
-
+    l->max_intrs = max_intrs;
     l->type = type;
 
+    cuda_malloc( (void **) &l->index, n * sizeof(int), TRUE, "Dev_Make_List::index" );
+    cuda_malloc( (void **) &l->end_index, n * sizeof(int), TRUE, "Dev_Make_List::end_index" );
+
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "dev_list: n=%d num_intrs=%d type=%d\n", n, num_intrs, type );
+    fprintf( stderr, "dev_list: n=%d max_intrs=%d type=%d\n", n, max_intrs, type );
 #endif
 
-    switch( l->type )
+    switch ( l->type )
     {
         case TYP_FAR_NEIGHBOR:
             cuda_malloc( (void **) &l->select.far_nbr_list, 
-                    l->num_intrs * sizeof(far_neighbor_data), TRUE, "dev_list:far_nbrs" );
+                    l->max_intrs * sizeof(far_neighbor_data), TRUE, "Dev_Make_List::far_nbrs" );
             break;
 
         case TYP_THREE_BODY:
             cuda_malloc( (void **) &l->select.three_body_list,
-                    l->num_intrs * sizeof(three_body_interaction_data), TRUE,
-                    "dev_list:three_bodies" );
+                    l->max_intrs * sizeof(three_body_interaction_data), TRUE,
+                    "Dev_Make_List::three_bodies" );
             break;
 
         case TYP_HBOND:
             cuda_malloc( (void **) &l->select.hbond_list, 
-                    l->num_intrs * sizeof(hbond_data), TRUE, "dev_list:hbonds" );
+                    l->max_intrs * sizeof(hbond_data), TRUE, "Dev_Make_List::hbonds" );
             break;            
 
         case TYP_BOND:
             cuda_malloc( (void **) &l->select.bond_list,
-                    l->num_intrs * sizeof(bond_data), TRUE, "dev_list:bonds" );
+                    l->max_intrs * sizeof(bond_data), TRUE, "Dev_Make_List::bonds" );
             break;
 
         default:
-            fprintf( stderr, "[ERROR] no %d dev_list type defined!\n", l->type );
+            fprintf( stderr, "[ERROR] unknown devive list type (%d)\n", l->type );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+            break;
     }
 }
 
 
 void Dev_Delete_List( reax_list *l )
 {
-    if( l->allocated == FALSE )
+    if ( l->allocated == FALSE )
     {
+        fprintf( stderr, "[WARNING] attempted to free list which was not allocated."
+                " Returning without deallocation...\n" );
         return;
     }
+
     l->allocated = FALSE;
 
-    cuda_free( l->index, "dev_index" );
-    cuda_free( l->end_index, "dev_end_index" );
+    cuda_free( l->index, "Dev_Delete_List::index" );
+    cuda_free( l->end_index, "Dev_Delete_List::end_index" );
 
-    switch (l->type)
+    switch ( l->type )
     {
         case TYP_HBOND:
-            cuda_free( l->select.hbond_list, "dev_list:hbonds" );
+            cuda_free( l->select.hbond_list, "Dev_Delete_List::hbonds" );
             break;
         case TYP_FAR_NEIGHBOR:
-            cuda_free( l->select.far_nbr_list, "dev_list:far_nbrs" );
+            cuda_free( l->select.far_nbr_list, "Dev_Delete_List::far_nbrs" );
             break;
         case TYP_BOND:
-            cuda_free( l->select.bond_list, "dev_list:bonds" );
+            cuda_free( l->select.bond_list, "Dev_Delete_List::bonds" );
             break;
         case TYP_THREE_BODY:
-            cuda_free( l->select.three_body_list, "dev_list:three_bodies" );
+            cuda_free( l->select.three_body_list, "Dev_Delete_List::three_bodies" );
             break;
         default:
-            fprintf (stderr, "[ERROR] no %d dev_list type defined !\n", l->type);
+            fprintf( stderr, "[ERROR] unknown devive list type (%d)\n", l->type );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+            break;
     }
 }
+
 
 }

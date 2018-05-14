@@ -281,21 +281,16 @@ void Read_Binary_Restart( char *res_file, reax_system *system,
              system->big_box.box[2][2]);
 #endif
 
-    /*set up box etc.*/
+    /* set up box, etc. */
     Setup_Environment( system, control, mpi_data );
     Count_Binary_Restart_Atoms( fres, system );
-    if ( PreAllocate_Space( system, control, workspace ) == FAILURE )
-    {
-        fprintf( stderr, "PreAllocate_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
+    PreAllocate_Space( system, control, workspace );
 
     /* go back to the start of restart file */
     rewind( fres );
     fread(&res_header, sizeof(restart_header), 1, fres);
 
-    /*process atoms*/
+    /* process atoms */
     top = 0;
     for ( i = 0; i < system->bigN; ++i )
     {
@@ -447,12 +442,7 @@ void Read_Restart( char *res_file, reax_system *system,
     /* set up the simulation envirionment */
     Setup_Environment( system, control, mpi_data );
     Count_Restart_Atoms(fres, system);
-    if ( PreAllocate_Space( system, control, workspace ) == FAILURE )
-    {
-        fprintf( stderr, "PreAllocate_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
+    PreAllocate_Space( system, control, workspace );
 
     /* go back to the start of file to read actual atom info */
     rewind( fres );

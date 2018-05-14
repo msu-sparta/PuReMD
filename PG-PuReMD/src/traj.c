@@ -809,9 +809,9 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
     for ( i = 0; i < system->n; ++i )
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            j = bonds->select.bond_list[pj].nbr;
+            j = bonds->bond_list[pj].nbr;
             if ( system->my_atoms[i].orig_id <= system->my_atoms[j].orig_id &&
-                    bonds->select.bond_list[pj].bo_data.BO >= control->bg_cut )
+                    bonds->bond_list[pj].bo_data.BO >= control->bg_cut )
                 ++my_bonds;
         }
     /* allreduce - total number of bonds */
@@ -840,7 +840,7 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
     for ( i = 0; i < system->n; ++i )
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            bo_ij = &( bonds->select.bond_list[pj] );
+            bo_ij = &bonds->bond_list[pj];
             j = bo_ij->nbr;
 
             if ( system->my_atoms[i].orig_id <= system->my_atoms[j].orig_id &&
@@ -922,24 +922,30 @@ int Write_Angles( reax_system *system, control_params *control,
     /* count the number of valence angles I will output */
     my_angles = 0;
     for ( j = 0; j < system->n; ++j )
+    {
         for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
         {
-            bo_ij = &(bonds->select.bond_list[pi]);
+            bo_ij = &bonds->bond_list[pi];
             i     = bo_ij->nbr;
 
             if ( bo_ij->bo_data.BO >= control->bg_cut ) // physical j&i bond
+            {
                 for ( pk = Start_Index( pi, thb_intrs );
                         pk < End_Index( pi, thb_intrs ); ++pk )
                 {
-                    angle_ijk = &(thb_intrs->select.three_body_list[pk]);
-                    k       = angle_ijk->thb;
-                    bo_jk   = &(bonds->select.bond_list[ angle_ijk->pthb ]);
+                    angle_ijk = &thb_intrs->three_body_list[pk];
+                    k = angle_ijk->thb;
+                    bo_jk = &bonds->bond_list[ angle_ijk->pthb ];
 
                     if ( system->my_atoms[i].orig_id < system->my_atoms[k].orig_id &&
                             bo_jk->bo_data.BO >= control->bg_cut ) // physical j&k bond
+                    {
                         ++my_angles;
+                    }
                 }
+            }
         }
+    }
     /* total number of valences */
     MPI_Allreduce(&my_angles, &num_angles, 1, MPI_INT, MPI_SUM,  mpi_data->world);
 
@@ -964,18 +970,20 @@ int Write_Angles( reax_system *system, control_params *control,
     out_control->line[0] = 0;
     out_control->buffer[0] = 0;
     for ( j = 0; j < system->n; ++j )
+    {
         for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
         {
-            bo_ij = &(bonds->select.bond_list[pi]);
-            i     = bo_ij->nbr;
+            bo_ij = &bonds->bond_list[pi];
+            i = bo_ij->nbr;
 
             if ( bo_ij->bo_data.BO >= control->bg_cut ) // physical j&i bond
+            {
                 for ( pk = Start_Index( pi, thb_intrs );
                         pk < End_Index( pi, thb_intrs ); ++pk )
                 {
-                    angle_ijk = &(thb_intrs->select.three_body_list[pk]);
-                    k       = angle_ijk->thb;
-                    bo_jk   = &(bonds->select.bond_list[ angle_ijk->pthb ]);
+                    angle_ijk = &thb_intrs->three_body_list[pk];
+                    k = angle_ijk->thb;
+                    bo_jk = &bonds->bond_list[ angle_ijk->pthb ];
 
                     if ( system->my_atoms[i].orig_id < system->my_atoms[k].orig_id &&
                             bo_jk->bo_data.BO >= control->bg_cut )   // physical j&k bond
@@ -989,7 +997,9 @@ int Write_Angles( reax_system *system, control_params *control,
                         ++my_angles;
                     }
                 }
+            }
         }
+    }
 
     if ( out_control->traj_method == MPI_TRAJ )
     {

@@ -44,13 +44,18 @@ void Reset_Atoms( reax_system* system, control_params *control )
     system->numH = 0;
     if ( control->hbond_cut > 0.0 )
     {
-        //TODO
         for ( i = 0; i < system->N; ++i )
         {
-            atom = &(system->my_atoms[i]);
-            //if( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
-            atom->Hindex = system->numH++;
-            //else atom->Hindex = -1;
+            atom = &system->my_atoms[i];
+
+            if( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
+            {
+                atom->Hindex = system->numH++;
+            }
+            else
+            {
+                atom->Hindex = -1;
+            }
         }
     }
 }
@@ -58,37 +63,37 @@ void Reset_Atoms( reax_system* system, control_params *control )
 
 void Reset_Energies( energy_data *en )
 {
-    en->e_bond = 0;
-    en->e_ov = 0;
-    en->e_un = 0;
-    en->e_lp = 0;
-    en->e_ang = 0;
-    en->e_pen = 0;
-    en->e_coa = 0;
-    en->e_hb = 0;
-    en->e_tor = 0;
-    en->e_con = 0;
-    en->e_vdW = 0;
-    en->e_ele = 0;
+    en->e_bond = 0.0;
+    en->e_ov = 0.0;
+    en->e_un = 0.0;
+    en->e_lp = 0.0;
+    en->e_ang = 0.0;
+    en->e_pen = 0.0;
+    en->e_coa = 0.0;
+    en->e_hb = 0.0;
+    en->e_tor = 0.0;
+    en->e_con = 0.0;
+    en->e_vdW = 0.0;
+    en->e_ele = 0.0;
 
-    en->e_pot = 0;
-    en->e_kin = 0;
-    en->e_tot = 0;
+    en->e_pot = 0.0;
+    en->e_kin = 0.0;
+    en->e_tot = 0.0;
 }
 
 
 void Reset_Temperatures( simulation_data *data )
 {
-    data->therm.T = 0;
+    data->therm.T = 0.0;
 }
 
 
 void Reset_Pressures( simulation_data *data )
 {
-    data->flex_bar.P_scalar = 0;
+    data->flex_bar.P_scalar = 0.0;
     rtensor_MakeZero( data->flex_bar.P );
 
-    data->iso_bar.P = 0;
+    data->iso_bar.P = 0.0;
     rvec_MakeZero( data->int_press );
     rvec_MakeZero( data->my_ext_press );
     rvec_MakeZero( data->ext_press );
@@ -106,13 +111,13 @@ void Reset_Simulation_Data( simulation_data* data )
 
 void Reset_Timing( reax_timing *rt )
 {
-    rt->total = Get_Time();
-    rt->comm = 0;
-    rt->nbrs = 0;
-    rt->init_forces = 0;
-    rt->bonded = 0;
-    rt->nonb = 0;
-    rt->cm = 0;
+    rt->total = Get_Time( );
+    rt->comm = 0.0;
+    rt->nbrs = 0.0;
+    rt->init_forces = 0.0;
+    rt->bonded = 0.0;
+    rt->nonb = 0.0;
+    rt->cm = 0.0;
     rt->s_matvecs = 0;
     rt->t_matvecs = 0;
     rt->num_retries = 0;
@@ -163,11 +168,6 @@ void Reset_Grid( grid *g )
         {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
-                /*
-                g->cells[i][j][k].top = 0;
-                g->cells[i][j][k].str = 0;
-                g->cells[i][j][k].end = 0;
-                */
                 g->cells[ index_grid_3d(i, j, k, g) ].top = 0;
                 //g->cells[ index_grid_3d(i, j, k, g) ].str = 0;
                 //g->cells[ index_grid_3d(i, j, k, g) ].end = 0;
@@ -188,84 +188,31 @@ void Reset_Out_Buffers( mpi_out_data *out_buf, int n )
 }
 
 
-void Reset_Neighbor_Lists( reax_system *system, control_params *control,
-                           storage *workspace, reax_list **lists )
+void Reset_Lists( reax_system *system, control_params *control,
+        storage *workspace, reax_list **lists )
 {
-    int i, total_bonds, Hindex, total_hbonds;
-    reax_list *bonds, *hbonds;
+    int i;
+    reax_list *bond_list, *hbond_list;
 
-    /* bonds list */
+    bond_list = lists[BONDS];
+    hbond_list = lists[HBONDS];
+
     if ( system->N > 0 )
     {
-        bonds = lists[BONDS];
-        total_bonds = 0;
-
-        /* reset start-end indexes */
-        for ( i = 0; i < system->N; ++i )
+        for ( i = 0; i < system->total_cap; ++i )
         {
-            Set_Start_Index( i, total_bonds, bonds );
-            Set_End_Index( i, total_bonds, bonds );
-            total_bonds += system->my_atoms[i].num_bonds;
+            Set_End_Index( i, Start_Index( i, bond_list ), bond_list );
         }
-//	Print_List( lists[BONDS] );
 
-        /* is reallocation needed? */
-        if ( total_bonds >= bonds->num_intrs * DANGER_ZONE )
+        if ( control->hbond_cut > 0.0 && system->numH > 0 )
         {
-            workspace->realloc.bonds = 1;
-            if ( total_bonds >= bonds->num_intrs )
+            for ( i = 0; i < system->total_cap; ++i )
             {
-                fprintf( stderr,
-                        "p%d: not enough space for bonds! total=%d allocated=%d\n",
-                        system->my_rank, total_bonds, bonds->num_intrs );
-                MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+                /* do not use Hindex, unconditionally reset end indices */
+                Set_End_Index( i, Start_Index( i, hbond_list ), hbond_list );
             }
         }
     }
-
-    // fprintf( stderr, "p%d: n:%d num_intrs:%d  num_H:%d\n",
-    //   system->my_rank, hbonds->n, hbonds->num_intrs, workspace->num_H );
-    // MPI_Barrier( MPI_COMM_WORLD );
-    /* hbonds list */
-    if ( control->hbond_cut > 0 && system->numH > 0 )
-    {
-//	Print_List( lists[BONDS] );
-
-        hbonds = lists[HBONDS];
-//	printf("bonds enum: %d, bonds pointer: %ld ::: hbonds enum: %d, hbonds pointer: %ld \n", BONDS, bonds, HBONDS, hbonds);
-        //hbonds = &(lists[HBONDS]);
-        total_hbonds = 0;
-
-        /* reset start-end indexes */
-        for ( i = 0; i < system->n; ++i )
-        {
-
-            Hindex = system->my_atoms[i].Hindex;
-//	    printf("i: %d, Hindex: %d \n", i, Hindex);
-            if ( Hindex > -1 )
-            {
-                Set_Start_Index( Hindex, total_hbonds, hbonds );
-                Set_End_Index( Hindex, total_hbonds, hbonds );
-                total_hbonds += system->my_atoms[i].num_hbonds;
-            }
-        }
-	
-//	Print_List( lists[BONDS] );
-        /* is reallocation needed? */
-        if ( total_hbonds >= hbonds->num_intrs * 0.90/*DANGER_ZONE*/ )
-        {
-            workspace->realloc.hbonds = 1;
-            if ( total_hbonds >= hbonds->num_intrs )
-            {
-                fprintf(stderr,
-                        "p%d: not enough space for hbonds! total=%d allocated=%d\n",
-                        system->my_rank, total_hbonds, hbonds->num_intrs );
-                MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-            }
-        }
-    }
-    // fprintf( stderr, "p%d: cleared hbonds\n", system->my_rank );
-    // MPI_Barrier( MPI_COMM_WORLD );
 }
 
 
@@ -283,11 +230,10 @@ void Reset( reax_system *system, control_params *control,
 
     Reset_Workspace( system, workspace );
 
-    Reset_Neighbor_Lists( system, control, workspace, lists );
+    Reset_Lists( system, control, workspace, lists );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
-
 }

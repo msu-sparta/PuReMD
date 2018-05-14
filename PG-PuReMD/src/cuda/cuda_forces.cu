@@ -26,6 +26,13 @@
 #include "../vector.h"
 
 
+typedef enum
+{
+    DIAGONAL = 0,
+    OFF_DIAGONAL = 1,
+} MATRIX_ENTRY_POSITION;
+
+
 CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params *control )
 {
     control->hbond_cut = 0.0;
@@ -212,7 +219,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
     int type_i, type_j;
     int ihb, jhb;
     int local;
-    int my_bonds, my_hbonds, my_cm_entries;
+    int num_bonds, num_hbonds, num_cm_entries;
     real cutoff;
     real r_ij; 
     real C12, C34, C56;
@@ -229,9 +236,9 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
         return;
     }
 
-    my_bonds = 0;
-    my_hbonds = 0;
-    my_cm_entries = 0;
+    num_bonds = 0;
+    num_hbonds = 0;
+    num_cm_entries = 0;
 
     if ( i < N )
     {
@@ -245,7 +252,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
         { 
             local = TRUE;
             cutoff = control->nonb_cut;
-            ++my_cm_entries;
+            ++num_cm_entries;
 //            ihb = sbp_i->p_hbond;
         }   
         else
@@ -274,18 +281,18 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                 {
                     if ( i < j && (j < n || atom_i->orig_id < atom_j->orig_id) )
                     {
-                        ++my_cm_entries;
+                        ++num_cm_entries;
                     }
                     else if ( i > j && (j < n || atom_j->orig_id > atom_i->orig_id) )
                     {
-                        ++my_cm_entries;
+                        ++num_cm_entries;
                     }
                 }
                 else
                 {
                     if ( i > j && j < n && atom_j->orig_id < atom_i->orig_id )
                     {
-                        ++my_cm_entries;
+                        ++num_cm_entries;
                     }
                 }
 
@@ -294,7 +301,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                 if ( control->hbond_cut > 0.0 && nbr_pj->d <= control->hbond_cut 
                         && ihb == H_BONDING_ATOM && jhb == H_ATOM && i >= n && j < n )
                 {
-                    ++my_hbonds;
+                    ++num_hbonds;
                 }
 
 //                if ( i >= n )
@@ -322,13 +329,13 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                          * atom j: H bonding atom */
                         if( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                         {
-                            ++my_hbonds;
+                            ++num_hbonds;
                         }
                         /* atom i: H bonding atom, native
                          * atom j: H atom, native */
                         else if( ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n )
                         {
-                            ++my_hbonds;
+                            ++num_hbonds;
                         }
                     }
                 }
@@ -343,7 +350,8 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                     }
                     else
                     {
-                        BO_s = C12 = 0.0;
+                        C12 = 0.0;
+                        BO_s = 0.0;
                     }
 
                     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
@@ -353,7 +361,8 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                     }
                     else
                     {
-                        BO_pi = C34 = 0.0;
+                        C34 = 0.0;
+                        BO_pi = 0.0;
                     }
 
                     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
@@ -363,7 +372,8 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                     }
                     else
                     {
-                        BO_pi2 = C56 = 0.0;
+                        C56 = 0.0;
+                        BO_pi2 = 0.0;
                     }
 
                     /* initially BO values are the uncorrected ones, page 1 */
@@ -371,21 +381,21 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
 
                     if ( BO >= control->bo_cut )
                     {
-                        ++my_bonds;
+                        ++num_bonds;
                     }
                 }
             }
         }
     }
 
-    bonds[i] = my_bonds;
-    max_bonds[i] = MAX( (int)(my_bonds * 2), MIN_BONDS );
+    bonds[i] = num_bonds;
+    max_bonds[i] = MAX( (int)(num_bonds * 2), MIN_BONDS );
 
-    hbonds[i] = my_hbonds;
-    max_hbonds[i] = MAX( (int)(my_hbonds * SAFE_ZONE), MIN_HBONDS );
+    hbonds[i] = num_hbonds;
+    max_hbonds[i] = MAX( (int)(num_hbonds * SAFE_ZONE), MIN_HBONDS );
 
-    cm_entries[i] = my_cm_entries;
-    max_cm_entries[i] = MAX( (int)(my_cm_entries * SAFE_ZONE), MIN_CM_ENTRIES );
+    cm_entries[i] = num_cm_entries;
+    max_cm_entries[i] = MAX( (int)(num_cm_entries * SAFE_ZONE), MIN_CM_ENTRIES );
 }
 
 
@@ -496,12 +506,12 @@ int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params *contr
                 TYP_THREE_BODY, dev_lists[THREE_BODIES] );
     }
 
-    if ( system->total_thbodies > dev_lists[THREE_BODIES]->num_intrs ||
+    if ( system->total_thbodies > dev_lists[THREE_BODIES]->max_intrs ||
             system->total_bonds > dev_lists[THREE_BODIES]->n )
     {
-        if ( system->total_thbodies > dev_lists[THREE_BODIES]->num_intrs )
+        if ( system->total_thbodies > dev_lists[THREE_BODIES]->max_intrs )
         {
-            system->total_thbodies = MAX( (int)(dev_lists[THREE_BODIES]->num_intrs * SAFE_ZONE),
+            system->total_thbodies = MAX( (int)(dev_lists[THREE_BODIES]->max_intrs * SAFE_ZONE),
                     system->total_thbodies );
         }
         if ( system->total_bonds > dev_lists[THREE_BODIES]->n )
@@ -518,26 +528,62 @@ int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params *contr
 }
 
 
-CUDA_DEVICE real Compute_H( real r, real gamma, real *ctap )
+CUDA_DEVICE real Init_Charge_Matrix_Entry( single_body_parameters *sbp_i, real *ctap,
+        control_params *control, int i, int j, real r_ij, real gamma, MATRIX_ENTRY_POSITION pos )
 {
-    real taper, dr3gamij_1, dr3gamij_3;
+    real taper, dr3gamij_1, dr3gamij_3, ret;
 
-    taper = ctap[7] * r + ctap[6];
-    taper = taper * r + ctap[5];
-    taper = taper * r + ctap[4];
-    taper = taper * r + ctap[3];
-    taper = taper * r + ctap[2];
-    taper = taper * r + ctap[1];
-    taper = taper * r + ctap[0];    
+    ret = 0.0;
 
-    dr3gamij_1 = r * r * r + gamma;
-    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+    switch ( control->charge_method )
+    {
+    case QEQ_CM:
+    case EE_CM:
+    case ACKS2_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                taper = ctap[7] * r_ij + ctap[6];
+                taper = taper * r_ij + ctap[5];
+                taper = taper * r_ij + ctap[4];
+                taper = taper * r_ij + ctap[3];
+                taper = taper * r_ij + ctap[2];
+                taper = taper * r_ij + ctap[1];
+                taper = taper * r_ij + ctap[0];    
 
-    return taper * EV_to_KCALpMOL / dr3gamij_3;
+                /* shielding */
+                dr3gamij_1 = r_ij * r_ij * r_ij + gamma;
+                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                //TODO: investigate why conditional is excluded (OpenMP code below)
+//                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
+                ret = taper * EV_to_KCALpMOL / dr3gamij_3;
+                break;
+
+            case DIAGONAL:
+                ret = sbp_i->eta;
+                break;
+
+            default:
+//                fprintf( stderr, "[ERROR] Invalid matrix position. Terminating...\n" );
+//                exit( INVALID_INPUT );
+                break;
+        }
+        break;
+
+
+    default:
+//        fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
+//        exit( INVALID_INPUT );
+        break;
+    }
+
+    return ret;
 }
 
 
-CUDA_DEVICE real Compute_tabH( LR_lookup_table *t_LR, real r_ij, int ti, int tj, int num_atom_types )
+CUDA_DEVICE real Init_Charge_Matrix_Entry_Tab( LR_lookup_table *t_LR, real r_ij,
+        int ti, int tj, int num_atom_types )
 {
     int r, tmin, tmax;
     real val, dif, base;
@@ -561,6 +607,173 @@ CUDA_DEVICE real Compute_tabH( LR_lookup_table *t_LR, real r_ij, int ti, int tj,
 
     return val;
 }
+
+
+//static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
+//        control_params *control, reax_list *far_nbrs,
+//        sparse_matrix * H, sparse_matrix * H_sp,
+//        int * Htop, int * H_sp_top )
+//{
+//    int i, j, pj;
+//    real d, xcut, bond_softness, * X_diag;
+//
+//    switch ( control->charge_method )
+//    {
+//        case QEQ_CM:
+//            break;
+//
+//        case EE_CM:
+//            H->start[system->N_cm - 1] = *Htop;
+//            H_sp->start[system->N_cm - 1] = *H_sp_top;
+//
+//            for ( i = 0; i < system->N_cm - 1; ++i )
+//            {
+//                H->j[*Htop] = i;
+//                H->val[*Htop] = 1.0;
+//                *Htop = *Htop + 1;
+//
+//                H_sp->j[*H_sp_top] = i;
+//                H_sp->val[*H_sp_top] = 1.0;
+//                *H_sp_top = *H_sp_top + 1;
+//            }
+//
+//            H->j[*Htop] = system->N_cm - 1;
+//            H->val[*Htop] = 0.0;
+//            *Htop = *Htop + 1;
+//
+//            H_sp->j[*H_sp_top] = system->N_cm - 1;
+//            H_sp->val[*H_sp_top] = 0.0;
+//            *H_sp_top = *H_sp_top + 1;
+//            break;
+//
+//        case ACKS2_CM:
+//            X_diag = (real*) scalloc( system->N, sizeof(real),
+//                    "Init_Charge_Matrix_Remaining_Entries::X_diag" );
+//
+//            H->start[system->N] = *Htop;
+//            H_sp->start[system->N] = *H_sp_top;
+//
+//            for ( i = 0; i < system->N; ++i )
+//            {
+//                H->j[*Htop] = i;
+//                H->val[*Htop] = 1.0;
+//                *Htop = *Htop + 1;
+//
+//                H_sp->j[*H_sp_top] = i;
+//                H_sp->val[*H_sp_top] = 1.0;
+//                *H_sp_top = *H_sp_top + 1;
+//            }
+//
+//            H->j[*Htop] = system->N;
+//            H->val[*Htop] = 0.0;
+//            *Htop = *Htop + 1;
+//
+//            H_sp->j[*H_sp_top] = system->N;
+//            H_sp->val[*H_sp_top] = 0.0;
+//            *H_sp_top = *H_sp_top + 1;
+//
+//            for ( i = 0; i < system->N; ++i )
+//            {
+//                H->start[system->N + i + 1] = *Htop;
+//                H_sp->start[system->N + i + 1] = *H_sp_top;
+//
+//                H->j[*Htop] = i;
+//                H->val[*Htop] = 1.0;
+//                *Htop = *Htop + 1;
+//
+//                H_sp->j[*H_sp_top] = i;
+//                H_sp->val[*H_sp_top] = 1.0;
+//                *H_sp_top = *H_sp_top + 1;
+//
+//                for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
+//                {
+//                    if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+//                    {
+//                        j = far_nbrs->select.far_nbr_list[pj].nbr;
+//
+//                        xcut = ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
+//                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 )
+//                            / 2.0;
+//
+//                        if ( far_nbrs->select.far_nbr_list[pj].d < xcut &&
+//                                far_nbrs->select.far_nbr_list[pj].d > 0.001 )
+//                        {
+//                            d = far_nbrs->select.far_nbr_list[pj].d / xcut;
+//                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 ) * POW( 1.0 - d, 6.0 );
+//
+//                            H->j[*Htop] = system->N + j + 1;
+//                            H->val[*Htop] = MAX( 0.0, bond_softness );
+//                            *Htop = *Htop + 1;
+//
+//                            H_sp->j[*H_sp_top] = system->N + j + 1;
+//                            H_sp->val[*H_sp_top] = MAX( 0.0, bond_softness );
+//                            *H_sp_top = *H_sp_top + 1;
+//
+//                            X_diag[i] -= bond_softness;
+//                            X_diag[j] -= bond_softness;
+//                        }
+//                    }
+//                }
+//
+//                H->j[*Htop] = system->N + i + 1;
+//                H->val[*Htop] = 0.0;
+//                *Htop = *Htop + 1;
+//
+//                H_sp->j[*H_sp_top] = system->N + i + 1;
+//                H_sp->val[*H_sp_top] = 0.0;
+//                *H_sp_top = *H_sp_top + 1;
+//            }
+//
+//            H->start[system->N_cm - 1] = *Htop;
+//            H_sp->start[system->N_cm - 1] = *H_sp_top;
+//
+//            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+//            {
+//                for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
+//                {
+//                    if ( H->j[pj] == i )
+//                    {
+//                        H->val[pj] = X_diag[i - system->N - 1];
+//                        break;
+//                    }
+//                }
+//
+//                for ( pj = H_sp->start[i]; pj < H_sp->start[i + 1]; ++pj )
+//                {
+//                    if ( H_sp->j[pj] == i )
+//                    {
+//                        H_sp->val[pj] = X_diag[i - system->N - 1];
+//                        break;
+//                    }
+//                }
+//            }
+//
+//            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+//            {
+//                H->j[*Htop] = i;
+//                H->val[*Htop] = 1.0;
+//                *Htop = *Htop + 1;
+//
+//                H_sp->j[*H_sp_top] = i;
+//                H_sp->val[*H_sp_top] = 1.0;
+//                *H_sp_top = *H_sp_top + 1;
+//            }
+//
+//            H->j[*Htop] = system->N_cm - 1;
+//            H->val[*Htop] = 0.0;
+//            *Htop = *Htop + 1;
+//
+//            H_sp->j[*H_sp_top] = system->N_cm - 1;
+//            H_sp->val[*H_sp_top] = 0.0;
+//            *H_sp_top = *H_sp_top + 1;
+//
+//            sfree( X_diag, "Init_Charge_Matrix_Remaining_Entries::X_diag" );
+//            break;
+//
+//        default:
+//            break;
+//    }
+//}
 
 
 CUDA_GLOBAL void k_print_hbond_info( reax_atom *my_atoms, single_body_parameters *sbp, 
@@ -604,15 +817,15 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
         two_body_parameters *tbp, storage workspace, control_params *control, 
         reax_list far_nbrs_list, reax_list bonds_list, reax_list hbonds_list, 
         LR_lookup_table *t_LR, int n, int N, int num_atom_types, int renbr,
-        int *cm_entries, int *max_cm_entries, int *realloc_cm_entries,
-        int *bonds, int *max_bonds, int *realloc_bonds,
-        int *hbonds, int *max_hbonds, int *realloc_hbonds )
+        int *max_cm_entries, int *realloc_cm_entries,
+        int *max_bonds, int *realloc_bonds,
+        int *max_hbonds, int *realloc_hbonds )
 {
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
     int Htop, btop_i, ihb, jhb, ihb_top;
-    int my_bonds, my_hbonds, my_cm_entries;
+    int num_bonds, num_hbonds, num_cm_entries;
     int local, flag, flag2, flag3;
     real r_ij, cutoff;
     single_body_parameters *sbp_i, *sbp_j;
@@ -661,7 +874,8 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
     if ( local == TRUE )
     {
         H->entries[Htop].j = i;
-        H->entries[Htop].val = sbp_i->eta;
+        H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+                i, H->entries[Htop].j, r_ij, twbp->gamma, DIAGONAL );
         ++Htop;
     }
 
@@ -792,11 +1006,12 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
                 H->entries[Htop].j = j;
                 if ( control->tabulate == 0 )
                 {
-                    H->entries[Htop].val = Compute_H( r_ij,twbp->gamma,workspace.Tap );
+                    H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
+                            control, i, H->entries[Htop].j, r_ij, twbp->gamma, OFF_DIAGONAL );
                 }
                 else
                 {
-                    H->entries[Htop].val = Compute_tabH( t_LR, r_ij, type_i, type_j,num_atom_types );
+                    H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij, type_i, type_j,num_atom_types );
                 }
                 //}
                 ++Htop;
@@ -816,17 +1031,19 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
 //                if( j < n || atom_i->orig_id < atom_j->orig_id ) {//tryQEq||1
 //                    H->entries[Htop].j = j;
 //                    if( control->tabulate == 0 )
-//                        H->entries[Htop].val = Compute_H(r_ij,twbp->gamma,workspace.Tap);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
+//                                    control, i, H->entries[Htop].j, r_ij, twbp->gamma, OFF_DIAGONAL );
 //                    else
-//                        H->entries[Htop].val = Compute_tabH(t_LR, r_ij, type_i, type_j,num_atom_types);
+//                        H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab(t_LR, r_ij, type_i, type_j,num_atom_types);
 //                    ++Htop;
 //                } 
 //                else if( j < n || atom_i->orig_id > atom_j->orig_id ) {//tryQEq||1
 //                    H->entries[Htop].j = j;
 //                    if( control->tabulate == 0 )
-//                        H->entries[Htop].val = Compute_H(r_ij,twbp->gamma,workspace.Tap);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
+//                                    control, i, H->entries[Htop].j, r_ij, twbp->gamma, OFF_DIAGONAL );
 //                    else
-//                        H->entries[Htop].val = Compute_tabH(t_LR, r_ij, type_i, type_j,num_atom_types);
+//                        H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab(t_LR, r_ij, type_i, type_j,num_atom_types);
 //                    ++Htop;
 //                } 
                 //bool condition = !((i >= n) && (j >= n));
@@ -863,7 +1080,7 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
                      * atom j: H atom, native */
                     else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n )
                     {
-                        //jhb_top = End_Index( atom_j->Hindex, hbonds );
+                        //jhb_top = End_Index( atom_j->Hindex, hbonds_list );
                         hbonds_list.select.hbond_list[ihb_top].nbr = j;
                         hbonds_list.select.hbond_list[ihb_top].scl = -1;
                         hbonds_list.select.hbond_list[ihb_top].ptr = nbr_pj;
@@ -908,27 +1125,27 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
         }
 //    }
 
-    my_bonds = btop_i - Dev_Start_Index( i, &bonds_list );
-    my_hbonds = ihb_top - Dev_Start_Index( atom_i->Hindex, &hbonds_list );
-    my_cm_entries = Htop - H->start[i];
+    num_bonds = btop_i - Dev_Start_Index( i, &bonds_list );
+    num_hbonds = ihb_top - Dev_Start_Index( atom_i->Hindex, &hbonds_list );
+    num_cm_entries = Htop - H->start[i];
 
     /* copy (h)bond info to atom structure
      * (needed for atom ownership transfer via MPI) */
-    my_atoms[i].num_bonds = my_bonds;
-    my_atoms[i].num_hbonds = my_hbonds;
+    my_atoms[i].num_bonds = num_bonds;
+    my_atoms[i].num_hbonds = num_hbonds;
 
     /* reallocation checks */
-    if ( my_bonds > max_bonds[i] )
+    if ( num_bonds > max_bonds[i] )
     {
         *realloc_bonds = TRUE;
     }
 
-    if ( my_hbonds > max_hbonds[i] )
+    if ( num_hbonds > max_hbonds[i] )
     {
         *realloc_hbonds = TRUE;
     }
 
-    if ( my_cm_entries > max_cm_entries[i] )
+    if ( num_cm_entries > max_cm_entries[i] )
     {
         *realloc_cm_entries = TRUE;
     }
@@ -1239,7 +1456,6 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 //    cudaThreadSynchronize( );
 //    cudaCheckError( );
 
-    /* main kernel */
     blocks = (system->N) / DEF_BLOCK_SIZE + 
         (((system->N % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
 
@@ -1272,9 +1488,9 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
           *(dev_lists[HBONDS]), d_LR, system->n,
           system->N, system->reax_param.num_atom_types,
           (((data->step-data->prev_steps) % control->reneighbor) == 0),
-          system->d_cm_entries, system->d_max_cm_entries, system->d_realloc_cm_entries,
-          system->d_bonds, system->d_max_bonds, system->d_realloc_bonds,
-          system->d_hbonds, system->d_max_hbonds, system->d_realloc_hbonds );
+          system->d_max_cm_entries, system->d_realloc_cm_entries,
+          system->d_max_bonds, system->d_realloc_bonds,
+          system->d_max_hbonds, system->d_realloc_hbonds );
     cudaThreadSynchronize( );
     cudaCheckError( );
 
@@ -1499,10 +1715,10 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             dev_lists, thbody );
 
 #if defined(DEBUG)
-    fprintf( stderr, "system->total_thbodies = %d, lists:THREE_BODIES->num_intrs = %d,\n",
-            system->total_thbodies, lists[THREE_BODIES]->num_intrs );
-    fprintf( stderr, "lists:THREE_BODIES->n = %d, lists:BONDS->num_intrs = %d,\n",
-            lists[THREE_BODIES]->n, lists[BONDS]->num_intrs );
+    fprintf( stderr, "system->total_thbodies = %d, lists:THREE_BODIES->max_intrs = %d,\n",
+            system->total_thbodies, lists[THREE_BODIES]->max_intrs );
+    fprintf( stderr, "lists:THREE_BODIES->n = %d, lists:BONDS->max_intrs = %d,\n",
+            lists[THREE_BODIES]->n, lists[BONDS]->max_intrs );
     fprintf( stderr, "system->total_thbodies = %d\n", system->total_thbodies );
 #endif
 

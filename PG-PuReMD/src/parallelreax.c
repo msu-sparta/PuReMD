@@ -71,17 +71,14 @@ int BLOCKS_N, BLOCKS_POW_2_N;
 int MATVEC_BLOCKS;
 
 
-void Read_System( char *geo_file, char *ffield_file, char *control_file,
+void Read_Control_Files( char *geo_file, char *ffield_file, char *control_file,
         reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    /* ffield file */
     Read_Force_Field( ffield_file, &(system->reax_param), system, control );
 
-    /* control file */
     Read_Control_File( control_file, control, out_control );
 
-    /* geo file */
     if ( control->geo_format == CUSTOM )
     {
         Read_Geo( geo_file, system, control, data, workspace, mpi_data );
@@ -125,17 +122,25 @@ void Post_Evolve( reax_system* system, control_params* control,
         for ( i = 0; i < system->n; i++ )
         {
             /* remove translational term */
-            rvec_ScaledAdd( system->my_atoms[i].v, -1., data->vcm );
+            rvec_ScaledAdd( system->my_atoms[i].v, -1.0, data->vcm );
 
             /* remove rotational term */
-            rvec_ScaledSum( diff, 1., system->my_atoms[i].x, -1., data->xcm );
+            rvec_ScaledSum( diff, 1.0, system->my_atoms[i].x, -1.0, data->xcm );
             rvec_Cross( cross, data->avcm, diff );
-            rvec_ScaledAdd( system->my_atoms[i].v, -1., cross );
+            rvec_ScaledAdd( system->my_atoms[i].v, -1.0, cross );
         }
     }
 
     /* compute kinetic energy of system */
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+
+    if ( (out_control->energy_update_freq > 0
+                && data->step % out_control->energy_update_freq == 0)
+            || (out_control->write_steps > 0
+                && data->step % out_control->write_steps == 0) )
+    {
+        Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+    }
 }
 
 
@@ -192,41 +197,26 @@ int main( int argc, char* argv[] )
     }
 
 #ifdef HAVE_CUDA
-
-    /* allocate main data structures */
-    system = (reax_system *) smalloc( sizeof(reax_system), "system" );
-    control = (control_params *) smalloc( sizeof(control_params), "control" );
-    data = (simulation_data *) smalloc( sizeof(simulation_data), "data" );
-    workspace = (storage *) smalloc( sizeof(storage), "workspace" );
-    lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list*), "lists" );
+    system = smalloc( sizeof(reax_system), "main::system" );
+    control = smalloc( sizeof(control_params), "main::control" );
+    data = smalloc( sizeof(simulation_data), "main::data" );
+    workspace = smalloc( sizeof(storage), "main::workspace" );
+    lists = smalloc( sizeof(reax_list *) * LIST_N, "main::lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
-        lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
+        lists[i] = smalloc( sizeof(reax_list), "main::lists[i]" );
         lists[i]->allocated = FALSE;
-
-        lists[i]->n = 0;
-        lists[i]->num_intrs = 0;
-        lists[i]->index = NULL;
-        lists[i]->end_index = NULL;
-        lists[i]->select.v = NULL;
     }
-    out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
-    mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
-    mpi_data->in1_buffer = NULL;
-    mpi_data->in2_buffer = NULL;
+    out_control = smalloc( sizeof(output_controls), "main::out_control" );
+    mpi_data = smalloc( sizeof(mpi_datatypes), "main::mpi_data" );
 
     /* allocate auxiliary data structures (GPU) */
-    dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
-    dev_lists = (reax_list **) smalloc ( LIST_N * sizeof (reax_list *), "dev_lists" );
+    dev_workspace = smalloc( sizeof(storage), "main::dev_workspace" );
+    dev_lists = smalloc ( sizeof(reax_list *) * LIST_N, "main::dev_lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
-        dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
+        dev_lists[i] = smalloc( sizeof(reax_list), "main::dev_lists[i]" );
         dev_lists[i]->allocated = FALSE;
-        lists[i]->n = 0; 
-        lists[i]->num_intrs = 0;
-        lists[i]->index = NULL;
-        lists[i]->end_index = NULL;
-        lists[i]->select.v = NULL;
     }
 
     /* setup MPI environment */
@@ -234,7 +224,7 @@ int main( int argc, char* argv[] )
     MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
 
     /* read system config files */
-    Read_System( argv[1], argv[2], argv[3], system, control,
+    Read_Control_Files( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
 
     /* setup the CUDA Device for this process */
@@ -247,13 +237,11 @@ int main( int argc, char* argv[] )
     /* init blocks sizes */
     init_blocks( system );
 
-    /* measure total simulation time after input is read */
     if ( system->my_rank == MASTER_NODE )
     {
         t_start = Get_Time( );
     }
 
-    /* initialize data structures */
     Cuda_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 
 #if defined(__CUDA_DEBUG__)
@@ -268,7 +256,7 @@ int main( int argc, char* argv[] )
     init_blocks( system );
 
     /* compute f_0 */
-    Comm_Atoms( system, control, data, workspace, lists, mpi_data, TRUE );
+    Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
     Sync_Atoms( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
     init_blocks( system );
@@ -312,7 +300,6 @@ int main( int argc, char* argv[] )
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-    /* begin main simulation loop */
     ++data->step;
     retries = 0;
     while ( data->step <= control->nsteps && retries < MAX_RETRIES )
@@ -393,6 +380,7 @@ int main( int argc, char* argv[] )
         else
         {
             ++retries;
+
 #if defined(DEBUG)
             fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
 #endif
@@ -412,84 +400,70 @@ int main( int argc, char* argv[] )
 #endif
 
 #else 
-    /* allocate main data structures */
-    system = (reax_system *) smalloc( sizeof(reax_system), "system" );
-    control = (control_params *) smalloc( sizeof(control_params), "control" );
-    data = (simulation_data *) smalloc( sizeof(simulation_data), "data" );
-    workspace = (storage *) smalloc( sizeof(storage), "workspace" );
-
-    lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list*), "lists" );
+    system = smalloc( sizeof(reax_system), "main::system" );
+    control = smalloc( sizeof(control_params), "main::control" );
+    data = smalloc( sizeof(simulation_data), "main::data" );
+    workspace = smalloc( sizeof(storage), "main::workspace" );
+    lists = smalloc( sizeof(reax_list *) * LIST_N, "main::lists" );
     for ( i = 0; i < LIST_N; ++i )
     {
-        // initialize here
-	lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
+	lists[i] = smalloc( sizeof(reax_list), "main::lists[i]" );
         lists[i]->allocated = FALSE;
-        lists[i]->n = 0; 
-        lists[i]->num_intrs = 0;
-        lists[i]->index = NULL;
-        lists[i]->end_index = NULL;
-        lists[i]->select.v = NULL;
     }
-    out_control = (output_controls *) smalloc( sizeof(output_controls), "out_control" );
-    mpi_data = (mpi_datatypes *) smalloc( sizeof(mpi_datatypes), "mpi_data" );
-
-    //TODO: remove?
-    /* allocate the cuda auxiliary data structures */
-    dev_workspace = (storage *) smalloc( sizeof(storage), "dev_workspace" );
-    dev_lists = (reax_list **) smalloc( LIST_N * sizeof(reax_list *), "dev_lists" );
-    for ( i = 0; i < LIST_N; ++i )
-    {
-        dev_lists[i] = (reax_list *) smalloc( sizeof(reax_list), "lists[i]" );
-        dev_lists[i]->allocated = FALSE;
-    }
+    out_control = smalloc( sizeof(output_controls), "main::out_control" );
+    mpi_data = smalloc( sizeof(mpi_datatypes), "main::mpi_data" );
 
     /* setup MPI environment */
-    MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
-    MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
+    MPI_Comm_size( MPI_COMM_WORLD, &control->nprocs );
+    MPI_Comm_rank( MPI_COMM_WORLD, &system->my_rank );
 
-    /* read system config files */
-    Read_System( argv[1], argv[2], argv[3], system, control,
+    /* read config files */
+    Read_Control_Files( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
-    /* measure total simulation time after input is read */
     if ( system->my_rank == MASTER_NODE )
     {
         t_start = Get_Time( );
     }
 
-    /* initialize datastructures */
     Initialize( system, control, data, workspace, lists, out_control, mpi_data );
    
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
-    MPI_Barrier( mpi_data->world );
-#endif
-
     /* compute f_0 */
-    Comm_Atoms( system, control, data, workspace, lists, mpi_data, TRUE );
+    Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
+
     Reset( system, control, data, workspace, lists );
 
-#if defined(DEBUG)
-    Print_List( lists[BONDS] );
-#endif
+    if ( ret == FAILURE )
+    {
+        ReAllocate( system, control, data, workspace, lists, mpi_data );
+    }
 
-    Generate_Neighbor_Lists( system, data, workspace, lists );
-    Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+    ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+
+    if ( ret != SUCCESS )
+    {
+        fprintf( stderr, "[ERROR] cannot generate initial neighbor lists. Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
+    }
+
+    ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+
+    if ( ret != SUCCESS )
+    {
+        fprintf( stderr, "[ERROR] cannot compute initial forces. Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
+    }
+
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+
+    Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+
     Output_Results( system, control, data, lists, out_control, mpi_data );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
-    MPI_Barrier( mpi_data->world );
-#endif
+    Check_Energy( data );
 
-    /* start the simulation */
     retries = 0;
+    ++data->step;
     while ( data->step <= control->nsteps && retries < MAX_RETRIES )
     {
         ret = SUCCESS;
@@ -528,10 +502,7 @@ int main( int argc, char* argv[] )
                 }
             }
 
-#if defined(DEBUG)
-            fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
-            MPI_Barrier( mpi_data->world );
-#endif
+            Check_Energy( data );
 
             ++data->step;
             retries = 0;
@@ -539,13 +510,17 @@ int main( int argc, char* argv[] )
         else
         {
             ++retries;
+
+#if defined(DEBUG)
             fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
+#endif
         }
     }
 
     if ( retries >= MAX_RETRIES )
     {
-        fprintf( stderr, "Maximum retries reached for this step. Terminating...\n" );
+        fprintf( stderr, "[ERROR] Maximum retries reached for this step (%d). Terminating...\n",
+              retries );
         MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
     }
     
@@ -558,7 +533,7 @@ int main( int argc, char* argv[] )
         fprintf( out_control->out, "Total Simulation Time: %.2f secs\n", t_elapsed );
     }
 
-//    Write_PDB( &system, &(lists[BONDS]), &out_control );
+//    Write_PDB( &system, &lists[BONDS], &out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
@@ -575,7 +550,6 @@ int main( int argc, char* argv[] )
         MPI_Finalize( );
     }
 
-    /* deallocate data structures */
     sfree( mpi_data, "main::mpi_data" );
     sfree( out_control, "main::out_control" );
     for ( i = 0; i < LIST_N; ++i )

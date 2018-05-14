@@ -63,7 +63,6 @@ void Allocate_Tokenizer_Space( char**, char**, char*** );
 
 int Tokenize( const char*, char*** );
 
-/* from lammps */
 void *smalloc( size_t, const char* );
 
 void* srealloc( void *, size_t, const char * );
@@ -71,6 +70,10 @@ void* srealloc( void *, size_t, const char * );
 void *scalloc( size_t, size_t, const char* );
 
 void sfree( void*, const char* );
+
+FILE * sfopen( const char *, const char * );
+
+void sfclose( FILE *, const char * );
 
 #ifdef __cplusplus
 }

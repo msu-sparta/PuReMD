@@ -29,12 +29,14 @@
 extern "C"  {
 #endif
 
-int PreAllocate_Space( reax_system*, control_params*, storage* );
+void Init_Matrix_Row_Indices( sparse_matrix *, int * );
 
-void Allocate_System( reax_system*, int, int, char* );
+void PreAllocate_Space( reax_system*, control_params*, storage* );
+
+void ReAllocate_System( reax_system*, int, int );
 
 void Allocate_Workspace( reax_system*, control_params*, storage*,
-        int, int, char* );
+        int, int );
 
 void Allocate_Grid( reax_system*, MPI_Comm );
 

@@ -30,6 +30,35 @@
 #endif
 
 
+static void * Get_Buffer_Offset( const void * const buffer,
+        const int offset, const int type )
+{
+    void * ptr;
+
+    switch ( type )
+    {
+        case REAL_PTR_TYPE:
+            ptr = (real *) buffer + offset;
+            break;
+
+        case RVEC_PTR_TYPE:
+            ptr = (rvec *) buffer + offset;
+            break;
+
+        case RVEC2_PTR_TYPE:
+            ptr = (rvec2 *) buffer + offset;
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] unknown pointer type. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+
+    return ptr;
+}
+
+
 void real_packer( void *dummy, mpi_out_data *out_buf )
 {
     int i;
@@ -47,7 +76,7 @@ void rvec_packer( void *dummy, mpi_out_data *out_buf )
 {
     int i;
     rvec *buf = (rvec*) dummy;
-    rvec *out = (rvec*)out_buf->out_atoms;
+    rvec *out = (rvec*) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -70,7 +99,7 @@ void rvec2_packer( void *dummy, mpi_out_data *out_buf )
 
 
 void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
-        MPI_Datatype type, int scale, dist_packer pack )
+        int buf_type, MPI_Datatype type, dist_packer pack )
 {
     int d;
     mpi_out_data *out_bufs;
@@ -89,18 +118,18 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
     for ( d = 0; d < 3; ++d )
     {
         /* initiate recvs */
-        nbr1 = &(system->my_nbrs[2 * d]);
+        nbr1 = &system->my_nbrs[2 * d];
         if ( nbr1->atoms_cnt )
         {
-            MPI_Irecv( buf + nbr1->atoms_str * scale, nbr1->atoms_cnt, type,
-                    nbr1->rank, 2 * d + 1, comm, &req1 );
+            MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
         }
 
-        nbr2 = &(system->my_nbrs[2 * d + 1]);
+        nbr2 = &system->my_nbrs[2 * d + 1];
         if ( nbr2->atoms_cnt )
         {
-            MPI_Irecv( buf + nbr2->atoms_str * scale, nbr2->atoms_cnt, type,
-                    nbr2->rank, 2 * d, comm, &req2 );
+            MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
         }
 
         /* send both messages in dimension d */
@@ -180,10 +209,9 @@ void rvec2_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 
 
 void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
-        MPI_Datatype type, int scale, coll_unpacker unpack )
+        int buf_type, MPI_Datatype type, coll_unpacker unpack )
 {
     int d;
-    void *in1, *in2;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
@@ -195,36 +223,36 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 #endif
 
     comm = mpi_data->comm_mesh3D;
-    in1 = mpi_data->in1_buffer;
-    in2 = mpi_data->in2_buffer;
     out_bufs = mpi_data->out_buffers;
 
     for ( d = 2; d >= 0; --d )
     {
         /* initiate recvs */
-        nbr1 = &(system->my_nbrs[2 * d]);
+        nbr1 = &system->my_nbrs[2 * d];
         if ( out_bufs[2 * d].cnt )
         {
-            MPI_Irecv(in1, out_bufs[2 * d].cnt, type, nbr1->rank, 2 * d + 1, comm, &req1);
+            MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
+                    type, nbr1->rank, 2 * d + 1, comm, &req1 );
         }
 
-        nbr2 = &(system->my_nbrs[2 * d + 1]);
+        nbr2 = &system->my_nbrs[2 * d + 1];
         if ( out_bufs[2 * d + 1].cnt )
         {
-            MPI_Irecv(in2, out_bufs[2 * d + 1].cnt, type, nbr2->rank, 2 * d, comm, &req2);
+            MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
+                    type, nbr2->rank, 2 * d, comm, &req2 );
         }
 
         /* send both messages in dimension d */
         if ( nbr1->atoms_cnt )
         {
-            MPI_Send( buf + nbr1->atoms_str * scale, nbr1->atoms_cnt, type,
-                    nbr1->rank, 2 * d, comm );
+            MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
         }
 
         if ( nbr2->atoms_cnt )
         {
-            MPI_Send( buf + nbr2->atoms_str * scale, nbr2->atoms_cnt, type,
-                    nbr2->rank, 2 * d + 1, comm );
+            MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
         }
 
 #if defined(DEBUG)
@@ -239,13 +267,13 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
         if ( out_bufs[2 * d].cnt )
         {
             MPI_Wait( &req1, &stat1 );
-            unpack( in1, buf, out_bufs + (2 * d) );
+            unpack( mpi_data->in1_buffer, buf, out_bufs + (2 * d) );
         }
 
         if ( out_bufs[2 * d + 1].cnt )
         {
             MPI_Wait( &req2, &stat2 );
-            unpack( in2, buf, out_bufs + (2 * d + 1) );
+            unpack( mpi_data->in2_buffer, buf, out_bufs + (2 * d + 1) );
         }
     }
 

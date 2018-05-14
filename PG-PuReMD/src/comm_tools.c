@@ -366,8 +366,8 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 #endif
 
     atoms = system->my_atoms;
-    nbr1 = &(system->my_nbrs[2 * d]);
-    nbr2 = &(system->my_nbrs[2 * d + 1]);
+    nbr1 = &system->my_nbrs[2 * d];
+    nbr2 = &system->my_nbrs[2 * d + 1];
     nbr1->est_send = 0;
     nbr2->est_send = 0;
 
@@ -396,11 +396,11 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
     /* allocate the estimated space */
     for ( p = 2 * d; p < 2 * d + 2; ++p )
     {
-        nbr_pr = &( system->my_nbrs[p] );
-        out_bufs[p].index = (int*)
-            scalloc( nbr_pr->est_send, sizeof(int), "mpibuf:index" );
-        out_bufs[p].out_atoms = (void*)
-            scalloc( nbr_pr->est_send, sizeof(boundary_atom), "mpibuf:out_atoms" );
+        nbr_pr = &system->my_nbrs[p];
+        out_bufs[p].index = scalloc( nbr_pr->est_send, sizeof(int),
+                "Estimate_Boundary_Atoms::mpibuf:index" );
+        out_bufs[p].out_atoms = scalloc( nbr_pr->est_send, sizeof(boundary_atom),
+                "Estimate_Boundary_Atoms::mpibuf:out_atoms" );
     }
 
     /* sort the atoms to their outgoing buffers */
@@ -410,13 +410,13 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
          * in either direction of the dimension under consideration */
         for ( p = 2 * d; p < 2 * d + 2; ++p )
         {
-            nbr_pr = &( system->my_nbrs[p] );
+            nbr_pr = &system->my_nbrs[p];
             if ( nbr_pr->bndry_min[d] <= atoms[i].x[d] &&
                     atoms[i].x[d] < nbr_pr->bndry_max[d] )
             {
                 out_cnt = out_bufs[p].cnt;
                 out_bufs[p].index[out_cnt] = i;
-                out_buf = (boundary_atom *)out_bufs[p].out_atoms;
+                out_buf = (boundary_atom *) out_bufs[p].out_atoms;
                 Pack_Boundary_Atom( out_buf + out_cnt, atoms + i, i );
                 ++out_bufs[p].cnt;
             }
@@ -446,7 +446,7 @@ fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d done!\n",
 
 
 void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
-        int d, int *max, int *nrecv, void **in1, void **in2, MPI_Comm comm )
+        int d, int *max, int *nrecv, mpi_datatypes *mpi_data, MPI_Comm comm )
 {
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
@@ -480,16 +480,20 @@ void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
     if ( new_max > *max )
     {
         *max = new_max;
-        if ( *in1 != NULL )
+
+        if ( mpi_data->in1_buffer != NULL )
         {
-            sfree( *in1, "in1" );
+            sfree( mpi_data->in1_buffer, "Estimate_Init_Storage::mpi_data->in1_buffer" );
         }
-        if ( *in2 != NULL )
+        if ( mpi_data->in2_buffer != NULL )
         {
-            sfree( *in2, "in2" );
+            sfree( mpi_data->in2_buffer, "Estimate_Init_Storage::mpi_data->in2_buffer" );
         }
-        *in1 = (void *) smalloc( new_max * sizeof(boundary_atom), "in1" );
-        *in2 = (void *) smalloc( new_max * sizeof(boundary_atom), "in2" );
+
+        mpi_data->in1_buffer = smalloc( sizeof(boundary_atom) * new_max,
+                "Estimate_Init_Storage::mpi_data->in1_buffer" );
+        mpi_data->in2_buffer = smalloc( sizeof(boundary_atom) * new_max,
+                "Estimate_Init_Storage::mpi_data->in2_buffer" );
     }
 }
 
@@ -625,7 +629,6 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 {
     int d, cnt, start, end, max, est_flag, ret;
     mpi_out_data *out_bufs;
-    void *in1, *in2;
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
@@ -643,8 +646,6 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
         Reset_Out_Buffers( mpi_data->out_buffers, system->num_nbrs );
     }
     comm = mpi_data->comm_mesh3D;
-    in1 = mpi_data->in1_buffer;
-    in2 = mpi_data->in2_buffer;
     out_bufs = mpi_data->out_buffers;
     start = 0;
     end = system->n;
@@ -656,14 +657,14 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
     {
         sort_func( system, start, end, d, out_bufs );
         start = end;
-        nbr1 = &(system->my_nbrs[2 * d]);
-        nbr2 = &(system->my_nbrs[2 * d + 1]);
+        nbr1 = &system->my_nbrs[2 * d];
+        nbr2 = &system->my_nbrs[2 * d + 1];
 
         /* for estimates in1_buffer & in2_buffer will be NULL */
         if ( est_flag == TRUE )
         {
             Estimate_Init_Storage( system->my_rank, nbr1, nbr2, d,
-                    &max, nrecv, &in1, &in2, comm );
+                    &max, nrecv, mpi_data, comm );
         }
 
 #if defined(DEBUG_FOCUS)
@@ -684,9 +685,9 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 #endif
 
         /* initiate recvs */
-        ret = MPI_Irecv( in1, nrecv[2 * d], type, nbr1->rank, 2 * d + 1, comm, &req1 );
+        ret = MPI_Irecv( mpi_data->in1_buffer, nrecv[2 * d], type, nbr1->rank, 2 * d + 1, comm, &req1 );
         Check_MPI_Error( ret, "SendRecv::MPI_Irecv::nbr1" );
-        ret = MPI_Irecv( in2, nrecv[2 * d + 1], type, nbr2->rank, 2 * d, comm, &req2 );
+        ret = MPI_Irecv( mpi_data->in2_buffer, nrecv[2 * d + 1], type, nbr2->rank, 2 * d, comm, &req2 );
         Check_MPI_Error( ret, "SendRecv::MPI_Irecv::nbr2" );
 
         /* send both messages in dimension d */
@@ -702,7 +703,7 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
         Check_MPI_Error( ret, "SendRecv::MPI_Wait::nbr1" );
         ret = MPI_Get_count( &stat1, type, &cnt );
         Check_MPI_Error( ret, "SendRecv::MPI_Count::nbr1" );
-        unpack( system, end, in1, cnt, nbr1, d );
+        unpack( system, end, mpi_data->in1_buffer, cnt, nbr1, d );
         end += cnt;
 
 #if defined(DEBUG)
@@ -714,7 +715,7 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
         Check_MPI_Error( ret, "SendRecv::MPI_Wait::nbr2" );
         ret = MPI_Get_count( &stat2, type, &cnt );
         Check_MPI_Error( ret, "SendRecv::MPI_Count::nbr2" );
-        unpack( system, end, in2, cnt, nbr2, d );
+        unpack( system, end, mpi_data->in2_buffer, cnt, nbr2, d );
         end += cnt;
 
 #if defined(DEBUG)
@@ -726,8 +727,6 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
     {
         system->est_recv = max;
         system->est_trans = (max * sizeof(boundary_atom)) / sizeof(mpi_atom);
-        mpi_data->in1_buffer = in1;
-        mpi_data->in2_buffer = in2;
     }
 
     return end;
@@ -735,7 +734,7 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 
 
 void Comm_Atoms( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
+        simulation_data *data, storage *workspace,
         mpi_datatypes *mpi_data, int renbr )
 {
     int i;
@@ -759,7 +758,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
         }
         system->n = SendRecv( system, mpi_data, mpi_data->mpi_atom_type, nrecv,
                 Sort_Transfer_Atoms, Unpack_Transfer_Message, TRUE );
-        Bin_My_Atoms( system, &(workspace->realloc) );
+        Bin_My_Atoms( system, &workspace->realloc );
         Reorder_My_Atoms( system, workspace );
 
 #if defined(DEBUG_FOCUS)

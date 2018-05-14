@@ -340,7 +340,7 @@ void dev_alloc_simulation_data( simulation_data *data )
 
 
 void dev_alloc_workspace( reax_system *system, control_params *control, 
-        storage *workspace, int local_cap, int total_cap, char *msg )
+        storage *workspace, int local_cap, int total_cap )
 {
     int total_real, total_rvec, local_rvec;
 
@@ -595,31 +595,31 @@ void dev_dealloc_matrix( sparse_matrix *H )
 }
 
 
-void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, size_t n, size_t num_intrs )
+void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, size_t n, size_t max_intrs )
 {
     Dev_Delete_List( far_nbrs );
-    Dev_Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs );
+    Dev_Make_List( n, max_intrs, TYP_FAR_NEIGHBOR, far_nbrs );
 }
 
 
-void Cuda_Reallocate_HBonds_List( reax_list *hbonds, size_t n, size_t num_intrs )
+void Cuda_Reallocate_HBonds_List( reax_list *hbonds, size_t n, size_t max_intrs )
 {
     Dev_Delete_List( hbonds );
-    Dev_Make_List( n, num_intrs, TYP_HBOND, hbonds );
+    Dev_Make_List( n, max_intrs, TYP_HBOND, hbonds );
 }
 
 
-void Cuda_Reallocate_Bonds_List( reax_list *bonds, size_t n, size_t num_intrs )
+void Cuda_Reallocate_Bonds_List( reax_list *bonds, size_t n, size_t max_intrs )
 {
     Dev_Delete_List( bonds );
-    Dev_Make_List( n, num_intrs, TYP_BOND, bonds );
+    Dev_Make_List( n, max_intrs, TYP_BOND, bonds );
 }
 
 
-void Cuda_Reallocate_Thbodies_List( reax_list *thbodies, size_t n, size_t num_intrs )
+void Cuda_Reallocate_Thbodies_List( reax_list *thbodies, size_t n, size_t max_intrs )
 {
     Dev_Delete_List( thbodies );
-    Dev_Make_List( n, num_intrs, TYP_THREE_BODY, thbodies );
+    Dev_Make_List( n, max_intrs, TYP_THREE_BODY, thbodies );
 
 }
 

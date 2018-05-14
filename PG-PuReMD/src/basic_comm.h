@@ -25,6 +25,14 @@
 #include "reax_types.h"
 
 
+enum pointer_type
+{
+    REAL_PTR_TYPE = 0,
+    RVEC_PTR_TYPE = 1,
+    RVEC2_PTR_TYPE = 2,
+};
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,7 +43,8 @@ void rvec_packer( void*, mpi_out_data* );
 
 void rvec2_packer( void*, mpi_out_data* );
 
-void Dist(reax_system*, mpi_datatypes*, void*, MPI_Datatype, int, dist_packer);
+void Dist( reax_system*, mpi_datatypes*, void*, int, MPI_Datatype,
+        dist_packer );
 
 void real_unpacker( void*, void*, mpi_out_data* );
 
@@ -43,8 +52,8 @@ void rvec_unpacker( void*, void*, mpi_out_data* );
 
 void rvec2_unpacker( void*, void*, mpi_out_data* );
 
-void Coll( reax_system*, mpi_datatypes*, void*, MPI_Datatype,
-        int, coll_unpacker );
+void Coll( reax_system*, mpi_datatypes*, void*, int, MPI_Datatype,
+        coll_unpacker );
 
 real Parallel_Norm( real*, int, MPI_Comm );
 

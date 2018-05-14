@@ -35,6 +35,8 @@ void Make_List( int, int, int, reax_list* );
 
 void Delete_List( reax_list* );
 
+void Init_List_Indices( reax_list *, int * );
+
 #ifdef __cplusplus
 }
 #endif

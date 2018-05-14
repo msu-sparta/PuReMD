@@ -122,7 +122,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 
 
 void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data, char *msg )
+        simulation_data *data )
 {
     dev_alloc_simulation_data( data );
 
@@ -216,10 +216,10 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
 
 void Cuda_Init_Workspace( reax_system *system, control_params *control,
-        storage *workspace, char *msg )
+        storage *workspace )
 {
     dev_alloc_workspace( system, control, dev_workspace,
-            system->local_cap, system->total_cap, msg );
+            system->local_cap, system->total_cap );
 
     memset( &(workspace->realloc), 0, sizeof(reallocate_data) );
     Cuda_Reset_Workspace( system, workspace );
@@ -231,7 +231,7 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
 
 void Cuda_Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data, char *msg )
+        mpi_datatypes *mpi_data )
 {
     Cuda_Estimate_Neighbors( system );
 
@@ -286,7 +286,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     /* 3bodies list: since a more accurate estimate of the num.
      * three body interactions requires that bond orders have
-     * been computed, delay estimation until for computation */
+     * been computed, delay estimation until computation */
 }
 
 
@@ -297,48 +297,31 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 {
     char msg[MAX_STR];
 
-    /* HOST/DEVICE SCRATCH */
     Cuda_Init_ScratchArea( );
 
-    /* MPI_DATATYPES */
     Init_MPI_Datatypes( system, workspace, mpi_data, msg );
 
-    /* SYSTEM */
     if ( Cuda_Init_System( system, control, data, workspace, mpi_data, msg ) == FAILURE )
     {
-        fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
-        fprintf( stderr, "p%d: system could not be initialized! terminating.\n",
+        fprintf( stderr, "[ERROR] p%d: %s\n", system->my_rank, msg );
+        fprintf( stderr, "[ERROR] p%d: system could not be initialized! terminating.\n",
                  system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
 
-    /* GRID */
     dev_alloc_grid( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
 
     //validate_grid( system );
 
-    /* SIMULATION_DATA */
-    Cuda_Init_Simulation_Data( system, control, data, msg );
+    Cuda_Init_Simulation_Data( system, control, data );
 
-    /* WORKSPACE */
-    Cuda_Init_Workspace( system, control, workspace, msg );
+    Cuda_Init_Workspace( system, control, workspace );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initialized workspace\n", system->my_rank );
-#endif
-
-    /* CONTROL */
     dev_alloc_control( control );
 
-    /* LISTS */
-    Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data, msg );
+    Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initialized lists\n", system->my_rank );
-#endif
-
-    /* OUTPUT Files */
     if ( Init_Output_Files( system, control, out_control, mpi_data, msg ) == FAILURE )
     {
         fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
@@ -347,29 +330,9 @@ void Cuda_Initialize( reax_system *system, control_params *control,
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: output files opened\n", system->my_rank );
-#endif
-
     /* Lookup Tables */
     if ( control->tabulate )
     {
-        if ( Init_Lookup_Tables( system, control, dev_workspace->Tap, mpi_data, msg ) == FAILURE )
-        {
-            fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
-            fprintf( stderr, "p%d: couldn't create lookup table! terminating.\n",
-                     system->my_rank );
-            MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-        }
-
-#if defined(DEBUG)
-        fprintf( stderr, "p%d: initialized lookup tables\n", system->my_rank );
-#endif
+        Init_Lookup_Tables( system, control, dev_workspace->Tap, mpi_data, msg );
     }
-
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: Device Initialization Done \n", system->my_rank );
-#endif
 }
-
-

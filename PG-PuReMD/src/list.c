@@ -32,7 +32,6 @@
 
 void Print_List( reax_list* list )
 {
-    //printf("List_Print\n");
     int i;
 
     printf("START INDICES \n");
@@ -50,66 +49,66 @@ void Print_List( reax_list* list )
 }
 
 
-/* allocate space for interaction list
+/* Allocate space for interaction list
  *
  * n: num. of elements to be allocated for list
- * num_intrs:
- * type:
- * l:
+ * max_intrs: max. num. of interactions for which to allocate space
+ * type: list interaction type
+ * l: pointer to list to be allocated
  * */
-void Make_List( int n, int num_intrs, int type, reax_list *l )
+void Make_List( int n, int max_intrs, int type, reax_list *l )
 {
+    if ( l->allocated == TRUE )
+    {
+        fprintf( stderr, "[WARNING] attempted to allocate list which was already allocated."
+                " Returning without allocation...\n" );
+        return;
+    }
+
     l->allocated = TRUE;
     l->n = n;
-    l->num_intrs = num_intrs;
-    l->index = (int*) smalloc( n * sizeof(int), "list:index" );
-    l->end_index = (int*) smalloc( n * sizeof(int), "list:index" );
+    l->max_intrs = max_intrs;
     l->type = type;
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "list: n=%d num_intrs=%d type=%d\n", n, num_intrs, type );
-#endif
+    l->index = smalloc( sizeof(int) * n, "Make_List::index" );
+    l->end_index = smalloc( sizeof(int) * n, "Make_List::end_index" );
 
     switch ( l->type )
     {
     case TYP_VOID:
-        l->select.v = (void*)
-                smalloc( l->num_intrs * sizeof(void*), "list:v" );
-        break;
-
-    case TYP_THREE_BODY:
-        l->select.three_body_list = (three_body_interaction_data*)
-                smalloc( l->num_intrs * sizeof(three_body_interaction_data), "list:three_bodies" );
+        l->v = smalloc( sizeof(void*) * l->max_intrs, "Make_List::v" );
         break;
 
     case TYP_BOND:
-        l->select.bond_list = (bond_data*)
-                smalloc( l->num_intrs * sizeof(bond_data), "list:bonds" );
+        l->bond_list = smalloc( sizeof(bond_data) * l->max_intrs, "Make_List::bonds" );
         break;
 
-    case TYP_DBO:
-        l->select.dbo_list = (dbond_data*)
-                smalloc( l->num_intrs * sizeof(dbond_data), "list:dbonds" );
-        break;
-
-    case TYP_DDELTA:
-        l->select.dDelta_list = (dDelta_data*)
-                smalloc( l->num_intrs * sizeof(dDelta_data), "list:dDeltas" );
-        break;
-
-    case TYP_FAR_NEIGHBOR:
-        l->select.far_nbr_list = (far_neighbor_data*)
-                smalloc( l->num_intrs * sizeof(far_neighbor_data), "list:far_nbrs" );
+    case TYP_THREE_BODY:
+        l->three_body_list = smalloc( sizeof(three_body_interaction_data) * l->max_intrs,
+                "Make_List::three_bodies" );
         break;
 
     case TYP_HBOND:
-        l->select.hbond_list = (hbond_data*)
-                smalloc( l->num_intrs * sizeof(hbond_data), "list:hbonds" );
+        l->hbond_list = smalloc( sizeof(hbond_data) * l->max_intrs, "Make_List::hbonds" );
+        break;
+
+    case TYP_FAR_NEIGHBOR:
+        l->far_nbr_list = smalloc( sizeof(far_neighbor_data) * l->max_intrs,
+                "Make_List::far_nbrs" );
+        break;
+
+    case TYP_DBO:
+        l->dbo_list = smalloc( sizeof(dbond_data) * l->max_intrs, "Make_List::dbonds" );
+        break;
+
+    case TYP_DDELTA:
+        l->dDelta_list = smalloc( sizeof(dDelta_data) * l->max_intrs, "Make_List::dDeltas" );
         break;
 
     default:
-        fprintf( stderr, "[ERROR] no %d list type defined!\n", l->type );
+        fprintf( stderr, "[ERROR] unknown list type (%d)\n", l->type );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+        break;
     }
 }
 
@@ -118,45 +117,72 @@ void Delete_List( reax_list *l )
 {
     if ( l->allocated == FALSE )
     {
+        fprintf( stderr, "[WARNING] attempted to free list which was not allocated."
+                " Returning without deallocation...\n" );
         return;
     }
+
     l->allocated = FALSE;
+    l->n = 0;
+    l->max_intrs = 0;
 
-    sfree( l->index, "list:index" );
-    sfree( l->end_index, "list:end_index" );
+    sfree( l->index, "Delete_List::index" );
+    sfree( l->end_index, "Delete_List::end_index" );
 
-    switch (l->type)
+    switch ( l->type )
     {
     case TYP_VOID:
-        sfree( l->select.v, "list:v" );
-        break;
-
-    case TYP_HBOND:
-        sfree( l->select.hbond_list, "list:hbonds" );
-        break;
-
-    case TYP_FAR_NEIGHBOR:
-        sfree( l->select.far_nbr_list, "list:far_nbrs" );
+        sfree( l->v, "Delete_List::v" );
         break;
 
     case TYP_BOND:
-        sfree( l->select.bond_list, "list:bonds" );
-        break;
-
-    case TYP_DBO:
-        sfree( l->select.dbo_list, "list:dbos" );
-        break;
-
-    case TYP_DDELTA:
-        sfree( l->select.dDelta_list, "list:dDeltas" );
+        sfree( l->bond_list, "Delete_List::bonds" );
         break;
 
     case TYP_THREE_BODY:
-        sfree( l->select.three_body_list, "list:three_bodies" );
+        sfree( l->three_body_list, "Delete_List::three_bodies" );
+        break;
+
+    case TYP_HBOND:
+        sfree( l->hbond_list, "Delete_List::hbonds" );
+        break;
+
+    case TYP_FAR_NEIGHBOR:
+        sfree( l->far_nbr_list, "Delete_List::far_nbrs" );
+        break;
+
+    case TYP_DBO:
+        sfree( l->dbo_list, "Delete_List::dbos" );
+        break;
+
+    case TYP_DDELTA:
+        sfree( l->dDelta_list, "Delete_List::dDeltas" );
         break;
 
     default:
-        fprintf( stderr, "[ERROR] no %d list type defined!\n", l->type );
+        fprintf( stderr, "[ERROR] unknown list type (%d)\n", l->type );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+        break;
+    }
+}
+
+
+/* Initialize list indices
+ *
+ * list: pointer to list
+ * max_intrs: max. num. of interactions for each list element
+ * */
+void Init_List_Indices( reax_list *list, int *max_intrs )
+{
+    int i;
+
+    /* exclusive prefix sum of max_intrs replaces start indices,
+     * set end indices to the same as start indices for safety */
+    Set_Start_Index( 0, 0, list );
+    Set_End_Index( 0, 0, list );
+    for ( i = 1; i < list->n; ++i )
+    {
+        Set_Start_Index( i, Start_Index( i - 1, list ) + max_intrs[i - 1], list );
+        Set_End_Index( i, Start_Index( i, list ), list );
     }
 }

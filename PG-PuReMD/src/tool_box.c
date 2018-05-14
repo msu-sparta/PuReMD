@@ -197,20 +197,27 @@ void Update_Timing_Info( real *t_start, real *timing )
 /*********** from io_tools.c **************/
 int Get_Atom_Type( reax_interaction *reax_param, char *s )
 {
-    int i;
+    int i, ret, flag;
+    
+    flag = FAILURE;
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
     {
-        if ( !strcmp( reax_param->sbp[i].name, s ) )
+        if ( strncmp( reax_param->sbp[i].name, s, 15 ) == 0 )
         {
-            return i;
+            ret = i;
+            flag = SUCCESS;
+            break;
         }
     }
 
-    fprintf( stderr, "Unknown atom type %s. Terminating...\n", s );
-    MPI_Abort( MPI_COMM_WORLD, UNKNOWN_ATOM_TYPE );
+    if ( flag == FAILURE )
+    {
+        fprintf( stderr, "Unknown atom type (%s). Terminating...\n", s );
+        MPI_Abort( MPI_COMM_WORLD, UNKNOWN_ATOM_TYPE );
+    }
 
-    return -1;
+    return ret;
 }
 
 
@@ -262,7 +269,6 @@ int Tokenize( const char* s, char*** tok )
 }
 
 
-/***************** taken from lammps ************************/
 /* Safe wrapper around libc malloc
  *
  * n: num. of bytes to allocated
@@ -270,7 +276,7 @@ int Tokenize( const char* s, char*** tok )
  *
  * returns: ptr to allocated memory
  * */
-void* smalloc( size_t n, const char *name )
+void * smalloc( size_t n, const char *name )
 {
     void *ptr;
 
@@ -278,11 +284,12 @@ void* smalloc( size_t n, const char *name )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n, name );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n, name );
+    fflush( stderr );
 #endif
 
     ptr = malloc( n );
@@ -291,11 +298,12 @@ void* smalloc( size_t n, const char *name )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n, name );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
+    fprintf( stderr, "[INFO] granted memory at address: %p\n", (void *) ptr );
+    fflush( stderr );
 #endif
 
     return ptr;
@@ -309,7 +317,7 @@ void* smalloc( size_t n, const char *name )
  *
  * returns: ptr to reallocated memory
  * */
-void* srealloc( void *ptr, size_t n, const char *name )
+void * srealloc( void *ptr, size_t n, const char *name )
 {
     void *new_ptr;
 
@@ -317,32 +325,34 @@ void* srealloc( void *ptr, size_t n, const char *name )
     {
         fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
                 n, name );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        exit( INSUFFICIENT_MEMORY );
     }
 
+#if defined(DEBUG)
     if ( ptr == NULL )
     {
         fprintf( stderr, "[INFO] trying to allocate %zu NEW bytes for array %s.\n",
                 n, name );
     }
 
-#if defined(DEBUG)
     fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fflush( stderr );
 #endif
 
     new_ptr = realloc( ptr, n );
 
-    /* technically, ptr is still allocated and valid in this case,
+    /* technically, ptr may still be allocated and valid,
      * but we needed more memory, so abort */
     if ( new_ptr == NULL )
     {
         fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
                 n, name );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
+    fprintf( stderr, "[INFO] address: %p [SREALLOC]\n", (void *) new_ptr );
+    fflush( stderr );
 #endif
 
     return new_ptr;
@@ -357,7 +367,7 @@ void* srealloc( void *ptr, size_t n, const char *name )
  *
  * returns: ptr to allocated memory, all bits initialized to zeros
  * */
-void* scalloc( size_t n, size_t size, const char *name )
+void * scalloc( size_t n, size_t size, const char *name )
 {
     void *ptr;
 
@@ -365,11 +375,12 @@ void* scalloc( size_t n, size_t size, const char *name )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n * size, name );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
     fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fflush( stderr );
 #endif
 
     ptr = calloc( n, size );
@@ -378,11 +389,12 @@ void* scalloc( size_t n, size_t size, const char *name )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n * size, name );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] successfuly assigned pointer for %s\n", name );
+    fprintf( stderr, "[INFO] address: %p [SCALLOC]\n", (void *) ptr );
+    fflush( stderr );
 #endif
 
     return ptr;
@@ -404,14 +416,73 @@ void sfree( void *ptr, const char *name )
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] freeing memory for %s\n", name );
+    fprintf( stderr, "[INFO] trying to free pointer (%s), address: %p\n",
+            name, (void *) ptr );
+    fflush( stderr );
 #endif
 
     free( ptr );
+}
 
-#if defined(DEBUG)
-    fprintf( stderr, "[INFO] successfuly freed memory from pointer for %s\n", name );
-#endif
 
-    ptr = NULL;
+/* Safe wrapper around libc fopen
+ *
+ * fname: name of file to be opened
+ * mode: mode in which to open file
+ * */
+FILE * sfopen( const char * fname, const char * mode )
+{
+    FILE * ptr;
+
+    if ( fname == NULL )
+    {
+        fprintf( stderr, "[ERROR] trying to open file\n" );
+        fprintf( stderr, "  [INFO] NULL file name\n" );
+        exit( INVALID_INPUT );
+    }
+    if ( mode == NULL )
+    {
+        fprintf( stderr, "[ERROR] trying to open file\n" );
+        fprintf( stderr, "  [INFO] NULL mode\n" );
+        exit( INVALID_INPUT );
+    }
+
+    ptr = fopen( fname, mode );
+
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[ERROR] failed to open file %s with mode %s\n",
+              fname, mode );
+        exit( INVALID_INPUT );
+    }
+
+    return ptr;
+}
+
+
+/* Safe wrapper around libc fclose
+ *
+ * fname: name of file to be opened
+ * mode: mode in which to open file
+ * msg: message to be printed in case of error
+ * */
+void sfclose( FILE * fp, const char * msg )
+{
+    int ret;
+
+    if ( fp == NULL )
+    {
+        fprintf( stderr, "[WARNING] trying to close NULL file pointer. Returning...\n" );
+        fprintf( stderr, "  [INFO] %s\n", msg );
+        return;
+    }
+
+    ret = fclose( fp );
+
+    if ( ret != 0 )
+    {
+        fprintf( stderr, "[ERROR] error detected when closing file\n" );
+        fprintf( stderr, "  [INFO] %s\n", msg );
+        exit( INVALID_INPUT );
+    }
 }

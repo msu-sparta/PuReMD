@@ -66,17 +66,23 @@ void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
     mark[atom] = 1;
     t = system->my_atoms[atom].type;
     if ( ignore && control->ignore[t] )
+    {
         return;
+    }
     type[t]++;
 
     start = Start_Index( atom, bonds );
     end = End_Index( atom, bonds );
+
     for ( i = start; i < end; ++i )
     {
-        nbr = bonds->select.bond_list[i].nbr;
-        bo = bonds->select.bond_list[i].bo_data.BO;
+        nbr = bonds->bond_list[i].nbr;
+        bo = bonds->bond_list[i].bo_data.BO;
+
         if ( bo >= control->bg_cut && !mark[nbr] )
+        {
             Visit_Bonds( nbr, mark, type, system, control, bonds, ignore );
+        }
     }
 }
 

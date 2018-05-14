@@ -31,8 +31,8 @@
 extern "C" {
 #endif
 
-int Init_Lookup_Tables( reax_system*, control_params*, real *,
-        mpi_datatypes*, char* );
+void Init_Lookup_Tables( reax_system *, control_params *, real *,
+        mpi_datatypes * );
 
 #ifdef _cplusplus
 }

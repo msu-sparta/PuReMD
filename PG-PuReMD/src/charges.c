@@ -409,13 +409,12 @@ void Init_MatVec( reax_system *system, simulation_data *data,
 void Calculate_Charges( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int i, scale;
+    int i;
     real u;//, s_sum, t_sum;
     rvec2 my_sum, all_sum;
     reax_atom *atom;
     real *q;
 
-    scale = sizeof(real) / sizeof(void);
     q = (real*) smalloc( system->N * sizeof(real), "Calculate_Charges::q" );
 
     //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
@@ -461,7 +460,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         atom->t[0] = workspace->x[i][1];
     }
 
-    Dist( system, mpi_data, q, MPI_DOUBLE, scale, real_packer );
+    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
     for ( i = system->n; i < system->N; ++i )
     {
         system->my_atoms[i].q = q[i];

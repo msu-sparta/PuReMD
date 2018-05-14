@@ -77,7 +77,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
         *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout,
         simulation_data *data )
 {
-    int i, j, n, N, matvecs, scale;
+    int i, j, n, N, matvecs;
     rvec2 tmp, alpha, beta;
     rvec2 my_sum, norm_sqr, b_norm, my_dot;
     rvec2 sig_old, sig_new;
@@ -87,7 +87,6 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
     N = system->N;
     comm = mpi_data->world;
     matvecs = 0;
-    scale = sizeof(rvec2) / sizeof(void);
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -102,7 +101,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
     check_zeros_host( x, N, "x" );
 #endif
 
-    Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
+    Dist( system, mpi_data, x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, rvec2_packer );
 
 #if defined(HAVE_CUDA) && defined(DEBUG)
     check_zeros_host( x, N, "x" );
@@ -113,7 +112,8 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
 //  if (data->step > 0) return;
 
     // tryQEq
-    Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+    Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE,
+            mpi_data->mpi_rvec2, rvec2_unpacker );
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -166,13 +166,15 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
 
     for ( i = 1; i < 300; ++i )
     {
-        Dist(system, mpi_data, workspace->d2, mpi_data->mpi_rvec2, scale, rvec2_packer);
+        Dist( system, mpi_data, workspace->d2, RVEC2_PTR_TYPE,
+                mpi_data->mpi_rvec2, rvec2_packer );
         //print_host_rvec2( workspace->d2, N );
 
         dual_Sparse_MatVec( H, workspace->d2, workspace->q2, N );
 
         // tryQEq
-        Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+        Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE,
+                mpi_data->mpi_rvec2, rvec2_unpacker );
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
@@ -314,16 +316,15 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
         real tol, real *x, mpi_datatypes* mpi_data )
 {
-    int  i, j, scale;
+    int i, j;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new, sig0;
 
-    scale = sizeof(real) / sizeof(void);
-    Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
+    Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
     Sparse_MatVec( H, x, workspace->q, system->N );
 
     // tryQEq
-    Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+    Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -351,11 +352,11 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 
     for ( i = 1; i < 300 && SQRT(sig_new) / b_norm > tol; ++i )
     {
-        Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
+        Dist( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
 
         //tryQEq
-        Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+        Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
@@ -401,12 +402,12 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 int CG_test( reax_system *system, storage *workspace, sparse_matrix *H, real
         *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
-    int  i, j, scale;
+    int  i, j;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new, sig0;
 
-    scale = sizeof(real) / sizeof(void);
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
+
 #if defined(DEBUG)
     if ( system->my_rank == MASTER_NODE )
     {
@@ -419,7 +420,7 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H, real
 #endif
 
     Sparse_MatVec( H, x, workspace->q, system->N );
-    //Coll( system, mpi_data, workspace->q, MPI_DOUBLE, real_unpacker );
+    //Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
 
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
     for ( j = 0; j < system->n; ++j )
@@ -446,10 +447,10 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H, real
         if ( system->my_rank == MASTER_NODE )
             t_start = Get_Time( );
 #endif
-        Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
+        Dist( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
         //tryQEq
-        //Coll(system, mpi_data, workspace->q, MPI_DOUBLE, real_unpacker);
+        //Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
         {
@@ -570,7 +571,7 @@ int PCG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
         real tol, sparse_matrix *L, sparse_matrix *U, real *x, mpi_datatypes*
         mpi_data, FILE *fout )
 {
-    int  i, me, n, N, scale;
+    int i, me, n, N;
     real tmp, alpha, beta, b_norm, r_norm, sig_old, sig_new;
     MPI_Comm world;
 
@@ -578,7 +579,7 @@ int PCG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
     n = system->n;
     N = system->N;
     world = mpi_data->world;
-    scale = sizeof(real) / sizeof(void);
+
     b_norm = Parallel_Norm( b, n, world );
 
 #if defined(DEBUG_FOCUS)
@@ -591,7 +592,7 @@ int PCG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 #endif
 
     Sparse_MatVec( H, x, workspace->q, N );
-    //Coll( system, workspace, mpi_data, workspace->q );
+    //Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, n );
     r_norm = Parallel_Norm( workspace->r, n, world );
 
@@ -612,10 +613,10 @@ int PCG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 
     for ( i = 1; i < 100 && r_norm / b_norm > tol; ++i )
     {
-        Dist( system, mpi_data, workspace->p, MPI_DOUBLE, scale, real_packer );
+        Dist( system, mpi_data, workspace->p, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
         Sparse_MatVec( H, workspace->p, workspace->q, N );
         // tryQEq
-        //Coll(system,mpi_data,workspace->q, MPI_DOUBLE, real_unpacker);
+        //Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
         tmp = Parallel_Dot( workspace->q, workspace->p, n, world );
         alpha = sig_new / tmp;
         Vector_Add( x, alpha, workspace->p, n );

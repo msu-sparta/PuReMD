@@ -68,17 +68,14 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 
 
 char Read_Geo( char* geo_file, reax_system* system, control_params *control,
-               simulation_data *data, storage *workspace,
-               mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
-
-    FILE *geo;
+    int i, j, serial, top;
     char descriptor[9];
-    int i, serial, top;
-    int j;
     real box_x, box_y, box_z, alpha, beta, gamma;
     rvec x;
     char element[3], name[9];
+    FILE *geo;
     reax_atom *atom;
 
     /* open the geometry file */
@@ -98,12 +95,7 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
 
     /* count my atoms & allocate storage */
     Count_Geo_Atoms( geo, system );
-    if ( PreAllocate_Space( system, control, workspace ) == FAILURE )
-    {
-        fprintf( stderr, "PreAllocate_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
+    PreAllocate_Space( system, control, workspace );
 
     /* read in my atom info */
     top = 0;
@@ -111,7 +103,9 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
+
         Fit_to_Periodic_Box( &(system->big_box), &x );
+
 #if defined(DEBUG)
         fprintf( stderr, "atom%d: %s %s %f %f %f\n",
                  serial, element, name, x[0], x[1], x[2] );
@@ -120,16 +114,14 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
         /* if the point is inside my_box, add it to my list */
         if ( is_Inside_Box(&(system->my_box), x) )
         {
-            atom = &(system->my_atoms[top]);
+            atom = &system->my_atoms[top];
             atom->orig_id = serial;
 
-            //FIX - 2 - Added this fix to compare only in upper case
-            //CHAD FIX
-            //CHAD FIX
-            for (j = 0; j < strlen(element); j++)
+            for ( j = 0; j < strnlen(element, 3); j++ )
+            {
                 element[j] = toupper( element[j] );
-            //CHAD FIX
-            atom->type = Get_Atom_Type( &(system->reax_param), element );
+            }
+            atom->type = Get_Atom_Type( &system->reax_param, element );
             strncpy( atom->name, name, MAX_ATOM_NAME_LEN );
             rvec_Copy( atom->x, x );
             rvec_MakeZero( atom->v );
@@ -264,7 +256,6 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
-
     FILE *pdb;
     char **tmp;
     char *s, *s1;
@@ -278,7 +269,6 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     int i, c, c1, pdb_serial, top;
     rvec x;
     reax_atom *atom;
-
 
     /* open pdb file */
     if ( (pdb = fopen(pdb_file, "r")) == NULL )
@@ -300,12 +290,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
     Setup_Environment( system, control, mpi_data );
     Count_PDB_Atoms( pdb, system );
-    if ( PreAllocate_Space( system, control, workspace ) == FAILURE )
-    {
-        fprintf( stderr, "PreAllocate_Space: not enough memory!" );
-        fprintf( stderr, "terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-    }
+    PreAllocate_Space( system, control, workspace );
 
     /* start reading and processing the pdb file */
 #if defined(DEBUG_FOCUS)
@@ -431,29 +416,17 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
                 atom->num_hbonds = 0;
 
                 top++;
-                // fprintf( stderr, "p%d: %6d%2d x:%8.3f%8.3f%8.3f"
-                //                  "q:%8.3f occ:%s temp:%s seg:%s elmnt:%s\n",
-                //       system->my_rank,
-                //       c, system->my_atoms[top].type,
-                //       system->my_atoms[top].x[0],
-                //       system->my_atoms[top].x[1],
-                //       system->my_atoms[top].x[2],
-                //       system->my_atoms[top].q, occupancy, temp_factor,
-                //       seg_id, element );
-
-                //fprintf( stderr, "atom( %8.3f %8.3f %8.3f ) --> p%d\n",
-                // system->my_atoms[top].x[0], system->my_atoms[top].x[1],
-                // system->my_atoms[top].x[2], system->my_rank );
             }
+
             c++;
         }
 
         /* IMPORTANT: We do not check for the soundness of restrictions here.
-           When atom2 is on atom1's restricted list, and there is a restriction
-           on atom2, then atom1 has to be on atom2's restricted list, too.
-           However, we do not check if this is the case in the input file,
-           this is upto the user. */
-        else if (!strncmp( tmp[0], "CONECT", 6 ))
+         * When atom2 is on atom1's restricted list, and there is a restriction
+         * on atom2, then atom1 has to be on atom2's restricted list, too.
+         * However, we do not check if this is the case in the input file,
+         * this is upto the user. */
+        else if ( !strncmp( tmp[0], "CONECT", 6 ) )
         {
             if ( control->restrict_bonds )
             {
@@ -491,23 +464,15 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
 
     fclose( pdb );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: finished reading the pdb file\n", system->my_rank );
-    //Print_My_Atoms( system );
-#endif
-
     return SUCCESS;
 }
 
 
 /* PDB serials are written without regard to the order, we'll see if this
-   cause trouble, if so we'll have to rethink this approach
-   Also, we do not write connect lines yet.
-*/
-
-char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
-               control_params *control, mpi_datatypes *mpi_data,
-               output_controls *out_control)
+ * cause trouble, if so we'll have to rethink this approach
+ * Also, we do not write connect lines yet.  */
+char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
+        control_params *control, mpi_datatypes *mpi_data, output_controls *out_control )
 {
     int i, cnt, me, np, buffer_req, buffer_len;
     //int j, connect[4];
@@ -612,9 +577,9 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
     for(i=0; i < system->N; i++) {
       count = 0;
       for(j = Start_Index(i, bonds); j < End_Index(i, bonds); ++j) {
-        bo = bonds->select.bond_list[j].bo_data.BO;
+        bo = bonds->bond_list[j].bo_data.BO;
         if (bo > 0.3) {
-          connect[count] = bonds->select.bond_list[j].nbr+1;
+          connect[count] = bonds->bond_list[j].nbr+1;
           count++;
         }
       }

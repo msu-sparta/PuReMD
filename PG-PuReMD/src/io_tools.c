@@ -890,8 +890,8 @@ void Print_My_Ext_Atoms( reax_system *system )
 void Print_Far_Neighbors( reax_system *system, reax_list **lists,
         control_params *control )
 {
-    char fname[100];
     int i, j, id_i, id_j, nbr, natoms;
+    char fname[100];
     FILE *fout;
     reax_list *far_nbrs;
 
@@ -906,20 +906,20 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
 
         for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
         {
-            nbr = far_nbrs->select.far_nbr_list[j].nbr;
+            nbr = far_nbrs->far_nbr_list[j].nbr;
             id_j = system->my_atoms[nbr].orig_id;
 
             fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                     id_i, id_j, far_nbrs->select.far_nbr_list[j].d,
-                     far_nbrs->select.far_nbr_list[j].dvec[0],
-                     far_nbrs->select.far_nbr_list[j].dvec[1],
-                     far_nbrs->select.far_nbr_list[j].dvec[2] );
+                     id_i, id_j, far_nbrs->far_nbr_list[j].d,
+                     far_nbrs->far_nbr_list[j].dvec[0],
+                     far_nbrs->far_nbr_list[j].dvec[1],
+                     far_nbrs->far_nbr_list[j].dvec[2] );
 
             fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                     id_j, id_i, far_nbrs->select.far_nbr_list[j].d,
-                     -far_nbrs->select.far_nbr_list[j].dvec[0],
-                     -far_nbrs->select.far_nbr_list[j].dvec[1],
-                     -far_nbrs->select.far_nbr_list[j].dvec[2] );
+                     id_j, id_i, far_nbrs->far_nbr_list[j].d,
+                     -far_nbrs->far_nbr_list[j].dvec[0],
+                     -far_nbrs->far_nbr_list[j].dvec[1],
+                     -far_nbrs->far_nbr_list[j].dvec[2] );
         }
     }
 
@@ -991,10 +991,12 @@ void Print_Symmetric_Sparse(reax_system *system, sparse_matrix *A, char *fname)
 void Print_Linear_System( reax_system *system, control_params *control,
         storage *workspace, int step )
 {
-    int i, j;
+    int i;
+//    int j;
     char fname[100];
-    reax_atom *ai, *aj;
-    sparse_matrix *H;
+    reax_atom *ai;
+//    reax_atom *aj;
+//    sparse_matrix *H;
     FILE *out;
 
     /* print rhs and init guesses for QEq */
@@ -1095,16 +1097,16 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
     fout = fopen( fname, "w" );
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->numH; ++i )
     {
         for ( pj = Start_Index(i, hbonds); pj < End_Index(i, hbonds); ++pj )
         {
-            phbond = &(hbonds->select.hbond_list[pj]);
+            phbond = &hbonds->hbond_list[pj];
 
-//            fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, phbond->nbr,
-//                    phbond->ptr->dvec[0], phbond->ptr->dvec[1], phbond->ptr->dvec[2] );
-            fprintf( fout, "%8d%8d %8d %8d\n", i, phbond->nbr,
-                  phbond->scl, phbond->sym_index );
+            fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, phbond->nbr,
+                    phbond->ptr->dvec[0], phbond->ptr->dvec[1], phbond->ptr->dvec[2] );
+//            fprintf( fout, "%8d%8d %8d %8d\n", i, phbond->nbr,
+//                  phbond->scl, phbond->sym_index );
         }
     }
 
@@ -1150,8 +1152,8 @@ void Print_Bonds( reax_system *system, reax_list **lists,
     {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            pbond = &(bonds->select.bond_list[pj]);
-            bo_ij = &(pbond->bo_data);
+            pbond = &bonds->bond_list[pj];
+            bo_ij = &pbond->bo_data;
 //            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
 //                    system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
 //                    pbond->d, bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
@@ -1185,7 +1187,7 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
         fprintf( f, "%6d:", id_i);
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            nbr = bonds->select.bond_list[pj].nbr;
+            nbr = bonds->bond_list[pj].nbr;
             id_j = system->my_atoms[nbr].orig_id;
             if ( id_i < id_j )
             {
@@ -1219,6 +1221,60 @@ void Print_Total_Force( reax_system *system, simulation_data *data,
 }
 
 
+/* Print reax interaction list in adjacency list format */
+void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, FILE *fp )
+{
+    int i, pj, id_i, id_j, nbr, cnt;
+    int num_intrs, *intrs;
+
+    num_intrs = 0;
+    intrs = NULL;
+
+    if ( fp == NULL )
+    {
+        fprintf( stderr, "[WARNING] null file pointer, returning without printing...\n" );
+        return;
+    }
+
+    for ( i = 0; i < system->n; ++i )
+    {
+        cnt = 0;
+        id_i = system->my_atoms[i].orig_id;
+        fprintf( fp, "%d: ", id_i );
+
+        if ( Num_Entries( i, list ) > num_intrs )
+        {
+            num_intrs = Num_Entries( i, list );
+            intrs = srealloc( intrs, num_intrs * sizeof(int),
+                    "Print_Far_Neighbor_List_Adj_Format::intrs" );
+        }
+
+        for ( pj = Start_Index(i, list); pj < End_Index(i, list); ++pj )
+        {
+            nbr = list->far_nbr_list[pj].nbr;
+            id_j = system->my_atoms[nbr].orig_id;
+            intrs[cnt++] = id_j;
+        }
+
+        if ( cnt > 0 )
+        {
+            qsort( (void *) intrs, (size_t) cnt, sizeof(int), fn_qsort_intcmp );
+        }
+
+        for ( pj = 0; pj < cnt; ++pj )
+        {
+            fprintf( fp, "%d, ", intrs[pj] );
+        }
+        fprintf( fp, "\n" );
+    }
+
+    if ( intrs != NULL )
+    {
+        sfree( intrs, "Print_Far_Neighbor_List_Adj_Format::intrs" );
+    }
+}
+
+
 void Output_Results( reax_system *system, control_params *control,
         simulation_data *data, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
@@ -1227,14 +1283,11 @@ void Output_Results( reax_system *system, control_params *control,
     real t_elapsed, denom;
 #endif
 
-    if ( (out_control->energy_update_freq > 0 &&
-            data->step % out_control->energy_update_freq == 0) ||
-            (out_control->write_steps > 0 &&
-             data->step % out_control->write_steps == 0) )
+    if ( (out_control->energy_update_freq > 0
+                && data->step % out_control->energy_update_freq == 0)
+            || (out_control->write_steps > 0
+                && data->step % out_control->write_steps == 0) )
     {
-        /* update system-wide energies */
-        Compute_System_Energy( system, data, MPI_COMM_WORLD );
-
         /* output energies */
         if ( system->my_rank == MASTER_NODE &&
                 out_control->energy_update_freq > 0 &&
@@ -1403,12 +1456,12 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            bo_ij = &(bonds->select.bond_list[pj].bo_data);
+            bo_ij = &bonds->bond_list[pj].bo_data;
             fprintf( out_control->fbo,
                      "%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                      system->my_atoms[i].orig_id,
-                     system->my_atoms[bonds->select.bond_list[pj].nbr].orig_id,
-                     bonds->select.bond_list[pj].d,
+                     system->my_atoms[bonds->bond_list[pj].nbr].orig_id,
+                     bonds->bond_list[pj].d,
                      bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
         }
 
@@ -1422,26 +1475,26 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
         {
             /* fprintf( out_control->fdbo, "%6d %6d\tstart: %6d\tend: %6d\n",
             system->my_atoms[i].orig_id,
-             system->my_atoms[bonds->select.bond_list[pj].nbr].orig_id,
+             system->my_atoms[bonds->bond_list[pj].nbr].orig_id,
              Start_Index( pj, dBOs ), End_Index( pj, dBOs ) ); */
             for ( pk = Start_Index(pj, dBOs); pk < End_Index(pj, dBOs); ++pk )
             {
-                dbo_k = &(dBOs->select.dbo_list[pk]);
+                dbo_k = &dBOs->dbo_list[pk];
                 fprintf( out_control->fdbo, "%6d%6d%6d%24.15e%24.15e%24.15e\n",
                          system->my_atoms[i].orig_id,
-                         system->my_atoms[bonds->select.bond_list[pj].nbr].orig_id,
+                         system->my_atoms[bonds->bond_list[pj].nbr].orig_id,
                          system->my_atoms[dbo_k->wrt].orig_id,
                          dbo_k->dBO[0], dbo_k->dBO[1], dbo_k->dBO[2] );
 
                 fprintf( out_control->fdbo, "%6d%6d%6d%24.15e%24.15e%24.15e\n",
                          system->my_atoms[i].orig_id,
-                         system->my_atoms[bonds->select.bond_list[pj].nbr].orig_id,
+                         system->my_atoms[bonds->bond_list[pj].nbr].orig_id,
                          system->my_atoms[dbo_k->wrt].orig_id,
                          dbo_k->dBOpi[0], dbo_k->dBOpi[1], dbo_k->dBOpi[2] );
 
                 fprintf( out_control->fdbo, "%6d%6d%6d%24.15e%24.15e%24.15e\n",
                          system->my_atoms[i].orig_id,
-                         system->my_atoms[bonds->select.bond_list[pj].nbr].orig_id,
+                         system->my_atoms[bonds->bond_list[pj].nbr].orig_id,
                          system->my_atoms[dbo_k->wrt].orig_id,
                          dbo_k->dBOpi2[0], dbo_k->dBOpi2[1], dbo_k->dBOpi2[2] );
             }
@@ -1545,40 +1598,46 @@ void Print_Force_Files( reax_system *system, control_params *control,
 
 
 #if defined(TEST_FORCES) || defined(TEST_ENERGY)
+/* Print far neighbors list in adjacency list format */
 void Print_Far_Neighbors_List( reax_system *system, reax_list **lists,
         control_params *control, simulation_data *data,
         output_controls *out_control )
 {
-    int   i, j, id_i, id_j, nbr, natoms;
-    int num = 0;
+    int i, j, id_i, id_j, nbr, natoms;
+    int num;
     int temp[500];
     reax_list *far_nbrs;
 
+    num = 0;
     far_nbrs = lists[FAR_NBRS];
+
     fprintf( out_control->flist, "step: %d\n", data->step );
     fprintf( out_control->flist, "%6s\t%-38s\n", "atom", "Far_nbrs_list");
-
 
     natoms = system->n;
     for ( i = 0; i < natoms; ++i )
     {
         id_i = system->my_atoms[i].orig_id;
-        fprintf( out_control->flist, "%6d:", id_i);
+        fprintf( out_control->flist, "%6d:", id_i );
         num = 0;
 
         for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
         {
-            nbr = far_nbrs->select.far_nbr_list[j].nbr;
+            nbr = far_nbrs->far_nbr_list[j].nbr;
             id_j = system->my_atoms[nbr].orig_id;
             temp[num++] = id_j;
         }
 
-        qsort(&temp, num, sizeof(int), fn_qsort_intcmp);
-        for (j = 0; j < num; j++)
-            fprintf(out_control->flist, "%6d", temp[j]);
-        fprintf( out_control->flist, "\n");
+        qsort( &temp, num, sizeof(int), fn_qsort_intcmp );
+
+        for ( j = 0; j < num; j++ )
+        {
+            fprintf( out_control->flist, "%6d", temp[j] );
+        }
+        fprintf( out_control->flist, "\n" );
     }
 }
+
 
 void Print_Bond_List( reax_system *system, control_params *control,
         simulation_data *data, reax_list **lists,
@@ -1591,26 +1650,30 @@ void Print_Bond_List( reax_system *system, control_params *control,
     int num = 0;
 
     fprintf( out_control->blist, "step: %d\n", data->step );
-    fprintf( out_control->blist, "%6s\t%-38s\n", "atom", "Bond_list");
+    fprintf( out_control->blist, "%6s\t%-38s\n", "atom", "Bond_list" );
 
     /* bond list */
     for ( i = 0; i < system->n; ++i )
     {
         num = 0;
         id_i = system->my_atoms[i].orig_id;
-        fprintf( out_control->blist, "%6d:", id_i);
+        fprintf( out_control->blist, "%6d:", id_i );
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            nbr = bonds->select.bond_list[pj].nbr;
+            nbr = bonds->bond_list[pj].nbr;
             id_j = system->my_atoms[nbr].orig_id;
             if ( id_i < id_j )
+            {
                 temp[num++] = id_j;
+            }
         }
 
-        qsort(&temp, num, sizeof(int), fn_qsort_intcmp);
-        for (j = 0; j < num; j++)
-            fprintf(out_control->blist, "%6d", temp[j]);
-        fprintf(out_control->blist, "\n");
+        qsort( &temp, num, sizeof(int), fn_qsort_intcmp );
+        for ( j = 0; j < num; j++ )
+        {
+            fprintf( out_control->blist, "%6d", temp[j] );
+        }
+        fprintf( out_control->blist, "\n" );
     }
 }
 

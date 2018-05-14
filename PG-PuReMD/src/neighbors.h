@@ -24,21 +24,14 @@
 
 #include "reax_types.h"
 
-/*typedef void (*find_neighbors_function)( reax_system*, control_params*,
-                     reax_list*, far_neighbor_data*,
-                     reax_list*, near_neighbor_data*,
-                     reax_list*, int*, near_neighbor_data*,
-                     int, int*, int*, int*, int,
-                     int, int, real, rvec, ivec );*/
-
 
 #ifdef _cplusplus
 extern "C" {
 #endif
 
-void Generate_Neighbor_Lists( reax_system*, simulation_data*, storage*, reax_list** );
+int Generate_Neighbor_Lists( reax_system*, simulation_data*, storage*, reax_list** );
 
-int Estimate_NumNeighbors( reax_system*, reax_list** );
+void Estimate_Num_Neighbors( reax_system* );
 
 #ifdef _cplusplus
 }

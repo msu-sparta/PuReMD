@@ -30,7 +30,7 @@
 #endif
 
 
-int Read_Force_Field( char *ffield_file, reax_interaction *reax,
+void Read_Force_Field( char *ffield_file, reax_interaction *reax,
         reax_system *system, control_params *control )
 {
     FILE *fp;
@@ -50,11 +50,11 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
         MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
     }
 
-    s = (char*) smalloc( sizeof(char) * MAX_LINE, "READ_FFIELD" );
-    tmp = (char**) smalloc( sizeof(char*)*MAX_TOKENS, "READ_FFIELD");
+    s = smalloc( sizeof(char) * MAX_LINE, "Read_Force_Field::s" );
+    tmp = smalloc( sizeof(char *) * MAX_TOKENS, "Read_Force_Field::tmp");
     for (i = 0; i < MAX_TOKENS; i++)
     {
-        tmp[i] = (char*) smalloc( sizeof(char) * MAX_TOKEN_LEN, "READ_FFIELD" );
+        tmp[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN, "Read_Force_Field::tmp[i]" );
     }
 
     /* reading first header comment */
@@ -70,11 +70,11 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
     {
         fprintf( stderr, "[WARNING] p%d: number of globals in ffield file is 0!\n",
               system->my_rank );
-        return SUCCESS;
+        return;
     }
 
     reax->gp.n_global = n;
-    reax->gp.l = (real*) smalloc( sizeof(real) * n, "READ_FFIELD" );
+    reax->gp.l = smalloc( sizeof(real) * n, "Read_Force_Field::reax->gp.l" );
 
     /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
     for (i = 0; i < n; i++)
@@ -103,27 +103,22 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
     /* Allocating structures in reax_interaction */
     __N = reax->num_atom_types;
 
-    reax->sbp = (single_body_parameters*)
-        scalloc( reax->num_atom_types, sizeof(single_body_parameters),
+    reax->sbp = scalloc( reax->num_atom_types, sizeof(single_body_parameters),
                 "Read_Force_Field::reax->sbp" );
 
-    reax->tbp = (two_body_parameters*)
-        scalloc( POW(reax->num_atom_types, 2), sizeof(two_body_parameters),
+    reax->tbp = scalloc( POW(reax->num_atom_types, 2.0), sizeof(two_body_parameters),
               "Read_Force_Field::reax->tbp" );
 
-    reax->thbp = (three_body_header*)
-        scalloc( POW(reax->num_atom_types, 3), sizeof(three_body_header),
+    reax->thbp = scalloc( POW(reax->num_atom_types, 3.0), sizeof(three_body_header),
               "Read_Force_Field::reax->thbp" );
 
-    reax->hbp = (hbond_parameters*)
-        scalloc( POW(reax->num_atom_types, 3), sizeof(hbond_parameters),
+    reax->hbp = scalloc( POW(reax->num_atom_types, 3.0), sizeof(hbond_parameters),
               "Read_Force_Field::reax->hbp" );
 
-    reax->fbp = (four_body_header*)
-        scalloc( POW(reax->num_atom_types, 4), sizeof(four_body_header),
+    reax->fbp = scalloc( POW(reax->num_atom_types, 4.0), sizeof(four_body_header),
               "Read_Force_Field::reax->fbp" );
 
-    tor_flag  = (char*) scalloc( POW(reax->num_atom_types, 4), sizeof(char),
+    tor_flag = scalloc( POW(reax->num_atom_types, 4.0), sizeof(char),
            "Read_Force_Field::tor_flag" );
 
     /* vdWaals type:
@@ -655,7 +650,7 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
         index2 = n * __N * __N * __N + m * __N * __N + k * __N + j;
 
         /* this means the entry is not in compact form */
-        if (j >= 0 && n >= 0)
+        if ( j >= 0 && n >= 0 )
         {
             if ( j < reax->num_atom_types && k < reax->num_atom_types &&
                     m < reax->num_atom_types && n < reax->num_atom_types )
@@ -761,15 +756,13 @@ int Read_Force_Field( char *ffield_file, reax_interaction *reax,
     /* deallocate helper storage */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        sfree( tmp[i], "READ_FFIELD" );
+        sfree( tmp[i], "Read_Force_Field::tmp[i]" );
     }
-    sfree( tmp, "READ_FFIELD" );
-    sfree( s, "READ_FFIELD" );
-    sfree( tor_flag, "READ_FFIELD" );
+    sfree( tmp, "Read_Force_Field::tmp" );
+    sfree( s, "Read_Force_Field::s" );
+    sfree( tor_flag, "Read_Force_Field::tor_flag" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: force field read\n", system->my_rank );
 #endif
-
-    return SUCCESS;
 }

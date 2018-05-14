@@ -52,9 +52,9 @@ void Bonds( reax_system *system, control_params *control,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     bond_order_data *bo_ij;
-    reax_list *bonds;
+    reax_list *bond_list;
 
-    bonds = lists[BONDS];
+    bond_list = lists[BONDS];
     gp3 = system->reax_param.gp.l[3];
     gp4 = system->reax_param.gp.l[4];
     gp7 = system->reax_param.gp.l[7];
@@ -64,24 +64,23 @@ void Bonds( reax_system *system, control_params *control,
 
     for ( i = 0; i < natoms; ++i )
     {
-        start_i = Start_Index(i, bonds);
-        end_i = End_Index(i, bonds);
+        start_i = Start_Index( i, bond_list );
+        end_i = End_Index( i, bond_list );
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            j = bonds->select.bond_list[pj].nbr;
+            j = bond_list->bond_list[pj].nbr;
 
             if ( system->my_atoms[i].orig_id <= system->my_atoms[j].orig_id )
             {
                 /* set the pointers */
                 type_i = system->my_atoms[i].type;
                 type_j = system->my_atoms[j].type;
-                sbp_i = &( system->reax_param.sbp[type_i] );
-                sbp_j = &( system->reax_param.sbp[type_j] );
-                //SUDHIR
-                //twbp = &( system->reax_param.tbp[type_i][type_j] );
-                twbp = &( system->reax_param.tbp[ index_tbp (type_i, type_j, system->reax_param.num_atom_types) ] );
-                bo_ij = &( bonds->select.bond_list[pj].bo_data );
+                sbp_i = &system->reax_param.sbp[type_i];
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[
+                    index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
+                bo_ij = &bond_list->bond_list[pj].bo_data;
 
                 /* calculate the constants */
                 pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
@@ -90,10 +89,10 @@ void Bonds( reax_system *system, control_params *control,
                        ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
 
                 /* calculate the Bond Energy */
-                data->my_en.e_bond += ebond =
-                                          -twbp->De_s * bo_ij->BO_s * exp_be12
-                                          - twbp->De_p * bo_ij->BO_pi
-                                          - twbp->De_pp * bo_ij->BO_pi2;
+                ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
+                    - twbp->De_p * bo_ij->BO_pi
+                    - twbp->De_pp * bo_ij->BO_pi2;
+                data->my_en.e_bond += ebond;
 
                 /* calculate derivatives of Bond Orders */
                 bo_ij->Cdbo += CEbo;
@@ -107,12 +106,14 @@ void Bonds( reax_system *system, control_params *control,
                          system->my_atoms[j].orig_id,
                          bo_ij->BO, ebond, data->my_en.e_bond );
 #endif
+
 #ifdef TEST_FORCES
                 Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
                 Add_dBOpinpi2( system, lists, i, pj,
                                -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
                                workspace->f_be, workspace->f_be );
 #endif
+
                 /* Stabilisation terminal triple bond */
                 if ( bo_ij->BO >= 1.00 )
                 {
@@ -120,8 +121,6 @@ void Bonds( reax_system *system, control_params *control,
                             (sbp_i->mass == 12.0000 && sbp_j->mass == 15.9990) ||
                             (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) )
                     {
-						
-
                         exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.50) );
                         exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
                         exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
@@ -141,12 +140,14 @@ void Bonds( reax_system *system, control_params *control,
                         bo_ij->Cdbo += decobdbo;
                         workspace->CdDelta[i] += decobdboua;
                         workspace->CdDelta[j] += decobdboub;
+
 #ifdef TEST_ENERGY
                         //fprintf( out_control->ebond,
                         //  "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
                         //  system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                         //  estriph, decobdbo, decobdboua, decobdboub );
 #endif
+
 #ifdef TEST_FORCES
                         Add_dBO( system, lists, i, pj, decobdbo, workspace->f_be );
                         Add_dDelta( system, lists, i, decobdboua, workspace->f_be );

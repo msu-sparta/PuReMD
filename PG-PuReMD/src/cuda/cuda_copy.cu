@@ -138,7 +138,7 @@ void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
     {
         Delete_List( host );
     }
-    Make_List( device->n, device->num_intrs, type, host );
+    Make_List( device->n, device->max_intrs, type, host );
 
     copy_host_device( host->index, device->index, sizeof(int) * device->n,
             cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->index" );
@@ -149,26 +149,26 @@ void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
     {   
         case TYP_FAR_NEIGHBOR:
             copy_host_device( host->select.far_nbr_list, device->select.far_nbr_list,
-                    sizeof(far_neighbor_data) * device->num_intrs,
+                    sizeof(far_neighbor_data) * device->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list" );
             break;
 
         case TYP_BOND:
             copy_host_device( host->select.bond_list, device->select.bond_list,
-                    sizeof(bond_data) * device->num_intrs,
+                    sizeof(bond_data) * device->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::bond_list" );
             break;
 
         case TYP_HBOND:
             copy_host_device( host->select.hbond_list, device->select.hbond_list,
-                    sizeof(hbond_data) * device->num_intrs,
+                    sizeof(hbond_data) * device->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::hbond_list" );
             break;
 
         case TYP_THREE_BODY:
             copy_host_device( host->select.three_body_list,
                     device->select.three_body_list,
-                    sizeof(three_body_interaction_data )* device->num_intrs,
+                    sizeof(three_body_interaction_data )* device->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::three_body_list" );
             break;
 

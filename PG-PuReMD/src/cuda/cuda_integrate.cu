@@ -317,7 +317,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         }
 
         Output_Sync_Atoms( system );
-        Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
         Sync_Atoms( system );
 
         /* sync grid to device */
@@ -420,7 +420,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         }
 
         Output_Sync_Atoms( system );
-        Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
         Sync_Atoms( system );
 
         /* sync grid to device */
@@ -560,7 +560,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         }
 
         Output_Sync_Atoms( system );
-        Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
         Sync_Atoms( system );
 
         /* sync grid to device */
@@ -691,7 +691,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         }
 
         Output_Sync_Atoms( system );
-        Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
         Sync_Atoms( system );
 
         /* sync grid to device */

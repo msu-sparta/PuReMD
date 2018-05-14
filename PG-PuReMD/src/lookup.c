@@ -193,8 +193,8 @@ void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 }
 
 
-int Init_Lookup_Tables( reax_system *system, control_params *control,
-        real *Tap, mpi_datatypes *mpi_data, char *msg )
+void Init_Lookup_Tables( reax_system *system, control_params *control,
+        real *Tap, mpi_datatypes *mpi_data )
 {
     int i, j, r;
     int num_atom_types;
@@ -202,10 +202,10 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
     real dr;
     real *h, *fh, *fvdw, *fele, *fCEvd, *fCEclmb;
     real v0_vdw, v0_ele, vlast_vdw, vlast_ele;
-
+#ifdef HAVE_CUDA
     real t_start, t_end;
+#endif
 
-    /* initializations */
     v0_vdw = 0;
     v0_ele = 0;
     vlast_vdw = 0;
@@ -325,8 +325,6 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
 
     fprintf( stderr, "Device copy of LR Lookup table: %f \n", t_end );
 #endif
-
-    return SUCCESS;
 }
 
 

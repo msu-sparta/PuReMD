@@ -73,6 +73,8 @@ void Print_Bond_List2( reax_system*, reax_list*, char* );
 
 void Print_Total_Force( reax_system*, simulation_data*, storage* );
 
+void Print_Far_Neighbors_List_Adj_Format( reax_system *, reax_list *, FILE * );
+
 void Output_Results( reax_system*, control_params*, simulation_data*,
         reax_list**, output_controls*, mpi_datatypes* );
 

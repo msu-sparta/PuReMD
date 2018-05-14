@@ -37,7 +37,7 @@ void Reset_Timing( reax_timing* );
 
 void Reset_Workspace( reax_system*, storage* );
 
-void Reset_Neighbor_Lists( reax_system*, control_params*, storage*, reax_list** );
+void Reset_Lists( reax_system*, control_params*, storage*, reax_list** );
 
 void Reset_Grid( grid* );
 

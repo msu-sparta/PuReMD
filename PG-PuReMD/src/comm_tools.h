@@ -49,7 +49,7 @@ int SendRecv( reax_system*, mpi_datatypes*_data, MPI_Datatype, int*,
         message_sorter, unpacker, int );
 
 void Comm_Atoms( reax_system*, control_params*, simulation_data*, storage*,
-        reax_list**, mpi_datatypes*, int );
+        mpi_datatypes*, int );
 
 #ifdef __cplusplus
 }

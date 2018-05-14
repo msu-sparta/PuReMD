@@ -51,6 +51,7 @@ int Velocity_Verlet_NVE( reax_system* system, control_params* control,
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
+    ret = SUCCESS;
     dt = control->dt;
     dt_sqr = SQR(dt);
     steps = data->step - data->prev_steps;
@@ -62,13 +63,13 @@ int Velocity_Verlet_NVE( reax_system* system, control_params* control,
     {
         for ( i = 0; i < system->n; i++ )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
             /* Compute x(t + dt) */
-            rvec_ScaledSum( dx, dt, atom->v, 0.5 * dt_sqr * -F_CONV * inv_m, atom->f );
+            rvec_ScaledSum( dx, dt, atom->v, -0.5 * dt_sqr * F_CONV * inv_m, atom->f );
             rvec_Add( system->my_atoms[i].x, dx );
             /* Compute v(t + dt/2) */
-            rvec_ScaledAdd( atom->v, 0.5 * dt * -F_CONV * inv_m, atom->f );
+            rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
         }
         verlet_part1_done = TRUE;
 
@@ -77,25 +78,33 @@ int Velocity_Verlet_NVE( reax_system* system, control_params* control,
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-        Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
     }
-
+        
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr )
+    if ( renbr == TRUE )
     {
-        Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+
+        if ( ret == FAILURE )
+        {
+            Estimate_Num_Neighbors( system );
+        }
     }
 
-    ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+    if ( ret == SUCCESS )
+    {
+        ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+    }
 
     if ( ret == SUCCESS )
     {
         for ( i = 0; i < system->n; i++ )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[ atom->type ].mass;
-            rvec_ScaledAdd( atom->v, 0.5 * dt * -F_CONV * inv_m, atom->f );
+            rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
         }
 
         verlet_part1_done = FALSE;
@@ -129,9 +138,10 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
+    ret = SUCCESS;
     dt = control->dt;
     dt_sqr = SQR(dt);
-    therm = &( data->therm );
+    therm = &data->therm;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
@@ -141,9 +151,9 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     {
         for ( i = 0; i < system->n; i++ )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
-            rvec_ScaledSum( dx, dt, atom->v, 0.5 * dt_sqr * -F_CONV * inv_m, atom->f );
+            rvec_ScaledSum( dx, dt, atom->v, -0.5 * dt_sqr * F_CONV * inv_m, atom->f );
             rvec_Add( system->my_atoms[i].x, dx );
             rvec_Copy( atom->f_old, atom->f );
         }
@@ -154,32 +164,40 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         verlet_part1_done = TRUE;
 
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step);
+        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-        Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
     }
 
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr )
+    if ( renbr == TRUE )
     {
-        Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+
+        if ( ret == FAILURE )
+        {
+            Estimate_Num_Neighbors( system );
+        }
     }
 
-    ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+    if ( ret == SUCCESS )
+    {
+        ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+    }
 
     if ( ret == SUCCESS )
     {
         /* Compute iteration constants for each atom's velocity */
         for ( i = 0; i < system->n; ++i )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
             rvec_Scale( workspace->v_const[i], 1.0 - 0.5 * dt * therm->v_xi, atom->v );
-            rvec_ScaledAdd( workspace->v_const[i], 0.5 * dt * inv_m * -F_CONV, atom->f_old );
-            rvec_ScaledAdd( workspace->v_const[i], 0.5 * dt * inv_m * -F_CONV, atom->f );
+            rvec_ScaledAdd( workspace->v_const[i], -0.5 * dt * inv_m * F_CONV, atom->f_old );
+            rvec_ScaledAdd( workspace->v_const[i], -0.5 * dt * inv_m * F_CONV, atom->f );
         }
     
         v_xi_new = therm->v_xi_old + 2.0 * dt * therm->G_xi;
@@ -195,11 +213,11 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             my_ekin = 0;
             for ( i = 0; i < system->n; ++i )
             {
-                atom = &(system->my_atoms[i]);
+                atom = &system->my_atoms[i];
                 coef_v = 1.0 / (1.0 + 0.5 * dt * v_xi_old);
                 rvec_Scale( atom->v, coef_v, workspace->v_const[i] );
-                my_ekin +=
-                    (0.5 * system->reax_param.sbp[atom->type].mass * rvec_Dot(atom->v, atom->v));
+                my_ekin += 0.5 * system->reax_param.sbp[atom->type].mass
+                        * rvec_Dot( atom->v, atom->v );
             }
     
             MPI_Allreduce( &my_ekin, &new_ekin, 1, MPI_DOUBLE, MPI_SUM,
@@ -207,8 +225,8 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     
             G_xi_new = control->Tau_T * ( 2.0 * new_ekin - data->N_f * K_B * control->T );
             v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
-        }
-        while ( FABS(v_xi_new - v_xi_old) > 1e-5 );
+        } while ( FABS(v_xi_new - v_xi_old) > 1e-5 );
+
         therm->v_xi_old = therm->v_xi;
         therm->v_xi = v_xi_new;
         therm->G_xi = G_xi_new;
@@ -216,7 +234,7 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         verlet_part1_done = FALSE;
 
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: T-coupling\n", system->my_rank, data->step);
+        fprintf( stderr, "p%d @ step%d: T-coupling\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
     }
@@ -226,8 +244,8 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
 
 /* uses Berendsen-type coupling for both T and P.
-   All box dimensions are scaled by the same amount,
-   there is no change in the angles between axes. */
+ * All box dimensions are scaled by the same amount,
+ * there is no change in the angles between axes. */
 int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
@@ -242,10 +260,12 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
     fprintf( stderr, "p%d @ step%d\n", system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
+
+    ret = SUCCESS;
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
-    dt_sqr = SQR(dt);
+    dt_sqr = SQR( dt );
 
     ReAllocate( system, control, data, workspace, lists, mpi_data );
 
@@ -254,55 +274,66 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
         /* velocity verlet, 1st part */
         for ( i = 0; i < system->n; i++ )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
-            rvec_ScaledSum( dx, dt, atom->v, 0.5 * -F_CONV * inv_m * dt_sqr, atom->f );
+            rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * dt_sqr, atom->f );
             rvec_Add( atom->x, dx );
-            rvec_ScaledAdd( atom->v, 0.5 * -F_CONV * inv_m * dt, atom->f );
+            rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
         }
 
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step);
+        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-        if ( renbr )
+        verlet_part1_done = TRUE;
+
+        if ( renbr == TRUE )
         {
             Update_Grid( system, control, mpi_data->world );
         }
 
-        Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
     }
-
+        
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr )
+    if ( renbr == TRUE )
     {
-        Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+
+        if ( ret == FAILURE )
+        {
+            Estimate_Num_Neighbors( system );
+        }
     }
 
-    ret = Compute_Forces( system, control, data, workspace,
-            lists, out_control, mpi_data );
+    if ( ret == SUCCESS )
+    {
+        ret = Compute_Forces( system, control, data, workspace,
+                lists, out_control, mpi_data );
+    }
 
     if ( ret == SUCCESS )
     {
         /* velocity verlet, 2nd part */
         for ( i = 0; i < system->n; i++ )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
             /* Compute v(t + dt) */
-            rvec_ScaledAdd( atom->v, 0.5 * dt * -F_CONV * inv_m, atom->f );
+            rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
         }
 
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step);
+        fprintf( stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
         /* temperature scaler */
         Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
         lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
+
         if ( lambda < MIN_dT )
         {
             lambda = MIN_dT;
@@ -311,14 +342,16 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
         {
             lambda = MAX_dT;
         }
+
         lambda = SQRT( lambda );
 
         /* Scale velocities and positions at t+dt */
         for ( i = 0; i < system->n; ++i )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             rvec_Scale( atom->v, lambda, atom->v );
         }
+
         Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
 #if defined(DEBUG_FOCUS)
@@ -352,6 +385,7 @@ int Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* control,
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
+    ret = SUCCESS;
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
@@ -363,52 +397,60 @@ int Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* control,
     {
         for ( i = 0; i < system->n; i++ )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
             /* Compute x(t + dt) */
-            rvec_ScaledSum( dx, dt, atom->v, 0.5 * -F_CONV * inv_m * SQR(dt), atom->f );
+            rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * SQR(dt), atom->f );
             rvec_Add( atom->x, dx );
             /* Compute v(t + dt/2) */
-            rvec_ScaledAdd( atom->v, 0.5 * -F_CONV * inv_m * dt, atom->f );
+            rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
         }
 
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step);
+        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
         verlet_part1_done = TRUE;
+
+        if ( renbr == TRUE )
+        {
+            Update_Grid( system, control, mpi_data->world );
+        }
+
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
     }
 
-    if ( renbr )
-    {
-        Update_Grid( system, control, mpi_data->world );
-    }
-
-    Comm_Atoms( system, control, data, workspace, lists, mpi_data, renbr );
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr )
+    if ( renbr == TRUE )
     {
-        Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+
+        if ( ret == FAILURE )
+        {
+            Estimate_Num_Neighbors( system );
+        }
     }
 
-    ret = Compute_Forces( system, control, data, workspace,
-            lists, out_control, mpi_data );
+    if ( ret == SUCCESS )
+    {
+        ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+    }
 
     if ( ret == SUCCESS )
     {
         /* velocity verlet, 2nd part */
         for ( i = 0; i < system->n; i++ )
         {
-            atom = &(system->my_atoms[i]);
+            atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
             /* Compute v(t + dt) */
-            rvec_ScaledAdd( atom->v, 0.5 * dt * -F_CONV * inv_m, atom->f );
+            rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
         }
 
 #if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step);
+        fprintf( stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 

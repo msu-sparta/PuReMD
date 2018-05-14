@@ -52,7 +52,8 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
     }
     else
     {
-        BO_s = C12 = 0.0;
+        C12 = 0.0;
+        BO_s = 0.0;
     }
 
     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
@@ -62,7 +63,8 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
     }
     else
     {
-        BO_pi = C34 = 0.0;
+        C34 = 0.0;
+        BO_pi = 0.0;
     }
 
     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
@@ -72,7 +74,8 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
     }
     else
     {
-        BO_pi2 = C56 = 0.0;
+        C56 = 0.0;
+        BO_pi2 = 0.0;
     }
 
     /* Initially BO values are the uncorrected ones, page 1 */
@@ -106,12 +109,12 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
 
             /* Only dln_BOp_xx wrt. dr_i is stored here, note that
              * dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
-            rvec_Scale(bo_ij->dln_BOp_s,
-                    -bo_ij->BO_s * Cln_BOp_s, ibond->dvec);
-            rvec_Scale(bo_ij->dln_BOp_pi,
-                    -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec);
-            rvec_Scale(bo_ij->dln_BOp_pi2,
-                    -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec);
+            rvec_Scale( bo_ij->dln_BOp_s,
+                    -bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
+            rvec_Scale( bo_ij->dln_BOp_pi,
+                    -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
+            rvec_Scale( bo_ij->dln_BOp_pi2,
+                    -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
 
             /* Only dBOp wrt. dr_i is stored here, note that
              * dBOp/dr_i = -dBOp/dr_j and all others are 0 */
@@ -132,12 +135,12 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
             //CUDA Specific
             ibond->ae_CdDelta = 0;
             ibond->va_CdDelta = 0;
-            rvec_MakeZero (ibond->va_f);
+            rvec_MakeZero( ibond->va_f );
             ibond->ta_CdDelta = 0;
             ibond->ta_Cdbo = 0;
-            rvec_MakeZero (ibond->ta_f);
-            rvec_MakeZero (ibond->hb_f);
-            rvec_MakeZero (ibond->tf_f);
+            rvec_MakeZero( ibond->ta_f );
+            rvec_MakeZero( ibond->hb_f );
+            rvec_MakeZero( ibond->tf_f );
         }
         else
         {
@@ -165,20 +168,20 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
             /* Only dln_BOp_xx wrt. dr_i is stored here, note that
             dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
 
-            rvec_Scale(bo_ij_dln_BOp_s, -BO_s * Cln_BOp_s, nbr_pj->dvec);
-            rvec_Scale(bo_ij_dln_BOp_pi, -BO_pi * Cln_BOp_pi, nbr_pj->dvec);
-            rvec_Scale(bo_ij_dln_BOp_pi2,
-                    -BO_pi2 * Cln_BOp_pi2, nbr_pj->dvec);
-            rvec_Scale(bo_ji->dln_BOp_s, -1., bo_ij_dln_BOp_s);
-            rvec_Scale(bo_ji->dln_BOp_pi, -1., bo_ij_dln_BOp_pi );
-            rvec_Scale(bo_ji->dln_BOp_pi2, -1., bo_ij_dln_BOp_pi2 );
+            rvec_Scale( bo_ij_dln_BOp_s, -BO_s * Cln_BOp_s, nbr_pj->dvec );
+            rvec_Scale( bo_ij_dln_BOp_pi, -BO_pi * Cln_BOp_pi, nbr_pj->dvec );
+            rvec_Scale( bo_ij_dln_BOp_pi2,
+                    -BO_pi2 * Cln_BOp_pi2, nbr_pj->dvec );
+            rvec_Scale( bo_ji->dln_BOp_s, -1., bo_ij_dln_BOp_s );
+            rvec_Scale( bo_ji->dln_BOp_pi, -1., bo_ij_dln_BOp_pi );
+            rvec_Scale( bo_ji->dln_BOp_pi2, -1., bo_ij_dln_BOp_pi2 );
 
             /* Only dBOp wrt. dr_i is stored here, note that
             dBOp/dr_i = -dBOp/dr_j and all others are 0 */
             rvec_Scale( bo_ij_dBOp, -(BO_s * Cln_BOp_s +
                         BO_pi * Cln_BOp_pi +
                         BO_pi2 * Cln_BOp_pi2), nbr_pj->dvec );
-            rvec_Scale( bo_ji->dBOp, -1., bo_ij_dBOp );
+            rvec_Scale( bo_ji->dBOp, -1.0, bo_ij_dBOp );
 
             rvec_Add( dDeltap_self[i], bo_ji->dBOp );
 
@@ -191,7 +194,7 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
             //CUDA Specific
             jbond->ae_CdDelta = 0;
             jbond->va_CdDelta = 0;
-            rvec_MakeZero (jbond->va_f);
+            rvec_MakeZero( jbond->va_f );
             jbond->ta_CdDelta = 0;
             jbond->ta_Cdbo = 0;
             rvec_MakeZero( jbond->ta_f );

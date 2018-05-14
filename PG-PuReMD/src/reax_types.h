@@ -58,9 +58,10 @@
   #include <cuda_runtime.h>
 #endif
 
+/* IBMC */
 #if defined(__IBMC__)
   #define inline __inline__
-#endif /*IBMC*/
+#endif
 
 #define PURE_REAX
 //#define LAMMPS_REAX
@@ -75,118 +76,150 @@
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
 
-#define SUCCESS  1
-#define FAILURE  0
-#define TRUE  1
-#define FALSE 0
+#define SUCCESS (1)
+#define FAILURE (0)
+#define TRUE (1)
+#define FALSE (0)
 
-#define EXP    exp
-#define EXP2   exp2
-#define LOG    log
-#define LOG2   log2
-#define SQRT   sqrt
-#define POW    pow
-#define COS    cos
-#define ACOS   acos
-#define SIN    sin
-#define TAN    tan
-#define ATAN2  atan2
-#define CEIL   ceil
-#define FLOOR  floor
-#define FABS   fabs
-#define FMOD   fmod
+#define EXP exp
+#define EXP2 exp2
+#define LOG log
+#define LOG2 log2
+#define SQRT sqrt
+#define POW pow
+#define COS cos
+#define ACOS acos
+#define SIN sin
+#define TAN tan
+#define ATAN2 atan2
+#define CEIL ceil
+#define FLOOR floor
+#define FABS fabs
+#define FMOD fmod
 
 /* transcendental constant pi */
 #if defined(M_PI)
   /* GNU C library (libc), defined in math.h */
   #define PI (M_PI)
 #else
-  #define PI            3.14159265
+  #define PI (3.14159265)
 #endif
 
-#define SQR(x)        ((x)*(x))
-#define CUBE(x)       ((x)*(x)*(x))
-#define DEG2RAD(a)    ((a)*PI/180.0)
-#define RAD2DEG(a)    ((a)*180.0/PI)
-#define MAX(x,y)      (((x) > (y)) ? (x) : (y))
-#define MIN(x,y)      (((x) < (y)) ? (x) : (y))
-#define MAX3(x,y,z)   MAX( MAX(x,y), z)
+#define SQR(x) ((x)*(x))
+#define CUBE(x) ((x)*(x)*(x))
+#define DEG2RAD(a) ((a)*PI/180.0)
+#define RAD2DEG(a) ((a)*180.0/PI)
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define MAX3(x,y,z) MAX( MAX(x,y), z)
 
 /* ??? */
-#define C_ele          332.06371
-/* ??? */
-//#define K_B         503.398008   // kcal/mol/K
-#define K_B             0.831687   // amu A^2 / ps^2 / K
-/* ??? */
-#define F_CONV          1e6 / 48.88821291 / 48.88821291   // --> amu A / ps^2
-/**/
-#define E_CONV          0.002391   // amu A^2 / ps^2 --> kcal/mol
+#define C_ele (332.06371)
+/* kcal/mol/K */
+//#define K_B (503.398008)
+/* amu A^2 / ps^2 / K */
+#define K_B (0.831687)
+/* --> amu A / ps^2 */
+#define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
+/* amu A^2 / ps^2 --> kcal/mol */
+#define E_CONV (0.002391)
 /* conversion factor from electron volts to kilo calories per mole  */
-#define EV_to_KCALpMOL 14.400000
+#define EV_to_KCALpMOL (14.400000)
 /* conversion factor from kilo calories per mode to electron volts */
-#define KCALpMOL_to_EV 23.060549   // 23.020000
+//#define KCALpMOL_to_EV (23.060549) // (23.020000)
+#define KCALpMOL_to_EV (23.020000)
 /* conversion factor from (elemental charge * angstroms) to debye */
-#define ECxA_to_DEBYE   4.803204   // elem. charge * Ang -> debye
+#define ECxA_to_DEBYE (4.803204)
 /* conversion factor from calories to joules */
-#define CAL_to_JOULES   4.184000
+#define CAL_to_JOULES (4.184000)
 /* conversion factor from joules to calories */
-#define JOULES_to_CAL   1/4.184000
+#define JOULES_to_CAL (1.0 / 4.184000)
 /* conversion factor from (unified) atomic mass units to grams */
-#define AMU_to_GRAM     1.6605e-24
+#define AMU_to_GRAM (1.6605e-24)
 /* conversion factor from angstroms to centimenters */
-#define ANG_to_CM       1e-8
+#define ANG_to_CM (1.0e-8)
 /* Avogadro's constant */
-#define AVOGNR          6.0221367e23
+#define AVOGNR (6.0221367e23)
 /* ??? */
-#define P_CONV          1e-24 * AVOGNR * JOULES_to_CAL
+#define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
 
-#define MAX_STR             1024
-#define MAX_LINE            1024
-#define MAX_TOKENS          1024
-#define MAX_TOKEN_LEN       1024
-#define MAX_ATOM_NAME_LEN   8
+#define MAX_STR (1024)
+#define MAX_LINE (1024)
+#define MAX_TOKENS (1024)
+#define MAX_TOKEN_LEN (1024)
+#define MAX_ATOM_NAME_LEN (8)
 
-#define MAX_ATOM_ID         100000
-#define MAX_RESTRICT        15
-#define MAX_MOLECULE_SIZE   20
-#define MAX_ATOM_TYPES      25
+/* ??? */
+#define MAX_RESTRICT (15)
+/* max. num. atoms per molecule */
+#define MAX_MOLECULE_SIZE (20)
+/* max. num. atom types defined in the force field parameter file */
+#define MAX_ATOM_TYPES (25)
 
-#define NUM_INTRS      10
-#define ALMOST_ZERO    1e-10
-#define NEG_INF       -1e10
-#define NO_BOND        1e-3  // 0.001
-#define HB_THRESHOLD   1e-2  // 0.01
+/* max. num. of interaction functions */
+#define NUM_INTRS (10)
+/* ??? */
+#define ALMOST_ZERO (1e-10)
+/* ??? */
+#define NEG_INF (-1.0e10)
+/* ??? */
+#define NO_BOND (1.0e-3)
+/* ??? */
+#define HB_THRESHOLD (1.0e-2)
 
-#define MIN_CAP        50
-#define MIN_NBRS       100
-#define MIN_CM_ENTRIES 100
-#define MAX_BONDS      30
-#define MIN_BONDS      15
-#define MIN_HBONDS     25
-#define MIN_3BODIES    1000
-#define MIN_GCELL_POPL 50
-#define MIN_SEND       100
-#define SAFE_ZONE      1.2
-#define SAFER_ZONE     1.4
-#define DANGER_ZONE    0.90
-#define LOOSE_ZONE     0.75
-#define MAX_3BODY_PARAM     5
-#define MAX_4BODY_PARAM     5
+/* ??? */
+#define MIN_CAP (50)
+/* ??? */
+#define MIN_NBRS (100)
+/* ??? */
+#define MIN_CM_ENTRIES (100)
+/* ??? */
+#define MAX_BONDS (30)
+/* ??? */
+#define MIN_BONDS (15)
+/* ??? */
+#define MIN_HBONDS (25)
+/* ??? */
+#define MIN_3BODIES (1000)
+/* ??? */
+#define MIN_GCELL_POPL (50)
+/* ??? */
+#define MIN_SEND (100)
+/* ??? */
+#define SAFE_ZONE (1.2)
+/* ??? */
+#define SAFER_ZONE (1.4)
+/* ??? */
+#define DANGER_ZONE (0.90)
+/* ??? */
+#define LOOSE_ZONE (0.75)
+/* ??? */
+#define MAX_3BODY_PARAM (5)
+/* ??? */
+#define MAX_4BODY_PARAM (5)
 
-#define MAX_dV              1.01
-#define MIN_dV              0.99
-#define MAX_dT              4.00
-#define MIN_dT              0.00
+/* ??? */
+#define MAX_dV (1.01)
+/* ??? */
+#define MIN_dV (0.99)
+/* ??? */
+#define MAX_dT (4.00)
+/* ??? */
+#define MIN_dT (0.00)
 
-#define MASTER_NODE 0
-#define MAX_NBRS 6 //27
+/* ??? */
+#define MASTER_NODE (0)
+/* ??? */
+#define MAX_NBRS (6) // (27)
 /* encoding of relative coordinate (0,0,0) */
-#define MYSELF 13
+#define MYSELF (13)
 
-#define MAX_ITR 10
-#define RESTART 30
-
-#define MAX_RETRIES 20
+/* ??? */
+#define MAX_ITR (10)
+/* ??? */
+#define RESTART (30)
+/* ??? */
+#define MAX_RETRIES (20)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -194,91 +227,97 @@
   #define IS_NAN_REAL(a) (isnan(a))
 #else
   #warn "No support for NaN"
-  #define NAN_REAL(a) (0)
+  #define IS_NAN_REAL(a) (0)
 #endif
 
 /**************** RESOURCE CONSTANTS **********************/
 /* 500 MB */
-#define HOST_SCRATCH_SIZE               (1024 * 1024 * 500)
+#define HOST_SCRATCH_SIZE (1024 * 1024 * 500)
 #ifdef HAVE_CUDA
 /* 500 MB */
-#define DEVICE_SCRATCH_SIZE             (1024 * 1024 * 500)
+#define DEVICE_SCRATCH_SIZE (1024 * 1024 * 500)
 /* 500 MB */
-#define RES_SCRATCH                     0x90
+#define RES_SCRATCH (0x90)
 
 /* BLOCK SIZES for kernels */
-#define HB_SYM_BLOCK_SIZE                   64
-#define HB_KER_SYM_THREADS_PER_ATOM         16
-#define HB_POST_PROC_BLOCK_SIZE             256
-#define HB_POST_PROC_KER_THREADS_PER_ATOM   32
+#define HB_SYM_BLOCK_SIZE (64)
+#define HB_KER_SYM_THREADS_PER_ATOM (16)
+#define HB_POST_PROC_BLOCK_SIZE (256)
+#define HB_POST_PROC_KER_THREADS_PER_ATOM (32)
 
 #if defined( __INIT_BLOCK_SIZE__)
-  #define DEF_BLOCK_SIZE                      __INIT_BLOCK_SIZE__    /* all utility functions and all */
-  #define CUDA_BLOCK_SIZE                     __INIT_BLOCK_SIZE__     /* init forces */
-  #define ST_BLOCK_SIZE                       __INIT_BLOCK_SIZE__
+  /* all utility functions and all */
+  #define DEF_BLOCK_SIZE __INIT_BLOCK_SIZE__
+  /* init forces */
+  #define CUDA_BLOCK_SIZE __INIT_BLOCK_SIZE__
+  /* ??? */
+  #define ST_BLOCK_SIZE __INIT_BLOCK_SIZE__
 #else
-  #define DEF_BLOCK_SIZE                      256                     /* all utility functions and all */
-  #define CUDA_BLOCK_SIZE                     256                     /* init forces */
-  #define ST_BLOCK_SIZE                       256
+  /* all utility functions and all */
+  #define DEF_BLOCK_SIZE (256)
+  /* init forces */
+  #define CUDA_BLOCK_SIZE (256)
+  /* ??? */
+  #define ST_BLOCK_SIZE (256)
 #endif
 
 #if defined( __NBRS_THREADS_PER_ATOM__ )
-  #define NB_KER_THREADS_PER_ATOM             __NBRS_THREADS_PER_ATOM__
+  #define NB_KER_THREADS_PER_ATOM __NBRS_THREADS_PER_ATOM__
 #else
-  #define NB_KER_THREADS_PER_ATOM             16
+  #define NB_KER_THREADS_PER_ATOM (16)
 #endif
 
 #if defined( __NBRS_BLOCK_SIZE__)
-  #define NBRS_BLOCK_SIZE                     __NBRS_BLOCK_SIZE__
+  #define NBRS_BLOCK_SIZE __NBRS_BLOCK_SIZE__
 #else
-  #define NBRS_BLOCK_SIZE                     256
+  #define NBRS_BLOCK_SIZE (256)
 #endif
 
 #if defined( __HB_THREADS_PER_ATOM__)
-  #define HB_KER_THREADS_PER_ATOM             __HB_THREADS_PER_ATOM__
+  #define HB_KER_THREADS_PER_ATOM __HB_THREADS_PER_ATOM__
 #else
-  #define HB_KER_THREADS_PER_ATOM             32
+  #define HB_KER_THREADS_PER_ATOM (32)
 #endif
 
 #if defined(__HB_BLOCK_SIZE__)
-  #define HB_BLOCK_SIZE                   __HB_BLOCK_SIZE__
+  #define HB_BLOCK_SIZE __HB_BLOCK_SIZE__
 #else
-  #define HB_BLOCK_SIZE                       256
+  #define HB_BLOCK_SIZE (256)
 #endif
 
 #if defined( __VDW_THREADS_PER_ATOM__ )
-  #define VDW_KER_THREADS_PER_ATOM            __VDW_THREADS_PER_ATOM__
+  #define VDW_KER_THREADS_PER_ATOM __VDW_THREADS_PER_ATOM__
 #else
-  #define VDW_KER_THREADS_PER_ATOM            32
+  #define VDW_KER_THREADS_PER_ATOM (32)
 #endif
 
 #if defined( __VDW_BLOCK_SIZE__)
-  #define VDW_BLOCK_SIZE                      __VDW_BLOCK_SIZE__
+  #define VDW_BLOCK_SIZE __VDW_BLOCK_SIZE__
 #else
-  #define VDW_BLOCK_SIZE                      256
+  #define VDW_BLOCK_SIZE (256)
 #endif
 
 #if defined( __MATVEC_THREADS_PER_ROW__ )
-  #define MATVEC_KER_THREADS_PER_ROW      __MATVEC_THREADS_PER_ROW__
+  #define MATVEC_KER_THREADS_PER_ROW __MATVEC_THREADS_PER_ROW__
 #else
-  #define MATVEC_KER_THREADS_PER_ROW      32
+  #define MATVEC_KER_THREADS_PER_ROW (32)
 #endif
 
 #if defined( __MATVEC_BLOCK_SIZE__)
-  #define MATVEC_BLOCK_SIZE                   __MATVEC_BLOCK_SIZE__
+  #define MATVEC_BLOCK_SIZE __MATVEC_BLOCK_SIZE__
 #else
-  #define MATVEC_BLOCK_SIZE                   512
+  #define MATVEC_BLOCK_SIZE (512)
 #endif
 
 //Validation
-#define GPU_TOLERANCE               1e-5
+#define GPU_TOLERANCE (1.0e-5)
 
 #endif
 
 
 /******************* ENUMERATIONS *************************/
 /* ensemble type */
-enum ensembles
+enum ensemble
 {
     NVE = 0,
     bNVT = 1,
@@ -347,8 +386,9 @@ enum errors
     UNKNOWN_OPTION = -15,
     INVALID_INPUT = -16,
     INVALID_GEO = -17,
-    MAX_RETRIES_REACHED = -18,
-    RUNTIME_ERROR = -19,
+    NUMERIC_BREAKDOWN = -18,
+    MAX_RETRIES_REACHED = -19,
+    RUNTIME_ERROR = -20,
 };
 
 /* restart file format */
@@ -427,7 +467,7 @@ enum gcell_types
 /* atom types as pertains to hydrogen bonding */
 enum hydrogen_bonding_atom_types
 {
-    NON_H_BONDING_ATOM = -1,
+    NON_H_BONDING_ATOM = 0,
     H_ATOM = 1,
     H_BONDING_ATOM = 2,
 };
@@ -1005,9 +1045,9 @@ typedef struct
 /**/
 typedef struct
 {
-    /* min. cell coordinate (top-left) */
+    /* min. cell coordinate (top-front-left) */
     rvec min;
-    /* max. cell coordinate (bottom-right) */
+    /* max. cell coordinate (bottom-back-right) */
     rvec max;
  
     /* ??? */
@@ -1022,7 +1062,7 @@ typedef struct
 
 
 /* info. for 3D domain (i.e., spatial) partitioning of atoms
- * inside the simulation box */
+ * inside a processor's portion (local and ghost regoin) of the simulation box */
 typedef struct
 {
     /* total number of grid cells (native AND ghost) */
@@ -1031,27 +1071,27 @@ typedef struct
     int max_atoms;
     /**/
     int max_nbrs;
-    /* num. of grid cells in each dimension, 3D */
+    /* num. of grid cells in each dimension of grid */
     ivec ncells;
-    /* lengths of each grid cell dimension, 3D */
+    /* lengths of each grid cell dimension of grid */
     rvec cell_len;
-    /* multiplicative inverses of lengths of each grid cell dimension, 3D */
+    /* multiplicative inverses of lengths of each grid cell dimension in grid */
     rvec inv_len;
-
-    /* bond interaction cutoff in terms of num. of grid cells in each dimension, 3D */
+    /* bond interaction cutoff in terms of
+     * num. of grid cells in each dimension of grid */
     ivec bond_span;
-    /* non-bonded interaction cutoff in terms of num. of grid cells in each dimension, 3D */
+    /* non-bonded interaction cutoff in terms of
+     * num. of grid cells in each dimension of grid */
     ivec nonb_span;
-    /* Verlet list (i.e., neighbor list) cutoff in terms of num. of grid cells in each dimension, 3D */
+    /* Verlet list (i.e., neighbor list) cutoff in terms of
+     * num. of grid cells in each dimension in grid */
     ivec vlist_span;
-
     /* partitioning of ??? */
     ivec native_cells;
     /**/
     ivec native_str;
     /**/
     ivec native_end;
-
     /**/
     real ghost_cut;
     /**/
@@ -1062,12 +1102,10 @@ typedef struct
     ivec ghost_hbond_span;
     /**/
     ivec ghost_bond_span;
-
     /**/
     grid_cell* cells;
     /**/
     ivec *order;
- 
     /**/
     int *str;
     /**/
@@ -1078,7 +1116,6 @@ typedef struct
     ivec *nbrs_x;
     /* corner points of cells which fall within neighbor cut-off of a given cell */
     rvec *nbrs_cp;
- 
     /**/
     ivec *rel_box;
 } grid;
@@ -1252,8 +1289,7 @@ typedef struct
     /* num. hydrogen bonds per atom (GPU) */
     int *d_hbonds;
     /* max. num. hydrogen bonds per atom */
-    int max_hbonds;
-    //int *max_hbonds;
+    int *max_hbonds;
     /* max. num. hydrogen bonds per atom (GPU) */
     int *d_max_hbonds;
     /* total num. hydrogen bonds (sum over max) */
@@ -1263,8 +1299,12 @@ typedef struct
     /* TRUE if hydrogen bonds list requires reallocation, FALSE otherwise (GPU) */
     int *d_realloc_hbonds;
 
+    /* num. matrix entries per row */
+    int *cm_entries;
     /* num. matrix entries per row (GPU) */
     int *d_cm_entries;
+    /* max. num. matrix entries per row */
+    int *max_cm_entries;
     /* max. num. matrix entries per row (GPU) */
     int *d_max_cm_entries;
     /* total num. matrix entries (sum over max) */
@@ -1536,7 +1576,6 @@ typedef struct
     real e_kin;
     /* total potential energy */
     real e_pot;
-
     /* total bond energy */
     real e_bond;
     /* total over coordination */
@@ -1575,45 +1614,40 @@ typedef struct
     int prev_steps;
     /**/
     real time;
-
-    /**/
-    real M;              // Total Mass
-    /**/
-    real inv_M;                      // 1 / Total Mass
-
-    /**/
-    rvec xcm;                        // Center of mass
-    /**/
-    rvec vcm;                        // Center of mass velocity
-    /**/
-    rvec fcm;                        // Center of mass force
-    /**/
-    rvec amcm;                       // Angular momentum of CoM
-    /**/
-    rvec avcm;                       // Angular velocity of CoM
-    /**/
-    real etran_cm;                   // Translational kinetic energy of CoM
-    /**/
-    real erot_cm;                    // Rotational kinetic energy of CoM
-
-    /**/
-    rtensor kinetic;                 // Kinetic energy tensor
-    /**/
-    rtensor virial;                  // Hydrodynamic virial
-
+    /* total mass */
+    real M;
+    /* multiplicative inverse of total mass */
+    real inv_M;
+    /* positional center of mass */
+    rvec xcm;
+    /* velocity center of mass */
+    rvec vcm;
+    /* force center of mass */
+    rvec fcm;
+    /* angular momentum of center of mass */
+    rvec amcm;
+    /* angular velocity of center of mass */
+    rvec avcm;
+    /* tranlational kinetic energy of center of mass */
+    real etran_cm;
+    /* rotational kinetic energy of center of mass */
+    real erot_cm;
+    /* kinetic energy tensor */
+    rtensor kinetic;
+    /* hydrodynamic virial */
+    rtensor virial;
     /**/
     energy_data my_en;
     /**/
     energy_data sys_en;
-
-    /**/
-    real N_f;          //Number of degrees of freedom
+    /* number of degrees of freedom */
+    real N_f;
     /**/
     rvec t_scale;
     /**/
     rtensor p_scale;
-    /**/
-    thermostat therm;        // Used in Nose_Hoover method
+    /* thermostat for Nose_Hoover method */
+    thermostat therm;
     /**/
     isotropic_barostat iso_bar;
     /**/
@@ -1665,13 +1699,14 @@ typedef struct
 /* info. about a far neighbor to an atom */
 typedef struct
 {
-    /**/
+    /* atom ID of neighbor */
     int nbr;
     /**/
     ivec rel_box;
-    /**/
+    /* distance to neighbor */
     real d;
-    /**/
+    /* component-wise difference of coordinates of this atom
+     * and its neighboring atom */
     rvec dvec;
 } far_neighbor_data;
 
@@ -1850,22 +1885,15 @@ typedef struct
     /* TRUE if charge matrix needs
      * to be reallocated, FALSE otherwise */
     int cm;
-    /**/
-    int Htop;
-    /**/
+    /* TRUE if hbond list needs
+     * to be reallocated, FALSE otherwise */
     int hbonds;
-    /**/
-    int num_hbonds;
-    /* TRUE if bonds list needs
+    /* TRUE if bond list needs
      * to be reallocated, FALSE otherwise */
     int bonds;
-    /**/
-    int num_bonds;
     /* TRUE if three body list needs
      * to be reallocated, FALSE otherwise */
     int thbody;
-    /**/
-    int num_3body;
     /**/
     int gcell_atoms;
 } reallocate_data;
@@ -2057,8 +2085,44 @@ typedef struct
 
 
 /* Union used for determining interaction list type */
-typedef union
+//typedef union
+//{
+//    /* void type */
+//    void *v;
+//    /* three body type */
+//    three_body_interaction_data *three_body_list;
+//    /* bond type */
+//    bond_data *bond_list;
+//    /* derivative bond order type */
+//    dbond_data *dbo_list;
+//    /* derivative delta type */
+//    dDelta_data *dDelta_list;
+//    /* far neighbor type */
+//    far_neighbor_data *far_nbr_list;
+//    /* hydrogen bond type */
+//    hbond_data *hbond_list;
+//} list_type;
+
+
+/* Interaction list */
+typedef struct
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int allocated;
+    /* total num. of entities, each of which correspond to zero or more interactions */
+    int n;
+    /* max. num. of interactions for which space is allocated */
+    int max_intrs;
+    /* beginning position for interactions corresponding to a particular entity,
+     * where the entity ID used for indexing is an integer between 0 and n - 1, inclusive */
+    int *index;
+    /* ending position for interactions corresponding to a particular entity,
+     * where the entity ID used for indexing is an integer between 0 and n - 1, inclusive */
+    int *end_index;
+    /* interaction list type, as defined by interactions enum above */
+    int type;
+    /* interaction list, made purposely non-opaque via above union to avoid typecasts */
+//    list_type select;
     /* void type */
     void *v;
     /* three body type */
@@ -2073,31 +2137,6 @@ typedef union
     far_neighbor_data *far_nbr_list;
     /* hydrogen bond type */
     hbond_data *hbond_list;
-} list_type;
-
-
-/* Interaction list */
-typedef struct
-{
-    /* 0 if struct members are NOT allocated, 1 otherwise */
-    int allocated;
-
-    /* total num. of entities, each of which correspond to one of more interactions */
-    int n;
-    /* total num. of interactions */
-    int num_intrs;
-
-    /* beginning position for interactions corresponding to a particular entity,
-     * where the entity ID used for indexing is an integer between 0 and n - 1, inclusive */
-    int *index;
-    /* ending position for interactions corresponding to a particular entity,
-     * where the entity ID used for indexing is an integer between 0 and n - 1, inclusive */
-    int *end_index;
-
-    /* interaction list type, as defined by interactions enum above */
-    int type;
-    /* interaction list, made purposely non-opaque via above union to avoid typecasts */
-    list_type select;
 } reax_list;
 
 

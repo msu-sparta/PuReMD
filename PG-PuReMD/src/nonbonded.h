@@ -35,8 +35,6 @@ void vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
 void Tabulated_vdW_Coulomb_Energy( reax_system*, control_params*,
         simulation_data*, storage*, reax_list**, output_controls* );
 
-void Compute_Polarization_Energy( reax_system*, simulation_data* );
-
 void LR_vdW_Coulomb( reax_system*, real *, int, int, real, LR_data* );
 
 #ifdef _cplusplus
