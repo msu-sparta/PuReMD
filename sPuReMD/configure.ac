@@ -51,7 +51,7 @@ if test "x$ax_cv_c_compiler_vendor" = "xgnu"; then
 	if test "x$BUILD_DEBUG" = "x"; then
 		CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
 	else
-		CFLAGS="$CFLAGS -Wall"
+		CFLAGS="$CFLAGS -Wall -O0 -g"
 	fi
 fi
 if test "x$ax_cv_c_compiler_vendor" = "xintel"; then

@@ -73,7 +73,7 @@
   #define IS_NAN_REAL(a) (isnan(a))
 #else
   #warn "No support for NaN"
-  #define NAN_REAL(a) (0)
+  #define IS_NAN_REAL(a) (0)
 #endif
 
 #if !defined(PI)
@@ -178,7 +178,8 @@ enum errors
     INVALID_INPUT = -16,
     INVALID_GEO = -17,
     NUMERIC_BREAKDOWN = -18,
-    RUNTIME_ERROR = -19,
+    MAX_RETRIES_REACHED = -19,
+    RUNTIME_ERROR = -20,
 };
 
 enum molecular_analysis_type

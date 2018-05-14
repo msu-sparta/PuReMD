@@ -28,8 +28,6 @@ AC_PROG_CC([icc gcc clang cc])
 AC_PROG_CPP
 CFLAGS="$sav_CFLAGS"
 
-AX_COMPILER_VENDOR
-
 AC_CONFIG_SRCDIR([src/torsion_angles.h])
 AC_CONFIG_HEADERS([src/config.h])
 
@@ -53,6 +51,21 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset])
+
+# Check for compiler vendor
+AX_COMPILER_VENDOR
+if test "x$ax_cv_c_compiler_vendor" = "xgnu"; then
+	if test "x$BUILD_DEBUG" = "x"; then
+		CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
+	else
+		CFLAGS="$CFLAGS -Wall -O0 -g"
+	fi
+fi
+if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
+	if test "x$BUILD_DEBUG" = "x"; then
+		CFLAGS="$CFLAGS -fast"
+	fi
+fi
 
 # Check for MPI support.
 CONFIGURE_HEADLINE([ MPI compiler ])

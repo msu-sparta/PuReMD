@@ -1014,6 +1014,56 @@ void Print_Charges( reax_system *system )
 }
 
 
+void Print_HBonds( reax_system *system, reax_list **lists,
+        control_params *control, int step )
+{
+    int i, pj; 
+    char fname[MAX_STR]; 
+    hbond_data *phbond;
+    FILE *fout;
+    reax_list *hbonds = lists[HBONDS];
+
+    sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
+    fout = fopen( fname, "w" );
+
+    for ( i = 0; i < system->numH; ++i )
+    {
+        for ( pj = Start_Index(i, hbonds); pj < End_Index(i, hbonds); ++pj )
+        {
+            phbond = &hbonds->hbond_list[pj];
+
+            fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, phbond->nbr,
+                    phbond->ptr->dvec[0], phbond->ptr->dvec[1], phbond->ptr->dvec[2] );
+//            fprintf( fout, "%8d%8d %8d %8d\n", i, phbond->nbr,
+//                  phbond->scl, phbond->sym_index );
+        }
+    }
+
+    fclose( fout );
+}
+
+ 
+void Print_HBond_Indices( reax_system *system, reax_list **lists,
+        control_params *control, int step )
+{
+    int i; 
+    char fname[MAX_STR]; 
+    FILE *fout;
+    reax_list *hbonds = lists[HBONDS];
+
+    sprintf( fname, "%s.hbonds_indices.%d.%d", control->sim_name, step, system->my_rank );
+    fout = fopen( fname, "w" );
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        fprintf( fout, "%8d: start: %8d, end: %8d\n",
+                i, Start_Index(i, hbonds), End_Index(i, hbonds) );
+    }
+
+    fclose( fout );
+}
+
+
 void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
 {
     int i, j, pj;
@@ -1085,6 +1135,59 @@ void Print_Total_Force( reax_system *system, simulation_data *data,
                  //"%6d%24.15e%24.15e%24.15e\n",
                  system->my_atoms[i].orig_id,
                  workspace->f[i][0], workspace->f[i][1], workspace->f[i][2] );
+}
+
+
+/* Print reax interaction list in adjacency list format */
+void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, FILE *fp )
+{
+    int i, pj, id_i, id_j, nbr, cnt;
+    int num_intrs, *intrs;
+
+    num_intrs = 0;
+    intrs = NULL;
+
+    if ( fp == NULL )
+    {
+        fprintf( stderr, "[WARNING] null file pointer, returning without printing...\n" );
+        return;
+    }
+
+    for ( i = 0; i < system->n; ++i )
+    {
+        cnt = 0;
+        id_i = system->my_atoms[i].orig_id;
+        fprintf( fp, "%d: ", id_i );
+
+        if ( Num_Entries( i, list ) > num_intrs )
+        {
+            num_intrs = Num_Entries( i, list );
+            intrs = realloc( intrs, num_intrs * sizeof(int) );
+        }
+
+        for ( pj = Start_Index(i, list); pj < End_Index(i, list); ++pj )
+        {
+            nbr = list->far_nbr_list[pj].nbr;
+            id_j = system->my_atoms[nbr].orig_id;
+            intrs[cnt++] = id_j;
+        }
+
+        if ( cnt > 0 )
+        {
+            qsort( (void *) intrs, (size_t) cnt, sizeof(int), fn_qsort_intcmp );
+        }
+
+        for ( pj = 0; pj < cnt; ++pj )
+        {
+            fprintf( fp, "%d, ", intrs[pj] );
+        }
+        fprintf( fp, "\n" );
+    }
+
+    if ( intrs != NULL )
+    {
+        free( intrs );
+    }
 }
 
 void Output_Results( reax_system *system, control_params *control,

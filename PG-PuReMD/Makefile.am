@@ -65,7 +65,7 @@ nodist_EXTRA_bin_pg_puremd_SOURCES = src/dummy.c
 endif
 
 
-bin_pg_puremd_CFLAGS = $(AM_CFLAGS) -Wall -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS) $(CFLAGS)
+bin_pg_puremd_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS) $(CFLAGS)
 bin_pg_puremd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
 bin_pg_puremd_LDADD = $(AM_LDADD) $(MPI_LIBS) $(LDADD) -lstdc++
 

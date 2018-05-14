@@ -43,39 +43,35 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     int i;
     rvec diff, cross;
 
-    /* if velocity dependent force then
-       {
-       Generate_Neighbor_Lists( &system, &control, &lists );
-       Compute_Charges(system, control, workspace, lists[FAR_NBRS]);
-       Introduce compute_force here if we are using velocity dependent forces
-       Compute_Forces(system,control,data,workspace,lists);
-       } */
-
-    /* compute kinetic energy of the system */
-    Compute_Kinetic_Energy( system, data );
-
     /* remove rotational and translational velocity of the center of mass */
     if ( control->ensemble != NVE &&
             control->remove_CoM_vel &&
             data->step && data->step % control->remove_CoM_vel == 0 )
     {
-
         /* compute velocity of the center of mass */
         Compute_Center_of_Mass( system, data, out_control->prs );
 
         for ( i = 0; i < system->N; i++ )
         {
-            // remove translational
-            rvec_ScaledAdd( system->atoms[i].v, -1., data->vcm );
+            /* remove translational */
+            rvec_ScaledAdd( system->atoms[i].v, -1.0, data->vcm );
 
-            // remove rotational
-            rvec_ScaledSum( diff, 1., system->atoms[i].x, -1., data->xcm );
+            /* remove rotational */
+            rvec_ScaledSum( diff, 1.0, system->atoms[i].x, -1.0, data->xcm );
             rvec_Cross( cross, data->avcm, diff );
-            rvec_ScaledAdd( system->atoms[i].v, -1., cross );
+            rvec_ScaledAdd( system->atoms[i].v, -1.0, cross );
         }
     }
 
-    Compute_Total_Energy( system, data );
+    Compute_Kinetic_Energy( system, data );
+
+    if ( (out_control->energy_update_freq > 0
+                && data->step % out_control->energy_update_freq == 0)
+            || (out_control->write_steps > 0
+                && data->step % out_control->write_steps == 0) )
+    {
+        Compute_Total_Energy( system, data );
+    }
 }
 
 
