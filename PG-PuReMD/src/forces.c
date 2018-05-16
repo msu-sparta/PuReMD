@@ -79,11 +79,11 @@ void Dummy_Interaction( reax_system *system, control_params *control,
 void Init_Force_Functions( control_params *control )
 {
     Interaction_Functions[0] = BO;
-    Interaction_Functions[1] = Bonds; //Dummy_Interaction;
-    Interaction_Functions[2] = Atom_Energy; //Dummy_Interaction;
-    Interaction_Functions[2] = Atom_Energy; //Dummy_Interaction;
-    Interaction_Functions[3] = Valence_Angles; //Dummy_Interaction;
-    Interaction_Functions[4] = Torsion_Angles; //Dummy_Interaction;
+    Interaction_Functions[1] = Bonds;
+    Interaction_Functions[2] = Atom_Energy;
+    Interaction_Functions[2] = Atom_Energy;
+    Interaction_Functions[3] = Valence_Angles;
+    Interaction_Functions[4] = Torsion_Angles;
     if ( control->hbond_cut > 0.0 )
     {
         Interaction_Functions[5] = Hydrogen_Bonds;
@@ -92,10 +92,10 @@ void Init_Force_Functions( control_params *control )
     {
         Interaction_Functions[5] = Dummy_Interaction;
     }
-    Interaction_Functions[6] = Dummy_Interaction; //empty
-    Interaction_Functions[7] = Dummy_Interaction; //empty
-    Interaction_Functions[8] = Dummy_Interaction; //empty
-    Interaction_Functions[9] = Dummy_Interaction; //empty
+    Interaction_Functions[6] = Dummy_Interaction;
+    Interaction_Functions[7] = Dummy_Interaction;
+    Interaction_Functions[8] = Dummy_Interaction;
+    Interaction_Functions[9] = Dummy_Interaction;
 }
 
 
@@ -105,13 +105,13 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
 {
     int i;
 
-    /* Mark beginning of a new timestep in bonded energy files */
 #if defined(TEST_ENERGY)
+    /* Mark beginning of a new timestep in bonded energy files */
     Debug_Marker_Bonded( out_control, data->step );
 #endif
 
     /* Implement all force calls as function pointers */
-    for( i = 0; i < NUM_INTRS; i++ )
+    for ( i = 0; i < NUM_INTRS; i++ )
     {
         (Interaction_Functions[i])( system, control, data, workspace, lists, out_control );
     }
@@ -123,8 +123,8 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    /* Mark beginning of a new timestep in nonbonded energy files */
 #if defined(TEST_ENERGY)
+    /* Mark beginning of a new timestep in nonbonded energy files */
     Debug_Marker_Nonbonded( out_control, data->step );
 #endif
 
@@ -463,8 +463,8 @@ int Init_Forces( reax_system *system, control_params *control,
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    nbr_pj->d <= control->bond_cut &&
-                    BOp( workspace, bond_list, control->bo_cut,
+                    nbr_pj->d <= control->bond_cut
+                    && BOp( workspace, bond_list, control->bo_cut,
                         i, btop_i, nbr_pj, sbp_i, sbp_j, twbp ) == TRUE )
                 {
                     ++btop_i;
@@ -557,8 +557,12 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
         type_i = atom_i->type;
         start_i = Start_Index( i, far_nbr_list );
         end_i = End_Index( i, far_nbr_list );
+        /* start at end because other atoms
+         * can add to this atom's list (half-list) */
         btop_i = End_Index( i, bond_list );
         sbp_i = &system->reax_param.sbp[type_i];
+        ihb = NON_H_BONDING_ATOM;
+        ihb_top = -1;
 
         if ( i < system->n )
         {
@@ -571,13 +575,14 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
             cutoff = control->bond_cut;
         }
 
-        ihb = NON_H_BONDING_ATOM;
-        ihb_top = -1;
         if ( local == TRUE && control->hbond_cut > 0.0 )
         {
             ihb = sbp_i->p_hbond;
+
             if ( ihb == H_ATOM )
             {
+                /* start at end because other atoms
+                 * can add to this atom's list (half-list) */
                 ihb_top = End_Index( atom_i->Hindex, hbond_list );
             }
             else
@@ -589,9 +594,9 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
         /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbr_list->far_nbr_list[pj] );
+            nbr_pj = &far_nbr_list->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
 
             if ( renbr == TRUE )
             {
@@ -610,9 +615,10 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                 nbr_pj->dvec[1] = atom_j->x[1] - atom_i->x[1];
                 nbr_pj->dvec[2] = atom_j->x[2] - atom_i->x[2];
                 nbr_pj->d = rvec_Norm_Sqr( nbr_pj->dvec );
-                if ( nbr_pj->d <= SQR(cutoff) )
+
+                if ( nbr_pj->d <= SQR( cutoff ) )
                 {
-                    nbr_pj->d = SQRT(nbr_pj->d);
+                    nbr_pj->d = SQRT( nbr_pj->d );
                     flag = TRUE;
                 }
                 else
@@ -631,8 +637,9 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                 if ( local == TRUE )
                 {
                     /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM) &&
-                            nbr_pj->d <= control->hbond_cut )
+                    if ( control->hbond_cut > 0.0
+                            && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
+                            && nbr_pj->d <= control->hbond_cut )
                     {
                         jhb = sbp_j->p_hbond;
 
@@ -643,6 +650,7 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                             hbond_list->hbond_list[ihb_top].ptr = nbr_pj;
                             ++ihb_top;
                         }
+                        /* only add to list for local j */
                         else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbond_list );
@@ -656,9 +664,9 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    nbr_pj->d <= control->bond_cut &&
-                    BOp( workspace, bond_list, control->bo_cut,
-                         i , btop_i, nbr_pj, sbp_i, sbp_j, twbp ) )
+                    nbr_pj->d <= control->bond_cut
+                    && BOp( workspace, bond_list, control->bo_cut,
+                         i , btop_i, nbr_pj, sbp_i, sbp_j, twbp ) == TRUE )
                 {
                     ++btop_i;
 
@@ -679,24 +687,22 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
         {
             Set_End_Index( atom_i->Hindex, ihb_top, hbond_list );
         }
+    }
 
-        /* reallocation checks */
+    /* reallocation checks */
+    for ( i = 0; i < system->N; ++i )
+    {
         if ( Num_Entries( i, bond_list ) > system->max_bonds[i] )
         {
             workspace->realloc.bonds = TRUE;
         }
 
         if ( ihb == H_ATOM
-                && Num_Entries( atom_i->Hindex, hbond_list ) > system->max_bonds[atom_i->Hindex] )
+                && Num_Entries( atom_i->Hindex, hbond_list ) > system->max_hbonds[atom_i->Hindex] )
         {
             workspace->realloc.hbonds = TRUE;
         }
     }
-
-#if defined( DEBUG )
-    Print_Bonds( system, bond_list, "debugbonds.out" );
-    Print_Bond_List2( system, bond_list, "pbonds.out" );
-#endif
 
     return (workspace->realloc.bonds == TRUE 
             || workspace->realloc.hbonds == TRUE) ? FAILURE : SUCCESS;
