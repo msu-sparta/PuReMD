@@ -30,9 +30,9 @@
 #include "tool_box.h"
 
 
-int compare_matrix_entry(const void *v1, const void *v2)
+int compare_matrix_entry( const void *v1, const void *v2 )
 {
-    return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
+    return ((sparse_matrix_entry *) v1)->j - ((sparse_matrix_entry *) v2)->j;
 }
 
 
@@ -44,292 +44,17 @@ void Sort_Matrix_Rows( sparse_matrix *A )
     {
         si = A->start[i];
         ei = A->end[i];
-        qsort( &(A->entries[si]), ei - si,
+        qsort( &A->entries[si], ei - si,
                 sizeof(sparse_matrix_entry), compare_matrix_entry );
     }
 }
 
 
-void Calculate_Droptol( sparse_matrix *A, real *droptol, real dtol )
-{
-    int i, j, k;
-    real val;
-
-    /* init droptol to 0 - not necessary for an upper-triangular A */
-    for ( i = 0; i < A->n; ++i )
-    {
-        droptol[i] = 0;
-    }
-
-    /* calculate sqaure of the norm of each row */
-    for ( i = 0; i < A->n; ++i )
-    {
-        val = A->entries[A->start[i]].val; // diagonal entry
-        droptol[i] += val * val;
-
-        // only within my block
-        for ( k = A->start[i] + 1; A->entries[k].j < A->n; ++k )
-        {
-            j = A->entries[k].j;
-            val = A->entries[k].val;
-
-            droptol[i] += val * val;
-            droptol[j] += val * val;
-        }
-    }
-
-    /* calculate local droptol for each row */
-    //fprintf( stderr, "droptol: " );
-    for ( i = 0; i < A->n; ++i )
-    {
-        droptol[i] = SQRT( droptol[i] ) * dtol;
-        //fprintf( stderr, "%f\n", droptol[i] );
-    }
-    //fprintf( stderr, "\n" );
-}
-
-
-int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
-{
-    int i, j, pj;
-    int fillin;
-    real val;
-
-    fillin = 0;
-    for ( i = 0; i < A->n; ++i )
-    {
-        for ( pj = A->start[i] + 1; A->entries[pj].j < A->n; ++pj )
-        {
-            j = A->entries[pj].j;
-            val = A->entries[pj].val;
-            if ( FABS(val) > droptol[i] )
-                ++fillin;
-        }
-    }
-
-    return fillin + A->n;
-}
-
-
-void ICHOLT( sparse_matrix *A, real *droptol,
-        sparse_matrix *L, sparse_matrix *U )
-{
-    sparse_matrix_entry tmp[1000];
-    int i, j, pj, k1, k2, tmptop, Utop;
-    real val, dval;
-    int *Ltop;
-
-    Ltop = (int*) smalloc( A->n * sizeof(int), "ICHOLT::Ltop" );
-
-    // clear data structures
-    Utop = 0;
-    tmptop = 0;
-    for ( i = 0; i < A->n; ++i )
-    {
-        U->start[i] = L->start[i] = L->end[i] = Ltop[i] = 0;
-    }
-
-    for ( i = A->n - 1; i >= 0; --i )
-    {
-        U->start[i] = Utop;
-        tmptop = 0;
-
-        for ( pj = A->end[i] - 1; A->entries[pj].j >= A->n; --pj ); // skip ghosts
-        for ( ; pj > A->start[i]; --pj )
-        {
-            j = A->entries[pj].j;
-            val = A->entries[pj].val;
-            fprintf( stderr, "i: %d, j: %d  val=%f ", i, j, val );
-            //fprintf( stdout, "%d %d %24.16f\n", 6540-i, 6540-j, val );
-            //fprintf( stdout, "%d %d %24.16f\n", 6540-j, 6540-i, val );
-
-            if ( FABS(val) > droptol[i] )
-            {
-                k1 = tmptop - 1;
-                k2 = U->start[j] + 1;
-                while ( k1 >= 0 && k2 < U->end[j] )
-                {
-                    if ( tmp[k1].j < U->entries[k2].j )
-                    {
-                        k1--;
-                    }
-                    else if ( tmp[k1].j > U->entries[k2].j )
-                    {
-                        k2++;
-                    }
-                    else
-                    {
-                        val -= (tmp[k1--].val * U->entries[k2++].val);
-                    }
-                }
-
-                // U matrix is upper triangular
-                val /= U->entries[U->start[j]].val;
-                fprintf( stderr, " newval=%f", val );
-                tmp[tmptop].j = j;
-                tmp[tmptop].val = val;
-                tmptop++;
-            }
-            fprintf( stderr, "\n" );
-        }
-        //fprintf( stderr, "i = %d - tmptop = %d\n", i, tmptop );
-
-        // compute the ith diagonal in U
-        dval = A->entries[A->start[i]].val;
-        //fprintf( stdout, "%d %d %24.16f\n", 6540-i, 6540-i, dval );
-        for ( k1 = 0; k1 < tmptop; ++k1 )
-        {
-            //if( FABS(tmp[k1].val) > droptol[i] )
-            dval -= SQR(tmp[k1].val);
-        }
-        dval = SQRT(dval);
-        // keep the diagonal in any case
-        U->entries[Utop].j = i;
-        U->entries[Utop].val = dval;
-        Utop++;
-
-        fprintf(stderr, "row%d: droptol=%.15f val=%.15f\n", i, droptol[i], dval);
-        for ( k1 = tmptop - 1; k1 >= 0; --k1 )
-        {
-            // apply the dropping rule once again
-            if ( FABS(tmp[k1].val) > droptol[i] / dval )
-            {
-                U->entries[Utop].j = tmp[k1].j;
-                U->entries[Utop].val = tmp[k1].val;
-                Utop++;
-                Ltop[tmp[k1].j]++;
-                fprintf( stderr, "%d(%.15f)\n", tmp[k1].j, tmp[k1].val );
-            }
-        }
-
-        U->end[i] = Utop;
-        //fprintf( stderr, "i = %d - Utop = %d\n", i, Utop );
-    }
-
-#if defined(DEBUG)
-    // print matrix U
-    fprintf( stderr, "nnz(U): %d\n", Utop );
-    for ( i = 0; i < U->n; ++i )
-    {
-        fprintf( stderr, "row%d: ", i );
-        for ( pj = U->start[i]; pj < U->end[i]; ++pj )
-        {
-            fprintf( stderr, "%d ", U->entries[pj].j );
-        }
-        fprintf( stderr, "\n" );
-    }
-#endif
-
-    // transpose matrix U into L
-    L->start[0] = L->end[0] = 0;
-    for ( i = 1; i < L->n; ++i )
-    {
-        L->start[i] = L->end[i] = L->start[i - 1] + Ltop[i - 1] + 1;
-        //fprintf( stderr, "i=%d  L->start[i]=%d\n", i, L->start[i] );
-    }
-
-    for ( i = 0; i < U->n; ++i )
-    {
-        for ( pj = U->start[i]; pj < U->end[i]; ++pj )
-        {
-            j = U->entries[pj].j;
-            L->entries[L->end[j]].j = i;
-            L->entries[L->end[j]].val = U->entries[pj].val;
-            L->end[j]++;
-        }
-    }
-
-#if defined(DEBUG)
-    // print matrix L
-    fprintf( stderr, "nnz(L): %d\n", L->end[L->n - 1] );
-    for ( i = 0; i < L->n; ++i )
-    {
-        fprintf( stderr, "row%d: ", i );
-        for ( pj = L->start[i]; pj < L->end[i]; ++pj )
-        {
-            fprintf( stderr, "%d ", L->entries[pj].j );
-        }
-        fprintf( stderr, "\n" );
-    }
-#endif
-
-    sfree( Ltop, "Ltop" );
-}
-
-
-void Init_MatVec( reax_system *system, simulation_data *data,
+static void Init_Linear_Solver( reax_system *system, simulation_data *data,
         control_params *control, storage *workspace, mpi_datatypes *mpi_data )
 {
-    int i; //, fillin;
+    int i;
     reax_atom *atom;
-
-//    if( (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 ||
-//            workspace->L == NULL )
-//    {
-////        Print_Linear_System( system, control, workspace, data->step );
-//        Sort_Matrix_Rows( workspace->H );
-//        fprintf( stderr, "H matrix sorted\n" );
-//
-//        Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
-//        fprintf( stderr, "drop tolerances calculated\n" );
-//
-//        if( workspace->L == NULL )
-//        {
-//            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
-//
-//            if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin ) == 0 ||
-//                    Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin ) == 0 )
-//            {
-//                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
-//                MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
-//            }
-//
-//            workspace->L->n = workspace->H->n;
-//            workspace->U->n = workspace->H->n;
-//
-//#if defined(DEBUG_FOCUS)
-//            fprintf( stderr, "p%d: n=%d, fillin = %d\n",x
-//                    system->my_rank, workspace->L->n, fillin );
-//            fprintf( stderr, "p%d: allocated memory: L = U = %ldMB\n",
-//                    system->my_rank,fillin*sizeof(sparse_matrix_entry)/(1024*1024) );
-//#endif
-//        }
-//
-//      ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
-//#if defined(DEBUG_FOCUS)
-//    fprintf( stderr, "p%d: icholt finished\n", system->my_rank );
-////    sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-////    Print_Sparse_Matrix2( workspace->L, fname );
-////    Print_Sparse_Matrix( U );
-//#endif
-//    }
-
-    for ( i = 0; i < system->n; ++i )
-    {
-        atom = &( system->my_atoms[i] );
-
-        /* initialize diagonal inverse preconditioner vectors */
-        workspace->Hdia_inv[i] = 1. / system->reax_param.sbp[ atom->type ].eta;
-
-        /* linear extrapolation for s and for t */
-        // newQEq: no extrapolation!
-        //workspace->s[i] = 2 * atom->s[0] - atom->s[1]; //0;
-        //workspace->t[i] = 2 * atom->t[0] - atom->t[1]; //0;
-        //workspace->x[i][0] = 2 * atom->s[0] - atom->s[1]; //0;
-        //workspace->x[i][1] = 2 * atom->t[0] - atom->t[1]; //0;
-
-        /* quadratic extrapolation for s and t */
-        // workspace->s[i] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
-        // workspace->t[i] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
-        //workspace->x[i][0] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
-        workspace->x[i][1] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
-
-        /* cubic extrapolation for s and t */
-        workspace->x[i][0] = 4 * (atom->s[0] + atom->s[2]) - (6 * atom->s[1] + atom->s[3]);
-        //workspace->x[i][1] = 4*(atom->t[0]+atom->t[2])-(6*atom->t[1]+atom->t[3]);
-
-//        fprintf(stderr, "i=%d s=%f t=%f\n", i, workspace->s[i], workspace->t[i]);
-    }
 
     /* initialize solution vectors for linear solves in charge method */
     switch ( control->charge_method )
@@ -337,11 +62,11 @@ void Init_MatVec( reax_system *system, simulation_data *data,
         case QEQ_CM:
             for ( i = 0; i < system->n; ++i )
             {
-                atom = &( system->my_atoms[i] );
+                atom = &system->my_atoms[i];
 
-                workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b_s[i] = -1.0 * system->reax_param.sbp[ atom->type ].chi;
                 workspace->b_t[i] = -1.0;
-                workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b[i][0] = -1.0 * system->reax_param.sbp[ atom->type ].chi;
                 workspace->b[i][1] = -1.0;
             }
             break;
@@ -349,12 +74,12 @@ void Init_MatVec( reax_system *system, simulation_data *data,
         case EE_CM:
             for ( i = 0; i < system->n; ++i )
             {
-                atom = &( system->my_atoms[i] );
+                atom = &system->my_atoms[i];
 
-                workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b_s[i] = -1.0 * system->reax_param.sbp[ atom->type ].chi;
 
                 //TODO: check if unused (redundant)
-                workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b[i][0] = -1.0 * system->reax_param.sbp[ atom->type ].chi;
             }
 
             if ( system->my_rank == 0 )
@@ -367,12 +92,12 @@ void Init_MatVec( reax_system *system, simulation_data *data,
         case ACKS2_CM:
             for ( i = 0; i < system->n; ++i )
             {
-                atom = &( system->my_atoms[i] );
+                atom = &system->my_atoms[i];
 
-                workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b_s[i] = -1.0 * system->reax_param.sbp[ atom->type ].chi;
 
                 //TODO: check if unused (redundant)
-                workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
+                workspace->b[i][0] = -1.0 * system->reax_param.sbp[ atom->type ].chi;
             }
 
             if ( system->my_rank == 0 )
@@ -383,7 +108,7 @@ void Init_MatVec( reax_system *system, simulation_data *data,
 
             for ( i = system->n + 1; i < system->N_cm; ++i )
             {
-                atom = &( system->my_atoms[i] );
+                atom = &system->my_atoms[i];
 
                 workspace->b_s[i] = 0.0;
 
@@ -399,132 +124,811 @@ void Init_MatVec( reax_system *system, simulation_data *data,
             break;
 
         default:
-            fprintf( stderr, "Unknown charge method type. Terminating...\n" );
-            exit( INVALID_INPUT );
+            fprintf( stderr, "[ERROR] Unknown charge method type. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
             break;
     }
 }
 
 
-void Calculate_Charges( reax_system *system, storage *workspace,
-        mpi_datatypes *mpi_data )
+static void Extrapolate_Charges_QEq( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
 {
     int i;
-    real u;//, s_sum, t_sum;
+    real s_tmp, t_tmp;
+
+    /* spline extrapolation for s & t */
+    //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        default(none) private(i, s_tmp, t_tmp)
+#endif
+    for ( i = 0; i < system->N_cm; ++i )
+    {
+        /* no extrapolation, previous solution as initial guess */
+        if ( control->cm_init_guess_extrap1 == 0 )
+        {
+            s_tmp = system->my_atoms[i].s[0];
+        }
+        /* linear */
+        else if ( control->cm_init_guess_extrap1 == 1 )
+        {
+            s_tmp = 2.0 * system->my_atoms[i].s[0] - system->my_atoms[i].s[1];
+        }
+        /* quadratic */
+        else if ( control->cm_init_guess_extrap1 == 2 )
+        {
+            s_tmp = system->my_atoms[i].s[2] + 3.0 * (system->my_atoms[i].s[0] - system->my_atoms[i].s[1]);
+        }
+        /* cubic */
+        else if ( control->cm_init_guess_extrap1 == 3 )
+        {
+            s_tmp = 4.0 * (system->my_atoms[i].s[0] + system->my_atoms[i].s[2]) -
+                    (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
+        }
+        /* 4th order */
+        else if ( control->cm_init_guess_extrap1 == 4 )
+        {
+            s_tmp = 5.0 * (system->my_atoms[i].s[0] - system->my_atoms[i].s[3]) +
+                10.0 * (-1.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[2]) + system->my_atoms[i].s[4];
+        }
+        else
+        {
+            s_tmp = 0.0;
+        }
+
+        /* no extrapolation, previous solution as initial guess */
+        if ( control->cm_init_guess_extrap2 == 0 )
+        {
+            t_tmp = system->my_atoms[i].t[0];
+        }
+        /* linear */
+        else if ( control->cm_init_guess_extrap2 == 1 )
+        {
+            t_tmp = 2.0 * system->my_atoms[i].t[0] - system->my_atoms[i].t[1];
+        }
+        /* quadratic */
+        else if ( control->cm_init_guess_extrap2 == 2 )
+        {
+            t_tmp = system->my_atoms[i].t[2] + 3.0 * (system->my_atoms[i].t[0] - system->my_atoms[i].t[1]);
+        }
+        /* cubic */
+        else if ( control->cm_init_guess_extrap2 == 3 )
+        {
+            t_tmp = 4.0 * (system->my_atoms[i].t[0] + system->my_atoms[i].t[2]) -
+                (6.0 * system->my_atoms[i].t[1] + system->my_atoms[i].t[3]);
+        }
+        /* 4th order */
+        else if ( control->cm_init_guess_extrap2 == 4 )
+        {
+            t_tmp = 5.0 * (system->my_atoms[i].t[0] - system->my_atoms[i].t[3]) +
+                10.0 * (-1.0 * system->my_atoms[i].t[1] + system->my_atoms[i].t[2]) + system->my_atoms[i].t[4];
+        }
+        else
+        {
+            t_tmp = 0.0;
+        }
+
+        system->my_atoms[i].s[4] = system->my_atoms[i].s[3];
+        system->my_atoms[i].s[3] = system->my_atoms[i].s[2];
+        system->my_atoms[i].s[2] = system->my_atoms[i].s[1];
+        system->my_atoms[i].s[1] = system->my_atoms[i].s[0];
+        system->my_atoms[i].s[0] = s_tmp;
+        /* x is used as initial guess to solver */
+        workspace->x[i][0] = s_tmp;
+
+        system->my_atoms[i].t[4] = system->my_atoms[i].t[3];
+        system->my_atoms[i].t[3] = system->my_atoms[i].t[2];
+        system->my_atoms[i].t[2] = system->my_atoms[i].t[1];
+        system->my_atoms[i].t[1] = system->my_atoms[i].t[0];
+        system->my_atoms[i].t[0] = t_tmp;
+        /* x is used as initial guess to solver */
+        workspace->x[i][1] = t_tmp;
+    }
+}
+
+
+static void Extrapolate_Charges_EE( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    int i;
+    real s_tmp;
+
+    /* spline extrapolation for s */
+    //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        default(none) private(i, s_tmp)
+#endif
+    for ( i = 0; i < system->N_cm; ++i )
+    {
+        /* no extrapolation, previous solution as initial guess */
+        if ( control->cm_init_guess_extrap1 == 0 )
+        {
+            s_tmp = system->my_atoms[i].s[0];
+        }
+        /* linear */
+        else if ( control->cm_init_guess_extrap1 == 1 )
+        {
+            s_tmp = 2.0 * system->my_atoms[i].s[0] - system->my_atoms[i].s[1];
+        }
+        /* quadratic */
+        else if ( control->cm_init_guess_extrap1 == 2 )
+        {
+            s_tmp = system->my_atoms[i].s[2] + 3.0 * (system->my_atoms[i].s[0] - system->my_atoms[i].s[1]);
+        }
+        /* cubic */
+        else if ( control->cm_init_guess_extrap1 == 3 )
+        {
+            s_tmp = 4.0 * (system->my_atoms[i].s[0] + system->my_atoms[i].s[2]) -
+                    (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
+        }
+        /* 4th order */
+        else if ( control->cm_init_guess_extrap1 == 4 )
+        {
+            s_tmp = 5.0 * (system->my_atoms[i].s[0] - system->my_atoms[i].s[3]) +
+                10.0 * (-1.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[2]) + system->my_atoms[i].s[4];
+        }
+        else
+        {
+            s_tmp = 0.0;
+        }
+
+        system->my_atoms[i].s[4] = system->my_atoms[i].s[3];
+        system->my_atoms[i].s[3] = system->my_atoms[i].s[2];
+        system->my_atoms[i].s[2] = system->my_atoms[i].s[1];
+        system->my_atoms[i].s[1] = system->my_atoms[i].s[0];
+        system->my_atoms[i].s[0] = s_tmp;
+        /* x is used as initial guess to solver */
+        workspace->x[i][0] = s_tmp;
+    }
+}
+
+
+/* Compute preconditioner for QEq
+ */
+static void Compute_Preconditioner_QEq( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = &workspace->H_sp;
+    }
+    else
+    {
+        Hptr = &workspace->H;
+    }
+
+    switch ( control->cm_solver_pre_comp_type )
+    {
+        case NONE_PC:
+            break;
+
+        case DIAG_PC:
+            data->timing.cm_solver_pre_comp +=
+                diag_pre_comp( system, workspace->Hdia_inv );
+//                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            break;
+
+        case ICHOLT_PC:
+        case ILU_PAR_PC:
+        case ILUT_PAR_PC:
+        case ILU_SUPERLU_MT_PC:
+            fprintf( stderr, "[ERROR] Unsupported preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+        case SAI_PC:
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+            //TODO: implement
+//            data->timing.cm_solver_pre_comp +=
+//                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
+//                        &workspace->H_app_inv );
+#else
+            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
+#endif
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+}
+
+
+/* Compute preconditioner for EE
+ */
+static void Compute_Preconditioner_EE( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = &workspace->H_sp;
+    }
+    else
+    {
+        Hptr = &workspace->H;
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
+    }
+    
+    switch ( control->cm_solver_pre_comp_type )
+    {
+        case NONE_PC:
+            break;
+
+        case DIAG_PC:
+            data->timing.cm_solver_pre_comp +=
+                diag_pre_comp( system, workspace->Hdia_inv );
+//                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            break;
+
+        case ICHOLT_PC:
+        case ILU_PAR_PC:
+        case ILUT_PAR_PC:
+        case ILU_SUPERLU_MT_PC:
+            fprintf( stderr, "[ERROR] Unsupported preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+        case SAI_PC:
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+            //TODO: implement
+//            data->timing.cm_solver_pre_comp +=
+//                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
+//                        &workspace->H_app_inv );
+#else
+            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
+#endif
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 0.0;
+    }
+}
+
+
+/* Compute preconditioner for ACKS2
+ */
+static void Compute_Preconditioner_ACKS2( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = &workspace->H_sp;
+    }
+    else
+    {
+        Hptr = &workspace->H;
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
+        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 1.0;
+    }
+    
+    switch ( control->cm_solver_pre_comp_type )
+    {
+        case NONE_PC:
+            break;
+
+        case DIAG_PC:
+            data->timing.cm_solver_pre_comp +=
+                diag_pre_comp( system, workspace->Hdia_inv );
+//                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            break;
+
+        case ICHOLT_PC:
+        case ILU_PAR_PC:
+        case ILUT_PAR_PC:
+        case ILU_SUPERLU_MT_PC:
+            fprintf( stderr, "[ERROR] Unsupported preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+        case SAI_PC:
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+            //TODO: implement
+//            data->timing.cm_solver_pre_comp +=
+//                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
+//                        &workspace->H_app_inv );
+#else
+            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            exit( INVALID_INPUT );
+#endif
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 0.0;
+        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 0.0;
+    }
+}
+
+
+static void Setup_Preconditioner_QEq( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    real time;
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = &workspace->H_sp;
+    }
+    else
+    {
+        Hptr = &workspace->H;
+    }
+
+    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    time = Get_Time( );
+    Sort_Matrix_Rows( &workspace->H );
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Sort_Matrix_Rows( &workspace->H_sp );
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
+
+    switch ( control->cm_solver_pre_comp_type )
+    {
+        case NONE_PC:
+            break;
+
+        case DIAG_PC:
+            if ( workspace->Hdia_inv == NULL )
+            {
+//                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+//                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
+            }
+            break;
+
+        case ICHOLT_PC:
+        case ILU_PAR_PC:
+        case ILUT_PAR_PC:
+        case ILU_SUPERLU_MT_PC:
+            fprintf( stderr, "[ERROR] Unsupported preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+        case SAI_PC:
+            //TODO: implement
+//            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+//                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+//                    control->cm_solver_pre_comp_sai_thres );
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+}
+
+
+/* Setup routines before computing the preconditioner for EE
+ */
+static void Setup_Preconditioner_EE( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    real time;
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = &workspace->H_sp;
+    }
+    else
+    {
+        Hptr = &workspace->H;
+    }
+
+    /* sorted H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    time = Get_Time( );
+    Sort_Matrix_Rows( &workspace->H );
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Sort_Matrix_Rows( &workspace->H_sp );
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
+    }
+
+    switch ( control->cm_solver_pre_comp_type )
+    {
+        case NONE_PC:
+            break;
+
+        case DIAG_PC:
+            if ( workspace->Hdia_inv == NULL )
+            {
+//                workspace->Hdia_inv = scalloc( system->N_cm, sizeof( real ),
+//                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
+            }
+            break;
+
+        case ICHOLT_PC:
+        case ILU_PAR_PC:
+        case ILUT_PAR_PC:
+        case ILU_SUPERLU_MT_PC:
+            fprintf( stderr, "[ERROR] Unsupported preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+        case SAI_PC:
+            //TODO: implement
+//            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+//                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+//                    control->cm_solver_pre_comp_sai_thres );
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 0.0;
+    }
+}
+
+
+/* Setup routines before computing the preconditioner for ACKS2
+ */
+static void Setup_Preconditioner_ACKS2( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    real time;
+    sparse_matrix *Hptr;
+
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Hptr = &workspace->H_sp;
+    }
+    else
+    {
+        Hptr = &workspace->H;
+    }
+
+    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    time = Get_Time( );
+    Sort_Matrix_Rows( &workspace->H );
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Sort_Matrix_Rows( &workspace->H_sp );
+    }
+    data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
+        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 1.0;
+    }
+
+    switch ( control->cm_solver_pre_comp_type )
+    {
+        case NONE_PC:
+            break;
+
+        case DIAG_PC:
+            if ( workspace->Hdia_inv == NULL )
+            {
+//                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+//                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
+            }
+            break;
+
+        case ICHOLT_PC:
+        case ILU_PAR_PC:
+        case ILUT_PAR_PC:
+        case ILU_SUPERLU_MT_PC:
+            fprintf( stderr, "[ERROR] Unsupported preconditioner computation method. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+
+        case SAI_PC:
+            //TODO: implement
+//            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+//                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+//                    control->cm_solver_pre_comp_sai_thres );
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILU_PAR_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        Hptr->entries[Hptr->start[system->N + 1] - 1].val = 0.0;
+        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 0.0;
+    }
+}
+
+
+/* Combine ficticious charges s and t to get atomic charge q for QEq method
+ */
+static void Calculate_Charges_QEq( const reax_system * const system,
+        storage * const workspace, const mpi_datatypes * const mpi_data )
+{
+    int i;
+    real u;
     rvec2 my_sum, all_sum;
-    reax_atom *atom;
     real *q;
 
-    q = (real*) smalloc( system->N * sizeof(real), "Calculate_Charges::q" );
+    q = smalloc( sizeof(real) * system->N, "Calculate_Charges_QEq::q" );
 
-    //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
-    //t_sum = Parallel_Vector_Acc(workspace->t, system->n, mpi_data->world);
-    my_sum[0] = my_sum[1] = 0;
+    my_sum[0] = 0.0;
+    my_sum[1] = 0.0;
     for ( i = 0; i < system->n; ++i )
     {
         my_sum[0] += workspace->x[i][0];
         my_sum[1] += workspace->x[i][1];
     }
 
-#if defined(DEBUG)
-    fprintf( stderr, "Host : my_sum[0]: %f and %f \n", my_sum[0], my_sum[1] );
-#endif
-
     MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
 
     u = all_sum[0] / all_sum[1];
-
-#if defined(DEBUG)
-    fprintf( stderr, "Host : u: %f \n", u );
-#endif
-
     for ( i = 0; i < system->n; ++i )
     {
-        atom = &( system->my_atoms[i] );
-
-        /* compute charge based on s & t */
-        //atom->q = workspace->s[i] - u * workspace->t[i];
-        q[i] = atom->q = workspace->x[i][0] - u * workspace->x[i][1];
-
-        /* backup s & t */
-        atom->s[3] = atom->s[2];
-        atom->s[2] = atom->s[1];
-        atom->s[1] = atom->s[0];
-        //atom->s[0] = workspace->s[i];
-        atom->s[0] = workspace->x[i][0];
-
-        atom->t[3] = atom->t[2];
-        atom->t[2] = atom->t[1];
-        atom->t[1] = atom->t[0];
-        //atom->t[0] = workspace->t[i];
-        atom->t[0] = workspace->x[i][1];
+        q[i] = workspace->x[i][0] - u * workspace->x[i][1];
+        system->my_atoms[i].q = q[i];
     }
 
     Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
+
     for ( i = system->n; i < system->N; ++i )
     {
         system->my_atoms[i].q = q[i];
     }
 
-    sfree( q, "Calculate_Charges::q" );
+    sfree( q, "Calculate_Charges_QEq::q" );
 }
 
 
-void QEq( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+/* Get atomic charge q for EE method
+ */
+static void Calculate_Charges_EE( const reax_system * const system,
+        storage * const workspace, const mpi_datatypes * const mpi_data )
 {
-    int s_matvecs, t_matvecs;
+    int i;
 
-    Init_MatVec( system, data, control, workspace, mpi_data );
+    for ( i = 0; i < system->N; ++i )
+    {
+        system->my_atoms[i].q = workspace->s[i];
+    }
+}
 
-    //if( data->step == 50010 ) {
-    //  Print_Linear_System( system, control, workspace, data->step );
-    // }
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: initialized qEq\n", system->my_rank );
-    //Print_Linear_System( system, control, workspace, data->step );
-#endif
+/* Main driver method for QEq kernel
+ *  1) init / setup routines for preconditioning of linear solver
+ *  2) compute preconditioner
+ *  3) extrapolate charges
+ *  4) perform 2 linear solves
+ *  5) compute atomic charges based on output of (4)
+ */
+static void QEq( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        const output_controls * const out_control,
+        const mpi_datatypes * const mpi_data )
+{
+    int iters;
 
-    //MATRIX CHANGES
-    s_matvecs = dual_CG( system, workspace, &workspace->H, workspace->b,
-            control->cm_solver_q_err, workspace->x, mpi_data, out_control->log, data );
-    t_matvecs = 0;
-    //fprintf (stderr, "Host: First CG complated with iterations: %d \n", s_matvecs);
+    Init_Linear_Solver( system, data, control, workspace, mpi_data );
 
-    //s_matvecs = CG(system, workspace, workspace->H, workspace->b_s, //newQEq sCG
-    // control->cm_solver_q_err, workspace->s, mpi_data, out_control->log );
-    //s_matvecs = PCG( system, workspace, workspace->H, workspace->b_s,
-    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->s,
-    //   mpi_data, out_control->log );
+    if ( control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+        
+    {
+        Setup_Preconditioner_QEq( system, control, data, workspace );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
-#endif
+        Compute_Preconditioner_QEq( system, control, data, workspace );
+    }
 
-    //t_matvecs = CG(system, workspace, workspace->H, workspace->b_t, //newQEq sCG
-    // control->cm_solver_q_err, workspace->t, mpi_data, out_control->log );
-    //t_matvecs = PCG( system, workspace, workspace->H, workspace->b_t,
-    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->t,
-    //   mpi_data, out_control->log );
+    Extrapolate_Charges_QEq( system, control, data, workspace );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: second CG completed\n", system->my_rank );
-#endif
+    switch ( control->cm_solver_type )
+    {
+    case CG_S:
+        iters = dual_CG( system, workspace, &workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data, out_control->log, data );
 
-    Calculate_Charges( system, workspace, mpi_data );
+//        iters = CG( system, workspace, workspace->H, workspace->b_s, //newQEq sCG
+//                control->cm_solver_q_err, workspace->s, mpi_data, out_control->log );
+//        iters += PCG( system, workspace, workspace->H, workspace->b_s,
+//                control->cm_solver_q_err, workspace->L, workspace->U, workspace->s,
+//                mpi_data, out_control->log );
+        break;
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: computed charges\n", system->my_rank );
-    //Print_Charges( system );
-#endif
+    case GMRES_S:
+    case GMRES_H_S:
+    case SDM_S:
+    case BiCGStab_S:
+    default:
+        fprintf( stderr, "[ERROR] Unrecognized QEq solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.s_matvecs += s_matvecs;
-        data->timing.t_matvecs += t_matvecs;
+        data->timing.cm_solver_iters += iters;
     }
 #endif
+
+    Calculate_Charges_QEq( system, workspace, mpi_data );
+}
+
+
+/* Main driver method for EE kernel
+ *  1) init / setup routines for preconditioning of linear solver
+ *  2) compute preconditioner
+ *  3) extrapolate charges
+ *  4) perform 1 linear solve
+ *  5) compute atomic charges based on output of (4)
+ */
+static void EE( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        const output_controls * const out_control,
+        const mpi_datatypes * const mpi_data )
+{
+    int iters;
+
+    Init_Linear_Solver( system, data, control, workspace, mpi_data );
+
+    if ( control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+    {
+        Setup_Preconditioner_EE( system, control, data, workspace );
+
+        Compute_Preconditioner_EE( system, control, data, workspace );
+    }
+
+    Extrapolate_Charges_EE( system, control, data, workspace );
+
+    switch ( control->cm_solver_type )
+    {
+    case GMRES_S:
+    case GMRES_H_S:
+    case CG_S:
+    case SDM_S:
+    case BiCGStab_S:
+    default:
+        fprintf( stderr, "[ERROR] Unrecognized EE solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    data->timing.cm_solver_iters += iters;
+
+    Calculate_Charges_EE( system, workspace, mpi_data );
+}
+
+
+/* Main driver method for ACKS2 kernel
+ *  1) init / setup routines for preconditioning of linear solver
+ *  2) compute preconditioner
+ *  3) extrapolate charges
+ *  4) perform 1 linear solve
+ *  5) compute atomic charges based on output of (4)
+ */
+static void ACKS2( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        const output_controls * const out_control,
+        const mpi_datatypes * const mpi_data )
+{
+    int iters;
+
+    Init_Linear_Solver( system, data, control, workspace, mpi_data );
+
+    if ( control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+    {
+        Setup_Preconditioner_ACKS2( system, control, data, workspace );
+
+        Compute_Preconditioner_ACKS2( system, control, data, workspace );
+    }
+
+    Extrapolate_Charges_EE( system, control, data, workspace );
+
+    switch ( control->cm_solver_type )
+    {
+    case GMRES_S:
+    case GMRES_H_S:
+    case CG_S:
+    case SDM_S:
+    case BiCGStab_S:
+    default:
+        fprintf( stderr, "[ERROR] Unrecognized ACKS2 solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    data->timing.cm_solver_iters += iters;
+
+    Calculate_Charges_EE( system, workspace, mpi_data );
+}
+
+
+void Compute_Charges( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        const output_controls * const out_control,
+        const mpi_datatypes * const mpi_data )
+{
+    switch ( control->charge_method )
+    {
+    case QEQ_CM:
+        QEq( system, control, data, workspace, out_control, mpi_data );
+        break;
+
+    case EE_CM:
+        EE( system, control, data, workspace, out_control, mpi_data );
+        break;
+
+    case ACKS2_CM:
+        ACKS2( system, control, data, workspace, out_control, mpi_data );
+        break;
+
+    default:
+        fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
+        exit( UNKNOWN_OPTION );
+        break;
+    }
 }

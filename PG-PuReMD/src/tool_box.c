@@ -223,13 +223,13 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
 
 char *Get_Element( reax_system *system, int i )
 {
-    return &( system->reax_param.sbp[system->my_atoms[i].type].name[0] );
+    return &system->reax_param.sbp[system->my_atoms[i].type].name[0];
 }
 
 
 char *Get_Atom_Name( reax_system *system, int i )
 {
-    return &(system->my_atoms[i].name[0]);
+    return &system->my_atoms[i].name[0];
 }
 
 
@@ -254,12 +254,12 @@ int Tokenize( const char* s, char*** tok )
 {
     char test[MAX_LINE];
     char *sep = "\t \n!=";
-    char *word;
+    char *word, *saveptr;
     int count = 0;
 
     strncpy( test, s, MAX_LINE );
 
-    for ( word = strtok(test, sep); word; word = strtok(NULL, sep) )
+    for ( word = strtok_r(test, sep, &saveptr); word; word = strtok_r(NULL, sep, &saveptr) )
     {
         strncpy( (*tok)[count], word, MAX_LINE );
         count++;
@@ -302,7 +302,7 @@ void * smalloc( size_t n, const char *name )
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] granted memory at address: %p\n", (void *) ptr );
+    fprintf( stderr, "[INFO] granted memory at address: %p\n", ptr );
     fflush( stderr );
 #endif
 
@@ -335,7 +335,7 @@ void * srealloc( void *ptr, size_t n, const char *name )
                 n, name );
     }
 
-    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n, name );
     fflush( stderr );
 #endif
 
@@ -351,7 +351,7 @@ void * srealloc( void *ptr, size_t n, const char *name )
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] address: %p [SREALLOC]\n", (void *) new_ptr );
+    fprintf( stderr, "[INFO] granted memory at address: %p\n", new_ptr );
     fflush( stderr );
 #endif
 
@@ -379,7 +379,7 @@ void * scalloc( size_t n, size_t size, const char *name )
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n * size, name );
     fflush( stderr );
 #endif
 
@@ -393,7 +393,7 @@ void * scalloc( size_t n, size_t size, const char *name )
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] address: %p [SCALLOC]\n", (void *) ptr );
+    fprintf( stderr, "[INFO] granted memory at address: %p\n", ptr );
     fflush( stderr );
 #endif
 

@@ -118,8 +118,7 @@ void Reset_Timing( reax_timing *rt )
     rt->bonded = 0.0;
     rt->nonb = 0.0;
     rt->cm = 0.0;
-    rt->s_matvecs = 0;
-    rt->t_matvecs = 0;
+    rt->cm_solver_iters = 0;
     rt->num_retries = 0;
 }
 

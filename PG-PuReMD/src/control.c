@@ -85,6 +85,8 @@ void Read_Control_File( char *control_file, control_params* control,
     control->cm_solver_restart = 50;
     control->cm_solver_q_err = 0.000001;
     control->cm_domain_sparsify_enabled = FALSE;
+    control->cm_init_guess_extrap1 = 3;
+    control->cm_init_guess_extrap2 = 2;
     control->cm_domain_sparsity = 1.0;
     control->cm_solver_pre_comp_type = DIAG_PC;
     control->cm_solver_pre_comp_sweeps = 3;
@@ -309,6 +311,16 @@ void Read_Control_File( char *control_file, control_params* control,
                     control->cm_domain_sparsify_enabled = TRUE;
                 }
             }
+            else if ( strncmp(tmp[0], "cm_init_guess_extrap1", MAX_LINE) == 0 )
+            {
+                ival = atoi( tmp[1] );
+                control->cm_init_guess_extrap1 = ival;
+            }
+            else if ( strncmp(tmp[0], "cm_init_guess_extrap2", MAX_LINE) == 0 )
+            {
+                ival = atoi( tmp[1] );
+                control->cm_init_guess_extrap2 = ival;
+            }
             else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
             {
                 ival = atoi( tmp[1] );
@@ -328,6 +340,11 @@ void Read_Control_File( char *control_file, control_params* control,
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_comp_sweeps = ival;
+            }
+            else if ( strncmp(tmp[0], "cm_solver_pre_comp_sai_thres", MAX_LINE) == 0 )
+            {
+                val = atof( tmp[1] );
+                control->cm_solver_pre_comp_sai_thres = val;
             }
             else if ( strcmp(tmp[0], "cm_solver_pre_app_type") == 0 )
             {

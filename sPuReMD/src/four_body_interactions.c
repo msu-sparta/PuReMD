@@ -494,7 +494,8 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
 #endif
                                         bo_kl->Cdbo += (CEtors6 + CEconj3);
 
-                                        if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT )
+                                        if ( control->ensemble == NVE || control->ensemble == nhNVT
+                                                || control->ensemble == bNVT )
                                         {
                                             /* dcos_theta_ijk */
                                             rvec_ScaledAdd( *f_i,

@@ -220,11 +220,11 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
             {
                 if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
                 {
-                    nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
+                    nbr_pj = &far_nbrs->select.far_nbr_list[pj];
                     j = nbr_pj->nbr;
                     r_ij = nbr_pj->d;
-                    twbp = &(system->reaxprm.tbp[ system->atoms[i].type ]
-                             [ system->atoms[j].type ]);
+                    twbp = &system->reaxprm.tbp[ system->atoms[i].type ]
+                             [ system->atoms[j].type ];
                     self_coef = (i == j) ? 0.5 : 1.0; // for supporting small boxes!
 
                     /* Calculate Taper and its derivative */
@@ -301,7 +301,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     CEclmb = self_coef * C_ele * system->atoms[i].q * system->atoms[j].q *
                              ( dTap -  Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
 
-                    if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT )
+                    if ( control->ensemble == NVE || control->ensemble == nhNVT
+                            || control->ensemble == bNVT )
                     {
 #ifndef _OPENMP
                         rvec_ScaledAdd( system->atoms[i].f,
@@ -606,7 +607,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                              t->CEclmb[r].a;
                     CEclmb *= self_coef * system->atoms[i].q * system->atoms[j].q;
 
-                    if ( control->ensemble == NVE || control->ensemble == NVT  || control->ensemble == bNVT)
+                    if ( control->ensemble == NVE || control->ensemble == nhNVT
+                            || control->ensemble == bNVT )
                     {
 #ifndef _OPENMP
                         rvec_ScaledAdd( system->atoms[i].f, -(CEvd + CEclmb), nbr_pj->dvec );

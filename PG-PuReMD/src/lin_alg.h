@@ -29,6 +29,9 @@
 extern "C" {
 #endif
 
+//real diag_pre_comp( const sparse_matrix * const, real * const );
+real diag_pre_comp( const reax_system * const, real * const );
+
 int GMRES( reax_system*, storage*, sparse_matrix*,
         real*, real, real*, mpi_datatypes*, FILE* );
 

@@ -477,7 +477,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     }
 
 
-                                    if ( control->ensemble == NVE || control->ensemble == NVT  || control->ensemble == bNVT)
+                                    if ( control->ensemble == NVE || control->ensemble == nhNVT
+                                            || control->ensemble == bNVT )
                                     {
                                         rvec_ScaledAdd( *f_i, CEval8, p_ijk->dcos_di );
                                         rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
@@ -820,7 +821,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #endif
                             bo_ij->Cdbo += CEhb1;
 
-                            if ( control->ensemble == NVE || control->ensemble == NVT  || control->ensemble == bNVT)
+                            if ( control->ensemble == NVE || control->ensemble == nhNVT
+                                    || control->ensemble == bNVT )
                             {
                                 /* dcos terms */
                                 rvec_ScaledAdd( *f_i, +CEhb2, dcos_theta_di );

@@ -250,7 +250,7 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
         *data, storage *workspace, output_controls *out_control, mpi_datatypes
         *mpi_data )
 {
-    int s_matvecs, t_matvecs;
+    int iters;
 
     Cuda_Init_MatVec( system, workspace );
 
@@ -271,10 +271,9 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
         break;
 
     case CG_S:
-        s_matvecs = Cuda_dual_CG( system, control, workspace, &dev_workspace->H,
+        iters = Cuda_dual_CG( system, control, workspace, &dev_workspace->H,
                 dev_workspace->b, control->cm_solver_q_err, dev_workspace->x, mpi_data,
                 out_control->log, data );
-        t_matvecs = 0;
         break;
 
 
@@ -289,8 +288,7 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.s_matvecs += s_matvecs;
-        data->timing.t_matvecs += t_matvecs;
+        data->timing.cm_solver_iters += iters;
     }
 #endif
 }
@@ -300,7 +298,7 @@ void Cuda_EE( reax_system *system, control_params *control, simulation_data
         *data, storage *workspace, output_controls *out_control, mpi_datatypes
         *mpi_data )
 {
-    int s_matvecs, t_matvecs;
+    int iters;
 
     Cuda_Init_MatVec( system, workspace );
 
@@ -314,9 +312,8 @@ void Cuda_EE( reax_system *system, control_params *control, simulation_data
         break;
 
     case CG_S:
-        s_matvecs = Cuda_CG( system, control, workspace, &dev_workspace->H,
+        iters = Cuda_CG( system, control, workspace, &dev_workspace->H,
                 dev_workspace->b_s, control->cm_solver_q_err, dev_workspace->s, mpi_data );
-        t_matvecs = 0;
         break;
 
 
@@ -331,8 +328,7 @@ void Cuda_EE( reax_system *system, control_params *control, simulation_data
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.s_matvecs += s_matvecs;
-        data->timing.t_matvecs += t_matvecs;
+        data->timing.cm_solver_iters += iters;
     }
 #endif
 }
@@ -342,7 +338,7 @@ void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
         *data, storage *workspace, output_controls *out_control, mpi_datatypes
         *mpi_data )
 {
-    int s_matvecs, t_matvecs;
+    int iters;
 
     Cuda_Init_MatVec( system, workspace );
 
@@ -356,14 +352,13 @@ void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
         break;
 
     case CG_S:
-        s_matvecs = Cuda_CG( system, control, workspace, &dev_workspace->H,
+        iters = Cuda_CG( system, control, workspace, &dev_workspace->H,
                 dev_workspace->b_s, control->cm_solver_q_err, dev_workspace->s, mpi_data );
-        t_matvecs = 0;
         break;
 
 
     default:
-        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
+        fprintf( stderr, "[ERROR] Unrecognized QEq solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }
@@ -373,8 +368,7 @@ void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.s_matvecs += s_matvecs;
-        data->timing.t_matvecs += t_matvecs;
+        data->timing.cm_solver_iters += iters;
     }
 #endif
 }

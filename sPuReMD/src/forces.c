@@ -136,7 +136,7 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
 #endif
 
     t_start = Get_Time( );
-    Compute_Charges( system, control, data, workspace, lists[FAR_NBRS], out_control );
+    Compute_Charges( system, control, data, workspace, out_control );
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.cm += t_elapsed;
 
@@ -185,7 +185,8 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
             {
                 if ( i < bonds->select.bond_list[pj].nbr )
                 {
-                    if ( control->ensemble == NVE || control->ensemble == NVT || control->ensemble == bNVT)
+                    if ( control->ensemble == NVE || control->ensemble == nhNVT
+                            || control->ensemble == bNVT )
                     {
                         Add_dBond_to_Forces( i, pj, system, data, workspace, lists );
                     }

@@ -29,8 +29,9 @@
 extern "C" {
 #endif
 
-void QEq( reax_system*, control_params*, simulation_data*,
-        storage*, output_controls*, mpi_datatypes* );
+void Compute_Charges( reax_system * const, control_params * const,
+        simulation_data * const, storage * const,
+        const output_controls * const, const mpi_datatypes * const );
 
 #ifdef __cplusplus
 }

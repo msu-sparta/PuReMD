@@ -966,7 +966,7 @@ int Compute_Forces( reax_system *system, control_params *control,
 #if defined(PURE_REAX)
         if ( charge_flag == TRUE )
         {
-            QEq( system, control, data, workspace, out_control, mpi_data );
+            Compute_Charges( system, control, data, workspace, out_control, mpi_data );
         }
 
 #if defined(LOG_PERFORMANCE)

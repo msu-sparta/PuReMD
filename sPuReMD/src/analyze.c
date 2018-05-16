@@ -34,14 +34,9 @@
 
 enum atoms
 {
-    C_ATOM = 0,
-    H_ATOM = 1,
-    O_ATOM = 2,
-    N_ATOM = 3,
-    S_ATOM = 4,
-    SI_ATOM = 5,
-    GE_ATOM = 6,
-    X_ATOM = 7,
+    O_ATOM = 0,
+    N_ATOM = 1,
+    SI_ATOM = 2,
 };
 
 enum molecule_type

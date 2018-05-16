@@ -129,18 +129,19 @@
 #define LOOSE_ZONE     (0.75)
 
 
-/* config params */
+/* ensemble type */
 enum ensemble
 {
     NVE = 0,
-    NVT = 1,
-    NPT = 2,
+    bNVT = 1,
+    nhNVT = 2,
     sNPT = 3,
     iNPT = 4,
-    ensNR = 5,
-    bNVT = 6,
+    NPT = 5,
+    ens_N = 6,
 };
 
+/* interaction list type */
 enum interaction_list_offets
 {
     FAR_NBRS = 0,
@@ -154,6 +155,7 @@ enum interaction_list_offets
     LIST_N = 8,
 };
 
+/* interaction type */
 enum interaction_type
 {
     TYP_VOID = 0,
@@ -167,6 +169,7 @@ enum interaction_type
     TYP_N = 8,
 };
 
+/* error codes for simulation termination */
 enum errors
 {
     FILE_NOT_FOUND = -10,
@@ -190,13 +193,15 @@ enum molecular_analysis_type
     NUM_ANALYSIS = 3,
 };
 
-enum restart_format
+/* restart file format */
+enum restart_formats
 {
     WRITE_ASCII = 0,
     WRITE_BINARY = 1,
     RF_N = 2,
 };
 
+/* geometry file format */
 enum geo_formats
 {
     CUSTOM = 0,
@@ -240,6 +245,15 @@ enum pre_app
     TRI_SOLVE_LEVEL_SCHED_PA = 1,
     TRI_SOLVE_GC_PA = 2,
     JACOBI_ITER_PA = 3,
+};
+
+
+/* atom types as pertains to hydrogen bonding */
+enum hydrogen_bonding_atom_types
+{
+    NON_H_BONDING_ATOM = 0,
+    H_ATOM = 1,
+    H_BONDING_ATOM = 2,
 };
 
 
@@ -603,22 +617,52 @@ typedef struct
     int freq_diffusion_coef;
     int restrict_type;
 
+    /* method for computing atomic charges */
     unsigned int charge_method;
+    /* frequency (in terms of simulation time steps) at which to
+     * re-compute atomic charge distribution */
+    int charge_freq;
+    /* iterative linear solver type */
     unsigned int cm_solver_type;
+    /* system net charge */
     real cm_q_net;
+    /* max. iterations for linear solver */
     unsigned int cm_solver_max_iters;
+    /* max. iterations before restarting in specific solvers, e.g., GMRES(k) */
     unsigned int cm_solver_restart;
+    /* error tolerance of solution produced by charge distribution
+     * sparse iterative linear solver */
     real cm_solver_q_err;
+    /* ratio used in computing sparser charge matrix,
+     * between 0.0 and 1.0 */
     real cm_domain_sparsity;
+    /* TRUE if enabled, FALSE otherwise */
     unsigned int cm_domain_sparsify_enabled;
+    /* order of spline extrapolation used for computing initial guess
+     * to linear solver */
     unsigned int cm_init_guess_extrap1;
+    /* order of spline extrapolation used for computing initial guess
+     * to linear solver */
     unsigned int cm_init_guess_extrap2;
+    /* preconditioner type for linear solver */
     unsigned int cm_solver_pre_comp_type;
+    /* frequency (in terms of simulation time steps) at which to recompute
+     * incomplete factorizations */
     unsigned int cm_solver_pre_comp_refactor;
+    /* drop tolerance of incomplete factorization schemes (ILUT, ICHOLT, etc.)
+     * used for preconditioning the iterative linear solver used in charge distribution */
     real cm_solver_pre_comp_droptol;
+    /* num. of sweeps for computing preconditioner factors
+     * in fine-grained iterative methods (FG-ICHOL, FG-ILU) */
     unsigned int cm_solver_pre_comp_sweeps;
+    /* relative num. of non-zeros to charge matrix used to
+     * compute the sparse approximate inverse preconditioner,
+     * between 0.0 and 1.0 */
     real cm_solver_pre_comp_sai_thres;
+    /* preconditioner application type */
     unsigned int cm_solver_pre_app_type;
+    /* num. of iterations used to apply preconditioner via
+     * Jacobi relaxation scheme (truncated Neumann series) */
     unsigned int cm_solver_pre_app_jacobi_iters;
 
     int molec_anal;
@@ -671,24 +715,42 @@ typedef struct
 
 typedef struct
 {
+    /* start time of event */
     real start;
+    /* end time of event */
     real end;
+    /* total elapsed time of event */
     real elapsed;
-
+    /* total simulation time */
     real total;
+    /* neighbor list generation time */
     real nbrs;
+    /* force initialization time */
     real init_forces;
+    /* bonded force calculation time */
     real bonded;
+    /* non-bonded force calculation time */
     real nonb;
+    /* atomic charge distribution calculation time */
     real cm;
+    /**/
     real cm_sort_mat_rows;
+    /**/
     real cm_solver_pre_comp;
+    /**/
     real cm_solver_pre_app;
+    /* num. of steps in iterative linear solver for charge distribution */
     int cm_solver_iters;
+    /**/
     real cm_solver_spmv;
+    /**/
     real cm_solver_vector_ops;
+    /**/
     real cm_solver_orthog;
+    /**/
     real cm_solver_tri_solve;
+    /* num. of retries in main sim. loop */
+    int num_retries;
 } reax_timing;
 
 
@@ -953,17 +1015,30 @@ typedef struct
     rvec *dDeltap_self;
 
     /* charge method storage */
+    /* charge matrix */
     sparse_matrix *H;
+    /* charge matrix (full) */
     sparse_matrix *H_full;
+    /* sparser charge matrix */
     sparse_matrix *H_sp;
+    /* permuted charge matrix (graph coloring) */
     sparse_matrix *H_p;
+    /* sparsity pattern of charge matrix, used in
+     * computing a sparse approximate inverse preconditioner */
     sparse_matrix *H_spar_patt;
+    /* sparsity pattern of charge matrix (full), used in
+     * computing a sparse approximate inverse preconditioner */
     sparse_matrix *H_spar_patt_full;
+    /* sparse approximate inverse preconditioner */
     sparse_matrix *H_app_inv;
+    /* incomplete Cholesky or LU preconditioner */
     sparse_matrix *L;
+    /* incomplete Cholesky or LU preconditioner */
     sparse_matrix *U;
-    real *droptol;
+    /* Jacobi preconditioner */
     real *Hdia_inv;
+    /* row drop tolerences for incomplete Cholesky preconditioner */
+    real *droptol;
     real *b;
     real *b_s;
     real *b_t;

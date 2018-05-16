@@ -149,7 +149,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         break;
 
 
-    case NVT:
+    case nhNVT:
         data->N_f = 3 * system->N + 1;
         //control->Tau_T = 100 * data->N_f * K_B * control->T_final;
         if ( !control->restart || (control->restart && control->random_vel) )

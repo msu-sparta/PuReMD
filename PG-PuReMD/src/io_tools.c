@@ -1343,7 +1343,7 @@ void Output_Results( reax_system *system, control_params *control,
                     data->timing.nbrs * denom, data->timing.init_forces * denom,
                     data->timing.bonded * denom, data->timing.nonb * denom,
                     data->timing.cm * denom,
-                    (int)((data->timing.s_matvecs + data->timing.t_matvecs) * denom),
+                    (int)(data->timing.cm_solver_iters * denom),
                     data->timing.num_retries );
 
             Reset_Timing( &(data->timing) );

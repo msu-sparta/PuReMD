@@ -58,11 +58,11 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                0.5 * dt_sqr * -F_CONV * inv_m, system->atoms[i].f );
+                -0.5 * dt_sqr * F_CONV * inv_m, system->atoms[i].f );
         Inc_on_T3( system->atoms[i].x, dx, &( system->box ) );
 
         rvec_ScaledAdd( system->atoms[i].v,
-                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -83,7 +83,7 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
     {
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
         rvec_ScaledAdd( system->atoms[i].v,
-                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -118,7 +118,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
         rvec_ScaledSum( dx, dt - 0.5 * dt_sqr * therm->v_xi, system->atoms[i].v,
-                0.5 * dt_sqr * inv_m * -F_CONV, system->atoms[i].f );
+                -0.5 * dt_sqr * inv_m * F_CONV, system->atoms[i].f );
 
         Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
 
@@ -150,14 +150,14 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
         rvec_Scale( workspace->v_const[i],
                     1.0 - 0.5 * dt * therm->v_xi, system->atoms[i].v );
         rvec_ScaledAdd( workspace->v_const[i],
-                        0.5 * dt * inv_m * -F_CONV, workspace->f_old[i] );
+                -0.5 * dt * inv_m * F_CONV, workspace->f_old[i] );
         rvec_ScaledAdd( workspace->v_const[i],
-                        0.5 * dt * inv_m * -F_CONV, system->atoms[i].f );
+                -0.5 * dt * inv_m * F_CONV, system->atoms[i].f );
 #if defined(DEBUG)
         fprintf( stderr, "atom%d: inv_m=%f, C1=%f, C2=%f, v_const=%f %f %f\n",
-                 i, inv_m, 1.0 - 0.5 * dt * therm->v_xi,
-                 0.5 * dt * inv_m * -F_CONV, workspace->v_const[i][0],
-                 workspace->v_const[i][1], workspace->v_const[i][2] );
+                i, inv_m, 1.0 - 0.5 * dt * therm->v_xi,
+                -0.5 * dt * inv_m * F_CONV, workspace->v_const[i][0],
+                workspace->v_const[i][1], workspace->v_const[i][2] );
 #endif
     }
 
@@ -219,30 +219,17 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     steps = data->step - data->prev_steps;
     renbr = (steps % control->reneighbor == 0);
 
-#if defined(DEBUG_FOCUS)
-    //fprintf( out_control->prs,
-    //         "tau_t: %g  tau_p: %g  dt/tau_t: %g  dt/tau_p: %g\n",
-    //control->Tau_T, control->Tau_P, dt / control->Tau_T, dt / control->Tau_P );
-    fprintf( stderr, "step %d: ", data->step );
-#endif
-
     /* velocity verlet, 1st part */
     for ( i = 0; i < system->N; i++ )
     {
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
         /* Compute x(t + dt) */
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                        0.5 * -F_CONV * inv_m * SQR(dt), system->atoms[i].f );
+                -0.5 * F_CONV * inv_m * SQR(dt), system->atoms[i].f );
         Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
         /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * -F_CONV * inv_m * dt, system->atoms[i].f );
-        /*fprintf( stderr, "%6d   %15.8f %15.8f %15.8f   %15.8f %15.8f %15.8f\n",
-          workspace->orig_id[i],
-          system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2],
-          0.5 * SQR(dt) * -F_CONV * inv_m * system->atoms[i].f[0],
-          0.5 * SQR(dt) * -F_CONV * inv_m * system->atoms[i].f[1],
-          0.5 * SQR(dt) * -F_CONV * inv_m * system->atoms[i].f[2] ); */
+                -0.5 * F_CONV * inv_m * dt, system->atoms[i].f );
     }
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "verlet1 - " );
@@ -265,13 +252,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
         /* Compute v(t + dt) */
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
-        /* fprintf( stderr, "%6d   %15f %15f %15f   %15.8f %15.8f %15.8f\n",
-           workspace->orig_id[i],
-           system->atoms[i].v[0], system->atoms[i].v[1], system->atoms[i].v[2],
-           0.5 * dt * -F_CONV * inv_m * system->atoms[i].f[0],
-           0.5 * dt * -F_CONV * inv_m * system->atoms[i].f[1],
-           0.5 * dt * -F_CONV * inv_m * system->atoms[i].f[2] );*/
+                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
     }
     Compute_Kinetic_Energy( system, data );
     Compute_Pressure_Isotropic( system, control, data, out_control );
@@ -350,17 +331,11 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
         /* Compute x(t + dt) */
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                        0.5 * -F_CONV * inv_m * SQR(dt), system->atoms[i].f );
+                -0.5 * F_CONV * inv_m * SQR(dt), system->atoms[i].f );
         Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
         /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * -F_CONV * inv_m * dt, system->atoms[i].f );
-        /*fprintf( stderr, "%6d   %15.8f %15.8f %15.8f   %15.8f %15.8f %15.8f\n",
-          workspace->orig_id[i],
-          system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2],
-          0.5 * SQR(dt) * -F_CONV * inv_m * system->atoms[i].f[0],
-          0.5 * SQR(dt) * -F_CONV * inv_m * system->atoms[i].f[1],
-          0.5 * SQR(dt) * -F_CONV * inv_m * system->atoms[i].f[2] ); */
+                -0.5 * F_CONV * inv_m * dt, system->atoms[i].f );
     }
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "verlet1 - " );
@@ -383,19 +358,12 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
         /* Compute v(t + dt) */
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
-        /* fprintf( stderr, "%6d   %15f %15f %15f   %15.8f %15.8f %15.8f\n",
-           workspace->orig_id[i],
-           system->atoms[i].v[0], system->atoms[i].v[1], system->atoms[i].v[2],
-           0.5 * dt * -F_CONV * inv_m * system->atoms[i].f[0],
-           0.5 * dt * -F_CONV * inv_m * system->atoms[i].f[1],
-           0.5 * dt * -F_CONV * inv_m * system->atoms[i].f[2] );*/
+                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
     }
+
     Compute_Kinetic_Energy( system, data );
+
     Compute_Pressure_Isotropic( system, control, data, out_control );
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "verlet2 - " );
-#endif
 
     /* pressure scaler */
     for ( d = 0; d < 3; ++d )
@@ -460,26 +428,26 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
     real dt_sqr = SQR(dt);
     rvec dx;
 
-    for (i = 0; i < system->N; i++)
+    for ( i = 0; i < system->N; i++ )
     {
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
-        // Compute x(t + dt)
+        /* Compute x(t + dt) */
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                        0.5 * dt_sqr * -F_CONV * inv_m, system->atoms[i].f );
+                -0.5 * dt_sqr * F_CONV * inv_m, system->atoms[i].f );
         Inc_on_T3_Gen( system->atoms[i].x, dx, &(system->box) );
 
-        // Compute v(t + dt/2)
+        /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
-                        -0.5 * dt * data->therm.xi, system->atoms[i].v );
+                -0.5 * dt * data->therm.xi, system->atoms[i].v );
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
     }
 
     // Compute zeta(t + dt/2), E_Kininetic(t + dt/2)
     // IMPORTANT: What will be the initial value of zeta? and what is g?
     data->therm.xi += 0.5 * dt * control->Tau_T  *
-                      ( 2.0 * data->E_Kin - data->N_f * K_B * control->T );
+        ( 2.0 * data->E_Kin - data->N_f * K_B * control->T );
 
     Reset( system, control, data, workspace );
     fprintf(out_control->log, "reset-");
@@ -490,7 +458,7 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
-    /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
+    /* Compute_Charges( system, control, workspace, out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
     Compute_Forces( system, control, data, workspace, lists, out_control,
@@ -504,14 +472,14 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
     {
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
-        // compute v(t + dt)
+        /* compute v(t + dt) */
         rvec_ScaledAdd( system->atoms[i].v,
-                        -0.5 * dt * data->therm.xi, system->atoms[i].v );
+                -0.5 * dt * data->therm.xi, system->atoms[i].v );
         rvec_ScaledAdd( system->atoms[i].v,
-                        0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
     }
 
-    // Compute zeta(t + dt)
+    /* Compute zeta(t + dt) */
     data->therm.xi += 0.5 * dt * control->Tau_T  * ( 2.0 * data->E_Kin -
                       data->N_f * K_B * control->T );
 
@@ -567,12 +535,12 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     {
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
-        // Compute x(t + dt)
-        rvec_ScaledSum( workspace->a[i], -F_CONV * inv_m, system->atoms[i].f,
-                        -( (2.0 + 3.0 / data->N_f) * iso_bar->v_eps + therm->v_xi ),
-                        system->atoms[i].v );
+        /* Compute x(t + dt) */
+        rvec_ScaledSum( workspace->a[i], -1.0 * F_CONV * inv_m, system->atoms[i].f,
+                -1.0 * ( (2.0 + 3.0 / data->N_f) * iso_bar->v_eps + therm->v_xi ),
+                system->atoms[i].v );
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                        0.5 * dt_sqr, workspace->a[i] );
+                0.5 * dt_sqr, workspace->a[i] );
         Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
         rvec_Scale( system->atoms[i].x, exp_deps, system->atoms[i].x );
     }
@@ -593,7 +561,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
-    /* Compute_Charges( system, control, workspace, lists[FAR_NBRS], out_control );
+    /* Compute_Charges( system, control, workspace, out_control );
        fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
 
     Compute_Forces( system, control, data, workspace, lists,
@@ -609,15 +577,14 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
         rvec_ScaledSum( dv, 0.5 * dt, workspace->a[i],
-                        0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
         rvec_Add( dv, system->atoms[i].v );
         rvec_Scale( workspace->v_const[i], exp_deps, dv );
 
-        P_int_const += ( -F_CONV *
-                         rvec_Dot( system->atoms[i].f, system->atoms[i].x ) );
+        P_int_const += ( -1.0 * F_CONV * rvec_Dot( system->atoms[i].f, system->atoms[i].x ) );
 
-        E_kin += (0.5 * system->reaxprm.sbp[system->atoms[i].type].mass *
-                  rvec_Dot( system->atoms[i].v, system->atoms[i].v ) );
+        E_kin += (0.5 * system->reaxprm.sbp[system->atoms[i].type].mass
+                * rvec_Dot( system->atoms[i].v, system->atoms[i].v ) );
     }
 
     // Compute initial p_int
@@ -716,15 +683,15 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         atom = &(system->atoms[i]);
         inv_m = 1.0 / system->reaxprm.sbp[atom->type].mass;
         /* Compute x(t + dt) */
-        rvec_ScaledSum( dx, dt, atom->v, 0.5 * -F_CONV * inv_m * SQR(dt), atom->f );
+        rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * SQR(dt), atom->f );
 
         /* bNVT fix - Metin's suggestion */
         /* ORIGINAL CHANGE -- CHECK THE branch serial-bnvt for the fix */
         //rvec_Add( atom->x, dx );
-        Inc_on_T3( atom->x, dx, &( system->box ) );
+        Inc_on_T3( atom->x, dx, &system->box );
 
         /* Compute v(t + dt/2) */
-        rvec_ScaledAdd( atom->v, 0.5 * -F_CONV * inv_m * dt, atom->f );
+        rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -748,7 +715,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         atom = &(system->atoms[i]);
         inv_m = 1.0 / system->reaxprm.sbp[atom->type].mass;
         /* Compute v(t + dt) */
-        rvec_ScaledAdd( atom->v, 0.5 * dt * -F_CONV * inv_m, atom->f );
+        rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
     }
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "step%d: verlet2 done\n", data->step);

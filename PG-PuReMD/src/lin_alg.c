@@ -73,6 +73,31 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 }
 
 
+/* Diagonal (Jacobi) preconditioner computation */
+real diag_pre_comp( const reax_system * const system, real * const Hdia_inv )
+{
+    unsigned int i;
+    real start;
+
+    start = Get_Time( );
+
+    for ( i = 0; i < system->n; ++i )
+    {
+//        if ( H->entries[H->start[i + 1] - 1].val != 0.0 )
+//        {
+//            Hdia_inv[i] = 1.0 / H->entries[H->start[i + 1] - 1].val;
+            Hdia_inv[i] = 1.0 / system->reax_param.sbp[ system->my_atoms[i].type ].eta;
+//        }
+//        else
+//        {
+//            Hdia_inv[i] = 1.0;
+//        }
+    }
+
+    return Get_Timing_Info( start );
+}
+
+
 int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H, rvec2
         *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout,
         simulation_data *data )

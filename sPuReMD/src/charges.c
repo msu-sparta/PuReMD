@@ -55,24 +55,24 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
         /* linear */
         else if ( control->cm_init_guess_extrap1 == 1 )
         {
-            s_tmp = 2 * workspace->s[0][i] - workspace->s[1][i];
+            s_tmp = 2.0 * workspace->s[0][i] - workspace->s[1][i];
         }
         /* quadratic */
         else if ( control->cm_init_guess_extrap1 == 2 )
         {
-            s_tmp = workspace->s[2][i] + 3 * (workspace->s[0][i]-workspace->s[1][i]);
+            s_tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i]-workspace->s[1][i]);
         }
         /* cubic */
         else if ( control->cm_init_guess_extrap1 == 3 )
         {
-            s_tmp = 4 * (workspace->s[0][i] + workspace->s[2][i]) -
-                    (6 * workspace->s[1][i] + workspace->s[3][i] );
+            s_tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i]) -
+                    (6.0 * workspace->s[1][i] + workspace->s[3][i]);
         }
         /* 4th order */
         else if ( control->cm_init_guess_extrap1 == 4 )
         {
-            s_tmp = 5 * (workspace->s[0][i] - workspace->s[3][i]) +
-                10 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
+            s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i]) +
+                10.0 * (-1.0 * workspace->s[1][i] + workspace->s[2][i]) + workspace->s[4][i];
         }
         else
         {
@@ -92,19 +92,19 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
         /* quadratic */
         else if ( control->cm_init_guess_extrap2 == 2 )
         {
-            t_tmp = workspace->t[2][i] + 3 * (workspace->t[0][i] - workspace->t[1][i]);
+            t_tmp = workspace->t[2][i] + 3.0 * (workspace->t[0][i] - workspace->t[1][i]);
         }
         /* cubic */
         else if ( control->cm_init_guess_extrap2 == 3 )
         {
             t_tmp = 4.0 * (workspace->t[0][i] + workspace->t[2][i]) -
-                (6.0 * workspace->t[1][i] + workspace->t[3][i] );
+                (6.0 * workspace->t[1][i] + workspace->t[3][i]);
         }
         /* 4th order */
         else if ( control->cm_init_guess_extrap2 == 4 )
         {
             t_tmp = 5.0 * (workspace->t[0][i] - workspace->t[3][i]) +
-                10.0 * (-workspace->t[1][i] + workspace->t[2][i] ) + workspace->t[4][i];
+                10.0 * (-1.0 * workspace->t[1][i] + workspace->t[2][i]) + workspace->t[4][i];
         }
         else
         {
@@ -186,8 +186,7 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
  */
 static void Compute_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs )
+        simulation_data * const data, static_storage * const workspace )
 {
     real time;
     sparse_matrix *Hptr;
@@ -292,8 +291,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
  */
 //static void Compute_Preconditioner_EE( const reax_system * const system,
 //        const control_params * const control,
-//        simulation_data * const data, static_storage * const workspace,
-//        const reax_list * const far_nbrs )
+//        simulation_data * const data, static_storage * const workspace )
 //{
 //    int i, top;
 //    static real * ones = NULL, * x = NULL, * y = NULL;
@@ -536,8 +534,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
  */
 static void Compute_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs )
+        simulation_data * const data, static_storage * const workspace )
 {
     real time;
     sparse_matrix *Hptr;
@@ -668,8 +665,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
  */
 static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs )
+        simulation_data * const data, static_storage * const workspace )
 {
     real time;
     sparse_matrix *Hptr;
@@ -800,8 +796,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
 static void Setup_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs )
+        simulation_data * const data, static_storage * const workspace )
 {
     int fillin;
     real time;
@@ -934,8 +929,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
  */
 static void Setup_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs )
+        simulation_data * const data, static_storage * const workspace )
 {
     int fillin;
     real time;
@@ -1086,8 +1080,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
  */
 static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs )
+        simulation_data * const data, static_storage * const workspace )
 {
     int fillin;
     real time;
@@ -1291,7 +1284,7 @@ static void Calculate_Charges_EE( const reax_system * const system,
  */
 static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs, const output_controls * const out_control )
+        const output_controls * const out_control )
 {
     int iters;
 
@@ -1299,9 +1292,9 @@ static void QEq( reax_system * const system, control_params * const control,
             ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
         
     {
-        Setup_Preconditioner_QEq( system, control, data, workspace, far_nbrs );
+        Setup_Preconditioner_QEq( system, control, data, workspace );
 
-        Compute_Preconditioner_QEq( system, control, data, workspace, far_nbrs );
+        Compute_Preconditioner_QEq( system, control, data, workspace );
     }
 
     Extrapolate_Charges_QEq( system, control, data, workspace );
@@ -1382,16 +1375,16 @@ static void QEq( reax_system * const system, control_params * const control,
  */
 static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs, const output_controls * const out_control )
+        const output_controls * const out_control )
 {
     int iters;
 
     if ( control->cm_solver_pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
     {
-        Setup_Preconditioner_EE( system, control, data, workspace, far_nbrs );
+        Setup_Preconditioner_EE( system, control, data, workspace );
 
-        Compute_Preconditioner_EE( system, control, data, workspace, far_nbrs );
+        Compute_Preconditioner_EE( system, control, data, workspace );
     }
 
     Extrapolate_Charges_EE( system, control, data, workspace );
@@ -1454,16 +1447,16 @@ static void EE( reax_system * const system, control_params * const control,
  */
 static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs, const output_controls * const out_control )
+        const output_controls * const out_control )
 {
     int iters;
 
     if ( control->cm_solver_pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
     {
-        Setup_Preconditioner_ACKS2( system, control, data, workspace, far_nbrs );
+        Setup_Preconditioner_ACKS2( system, control, data, workspace );
 
-        Compute_Preconditioner_ACKS2( system, control, data, workspace, far_nbrs );
+        Compute_Preconditioner_ACKS2( system, control, data, workspace );
     }
 
 //   Print_Linear_System( system, control, workspace, data->step );
@@ -1533,7 +1526,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 void Compute_Charges( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const reax_list * const far_nbrs, const output_controls * const out_control )
+        const output_controls * const out_control )
 {
 #if defined(DEBUG_FOCUS)
 #define SIZE (200)
@@ -1562,20 +1555,20 @@ void Compute_Charges( reax_system * const system, control_params * const control
     switch ( control->charge_method )
     {
     case QEQ_CM:
-        QEq( system, control, data, workspace, far_nbrs, out_control );
+        QEq( system, control, data, workspace, out_control );
         break;
 
     case EE_CM:
-        EE( system, control, data, workspace, far_nbrs, out_control );
+        EE( system, control, data, workspace, out_control );
         break;
 
     case ACKS2_CM:
-        ACKS2( system, control, data, workspace, far_nbrs, out_control );
+        ACKS2( system, control, data, workspace, out_control );
         break;
 
     default:
-        fprintf( stderr, "Invalid charge method. Terminating...\n" );
-        exit( INVALID_INPUT );
+        fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
+        exit( UNKNOWN_OPTION );
         break;
     }
 }
