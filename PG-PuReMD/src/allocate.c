@@ -684,7 +684,7 @@ void Deallocate_Grid( grid *g )
  *
  * the largest space by far is required for the 2nd comm operation above.
  *
- * Note: buffers are void*, type cast to the correct pointer type to access
+ * Note: buffers are (void *), type cast to the correct pointer type to access
  * the allocated buffers */
 void Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
         neighbor_proc *my_nbrs, char *msg )

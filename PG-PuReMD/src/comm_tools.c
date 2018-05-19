@@ -67,7 +67,7 @@ void Setup_Comm( reax_system* system, control_params* control,
     for ( i = 0; i < system->num_nbrs; ++i )
     {
         ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */
-        nbr_pr = &(system->my_nbrs[i]);
+        nbr_pr = &system->my_nbrs[i];
         ivec_Copy( nbr_pr->rltv, r[i] );
         MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &(nbr_pr->rank) );
 
@@ -130,7 +130,7 @@ void Update_Comm( reax_system* system )
     /* identify my neighbors */
     for ( i = 0; i < system->num_nbrs; ++i )
     {
-        nbr_pr = &(system->my_nbrs[i]);
+        nbr_pr = &system->my_nbrs[i];
 
         for ( d = 0; d < 3; ++d )
         {
@@ -204,7 +204,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
 #endif
 
     atoms = system->my_atoms;
-    my_box = &( system->my_box );
+    my_box = &system->my_box;
 
     /* place each atom into the appropriate outgoing list */
     for ( i = start; i < end; ++i )
@@ -214,7 +214,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
             if ( atoms[i].x[d] < my_box->min[d] )
             {
                 out_cnt = out_bufs[2 * d].cnt++;
-                out_buf = (mpi_atom *)out_bufs[2 * d].out_atoms;
+                out_buf = (mpi_atom *) out_bufs[2 * d].out_atoms;
                 Pack_MPI_Atom( out_buf + out_cnt, atoms + i, i );
                 atoms[i].orig_id = -1;
                 break;
@@ -222,7 +222,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
             else if ( atoms[i].x[d] >= my_box->max[d] )
             {
                 out_cnt = out_bufs[2 * d + 1].cnt++;
-                out_buf = (mpi_atom *)out_bufs[2 * d + 1].out_atoms;
+                out_buf = (mpi_atom *) out_bufs[2 * d + 1].out_atoms;
                 Pack_MPI_Atom( out_buf + out_cnt, atoms + i, i );
                 atoms[i].orig_id = -1;
                 break;
@@ -326,13 +326,14 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
         {
             for ( p = 2 * d; p < 2 * d + 2; ++p )
             {
-                nbr_pr = &( system->my_nbrs[p] );
+                nbr_pr = &system->my_nbrs[p];
+
                 if ( nbr_pr->bndry_min[d] <= atoms[i].x[d] &&
                         atoms[i].x[d] < nbr_pr->bndry_max[d] )
                 {
                     out_cnt = out_bufs[p].cnt++;
                     out_bufs[p].index[out_cnt] = i;
-                    out_buf = (boundary_atom *)out_bufs[p].out_atoms;
+                    out_buf = (boundary_atom *) out_bufs[p].out_atoms;
                     Pack_Boundary_Atom( out_buf + out_cnt, atoms + i, i );
                 }
             }
@@ -504,10 +505,12 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
 {
     int i;
     real dx;
+    boundary_atom *src;
     reax_atom *dest;
-    boundary_atom* src = (boundary_atom*) dummy;
 
+    src = (boundary_atom *) dummy;
     dest = system->my_atoms + end;
+
     for ( i = 0; i < cnt; ++i )
     {
         Unpack_Boundary_Atom( dest + i, src + i );
@@ -527,6 +530,7 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
     /* record the atoms recv'd from this nbr */
     nbr->atoms_str = end;
     nbr->atoms_cnt = cnt;
+
     /* update est_recv */
     nbr->est_recv = MAX( (int)(cnt * SAFER_ZONE), MIN_SEND );
 
@@ -540,6 +544,7 @@ void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
     if ( nbr->prdc[dim] )
     {
         dx = nbr->prdc[dim] * system->big_box.box_norms[dim];
+
 #if defined(DEBUG_FOCUS)
             fprintf( stderr, "UNPACK p%d: dim = %d, dx = %f\n",
                     system->my_rank, dim, dx );
@@ -561,8 +566,8 @@ void Unpack_Estimate_Message( reax_system *system, int end, void *dummy,
              system->my_rank, nbr->rank, end, cnt );
 #endif
 
-    system->my_atoms = (reax_atom*)
-            srealloc( system->my_atoms, (end + cnt) * sizeof(reax_atom), "system:my_atoms" );
+    system->my_atoms = srealloc( system->my_atoms, sizeof(reax_atom) * (end + cnt),
+            "Unpack_Estimate_Message::system:my_atoms" );
 
     Unpack_Exchange_Message( system, end, dummy, cnt, nbr, dim );
 
@@ -588,6 +593,7 @@ void Sort_Position_Updates( reax_system *system, int start, int end,
     for ( p = 2 * dim; p < 2 * dim + 2; ++p )
     {
         out = (rvec*) out_bufs[p].out_atoms;
+
         for ( i = 0; i < out_bufs[p].cnt; ++i )
         {
             memcpy( out[i], atoms[ out_bufs[p].index[i] ].x, sizeof(rvec) );
@@ -602,8 +608,9 @@ void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
     int i, start;
     reax_atom *atoms;
     real dx;
-    rvec* src = (rvec*) dummy;
+    rvec *src;
 
+    src = (rvec*) dummy;
     atoms = system->my_atoms;
     start = nbr->atoms_str;
 

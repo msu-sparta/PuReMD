@@ -65,16 +65,27 @@
 
 enum ATOM_LINE_OPTS
 {
-    OPT_NOATOM = 0, OPT_ATOM_BASIC = 4, OPT_ATOM_wF = 5, OPT_ATOM_wV = 6,
-    OPT_ATOM_FULL = 7, NR_OPT_ATOM = 8,
+    OPT_NOATOM = 0,
+    OPT_ATOM_BASIC = 4,
+    OPT_ATOM_wF = 5,
+    OPT_ATOM_wV = 6,
+    OPT_ATOM_FULL = 7,
+    NR_OPT_ATOM = 8,
 };
+
 enum BOND_LINE_OPTS
 {
-    OPT_NOBOND = 0, OPT_BOND_BASIC = 1, OPT_BOND_FULL = 2, NR_OPT_BOND = 3,
+    OPT_NOBOND = 0,
+    OPT_BOND_BASIC = 1,
+    OPT_BOND_FULL = 2,
+    NR_OPT_BOND = 3,
 };
+
 enum ANGLE_LINE_OPTS
 {
-    OPT_NOANGLE = 0, OPT_ANGLE_BASIC = 1, NR_OPT_ANGLE = 2,
+    OPT_NOANGLE = 0,
+    OPT_ANGLE_BASIC = 1,
+    NR_OPT_ANGLE = 2,
 };
 
 
@@ -82,9 +93,9 @@ enum ANGLE_LINE_OPTS
 extern "C" {
 #endif
 
-int Init_Traj( reax_system*, control_params*, output_controls*, mpi_datatypes*, char* );
+void Init_Traj( reax_system*, control_params*, output_controls*, mpi_datatypes* );
 
-int End_Traj( int, output_controls* );
+void End_Traj( int, output_controls* );
 
 int Append_Frame( reax_system*, control_params*, simulation_data*, reax_list**,
         output_controls*, mpi_datatypes* );

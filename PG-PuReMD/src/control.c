@@ -38,15 +38,8 @@ void Read_Control_File( char *control_file, control_params* control,
     int c, i, ival;
     real val;
 
-    /* open control file */
-    if ( (fp = fopen( control_file, "r" ) ) == NULL )
-    {
-        fprintf( stderr, "[ERROR] cannot open the control file (%s)! terminating...\n",
-              control_file );
-        MPI_Abort( MPI_COMM_WORLD,  FILE_NOT_FOUND );
-    }
+    fp = sfopen( control_file, "r", "Read_Control_File::fp" );
 
-    /* assign default values */
     strcpy( control->sim_name, "default.sim" );
     control->ensemble = NVE;
     control->nsteps = 0;

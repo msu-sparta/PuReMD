@@ -429,21 +429,22 @@ void sfree( void *ptr, const char *name )
  *
  * fname: name of file to be opened
  * mode: mode in which to open file
+ * msg: message to be printed in case of error
  * */
-FILE * sfopen( const char * fname, const char * mode )
+FILE * sfopen( const char * fname, const char * mode, const char * msg )
 {
     FILE * ptr;
 
     if ( fname == NULL )
     {
-        fprintf( stderr, "[ERROR] trying to open file\n" );
-        fprintf( stderr, "  [INFO] NULL file name\n" );
+        fprintf( stderr, "[ERROR] trying to open file: NULL file name (%s). Terminating...\n",
+                msg );
         exit( INVALID_INPUT );
     }
     if ( mode == NULL )
     {
-        fprintf( stderr, "[ERROR] trying to open file\n" );
-        fprintf( stderr, "  [INFO] NULL mode\n" );
+        fprintf( stderr, "[ERROR] trying to open file: NULL mode (%s). Terminating...\n",
+                msg );
         exit( INVALID_INPUT );
     }
 
@@ -451,8 +452,8 @@ FILE * sfopen( const char * fname, const char * mode )
 
     if ( ptr == NULL )
     {
-        fprintf( stderr, "[ERROR] failed to open file %s with mode %s\n",
-              fname, mode );
+        fprintf( stderr, "[ERROR] failed to open file %s with mode %s (%s)\n",
+              fname, mode, msg );
         exit( INVALID_INPUT );
     }
 
@@ -472,8 +473,7 @@ void sfclose( FILE * fp, const char * msg )
 
     if ( fp == NULL )
     {
-        fprintf( stderr, "[WARNING] trying to close NULL file pointer. Returning...\n" );
-        fprintf( stderr, "  [INFO] %s\n", msg );
+        fprintf( stderr, "[WARNING] trying to close NULL file pointer (%s). Returning...\n", msg );
         return;
     }
 
@@ -481,8 +481,7 @@ void sfclose( FILE * fp, const char * msg )
 
     if ( ret != 0 )
     {
-        fprintf( stderr, "[ERROR] error detected when closing file\n" );
-        fprintf( stderr, "  [INFO] %s\n", msg );
+        fprintf( stderr, "[ERROR] error detected when closing file (%s). Terminating...\n", msg );
         exit( INVALID_INPUT );
     }
 }

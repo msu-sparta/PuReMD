@@ -67,7 +67,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_Geo( char* geo_file, reax_system* system, control_params *control,
+void Read_Geo( char* geo_file, reax_system* system, control_params *control,
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     int i, j, serial, top;
@@ -79,11 +79,7 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
     reax_atom *atom;
 
     /* open the geometry file */
-    if ( (geo = fopen(geo_file, "r")) == NULL )
-    {
-        fprintf( stderr, "fopen: error opening the geo file! terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
-    }
+    geo = sfopen( geo_file, "r", "Read_Geo::geo" );
 
     /* read box information */
     fscanf( geo, CUSTOM_BOXGEO_FORMAT,
@@ -140,14 +136,12 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
         }
     }
 
-    fclose( geo );
+    sfclose( geo, "Read_Geo::geo" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: finished reading the geo file\n", system->my_rank );
     //Print_My_Atoms( system );
 #endif
-
-    return SUCCESS;
 }
 
 
@@ -253,7 +247,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 }
 
 
-char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
+void Read_PDB( char* pdb_file, reax_system* system, control_params *control,
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     FILE *pdb;
@@ -270,12 +264,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     rvec x;
     reax_atom *atom;
 
-    /* open pdb file */
-    if ( (pdb = fopen(pdb_file, "r")) == NULL )
-    {
-        fprintf( stderr, "fopen: error opening the pdb file! terminating...\n" );
-        MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
-    }
+    pdb = sfopen( pdb_file, "r", "Read_PDB::pdb" );
 
     /* allocate memory for tokenizing pdb lines */
     Allocate_Tokenizer_Space( &s, &s1, &tmp );
@@ -462,16 +451,14 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
         }
     }
 
-    fclose( pdb );
-
-    return SUCCESS;
+    sfclose( pdb, "Read_PDB::pdb" );
 }
 
 
 /* PDB serials are written without regard to the order, we'll see if this
  * cause trouble, if so we'll have to rethink this approach
  * Also, we do not write connect lines yet.  */
-char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
+void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, mpi_datatypes *mpi_data, output_controls *out_control )
 {
     int i, cnt, me, np, buffer_req, buffer_len;
@@ -490,18 +477,23 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     np = control->nprocs;
 
     /* Allocation*/
-    line = (char*) smalloc(sizeof(char) * PDB_ATOM_FORMAT_O_LENGTH, "geo:line");
+    line = smalloc( sizeof(char) * PDB_ATOM_FORMAT_O_LENGTH, "Write_PDB::line" );
     if ( me == MASTER_NODE )
+    {
         buffer_req = system->bigN * PDB_ATOM_FORMAT_O_LENGTH;
+    }
     else
+    {
         buffer_req = system->n * PDB_ATOM_FORMAT_O_LENGTH;
+    }
 
-    buffer = (char*) smalloc(sizeof(char) * buffer_req, "geo:buffer");
+    buffer = smalloc( sizeof(char) * buffer_req, "Write_PDB::buffer" );
 
     pdb = NULL;
     line[0] = 0;
     buffer[0] = 0;
-    /*open pdb and write header*/
+
+    /* open pdb and write header */
     if (me == MASTER_NODE)
     {
         /* Writing Box information */
@@ -519,8 +511,8 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                       (system->big_box.box_norms[2] * system->big_box.box_norms[1]) );
 
 
-        sprintf(fname, "%s-%d.pdb", control->sim_name, data->step);
-        pdb = fopen(fname, "w");
+        sprintf( fname, "%s-%d.pdb", control->sim_name, data->step );
+        pdb = sfopen( fname, "w", "Write_PDB::pdb" );
         fprintf( pdb, PDB_CRYST1_FORMAT_O,
                  "CRYST1",
                  system->big_box.box_norms[0], system->big_box.box_norms[1],
@@ -533,8 +525,8 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     /*write atom lines to buffer*/
     for ( i = 0; i < system->n; i++)
     {
-        p_atom = &(system->my_atoms[i]);
-        strncpy(name, p_atom->name, 8);
+        p_atom = &system->my_atoms[i];
+        strncpy( name, p_atom->name, 8 );
         Trim_Spaces(name);
         sprintf( line, PDB_ATOM_FORMAT_O,
                  "ATOM  ", p_atom->orig_id, p_atom->name, ' ', "REX", ' ', 1, ' ',
@@ -555,6 +547,7 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     {
         buffer_len = system->n * PDB_ATOM_FORMAT_O_LENGTH;
         for ( i = 0; i < np; ++i )
+        {
             if ( i != MASTER_NODE )
             {
                 MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
@@ -563,13 +556,14 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                 MPI_Get_count( &status, MPI_CHAR, &cnt );
                 buffer_len += cnt;
             }
+        }
         buffer[buffer_len] = 0;
     }
 
     if ( me == MASTER_NODE)
     {
         fprintf( pdb, "%s", buffer );
-        fclose( pdb );
+        sfclose( pdb, "Write_PDB::pdb" );
     }
 
     /* Writing connect information */
@@ -593,6 +587,4 @@ char Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 
     sfree( buffer, "Write_PDB::buffer" );
     sfree( line, "Write_PDB::line" );
-
-    return SUCCESS;
 }

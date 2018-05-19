@@ -29,8 +29,8 @@
 extern "C" {
 #endif
 
-int Init_Output_Files( reax_system*, control_params*,
-        output_controls*, mpi_datatypes*, char* );
+void Init_Output_Files( reax_system*, control_params*,
+        output_controls*, mpi_datatypes* );
 
 void Close_Output_Files( reax_system*, control_params*,
         output_controls*, mpi_datatypes* );

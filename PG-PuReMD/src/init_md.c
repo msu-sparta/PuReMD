@@ -445,21 +445,19 @@ void Init_MPI_Datatypes( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data )
 {
     int block[11];
-//    int i;
+    int i;
     MPI_Aint disp[11];
-//    MPI_Aint base;
-    MPI_Datatype type[11];
-//    mpi_atom sample;
-//    boundary_atom b_sample;
-//    restart_atom r_sample;
-//    rvec rvec_sample;
-//    rvec2 rvec2_sample;
+    MPI_Aint base, size_entry;
+    MPI_Datatype type[11], temp_type;
+    mpi_atom sample[2];
+    boundary_atom b_sample[2];
+    restart_atom r_sample[2];
+    rvec rvec_sample[2];
+    rvec2 rvec2_sample[2];
 
-    /* setup the world */
     mpi_data->world = MPI_COMM_WORLD;
 
-    /* mpi_atom: orig_id, imprt_id, type, num_bonds, num_hbonds, name,
-     * x, v, f_old, s, t */
+    /* mpi_atom */
     block[0] = 1;
     block[1] = 1;
     block[2] = 1;
@@ -472,33 +470,22 @@ void Init_MPI_Datatypes( reax_system *system, storage *workspace,
     block[9] = 4;
     block[10] = 4;
 
-//    MPI_Get_address( &sample, &base );
-//    MPI_Get_address( &(sample.orig_id), disp + 0 );
-//    MPI_Get_address( &(sample.imprt_id), disp + 1 );
-//    MPI_Get_address( &(sample.type), disp + 2 );
-//    MPI_Get_address( &(sample.num_bonds), disp + 3 );
-//    MPI_Get_address( &(sample.num_hbonds), disp + 4 );
-//    MPI_Get_address( &(sample.name), disp + 5 );
-//    MPI_Get_address( &(sample.x[0]), disp + 6 );
-//    MPI_Get_address( &(sample.v[0]), disp + 7 );
-//    MPI_Get_address( &(sample.f_old[0]), disp + 8 );
-//    MPI_Get_address( &(sample.s[0]), disp + 9 );
-//    MPI_Get_address( &(sample.t[0]), disp + 10 );
-//    for ( i = 0; i < 11; ++i )
-//    {
-//        disp[i] -= base;
-//    }
-    disp[0] = offsetof( mpi_atom, orig_id );
-    disp[1] = offsetof( mpi_atom, imprt_id );
-    disp[2] = offsetof( mpi_atom, type );
-    disp[3] = offsetof( mpi_atom, num_bonds );
-    disp[4] = offsetof( mpi_atom, num_hbonds );
-    disp[5] = offsetof( mpi_atom, name );
-    disp[6] = offsetof( mpi_atom, x );
-    disp[7] = offsetof( mpi_atom, v );
-    disp[8] = offsetof( mpi_atom, f_old );
-    disp[9] = offsetof( mpi_atom, s );
-    disp[10] = offsetof( mpi_atom, t );
+    MPI_Get_address( sample, disp );
+    MPI_Get_address( &sample[0].imprt_id, disp + 1 );
+    MPI_Get_address( &sample[0].type, disp + 2 );
+    MPI_Get_address( &sample[0].num_bonds, disp + 3 );
+    MPI_Get_address( &sample[0].num_hbonds, disp + 4 );
+    MPI_Get_address( sample[0].name, disp + 5 );
+    MPI_Get_address( sample[0].x, disp + 6 );
+    MPI_Get_address( sample[0].v, disp + 7 );
+    MPI_Get_address( sample[0].f_old, disp + 8 );
+    MPI_Get_address( sample[0].s, disp + 9 );
+    MPI_Get_address( sample[0].t, disp + 10 );
+    base = disp[0];
+    for ( i = 0; i < 11; ++i )
+    {
+        disp[i] -= base;
+    }
 
     type[0] = MPI_INT;
     type[1] = MPI_INT;
@@ -512,10 +499,15 @@ void Init_MPI_Datatypes( reax_system *system, storage *workspace,
     type[9] = MPI_DOUBLE;
     type[10] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 11, block, disp, type, &mpi_data->mpi_atom_type );
+    MPI_Type_create_struct( 11, block, disp, type, &temp_type );
+    /* in case of compiler padding, compute difference
+     * between 2 consecutive struct elements */
+    MPI_Get_address( sample + 1, &size_entry );
+    size_entry = MPI_Aint_diff( size_entry, base );
+    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->mpi_atom_type );
     MPI_Type_commit( &mpi_data->mpi_atom_type );
 
-    /* boundary_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, x] */
+    /* boundary_atom */
     block[0] = 1;
     block[1] = 1;
     block[2] = 1;
@@ -523,23 +515,17 @@ void Init_MPI_Datatypes( reax_system *system, storage *workspace,
     block[4] = 1;
     block[5] = 3;
 
-//    MPI_Get_address( &b_sample, &base );
-//    MPI_Get_address( &(b_sample.orig_id), disp + 0 );
-//    MPI_Get_address( &(b_sample.imprt_id), disp + 1 );
-//    MPI_Get_address( &(b_sample.type), disp + 2 );
-//    MPI_Get_address( &(b_sample.num_bonds), disp + 3 );
-//    MPI_Get_address( &(b_sample.num_hbonds), disp + 4 );
-//    MPI_Get_address( &(b_sample.x[0]), disp + 5 );
-//    for ( i = 0; i < 6; ++i )
-//    {
-//        disp[i] -= base;
-//    }
-    disp[0] = offsetof( boundary_atom, orig_id );
-    disp[1] = offsetof( boundary_atom, imprt_id );
-    disp[2] = offsetof( boundary_atom, type );
-    disp[3] = offsetof( boundary_atom, num_bonds );
-    disp[4] = offsetof( boundary_atom, num_hbonds );
-    disp[5] = offsetof( boundary_atom, x );
+    MPI_Get_address( b_sample, disp );
+    MPI_Get_address( &b_sample[0].imprt_id, disp + 1 );
+    MPI_Get_address( &b_sample[0].type, disp + 2 );
+    MPI_Get_address( &b_sample[0].num_bonds, disp + 3 );
+    MPI_Get_address( &b_sample[0].num_hbonds, disp + 4 );
+    MPI_Get_address( b_sample[0].x, disp + 5 );
+    base = disp[0];
+    for ( i = 0; i < 6; ++i )
+    {
+        disp[i] -= base;
+    }
 
     type[0] = MPI_INT;
     type[1] = MPI_INT;
@@ -548,63 +534,71 @@ void Init_MPI_Datatypes( reax_system *system, storage *workspace,
     type[4] = MPI_INT;
     type[5] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 6, block, disp, type, &mpi_data->boundary_atom_type );
+    MPI_Type_create_struct( 6, block, disp, type, &temp_type );
+    /* in case of compiler padding, compute difference
+     * between 2 consecutive struct elements */
+    MPI_Get_address( b_sample + 1, &size_entry );
+    size_entry = MPI_Aint_diff( size_entry, base );
+    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->boundary_atom_type );
     MPI_Type_commit( &mpi_data->boundary_atom_type );
 
     /* mpi_rvec */
     block[0] = 3;
 
-//    MPI_Get_address( &rvec_sample, &base );
-//    MPI_Get_address( &(rvec_sample[0]), disp + 0 );
-//    for ( i = 0; i < 1; ++i )
-//    {
-//        disp[i] -= base;
-//    }
-    disp[0] = 0;
+    MPI_Get_address( &rvec_sample, disp );
+    base = disp[0];
+    for ( i = 0; i < 1; ++i )
+    {
+        disp[i] -= base;
+    }
 
     type[0] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 1, block, disp, type, &mpi_data->mpi_rvec );
+    MPI_Type_create_struct( 1, block, disp, type, &temp_type );
+    /* in case of compiler padding, compute difference
+     * between 2 consecutive struct elements */
+    MPI_Get_address( rvec_sample + 1, &size_entry );
+    size_entry = MPI_Aint_diff( size_entry, base );
+    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->mpi_rvec );
     MPI_Type_commit( &mpi_data->mpi_rvec );
 
     /* mpi_rvec2 */
     block[0] = 2;
 
-//    MPI_Get_address( &rvec2_sample, &base );
-//    MPI_Get_address( &(rvec2_sample[0]), disp + 0 );
-//    for ( i = 0; i < 1; ++i )
-//    {
-//        disp[i] -= base;
-//    }
-    disp[0] = 0;
+    MPI_Get_address( &rvec2_sample, disp );
+    base = disp[0];
+    for ( i = 0; i < 1; ++i )
+    {
+        disp[i] -= base;
+    }
 
     type[0] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 1, block, disp, type, &mpi_data->mpi_rvec2 );
+    MPI_Type_create_struct( 1, block, disp, type, &temp_type );
+    /* in case of compiler padding, compute difference
+     * between 2 consecutive struct elements */
+    MPI_Get_address( rvec2_sample + 1, &size_entry );
+    size_entry = MPI_Aint_diff( size_entry, base );
+    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->mpi_rvec2 );
     MPI_Type_commit( &mpi_data->mpi_rvec2 );
 
-    /* restart_atom - [orig_id, type, name, x, v] */
+    /* restart_atom */
     block[0] = 1;
     block[1] = 1 ;
     block[2] = MAX_ATOM_NAME_LEN;
     block[3] = 3;
     block[4] = 3;
 
-//    MPI_Get_address( &r_sample, &base );
-//    MPI_Get_address( &(r_sample.orig_id), disp + 0 );
-//    MPI_Get_address( &(r_sample.type), disp + 1 );
-//    MPI_Get_address( &(r_sample.name), disp + 2 );
-//    MPI_Get_address( &(r_sample.x[0]), disp + 3 );
-//    MPI_Get_address( &(r_sample.v[0]), disp + 4 );
-//    for ( i = 0; i < 5; ++i )
-//    {
-//        disp[i] -= base;
-//    }
-    disp[0] = offsetof( restart_atom, orig_id );
-    disp[1] = offsetof( restart_atom, type );
-    disp[2] = offsetof( restart_atom, name );
-    disp[3] = offsetof( restart_atom, x );
-    disp[4] = offsetof( restart_atom, v );
+    MPI_Get_address( &r_sample, disp );
+    MPI_Get_address( &r_sample[0].type, disp + 1 );
+    MPI_Get_address( r_sample[0].name, disp + 2 );
+    MPI_Get_address( r_sample[0].x, disp + 3 );
+    MPI_Get_address( r_sample[0].v, disp + 4 );
+    base = disp[0];
+    for ( i = 0; i < 5; ++i )
+    {
+        disp[i] -= base;
+    }
 
     type[0] = MPI_INT;
     type[1] = MPI_INT;
@@ -612,7 +606,12 @@ void Init_MPI_Datatypes( reax_system *system, storage *workspace,
     type[3] = MPI_DOUBLE;
     type[4] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 5, block, disp, type, &mpi_data->restart_atom_type );
+    MPI_Type_create_struct( 5, block, disp, type, &temp_type );
+    /* in case of compiler padding, compute difference
+     * between 2 consecutive struct elements */
+    MPI_Get_address( r_sample + 1, &size_entry );
+    size_entry = MPI_Aint_diff( size_entry, base );
+    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->restart_atom_type );
     MPI_Type_commit( &mpi_data->restart_atom_type );
 
     mpi_data->in1_buffer = NULL;
@@ -668,8 +667,6 @@ void Initialize( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    char msg[MAX_STR];
-
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
     Init_System( system, control, data, workspace, mpi_data );
@@ -680,13 +677,7 @@ void Initialize( reax_system *system, control_params *control,
 
     Init_Lists( system, control, data, workspace, lists, mpi_data );
 
-    if ( Init_Output_Files( system, control, out_control, mpi_data, msg ) == FAILURE )
-    {
-        fprintf( stderr, "[ERROR] p%d: %s\n", system->my_rank, msg );
-        fprintf( stderr, "[ERROR] p%d: could not open output files! terminating...\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Init_Output_Files( system, control, out_control, mpi_data );
 
     if ( control->tabulate )
     {
@@ -723,8 +714,6 @@ void Initialize( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    char msg[MAX_STR];
-
     Init_System( system );
 
     Init_Simulation_Data( system, control, data );
@@ -735,13 +724,7 @@ void Initialize( reax_system *system, control_params *control,
 
     Init_Lists( system, control, workspace, lists );
 
-    if ( Init_Output_Files( system, control, out_control, mpi_data, msg ) == FAILURE)
-    {
-        fprintf( stderr, "[ERROR] p%d: %s\n", system->my_rank, msg );
-        fprintf( stderr, "[ERROR] p%d: could not open output files! terminating...\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Init_Output_Files( system, control, out_control, mpi_data );
 
     if ( control->tabulate )
     {

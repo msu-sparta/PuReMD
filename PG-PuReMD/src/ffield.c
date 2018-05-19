@@ -43,12 +43,7 @@ void Read_Force_Field( char *ffield_file, reax_interaction *reax,
     int index1, index2;
 
     /* open force field file */
-    if ( (fp = fopen( ffield_file, "r" ) ) == NULL )
-    {
-        fprintf( stderr, "[ERROR] p%d: cannot open force field file! terminating...\n",
-              system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
-    }
+    fp = sfopen( ffield_file, "r", "Read_Force_Field::fp" );
 
     s = smalloc( sizeof(char) * MAX_LINE, "Read_Force_Field::s" );
     tmp = smalloc( sizeof(char *) * MAX_TOKENS, "Read_Force_Field::tmp");

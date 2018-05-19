@@ -75,8 +75,10 @@ void real_packer( void *dummy, mpi_out_data *out_buf )
 void rvec_packer( void *dummy, mpi_out_data *out_buf )
 {
     int i;
-    rvec *buf = (rvec*) dummy;
-    rvec *out = (rvec*) out_buf->out_atoms;
+    rvec *buf, *out;
+
+    buf = (rvec*) dummy;
+    out = (rvec*) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -88,8 +90,10 @@ void rvec_packer( void *dummy, mpi_out_data *out_buf )
 void rvec2_packer( void *dummy, mpi_out_data *out_buf )
 {
     int i;
-    rvec2 *buf = (rvec2*) dummy;
-    rvec2 *out = (rvec2*) out_buf->out_atoms;
+    rvec2 *buf, *out;
+
+    buf = (rvec2*) dummy;
+    out = (rvec2*) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -166,8 +170,10 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 {
     int i;
-    real *in = (real*) dummy_in;
-    real *buf = (real*) dummy_buf;
+    real *in, *buf;
+
+    in = (real*) dummy_in;
+    buf = (real*) dummy_buf;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -179,8 +185,10 @@ void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 {
     int i;
-    rvec *in = (rvec*) dummy_in;
-    rvec *buf = (rvec*) dummy_buf;
+    rvec *in, *buf;
+
+    in = (rvec*) dummy_in;
+    buf = (rvec*) dummy_buf;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -197,8 +205,10 @@ void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 void rvec2_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 {
     int i;
-    rvec2 *in = (rvec2*) dummy_in;
-    rvec2 *buf = (rvec2*) dummy_buf;
+    rvec2 *in, *buf;
+
+    in = (rvec2*) dummy_in;
+    buf = (rvec2*) dummy_buf;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -229,6 +239,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
     {
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
+
         if ( out_bufs[2 * d].cnt )
         {
             MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
@@ -236,6 +247,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
+
         if ( out_bufs[2 * d + 1].cnt )
         {
             MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
@@ -267,13 +279,13 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
         if ( out_bufs[2 * d].cnt )
         {
             MPI_Wait( &req1, &stat1 );
-            unpack( mpi_data->in1_buffer, buf, out_bufs + (2 * d) );
+            unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
         }
 
         if ( out_bufs[2 * d + 1].cnt )
         {
             MPI_Wait( &req2, &stat2 );
-            unpack( mpi_data->in2_buffer, buf, out_bufs + (2 * d + 1) );
+            unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
         }
     }
 

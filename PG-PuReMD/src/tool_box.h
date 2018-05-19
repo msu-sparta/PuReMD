@@ -71,7 +71,7 @@ void *scalloc( size_t, size_t, const char* );
 
 void sfree( void*, const char* );
 
-FILE * sfopen( const char *, const char * );
+FILE * sfopen( const char *, const char *, const char * );
 
 void sfclose( FILE *, const char * );
 

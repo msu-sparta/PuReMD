@@ -552,8 +552,6 @@ typedef struct
     int num_bonds;
     /* num. hydrogren bonds associated with atom */
     int num_hbonds;
-    /* pad to 8-byte address boundary */
-    //int  pad;
     /* atom name as given in the geo file */
     char name[MAX_ATOM_NAME_LEN];
     /* atomic position, 3D */
@@ -586,8 +584,6 @@ typedef struct
     int num_bonds;
     /* num. hydrogren bonds associated with atom */
     int num_hbonds;
-    /* pad to 8-byte address boundary */
-    //int pad;
     /* atomic position, 3D */
     rvec x;
 } boundary_atom;

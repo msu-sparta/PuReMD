@@ -23,10 +23,12 @@
 
 #if defined(PURE_REAX)
   #include "traj.h"
+  #include "comm_tools.h"
   #include "list.h"
   #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_traj.h"
+  #include "reax_comm_tools.h"
   #include "reax_list.h"
   #include "reax_tool_box.h"
 #endif
@@ -442,8 +444,8 @@ int Write_Init_Desc( reax_system *system, control_params *control,
 }
 
 
-int Init_Traj( reax_system *system, control_params *control,
-        output_controls *out_control, mpi_datatypes *mpi_data, char *msg )
+void Init_Traj( reax_system *system, control_params *control,
+        output_controls *out_control, mpi_datatypes *mpi_data )
 {
     char fname[MAX_STR];
     int atom_line_len[ NR_OPT_ATOM ] = { 0, 0, 0, 0,
@@ -452,6 +454,7 @@ int Init_Traj( reax_system *system, control_params *control,
     };
     int bond_line_len[ NR_OPT_BOND ] = { 0, BOND_BASIC_LEN, BOND_FULL_LEN };
     int angle_line_len[ NR_OPT_ANGLE ] = { 0, ANGLE_BASIC_LEN };
+    int ret;
 
     /* generate trajectory name */
     sprintf( fname, "%s.trj", control->sim_name );
@@ -467,7 +470,7 @@ int Init_Traj( reax_system *system, control_params *control,
     out_control->write_angles = ( out_control->angle_line_len ? 1 : 0 );
 
     /* allocate line & buffer space */
-    out_control->line = (char*) scalloc( MAX_TRJ_LINE_LEN + 1, sizeof(char),
+    out_control->line = scalloc( MAX_TRJ_LINE_LEN + 1, sizeof(char),
            "Init_Traj::out_control->line" );
     out_control->buffer_len = 0;
     out_control->buffer = NULL;
@@ -489,43 +492,43 @@ int Init_Traj( reax_system *system, control_params *control,
         }
 
         /* open a fresh trajectory file */
-        if ( MPI_File_open( mpi_data->world, fname,
-                            MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL,
-                            &(out_control->trj) ) )
-        {
-            strcpy( msg, "init_traj: unable to open trajectory file" );
-            return FAILURE;
-        }
+        ret = MPI_File_open( mpi_data->world, fname,
+                MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL,
+                &out_control->trj );
+        Check_MPI_Error( ret, "Init_Traj::MPI_File_open" );
 
         /* build the mpi structs for trajectory */
         /* header_line */
-        MPI_Type_contiguous( HEADER_LINE_LEN, MPI_CHAR, &(mpi_data->header_line) );
-        MPI_Type_commit( &(mpi_data->header_line) );
+        MPI_Type_contiguous( HEADER_LINE_LEN, MPI_CHAR, &mpi_data->header_line );
+        MPI_Type_commit( &mpi_data->header_line );
         /* init_desc_line */
-        MPI_Type_contiguous( INIT_DESC_LEN, MPI_CHAR, &(mpi_data->init_desc_line) );
-        MPI_Type_commit( &(mpi_data->init_desc_line) );
+        MPI_Type_contiguous( INIT_DESC_LEN, MPI_CHAR, &mpi_data->init_desc_line );
+        MPI_Type_commit( &mpi_data->init_desc_line );
         /* atom */
         MPI_Type_contiguous( out_control->atom_line_len, MPI_CHAR,
-                             &(mpi_data->atom_line) );
-        MPI_Type_commit( &(mpi_data->atom_line) );
+                &mpi_data->atom_line );
+        MPI_Type_commit( &mpi_data->atom_line );
         /* bonds */
         MPI_Type_contiguous( out_control->bond_line_len, MPI_CHAR,
-                             &(mpi_data->bond_line) );
-        MPI_Type_commit( &(mpi_data->bond_line) );
+                &mpi_data->bond_line );
+        MPI_Type_commit( &mpi_data->bond_line );
         /* angles */
         MPI_Type_contiguous( out_control->angle_line_len, MPI_CHAR,
-                             &(mpi_data->angle_line) );
-        MPI_Type_commit( &(mpi_data->angle_line) );
+                &mpi_data->angle_line );
+        MPI_Type_commit( &mpi_data->angle_line );
     }
     else if ( out_control->traj_method == REG_TRAJ)
     {
         if ( system->my_rank == MASTER_NODE )
-            out_control->strj = fopen( fname, "w" );
+        {
+            out_control->strj = sfopen( fname, "w",
+                   "Init_Traj::out_control->strj" );
+        }
     }
     else
     {
-        strcpy( msg, "init_traj: unknown trajectory option" );
-        return FAILURE;
+        fprintf( stderr, "[ERROR] unknown trajectory option. Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, UNKNOWN_OPTION );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -543,8 +546,6 @@ int Init_Traj( reax_system *system, control_params *control,
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: atom descriptions written\n", system->my_rank );
 #endif
-
-    return SUCCESS;
 }
 
 
@@ -1077,19 +1078,20 @@ int Append_Frame( reax_system *system, control_params *control,
 }
 
 
-int End_Traj( int my_rank, output_controls *out_control )
+void End_Traj( int my_rank, output_controls *out_control )
 {
+    int ret;
+
     if ( out_control->traj_method == MPI_TRAJ )
     {
-        MPI_File_close( &(out_control->trj) );
+        ret = MPI_File_close( &out_control->trj );
+        Check_MPI_Error( ret, "End_Traj::MPI_File_close" );
     }
     else if ( my_rank == MASTER_NODE )
     {
-        fclose( out_control->strj );
+        sfclose( out_control->strj, "End_Traj::out_control->strj" );
     }
 
     sfree( out_control->buffer, "End_Traj::out_control->buffer" );
     sfree( out_control->line, "End_Traj::out_control->line" );
-
-    return SUCCESS;
 }
