@@ -266,7 +266,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
 
         for ( pj = start_i; pj < end_i; ++pj )
         { 
-            nbr_pj = &( far_nbrs.select.far_nbr_list[pj] );
+            nbr_pj = &( far_nbrs.far_nbr_list[pj] );
             j = nbr_pj->nbr;
             atom_j = &(my_atoms[j]);
 
@@ -687,18 +687,18 @@ CUDA_DEVICE real Init_Charge_Matrix_Entry_Tab( LR_lookup_table *t_LR, real r_ij,
 //
 //                for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
 //                {
-//                    if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+//                    if ( far_nbrs->far_nbr_list[pj].d <= control->r_cut )
 //                    {
-//                        j = far_nbrs->select.far_nbr_list[pj].nbr;
+//                        j = far_nbrs->far_nbr_list[pj].nbr;
 //
 //                        xcut = ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
 //                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 )
 //                            / 2.0;
 //
-//                        if ( far_nbrs->select.far_nbr_list[pj].d < xcut &&
-//                                far_nbrs->select.far_nbr_list[pj].d > 0.001 )
+//                        if ( far_nbrs->far_nbr_list[pj].d < xcut &&
+//                                far_nbrs->far_nbr_list[pj].d > 0.001 )
 //                        {
-//                            d = far_nbrs->select.far_nbr_list[pj].d / xcut;
+//                            d = far_nbrs->far_nbr_list[pj].d / xcut;
 //                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 ) * POW( 1.0 - d, 6.0 );
 //
 //                            H->j[*Htop] = system->N + j + 1;
@@ -896,7 +896,7 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
     /* update i-j distance - check if j is within cutoff */
     for ( pj = start_i; pj < end_i; ++pj )
     {
-        nbr_pj = &( far_nbrs_list.select.far_nbr_list[pj] );
+        nbr_pj = &( far_nbrs_list.far_nbr_list[pj] );
         j = nbr_pj->nbr;
         atom_j = &(my_atoms[j]);
 
@@ -969,13 +969,13 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
             if ( control->hbond_cut > 0.0 && nbr_pj->d <= control->hbond_cut
                     && ihb == H_BONDING_ATOM && jhb == H_ATOM && i >= n && j < n ) 
             {
-                hbonds_list.select.hbond_list[ihb_top].nbr = j;
-                hbonds_list.select.hbond_list[ihb_top].scl = -1;
-                hbonds_list.select.hbond_list[ihb_top].ptr = nbr_pj;
+                hbonds_list.hbond_list[ihb_top].nbr = j;
+                hbonds_list.hbond_list[ihb_top].scl = -1;
+                hbonds_list.hbond_list[ihb_top].ptr = nbr_pj;
 
                 //CUDA SPECIFIC
-                hbonds_list.select.hbond_list[ihb_top].sym_index = -1;
-                rvec_MakeZero( hbonds_list.select.hbond_list[ihb_top].hb_f );
+                hbonds_list.hbond_list[ihb_top].sym_index = -1;
+                rvec_MakeZero( hbonds_list.hbond_list[ihb_top].hb_f );
 
                 ++ihb_top;
             }
@@ -1058,21 +1058,21 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
                      * atom j: H bonding atom */
                     if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                     {
-                        hbonds_list.select.hbond_list[ihb_top].nbr = j;
+                        hbonds_list.hbond_list[ihb_top].nbr = j;
 
                         if ( i < j )
                         {
-                            hbonds_list.select.hbond_list[ihb_top].scl = 1;
+                            hbonds_list.hbond_list[ihb_top].scl = 1;
                         }
                         else
                         {
-                            hbonds_list.select.hbond_list[ihb_top].scl = -1;
+                            hbonds_list.hbond_list[ihb_top].scl = -1;
                         }
-                        hbonds_list.select.hbond_list[ihb_top].ptr = nbr_pj;
+                        hbonds_list.hbond_list[ihb_top].ptr = nbr_pj;
 
                         //CUDA SPECIFIC
-                        hbonds_list.select.hbond_list[ihb_top].sym_index = -1;
-                        rvec_MakeZero( hbonds_list.select.hbond_list[ihb_top].hb_f );
+                        hbonds_list.hbond_list[ihb_top].sym_index = -1;
+                        rvec_MakeZero( hbonds_list.hbond_list[ihb_top].hb_f );
 
                         ++ihb_top;
                     }
@@ -1081,13 +1081,13 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
                     else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n )
                     {
                         //jhb_top = End_Index( atom_j->Hindex, hbonds_list );
-                        hbonds_list.select.hbond_list[ihb_top].nbr = j;
-                        hbonds_list.select.hbond_list[ihb_top].scl = -1;
-                        hbonds_list.select.hbond_list[ihb_top].ptr = nbr_pj;
+                        hbonds_list.hbond_list[ihb_top].nbr = j;
+                        hbonds_list.hbond_list[ihb_top].scl = -1;
+                        hbonds_list.hbond_list[ihb_top].ptr = nbr_pj;
 
                         //CUDA SPECIFIC
-                        hbonds_list.select.hbond_list[ihb_top].sym_index = -1;
-                        rvec_MakeZero( hbonds_list.select.hbond_list[ihb_top].hb_f );
+                        hbonds_list.hbond_list[ihb_top].sym_index = -1;
+                        rvec_MakeZero( hbonds_list.hbond_list[ihb_top].hb_f );
 
                         ++ihb_top;
                     }
@@ -1184,12 +1184,12 @@ CUDA_GLOBAL void New_fix_sym_dbond_indices( reax_list pbonds, int N )
 
     for ( j = Dev_Start_Index(i, bonds); j < Dev_End_Index(i, bonds); j++ )
     {
-        ibond = &( bonds->select.bond_list[j] );
+        ibond = &( bonds->bond_list[j] );
         nbr = ibond->nbr;
 
         for ( k = Dev_Start_Index(nbr, bonds); k < Dev_End_Index(nbr, bonds); k++ )
         {
-            jbond = &( bonds->select.bond_list[k] );
+            jbond = &( bonds->bond_list[k] );
             atom_j = jbond->nbr;
 
             if ( atom_j == i )
@@ -1236,7 +1236,7 @@ CUDA_GLOBAL void New_fix_sym_hbond_indices( reax_atom *my_atoms, reax_list hbond
 
     while ( j < end )
     {
-        ihbond = &( hbonds.select.hbond_list[j] );
+        ihbond = &( hbonds.hbond_list[j] );
         nbr = ihbond->nbr;
 
         nbrstart = Dev_Start_Index( my_atoms[nbr].Hindex, &hbonds );
@@ -1244,7 +1244,7 @@ CUDA_GLOBAL void New_fix_sym_hbond_indices( reax_atom *my_atoms, reax_list hbond
 
         for ( k = nbrstart; k < nbrend; k++ )
         {
-            jhbond = &( hbonds.select.hbond_list[k] );
+            jhbond = &( hbonds.hbond_list[k] );
 
             if ( jhbond->nbr == i )
             {
@@ -1341,7 +1341,7 @@ CUDA_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list p_hbonds, int n,
     hbonds = &( p_hbonds );
     start = Dev_Start_Index( my_atoms[i].Hindex, hbonds );
     end = Dev_End_Index( my_atoms[i].Hindex, hbonds );
-    hbond_list = hbonds->select.hbond_list;
+    hbond_list = hbonds->hbond_list;
 
     for ( pj = start; pj < end; ++pj )
     {
@@ -1394,7 +1394,7 @@ CUDA_GLOBAL void k_init_bond_orders( reax_atom *my_atoms, reax_list far_nbrs,
 
     for( pj = start_i; pj < end_i; ++pj )
     { 
-//        nbr_pj = &( far_nbrs.select.far_nbr_list[pj] );
+//        nbr_pj = &( far_nbrs.far_nbr_list[pj] );
 //        j = nbr_pj->nbr;
 //        atom_j = &(my_atoms[j]);
 //
@@ -1420,7 +1420,7 @@ CUDA_GLOBAL void k_bond_mark( reax_list p_bonds, storage p_workspace, int N )
     {
         for (k = Dev_Start_Index(i, bonds); k < Dev_End_Index(i, bonds); k++)
         {
-            bond_data *bdata = &( bonds->select.bond_list[k] );
+            bond_data *bdata = &( bonds->bond_list[k] );
             j = bdata->nbr;
 
             if (i < j )
@@ -1485,7 +1485,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
           system->reax_param.d_tbp, *dev_workspace,
           (control_params *)control->d_control_params,
           *(dev_lists[FAR_NBRS]), *(dev_lists[BONDS]),
-          *(dev_lists[HBONDS]), d_LR, system->n,
+          *(dev_lists[HBONDS]), control->d_LR, system->n,
           system->N, system->reax_param.num_atom_types,
           (((data->step-data->prev_steps) % control->reneighbor) == 0),
           system->d_max_cm_entries, system->d_realloc_cm_entries,
@@ -1973,8 +1973,8 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
     copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N ,
             cudaMemcpyDeviceToHost, "total_force:f:get" );
 
-    Coll( system, mpi_data, f, mpi_data->mpi_rvec,
-          sizeof(rvec) / sizeof(void), rvec_unpacker );
+    Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec,
+          rvec_unpacker );
 
     copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N,
             cudaMemcpyHostToDevice, "total_force:f:put" );

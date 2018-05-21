@@ -42,7 +42,7 @@ void Allocate_Grid( reax_system*, MPI_Comm );
 
 void Deallocate_Grid( grid* );
 
-void Allocate_MPI_Buffers( mpi_datatypes*, int, neighbor_proc*, char* );
+void Allocate_MPI_Buffers( mpi_datatypes*, int, neighbor_proc* );
 
 void Allocate_Matrix( sparse_matrix*, int, int );
 

@@ -44,9 +44,6 @@
 #include "index_utils.h"
 
 
-print_interaction Print_Interactions[NUM_INTRS];
-
-
 /************************ initialize output controls ************************/
 void Init_Output_Files( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
@@ -103,7 +100,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
 
             fprintf( out_control->log, "%6s%8s%8s%8s%8s%8s%8s%8s%8s%8s\n",
                      "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
-                     "charges", "l iters", "retries" );
+                     "charges", "siters", "retries" );
 
             fflush( out_control->log );
 #endif
@@ -596,7 +593,7 @@ void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
     neighbor_proc *nbr_pr;
     char fname[100];
     FILE *f;
-    char exch[3][10] = { "NONE", "NEAR_EXCH", "FULL_EXCH" };
+    char exch[3][10] = { "NO_EXCH", "NEAR_EXCH", "FULL_EXCH" };
 
     sprintf( fname, "gcell_exchange_bounds%d", my_rank );
     f = sfopen( fname, "w", "Print_GCell_Exchange_Bounds::f" );
@@ -735,13 +732,13 @@ void Print_All_GCells( reax_system *system )
 }
 
 
-void Print_My_Atoms( reax_system *system )
+void Print_My_Atoms( reax_system *system, control_params *control, int step )
 {
     int i;
     char fname[100];
     FILE *fh;
 
-    sprintf( fname, "my_atoms.%d", system->my_rank );
+    sprintf( fname, "%s.my_atoms.%d.%d", control->sim_name, step, system->my_rank );
     fh = sfopen( fname, "w", "Print_My_Atoms::fh" );
 
     // fprintf( stderr, "p%d had %d atoms\n",
@@ -1046,7 +1043,7 @@ void Print_HBond_Indices( reax_system *system, reax_list **lists,
 
 
 void Print_Bonds( reax_system *system, reax_list **lists,
-        control_params *control )
+        control_params *control, int step )
 {
     int i, pj; 
     char fname[MAX_STR]; 
@@ -1055,7 +1052,7 @@ void Print_Bonds( reax_system *system, reax_list **lists,
     FILE *fout;
     reax_list *bonds = lists[BONDS];
 
-    sprintf( fname, "%s.bonds.%d", control->sim_name, system->my_rank );
+    sprintf( fname, "%s.bonds.%d.%d", control->sim_name, step, system->my_rank );
     fout = sfopen( fname, "w", "Print_Bonds::fout" );
 
     for ( i = 0; i < system->N; ++i )
@@ -1138,15 +1135,21 @@ void Print_Total_Force( reax_system *system, simulation_data *data,
 
 
 /* Print reax interaction list in adjacency list format */
-void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, FILE *fp )
+void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
+        control_params *control, reax_list *list, int step )
 {
     int i, pj, id_i, id_j, nbr, cnt;
     int num_intrs, *intrs;
+    char fname[MAX_STR]; 
+    FILE *fout;
+
+    sprintf( fname, "%s.far.%d.%d", control->sim_name, step, system->my_rank );
+    fout = sfopen( fname, "w", "Print_Far_Neighbors_List_Adj_Format" );
 
     num_intrs = 0;
     intrs = NULL;
 
-    if ( fp == NULL )
+    if ( fout == NULL )
     {
         fprintf( stderr, "[WARNING] null file pointer, returning without printing...\n" );
         return;
@@ -1156,7 +1159,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, 
     {
         cnt = 0;
         id_i = system->my_atoms[i].orig_id;
-        fprintf( fp, "%d: ", id_i );
+        fprintf( fout, "%d: ", id_i );
 
         if ( Num_Entries( i, list ) > num_intrs )
         {
@@ -1179,15 +1182,17 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, 
 
         for ( pj = 0; pj < cnt; ++pj )
         {
-            fprintf( fp, "%d, ", intrs[pj] );
+            fprintf( fout, "%d, ", intrs[pj] );
         }
-        fprintf( fp, "\n" );
+        fprintf( fout, "\n" );
     }
 
     if ( intrs != NULL )
     {
         sfree( intrs, "Print_Far_Neighbor_List_Adj_Format::intrs" );
     }
+
+    sfclose( fout, "Print_Far_Neighbors_List_Adj_Format" );
 }
 
 

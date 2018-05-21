@@ -295,12 +295,12 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 }
 
 
-/*****************************************************************************/
 real Parallel_Norm( real *v, int n, MPI_Comm comm )
 {
     int  i;
     real my_sum, norm_sqr;
 
+    /* compute local part of vector 2-norm */
     my_sum = 0;
     for ( i = 0; i < n; ++i )
     {
@@ -319,6 +319,7 @@ real Parallel_Dot( real *v1, real *v2, int n, MPI_Comm comm )
     int  i;
     real my_dot, res;
 
+    /* compute local part of inner product */
     my_dot = 0;
     for ( i = 0; i < n; ++i )
     {
@@ -337,6 +338,7 @@ real Parallel_Vector_Acc( real *v, int n, MPI_Comm comm )
     int  i;
     real my_acc, res;
 
+    /* compute local part of vector element-wise sum */
     my_acc = 0;
     for ( i = 0; i < n; ++i )
     {

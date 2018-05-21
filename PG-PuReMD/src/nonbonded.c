@@ -258,7 +258,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         {
             nbr_pj = &far_nbr_list->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            orig_j  = system->my_atoms[j].orig_id;
+            orig_j = system->my_atoms[j].orig_id;
 
             if ( nbr_pj->d <= control->nonb_cut && (j < natoms || orig_i < orig_j) )
             {
@@ -267,7 +267,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                 r_ij = nbr_pj->d;
                 tmin = MIN( type_i, type_j );
                 tmax = MAX( type_i, type_j );
-                t = &LR[ index_lr(tmin, tmax, system->reax_param.num_atom_types) ];
+                t = &control->LR[ index_lr(tmin, tmax, system->reax_param.num_atom_types) ];
 
                 /* Cubic Spline Interpolation */
                 r = (int)(r_ij * t->inv_dx);

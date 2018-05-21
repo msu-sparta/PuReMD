@@ -64,7 +64,7 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
 
     for ( pj = start_i; pj < end_i; ++pj )
     {
-        j = bonds->select.bond_list[pj].nbr;
+        j = bonds->bond_list[pj].nbr;
 
         if ( my_atoms[i].orig_id <= my_atoms[j].orig_id )
         {
@@ -75,7 +75,7 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
             sbp_j = &( sbp[type_j] );
 
             twbp = &( tbp[ index_tbp (type_i,type_j, num_atom_types) ] );
-            bo_ij = &( bonds->select.bond_list[pj].bo_data );
+            bo_ij = &( bonds->bond_list[pj].bo_data );
 
             /* calculate the constants */
             pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );

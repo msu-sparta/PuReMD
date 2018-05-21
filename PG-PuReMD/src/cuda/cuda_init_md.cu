@@ -137,20 +137,20 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     {
     case NVE:
         data->N_f = 3 * system->bigN;
-        Cuda_Evolve = Cuda_Velocity_Verlet_NVE;
+        control->Cuda_Evolve = Cuda_Velocity_Verlet_NVE;
         control->virial = 0;
         break;
 
     case bNVT:
         data->N_f = 3 * system->bigN + 1;
-        Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NVT;
+        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NVT;
         control->virial = 0;
         break;
 
     case nhNVT:
         fprintf( stderr, "[WARNING] Nose-Hoover NVT is still under testing.\n" );
         data->N_f = 3 * system->bigN + 1;
-        Cuda_Evolve = Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein;
+        control->Cuda_Evolve = Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
         if ( !control->restart || (control->restart && control->random_vel) )
         {
@@ -164,7 +164,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     case sNPT: /* Semi-Isotropic NPT */
         data->N_f = 3 * system->bigN + 4;
-        Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
+        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -174,7 +174,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     case iNPT: /* Isotropic NPT */
         data->N_f = 3 * system->bigN + 2;
-        Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
+        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -184,7 +184,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     case NPT: /* Anisotropic NPT */
         data->N_f = 3 * system->bigN + 9;
-        Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
+        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
 
         fprintf( stderr, "p%d: init_simulation_data: option not yet implemented\n",
@@ -299,7 +299,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 
     Cuda_Init_ScratchArea( );
 
-    Init_MPI_Datatypes( system, workspace, mpi_data, msg );
+    Init_MPI_Datatypes( system, workspace, mpi_data );
 
     if ( Cuda_Init_System( system, control, data, workspace, mpi_data, msg ) == FAILURE )
     {
@@ -322,17 +322,11 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 
     Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data );
 
-    if ( Init_Output_Files( system, control, out_control, mpi_data, msg ) == FAILURE )
-    {
-        fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
-        fprintf( stderr, "p%d: could not open output files! terminating...\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Init_Output_Files( system, control, out_control, mpi_data );
 
     /* Lookup Tables */
     if ( control->tabulate )
     {
-        Init_Lookup_Tables( system, control, dev_workspace->Tap, mpi_data, msg );
+        Init_Lookup_Tables( system, control, dev_workspace->Tap, mpi_data );
     }
 }

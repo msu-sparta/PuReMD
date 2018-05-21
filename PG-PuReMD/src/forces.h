@@ -25,9 +25,6 @@
 #include "reax_types.h"
 
 
-extern interaction_function Interaction_Functions[NUM_INTRS];
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif

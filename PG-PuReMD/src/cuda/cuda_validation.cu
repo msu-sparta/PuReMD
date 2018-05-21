@@ -100,7 +100,7 @@ int validate_neighbors( reax_system *system, reax_list **lists )
 
     far_neighbor_data *data = (far_neighbor_data *) 
         malloc (sizeof (far_neighbor_data)* d_nbrs->max_intrs);
-    copy_host_device (data, d_nbrs->select.far_nbr_list, 
+    copy_host_device (data, d_nbrs->far_nbr_list, 
             sizeof (far_neighbor_data) * d_nbrs->max_intrs, cudaMemcpyDeviceToHost, "far_nbr_list");
 
     hostcount = dijcount = djicount = 0;
@@ -199,7 +199,7 @@ int validate_neighbors( reax_system *system, reax_list **lists )
             }
 
             gpu = data[j];
-            cpu = far_nbrs->select.far_nbr_list[index];
+            cpu = far_nbrs->far_nbr_list[index];
             if (  check_zero (gpu.d, cpu.d) ||
                     (gpu.nbr != cpu.nbr) ||
                     check_zero (cpu.dvec, gpu.dvec) ||
@@ -260,7 +260,7 @@ int validate_sym_dbond_indices( reax_system *system, storage *workspace, reax_li
 
     copy_host_device (d_start, d_bonds->index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "index");
     copy_host_device (d_end, d_bonds->end_index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "index");
-    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) * d_bonds->max_intrs, cudaMemcpyDeviceToHost, "bond_data");
+    copy_host_device (d_bond_data, d_bonds->bond_list, sizeof (bond_data) * d_bonds->max_intrs, cudaMemcpyDeviceToHost, "bond_data");
 
     count = 0; 
     miscount = 0; 
@@ -300,9 +300,9 @@ int validate_sym_dbond_indices( reax_system *system, storage *workspace, reax_li
 
         for (int j = Start_Index (i, bonds); j < End_Index(i, bonds); j++) {
             bond_data *src, *tgt;
-            src = &bonds->select.bond_list [j]; 
+            src = &bonds->bond_list [j]; 
 
-            tgt = &bonds->select.bond_list [ src->sym_index ]; 
+            tgt = &bonds->bond_list [ src->sym_index ]; 
 
             if ((src->dbond_index == tgt->dbond_index) )
                 count ++;
@@ -472,7 +472,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
 
     //fprintf (stderr, "Copying hbonds to host %d \n", system->num_hbonds);
     data = (hbond_data *) malloc (sizeof (hbond_data) * d_hbonds->max_intrs);
-    copy_host_device (data, d_hbonds->select.hbond_list, sizeof (hbond_data) * d_hbonds->max_intrs, 
+    copy_host_device (data, d_hbonds->hbond_list, sizeof (hbond_data) * d_hbonds->max_intrs, 
             cudaMemcpyDeviceToHost, "hbond_data");
 
     count = 0;
@@ -492,7 +492,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
                         Start_Index (i, hbonds),
                         End_Index (i, hbonds) );
                 print_hbonds( d_start, d_end, i, data );
-                print_hbonds( hbonds->index, hbonds->end_index, i, hbonds->select.hbond_list );
+                print_hbonds( hbonds->index, hbonds->end_index, i, hbonds->hbond_list );
                 exit (-1);
             }
         }
@@ -579,7 +579,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
             int k = 0;
             for (k = Start_Index (i, hbonds);
                     k < End_Index (i, hbonds); k++) {
-                src = hbonds->select.hbond_list[k];
+                src = hbonds->hbond_list[k];
 
                 if ((src.nbr == tgt.nbr) && (src.scl == tgt.scl)) {
                     /*
@@ -604,7 +604,7 @@ int validate_hbonds( reax_system *system, storage *workspace,
                 fprintf (stderr, "Hbonds does not match for atom %d hbond_Index %d \n", i, j);
                 fprintf (stderr, " ==========Host============ \n");
                 print_hbonds( hbonds->index, hbonds->end_index,
-                        i, hbonds->select.hbond_list );
+                        i, hbonds->hbond_list );
                 fprintf (stderr, " ==========Device============ \n");
                 print_hbonds( d_start, d_end,
                         i, data );
@@ -643,7 +643,7 @@ int validate_bonds( reax_system *system, storage *workspace, reax_list **lists )
 
     copy_host_device (d_start, d_bonds->index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "start");
     copy_host_device (d_end, d_bonds->end_index, sizeof (int) * system->N, cudaMemcpyDeviceToHost, "end");
-    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) * d_bonds->max_intrs, 
+    copy_host_device (d_bond_data, d_bonds->bond_list, sizeof (bond_data) * d_bonds->max_intrs, 
             cudaMemcpyDeviceToHost, "bond_data");
 
     count = 0;
@@ -682,8 +682,8 @@ int validate_bonds( reax_system *system, storage *workspace, reax_list **lists )
 
             int k = 0;
             for (k = Start_Index (i, bonds); k < End_Index (i, bonds); k++) {
-                tgt = & (bonds->select.bond_list[k]);
-                bond_data *tgt_sym = &(bonds->select.bond_list [tgt->sym_index]);
+                tgt = & (bonds->bond_list[k]);
+                bond_data *tgt_sym = &(bonds->bond_list [tgt->sym_index]);
 
                 if ((src->nbr == tgt->nbr) && !check_zero (src->d,tgt->d) &&
                         !check_zero (src->dvec,tgt->dvec) && check_same (src->rel_box, tgt->rel_box)) {
@@ -1418,7 +1418,7 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
             sizeof (int) * d_three->n, cudaMemcpyDeviceToHost, "three:start");
     copy_host_device ( end, d_three->end_index,
             sizeof (int) * d_three->n, cudaMemcpyDeviceToHost, "three:end");
-    copy_host_device ( data, d_three->select.three_body_list,
+    copy_host_device ( data, d_three->three_body_list,
             sizeof (three_body_interaction_data) * d_three->max_intrs,
             cudaMemcpyDeviceToHost, "three:data");
 
@@ -1428,7 +1428,7 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
             sizeof (int) * d_bonds->n, cudaMemcpyDeviceToHost, "bonds:start");
     copy_host_device ( b_end, d_bonds->end_index,
             sizeof (int) * d_bonds->n, cudaMemcpyDeviceToHost, "bonds:end");
-    copy_host_device (d_bond_data, d_bonds->select.bond_list, sizeof (bond_data) *  d_bonds->max_intrs, 
+    copy_host_device (d_bond_data, d_bonds->bond_list, sizeof (bond_data) *  d_bonds->max_intrs, 
             cudaMemcpyDeviceToHost, "bonds:data");
 
     count = 0;
@@ -1446,7 +1446,7 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
             bond_data *host_bond;
             for (z = Start_Index (i, bonds); z < End_Index (i, bonds); z++)
             {
-                host_bond = &bonds->select.bond_list [z];
+                host_bond = &bonds->bond_list [z];
                 if ((dev_bond->nbr == host_bond->nbr) &&
                         check_same (dev_bond->rel_box, host_bond->rel_box) &&
                         !check_zero (dev_bond->dvec, host_bond->dvec) &&
@@ -1487,7 +1487,7 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
            print_bond_data (src);
 
            fprintf (stderr, "\n");
-           src = &bonds->select.bond_list[j].bo_data;
+           src = &bonds->bond_list[j].bo_data;
            fprintf (stderr, "host \n");
            print_bond_data (src);
            fprintf (stderr, "\n");
@@ -1518,7 +1518,7 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
             bond_data *host_bond;
             for (z = Start_Index (i, bonds); z < End_Index (i, bonds); z++)
             {
-                host_bond = &bonds->select.bond_list [z];
+                host_bond = &bonds->bond_list [z];
                 if ((dev_bond->nbr == host_bond->nbr) &&
                         check_same (dev_bond->rel_box, host_bond->rel_box) &&
                         !check_zero (dev_bond->dvec, host_bond->dvec) &&
@@ -1543,7 +1543,7 @@ int validate_three_bodies( reax_system *system, storage *workspace, reax_list **
                 int xx;
                 for (xx = Start_Index (z, three); xx < End_Index (z, three); xx++)
                 {
-                    host = &three->select.three_body_list [xx];
+                    host = &three->three_body_list [xx];
                     //fprintf (stderr, "Host thb %d pthb %d \n", host->thb, host->pthb);
                     //if ((host->thb == device->thb) && (host->pthb == device->pthb))
                     if ((host->thb == device->thb) && !check_zero (host->theta, device->theta))

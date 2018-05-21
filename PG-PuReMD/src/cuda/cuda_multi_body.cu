@@ -106,15 +106,15 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
         for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
         {
             if ( my_atoms[i].orig_id < 
-                    my_atoms[bonds->select.bond_list[pj].nbr].orig_id )
+                    my_atoms[bonds->bond_list[pj].nbr].orig_id )
             {
-                j = bonds->select.bond_list[pj].nbr;
+                j = bonds->bond_list[pj].nbr;
                 type_j = my_atoms[j].type;
 
                 if ( !cuda_strcmp( sbp[type_j].name, "C", 1 ) )
                 {
                     twbp = &( tbp[index_tbp (type_i,type_j, num_atom_types) ]);
-                    bo_ij = &( bonds->select.bond_list[pj].bo_data );
+                    bo_ij = &( bonds->bond_list[pj].bo_data );
                     Di = workspace->Delta[i];
                     vov3 = bo_ij->BO - Di - 0.040 * POW(Di, 4.);
 
@@ -165,9 +165,9 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     sum_ovun1 = sum_ovun2 = 0;
     for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
     {
-        j = bonds->select.bond_list[pj].nbr;
+        j = bonds->bond_list[pj].nbr;
         type_j = my_atoms[j].type;
-        bo_ij = &(bonds->select.bond_list[pj].bo_data);
+        bo_ij = &(bonds->bond_list[pj].bo_data);
         twbp = &(tbp[ index_tbp(type_i, type_j, num_atom_types )]);
 
         sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
@@ -229,7 +229,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
 
     for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
     {
-        pbond = &(bonds->select.bond_list[pj]);
+        pbond = &(bonds->bond_list[pj]);
         j = pbond->nbr;
         bo_ij = &(pbond->bo_data);
         twbp  = &(tbp[ index_tbp(my_atoms[i].type, my_atoms[pbond->nbr].type, 
@@ -344,12 +344,12 @@ CUDA_GLOBAL void Cuda_Atom_Energy_PostProcess( reax_list p_bonds,
 
     for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
     {
-//        pbond = &(bonds->select.bond_list[pj]);
-//        dbond_index_bond = &( bonds->select.bond_list[ pbond->dbond_index ] );
+//        pbond = &(bonds->bond_list[pj]);
+//        dbond_index_bond = &( bonds->bond_list[ pbond->dbond_index ] );
 //        workspace->CdDelta[i] += dbond_index_bond->ae_CdDelta;
 
-        sbond = &(bonds->select.bond_list[pj]);
-        sym_index_bond = &( bonds->select.bond_list[ sbond->sym_index ]); 
+        sbond = &(bonds->bond_list[pj]);
+        sym_index_bond = &( bonds->bond_list[ sbond->sym_index ]); 
         workspace->CdDelta[i] += sym_index_bond->ae_CdDelta;
     }
 }

@@ -54,18 +54,11 @@
   #endif
 #endif
 
-
-evolve_function Evolve;
-evolve_function Cuda_Evolve;
-LR_lookup_table *LR;
-LR_lookup_table *d_LR;
-
-/* CUDA SPECIFIC DECLARATIONS */
+/* CUDA-specific globals */
 reax_list **dev_lists;
 storage *dev_workspace;
 void *scratch;
 void *host_scratch;
-
 int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
 int BLOCKS_N, BLOCKS_POW_2_N;
 int MATVEC_BLOCKS;
@@ -169,7 +162,7 @@ int Cuda_Post_Evolve( reax_system* system, control_params* control,
 
 static void usage( char* argv[] )
 {
-    fprintf( stderr, "usage: ./%s geometry ffield control\n", argv[0] );
+    fprintf( stderr, "usage: ./%s geometry_file force_field_params_file control_file\n", argv[0] );
 }
 
 
@@ -316,10 +309,12 @@ int main( int argc, char* argv[] )
 #endif
 
 #if defined(__CUDA_DEBUG__)
-        ret = Evolve( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = control->Evolve( system, control, data, workspace,
+                lists, out_control, mpi_data );
 #endif
     
-        ret = Cuda_Evolve( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = control->Cuda_Evolve( system, control, data, workspace,
+                lists, out_control, mpi_data );
     
 #if defined(DEBUG)
         t_end = Get_Timing_Info( t_begin );
@@ -473,7 +468,8 @@ int main( int argc, char* argv[] )
             Temperature_Control( control, data );
         }
 
-        ret = Evolve( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = control->Evolve( system, control, data, workspace,
+                lists, out_control, mpi_data );
 
         if ( ret == SUCCESS )
         {
@@ -534,6 +530,7 @@ int main( int argc, char* argv[] )
     }
 
 //    Write_PDB( &system, &lists[BONDS], &out_control );
+
     Close_Output_Files( system, control, out_control, mpi_data );
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)

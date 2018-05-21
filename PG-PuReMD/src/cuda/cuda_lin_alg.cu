@@ -652,7 +652,7 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
 #endif
 
     copy_host_device( spad, x, sizeof(rvec2) * system->total_cap, cudaMemcpyDeviceToHost, "CG:x:get" );
-    Dist( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_packer );
+    Dist( system, mpi_data, spad, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, rvec2_packer );
     copy_host_device( spad, x, sizeof(rvec2) * system->total_cap, cudaMemcpyHostToDevice, "CG:x:put" );
 
     //originally we were using only H->n which was system->n (init_md.c)
@@ -661,7 +661,7 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
 
     copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
             cudaMemcpyDeviceToHost, "CG:q2:get" );
-    Coll( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker );
+    Coll( system, mpi_data, spad, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, rvec2_unpacker );
     copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
             cudaMemcpyHostToDevice,"CG:q2:put" );
 
@@ -700,7 +700,7 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
     {
         copy_host_device( spad, dev_workspace->d2, sizeof(rvec2) * system->total_cap,
                 cudaMemcpyDeviceToHost, "cg:d2:get" );
-        Dist( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_packer );
+        Dist( system, mpi_data, spad, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, rvec2_packer );
         copy_host_device( spad, dev_workspace->d2, sizeof(rvec2) * system->total_cap,
                 cudaMemcpyHostToDevice, "cg:d2:put" );
 
@@ -709,7 +709,7 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
 
         copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
                 cudaMemcpyDeviceToHost, "cg:q2:get" );
-        Coll( system, mpi_data, spad, mpi_data->mpi_rvec2, scale, rvec2_unpacker );
+        Coll( system, mpi_data, spad, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, rvec2_unpacker );
         copy_host_device( spad, dev_workspace->q2, sizeof(rvec2) * system->total_cap,
                 cudaMemcpyHostToDevice, "cg:q2:put" );
 
@@ -810,7 +810,7 @@ int Cuda_CG( reax_system *system, control_params *control, storage *workspace,
     memset( spad, 0, sizeof(real) * system->total_cap );
     copy_host_device( spad, x, sizeof(real) * system->total_cap,
             cudaMemcpyDeviceToHost, "cuda_cg:x:get" );
-    Dist( system, mpi_data, spad, MPI_DOUBLE, scale, real_packer );
+    Dist( system, mpi_data, spad, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
 
     copy_host_device( spad, x, sizeof(real) * system->total_cap,
             cudaMemcpyHostToDevice, "cuda_cg:x:put" );
@@ -818,7 +818,7 @@ int Cuda_CG( reax_system *system, control_params *control, storage *workspace,
 
     copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
             cudaMemcpyDeviceToHost, "cuda_cg:q:get" );
-    Coll( system, mpi_data, spad, MPI_DOUBLE, scale, real_unpacker );
+    Coll( system, mpi_data, spad, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
 
     copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
             cudaMemcpyHostToDevice, "cuda_cg:q:put" );
@@ -860,7 +860,7 @@ int Cuda_CG( reax_system *system, control_params *control, storage *workspace,
     {
         copy_host_device( spad, dev_workspace->d, sizeof(real) * system->total_cap,
                 cudaMemcpyDeviceToHost, "cuda_cg:d:get" );
-        Dist( system, mpi_data, spad, MPI_DOUBLE, scale, real_packer );
+        Dist( system, mpi_data, spad, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
         copy_host_device( spad, dev_workspace->d, sizeof(real) * system->total_cap,
                 cudaMemcpyHostToDevice, "cuda_cg:d:put" );
 
@@ -868,7 +868,7 @@ int Cuda_CG( reax_system *system, control_params *control, storage *workspace,
 
         copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
                 cudaMemcpyDeviceToHost, "cuda_cg:q:get" );
-        Coll( system, mpi_data, spad, MPI_DOUBLE, scale, real_unpacker );
+        Coll( system, mpi_data, spad, REAL_PTR_TYPE, MPI_DOUBLE, real_unpacker );
         copy_host_device( spad, dev_workspace->q, sizeof(real) * system->total_cap,
                 cudaMemcpyHostToDevice, "cuda_cg:q:get" );
 

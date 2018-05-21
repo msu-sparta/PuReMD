@@ -24,8 +24,6 @@
 
 #include "reax_types.h"
 
-//extern LR_lookup_table **LR;
-
 
 #ifdef _cplusplus
 extern "C" {

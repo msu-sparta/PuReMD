@@ -677,7 +677,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         /* workspace */
         dev_dealloc_workspace( control, workspace );
         dev_alloc_workspace( system, control, workspace, system->local_cap,
-                system->total_cap, msg );
+                system->total_cap );
     }
 
     /* far neighbors */
@@ -876,7 +876,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
         /* reallocate mpi buffers */
         Deallocate_MPI_Buffers( mpi_data );
-        Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs, msg );
+        Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs );
     }
 
 #if defined(DEBUG_FOCUS)

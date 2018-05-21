@@ -95,7 +95,8 @@ int Velocity_Verlet_NVE( reax_system* system, control_params* control,
 
     if ( ret == SUCCESS )
     {
-        ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = Compute_Forces( system, control, data, workspace,
+                lists, out_control, mpi_data );
     }
 
     if ( ret == SUCCESS )
@@ -185,7 +186,8 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
     if ( ret == SUCCESS )
     {
-        ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = Compute_Forces( system, control, data, workspace,
+                lists, out_control, mpi_data );
     }
 
     if ( ret == SUCCESS )
@@ -330,8 +332,9 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
-        /* temperature scaler */
         Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+
+        /* temperature scaler */
         lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
 
         if ( lambda < MIN_dT )
@@ -435,7 +438,8 @@ int Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* control,
 
     if ( ret == SUCCESS )
     {
-        ret = Compute_Forces( system, control, data, workspace, lists, out_control, mpi_data );
+        ret = Compute_Forces( system, control, data, workspace,
+                lists, out_control, mpi_data );
     }
 
     if ( ret == SUCCESS )

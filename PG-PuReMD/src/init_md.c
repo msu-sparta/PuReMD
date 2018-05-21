@@ -242,20 +242,20 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
     {
     case NVE:
         data->N_f = 3 * system->bigN;
-        Evolve = Velocity_Verlet_NVE;
+        control->Evolve = Velocity_Verlet_NVE;
         control->virial = 0;
         break;
 
     case bNVT:
         data->N_f = 3 * system->bigN + 1;
-        Evolve = Velocity_Verlet_Berendsen_NVT;
+        control->Evolve = Velocity_Verlet_Berendsen_NVT;
         control->virial = 0;
         break;
 
     case nhNVT:
         fprintf( stderr, "[WARNING] Nose-Hoover NVT is still under testing.\n" );
         data->N_f = 3 * system->bigN + 1;
-        Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
+        control->Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
         if ( !control->restart || (control->restart && control->random_vel) )
         {
@@ -270,7 +270,7 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
     /* Semi-Isotropic NPT */
     case sNPT:
         data->N_f = 3 * system->bigN + 4;
-        Evolve = Velocity_Verlet_Berendsen_NPT;
+        control->Evolve = Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -281,7 +281,7 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
     /* Isotropic NPT */
     case iNPT:
         data->N_f = 3 * system->bigN + 2;
-        Evolve = Velocity_Verlet_Berendsen_NPT;
+        control->Evolve = Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -296,7 +296,7 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
 
         data->N_f = 3 * system->bigN + 9;
-        Evolve = Velocity_Verlet_Berendsen_NPT;
+        control->Evolve = Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         /*if( !control->restart ) {
           data->therm.G_xi = control->Tau_T *
@@ -640,7 +640,7 @@ void Init_Lists( reax_system *system, control_params *control,
     
     Estimate_Storages( system, control, lists );
     
-    Allocate_Matrix( &workspace->H, system->n, system->total_cm_entries );
+    Allocate_Matrix( &workspace->H, system->local_cap, system->total_cm_entries );
     Init_Matrix_Row_Indices( &workspace->H, system->max_cm_entries );
 
     if ( control->hbond_cut > 0.0 )

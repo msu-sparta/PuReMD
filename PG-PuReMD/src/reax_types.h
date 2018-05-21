@@ -143,10 +143,15 @@
 /* ??? */
 #define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
 
+/**/
 #define MAX_STR (1024)
+/**/
 #define MAX_LINE (1024)
+/**/
 #define MAX_TOKENS (1024)
+/**/
 #define MAX_TOKEN_LEN (1024)
+/**/
 #define MAX_ATOM_NAME_LEN (8)
 
 /* ??? */
@@ -234,84 +239,83 @@
 /* 500 MB */
 #define HOST_SCRATCH_SIZE (1024 * 1024 * 500)
 #ifdef HAVE_CUDA
-/* 500 MB */
-#define DEVICE_SCRATCH_SIZE (1024 * 1024 * 500)
-/* 500 MB */
-#define RES_SCRATCH (0x90)
-
-/* BLOCK SIZES for kernels */
-#define HB_SYM_BLOCK_SIZE (64)
-#define HB_KER_SYM_THREADS_PER_ATOM (16)
-#define HB_POST_PROC_BLOCK_SIZE (256)
-#define HB_POST_PROC_KER_THREADS_PER_ATOM (32)
-
-#if defined( __INIT_BLOCK_SIZE__)
-  /* all utility functions and all */
-  #define DEF_BLOCK_SIZE __INIT_BLOCK_SIZE__
-  /* init forces */
-  #define CUDA_BLOCK_SIZE __INIT_BLOCK_SIZE__
-  /* ??? */
-  #define ST_BLOCK_SIZE __INIT_BLOCK_SIZE__
-#else
-  /* all utility functions and all */
-  #define DEF_BLOCK_SIZE (256)
-  /* init forces */
-  #define CUDA_BLOCK_SIZE (256)
-  /* ??? */
-  #define ST_BLOCK_SIZE (256)
-#endif
-
-#if defined( __NBRS_THREADS_PER_ATOM__ )
-  #define NB_KER_THREADS_PER_ATOM __NBRS_THREADS_PER_ATOM__
-#else
-  #define NB_KER_THREADS_PER_ATOM (16)
-#endif
-
-#if defined( __NBRS_BLOCK_SIZE__)
-  #define NBRS_BLOCK_SIZE __NBRS_BLOCK_SIZE__
-#else
-  #define NBRS_BLOCK_SIZE (256)
-#endif
-
-#if defined( __HB_THREADS_PER_ATOM__)
-  #define HB_KER_THREADS_PER_ATOM __HB_THREADS_PER_ATOM__
-#else
-  #define HB_KER_THREADS_PER_ATOM (32)
-#endif
-
-#if defined(__HB_BLOCK_SIZE__)
-  #define HB_BLOCK_SIZE __HB_BLOCK_SIZE__
-#else
-  #define HB_BLOCK_SIZE (256)
-#endif
-
-#if defined( __VDW_THREADS_PER_ATOM__ )
-  #define VDW_KER_THREADS_PER_ATOM __VDW_THREADS_PER_ATOM__
-#else
-  #define VDW_KER_THREADS_PER_ATOM (32)
-#endif
-
-#if defined( __VDW_BLOCK_SIZE__)
-  #define VDW_BLOCK_SIZE __VDW_BLOCK_SIZE__
-#else
-  #define VDW_BLOCK_SIZE (256)
-#endif
-
-#if defined( __MATVEC_THREADS_PER_ROW__ )
-  #define MATVEC_KER_THREADS_PER_ROW __MATVEC_THREADS_PER_ROW__
-#else
-  #define MATVEC_KER_THREADS_PER_ROW (32)
-#endif
-
-#if defined( __MATVEC_BLOCK_SIZE__)
-  #define MATVEC_BLOCK_SIZE __MATVEC_BLOCK_SIZE__
-#else
-  #define MATVEC_BLOCK_SIZE (512)
-#endif
-
-//Validation
-#define GPU_TOLERANCE (1.0e-5)
-
+  /* 500 MB */
+  #define DEVICE_SCRATCH_SIZE (1024 * 1024 * 500)
+  /* 500 MB */
+  #define RES_SCRATCH (0x90)
+  
+  /* BLOCK SIZES for kernels */
+  #define HB_SYM_BLOCK_SIZE (64)
+  #define HB_KER_SYM_THREADS_PER_ATOM (16)
+  #define HB_POST_PROC_BLOCK_SIZE (256)
+  #define HB_POST_PROC_KER_THREADS_PER_ATOM (32)
+  
+  #if defined( __INIT_BLOCK_SIZE__)
+    /* all utility functions and all */
+    #define DEF_BLOCK_SIZE __INIT_BLOCK_SIZE__
+    /* init forces */
+    #define CUDA_BLOCK_SIZE __INIT_BLOCK_SIZE__
+    /* ??? */
+    #define ST_BLOCK_SIZE __INIT_BLOCK_SIZE__
+  #else
+    /* all utility functions and all */
+    #define DEF_BLOCK_SIZE (256)
+    /* init forces */
+    #define CUDA_BLOCK_SIZE (256)
+    /* ??? */
+    #define ST_BLOCK_SIZE (256)
+  #endif
+  
+  #if defined( __NBRS_THREADS_PER_ATOM__ )
+    #define NB_KER_THREADS_PER_ATOM __NBRS_THREADS_PER_ATOM__
+  #else
+    #define NB_KER_THREADS_PER_ATOM (16)
+  #endif
+  
+  #if defined( __NBRS_BLOCK_SIZE__)
+    #define NBRS_BLOCK_SIZE __NBRS_BLOCK_SIZE__
+  #else
+    #define NBRS_BLOCK_SIZE (256)
+  #endif
+  
+  #if defined( __HB_THREADS_PER_ATOM__)
+    #define HB_KER_THREADS_PER_ATOM __HB_THREADS_PER_ATOM__
+  #else
+    #define HB_KER_THREADS_PER_ATOM (32)
+  #endif
+  
+  #if defined(__HB_BLOCK_SIZE__)
+    #define HB_BLOCK_SIZE __HB_BLOCK_SIZE__
+  #else
+    #define HB_BLOCK_SIZE (256)
+  #endif
+  
+  #if defined( __VDW_THREADS_PER_ATOM__ )
+    #define VDW_KER_THREADS_PER_ATOM __VDW_THREADS_PER_ATOM__
+  #else
+    #define VDW_KER_THREADS_PER_ATOM (32)
+  #endif
+  
+  #if defined( __VDW_BLOCK_SIZE__)
+    #define VDW_BLOCK_SIZE __VDW_BLOCK_SIZE__
+  #else
+    #define VDW_BLOCK_SIZE (256)
+  #endif
+  
+  #if defined( __MATVEC_THREADS_PER_ROW__ )
+    #define MATVEC_KER_THREADS_PER_ROW __MATVEC_THREADS_PER_ROW__
+  #else
+    #define MATVEC_KER_THREADS_PER_ROW (32)
+  #endif
+  
+  #if defined( __MATVEC_BLOCK_SIZE__)
+    #define MATVEC_BLOCK_SIZE __MATVEC_BLOCK_SIZE__
+  #else
+    #define MATVEC_BLOCK_SIZE (512)
+  #endif
+  
+  /* Cuda_Validation */
+  #define GPU_TOLERANCE (1.0e-5)
 #endif
 
 
@@ -408,6 +412,7 @@ enum geo_formats
     GF_N = 4,
 };
 
+/* method for computing atomic charges */
 enum charge_method
 {
     QEQ_CM = 0,
@@ -415,6 +420,7 @@ enum charge_method
     ACKS2_CM = 2,
 };
 
+/* linear solver type used in charge method */
 enum solver
 {
     GMRES_S = 0,
@@ -424,6 +430,7 @@ enum solver
     BiCGStab_S = 4,
 };
 
+/* preconditioner computation type for charge method linear solver */
 enum pre_comp
 {
     NONE_PC = 0,
@@ -435,20 +442,14 @@ enum pre_comp
     SAI_PC = 6,
 };
 
+/* preconditioner application type for ICHOL/ILU preconditioners,
+ * used for charge method linear solver */
 enum pre_app
 {
     TRI_SOLVE_PA = 0,
     TRI_SOLVE_LEVEL_SCHED_PA = 1,
     TRI_SOLVE_GC_PA = 2,
     JACOBI_ITER_PA = 3,
-};
-
-/* ??? */
-enum exchanges
-{
-    NONE = 0,
-    NEAR_EXCH = 1,
-    FULL_EXCH = 2,
 };
 
 /* ??? */
@@ -476,13 +477,15 @@ enum hydrogen_bonding_atom_types
 /* trajectory file formats */
 enum traj_methods
 {
+    /* write trajectory file using standard I/O */
     REG_TRAJ = 0,
+    /* write trajectory file using MPI I/O */
     MPI_TRAJ = 1,
+    /* num. trajectory file formats */
     TF_N = 2,
 };
 
 
-/********************** TYPE DEFINITIONS ********************/
 /* 3D vector, integer values */
 typedef int ivec[3];
 /* double precision floating point */
@@ -497,8 +500,78 @@ typedef real rvec2[2];
 typedef real rvec4[4];
 
 
+/* struct declarations, see definitions below for comments */
+typedef struct restart_header restart_header;
+typedef struct restart_atom restart_atom;
+typedef struct mpi_atom mpi_atom;
+typedef struct boundary_atom boundary_atom;
+typedef struct mpi_out_data mpi_out_data;
+typedef struct mpi_datatypes mpi_datatypes;
+typedef struct global_parameters global_parameters;
+typedef struct single_body_parameters single_body_parameters;
+typedef struct two_body_parameters two_body_parameters;
+typedef struct three_body_parameters three_body_parameters;
+typedef struct three_body_header three_body_header;
+typedef struct hbond_parameters hbond_parameters;
+typedef struct four_body_parameters four_body_parameters;
+typedef struct four_body_header four_body_header;
+typedef struct reax_interaction reax_interaction;
+typedef struct reax_atom reax_atom;
+typedef struct simulation_box simulation_box;
+typedef struct grid_cell grid_cell;
+typedef struct grid grid;
+typedef struct neighbor_proc neighbor_proc;
+typedef struct bound_estimate bound_estimate;
+typedef struct boundary_cutoff boundary_cutoff;
+typedef struct reax_system reax_system;
+typedef struct control_params control_params;
+typedef struct thermostat thermostat;
+typedef struct isotropic_barostat isotropic_barostat;
+typedef struct flexible_barostat flexible_barostat;
+typedef struct reax_timing reax_timing;
+typedef struct energy_data energy_data;
+typedef struct simulation_data simulation_data;
+typedef struct three_body_interaction_data three_body_interaction_data;
+typedef struct far_neighbor_data far_neighbor_data;
+typedef struct hbond_data hbond_data;
+typedef struct dDelta_data dDelta_data;
+typedef struct dbond_data dbond_data;
+typedef struct bond_order_data bond_order_data;
+typedef struct bond_data bond_data;
+typedef struct sparse_matrix_entry sparse_matrix_entry;
+typedef struct sparse_matrix sparse_matrix;
+typedef struct reallocate_data reallocate_data;
+typedef struct storage storage;
+typedef struct reax_list reax_list;
+typedef struct output_controls output_controls;
+typedef struct molecule molecule;
+typedef struct LR_data LR_data;
+typedef struct cubic_spline_coef cubic_spline_coef;
+typedef struct LR_lookup_table LR_lookup_table;
+
+
+/* function pointer definitions */
+/**/
+typedef int (*evolve_function)( reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls*, mpi_datatypes* );
+/**/
+typedef void (*interaction_function)( reax_system*, control_params*,
+        simulation_data*, storage*, reax_list**, output_controls* );
+/**/
+typedef real (*lookup_function)( real );
+/**/
+typedef void (*message_sorter)( reax_system*, int, int, int, mpi_out_data* );
+/**/
+typedef void (*unpacker)( reax_system*, int, void*, int, neighbor_proc*, int );
+/**/
+typedef void (*dist_packer)( void*, mpi_out_data* );
+/**/
+typedef void (*coll_unpacker)( void*, void*, mpi_out_data* );
+
+
+/* struct definitions */
 /* header used in restart file */
-typedef struct
+struct restart_header
 {
     /* current simulation time step */
     int step;
@@ -516,11 +589,11 @@ typedef struct
     real G_xi;
     /* ??? */
     rtensor box;
-} restart_header;
+};
 
 
 /* atom type used for restarting simulation */
-typedef struct
+struct restart_atom
 {
     /* atom serial number as given in the geo file */
     int orig_id;
@@ -534,11 +607,11 @@ typedef struct
     rvec x;
     /* atomic velocity, 3D */
     rvec v;
-} restart_atom;
+};
 
 
 /* atom type used for MPI communications */
-typedef struct
+struct mpi_atom
 {
     /* atom serial number as given in the geo file */
     int orig_id;
@@ -566,11 +639,11 @@ typedef struct
     /* atomic fictitious charge used during QEq to compute atomic charge,
      * multiple entries used to hold old values for extrapolation */
     rvec4 t;
-} mpi_atom;
+};
 
 
 /* atom type used for MPI communications at boundary regions */
-typedef struct
+struct boundary_atom
 {
     /* atom serial number as given in the geo file */
     int orig_id;
@@ -586,11 +659,11 @@ typedef struct
     int num_hbonds;
     /* atomic position, 3D */
     rvec x;
-} boundary_atom;
+};
 
 
 /**/
-typedef struct
+struct mpi_out_data
 {
     /**/
     int cnt;
@@ -598,58 +671,46 @@ typedef struct
     int *index;
     /**/
     void *out_atoms;
-} mpi_out_data;
+};
 
 
 /**/
-typedef struct
+struct mpi_datatypes
 {
-    /**/
+    /* communicator for all processes */
     MPI_Comm world;
-    /**/
+    /* communicator for neighboring processes in 3D Cartesian mesh topology */
     MPI_Comm comm_mesh3D;
-
-    /**/
-    MPI_Datatype sys_info;
-    /**/
+    /* MPI datatype for mpi_atom */
     MPI_Datatype mpi_atom_type;
-    /**/
+    /* MPI datatype for boundary_atom */
     MPI_Datatype boundary_atom_type;
-    /**/
+    /* MPI datatype for rvec */
     MPI_Datatype mpi_rvec;
-    /**/
+    /* MPI datatype for rvec2 */
     MPI_Datatype mpi_rvec2;
-    /**/
+    /* MPI datatype for restart_atom */
     MPI_Datatype restart_atom_type;
-
     /**/
     MPI_Datatype header_line;
     /**/
-    MPI_Datatype header_view;
-    /**/
     MPI_Datatype init_desc_line;
-    /**/
-    MPI_Datatype init_desc_view;
     /**/
     MPI_Datatype atom_line;
     /**/
-    MPI_Datatype atom_view;
-    /**/
     MPI_Datatype bond_line;
     /**/
-    MPI_Datatype bond_view;
-    /**/
     MPI_Datatype angle_line;
-    /**/
-    MPI_Datatype angle_view;
-
-    /**/
+    /* outgoing buffers for communications with neighbors in
+     * 3D Cartesian topology */
     mpi_out_data out_buffers[MAX_NBRS];
-    /**/
+    /* ingoing buffer for communications with neighbor 1 along
+     * one dimension of the 3D Cartesian topology */
     void *in1_buffer;
-    /**/
+    /* ingoing buffer for communications with neighbor 2 along
+     * one dimension of the 3D Cartesian topology */
     void *in2_buffer;
-} mpi_datatypes;
+};
 
 
 /* Global parameters in force field parameters file, mapping:
@@ -694,7 +755,7 @@ typedef struct
  * l[37] = version number
  * l[38] = p_coa3
  * */
-typedef struct
+struct global_parameters
 {
     /* num. of global parameters, from the force field file */
     int n_global;
@@ -707,11 +768,11 @@ typedef struct
      * 3: inner wall + shielding
      * */
     int vdw_type;
-} global_parameters;
+};
 
 
 /* single body parameters in force field parameters file */
-typedef struct
+struct single_body_parameters
 {
     /* Line one in field file */
     /* two character atom name */
@@ -782,12 +843,12 @@ typedef struct
     real ecore2;
     /**/
     real acore2;
-} single_body_parameters;
+};
 
 
 /* 2-body parameters for a single interaction type,
  * from the force field parameters file */
-typedef struct
+struct two_body_parameters
 {
     /* Bond Order parameters */
     /**/
@@ -855,12 +916,12 @@ typedef struct
     real v13cor;
     /**/
     real ovc;
-} two_body_parameters;
+};
 
 
 /* 3-body parameters for a single interaction type,
  * from the force field parameters file */
-typedef struct
+struct three_body_parameters
 {
     /* valence angle */
     real theta_00;
@@ -871,21 +932,21 @@ typedef struct
 
     /* 3-body conjugation */
     real p_coa1;
-} three_body_parameters;
+};
 
 
 /* three body interactions info. */
-typedef struct
+struct three_body_header
 {
     /* num. of three body parameters */
     int cnt;
     /* collection of three body parameters, indexed by atomic types */
     three_body_parameters prm[MAX_3BODY_PARAM];
-} three_body_header;
+};
 
 
 /* hydrogen bond parameters in force field parameters file */
-typedef struct
+struct hbond_parameters
 {
     /**/
     real r0_hb;
@@ -895,12 +956,12 @@ typedef struct
     real p_hb2;
     /**/
     real p_hb3;
-} hbond_parameters;
+};
 
 
 /* 4-body parameters for a single interaction type,
  * from the force field parameters file */
-typedef struct
+struct four_body_parameters
 {
     /**/
     real V1;
@@ -914,21 +975,21 @@ typedef struct
 
     /* 4-body conjugation */
     real p_cot1;
-} four_body_parameters;
+};
 
 
 /* four body interactions info. */
-typedef struct
+struct four_body_header
 {
     /* num. of four body parameters */
     int cnt;
     /* collection of four body parameters, indexed by atomic types */
     four_body_parameters prm[MAX_4BODY_PARAM];
-} four_body_header;
+};
 
 
 /* atomic interaction parameters */
-typedef struct
+struct reax_interaction
 {
     /* num. of atom types, from force field parameters file */
     int num_atom_types;
@@ -960,11 +1021,11 @@ typedef struct
     /* simulation parameters for four body interactions (GPU) */
     four_body_header *d_fbp;
 #endif
-} reax_interaction;
+};
 
 
 /**/
-typedef struct
+struct reax_atom
 {
     /* atom serial number as given in the geo file */
     int orig_id;
@@ -1004,11 +1065,11 @@ typedef struct
     int num_hbonds;
     /* ??? */
     int renumber;
-} reax_atom;
+};
 
 
 /* Info. regarding 3D simulation space */
-typedef struct
+struct simulation_box
 {
     /* total volume */
     real V;
@@ -1029,11 +1090,11 @@ typedef struct
     rtensor trans_inv;
     /* ??? */
     rtensor g;
-} simulation_box;
+};
 
 
 /**/
-typedef struct
+struct grid_cell
 {
     /* min. cell coordinate (top-front-left) */
     rvec min;
@@ -1048,12 +1109,12 @@ typedef struct
     int top;
     /* IDs of atoms within this grid cell */
     int* atoms;
-} grid_cell;
+};
 
 
 /* info. for 3D domain (i.e., spatial) partitioning of atoms
  * inside a processor's portion (local and ghost regoin) of the simulation box */
-typedef struct
+struct grid
 {
     /* total number of grid cells (native AND ghost) */
     int total;
@@ -1108,11 +1169,11 @@ typedef struct
     rvec *nbrs_cp;
     /**/
     ivec *rel_box;
-} grid;
+};
 
 
 /**/
-typedef struct
+struct neighbor_proc
 {
     /**/
     int rank;
@@ -1145,11 +1206,11 @@ typedef struct
     ivec str_recv;
     /**/
     ivec end_recv;
-} neighbor_proc;
+};
 
 
 /**/
-typedef struct
+struct bound_estimate
 {
     /**/
     int N;
@@ -1157,11 +1218,11 @@ typedef struct
     int exc_gcells;
     /**/
     int exc_atoms;
-} bound_estimate;
+};
 
 
 /**/
-typedef struct
+struct boundary_cutoff
 {
     /**/
     real ghost_nonb;
@@ -1171,11 +1232,11 @@ typedef struct
     real ghost_bond;
     /**/
     real ghost_cutoff;
-} boundary_cutoff;
+};
 
 
 /**/
-typedef struct
+struct reax_system
 {
     /* atomic interaction parameters */
     reax_interaction reax_param;
@@ -1245,14 +1306,14 @@ typedef struct
 
     /* current num. of far neighbors per atom */
     int *far_nbrs;
-    /* current num. of far neighbors per atom (GPU) */
-    int *d_far_nbrs;
     /* max num. of far neighbors per atom */
     int *max_far_nbrs;
-    /* max num. of far neighbors per atom (GPU) */
-    int *d_max_far_nbrs;
     /* total num. of (max) far neighbors across all atoms */
     int total_far_nbrs;
+    /* current num. of far neighbors per atom (GPU) */
+    int *d_far_nbrs;
+    /* max num. of far neighbors per atom (GPU) */
+    int *d_max_far_nbrs;
     /* total num. of (max) far neighbors across all atoms (GPU) */
     int *d_total_far_nbrs;
     /* TRUE if far neighbors list requires reallocation,
@@ -1261,14 +1322,14 @@ typedef struct
 
     /* num. bonds per atom */
     int *bonds;
-    /* num. bonds per atom (GPU) */
-    int *d_bonds;
     /* max. num. bonds per atom */
     int *max_bonds;
-    /* max. num. bonds per atom (GPU) */
-    int *d_max_bonds;
     /* total num. bonds (sum over max) */
     int total_bonds;
+    /* num. bonds per atom (GPU) */
+    int *d_bonds;
+    /* max. num. bonds per atom (GPU) */
+    int *d_max_bonds;
     /* total num. bonds (sum over max) (GPU) */
     int *d_total_bonds;
     /* TRUE if bonds list requires reallocation, FALSE otherwise (GPU) */
@@ -1276,14 +1337,14 @@ typedef struct
 
     /* num. hydrogen bonds per atom */
     int *hbonds;
-    /* num. hydrogen bonds per atom (GPU) */
-    int *d_hbonds;
     /* max. num. hydrogen bonds per atom */
     int *max_hbonds;
-    /* max. num. hydrogen bonds per atom (GPU) */
-    int *d_max_hbonds;
     /* total num. hydrogen bonds (sum over max) */
     int total_hbonds;
+    /* num. hydrogen bonds per atom (GPU) */
+    int *d_hbonds;
+    /* max. num. hydrogen bonds per atom (GPU) */
+    int *d_max_hbonds;
     /* total num. hydrogen bonds (sum over max) (GPU) */
     int *d_total_hbonds;
     /* TRUE if hydrogen bonds list requires reallocation, FALSE otherwise (GPU) */
@@ -1291,14 +1352,14 @@ typedef struct
 
     /* num. matrix entries per row */
     int *cm_entries;
-    /* num. matrix entries per row (GPU) */
-    int *d_cm_entries;
     /* max. num. matrix entries per row */
     int *max_cm_entries;
-    /* max. num. matrix entries per row (GPU) */
-    int *d_max_cm_entries;
     /* total num. matrix entries (sum over max) */
     int total_cm_entries;
+    /* num. matrix entries per row (GPU) */
+    int *d_cm_entries;
+    /* max. num. matrix entries per row (GPU) */
+    int *d_max_cm_entries;
     /* total num. matrix entries (sum over max) (GPU) */
     int *d_total_cm_entries;
     /* TRUE if charge matrix requires reallocation, FALSE otherwise (GPU) */
@@ -1310,11 +1371,11 @@ typedef struct
     int total_thbodies;
     /* total num. three body interactions (GPU) */
     int *d_total_thbodies;
-} reax_system;
+};
 
 
 /* system control parameters */
-typedef struct
+struct control_params
 {
     /* simulation name, as supplied via control file */
     char sim_name[MAX_STR];
@@ -1473,13 +1534,25 @@ typedef struct
     int freq_diffusion_coef;
     /**/
     int restrict_type;
+    /* function pointer for ensemble used to evolve atomic system */
+    evolve_function Evolve;
+    /* function pointers for bonded interactions */
+    interaction_function intr_funcs[NUM_INTRS];
+    /* lookup table for force tabulation */
+    LR_lookup_table *LR;
 
+#if defined(HAVE_CUDA)
+    /* function pointer for ensemble used to evolve atomic system (GPU) */
+    evolve_function Cuda_Evolve;
     /* control parameters (GPU) */
     void *d_control_params;
-} control_params;
+    /* lookup table for force tabulation (GPU) */
+    LR_lookup_table *d_LR;
+#endif
+};
 
 
-typedef struct
+struct thermostat
 {
     /**/
     real T;
@@ -1492,10 +1565,10 @@ typedef struct
     /**/
     real G_xi;
 
-} thermostat;
+};
 
 
-typedef struct
+struct isotropic_barostat
 {
     /**/
     real P;
@@ -1508,10 +1581,10 @@ typedef struct
     /**/
     real a_eps;
 
-} isotropic_barostat;
+};
 
 
-typedef struct
+struct flexible_barostat
 {
     /**/
     rtensor P;
@@ -1536,10 +1609,10 @@ typedef struct
     /**/
     rtensor a_g0;
 
-} flexible_barostat;
+};
 
 
-typedef struct
+struct reax_timing
 {
     /* start time of event */
     real start;
@@ -1579,10 +1652,10 @@ typedef struct
     real cm_solver_tri_solve;
     /* num. of retries in main sim. loop */
     int num_retries;
-} reax_timing;
+};
 
 
-typedef struct
+struct energy_data
 {
     /* total energy */
     real e_tot;
@@ -1616,11 +1689,11 @@ typedef struct
     real e_ele;
     /* polarization energy */
     real e_pol;
-} energy_data;
+};
 
 
 /**/
-typedef struct
+struct simulation_data
 {
     /**/
     int step;
@@ -1679,19 +1752,18 @@ typedef struct
     rvec ext_press;
     /**/
     rvec tot_press;
-
     /**/
     reax_timing timing;
-    /**/
-    reax_timing d_timing;
 
     /**/
+    reax_timing d_timing;
+    /**/
     void *d_simulation_data;
-} simulation_data;
+};
 
 
 /**/
-typedef struct
+struct three_body_interaction_data
 {
     /**/
     int thb;
@@ -1707,11 +1779,11 @@ typedef struct
     rvec dcos_dj;
     /**/
     rvec dcos_dk;
-} three_body_interaction_data;
+};
 
 
 /* info. about a far neighbor to an atom */
-typedef struct
+struct far_neighbor_data
 {
     /* atom ID of neighbor */
     int nbr;
@@ -1722,11 +1794,11 @@ typedef struct
     /* component-wise difference of coordinates of this atom
      * and its neighboring atom */
     rvec dvec;
-} far_neighbor_data;
+};
 
 
 /**/
-typedef struct
+struct hbond_data
 {
     /**/
     int nbr;
@@ -1740,21 +1812,21 @@ typedef struct
     int sym_index;
     /**/
     rvec hb_f;
-} hbond_data;
+};
 
 
 /**/
-typedef struct
+struct dDelta_data
 {
     /**/
     int wrt;
     /**/
     rvec dVal;
-} dDelta_data;
+};
 
 
 /**/
-typedef struct
+struct dbond_data
 {
     /**/
     int wrt;
@@ -1764,11 +1836,11 @@ typedef struct
     rvec dBOpi;
     /**/
     rvec dBOpi2;
-} dbond_data;
+};
 
 
 /**/
-typedef struct
+struct bond_order_data
 {
     /**/
     real BO;
@@ -1814,11 +1886,11 @@ typedef struct
     rvec dln_BOp_pi;
     /**/
     rvec dln_BOp_pi2;
-} bond_order_data;
+};
 
 
 /**/
-typedef struct
+struct bond_data
 {
     /**/
     int nbr;
@@ -1857,17 +1929,17 @@ typedef struct
 
     /**/
     rvec tf_f;
-} bond_data;
+};
 
 
 /* Secondary structure for matrix in CRS format */
-typedef struct
+struct sparse_matrix_entry
 {
     /* column index for corresponding matrix entry */
     int j;
     /* matrix entry */
     real val;
-} sparse_matrix_entry;
+};
 
 
 /* Matrix in compressed row storage (CRS) format,
@@ -1875,7 +1947,7 @@ typedef struct
  * See, e.g.,
  *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
  */
-typedef struct
+struct sparse_matrix
 {
     /* number of rows */
     int n;
@@ -1887,11 +1959,11 @@ typedef struct
     int *end;
     /* secondary structure for matrix entry info */
     sparse_matrix_entry *entries;
-} sparse_matrix;
+};
 
 
 /* used to determine if and how much space should be reallocated */
-typedef struct
+struct reallocate_data
 {
     /* TRUE if far neighbor list needs
      * to be reallocated, FALSE otherwise */
@@ -1910,10 +1982,10 @@ typedef struct
     int thbody;
     /**/
     int gcell_atoms;
-} reallocate_data;
+};
 
 
-typedef struct
+struct storage
 {
     /* 0 if struct members are NOT allocated, 1 otherwise */
     int allocated;
@@ -1926,7 +1998,7 @@ typedef struct
     /**/
     rvec2 *tmp_rvec2[MAX_NBRS];
     /**/
-    int  *within_bond_box;
+    int *within_bond_box;
 
     /* bond order related storage */
     /**/
@@ -2039,7 +2111,6 @@ typedef struct
     rvec2 *p2;
 
     /* Taper */
-    /* Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0 */
     real Tap[8];
 
     /* storage for analysis */
@@ -2109,7 +2180,7 @@ typedef struct
 
     /**/
     reallocate_data realloc;
-} storage;
+};
 
 
 /* Union used for determining interaction list type */
@@ -2133,7 +2204,7 @@ typedef struct
 
 
 /* Interaction list */
-typedef struct
+struct reax_list
 {
     /* 0 if struct members are NOT allocated, 1 otherwise */
     int allocated;
@@ -2165,11 +2236,11 @@ typedef struct
     far_neighbor_data *far_nbr_list;
     /* hydrogen bond type */
     hbond_data *hbond_list;
-} reax_list;
+};
 
 
 /**/
-typedef struct
+struct output_controls
 {
 #if defined(PURE_REAX)
     /**/
@@ -2311,11 +2382,11 @@ typedef struct
     /* near neighbor list */
     FILE *nlist;
 #endif
-} output_controls;
+};
 
 
 /**/
-typedef struct
+struct molecule
 {
     /**/
     int atom_count;
@@ -2323,11 +2394,11 @@ typedef struct
     int atom_list[MAX_MOLECULE_SIZE];
     /**/
     int mtypes[MAX_ATOM_TYPES];
-} molecule;
+};
 
 
 /**/
-typedef struct
+struct LR_data
 {
     /**/
     real H;
@@ -2339,11 +2410,11 @@ typedef struct
     real e_ele;
     /**/
     real CEclmb;
-} LR_data;
+};
 
 
-/**/
-typedef struct
+/* coefficients for cublic spline interpolation */
+struct cubic_spline_coef
 {
     /**/
     real a;
@@ -2353,11 +2424,11 @@ typedef struct
     real c;
     /**/
     real d;
-} cubic_spline_coef;
+};
 
 
 /**/
-typedef struct
+struct LR_lookup_table
 {
     /**/
     real xmin;
@@ -2388,39 +2459,12 @@ typedef struct
     cubic_spline_coef *ele;
     /**/
     cubic_spline_coef *CEclmb;
-} LR_lookup_table;
+};
 
 
-extern LR_lookup_table *LR;
-
-
-/* function pointer defs */
-typedef int (*evolve_function)(reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*, mpi_datatypes* );
-#if defined(PURE_REAX)
-extern evolve_function Evolve;
-extern evolve_function Cuda_Evolve;
-#endif
-
-typedef void (*interaction_function)(reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*);
-
-typedef void (*print_interaction)(reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*);
-
-typedef real (*lookup_function)(real);
-
-typedef void (*message_sorter)(reax_system*, int, int, int, mpi_out_data*);
-typedef void (*unpacker)( reax_system*, int, void*, int, neighbor_proc*, int );
-
-typedef void (*dist_packer)(void*, mpi_out_data*);
-typedef void (*coll_unpacker)(void*, void*, mpi_out_data*);
-
-/*CUDA-specific*/
+/* CUDA-specific globals */
 extern reax_list **dev_lists;
 extern storage *dev_workspace;
-extern LR_lookup_table *d_LR;
-
 extern void *scratch;
 extern void *host_scratch;
 extern int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;

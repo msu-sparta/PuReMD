@@ -108,7 +108,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
         while ( pj < end_i )
         {
 
-            nbr_pj = &(far_nbrs->select.far_nbr_list[pj]);
+            nbr_pj = &(far_nbrs->far_nbr_list[pj]);
             j = nbr_pj->nbr;
             orig_j  = my_atoms[j].orig_id;
 
@@ -407,7 +407,7 @@ CUDA_GLOBAL void k_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
 
     for( pj = start_i; pj < end_i; ++pj )
     {
-        nbr_pj = &(far_nbrs->select.far_nbr_list[pj]);
+        nbr_pj = &(far_nbrs->far_nbr_list[pj]);
         j = nbr_pj->nbr;
         orig_j  = my_atoms[j].orig_id;
 
@@ -589,7 +589,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *)control->d_control_params, 
               *(dev_workspace), *(dev_lists[FAR_NBRS]), 
-              d_LR, system->n, system->N,
+              control->d_LR, system->n, system->N,
               system->reax_param.num_atom_types, 
               data->step, data->prev_steps, 
               out_control->energy_update_freq,

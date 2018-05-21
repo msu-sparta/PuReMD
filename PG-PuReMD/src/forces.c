@@ -64,9 +64,6 @@ typedef enum
 } MATRIX_ENTRY_POSITION;
 
 
-interaction_function Interaction_Functions[NUM_INTRS];
-
-
 /* placeholder for unused interactions in interaction list
  * Interaction_Functions, which is initialized in Init_Force_Functions */
 void Dummy_Interaction( reax_system *system, control_params *control,
@@ -78,24 +75,24 @@ void Dummy_Interaction( reax_system *system, control_params *control,
 
 void Init_Force_Functions( control_params *control )
 {
-    Interaction_Functions[0] = BO;
-    Interaction_Functions[1] = Bonds;
-    Interaction_Functions[2] = Atom_Energy;
-    Interaction_Functions[2] = Atom_Energy;
-    Interaction_Functions[3] = Valence_Angles;
-    Interaction_Functions[4] = Torsion_Angles;
+    control->intr_funcs[0] = BO;
+    control->intr_funcs[1] = Bonds;
+    control->intr_funcs[2] = Atom_Energy;
+    control->intr_funcs[2] = Atom_Energy;
+    control->intr_funcs[3] = Valence_Angles;
+    control->intr_funcs[4] = Torsion_Angles;
     if ( control->hbond_cut > 0.0 )
     {
-        Interaction_Functions[5] = Hydrogen_Bonds;
+        control->intr_funcs[5] = Hydrogen_Bonds;
     }
     else
     {
-        Interaction_Functions[5] = Dummy_Interaction;
+        control->intr_funcs[5] = Dummy_Interaction;
     }
-    Interaction_Functions[6] = Dummy_Interaction;
-    Interaction_Functions[7] = Dummy_Interaction;
-    Interaction_Functions[8] = Dummy_Interaction;
-    Interaction_Functions[9] = Dummy_Interaction;
+    control->intr_funcs[6] = Dummy_Interaction;
+    control->intr_funcs[7] = Dummy_Interaction;
+    control->intr_funcs[8] = Dummy_Interaction;
+    control->intr_funcs[9] = Dummy_Interaction;
 }
 
 
@@ -113,7 +110,7 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
     /* Implement all force calls as function pointers */
     for ( i = 0; i < NUM_INTRS; i++ )
     {
-        (Interaction_Functions[i])( system, control, data, workspace, lists, out_control );
+        (control->intr_funcs[i])( system, control, data, workspace, lists, out_control );
     }
 }
 
@@ -259,7 +256,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 }
 
 
-static inline real Compute_tabH( real r_ij, int ti, int tj, int num_atom_types )
+static inline real Compute_tabH( control_params *control, real r_ij, int ti, int tj, int num_atom_types )
 {
     int r, tmin, tmax;
     real val, dif, base;
@@ -267,7 +264,7 @@ static inline real Compute_tabH( real r_ij, int ti, int tj, int num_atom_types )
 
     tmin = MIN( ti, tj );
     tmax = MAX( ti, tj );
-    t = &LR[ index_lr( tmin, tmax, num_atom_types ) ];
+    t = &control->LR[ index_lr( tmin, tmax, num_atom_types ) ];
 
     /* cubic spline interpolation */
     r = (int)(r_ij * t->inv_dx);
@@ -429,7 +426,7 @@ int Init_Forces( reax_system *system, control_params *control,
                         }
                         else
                         {
-                            H->entries[cm_top].val = Compute_tabH( r_ij, type_i, type_j,
+                            H->entries[cm_top].val = Compute_tabH( control, r_ij, type_i, type_j,
                                     system->reax_param.num_atom_types );
                         }
                         ++cm_top;
@@ -952,7 +949,8 @@ int Compute_Forces( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
+        Compute_Bonded_Forces( system, control, data, workspace,
+                lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
         //MPI_Barrier( MPI_COMM_WORLD );

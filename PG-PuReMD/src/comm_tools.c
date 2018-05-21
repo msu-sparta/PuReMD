@@ -157,7 +157,7 @@ void Update_Comm( reax_system* system )
 /********************* ATOM TRANSFER ***********************/
 
 /***************** PACK & UNPACK ATOMS *********************/
-void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
+static void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
 {
     matm->orig_id = ratm->orig_id;
     matm->imprt_id = i;
@@ -173,7 +173,7 @@ void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
 }
 
 
-void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
+static void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
 {
     ratm->orig_id = matm->orig_id;
     ratm->imprt_id = matm->imprt_id;
@@ -190,7 +190,7 @@ void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
 
 
 /*********************** SORTER **************************/
-void Sort_Transfer_Atoms( reax_system *system, int start, int end,
+static void Sort_Transfer_Atoms( reax_system *system, int start, int end,
         int dim, mpi_out_data *out_bufs )
 {
     int i, d, out_cnt;
@@ -251,7 +251,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
 
 
 /*********************** UNPACKER **************************/
-void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
+static void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
         int cnt, neighbor_proc *nbr, int dim )
 {
     int i;
@@ -280,7 +280,7 @@ void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
 /************** EXCHANGE BOUNDARY ATOMS *****************/
 
 /************ PACK & UNPACK BOUNDARY ATOMS **************/
-void Pack_Boundary_Atom( boundary_atom *matm, reax_atom *ratm, int i )
+static void Pack_Boundary_Atom( boundary_atom *matm, reax_atom *ratm, int i )
 {
     matm->orig_id = ratm->orig_id;
     matm->imprt_id = i;
@@ -291,7 +291,7 @@ void Pack_Boundary_Atom( boundary_atom *matm, reax_atom *ratm, int i )
 }
 
 
-void Unpack_Boundary_Atom( reax_atom *ratm, boundary_atom *matm )
+static void Unpack_Boundary_Atom( reax_atom *ratm, boundary_atom *matm )
 {
     ratm->orig_id = matm->orig_id;
     ratm->imprt_id = matm->imprt_id;
@@ -304,7 +304,7 @@ void Unpack_Boundary_Atom( reax_atom *ratm, boundary_atom *matm )
 
 
 /*********************** SORTER **************************/
-void Sort_Boundary_Atoms( reax_system *system, int start, int end,
+static void Sort_Boundary_Atoms( reax_system *system, int start, int end,
         int dim, mpi_out_data *out_bufs )
 {
     int i, d, p, out_cnt;
@@ -446,7 +446,7 @@ fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d done!\n",
 }
 
 
-void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
+static void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
         int d, int *max, int *nrecv, mpi_datatypes *mpi_data, MPI_Comm comm )
 {
     MPI_Request req1, req2;
@@ -500,7 +500,7 @@ void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
 
 
 /*********************** UNPACKER **************************/
-void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
+static void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
         int cnt, neighbor_proc *nbr, int dim )
 {
     int i;
@@ -581,7 +581,7 @@ void Unpack_Estimate_Message( reax_system *system, int end, void *dummy,
 /**************** UPDATE ATOM POSITIONS *******************/
 
 /**************** PACK POSITION UPDATES *******************/
-void Sort_Position_Updates( reax_system *system, int start, int end,
+static void Sort_Position_Updates( reax_system *system, int start, int end,
         int dim, mpi_out_data *out_bufs )
 {
     int i, p;
@@ -602,7 +602,7 @@ void Sort_Position_Updates( reax_system *system, int start, int end,
 }
 
 /*************** UNPACK POSITION UPDATES ******************/
-void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
+static void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
         int cnt, neighbor_proc *nbr, int dim )
 {
     int i, start;

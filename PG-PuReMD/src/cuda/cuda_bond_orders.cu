@@ -85,9 +85,9 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
 
     for( pj = start_i; pj < end_i; ++pj )
     {
-        j = bonds->select.bond_list[pj].nbr;
+        j = bonds->bond_list[pj].nbr;
         type_j = my_atoms[j].type;
-        bo_ij = &( bonds->select.bond_list[pj].bo_data );
+        bo_ij = &( bonds->bond_list[pj].bo_data );
         // fprintf( stderr, "\tj:%d - ubo: %8.3f\n", j+1, bo_ij->BO );
 
         //TODO
@@ -124,7 +124,7 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
                 bo_ij->C4dbopi2 = 0.0;
 
 #ifdef TEST_FORCES
-                pdbo = &(dBOs->select.dbo_list[ top_dbo ]);
+                pdbo = &(dBOs->dbo_list[ top_dbo ]);
 
                 // compute dBO_ij/dr_i
                 pdbo->wrt = i;
@@ -286,7 +286,7 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
                "Cdbopi:\t%g %g %g %g\n"
                "Cdbopi2:%g %g %g %g\n\n", 
                i+1, j+1, 
-               bonds->select.bond_list[ pj ].d, 
+               bonds->bond_list[ pj ].d, 
                bo_ij->BO,bo_ij->BO_pi, bo_ij->BO_pi2, 
                bo_ij->C1dbo, bo_ij->C2dbo, bo_ij->C3dbo,
                bo_ij->C1dbopi, bo_ij->C2dbopi, 
@@ -309,8 +309,8 @@ CUDA_GLOBAL void Cuda_Calculate_BO( reax_atom *my_atoms, global_parameters gp,
                else {
             // We only need to update bond orders from bo_ji
             //   everything else is set in uncorrected_bo calculations
-            sym_index = bonds->select.bond_list[pj].sym_index;
-            bo_ji = &(bonds->select.bond_list[ sym_index ].bo_data);
+            sym_index = bonds->bond_list[pj].sym_index;
+            bo_ji = &(bonds->bond_list[ sym_index ].bo_data);
             bo_ij->BO = bo_ji->BO;
             bo_ij->BO_s = bo_ji->BO_s;
             bo_ij->BO_pi = bo_ji->BO_pi;
@@ -352,16 +352,16 @@ CUDA_GLOBAL void Cuda_Update_Uncorrected_BO( storage p_workspace,
     for( pj = start_i; pj < end_i; ++pj )
     {
 
-        j = bonds->select.bond_list[pj].nbr;
-        bo_ij = &( bonds->select.bond_list[pj].bo_data );
+        j = bonds->bond_list[pj].nbr;
+        bo_ij = &( bonds->bond_list[pj].bo_data );
 
         //if( (i >= j)  || (workspace->bond_mark [i] <= 3)) {
         if ( i >= j )
         {
             /* We only need to update bond orders from bo_ji
                everything else is set in uncorrected_bo calculations */
-            sym_index = bonds->select.bond_list[pj].sym_index;
-            bo_ji = &(bonds->select.bond_list[ sym_index ].bo_data);
+            sym_index = bonds->bond_list[pj].sym_index;
+            bo_ji = &(bonds->bond_list[ sym_index ].bo_data);
             bo_ij->BO = bo_ji->BO;
             bo_ij->BO_s = bo_ji->BO_s;
             bo_ij->BO_pi = bo_ji->BO_pi;
@@ -444,20 +444,20 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     int pk, k, j;
 
     /* Initializations */
-    nbr_j = &(bonds->select.bond_list[pj]);
+    nbr_j = &(bonds->bond_list[pj]);
     j = nbr_j->nbr;
 
     //bo_ij = &(nbr_j->bo_data);
-    //bo_ji = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
+    //bo_ji = &(bonds->bond_list[ nbr_j->sym_index ].bo_data);
     if (i < j)
     {
         bo_ij = &(nbr_j->bo_data);
-        bo_ji = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
+        bo_ji = &(bonds->bond_list[ nbr_j->sym_index ].bo_data);
     }
     else
     {
         bo_ji = &(nbr_j->bo_data);
-        bo_ij = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
+        bo_ij = &(bonds->bond_list[ nbr_j->sym_index ].bo_data);
     }
 
     coef.C1dbo = bo_ij->C1dbo * (bo_ij->Cdbo + bo_ji->Cdbo);
@@ -486,7 +486,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     {
         for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
         {
-            nbr_k = &(bonds->select.bond_list[pk]);
+            nbr_k = &(bonds->bond_list[pk]);
             k = nbr_k->nbr;
 
             rvec_MakeZero( nbr_k->tf_f );
@@ -539,7 +539,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
          ******************************************************/
         for( pk = Dev_Start_Index(j, bonds); pk < Dev_End_Index(j, bonds); ++pk )
         {
-            nbr_k = &(bonds->select.bond_list[pk]);
+            nbr_k = &(bonds->bond_list[pk]);
             k = nbr_k->nbr;
 
             rvec_MakeZero (nbr_k->tf_f);
@@ -617,20 +617,20 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     rvec_MakeZero( tf_f );
 
     /* Initializations */
-    nbr_j = &(bonds->select.bond_list[pj]);
+    nbr_j = &(bonds->bond_list[pj]);
     j = nbr_j->nbr;
     //bo_ij = &(nbr_j->bo_data);
-    //bo_ji = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
+    //bo_ji = &(bonds->bond_list[ nbr_j->sym_index ].bo_data);
 
     if ( i < j )
     {
         bo_ij = &(nbr_j->bo_data);
-        bo_ji = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
+        bo_ji = &(bonds->bond_list[ nbr_j->sym_index ].bo_data);
     }
     else
     {
         bo_ji = &(nbr_j->bo_data);
-        bo_ij = &(bonds->select.bond_list[ nbr_j->sym_index ].bo_data);
+        bo_ij = &(bonds->bond_list[ nbr_j->sym_index ].bo_data);
     }
 
     coef.C1dbo = bo_ij->C1dbo * (bo_ij->Cdbo + bo_ji->Cdbo);
@@ -655,7 +655,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     {
         for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
         {
-            nbr_k = &(bonds->select.bond_list[pk]);
+            nbr_k = &(bonds->bond_list[pk]);
             rvec_MakeZero( tf_f );
 
             /*2nd,dBO*/
@@ -699,7 +699,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     {
         for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
         {
-            nbr_k = &(bonds->select.bond_list[pk]);
+            nbr_k = &(bonds->bond_list[pk]);
             rvec_MakeZero( tf_f );
 
             /*3rd, dBO*/
@@ -750,8 +750,8 @@ CUDA_DEVICE void Cuda_dbond_to_Forces_postprocess( int i, reax_atom *atoms,
 
     for( pk = Dev_Start_Index(i, bonds); pk < Dev_End_Index(i, bonds); ++pk )
     {
-        nbr_k = &(bonds->select.bond_list[pk]);
-        nbr_k_sym = &( bonds->select.bond_list [nbr_k->sym_index] );
+        nbr_k = &(bonds->bond_list[pk]);
+        nbr_k_sym = &( bonds->bond_list [nbr_k->sym_index] );
 
         //rvec_Add( atoms[i].f, nbr_k_sym->tf_f );
         rvec_Add( workspace->f[i], nbr_k_sym->tf_f );
@@ -800,7 +800,7 @@ CUDA_GLOBAL void k_total_forces( storage p_workspace, reax_list p_bonds,
 
     for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
     {
-        //if( i < bonds->select.bond_list[pj].nbr ) {
+        //if( i < bonds->bond_list[pj].nbr ) {
         if( control->virial == 0 )
         {
             Cuda_Add_dBond_to_Forces( i, pj, workspace, bonds );

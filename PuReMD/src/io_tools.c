@@ -778,13 +778,13 @@ void Print_All_GCells( reax_system *system )
 
 
 
-void Print_My_Atoms( reax_system *system )
+void Print_My_Atoms( reax_system *system, control_params *control, int step )
 {
     int   i;
     char  fname[100];
     FILE *fh;
 
-    sprintf( fname, "my_atoms.%d", system->my_rank );
+    sprintf( fname, "%s.my_atoms.%d.%d", control->sim_name, step, system->my_rank );
     if ( (fh = fopen( fname, "w" )) == NULL )
     {
         fprintf( stderr, "error in opening my_atoms file" );
@@ -1064,28 +1064,35 @@ void Print_HBond_Indices( reax_system *system, reax_list **lists,
 }
 
 
-void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
+void Print_Bonds( reax_system *system, reax_list **lists,
+        control_params *control, int step )
 {
-    int i, j, pj;
+    int i, pj; 
+    char fname[MAX_STR]; 
     bond_data *pbond;
     bond_order_data *bo_ij;
-    FILE *f = fopen( fname, "w" );
+    FILE *fout;
+    reax_list *bonds = lists[BONDS];
+
+    sprintf( fname, "%s.bonds.%d.%d", control->sim_name, step, system->my_rank );
+    fout = fopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            pbond = &(bonds->bond_list[pj]);
-            bo_ij = &(pbond->bo_data);
-            j = pbond->nbr;
-            //fprintf( f, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-            //       system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
-            //       pbond->d, bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
-            fprintf( f, "%8d%8d %24.15f %24.15f\n",
-                     i, j,//system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
-                     pbond->d, bo_ij->BO );
+            pbond = &bonds->bond_list[pj];
+            bo_ij = &pbond->bo_data;
+//            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
+//                    system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
+//                    pbond->d, bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
+            fprintf( fout, "%8d%8d %24.15f %24.15f\n",
+                    i, pbond->nbr, //system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
+                    pbond->d, bo_ij->BO );
         }
+    }
 
-    fclose(f);
+    fclose( fout );
 }
 
 
@@ -1139,15 +1146,21 @@ void Print_Total_Force( reax_system *system, simulation_data *data,
 
 
 /* Print reax interaction list in adjacency list format */
-void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, FILE *fp )
+void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
+        control_params *control, reax_list *list, int step )
 {
     int i, pj, id_i, id_j, nbr, cnt;
     int num_intrs, *intrs;
+    char fname[MAX_STR]; 
+    FILE *fout;
+
+    sprintf( fname, "%s.far.%d.%d", control->sim_name, step, system->my_rank );
+    fout = fopen( fname, "w" );
 
     num_intrs = 0;
     intrs = NULL;
 
-    if ( fp == NULL )
+    if ( fout == NULL )
     {
         fprintf( stderr, "[WARNING] null file pointer, returning without printing...\n" );
         return;
@@ -1157,7 +1170,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, 
     {
         cnt = 0;
         id_i = system->my_atoms[i].orig_id;
-        fprintf( fp, "%d: ", id_i );
+        fprintf( fout, "%d: ", id_i );
 
         if ( Num_Entries( i, list ) > num_intrs )
         {
@@ -1179,15 +1192,17 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system, reax_list *list, 
 
         for ( pj = 0; pj < cnt; ++pj )
         {
-            fprintf( fp, "%d, ", intrs[pj] );
+            fprintf( fout, "%d, ", intrs[pj] );
         }
-        fprintf( fp, "\n" );
+        fprintf( fout, "\n" );
     }
 
     if ( intrs != NULL )
     {
         free( intrs );
     }
+
+    fclose( fout );
 }
 
 void Output_Results( reax_system *system, control_params *control,

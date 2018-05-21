@@ -64,23 +64,23 @@ void Dev_Make_List( int n, int max_intrs, int type, reax_list *l )
     switch ( l->type )
     {
         case TYP_FAR_NEIGHBOR:
-            cuda_malloc( (void **) &l->select.far_nbr_list, 
+            cuda_malloc( (void **) &l->far_nbr_list, 
                     l->max_intrs * sizeof(far_neighbor_data), TRUE, "Dev_Make_List::far_nbrs" );
             break;
 
         case TYP_THREE_BODY:
-            cuda_malloc( (void **) &l->select.three_body_list,
+            cuda_malloc( (void **) &l->three_body_list,
                     l->max_intrs * sizeof(three_body_interaction_data), TRUE,
                     "Dev_Make_List::three_bodies" );
             break;
 
         case TYP_HBOND:
-            cuda_malloc( (void **) &l->select.hbond_list, 
+            cuda_malloc( (void **) &l->hbond_list, 
                     l->max_intrs * sizeof(hbond_data), TRUE, "Dev_Make_List::hbonds" );
             break;            
 
         case TYP_BOND:
-            cuda_malloc( (void **) &l->select.bond_list,
+            cuda_malloc( (void **) &l->bond_list,
                     l->max_intrs * sizeof(bond_data), TRUE, "Dev_Make_List::bonds" );
             break;
 
@@ -109,16 +109,16 @@ void Dev_Delete_List( reax_list *l )
     switch ( l->type )
     {
         case TYP_HBOND:
-            cuda_free( l->select.hbond_list, "Dev_Delete_List::hbonds" );
+            cuda_free( l->hbond_list, "Dev_Delete_List::hbonds" );
             break;
         case TYP_FAR_NEIGHBOR:
-            cuda_free( l->select.far_nbr_list, "Dev_Delete_List::far_nbrs" );
+            cuda_free( l->far_nbr_list, "Dev_Delete_List::far_nbrs" );
             break;
         case TYP_BOND:
-            cuda_free( l->select.bond_list, "Dev_Delete_List::bonds" );
+            cuda_free( l->bond_list, "Dev_Delete_List::bonds" );
             break;
         case TYP_THREE_BODY:
-            cuda_free( l->select.three_body_list, "Dev_Delete_List::three_bodies" );
+            cuda_free( l->three_body_list, "Dev_Delete_List::three_bodies" );
             break;
         default:
             fprintf( stderr, "[ERROR] unknown devive list type (%d)\n", l->type );

@@ -46,12 +46,12 @@ int Velocity_Verlet_Berendsen_NPT( reax_system*, control_params*,
 
 /*
 int Velocity_Verlet_Nose_Hoover_NVT( reax_system*, control_params*,
-                   simulation_data*, storage*, reax_list**,
-                   output_controls*, mpi_datatypes* );
+        simulation_data*, storage*, reax_list**,
+        output_controls*, mpi_datatypes* );
 
 int Velocity_Verlet_Flexible_NPT( reax_system*, control_params*,
-                simulation_data*, storage*, reax_list**,
-                output_controls*, mpi_datatypes* );
+        simulation_data*, storage*, reax_list**,
+        output_controls*, mpi_datatypes* );
 */
 
 #ifdef __cplusplus

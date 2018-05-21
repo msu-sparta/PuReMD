@@ -224,7 +224,7 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
 
     for ( pk = start_j; pk < end_j; ++pk )
     {
-        pbond_jk = &( bonds->select.bond_list[pk] );
+        pbond_jk = &( bonds->bond_list[pk] );
         k = pbond_jk->nbr;
         bo_jk = &( pbond_jk->bo_data );
         BOA_jk = bo_jk->BO - control->thb_cut;
@@ -261,9 +261,9 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
                 /* pick i up from j-k interaction where j is the central atom */
                 for ( pi = start_pk; pi < end_pk; ++pi )
                 {
-                    p_ijk = &( thb_intrs->select.three_body_list[pi] );
+                    p_ijk = &( thb_intrs->three_body_list[pi] );
                     pij = p_ijk->pthb; // pij is pointer to i on j's bond_list
-                    pbond_ij = &( bonds->select.bond_list[pij] );
+                    pbond_ij = &( bonds->bond_list[pij] );
                     bo_ij = &( pbond_ij->bo_data );
 
 
@@ -297,10 +297,10 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
 
                         /* pick l up from j-k interaction where k is the central atom */
                         for ( pl = start_pj; pl < end_pj; ++pl ) {
-                            p_jkl = &( thb_intrs->select.three_body_list[pl] );
+                            p_jkl = &( thb_intrs->three_body_list[pl] );
                             l = p_jkl->thb;
                             plk = p_jkl->pthb; //pointer to l on k's bond_list!
-                            pbond_kl = &( bonds->select.bond_list[plk] );
+                            pbond_kl = &( bonds->bond_list[plk] );
                             bo_kl = &( pbond_kl->bo_data );
                             type_l = my_atoms[l].type;
                             fbh = &(d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)]);
@@ -652,9 +652,9 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_PostProcess ( reax_atom *my_atoms,
 
     for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
     {
-        pbond = &(bonds->select.bond_list[pj]);
+        pbond = &(bonds->bond_list[pj]);
         bo_data = &pbond->bo_data;
-        sym_index_bond = &( bonds->select.bond_list[ pbond->sym_index ] ); 
+        sym_index_bond = &( bonds->bond_list[ pbond->sym_index ] ); 
 
         workspace->CdDelta[i] += sym_index_bond->ta_CdDelta;
 

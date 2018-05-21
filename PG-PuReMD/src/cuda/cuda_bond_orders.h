@@ -92,7 +92,7 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
 
         if ( i < j )
         {
-            ibond = &( bonds.select.bond_list[btop_i] );
+            ibond = &( bonds.bond_list[btop_i] );
             ibond->nbr = j;
             ibond->d = nbr_pj->d;
             rvec_Copy( ibond->dvec, nbr_pj->dvec );
@@ -147,7 +147,7 @@ CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
             //btop_j = End_Index( j, bonds );
             btop_j = btop_i;
 
-            jbond = &(bonds.select.bond_list[btop_j]);
+            jbond = &(bonds.bond_list[btop_j]);
             //jbond->nbr = i;
             jbond->nbr = j;
             jbond->d = nbr_pj->d;

@@ -687,15 +687,17 @@ void Deallocate_Grid( grid *g )
  * Note: buffers are (void *), type cast to the correct pointer type to access
  * the allocated buffers */
 void Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
-        neighbor_proc *my_nbrs, char *msg )
+        neighbor_proc *my_nbrs )
 {
     int i;
     mpi_out_data *mpi_buf;
 
     /* in buffers */
-    mpi_data->in1_buffer = scalloc( est_recv, sizeof(boundary_atom),
+    mpi_data->in1_buffer = scalloc( est_recv,
+            MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
             "Allocate_MPI_Buffers::in1_buffer" );
-    mpi_data->in2_buffer = scalloc( est_recv, sizeof(boundary_atom),
+    mpi_data->in2_buffer = scalloc( est_recv,
+            MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
             "Allocate_MPI_Buffers::in2_buffer" );
 
     /* out buffers */
@@ -740,7 +742,6 @@ void ReAllocate( reax_system *system, control_params *control,
     grid *g;
     neighbor_proc *nbr_pr;
     mpi_out_data *nbr_data;
-    char msg[200];
 
     realloc = &workspace->realloc;
     g = &system->my_grid;
@@ -960,7 +961,7 @@ void ReAllocate( reax_system *system, control_params *control,
 
         /* reallocate mpi buffers */
         Deallocate_MPI_Buffers( mpi_data );
-        Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs, msg );
+        Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs );
     }
 
 #if defined(DEBUG_FOCUS)
