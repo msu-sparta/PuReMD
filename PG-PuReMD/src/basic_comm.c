@@ -30,6 +30,104 @@
 #endif
 
 
+typedef void (*dist_packer)( void*, mpi_out_data* );
+typedef void (*coll_unpacker)( void*, void*, mpi_out_data* );
+
+
+static void real_packer( void *dummy, mpi_out_data *out_buf )
+{
+    int i;
+    real *buf = (real*) dummy;
+    real *out = (real*) out_buf->out_atoms;
+
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        out[i] = buf[ out_buf->index[i] ];
+    }
+}
+
+
+static void rvec_packer( void *dummy, mpi_out_data *out_buf )
+{
+    int i;
+    rvec *buf, *out;
+
+    buf = (rvec*) dummy;
+    out = (rvec*) out_buf->out_atoms;
+
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec) );
+    }
+}
+
+
+static void rvec2_packer( void *dummy, mpi_out_data *out_buf )
+{
+    int i;
+    rvec2 *buf, *out;
+
+    buf = (rvec2*) dummy;
+    out = (rvec2*) out_buf->out_atoms;
+
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec2) );
+    }
+}
+
+
+static void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+{
+    int i;
+    real *in, *buf;
+
+    in = (real*) dummy_in;
+    buf = (real*) dummy_buf;
+
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        buf[ out_buf->index[i] ] += in[i];
+    }
+}
+
+
+static void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+{
+    int i;
+    rvec *in, *buf;
+
+    in = (rvec*) dummy_in;
+    buf = (rvec*) dummy_buf;
+
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        rvec_Add( buf[ out_buf->index[i] ], in[i] );
+
+#if defined(DEBUG)
+        fprintf( stderr, "rvec_unpacker: cnt=%d  i =%d  index[i]=%d\n",
+                out_buf->cnt, i, out_buf->index[i] );
+#endif
+    }
+}
+
+
+static void rvec2_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+{
+    int i;
+    rvec2 *in, *buf;
+
+    in = (rvec2*) dummy_in;
+    buf = (rvec2*) dummy_buf;
+
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        buf[ out_buf->index[i] ][0] += in[i][0];
+        buf[ out_buf->index[i] ][1] += in[i][1];
+    }
+}
+
+
 static void * Get_Buffer_Offset( const void * const buffer,
         const int offset, const int type )
 {
@@ -59,51 +157,64 @@ static void * Get_Buffer_Offset( const void * const buffer,
 }
 
 
-void real_packer( void *dummy, mpi_out_data *out_buf )
+static dist_packer Get_Packer( const int type )
 {
-    int i;
-    real *buf = (real*) dummy;
-    real *out = (real*) out_buf->out_atoms;
+    dist_packer ptr;
 
-    for ( i = 0; i < out_buf->cnt; ++i )
+    switch ( type )
     {
-        out[i] = buf[ out_buf->index[i] ];
+        case REAL_PTR_TYPE:
+            ptr = real_packer;
+            break;
+
+        case RVEC_PTR_TYPE:
+            ptr = rvec_packer;
+            break;
+
+        case RVEC2_PTR_TYPE:
+            ptr = rvec2_packer;
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] unknown pointer type. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
     }
+
+    return ptr;
 }
 
 
-void rvec_packer( void *dummy, mpi_out_data *out_buf )
+static coll_unpacker Get_Unpacker( const int type )
 {
-    int i;
-    rvec *buf, *out;
+    coll_unpacker ptr;
 
-    buf = (rvec*) dummy;
-    out = (rvec*) out_buf->out_atoms;
-
-    for ( i = 0; i < out_buf->cnt; ++i )
+    switch ( type )
     {
-        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec) );
+        case REAL_PTR_TYPE:
+            ptr = real_unpacker;
+            break;
+
+        case RVEC_PTR_TYPE:
+            ptr = rvec_unpacker;
+            break;
+
+        case RVEC2_PTR_TYPE:
+            ptr = rvec2_unpacker;
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] unknown pointer type. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
     }
+
+    return ptr;
 }
 
 
-void rvec2_packer( void *dummy, mpi_out_data *out_buf )
-{
-    int i;
-    rvec2 *buf, *out;
-
-    buf = (rvec2*) dummy;
-    out = (rvec2*) out_buf->out_atoms;
-
-    for ( i = 0; i < out_buf->cnt; ++i )
-    {
-        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec2) );
-    }
-}
-
-
-void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
-        int buf_type, MPI_Datatype type, dist_packer pack )
+void Dist( const reax_system * const system, const mpi_datatypes * const mpi_data,
+        void *buf, int buf_type, MPI_Datatype type )
 {
     int d;
     mpi_out_data *out_bufs;
@@ -111,6 +222,7 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     neighbor_proc *nbr1, *nbr2;
+    dist_packer pack;
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d dist: entered\n", system->my_rank );
@@ -118,6 +230,7 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
+    pack = Get_Packer( buf_type );
 
     for ( d = 0; d < 3; ++d )
     {
@@ -167,59 +280,8 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 }
 
 
-void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
-{
-    int i;
-    real *in, *buf;
-
-    in = (real*) dummy_in;
-    buf = (real*) dummy_buf;
-
-    for ( i = 0; i < out_buf->cnt; ++i )
-    {
-        buf[ out_buf->index[i] ] += in[i];
-    }
-}
-
-
-void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
-{
-    int i;
-    rvec *in, *buf;
-
-    in = (rvec*) dummy_in;
-    buf = (rvec*) dummy_buf;
-
-    for ( i = 0; i < out_buf->cnt; ++i )
-    {
-        rvec_Add( buf[ out_buf->index[i] ], in[i] );
-
-#if defined(DEBUG)
-        fprintf( stderr, "rvec_unpacker: cnt=%d  i =%d  index[i]=%d\n",
-                out_buf->cnt, i, out_buf->index[i] );
-#endif
-    }
-}
-
-
-void rvec2_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
-{
-    int i;
-    rvec2 *in, *buf;
-
-    in = (rvec2*) dummy_in;
-    buf = (rvec2*) dummy_buf;
-
-    for ( i = 0; i < out_buf->cnt; ++i )
-    {
-        buf[ out_buf->index[i] ][0] += in[i][0];
-        buf[ out_buf->index[i] ][1] += in[i][1];
-    }
-}
-
-
-void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
-        int buf_type, MPI_Datatype type, coll_unpacker unpack )
+void Coll( const reax_system const* system, const mpi_datatypes * const mpi_data,
+        void *buf, int buf_type, MPI_Datatype type )
 {
     int d;
     mpi_out_data *out_bufs;
@@ -227,6 +289,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     neighbor_proc *nbr1, *nbr2;
+    coll_unpacker unpack;
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
@@ -234,6 +297,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
+    unpack = Get_Unpacker( buf_type );
 
     for ( d = 2; d >= 0; --d )
     {
@@ -295,7 +359,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data, void *buf,
 }
 
 
-real Parallel_Norm( real *v, int n, MPI_Comm comm )
+real Parallel_Norm( const real * const v, const int n, MPI_Comm comm )
 {
     int  i;
     real my_sum, norm_sqr;
@@ -314,7 +378,8 @@ real Parallel_Norm( real *v, int n, MPI_Comm comm )
 
 
 
-real Parallel_Dot( real *v1, real *v2, int n, MPI_Comm comm )
+real Parallel_Dot( const real * const v1, const real * const v2,
+        const int n, MPI_Comm comm )
 {
     int  i;
     real my_dot, res;
@@ -333,7 +398,8 @@ real Parallel_Dot( real *v1, real *v2, int n, MPI_Comm comm )
 
 
 
-real Parallel_Vector_Acc( real *v, int n, MPI_Comm comm )
+real Parallel_Vector_Acc( const real * const v, const int n,
+        MPI_Comm comm )
 {
     int  i;
     real my_acc, res;

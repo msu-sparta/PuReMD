@@ -111,7 +111,7 @@
 #define RAD2DEG(a) ((a)*180.0/PI)
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
-#define MAX3(x,y,z) MAX( MAX(x,y), z)
+#define MAX3(x,y,z) MAX( MAX((x),(y)), (z))
 
 /* ??? */
 #define C_ele (332.06371)
@@ -563,10 +563,6 @@ typedef real (*lookup_function)( real );
 typedef void (*message_sorter)( reax_system*, int, int, int, mpi_out_data* );
 /**/
 typedef void (*unpacker)( reax_system*, int, void*, int, neighbor_proc*, int );
-/**/
-typedef void (*dist_packer)( void*, mpi_out_data* );
-/**/
-typedef void (*coll_unpacker)( void*, void*, mpi_out_data* );
 
 
 /* struct definitions */

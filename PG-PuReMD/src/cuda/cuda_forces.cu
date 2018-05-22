@@ -1973,8 +1973,7 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
     copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N ,
             cudaMemcpyDeviceToHost, "total_force:f:get" );
 
-    Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec,
-          rvec_unpacker );
+    Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
 
     copy_host_device( f, dev_workspace->f, sizeof(rvec) * system->N,
             cudaMemcpyHostToDevice, "total_force:f:put" );

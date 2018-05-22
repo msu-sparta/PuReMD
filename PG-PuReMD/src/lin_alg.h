@@ -29,26 +29,22 @@
 extern "C" {
 #endif
 
+
 //real diag_pre_comp( const sparse_matrix * const, real * const );
 real diag_pre_comp( const reax_system * const, real * const );
 
-int GMRES( reax_system*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes*, FILE* );
+int dual_CG( const reax_system * const, const control_params * const,
+        const storage * const, const simulation_data * const,
+        const mpi_datatypes * const,
+        const sparse_matrix * const, const rvec2 * const,
+        const real, rvec2 * const, const int );
 
-int GMRES_HouseHolder( reax_system*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes*, FILE* );
+int CG( const reax_system * const, const control_params * const,
+        const storage * const, const simulation_data * const,
+        const mpi_datatypes * const,
+        const sparse_matrix * const, const real * const,
+        const real, real * const, const int );
 
-int dual_CG( reax_system*, storage*, sparse_matrix*,
-        rvec2*, real, rvec2*, mpi_datatypes*, FILE* , simulation_data * );
-
-int CG( reax_system*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes* );
-
-int PCG( reax_system*, storage*, sparse_matrix*, real*, real,
-        sparse_matrix*, sparse_matrix*, real*, mpi_datatypes*, FILE* );
-
-int sCG( reax_system*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes*, FILE* );
 
 #ifdef __cplusplus
 }

@@ -731,7 +731,7 @@ static void Calculate_Charges_QEq( const reax_system * const system,
         system->my_atoms[i].q = q[i];
     }
 
-    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
+    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
     for ( i = system->n; i < system->N; ++i )
     {
@@ -786,14 +786,11 @@ static void QEq( reax_system * const system, control_params * const control,
     switch ( control->cm_solver_type )
     {
     case CG_S:
-        iters = dual_CG( system, workspace, &workspace->H, workspace->b,
-                control->cm_solver_q_err, workspace->x, mpi_data, out_control->log, data );
-
-//        iters = CG( system, workspace, workspace->H, workspace->b_s, //newQEq sCG
-//                control->cm_solver_q_err, workspace->s, mpi_data, out_control->log );
-//        iters += PCG( system, workspace, workspace->H, workspace->b_s,
-//                control->cm_solver_q_err, workspace->L, workspace->U, workspace->s,
-//                mpi_data, out_control->log );
+        iters = dual_CG( system, control, workspace, data, mpi_data,
+                &workspace->H, workspace->b, control->cm_solver_q_err,
+                workspace->x, (control->cm_solver_pre_comp_refactor > 0
+                    && (data->step - data->prev_steps)
+                    % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         break;
 
     case GMRES_S:
@@ -801,7 +798,7 @@ static void QEq( reax_system * const system, control_params * const control,
     case SDM_S:
     case BiCGStab_S:
     default:
-        fprintf( stderr, "[ERROR] Unrecognized QEq solver selection. Terminating...\n" );
+        fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }

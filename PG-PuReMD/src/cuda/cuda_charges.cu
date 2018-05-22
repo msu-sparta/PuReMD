@@ -240,7 +240,7 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
 
     cuda_charges_st( system, workspace, q, u );
 
-    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, real_packer );
+    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
     cuda_charges_updateq( system, q );
 }

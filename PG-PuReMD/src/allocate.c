@@ -692,7 +692,8 @@ void Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
     int i;
     mpi_out_data *mpi_buf;
 
-    /* in buffers */
+    /* buffers for incoming messages,
+     * see SendRecv for MPI datatypes sent */
     mpi_data->in1_buffer = scalloc( est_recv,
             MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
             "Allocate_MPI_Buffers::in1_buffer" );
@@ -700,14 +701,17 @@ void Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
             MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
             "Allocate_MPI_Buffers::in2_buffer" );
 
-    /* out buffers */
+    /* buffers for outgoing messages,
+     * see SendRecv for MPI datatypes sent */
     for ( i = 0; i < MAX_NBRS; ++i )
     {
         mpi_buf = &mpi_data->out_buffers[i];
+
         /* allocate storage for the neighbor processor i */
         mpi_buf->index = scalloc( my_nbrs[i].est_send, sizeof(int),
                 "Allocate_MPI_Buffers::mpi_buf->index" );
-        mpi_buf->out_atoms = scalloc( my_nbrs[i].est_send, sizeof(boundary_atom),
+        mpi_buf->out_atoms = scalloc( my_nbrs[i].est_send,
+                MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
                 "Allocate_MPI_Buffers::mpi_buf->out_atoms" );
     }
 }

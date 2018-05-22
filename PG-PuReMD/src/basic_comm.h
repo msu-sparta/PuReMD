@@ -37,29 +37,17 @@ enum pointer_type
 extern "C" {
 #endif
 
-void real_packer( void*, mpi_out_data* );
+void Dist( const reax_system * const, const mpi_datatypes * const,
+        void*, int, MPI_Datatype );
 
-void rvec_packer( void*, mpi_out_data* );
+void Coll( const reax_system * const, const mpi_datatypes * const,
+        void*, int, MPI_Datatype );
 
-void rvec2_packer( void*, mpi_out_data* );
+real Parallel_Norm( const real * const, const int, MPI_Comm );
 
-void Dist( reax_system*, mpi_datatypes*, void*, int, MPI_Datatype,
-        dist_packer );
+real Parallel_Dot( const real * const, const real * const, const int, MPI_Comm );
 
-void real_unpacker( void*, void*, mpi_out_data* );
-
-void rvec_unpacker( void*, void*, mpi_out_data* );
-
-void rvec2_unpacker( void*, void*, mpi_out_data* );
-
-void Coll( reax_system*, mpi_datatypes*, void*, int, MPI_Datatype,
-        coll_unpacker );
-
-real Parallel_Norm( real*, int, MPI_Comm );
-
-real Parallel_Dot( real*, real*, int, MPI_Comm );
-
-real Parallel_Vector_Acc( real*, int, MPI_Comm );
+real Parallel_Vector_Acc( const real * const, const int, MPI_Comm );
 
 #if defined(TEST_FORCES)
 void Coll_ids_at_Master( reax_system*, storage*, mpi_datatypes* );
