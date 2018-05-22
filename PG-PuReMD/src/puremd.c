@@ -216,14 +216,15 @@ void* setup( const char * const geo_file, const char * const ffield_file,
 
 #ifdef HAVE_CUDA
     /* setup the CUDA Device for this process */
-    Setup_Cuda_Environment( system->my_rank, control->nprocs, control->gpus_per_node );
+    Setup_Cuda_Environment( pmd_handle->system->my_rank,
+            pmd_handle->control->nprocs, pmd_handle->control->gpus_per_node );
 
 #if defined(DEBUG)
     print_device_mem_usage( );
 #endif
 
     /* init blocks sizes */
-    init_blocks( system );
+    init_blocks( pmd_handle->system );
 #endif
 
     return (void*) pmd_handle;

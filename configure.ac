@@ -30,7 +30,7 @@ AC_ARG_ENABLE([openmp],
 	      [pack_openmp_enabled=${enableval}], [pack_openmp_enabled=yes])
 AC_ARG_ENABLE([mpi-old],
 	      [AS_HELP_STRING([--enable-mpi-old],
-			      [enable MPI support @<:@default: no@:>@])],
+			      [enable MPI support (old) @<:@default: no@:>@])],
 	      [pack_mpi_old_enabled=${enableval}], [pack_mpi_old_enabled=no])
 AC_ARG_ENABLE([gpu],
 	      [AS_HELP_STRING([--enable-gpu],
@@ -38,7 +38,7 @@ AC_ARG_ENABLE([gpu],
 	      [pack_gpu_enabled=${enableval}], [pack_gpu_enabled=no])
 AC_ARG_ENABLE([mpi],
 	      [AS_HELP_STRING([--enable-mpi],
-			      [enable MPI but not CUDA support @<:@default: no@:>@])],
+			      [enable MPI support @<:@default: no@:>@])],
 	      [pack_mpi_enabled=${enableval}], [pack_mpi_enabled=no])
 AC_ARG_ENABLE([mpi-gpu],
 	      [AS_HELP_STRING([--enable-mpi-gpu],
@@ -80,7 +80,7 @@ AC_ARG_ENABLE([debug],
 			      [enable debug support @<:@default: no@:>@])],
 	      [DEBUG=${enableval}], [DEBUG=no]
 	      )
-if test "x$DEBUG" = "xyes"
+if test "x${DEBUG}" = "xyes"
 then
 #	#TODO: fix exporting to subdirs
 #	# See: http://stackoverflow.com/questions/34124337/changing-flags-in-configure-ac-vs-caching-with-subprojects
@@ -125,7 +125,7 @@ fi
 
 AC_ARG_WITH([superlu-mt],
 	    [AS_HELP_STRING([--with-superlu-mt],
-			    [enable usage of SuperLU MT for QEq preconditioner computation @<:@default: no@:>@])],
+			    [enable usage of SuperLU MT for preconditioning @<:@default: no@:>@])],
             [package_superlu_mt=${withval}], [package_superlu_mt=no])
 
 if test "x${package_superlu_mt}" != "xno"
