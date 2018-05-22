@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------
-  PuReMD - Purdue ReaxFF Molecular Dynamics Program
+  SerialReax - Reax Force Field Simulator
 
   Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
@@ -19,17 +19,32 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __FFIELD_H_
-#define __FFIELD_H_
+#ifndef __PUREMD_H_
+#define __PUREMD_H_
 
 #include "reax_types.h"
 
 
+#define PUREMD_SUCCESS (0)
+#define PUREMD_FAILURE (-1)
+
+
 #ifdef __cplusplus
-extern "C" {
+extern "C"  {
 #endif
 
-void Read_Force_Field_File( char*, reax_interaction*, reax_system *, control_params* );
+void* setup( const char * const, const char * const,
+        const char * const );
+
+int setup_callback( const void * const, const callback_function );
+
+int simulate( const void * const );
+
+int cleanup( const void * const );
+
+reax_atom* get_atoms( const void * const );
+
+int set_output_enabled( const void * const, const int );
 
 #ifdef __cplusplus
 }

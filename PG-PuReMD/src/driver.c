@@ -1,5 +1,6 @@
+
 /*----------------------------------------------------------------------
-  PuReMD - Purdue ReaxFF Molecular Dynamics Program
+  SerialReax - Reax Force Field Simulator
 
   Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
@@ -19,21 +20,51 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __FFIELD_H_
-#define __FFIELD_H_
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "reax_types.h"
+#include "puremd.h"
+
+#define INVALID_INPUT (-1)
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void Read_Force_Field_File( char*, reax_interaction*, reax_system *, control_params* );
-
-#ifdef __cplusplus
+static void usage( char * argv[] )
+{
+    fprintf( stderr, "usage: ./%s geometry_file force_field_params_file control_file\n", argv[0] );
 }
-#endif
 
 
-#endif
+int main( int argc, char* argv[] )
+{
+    void *handle;
+    int ret;
+
+    MPI_Init( &argc, &argv );
+
+    if ( argc != 4 )
+    {
+        usage( argv );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+    }
+
+    handle = setup( argv[1], argv[2], argv[3] );
+    ret = PUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        ret = simulate( handle );
+    }
+
+    MPI_Finalized( &ret );
+    if ( !ret )
+    { 
+        MPI_Finalize( );
+    }
+
+    if ( ret == PUREMD_SUCCESS )
+    {
+        ret = cleanup( handle );
+    }
+
+    return (ret == PUREMD_SUCCESS) ? 0 : (-1);
+}

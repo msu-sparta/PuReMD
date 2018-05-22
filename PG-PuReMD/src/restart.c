@@ -29,7 +29,7 @@
 #include "vector.h"
 
 
-void Write_Binary_Restart( reax_system *system, control_params *control,
+void Write_Binary_Restart_File( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
@@ -49,7 +49,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     {
         /* master handles the restart file */
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
-        fres = sfopen( fname, "wb", "Write_Binary_Restart::fres" );
+        fres = sfopen( fname, "wb", "Write_Binary_Restart_File::fres" );
 
         /* master can write the header by itself */
         res_header.step = data->step;
@@ -64,12 +64,12 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 
         /* master needs to allocate space for all atoms */
         buffer = scalloc( system->bigN, sizeof(restart_atom),
-                "Write_Binary_Restart::buffer" );
+                "Write_Binary_Restart_File::buffer" );
     }
     else
     {
         buffer = scalloc( system->n, sizeof(restart_atom),
-                "Write_Binary_Restart::buffer" );
+                "Write_Binary_Restart_File::buffer" );
     }
 
     /* fill in the buffers */
@@ -108,14 +108,14 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         fwrite( buffer, system->bigN, sizeof(restart_atom), fres );
-        sfclose( fres, "Write_Binary_Restart::fres" );
+        sfclose( fres, "Write_Binary_Restart_File::fres" );
     }
 
-    sfree( buffer, "Write_Binary_Restart::buffer" );
+    sfree( buffer, "Write_Binary_Restart_File::buffer" );
 }
 
 
-void Write_Restart( reax_system *system, control_params *control,
+void Write_Restart_File( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
@@ -135,7 +135,7 @@ void Write_Restart( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
-        fres = sfopen( fname, "w", "Write_Restart::fres" );
+        fres = sfopen( fname, "w", "Write_Restart_File::fres" );
 
         /* write the header - only master writes it */
         fprintf( fres, RESTART_HEADER,
@@ -156,7 +156,7 @@ void Write_Restart( reax_system *system, control_params *control,
         buffer_req = system->n * RESTART_LINE_LEN + 1;
     }
 
-    buffer = smalloc( sizeof(char) * buffer_req, "Write_Restart::buffer" );
+    buffer = smalloc( sizeof(char) * buffer_req, "Write_Restart_File::buffer" );
     line[0] = 0;
     buffer[0] = 0;
 
@@ -200,10 +200,10 @@ void Write_Restart( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         fprintf( fres, "%s", buffer );
-        sfclose( fres, "Write_Restart::fres" );
+        sfclose( fres, "Write_Restart_File::fres" );
     }
-    sfree( buffer, "Write_Restart::buffer" );
-    sfree( line, "Write_Restart::line" );
+    sfree( buffer, "Write_Restart_File::buffer" );
+    sfree( line, "Write_Restart_File::line" );
 }
 
 
@@ -235,7 +235,7 @@ void Count_Binary_Restart_Atoms( FILE *fres, reax_system *system )
 }
 
 
-void Read_Binary_Restart( char *res_file, reax_system *system,
+void Read_Binary_Restart_File( char *res_file, reax_system *system,
         control_params *control, simulation_data *data,
         storage *workspace, mpi_datatypes *mpi_data )
 {
@@ -245,7 +245,7 @@ void Read_Binary_Restart( char *res_file, reax_system *system,
     restart_atom res_atom;
     reax_atom *p_atom;
 
-    fres = sfopen( res_file, "rb", "Read_Binary_Restart::fres" );
+    fres = sfopen( res_file, "rb", "Read_Binary_Restart_File::fres" );
 
     /* first read the header lines */
     fread( &res_header, sizeof(restart_header), 1, fres );
@@ -305,7 +305,7 @@ void Read_Binary_Restart( char *res_file, reax_system *system,
         }
     }
 
-    sfclose( fres, "Read_Binary_Restart::fres" );
+    sfclose( fres, "Read_Binary_Restart_File::fres" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run
@@ -350,7 +350,7 @@ void Count_Restart_Atoms( FILE *fres, reax_system *system )
 }
 
 
-void Read_Restart( char *res_file, reax_system *system,
+void Read_Restart_File( char *res_file, reax_system *system,
         control_params *control, simulation_data *data,
         storage *workspace, mpi_datatypes *mpi_data )
 {
@@ -362,13 +362,13 @@ void Read_Restart( char *res_file, reax_system *system,
     rvec x_temp, v_temp;
     rtensor box;
 
-    fres = sfopen( res_file, "r", "Read_Restart::fres" );
+    fres = sfopen( res_file, "r", "Read_Restart_File::fres" );
 
-    s = smalloc( sizeof(char) * MAX_LINE, "Read_Restart::s" );
-    tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Restart::tmp" );
+    s = smalloc( sizeof(char) * MAX_LINE, "Read_Restart_File::s" );
+    tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Restart_File::tmp" );
     for (i = 0; i < MAX_TOKENS; i++)
     {
-        tmp[i] = smalloc( sizeof(char) * MAX_LINE, "Read_Restart::tmp[i]" );
+        tmp[i] = smalloc( sizeof(char) * MAX_LINE, "Read_Restart_File::tmp[i]" );
     }
 
     //read first header lines
@@ -486,15 +486,15 @@ void Read_Restart( char *res_file, reax_system *system,
             top++;
         }
     }
-    sfclose( fres, "Read_Restart::fres" );
+    sfclose( fres, "Read_Restart_File::fres" );
 
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        sfree( tmp[i], "Read_Restart::tmp[i]" );
+        sfree( tmp[i], "Read_Restart_File::tmp[i]" );
     }
-    sfree( tmp, "Read_Restart::tmp" );
-    sfree( s, "Read_Restart::s" );
+    sfree( tmp, "Read_Restart_File::tmp" );
+    sfree( s, "Read_Restart_File::s" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run

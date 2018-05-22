@@ -548,6 +548,7 @@ typedef struct molecule molecule;
 typedef struct LR_data LR_data;
 typedef struct cubic_spline_coef cubic_spline_coef;
 typedef struct LR_lookup_table LR_lookup_table;
+typedef struct puremd_handle puremd_handle;
 
 
 /* function pointer definitions */
@@ -563,6 +564,8 @@ typedef real (*lookup_function)( real );
 typedef void (*message_sorter)( reax_system*, int, int, int, mpi_out_data* );
 /**/
 typedef void (*unpacker)( reax_system*, int, void*, int, neighbor_proc*, int );
+/**/
+typedef void (*callback_function)(reax_atom*, simulation_data*, reax_list*);
 
 
 /* struct definitions */
@@ -2455,6 +2458,30 @@ struct LR_lookup_table
     cubic_spline_coef *ele;
     /**/
     cubic_spline_coef *CEclmb;
+};
+
+
+/* Handle for working with an instance of the PuReMD library */
+struct puremd_handle
+{
+    /* System info. struct pointer */
+    reax_system *system;
+    /* System struct pointer */
+    control_params *control;
+    /* Control parameters struct pointer */
+    simulation_data *data;
+    /* Internal workspace struct pointer */
+    storage *workspace;
+    /* Reax interaction list struct pointer */
+    reax_list **lists;
+    /* Output controls struct pointer */
+    output_controls *out_control;
+    /* MPI datatypes struct pointer */
+    mpi_datatypes *mpi_data;
+    /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
+    int output_enabled;
+    /* Callback for getting simulation state at the end of each time step */
+    callback_function callback;
 };
 
 

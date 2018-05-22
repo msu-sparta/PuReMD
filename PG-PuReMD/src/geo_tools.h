@@ -115,13 +115,13 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 extern "C" {
 #endif
 
-void Read_Geo( char*, reax_system*, control_params*,
+void Read_Geo_File( char*, reax_system*, control_params*,
         simulation_data*, storage*, mpi_datatypes* );
 
-void Read_PDB( char*, reax_system*, control_params*,
+void Read_PDB_File( char*, reax_system*, control_params*,
         simulation_data*, storage*, mpi_datatypes* );
 
-void Write_PDB( reax_system*, reax_list*, simulation_data*,
+void Write_PDB_File( reax_system*, reax_list*, simulation_data*,
         control_params*, mpi_datatypes*, output_controls* );
 
 #ifdef __cplusplus

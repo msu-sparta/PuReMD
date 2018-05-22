@@ -67,7 +67,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 }
 
 
-void Read_Geo( char* geo_file, reax_system* system, control_params *control,
+void Read_Geo_File( char* geo_file, reax_system* system, control_params *control,
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     int i, j, serial, top;
@@ -79,7 +79,7 @@ void Read_Geo( char* geo_file, reax_system* system, control_params *control,
     reax_atom *atom;
 
     /* open the geometry file */
-    geo = sfopen( geo_file, "r", "Read_Geo::geo" );
+    geo = sfopen( geo_file, "r", "Read_Geo_File::geo" );
 
     /* read box information */
     fscanf( geo, CUSTOM_BOXGEO_FORMAT,
@@ -136,7 +136,7 @@ void Read_Geo( char* geo_file, reax_system* system, control_params *control,
         }
     }
 
-    sfclose( geo, "Read_Geo::geo" );
+    sfclose( geo, "Read_Geo_File::geo" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: finished reading the geo file\n", system->my_rank );
@@ -247,7 +247,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 }
 
 
-void Read_PDB( char* pdb_file, reax_system* system, control_params *control,
+void Read_PDB_File( char* pdb_file, reax_system* system, control_params *control,
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     FILE *pdb;
@@ -264,7 +264,7 @@ void Read_PDB( char* pdb_file, reax_system* system, control_params *control,
     rvec x;
     reax_atom *atom;
 
-    pdb = sfopen( pdb_file, "r", "Read_PDB::pdb" );
+    pdb = sfopen( pdb_file, "r", "Read_PDB_File::pdb" );
 
     /* allocate memory for tokenizing pdb lines */
     Allocate_Tokenizer_Space( &s, &s1, &tmp );
@@ -451,14 +451,14 @@ void Read_PDB( char* pdb_file, reax_system* system, control_params *control,
         }
     }
 
-    sfclose( pdb, "Read_PDB::pdb" );
+    sfclose( pdb, "Read_PDB_File::pdb" );
 }
 
 
 /* PDB serials are written without regard to the order, we'll see if this
  * cause trouble, if so we'll have to rethink this approach
  * Also, we do not write connect lines yet.  */
-void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
+void Write_PDB_File( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, mpi_datatypes *mpi_data, output_controls *out_control )
 {
     int i, cnt, me, np, buffer_req, buffer_len;
@@ -477,7 +477,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     np = control->nprocs;
 
     /* Allocation*/
-    line = smalloc( sizeof(char) * PDB_ATOM_FORMAT_O_LENGTH, "Write_PDB::line" );
+    line = smalloc( sizeof(char) * PDB_ATOM_FORMAT_O_LENGTH, "Write_PDB_File::line" );
     if ( me == MASTER_NODE )
     {
         buffer_req = system->bigN * PDB_ATOM_FORMAT_O_LENGTH;
@@ -487,7 +487,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         buffer_req = system->n * PDB_ATOM_FORMAT_O_LENGTH;
     }
 
-    buffer = smalloc( sizeof(char) * buffer_req, "Write_PDB::buffer" );
+    buffer = smalloc( sizeof(char) * buffer_req, "Write_PDB_File::buffer" );
 
     pdb = NULL;
     line[0] = 0;
@@ -512,7 +512,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 
 
         sprintf( fname, "%s-%d.pdb", control->sim_name, data->step );
-        pdb = sfopen( fname, "w", "Write_PDB::pdb" );
+        pdb = sfopen( fname, "w", "Write_PDB_File::pdb" );
         fprintf( pdb, PDB_CRYST1_FORMAT_O,
                  "CRYST1",
                  system->big_box.box_norms[0], system->big_box.box_norms[1],
@@ -563,7 +563,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     if ( me == MASTER_NODE)
     {
         fprintf( pdb, "%s", buffer );
-        sfclose( pdb, "Write_PDB::pdb" );
+        sfclose( pdb, "Write_PDB_File::pdb" );
     }
 
     /* Writing connect information */
@@ -585,6 +585,6 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     }
     */
 
-    sfree( buffer, "Write_PDB::buffer" );
-    sfree( line, "Write_PDB::line" );
+    sfree( buffer, "Write_PDB_File::buffer" );
+    sfree( line, "Write_PDB_File::line" );
 }
