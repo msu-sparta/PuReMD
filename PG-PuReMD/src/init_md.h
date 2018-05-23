@@ -41,6 +41,10 @@ void Pure_Initialize( reax_system*, control_params*, simulation_data*,
 
 void Init_Taper( control_params *,  storage * );
 
+void Finalize( reax_system *, control_params *,
+        simulation_data *, storage *, reax_list **,
+        output_controls *, mpi_datatypes *, const int );
+
 #ifdef __cplusplus
 }
 #endif

@@ -327,6 +327,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     /* Lookup Tables */
     if ( control->tabulate )
     {
-        Init_Lookup_Tables( system, control, dev_workspace->Tap, mpi_data );
+        Init_Lookup_Tables( system, control, dev_workspace, mpi_data );
     }
 }

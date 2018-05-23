@@ -50,6 +50,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
 {
     char temp[MAX_STR];
 
+    /* trajectory file */
     if ( out_control->write_steps > 0 )
     {
         Init_Traj( system, control, out_control, mpi_data );
@@ -59,6 +60,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
     {
         if ( out_control->energy_update_freq > 0 )
         {
+            /* out file */
             sprintf( temp, "%s.out", control->sim_name );
             out_control->out = sfopen( temp, "w",
                     "Init_Output_Controls::output_control->out" );
@@ -74,6 +76,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
 #endif
             fflush( out_control->out );
 
+            /* potential file */
             sprintf( temp, "%s.pot", control->sim_name );
             out_control->pot = sfopen( temp, "w",
                     "Init_Output_Controls::output_control->pot" );
@@ -94,6 +97,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
             fflush( out_control->pot );
 
 #if defined(LOG_PERFORMANCE)
+            /* log file */
             sprintf( temp, "%s.log", control->sim_name );
             out_control->log = sfopen( temp, "w",
                     "Init_Output_Controls::output_control->log" );
@@ -106,6 +110,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
 #endif
         }
 
+        /* pressure file */
         if ( control->ensemble == NPT  ||
                 control->ensemble == iNPT ||
                 control->ensemble == sNPT )
@@ -145,7 +150,6 @@ void Init_Output_Files( reax_system *system, control_params *control,
             fflush( out_control->drft );
         }
     }
-
 
     /* molecular analysis file:
      * proc0 opens this file and shares it with everyone.
@@ -332,9 +336,8 @@ void Init_Output_Files( reax_system *system, control_params *control,
 }
 
 
-/************************ close output files ************************/
-void Close_Output_Files( reax_system *system, control_params *control,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+void Finalize_Output_Files( reax_system *system, control_params *control,
+        output_controls *out_control )
 {
     if ( out_control->write_steps > 0 )
     {

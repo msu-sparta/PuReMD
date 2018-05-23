@@ -9,7 +9,8 @@
 extern "C" {
 #endif
 
-void copy_LR_table_to_device( reax_system *, control_params *, int * );
+void copy_LR_table_to_device( reax_system *, control_params *,
+        storage *, int * );
 
 #ifdef __cplusplus
 }

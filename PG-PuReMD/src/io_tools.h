@@ -32,8 +32,8 @@ extern "C" {
 void Init_Output_Files( reax_system*, control_params*,
         output_controls*, mpi_datatypes* );
 
-void Close_Output_Files( reax_system*, control_params*,
-        output_controls*, mpi_datatypes* );
+void Finalize_Output_Files( reax_system*, control_params*,
+        output_controls* );
 
 void Print_Box( simulation_box*, char*, FILE* );
 

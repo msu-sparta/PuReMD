@@ -67,7 +67,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 }
 
 
-void Read_Geo_File( char* geo_file, reax_system* system, control_params *control,
+void Read_Geo_File( const char * const geo_file, reax_system* system, control_params *control,
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     int i, j, serial, top;
@@ -247,7 +247,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 }
 
 
-void Read_PDB_File( char* pdb_file, reax_system* system, control_params *control,
+void Read_PDB_File( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     FILE *pdb;

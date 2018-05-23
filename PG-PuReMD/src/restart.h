@@ -51,10 +51,10 @@ void Write_Binary_Restart_File( reax_system*, control_params*,
 void Write_Restart_File( reax_system*, control_params*,
         simulation_data*, output_controls*, mpi_datatypes* );
 
-void Read_Binary_Restart_File( char*, reax_system*, control_params*,
+void Read_Binary_Restart_File( const char * const, reax_system*, control_params*,
         simulation_data*, storage*, mpi_datatypes* );
 
-void Read_Restart_File( char*, reax_system*, control_params*,
+void Read_Restart_File( const char * const, reax_system*, control_params*,
         simulation_data*, storage*, mpi_datatypes* );
 
 #ifdef __cplusplus

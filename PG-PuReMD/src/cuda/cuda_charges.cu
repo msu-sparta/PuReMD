@@ -212,14 +212,12 @@ void cuda_charges_updateq( reax_system *system, real *q )
 void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int scale;
     real u;//, s_sum, t_sum;
     rvec2 my_sum, all_sum;
     real *q;
 
     my_sum[0] = 0.0;
     my_sum[1] = 0.0;
-    scale = sizeof(real) / sizeof(void);
     q = (real *) host_scratch;
     memset( q, 0, system->N * sizeof(real) );
 

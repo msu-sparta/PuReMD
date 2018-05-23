@@ -423,9 +423,9 @@ CUDA_GLOBAL void k_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
             tmin  = MIN( type_i, type_j );
             tmax  = MAX( type_i, type_j );
 
-            t = &( t_LR[ index_lr(tmin, tmax, num_atom_types) ]);    
+            t = &t_LR[ index_lr(tmin, tmax, num_atom_types) ];
 
-            //table = &( LR[type_i][type_j] ); 
+            //table = &LR[type_i][type_j]; 
 
             /* Cubic Spline Interpolation */
             r = (int)(r_ij * t->inv_dx);
@@ -589,7 +589,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *)control->d_control_params, 
               *(dev_workspace), *(dev_lists[FAR_NBRS]), 
-              control->d_LR, system->n, system->N,
+              workspace->d_LR, system->n, system->N,
               system->reax_param.num_atom_types, 
               data->step, data->prev_steps, 
               out_control->energy_update_freq,

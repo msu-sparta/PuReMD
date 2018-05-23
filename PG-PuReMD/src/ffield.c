@@ -30,7 +30,7 @@
 #endif
 
 
-void Read_Force_Field_File( char *ffield_file, reax_interaction *reax,
+void Read_Force_Field_File( const char * const ffield_file, reax_interaction *reax,
         reax_system *system, control_params *control )
 {
     FILE *fp;

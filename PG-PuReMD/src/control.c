@@ -30,7 +30,7 @@
 #endif
 
 
-void Read_Control_File( char *control_file, control_params* control,
+void Read_Control_File( const char * const control_file, control_params* control,
         output_controls *out_control )
 {
     FILE *fp;

@@ -628,7 +628,7 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
         sparse_matrix *H, rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data,
         FILE *fout, simulation_data *data )
 {
-    int i, n, matvecs, scale;
+    int i, n, matvecs;
 //    int j, N;
     rvec2 tmp, alpha, beta;
     rvec2 my_sum, norm_sqr, b_norm, my_dot;
@@ -640,7 +640,6 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
 //    N = system->N;
     comm = mpi_data->world;
     matvecs = 0;
-    scale = sizeof(rvec2) / sizeof(void);
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -799,13 +798,11 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
 int Cuda_CG( reax_system *system, control_params *control, storage *workspace,
         sparse_matrix *H, real *b, real tol, real *x, mpi_datatypes* mpi_data )
 {
-    int  i, scale;
+    int i;
 //    int j;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;
     real *spad = (real *) host_scratch;
-
-    scale = sizeof(real) / sizeof(void);
 
     memset( spad, 0, sizeof(real) * system->total_cap );
     copy_host_device( spad, x, sizeof(real) * system->total_cap,

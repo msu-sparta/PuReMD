@@ -235,7 +235,7 @@ void Count_Binary_Restart_Atoms( FILE *fres, reax_system *system )
 }
 
 
-void Read_Binary_Restart_File( char *res_file, reax_system *system,
+void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
         control_params *control, simulation_data *data,
         storage *workspace, mpi_datatypes *mpi_data )
 {
@@ -350,7 +350,7 @@ void Count_Restart_Atoms( FILE *fres, reax_system *system )
 }
 
 
-void Read_Restart_File( char *res_file, reax_system *system,
+void Read_Restart_File( const char * const res_file, reax_system *system,
         control_params *control, simulation_data *data,
         storage *workspace, mpi_datatypes *mpi_data )
 {

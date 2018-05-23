@@ -115,10 +115,10 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 extern "C" {
 #endif
 
-void Read_Geo_File( char*, reax_system*, control_params*,
+void Read_Geo_File( const char * const, reax_system*, control_params*,
         simulation_data*, storage*, mpi_datatypes* );
 
-void Read_PDB_File( char*, reax_system*, control_params*,
+void Read_PDB_File( const char * const, reax_system*, control_params*,
         simulation_data*, storage*, mpi_datatypes* );
 
 void Write_PDB_File( reax_system*, reax_list*, simulation_data*,

@@ -561,8 +561,6 @@ int simulate( const void * const handle )
 
 //      Write_PDB_File( &system, &lists[BONDS], &out_control );
 
-        Close_Output_Files( system, control, out_control, mpi_data );
-
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
 //      Integrate_Results(control);
 #endif
@@ -589,10 +587,9 @@ int cleanup( const void * const handle )
     {
         pmd_handle = (puremd_handle*) handle;
 
-        //TODO
-//        Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
-//                pmd_handle->workspace, &pmd_handle->lists, pmd_handle->out_control,
-//                pmd_handle->output_enabled );
+        Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
+                pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
+                pmd_handle->mpi_data, pmd_handle->output_enabled );
 
         sfree( pmd_handle->mpi_data, "cleanup::pmd_handle->mpi_data" );
         sfree( pmd_handle->out_control, "cleanup::pmd_handle->out_control" );

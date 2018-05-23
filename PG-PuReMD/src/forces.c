@@ -255,7 +255,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 }
 
 
-static inline real Compute_tabH( control_params *control, real r_ij, int ti, int tj, int num_atom_types )
+static inline real Compute_tabH( storage *workspace, real r_ij,
+        int ti, int tj, int num_atom_types )
 {
     int r, tmin, tmax;
     real val, dif, base;
@@ -263,7 +264,7 @@ static inline real Compute_tabH( control_params *control, real r_ij, int ti, int
 
     tmin = MIN( ti, tj );
     tmax = MAX( ti, tj );
-    t = &control->LR[ index_lr( tmin, tmax, num_atom_types ) ];
+    t = &workspace->LR[ index_lr( tmin, tmax, num_atom_types ) ];
 
     /* cubic spline interpolation */
     r = (int)(r_ij * t->inv_dx);
@@ -425,7 +426,7 @@ int Init_Forces( reax_system *system, control_params *control,
                         }
                         else
                         {
-                            H->entries[cm_top].val = Compute_tabH( control, r_ij, type_i, type_j,
+                            H->entries[cm_top].val = Compute_tabH( workspace, r_ij, type_i, type_j,
                                     system->reax_param.num_atom_types );
                         }
                         ++cm_top;

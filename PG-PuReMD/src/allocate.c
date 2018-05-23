@@ -211,7 +211,7 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
         sfree( workspace->x_old, "DeAllocate_Workspace::x_old" );
     }
 
-    /* force related storage */
+    /* force-related storage */
     sfree( workspace->f, "DeAllocate_Workspace::f" );
     sfree( workspace->CdDelta, "DeAllocate_Workspace::CdDelta" );
 
@@ -262,8 +262,8 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     }
 
     /* bond order related storage  */
-    workspace->within_bond_box = scalloc(total_cap, sizeof(int),
-            "Allocate_Workspace::skin");
+    workspace->within_bond_box = scalloc( total_cap, sizeof(int),
+            "Allocate_Workspace::skin" );
     workspace->total_bond_order = smalloc( total_real, "Allocate_Workspace::total_bo" );
     workspace->Deltap = smalloc( total_real, "Allocate_Workspace::Deltap" );
     workspace->Deltap_boc = smalloc( total_real, "Allocate_Workspace::Deltap_boc" );
@@ -278,6 +278,7 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     workspace->nlp = smalloc( total_real, "Allocate_Workspace::nlp" );
     workspace->nlp_temp = smalloc( total_real, "Allocate_Workspace::nlp_temp" );
     workspace->Clp = smalloc( total_real, "Allocate_Workspace::Clp" );
+    workspace->CdDelta = scalloc( total_cap, sizeof(real), "Allocate_Workspace::CdDelta" );
     workspace->vlpex = smalloc( total_real, "Allocate_Workspace::vlpex" );
     workspace->bond_mark = scalloc( total_cap, sizeof(int),
             "Allocate_Workspace::bond_mark" );
@@ -374,8 +375,8 @@ void Allocate_Workspace( reax_system *system, control_params *control,
             break;
 
         default:
-            fprintf( stderr, "Unknown charge method linear solver type. Terminating...\n" );
-            exit( INVALID_INPUT );
+            fprintf( stderr, "[ERROR] Unknown charge method linear solver type. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
             break;
     }
 
@@ -392,7 +393,8 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     }
     else
     {
-        workspace->mark = workspace->old_mark = NULL;
+        workspace->mark = NULL;
+        workspace->old_mark = NULL;
     }
 
     if ( control->diffusion_coef )
@@ -408,8 +410,6 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     /* force related storage */
     workspace->f = scalloc( total_cap, sizeof(rvec),
             "Allocate_Workspace::f" );
-    workspace->CdDelta = scalloc( total_cap, sizeof(real),
-            "Allocate_Workspace::CdDelta" );
 
 #ifdef TEST_FORCES
     workspace->dDelta = smalloc( total_rvec, "Allocate_Workspace::dDelta" );

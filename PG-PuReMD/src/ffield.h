@@ -29,7 +29,8 @@
 extern "C" {
 #endif
 
-void Read_Force_Field_File( char*, reax_interaction*, reax_system *, control_params* );
+void Read_Force_Field_File( const char * const, reax_interaction*,
+        reax_system *, control_params* );
 
 #ifdef __cplusplus
 }

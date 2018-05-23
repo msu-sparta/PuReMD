@@ -55,15 +55,15 @@ int main( int argc, char* argv[] )
         ret = simulate( handle );
     }
 
+    if ( ret == PUREMD_SUCCESS )
+    {
+        ret = cleanup( handle );
+    }
+
     MPI_Finalized( &ret );
     if ( !ret )
     { 
         MPI_Finalize( );
-    }
-
-    if ( ret == PUREMD_SUCCESS )
-    {
-        ret = cleanup( handle );
     }
 
     return (ret == PUREMD_SUCCESS) ? 0 : (-1);

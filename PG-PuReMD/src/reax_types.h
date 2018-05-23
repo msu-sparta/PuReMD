@@ -1537,16 +1537,12 @@ struct control_params
     evolve_function Evolve;
     /* function pointers for bonded interactions */
     interaction_function intr_funcs[NUM_INTRS];
-    /* lookup table for force tabulation */
-    LR_lookup_table *LR;
 
 #if defined(HAVE_CUDA)
     /* function pointer for ensemble used to evolve atomic system (GPU) */
     evolve_function Cuda_Evolve;
     /* control parameters (GPU) */
     void *d_control_params;
-    /* lookup table for force tabulation (GPU) */
-    LR_lookup_table *d_LR;
 #endif
 };
 
@@ -2176,9 +2172,14 @@ struct storage
     /**/
     rvec *f_all;
 #endif
-
     /**/
     reallocate_data realloc;
+    /* lookup table for force tabulation */
+    LR_lookup_table *LR;
+#if defined(HAVE_CUDA)
+    /* lookup table for force tabulation (GPU) */
+    LR_lookup_table *d_LR;
+#endif
 };
 
 

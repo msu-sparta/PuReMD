@@ -681,7 +681,7 @@ void Initialize( reax_system *system, control_params *control,
 
     if ( control->tabulate )
     {
-        Init_Lookup_Tables( system, control, workspace->Tap, mpi_data );
+        Init_Lookup_Tables( system, control, workspace, mpi_data );
     }
 
     Init_Force_Functions( control );
@@ -728,9 +728,258 @@ void Initialize( reax_system *system, control_params *control,
 
     if ( control->tabulate )
     {
-        Init_Lookup_Tables( system, control, workspace->Tap, mpi_data );
+        Init_Lookup_Tables( system, control, workspace, mpi_data );
     }
 
     Init_Force_Functions( );
     }
 #endif
+
+
+static void Finalize_System( reax_system *system, control_params *control,
+        simulation_data *data )
+{
+    reax_interaction *reax;
+
+    reax = &system->reax_param;
+
+    Deallocate_Grid( &system->my_grid );
+
+    sfree( reax->gp.l, "Finalize_System::reax->gp.l" );
+
+    sfree( reax->sbp, "Finalize_System::reax->sbp" );
+    sfree( reax->tbp, "Finalize_System::reax->tbp" );
+    sfree( reax->thbp, "Finalize_System::reax->thbp" );
+    sfree( reax->hbp, "Finalize_System::reax->hbp" );
+    sfree( reax->fbp, "Finalize_System::reax->fbp" );
+
+    sfree( system->far_nbrs, "Finalize_System::system->far_nbrs" );
+    sfree( system->max_far_nbrs, "Finalize_System::system->max_far_nbrs" );
+    sfree( system->bonds, "Finalize_System::system->bonds" );
+    sfree( system->max_bonds, "Finalize_System::system->max_bonds" );
+    sfree( system->hbonds, "Finalize_System::system->hbonds" );
+    sfree( system->max_hbonds, "Finalize_System::system->max_hbonds" );
+    sfree( system->cm_entries, "Finalize_System::system->cm_entries" );
+    sfree( system->max_cm_entries, "Finalize_System::max_cm_entries->max_hbonds" );
+
+    sfree( system->my_atoms, "Finalize_System::system->atoms" );
+}
+
+
+static void Finalize_Simulation_Data( reax_system *system, control_params *control,
+        simulation_data *data, output_controls *out_control )
+{
+}
+
+
+static void Finalize_Workspace( reax_system *system, control_params *control,
+        storage *workspace )
+{
+    int i;
+
+    for ( i = 0; i < MAX_NBRS; ++i )
+    {
+        sfree( workspace->tmp_dbl[i], "Finalize_Workspace::tmp_dbl[i]" );
+        sfree( workspace->tmp_rvec[i], "Finalize_Workspace::tmp_rvec[i]" );
+        sfree( workspace->tmp_rvec2[i], "Finalize_Workspace::tmp_rvec2[i]" );
+    }
+
+    sfree( workspace->within_bond_box, "Finalize_Workspace::skin" );
+    sfree( workspace->total_bond_order, "Finalize_Workspace::workspace->total_bond_order" );
+    sfree( workspace->Deltap, "Finalize_Workspace::workspace->Deltap" );
+    sfree( workspace->Deltap_boc, "Finalize_Workspace::workspace->Deltap_boc" );
+    sfree( workspace->dDeltap_self, "Finalize_Workspace::workspace->dDeltap_self" );
+    sfree( workspace->Delta, "Finalize_Workspace::workspace->Delta" );
+    sfree( workspace->Delta_lp, "Finalize_Workspace::workspace->Delta_lp" );
+    sfree( workspace->Delta_lp_temp, "Finalize_Workspace::workspace->Delta_lp_temp" );
+    sfree( workspace->dDelta_lp, "Finalize_Workspace::workspace->dDelta_lp" );
+    sfree( workspace->dDelta_lp_temp, "Finalize_Workspace::workspace->dDelta_lp_temp" );
+    sfree( workspace->Delta_e, "Finalize_Workspace::workspace->Delta_e" );
+    sfree( workspace->Delta_boc, "Finalize_Workspace::workspace->Delta_boc" );
+    sfree( workspace->nlp, "Finalize_Workspace::workspace->nlp" );
+    sfree( workspace->nlp_temp, "Finalize_Workspace::workspace->nlp_temp" );
+    sfree( workspace->Clp, "Finalize_Workspace::workspace->Clp" );
+    sfree( workspace->CdDelta, "Finalize_Workspace::workspace->CdDelta" );
+    sfree( workspace->vlpex, "Finalize_Workspace::workspace->vlpex" );
+    sfree( workspace->bond_mark, "Finalize_Workspace::bond_mark" );
+
+    Deallocate_Matrix( &workspace->H );
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+//        Deallocate_Matrix( &workspace->H_full );
+//        Deallocate_Matrix( &workspace->H_spar_patt );
+//        Deallocate_Matrix( &workspace->H_spar_patt_full );
+//        Deallocate_Matrix( &workspace->H_app_inv );
+    }
+
+    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+    {
+        sfree( workspace->Hdia_inv, "Finalize_Workspace::workspace->Hdia_inv" );
+    }
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    {
+        sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
+    }
+    sfree( workspace->b_s, "Finalize_Workspace::workspace->b_s" );
+    sfree( workspace->b_t, "Finalize_Workspace::workspace->b_t" );
+    sfree( workspace->b_prc, "Finalize_Workspace::workspace->b_prc" );
+    sfree( workspace->b_prm, "Finalize_Workspace::workspace->b_prm" );
+    sfree( workspace->s, "Finalize_Workspace::workspace->s" );
+    sfree( workspace->t, "Finalize_Workspace::workspace->t" );
+
+    switch ( control->cm_solver_type )
+    {
+        case GMRES_S:
+        case GMRES_H_S:
+            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
+            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
+            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
+            sfree( workspace->h, "Finalize_Workspace::workspace->h" );
+            sfree( workspace->hs, "Finalize_Workspace::workspace->hs" );
+            sfree( workspace->hc, "Finalize_Workspace::workspace->hc" );
+            sfree( workspace->v, "Finalize_Workspace::workspace->v" );
+            break;
+
+        case CG_S:
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
+            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
+            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
+            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            break;
+
+        case SDM_S:
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
+            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
+            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
+            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            break;
+
+        case BiCGStab_S:
+        default:
+            fprintf( stderr, "[ERROR] Unknown charge method linear solver type. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
+    }
+
+    /* integrator storage */
+    sfree( workspace->v_const, "Finalize_Workspace::workspace->v_const" );
+
+    /* storage for analysis */
+    if ( control->molecular_analysis || control->diffusion_coef )
+    {
+        sfree( workspace->mark, "Finalize_Workspace::workspace->mark" );
+        sfree( workspace->old_mark, "Finalize_Workspace::workspace->old_mark" );
+    }
+
+    if ( control->diffusion_coef )
+    {
+        sfree( workspace->x_old, "Finalize_Workspace::workspace->x_old" );
+    }
+
+    /* force-related storage */
+    sfree( workspace->f, "Finalize_Workspace::workspace->f" );
+
+    /* space for keeping restriction info, if any */
+    if ( control->restrict_bonds )
+    {
+        sfree( workspace->restricted, "Finalize_Workspace::workspace->restricted" );
+        sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
+    }
+
+#ifdef TEST_FORCES
+    sfree( workspace->dDelta, "Finalize_Workspace::workspace->dDelta" );
+    sfree( workspace->f_ele, "Finalize_Workspace::workspace->f_ele" );
+    sfree( workspace->f_vdw, "Finalize_Workspace::workspace->f_vdw" );
+    sfree( workspace->f_bo, "Finalize_Workspace::workspace->f_bo" );
+    sfree( workspace->f_be, "Finalize_Workspace::workspace->f_be" );
+    sfree( workspace->f_lp, "Finalize_Workspace::workspace->f_lp" );
+    sfree( workspace->f_ov, "Finalize_Workspace::workspace->f_ov" );
+    sfree( workspace->f_un, "Finalize_Workspace::workspace->f_un" );
+    sfree( workspace->f_ang, "Finalize_Workspace::workspace->f_ang" );
+    sfree( workspace->f_coa, "Finalize_Workspace::workspace->f_coa" );
+    sfree( workspace->f_pen, "Finalize_Workspace::workspace->f_pen" );
+    sfree( workspace->f_hb, "Finalize_Workspace::workspace->f_hb" );
+    sfree( workspace->f_tor, "Finalize_Workspace::workspace->f_tor" );
+    sfree( workspace->f_con, "Finalize_Workspace::workspace->f_con" );
+    sfree( workspace->f_tot, "Finalize_Workspace::workspace->f_tot" );
+
+    sfree( workspace->rcounts, "Finalize_Workspace::workspace->rcounts" );
+    sfree( workspace->displs, "Finalize_Workspace::workspace->displs" );
+    sfree( workspace->id_all, "Finalize_Workspace::workspace->id_all" );
+    sfree( workspace->f_all, "Finalize_Workspace::workspace->f_all" );
+#endif
+}
+
+
+static void Finalize_Lists( control_params *control, reax_list **lists )
+{
+    Delete_List( lists[FAR_NBRS] );
+    Delete_List( lists[BONDS] );
+    Delete_List( lists[THREE_BODIES] );
+    if ( control->hbond_cut > 0.0 )
+    {
+        Delete_List( lists[HBONDS] );
+    }
+
+#ifdef TEST_FORCES
+    Delete_List( lists[DBOS] );
+    Delete_List( lists[DDELTAS] );
+#endif
+}
+
+
+static void Finalize_MPI_Datatypes( mpi_datatypes *mpi_data )
+{
+    int ret;
+
+    Deallocate_MPI_Buffers( mpi_data );
+
+    ret = MPI_Type_free( &mpi_data->mpi_atom_type );
+    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_atom_type" );
+    ret = MPI_Type_free( &mpi_data->boundary_atom_type );
+    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->boundary_atom_type" );
+    ret = MPI_Type_free( &mpi_data->mpi_rvec );
+    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_rvec" );
+    ret = MPI_Type_free( &mpi_data->mpi_rvec2 );
+    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_rvec2" );
+    ret = MPI_Type_free( &mpi_data->restart_atom_type );
+    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->restart_atom_type" );
+}
+
+
+/* Deallocate top-level data structures, close file handles, etc.
+ *
+ */
+void Finalize( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, mpi_datatypes *mpi_data, const int output_enabled )
+{
+    if ( control->tabulate )
+    {
+        Finalize_LR_Lookup_Table( system, control, workspace, mpi_data );
+    }
+
+    if ( output_enabled == TRUE )
+    {
+        Finalize_Output_Files( system, control, out_control );
+    }
+
+    Finalize_Lists( control, lists );
+
+    Finalize_Workspace( system, control, workspace );
+
+    Finalize_Simulation_Data( system, control, data, out_control );
+
+    Finalize_System( system, control, data );
+
+    Finalize_MPI_Datatypes( mpi_data );
+}
