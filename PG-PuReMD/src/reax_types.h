@@ -75,6 +75,8 @@
 #define STANDARD_BOUNDARIES
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
+/* build far neighbors list as a half-list */
+#define HALF_LIST
 
 #define SUCCESS (1)
 #define FAILURE (0)

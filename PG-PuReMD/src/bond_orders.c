@@ -268,12 +268,17 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
         single_body_parameters *sbp_i, single_body_parameters *sbp_j,
         two_body_parameters *twbp )
 {
-    int j, btop_j;
+    int j;
     real r2, C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
-    bond_data *ibond, *jbond;
-    bond_order_data *bo_ij, *bo_ji;
+    bond_data *ibond;
+    bond_order_data *bo_ij;
+#if defined(HALF_LIST)
+    int btop_j;
+    bond_data *jbond;
+    bond_order_data *bo_ji;
+#endif
 
     j = nbr_pj->nbr;
     r2 = SQR( nbr_pj->d );
@@ -318,34 +323,40 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
     {
         /* bonds i-j and j-i */
         ibond = &bond_list->bond_list[btop_i];
+#if defined(HALF_LIST)
         btop_j = End_Index( j, bond_list );
         jbond = &bond_list->bond_list[btop_j];
+#endif
 
         ibond->nbr = j;
-        jbond->nbr = i;
         ibond->d = nbr_pj->d;
-        jbond->d = nbr_pj->d;
         rvec_Copy( ibond->dvec, nbr_pj->dvec );
-        rvec_Scale( jbond->dvec, -1.0, nbr_pj->dvec );
         ivec_Copy( ibond->rel_box, nbr_pj->rel_box );
-        ivec_Scale( jbond->rel_box, -1, nbr_pj->rel_box );
         ibond->dbond_index = btop_i;
-        jbond->dbond_index = btop_i;
+#if defined(HALF_LIST)
         ibond->sym_index = btop_j;
+        jbond->nbr = i;
+        jbond->d = nbr_pj->d;
+        rvec_Scale( jbond->dvec, -1.0, nbr_pj->dvec );
+        ivec_Scale( jbond->rel_box, -1, nbr_pj->rel_box );
+        jbond->dbond_index = btop_i;
         jbond->sym_index = btop_i;
 
         Set_End_Index( j, btop_j + 1, bond_list );
+#endif
 
         bo_ij = &ibond->bo_data;
-        bo_ji = &jbond->bo_data;
         bo_ij->BO = BO;
-        bo_ji->BO = BO;
         bo_ij->BO_s = BO_s;
-        bo_ji->BO_s = BO_s;
         bo_ij->BO_pi = BO_pi;
-        bo_ji->BO_pi = BO_pi;
         bo_ij->BO_pi2 = BO_pi2;
+#if defined(HALF_LIST)
+        bo_ji = &jbond->bo_data;
+        bo_ji->BO = BO;
+        bo_ji->BO_s = BO_s;
+        bo_ji->BO_pi = BO_pi;
         bo_ji->BO_pi2 = BO_pi2;
+#endif
 
         /* Bond Order page2-3, derivative of total bond order prime */
         Cln_BOp_s = twbp->p_bo2 * C12 / r2;
@@ -357,32 +368,40 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
         rvec_Scale( bo_ij->dln_BOp_s, -1.0 * bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
         rvec_Scale( bo_ij->dln_BOp_pi, -1.0 * bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
         rvec_Scale( bo_ij->dln_BOp_pi2, -1.0 * bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+#if defined(HALF_LIST)
         rvec_Scale( bo_ji->dln_BOp_s, -1.0, bo_ij->dln_BOp_s );
         rvec_Scale( bo_ji->dln_BOp_pi, -1.0, bo_ij->dln_BOp_pi );
         rvec_Scale( bo_ji->dln_BOp_pi2, -1.0, bo_ij->dln_BOp_pi2 );
+#endif
 
         /* Only dBOp wrt. dr_i is stored here, note that
          * dBOp/dr_i = -dBOp/dr_j and all others are 0 */
         rvec_Scale( bo_ij->dBOp, -1.0 * (bo_ij->BO_s * Cln_BOp_s
                     + bo_ij->BO_pi * Cln_BOp_pi
                     + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
+#if defined(HALF_LIST)
         rvec_Scale( bo_ji->dBOp, -1.0, bo_ij->dBOp );
+#endif
 
         rvec_Add( workspace->dDeltap_self[i], bo_ij->dBOp );
+#if defined(HALF_LIST)
         rvec_Add( workspace->dDeltap_self[j], bo_ji->dBOp );
+#endif
 
         bo_ij->BO_s -= bo_cut;
         bo_ij->BO -= bo_cut;
+        workspace->total_bond_order[i] += bo_ij->BO; //currently total_BOp
+        bo_ij->Cdbo = 0.0;
+        bo_ij->Cdbopi = 0.0;
+        bo_ij->Cdbopi2 = 0.0;
+#if defined(HALF_LIST)
         bo_ji->BO_s -= bo_cut;
         bo_ji->BO -= bo_cut;
-        workspace->total_bond_order[i] += bo_ij->BO; //currently total_BOp
         workspace->total_bond_order[j] += bo_ji->BO; //currently total_BOp
-        bo_ij->Cdbo = 0.0;
         bo_ji->Cdbo = 0.0;
-        bo_ij->Cdbopi = 0.0;
         bo_ji->Cdbopi = 0.0;
-        bo_ij->Cdbopi2 = 0.0;
         bo_ji->Cdbopi2 = 0.0;
+#endif
 
         return TRUE;
     }
@@ -391,10 +410,12 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
 }
 
 
-int compare_bonds( const void *p1, const void *p2 )
+#ifdef TEST_FORCES
+static int compare_bonds( const void *p1, const void *p2 )
 {
     return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
 }
+#endif
 
 
 void BO( reax_system *system, control_params *control, simulation_data *data,
@@ -425,9 +446,11 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
     dDeltas = lists[DDELTAS];
     dBOs = lists[DBOS];
 
-    //for( i = 0; i < system->N; ++i )
-    //  qsort( &(bond_list->bond_list[Start_Index(i, bond_list)]),
-    //   Num_Entries(i, bond_list), sizeof(bond_data), compare_bonds );
+//    for( i = 0; i < system->N; ++i )
+//    {
+//        qsort( &bond_list->bond_list[Start_Index(i, bond_list)],
+//                Num_Entries( i, bond_list ), sizeof(bond_data), compare_bonds );
+//    }
 #endif
 
     bond_list = lists[BONDS];
@@ -450,7 +473,7 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
     for ( i = 0; i < system->N; ++i )
     {
         type_i = system->my_atoms[i].type;
-        sbp_i = &(system->reax_param.sbp[type_i]);
+        sbp_i = &system->reax_param.sbp[type_i];
         val_i = sbp_i->valency;
         Deltap_i = workspace->Deltap[i];
         Deltap_boc_i = workspace->Deltap_boc[i];
@@ -467,7 +490,8 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
             //if( i < j || workspace->bond_mark[j] > 3 ) {
             if ( i < j )
             {
-                twbp = &system->reax_param.tbp[ index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
+                twbp = &system->reax_param.tbp[
+                    index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
 
 #ifdef TEST_FORCES
                 Set_Start_Index( pj, top_dbo, dBOs );
@@ -689,7 +713,8 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
                 ptop_dDelta->wrt = j;
                 rvec_Copy( ptop_dDelta->dVal, workspace->dDelta[j] );
                 rvec_MakeZero( workspace->dDelta[j] );
-                ++top_dDelta, ++ptop_dDelta;
+                ++top_dDelta;
+                ++ptop_dDelta;
             }
 
             start_j = Start_Index( j, bond_list );
@@ -697,12 +722,14 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
             for ( pk = start_j; pk < end_j; ++pk )
             {
                 k = bond_list->bond_list[pk].nbr;
+
                 if ( !rvec_isZero( workspace->dDelta[k] ) )
                 {
                     ptop_dDelta->wrt = k;
                     rvec_Copy( ptop_dDelta->dVal, workspace->dDelta[k] );
                     rvec_MakeZero( workspace->dDelta[k] );
-                    ++top_dDelta, ++ptop_dDelta;
+                    ++top_dDelta;
+                    ++ptop_dDelta;
                 }
             }
         }
@@ -718,7 +745,7 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
     for ( j = 0; j < system->N; ++j )
     {
         type_j = system->my_atoms[j].type;
-        sbp_j = &(system->reax_param.sbp[ type_j ]);
+        sbp_j = &system->reax_param.sbp[ type_j ];
 
         workspace->Delta[j] = workspace->total_bond_order[j] - sbp_j->valency;
         workspace->Delta_e[j] = workspace->total_bond_order[j] - sbp_j->valency_e;
@@ -727,7 +754,7 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
 
         workspace->vlpex[j] = workspace->Delta_e[j] -
                 2.0 * (int)(workspace->Delta_e[j] / 2.0);
-        explp1 = EXP(-p_lp1 * SQR(2.0 + workspace->vlpex[j]));
+        explp1 = EXP( -1.0 * p_lp1 * SQR(2.0 + workspace->vlpex[j]) );
         workspace->nlp[j] = explp1 - (int)(workspace->Delta_e[j] / 2.0);
         workspace->Delta_lp[j] = sbp_j->nlp_opt - workspace->nlp[j];
         workspace->Clp[j] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[j]);
@@ -741,7 +768,7 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
         {
             workspace->nlp_temp[j] = 0.5 * (sbp_j->valency_e - sbp_j->valency);
             workspace->Delta_lp_temp[j] = sbp_j->nlp_opt - workspace->nlp_temp[j];
-            workspace->dDelta_lp_temp[j] = 0.;
+            workspace->dDelta_lp_temp[j] = 0.0;
         }
         else
         {

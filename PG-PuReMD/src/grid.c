@@ -32,7 +32,7 @@
 
 
 /* determines the exchange boundaries with nbrs in terms of gcells */
-void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
+static void Mark_Grid_Cells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
 {
     int x, y, z, d;
     ivec r, nbr_coord, prdc;
@@ -136,7 +136,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
 
 /* finds the closest point between two grid cells denoted by c1 and c2.
  * periodic boundary conditions are taken into consideration as well. */
-void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
+static void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
 {
     int i, d;
 
@@ -150,7 +150,7 @@ void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
         }
         else if ( d == 0 )
         {
-            closest_point[i] = NEG_INF - 1.;
+            closest_point[i] = NEG_INF - 1.0;
         }
         else
         {
@@ -161,7 +161,7 @@ void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
 
 
 /* mark gcells based on the kind of nbrs we will be looking for in them */
-void Find_Neighbor_GridCells( grid *g, control_params *control )
+static void Find_Neighbor_Grid_Cells( grid *g, control_params *control )
 {
     int d, top;
     ivec ci, cj, cmin, cmax, span;
@@ -234,7 +234,7 @@ void Find_Neighbor_GridCells( grid *g, control_params *control )
 }
 
 
-void Reorder_GridCells( grid *g )
+static void Reorder_Grid_Cells( grid *g )
 {
     int i, j, k, x, y, z, top;
     ivec dblock, nblocks;
@@ -374,12 +374,12 @@ void Setup_New_Grid( reax_system* system, control_params* control,
     }
 
     /* determine the exchange boundaries with nbrs in terms of gcells */
-    Mark_GCells( system, g, control->procs_by_dim, comm );
+    Mark_Grid_Cells( system, g, control->procs_by_dim, comm );
 
     /* determine what kind of nbrs we will be looking for in boundary gcells */
-    Find_Neighbor_GridCells( g, control );
+    Find_Neighbor_Grid_Cells( g, control );
 
-    Reorder_GridCells( g );
+    Reorder_Grid_Cells( g );
 }
 
 
@@ -432,8 +432,8 @@ void Update_Grid( reax_system* system, control_params* control, MPI_Comm comm )
     }
 
     /* gcells are unchanged */
-    if ( ivec_isEqual( native_cells, g->native_cells ) &&
-            ivec_isEqual( ghost_span, g->ghost_span ) )
+    if ( ivec_isEqual( native_cells, g->native_cells )
+            && ivec_isEqual( ghost_span, g->ghost_span ) )
     {
         /* update cell lengths */
         rvec_Copy( g->cell_len, cell_len );
@@ -522,7 +522,7 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
 
     for ( l = 0; l < system->n; l++ )
     {
-        // outgoing atoms are marked with orig_id = -1
+        /* outgoing atoms are marked with orig_id = -1 */
         if ( atoms[l].orig_id >= 0 )
         {
             for ( d = 0; d < 3; ++d )
@@ -626,7 +626,7 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
     reax_atom *old_atom, *new_atoms;
 
     /* allocate storage space for est_N */
-    new_atoms = (reax_atom*) smalloc( system->total_cap * sizeof(reax_atom),
+    new_atoms = (reax_atom*) smalloc( sizeof(reax_atom) * system->total_cap,
             "Reorder_My_Atoms::new_atoms" );
     top = 0;
     g = &system->my_grid;
@@ -669,7 +669,7 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
         x = g->order[i][0];
         y = g->order[i][1];
         z = g->order[i][2];
-        gc = &( g->cells[ index_grid_3d(x, y, z, g) ] );
+        gc = &g->cells[ index_grid_3d(x, y, z, g) ];
 
         fprintf( stderr, "p%d: x = %6d, y = %6d, z = %6d\n",
                 system->my_rank, x, y, z );
@@ -677,9 +677,10 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
                 system->my_rank, index_grid_3d(x, y, z, g) );
         fprintf( stderr, "p%d: i = %6d, g->start[%6d] = %6d, g->end[%6d] = %6d\n",
                 system->my_rank, i, i, g->str[index_grid_3d(x, y, z, g)],
-                i, g->end[index_grid_3d(x, y, z, g)] );
+                i, g->end[ index_grid_3d(x, y, z, g) ] );
         fflush( stderr );
-        for ( l = g->str[index_grid_3d(x, y, z, g)]; l < g->end[index_grid_3d(x, y, z, g)]; ++l )
+        for ( l = g->str[ index_grid_3d(x, y, z, g) ];
+                l < g->end[ index_grid_3d(x, y, z, g) ]; ++l )
         {
             fprintf( stderr, "p%d: atom %6d: x = %10.4f, y = %10.4f, z = %10.4f\n",
                     system->my_rank, system->my_atoms[l].orig_id,
@@ -698,7 +699,7 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
 
 
 /* Determine the grid cell which a boundary atom falls within */
-void Get_Boundary_GCell( grid *g, rvec base, rvec x, grid_cell **gc,
+static void Get_Boundary_Grid_Cell( grid *g, rvec base, rvec x, grid_cell **gc,
         rvec *cur_min, rvec *cur_max, ivec gcell_cood )
 {
     int d;
@@ -788,7 +789,7 @@ void Bin_Boundary_Atoms( reax_system *system )
     ext_box = &system->my_ext_box;
     memcpy( base, ext_box->min, sizeof(rvec) );
 
-    Get_Boundary_GCell( g, base, atoms[start].x, &gc, &cur_min, &cur_max, gcell_cood );
+    Get_Boundary_Grid_Cell( g, base, atoms[start].x, &gc, &cur_min, &cur_max, gcell_cood );
     g->str[ index_grid_3d_v( gcell_cood, g ) ] = start;
     gc->top = 1;
 
@@ -819,7 +820,7 @@ void Bin_Boundary_Atoms( reax_system *system )
         else
         {
             g->end[ index_grid_3d_v( gcell_cood, g ) ] = i;
-            Get_Boundary_GCell( g, base, atoms[i].x, &gc, &cur_min, &cur_max, gcell_cood );
+            Get_Boundary_Grid_Cell( g, base, atoms[i].x, &gc, &cur_min, &cur_max, gcell_cood );
 
             /* sanity check! */
             if ( gc->top != 0 )

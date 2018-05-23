@@ -290,7 +290,7 @@ int Init_Forces( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int cm_top, btop_i;
-    int ihb, jhb, ihb_top, jhb_top;
+    int ihb, jhb, ihb_top;
     int local, flag, renbr;
     real r_ij, cutoff;
     sparse_matrix *H;
@@ -299,6 +299,12 @@ int Init_Forces( reax_system *system, control_params *control,
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
+#if defined(HALF_LIST)
+    int jhb_top;
+#else
+    int start_j, end_j;
+    int btop_j;
+#endif
 
     far_nbr_list = lists[FAR_NBRS];
     bond_list = lists[BONDS];
@@ -415,7 +421,9 @@ int Init_Forces( reax_system *system, control_params *control,
                 if ( local == TRUE )
                 {
                     /* H matrix entry */
+#if defined(HALF_LIST)
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq||1
+#endif
                     {
                         H->entries[cm_top].j = j;
 
@@ -446,7 +454,8 @@ int Init_Forces( reax_system *system, control_params *control,
                             hbond_list->hbond_list[ihb_top].ptr = nbr_pj;
                             ++ihb_top;
                         }
-                        /* only add to list for local j */
+#if defined(HALF_LIST)
+                        /* only add to list for local j (far nbrs is half-list) */
                         else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbond_list );
@@ -455,6 +464,7 @@ int Init_Forces( reax_system *system, control_params *control,
                             hbond_list->hbond_list[jhb_top].ptr = nbr_pj;
                             Set_End_Index( atom_j->Hindex, jhb_top + 1, hbond_list );
                         }
+#endif
                     }
                 }
 
@@ -488,6 +498,31 @@ int Init_Forces( reax_system *system, control_params *control,
             }
         }
     }
+
+#if !defined(HALF_LIST)
+    /* set sym_index for bonds list (far_nbrs full list) */
+    for ( i = 0; i < system->n; ++i )
+    {
+        start_i = Start_Index( i, bond_list );
+        end_i = End_Index( i, bond_list );
+
+        for ( btop_i = start_i; btop_i < end_i; ++btop_i )
+        {
+            j = bond_list->bond_list[btop_i].nbr;
+            start_j = Start_Index( j, bond_list );
+            end_j = End_Index( j, bond_list );
+            
+            for ( btop_j = start_j; btop_j < end_j; ++btop_j )
+            {
+                if ( bond_list->bond_list[btop_j].nbr == i )
+                {
+                    bond_list->bond_list[btop_i].sym_index = btop_j;
+                    break;
+                }
+            }
+        }
+    }
+#endif
 
     /* reallocation checks */
     for ( i = 0; i < system->N; ++i )
@@ -523,7 +558,7 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int btop_i;
-    int ihb, jhb, ihb_top, jhb_top;
+    int ihb, jhb, ihb_top;
     int local, flag, renbr;
     real cutoff;
     reax_list *far_nbr_list, *bond_list, *hbond_list;
@@ -531,6 +566,12 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
+#if defined(HALF_LIST)
+    int jhb_top;
+#else
+    int start_j, end_j;
+    int btop_j;
+#endif
 
     far_nbr_list = lists[FAR_NBRS];
     bond_list = lists[BONDS];
@@ -647,7 +688,8 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                             hbond_list->hbond_list[ihb_top].ptr = nbr_pj;
                             ++ihb_top;
                         }
-                        /* only add to list for local j */
+#if defined(HALF_LIST)
+                        /* only add to list for local j (far nbrs is half-list) */
                         else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbond_list );
@@ -656,6 +698,7 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                             hbond_list->hbond_list[jhb_top].ptr = nbr_pj;
                             Set_End_Index( atom_j->Hindex, jhb_top + 1, hbond_list );
                         }
+#endif
                     }
                 }
 
@@ -663,7 +706,7 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
                     nbr_pj->d <= control->bond_cut
                     && BOp( workspace, bond_list, control->bo_cut,
-                         i , btop_i, nbr_pj, sbp_i, sbp_j, twbp ) == TRUE )
+                        i, btop_i, nbr_pj, sbp_i, sbp_j, twbp ) == TRUE )
                 {
                     ++btop_i;
 
@@ -685,6 +728,31 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
             Set_End_Index( atom_i->Hindex, ihb_top, hbond_list );
         }
     }
+
+#if !defined(HALF_LIST)
+    /* set sym_index for bonds list (far_nbrs full list) */
+    for ( i = 0; i < system->n; ++i )
+    {
+        start_i = Start_Index( i, bond_list );
+        end_i = End_Index( i, bond_list );
+
+        for ( btop_i = start_i; btop_i < end_i; ++btop_i )
+        {
+            j = bond_list->bond_list[btop_i].nbr;
+            start_j = Start_Index( j, bond_list );
+            end_j = End_Index( j, bond_list );
+            
+            for ( btop_j = start_j; btop_j < end_j; ++btop_j )
+            {
+                if ( bond_list->bond_list[btop_j].nbr == i )
+                {
+                    bond_list->bond_list[btop_i].sym_index = btop_j;
+                    break;
+                }
+            }
+        }
+    }
+#endif
 
     /* reallocation checks */
     for ( i = 0; i < system->N; ++i )
@@ -722,7 +790,10 @@ void Estimate_Storages( reax_system *system, control_params *control,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
-    reax_atom *atom_i, *atom_j;
+    reax_atom *atom_i;
+#if defined(HALF_LIST)
+    reax_atom *atom_j;
+#endif
 
     far_nbr_list = lists[FAR_NBRS];
 
@@ -759,7 +830,9 @@ void Estimate_Storages( reax_system *system, control_params *control,
         {
             nbr_pj = &far_nbr_list->far_nbr_list[pj];
             j = nbr_pj->nbr;
+#if defined(HALF_LIST)
             atom_j = &system->my_atoms[j];
+#endif
 
             if ( nbr_pj->d <= cutoff )
             {
@@ -771,7 +844,9 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
                 if ( local == TRUE )
                 {
+#if defined(HALF_LIST)
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
+#endif
                     {
                         ++system->cm_entries[i];
                     }
@@ -786,10 +861,13 @@ void Estimate_Storages( reax_system *system, control_params *control,
                         {
                             ++system->hbonds[atom_i->Hindex];
                         }
+#if defined(HALF_LIST)
+                        /* only add to list for local j (far nbrs is half-list) */
                         else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             ++system->hbonds[atom_j->Hindex];
                         }
+#endif
                     }
                 }
 
@@ -835,7 +913,9 @@ void Estimate_Storages( reax_system *system, control_params *control,
                     if ( BO >= control->bo_cut )
                     {
                         ++system->bonds[i];
+#if defined(HALF_LIST)
                         ++system->bonds[j];
+#endif
                     }
                 }
             }
@@ -849,7 +929,11 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
+#if defined(HALF_LIST)
         system->max_bonds[i] = MAX( (int)(2.0 * system->bonds[i] * SAFE_ZONE), MIN_BONDS );
+#else
+        system->max_bonds[i] = MAX( (int)(system->bonds[i] * SAFE_ZONE), MIN_BONDS );
+#endif
         if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM )
         {
             system->max_hbonds[ system->my_atoms[i].Hindex ] = MAX(

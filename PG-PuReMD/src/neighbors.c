@@ -121,16 +121,25 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                     /* search through neighbor grid cell candidates of current cell */
                     while ( g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ][0] >= 0 )
                     {
-                        if ( g->str[ index_grid_3d(i, j, k, g) ] <=
-                                g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ]
-                            && DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
+                        if ( 
+#if defined(HALF_LIST)
+                                g->str[ index_grid_3d(i, j, k, g) ] <=
+                                g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ] &&
+#endif
+                                DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
                         {
                             /* pick up another atom from the neighbor grid cell */
                             for ( m = g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ];
                                     m < g->end[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ]; ++m )
                             {
-                                /* prevent recounting same pairs within a gcell */
+#if defined(HALF_LIST)
+                                /* prevent recounting same pairs within a gcell and
+                                 * make half-list */
                                 if ( l < m )
+#else
+                                /* prevent recounting same pairs within a gcell */
+                                if ( l != m )
+#endif
                                 {
                                     atom2 = &system->my_atoms[m];
                                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -229,16 +238,25 @@ void Estimate_Num_Neighbors( reax_system *system )
                     while ( g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ][0] >= 0 )
                     {
                         /* only search half of grid cells according to stencil used (upper-right) */
-                        if ( g->str[ index_grid_3d(i, j, k, g) ] <=
-                                g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ]
-                            && DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
+                        if ( 
+#if defined(HALF_LIST)
+                                g->str[ index_grid_3d(i, j, k, g) ] <=
+                                g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ] &&
+#endif
+                                DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
                         {
                             /* pick up another atom from the neighbor cell */
                             for ( m = g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ];
                                     m < g->end[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ]; ++m )
                             {
-                                /* half-list for case when l and m point to the same grid cell */
+#if defined(HALF_LIST)
+                                /* prevent recounting same pairs within a gcell and
+                                 * make half-list */
                                 if ( l < m )
+#else
+                                /* prevent recounting same pairs within a gcell */
+                                if ( l != m )
+#endif
                                 {
                                     atom2 = &system->my_atoms[m];
                                     dvec[0] = atom2->x[0] - atom1->x[0];

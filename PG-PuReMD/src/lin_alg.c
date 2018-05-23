@@ -64,11 +64,13 @@ static void dual_Sparse_MatVec( const sparse_matrix * const A,
             b[i][0] += H * x[j][0];
             b[i][1] += H * x[j][1];
 
+#if defined(HALF_LIST)
             // comment out for tryQEq
             //if( j < A->n ) {
             b[j][0] += H * x[i][0];
             b[j][1] += H * x[i][1];
             //}
+#endif
         }
     }
 }
@@ -139,9 +141,11 @@ int dual_CG( const reax_system * const system, const control_params * const cont
 
 //  if (data->step > 0) return;
 
+#if defined(HALF_LIST)
     // tryQEq
     Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE,
             mpi_data->mpi_rvec2 );
+#endif
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -198,9 +202,11 @@ int dual_CG( const reax_system * const system, const control_params * const cont
 
         dual_Sparse_MatVec( H, workspace->d2, workspace->q2, N );
 
+#if defined(HALF_LIST)
         // tryQEq
         Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE,
                 mpi_data->mpi_rvec2 );
+#endif
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
@@ -327,8 +333,10 @@ const void Sparse_MatVec( const sparse_matrix * const A, const real * const x,
             H = A->entries[k].val;
 
             b[i] += H * x[j];
+#if defined(HALF_LIST)
             //if( j < A->n ) // comment out for tryQEq
             b[j] += H * x[i];
+#endif
         }
     }
 }
@@ -347,8 +355,10 @@ int CG( const reax_system * const system, const control_params * const control,
     Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
     Sparse_MatVec( H, x, workspace->q, system->N );
 
+#if defined(HALF_LIST)
     // tryQEq
     Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
+#endif
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -381,8 +391,10 @@ int CG( const reax_system * const system, const control_params * const control,
         Dist( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
 
+#if defined(HALF_LIST)
         //tryQEq
         Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
+#endif
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
