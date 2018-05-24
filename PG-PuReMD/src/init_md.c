@@ -179,24 +179,24 @@ void Init_System( reax_system *system, control_params *control,
     system->Hcap = MAX( system->n * SAFER_ZONE, MIN_CAP );
 
     /* list management */
-    system->far_nbrs = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->far_nbrs = smalloc( sizeof(int) * system->total_cap,
             "ReAllocate_System::system->far_nbrs" );
-    system->max_far_nbrs = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->max_far_nbrs = smalloc( sizeof(int) * system->total_cap,
             "ReAllocate_System::system->max_far_nbrs" );
 
-    system->bonds = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->bonds = smalloc( sizeof(int) * system->total_cap,
             "ReAllocate_System::system->bonds" );
-    system->max_bonds = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->max_bonds = smalloc( sizeof(int) * system->total_cap,
             "ReAllocate_System::system->max_bonds" );
 
-    system->hbonds = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->hbonds = smalloc( sizeof(int) * system->total_cap,
             "ReAllocate_System::system->hbonds" );
-    system->max_hbonds = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->max_hbonds = smalloc( sizeof(int) * system->total_cap,
             "ReAllocate_System::system->max_hbonds" );
 
-    system->cm_entries = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->cm_entries = smalloc( sizeof(int) * system->local_cap,
             "ReAllocate_System::system->cm_entries" );
-    system->max_cm_entries = (int *) smalloc( sizeof(int) * system->total_cap,
+    system->max_cm_entries = smalloc( sizeof(int) * system->local_cap,
             "ReAllocate_System::max_cm_entries->max_hbonds" );
     
 #if defined(DEBUG_FOCUS)
@@ -640,7 +640,7 @@ void Init_Lists( reax_system *system, control_params *control,
     
     Estimate_Storages( system, control, lists );
     
-    Allocate_Matrix( &workspace->H, system->local_cap, system->total_cm_entries );
+    Allocate_Matrix( &workspace->H, system->n, system->local_cap, system->total_cm_entries );
     Init_Matrix_Row_Indices( &workspace->H, system->max_cm_entries );
 
     if ( control->hbond_cut > 0.0 )

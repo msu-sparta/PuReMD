@@ -58,8 +58,9 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
     cos_jkl = COS( p_jkl->theta );
 
     /* omega */
-    unnorm_cos_omega = -1.0 * rvec_Dot( dvec_ij, dvec_jk ) * rvec_Dot( dvec_jk, dvec_kl ) +
-        SQR( r_jk ) *  rvec_Dot( dvec_ij, dvec_kl );
+    unnorm_cos_omega = -1.0 * rvec_Dot( dvec_ij, dvec_jk )
+        * rvec_Dot( dvec_jk, dvec_kl ) + SQR( r_jk )
+        * rvec_Dot( dvec_ij, dvec_kl );
 
     rvec_Cross( cross_jk_kl, dvec_jk, dvec_kl );
     unnorm_sin_omega = -1.0 * r_jk * rvec_Dot( dvec_ij, cross_jk_kl );
@@ -87,9 +88,9 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
         poem = 1e-20;
     }
 
-    tel  = SQR( r_ij ) + SQR( r_jk ) + SQR( r_kl ) - SQR( r_li ) -
-           2.0 * ( r_ij * r_jk * cos_ijk - r_ij * r_kl * cos_ijk * cos_jkl +
-                   r_jk * r_kl * cos_jkl );
+    tel = SQR( r_ij ) + SQR( r_jk ) + SQR( r_kl ) - SQR( r_li )
+        - 2.0 * ( r_ij * r_jk * cos_ijk - r_ij * r_kl * cos_ijk
+                * cos_jkl + r_jk * r_kl * cos_jkl );
 
     arg  = tel / poem;
     if ( arg >  1.0 )
@@ -100,26 +101,6 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
     {
         arg = -1.0;
     }
-
-    /* fprintf( out_control->etor,
-       "%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f\n",
-       htra, htrb, htrc, hthd, hthe, hnra, hnrc, hnhd, hnhe );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       dvec_ij[0]/r_ij, dvec_ij[1]/r_ij, dvec_ij[2]/r_ij );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -dvec_jk[0]/r_jk, -dvec_jk[1]/r_jk, -dvec_jk[2]/r_jk );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -dvec_kl[0]/r_kl, -dvec_kl[1]/r_kl, -dvec_kl[2]/r_kl );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f%12.6f\n",
-       r_li, dvec_li[0], dvec_li[1], dvec_li[2] );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       poem, tel, arg ); */
-    /* fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -p_ijk->dcos_dk[0]/sin_ijk, -p_ijk->dcos_dk[1]/sin_ijk,
-       -p_ijk->dcos_dk[2]/sin_ijk );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -p_jkl->dcos_dk[0]/sin_jkl, -p_jkl->dcos_dk[1]/sin_jkl,
-       -p_jkl->dcos_dk[2]/sin_jkl );*/
 
     if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE )
     {
@@ -170,7 +151,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i, j, k, l, pi, pj, pk, pl, pij, plk, natoms;
+    int i, j, k, l, pi, pj, pk, pl, pij, plk;
     int type_i, type_j, type_k, type_l;
     int start_j, end_j, start_k, end_k;
     int start_pj, end_pj, start_pk, end_pk;
@@ -209,7 +190,6 @@ void Torsion_Angles( reax_system *system, control_params *control,
     reax_list *bond_list;
     reax_list *thb_list;
 
-    natoms = system->n;
     num_frb_intrs = 0;
     p_tor2 = system->reax_param.gp.l[23];
     p_tor3 = system->reax_param.gp.l[24];
@@ -218,7 +198,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
     bond_list = lists[BONDS];
     thb_list = lists[THREE_BODIES];
 
-    for ( j = 0; j < natoms; ++j )
+    for ( j = 0; j < system->n; ++j )
     {
         type_j = system->my_atoms[j].type;
         Delta_j = workspace->Delta_boc[j];
@@ -236,8 +216,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
             /* see if there are any 3-body interactions involving j and k
              * where j is the central atom. Otherwise there is no point in
              * trying to form a 4-body interaction out of this neighborhood */
-            if ( system->my_atoms[j].orig_id < system->my_atoms[k].orig_id &&
-                    bo_jk->BO > control->thb_cut && Num_Entries(pk, thb_list) )
+            if ( system->my_atoms[j].orig_id < system->my_atoms[k].orig_id
+                    && bo_jk->BO > control->thb_cut
+                    && Num_Entries(pk, thb_list) )
             {
                 start_k = Start_Index( k, bond_list );
                 end_k = End_Index( k, bond_list );
@@ -397,7 +378,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     CEtors9 = fn10 * sin_ijk * sin_jkl *
                                               (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega +
                                                1.5 * fbp->V3 * (cos2omega + 2.0 * SQR(cos_omega)));
-                                    /* end  of torsion energy */
+                                    /* end of torsion energy */
 
                                     /* 4-body conjugation energy */
                                     fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
@@ -527,14 +508,14 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     /* fprintf( out_control->etor, "%12.6f%12.6f%12.6f%12.6f\n",
                                        fbp->V1, fbp->V2, fbp->V3, fbp->p_tor1 );*/
 
-                                    fprintf(out_control->etor,
+                                    fprintf( out_control->etor,
                                             //"%6d%6d%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
                                             "%6d%6d%6d%6d%12.4f%12.4f%12.4f%12.4f\n",
                                             system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                             system->my_atoms[k].orig_id, system->my_atoms[l].orig_id,
                                             RAD2DEG(omega), BOA_jk, e_tor, data->my_en.e_tor );
 
-                                    fprintf(out_control->econ,
+                                    fprintf( out_control->econ,
                                             //"%6d%6d%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                                             "%6d%6d%6d%6d%12.4f%12.4f%12.4f%12.4f%12.4f%12.4f\n",
                                             system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
@@ -558,7 +539,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     rvec_ScaledAdd( workspace->f_tor[j],
                                                     CEtors7, p_ijk->dcos_dj );
 
-				rvec_ScaledAdd( workspace->f_tor[k],
+                                    rvec_ScaledAdd( workspace->f_tor[k],
                                                     CEtors7, p_ijk->dcos_di );
 
                                     rvec_ScaledAdd( workspace->f_tor[j],

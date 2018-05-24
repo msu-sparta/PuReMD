@@ -829,16 +829,16 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
 
 void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
 {
-    int i, j;
+    int i, pj;
 
     for ( i = 0; i < A->n; ++i )
     {
-        for ( j = A->start[i]; j < A->end[i]; ++j )
+        for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
             fprintf( stderr, "%d %d %.15e\n",
-                     system->my_atoms[i].orig_id,
-                     system->my_atoms[A->entries[j].j].orig_id,
-                     A->entries[j].val );
+                    system->my_atoms[i].orig_id,
+                    system->my_atoms[A->entries[pj].j].orig_id,
+                    A->entries[pj].val );
         }
     }
 }
@@ -846,19 +846,19 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
 
 void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
 {
-    int i, j;
+    int i, pj;
     FILE *f;
     
     f = sfopen( fname, "w", "Print_Sparse_Matrix2::f" );
 
     for ( i = 0; i < A->n; ++i )
     {
-        for ( j = A->start[i]; j < A->end[i]; ++j )
+        for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
             fprintf( f, "%d %d %.15e\n",
-                     system->my_atoms[i].orig_id,
-                     system->my_atoms[A->entries[j].j].orig_id,
-                     A->entries[j].val );
+                    system->my_atoms[i].orig_id,
+                    system->my_atoms[A->entries[pj].j].orig_id,
+                    A->entries[pj].val );
         }
     }
 
@@ -914,7 +914,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->n; i++ )
     {
-        ai = &(system->my_atoms[i]);
+        ai = &system->my_atoms[i];
         fprintf( out, "%6d%2d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                  ai->renumber, ai->type, ai->x[0], ai->x[1], ai->x[2],
                  workspace->s[i], workspace->b_s[i],
@@ -922,7 +922,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
     }
     sfclose( out, "Print_Linear_System::out" );
 
-    /* print QEq coef matrix */
+    /* print charge matrix */
     sprintf( fname, "%s.p%dH%d", control->sim_name, system->my_rank, step );
     Print_Symmetric_Sparse( system, &workspace->H, fname ); //MATRIX CHANGES
 

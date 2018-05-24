@@ -211,6 +211,11 @@ void Reset_Lists( reax_system *system, control_params *control,
                 Set_End_Index( i, Start_Index( i, hbond_list ), hbond_list );
             }
         }
+
+        for ( i = 0; i < system->local_cap; ++i )
+        {
+            workspace->H.end[i] = workspace->H.start[i];
+        }
     }
 }
 

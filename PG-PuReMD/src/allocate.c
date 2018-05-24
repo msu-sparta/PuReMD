@@ -106,9 +106,9 @@ void ReAllocate_System( reax_system *system, int local_cap, int total_cap )
     system->max_hbonds = srealloc( system->max_hbonds, sizeof(int) * total_cap,
             "ReAllocate_System::system->max_hbonds" );
 
-    system->cm_entries = srealloc( system->cm_entries, sizeof(int) * total_cap,
+    system->cm_entries = srealloc( system->cm_entries, sizeof(int) * local_cap,
             "ReAllocate_System::system->cm_entries" );
-    system->max_cm_entries = srealloc( system->max_cm_entries, sizeof(int) * total_cap,
+    system->max_cm_entries = srealloc( system->max_cm_entries, sizeof(int) * local_cap,
             "ReAllocate_System::system->max_cm_entries" );
 }
 
@@ -287,13 +287,13 @@ void Allocate_Workspace( reax_system *system, control_params *control,
     switch ( control->charge_method )
     {
         case QEQ_CM:
-            system->N_cm = system->N;
+            system->n_cm = system->N;
             break;
         case EE_CM:
-            system->N_cm = system->N + 1;
+            system->n_cm = system->N + 1;
             break;
         case ACKS2_CM:
-            system->N_cm = 2 * system->N + 2;
+            system->n_cm = 2 * system->N + 2;
             break;
         default:
             fprintf( stderr, "[ERROR] Unknown charge method type. Terminating...\n" );
@@ -457,29 +457,34 @@ void Reallocate_Neighbor_List( reax_list *far_nbr_list, int n, int max_intrs )
 }
 
 
-void Allocate_Matrix( sparse_matrix *H, int n, int m )
+void Allocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
 {
     H->n = n;
+    H->n_max = n_max;
     H->m = m;
 
-    H->start = smalloc( sizeof(int) * n, "Allocate_Matrix::start" );
-    H->end = smalloc( sizeof(int) * n, "Allocate_Matrix::end" );
+    H->start = smalloc( sizeof(int) * n_max, "Allocate_Matrix::start" );
+    H->end = smalloc( sizeof(int) * n_max, "Allocate_Matrix::end" );
     H->entries = smalloc( sizeof(sparse_matrix_entry) * m, "Allocate_Matrix::entries" );
 }
 
 
 void Deallocate_Matrix( sparse_matrix *H )
 {
+    H->n = 0;
+    H->n_max = 0;
+    H->m = 0;
+
     sfree( H->start, "Deallocate_Matrix::start" );
     sfree( H->end, "Deallocate_Matrix::end" );
     sfree( H->entries, "Deallocate_Matrix::entries" );
 }
 
 
-static void Reallocate_Matrix( sparse_matrix *H, int n, int m )
+static void Reallocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
 {
     Deallocate_Matrix( H );
-    Allocate_Matrix( H, n, m );
+    Allocate_Matrix( H, n, n_max, m );
 }
 
 
@@ -813,7 +818,7 @@ void ReAllocate( reax_system *system, control_params *control,
                 (1024 * 1024)) );
 #endif
 
-        Reallocate_Matrix( H, system->local_cap, system->total_cm_entries );
+        Reallocate_Matrix( H, system->n, system->local_cap, system->total_cm_entries );
         Init_Matrix_Row_Indices( H, system->max_cm_entries );
         realloc->cm = FALSE;
     }

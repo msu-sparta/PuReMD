@@ -801,7 +801,10 @@ void Estimate_Storages( reax_system *system, control_params *control,
     {
         system->bonds[i] = 0;
         system->hbonds[i] = 0;
-        system->cm_entries[i] = 0;
+        if ( i < system->local_cap )
+        {
+            system->cm_entries[i] = 0;
+        }
     }
 
     for ( i = 0; i < system->N; ++i )
@@ -939,13 +942,19 @@ void Estimate_Storages( reax_system *system, control_params *control,
             system->max_hbonds[ system->my_atoms[i].Hindex ] = MAX(
                     (int)(system->hbonds[ system->my_atoms[i].Hindex ] * SAFE_ZONE), MIN_HBONDS );
         }
-        system->max_cm_entries[i] = MAX( (int)(system->cm_entries[i] * SAFE_ZONE), MIN_CM_ENTRIES );
+        if ( i < system->local_cap )
+        {
+            system->max_cm_entries[i] = MAX( (int)(system->cm_entries[i] * SAFE_ZONE), MIN_CM_ENTRIES );
+        }
     }
     for ( i = system->N; i < system->total_cap; ++i )
     {
         system->max_bonds[i] = MIN_BONDS;
         system->max_hbonds[i] = MIN_HBONDS;
-        system->max_cm_entries[i] = MIN_CM_ENTRIES;
+        if ( i < system->local_cap )
+        {
+            system->max_cm_entries[i] = MIN_CM_ENTRIES;
+        }
     }
 
     /* reductions to get totals */
@@ -968,7 +977,10 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
         system->total_bonds += system->max_bonds[i];
         system->total_hbonds += system->max_hbonds[i];
-        system->total_cm_entries += system->max_cm_entries[i];
+        if ( i < system->local_cap )
+        {
+            system->total_cm_entries += system->max_cm_entries[i];
+        }
         system->total_thbodies += SQR( system->max_bonds[i] / 2.0 );
     }
 

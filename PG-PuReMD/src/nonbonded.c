@@ -116,10 +116,10 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                 dTap += workspace->Tap[1] / r_ij;
 
                 /* vdWaals Calculations */
+                /* shielding */
                 if ( system->reax_param.gp.vdw_type == 1
                         || system->reax_param.gp.vdw_type == 3 )
                 {
-                    // shielding
                     powr_vdW1 = POW(r_ij, p_vdW1);
                     powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1);
 
@@ -136,7 +136,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     CEvd = dTap * e_vdW -
                            Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
                 }
-                else  // no shielding
+                /* no shielding */
+                else
                 {
                     exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
                     exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
@@ -148,10 +149,10 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                            Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2);
                 }
 
+                /* innner wall */
                 if ( system->reax_param.gp.vdw_type == 2
                         || system->reax_param.gp.vdw_type == 3 )
                 {
-                    // innner wall
                     e_core = twbp->ecore * EXP(twbp->acore * (1.0 - (r_ij / twbp->rcore)));
                     data->my_en.e_vdW += Tap * e_core;
 

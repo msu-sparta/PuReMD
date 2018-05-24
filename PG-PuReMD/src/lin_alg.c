@@ -45,18 +45,24 @@ static void dual_Sparse_MatVec( const sparse_matrix * const A,
 
     for ( i = 0; i < N; ++i )
     {
-        b[i][0] = 0;
-        b[i][1] = 0;
+        b[i][0] = 0.0;
+        b[i][1] = 0.0;
     }
 
     /* perform multiplication */
     for ( i = 0; i < A->n; ++i )
     {
         si = A->start[i];
+#if defined(HALF_LIST)
         b[i][0] += A->entries[si].val * x[i][0];
         b[i][1] += A->entries[si].val * x[i][1];
+#endif
 
+#if defined(HALF_LIST)
         for ( k = si + 1; k < A->end[i]; ++k )
+#else
+        for ( k = si; k < A->end[i]; ++k )
+#endif
         {
             j = A->entries[k].j;
             H = A->entries[k].val;
@@ -314,28 +320,34 @@ const void Sparse_MatVec( const sparse_matrix * const A, const real * const x,
         real * const b, const int N )
 {
     int i, j, k, si;
-    real H;
+    real val;
 
     for ( i = 0; i < N; ++i )
     {
-        b[i] = 0;
+        b[i] = 0.0;
     }
 
     for ( i = 0; i < A->n; ++i )
     {
         si = A->start[i];
 
+#if defined(HALF_LIST)
         b[i] += A->entries[si].val * x[i];
+#endif
 
+#if defined(HALF_LIST)
         for ( k = si + 1; k < A->end[i]; ++k )
+#else
+        for ( k = si; k < A->end[i]; ++k )
+#endif
         {
             j = A->entries[k].j;
-            H = A->entries[k].val;
+            val = A->entries[k].val;
 
-            b[i] += H * x[j];
+            b[i] += val * x[j];
 #if defined(HALF_LIST)
             //if( j < A->n ) // comment out for tryQEq
-            b[j] += H * x[i];
+            b[j] += val * x[i];
 #endif
         }
     }

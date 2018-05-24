@@ -44,7 +44,7 @@ void Deallocate_Grid( grid* );
 
 void Allocate_MPI_Buffers( mpi_datatypes*, int, neighbor_proc* );
 
-void Allocate_Matrix( sparse_matrix*, int, int );
+void Allocate_Matrix( sparse_matrix*, int, int, int );
 
 void Deallocate_Matrix( sparse_matrix * );
 

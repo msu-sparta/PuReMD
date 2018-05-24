@@ -56,6 +56,24 @@ static void Init_Linear_Solver( reax_system *system, simulation_data *data,
     int i;
     reax_atom *atom;
 
+    /* reset size of locally owned portion of charge matrix */
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            system->n_cm = system->N;
+            break;
+        case EE_CM:
+            system->n_cm = system->N + 1;
+            break;
+        case ACKS2_CM:
+            system->n_cm = 2 * system->N + 2;
+            break;
+        default:
+            fprintf( stderr, "[ERROR] Unknown charge method type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+    }
+
     /* initialize solution vectors for linear solves in charge method */
     switch ( control->charge_method )
     {
@@ -106,7 +124,7 @@ static void Init_Linear_Solver( reax_system *system, simulation_data *data,
                 workspace->b[system->n][0] = control->cm_q_net;
             }
 
-            for ( i = system->n + 1; i < system->N_cm; ++i )
+            for ( i = system->n + 1; i < system->n_cm; ++i )
             {
                 atom = &system->my_atoms[i];
 
@@ -140,11 +158,7 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
 
     /* spline extrapolation for s & t */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
-#ifdef _OPENMP
-    #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp, t_tmp)
-#endif
-    for ( i = 0; i < system->N_cm; ++i )
+    for ( i = 0; i < system->n_cm; ++i )
     {
         /* no extrapolation, previous solution as initial guess */
         if ( control->cm_init_guess_extrap1 == 0 )
@@ -167,17 +181,17 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
             s_tmp = 4.0 * (system->my_atoms[i].s[0] + system->my_atoms[i].s[2]) -
                     (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
         }
-        /* 4th order */
-        else if ( control->cm_init_guess_extrap1 == 4 )
-        {
-            s_tmp = 5.0 * (system->my_atoms[i].s[0] - system->my_atoms[i].s[3]) +
-                10.0 * (-1.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[2]) + system->my_atoms[i].s[4];
-        }
         else
         {
             s_tmp = 0.0;
         }
 
+        /* x is used as initial guess to solver */
+        workspace->x[i][0] = s_tmp;
+    }
+
+    for ( i = 0; i < system->n_cm; ++i )
+    {
         /* no extrapolation, previous solution as initial guess */
         if ( control->cm_init_guess_extrap2 == 0 )
         {
@@ -199,32 +213,36 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
             t_tmp = 4.0 * (system->my_atoms[i].t[0] + system->my_atoms[i].t[2]) -
                 (6.0 * system->my_atoms[i].t[1] + system->my_atoms[i].t[3]);
         }
-        /* 4th order */
-        else if ( control->cm_init_guess_extrap2 == 4 )
-        {
-            t_tmp = 5.0 * (system->my_atoms[i].t[0] - system->my_atoms[i].t[3]) +
-                10.0 * (-1.0 * system->my_atoms[i].t[1] + system->my_atoms[i].t[2]) + system->my_atoms[i].t[4];
-        }
         else
         {
             t_tmp = 0.0;
         }
 
-        system->my_atoms[i].s[4] = system->my_atoms[i].s[3];
+        /* x is used as initial guess to solver */
+        workspace->x[i][1] = t_tmp;
+    }
+}
+
+
+static void Extrapolate_Charges_QEq_Part2( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    int i;
+
+    /* spline extrapolation for s & t */
+    //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
+    for ( i = 0; i < system->n_cm; ++i )
+    {
         system->my_atoms[i].s[3] = system->my_atoms[i].s[2];
         system->my_atoms[i].s[2] = system->my_atoms[i].s[1];
         system->my_atoms[i].s[1] = system->my_atoms[i].s[0];
-        system->my_atoms[i].s[0] = s_tmp;
-        /* x is used as initial guess to solver */
-        workspace->x[i][0] = s_tmp;
+        system->my_atoms[i].s[0] = workspace->x[i][0];
 
-        system->my_atoms[i].t[4] = system->my_atoms[i].t[3];
         system->my_atoms[i].t[3] = system->my_atoms[i].t[2];
         system->my_atoms[i].t[2] = system->my_atoms[i].t[1];
         system->my_atoms[i].t[1] = system->my_atoms[i].t[0];
-        system->my_atoms[i].t[0] = t_tmp;
-        /* x is used as initial guess to solver */
-        workspace->x[i][1] = t_tmp;
+        system->my_atoms[i].t[0] = workspace->x[i][1];
     }
 }
 
@@ -238,11 +256,7 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
 
     /* spline extrapolation for s */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
-#ifdef _OPENMP
-    #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp)
-#endif
-    for ( i = 0; i < system->N_cm; ++i )
+    for ( i = 0; i < system->n_cm; ++i )
     {
         /* no extrapolation, previous solution as initial guess */
         if ( control->cm_init_guess_extrap1 == 0 )
@@ -265,24 +279,31 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
             s_tmp = 4.0 * (system->my_atoms[i].s[0] + system->my_atoms[i].s[2]) -
                     (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
         }
-        /* 4th order */
-        else if ( control->cm_init_guess_extrap1 == 4 )
-        {
-            s_tmp = 5.0 * (system->my_atoms[i].s[0] - system->my_atoms[i].s[3]) +
-                10.0 * (-1.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[2]) + system->my_atoms[i].s[4];
-        }
         else
         {
             s_tmp = 0.0;
         }
 
+        workspace->x[i][0] = s_tmp;
+    }
+}
+
+
+static void Extrapolate_Charges_EE_Part2( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, storage * const workspace )
+{
+    int i;
+
+    /* spline extrapolation for s */
+    //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
+    for ( i = 0; i < system->n_cm; ++i )
+    {
         system->my_atoms[i].s[4] = system->my_atoms[i].s[3];
         system->my_atoms[i].s[3] = system->my_atoms[i].s[2];
         system->my_atoms[i].s[2] = system->my_atoms[i].s[1];
         system->my_atoms[i].s[1] = system->my_atoms[i].s[0];
-        system->my_atoms[i].s[0] = s_tmp;
-        /* x is used as initial guess to solver */
-        workspace->x[i][0] = s_tmp;
+        system->my_atoms[i].s[0] = workspace->x[i][0];
     }
 }
 
@@ -435,7 +456,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
-        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 1.0;
+        Hptr->entries[Hptr->start[system->n_cm] - 1].val = 1.0;
     }
     
     switch ( control->cm_solver_pre_comp_type )
@@ -480,7 +501,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->entries[Hptr->start[system->N + 1] - 1].val = 0.0;
-        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 0.0;
+        Hptr->entries[Hptr->start[system->n_cm] - 1].val = 0.0;
     }
 }
 
@@ -588,7 +609,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-//                workspace->Hdia_inv = scalloc( system->N_cm, sizeof( real ),
+//                workspace->Hdia_inv = scalloc( system->n_cm, sizeof( real ),
 //                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
@@ -655,7 +676,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
-        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 1.0;
+        Hptr->entries[Hptr->start[system->n_cm] - 1].val = 1.0;
     }
 
     switch ( control->cm_solver_pre_comp_type )
@@ -697,7 +718,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->entries[Hptr->start[system->N + 1] - 1].val = 0.0;
-        Hptr->entries[Hptr->start[system->N_cm] - 1].val = 0.0;
+        Hptr->entries[Hptr->start[system->n_cm] - 1].val = 0.0;
     }
 }
 
@@ -727,8 +748,8 @@ static void Calculate_Charges_QEq( const reax_system * const system,
     u = all_sum[0] / all_sum[1];
     for ( i = 0; i < system->n; ++i )
     {
-        q[i] = workspace->x[i][0] - u * workspace->x[i][1];
-        system->my_atoms[i].q = q[i];
+        system->my_atoms[i].q  = workspace->x[i][0] - u * workspace->x[i][1];
+        q[i] = system->my_atoms[i].q;
     }
 
     Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -811,6 +832,8 @@ static void QEq( reax_system * const system, control_params * const control,
 #endif
 
     Calculate_Charges_QEq( system, workspace, mpi_data );
+
+    Extrapolate_Charges_QEq_Part2( system, control, data, workspace );
 }
 
 
@@ -856,6 +879,8 @@ static void EE( reax_system * const system, control_params * const control,
     data->timing.cm_solver_iters += iters;
 
     Calculate_Charges_EE( system, workspace, mpi_data );
+
+    Extrapolate_Charges_EE_Part2( system, control, data, workspace );
 }
 
 
@@ -901,6 +926,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
     data->timing.cm_solver_iters += iters;
 
     Calculate_Charges_EE( system, workspace, mpi_data );
+
+    Extrapolate_Charges_EE_Part2( system, control, data, workspace );
 }
 
 

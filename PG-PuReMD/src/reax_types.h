@@ -76,7 +76,7 @@
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
 /* build far neighbors list as a half-list */
-#define HALF_LIST
+//#define HALF_LIST
 
 #define SUCCESS (1)
 #define FAILURE (0)
@@ -1248,8 +1248,8 @@ struct reax_system
     int N;
     /* num. atoms within simulation */
     int bigN;
-    /* dimension of sparse charge method matrix */
-    int N_cm;
+    /* dimension of locally owned part of sparse charge matrix */
+    int n_cm;
     /* num. hydrogen atoms */
     int numH;
     /* num. hydrogen atoms (GPU) */
@@ -1946,8 +1946,10 @@ struct sparse_matrix_entry
  */
 struct sparse_matrix
 {
-    /* number of rows */
+    /* number of rows active for this processor */
     int n;
+    /* max. number of rows active for this processor */
+    int n_max;
     /* number of nonzeros (NNZ) ALLOCATED */
     int m;
     /* row start pointer (last element contains ACTUAL NNZ) */
@@ -2089,7 +2091,7 @@ struct storage
     /**/
     real *v;
 
-    /* CG storage */
+    /* CG, SDM storage */
     /**/
     real *r;
     /**/
