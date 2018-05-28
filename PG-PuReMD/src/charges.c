@@ -179,7 +179,7 @@ static void Extrapolate_Charges_QEq( const reax_system * const system,
         else if ( control->cm_init_guess_extrap1 == 3 )
         {
             s_tmp = 4.0 * (system->my_atoms[i].s[0] + system->my_atoms[i].s[2]) -
-                    (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
+                (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
         }
         else
         {
@@ -277,7 +277,7 @@ static void Extrapolate_Charges_EE( const reax_system * const system,
         else if ( control->cm_init_guess_extrap1 == 3 )
         {
             s_tmp = 4.0 * (system->my_atoms[i].s[0] + system->my_atoms[i].s[2]) -
-                    (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
+                (6.0 * system->my_atoms[i].s[1] + system->my_atoms[i].s[3]);
         }
         else
         {
@@ -309,10 +309,11 @@ static void Extrapolate_Charges_EE_Part2( const reax_system * const system,
 
 
 /* Compute preconditioner for QEq
- */
+*/
 static void Compute_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, storage * const workspace )
+        simulation_data * const data, storage * const workspace, 
+        const mpi_datatypes * const mpi_data )
 {
     sparse_matrix *Hptr;
 
@@ -333,7 +334,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         case DIAG_PC:
             data->timing.cm_solver_pre_comp +=
                 diag_pre_comp( system, workspace->Hdia_inv );
-//                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            //                diag_pre_comp( Hptr, workspace->Hdia_inv );
             break;
 
         case ICHOLT_PC:
@@ -347,9 +348,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             //TODO: implement
-//            data->timing.cm_solver_pre_comp +=
-//                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
-//                        &workspace->H_app_inv );
+            data->timing.cm_solver_pre_comp += 
+                sparse_approx_inverse( system, workspace, mpi_data, 
+                        workspace->H_full, workspace->H_spar_patt_full, &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
@@ -365,10 +366,11 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 
 
 /* Compute preconditioner for EE
- */
+*/
 static void Compute_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, storage * const workspace )
+        simulation_data * const data, storage * const workspace,
+        const mpi_datatypes * const mpi_data )
 {
     sparse_matrix *Hptr;
 
@@ -387,7 +389,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     {
         Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
     }
-    
+
     switch ( control->cm_solver_pre_comp_type )
     {
         case NONE_PC:
@@ -396,7 +398,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         case DIAG_PC:
             data->timing.cm_solver_pre_comp +=
                 diag_pre_comp( system, workspace->Hdia_inv );
-//                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            //                diag_pre_comp( Hptr, workspace->Hdia_inv );
             break;
 
         case ICHOLT_PC:
@@ -410,9 +412,9 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             //TODO: implement
-//            data->timing.cm_solver_pre_comp +=
-//                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
-//                        &workspace->H_app_inv );
+            data->timing.cm_solver_pre_comp += 
+                sparse_approx_inverse( system, workspace, mpi_data, 
+                        workspace->H_full, workspace->H_spar_patt_full, &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
@@ -435,10 +437,11 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 
 
 /* Compute preconditioner for ACKS2
- */
+*/
 static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, storage * const workspace )
+        simulation_data * const data, storage * const workspace,
+        const mpi_datatypes * const mpi_data )
 {
     sparse_matrix *Hptr;
 
@@ -458,7 +461,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         Hptr->entries[Hptr->start[system->N + 1] - 1].val = 1.0;
         Hptr->entries[Hptr->start[system->n_cm] - 1].val = 1.0;
     }
-    
+
     switch ( control->cm_solver_pre_comp_type )
     {
         case NONE_PC:
@@ -467,7 +470,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         case DIAG_PC:
             data->timing.cm_solver_pre_comp +=
                 diag_pre_comp( system, workspace->Hdia_inv );
-//                diag_pre_comp( Hptr, workspace->Hdia_inv );
+            //                diag_pre_comp( Hptr, workspace->Hdia_inv );
             break;
 
         case ICHOLT_PC:
@@ -481,9 +484,9 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             //TODO: implement
-//            data->timing.cm_solver_pre_comp +=
-//                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
-//                        &workspace->H_app_inv );
+            data->timing.cm_solver_pre_comp += 
+                sparse_approx_inverse( system, workspace, mpi_data, 
+                        workspace->H_full, workspace->H_spar_patt_full, &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
@@ -508,7 +511,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
 static void Setup_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, storage * const workspace )
+        simulation_data * const data, storage * const workspace, const mpi_datatypes * const mpi_data )
 {
     real time;
     sparse_matrix *Hptr;
@@ -539,8 +542,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-//                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
-//                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
+                //                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+                //                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -554,9 +557,10 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
         case SAI_PC:
             //TODO: implement
-//            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-//                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
-//                    control->cm_solver_pre_comp_sai_thres );
+            /*setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+              &workspace->H_spar_patt_full, &workspace->H_app_inv,
+              control->cm_solver_pre_comp_sai_thres );*/
+            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -568,10 +572,11 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
 
 /* Setup routines before computing the preconditioner for EE
- */
+*/
 static void Setup_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, storage * const workspace )
+        simulation_data * const data, storage * const workspace, 
+        const mpi_datatypes * const mpi_data )
 {
     real time;
     sparse_matrix *Hptr;
@@ -609,8 +614,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-//                workspace->Hdia_inv = scalloc( system->n_cm, sizeof( real ),
-//                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
+                //                workspace->Hdia_inv = scalloc( system->n_cm, sizeof( real ),
+                //                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -624,9 +629,10 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
         case SAI_PC:
             //TODO: implement
-//            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-//                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
-//                    control->cm_solver_pre_comp_sai_thres );
+            //            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+            //                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+            //                    control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -645,10 +651,11 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
 
 /* Setup routines before computing the preconditioner for ACKS2
- */
+*/
 static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
-        simulation_data * const data, storage * const workspace )
+        simulation_data * const data, storage * const workspace, 
+        const mpi_datatypes * const mpi_data )
 {
     real time;
     sparse_matrix *Hptr;
@@ -687,8 +694,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case DIAG_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-//                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
-//                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
+                //                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+                //                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -702,9 +709,10 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
         case SAI_PC:
             //TODO: implement
-//            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-//                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
-//                    control->cm_solver_pre_comp_sai_thres );
+            //            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+            //                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
+            //                    control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -724,7 +732,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
 
 /* Combine ficticious charges s and t to get atomic charge q for QEq method
- */
+*/
 static void Calculate_Charges_QEq( const reax_system * const system,
         storage * const workspace, const mpi_datatypes * const mpi_data )
 {
@@ -764,7 +772,7 @@ static void Calculate_Charges_QEq( const reax_system * const system,
 
 
 /* Get atomic charge q for EE method
- */
+*/
 static void Calculate_Charges_EE( const reax_system * const system,
         storage * const workspace, const mpi_datatypes * const mpi_data )
 {
@@ -795,33 +803,33 @@ static void QEq( reax_system * const system, control_params * const control,
 
     if ( control->cm_solver_pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
-        
-    {
-        Setup_Preconditioner_QEq( system, control, data, workspace );
 
-        Compute_Preconditioner_QEq( system, control, data, workspace );
+    {
+        Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+
+        Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
     }
 
     Extrapolate_Charges_QEq( system, control, data, workspace );
 
     switch ( control->cm_solver_type )
     {
-    case CG_S:
-        iters = dual_CG( system, control, workspace, data, mpi_data,
-                &workspace->H, workspace->b, control->cm_solver_q_err,
-                workspace->x, (control->cm_solver_pre_comp_refactor > 0
-                    && (data->step - data->prev_steps)
-                    % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
-        break;
+        case CG_S:
+            iters = dual_CG( system, control, workspace, data, mpi_data,
+                    &workspace->H, workspace->b, control->cm_solver_q_err,
+                    workspace->x, (control->cm_solver_pre_comp_refactor > 0
+                        && (data->step - data->prev_steps)
+                        % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
+            break;
 
-    case GMRES_S:
-    case GMRES_H_S:
-    case SDM_S:
-    case BiCGStab_S:
-    default:
-        fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        case GMRES_S:
+        case GMRES_H_S:
+        case SDM_S:
+        case BiCGStab_S:
+        default:
+            fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
 #if defined(LOG_PERFORMANCE)
@@ -856,24 +864,24 @@ static void EE( reax_system * const system, control_params * const control,
     if ( control->cm_solver_pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
     {
-        Setup_Preconditioner_EE( system, control, data, workspace );
+        Setup_Preconditioner_EE( system, control, data, workspace, mpi_data );
 
-        Compute_Preconditioner_EE( system, control, data, workspace );
+        Compute_Preconditioner_EE( system, control, data, workspace, mpi_data );
     }
 
     Extrapolate_Charges_EE( system, control, data, workspace );
 
     switch ( control->cm_solver_type )
     {
-    case GMRES_S:
-    case GMRES_H_S:
-    case CG_S:
-    case SDM_S:
-    case BiCGStab_S:
-    default:
-        fprintf( stderr, "[ERROR] Unrecognized EE solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        case GMRES_S:
+        case GMRES_H_S:
+        case CG_S:
+        case SDM_S:
+        case BiCGStab_S:
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized EE solver selection. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
     data->timing.cm_solver_iters += iters;
@@ -903,24 +911,24 @@ static void ACKS2( reax_system * const system, control_params * const control,
     if ( control->cm_solver_pre_comp_refactor > 0 &&
             ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
     {
-        Setup_Preconditioner_ACKS2( system, control, data, workspace );
+        Setup_Preconditioner_ACKS2( system, control, data, workspace, mpi_data );
 
-        Compute_Preconditioner_ACKS2( system, control, data, workspace );
+        Compute_Preconditioner_ACKS2( system, control, data, workspace, mpi_data );
     }
 
     Extrapolate_Charges_EE( system, control, data, workspace );
 
     switch ( control->cm_solver_type )
     {
-    case GMRES_S:
-    case GMRES_H_S:
-    case CG_S:
-    case SDM_S:
-    case BiCGStab_S:
-    default:
-        fprintf( stderr, "[ERROR] Unrecognized ACKS2 solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
+        case GMRES_S:
+        case GMRES_H_S:
+        case CG_S:
+        case SDM_S:
+        case BiCGStab_S:
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized ACKS2 solver selection. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
     }
 
     data->timing.cm_solver_iters += iters;
@@ -938,21 +946,21 @@ void Compute_Charges( reax_system * const system, control_params * const control
 {
     switch ( control->charge_method )
     {
-    case QEQ_CM:
-        QEq( system, control, data, workspace, out_control, mpi_data );
-        break;
+        case QEQ_CM:
+            QEq( system, control, data, workspace, out_control, mpi_data );
+            break;
 
-    case EE_CM:
-        EE( system, control, data, workspace, out_control, mpi_data );
-        break;
+        case EE_CM:
+            EE( system, control, data, workspace, out_control, mpi_data );
+            break;
 
-    case ACKS2_CM:
-        ACKS2( system, control, data, workspace, out_control, mpi_data );
-        break;
+        case ACKS2_CM:
+            ACKS2( system, control, data, workspace, out_control, mpi_data );
+            break;
 
-    default:
-        fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
-        exit( UNKNOWN_OPTION );
-        break;
+        default:
+            fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
+            exit( UNKNOWN_OPTION );
+            break;
     }
 }
