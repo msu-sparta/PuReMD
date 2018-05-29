@@ -34,6 +34,19 @@ typedef void (*dist_packer)( void*, mpi_out_data* );
 typedef void (*coll_unpacker)( void*, void*, mpi_out_data* );
 
 
+static void int_packer( void *dummy, mpi_out_data *out_buf )
+{
+    int i;
+    int *buf = (int*) dummy;
+    int *out = (int*) out_buf->out_atoms;
+
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        out[i] = buf[ out_buf->index[i] ];
+    }
+}
+
+
 static void real_packer( void *dummy, mpi_out_data *out_buf )
 {
     int i;
@@ -74,6 +87,21 @@ static void rvec2_packer( void *dummy, mpi_out_data *out_buf )
     {
         memcpy( out + i, buf + out_buf->index[i], sizeof(rvec2) );
     }
+}
+
+
+static void int_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+{
+        int i;
+        int *in, *buf;
+
+        in = (int*) dummy_in;
+        buf = (int*) dummy_buf;
+
+        for ( i = 0; i < out_buf->cnt; ++i )
+        {
+            buf[ out_buf->index[i] ] += in[i];
+        }
 }
 
 
@@ -135,6 +163,10 @@ static void * Get_Buffer_Offset( const void * const buffer,
 
     switch ( type )
     {
+        case INT_PTR_TYPE:
+            ptr = (int *) buffer + offset;
+            break;
+
         case REAL_PTR_TYPE:
             ptr = (real *) buffer + offset;
             break;

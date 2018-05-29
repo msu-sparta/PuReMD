@@ -27,9 +27,10 @@
 
 enum pointer_type
 {
-    REAL_PTR_TYPE = 0,
-    RVEC_PTR_TYPE = 1,
-    RVEC2_PTR_TYPE = 2,
+    INT_PTR_TYPE = 0,
+    REAL_PTR_TYPE = 1,
+    RVEC_PTR_TYPE = 2,
+    RVEC2_PTR_TYPE = 3,
 };
 
 
