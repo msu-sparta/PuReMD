@@ -28,6 +28,14 @@
 #include "tool_box.h"
 #include "vector.h"
 
+/* Intel MKL */
+#if defined(HAVE_LAPACKE_MKL)
+  #include "mkl.h"
+/* reference LAPACK */
+#elif defined(HAVE_LAPACKE)
+  #include "lapacke.h"
+#endif
+
 #if defined(HAVE_CUDA) && defined(DEBUG)
 #include "cuda/cuda_validation.h"
 #endif

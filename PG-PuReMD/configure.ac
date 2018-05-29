@@ -132,13 +132,42 @@ fi
 AC_SUBST(MPI_CFLAGS)
 AC_SUBST(MPI_LIBS)
 
+# Check for LAPACKE
+AC_CHECK_HEADERS([mkl.h], [MKL_FOUND_HEADERS="yes"])
+if test "x${MKL_FOUND_HEADERS}" = "xyes"
+then
+	AC_SEARCH_LIBS([LAPACKE_dgels], [mkl_intel_ilp64],
+		       [MKL_FOUND_LIBS="yes"], [MKL_FOUND_LIBS="no"],
+		       [-lmkl_sequential -lmkl_core -lpthread -lm -ldl])
+	AS_IF([test "x${MKL_FOUND_LIBS}" != "xyes"],
+	      [AC_MSG_ERROR([Unable to find MKL LAPACKE library.])])
+	LIBS="${LIBS} -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl"
+	AC_DEFINE([HAVE_LAPACKE_MKL], [1], [Define to 1 if you have MKL LAPACKE support enabled.])
+else
+	AC_CHECK_HEADERS([lapacke.h], [LAPACKE_FOUND_HEADERS="yes"])
+	if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"
+	then
+		AC_SEARCH_LIBS([LAPACKE_dgels], [lapacke],
+			       [LAPACKE_FOUND_LIBS="yes"], [LAPACKE_FOUND_LIBS="no"],
+			       [-llapack])
+		AS_IF([test "x${LAPACKE_FOUND_LIBS}" != "xyes"],
+		      [AC_MSG_ERROR([Unable to find LAPACKE library.])])
+		LIBS="${LIBS} -llapack"
+		AC_DEFINE([HAVE_LAPACKE], [1], [Define to 1 if you have LAPACKE support enabled.])
+	else
+		AC_MSG_WARN([
+  -----------------------------------------------
+   Unable to find LAPACKE on this system.
+   Disabling support for dependent methods.
+  -----------------------------------------------])
+	fi
+fi
+
 AC_LANG([C++])
 
 # Checks for programs.
 AC_PROG_CXX([icpc g++ clang++ c++])
 AC_PROG_CXXCPP
-
-AX_COMPILER_VENDOR
 
 # Check for CUDA support.
 if test "x${BUILD_GPU}" = "xyes"; then
