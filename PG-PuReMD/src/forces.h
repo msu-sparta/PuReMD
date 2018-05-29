@@ -29,12 +29,12 @@
 extern "C" {
 #endif
 
-void Init_Force_Functions( control_params* );
+void Init_Force_Functions( control_params * const );
 
-int Compute_Forces( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
+int Compute_Forces( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list ** const, output_controls * const, mpi_datatypes * const );
 
-void Estimate_Storages( reax_system*, control_params*, reax_list** );
+void Estimate_Storages( reax_system * const, control_params * const, reax_list ** const );
 
 #ifdef __cplusplus
 }

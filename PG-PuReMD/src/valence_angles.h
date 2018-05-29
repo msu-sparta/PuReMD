@@ -29,12 +29,14 @@
 extern "C" {
 #endif
 
-void Calculate_Theta( rvec, real, rvec, real, real*, real* );
+void Calculate_Theta( rvec, real, rvec, real,
+        real * const, real * const );
 
-void Calculate_dCos_Theta( rvec, real, rvec, real, rvec*, rvec*, rvec* );
+void Calculate_dCos_Theta( rvec, real, rvec, real,
+        rvec * const, rvec * const, rvec * const );
 
-void Valence_Angles( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls* );
+void Valence_Angles( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list** const, output_controls * const );
 
 #ifdef __cplusplus
 }

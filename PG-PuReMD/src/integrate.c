@@ -36,9 +36,9 @@
 #include "vector.h"
 
 
-int Velocity_Verlet_NVE( reax_system* system, control_params* control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+int Velocity_Verlet_NVE( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     int i, steps, renbr, ret;
     static int verlet_part1_done = FALSE;
@@ -120,9 +120,9 @@ int Velocity_Verlet_NVE( reax_system* system, control_params* control,
 }
 
 
-int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
-        control_params* control, simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control, mpi_datatypes *mpi_data )
+int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
+        control_params * const control, simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     int i, itr, steps, renbr, ret;
     static int verlet_part1_done = FALSE;
@@ -248,9 +248,9 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 /* uses Berendsen-type coupling for both T and P.
  * All box dimensions are scaled by the same amount,
  * there is no change in the angles between axes. */
-int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     int i, steps, renbr, ret;
     static int verlet_part1_done = FALSE;
@@ -373,9 +373,9 @@ int Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* control,
 /* uses Berendsen-type coupling for both T and P.
  * All box dimensions are scaled by the same amount,
  * there is no change in the angles between axes. */
-int Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     int i, steps, renbr, ret;
     static int verlet_part1_done = FALSE;

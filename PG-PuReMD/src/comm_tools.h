@@ -29,22 +29,22 @@
 extern "C" {
 #endif
 
-void Check_MPI_Error( int, const char * );
+void Check_MPI_Error( int, const char * const );
 
-void Setup_Comm( reax_system*, control_params*, mpi_datatypes* );
+void Setup_Comm( reax_system * const, control_params * const, mpi_datatypes * const );
 
-void Update_Comm( reax_system* );
+void Update_Comm( reax_system * const );
 
-void Estimate_Boundary_Atoms( reax_system*, int, int, int, mpi_out_data* );
+void Estimate_Boundary_Atoms( reax_system * const, int, int, int, mpi_out_data * const );
 
-void Unpack_Estimate_Message( reax_system*, int, void*, int,
-        neighbor_proc*, int );
+void Unpack_Estimate_Message( reax_system * const, int, void * const, int,
+        neighbor_proc * const, int );
 
-int SendRecv( reax_system*, mpi_datatypes*_data, MPI_Datatype, int*,
+int SendRecv( reax_system * const, mpi_datatypes * const, MPI_Datatype, int * const,
         message_sorter, unpacker, int );
 
-void Comm_Atoms( reax_system*, control_params*, simulation_data*, storage*,
-        mpi_datatypes*, int );
+void Comm_Atoms( reax_system * const, control_params * const, simulation_data * const, storage * const,
+        mpi_datatypes * const, int );
 
 #ifdef __cplusplus
 }

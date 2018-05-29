@@ -29,7 +29,7 @@
 #include "vector.h"
 
 
-void Check_MPI_Error( int code, const char * msg )
+void Check_MPI_Error( int code, const char * const msg )
 {
     char err_msg[MPI_MAX_ERROR_STRING];
     int len;
@@ -46,21 +46,19 @@ void Check_MPI_Error( int code, const char * msg )
 }
 
 
-void Setup_Comm( reax_system* system, control_params* control,
-        mpi_datatypes *mpi_data )
+void Setup_Comm( reax_system * const system, control_params * const control,
+        mpi_datatypes * const mpi_data )
 {
     int i, d;
-    real bndry_cut;
+    const real bndry_cut = system->bndry_cuts.ghost_cutoff;
     neighbor_proc *nbr_pr;
-    simulation_box *my_box;
+    simulation_box * const my_box = &system->my_box;
     ivec nbr_coords;
     ivec r[6] = {
         { -1, 0, 0}, { 1, 0, 0}, // -x, +x
         {0, -1, 0}, {0, 1, 0}, // -y, +y
         {0, 0, -1}, {0, 0, 1}, // -z, +z
     };
-    my_box = &(system->my_box);
-    bndry_cut = system->bndry_cuts.ghost_cutoff;
 
     /* identify my neighbors */
     system->num_nbrs = MAX_NBRS;
@@ -113,19 +111,17 @@ void Setup_Comm( reax_system* system, control_params* control,
 }
 
 
-void Update_Comm( reax_system* system )
+void Update_Comm( reax_system * const system )
 {
     int i, d;
-    real bndry_cut;
+    const real bndry_cut = system->bndry_cuts.ghost_cutoff;
     neighbor_proc *nbr_pr;
-    simulation_box *my_box;
+    simulation_box * const my_box = &system->my_box;
     ivec r[6] = {
         { -1, 0, 0}, { 1, 0, 0}, // -x, +x
         {0, -1, 0}, {0, 1, 0}, // -y, +y
         {0, 0, -1}, {0, 0, 1}, // -z, +z
     };
-    my_box = &(system->my_box);
-    bndry_cut = system->bndry_cuts.ghost_cutoff;
 
     /* identify my neighbors */
     for ( i = 0; i < system->num_nbrs; ++i )
@@ -157,7 +153,7 @@ void Update_Comm( reax_system* system )
 /********************* ATOM TRANSFER ***********************/
 
 /***************** PACK & UNPACK ATOMS *********************/
-static void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
+static void Pack_MPI_Atom( mpi_atom * const matm, const reax_atom * const ratm, int i )
 {
     matm->orig_id = ratm->orig_id;
     matm->imprt_id = i;
@@ -173,7 +169,7 @@ static void Pack_MPI_Atom( mpi_atom *matm, reax_atom *ratm, int i )
 }
 
 
-static void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
+static void Unpack_MPI_Atom( reax_atom * const ratm, const mpi_atom * const matm )
 {
     ratm->orig_id = matm->orig_id;
     ratm->imprt_id = matm->imprt_id;
@@ -190,21 +186,18 @@ static void Unpack_MPI_Atom( reax_atom *ratm, mpi_atom *matm )
 
 
 /*********************** SORTER **************************/
-static void Sort_Transfer_Atoms( reax_system *system, int start, int end,
-        int dim, mpi_out_data *out_bufs )
+static void Sort_Transfer_Atoms( reax_system * const system, int start, int end,
+        int dim, mpi_out_data * const out_bufs )
 {
     int i, d, out_cnt;
-    reax_atom *atoms;
-    simulation_box *my_box;
+    reax_atom * const atoms = system->my_atoms;
+    simulation_box * const my_box = &system->my_box;
     mpi_atom *out_buf;
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d starting...\n",
             system->my_rank, start, end, dim );
 #endif
-
-    atoms = system->my_atoms;
-    my_box = &system->my_box;
 
     /* place each atom into the appropriate outgoing list */
     for ( i = start; i < end; ++i )
@@ -237,11 +230,15 @@ static void Sort_Transfer_Atoms( reax_system *system, int start, int end,
         {
             fprintf( stderr, "p%d to p%d(nbr%d) # of transfers = %d\n",
                     system->my_rank, system->my_nbrs[d].rank, d, out_bufs[d].cnt );
+
             out_buf = out_bufs[d].out_atoms;
+
             for ( i = 0; i < out_bufs[d].cnt; ++i )
+            {
                 fprintf( stderr, "p%d to p%d: transfer atom%d [%.3f %.3f %.3f]\n",
                         system->my_rank, system->my_nbrs[d].rank, out_buf[i].imprt_id,
                         out_buf[i].x[0],  out_buf[i].x[1],  out_buf[i].x[2] );
+            }
         }
     //fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d done!\n",
     //   system->my_rank, start, end, dim );
@@ -251,15 +248,14 @@ static void Sort_Transfer_Atoms( reax_system *system, int start, int end,
 
 
 /*********************** UNPACKER **************************/
-static void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
-        int cnt, neighbor_proc *nbr, int dim )
+static void Unpack_Transfer_Message( reax_system * const system, int end, void * const dummy,
+        int cnt, neighbor_proc * const nbr, int dim )
 {
     int i;
     real dx;
-    reax_atom *dest;
-    mpi_atom* src = (mpi_atom*) dummy;
+    reax_atom * const dest = system->my_atoms + end;
+    mpi_atom * const src = (mpi_atom*) dummy;
 
-    dest = system->my_atoms + end;
     for ( i = 0; i < cnt; ++i )
     {
         Unpack_MPI_Atom( dest + i, src + i );
@@ -269,6 +265,7 @@ static void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
     if ( nbr->prdc[dim] )
     {
         dx = nbr->prdc[dim] * system->big_box.box_norms[dim];
+
         for ( i = 0; i < cnt; ++i )
         {
             dest[i].x[dim] += dx;
@@ -280,7 +277,7 @@ static void Unpack_Transfer_Message( reax_system *system, int end, void *dummy,
 /************** EXCHANGE BOUNDARY ATOMS *****************/
 
 /************ PACK & UNPACK BOUNDARY ATOMS **************/
-static void Pack_Boundary_Atom( boundary_atom *matm, reax_atom *ratm, int i )
+static void Pack_Boundary_Atom( boundary_atom * const matm, const reax_atom * const ratm, int i )
 {
     matm->orig_id = ratm->orig_id;
     matm->imprt_id = i;
@@ -291,7 +288,7 @@ static void Pack_Boundary_Atom( boundary_atom *matm, reax_atom *ratm, int i )
 }
 
 
-static void Unpack_Boundary_Atom( reax_atom *ratm, boundary_atom *matm )
+static void Unpack_Boundary_Atom( reax_atom * const ratm, const boundary_atom * const matm )
 {
     ratm->orig_id = matm->orig_id;
     ratm->imprt_id = matm->imprt_id;
@@ -304,11 +301,11 @@ static void Unpack_Boundary_Atom( reax_atom *ratm, boundary_atom *matm )
 
 
 /*********************** SORTER **************************/
-static void Sort_Boundary_Atoms( reax_system *system, int start, int end,
-        int dim, mpi_out_data *out_bufs )
+static void Sort_Boundary_Atoms( reax_system * const system, int start, int end,
+        int dim, mpi_out_data * const out_bufs )
 {
     int i, d, p, out_cnt;
-    reax_atom *atoms;
+    const reax_atom * const atoms = system->my_atoms;
     boundary_atom *out_buf;
     neighbor_proc *nbr_pr;
 
@@ -316,8 +313,6 @@ static void Sort_Boundary_Atoms( reax_system *system, int start, int end,
     fprintf( stderr, "p%d sort_exchange: start=%d end=%d dim=%d starting...\n",
             system->my_rank, start, end, dim );
 #endif
-
-    atoms = system->my_atoms;
 
     /* place each atom into the appropriate outgoing list */
     for ( i = start; i < end; ++i )
@@ -353,22 +348,21 @@ static void Sort_Boundary_Atoms( reax_system *system, int start, int end,
 }
 
 
-void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
-        int d, mpi_out_data *out_bufs )
+void Estimate_Boundary_Atoms( reax_system * const system, int start, int end,
+        int d, mpi_out_data * const out_bufs )
 {
     int i, p, out_cnt;
-    reax_atom *atoms;
+    const reax_atom * const atoms = system->my_atoms;
     boundary_atom *out_buf;
-    neighbor_proc *nbr1, *nbr2, *nbr_pr;
+    neighbor_proc * const nbr1 = &system->my_nbrs[2 * d];
+    neighbor_proc * const nbr2 = &system->my_nbrs[2 * d + 1];
+    neighbor_proc *nbr_pr;
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d estimate_exchange: start=%d end=%d dim=%d starting.\n",
             system->my_rank, start, end, d );
 #endif
 
-    atoms = system->my_atoms;
-    nbr1 = &system->my_nbrs[2 * d];
-    nbr2 = &system->my_nbrs[2 * d + 1];
     nbr1->est_send = 0;
     nbr2->est_send = 0;
 
@@ -446,8 +440,8 @@ fprintf( stderr, "p%d estimate_exchange: end=%d dim=%d done!\n",
 }
 
 
-static void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *nbr2,
-        int d, int *max, int *nrecv, mpi_datatypes *mpi_data, MPI_Comm comm )
+static void Estimate_Init_Storage( int me, neighbor_proc * const nbr1, neighbor_proc * const nbr2,
+        int d, int * const max, int * const nrecv, mpi_datatypes * const mpi_data, MPI_Comm comm )
 {
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
@@ -500,16 +494,13 @@ static void Estimate_Init_Storage( int me, neighbor_proc *nbr1, neighbor_proc *n
 
 
 /*********************** UNPACKER **************************/
-static void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
-        int cnt, neighbor_proc *nbr, int dim )
+static void Unpack_Exchange_Message( reax_system * const system, int end, void * const dummy,
+        int cnt, neighbor_proc * const nbr, int dim )
 {
     int i;
     real dx;
-    boundary_atom *src;
-    reax_atom *dest;
-
-    src = (boundary_atom *) dummy;
-    dest = system->my_atoms + end;
+    const boundary_atom * const src = (boundary_atom *) dummy;
+    reax_atom * const dest = system->my_atoms + end;
 
     for ( i = 0; i < cnt; ++i )
     {
@@ -558,8 +549,8 @@ static void Unpack_Exchange_Message( reax_system *system, int end, void *dummy,
 }
 
 
-void Unpack_Estimate_Message( reax_system *system, int end, void *dummy,
-        int cnt, neighbor_proc *nbr, int dim )
+void Unpack_Estimate_Message( reax_system * const system, int end, void * const dummy,
+        int cnt, neighbor_proc * const nbr, int dim )
 {
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d-p%d unpack_estimate: end=%d cnt=%d - unpacking\n",
@@ -581,14 +572,12 @@ void Unpack_Estimate_Message( reax_system *system, int end, void *dummy,
 /**************** UPDATE ATOM POSITIONS *******************/
 
 /**************** PACK POSITION UPDATES *******************/
-static void Sort_Position_Updates( reax_system *system, int start, int end,
-        int dim, mpi_out_data *out_bufs )
+static void Sort_Position_Updates( reax_system * const system, int start, int end,
+        int dim, mpi_out_data * const out_bufs )
 {
     int i, p;
-    reax_atom *atoms;
+    const reax_atom * const atoms = system->my_atoms;
     rvec *out;
-
-    atoms = system->my_atoms;
 
     for ( p = 2 * dim; p < 2 * dim + 2; ++p )
     {
@@ -602,17 +591,14 @@ static void Sort_Position_Updates( reax_system *system, int start, int end,
 }
 
 /*************** UNPACK POSITION UPDATES ******************/
-static void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
-        int cnt, neighbor_proc *nbr, int dim )
+static void Unpack_Position_Updates( reax_system * const system, int end, void * const dummy,
+        int cnt, neighbor_proc * const nbr, int dim )
 {
-    int i, start;
-    reax_atom *atoms;
+    int i;
+    const int start = nbr->atoms_str;
+    reax_atom * const atoms = system->my_atoms;
     real dx;
-    rvec *src;
-
-    src = (rvec*) dummy;
-    atoms = system->my_atoms;
-    start = nbr->atoms_str;
+    rvec * const src = (rvec*) dummy;
 
     for ( i = 0; i < cnt; ++i )
     {
@@ -623,6 +609,7 @@ static void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
     if ( nbr->prdc[dim] )
     {
         dx = nbr->prdc[dim] * system->big_box.box_norms[dim];
+
         for ( i = 0; i < cnt; ++i )
         {
             atoms[start + i].x[dim] += dx;
@@ -631,12 +618,12 @@ static void Unpack_Position_Updates( reax_system *system, int end, void *dummy,
 }
 
 
-int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
-        int* nrecv, message_sorter sort_func, unpacker unpack, int clr )
+int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data, MPI_Datatype type,
+        int * const nrecv, message_sorter sort_func, unpacker unpack, int clr )
 {
     int d, cnt, start, end, max, est_flag, ret;
-    mpi_out_data *out_bufs;
-    MPI_Comm comm;
+    mpi_out_data * const out_bufs = mpi_data->out_buffers;
+    const MPI_Comm comm = mpi_data->comm_mesh3D;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     neighbor_proc *nbr1, *nbr2;
@@ -652,8 +639,6 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
     {
         Reset_Out_Buffers( mpi_data->out_buffers, system->num_nbrs );
     }
-    comm = mpi_data->comm_mesh3D;
-    out_bufs = mpi_data->out_buffers;
     start = 0;
     end = system->n;
     max = 0;
@@ -740,9 +725,9 @@ int SendRecv( reax_system* system, mpi_datatypes *mpi_data, MPI_Datatype type,
 }
 
 
-void Comm_Atoms( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        mpi_datatypes *mpi_data, int renbr )
+void Comm_Atoms( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        mpi_datatypes * const mpi_data, int renbr )
 {
     int i;
     int nrecv[MAX_NBRS];

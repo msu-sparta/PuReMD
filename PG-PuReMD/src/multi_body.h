@@ -29,8 +29,8 @@
 extern "C" {
 #endif
 
-void Atom_Energy( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls* );
+void Atom_Energy( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list** const, output_controls * const );
 
 #ifdef _cplusplus
 }

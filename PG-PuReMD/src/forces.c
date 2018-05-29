@@ -73,11 +73,10 @@ void Dummy_Interaction( reax_system *system, control_params *control,
 }
 
 
-void Init_Force_Functions( control_params *control )
+void Init_Force_Functions( control_params * const control )
 {
     control->intr_funcs[0] = BO;
     control->intr_funcs[1] = Bonds;
-    control->intr_funcs[2] = Atom_Energy;
     control->intr_funcs[2] = Atom_Energy;
     control->intr_funcs[3] = Valence_Angles;
     control->intr_funcs[4] = Torsion_Angles;
@@ -96,9 +95,9 @@ void Init_Force_Functions( control_params *control )
 }
 
 
-void Compute_Bonded_Forces( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control )
+void Compute_Bonded_Forces( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i;
 
@@ -115,10 +114,10 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
 }
 
 
-void Compute_NonBonded_Forces( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+void Compute_NonBonded_Forces( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        mpi_datatypes * const mpi_data )
 {
 #if defined(TEST_ENERGY)
     /* Mark beginning of a new timestep in nonbonded energy files */
@@ -145,18 +144,18 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 /* this version of Compute_Total_Force computes forces from
  * coefficients accumulated by all interaction functions.
  * Saves enormous time & space! */
-void Compute_Total_Force( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void Compute_Total_Force( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        mpi_datatypes * const mpi_data )
 {
     int i, pj;
-    reax_list *bonds = lists[BONDS];
+    reax_list * const bond_list = lists[BONDS];
 
     for ( i = 0; i < system->N; ++i )
     {
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
+        for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
         {
-            if ( i < bonds->bond_list[pj].nbr )
+            if ( i < bond_list->bond_list[pj].nbr )
             {
                 if ( control->virial == 0 )
                 {
@@ -200,9 +199,9 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 }
 
 
-static inline real Init_Charge_Matrix_Entry( reax_system *system,
-        control_params *control, storage *workspace, int i, int j,
-        real r_ij, MATRIX_ENTRY_POSITION pos )
+static inline real Init_Charge_Matrix_Entry( const reax_system * const system,
+        const control_params * const control, const storage * const workspace,
+        int i, int j, real r_ij, MATRIX_ENTRY_POSITION pos )
 {
     real Tap, dr3gamij_1, dr3gamij_3, ret;
 
@@ -255,16 +254,14 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 }
 
 
-static inline real Compute_tabH( storage *workspace, real r_ij,
+static inline real Compute_tabH( storage * const workspace, real r_ij,
         int ti, int tj, int num_atom_types )
 {
-    int r, tmin, tmax;
+    int r;
     real val, dif, base;
-    LR_lookup_table *t;
-
-    tmin = MIN( ti, tj );
-    tmax = MAX( ti, tj );
-    t = &workspace->LR[ index_lr( tmin, tmax, num_atom_types ) ];
+    int tmin = MIN( ti, tj );
+    int tmax = MAX( ti, tj );
+    const LR_lookup_table * const t = &workspace->LR[ index_lr( tmin, tmax, num_atom_types ) ];
 
     /* cubic spline interpolation */
     r = (int)(r_ij * t->inv_dx);
@@ -282,9 +279,9 @@ static inline real Compute_tabH( storage *workspace, real r_ij,
 }
 
 
-int Init_Forces( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control )
+int Init_Forces( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -293,8 +290,6 @@ int Init_Forces( reax_system *system, control_params *control,
     int ihb, jhb, ihb_top;
     int local, flag, renbr;
     real r_ij, cutoff;
-    sparse_matrix *H;
-    reax_list *far_nbr_list, *bond_list, *hbond_list;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
@@ -305,10 +300,10 @@ int Init_Forces( reax_system *system, control_params *control,
     int start_j, end_j;
     int btop_j;
 #endif
-
-    far_nbr_list = lists[FAR_NBRS];
-    bond_list = lists[BONDS];
-    hbond_list = lists[HBONDS];
+    sparse_matrix * const H = &workspace->H;
+    reax_list * const far_nbr_list = lists[FAR_NBRS];
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const hbond_list = lists[HBONDS];
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -321,7 +316,6 @@ int Init_Forces( reax_system *system, control_params *control,
     }
 
     cm_top = 0;
-    H = &workspace->H;
     H->n = system->n;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
@@ -331,9 +325,13 @@ int Init_Forces( reax_system *system, control_params *control,
         type_i = atom_i->type;
         start_i = Start_Index( i, far_nbr_list );
         end_i = End_Index( i, far_nbr_list );
+#if defined(HALF_LIST)
         /* start at end because other atoms
          * can add to this atom's list (half-list) */
         btop_i = End_Index( i, bond_list );
+#else
+        btop_i = Start_Index( i, bond_list );
+#endif
         sbp_i = &system->reax_param.sbp[type_i];
         ihb = NON_H_BONDING_ATOM;
         ihb_top = -1;
@@ -363,9 +361,13 @@ int Init_Forces( reax_system *system, control_params *control,
 
                 if ( ihb == H_ATOM )
                 {
+#if defined(HALF_LIST)
                     /* start at end because other atoms
                      * can add to this atom's list (half-list) */
                     ihb_top = End_Index( atom_i->Hindex, hbond_list );
+#else
+                    ihb_top = Start_Index( atom_i->Hindex, hbond_list );
+#endif
                 }
                 else
                 {
@@ -532,8 +534,9 @@ int Init_Forces( reax_system *system, control_params *control,
             workspace->realloc.bonds = TRUE;
         }
 
-        if ( ihb == H_ATOM
-                && Num_Entries( atom_i->Hindex, hbond_list ) > system->max_hbonds[atom_i->Hindex] )
+        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
+                && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
+                > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
             workspace->realloc.hbonds = TRUE;
         }
@@ -550,9 +553,9 @@ int Init_Forces( reax_system *system, control_params *control,
 }
 
 
-int Init_Forces_No_Charges( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control )
+int Init_Forces_No_Charges( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -561,7 +564,6 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
     int ihb, jhb, ihb_top;
     int local, flag, renbr;
     real cutoff;
-    reax_list *far_nbr_list, *bond_list, *hbond_list;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
@@ -572,10 +574,9 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
     int start_j, end_j;
     int btop_j;
 #endif
-
-    far_nbr_list = lists[FAR_NBRS];
-    bond_list = lists[BONDS];
-    hbond_list = lists[HBONDS];
+    reax_list * const far_nbr_list = lists[FAR_NBRS];
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const hbond_list = lists[HBONDS];
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -595,9 +596,13 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
         type_i = atom_i->type;
         start_i = Start_Index( i, far_nbr_list );
         end_i = End_Index( i, far_nbr_list );
+#if defined(HALF_LIST)
         /* start at end because other atoms
          * can add to this atom's list (half-list) */
         btop_i = End_Index( i, bond_list );
+#else
+        btop_i = Start_Index( i, bond_list );
+#endif
         sbp_i = &system->reax_param.sbp[type_i];
         ihb = NON_H_BONDING_ATOM;
         ihb_top = -1;
@@ -619,9 +624,13 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
 
             if ( ihb == H_ATOM )
             {
+#if defined(HALF_LIST)
                 /* start at end because other atoms
                  * can add to this atom's list (half-list) */
                 ihb_top = End_Index( atom_i->Hindex, hbond_list );
+#else
+                ihb_top = Start_Index( atom_i->Hindex, hbond_list );
+#endif
             }
             else
             {
@@ -762,8 +771,9 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
             workspace->realloc.bonds = TRUE;
         }
 
-        if ( ihb == H_ATOM
-                && Num_Entries( atom_i->Hindex, hbond_list ) > system->max_hbonds[atom_i->Hindex] )
+        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
+                && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
+                > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
             workspace->realloc.hbonds = TRUE;
         }
@@ -774,8 +784,8 @@ int Init_Forces_No_Charges( reax_system *system, control_params *control,
 }
 
 
-void Estimate_Storages( reax_system *system, control_params *control,
-        reax_list **lists )
+void Estimate_Storages( reax_system * const system, control_params * const control,
+        reax_list ** const lists )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -786,7 +796,6 @@ void Estimate_Storages( reax_system *system, control_params *control,
     real r_ij;
     real C12, C34, C56;
     real BO, BO_s, BO_pi, BO_pi2;
-    reax_list *far_nbr_list;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
@@ -794,8 +803,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
 #if defined(HALF_LIST)
     reax_atom *atom_j;
 #endif
-
-    far_nbr_list = lists[FAR_NBRS];
+    reax_list * const far_nbr_list = lists[FAR_NBRS];
 
     for ( i = 0; i < system->total_cap; ++i )
     {
@@ -981,7 +989,11 @@ void Estimate_Storages( reax_system *system, control_params *control,
         {
             system->total_cm_entries += system->max_cm_entries[i];
         }
+#if defined(HALF_LIST)
         system->total_thbodies += SQR( system->max_bonds[i] / 2.0 );
+#else
+        system->total_thbodies += SQR( system->max_bonds[i] );
+#endif
     }
 
     system->total_bonds = MAX( system->total_bonds, MIN_CAP * MIN_BONDS );
@@ -997,10 +1009,10 @@ void Estimate_Storages( reax_system *system, control_params *control,
 }
 
 
-int Compute_Forces( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+int Compute_Forces( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     int charge_flag, ret;
 #if defined(LOG_PERFORMANCE)
@@ -1125,24 +1137,25 @@ int Compute_Forces( reax_system *system, control_params *control,
 }
 
 
-int validate_device( reax_system *system, simulation_data *data,
-        storage *workspace, reax_list **lists )
+#if defined(HAVE_CUDA)
+int validate_device( reax_system * const system, simulation_data * const data,
+        storage * const workspace, reax_list ** const lists )
 {
     int retval = FAILURE;
 
 #if defined(__CUDA_DEBUG__)
-    //retval |= validate_neighbors (system, lists);
-    //retval |= validate_sym_dbond_indices (system, workspace, lists);
-    //retval |= validate_hbonds (system, workspace, lists);
-    //retval |= validate_workspace (system, workspace);
-    //retval |= validate_bonds (system, workspace, lists);
-    //retval |= validate_three_bodies (system, workspace, lists );
-    retval |= validate_sparse_matrix (system, workspace);
-    //retval |= validate_data (system, data);
-    //retval |= validate_atoms (system, lists);
-    //analyze_hbonds (system, workspace, lists);
+    //retval |= validate_neighbors( system, lists );
+    //retval |= validate_sym_dbond_indices( system, workspace, lists );
+    //retval |= validate_hbonds( system, workspace, lists );
+    //retval |= validate_workspace( system, workspace );
+    //retval |= validate_bonds( system, workspace, lists );
+    //retval |= validate_three_bodies( system, workspace, lists );
+    retval |= validate_sparse_matrix( system, workspace );
+    //retval |= validate_data( system, data );
+    //retval |= validate_atoms( system, lists );
+    //analyze_hbonds( system, workspace, lists );
 
-    if (!retval)
+    if ( !retval )
     {
         fprintf( stderr, "Result *DOES NOT* match between device and host\n" );
     }
@@ -1151,3 +1164,4 @@ int validate_device( reax_system *system, simulation_data *data,
     return retval;
 
 }
+#endif

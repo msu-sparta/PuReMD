@@ -42,27 +42,27 @@ void Init_List_Indices( reax_list *, int * );
 #endif
 
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
-static inline int Num_Entries( int i, reax_list *l )
+static inline int Num_Entries( int i, const reax_list * const l )
 {
     return l->end_index[i] - l->index[i];
 }
 
-static inline int Start_Index( int i, reax_list *l )
+static inline int Start_Index( int i, const reax_list * const l )
 {
     return l->index[i];
 }
 
-static inline int End_Index( int i, reax_list *l )
+static inline int End_Index( int i, const reax_list * const l )
 {
     return l->end_index[i];
 }
 
-static inline void Set_Start_Index( int i, int val, reax_list *l )
+static inline void Set_Start_Index( int i, int val, const reax_list * const l )
 {
     l->index[i] = val;
 }
 
-static inline void Set_End_Index( int i, int val, reax_list *l )
+static inline void Set_End_Index( int i, int val, const reax_list * const l )
 {
     l->end_index[i] = val;
 }

@@ -555,19 +555,24 @@ typedef struct puremd_handle puremd_handle;
 
 /* function pointer definitions */
 /**/
-typedef int (*evolve_function)( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*, mpi_datatypes* );
+typedef int (*evolve_function)( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list ** const,
+        output_controls * const, mpi_datatypes * const );
 /**/
-typedef void (*interaction_function)( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls* );
+typedef void (*interaction_function)( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list ** const,
+        output_controls * const );
 /**/
 typedef real (*lookup_function)( real );
 /**/
-typedef void (*message_sorter)( reax_system*, int, int, int, mpi_out_data* );
+typedef void (*message_sorter)( reax_system * const, int, int, int,
+        mpi_out_data * const );
 /**/
-typedef void (*unpacker)( reax_system*, int, void*, int, neighbor_proc*, int );
+typedef void (*unpacker)( reax_system * const, int, void * const, int,
+        neighbor_proc * const, int );
 /**/
-typedef void (*callback_function)(reax_atom*, simulation_data*, reax_list*);
+typedef void (*callback_function)(reax_atom * const, simulation_data * const,
+        reax_list * const );
 
 
 /* struct definitions */
@@ -1803,12 +1808,12 @@ struct hbond_data
     int scl;
     /**/
     far_neighbor_data *ptr;
-
-    /*CUDA-specific*/
+#if defined(HAVE_CUDA)
     /**/
     int sym_index;
     /**/
     rvec hb_f;
+#endif
 };
 
 
@@ -1889,43 +1894,40 @@ struct bond_order_data
 /**/
 struct bond_data
 {
-    /**/
+    /* local atom ID of neighboring bonded atom */
     int nbr;
-    /**/
+    /* index in the bonds list of neighboring atom */
     int sym_index;
-    /**/
+    /* index in the dbond list of neighboring atom */
     int dbond_index;
     /**/
     ivec rel_box;
-    //  rvec ext_factor;
-    /**/
+//  rvec ext_factor;
+    /* distance to neighboring atom */
     real d;
-    /**/
+    /* component-wise difference of coordinates of this atom
+     * and its neighboring bonded atom */
     rvec dvec;
-    /**/
+    /* bond order data */
     bond_order_data bo_data;
-
-    /*CUDA-specific*/
+#if defined(HAVE_CUDA)
     /**/
     real ae_CdDelta;
-
     /**/
     real va_CdDelta;
     /**/
     rvec va_f;
-
     /**/
     real ta_CdDelta;
     /**/
     real ta_Cdbo;
     /**/
     rvec ta_f;
-
     /**/
     rvec hb_f;
-
     /**/
     rvec tf_f;
+#endif
 };
 
 

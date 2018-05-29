@@ -105,13 +105,13 @@ static inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
 }
 
 
-/* determine whether point p is inside the box */
-/* assumes orthogonal box */
+/* determine whether point p is inside the box,
+ * assumes orthogonal box */
 static inline int is_Inside_Box( simulation_box *box, rvec p )
 {
-    if ( p[0] < box->min[0] || p[0] >= box->max[0] ||
-            p[1] < box->min[1] || p[1] >= box->max[1] ||
-            p[2] < box->min[2] || p[2] >= box->max[2] )
+    if ( p[0] < box->min[0] || p[0] >= box->max[0]
+            || p[1] < box->min[1] || p[1] >= box->max[1]
+            || p[2] < box->min[2] || p[2] >= box->max[2] )
     {
         return FALSE;
     }
@@ -174,7 +174,7 @@ static inline void GridCell_Touch_Point( grid_cell *gc, ivec rl, rvec fp )
         }
         else if ( rl[d] == 0 )
         {
-            fp[d] = NEG_INF - 1.;
+            fp[d] = NEG_INF - 1.0;
         }
         else
         {
@@ -188,7 +188,9 @@ static inline void GridCell_Touch_Point( grid_cell *gc, ivec rl, rvec fp )
 static inline real DistSqr_to_CP( rvec cp, rvec x )
 {
     int  i;
-    real d_sqr = 0;
+    real d_sqr;
+
+    d_sqr = 0.0;
 
     for ( i = 0; i < 3; ++i )
     {
@@ -211,7 +213,9 @@ static inline int Relative_Coord_Encoding( ivec c )
 static inline real DistSqr_to_Special_Point( rvec cp, rvec x )
 {
     int  i;
-    real d_sqr = 0;
+    real d_sqr;
+
+    d_sqr = 0.0;
 
     for ( i = 0; i < 3; ++i )
     {

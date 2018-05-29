@@ -35,18 +35,17 @@
 #include "index_utils.h"
 
 
-void Add_dBond_to_Forces_NPT( int i, int pj, simulation_data *data,
-        storage *workspace, reax_list **lists )
+void Add_dBond_to_Forces_NPT( int i, int pj, simulation_data * const data,
+        storage * const workspace, reax_list ** const lists )
 {
     int pk, k, j;
-    reax_list *bond_list;
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
     rvec temp, ext_press;
     ivec rel_box;
+    reax_list * const bond_list = lists[BONDS];
 
-    bond_list = lists[BONDS];
     nbr_j = &bond_list->bond_list[pj];
     j = nbr_j->nbr;
     bo_ij = &nbr_j->bo_data;
@@ -151,15 +150,15 @@ void Add_dBond_to_Forces_NPT( int i, int pj, simulation_data *data,
 }
 
 
-void Add_dBond_to_Forces( int i, int pj, storage *workspace, reax_list **lists )
+void Add_dBond_to_Forces( int i, int pj, storage * const workspace,
+        reax_list ** const lists )
 {
     int pk, k, j;
-    reax_list *bond_list;
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
+    reax_list * const bond_list = lists[BONDS];
 
-    bond_list = lists[BONDS];
     nbr_j = &bond_list->bond_list[pj];
     j = nbr_j->nbr;
     bo_ij = &nbr_j->bo_data;
@@ -263,10 +262,10 @@ void Add_dBond_to_Forces( int i, int pj, storage *workspace, reax_list **lists )
 }
 
 
-int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
-        int i, int btop_i, far_neighbor_data *nbr_pj,
-        single_body_parameters *sbp_i, single_body_parameters *sbp_j,
-        two_body_parameters *twbp )
+int BOp( storage * const workspace, reax_list * const bond_list,
+        real bo_cut, int i, int btop_i, const far_neighbor_data * const nbr_pj,
+        const single_body_parameters * const sbp_i, const single_body_parameters * const sbp_j,
+        const two_body_parameters * const twbp )
 {
     int j;
     real r2, C12, C34, C56;
@@ -328,12 +327,12 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
         jbond = &bond_list->bond_list[btop_j];
 #endif
 
+#if defined(HALF_LIST)
         ibond->nbr = j;
         ibond->d = nbr_pj->d;
         rvec_Copy( ibond->dvec, nbr_pj->dvec );
         ivec_Copy( ibond->rel_box, nbr_pj->rel_box );
         ibond->dbond_index = btop_i;
-#if defined(HALF_LIST)
         ibond->sym_index = btop_j;
         jbond->nbr = i;
         jbond->d = nbr_pj->d;
@@ -343,6 +342,23 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
         jbond->sym_index = btop_i;
 
         Set_End_Index( j, btop_j + 1, bond_list );
+#else
+//        if ( i < j )
+//        {
+            ibond->nbr = j;
+            ibond->d = nbr_pj->d;
+            rvec_Copy( ibond->dvec, nbr_pj->dvec );
+            ivec_Copy( ibond->rel_box, nbr_pj->rel_box );
+            ibond->dbond_index = btop_i;
+//        }
+//        else
+//        {
+//            ibond->nbr = j;
+//            ibond->d = nbr_pj->d;
+//            rvec_Scale( ibond->dvec, -1.0, nbr_pj->dvec );
+//            ivec_Scale( ibond->rel_box, -1, nbr_pj->rel_box );
+//            ibond->dbond_index = btop_i;
+//        }
 #endif
 
         bo_ij = &ibond->bo_data;
@@ -365,22 +381,48 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
 
         /* Only dln_BOp_xx wrt. dr_i is stored here, note that
          * dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
+#if defined(HALF_LIST)
         rvec_Scale( bo_ij->dln_BOp_s, -1.0 * bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
         rvec_Scale( bo_ij->dln_BOp_pi, -1.0 * bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
         rvec_Scale( bo_ij->dln_BOp_pi2, -1.0 * bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
-#if defined(HALF_LIST)
         rvec_Scale( bo_ji->dln_BOp_s, -1.0, bo_ij->dln_BOp_s );
         rvec_Scale( bo_ji->dln_BOp_pi, -1.0, bo_ij->dln_BOp_pi );
         rvec_Scale( bo_ji->dln_BOp_pi2, -1.0, bo_ij->dln_BOp_pi2 );
+#else
+//        if ( i < j )
+//        {
+            rvec_Scale( bo_ij->dln_BOp_s, -1.0 * bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
+            rvec_Scale( bo_ij->dln_BOp_pi, -1.0 * bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
+            rvec_Scale( bo_ij->dln_BOp_pi2, -1.0 * bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+//        }
+//        else
+//        {
+//            rvec_Scale( bo_ij->dln_BOp_s, bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
+//            rvec_Scale( bo_ij->dln_BOp_pi, bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
+//            rvec_Scale( bo_ij->dln_BOp_pi2, bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+//        }
 #endif
 
         /* Only dBOp wrt. dr_i is stored here, note that
          * dBOp/dr_i = -dBOp/dr_j and all others are 0 */
+#if defined(HALF_LIST)
         rvec_Scale( bo_ij->dBOp, -1.0 * (bo_ij->BO_s * Cln_BOp_s
                     + bo_ij->BO_pi * Cln_BOp_pi
                     + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
-#if defined(HALF_LIST)
         rvec_Scale( bo_ji->dBOp, -1.0, bo_ij->dBOp );
+#else
+//        if ( i < j )
+//        {
+            rvec_Scale( bo_ij->dBOp, -1.0 * (bo_ij->BO_s * Cln_BOp_s
+                        + bo_ij->BO_pi * Cln_BOp_pi
+                        + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
+//        }
+//        else
+//        {
+//            rvec_Scale( bo_ij->dBOp, bo_ij->BO_s * Cln_BOp_s
+//                        + bo_ij->BO_pi * Cln_BOp_pi
+//                        + bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+//        }
 #endif
 
         rvec_Add( workspace->dDeltap_self[i], bo_ij->dBOp );
@@ -411,15 +453,15 @@ int BOp( storage *workspace, reax_list *bond_list, real bo_cut,
 
 
 #ifdef TEST_FORCES
-static int compare_bonds( const void *p1, const void *p2 )
+int compare_bonds( const void *p1, const void *p2 )
 {
-    return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
+    return ((bond_data *) p1)->nbr - ((bond_data *) p2)->nbr;
 }
 #endif
 
 
-void BO( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, reax_list **lists, output_controls *out_control )
+void BO( reax_system * const system, control_params * const control, simulation_data * const data,
+        storage * const workspace, reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, pj, type_i, type_j;
     int start_i, end_i, sym_index;
@@ -434,39 +476,41 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     bond_order_data *bo_ij, *bo_ji;
-    reax_list *bond_list;
+    reax_list * const bond_list = lists[BONDS];
 #ifdef TEST_FORCES
     int k, pk, start_j, end_j;
     int top_dbo, top_dDelta;
     dbond_data *pdbo;
     dDelta_data *ptop_dDelta;
-    reax_list *dDeltas, *dBOs;
+    reax_list * const dDeltas = lists[DDELTAS];
+    reax_list * const dBOs = lists[DBOS];
+
     top_dbo = 0;
     top_dDelta = 0;
-    dDeltas = lists[DDELTAS];
-    dBOs = lists[DBOS];
-
-//    for( i = 0; i < system->N; ++i )
-//    {
-//        qsort( &bond_list->bond_list[Start_Index(i, bond_list)],
-//                Num_Entries( i, bond_list ), sizeof(bond_data), compare_bonds );
-//    }
 #endif
 
-    bond_list = lists[BONDS];
     p_boc1 = system->reax_param.gp.l[0];
     p_boc2 = system->reax_param.gp.l[1];
+    p_lp1 = system->reax_param.gp.l[15];
+
+#ifdef TEST_FORCES
+    for( i = 0; i < bond_list->n; ++i )
+    {
+        qsort( &bond_list->bond_list[ Start_Index( i, bond_list ) ],
+                Num_Entries( i, bond_list ), sizeof(bond_data), compare_bonds );
+    }
+#endif
 
     /* Calculate Deltaprime, Deltaprime_boc values */
     for ( i = 0; i < system->N; ++i )
     {
         type_i = system->my_atoms[i].type;
-        sbp_i = &(system->reax_param.sbp[type_i]);
+        sbp_i = &system->reax_param.sbp[type_i];
         workspace->Deltap[i] = workspace->total_bond_order[i] - sbp_i->valency;
         workspace->Deltap_boc[i] =
             workspace->total_bond_order[i] - sbp_i->valency_val;
 
-        workspace->total_bond_order[i] = 0;
+        workspace->total_bond_order[i] = 0.0;
     }
 
     /* Corrected Bond Order calculations */
@@ -568,7 +612,7 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
 
                         //Cf1_ij = -Cf1A_ij * p_boc1 * exp_p1i +
                         //          Cf1B_ij * exp_p2i / ( exp_p2i + exp_p2j );
-                        Cf1_ij = 0.50 * ( -p_boc1 * exp_p1i / u1_ij -
+                        Cf1_ij = 0.5 * ( -p_boc1 * exp_p1i / u1_ij -
                                 ((val_i + f2) / SQR(u1_ij)) *
                                 ( -p_boc1 * exp_p1i +
                                   exp_p2i / ( exp_p2i + exp_p2j ) ) +
@@ -738,8 +782,6 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
 #endif
     }
 
-    p_lp1 = system->reax_param.gp.l[15];
-
     /* Calculate some helper variables that are used at many places
      * throughout force calculations */
     for ( j = 0; j < system->N; ++j )
@@ -781,15 +823,13 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
 
 
 #ifdef TEST_FORCES
-void Add_dBO( reax_system *system, reax_list **lists,
-        int i, int pj, real C, rvec *v )
+void Add_dBO( reax_system * const system, reax_list ** const lists,
+        int i, int pj, real C, rvec * const v )
 {
     int start_pj, end_pj, k;
-    reax_list *bond_list;
-    reax_list *dBOs;
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const dBOs = lists[DBOS];
 
-    bond_list = lists[BONDS];
-    dBOs = lists[DBOS];
     pj = bond_list->bond_list[pj].dbond_index;
     start_pj = Start_Index( pj, dBOs );
     end_pj = End_Index( pj, dBOs );
@@ -804,16 +844,13 @@ void Add_dBO( reax_system *system, reax_list **lists,
 }
 
 
-void Add_dBOpinpi2( reax_system *system, reax_list **lists,
-        int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
+void Add_dBOpinpi2( reax_system * const system, reax_list ** const lists,
+        int i, int pj, real Cpi, real Cpi2, rvec * const vpi, rvec * const vpi2 )
 {
     int start_pj, end_pj, k;
-    reax_list *bond_list;
-    reax_list *dBOs;
     dbond_data *dbo_k;
-
-    bond_list = lists[BONDS];
-    dBOs = lists[DBOS];
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const dBOs = lists[DBOS];
 
     pj = bond_list->bond_list[pj].dbond_index;
     start_pj = Start_Index( pj, dBOs );
@@ -828,15 +865,12 @@ void Add_dBOpinpi2( reax_system *system, reax_list **lists,
 }
 
 
-void Add_dBO_to_Forces( reax_system *system, reax_list **lists,
+void Add_dBO_to_Forces( reax_system * const system, reax_list ** const lists,
         int i, int pj, real C )
 {
     int start_pj, end_pj, k;
-    reax_list *bond_list;
-    reax_list *dBOs;
-
-    bond_list = lists[BONDS];
-    dBOs = lists[DBOS];
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const dBOs = lists[DBOS];
 
     pj = bond_list->bond_list[pj].dbond_index;
     start_pj = Start_Index( pj, dBOs );
@@ -850,16 +884,13 @@ void Add_dBO_to_Forces( reax_system *system, reax_list **lists,
 }
 
 
-void Add_dBOpinpi2_to_Forces( reax_system *system, reax_list **lists,
+void Add_dBOpinpi2_to_Forces( reax_system * const system, reax_list ** const lists,
         int i, int pj, real Cpi, real Cpi2 )
 {
     int start_pj, end_pj, k;
-    reax_list *bond_list;
-    reax_list *dBOs;
     dbond_data *dbo_k;
-
-    bond_list = lists[BONDS];
-    dBOs = lists[DBOS];
+    reax_list *bond_list = lists[BONDS];
+    reax_list *dBOs = lists[DBOS];
 
     pj = bond_list->bond_list[pj].dbond_index;
     start_pj = Start_Index( pj, dBOs );
@@ -874,14 +905,14 @@ void Add_dBOpinpi2_to_Forces( reax_system *system, reax_list **lists,
 }
 
 
-void Add_dDelta( reax_system *system, reax_list **lists, int i, real C, rvec *v )
+void Add_dDelta( reax_system * const system, reax_list ** const lists,
+        int i, real C, rvec * const v )
 {
-    int start = Start_Index( i, dDeltas );
-    int end = End_Index( i, dDeltas );
-    int k;
-    reax_list *dDeltas;
+    int start, end, k;
+    reax_list * const dDeltas = lists[DDELTAS];
 
-    dDeltas = lists[DDELTAS];
+    start = Start_Index( i, dDeltas );
+    end = End_Index( i, dDeltas );
 
     for ( k = start; k < end; ++k )
     {
@@ -891,13 +922,14 @@ void Add_dDelta( reax_system *system, reax_list **lists, int i, real C, rvec *v 
 }
 
 
-void Add_dDelta_to_Forces( reax_system *system, reax_list **lists,
-                           int i, real C )
+void Add_dDelta_to_Forces( reax_system * const system, reax_list ** const lists,
+        int i, real C )
 {
-    reax_list *dDeltas = lists[DDELTAS];
-    int start = Start_Index( i, dDeltas );
-    int end = End_Index( i, dDeltas );
-    int k;
+    int start, end, k;
+    reax_list * const dDeltas = lists[DDELTAS];
+
+    start = Start_Index( i, dDeltas );
+    end = End_Index( i, dDeltas );
 
     for ( k = start; k < end; ++k )
     {
@@ -907,13 +939,15 @@ void Add_dDelta_to_Forces( reax_system *system, reax_list **lists,
 }
 
 
-void Calculate_dBO( int i, int pj, storage *workspace, reax_list **lists, int *top )
+void Calculate_dBO( int i, int pj, storage * const workspace,
+        reax_list ** const lists, int *top )
 {
     int j, k, l, start_i, end_i, end_j;
-    reax_list *bond_list, *dBOs;
     bond_data *nbr_l, *nbr_k;
     bond_order_data *bo_ij;
     dbond_data *top_dbo;
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const dBOs = lists[DBOS];
 
     //  rvec due_j[1000], due_i[1000];
     //  rvec due_j_pi[1000], due_i_pi[1000];
@@ -923,15 +957,12 @@ void Calculate_dBO( int i, int pj, storage *workspace, reax_list **lists, int *t
     //  memset(due_j_pi, 0, sizeof(rvec)*1000 );
     //  memset(due_i_pi, 0, sizeof(rvec)*1000 );
 
-    bond_list = lists[BONDS];
-    dBOs = lists[DBOS];
-
     start_i = Start_Index( i, bond_list );
     end_i = End_Index( i, bond_list );
 
     j = bond_list->bond_list[pj].nbr;
-    l = Start_Index(j, bond_list);
-    end_j = End_Index(j, bond_list);
+    l = Start_Index( j, bond_list );
+    end_j = End_Index( j, bond_list );
 
     bo_ij = &bond_list->bond_list[pj].bo_data;
     top_dbo = &dBOs->dbo_list[ (*top) ];

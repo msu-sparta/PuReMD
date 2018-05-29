@@ -109,7 +109,7 @@ real diag_pre_comp( const reax_system * const system, real * const Hdia_inv )
 
 int dual_CG( const reax_system * const system, const control_params * const control,
         const storage * const workspace, const simulation_data * const data,
-        const mpi_datatypes * const mpi_data,
+        mpi_datatypes * const mpi_data,
         const sparse_matrix * const H, const rvec2 * const b,
         const real tol, rvec2 * const x, const int fresh_pre )
 {
@@ -356,7 +356,7 @@ const void Sparse_MatVec( const sparse_matrix * const A, const real * const x,
 
 int CG( const reax_system * const system, const control_params * const control,
         const storage * const workspace, const simulation_data * const data,
-        const mpi_datatypes * const mpi_data,
+        mpi_datatypes * const mpi_data,
         const sparse_matrix * const H, const real * const b,
         const real tol, real * const x, const int fresh_pre )
 {

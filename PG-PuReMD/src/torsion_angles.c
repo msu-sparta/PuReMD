@@ -42,9 +42,8 @@
 
 static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
         rvec dvec_kl, real r_kl, rvec dvec_li, real r_li,
-        three_body_interaction_data *p_ijk, three_body_interaction_data *p_jkl,
-        rvec dcos_omega_di, rvec dcos_omega_dj, rvec dcos_omega_dk, rvec dcos_omega_dl,
-        output_controls *out_control )
+        const three_body_interaction_data * const p_ijk, const three_body_interaction_data * const p_jkl,
+        rvec dcos_omega_di, rvec dcos_omega_dj, rvec dcos_omega_dk, rvec dcos_omega_dl )
 {
     real unnorm_cos_omega, unnorm_sin_omega, omega;
     real sin_ijk, cos_ijk, sin_jkl, cos_jkl;
@@ -147,9 +146,9 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
 }
 
 
-void Torsion_Angles( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control )
+void Torsion_Angles( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, k, l, pi, pj, pk, pl, pij, plk;
     int type_i, type_j, type_k, type_l;
@@ -183,20 +182,14 @@ void Torsion_Angles( reax_system *system, control_params *control,
     bond_data *pbond_ij, *pbond_jk, *pbond_kl;
     bond_order_data *bo_ij, *bo_jk, *bo_kl;
     three_body_interaction_data *p_ijk, *p_jkl;
-    real p_tor2;
-    real p_tor3;
-    real p_tor4;
-    real p_cot2;
-    reax_list *bond_list;
-    reax_list *thb_list;
+    real const p_tor2 = system->reax_param.gp.l[23];
+    real const p_tor3 = system->reax_param.gp.l[24];
+    real const p_tor4 = system->reax_param.gp.l[25];
+    real const p_cot2 = system->reax_param.gp.l[27];
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const thb_list = lists[THREE_BODIES];
 
     num_frb_intrs = 0;
-    p_tor2 = system->reax_param.gp.l[23];
-    p_tor3 = system->reax_param.gp.l[24];
-    p_tor4 = system->reax_param.gp.l[25];
-    p_cot2 = system->reax_param.gp.l[27];
-    bond_list = lists[BONDS];
-    thb_list = lists[THREE_BODIES];
 
     for ( j = 0; j < system->n; ++j )
     {
@@ -329,8 +322,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     /* omega and its derivative */
                                     omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec, r_jk,
                                             pbond_kl->dvec, r_kl, dvec_li, r_li, p_ijk, p_jkl,
-                                            dcos_omega_di, dcos_omega_dj, dcos_omega_dk, dcos_omega_dl,
-                                            out_control );
+                                            dcos_omega_di, dcos_omega_dj, dcos_omega_dk, dcos_omega_dl );
 
                                     cos_omega = COS( omega );
                                     cos2omega = COS( 2.0 * omega );

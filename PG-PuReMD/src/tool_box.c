@@ -200,6 +200,7 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
     int i, ret, flag;
     
     flag = FAILURE;
+    ret = -1;
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
     {
@@ -213,7 +214,7 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
 
     if ( flag == FAILURE )
     {
-        fprintf( stderr, "Unknown atom type (%s). Terminating...\n", s );
+        fprintf( stderr, "[ERROR] Unknown atom type (%s). Terminating...\n", s );
         MPI_Abort( MPI_COMM_WORLD, UNKNOWN_ATOM_TYPE );
     }
 

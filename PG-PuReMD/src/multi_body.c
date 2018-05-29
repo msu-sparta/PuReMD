@@ -36,9 +36,9 @@
 #include "index_utils.h"
 
 
-void Atom_Energy( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control )
+void Atom_Energy( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control )
 {
     int i, j, pj, type_i, type_j;
     real Delta_lpcorr, dfvl;
@@ -49,23 +49,21 @@ void Atom_Energy( reax_system *system, control_params *control,
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
-    real p_lp1, p_lp2, p_lp3;
-    real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
+    const real p_lp1 = system->reax_param.gp.l[15];
+    real p_lp2;
+    const real p_lp3 = system->reax_param.gp.l[5];
+    real p_ovun2;
+    const real p_ovun3 = system->reax_param.gp.l[32];
+    const real p_ovun4 = system->reax_param.gp.l[31];
+    real p_ovun5;
+    const real p_ovun6 = system->reax_param.gp.l[6];
+    const real p_ovun7 = system->reax_param.gp.l[8];
+    const real p_ovun8 = system->reax_param.gp.l[9];
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij;
-    reax_list *bond_list;
-
-    bond_list = lists[BONDS];
-
-    p_lp1 = system->reax_param.gp.l[15];
-    p_lp3 = system->reax_param.gp.l[5];
-    p_ovun3 = system->reax_param.gp.l[32];
-    p_ovun4 = system->reax_param.gp.l[31];
-    p_ovun6 = system->reax_param.gp.l[6];
-    p_ovun7 = system->reax_param.gp.l[8];
-    p_ovun8 = system->reax_param.gp.l[9];
+    reax_list * const bond_list = lists[BONDS];
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -173,8 +171,8 @@ void Atom_Energy( reax_system *system, control_params *control,
             type_j = system->my_atoms[j].type;
             bo_ij = &bond_list->bond_list[pj].bo_data;
             sbp_j = &system->reax_param.sbp[ type_j ];
-            twbp = &(system->reax_param.tbp[
-                    index_tbp(type_i, type_j, system->reax_param.num_atom_types) ]);
+            twbp = &system->reax_param.tbp[
+                    index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
 
             sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
             sum_ovun2 += (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]) *

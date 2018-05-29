@@ -213,7 +213,7 @@ static coll_unpacker Get_Unpacker( const int type )
 }
 
 
-void Dist( const reax_system * const system, const mpi_datatypes * const mpi_data,
+void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {
     int d;
@@ -221,7 +221,7 @@ void Dist( const reax_system * const system, const mpi_datatypes * const mpi_dat
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
-    neighbor_proc *nbr1, *nbr2;
+    const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
 
 #if defined(DEBUG)
@@ -253,8 +253,8 @@ void Dist( const reax_system * const system, const mpi_datatypes * const mpi_dat
         if ( out_bufs[2 * d].cnt )
         {
             pack( buf, out_bufs + (2 * d) );
-            MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt, type,
-                    nbr1->rank, 2 * d, comm );
+            MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
+                    type, nbr1->rank, 2 * d, comm );
         }
 
         if ( out_bufs[2 * d + 1].cnt )
@@ -280,7 +280,7 @@ void Dist( const reax_system * const system, const mpi_datatypes * const mpi_dat
 }
 
 
-void Coll( const reax_system const* system, const mpi_datatypes * const mpi_data,
+void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {
     int d;
@@ -288,7 +288,7 @@ void Coll( const reax_system const* system, const mpi_datatypes * const mpi_data
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
-    neighbor_proc *nbr1, *nbr2;
+    const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
 
 #if defined(DEBUG)

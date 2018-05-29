@@ -853,6 +853,7 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
 
     for ( i = 0; i < A->n; ++i )
     {
+        fprintf( f, "===> i = %d\n", i );
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
             fprintf( f, "%d %d %.15e\n",
@@ -1074,6 +1075,36 @@ void Print_Bonds( reax_system *system, reax_list **lists,
     }
 
     sfclose( fout, "Print_Bonds::fout" );
+}
+
+
+void Print_Three_Bodies( reax_system *system, reax_list **lists,
+        control_params *control, int step )
+{
+    int i, pj; 
+    char fname[MAX_STR]; 
+    three_body_interaction_data *thb_data;
+    FILE *fout;
+    reax_list *thb_list = lists[THREE_BODIES];
+
+    sprintf( fname, "%s.thbs.%d.%d", control->sim_name, step, system->my_rank );
+    fout = sfopen( fname, "w", "Print_Three_Bodies::fout" );
+
+    for ( i = 0; i < thb_list->n; ++i )
+    {
+        for ( pj = Start_Index(i, thb_list); pj < End_Index(i, thb_list); ++pj )
+        {
+            thb_data = &thb_list->three_body_list[pj];
+
+            fprintf( fout, "%12d %12d %24.15f %24.15f %24.15f %24.15f %24.15f %24.15f %24.15f %24.15f %24.15f %24.15f %24.15f\n",
+                    thb_data->thb, thb_data->pthb, thb_data->theta, thb_data->cos_theta,
+                    thb_data->dcos_di[0], thb_data->dcos_di[1], thb_data->dcos_di[2],
+                    thb_data->dcos_dj[0], thb_data->dcos_dj[1], thb_data->dcos_dj[2],
+                    thb_data->dcos_dk[0], thb_data->dcos_dk[1], thb_data->dcos_dk[2] );
+        }
+    }
+
+    sfclose( fout, "Print_Three_Bodies::fout" );
 }
 
 
@@ -1363,14 +1394,17 @@ void Dummy_Printer( reax_system *system, control_params *control,
 
 
 void Print_Bond_Orders( reax_system *system, control_params *control,
-                        simulation_data *data, storage *workspace,
-                        reax_list **lists, output_controls *out_control )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control )
 {
     int i, pj, pk;
     bond_order_data *bo_ij;
     dbond_data *dbo_k;
-    reax_list *bonds = lists[BONDS];
-    reax_list *dBOs  = lists[DBOS];
+    reax_list *bonds;
+    reax_list *dBOs;
+
+    bonds = lists[BONDS];
+    dBOs = lists[DBOS];
 
     /* bond orders */
     fprintf( out_control->fbo, "step: %d\n", data->step );
@@ -1378,6 +1412,7 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
              "atom1", "atom2", "r_ij", "total_bo", "bo_s", "bo_p", "bo_pp" );
 
     for ( i = 0; i < system->N; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
             bo_ij = &bonds->bond_list[pj].bo_data;
@@ -1388,13 +1423,14 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
                      bonds->bond_list[pj].d,
                      bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
         }
-
+    }
 
     /* derivatives of bond orders */
     fprintf( out_control->fdbo, "step: %d\n", data->step );
     fprintf( out_control->fdbo, "%6s%6s%6s%24s%24s%24s\n",
              "atom1", "atom2", "atom2", "dBO", "dBOpi", "dBOpi2" );
     for ( i = 0; i < system->N; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
             /* fprintf( out_control->fdbo, "%6d %6d\tstart: %6d\tend: %6d\n",
@@ -1423,6 +1459,7 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
                          dbo_k->dBOpi2[0], dbo_k->dBOpi2[1], dbo_k->dBOpi2[2] );
             }
         }
+    }
 }
 
 

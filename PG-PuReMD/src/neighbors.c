@@ -87,10 +87,12 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     reax_list *far_nbr_list;
     far_neighbor_data *nbr_data;
     reax_atom *atom1, *atom2;
-
 #if defined(LOG_PERFORMANCE)
-    real t_start = 0.0;
-    real t_elapsed = 0.0;
+    real t_start;
+    real t_elapsed;
+
+    t_start = 0.0;
+    t_elapsed = 0.0;
 
     if ( system->my_rank == MASTER_NODE )
     {
@@ -166,14 +168,17 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                     }
 
                     Set_End_Index( l, num_far, far_nbr_list );
-
-                    /* reallocation check */
-                    if ( Num_Entries( l, far_nbr_list ) > system->max_far_nbrs[l] )
-                    {
-                        workspace->realloc.far_nbrs = TRUE;
-                    }
                 }
             }
+        }
+    }
+
+    for ( i = 0; i < system->total_cap; i++ )
+    {
+        /* reallocation check */
+        if ( Num_Entries( i, far_nbr_list ) > system->max_far_nbrs[i] )
+        {
+            workspace->realloc.far_nbrs = TRUE;
         }
     }
 

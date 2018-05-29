@@ -198,8 +198,8 @@ static void Find_Neighbor_Grid_Cells( grid *g, control_params *control )
                 for ( d = 0; d < 3; ++d )
                 {
                     //TODO: investigate if correct
-//                    span[d] = (int)CEIL( gc->cutoff / g->cell_len[d] );
-                    span[d] = (int)CEIL( control->vlist_cut / g->cell_len[d] );
+                    span[d] = (int)CEIL( g->cutoff[ index_grid_3d_v(ci, g) ] / g->cell_len[d] );
+//                    span[d] = (int)CEIL( control->vlist_cut / g->cell_len[d] );
                     cmin[d] = MAX( ci[d] - span[d], 0 );
                     cmax[d] = MIN( ci[d] + span[d] + 1, g->ncells[d] );
                 }

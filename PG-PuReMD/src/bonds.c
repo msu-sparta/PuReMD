@@ -38,9 +38,9 @@
 #include "index_utils.h"
 
 
-void Bonds( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control )
+void Bonds( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control )
 {
     int i, j, pj, natoms;
     int start_i, end_i;
@@ -52,9 +52,8 @@ void Bonds( reax_system *system, control_params *control,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     bond_order_data *bo_ij;
-    reax_list *bond_list;
+    reax_list * const bond_list = lists[BONDS];
 
-    bond_list = lists[BONDS];
     gp3 = system->reax_param.gp.l[3];
     gp4 = system->reax_param.gp.l[4];
     gp7 = system->reax_param.gp.l[7];

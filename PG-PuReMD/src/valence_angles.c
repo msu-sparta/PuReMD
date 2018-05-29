@@ -36,9 +36,10 @@
 
 /* calculates the theta angle between i-j-k */
 void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-        real *theta, real *cos_theta )
+        real * const theta, real * const cos_theta )
 {
     (*cos_theta) = Dot( dvec_ji, dvec_jk, 3 ) / ( d_ji * d_jk );
+
     if ( *cos_theta > 1.0 )
     {
         *cos_theta  = 1.0;
@@ -54,15 +55,22 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
 void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-        rvec* dcos_theta_di, rvec* dcos_theta_dj, rvec* dcos_theta_dk )
+        rvec * const dcos_theta_di, rvec * const dcos_theta_dj, rvec * const dcos_theta_dk )
 {
     int t;
-    real sqr_d_ji = SQR( d_ji );
-    real sqr_d_jk = SQR( d_jk );
-    real inv_dists = 1.0 / (d_ji * d_jk);
-    real inv_dists3 = POW( inv_dists, 3.0 );
-    real dot_dvecs = Dot( dvec_ji, dvec_jk, 3 );
-    real Cdot_inv3 = dot_dvecs * inv_dists3;
+    real sqr_d_ji;
+    real sqr_d_jk;
+    real inv_dists;
+    real inv_dists3;
+    real dot_dvecs;
+    real Cdot_inv3;
+
+    sqr_d_ji = SQR( d_ji );
+    sqr_d_jk = SQR( d_jk );
+    inv_dists = 1.0 / (d_ji * d_jk);
+    inv_dists3 = POW( inv_dists, 3.0 );
+    dot_dvecs = Dot( dvec_ji, dvec_jk, 3 );
+    Cdot_inv3 = dot_dvecs * inv_dists3;
 
     for ( t = 0; t < 3; ++t )
     {
@@ -78,9 +86,9 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
 /* this is a 3-body interaction in which the main role is
  * played by j which sits in the middle of the other two. */
-void Valence_Angles( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control )
+void Valence_Angles( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, pi, k, pk, t;
     int type_i, type_j, type_k;
@@ -88,7 +96,11 @@ void Valence_Angles( reax_system *system, control_params *control,
     int cnt, num_thb_intrs;
     real temp, temp_bo_jt, pBOjt7;
     real p_val1, p_val2, p_val3, p_val4, p_val5;
-    real p_val6, p_val7, p_val8, p_val9, p_val10;
+    const real p_val6 = system->reax_param.gp.l[14];
+    real p_val7;
+    const real p_val8 = system->reax_param.gp.l[33];
+    const real p_val9 = system->reax_param.gp.l[16];
+    const real p_val10 = system->reax_param.gp.l[17];
     real p_pen1, p_pen2, p_pen3, p_pen4;
     real p_coa1, p_coa2, p_coa3, p_coa4;
     real trm8, expval6, expval7, expval2theta, expval12theta, exp3ij, exp3jk;
@@ -110,17 +122,9 @@ void Valence_Angles( reax_system *system, control_params *control,
     three_body_interaction_data *p_ijk, *p_kji;
     bond_data *pbond_ij, *pbond_jk, *pbond_jt;
     bond_order_data *bo_ij, *bo_jk, *bo_jt;
-    reax_list *bond_list;
-    reax_list *thb_list;
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const thb_list = lists[THREE_BODIES];
 
-    bond_list = lists[BONDS];
-    thb_list = lists[THREE_BODIES];
-
-    /* global parameters used in these calculations */
-    p_val6 = system->reax_param.gp.l[14];
-    p_val8 = system->reax_param.gp.l[33];
-    p_val9 = system->reax_param.gp.l[16];
-    p_val10 = system->reax_param.gp.l[17];
     num_thb_intrs = 0;
 
     for ( j = 0; j < system->N; ++j )
@@ -213,7 +217,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                             p_kji = &thb_list->three_body_list[t];
 
                             p_ijk->thb = bond_list->bond_list[pk].nbr;
-                            p_ijk->pthb  = pk;
+                            p_ijk->pthb = pk;
                             p_ijk->theta = p_kji->theta;
                             rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
                             rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
@@ -229,7 +233,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                 for ( pk = pi + 1; pk < end_j; ++pk )
                 {
                     pbond_jk = &bond_list->bond_list[pk];
-                    bo_jk = &(pbond_jk->bo_data);
+                    bo_jk = &pbond_jk->bo_data;
                     BOA_jk = bo_jk->BO - control->thb_cut;
                     k = pbond_jk->nbr;
                     type_k = system->my_atoms[k].type;
@@ -240,8 +244,8 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                     Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d,
                             pbond_jk->dvec, pbond_jk->d,
-                            &(p_ijk->dcos_di), &(p_ijk->dcos_dj),
-                            &(p_ijk->dcos_dk) );
+                            &p_ijk->dcos_di, &p_ijk->dcos_dj,
+                            &p_ijk->dcos_dk );
                     p_ijk->thb = k;
                     p_ijk->pthb = pk;
                     p_ijk->theta = theta;
@@ -254,19 +258,19 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                     ++num_thb_intrs;
 
-                    if ( (j < system->n) && (BOA_jk > 0.0) &&
-                            (bo_ij->BO * bo_jk->BO > SQR(control->thb_cut)) )
+                    if ( j < system->n && BOA_jk > 0.0
+                            && (bo_ij->BO * bo_jk->BO > SQR(control->thb_cut)) )
                     {
                         r_jk = pbond_jk->d;
-			thbh = &( system->reax_param.thbp[
+			thbh = &system->reax_param.thbp[
                                 (type_i * system->reax_param.num_atom_types * system->reax_param.num_atom_types)
-                                + (type_j * system->reax_param.num_atom_types ) + type_k ] );
+                                + (type_j * system->reax_param.num_atom_types ) + type_k ];
 
                         for ( cnt = 0; cnt < thbh->cnt; ++cnt )
                         {
                             if ( FABS(thbh->prm[cnt].p_val1) > 0.001 )
                             {
-                                thbp = &( thbh->prm[cnt] );
+                                thbp = &thbh->prm[cnt];
 
                                 /* ANGLE ENERGY */
                                 p_val1 = thbp->p_val1;
@@ -335,9 +339,9 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 exp_pen4 = EXP(  p_pen4 * workspace->Delta[j] );
                                 trm_pen34 = 1.0 + exp_pen3 + exp_pen4;
                                 f9_Dj = ( 2.0 + exp_pen3 ) / trm_pen34;
-                                Cf9j = ( -p_pen3 * exp_pen3 * trm_pen34 -
-                                        (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3 +
-                                            p_pen4 * exp_pen4 ) ) / SQR( trm_pen34 );
+                                Cf9j = ( -p_pen3 * exp_pen3 * trm_pen34
+                                        - (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3
+                                            + p_pen4 * exp_pen4 ) ) / SQR( trm_pen34 );
 
                                 e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                                 data->my_en.e_pen += e_pen;

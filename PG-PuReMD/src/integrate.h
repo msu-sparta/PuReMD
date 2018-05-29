@@ -29,29 +29,29 @@
 extern "C" {
 #endif
 
-int Velocity_Verlet_NVE( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
+int Velocity_Verlet_NVE( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list** const, output_controls * const, mpi_datatypes * const );
 
-int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
+int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list** const, output_controls * const,
+        mpi_datatypes * const );
 
-int Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
+int Velocity_Verlet_Berendsen_NVT( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list** const, output_controls * const,
+        mpi_datatypes * const );
 
-int Velocity_Verlet_Berendsen_NPT( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls*,
-        mpi_datatypes* );
+int Velocity_Verlet_Berendsen_NPT( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list** const, output_controls * const,
+        mpi_datatypes * const );
 
 /*
-int Velocity_Verlet_Nose_Hoover_NVT( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**,
-        output_controls*, mpi_datatypes* );
+int Velocity_Verlet_Nose_Hoover_NVT( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list** const,
+        output_controls * const, mpi_datatypes * const );
 
-int Velocity_Verlet_Flexible_NPT( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**,
-        output_controls*, mpi_datatypes* );
+int Velocity_Verlet_Flexible_NPT( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list** const,
+        output_controls * const, mpi_datatypes * const );
 */
 
 #ifdef __cplusplus

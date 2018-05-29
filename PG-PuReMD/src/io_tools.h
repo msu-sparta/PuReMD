@@ -69,6 +69,9 @@ void Print_HBond_Indices( reax_system*, reax_list**, control_params *, int );
 
 void Print_Bonds( reax_system*, reax_list**, control_params *, int );
 
+void Print_Three_Bodies( reax_system *, reax_list **,
+        control_params *, int );
+
 void Print_Bond_List2( reax_system*, reax_list*, char* );
 
 void Print_Total_Force( reax_system*, simulation_data*, storage* );

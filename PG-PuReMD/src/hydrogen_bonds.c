@@ -42,9 +42,9 @@
 #include "index_utils.h"
 
 
-void Hydrogen_Bonds( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control )
+void Hydrogen_Bonds( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;
@@ -56,7 +56,6 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
     rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
     rvec dvec_jk, force, ext_press;
-    reax_list *bond_list, *hbond_list;
     hbond_parameters *hbp;
     bond_order_data *bo_ij;
     bond_data *pbond_ij;
@@ -65,9 +64,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #if defined(DEBUG)
     int num_hb_intrs = 0;
 #endif
-    
-    bond_list = lists[BONDS];
-    hbond_list = lists[HBONDS];
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const hbond_list = lists[HBONDS];
+
     hblist = NULL;
     hblist_size = 0;
 
@@ -88,6 +87,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
             hb_end_j = End_Index( system->my_atoms[j].Hindex, hbond_list );
             top = 0;
 
+            //TOOD: good candidate for shared scratch space
             if ( Num_Entries( j, bond_list ) > hblist_size )
             {
                 hblist_size = Num_Entries( j, bond_list );

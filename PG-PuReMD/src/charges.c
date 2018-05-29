@@ -524,11 +524,11 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
-    Sort_Matrix_Rows( &workspace->H );
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
-        Sort_Matrix_Rows( &workspace->H_sp );
-    }
+//    Sort_Matrix_Rows( &workspace->H );
+//    if ( control->cm_domain_sparsify_enabled == TRUE )
+//    {
+//        Sort_Matrix_Rows( &workspace->H_sp );
+//    }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
     switch ( control->cm_solver_pre_comp_type )
@@ -726,7 +726,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 /* Combine ficticious charges s and t to get atomic charge q for QEq method
  */
 static void Calculate_Charges_QEq( const reax_system * const system,
-        storage * const workspace, const mpi_datatypes * const mpi_data )
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
     int i;
     real u;
@@ -766,7 +766,7 @@ static void Calculate_Charges_QEq( const reax_system * const system,
 /* Get atomic charge q for EE method
  */
 static void Calculate_Charges_EE( const reax_system * const system,
-        storage * const workspace, const mpi_datatypes * const mpi_data )
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
     int i;
 
@@ -787,7 +787,7 @@ static void Calculate_Charges_EE( const reax_system * const system,
 static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         const output_controls * const out_control,
-        const mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
     int iters;
 
@@ -847,7 +847,7 @@ static void QEq( reax_system * const system, control_params * const control,
 static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         const output_controls * const out_control,
-        const mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
     int iters;
 
@@ -894,7 +894,7 @@ static void EE( reax_system * const system, control_params * const control,
 static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         const output_controls * const out_control,
-        const mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
     int iters;
 
@@ -934,7 +934,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 void Compute_Charges( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         const output_controls * const out_control,
-        const mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
     switch ( control->charge_method )
     {

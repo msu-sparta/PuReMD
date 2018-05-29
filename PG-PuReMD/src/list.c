@@ -34,18 +34,14 @@ void Print_List( reax_list* list )
 {
     int i;
 
-    printf("START INDICES \n");
-    for( i=0; i<list->n; i++ )
+    for( i = 0; i < list->n; i++ )
     {
-        printf("%d \n",list->index[i]);
+        printf( "%d %d\n", list->index[i], list->end_index[i] );
+        if ( i > 1 && list->end_index[i - 1] >= list->index[i] )
+        {
+            printf( "===> malformed list %d", i );
+        }
     }
-
-    printf("END INDICES \n");
-    for ( i=0; i<list->n; i++ )
-    {
-        printf("%d \n", list->end_index[i]);
-    }
-
 }
 
 

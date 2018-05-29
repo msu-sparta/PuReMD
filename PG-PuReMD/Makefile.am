@@ -10,8 +10,8 @@ if USE_CUDA
 #   Note: cc 13 for Tesla, cc 20 for Fermi, cc 30 for Kepler K10, cc 35 for Kepler K20/K40, etc.
 #NVCCFLAGS += -use_fast_math -gencode arch=compute_35,code=sm_35
 NVCCFLAGS += -use_fast_math $(NVCC_OPT_CODE)
-#NVCCFLAGS += --compiler-options "$(DEFS) -D__SM_35__ -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)"
-NVCCFLAGS += --compiler-options "$(DEFS) $(NVCC_OPT_CODE_DEFS) -O3 -funroll-loops -fstrict-aliasing $(MPI_CFLAGS)"
+#NVCCFLAGS += --compiler-options "$(DEFS) -D__SM_35__ -O3 -funroll-loops $(MPI_CFLAGS)"
+NVCCFLAGS += --compiler-options "$(DEFS) $(NVCC_OPT_CODE_DEFS) -O3 -funroll-loops $(MPI_CFLAGS)"
 #NVCCFLAGS += --ptxas-options -v
 endif
 

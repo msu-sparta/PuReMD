@@ -35,13 +35,13 @@ real diag_pre_comp( const reax_system * const, real * const );
 
 int dual_CG( const reax_system * const, const control_params * const,
         const storage * const, const simulation_data * const,
-        const mpi_datatypes * const,
+        mpi_datatypes * const,
         const sparse_matrix * const, const rvec2 * const,
         const real, rvec2 * const, const int );
 
 int CG( const reax_system * const, const control_params * const,
         const storage * const, const simulation_data * const,
-        const mpi_datatypes * const,
+        mpi_datatypes * const,
         const sparse_matrix * const, const real * const,
         const real, real * const, const int );
 

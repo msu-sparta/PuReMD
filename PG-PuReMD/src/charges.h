@@ -31,7 +31,7 @@ extern "C" {
 
 void Compute_Charges( reax_system * const, control_params * const,
         simulation_data * const, storage * const,
-        const output_controls * const, const mpi_datatypes * const );
+        const output_controls * const, mpi_datatypes * const );
 
 #ifdef __cplusplus
 }
