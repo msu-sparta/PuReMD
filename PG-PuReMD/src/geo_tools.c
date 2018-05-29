@@ -30,7 +30,7 @@
 
 
 /********************* geo format routines ******************/
-void Count_Geo_Atoms( FILE *geo, reax_system *system )
+static void Count_Geo_Atoms( FILE *geo, reax_system * const system )
 {
     int i, serial;
     rvec x;
@@ -45,11 +45,14 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
-        Fit_to_Periodic_Box( &(system->big_box), &x );
+
+        Fit_to_Periodic_Box( &system->big_box, &x );
 
         /* if the point is inside my_box, add it to my lists */
-        if ( is_Inside_Box(&(system->my_box), x) )
+        if ( is_Inside_Box( &system->my_box, x ) == TRUE )
+        {
             ++system->n;
+        }
     }
 
     system->N = system->n;
@@ -67,8 +70,9 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 }
 
 
-void Read_Geo_File( const char * const geo_file, reax_system* system, control_params *control,
-        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+void Read_Geo_File( const char * const geo_file, reax_system * const system,
+        control_params * const control, simulation_data * const data,
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
     int i, j, serial, top;
     char descriptor[9];
@@ -100,7 +104,7 @@ void Read_Geo_File( const char * const geo_file, reax_system* system, control_pa
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
 
-        Fit_to_Periodic_Box( &(system->big_box), &x );
+        Fit_to_Periodic_Box( &system->big_box, &x );
 
 #if defined(DEBUG)
         fprintf( stderr, "atom%d: %s %s %f %f %f\n",
@@ -108,7 +112,7 @@ void Read_Geo_File( const char * const geo_file, reax_system* system, control_pa
 #endif
 
         /* if the point is inside my_box, add it to my list */
-        if ( is_Inside_Box(&(system->my_box), x) )
+        if ( is_Inside_Box( &system->my_box, x ) == TRUE )
         {
             atom = &system->my_atoms[top];
             atom->orig_id = serial;
@@ -145,7 +149,7 @@ void Read_Geo_File( const char * const geo_file, reax_system* system, control_pa
 }
 
 
-int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
+static int Read_Box_Info( reax_system * const system, FILE *geo, int geo_format )
 {
     char *cryst;
     char line[MAX_LINE + 1];
@@ -153,8 +157,7 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     char s_group[12], s_zValue[12];
 
-    /* initialize variables */
-    fseek( geo, 0, SEEK_SET ); // set the pointer to the beginning of the file
+    fseek( geo, 0, SEEK_SET );
 
     switch ( geo_format )
     {
@@ -166,7 +169,7 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
     }
 
     /* locate the cryst line in the geo file, read it and
-       initialize the big box */
+     * initialize the big box */
     while ( fgets( line, MAX_LINE, geo ) )
     {
         if ( strncmp( line, cryst, 6 ) == 0 )
@@ -183,7 +186,7 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
             /* compute full volume tensor from the angles */
             Setup_Big_Box( atof(s_a),  atof(s_b), atof(s_c),
                     atof(s_alpha), atof(s_beta), atof(s_gamma),
-                    &(system->big_box) );
+                    &system->big_box );
 
             return SUCCESS;
         }
@@ -193,15 +196,14 @@ int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 }
 
 
-void Count_PDB_Atoms( FILE *geo, reax_system *system )
+static void Count_PDB_Atoms( FILE *geo, reax_system * const system )
 {
     char *endptr = NULL;
     char line[MAX_LINE + 1];
     char s_x[9], s_y[9], s_z[9];
     rvec x;
 
-    /* initialize variables */
-    fseek( geo, 0, SEEK_SET ); /* set the pointer to the beginning of the file */
+    fseek( geo, 0, SEEK_SET );
     system->bigN = 0;
     system->n = 0;
     system->N = 0;
@@ -222,17 +224,13 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
             s_z[8] = 0;
             Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
                         strtod( s_z, &endptr ), &x );
-            Fit_to_Periodic_Box( &(system->big_box), &x );
+            Fit_to_Periodic_Box( &system->big_box, &x );
 
             /* if the point is inside my_box, add it to my lists */
-            if ( is_Inside_Box(&(system->my_box), x) )
+            if ( is_Inside_Box( &system->my_box, x ) == TRUE )
             {
                 ++system->n;
             }
-//            if ( is_Inside_Box(&(system->my_ext_box), x) )
-//            {
-//              ++system->N;
-//            }
         }
     }
 
@@ -247,8 +245,9 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 }
 
 
-void Read_PDB_File( const char * const pdb_file, reax_system* system, control_params *control,
-        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+void Read_PDB_File( const char * const pdb_file, reax_system * const system,
+        control_params * const control, simulation_data * const data,
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
     FILE *pdb;
     char **tmp;
@@ -272,8 +271,8 @@ void Read_PDB_File( const char * const pdb_file, reax_system* system, control_pa
     /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )
     {
-        fprintf( stderr, "Read_Box_Info: no CRYST line in the pdb file!" );
-        fprintf( stderr, "terminating...\n" );
+        fprintf( stderr, "[ERROR] Read_Box_Info: no CRYST line in the pdb file!" );
+        fprintf( stderr, " Terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, INVALID_GEO );
     }
 
@@ -281,10 +280,11 @@ void Read_PDB_File( const char * const pdb_file, reax_system* system, control_pa
     Count_PDB_Atoms( pdb, system );
     PreAllocate_Space( system, control, workspace );
 
-    /* start reading and processing the pdb file */
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: starting to read the pdb file\n", system->my_rank );
 #endif
+
+    /* start reading and processing the pdb file */
     fseek( pdb, 0, SEEK_SET );
     c = 0;
     c1 = 0;
@@ -378,17 +378,17 @@ void Read_PDB_File( const char * const pdb_file, reax_system* system, control_pa
                     strtod( &s_y[0], &endptr ),
                     strtod( &s_z[0], &endptr ), &x );
 
-            Fit_to_Periodic_Box( &(system->big_box), &x );
+            Fit_to_Periodic_Box( &system->big_box, &x );
 
-            if ( is_Inside_Box( &(system->my_box), x ) == TRUE )
+            if ( is_Inside_Box( &system->my_box, x ) == TRUE )
             {
                 /* store orig_id, type, name and coord info of the new atom */
-                atom = &(system->my_atoms[top]);
+                atom = &system->my_atoms[top];
                 pdb_serial = (int) strtod( &serial[0], &endptr );
                 atom->orig_id = pdb_serial;
 
                 Trim_Spaces( element );
-                atom->type = Get_Atom_Type( &(system->reax_param), element );
+                atom->type = Get_Atom_Type( &system->reax_param, element );
                 strncpy( atom->name, atom_name, MAX_ATOM_NAME_LEN );
 
                 rvec_Copy( atom->x, x );
@@ -458,8 +458,9 @@ void Read_PDB_File( const char * const pdb_file, reax_system* system, control_pa
 /* PDB serials are written without regard to the order, we'll see if this
  * cause trouble, if so we'll have to rethink this approach
  * Also, we do not write connect lines yet.  */
-void Write_PDB_File( reax_system* system, reax_list* bonds, simulation_data *data,
-        control_params *control, mpi_datatypes *mpi_data, output_controls *out_control )
+void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
+        simulation_data * const data, control_params * const control,
+        mpi_datatypes * const mpi_data, output_controls * const out_control )
 {
     int i, cnt, me, np, buffer_req, buffer_len;
     //int j, connect[4];
@@ -494,7 +495,7 @@ void Write_PDB_File( reax_system* system, reax_list* bonds, simulation_data *dat
     buffer[0] = 0;
 
     /* open pdb and write header */
-    if (me == MASTER_NODE)
+    if ( me == MASTER_NODE )
     {
         /* Writing Box information */
         gamma = ACOS( (system->big_box.box[0][0] * system->big_box.box[1][0] +
@@ -570,10 +571,10 @@ void Write_PDB_File( reax_system* system, reax_list* bonds, simulation_data *dat
     /*
     for(i=0; i < system->N; i++) {
       count = 0;
-      for(j = Start_Index(i, bonds); j < End_Index(i, bonds); ++j) {
-        bo = bonds->bond_list[j].bo_data.BO;
+      for(j = Start_Index(i, bond_list); j < End_Index(i, bond_list); ++j) {
+        bo = bond_list->bond_list[j].bo_data.BO;
         if (bo > 0.3) {
-          connect[count] = bonds->bond_list[j].nbr+1;
+          connect[count] = bond_list->bond_list[j].nbr+1;
           count++;
         }
       }

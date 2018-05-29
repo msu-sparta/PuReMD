@@ -29,13 +29,13 @@
 extern "C" {
 #endif
 
-void Print_List( reax_list* );
+void Print_List( reax_list * const );
 
-void Make_List( int, int, int, reax_list* );
+void Make_List( int, int, int, reax_list * const );
 
-void Delete_List( reax_list* );
+void Delete_List( reax_list * const );
 
-void Init_List_Indices( reax_list *, int * );
+void Init_List_Indices( reax_list * const, int * const );
 
 #ifdef __cplusplus
 }

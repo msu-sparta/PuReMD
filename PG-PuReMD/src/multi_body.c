@@ -49,7 +49,6 @@ void Atom_Energy( reax_system * const system, control_params * const control,
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
-    const real p_lp1 = system->reax_param.gp.l[15];
     real p_lp2;
     const real p_lp3 = system->reax_param.gp.l[5];
     real p_ovun2;
@@ -59,7 +58,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
     const real p_ovun6 = system->reax_param.gp.l[6];
     const real p_ovun7 = system->reax_param.gp.l[8];
     const real p_ovun8 = system->reax_param.gp.l[9];
-    single_body_parameters *sbp_i, *sbp_j;
+    single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij;
@@ -80,8 +79,8 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         e_lp = p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
         data->my_en.e_lp += e_lp;
 
-        dElp = p_lp2 * inv_expvd2 +
-               75.0 * p_lp2 * workspace->Delta_lp[i] * expvd2 * SQR(inv_expvd2);
+        dElp = p_lp2 * inv_expvd2 + 75.0 * p_lp2 * workspace->Delta_lp[i]
+            * expvd2 * SQR(inv_expvd2);
         CElp = dElp * workspace->dDelta_lp[i];
 
         workspace->CdDelta[i] += CElp;  // lp - 1st term
@@ -124,8 +123,9 @@ void Atom_Energy( reax_system * const system, control_params * const control,
                             e_lph = p_lp3 * SQR( vov3 - 3.0 );
                             data->my_en.e_lp += e_lph;
 
-                            deahu2dbo = 2.*p_lp3 * (vov3 - 3.);
-                            deahu2dsbo = 2.*p_lp3 * (vov3 - 3.) * (-1. - 0.16 * POW(Di, 3.));
+                            deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
+                            deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
+                                * (-1.0 - 0.16 * POW(Di, 3.));
 
                             bo_ij->Cdbo += deahu2dbo;
                             workspace->CdDelta[i] += deahu2dsbo;
@@ -170,13 +170,12 @@ void Atom_Energy( reax_system * const system, control_params * const control,
             j = bond_list->bond_list[pj].nbr;
             type_j = system->my_atoms[j].type;
             bo_ij = &bond_list->bond_list[pj].bo_data;
-            sbp_j = &system->reax_param.sbp[ type_j ];
             twbp = &system->reax_param.tbp[
                     index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
 
             sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
-            sum_ovun2 += (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]) *
-                         ( bo_ij->BO_pi + bo_ij->BO_pi2 );
+            sum_ovun2 += (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j])
+                * ( bo_ij->BO_pi + bo_ij->BO_pi2 );
         }
 
         exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );

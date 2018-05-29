@@ -1445,18 +1445,15 @@ int CG( const reax_system * const system, const control_params * const control,
         const sparse_matrix * const H, const real * const b,
         const real tol, real * const x, const int fresh_pre )
 {
-    fprintf(stdout,"CG working\n");
-    fflush(stdout);
-    int i, j;
+    int i;
     real tmp, alpha, beta, b_norm;
-    real sig_old, sig_new, sig0;
+    real sig_old, sig_new;
     //real *d, *r, *p, *z;
 
     /*d = workspace->d;
       r = workspace->r;
       p = workspace->q;
       z = workspace->p;*/
-
 
     Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
     Sparse_MatVec( H, x, workspace->q, system->N );
@@ -1475,17 +1472,11 @@ int CG( const reax_system * const system, const control_params * const control,
 
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->q, system->n );
 
-    // preconditioner
-    /*for ( j = 0; j < system->n; ++j )
-      {
-      workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
-      }*/
     apply_preconditioner( system, workspace, control, workspace->r, workspace->d, fresh_pre, LEFT );
     apply_preconditioner( system, workspace, control, workspace->d, workspace->p, fresh_pre, RIGHT );
 
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot( workspace->r, workspace->d, system->n, mpi_data->world );
-    sig0 = sig_new;
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -1516,11 +1507,6 @@ int CG( const reax_system * const system, const control_params * const control,
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
 
-        /* preconditioner */
-        /*for ( j = 0; j < system->n; ++j )
-          {
-          workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
-          }*/
         apply_preconditioner( system, workspace, control, workspace->r, workspace->d, FALSE, LEFT );
         apply_preconditioner( system, workspace, control, workspace->d, workspace->p, FALSE, RIGHT );
 

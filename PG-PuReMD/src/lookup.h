@@ -29,11 +29,11 @@
 extern "C" {
 #endif
 
-void Init_Lookup_Tables( reax_system *, control_params *, storage *,
-        mpi_datatypes * );
+void Init_Lookup_Tables( reax_system * const, control_params * const, storage * const,
+        mpi_datatypes * const );
 
-void Finalize_LR_Lookup_Table( reax_system *, control_params *,
-       storage *, mpi_datatypes * );
+void Finalize_LR_Lookup_Table( reax_system * const, control_params * const,
+       storage * const, mpi_datatypes * const );
 
 #ifdef _cplusplus
 }

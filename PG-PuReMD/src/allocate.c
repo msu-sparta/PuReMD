@@ -38,7 +38,8 @@
 #include "index_utils.h"
 
 
-void Init_Matrix_Row_Indices( sparse_matrix *H, int * max_row_entries )
+void Init_Matrix_Row_Indices( sparse_matrix * const H,
+        int * const max_row_entries )
 {
     int i;
 
@@ -58,8 +59,8 @@ void Init_Matrix_Row_Indices( sparse_matrix *H, int * max_row_entries )
  * important: we cannot know the exact number of atoms that will fall into a
  * process's box throughout the whole simulation. therefore
  * we need to make upper bound estimates for various data structures */
-void PreAllocate_Space( reax_system *system, control_params *control,
-        storage *workspace )
+void PreAllocate_Space( reax_system * const system, control_params * const control,
+        storage * const workspace )
 {
     /* determine capacity based on box vol & est atom volume */
     system->local_cap = MAX( (int)(system->n * SAFE_ZONE), MIN_CAP );
@@ -85,7 +86,7 @@ void PreAllocate_Space( reax_system *system, control_params *control,
 
 
 /*************       system        *************/
-void ReAllocate_System( reax_system *system, int local_cap, int total_cap )
+void ReAllocate_System( reax_system * const system, int local_cap, int total_cap )
 {
     system->my_atoms = srealloc( system->my_atoms, sizeof(reax_atom) * total_cap,
             "ReAllocate_System::system->my_atoms" );
@@ -114,7 +115,7 @@ void ReAllocate_System( reax_system *system, int local_cap, int total_cap )
 
 
 /*************       workspace        *************/
-void DeAllocate_Workspace( control_params *control, storage *workspace )
+void DeAllocate_Workspace( control_params * const control, storage * const workspace )
 {
     int i;
 
@@ -192,13 +193,6 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     // sfree( workspace->f_old, "DeAllocate_Workspace::f_old" );
     sfree( workspace->v_const, "DeAllocate_Workspace::v_const" );
 
-    /*workspace->realloc.far_nbrs = -1;
-      workspace->realloc.Htop = -1;
-      workspace->realloc.hbonds = -1;
-      workspace->realloc.bonds = -1;
-      workspace->realloc.num_3body = -1;
-      workspace->realloc.gcell_atoms = -1;*/
-
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
     {
@@ -240,8 +234,8 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
 }
 
 
-void Allocate_Workspace( reax_system *system, control_params *control,
-        storage *workspace, int local_cap, int total_cap )
+void Allocate_Workspace( reax_system * const system, control_params * const control,
+        storage * const workspace, int local_cap, int total_cap )
 {
     int i, total_real, total_rvec, local_rvec;
 
@@ -450,14 +444,15 @@ void Allocate_Workspace( reax_system *system, control_params *control,
 }
 
 
-void Reallocate_Neighbor_List( reax_list *far_nbr_list, int n, int max_intrs )
+void Reallocate_Neighbor_List( reax_list * const far_nbr_list,
+        int n, int max_intrs )
 {
     Delete_List( far_nbr_list );
     Make_List( n, max_intrs, TYP_FAR_NEIGHBOR, far_nbr_list );
 }
 
 
-void Allocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
+void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
 {
     H->n = n;
     H->n_max = n_max;
@@ -469,7 +464,7 @@ void Allocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
 }
 
 
-void Deallocate_Matrix( sparse_matrix *H )
+void Deallocate_Matrix( sparse_matrix * const H )
 {
     H->n = 0;
     H->n_max = 0;
@@ -481,14 +476,14 @@ void Deallocate_Matrix( sparse_matrix *H )
 }
 
 
-static void Reallocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
+static void Reallocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
 {
     Deallocate_Matrix( H );
     Allocate_Matrix( H, n, n_max, m );
 }
 
 
-void Reallocate_HBonds_List( reax_system *system, reax_list *hbond_list )
+void Reallocate_HBonds_List( reax_system * const system, reax_list * const hbond_list )
 {
     Delete_List( hbond_list );
 //    Make_List( system->Hcap, system->total_hbonds, TYP_HBOND, hbond_list );
@@ -496,7 +491,7 @@ void Reallocate_HBonds_List( reax_system *system, reax_list *hbond_list )
 }
 
 
-void Reallocate_Bonds_List( reax_system *system, reax_list *bond_list )
+void Reallocate_Bonds_List( reax_system * const system, reax_list * const bond_list )
 {
     Delete_List( bond_list );
     Make_List( system->total_cap, system->total_bonds, TYP_BOND, bond_list );
@@ -504,18 +499,15 @@ void Reallocate_Bonds_List( reax_system *system, reax_list *bond_list )
 
 
 /*************       grid        *************/
-int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
+int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
 {
     int d, i, j, k, l, max_atoms, my_max, all_max;
     ivec c;
-    grid *g;
+    grid * const g = &system->my_grid;
     grid_cell *gc;
-    simulation_box *my_ext_box;
-    reax_atom *atoms;
+    simulation_box * const my_ext_box = &system->my_ext_box;
+    reax_atom * const atoms = system->my_atoms;
 
-    my_ext_box = &system->my_ext_box;
-    g = &system->my_grid;
-    atoms = system->my_atoms;
     Reset_Grid( g );
 
     for ( l = 0; l < system->n; l++ )
@@ -579,14 +571,13 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
 }
 
 
-void Allocate_Grid( reax_system *system, MPI_Comm comm )
+void Allocate_Grid( reax_system * const system, MPI_Comm comm )
 {
     int i, j, k;
-    grid *g;
+    grid * const g = &system->my_grid;
     grid_cell *gc;
     int total;
 
-    g = &system->my_grid;
     total = g->ncells[0] * g->ncells[1] * g->ncells[2];
 
     /* allocate gcell reordering space */
@@ -650,7 +641,7 @@ void Allocate_Grid( reax_system *system, MPI_Comm comm )
 }
 
 
-void Deallocate_Grid( grid *g )
+void Deallocate_Grid( grid * const g )
 {
     int i, j, k;
     grid_cell *gc;
@@ -691,8 +682,8 @@ void Deallocate_Grid( grid *g )
  *
  * Note: buffers are (void *), type cast to the correct pointer type to access
  * the allocated buffers */
-void Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
-        neighbor_proc *my_nbrs )
+void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
+        neighbor_proc * const my_nbrs )
 {
     int i;
     mpi_out_data *mpi_buf;
@@ -722,7 +713,7 @@ void Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
 }
 
 
-void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
+void Deallocate_MPI_Buffers( mpi_datatypes * const mpi_data )
 {
     int i;
     mpi_out_data  *mpi_buf;
@@ -739,22 +730,18 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
 }
 
 
-void ReAllocate( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void ReAllocate( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        mpi_datatypes * const mpi_data )
 {
     int i, j, k;
     int nflag, Nflag, Hflag, mpi_flag, total_send;
     int renbr;
-    reallocate_data *realloc;
-    sparse_matrix *H;
-    grid *g;
+    reallocate_data * const realloc = &workspace->realloc;
+    sparse_matrix * const H = &workspace->H;
+    grid * const g = &system->my_grid;
     neighbor_proc *nbr_pr;
     mpi_out_data *nbr_data;
-
-    realloc = &workspace->realloc;
-    g = &system->my_grid;
-    H = &workspace->H;
 
     /* IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with FALSE!!! */
     nflag = FALSE;
@@ -903,9 +890,9 @@ void ReAllocate( reax_system *system, control_params *control,
         realloc->gcell_atoms = -1;
     }
 
-    /* mpi buffers */
-    // we have to be at a renbring step -
-    // to ensure correct values at mpi_buffers for update_boundary_positions
+    /* mpi buffers:
+     * we have to be at a renbring step
+     * to ensure correct values at mpi_buffers for update_boundary_positions */
     if ( renbr == FALSE )
     {
         mpi_flag = FALSE;
@@ -921,8 +908,9 @@ void ReAllocate( reax_system *system, control_params *control,
         mpi_flag = FALSE;
         for ( i = 0; i < MAX_NBRS; ++i )
         {
-            nbr_pr = &( system->my_nbrs[i] );
-            nbr_data = &( mpi_data->out_buffers[i] );
+            nbr_pr = &system->my_nbrs[i];
+            nbr_data = &mpi_data->out_buffers[i];
+
             if ( nbr_data->cnt >= nbr_pr->est_send * DANGER_ZONE )
             {
                 mpi_flag = TRUE;
@@ -950,8 +938,8 @@ void ReAllocate( reax_system *system, control_params *control,
         total_send = 0;
         for ( i = 0; i < MAX_NBRS; ++i )
         {
-            nbr_pr = &( system->my_nbrs[i] );
-            nbr_data = &( mpi_data->out_buffers[i] );
+            nbr_pr = &system->my_nbrs[i];
+            nbr_data = &mpi_data->out_buffers[i];
             nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
             total_send += nbr_pr->est_send;
         }

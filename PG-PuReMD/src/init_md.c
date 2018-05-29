@@ -56,8 +56,8 @@
 
 #if defined(PURE_REAX)
 /************************ initialize system ************************/
-int Reposition_Atoms( reax_system *system, control_params *control,
-        simulation_data *data, mpi_datatypes *mpi_data, char *msg )
+static int Reposition_Atoms( reax_system * const system, control_params * const control,
+        simulation_data * const data, mpi_datatypes * const mpi_data, char * const msg )
 {
     int i;
     rvec dx;
@@ -96,7 +96,7 @@ int Reposition_Atoms( reax_system *system, control_params *control,
 
 
 
-void Generate_Initial_Velocities( reax_system *system, real T )
+void Generate_Initial_Velocities( reax_system * const system, real T )
 {
     int i;
     real m, scale, norm;
@@ -126,9 +126,9 @@ void Generate_Initial_Velocities( reax_system *system, real T )
 }
 
 
-void Init_System( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        mpi_datatypes *mpi_data )
+void Init_System( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        mpi_datatypes * const mpi_data )
 {
     int i;
     reax_atom *atom;
@@ -228,8 +228,8 @@ void Init_System( reax_system *system, control_params *control,
 
 
 /************************ initialize simulation data ************************/
-void Init_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data )
+void Init_Simulation_Data( reax_system * const system, control_params * const control,
+        simulation_data * const data )
 {
     Reset_Simulation_Data( data );
 
@@ -333,7 +333,7 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
 
 
 #elif defined(LAMMPS_REAX)
-void Init_System( reax_system *system )
+void Init_System( reax_system * const system )
 {
     system->big_box.V = 0;
     system->big_box.box_norms[0] = 0;
@@ -361,8 +361,8 @@ void Init_System( reax_system *system )
 }
 
 
-void Init_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data )
+void Init_Simulation_Data( reax_system * const system, control_params * const control,
+        simulation_data * const data )
 {
     Reset_Simulation_Data( data );
 
@@ -378,26 +378,25 @@ void Init_Simulation_Data( reax_system *system, control_params *control,
 
 /************************ initialize workspace ************************/
 /* Initialize Taper params */
-void Init_Taper( control_params *control,  storage *workspace )
+void Init_Taper( control_params * const control,  storage * const workspace )
 {
     real d1, d7;
-    real swa, swa2, swa3;
-    real swb, swb2, swb3;
-
-    swa = control->nonb_low;
-    swb = control->nonb_cut;
+    const real swa = control->nonb_low;
+    const real swb = control->nonb_cut;
+    real swa2, swa3;
+    real swb2, swb3;
 
     if ( FABS( swa ) > 0.01 )
     {
         fprintf( stderr, "[WARNING] non-zero lower Taper-radius cutoff in force field parameters\n" );
     }
 
-    if ( swb < 0 )
+    if ( swb < 0.0 )
     {
         fprintf( stderr, "[ERROR] negative upper Taper-radius cutoff in force field parameters\n" );
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
     }
-    else if ( swb < 5 )
+    else if ( swb < 5.0 )
     {
         fprintf( stderr, "[WARNING] very low Taper-radius cutoff in force field parameters (%f)\n", swb );
     }
@@ -416,13 +415,13 @@ void Init_Taper( control_params *control,  storage *workspace )
     workspace->Tap[3] = 140.0 * (swa3 * swb + 3.0 * swa2 * swb2 + swa * swb3 ) / d7;
     workspace->Tap[2] = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
     workspace->Tap[1] = 140.0 * swa3 * swb3 / d7;
-    workspace->Tap[0] = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2 +
-            7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
+    workspace->Tap[0] = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2
+            + 7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
 }
 
 
-void Init_Workspace( reax_system *system, control_params *control,
-        storage *workspace )
+void Init_Workspace( reax_system * const system, control_params * const control,
+        storage * const workspace )
 {
     Allocate_Workspace( system, control, workspace, system->local_cap,
             system->total_cap );
@@ -440,9 +439,10 @@ void Init_Workspace( reax_system *system, control_params *control,
 }
 
 
-/************** setup communication data structures  **************/
-void Init_MPI_Datatypes( reax_system *system, storage *workspace,
-        mpi_datatypes *mpi_data )
+/* Setup communication data structures
+ * */
+void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
+        mpi_datatypes * const mpi_data )
 {
     int block[11];
     int i;
@@ -619,10 +619,11 @@ void Init_MPI_Datatypes( reax_system *system, storage *workspace,
 }
 
 
-/********************** allocate lists *************************/
-void Init_Lists( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+/* Allocate and initialize lists
+ * */
+void Init_Lists( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        mpi_datatypes * const mpi_data )
 {
     int ret;
 
@@ -662,10 +663,10 @@ void Init_Lists( reax_system *system, control_params *control,
 
 
 #if defined(PURE_REAX)
-void Initialize( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+void Initialize( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
@@ -693,10 +694,10 @@ void Initialize( reax_system *system, control_params *control,
 }
 
 
-void Pure_Initialize( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+void Pure_Initialize( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     Init_Simulation_Data( system, control, data );
 
@@ -709,10 +710,10 @@ void Pure_Initialize( reax_system *system, control_params *control,
 
 
 #elif defined(LAMMPS_REAX)
-void Initialize( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+void Initialize( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     Init_System( system );
 
@@ -736,12 +737,10 @@ void Initialize( reax_system *system, control_params *control,
 #endif
 
 
-static void Finalize_System( reax_system *system, control_params *control,
-        simulation_data *data )
+static void Finalize_System( reax_system * const system, control_params * const control,
+        simulation_data * const data )
 {
-    reax_interaction *reax;
-
-    reax = &system->reax_param;
+    reax_interaction * const reax = &system->reax_param;
 
     Deallocate_Grid( &system->my_grid );
 
@@ -766,14 +765,14 @@ static void Finalize_System( reax_system *system, control_params *control,
 }
 
 
-static void Finalize_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data, output_controls *out_control )
+static void Finalize_Simulation_Data( reax_system * const system, control_params * const control,
+        simulation_data * const data, output_controls * const out_control )
 {
 }
 
 
-static void Finalize_Workspace( reax_system *system, control_params *control,
-        storage *workspace )
+static void Finalize_Workspace( reax_system * const system, control_params * const control,
+        storage * const workspace )
 {
     int i;
 
@@ -920,7 +919,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 }
 
 
-static void Finalize_Lists( control_params *control, reax_list **lists )
+static void Finalize_Lists( control_params * const control, reax_list ** const lists )
 {
     Delete_List( lists[FAR_NBRS] );
     Delete_List( lists[BONDS] );
@@ -937,7 +936,7 @@ static void Finalize_Lists( control_params *control, reax_list **lists )
 }
 
 
-static void Finalize_MPI_Datatypes( mpi_datatypes *mpi_data )
+static void Finalize_MPI_Datatypes( mpi_datatypes * const mpi_data )
 {
     int ret;
 
@@ -959,9 +958,10 @@ static void Finalize_MPI_Datatypes( mpi_datatypes *mpi_data )
 /* Deallocate top-level data structures, close file handles, etc.
  *
  */
-void Finalize( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data, const int output_enabled )
+void Finalize( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data,
+        const int output_enabled )
 {
     if ( control->tabulate )
     {

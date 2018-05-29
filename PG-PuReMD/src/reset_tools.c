@@ -36,7 +36,7 @@
 #include "index_utils.h"
 
 
-void Reset_Atoms( reax_system* system, control_params *control )
+static void Reset_Atoms( reax_system * const system, control_params * const control )
 {
     int i;
     reax_atom *atom;
@@ -61,7 +61,7 @@ void Reset_Atoms( reax_system* system, control_params *control )
 }
 
 
-void Reset_Energies( energy_data *en )
+static void Reset_Energies( energy_data * const en )
 {
     en->e_bond = 0.0;
     en->e_ov = 0.0;
@@ -82,13 +82,13 @@ void Reset_Energies( energy_data *en )
 }
 
 
-void Reset_Temperatures( simulation_data *data )
+static void Reset_Temperatures( simulation_data * const data )
 {
     data->therm.T = 0.0;
 }
 
 
-void Reset_Pressures( simulation_data *data )
+void Reset_Pressures( simulation_data * const data )
 {
     data->flex_bar.P_scalar = 0.0;
     rtensor_MakeZero( data->flex_bar.P );
@@ -100,7 +100,7 @@ void Reset_Pressures( simulation_data *data )
 }
 
 
-void Reset_Simulation_Data( simulation_data* data )
+void Reset_Simulation_Data( simulation_data * const data )
 {
     Reset_Energies( &data->my_en );
     Reset_Energies( &data->sys_en );
@@ -109,7 +109,7 @@ void Reset_Simulation_Data( simulation_data* data )
 }
 
 
-void Reset_Timing( reax_timing *rt )
+void Reset_Timing( reax_timing * const rt )
 {
     rt->total = Get_Time( );
     rt->comm = 0.0;
@@ -124,7 +124,7 @@ void Reset_Timing( reax_timing *rt )
 
 
 #ifdef TEST_FORCES
-void Reset_Test_Forces( reax_system *system, storage *workspace )
+void Reset_Test_Forces( reax_system * const system, storage * const workspace )
 {
     memset( workspace->f_ele, 0, system->total_cap * sizeof(rvec) );
     memset( workspace->f_vdw, 0, system->total_cap * sizeof(rvec) );
@@ -143,7 +143,7 @@ void Reset_Test_Forces( reax_system *system, storage *workspace )
 #endif
 
 
-void Reset_Workspace( reax_system *system, storage *workspace )
+void Reset_Workspace( reax_system * const system, storage * const workspace )
 {
     memset( workspace->total_bond_order, 0, system->total_cap * sizeof( real ) );
     memset( workspace->dDeltap_self, 0, system->total_cap * sizeof( rvec ) );
@@ -157,7 +157,7 @@ void Reset_Workspace( reax_system *system, storage *workspace )
 }
 
 
-void Reset_Grid( grid *g )
+void Reset_Grid( grid * const g )
 {
     int i, j, k;
 
@@ -176,7 +176,7 @@ void Reset_Grid( grid *g )
 }
 
 
-void Reset_Out_Buffers( mpi_out_data *out_buf, int n )
+void Reset_Out_Buffers( mpi_out_data * const out_buf, int n )
 {
     int i;
 
@@ -187,14 +187,12 @@ void Reset_Out_Buffers( mpi_out_data *out_buf, int n )
 }
 
 
-void Reset_Lists( reax_system *system, control_params *control,
-        storage *workspace, reax_list **lists )
+void Reset_Lists( reax_system * const system, control_params * const control,
+        storage * const workspace, reax_list ** const lists )
 {
     int i;
-    reax_list *bond_list, *hbond_list;
-
-    bond_list = lists[BONDS];
-    hbond_list = lists[HBONDS];
+    reax_list * const bond_list = lists[BONDS];
+    reax_list * const hbond_list = lists[HBONDS];
 
     if ( system->N > 0 )
     {
@@ -220,8 +218,9 @@ void Reset_Lists( reax_system *system, control_params *control,
 }
 
 
-void Reset( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists )
+void Reset( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists )
 {
     Reset_Atoms( system, control );
 

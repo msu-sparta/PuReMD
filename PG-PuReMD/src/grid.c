@@ -32,7 +32,8 @@
 
 
 /* determines the exchange boundaries with nbrs in terms of gcells */
-static void Mark_Grid_Cells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
+static void Mark_Grid_Cells( reax_system * const system, grid * const g,
+        ivec procs, MPI_Comm comm )
 {
     int x, y, z, d;
     ivec r, nbr_coord, prdc;
@@ -136,7 +137,8 @@ static void Mark_Grid_Cells( reax_system* system, grid *g, ivec procs, MPI_Comm 
 
 /* finds the closest point between two grid cells denoted by c1 and c2.
  * periodic boundary conditions are taken into consideration as well. */
-static void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
+static void Find_Closest_Point( grid * const g, ivec c1, ivec c2,
+        rvec closest_point )
 {
     int i, d;
 
@@ -161,7 +163,7 @@ static void Find_Closest_Point( grid *g, ivec c1, ivec c2, rvec closest_point )
 
 
 /* mark gcells based on the kind of nbrs we will be looking for in them */
-static void Find_Neighbor_Grid_Cells( grid *g, control_params *control )
+static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const control )
 {
     int d, top;
     ivec ci, cj, cmin, cmax, span;
@@ -234,7 +236,7 @@ static void Find_Neighbor_Grid_Cells( grid *g, control_params *control )
 }
 
 
-static void Reorder_Grid_Cells( grid *g )
+static void Reorder_Grid_Cells( grid * const g )
 {
     int i, j, k, x, y, z, top;
     ivec dblock, nblocks;
@@ -284,22 +286,18 @@ static void Reorder_Grid_Cells( grid *g )
 }
 
 
-void Setup_New_Grid( reax_system* system, control_params* control,
+void Setup_New_Grid( reax_system * const system, control_params * const control,
         MPI_Comm comm )
 {
     int d, i, j, k;
-    grid *g;
-    simulation_box *my_box, *my_ext_box;
-    boundary_cutoff *bc;
+    grid * const g = &system->my_grid;
+    simulation_box * const my_box = &system->my_box;
+    simulation_box * const my_ext_box = &system->my_ext_box;
+    boundary_cutoff * const bc = &system->bndry_cuts;
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: setup new grid\n", system->my_rank );
 #endif
-
-    g = &system->my_grid;
-    my_box = &system->my_box;
-    my_ext_box = &system->my_ext_box;
-    bc = &system->bndry_cuts;
 
     /* compute number of grid cells and props in each direction */
     for ( d = 0; d < 3; ++d )
@@ -383,22 +381,18 @@ void Setup_New_Grid( reax_system* system, control_params* control,
 }
 
 
-void Update_Grid( reax_system* system, control_params* control, MPI_Comm comm )
+void Update_Grid( reax_system * const system, control_params * const control,
+        MPI_Comm comm )
 {
     int d, i, j, k, itr;
     ivec ci, native_cells, nonb_span, bond_span;
     ivec ghost_span, ghost_nonb_span, ghost_bond_span, ghost_hbond_span;
     rvec cell_len, inv_len;
-    grid *g;
+    grid * const g = &system->my_grid;
     grid_cell *gc;
-    simulation_box *my_box;
-    simulation_box *my_ext_box;
-    boundary_cutoff *bc;
-
-    g = &( system->my_grid );
-    my_box = &( system->my_box );
-    my_ext_box = &( system->my_ext_box );
-    bc = &(system->bndry_cuts);
+    simulation_box * const my_box = &system->my_box;
+    simulation_box * const my_ext_box = &system->my_ext_box;
+    boundary_cutoff * const bc = &system->bndry_cuts;
 
     /* compute number of grid cells and props in each direction */
     for ( d = 0; d < 3; ++d )
@@ -499,20 +493,16 @@ void Update_Grid( reax_system* system, control_params* control, MPI_Comm comm )
 
 
 /* Bin my (native) atoms into grid cells */
-void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
+void Bin_My_Atoms( reax_system * const system, reallocate_data * const realloc )
 {
     int i, j, k, l, d, max_atoms;
     ivec c;
-    simulation_box *big_box, *my_box, *my_ext_box;
-    grid *g;
+//    simulation_box * const big_box = &system->big_box;
+    simulation_box * const my_ext_box = &system->my_ext_box;
+    simulation_box * const my_box = &system->my_box;
+    grid * const g = &system->my_grid;
     grid_cell *gc;
-    reax_atom *atoms;
-
-    big_box = &system->big_box;
-    my_ext_box = &system->my_ext_box;
-    my_box = &system->my_box;
-    g = &system->my_grid;
-    atoms = system->my_atoms;
+    reax_atom * const atoms = system->my_atoms;
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d bin_my_atoms: entered\n", system->my_rank );
@@ -527,16 +517,21 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
         {
             for ( d = 0; d < 3; ++d )
             {
-                //if( atoms[l].x[d] < big_box->min[d] )
-                //  atoms[l].x[d] += big_box->box_norms[d];
-                //else if( atoms[l].x[d] >= big_box->max[d] )
-                //  atoms[l].x[d] -= big_box->box_norms[d];
+//                if( atoms[l].x[d] < big_box->min[d] )
+//                {
+//                    atoms[l].x[d] += big_box->box_norms[d];
+//                }
+//                else if( atoms[l].x[d] >= big_box->max[d] )
+//                {
+//                    atoms[l].x[d] -= big_box->box_norms[d];
+//                }
+
                 if ( atoms[l].x[d] < my_box->min[d] || atoms[l].x[d] > my_box->max[d] )
                 {
-                    fprintf( stderr, "p%d: local atom%d [%f %f %f] is out of my box!\n",
+                    fprintf( stderr, "[ERROR] p%d: local atom%d [%f %f %f] is out of my box!\n",
                             system->my_rank, l,
                             atoms[l].x[0], atoms[l].x[1], atoms[l].x[2] );
-                    fprintf( stderr, "p%d: my_box=[%f-%f, %f-%f, %f-%f]\n",
+                    fprintf( stderr, "[ERROR] p%d: my_box=[%f-%f, %f-%f, %f-%f]\n",
                             system->my_rank, my_box->min[0], my_box->max[0],
                             my_box->min[1], my_box->max[1],
                             my_box->min[2], my_box->max[2] );
@@ -617,7 +612,7 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
 
 
 /* Reorder atoms falling into the same gcell together in the atom list */
-void Reorder_My_Atoms( reax_system *system, storage *workspace )
+void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
 {
     int i, l, x, y, z;
     int top, old_id;
@@ -626,7 +621,7 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
     reax_atom *old_atom, *new_atoms;
 
     /* allocate storage space for est_N */
-    new_atoms = (reax_atom*) smalloc( sizeof(reax_atom) * system->total_cap,
+    new_atoms = smalloc( sizeof(reax_atom) * system->total_cap,
             "Reorder_My_Atoms::new_atoms" );
     top = 0;
     g = &system->my_grid;
@@ -699,8 +694,8 @@ void Reorder_My_Atoms( reax_system *system, storage *workspace )
 
 
 /* Determine the grid cell which a boundary atom falls within */
-static void Get_Boundary_Grid_Cell( grid *g, rvec base, rvec x, grid_cell **gc,
-        rvec *cur_min, rvec *cur_max, ivec gcell_cood )
+static void Get_Boundary_Grid_Cell( grid * const g, rvec base, rvec x, grid_cell ** const gc,
+        rvec * const cur_min, rvec * const cur_max, ivec gcell_cood )
 {
     int d;
     ivec c;
@@ -745,7 +740,7 @@ static void Get_Boundary_Grid_Cell( grid *g, rvec base, rvec x, grid_cell **gc,
 
 /* Check if the current atom position falls within the
  * boundaries of a grid cell */
-int is_Within_GCell( rvec x, rvec cur_min, rvec cur_max )
+static int is_Within_Grid_Cell( rvec x, rvec cur_min, rvec cur_max )
 {
     int d;
 
@@ -762,13 +757,13 @@ int is_Within_GCell( rvec x, rvec cur_min, rvec cur_max )
 
 
 /* bin my boundary atoms into grid cells */
-void Bin_Boundary_Atoms( reax_system *system )
+void Bin_Boundary_Atoms( reax_system * const system )
 {
     int i, start, end;
     rvec base, cur_min, cur_max;
-    grid *g;
+    grid * const g = &system->my_grid;
     grid_cell *gc;
-    reax_atom *atoms;
+    reax_atom * const atoms = system->my_atoms;
     simulation_box *ext_box;
     ivec gcell_cood;
 
@@ -777,8 +772,6 @@ void Bin_Boundary_Atoms( reax_system *system )
             system->my_rank, system->n, system->N );
 #endif
 
-    g = &system->my_grid;
-    atoms = system->my_atoms;
     start = system->n;
     end = system->N;
     if ( start == end )
@@ -794,7 +787,7 @@ void Bin_Boundary_Atoms( reax_system *system )
     gc->top = 1;
 
     /* error check */
-    if ( is_Within_GCell( atoms[start].x, ext_box->min, ext_box->max ) == FALSE )
+    if ( is_Within_Grid_Cell( atoms[start].x, ext_box->min, ext_box->max ) == FALSE )
     {
         fprintf( stderr, "[ERROR] p%d: (start):ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
                  system->my_rank, start,
@@ -805,7 +798,7 @@ void Bin_Boundary_Atoms( reax_system *system )
     for ( i = start + 1; i < end; i++ )
     {
         /* error check */
-        if ( is_Within_GCell( atoms[i].x, ext_box->min, ext_box->max ) == FALSE )
+        if ( is_Within_Grid_Cell( atoms[i].x, ext_box->min, ext_box->max ) == FALSE )
         {
             fprintf( stderr, "[ERROR] p%d: (middle) ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
                     system->my_rank, i,
@@ -813,7 +806,7 @@ void Bin_Boundary_Atoms( reax_system *system )
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         }
 
-        if ( is_Within_GCell( atoms[i].x, cur_min, cur_max ) == TRUE )
+        if ( is_Within_Grid_Cell( atoms[i].x, cur_min, cur_max ) == TRUE )
         {
             ++gc->top;
         }

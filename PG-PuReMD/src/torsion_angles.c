@@ -152,7 +152,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
 {
     int i, j, k, l, pi, pj, pk, pl, pij, plk;
     int type_i, type_j, type_k, type_l;
-    int start_j, end_j, start_k, end_k;
+    int start_j, end_j;
     int start_pj, end_pj, start_pk, end_pk;
     int num_frb_intrs;
     real Delta_j, Delta_k;
@@ -213,8 +213,6 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
                     && bo_jk->BO > control->thb_cut
                     && Num_Entries(pk, thb_list) )
             {
-                start_k = Start_Index( k, bond_list );
-                end_k = End_Index( k, bond_list );
                 /* pj points to j on k's list */
                 pj = pbond_jk->sym_index;
 

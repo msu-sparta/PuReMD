@@ -29,21 +29,21 @@
 extern "C" {
 #endif
 
-void Generate_Initial_Velocities( reax_system *, real );
+void Generate_Initial_Velocities( reax_system * const, real );
 
-void Init_MPI_Datatypes( reax_system *, storage *, mpi_datatypes * );
+void Init_MPI_Datatypes( reax_system * const, storage * const, mpi_datatypes * const );
 
-void Initialize( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
+void Initialize( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list** const, output_controls * const, mpi_datatypes * const );
 
-void Pure_Initialize( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
+void Pure_Initialize( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list** const, output_controls * const, mpi_datatypes * const );
 
-void Init_Taper( control_params *,  storage * );
+void Init_Taper( control_params * const,  storage * const );
 
-void Finalize( reax_system *, control_params *,
-        simulation_data *, storage *, reax_list **,
-        output_controls *, mpi_datatypes *, const int );
+void Finalize( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list ** const,
+        output_controls * const, mpi_datatypes * const, const int );
 
 #ifdef __cplusplus
 }

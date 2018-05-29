@@ -113,7 +113,6 @@ void Valence_Angles( reax_system * const system, control_params * const control,
     real Cf7ij, Cf7jk, Cf8j, Cf9j;
     real f7_ij, f7_jk, f8_Dj, f9_Dj;
     real Ctheta_0, theta_0, theta_00, theta, cos_theta, sin_theta;
-    real r_ij, r_jk;
     real BOA_ij, BOA_jk;
     rvec force, ext_press;
     //rtensor temp_rtensor, total_rtensor;
@@ -198,7 +197,6 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                     ( j < system->n || pbond_ij->nbr < system->n ) )
             {
                 i = pbond_ij->nbr;
-                r_ij = pbond_ij->d;
                 type_i = system->my_atoms[i].type;
 
                 /* first copy 3-body intrs from previously computed ones where i>k.
@@ -261,7 +259,6 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                     if ( j < system->n && BOA_jk > 0.0
                             && (bo_ij->BO * bo_jk->BO > SQR(control->thb_cut)) )
                     {
-                        r_jk = pbond_jk->d;
 			thbh = &system->reax_param.thbp[
                                 (type_i * system->reax_param.num_atom_types * system->reax_param.num_atom_types)
                                 + (type_j * system->reax_param.num_atom_types ) + type_k ];

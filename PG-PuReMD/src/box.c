@@ -29,7 +29,7 @@
 #include "vector.h"
 
 
-void Make_Consistent( simulation_box* box )
+void Make_Consistent( simulation_box * const box )
 {
     real one_vol;
 
@@ -140,14 +140,14 @@ void Make_Consistent( simulation_box* box )
 
 /* setup the entire simulation box */
 void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
-                    simulation_box* box )
+        simulation_box * const box )
 {
     double c_alpha, c_beta, c_gamma, s_gamma, zi;
 
     if ( IS_NAN_REAL(a) || IS_NAN_REAL(b) || IS_NAN_REAL(c)
             || IS_NAN_REAL(alpha) || IS_NAN_REAL(beta) || IS_NAN_REAL(gamma) )
     {
-        fprintf( stderr, "Invalid simulation box boundaries for big box (NaN). Terminating...\n" );
+        fprintf( stderr, "[ERROR] Invalid simulation box boundaries for big box (NaN). Terminating...\n" );
         exit( INVALID_INPUT );
     }
 
@@ -178,7 +178,7 @@ void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
 }
 
 
-void Init_Box( rtensor box_tensor, simulation_box *box )
+void Init_Box( rtensor box_tensor, simulation_box * const box )
 {
     rvec_MakeZero( box->min );
     rtensor_Copy( box->box, box_tensor );
@@ -192,13 +192,12 @@ void Init_Box( rtensor box_tensor, simulation_box *box )
 
 
 /* setup my simulation box -- only the region that I own */
-void Setup_My_Box( reax_system *system, control_params *control )
+void Setup_My_Box( reax_system * const system, control_params * const control )
 {
     int d;
-    simulation_box *big_box, *my_box;
+    simulation_box * const big_box = &system->big_box;
+    simulation_box * const my_box = &system->my_box;
 
-    big_box = &(system->big_box);
-    my_box  = &(system->my_box);
     rtensor_MakeZero( my_box->box );
 
     for ( d = 0; d < 3; ++d )
@@ -216,18 +215,18 @@ void Setup_My_Box( reax_system *system, control_params *control )
 
 
 /* setup my extended box -- my box together with the ghost regions */
-void Setup_My_Ext_Box( reax_system *system, control_params *control )
+void Setup_My_Ext_Box( reax_system * const system, control_params * const control )
 {
     int d;
     ivec native_gcells, ghost_gcells;
     rvec gcell_len;
-    simulation_box *big_box, *my_box, *my_ext_box;
-    boundary_cutoff *bc;
+    boundary_cutoff * const bc = &system->bndry_cuts;
+    simulation_box * const my_box = &system->my_box;
+    simulation_box * const my_ext_box = &system->my_ext_box;
+#if defined(DEBUG_FOCUS)
+    simulation_box * const big_box = &system->big_box;
+#endif
 
-    big_box = &(system->big_box);
-    my_box = &(system->my_box);
-    my_ext_box = &(system->my_ext_box);
-    bc = &(system->bndry_cuts);
     rtensor_MakeZero( my_ext_box->box );
 
     for ( d = 0; d < 3; ++d )
@@ -255,10 +254,9 @@ void Setup_My_Ext_Box( reax_system *system, control_params *control )
 
 /******************** initialize parallel environment ***********************/
 
-void Setup_Boundary_Cutoffs( reax_system *system, control_params *control )
+void Setup_Boundary_Cutoffs( reax_system * const system, control_params * const control )
 {
-    boundary_cutoff *bc;
-    bc = &(system->bndry_cuts);
+    boundary_cutoff * const bc = &system->bndry_cuts;
 
     bc->ghost_nonb = control->nonb_cut;
     bc->ghost_hbond = control->hbond_cut;
@@ -274,8 +272,8 @@ void Setup_Boundary_Cutoffs( reax_system *system, control_params *control )
 }
 
 
-void Setup_Environment( reax_system *system, control_params *control,
-        mpi_datatypes *mpi_data )
+void Setup_Environment( reax_system * const system, control_params * const control,
+        mpi_datatypes * const mpi_data )
 {
     ivec periodic = {1, 1, 1};
 #if defined(DEBUG_FOCUS)
@@ -284,8 +282,8 @@ void Setup_Environment( reax_system *system, control_params *control,
 
     /* initialize communicator - 3D mesh with wrap-arounds = 3D torus */
     MPI_Cart_create( MPI_COMM_WORLD, 3, control->procs_by_dim, periodic, 1,
-            &(mpi_data->comm_mesh3D) );
-    MPI_Comm_rank( mpi_data->comm_mesh3D, &(system->my_rank) );
+            &mpi_data->comm_mesh3D );
+    MPI_Comm_rank( mpi_data->comm_mesh3D, &system->my_rank );
     MPI_Cart_coords( mpi_data->comm_mesh3D, system->my_rank, 3,
             system->my_coords );
 
@@ -299,11 +297,11 @@ void Setup_Environment( reax_system *system, control_params *control,
              system->my_rank, system->my_coords[0],
              system->my_coords[1], system->my_coords[2] );
     sprintf( temp, "p%d big_box", system->my_rank );
-    Print_Box( &(system->big_box), temp, stderr );
+    Print_Box( &system->big_box, temp, stderr );
     sprintf( temp, "p%d my_box", system->my_rank );
-    Print_Box( &(system->my_box), temp, stderr );
+    Print_Box( &system->my_box, temp, stderr );
     sprintf( temp, "p%d ext_box", system->my_rank );
-    Print_Box( &(system->my_ext_box), temp, stderr );
+    Print_Box( &system->my_ext_box, temp, stderr );
     MPI_Barrier( MPI_COMM_WORLD );
 
     fprintf( stderr, "p%d: parallel environment initialized\n",
@@ -312,8 +310,8 @@ void Setup_Environment( reax_system *system, control_params *control,
 }
 
 
-void Scale_Box( reax_system *system, control_params *control,
-        simulation_data *data, mpi_datatypes *mpi_data )
+void Scale_Box( reax_system * const system, control_params * const control,
+        simulation_data * const data, mpi_datatypes * const mpi_data )
 {
     int i, d;
     real dt, lambda;
@@ -373,7 +371,7 @@ void Scale_Box( reax_system *system, control_params *control,
     /* Scale velocities and positions at t+dt */
     for ( i = 0; i < system->n; ++i )
     {
-        atom = &(system->my_atoms[i]);
+        atom = &system->my_atoms[i];
         rvec_Scale( atom->v, lambda, atom->v );
         atom->x[0] = mu[0] * atom->x[0];
         atom->x[1] = mu[1] * atom->x[1];
@@ -401,7 +399,7 @@ void Scale_Box( reax_system *system, control_params *control,
 }
 
 
-real Metric_Product( rvec x1, rvec x2, simulation_box* box )
+real Metric_Product( rvec x1, rvec x2, simulation_box * const box )
 {
     int i, j;
     real dist = 0.0, tmp;

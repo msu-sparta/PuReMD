@@ -5,26 +5,30 @@
 
 
 /* Indexing routine for grid cells */
-static inline CUDA_HOST_DEVICE int index_grid_3d( int i, int j, int k, grid *g )
+static inline CUDA_HOST_DEVICE int index_grid_3d( int i, int j, int k,
+        const grid * const g )
 {
     return (i * g->ncells[1] * g->ncells[2]) + (j * g->ncells[2]) + k;
 }
 
 /* Indexing routine for grid cells, identical in functionality to above function */
-static inline CUDA_HOST_DEVICE int index_grid_3d_v( ivec x, grid *g )
+static inline CUDA_HOST_DEVICE int index_grid_3d_v( ivec x,
+        const grid * const g )
 {
     return (x[0] * g->ncells[1] * g->ncells[2]) + (x[1] * g->ncells[2]) + x[2];
 }
 
 /* Indexing routine for neighbors of binned atoms within grid cells */
-static inline CUDA_HOST_DEVICE int index_grid_nbrs( int i, int j, int k, int l, grid *g )
+static inline CUDA_HOST_DEVICE int index_grid_nbrs( int i, int j, int k, int l,
+        const grid * const g )
 {
     return (i * g->ncells[1] * g->ncells[2] * g->max_nbrs) +
         (j * g->ncells[2] * g->max_nbrs) + (k * g->max_nbrs) + l;
 }
 
 /* Indexing routine for binned atoms within grid cells */
-static inline CUDA_HOST_DEVICE int index_grid_atoms( int i, int j, int k, int l, grid *g )
+static inline CUDA_HOST_DEVICE int index_grid_atoms( int i, int j, int k, int l,
+        const grid * const g )
 {
     return (i * g->ncells[1] * g->ncells[2] * g->max_atoms) +
         (j * g->ncells[2] * g->max_atoms) + (k * g->max_atoms) + l;

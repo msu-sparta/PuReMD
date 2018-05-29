@@ -30,8 +30,8 @@
 #endif
 
 
-void Read_Force_Field_File( const char * const ffield_file, reax_interaction *reax,
-        reax_system *system, control_params *control )
+void Read_Force_Field_File( const char * const ffield_file, reax_interaction * const reax,
+        reax_system * const system, control_params * const control )
 {
     FILE *fp;
     char *s;
@@ -60,7 +60,11 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction *re
     c = Tokenize( s, &tmp );
 
     /* reading the number of global parameters */
-    n = atoi(tmp[0]);
+    if ( c > 0 )
+    {
+        n = atoi(tmp[0]);
+    }
+
     if ( n < 1 )
     {
         fprintf( stderr, "[WARNING] p%d: number of globals in ffield file is 0!\n",
@@ -74,11 +78,14 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction *re
     /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
     for (i = 0; i < n; i++)
     {
-        fgets(s, MAX_LINE, fp);
-        c = Tokenize(s, &tmp);
+        fgets( s, MAX_LINE, fp );
+        c = Tokenize( s, &tmp );
 
-        val = (real) atof(tmp[0]);
-        reax->gp.l[i] = val;
+        if ( c > 0 )
+        {
+            val = (real) atof(tmp[0]);
+            reax->gp.l[i] = val;
+        }
     }
 
     control->bo_cut = 0.01 * reax->gp.l[29];
@@ -88,7 +95,10 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction *re
     /* next line is number of atom types and some comments */
     fgets( s, MAX_LINE, fp );
     c = Tokenize( s, &tmp );
-    reax->num_atom_types = atoi(tmp[0]);
+    if ( c > 0 )
+    {
+        reax->num_atom_types = atoi(tmp[0]);
+    }
 
     /* 3 lines of comments */
     fgets(s, MAX_LINE, fp);
@@ -134,7 +144,11 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction *re
 
         for ( j = 0; j < (int)(strlen(tmp[0])); ++j )
         {
-            reax->sbp[i].name[j] = toupper( tmp[0][j] );
+            if ( c > 0 )
+            {
+                reax->sbp[i].name[j] = toupper( tmp[0][j] );
+                --c;
+            }
         }
 
 #if defined(DEBUG_FOCUS)
@@ -164,59 +178,68 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction *re
         fgets( s, MAX_LINE, fp );
         c = Tokenize( s, &tmp );
 
-        val = atof(tmp[0]);
-        reax->sbp[i].alpha = val;
-        val = atof(tmp[1]);
-        reax->sbp[i].gamma_w = val;
-        val = atof(tmp[2]);
-        reax->sbp[i].valency_boc = val;
-        val = atof(tmp[3]);
-        reax->sbp[i].p_ovun5 = val;
-        val = atof(tmp[4]);
-        val = atof(tmp[5]);
-        reax->sbp[i].chi = val;
-        val = atof(tmp[6]);
-        reax->sbp[i].eta = 2.0 * val;
-        val = atof(tmp[7]);
-        reax->sbp[i].p_hbond = (int)val;
+        if ( c >= 8 )
+        {
+            val = atof(tmp[0]);
+            reax->sbp[i].alpha = val;
+            val = atof(tmp[1]);
+            reax->sbp[i].gamma_w = val;
+            val = atof(tmp[2]);
+            reax->sbp[i].valency_boc = val;
+            val = atof(tmp[3]);
+            reax->sbp[i].p_ovun5 = val;
+            val = atof(tmp[4]);
+            val = atof(tmp[5]);
+            reax->sbp[i].chi = val;
+            val = atof(tmp[6]);
+            reax->sbp[i].eta = 2.0 * val;
+            val = atof(tmp[7]);
+            reax->sbp[i].p_hbond = (int)val;
+        }
 
         /* line 3 */
         fgets( s, MAX_LINE, fp );
         c = Tokenize( s, &tmp );
 
-        val = atof(tmp[0]);
-        reax->sbp[i].r_pi_pi = val;
-        val = atof(tmp[1]);
-        reax->sbp[i].p_lp2 = val;
-        val = atof(tmp[2]);
-        val = atof(tmp[3]);
-        reax->sbp[i].b_o_131 = val;
-        val = atof(tmp[4]);
-        reax->sbp[i].b_o_132 = val;
-        val = atof(tmp[5]);
-        reax->sbp[i].b_o_133 = val;
-        val = atof(tmp[6]);
-        val = atof(tmp[7]);
+        if ( c >= 8 )
+        {
+            val = atof(tmp[0]);
+            reax->sbp[i].r_pi_pi = val;
+            val = atof(tmp[1]);
+            reax->sbp[i].p_lp2 = val;
+            val = atof(tmp[2]);
+            val = atof(tmp[3]);
+            reax->sbp[i].b_o_131 = val;
+            val = atof(tmp[4]);
+            reax->sbp[i].b_o_132 = val;
+            val = atof(tmp[5]);
+            reax->sbp[i].b_o_133 = val;
+            val = atof(tmp[6]);
+            val = atof(tmp[7]);
+        }
 
         /* line 4  */
         fgets( s, MAX_LINE, fp );
         c = Tokenize( s, &tmp );
 
-        val = atof(tmp[0]);
-        reax->sbp[i].p_ovun2 = val;
-        val = atof(tmp[1]);
-        reax->sbp[i].p_val3 = val;
-        val = atof(tmp[2]);
-        val = atof(tmp[3]);
-        reax->sbp[i].valency_val = val;
-        val = atof(tmp[4]);
-        reax->sbp[i].p_val5 = val;
-        val = atof(tmp[5]);
-        reax->sbp[i].rcore2 = val;
-        val = atof(tmp[6]);
-        reax->sbp[i].ecore2 = val;
-        val = atof(tmp[7]);
-        reax->sbp[i].acore2 = val;
+        if ( c >= 8 )
+        {
+            val = atof(tmp[0]);
+            reax->sbp[i].p_ovun2 = val;
+            val = atof(tmp[1]);
+            reax->sbp[i].p_val3 = val;
+            val = atof(tmp[2]);
+            val = atof(tmp[3]);
+            reax->sbp[i].valency_val = val;
+            val = atof(tmp[4]);
+            reax->sbp[i].p_val5 = val;
+            val = atof(tmp[5]);
+            reax->sbp[i].rcore2 = val;
+            val = atof(tmp[6]);
+            reax->sbp[i].ecore2 = val;
+            val = atof(tmp[7]);
+            reax->sbp[i].acore2 = val;
+        }
 
         /* Inner-wall */
         if ( reax->sbp[i].rcore2 > 0.01 && reax->sbp[i].acore2 > 0.01 )
@@ -321,7 +344,7 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction *re
     l = atoi(tmp[0]);
 
     /* a line of comments */
-    fgets(s, MAX_LINE, fp);
+    fgets( s, MAX_LINE, fp );
 
     for (i = 0; i < l; i++)
     {
@@ -334,7 +357,7 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction *re
         index1 = j * __N + k;
         index2 = k * __N + j;
 
-        if (j < reax->num_atom_types && k < reax->num_atom_types)
+        if ( j < reax->num_atom_types && k < reax->num_atom_types )
         {
             val = atof(tmp[2]);
             reax->tbp[ index1 ].De_s = val;

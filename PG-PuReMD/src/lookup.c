@@ -39,8 +39,8 @@
 
 
 /* Fills solution into x. Warning: will modify c and d! */
-static void Tridiagonal_Solve( const real *a, const real *b,
-        real *c, real *d, real *x, unsigned int n )
+static void Tridiagonal_Solve( const real * const a, const real * const b,
+        real * const c, real * const d, real * const x, unsigned int n )
 {
     int i;
     real id;
@@ -64,8 +64,8 @@ static void Tridiagonal_Solve( const real *a, const real *b,
 }
 
 
-static void Natural_Cubic_Spline( const real *h, const real *f,
-        cubic_spline_coef *coef, unsigned int n )
+static void Natural_Cubic_Spline( const real * const h, const real * const f,
+        cubic_spline_coef * const coef, unsigned int n )
 {
     int i;
     real *a, *b, *c, *d, *v;
@@ -128,8 +128,8 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
 }
 
 
-static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
-        cubic_spline_coef *coef, unsigned int n )
+static void Complete_Cubic_Spline( const real * const h, const real * const f,
+        real v0, real vlast, cubic_spline_coef * const coef, unsigned int n )
 {
     int i;
     real *a, *b, *c, *d, *v;
@@ -184,7 +184,7 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
 }
 
 
-void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
+void LR_Lookup( LR_lookup_table * const t, real r, LR_data * const y )
 {
     int i;
     real base, dif;
@@ -211,8 +211,8 @@ void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 }
 
 
-void Init_Lookup_Tables( reax_system *system, control_params *control,
-        storage *workspace, mpi_datatypes *mpi_data )
+void Init_Lookup_Tables( reax_system * const system, control_params * const control,
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
     int i, j, r;
     int num_atom_types;
@@ -353,8 +353,8 @@ void Init_Lookup_Tables( reax_system *system, control_params *control,
 }
 
 
-void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
-       storage *workspace, mpi_datatypes *mpi_data )
+void Finalize_LR_Lookup_Table( reax_system * const system, control_params * const control,
+       storage * const workspace, mpi_datatypes * const mpi_data )
 {
     int i, j;
     int num_atom_types;
@@ -398,7 +398,7 @@ void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
 
 
 /*
-void copy_LR_table_to_device( reax_system *system, control_params *control, int aggregated )
+void copy_LR_table_to_device( reax_system * const system, control_params * const control, int aggregated )
 {
   int i, j, r;
   int num_atom_types;

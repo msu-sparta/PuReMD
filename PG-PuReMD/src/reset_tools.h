@@ -29,24 +29,26 @@
 extern "C"  {
 #endif
 
-void Reset_Pressures( simulation_data* );
+void Reset_Pressures( simulation_data * const );
 
-void Reset_Simulation_Data( simulation_data* );
+void Reset_Simulation_Data( simulation_data * const );
 
-void Reset_Timing( reax_timing* );
+void Reset_Timing( reax_timing * const );
 
-void Reset_Workspace( reax_system*, storage* );
+void Reset_Workspace( reax_system * const, storage * const );
 
-void Reset_Lists( reax_system*, control_params*, storage*, reax_list** );
+void Reset_Lists( reax_system * const, control_params * const,
+        storage * const, reax_list** const );
 
-void Reset_Grid( grid* );
+void Reset_Grid( grid * const );
 
-void Reset_Out_Buffers( mpi_out_data*, int );
+void Reset_Out_Buffers( mpi_out_data * const, int );
 
-void Reset( reax_system*, control_params*, simulation_data*, storage*, reax_list** );
+void Reset( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list** const );
 
 #ifdef TEST_FORCES
-void Reset_Test_Forces( reax_system*, storage* );
+void Reset_Test_Forces( reax_system * const, storage * const );
 #endif
 
 #ifdef __cplusplus

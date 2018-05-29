@@ -30,7 +30,7 @@
 #endif
 
 
-void Print_List( reax_list* list )
+void Print_List( reax_list * const list )
 {
     int i;
 
@@ -52,7 +52,7 @@ void Print_List( reax_list* list )
  * type: list interaction type
  * l: pointer to list to be allocated
  * */
-void Make_List( int n, int max_intrs, int type, reax_list *l )
+void Make_List( int n, int max_intrs, int type, reax_list * const l )
 {
     if ( l->allocated == TRUE )
     {
@@ -109,7 +109,7 @@ void Make_List( int n, int max_intrs, int type, reax_list *l )
 }
 
 
-void Delete_List( reax_list *l )
+void Delete_List( reax_list * const l )
 {
     if ( l->allocated == FALSE )
     {
@@ -168,7 +168,7 @@ void Delete_List( reax_list *l )
  * list: pointer to list
  * max_intrs: max. num. of interactions for each list element
  * */
-void Init_List_Indices( reax_list *list, int *max_intrs )
+void Init_List_Indices( reax_list * const list, int * const max_intrs )
 {
     int i;
 

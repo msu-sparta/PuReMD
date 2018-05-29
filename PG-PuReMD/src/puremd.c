@@ -54,7 +54,9 @@
   #endif
 #endif
 
+
 /* CUDA-specific globals */
+#if defined(HAVE_CUDA)
 reax_list **dev_lists;
 storage *dev_workspace;
 void *scratch;
@@ -62,12 +64,13 @@ void *host_scratch;
 int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
 int BLOCKS_N, BLOCKS_POW_2_N;
 int MATVEC_BLOCKS;
+#endif
 
 
 static void Read_Config_Files( const char * const geo_file, const char * const ffield_file,
         const char * const control_file,
-        reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, output_controls *out_control, mpi_datatypes *mpi_data )
+        reax_system * const system, control_params * const control, simulation_data * const data,
+        storage * const workspace, output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     Read_Force_Field_File( ffield_file, &system->reax_param, system, control );
 
@@ -99,9 +102,9 @@ static void Read_Config_Files( const char * const geo_file, const char * const f
 }
 
 
-static void Post_Evolve( reax_system* system, control_params* control,
-        simulation_data* data, storage* workspace, reax_list** lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+static void Post_Evolve( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     int i;
     rvec diff, cross;
@@ -139,9 +142,9 @@ static void Post_Evolve( reax_system* system, control_params* control,
 
 
 #ifdef HAVE_CUDA
-static void Cuda_Post_Evolve( reax_system* system, control_params* control,
-        simulation_data* data, storage* workspace, reax_list** lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+static void Cuda_Post_Evolve( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     /* remove trans & rot velocity of the center of mass from system */
     if ( control->ensemble != NVE && control->remove_CoM_vel &&
@@ -261,11 +264,12 @@ int simulate( const void * const handle )
     output_controls *out_control;
     mpi_datatypes *mpi_data;
     puremd_handle *pmd_handle;
-    real t_start = 0, t_elapsed;
+    real t_start, t_elapsed;
 #if defined(DEBUG)
     real t_begin, t_end;
 #endif
 
+    t_start = 0;
     ret = PUREMD_FAILURE;
 
     if ( handle != NULL )
