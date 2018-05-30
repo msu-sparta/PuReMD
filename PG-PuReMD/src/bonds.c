@@ -42,11 +42,15 @@ void Bonds( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int i, j, pj, natoms;
+    int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
     real ebond, pow_BOs_be2, exp_be12, CEbo;
-    real gp3, gp4, gp7, gp10, gp37;
+    const real gp3 = system->reax_param.gp.l[3];
+    const real gp4 = system->reax_param.gp.l[4];
+    const real gp7 = system->reax_param.gp.l[7];
+    const real gp10 = system->reax_param.gp.l[10];
+    const real gp37 = (int) system->reax_param.gp.l[37];
     real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
     real decobdbo, decobdboua, decobdboub;
     single_body_parameters *sbp_i, *sbp_j;
@@ -54,14 +58,7 @@ void Bonds( reax_system * const system, control_params * const control,
     bond_order_data *bo_ij;
     reax_list * const bond_list = lists[BONDS];
 
-    gp3 = system->reax_param.gp.l[3];
-    gp4 = system->reax_param.gp.l[4];
-    gp7 = system->reax_param.gp.l[7];
-    gp10 = system->reax_param.gp.l[10];
-    gp37 = (int) system->reax_param.gp.l[37];
-    natoms = system->n;
-
-    for ( i = 0; i < natoms; ++i )
+    for ( i = 0; i < system->n; ++i )
     {
         start_i = Start_Index( i, bond_list );
         end_i = End_Index( i, bond_list );
@@ -72,7 +69,6 @@ void Bonds( reax_system * const system, control_params * const control,
 
             if ( system->my_atoms[i].orig_id <= system->my_atoms[j].orig_id )
             {
-                /* set the pointers */
                 type_i = system->my_atoms[i].type;
                 type_j = system->my_atoms[j].type;
                 sbp_i = &system->reax_param.sbp[type_i];
@@ -116,25 +112,26 @@ void Bonds( reax_system * const system, control_params * const control,
                 /* Stabilisation terminal triple bond */
                 if ( bo_ij->BO >= 1.00 )
                 {
-                    if ( gp37 == 2 ||
-                            (sbp_i->mass == 12.0000 && sbp_j->mass == 15.9990) ||
-                            (sbp_j->mass == 12.0000 && sbp_i->mass == 15.9990) )
+                    /* changed to avoid equality checks of doubles, but really need better approach... */
+                    if ( gp37 == 2
+                            || (sbp_i->mass - 12.0000 < 1e-6 && sbp_j->mass - 15.9990 < 1e-6)
+                            || (sbp_j->mass - 12.0000 < 1e-6 && sbp_i->mass - 15.9990 < 1e-6) )
                     {
                         exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.50) );
-                        exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
-                        exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
-                        exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
+                        exphua1 = EXP( -gp3 * (workspace->total_bond_order[i] - bo_ij->BO) );
+                        exphub1 = EXP( -gp3 * (workspace->total_bond_order[j] - bo_ij->BO) );
+                        exphuov = EXP( gp4 * (workspace->Delta[i] + workspace->Delta[j]) );
                         hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
                         estriph = gp10 * exphu * hulpov * (exphua1 + exphub1);
                         data->my_en.e_bond += estriph;
 
-                        decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1) *
-                                   ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.50) );
-                        decobdboua = -gp10 * exphu * hulpov *
-                                     (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
-                        decobdboub = -gp10 * exphu * hulpov *
-                                     (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                        decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
+                            * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.50) );
+                        decobdboua = -gp10 * exphu * hulpov * (gp3 * exphua1
+                                + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                        decobdboub = -gp10 * exphu * hulpov * (gp3 * exphub1
+                                + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
                         bo_ij->Cdbo += decobdbo;
                         workspace->CdDelta[i] += decobdboua;

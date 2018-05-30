@@ -255,15 +255,24 @@ int Tokenize( const char* s, char*** tok )
 {
     char test[MAX_LINE];
     char *sep = "\t \n!=";
-    char *word, *saveptr;
+    char *word;
+    char *saveptr = NULL;
     int count = 0;
+
+    if ( s == NULL )
+    {
+        fprintf( stderr, "[WARNING] passed null string to tokenizer. Returning...\n" );
+        return count;
+    }
 
     strncpy( test, s, MAX_LINE );
 
-    for ( word = strtok_r(test, sep, &saveptr); word; word = strtok_r(NULL, sep, &saveptr) )
+    for ( word = strtok_r( test, sep, &saveptr );
+            word != NULL;
+            word = strtok_r( NULL, sep, &saveptr ) )
     {
         strncpy( (*tok)[count], word, MAX_LINE );
-        count++;
+        ++count;
     }
 
     return count;

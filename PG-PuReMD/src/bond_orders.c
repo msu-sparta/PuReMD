@@ -460,8 +460,9 @@ int compare_bonds( const void *p1, const void *p2 )
 #endif
 
 
-void BO( reax_system * const system, control_params * const control, simulation_data * const data,
-        storage * const workspace, reax_list ** const lists, output_controls * const out_control )
+void BO( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, pj, type_i, type_j;
     int start_i, end_i, sym_index;
@@ -470,9 +471,12 @@ void BO( reax_system * const system, control_params * const control, simulation_
     real f1, f2, f3, f4, f5, f4f5, exp_f4, exp_f5;
     real exp_p1i, exp_p2i, exp_p1j, exp_p2j;
     real temp, u1_ij, u1_ji, Cf1A_ij, Cf1B_ij, Cf1_ij, Cf1_ji;
-    real Cf45_ij, Cf45_ji, p_lp1; //u_ij, u_ji
+    real Cf45_ij, Cf45_ji; //u_ij, u_ji
+    const real p_lp1 = system->reax_param.gp.l[15];
     real A0_ij, A1_ij, A2_ij, A2_ji, A3_ij, A3_ji;
-    real explp1, p_boc1, p_boc2;
+    real explp1;
+    const real p_boc1 = system->reax_param.gp.l[0];
+    const real p_boc2 = system->reax_param.gp.l[1];
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     bond_order_data *bo_ij, *bo_ji;
@@ -488,10 +492,6 @@ void BO( reax_system * const system, control_params * const control, simulation_
     top_dbo = 0;
     top_dDelta = 0;
 #endif
-
-    p_boc1 = system->reax_param.gp.l[0];
-    p_boc2 = system->reax_param.gp.l[1];
-    p_lp1 = system->reax_param.gp.l[15];
 
 #ifdef TEST_FORCES
     for( i = 0; i < bond_list->n; ++i )
@@ -666,8 +666,8 @@ void BO( reax_system * const system, control_params * const control, simulation_
 
                     /* Bond Order page 10, derivative of total bond order */
                     A0_ij = f1 * f4f5;
-                    A1_ij = -2.0 * twbp->p_boc3 * twbp->p_boc4 * bo_ij->BO *
-                        (Cf45_ij + Cf45_ji);
+                    A1_ij = -2.0 * twbp->p_boc3 * twbp->p_boc4 * bo_ij->BO
+                        * (Cf45_ij + Cf45_ji);
                     A2_ij = Cf1_ij / f1 + twbp->p_boc3 * Cf45_ij;
                     A2_ji = Cf1_ji / f1 + twbp->p_boc3 * Cf45_ji;
                     A3_ij = A2_ij + Cf1_ij / f1;
@@ -784,39 +784,39 @@ void BO( reax_system * const system, control_params * const control, simulation_
 
     /* Calculate some helper variables that are used at many places
      * throughout force calculations */
-    for ( j = 0; j < system->N; ++j )
+    for ( i = 0; i < system->N; ++i )
     {
-        type_j = system->my_atoms[j].type;
+        type_j = system->my_atoms[i].type;
         sbp_j = &system->reax_param.sbp[ type_j ];
 
-        workspace->Delta[j] = workspace->total_bond_order[j] - sbp_j->valency;
-        workspace->Delta_e[j] = workspace->total_bond_order[j] - sbp_j->valency_e;
-        workspace->Delta_boc[j] = workspace->total_bond_order[j] -
+        workspace->Delta[i] = workspace->total_bond_order[i] - sbp_j->valency;
+        workspace->Delta_e[i] = workspace->total_bond_order[i] - sbp_j->valency_e;
+        workspace->Delta_boc[i] = workspace->total_bond_order[i] -
                 sbp_j->valency_boc;
 
-        workspace->vlpex[j] = workspace->Delta_e[j] -
-                2.0 * (int)(workspace->Delta_e[j] / 2.0);
-        explp1 = EXP( -1.0 * p_lp1 * SQR(2.0 + workspace->vlpex[j]) );
-        workspace->nlp[j] = explp1 - (int)(workspace->Delta_e[j] / 2.0);
-        workspace->Delta_lp[j] = sbp_j->nlp_opt - workspace->nlp[j];
-        workspace->Clp[j] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[j]);
+        workspace->vlpex[i] = workspace->Delta_e[i]
+            - 2.0 * (int)(workspace->Delta_e[i] / 2.0);
+        explp1 = EXP( -1.0 * p_lp1 * SQR(2.0 + workspace->vlpex[i]) );
+        workspace->nlp[i] = explp1 - (int)(workspace->Delta_e[i] / 2.0);
+        workspace->Delta_lp[i] = sbp_j->nlp_opt - workspace->nlp[i];
+        workspace->Clp[i] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[i]);
         /* Adri uses different dDelta_lp values than the ones in notes... */
-        workspace->dDelta_lp[j] = workspace->Clp[j];
-        //workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5-workspace->Clp[j]) *
-        //((FABS(workspace->Delta_e[j]/2.0 -
-        //       (int)(workspace->Delta_e[j]/2.0)) < 0.1) ? 1 : 0 );
+        workspace->dDelta_lp[i] = workspace->Clp[i];
+        //workspace->dDelta_lp[i] = workspace->Clp[i] + (0.5-workspace->Clp[i]) *
+        //((FABS(workspace->Delta_e[i]/2.0 -
+        //       (int)(workspace->Delta_e[i]/2.0)) < 0.1) ? 1 : 0 );
 
         if ( sbp_j->mass > 21.0 )
         {
-            workspace->nlp_temp[j] = 0.5 * (sbp_j->valency_e - sbp_j->valency);
-            workspace->Delta_lp_temp[j] = sbp_j->nlp_opt - workspace->nlp_temp[j];
-            workspace->dDelta_lp_temp[j] = 0.0;
+            workspace->nlp_temp[i] = 0.5 * (sbp_j->valency_e - sbp_j->valency);
+            workspace->Delta_lp_temp[i] = sbp_j->nlp_opt - workspace->nlp_temp[i];
+            workspace->dDelta_lp_temp[i] = 0.0;
         }
         else
         {
-            workspace->nlp_temp[j] = workspace->nlp[j];
-            workspace->Delta_lp_temp[j] = sbp_j->nlp_opt - workspace->nlp_temp[j];
-            workspace->dDelta_lp_temp[j] = workspace->Clp[j];
+            workspace->nlp_temp[i] = workspace->nlp[i];
+            workspace->Delta_lp_temp[i] = sbp_j->nlp_opt - workspace->nlp_temp[i];
+            workspace->dDelta_lp_temp[i] = workspace->Clp[i];
         }
     }
 }

@@ -35,18 +35,18 @@
 
 
 /* calculates the theta angle between i-j-k */
-void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+void Calculate_Theta( const rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         real * const theta, real * const cos_theta )
 {
     (*cos_theta) = Dot( dvec_ji, dvec_jk, 3 ) / ( d_ji * d_jk );
 
     if ( *cos_theta > 1.0 )
     {
-        *cos_theta  = 1.0;
+        *cos_theta = 1.0;
     }
     if ( *cos_theta < -1.0 )
     {
-        *cos_theta  = -1.0;
+        *cos_theta = -1.0;
     }
 
     (*theta) = ACOS( *cos_theta );
@@ -54,7 +54,7 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
-void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+void Calculate_dCos_Theta( const rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         rvec * const dcos_theta_di, rvec * const dcos_theta_dj, rvec * const dcos_theta_dk )
 {
     int t;
@@ -101,8 +101,14 @@ void Valence_Angles( reax_system * const system, control_params * const control,
     const real p_val8 = system->reax_param.gp.l[33];
     const real p_val9 = system->reax_param.gp.l[16];
     const real p_val10 = system->reax_param.gp.l[17];
-    real p_pen1, p_pen2, p_pen3, p_pen4;
-    real p_coa1, p_coa2, p_coa3, p_coa4;
+    real p_pen1;
+    const real p_pen2 = system->reax_param.gp.l[19];
+    const real p_pen3 = system->reax_param.gp.l[20];
+    const real p_pen4 = system->reax_param.gp.l[21];
+    real p_coa1;
+    const real p_coa2 = system->reax_param.gp.l[2];
+    const real p_coa3 = system->reax_param.gp.l[38];
+    const real p_coa4 = system->reax_param.gp.l[30];
     real trm8, expval6, expval7, expval2theta, expval12theta, exp3ij, exp3jk;
     real exp_pen2ij, exp_pen2jk, exp_pen3, exp_pen4, trm_pen34, exp_coa2;
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
@@ -141,7 +147,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
         for ( t = start_j; t < end_j; ++t )
         {
             bo_jt = &bond_list->bond_list[t].bo_data;
-            SBOp += (bo_jt->BO_pi + bo_jt->BO_pi2);
+            SBOp += bo_jt->BO_pi + bo_jt->BO_pi2;
             temp = SQR( bo_jt->BO );
             temp *= temp;
             temp *= temp;
@@ -193,8 +199,8 @@ void Valence_Angles( reax_system * const system, control_params * const control,
             bo_ij = &pbond_ij->bo_data;
             BOA_ij = bo_ij->BO - control->thb_cut;
 
-            if ( BOA_ij > 0.0 &&
-                    ( j < system->n || pbond_ij->nbr < system->n ) )
+            if ( BOA_ij > 0.0
+                    && ( j < system->n || pbond_ij->nbr < system->n ) )
             {
                 i = pbond_ij->nbr;
                 type_i = system->my_atoms[i].type;
@@ -326,9 +332,6 @@ void Valence_Angles( reax_system * const system, control_params * const control,
 
                                 /* PENALTY ENERGY */
                                 p_pen1 = thbp->p_pen1;
-                                p_pen2 = system->reax_param.gp.l[19];
-                                p_pen3 = system->reax_param.gp.l[20];
-                                p_pen4 = system->reax_param.gp.l[21];
 
                                 exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
                                 exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
@@ -351,9 +354,6 @@ void Valence_Angles( reax_system * const system, control_params * const control,
 
                                 /* COALITION ENERGY */
                                 p_coa1 = thbp->p_coa1;
-                                p_coa2 = system->reax_param.gp.l[2];
-                                p_coa3 = system->reax_param.gp.l[38];
-                                p_coa4 = system->reax_param.gp.l[30];
 
                                 exp_coa2 = EXP( p_coa2 * workspace->Delta_boc[j] );
                                 e_coa = p_coa1 / (1.0 + exp_coa2)
@@ -373,9 +373,9 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                 /* END COALITION ENERGY */
 
                                 /* FORCES */
-                                bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
-                                bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
-                                workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
+                                bo_ij->Cdbo += CEval1 + CEpen2 + (CEcoa1 - CEcoa4);
+                                bo_jk->Cdbo += CEval2 + CEpen3 + (CEcoa2 - CEcoa5);
+                                workspace->CdDelta[j] += (CEval3 + CEval7) + CEpen1 + CEcoa3;
                                 workspace->CdDelta[i] += CEcoa4;
                                 workspace->CdDelta[k] += CEcoa5;
 
@@ -387,7 +387,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                     temp = CUBE( temp_bo_jt );
                                     pBOjt7 = temp * temp * temp_bo_jt;
 
-                                    bo_jt->Cdbo += (CEval6 * pBOjt7);
+                                    bo_jt->Cdbo += CEval6 * pBOjt7;
                                     bo_jt->Cdbopi += CEval5;
                                     bo_jt->Cdbopi2 += CEval5;
                                 }
@@ -523,10 +523,18 @@ void Valence_Angles( reax_system * const system, control_params * const control,
         }
     }
 
-    if ( num_thb_intrs >= thb_list->max_intrs * DANGER_ZONE )
+    if ( num_thb_intrs >= (int)(thb_list->max_intrs * DANGER_ZONE) )
     {
         system->total_thbodies = MAX( num_thb_intrs * SAFE_ZONE, MIN_3BODIES );
         workspace->realloc.thbody = TRUE;
+
+        //TODO: need to refactor Compute_Bonded_Forces to allow retry logic
+        if ( num_thb_intrs > thb_list->max_intrs )
+        {
+            fprintf( stderr, "[ERROR] step%d-ran out of space on angle_list: top=%d, max=%d",
+                     data->step, num_thb_intrs, thb_list->max_intrs );
+            MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
+        }
     }
 
 #if defined(DEBUG)

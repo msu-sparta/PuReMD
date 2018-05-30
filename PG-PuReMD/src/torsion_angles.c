@@ -40,8 +40,8 @@
 #define MIN_SINE 1e-10
 
 
-static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
-        rvec dvec_kl, real r_kl, rvec dvec_li, real r_li,
+static real Calculate_Omega( const rvec dvec_ij, real r_ij, const rvec dvec_jk, real r_jk,
+        const rvec dvec_kl, real r_kl, const rvec dvec_li, real r_li,
         const three_body_interaction_data * const p_ijk, const three_body_interaction_data * const p_jkl,
         rvec dcos_omega_di, rvec dcos_omega_dj, rvec dcos_omega_dk, rvec dcos_omega_dl )
 {
@@ -101,25 +101,25 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
         arg = -1.0;
     }
 
-    if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE )
+    if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
     {
         sin_ijk = MIN_SINE;
     }
-    else if ( sin_ijk <= 0 && sin_ijk >= -MIN_SINE )
+    else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
     {
         sin_ijk = -MIN_SINE;
     }
-    if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE )
+    if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
     {
         sin_jkl = MIN_SINE;
     }
-    else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE )
+    else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
     {
         sin_jkl = -MIN_SINE;
     }
 
     /* dcos_omega_di */
-    rvec_ScaledSum( dcos_omega_di, (htra - arg * hnra) / r_ij, dvec_ij, -1., dvec_li );
+    rvec_ScaledSum( dcos_omega_di, (htra - arg * hnra) / r_ij, dvec_ij, -1.0, dvec_li );
     rvec_ScaledAdd( dcos_omega_di, -(hthd - arg * hnhd) / sin_ijk, p_ijk->dcos_dk );
     rvec_Scale( dcos_omega_di, 2.0 / poem, dcos_omega_di );
 
@@ -138,7 +138,7 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
     rvec_Scale( dcos_omega_dk, 2.0 / poem, dcos_omega_dk );
 
     /* dcos_omega_dl */
-    rvec_ScaledSum( dcos_omega_dl, (htrc - arg * hnrc) / r_kl, dvec_kl, 1., dvec_li );
+    rvec_ScaledSum( dcos_omega_dl, (htrc - arg * hnrc) / r_kl, dvec_kl, 1.0, dvec_li );
     rvec_ScaledAdd( dcos_omega_dl, -(hthe - arg * hnhe) / sin_jkl, p_jkl->dcos_dk );
     rvec_Scale( dcos_omega_dl, 2.0 / poem, dcos_omega_dl );
 

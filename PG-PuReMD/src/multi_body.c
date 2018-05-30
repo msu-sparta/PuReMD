@@ -100,7 +100,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
 
         /* correction for C2 */
         if ( system->reax_param.gp.l[5] > 0.001 &&
-                !strncmp( system->reax_param.sbp[type_i].name, "C", 15 ) )
+                strncmp( system->reax_param.sbp[type_i].name, "C", 15 ) != 0 )
         {
             for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
             {
@@ -110,15 +110,15 @@ void Atom_Energy( reax_system * const system, control_params * const control,
                     j = bond_list->bond_list[pj].nbr;
                     type_j = system->my_atoms[j].type;
 
-                    if ( !strncmp( system->reax_param.sbp[type_j].name, "C", 15 ) )
+                    if ( strncmp( system->reax_param.sbp[type_j].name, "C", 15 ) != 0 )
                     {
                         twbp = &system->reax_param.tbp[
                             index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
                         bo_ij = &bond_list->bond_list[pj].bo_data;
                         Di = workspace->Delta[i];
-                        vov3 = bo_ij->BO - Di - 0.040 * POW(Di, 4.);
+                        vov3 = bo_ij->BO - Di - 0.040 * POW( Di, 4.0 );
 
-                        if ( vov3 > 3. )
+                        if ( vov3 > 3.0 )
                         {
                             e_lph = p_lp3 * SQR( vov3 - 3.0 );
                             data->my_en.e_lp += e_lph;
@@ -131,7 +131,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
                             workspace->CdDelta[i] += deahu2dsbo;
 
 #ifdef TEST_ENERGY
-                            fprintf(out_control->elp, "C2cor%6d%6d%12.6f%12.6f%12.6f\n",
+                            fprintf( out_control->elp, "C2cor%6d%6d%12.6f%12.6f%12.6f\n",
                                     system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                     e_lph, deahu2dbo, deahu2dsbo );
 #endif
@@ -164,7 +164,9 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         }
 
         p_ovun2 = sbp_i->p_ovun2;
-        sum_ovun1 = sum_ovun2 = 0;
+        sum_ovun1 = 0.0;
+        sum_ovun2 = 0.0;
+
         for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
         {
             j = bond_list->bond_list[pj].nbr;
@@ -180,8 +182,8 @@ void Atom_Energy( reax_system * const system, control_params * const control,
 
         exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );
         inv_exp_ovun1 = 1.0 / (1 + exp_ovun1);
-        Delta_lpcorr  = workspace->Delta[i] -
-                        (dfvl * workspace->Delta_lp_temp[i]) * inv_exp_ovun1;
+        Delta_lpcorr = workspace->Delta[i]
+            - (dfvl * workspace->Delta_lp_temp[i]) * inv_exp_ovun1;
 
         exp_ovun2 = EXP( p_ovun2 * Delta_lpcorr );
         inv_exp_ovun2 = 1.0 / (1.0 + exp_ovun2);
@@ -192,13 +194,13 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         e_ov = sum_ovun1 * CEover1;
         data->my_en.e_ov += e_ov;
 
-        CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 *
-                  (1.0 - Delta_lpcorr * ( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ));
+        CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 * (1.0 - Delta_lpcorr
+                * ( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ));
 
         CEover3 = CEover2 * (1.0 - dfvl * workspace->dDelta_lp[i] * inv_exp_ovun1 );
 
-        CEover4 = CEover2 * (dfvl * workspace->Delta_lp_temp[i]) *
-                  p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1);
+        CEover4 = CEover2 * (dfvl * workspace->Delta_lp_temp[i])
+            * p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1);
 
         /* under-coordination potential */
         p_ovun2 = sbp_i->p_ovun2;
@@ -213,13 +215,12 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
         data->my_en.e_un += e_un;
 
-        CEunder1 = inv_exp_ovun2n *
-                   ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8 +
-                     p_ovun2 * e_un * exp_ovun2n );
+        CEunder1 = inv_exp_ovun2n * ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8
+                + p_ovun2 * e_un * exp_ovun2n );
         CEunder2 = -e_un * p_ovun8 * exp_ovun8 * inv_exp_ovun8;
         CEunder3 = CEunder1 * (1.0 - dfvl * workspace->dDelta_lp[i] * inv_exp_ovun1);
-        CEunder4 = CEunder1 * (dfvl * workspace->Delta_lp_temp[i]) *
-                   p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1) + CEunder2;
+        CEunder4 = CEunder1 * (dfvl * workspace->Delta_lp_temp[i])
+            * p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1) + CEunder2;
 
         /* forces */
         workspace->CdDelta[i] += CEover3;   // OvCoor - 2nd term
@@ -240,20 +241,20 @@ void Atom_Energy( reax_system * const system, control_params * const control,
                         system->reax_param.num_atom_types) ];
 
             bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st
-            workspace->CdDelta[j] += CEover4 * (1.0 - dfvl * workspace->dDelta_lp[j]) *
-                                     (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor-3a
-            bo_ij->Cdbopi += CEover4 *
-                             (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); // OvCoor-3b
-            bo_ij->Cdbopi2 += CEover4 *
-                              (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); // OvCoor-3b
+            workspace->CdDelta[j] += CEover4 * (1.0 - dfvl * workspace->dDelta_lp[j])
+                * (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor-3a
+            bo_ij->Cdbopi += CEover4 * (workspace->Delta[j] - dfvl
+                    * workspace->Delta_lp_temp[j]); // OvCoor-3b
+            bo_ij->Cdbopi2 += CEover4 * (workspace->Delta[j] - dfvl
+                    * workspace->Delta_lp_temp[j]); // OvCoor-3b
 
 
-            workspace->CdDelta[j] += CEunder4 * (1.0 - dfvl * workspace->dDelta_lp[j]) *
-                                     (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
-            bo_ij->Cdbopi += CEunder4 *
-                             (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); // UnCoor-2b
-            bo_ij->Cdbopi2 += CEunder4 *
-                              (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); // UnCoor-2b
+            workspace->CdDelta[j] += CEunder4 * (1.0 - dfvl * workspace->dDelta_lp[j])
+                * (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
+            bo_ij->Cdbopi += CEunder4 * (workspace->Delta[j] - dfvl
+                    * workspace->Delta_lp_temp[j]); // UnCoor-2b
+            bo_ij->Cdbopi2 += CEunder4 * (workspace->Delta[j] - dfvl
+                    * workspace->Delta_lp_temp[j]); // UnCoor-2b
 
 #ifdef TEST_ENERGY
             /*    fprintf( out_control->eov, "%6d%12.6f\n",

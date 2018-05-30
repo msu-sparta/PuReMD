@@ -462,11 +462,6 @@ int simulate( const void * const handle )
 
         Reset( system, control, data, workspace, lists );
 
-        if ( ret == FAILURE )
-        {
-            ReAllocate( system, control, data, workspace, lists, mpi_data );
-        }
-
         ret = Generate_Neighbor_Lists( system, data, workspace, lists );
 
         if ( ret != SUCCESS )

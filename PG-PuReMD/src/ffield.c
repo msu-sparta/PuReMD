@@ -64,6 +64,10 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     {
         n = atoi(tmp[0]);
     }
+    else
+    {
+        n = 0;
+    }
 
     if ( n < 1 )
     {
@@ -346,7 +350,7 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     /* a line of comments */
     fgets( s, MAX_LINE, fp );
 
-    for (i = 0; i < l; i++)
+    for ( i = 0; i < l; i++ )
     {
         /* line 1 */
         fgets(s, MAX_LINE, fp);
@@ -415,9 +419,9 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* calculating combination rules and filling up remaining fields. */
-    for (i = 0; i < reax->num_atom_types; i++)
+    for ( i = 0; i < reax->num_atom_types; i++ )
     {
-        for (j = i; j < reax->num_atom_types; j++)
+        for ( j = i; j < reax->num_atom_types; j++ )
         {
             index1 = i * __N + j;
             index2 = j * __N + i;
@@ -454,43 +458,44 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
 
             reax->tbp[index1].D =
                 SQRT(reax->sbp[i].epsilon * reax->sbp[j].epsilon);
-
             reax->tbp[index2].D =
                 SQRT(reax->sbp[j].epsilon * reax->sbp[i].epsilon);
 
             reax->tbp[index1].alpha =
                 SQRT(reax->sbp[i].alpha * reax->sbp[j].alpha);
-
             reax->tbp[index2].alpha =
                 SQRT(reax->sbp[j].alpha * reax->sbp[i].alpha);
 
             reax->tbp[index1].r_vdW =
                 2.0 * SQRT(reax->sbp[i].r_vdw * reax->sbp[j].r_vdw);
-
             reax->tbp[index2].r_vdW =
                 2.0 * SQRT(reax->sbp[j].r_vdw * reax->sbp[i].r_vdw);
 
             reax->tbp[index1].gamma_w =
                 SQRT(reax->sbp[i].gamma_w * reax->sbp[j].gamma_w);
-
             reax->tbp[index2].gamma_w =
                 SQRT(reax->sbp[j].gamma_w * reax->sbp[i].gamma_w);
 
             reax->tbp[index1].gamma =
                 POW(reax->sbp[i].gamma * reax->sbp[j].gamma, -1.5);
-
             reax->tbp[index2].gamma =
                 POW(reax->sbp[j].gamma * reax->sbp[i].gamma, -1.5);
 
             /* additions for additional vdWaals interaction types - inner core */
-            reax->tbp[index1].rcore = reax->tbp[index2].rcore =
+            reax->tbp[index1].rcore = 
                 SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
+            reax->tbp[index2].rcore =
+                SQRT( reax->sbp[j].rcore2 * reax->sbp[i].rcore2 );
 
-            reax->tbp[index1].ecore = reax->tbp[index2].ecore =
+            reax->tbp[index1].ecore =
                 SQRT( reax->sbp[i].ecore2 * reax->sbp[j].ecore2 );
+            reax->tbp[index2].ecore =
+                SQRT( reax->sbp[j].ecore2 * reax->sbp[i].ecore2 );
 
-            reax->tbp[index1].acore = reax->tbp[index2].acore =
+            reax->tbp[index1].acore =
                 SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
+            reax->tbp[index2].acore =
+                SQRT( reax->sbp[j].acore2 * reax->sbp[i].acore2 );
         }
     }
 

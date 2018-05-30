@@ -64,6 +64,12 @@ typedef enum
 } MATRIX_ENTRY_POSITION;
 
 
+int compare_bonds( const void *p1, const void *p2 )
+{
+    return ((bond_data *) p1)->nbr - ((bond_data *) p2)->nbr;
+}
+
+
 /* placeholder for unused interactions in interaction list
  * Interaction_Functions, which is initialized in Init_Force_Functions */
 void Dummy_Interaction( reax_system *system, control_params *control,
@@ -75,23 +81,23 @@ void Dummy_Interaction( reax_system *system, control_params *control,
 
 void Init_Force_Functions( control_params * const control )
 {
-    control->intr_funcs[0] = BO;
-    control->intr_funcs[1] = Bonds;
-    control->intr_funcs[2] = Atom_Energy;
-    control->intr_funcs[3] = Valence_Angles;
-    control->intr_funcs[4] = Torsion_Angles;
+    control->intr_funcs[0] = &BO;
+    control->intr_funcs[1] = &Bonds;
+    control->intr_funcs[2] = &Atom_Energy;
+    control->intr_funcs[3] = &Valence_Angles;
+    control->intr_funcs[4] = &Torsion_Angles;
     if ( control->hbond_cut > 0.0 )
     {
-        control->intr_funcs[5] = Hydrogen_Bonds;
+        control->intr_funcs[5] = &Hydrogen_Bonds;
     }
     else
     {
-        control->intr_funcs[5] = Dummy_Interaction;
+        control->intr_funcs[5] = &Dummy_Interaction;
     }
-    control->intr_funcs[6] = Dummy_Interaction;
-    control->intr_funcs[7] = Dummy_Interaction;
-    control->intr_funcs[8] = Dummy_Interaction;
-    control->intr_funcs[9] = Dummy_Interaction;
+    control->intr_funcs[6] = &Dummy_Interaction;
+    control->intr_funcs[7] = &Dummy_Interaction;
+    control->intr_funcs[8] = &Dummy_Interaction;
+    control->intr_funcs[9] = &Dummy_Interaction;
 }
 
 
@@ -503,7 +509,7 @@ int Init_Forces( reax_system * const system, control_params * const control,
 
 #if !defined(HALF_LIST)
     /* set sym_index for bonds list (far_nbrs full list) */
-    for ( i = 0; i < system->n; ++i )
+    for ( i = 0; i < system->N; ++i )
     {
         start_i = Start_Index( i, bond_list );
         end_i = End_Index( i, bond_list );
@@ -534,7 +540,8 @@ int Init_Forces( reax_system * const system, control_params * const control,
             workspace->realloc.bonds = TRUE;
         }
 
-        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
+        if ( i < system->n
+                && system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
                 > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
@@ -740,7 +747,7 @@ int Init_Forces_No_Charges( reax_system * const system, control_params * const c
 
 #if !defined(HALF_LIST)
     /* set sym_index for bonds list (far_nbrs full list) */
-    for ( i = 0; i < system->n; ++i )
+    for ( i = 0; i < system->N; ++i )
     {
         start_i = Start_Index( i, bond_list );
         end_i = End_Index( i, bond_list );
@@ -771,7 +778,8 @@ int Init_Forces_No_Charges( reax_system * const system, control_params * const c
             workspace->realloc.bonds = TRUE;
         }
 
-        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
+        if ( i < system->n
+                && system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
                 > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
