@@ -22,12 +22,12 @@
 #ifndef __INIT_MD_H_
 #define __INIT_MD_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Initialize( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls*, evolve_function*,
-        interaction_function *, const int );
+        const int );
 
 void Finalize( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls*, const int );

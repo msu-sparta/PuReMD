@@ -22,7 +22,7 @@
 #ifndef __LIN_ALG_H_
 #define __LIN_ALG_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 typedef enum
 {

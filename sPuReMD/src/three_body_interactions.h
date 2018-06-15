@@ -22,7 +22,7 @@
 #ifndef __THREE_BODY_INTERACTIONS_H_
 #define __THREE_BODY_INTERACTIONS_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Calculate_Theta( rvec, real, rvec, real, real*, real* );

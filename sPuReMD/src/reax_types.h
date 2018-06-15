@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __MYTYPES_H_
-#define __MYTYPES_H_
+#ifndef __REAX_TYPES_H_
+#define __REAX_TYPES_H_
 
 #if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
   #define __CONFIG_H_
@@ -263,6 +263,59 @@ typedef int ivec[3];
 typedef real rtensor[3][3];
 
 
+/* struct declarations, see definitions below for comments */
+typedef struct global_parameters global_parameters;
+typedef struct single_body_parameters single_body_parameters;
+typedef struct two_body_parameters two_body_parameters;
+typedef struct three_body_parameters three_body_parameters;
+typedef struct three_body_header three_body_header;
+typedef struct hbond_parameters hbond_parameters;
+typedef struct four_body_parameters four_body_parameters;
+typedef struct four_body_header four_body_header;
+typedef struct reax_interaction reax_interaction;
+typedef struct reax_atom reax_atom;
+typedef struct simulation_box simulation_box;
+typedef struct grid grid;
+typedef struct reax_system reax_system;
+typedef struct control_params control_params;
+typedef struct thermostat thermostat;
+typedef struct isotropic_barostat isotropic_barostat;
+typedef struct flexible_barostat flexible_barostat;
+typedef struct reax_timing reax_timing;
+typedef struct simulation_data simulation_data;
+typedef struct three_body_interaction_data three_body_interaction_data;
+typedef struct near_neighbor_data near_neighbor_data;
+typedef struct far_neighbor_data far_neighbor_data;
+typedef struct hbond_data hbond_data;
+typedef struct dDelta_data dDelta_data;
+typedef struct dbond_data dbond_data;
+typedef struct bond_order_data bond_order_data;
+typedef struct bond_data bond_data;
+typedef struct sparse_matrix sparse_matrix;
+typedef struct reallocate_data reallocate_data;
+typedef struct LR_data LR_data;
+typedef struct cubic_spline_coef cubic_spline_coef;
+typedef struct lookup_table lookup_table;
+typedef struct LR_lookup_table LR_lookup_table;
+typedef struct static_storage static_storage;
+typedef struct reax_list reax_list;
+typedef struct output_controls output_controls;
+typedef struct spuremd_handle spuremd_handle;
+
+
+/* function pointer definitions */
+/**/
+typedef void (*interaction_function)( reax_system*, control_params*,
+        simulation_data*, static_storage*, reax_list**, output_controls* );
+/**/
+typedef void (*evolve_function)( reax_system*, control_params*,
+        simulation_data*, static_storage*,
+        reax_list**, output_controls* );
+/**/
+typedef void (*callback_function)( reax_atom*, simulation_data*, reax_list** );
+
+
+/* struct definitions */
 /* Force field global parameters mapping
  * (contained in section 1 of file):
  *
@@ -305,15 +358,15 @@ typedef real rtensor[3][3];
  * l[36] = N/A
  * l[37] = version number
  * l[38] = p_coa3 */
-typedef struct
+struct global_parameters
 {
     int n_global;
     real* l;
     int vdw_type;
-} global_parameters;
+};
 
 
-typedef struct
+struct single_body_parameters
 {
     /* Line one in field file */
     /* Two character atom name */
@@ -359,11 +412,11 @@ typedef struct
     real rcore2;
     real ecore2;
     real acore2;
-} single_body_parameters;
+};
 
 
 /* Two Body Parameters */
-typedef struct
+struct two_body_parameters
 {
     /* Bond Order parameters */
     real p_bo1;
@@ -405,11 +458,11 @@ typedef struct
 
     real v13cor;
     real ovc;
-} two_body_parameters;
+};
 
 
 /* 3-body parameters */
-typedef struct
+struct three_body_parameters
 {
     /* valence angle */
     real theta_00;
@@ -423,28 +476,28 @@ typedef struct
 
     /* 3-body conjugation */
     real p_coa1;
-} three_body_parameters;
+};
 
 
-typedef struct
+struct three_body_header
 {
     int cnt;
     three_body_parameters prm[MAX_3BODY_PARAM];
-} three_body_header;
+};
 
 
 /* hydrogen-bond parameters */
-typedef struct
+struct hbond_parameters
 {
     real r0_hb;
     real p_hb1;
     real p_hb2;
     real p_hb3;
-} hbond_parameters;
+};
 
 
 /* 4-body parameters */
-typedef struct
+struct four_body_parameters
 {
     real V1;
     real V2;
@@ -455,17 +508,17 @@ typedef struct
 
     /* 4-body conjugation */
     real p_cot1;
-} four_body_parameters;
+};
 
 
-typedef struct
+struct four_body_header
 {
     int cnt;
     four_body_parameters prm[MAX_4BODY_PARAM];
-} four_body_header;
+};
 
 
-typedef struct
+struct reax_interaction
 {
     int num_atom_types;
     global_parameters gp;
@@ -474,10 +527,10 @@ typedef struct
     three_body_header ***thbp;
     hbond_parameters ***hbp;
     four_body_header ****fbp;
-} reax_interaction;
+};
 
 
-typedef struct
+struct reax_atom
 {
     /* Type of this atom */
     int type;
@@ -491,10 +544,10 @@ typedef struct
     rvec f;
     /* Charge on the atom */
     real q;
-} reax_atom;
+};
 
 
-typedef struct
+struct simulation_box
 {
     real volume;
 
@@ -508,10 +561,10 @@ typedef struct
     rtensor trans;
     rtensor trans_inv;
     rtensor g;
-} simulation_box;
+};
 
 
-typedef struct
+struct grid
 {
     int max_atoms;
     int max_nbrs;
@@ -530,10 +583,10 @@ typedef struct
     int *** end;
     ivec **** nbrs;
     rvec **** nbrs_cp;
-} grid;
+};
 
 
-typedef struct
+struct reax_system
 {
     /* number of atoms */
     int N;
@@ -547,11 +600,11 @@ typedef struct
     simulation_box box;
     /* grid structure used for binning atoms and tracking neighboring bins */
     grid g;
-} reax_system;
+};
 
 
 /* Simulation control parameters not related to the system */
-typedef struct
+struct control_params
 {
     char sim_name[MAX_STR];
     char restart_from[MAX_STR];
@@ -583,14 +636,6 @@ typedef struct
     real bo_cut;
     real thb_cut;
     real hb_cut;
-    real Tap7;
-    real Tap6;
-    real Tap5;
-    real Tap4;
-    real Tap3;
-    real Tap2;
-    real Tap1;
-    real Tap0;
 
     real T_init;
     real T_final;
@@ -664,38 +709,44 @@ typedef struct
     /* num. of iterations used to apply preconditioner via
      * Jacobi relaxation scheme (truncated Neumann series) */
     unsigned int cm_solver_pre_app_jacobi_iters;
-
+    /**/
     int molec_anal;
+    /**/
     int freq_molec_anal;
+    /**/
     real bg_cut;
+    /**/
     int num_ignored;
+    /**/
     int ignore[MAX_ATOM_TYPES];
-
+    /**/
     int num_threads;
-} control_params;
+    /* function pointers for bonded interactions */
+    interaction_function intr_funcs[NO_OF_INTERACTIONS];
+};
 
 
-typedef struct
+struct thermostat
 {
     real T;
     real xi;
     real v_xi;
     real v_xi_old;
     real G_xi;
-} thermostat;
+};
 
 
-typedef struct
+struct isotropic_barostat
 {
     real P;
     real eps;
     real v_eps;
     real v_eps_old;
     real a_eps;
-} isotropic_barostat;
+};
 
 
-typedef struct
+struct flexible_barostat
 {
     rtensor P;
     real P_scalar;
@@ -710,10 +761,10 @@ typedef struct
     rtensor v_g0_old;
     rtensor a_g0;
 
-} flexible_barostat;
+};
 
 
-typedef struct
+struct reax_timing
 {
     /* start time of event */
     real start;
@@ -751,10 +802,10 @@ typedef struct
     real cm_solver_tri_solve;
     /* num. of retries in main sim. loop */
     int num_retries;
-} reax_timing;
+};
 
 
-typedef struct
+struct simulation_data
 {
     int step;
     int prev_steps;
@@ -808,10 +859,10 @@ typedef struct
     rvec tot_press;
 
     reax_timing timing;
-} simulation_data;
+};
 
 
-typedef struct
+struct three_body_interaction_data
 {
     int thb;
     /* pointer to the third body on the central atom's nbrlist */
@@ -821,54 +872,54 @@ typedef struct
     rvec dcos_di;
     rvec dcos_dj;
     rvec dcos_dk;
-} three_body_interaction_data;
+};
 
 
-typedef struct
+struct near_neighbor_data
 {
     int nbr;
     ivec rel_box;
 //    rvec ext_factor;
     real d;
     rvec dvec;
-} near_neighbor_data;
+};
 
 
-typedef struct
+struct far_neighbor_data
 {
     int nbr;
     ivec rel_box;
 //    rvec ext_factor;
     real d;
     rvec dvec;
-} far_neighbor_data;
+};
 
 
-typedef struct
+struct hbond_data
 {
     int nbr;
     int scl;
     far_neighbor_data *ptr;
-} hbond_data;
+};
 
 
-typedef struct
+struct dDelta_data
 {
     int wrt;
     rvec dVal;
-} dDelta_data;
+};
 
 
-typedef struct
+struct dbond_data
 {
     int wrt;
     rvec dBO;
     rvec dBOpi;
     rvec dBOpi2;
-} dbond_data;
+};
 
 
-typedef struct
+struct bond_order_data
 {
     real BO;
     real BO_s;
@@ -892,10 +943,10 @@ typedef struct
     rvec dln_BOp_s;
     rvec dln_BOp_pi;
     rvec dln_BOp_pi2;
-} bond_order_data;
+};
 
 
-typedef struct
+struct bond_data
 {
     int nbr;
     int sym_index;
@@ -905,7 +956,7 @@ typedef struct
     real d;
     rvec dvec;
     bond_order_data bo_data;
-} bond_data;
+};
 
 
 /* compressed row storage (crs) format
@@ -917,17 +968,17 @@ typedef struct
  *   start: row pointer (last element contains ACTUAL NNZ)
  *   j: column index for corresponding matrix entry
  *   val: matrix entry */
-typedef struct
+struct sparse_matrix
 {
     unsigned int n;
     unsigned int m;
     unsigned int *start;
     unsigned int *j;
     real *val;
-} sparse_matrix;
+};
 
 
-typedef struct
+struct reallocate_data
 {
     int num_far;
     int Htop;
@@ -937,29 +988,29 @@ typedef struct
     int num_bonds;
     int num_3body;
     int gcell_atoms;
-} reallocate_data;
+};
 
 
-typedef struct
+struct LR_data
 {
     real H;
     real e_vdW;
     real CEvd;
     real e_ele;
     real CEclmb;
-} LR_data;
+};
 
 
-typedef struct
+struct cubic_spline_coef
 {
     real a;
     real b;
     real c;
     real d;
-} cubic_spline_coef;
+};
 
 
-typedef struct
+struct lookup_table
 {
     real xmin;
     real xmax;
@@ -972,10 +1023,10 @@ typedef struct
     real c;
 
     real *y;
-} lookup_table;
+};
 
 
-typedef struct
+struct LR_lookup_table
 {
     real xmin;
     real xmax;
@@ -992,10 +1043,10 @@ typedef struct
     cubic_spline_coef *CEvd;
     cubic_spline_coef *ele;
     cubic_spline_coef *CEclmb;
-} LR_lookup_table;
+};
 
 
-typedef struct
+struct static_storage
 {
     /* bond order related storage */
     real *total_bond_order;
@@ -1112,6 +1163,9 @@ typedef struct
 
     real *CdDelta;  // coefficient of dDelta for force calculations
 
+    /* Taper */
+    real Tap[8];
+
     int *mark;
     int *old_mark;  // storage for analysis
     rvec *x_old;
@@ -1150,11 +1204,11 @@ typedef struct
     /* Calculated on the fly in bond_orders.c */
     rvec *dDelta;
 #endif
-} static_storage;
+};
 
 
 /* interaction lists */
-typedef struct
+struct reax_list
 {
     /* num. entries in list */
     int n;
@@ -1186,10 +1240,10 @@ typedef struct
         /* hydrogen bond interaction list */
         hbond_data *hbond_list;
     } select;
-} reax_list;
+};
 
 
-typedef struct
+struct output_controls
 {
     FILE *trj;
     FILE *out;
@@ -1249,22 +1303,11 @@ typedef struct
     FILE *ftot;
     FILE *ftot2;
 #endif
-} output_controls;
-
-
-/* Function pointer definitions */
-typedef void (*interaction_function)(reax_system*, control_params*,
-        simulation_data*, static_storage*, reax_list**, output_controls*);
-
-typedef void (*evolve_function)(reax_system*, control_params*,
-        simulation_data*, static_storage*,
-        reax_list**, output_controls*, interaction_function*);
-
-typedef void (*callback_function)(reax_atom*, simulation_data*, reax_list*);
+};
 
 
 /* Handle for working with an instance of the sPuReMD library */
-typedef struct
+struct spuremd_handle
 {
     /* System info. struct pointer */
     reax_system *system;
@@ -1275,16 +1318,14 @@ typedef struct
     /* Internal workspace struct pointer */
     static_storage *workspace;
     /* Reax interaction list struct pointer */
-    reax_list *lists;
+    reax_list **lists;
     /* Output controls struct pointer */
     output_controls *out_control;
     /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
     int output_enabled;
-    /* */
-    interaction_function interaction_functions[NO_OF_INTERACTIONS];
     /* Callback for getting simulation state at the end of each time step */
     callback_function callback;
-} spuremd_handle;
+};
 
 
 #endif

@@ -22,7 +22,7 @@
 #ifndef __BOX_H__
 #define __BOX_H__
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 /* Computes all the transformations,

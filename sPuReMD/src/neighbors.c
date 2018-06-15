@@ -71,7 +71,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     t_start = Get_Time( );
     // fprintf( stderr, "\n\tentered nbrs - " );
     g = &( system->g );
-    far_nbrs = &(*lists)[FAR_NBRS];
+    far_nbrs = lists[FAR_NBRS];
 
     Bin_Atoms( system, workspace );
     // fprintf( stderr, "atoms sorted - " );
@@ -387,7 +387,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     far_neighbor_data new_nbrs[125];
 
     g = &( system->g );
-    far_nbrs = &(*lists)[FAR_NBRS];
+    far_nbrs = lists[FAR_NBRS];
 
     // fprintf( stderr, "\n\tentered nbrs - " );
     if ( control->ensemble == iNPT || control->ensemble == sNPT ||
@@ -636,7 +636,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     far_neighbor_data new_nbrs[125];
 
     g = &( system->g );
-    far_nbrs = &(*lists)[FAR_NBRS];
+    far_nbrs = lists[FAR_NBRS];
 
     // fprintf( stderr, "\n\tentered nbrs - " );
     if ( control->ensemble == iNPT ||

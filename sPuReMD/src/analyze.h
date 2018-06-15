@@ -22,7 +22,7 @@
 #ifndef __ANALYZE_H_
 #define __ANALYZE_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Analysis( reax_system*, control_params*, simulation_data*,

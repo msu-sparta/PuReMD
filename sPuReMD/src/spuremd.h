@@ -22,7 +22,7 @@
 #ifndef __SPUREMD_H_
 #define __SPUREMD_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 #define SPUREMD_SUCCESS (0)

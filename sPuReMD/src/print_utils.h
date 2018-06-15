@@ -22,7 +22,7 @@
 #ifndef __PRINT_UTILS_H_
 #define __PRINT_UTILS_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 char *Get_Element( reax_system*, int );

@@ -59,8 +59,8 @@ static void Copy_Bond_List( reax_system *system, control_params *control,
                      reax_list **lists )
 {
     int i, j, top_old;
-    reax_list *new_bonds = &(*lists)[BONDS];
-    reax_list *old_bonds = &(*lists)[OLD_BONDS];
+    reax_list *new_bonds = lists[BONDS];
+    reax_list *old_bonds = lists[OLD_BONDS];
 
     for ( top_old = 0, i = 0; i < system->N; ++i )
     {
@@ -89,8 +89,8 @@ static void Copy_Bond_List( reax_system *system, control_params *control,
 static int Compare_Bond_Lists( int atom, control_params *control, reax_list **lists )
 {
     int oldp, newp;
-    reax_list *new_bonds = &(*lists)[BONDS];
-    reax_list *old_bonds = &(*lists)[OLD_BONDS];
+    reax_list *new_bonds = lists[BONDS];
+    reax_list *old_bonds = lists[OLD_BONDS];
 
     /*fprintf( stdout, "\n%d\nold_bonds:", atom );
       for( oldp = Start_Index( atom, old_bonds );
@@ -224,8 +224,8 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
     int *old_mark = workspace->old_mark;
     int num_old, num_new;
     char s[MAX_MOLECULE_SIZE * 10];
-    reax_list *new_bonds = &(*lists)[BONDS];
-    reax_list *old_bonds = &(*lists)[OLD_BONDS];
+    reax_list *new_bonds = lists[BONDS];
+    reax_list *old_bonds = lists[OLD_BONDS];
     molecule old_molecules[20], new_molecules[20];
 
     fprintf( fout, "molecular analysis @ %d\n", data->step );
@@ -578,8 +578,8 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
     int fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
-    reax_list *new_bonds = &(*lists)[BONDS];
-//    reax_list *old_bonds = &(*lists)[OLD_BONDS];
+    reax_list *new_bonds = lists[BONDS];
+//    reax_list *old_bonds = lists[OLD_BONDS];
 
     /* fragment analysis */
     fprintf( fout, "step%d fragments\n", data->step );
@@ -648,8 +648,8 @@ static void Analyze_Silica( reax_system *system, control_params *control,
     int O_SI_O_count, SI_O_SI_count;
     int si_coord[10], ox_coord[10];
     real O_SI_O, SI_O_SI;
-    reax_list *new_bonds = &(*lists)[BONDS];
-    reax_list *thb_intrs = &(*lists)[THREE_BODIES];
+    reax_list *new_bonds = lists[BONDS];
+    reax_list *thb_intrs = lists[THREE_BODIES];
 
     Analyze_Fragments( system, control, data, workspace, lists, fout, 0 );
 

@@ -23,7 +23,7 @@
 #define __RANDOM_H_
 
 /* Includes <stdlib.h> for random( ) */
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 /* This function seeds the system pseudo random number generator with

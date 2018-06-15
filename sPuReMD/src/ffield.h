@@ -22,7 +22,7 @@
 #ifndef __FFIELD_H_
 #define __FFIELD_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Read_Force_Field( FILE*, reax_interaction* );

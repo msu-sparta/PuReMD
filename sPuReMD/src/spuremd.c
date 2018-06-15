@@ -137,6 +137,7 @@ static void Read_System( const char * const geo_file,
 void* setup( const char * const geo_file, const char * const ffield_file,
         const char * const control_file )
 {
+    int i;
     spuremd_handle *spmd_handle;
 
     /* top-level allocation */
@@ -144,17 +145,23 @@ void* setup( const char * const geo_file, const char * const ffield_file,
             "setup::spmd_handle" );
 
     /* second-level allocations */
-    spmd_handle->system = (reax_system*) smalloc( sizeof(reax_system),
+    spmd_handle->system = smalloc( sizeof(reax_system),
            "Setup::spmd_handle->system" );
-    spmd_handle->control = (control_params*) smalloc( sizeof(control_params),
+    spmd_handle->control = smalloc( sizeof(control_params),
            "Setup::spmd_handle->control" );
-    spmd_handle->data = (simulation_data*) smalloc( sizeof(simulation_data),
+    spmd_handle->data = smalloc( sizeof(simulation_data),
            "Setup::spmd_handle->data" );
-    spmd_handle->workspace = (static_storage*) smalloc( sizeof(static_storage),
+    spmd_handle->workspace = smalloc( sizeof(static_storage),
            "Setup::spmd_handle->workspace" );
-    spmd_handle->lists = (reax_list*) smalloc( sizeof(reax_list) * LIST_N,
+    spmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
            "Setup::spmd_handle->lists" );
-    spmd_handle->out_control = (output_controls*) smalloc( sizeof(output_controls),
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        spmd_handle->lists[i] = smalloc( sizeof(reax_list),
+                "Setup::spmd_handle->lists[i]" );
+//        spmd_handle->lists[i]->allocated = FALSE;
+    }
+    spmd_handle->out_control = smalloc( sizeof(output_controls),
            "Setup::spmd_handle->out_control" );
 
     spmd_handle->output_enabled = TRUE;
@@ -202,22 +209,21 @@ int simulate( const void * const handle )
         spmd_handle = (spuremd_handle*) handle;
 
         Initialize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, &spmd_handle->lists,
-                spmd_handle->out_control, &Evolve, spmd_handle->interaction_functions,
+                spmd_handle->workspace, spmd_handle->lists,
+                spmd_handle->out_control, &Evolve,
                 spmd_handle->output_enabled );
 
         /* compute f_0 */
         //if( control.restart == 0 ) {
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, &spmd_handle->lists );
+                spmd_handle->workspace, spmd_handle->lists );
 
         Generate_Neighbor_Lists( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
         //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
         Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control,
-                spmd_handle->interaction_functions );
+                spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
 
@@ -226,7 +232,7 @@ int simulate( const void * const handle )
         if ( spmd_handle->output_enabled == TRUE )
         {
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
         }
 
         Check_Energy( spmd_handle->data );
@@ -248,16 +254,15 @@ int simulate( const void * const handle )
             }
 
             Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control,
-                    spmd_handle->interaction_functions );
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
             Post_Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                    spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
             if ( spmd_handle->output_enabled == TRUE )
             {
                 Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                        spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                        spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
             }
 
             Check_Energy( spmd_handle->data );
@@ -265,7 +270,7 @@ int simulate( const void * const handle )
             if ( spmd_handle->output_enabled == TRUE )
             {
                 Analysis( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                        spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control );
+                        spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
             }
 
             steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
@@ -287,7 +292,7 @@ int simulate( const void * const handle )
 
         if ( spmd_handle->out_control->write_steps > 0 && spmd_handle->output_enabled == TRUE )
         {
-            Write_PDB( spmd_handle->system, &(spmd_handle->lists[BONDS]), spmd_handle->data,
+            Write_PDB( spmd_handle->system, spmd_handle->lists[BONDS], spmd_handle->data,
                     spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
         }
 
@@ -308,7 +313,7 @@ int simulate( const void * const handle )
 
 int cleanup( const void * const handle )
 {
-    int ret;
+    int i, ret;
     spuremd_handle *spmd_handle;
 
     ret = SPUREMD_FAILURE;
@@ -318,10 +323,14 @@ int cleanup( const void * const handle )
         spmd_handle = (spuremd_handle*) handle;
 
         Finalize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, &spmd_handle->lists, spmd_handle->out_control,
+                spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
                 spmd_handle->output_enabled );
 
         sfree( spmd_handle->out_control, "cleanup::spmd_handle->out_control" );
+        for ( i = 0; i < LIST_N; ++i )
+        {
+            sfree( spmd_handle->lists[i], "cleanup::spmd_handle->lists[i]" );
+        }
         sfree( spmd_handle->lists, "cleanup::spmd_handle->lists" );
         sfree( spmd_handle->workspace, "cleanup::spmd_handle->workspace" );
         sfree( spmd_handle->data, "cleanup::spmd_handle->data" );

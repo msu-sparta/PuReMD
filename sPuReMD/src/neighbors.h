@@ -22,7 +22,7 @@
 #ifndef __NEIGHBORS_H_
 #define __NEIGHBORS_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Generate_Neighbor_Lists( reax_system*, control_params*, simulation_data*,

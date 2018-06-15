@@ -22,7 +22,7 @@
 #ifndef __CONTROL_H_
 #define __CONTROL_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Read_Control_File( FILE*, reax_system*, control_params*, output_controls* );

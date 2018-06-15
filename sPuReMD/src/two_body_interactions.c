@@ -35,7 +35,7 @@ void Bond_Energy( reax_system *system, control_params *control,
     real gp3, gp4, gp7, gp10, gp37, ebond_total;
     reax_list *bonds;
 
-    bonds = &(*lists)[BONDS];
+    bonds = lists[BONDS];
     gp3 = system->reaxprm.gp.l[3];
     gp4 = system->reaxprm.gp.l[4];
     gp7 = system->reaxprm.gp.l[7];
@@ -177,7 +177,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
     p_vdW1 = system->reaxprm.gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
-    far_nbrs = &(*lists)[FAR_NBRS];
+    far_nbrs = lists[FAR_NBRS];
     e_vdW_total = 0.0;
     e_ele_total = 0.0;
 
@@ -229,20 +229,20 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                     /* Calculate Taper and its derivative */
                     // Tap = nbr_pj->Tap;   -- precomputed during compte_H
-                    Tap = control->Tap7 * r_ij + control->Tap6;
-                    Tap = Tap * r_ij + control->Tap5;
-                    Tap = Tap * r_ij + control->Tap4;
-                    Tap = Tap * r_ij + control->Tap3;
-                    Tap = Tap * r_ij + control->Tap2;
-                    Tap = Tap * r_ij + control->Tap1;
-                    Tap = Tap * r_ij + control->Tap0;
+                    Tap = workspace->Tap[7] * r_ij + workspace->Tap[6];
+                    Tap = Tap * r_ij + workspace->Tap[5];
+                    Tap = Tap * r_ij + workspace->Tap[4];
+                    Tap = Tap * r_ij + workspace->Tap[3];
+                    Tap = Tap * r_ij + workspace->Tap[2];
+                    Tap = Tap * r_ij + workspace->Tap[1];
+                    Tap = Tap * r_ij + workspace->Tap[0];
 
-                    dTap = 7 * control->Tap7 * r_ij + 6 * control->Tap6;
-                    dTap = dTap * r_ij + 5 * control->Tap5;
-                    dTap = dTap * r_ij + 4 * control->Tap4;
-                    dTap = dTap * r_ij + 3 * control->Tap3;
-                    dTap = dTap * r_ij + 2 * control->Tap2;
-                    dTap += control->Tap1 / r_ij;
+                    dTap = 7 * workspace->Tap[7] * r_ij + 6 * workspace->Tap[6];
+                    dTap = dTap * r_ij + 5 * workspace->Tap[5];
+                    dTap = dTap * r_ij + 4 * workspace->Tap[4];
+                    dTap = dTap * r_ij + 3 * workspace->Tap[3];
+                    dTap = dTap * r_ij + 2 * workspace->Tap[2];
+                    dTap += workspace->Tap[1] / r_ij;
 
                     /* vdWaals Calculations */
                     if ( system->reaxprm.gp.vdw_type == 1 || system->reaxprm.gp.vdw_type == 3 )
@@ -404,7 +404,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
 
 void LR_vdW_Coulomb( reax_system *system, control_params *control,
-        int i, int j, real r_ij, LR_data *lr )
+        static_storage *workspace, int i, int j, real r_ij, LR_data *lr )
 {
     real p_vdW1 = system->reaxprm.gp.l[28];
     real p_vdW1i = 1.0 / p_vdW1;
@@ -415,25 +415,25 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
     real e_core, de_core;
     two_body_parameters *twbp;
 
-    twbp = &(system->reaxprm.tbp[i][j]);
+    twbp = &system->reaxprm.tbp[i][j];
     e_core = 0;
     de_core = 0;
 
     /* calculate taper and its derivative */
-    Tap = control->Tap7 * r_ij + control->Tap6;
-    Tap = Tap * r_ij + control->Tap5;
-    Tap = Tap * r_ij + control->Tap4;
-    Tap = Tap * r_ij + control->Tap3;
-    Tap = Tap * r_ij + control->Tap2;
-    Tap = Tap * r_ij + control->Tap1;
-    Tap = Tap * r_ij + control->Tap0;
+    Tap = workspace->Tap[7] * r_ij + workspace->Tap[6];
+    Tap = Tap * r_ij + workspace->Tap[5];
+    Tap = Tap * r_ij + workspace->Tap[4];
+    Tap = Tap * r_ij + workspace->Tap[3];
+    Tap = Tap * r_ij + workspace->Tap[2];
+    Tap = Tap * r_ij + workspace->Tap[1];
+    Tap = Tap * r_ij + workspace->Tap[0];
 
-    dTap = 7 * control->Tap7 * r_ij + 6 * control->Tap6;
-    dTap = dTap * r_ij + 5 * control->Tap5;
-    dTap = dTap * r_ij + 4 * control->Tap4;
-    dTap = dTap * r_ij + 3 * control->Tap3;
-    dTap = dTap * r_ij + 2 * control->Tap2;
-    dTap += control->Tap1 / r_ij;
+    dTap = 7 * workspace->Tap[7] * r_ij + 6 * workspace->Tap[6];
+    dTap = dTap * r_ij + 5 * workspace->Tap[5];
+    dTap = dTap * r_ij + 4 * workspace->Tap[4];
+    dTap = dTap * r_ij + 3 * workspace->Tap[3];
+    dTap = dTap * r_ij + 2 * workspace->Tap[2];
+    dTap += workspace->Tap[1] / r_ij;
 
 
     /* vdWaals calculations */
@@ -528,7 +528,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     reax_list *far_nbrs;
     real e_vdW_total, e_ele_total;
 
-    far_nbrs = &(*lists)[FAR_NBRS];
+    far_nbrs = lists[FAR_NBRS];
     steps = data->step - data->prev_steps;
     update_freq = out_control->energy_update_freq;
     update_energies = update_freq > 0 && steps % update_freq == 0;

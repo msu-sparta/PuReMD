@@ -22,7 +22,7 @@
 #ifndef __RESTART_H_
 #define __RESTART_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 typedef struct
 {

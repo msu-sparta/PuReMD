@@ -229,7 +229,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
 
 
 /* Initialize Taper params */
-static void Init_Taper( control_params *control )
+static void Init_Taper( control_params *control, static_storage *workspace )
 {
     real d1, d7;
     real swa, swa2, swa3;
@@ -260,14 +260,14 @@ static void Init_Taper( control_params *control )
     swb2 = SQR( swb );
     swb3 = CUBE( swb );
 
-    control->Tap7 =  20.0 / d7;
-    control->Tap6 = -70.0 * (swa + swb) / d7;
-    control->Tap5 =  84.0 * (swa2 + 3.0 * swa * swb + swb2) / d7;
-    control->Tap4 = -35.0 * (swa3 + 9.0 * swa2 * swb + 9.0 * swa * swb2 + swb3 ) / d7;
-    control->Tap3 = 140.0 * (swa3 * swb + 3.0 * swa2 * swb2 + swa * swb3 ) / d7;
-    control->Tap2 = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
-    control->Tap1 = 140.0 * swa3 * swb3 / d7;
-    control->Tap0 = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2 +
+    workspace->Tap[7] =  20.0 / d7;
+    workspace->Tap[6] = -70.0 * (swa + swb) / d7;
+    workspace->Tap[5] =  84.0 * (swa2 + 3.0 * swa * swb + swb2) / d7;
+    workspace->Tap[4] = -35.0 * (swa3 + 9.0 * swa2 * swb + 9.0 * swa * swb2 + swb3 ) / d7;
+    workspace->Tap[3] = 140.0 * (swa3 * swb + 3.0 * swa2 * swb2 + swa * swb3 ) / d7;
+    workspace->Tap[2] = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
+    workspace->Tap[1] = 140.0 * swa3 * swb3 / d7;
+    workspace->Tap[0] = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2 +
             7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
 }
 
@@ -692,7 +692,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     Reset_Workspace( system, workspace );
 
     /* Initialize Taper function */
-    Init_Taper( control );
+    Init_Taper( control, workspace );
 }
 
 
@@ -708,7 +708,7 @@ static void Init_Lists( reax_system *system, control_params *control,
 
     num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
 
-    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, &(*lists)[FAR_NBRS] );
+    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
@@ -742,12 +742,12 @@ static void Init_Lists( reax_system *system, control_params *control,
             break;
     }
 
-    Allocate_Matrix( &(workspace->H), system->N_cm, max_nnz );
+    Allocate_Matrix( &workspace->H, system->N_cm, max_nnz );
     /* TODO: better estimate for H_sp?
      *   If so, need to refactor Estimate_Storage_Sizes
      *   to use various cut-off distances as parameters
      *   (non-bonded, hydrogen, 3body, etc.) */
-    Allocate_Matrix( &(workspace->H_sp), system->N_cm, max_nnz );
+    Allocate_Matrix( &workspace->H_sp, system->N_cm, max_nnz );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - Htop: %d\n", Htop );
@@ -779,7 +779,7 @@ static void Init_Lists( reax_system *system, control_params *control,
         else
         {
             Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
-                    hb_top, &(*lists)[HBONDS] );
+                    hb_top, lists[HBONDS] );
         }
 
 #if defined(DEBUG_FOCUS)
@@ -791,7 +791,7 @@ static void Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    Allocate_Bond_List( system->N, bond_top, &(*lists)[BONDS] );
+    Allocate_Bond_List( system->N, bond_top, lists[BONDS] );
     num_bonds = bond_top[system->N - 1];
 
 #if defined(DEBUG_FOCUS)
@@ -801,7 +801,7 @@ static void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list */
-    Make_List( num_bonds, num_3body, TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
+    Make_List( num_bonds, num_3body, TYP_THREE_BODY, lists[THREE_BODIES] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
@@ -810,9 +810,9 @@ static void Init_Lists( reax_system *system, control_params *control,
 #endif
 
 #ifdef TEST_FORCES
-    Make_List( system->N, num_bonds * 8, TYP_DDELTA, &(*lists)[DDELTA] );
+    Make_List( system->N, num_bonds * 8, TYP_DDELTA, lists[DDELTA] );
 
-    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, &(*lists)[DBO] );
+    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, lists[DBO] );
 #endif
 
     sfree( hb_top, "Init_Lists::hb_top" );
@@ -1079,7 +1079,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 void Initialize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control, evolve_function *Evolve,
-        interaction_function *interaction_functions, const int output_enabled )
+        const int output_enabled )
 {
 #if defined(DEBUG)
     real start, end;
@@ -1111,7 +1111,7 @@ void Initialize( reax_system *system, control_params *control,
     }
 
     /* These are done in forces.c, only forces.c can see all those functions */
-    Init_Bonded_Force_Functions( control, interaction_functions );
+    Init_Bonded_Force_Functions( control );
 
 #ifdef TEST_FORCES
     Init_Force_Test_Functions( );
@@ -1412,17 +1412,17 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 
 static void Finalize_Lists( control_params *control, reax_list **lists )
 {
-    Delete_List( TYP_FAR_NEIGHBOR, &(*lists)[FAR_NBRS] );
+    Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
     if ( control->hb_cut > 0.0 )
     {
-        Delete_List( TYP_HBOND, &(*lists)[HBONDS] );
+        Delete_List( TYP_HBOND, lists[HBONDS] );
     }
-    Delete_List( TYP_BOND, &(*lists)[BONDS] );
-    Delete_List( TYP_THREE_BODY, &(*lists)[THREE_BODIES] );
+    Delete_List( TYP_BOND, lists[BONDS] );
+    Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
 
 #ifdef TEST_FORCES
-    Delete_List( TYP_DDELTA, &(*lists)[DDELTA] );
-    Delete_List( TYP_DBO, &(*lists)[DBO] );
+    Delete_List( TYP_DDELTA, lists[DDELTA] );
+    Delete_List( TYP_DBO, lists[DBO] );
 #endif
 }
 

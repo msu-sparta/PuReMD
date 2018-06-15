@@ -63,7 +63,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     reax->gp.l = (real*) smalloc( sizeof(real) * n,
            "Read_Force_Field::reax->gp-l" );
 
-    /* see mytypes.h for mapping between l[i] and the lambdas used in ff */
+    /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
     for (i = 0; i < n; i++)
     {
         fgets(s, MAX_LINE, fp);
@@ -503,7 +503,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     }
 
     /* 3-body parameters -
-     * supports multi-well potentials (upto MAX_3BODY_PARAM in mytypes.h) */
+     * supports multi-well potentials (upto MAX_3BODY_PARAM in reax_types.h) */
     /* clear entries first */
     for ( i = 0; i < reax->num_atom_types; ++i )
     {
@@ -572,7 +572,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
      * correspond to any type of pair of atoms in 1 and 4
      * position. However, explicit X-Y-Z-W takes precedence over the
      * default description.
-     * supports multi-well potentials (upto MAX_4BODY_PARAM in mytypes.h)
+     * supports multi-well potentials (upto MAX_4BODY_PARAM in reax_types.h)
      * IMPORTANT: for now, directions on how to read multi-entries from ffield
      * is not clear */
 

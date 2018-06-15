@@ -342,8 +342,8 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {
-                        LR_vdW_Coulomb( system, control, i, j, r * dr,
-                                &(workspace->LR[i][j].y[r]) );
+                        LR_vdW_Coulomb( system, control, workspace,
+                                i, j, r * dr, &workspace->LR[i][j].y[r] );
                         h[r] = workspace->LR[i][j].dx;
                         fh[r] = workspace->LR[i][j].y[r].H;
                         fvdw[r] = workspace->LR[i][j].y[r].e_vdW;
@@ -410,7 +410,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
      if( existing_types[j] ) {
      for( r = 1; r <= 100; ++r ) {
      rand_dist = (real)rand()/RAND_MAX * control->r_cut;
-     LR_vdW_Coulomb( system, control, i, j, rand_dist, &y );
+     LR_vdW_Coulomb( system, control, workspace, i, j, rand_dist, &y );
      LR_Lookup( &(workspace->LR[i][j]), rand_dist, &y_spline );
 
      evdw_abserr = FABS(y.e_vdW - y_spline.e_vdW);

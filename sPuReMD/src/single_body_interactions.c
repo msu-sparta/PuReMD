@@ -48,7 +48,7 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
     bond_order_data *bo_ij;
     reax_list *bonds;
 
-    bonds = &(*lists)[BONDS];
+    bonds = lists[BONDS];
     /* Initialize parameters */
     p_lp1 = system->reaxprm.gp.l[15];
     p_lp3 = system->reaxprm.gp.l[5];

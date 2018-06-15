@@ -22,7 +22,7 @@
 #ifndef __TWO_BODY_INTERACTIONS_H_
 #define __TWO_BODY_INTERACTIONS_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Bond_Energy( reax_system*, control_params*, simulation_data*,
@@ -31,7 +31,8 @@ void Bond_Energy( reax_system*, control_params*, simulation_data*,
 void vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
-void LR_vdW_Coulomb( reax_system*, control_params*, int, int, real, LR_data* );
+void LR_vdW_Coulomb( reax_system*, control_params*, static_storage *,
+        int, int, real, LR_data* );
 
 void Tabulated_vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );

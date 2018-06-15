@@ -22,7 +22,7 @@
 #ifndef __LIST_H_
 #define __LIST_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Make_List( int, int, int, reax_list* );

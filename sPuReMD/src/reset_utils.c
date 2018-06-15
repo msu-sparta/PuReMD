@@ -121,8 +121,8 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
     reax_list *bonds;
     reax_list *hbonds;
 
-    bonds = &(*lists)[BONDS];
-    hbonds = &(*lists)[HBONDS];
+    bonds = lists[BONDS];
+    hbonds = lists[HBONDS];
 
     for ( i = 0; i < system->N; ++i )
     {

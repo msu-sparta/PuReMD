@@ -22,7 +22,7 @@
 #ifndef __RESET_UTILS_H_
 #define __RESET_UTILS_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Reset_Atoms( reax_system* );

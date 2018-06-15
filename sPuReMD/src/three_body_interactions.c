@@ -94,9 +94,9 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
     real e_ang_total, e_pen_total, e_coa_total;
 
     total_bo = workspace->total_bond_order;
-    bonds = &(*lists)[BONDS];
+    bonds = lists[BONDS];
     bond_list = bonds->select.bond_list;
-    thb_intrs = &(*lists)[THREE_BODIES];
+    thb_intrs = lists[THREE_BODIES];
     thb_list = thb_intrs->select.three_body_list;
     /* global parameters used in these calculations */
     p_pen2 = system->reaxprm.gp.l[19];
@@ -707,9 +707,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #ifdef TEST_FORCES
         num_hb_intrs = 0;
 #endif
-        bonds = &(*lists)[BONDS];
+        bonds = lists[BONDS];
         bond_list = bonds->select.bond_list;
-        hbonds = &(*lists)[HBONDS];
+        hbonds = lists[HBONDS];
         hbond_list = hbonds->select.hbond_list;
 
         /* loops below discover the Hydrogen bonds between i-j-k triplets.

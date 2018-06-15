@@ -22,7 +22,7 @@
 #ifndef __GRID_H_
 #define __GRID_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 int Shift( int, int, int, grid* );

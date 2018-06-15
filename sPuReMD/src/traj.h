@@ -22,7 +22,7 @@
 #ifndef __TRAJ_H__
 #define __TRAJ_H__
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 #define BLOCK_MARK "REAX_BLOCK_MARK "

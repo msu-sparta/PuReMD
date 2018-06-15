@@ -180,8 +180,8 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     int frame_globals_len, num_bonds, num_thb_intrs;
     real P;
     char buffer[SIZE];
-    reax_list *bonds = &(*lists)[BONDS];
-    reax_list *thb_intrs = &(*lists)[THREE_BODIES];
+    reax_list *bonds = lists[BONDS];
+    reax_list *thb_intrs = lists[THREE_BODIES];
     bond_data *bo_ij;
 
     /* IMPORTANT: This whole part will go to init_trj after finalized! */

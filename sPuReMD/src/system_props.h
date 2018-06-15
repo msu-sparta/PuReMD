@@ -22,7 +22,7 @@
 #ifndef __SYSTEM_PROP_H_
 #define __SYSTEM_PROP_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Temperature_Control( control_params*, simulation_data*, output_controls* );

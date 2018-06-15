@@ -393,7 +393,7 @@ if __name__ == '__main__':
     get_atoms.restype = POINTER(ReaxAtom)
 
     CALLBACKFUNC = CFUNCTYPE(None, POINTER(ReaxAtom),
-            POINTER(SimulationData), POINTER(ReaxList))
+            POINTER(SimulationData), POINTER(POINTER(ReaxList)))
 
     setup_callback = lib.setup_callback
     setup_callback.restype = c_int

@@ -22,7 +22,7 @@
 #ifndef __FOUR_BODY_INTERACTIONS_H_
 #define __FOUR_BODY_INTERACTIONS_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Four_Body_Interactions( reax_system*, control_params*, simulation_data*,

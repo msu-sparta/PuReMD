@@ -22,7 +22,7 @@
 #ifndef __ALLOCATE_H_
 #define __ALLOCATE_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void PreAllocate_Space( reax_system*, control_params*, static_storage* );

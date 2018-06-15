@@ -22,7 +22,7 @@
 #ifndef __LOOKUP_H_
 #define __LOOKUP_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 typedef real (*lookup_function)(real);

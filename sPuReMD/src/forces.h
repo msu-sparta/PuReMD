@@ -22,15 +22,13 @@
 #ifndef __FORCES_H_
 #define __FORCES_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
-void Init_Bonded_Force_Functions( control_params*,
-       interaction_function* );
+void Init_Bonded_Force_Functions( control_params* );
 
 void Compute_Forces( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls*,
-        interaction_function* );
+        static_storage*, reax_list**, output_controls* );
 
 void Estimate_Storage_Sizes( reax_system*, control_params*, reax_list**,
         int*, int*, int*, int* );

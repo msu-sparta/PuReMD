@@ -22,7 +22,7 @@
 #ifndef __BOND_ORDERS_H_
 #define __BOND_ORDERS_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 typedef struct

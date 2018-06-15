@@ -22,7 +22,7 @@
 #ifndef __VECTOR_H_
 #define __VECTOR_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 #include "random.h"
 

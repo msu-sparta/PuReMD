@@ -22,7 +22,7 @@
 #ifndef __CHARGES_H_
 #define __CHARGES_H_
 
-#include "mytypes.h"
+#include "reax_types.h"
 
 
 void Compute_Charges( reax_system* const, control_params* const, simulation_data* const,
