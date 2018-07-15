@@ -464,6 +464,24 @@ void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
 }
 
 
+/*void Allocate_Matrix_SAI( sparse_matrix ** const pH, int n, int n_max, int m )
+{
+
+    sparse_matrix *H;
+
+    *pH = (sparse_matrix*) smalloc( sizeof(sparse_matrix),
+            "Allocate_Matrix::pH" );
+
+    H = *pH;
+    H->n = n;
+    H->n_max = n_max;
+    H->m = m;
+
+    H->start = smalloc( sizeof(int) * n_max, "Allocate_Matrix::start" );
+    H->end = smalloc( sizeof(int) * n_max, "Allocate_Matrix::end" );
+    H->entries = smalloc( sizeof(sparse_matrix_entry) * m, "Allocate_Matrix::entries" );
+}*/
+
 void Deallocate_Matrix( sparse_matrix * const H )
 {
     H->n = 0;
@@ -476,7 +494,7 @@ void Deallocate_Matrix( sparse_matrix * const H )
 }
 
 
-static void Reallocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
+void Reallocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
 {
     Deallocate_Matrix( H );
     Allocate_Matrix( H, n, n_max, m );

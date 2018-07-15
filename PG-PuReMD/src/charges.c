@@ -313,9 +313,10 @@ static void Extrapolate_Charges_EE_Part2( const reax_system * const system,
 static void Compute_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, storage * const workspace, 
-        const mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
     sparse_matrix *Hptr;
+    sparse_matrix *Hsparptr;
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
@@ -325,6 +326,8 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     {
         Hptr = &workspace->H;
     }
+
+    Hsparptr = &workspace->H_spar_patt;
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -350,7 +353,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             //TODO: implement
             data->timing.cm_solver_pre_comp += 
                 sparse_approx_inverse( system, workspace, mpi_data, 
-                        workspace->H_full, workspace->H_spar_patt_full, &workspace->H_app_inv );
+                        Hptr, Hsparptr, &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
@@ -370,9 +373,10 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 static void Compute_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, storage * const workspace,
-        const mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
     sparse_matrix *Hptr;
+    sparse_matrix *Hsparptr;
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
@@ -382,6 +386,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     {
         Hptr = &workspace->H;
     }
+
+    Hsparptr = &workspace->H_spar_patt;
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
             control->cm_solver_pre_comp_type == ILU_PAR_PC ||
@@ -414,7 +420,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             //TODO: implement
             data->timing.cm_solver_pre_comp += 
                 sparse_approx_inverse( system, workspace, mpi_data, 
-                        workspace->H_full, workspace->H_spar_patt_full, &workspace->H_app_inv );
+                        Hptr, Hsparptr, &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
@@ -441,9 +447,10 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, storage * const workspace,
-        const mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
     sparse_matrix *Hptr;
+    sparse_matrix *Hsparptr;
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
@@ -453,6 +460,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     {
         Hptr = &workspace->H;
     }
+
+    Hsparptr = &workspace->H_spar_patt;
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
             control->cm_solver_pre_comp_type == ILU_PAR_PC ||
@@ -486,7 +495,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             //TODO: implement
             data->timing.cm_solver_pre_comp += 
                 sparse_approx_inverse( system, workspace, mpi_data, 
-                        workspace->H_full, workspace->H_spar_patt_full, &workspace->H_app_inv );
+                        Hptr, Hsparptr, &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
@@ -527,11 +536,11 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
-//    Sort_Matrix_Rows( &workspace->H );
-//    if ( control->cm_domain_sparsify_enabled == TRUE )
-//    {
-//        Sort_Matrix_Rows( &workspace->H_sp );
-//    }
+    Sort_Matrix_Rows( &workspace->H );
+    if ( control->cm_domain_sparsify_enabled == TRUE )
+    {
+        Sort_Matrix_Rows( &workspace->H_sp );
+    }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
     switch ( control->cm_solver_pre_comp_type )
@@ -560,7 +569,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             /*setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
               &workspace->H_spar_patt_full, &workspace->H_app_inv,
               control->cm_solver_pre_comp_sai_thres );*/
-            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt,
+                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -632,7 +642,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             //            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
             //                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
             //                    control->cm_solver_pre_comp_sai_thres );
-            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt,
+                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -712,7 +723,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             //            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
             //                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
             //                    control->cm_solver_pre_comp_sai_thres );
-            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt,
+                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
