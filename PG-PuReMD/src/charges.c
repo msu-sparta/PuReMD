@@ -843,6 +843,8 @@ static void QEq( reax_system * const system, control_params * const control,
             exit( INVALID_INPUT );
             break;
     }
+    
+
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )

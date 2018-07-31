@@ -942,8 +942,8 @@ static void Finalize_MPI_Datatypes( mpi_datatypes * const mpi_data )
 
     Deallocate_MPI_Buffers( mpi_data );
 
-    ret = MPI_Type_free( &mpi_data->mpi_atom_type );
-    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_atom_type" );
+    //ret = MPI_Type_free( &mpi_data->mpi_atom_type );
+    //Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_atom_type" );
     ret = MPI_Type_free( &mpi_data->boundary_atom_type );
     Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->boundary_atom_type" );
     ret = MPI_Type_free( &mpi_data->mpi_rvec );
@@ -963,23 +963,18 @@ void Finalize( reax_system * const system, control_params * const control,
         output_controls * const out_control, mpi_datatypes * const mpi_data,
         const int output_enabled )
 {
+
     if ( control->tabulate )
     {
         Finalize_LR_Lookup_Table( system, control, workspace, mpi_data );
     }
-
     if ( output_enabled == TRUE )
     {
         Finalize_Output_Files( system, control, out_control );
     }
-
     Finalize_Lists( control, lists );
-
     Finalize_Workspace( system, control, workspace );
-
     Finalize_Simulation_Data( system, control, data, out_control );
-
     Finalize_System( system, control, data );
-
     Finalize_MPI_Datatypes( mpi_data );
 }

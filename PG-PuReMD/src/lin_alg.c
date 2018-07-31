@@ -254,7 +254,9 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
     bucketlist = NULL;
     samplelist = NULL;
 
-    for(i = 0; i < system->n; i++)
+    fprintf(stdout,"bigN = %d\n",system->bigN);
+
+    /*for(i = 0; i < system->n; i++)
     {
         fprintf(stdout, "\n%d\n",i);
         for(pj = A->start[i]; pj < A->end[i]; pj++)
@@ -281,7 +283,7 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
 
     m = 0;
     for( i = 0; i < A->n; ++i )
-    {
+    {//TODO: add if
         m += A->end[i] - A->start[i];
     }
 
@@ -292,7 +294,10 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
     {
         for( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
-            local_entries[m++] = A->entries[pj].val;
+            if(A->entries[pj].j < system->bigN)
+            {
+                local_entries[m++] = A->entries[pj].val;
+            }
         }
     }
 
@@ -586,7 +591,8 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
 
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
-            if ( ( A->entries[pj].val >= threshold )  || ( A->entries[pj].j == i ) )
+            if ( ( ( A->entries[pj].val >= threshold )  || ( A->entries[pj].j == i ) ) 
+                    && A->entries[pj].j < system->bigN )
             {
                 A_spar_patt->entries[size].val = A->entries[pj].val;
                 A_spar_patt->entries[size].j = A->entries[pj].j;
@@ -639,66 +645,44 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
 
     start = Get_Time( );
 
-
     if ( A_app_inv == NULL )
     {
-        fprintf(stdout, "1  %d %d %d\n",A->n, A->n_max, A->m);
-        fflush(stdout);
         Allocate_Matrix(A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m );
     }
 
     else if ( (A_app_inv->m) < (A_spar_patt->m) )
     {
-        fprintf(stdout, "2 %d %d %d\n",A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m);
-        fflush(stdout);
         Reallocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m );
     }
-
-    /*for(i = 0; i < system->n; i++)
-    {
-        fprintf(stdout, "\n%d\n",i);
-        for(pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; pj++)
-        {
-            fprintf(stdout, "%d %.2lf ---",A_spar_patt->entries[pj].j, A_spar_patt->entries[pj].val);
-        }
-        fprintf(stdout,"\n");
-    }*/
-
-    fprintf(stdout,"\n\n\nSAI computation started\n");
-    fprintf(stdout, "rank = %d\n", system->my_rank);
-    fprintf(stdout, "n = %d N = %d\n",system->n, system->N);
-    fprintf(stdout, "nnz of sparsity pattern = %d\n",A_spar_patt->m);
-    fflush(stdout);
-
 
     j_recv1 = NULL;
     j_recv2 = NULL;
     val_recv1 = NULL;
     val_recv2 = NULL;
 
-    mark = (int *) malloc( sizeof(int) * (system->N + 1) );
+    mark = (int *) malloc( sizeof(int) * (system->bigN + 1) );
+
+    // row_needed and row_nnz are used for Dist and Coll functions
+    // so their size should be N rather than bigN
     row_needed = (int *) malloc( sizeof(int) * (system->N + 1) );
     row_nnz = (int *) malloc( sizeof(int) * (system->N + 1) );
 
-    j_list = (int **) malloc( sizeof(int *) * (system->N + 1) );
-    val_list = (real **) malloc( sizeof(real *) * (system->N + 1) );
+    j_list = (int **) malloc( sizeof(int *) * (system->bigN + 1) );
+    val_list = (real **) malloc( sizeof(real *) * (system->bigN + 1) );
 
-    for ( i = 0; i <= system->N; ++i )
+    for ( i = 0; i <= system->bigN; ++i )
     {   
-        mark[ i ] = -1;
-        row_needed[ i ] = -1;
-        row_nnz[ i ] = 0;
+        mark[i] = -1;
+        row_needed[i] = -1;
+        row_nnz[i] = 0;
     }
 
     /* mark the atoms that already have their row stored in the local matrix */
     for ( i = 0; i < system->n; ++i )
     {   
         atom = &system->my_atoms[i];
-        fprintf(stdout, "%d ",atom->orig_id);
         mark[ atom->orig_id ] = i;
     }
-    fprintf(stdout,"\n");
-    fflush(stdout);
 
     /*find the atoms that are not marked but needed,
      *     meaning we need to communicate their row*/
@@ -707,288 +691,295 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
         for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
         {
             atom = &system->my_atoms[ A_spar_patt->entries[pj].j ];
-            //fprintf(stdout,"Spar_patt column: %d - orig_id: %d\n",A_spar_patt->entries[pj].j, atom->orig_id);
-            //fflush(stdout);
-            if(atom->orig_id > system->n)
-                fprintf(stdout, "adsadsads %d ",atom->orig_id);
 
             if( mark[ atom->orig_id ] == -1)
             {
-                fprintf(stdout, "asd %d ",atom->orig_id);
                 row_needed[ A_spar_patt->entries[pj].j ] = atom->orig_id;
             }
         }
     }
 
-    fflush(stdout);
+    
+    // TODO: Dist or Coll
+    // Announce the rows that you need but you do not have
+    Coll( system, mpi_data, row_needed, INT_PTR_TYPE, MPI_INT );
 
-    Dist( system, mpi_data, row_needed, INT_PTR_TYPE, MPI_INT );
-
-    fprintf(stdout, "First Dist is done\n");
-    fflush(stdout);
-
-    /* fill in the nnz of the lines that will be collected by other processes */
-    for( i = 0; i < system->N; ++i )
+    for(i = 0; i<system->bigN;i++)
     {
-        if( row_needed[i] !=-1 && mark[ row_needed[i] ] != -1)
+        fprintf(stdout,"%d ", row_needed[i]);
+    }
+
+    /* fill in the nnz of the rows of the original charge matrix
+     * that will be collected by other processes */
+    for( i = 0; i < system->bigN; ++i )
+    {
+        if( row_needed[i] != -1 && mark[ row_needed[i] ] != -1 )
         {
-            row_nnz[i] = A->end[  mark[ row_needed[i] ] ] - A->start[  mark[ row_needed[i] ] ];
-            
+            for( pj = A->start[i]; pj < A->end[i]; ++pj)
+            {
+                if( A->entries[pj].j < system->bigN )
+                {
+                    ++row_nnz[i];
+                }
+            }
         }
     }
-    fprintf(stdout, "Required NNZ calculation is done\n");
-    fflush(stdout);
 
-    /* announce the nnz's in each row to allocota space */
-    Coll( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
+    // TODO: Dist or Coll
+    /* Announce the nnz's in each row that will be communicated later */
+    Dist( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
     
-    fprintf(stdout, "First Call is done\n");
-    fflush(stdout);
-
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
-    for ( d = 2; d >= 0; --d )
+
+    fprintf(stdout,"before manual dist function\n");
+    
+    /*  Dist, not Coll */
+    for ( d = 0; d < 3; ++d)
     {
-        fprintf(stdout, "iterative loop for coll %d\n", d);
-        fflush(stdout);
+
+        fprintf(stdout,"iteration number: %d\n", d);
 
         flag1 = 0;
         flag2 = 0;
 
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-
-        if ( out_bufs[2 * d].cnt )
+        if ( nbr1->atoms_cnt )
         {
+            /* calculate the total data that will be received */
             cnt = 0;
-            for( i = 0; i < out_bufs[2 * d].cnt; ++i )
+            for( i = nbr1->atoms_str; i < system->bigN && i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                cnt += row_nnz[ out_bufs[2 * d].index[i] ];
-     //           fprintf(stdout,"Outbuffs to be sent id:%d nnz:%d\n",out_bufs[2 * d+1].index[i], row_nnz[ out_bufs[2 * d+1].index[i] ]);
-       //         fflush(stdout);
+                if( row_needed[i] != -1 && mark[ row_needed[i] ] == -1)
+                {
+                    cnt += row_nnz[i];
+                }
             }
 
-            j_recv1 = (int *) malloc( sizeof(int) * cnt );
-            val_recv1 = (real *) malloc( sizeof(real) * cnt );
-            
+            /* initiate Irecv */
             if( cnt )
             {
                 flag1 = 1;
+                j_recv1 = (int *) malloc( sizeof(int) * cnt );
+                val_recv1 = (real *) malloc( sizeof(real) * cnt );
                 MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
                 MPI_Irecv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm, &req2 );
             }
         }
 
-        nbr2 = &system->my_nbrs[2 * d + 1];
-        fprintf(stdout, "Irecv is completed\n");
+        fprintf(stdout,"after first Irecv, cnt = %d\n",cnt);
         fflush(stdout);
 
-        if ( out_bufs[2 * d + 1].cnt )
+        nbr2 = &system->my_nbrs[2 * d + 1];
+        if ( nbr1->atoms_cnt )
         {
+            /* calculate the total data that will be received */
             cnt = 0;
-            for( i = 0; i < out_bufs[2 * d+1].cnt; ++i )
+            for( i = nbr2->atoms_str; i < system->bigN && i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                cnt += row_nnz[ out_bufs[2 * d+1].index[i] ];
+                if( row_needed[i] != -1 && mark[ row_needed[i] ] == -1)
+                {
+                    cnt += row_nnz[i];
+                }
             }
 
-            j_recv2 = (int *) malloc( sizeof(int) * cnt );
-            val_recv2 = (real *) malloc( sizeof(real) * cnt );
-
+            /* initiate Irecv */
             if( cnt )
             {
                 flag2 = 1;
+                j_recv2 = (int *) malloc( sizeof(int) * cnt );
+                val_recv2 = (real *) malloc( sizeof(real) * cnt );
                 MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
                 MPI_Irecv( val_recv2, cnt, MPI_DOUBLE, nbr2->rank, 2 * d, comm, &req4 );
             }
         }
 
-        fprintf(stdout, "Second Irecv is completed\n");
+        fprintf(stdout,"after second Irecv, cnt = %d\n", cnt);
         fflush(stdout);
 
         /* send both messages in dimension d */
-        if ( nbr1->atoms_cnt )
+        if( out_bufs[2 * d].cnt )
         {
             cnt = 0;
-            for( i = nbr1->atoms_str; i < nbr1->atoms_str + nbr1->atoms_cnt; ++i)
+            for( i = 0; i < out_bufs[2 * d].cnt; ++i )
             {
-                atom = &system->my_atoms[i];
-
-                if(mark[ atom->orig_id ] != -1)
+                if( out_bufs[2 * d].index[i] < system->bigN )
                 {
-                    cnt += A->end[ mark[ atom->orig_id ] ] - A->start[ mark[ atom->orig_id ] ];
-                }
-                else
-                {
-                    cnt += row_nnz[i];
+                    if( row_needed[ out_bufs[2 * d].index[i] ] != -1)
+                    {
+                        cnt += row_nnz[ out_bufs[2 * d].index[i] ];
+                    }
                 }
             }
 
-            fprintf(stdout, "Inside of First Send\n");
+            fprintf(stdout,"cnt = %d\n", cnt);
             fflush(stdout);
-
-            j_send = (int *) malloc( sizeof(int) * cnt );
-            val_send = (real *) malloc( sizeof(real) * cnt );
-
-            cnt = 0;
-            for( i = nbr1->atoms_str; i < nbr1->atoms_str + nbr1->atoms_cnt; ++i)
+            if( cnt )
             {
-                atom = &system->my_atoms[i];
-                if(row_needed[ atom->orig_id ] != -1)
+                j_send = (int *) malloc( sizeof(int) * cnt );
+                val_send = (real *) malloc( sizeof(real) * cnt );
+
+                cnt = 0;
+                for( i = 0; i < out_bufs[2 * d].cnt; ++i )
                 {
-                    if(mark[ atom->orig_id ] != -1)
+                    if( out_bufs[2 * d].index[i] < system->bigN )
                     {
-                        for( pj = A->start[ mark[ atom->orig_id ] ]; pj < A->end[ mark[ atom->orig_id ] ]; ++pj)
+                        if( row_needed[ out_bufs[2 * d].index[i] ] != -1)
                         {
-                            j_send[cnt] = A->entries[pj].j;
-                            val_send[cnt] = A->entries[pj].val;
-                            cnt++;
-                        }
-                    }
-                    else
-                    {
-                        for( pj = 0; pj < row_nnz[i]; ++pj)
-                        {
-                            j_send[cnt] = j_list[i][pj];
-                            val_send[cnt] = val_list[i][pj];
-                            cnt++;
+                            if( mark[ row_needed[ out_bufs[2 * d].index[i] ] ] != -1)
+                            {
+                                for( pj = A->start[ out_bufs[2 * d].index[i] ]; pj < A->end[ out_bufs[2 * d].index[i] ]; ++pj )
+                                {
+                                    if( A->entries[pj].j < system->bigN)
+                                    {
+                                        j_send[cnt] = A->entries[pj].j;
+                                        val_send[cnt] = A->entries[pj].val;
+                                        cnt++;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                for( pj = 0; pj < row_nnz[ out_bufs[2 * d].index[i] ]; ++pj )
+                                {
+                                    j_send[cnt] = j_list[ out_bufs[2 * d].index[i] ][pj];
+                                    val_send[cnt] = val_list[ out_bufs[2 * d].index[i] ][pj];
+                                    cnt++;
+                                }
+                            }
                         }
                     }
                 }
 
+                MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d, comm );
+                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d, comm );
             }
-            fprintf(stdout, "Still Inside of First Send\n");
+        }
+
+        fprintf(stdout,"after first Send\n");
+        fflush(stdout);
+
+        if( out_bufs[2 * d + 1].cnt )
+        {
+            cnt = 0;
+            for( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
+            {
+                if( out_bufs[2 * d + 1].index[i] < system->bigN )
+                {
+                    if( row_needed[ out_bufs[2 * d + 1].index[i] ] != -1)
+                    {
+                        cnt += row_nnz[ out_bufs[2 * d + 1].index[i] ];
+                    }
+                }
+            }
+
+            fprintf(stdout,"cnt = %d\n", cnt);
             fflush(stdout);
 
             if( cnt )
             {
-                MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d, comm );
-                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d, comm );
-            }
+                j_send = (int *) malloc( sizeof(int) * cnt );
+                val_send = (real *) malloc( sizeof(real) * cnt );
 
-        }
-            fprintf(stdout, "Outside of First Send\n");
-            fflush(stdout);
-
-        if ( nbr2->atoms_cnt )
-        {
-            fprintf(stdout, "Beginning of Second Send\n");
-            fflush(stdout);
-            cnt = 0;
-            for( i = nbr2->atoms_str; i < nbr2->atoms_str + nbr2->atoms_cnt; ++i)
-            {
-                atom = &system->my_atoms[i];
-
-                if(mark[ atom->orig_id ] != -1)
+                cnt = 0;
+                for( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
                 {
-                    cnt += A->end[ mark[ atom->orig_id ] ] - A->start[ mark[ atom->orig_id ] ];
-                }
-                else
-                {
-                    cnt += row_nnz[i];
-                }
-            }
-            
-            fprintf(stdout, "Inside of Second Send\n");
-            fflush(stdout);
-
-            j_send = (int *) malloc( sizeof(int) * cnt );
-            val_send = (real *) malloc( sizeof(real) * cnt );
-
-            fprintf(stdout, "Inside of Second Send after Malloc\n");
-            fflush(stdout);
-
-            cnt = 0;
-            for( i = nbr2->atoms_str; i < nbr2->atoms_str + nbr2->atoms_cnt; ++i)
-            {
-                atom = &system->my_atoms[i];
-
-                if(row_needed[ atom->orig_id ] != -1)
-                {
-                    if(mark[ atom->orig_id ] != -1)
+                    if( out_bufs[2 * d + 1].index[i] < system->bigN )
                     {
-                        for( pj = A->start[ mark[ atom->orig_id ] ]; pj < A->end[ mark[ atom->orig_id ] ]; ++pj)
+                        if( row_needed[ out_bufs[2 * d + 1].index[i] ] != -1)
                         {
-                            j_send[cnt] = A->entries[pj].j;
-                            val_send[cnt] = A->entries[pj].val;
-                            cnt++;
-                        }
-                    }
-                    else
-                    {
-                        for( pj = 0; pj < row_nnz[i]; ++pj)
-                        {
-                            j_send[cnt] = j_list[i][pj];
-                            val_send[cnt] = val_list[i][pj];
-                            cnt++;
+                            if( mark[ row_needed[ out_bufs[2 * d + 1].index[i] ] ] != -1)
+                            {
+                                for( pj = A->start[ out_bufs[2 * d + 1].index[i] ]; pj < A->end[ out_bufs[2 * d + 1].index[i] ]; ++pj )
+                                {
+                                    if( A->entries[pj].j < system->bigN)
+                                    {
+                                        j_send[cnt] = A->entries[pj].j;
+                                        val_send[cnt] = A->entries[pj].val;
+                                        cnt++;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                for( pj = 0; pj < row_nnz[ out_bufs[2 * d + 1].index[i] ]; ++pj )
+                                {
+                                    j_send[cnt] = j_list[ out_bufs[2 * d + 1].index[i] ][pj];
+                                    val_send[cnt] = val_list[ out_bufs[2 * d + 1].index[i] ][pj];
+                                    cnt++;
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            fprintf(stdout, "Still Inside of Second Send\n");
-            fprintf(stdout, "cnt = %d\n",cnt);
-            fflush(stdout);
-
-            if ( cnt )
-            {
-                MPI_Send( j_send, cnt, MPI_INT, nbr2->rank, 2 * d + 1, comm );
-                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr2->rank, 2 * d + 1, comm );
+                MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm );
+                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm );
             }
         }
 
-        if ( out_bufs[2 * d].cnt && flag1 )
+        fprintf(stdout,"after the seconf Send\n");
+        fflush(stdout);
+
+        if( flag1 )
         {
             MPI_Wait( &req1, &stat1 );
             MPI_Wait( &req2, &stat2 );
 
-            cnt = 0;
-            for( i = 0; i < out_bufs[2 * d].cnt; ++i )
-            {
-                j_list[ out_bufs[2 * d].index[i] ] = (int *) malloc( sizeof(int) * row_nnz[ out_bufs[2 * d].index[i] ] );
-                val_list[ out_bufs[2 * d].index[i] ] = (real *) malloc( sizeof(real) * row_nnz[ out_bufs[2 * d].index[i] ] );
 
-                for( pj = 0; pj < row_nnz[ out_bufs[2 * d].index[i] ]; ++pj)
+            cnt = 0;
+            for( i = nbr1->atoms_str; i < system->bigN && i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
+            {
+                if( row_needed[i] != -1 && mark[ row_needed[i] ] == -1)
                 {
-                    j_list[ out_bufs[2 * d].index[i] ][pj] = j_recv1[cnt];
-                    val_list[ out_bufs[2 * d].index[i] ][pj] = val_recv1[cnt];
-                    cnt++;
+                    j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
+                    val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
+
+                    for( pj = 0; pj < row_nnz[i]; ++pj )
+                    {
+                        j_list[i][pj] = j_recv1[cnt];
+                        val_list[i][pj] = val_recv1[cnt];
+                        cnt++;
+                    }
                 }
             }
         }
 
-        if ( out_bufs[2 * d + 1].cnt && flag2 )
+        if( flag2 )
         {
             MPI_Wait( &req3, &stat3 );
             MPI_Wait( &req4, &stat4 );
 
+
             cnt = 0;
-            for( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
+            for( i = nbr2->atoms_str; i < system->bigN && i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                for( pj = 0; pj < row_nnz[ out_bufs[2 * d + 1].index[i] ]; ++pj)
+                if( row_needed[i] != -1 && mark[ row_needed[i] ] == -1)
                 {
-                    j_list[ out_bufs[2 * d + 1].index[i] ][pj] = j_recv2[cnt];
-                    val_list[ out_bufs[2 * d + 1].index[i] ][pj] = val_recv2[cnt];
-                    cnt++;
+                    j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
+                    val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
+
+                    for( pj = 0; pj < row_nnz[i]; ++pj )
+                    {
+                        j_list[i][pj] = j_recv2[cnt];
+                        val_list[i][pj] = val_recv2[cnt];
+                        cnt++;
+                    }
                 }
             }
         }
 
-        fprintf(stdout,"Package placed into correct positions\n");
-        fflush(stdout);
-    }    
-
-    fprintf(stdout,"before initilaization of SAI computation variables\n");
-    fflush(stdout);
+    }
 
     A_app_inv->start[A_app_inv->n] = A_spar_patt->start[A_spar_patt->n];
 
+    X = (char *) malloc( sizeof(char) * system->bigN );
+    Y = (char *) malloc( sizeof(char) * system->bigN );
+    pos_x = (int *) malloc( sizeof(int) * system->bigN );
+    pos_y = (int *) malloc( sizeof(int) * system->bigN );
 
-    X = (char *) malloc( sizeof(char) * A->n );
-    Y = (char *) malloc( sizeof(char) * A->n );
-    pos_x = (int *) malloc( sizeof(int) * A->n );
-    pos_y = (int *) malloc( sizeof(int) * A->n );
-
-    for ( i = 0; i < A->n; ++i )
+    for ( i = 0; i < system->bigN; ++i )
     {
         X[i] = 0;
         Y[i] = 0;
@@ -996,7 +987,8 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
         pos_y[i] = 0;
     }
 
-    fprintf(stdout, "SAI computation\n");
+    fprintf(stdout,"right before SAI computation\n");
+    fflush(stdout);
 
     for ( i = 0; i < A_spar_patt->n; ++i )
     {
@@ -1006,25 +998,27 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
         /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
         for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
         {
-
             j_temp = A_spar_patt->entries[pj].j;
-
+            atom = &system->my_atoms[j_temp];
             Y[j_temp] = 1;
             pos_y[j_temp] = N;
             ++N;
 
             /* for each of those indices
              *             search through the row of full A of that index */
-
+    
             /* the case where the local matrix has that index's row */
-            if(mark[j_temp] != -1)
+            if( mark[ atom->orig_id ] != -1)
             {
-                for ( k = A->start[ mark[j_temp] ]; k < A->end[ mark[j_temp] ]; ++k )
+                for ( k = A->start[ j_temp ]; k < A->end[ j_temp ]; ++k )
                 {
-                    /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    X[A->entries[k].j] = 1;
+                    if( A->entries[k].j < system->bigN )
+                    {
+                        /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
+                        X[A->entries[k].j] = 1;
+                    }
                 }
-            }
+            }   
 
             /* the case where we communicated that index's row */
             else
@@ -1039,7 +1033,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
 
         /* enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix */
         identity_pos = M;
-        for ( k = 0; k < A->n; k++)
+        for ( k = 0; k < system->bigN; k++)
         {
             if ( X[k] != 0 )
             {
@@ -1066,13 +1060,14 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
             /* change the value if any of the column indices is seen */
 
             /* it is in the original list */
-            if( mark[ pos_x[d_i] ] != -1)
+            atom = &system->my_atoms[ pos_x[d_i] ];
+            if( mark[ atom->orig_id ] != -1)
             {
-                for ( d_j = A->start[  mark[ pos_x[d_i] ] ]; d_j < A->end[ mark[ pos_x[d_i] ] ]; ++d_j )
+                for ( d_j = A->start[  pos_x[d_i] ]; d_j < A->end[ pos_x[d_i] ]; ++d_j )
                 {
-                    if ( Y[A->entries[d_j].j] == 1 )
+                    if ( A->entries[d_j].j < system->bigN && Y[ A->entries[d_j].j ] == 1 )
                     {
-                        dense_matrix[d_i * N + pos_y[A->entries[d_j].j]] = A->entries[d_j].val;
+                        dense_matrix[ d_i * N + pos_y[ A->entries[d_j].j ] ] = A->entries[d_j].val;
                     }
                 }
             }
@@ -1087,7 +1082,6 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
                     }
                 }
             }
-
         }
 
         /* create the right hand side of the linear equation
@@ -1107,9 +1101,6 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
         nrhs = 1;
         lda = N;
         ldb = nrhs;
-
-        fprintf(stdout,"Before LAPACKE\n");
-        fflush(stdout);
 
         info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
                 e_j, ldb );
@@ -1140,7 +1131,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
         /* empty variables that will be used next iteration */
         free( dense_matrix );
         free( e_j );
-        for ( k = 0; k < A->n; ++k )
+        for ( k = 0; k < system->bigN; ++k )
         {
             X[k] = 0;
             Y[k] = 0;
@@ -1148,10 +1139,6 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
             pos_y[k] = 0;
         }
     }
-
-
-    fprintf(stdout, "SAI computation over\n");
-    fflush(stdout);
 
     free( pos_y);
     free( pos_x);
@@ -1179,8 +1166,6 @@ static void apply_preconditioner( const reax_system * const system, const storag
         const control_params * const control, const real * const y, real * const x, 
         const int fresh_pre, const int side )
 {
-    //fprintf(stdout,"apply_preconditioner working\n");
-    //fflush(stdout);
     /* no preconditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
     {
@@ -1415,8 +1400,6 @@ int dual_CG( const reax_system * const system, const control_params * const cont
         const real tol, rvec2 * const x, const int fresh_pre )
 {
 
-    fprintf(stdout,"dual_cg working\n");
-    fflush(stdout);
     int i, j, n, N, iters;
     rvec2 tmp, alpha, beta;
     rvec2 my_sum, norm_sqr, b_norm, my_dot;
@@ -1684,7 +1667,7 @@ int dual_CG( const reax_system * const system, const control_params * const cont
     {
         fprintf( stderr, "[WARNING] Dual CG convergence failed (%d iters)\n", i + 1 + iters );
     }
-
+    
     return (i + 1) + iters;
 }
 
@@ -1721,9 +1704,6 @@ int CG( const reax_system * const system, const control_params * const control,
 #endif
 
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->q, system->n );
-
-    apply_preconditioner( system, workspace, control, workspace->r, workspace->d, fresh_pre, LEFT );
-    apply_preconditioner( system, workspace, control, workspace->d, workspace->p, fresh_pre, RIGHT );
 
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot( workspace->r, workspace->d, system->n, mpi_data->world );

@@ -65,6 +65,6 @@ int main( int argc, char* argv[] )
     { 
         MPI_Finalize( );
     }
-
+    
     return (ret == PUREMD_SUCCESS) ? 0 : (-1);
 }

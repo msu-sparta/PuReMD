@@ -42,7 +42,7 @@ static void int_packer( void *dummy, mpi_out_data *out_buf )
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        out[i] = buf[ out_buf->index[i] ];
+        out[i] += buf[ out_buf->index[i] ];
     }
 }
 
@@ -100,7 +100,7 @@ static void int_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf
 
         for ( i = 0; i < out_buf->cnt; ++i )
         {
-            buf[ out_buf->index[i] ] += in[i];
+            buf[ out_buf->index[i] ] = in[i];
         }
 }
 
@@ -267,43 +267,21 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
 #if defined(DEBUG)
     fprintf( stderr, "p%d dist: entered\n", system->my_rank );
 #endif
-    fprintf( stdout, "p%d dist: entered\n", system->my_rank );
-    fflush(stdout);
-
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
     pack = Get_Packer( buf_type );
 
-    fprintf( stdout, "Packer Gottten\n" );
-    fflush(stdout);
-
-    /*for(d = 0; d < 4101; d++)
-        if(*(int * )(buf + 4001) != -1)
-        fprintf(stdout,"%d ", *(int * )(buf + d));
-    fprintf(stdout, "\n");*/
-
     for ( d = 0; d < 3; ++d )
     {
-
-        fprintf( stdout, "Iteration %d\n", d );
-        fflush(stdout);
 
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
         if ( nbr1->atoms_cnt )
         {
-            fprintf( stdout, "Irecv %d\n", d );
-            fflush(stdout);
-            fprintf(stdout,"%d %d\n",nbr1->atoms_str, nbr1->atoms_cnt);
-            fprintf(stdout,"%d\n", *(int *)Get_Buffer_Offset( buf, nbr1->atoms_str + nbr1->atoms_cnt - 1, buf_type ));
-            fprintf(stdout,"%d %d\n", nbr1->rank, 2*d + 1);
-            fflush(stdout);
             MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
         }
-        fprintf( stdout, "A %d\n", d );
-        fflush(stdout);
 
         nbr2 = &system->my_nbrs[2 * d + 1];
         if ( nbr2->atoms_cnt )
@@ -311,8 +289,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
             MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
         }
-        fprintf( stdout, "B %d\n", d );
-        fflush(stdout);
 
         /* send both messages in dimension d */
         if ( out_bufs[2 * d].cnt )
@@ -321,8 +297,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
             MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d, comm );
         }
-        fprintf( stdout, "C %d\n", d );
-        fflush(stdout);
 
         if ( out_bufs[2 * d + 1].cnt )
         {
@@ -330,8 +304,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
             MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d + 1, comm );
         }
-        fprintf( stdout, "D %d\n", d );
-        fflush(stdout);
 
         if( nbr1->atoms_cnt )
         {
@@ -343,8 +315,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
         }
     }
 
-    fprintf( stdout, "Out of For Loop\n" );
-    fflush(stdout);
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
@@ -355,9 +325,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
 void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {
-    fprintf(stdout, "Coll\n");
-    fflush(stdout);
-
     int d;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -376,9 +343,6 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
 
     for ( d = 2; d >= 0; --d )
     {
-        fprintf(stdout, "loop %d\n",d);
-        fflush(stdout);
-
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
 
