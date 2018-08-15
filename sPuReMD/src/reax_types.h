@@ -36,36 +36,78 @@
   #include <omp.h>
 #endif
 
+/* enables debugging code */
 //#define DEBUG_FOCUS
+/* enables test forces code */
 //#define TEST_FORCES
+/* enables test energy code */
 //#define TEST_ENERGY
-#define REORDER_ATOMS  /* turns on nbrgen opt by re-ordering atoms */
-//#define LGJ
+/* enables reordering atoms after neighbor list generation (optimization) */
+#define REORDER_ATOMS
+/* enables support for small simulation boxes (i.e. a simulation box with any
+ * dimension less than twice the Verlet list cutoff distance, vlist_cut) */
+//#define SMALL_BOX_SUPPORT
 
 #define SUCCESS (1)
 #define FAILURE (0)
 #define TRUE (1)
 #define FALSE (0)
 
-#define LOG    log
-#define EXP    exp
-#define SQRT   sqrt
-#define POW    pow
-#define ACOS   acos
-#define COS    cos
-#define SIN    sin
-#define TAN    tan
-#define CEIL   ceil
-#define FLOOR  floor
-#define FABS   fabs
-#define FMOD   fmod
+/* transcendental constant pi */
+#if defined(M_PI)
+  /* GNU C library (libc), defined in math.h */
+  #define PI (M_PI)
+#else
+  #define PI (3.14159265)
+#endif
+#define C_ele (332.06371)
+//#define K_B (503.398008)   // kcal/mol/K
+#define K_B (0.831687)   // amu A^2 / ps^2 / K
+#define F_CONV (1e6 / 48.88821291 / 48.88821291)   // --> amu A / ps^2
+#define E_CONV (0.002391)   // amu A^2 / ps^2 --> kcal/mol
+#define EV_to_KCALpMOL (14.400000)   // ElectronVolt --> KCAL per MOLe
+#define KCALpMOL_to_EV (23.060549)   // 23.020000//KCAL per MOLe --> ElectronVolt
+#define ECxA_to_DEBYE (4.803204)      // elem. charge * angstrom -> debye conv
+#define CAL_to_JOULES (4.184000)      // CALories --> JOULES
+#define JOULES_to_CAL (1.0 / 4.184000)    // JOULES --> CALories
+#define AMU_to_GRAM (1.6605e-24)
+#define ANG_to_CM (1.0e-8)
+#define AVOGNR (6.0221367e23)
+#define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
 
-#define SQR(x)        ((x)*(x))
-#define CUBE(x)       ((x)*(x)*(x))
-#define DEG2RAD(a)    ((a)*PI/180.0)
-#define RAD2DEG(a)    ((a)*180.0/PI)
-#define MAX( x, y )   (((x) > (y)) ? (x) : (y))
-#define MIN( x, y )   (((x) < (y)) ? (x) : (y))
+#define MAX_STR (1024)
+#define MAX_LINE (1024)
+#define MAX_TOKENS (1024)
+#define MAX_TOKEN_LEN (1024)
+
+#define MAX_ATOM_ID (100000)
+#define MAX_RESTRICT (15)
+#define MAX_MOLECULE_SIZE (20)
+#define MAX_ATOM_TYPES (25)
+
+#define MAX_GRID (50)
+#define MAX_3BODY_PARAM (5)
+#define MAX_4BODY_PARAM (5)
+#define NO_OF_INTERACTIONS (10)
+
+#define MAX_dV (1.01)
+#define MIN_dV (0.99)
+#define MAX_dT (4.00)
+#define MIN_dT (0.00)
+
+#define ZERO (0.000000000000000e+00)
+#define ALMOST_ZERO (1e-10)
+#define NEG_INF (-1e10)
+#define NO_BOND (1e-3)
+#define HB_THRESHOLD (1e-2)
+#define MAX_BONDS (40)
+#define MIN_BONDS (15)
+#define MIN_HBONDS (50)
+#define SAFE_HBONDS (1.4)
+#define MIN_GCELL_POPL (50)
+#define SAFE_ZONE (1.2)
+#define DANGER_ZONE (0.95)
+#define LOOSE_ZONE (0.75)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -75,58 +117,24 @@
   #warn "No support for NaN"
   #define IS_NAN_REAL(a) (0)
 #endif
-
-#if !defined(PI)
-  #define PI (3.14159265)
-#endif
-#define C_ele           (332.06371)
-//#define K_B             (503.398008)   // kcal/mol/K
-#define K_B             (0.831687)   // amu A^2 / ps^2 / K
-#define F_CONV          (1e6 / 48.88821291 / 48.88821291)   // --> amu A / ps^2
-#define E_CONV          (0.002391)   // amu A^2 / ps^2 --> kcal/mol
-#define EV_to_KCALpMOL  (14.400000)   // ElectronVolt --> KCAL per MOLe
-#define KCALpMOL_to_EV  (23.060549)   // 23.020000//KCAL per MOLe --> ElectronVolt
-#define ECxA_to_DEBYE   (4.803204)      // elem. charge * angstrom -> debye conv
-#define CAL_to_JOULES   (4.184000)      // CALories --> JOULES
-#define JOULES_to_CAL   (1.0 / 4.184000)    // JOULES --> CALories
-#define AMU_to_GRAM     (1.6605e-24)
-#define ANG_to_CM       (1.0e-8)
-#define AVOGNR          (6.0221367e23)
-#define P_CONV          (1.0e-24 * AVOGNR * JOULES_to_CAL)
-
-#define MAX_STR             (1024)
-#define MAX_LINE            (1024)
-#define MAX_TOKENS          (1024)
-#define MAX_TOKEN_LEN       (1024)
-
-#define MAX_ATOM_ID         (100000)
-#define MAX_RESTRICT        (15)
-#define MAX_MOLECULE_SIZE   (20)
-#define MAX_ATOM_TYPES      (25)
-
-#define MAX_GRID            (50)
-#define MAX_3BODY_PARAM     (5)
-#define MAX_4BODY_PARAM     (5)
-#define NO_OF_INTERACTIONS  (10)
-
-#define MAX_dV              (1.01)
-#define MIN_dV              (0.99)
-#define MAX_dT              (4.00)
-#define MIN_dT              (0.00)
-
-#define ZERO           (0.000000000000000e+00)
-#define ALMOST_ZERO    (1e-10)
-#define NEG_INF        (-1e10)
-#define NO_BOND        (1e-3)
-#define HB_THRESHOLD   (1e-2)
-#define MAX_BONDS      (40)
-#define MIN_BONDS      (15)
-#define MIN_HBONDS     (50)
-#define SAFE_HBONDS    (1.4)
-#define MIN_GCELL_POPL (50)
-#define SAFE_ZONE      (1.2)
-#define DANGER_ZONE    (0.95)
-#define LOOSE_ZONE     (0.75)
+#define LOG (log)
+#define EXP (exp)
+#define SQRT (sqrt)
+#define POW (pow)
+#define ACOS (acos)
+#define COS (cos)
+#define SIN (sin)
+#define TAN (tan)
+#define CEIL (ceil)
+#define FLOOR (floor)
+#define FABS (fabs)
+#define FMOD (fmod)
+#define SQR(x) ((x)*(x))
+#define CUBE(x) ((x)*(x)*(x))
+#define DEG2RAD(a) ((a)*PI/180.0)
+#define RAD2DEG(a) ((a)*180.0/PI)
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
 
 
 /* ensemble type */
@@ -295,7 +303,6 @@ typedef struct sparse_matrix sparse_matrix;
 typedef struct reallocate_data reallocate_data;
 typedef struct LR_data LR_data;
 typedef struct cubic_spline_coef cubic_spline_coef;
-typedef struct lookup_table lookup_table;
 typedef struct LR_lookup_table LR_lookup_table;
 typedef struct static_storage static_storage;
 typedef struct reax_list reax_list;
@@ -1007,22 +1014,6 @@ struct cubic_spline_coef
     real b;
     real c;
     real d;
-};
-
-
-struct lookup_table
-{
-    real xmin;
-    real xmax;
-    int n;
-    real dx;
-    real inv_dx;
-    real a;
-
-    real m;
-    real c;
-
-    real *y;
 };
 
 

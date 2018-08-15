@@ -398,9 +398,9 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
 }
 
 
-/* Determines if the distance between x1 and x2 is < vlist_cut.
-   If so, this neighborhood is added to the list of far neighbors.
-   Periodic boundary conditions do not apply. */
+/* Determines if the distance between atoms x1 and x2 is strictly less than
+ * vlist_cut.  If so, this neighborhood is added to the list of far neighbors.
+ * Note: Periodic boundary conditions do not apply. */
 void Get_NonPeriodic_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
         control_params *control, far_neighbor_data *new_nbrs, int *count )
 {
@@ -424,10 +424,10 @@ void Get_NonPeriodic_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
 }
 
 
-/* Finds periodic neighbors in a 'big_box'. Here 'big_box' means:
-   the current simulation box has all dimensions > 2 *vlist_cut.
-   If the periodic distance between x1 and x2 is than vlist_cut, this
-   neighborhood is added to the list of far neighbors. */
+/* Finds periodic neighbors in a 'big_box'. Here 'big_box' means the current
+ * simulation box has all dimensions strictly greater than twice of vlist_cut.
+ * If the periodic distance between x1 and x2 is than vlist_cut, this
+ * neighborhood is added to the list of far neighbors. */
 void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
         control_params *control, far_neighbor_data *periodic_nbrs, int *count )
 {
@@ -439,9 +439,7 @@ void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
     for ( i = 0; i < 3; i++ )
     {
         d = x2[i] - x1[i];
-        tmp = SQR(d);
-        // fprintf(out,"Inside Sq_Distance_on_T3, %d, %lf, %lf\n",
-        // i,tmp,SQR(box->box_norms[i]/2.0));
+        tmp = SQR( d );
 
         if ( tmp >= SQR( box->box_norms[i] / 2.0 ) )
         {
@@ -482,13 +480,14 @@ void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
 }
 
 
-/* Finds all periodic far neighborhoods between x1 and x2
-   ((dist(x1, x2') < vlist_cut, periodic images of x2 are also considered).
-   Here the box is 'small' meaning that at least one dimension is < 2*vlist_cut.
-   IMPORTANT: This part might need some improvement. In NPT, the simulation box
-   might get too small (such as <5 A!). In this case we have to consider the
-   periodic images of x2 that are two boxs away!!!
-*/
+/* Finds all periodic far neighborhoods between atoms x1 and x2
+ * ((dist(x1, x2') < 2 * vlist_cut, periodic images of x2 are also considered).
+ * Here the box is 'small' meaning that at least one dimension is strictly
+ * less than twice of vlist_cut.
+ *
+ * NOTE: This part might need some improvement. In NPT, the simulation box
+ * might get too small (such as <5 A!). In this case we have to consider the
+ * periodic images of x2 that are two boxs away!!! */
 void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box,
         control_params *control, far_neighbor_data *periodic_nbrs, int *count )
 {
@@ -498,29 +497,36 @@ void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box
 
     *count = 0;
     /* determine the max stretch of imaginary boxs in each direction
-       to handle periodic boundary conditions correctly. */
+     * to handle periodic boundary conditions correctly */
     imax = (int)(control->vlist_cut / box->box_norms[0] + 1);
     jmax = (int)(control->vlist_cut / box->box_norms[1] + 1);
     kmax = (int)(control->vlist_cut / box->box_norms[2] + 1);
+
     /*if( imax > 1 || jmax > 1 || kmax > 1 )
       fprintf( stderr, "box %8.3f x %8.3f x %8.3f --> %2d %2d %2d\n",
       box->box_norms[0], box->box_norms[1], box->box_norms[2],
       imax, jmax, kmax ); */
 
-
     for ( i = -imax; i <= imax; ++i )
     {
-        if (FABS(d_i = ((x2[0] + i * box->box_norms[0]) - x1[0])) <= control->vlist_cut)
+        d_i = (x2[0] + i * box->box_norms[0]) - x1[0];
+
+        if ( FABS(d_i) <= control->vlist_cut )
         {
             for ( j = -jmax; j <= jmax; ++j )
             {
-                if (FABS(d_j = ((x2[1] + j * box->box_norms[1]) - x1[1])) <= control->vlist_cut)
+                d_j = (x2[1] + j * box->box_norms[1]) - x1[1];
+
+                if ( FABS(d_j) <= control->vlist_cut )
                 {
                     for ( k = -kmax; k <= kmax; ++k )
                     {
-                        if (FABS(d_k = ((x2[2] + k * box->box_norms[2]) - x1[2])) <= control->vlist_cut)
+                        d_k = (x2[2] + k * box->box_norms[2]) - x1[2];
+
+                        if ( FABS(d_k) <= control->vlist_cut )
                         {
                             sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
+
                             if ( sqr_norm <= SQR(control->vlist_cut) )
                             {
                                 periodic_nbrs[ *count ].d = SQRT( sqr_norm );
@@ -553,6 +559,7 @@ void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box
                                  *  periodic_nbrs[ *count ].imaginary = 0;
                                  *  else periodic_nbrs[ *count ].imaginary = 1;
                                  */
+
                                 ++(*count);
                             }
                         }

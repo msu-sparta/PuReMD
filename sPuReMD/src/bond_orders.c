@@ -669,36 +669,6 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
 }
 
 
-/* Locate j on i's list.
-   This function assumes that j is there for sure!
-   And this is the case given our method of neighbor generation*/
-static int Locate_Symmetric_Bond( reax_list *bonds, int i, int j )
-{
-    int start = Start_Index(i, bonds);
-    int end = End_Index(i, bonds);
-    int mid = (start + end) / 2;
-    int mid_nbr;
-
-    while ( (mid_nbr = bonds->select.bond_list[mid].nbr) != j )
-    {
-        /*fprintf( stderr, "\tstart: %d   end: %d   mid: %d\n",
-        start, end, mid );*/
-        if ( mid_nbr < j )
-        {
-            start = mid + 1;
-        }
-        else
-        {
-            end = mid - 1;
-        }
-
-        mid = (start + end) / 2;
-    }
-
-    return mid;
-}
-
-
 static inline void Copy_Neighbor_Data( bond_data *dest, near_neighbor_data *src )
 {
     dest->nbr = src->nbr;
@@ -720,12 +690,6 @@ static inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data 
     rvec_Scale( dest->dln_BOp_s, -1.0, src->dln_BOp_s );
     rvec_Scale( dest->dln_BOp_pi, -1.0, src->dln_BOp_pi );
     rvec_Scale( dest->dln_BOp_pi2, -1.0, src->dln_BOp_pi2 );
-}
-
-
-static int compare_bonds( const void *p1, const void *p2 )
-{
-    return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
 }
 
 

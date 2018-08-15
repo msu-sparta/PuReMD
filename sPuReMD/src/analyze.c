@@ -29,7 +29,7 @@
 #include "vector.h"
 
 
-#define MAX_FRAGMENT_TYPES 100
+#define MAX_FRAGMENT_TYPES (100)
 
 
 enum atoms
@@ -54,9 +54,9 @@ typedef struct
 } molecule;
 
 
-// copy bond list into old bond list
+/* copy bond list into old bond list */
 static void Copy_Bond_List( reax_system *system, control_params *control,
-                     reax_list **lists )
+        reax_list **lists )
 {
     int i, j, top_old;
     reax_list *new_bonds = lists[BONDS];
@@ -111,13 +111,17 @@ static int Compare_Bond_Lists( int atom, control_params *control, reax_list **li
             oldp = MIN( oldp + 1, End_Index( atom, old_bonds ) ),
             newp = MIN( newp + 1, End_Index( atom, new_bonds ) ) )
     {
-        while ( oldp < End_Index( atom, old_bonds ) &&
-                old_bonds->select.bond_list[oldp].bo_data.BO < control->bg_cut )
+        while ( oldp < End_Index( atom, old_bonds )
+                && old_bonds->select.bond_list[oldp].bo_data.BO < control->bg_cut )
+        {
             ++oldp;
+        }
 
-        while ( newp < End_Index( atom, new_bonds ) &&
-                new_bonds->select.bond_list[newp].bo_data.BO < control->bg_cut )
+        while ( newp < End_Index( atom, new_bonds )
+                && new_bonds->select.bond_list[newp].bo_data.BO < control->bg_cut )
+        {
             ++newp;
+        }
 
         /*fprintf( fout, "%d, oldp: %d - %d, newp: %d - %d",
           atom, oldp, old_bonds->select.bond_list[oldp].nbr,
@@ -165,8 +169,7 @@ static int Compare_Bond_Lists( int atom, control_params *control, reax_list **li
 
 
 static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
-                   control_params *control, reax_list *bonds, int print,
-                   FILE *fout )
+        control_params *control, reax_list *bonds, int print, FILE *fout )
 {
     int i, start, end;
 
@@ -174,17 +177,23 @@ static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
     end = End_Index( atom, bonds );
 
     if ( print )
+    {
         fprintf( fout, "%5d(%2s)",
                  atom + 1, system->reaxprm.sbp[ system->atoms[atom].type ].name );
+    }
     mark[atom] = 1;
     m->atom_list[ m->atom_count++ ] = atom;
     m->mtypes[ system->atoms[ atom ].type ]++;
 
     for ( i = start; i < end; ++i )
+    {
         if ( bonds->select.bond_list[i].bo_data.BO >= control->bg_cut &&
                 !mark[bonds->select.bond_list[i].nbr] )
+        {
             Get_Molecule( bonds->select.bond_list[i].nbr, m, mark,
                           system, control, bonds, print, fout );
+        }
+    }
 }
 
 

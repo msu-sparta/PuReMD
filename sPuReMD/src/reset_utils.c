@@ -138,6 +138,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
             {
                 tmp = Start_Index( workspace->hbond_index[i], hbonds );
                 Set_End_Index( workspace->hbond_index[i], tmp, hbonds );
+
                 /* fprintf( stderr, "i:%d, hbond: %d-%d\n",
                    i, Start_Index( workspace->hbond_index[i], hbonds ),
                    End_Index( workspace->hbond_index[i], hbonds ) );*/

@@ -959,28 +959,3 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
         fprintf( f, "\n" );
     }
 }
-
-
-#ifdef LGJ
-Print_XYZ_Serial( reax_system* system, static_storage *workspace )
-{
-    rvec p;
-    char fname[100];
-    FILE *fout;
-    int i;
-
-    snprintf( fname, 100, "READ_PDB.0" );
-    fout = sfopen( fname, "w" );
-
-    for ( i = 0; i < system->N; i++ )
-    {
-        fprintf( fout, "%6d%24.15e%24.15e%24.15e\n",
-                 workspace->orig_id[i],
-                 p[0] = system->atoms[i].x[0],
-                 p[1] = system->atoms[i].x[1],
-                 p[2] = system->atoms[i].x[2] );
-    }
-
-    sfclose( fout, "Print_XYZ_Serial::fout" );
-}
-#endif

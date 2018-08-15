@@ -25,32 +25,6 @@
 #include "two_body_interactions.h"
 
 
-void Make_Lookup_Table( real xmin, real xmax, int n,
-        lookup_function f, lookup_table* t )
-{
-    int i;
-
-    t->xmin = xmin;
-    t->xmax = xmax;
-    t->n = n;
-    t->dx = (xmax - xmin) / (n - 1);
-    t->inv_dx = 1.0 / t->dx;
-    t->a = (n - 1) / (xmax - xmin);
-    t->y = (real*) smalloc( n * sizeof(real),
-            "Make_Lookup_Table::t->y" );
-
-    for (i = 0; i < n; i++)
-    {
-        t->y[i] = f(i * t->dx + t->xmin);
-    }
-
-    // fprintf(stdout,"dx = %lf\n",t->dx);
-    // for(i=0; i < n; i++)
-    //   fprintf( stdout,"%d %lf %lf %lf\n",
-    //            i, i/t->a+t->xmin, t->y[i], exp(i/t->a+t->xmin) );
-}
-
-
 /* Fills solution into x. Warning: will modify c and d! */
 static void Tridiagonal_Solve( const real *a, const real *b,
         real *c, real *d, real *x, unsigned int n)
@@ -68,7 +42,7 @@ static void Tridiagonal_Solve( const real *a, const real *b,
         d[i] = (d[i] - d[i - 1] * a[i]) / id;
     }
 
-    /* Now back substitute. */
+    /* solve via back substitution */
     x[n - 1] = d[n - 1];
     for (i = n - 2; i >= 0; i--)
     {
@@ -83,19 +57,19 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     int i;
     real *a, *b, *c, *d, *v;
 
-    /* allocate space for the linear system */
-    a = (real*) smalloc( n * sizeof(real),
+    /* allocate space for linear system */
+    a = smalloc( n * sizeof(real),
            "Natural_Cubic_Spline::a" );
-    b = (real*) smalloc( n * sizeof(real),
+    b = smalloc( n * sizeof(real),
            "Natural_Cubic_Spline::b" );
-    c = (real*) smalloc( n * sizeof(real),
+    c = smalloc( n * sizeof(real),
            "Natural_Cubic_Spline::c" );
-    d = (real*) smalloc( n * sizeof(real),
+    d = smalloc( n * sizeof(real),
            "Natural_Cubic_Spline::d" );
-    v = (real*) smalloc( n * sizeof(real),
+    v = smalloc( n * sizeof(real),
            "Natural_Cubic_Spline::v" );
 
-    /* build the linear system */
+    /* build linear system */
     a[0] = 0.0;
     a[1] = 0.0;
     a[n - 1] = 0.0;
@@ -130,6 +104,7 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     /*fprintf( stderr, "i  a        b        c        d\n" );
       for( i = 0; i < n; ++i )
       fprintf( stderr, "%d  %f  %f  %f  %f\n", i, a[i], b[i], c[i], d[i] );*/
+
     v[0] = 0.0;
     v[n - 1] = 0.0;
     Tridiagonal_Solve( a + 1, b + 1, c + 1, d + 1, v + 1, n - 2 );
@@ -158,15 +133,15 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
     real *a, *b, *c, *d, *v;
 
     /* allocate space for the linear system */
-    a = (real*) smalloc( n * sizeof(real),
+    a = smalloc( n * sizeof(real),
            "Complete_Cubic_Spline::a" );
-    b = (real*) smalloc( n * sizeof(real),
+    b = smalloc( n * sizeof(real),
            "Complete_Cubic_Spline::b" );
-    c = (real*) smalloc( n * sizeof(real),
+    c = smalloc( n * sizeof(real),
            "Complete_Cubic_Spline::c" );
-    d = (real*) smalloc( n * sizeof(real),
+    d = smalloc( n * sizeof(real),
            "Complete_Cubic_Spline::d" );
-    v = (real*) smalloc( n * sizeof(real),
+    v = smalloc( n * sizeof(real),
            "Complete_Cubic_Spline::v" );
 
     /* build the linear system */
@@ -271,17 +246,17 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 
     num_atom_types = system->reaxprm.num_atom_types;
     dr = control->r_cut / control->tabulate;
-    h = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+    h = scalloc( (control->tabulate + 1), sizeof(real),
             "Make_LR_Lookup_Table::h" );
-    fh = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+    fh = scalloc( (control->tabulate + 1), sizeof(real),
             "Make_LR_Lookup_Table::fh" );
-    fvdw = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+    fvdw = scalloc( (control->tabulate + 1), sizeof(real),
             "Make_LR_Lookup_Table::fvdw" );
-    fCEvd = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+    fCEvd = scalloc( (control->tabulate + 1), sizeof(real),
             "Make_LR_Lookup_Table::fCEvd" );
-    fele = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+    fele = scalloc( (control->tabulate + 1), sizeof(real),
             "Make_LR_Lookup_Table::fele" );
-    fCEclmb = (real*) scalloc( (control->tabulate + 1), sizeof(real),
+    fCEclmb = scalloc( (control->tabulate + 1), sizeof(real),
             "Make_LR_Lookup_Table::fCEclmb" );
 
     /* allocate Long-Range LookUp Table space based on
@@ -321,22 +296,22 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
                     workspace->LR[i][j].n = control->tabulate + 1;
                     workspace->LR[i][j].dx = dr;
                     workspace->LR[i][j].inv_dx = control->tabulate / control->r_cut;
-                    workspace->LR[i][j].y = (LR_data*)
+                    workspace->LR[i][j].y = 
                         smalloc( workspace->LR[i][j].n * sizeof(LR_data),
                               "Make_LR_Lookup_Table::LR[i][j].y" );
-                    workspace->LR[i][j].H = (cubic_spline_coef*)
+                    workspace->LR[i][j].H = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].H" );
-                    workspace->LR[i][j].vdW = (cubic_spline_coef*)
+                    workspace->LR[i][j].vdW = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].vdW" );
-                    workspace->LR[i][j].CEvd = (cubic_spline_coef*)
+                    workspace->LR[i][j].CEvd = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].CEvd" );
-                    workspace->LR[i][j].ele = (cubic_spline_coef*)
+                    workspace->LR[i][j].ele = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].ele" );
-                    workspace->LR[i][j].CEclmb = (cubic_spline_coef*)
+                    workspace->LR[i][j].CEclmb = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               "Make_LR_Lookup_Table::LR[i][j].CEclmb" );
 
@@ -498,41 +473,4 @@ void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
     }
 
     sfree( workspace->LR, "Finalize_LR_Lookup_Table::LR" );
-}
-
-
-static int Lookup_Index_Of( real x, lookup_table* t )
-{
-    return (int)( t->a * ( x - t->xmin ) );
-}
-
-
-real Lookup( real x, lookup_table* t )
-{
-    real x1, x2;
-    real b;
-    int i;
-
-    /*
-    if ( x < t->xmin)
-    {
-       fprintf(stderr,"Domain check %lf > %lf\n",t->xmin,x);
-       exit(0);
-    }
-    if ( x > t->xmax)
-    {
-       fprintf(stderr,"Domain check %lf < %lf\n",t->xmax,x);
-       exit(0);
-    }
-    */
-
-    i = Lookup_Index_Of( x, t );
-    x1 = i * t->dx + t->xmin;
-    x2 = (i + 1) * t->dx + t->xmin;
-
-    b = ( x2 * t->y[i] - x1 * t->y[i + 1] ) * t->inv_dx;
-    // fprintf( stdout,"SLookup_Entry: %d, %lf, %lf, %lf, %lf: %lf, %lf\n",
-    //          i,x1,x2,x,b,t->one_over_dx*(t->y[i+1]-t->y[i])*x+b,exp(x));
-
-    return t->inv_dx * ( t->y[i + 1] - t->y[i] ) * x + b;
 }
