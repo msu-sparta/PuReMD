@@ -942,8 +942,8 @@ static void Finalize_MPI_Datatypes( mpi_datatypes * const mpi_data )
 
     Deallocate_MPI_Buffers( mpi_data );
 
-    //ret = MPI_Type_free( &mpi_data->mpi_atom_type );
-    //Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_atom_type" );
+    ret = MPI_Type_free( &mpi_data->mpi_atom_type );
+    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_atom_type" );
     ret = MPI_Type_free( &mpi_data->boundary_atom_type );
     Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->boundary_atom_type" );
     ret = MPI_Type_free( &mpi_data->mpi_rvec );

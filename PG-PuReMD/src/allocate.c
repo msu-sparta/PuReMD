@@ -482,6 +482,7 @@ void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
     H->entries = smalloc( sizeof(sparse_matrix_entry) * m, "Allocate_Matrix::entries" );
 }*/
 
+
 void Deallocate_Matrix( sparse_matrix * const H )
 {
     H->n = 0;

@@ -42,7 +42,8 @@ static void int_packer( void *dummy, mpi_out_data *out_buf )
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        out[i] += buf[ out_buf->index[i] ];
+        //if( buf[ out_buf->index[i] ] !=-1 )
+        out[i] = buf[ out_buf->index[i] ];
     }
 }
 
@@ -100,7 +101,10 @@ static void int_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf
 
         for ( i = 0; i < out_buf->cnt; ++i )
         {
-            buf[ out_buf->index[i] ] = in[i];
+            if( buf[ out_buf->index[i] ] == -1 && in[i] != -1 )
+            {
+                buf[ out_buf->index[i] ] = in[i];
+            }
         }
 }
 
@@ -256,6 +260,10 @@ static coll_unpacker Get_Unpacker( const int type )
 void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {
+
+    //fprintf( stdout, "Process %d entered the Dist\n", system->my_rank );
+    //fflush ( stdout );
+
     int d;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -324,7 +332,8 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
 
 void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
-{
+{   
+
     int d;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -356,17 +365,18 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
 
         if ( out_bufs[2 * d + 1].cnt )
         {
+
             MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d, comm, &req2 );
         }
-
+        
         /* send both messages in dimension d */
         if ( nbr1->atoms_cnt )
         {
             MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
         }
-
+        
         if ( nbr2->atoms_cnt )
         {
             MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
