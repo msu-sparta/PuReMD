@@ -237,7 +237,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     {
         Update_Grid( system );
         Generate_Neighbor_Lists( system, control, data, workspace,
-                                 lists, out_control );
+                lists, out_control );
     }
     Compute_Forces( system, control, data, workspace, lists, out_control );
 
@@ -341,7 +341,7 @@ void Velocity_Verlet_Berendsen_SemiIsotropic_NPT( reax_system* system,
     {
         Update_Grid( system );
         Generate_Neighbor_Lists( system, control, data, workspace,
-                                 lists, out_control );
+                lists, out_control );
     }
     Compute_Forces( system, control, data, workspace, lists, out_control );
 

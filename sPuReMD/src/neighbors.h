@@ -28,7 +28,7 @@
 void Generate_Neighbor_Lists( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
-int Estimate_NumNeighbors( reax_system*, control_params*,
+int Estimate_Num_Neighbors( reax_system*, control_params*,
         static_storage*, reax_list** );
 
 

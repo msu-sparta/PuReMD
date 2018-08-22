@@ -36,16 +36,20 @@ void Update_Box( rtensor, simulation_box* );
 void Update_Box_Isotropic( simulation_box*, real );
 void Update_Box_SemiIsotropic( simulation_box*, rvec );
 
-int Are_Far_Neighbors( rvec, rvec, simulation_box*, real, far_neighbor_data* );
-void Get_NonPeriodic_Far_Neighbors( rvec, rvec, simulation_box*,
-                                    control_params*, far_neighbor_data*, int* );
-void Get_Periodic_Far_Neighbors_Big_Box( rvec, rvec, simulation_box*,
-        control_params*, far_neighbor_data*,
-        int* );
-void Get_Periodic_Far_Neighbors_Small_Box( rvec, rvec, simulation_box*,
-        control_params*, far_neighbor_data*,
-        int* );
+int Count_Periodic_Far_Neighbors_Big_Box( rvec, rvec, simulation_box*, real,
+        far_neighbor_data* );
+
+int Find_Non_Periodic_Far_Neighbors( rvec, rvec, int, int,
+        simulation_box*, real, far_neighbor_data* );
+
+int Find_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int, int,
+        simulation_box*, real, far_neighbor_data* );
+
+int Find_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
+        simulation_box*, real, far_neighbor_data* );
+
 void Distance_on_T3_Gen( rvec, rvec, simulation_box*, rvec );
+
 void Inc_on_T3_Gen( rvec, rvec, simulation_box* );
 
 /*int Get_Nbr_Box( simulation_box*, int, int, int );

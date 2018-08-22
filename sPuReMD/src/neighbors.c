@@ -47,7 +47,7 @@ static inline real DistSqr_to_CP( rvec cp, rvec x )
 }
 
 
-int Estimate_NumNeighbors( reax_system *system, control_params *control,
+int Estimate_Num_Neighbors( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
     int i, j, k, l, m, itr;
@@ -104,7 +104,9 @@ int Estimate_NumNeighbors( reax_system *system, control_params *control,
                                 //if( nbrs[itr+1][0] >= 0 || atom1 > atom2 ) {
                                 if ( atom1 > atom2 )
                                 {
-                                    if ( Are_Far_Neighbors(system->atoms[atom1].x,
+                                    /* assume periodic boundary conditions since it is
+                                     * safe to over-estimate for the non-periodic case */
+                                    if ( Count_Periodic_Far_Neighbors_Big_Box(system->atoms[atom1].x,
                                                 system->atoms[atom2].x,
                                                 &system->box, control->vlist_cut, &nbr_data) )
                                     {
@@ -137,49 +139,43 @@ int Estimate_NumNeighbors( reax_system *system, control_params *control,
  * 
  * Define the preprocessor definition SMALL_BOX_SUPPORT to enable (in
  * reax_types.h). */
-#if defined SMALL_BOX_SUPPORT
-typedef void (*get_far_neighbors_function)( rvec, rvec, simulation_box*,
-        control_params*, far_neighbor_data*, int* );
+typedef int (*find_far_neighbors_function)( rvec, rvec, int, int,
+        simulation_box*, real, far_neighbor_data* );
 
 
 void Choose_Neighbor_Finder( reax_system *system, control_params *control,
-        get_far_neighbors_function *Get_Far_Neighbors )
+        find_far_neighbors_function *Find_Far_Neighbors )
 {
     if ( control->periodic_boundaries )
     {
+#ifdef SMALL_BOX_SUPPORT
         if ( system->box.box_norms[0] > 2.0 * control->vlist_cut
                 && system->box.box_norms[1] > 2.0 * control->vlist_cut
                 && system->box.box_norms[2] > 2.0 * control->vlist_cut )
         {
-            *Get_Far_Neighbors = &Get_Periodic_Far_Neighbors_Big_Box;
+            *Find_Far_Neighbors = &Find_Periodic_Far_Neighbors_Big_Box;
         }
         else
         {
-            *Get_Far_Neighbors = &Get_Periodic_Far_Neighbors_Small_Box;
+            *Find_Far_Neighbors = &Find_Periodic_Far_Neighbors_Small_Box;
         }
+#else
+        *Find_Far_Neighbors = &Find_Periodic_Far_Neighbors_Big_Box;
+#endif
     }
     else
     {
-        *Get_Far_Neighbors = &Get_NonPeriodic_Far_Neighbors;
+        *Find_Far_Neighbors = &Find_Non_Periodic_Far_Neighbors;
     }
 }
 
 
+#ifdef DEBUG
 int compare_far_nbrs(const void *v1, const void *v2)
 {
     return ((*(far_neighbor_data *)v1).nbr - (*(far_neighbor_data *)v2).nbr);
 }
-
-
-static inline void Set_Far_Neighbor( far_neighbor_data *dest, int nbr, real d, real C,
-        rvec dvec, ivec rel_box/*, rvec ext_factor*/ )
-{
-    dest->nbr = nbr;
-    dest->d = d;
-    rvec_Scale( dest->dvec, C, dvec );
-    ivec_Copy( dest->rel_box, rel_box );
-    // rvec_Scale( dest->ext_factor, C, ext_factor );
-}
+#endif
 
 
 void Generate_Neighbor_Lists( reax_system *system, control_params *control,
@@ -189,134 +185,14 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     int i, j, k, l, m, itr;
     int x, y, z;
     int atom1, atom2, max;
-    int num_far, c, count;
-    int *nbr_atoms;
-    ivec *nbrs;
-    rvec *nbrs_cp;
-    grid *g;
-    reax_list *far_nbrs;
-    get_far_neighbors_function Get_Far_Neighbors;
-    far_neighbor_data new_nbrs[125];
-    real t_start, t_elapsed;
-
-    t_start = Get_Time( );
-    g = &system->g;
-    far_nbrs = lists[FAR_NBRS];
-
-    if ( control->ensemble == iNPT || control->ensemble == sNPT
-            || control->ensemble == NPT )
-    {
-        Update_Grid( system );
-    }
-
-    Bin_Atoms( system, out_control );
-
-#ifdef REORDER_ATOMS
-    Cluster_Atoms( system, workspace, control );
-#endif
-
-    Choose_Neighbor_Finder( system, control, &Get_Far_Neighbors );
-
-    num_far = 0;
-    c = 0;
-
-    /* first pick up a cell in the grid */
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
-                nbrs = g->nbrs[i][j][k];
-                nbrs_cp = g->nbrs_cp[i][j][k];
-
-                /* pick up an atom from the current cell */
-                for ( l = 0; l < g->top[i][j][k]; ++l )
-                {
-                    atom1 = g->atoms[i][j][k][l];
-                    Set_Start_Index( atom1, num_far, far_nbrs );
-
-                    itr = 0;
-                    while ( nbrs[itr][0] > 0 )
-                    {
-                        x = nbrs[itr][0];
-                        y = nbrs[itr][1];
-                        z = nbrs[itr][2];
-
-                        // if( DistSqr_to_CP(nbrs_cp[itr], system->atoms[atom1].x ) <=
-                        //     SQR(control->r_cut))
-                        nbr_atoms = g->atoms[x][y][z];
-                        max = g->top[x][y][z];
-
-                        /* pick up another atom from the neighbor cell -
-                         * we have to compare atom1 with its own periodic images as well,
-                         * that's why there is also equality in the if stmt below */
-                        for ( m = 0; m < max; ++m )
-                        {
-                            atom2 = nbr_atoms[m];
-
-                            if ( atom1 >= atom2 )
-                            {
-                                Get_Far_Neighbors( system->atoms[atom1].x, system->atoms[atom2].x,
-                                        &system->box, control, new_nbrs, &count );
-
-                                for ( c = 0; c < count; ++c )
-                                {
-                                    if ( atom1 != atom2 || (atom1 == atom2 && new_nbrs[c].d >= 0.1) )
-                                    {
-                                        Set_Far_Neighbor( &far_nbrs->select.far_nbr_list[num_far],
-                                                atom2, new_nbrs[c].d, 1.0,
-                                                new_nbrs[c].dvec, new_nbrs[c].rel_box );
-                                        ++num_far;
-                                    }
-                                }
-                            }
-                        }
-
-                        ++itr;
-                    }
-
-                    Set_End_Index( atom1, num_far, far_nbrs );
-                }
-            }
-        }
-    }
-
-    far_nbrs->total_intrs = num_far;
-
-#if defined(DEBUG)
-    for ( i = 0; i < system->N; ++i )
-    {
-        qsort( &far_nbrs->select.far_nbr_list[ Start_Index(i, far_nbrs) ],
-                Num_Entries(i, far_nbrs), sizeof(far_neighbor_data),
-                compare_far_nbrs );
-    }
-
-    fprintf( stderr, "step%d: num of farnbrs=%6d\n", data->step, num_far );
-    fprintf( stderr, "\tallocated farnbrs: %6d\n",
-             system->N * far_nbrs->intrs_per_unit );
-#endif
-
-    t_elapsed = Get_Timing_Info( t_start );
-    data->timing.nbrs += t_elapsed;
-}
-
-
-#else
-void Generate_Neighbor_Lists( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
-{
-    int i, j, k, l, m, itr;
-    int x, y, z;
-    int atom1, atom2, max;
-    int num_far;
+    int num_far, count;
     int *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
     grid *g;
     reax_list *far_nbrs;
     far_neighbor_data *nbr_data;
+    find_far_neighbors_function Find_Far_Neighbors;
     real t_start, t_elapsed;
 
     t_start = Get_Time( );
@@ -326,9 +202,10 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     Bin_Atoms( system, workspace );
 
 #ifdef REORDER_ATOMS
-    Cluster_Atoms( system, workspace, control );
+    //Cluster_Atoms( system, workspace, control );
 #endif
 
+    Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
 
     num_far = 0;
 
@@ -347,16 +224,16 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                 {
                     atom1 = g->atoms[i][j][k][l];
                     Set_Start_Index( atom1, num_far, far_nbrs );
-
                     itr = 0;
+
                     while ( nbrs[itr][0] >= 0 )
                     {
                         x = nbrs[itr][0];
                         y = nbrs[itr][1];
                         z = nbrs[itr][2];
 
-                        if ( DistSqr_to_CP(nbrs_cp[itr], system->atoms[atom1].x ) <=
-                                SQR(control->vlist_cut) )
+                        if ( DistSqr_to_CP(nbrs_cp[itr], system->atoms[atom1].x )
+                                <= SQR(control->vlist_cut) )
                         {
                             nbr_atoms = g->atoms[x][y][z];
                             max = g->top[x][y][z];
@@ -370,13 +247,10 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                                 {
                                     nbr_data = &far_nbrs->select.far_nbr_list[num_far];
 
-                                    if ( Are_Far_Neighbors(system->atoms[atom1].x,
-                                                system->atoms[atom2].x, &system->box,
-                                                control->vlist_cut, nbr_data) )
-                                    {
-                                        nbr_data->nbr = atom2;
-                                        ++num_far;
-                                    }
+                                    count = Find_Far_Neighbors( system->atoms[atom1].x, system->atoms[atom2].x,
+                                            atom1, atom2, &system->box, control->vlist_cut, nbr_data );
+
+                                    num_far += count;
                                 }
                             }
                         }
@@ -385,9 +259,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                     }
 
                     Set_End_Index( atom1, num_far, far_nbrs );
-                    //fprintf(stderr, "i:%d, start: %d, end: %d - itr: %d\n",
-                    //  atom1,Start_Index(atom1,far_nbrs),End_Index(atom1,far_nbrs),
-                    //  itr);
+
+//                    fprintf( stderr, "i:%d, start: %d, end: %d - itr: %d\n",
+//                            atom1, Start_Index(atom1,far_nbrs), End_Index(atom1,far_nbrs), itr );
                 }
             }
         }
@@ -413,11 +287,6 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     }
 #endif
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "nbrs - ");
-    fprintf( stderr, "nbrs done, num_far: %d\n", num_far );
-#endif
-
 #if defined(TEST_ENERGY)
     //Print_Far_Neighbors( system, control, workspace, lists );
 #endif
@@ -425,7 +294,6 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.nbrs += t_elapsed;
 }
-#endif
 
 
 #if defined(LEGACY)  
@@ -476,7 +344,8 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     int grid_top;
     grid *g;
     reax_list *far_nbrs;
-    get_far_neighbors_function Get_Far_Neighbors;
+    find_far_neighbors_function Find_Far_Neighbors;
+    far_neighbor_data *nbr_data;
     far_neighbor_data new_nbrs[125];
     real t_start, t_elapsed;
 
@@ -490,13 +359,13 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         Update_Grid( system );
     }
 
-    Bin_Atoms( system, out_control );
+    Bin_Atoms( system, workspace );
 
 #ifdef REORDER_ATOMS
-    Cluster_Atoms( system, workspace, control );
+    //Cluster_Atoms( system, workspace, control );
 #endif
 
-    Choose_Neighbor_Finder( system, control, &Get_Far_Neighbors );
+    Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
 
     num_far = 0;
     num_near = 0;
@@ -539,21 +408,14 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
                             if ( atom1 >= atom2 )
                             {
+                                nbr_data = &far_nbrs->select.far_nbr_list[num_far];
+
                                 //top_near1 = End_Index( atom1, near_nbrs );
                                 //Set_Start_Index( atom1, num_far, far_nbrs );
-                                Get_Far_Neighbors( system->atoms[atom1].x, system->atoms[atom2].x,
-                                        &system->box, control, new_nbrs, &count );
+                                count = Find_Far_Neighbors( system->atoms[atom1].x, system->atoms[atom2].x,
+                                        atom1, atom2, &system->box, control->vlist_cut, nbr_data );
 
-                                for ( c = 0; c < count; ++c )
-                                {
-                                    if ( atom1 != atom2 || (atom1 == atom2 && new_nbrs[c].d >= 0.1) )
-                                    {
-                                        Set_Far_Neighbor( &far_nbrs->select.far_nbr_list[num_far],
-                                                atom2, new_nbrs[c].d, 1.0,
-                                                new_nbrs[c].dvec, new_nbrs[c].rel_box );
-                                        ++num_far;
-                                    }
-                                }
+                                num_far += count;
                             }
                         }
                     }
@@ -648,11 +510,11 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     }
 
 #ifdef TEST_ENERGY
-    /* for( i = 0; i < system->N; ++i ) {
-       qsort( &(far_nbrs->select.far_nbr_list[ Start_Index(i, far_nbrs) ]),
-       Num_Entries(i, far_nbrs), sizeof(far_neighbor_data),
-       compare_far_nbrs );
-       } */
+//    for ( i = 0; i < system->N; ++i )
+//    {
+//       qsort( &far_nbrs->select.far_nbr_list[ Start_Index(i, far_nbrs) ],
+//               Num_Entries(i, far_nbrs), sizeof(far_neighbor_data), compare_far_nbrs );
+//    }
 
     fprintf( stderr, "Near neighbors/atom: %d (compare to 150)\n",
              num_near / system->N );

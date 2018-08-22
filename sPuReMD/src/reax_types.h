@@ -46,7 +46,7 @@
 #define REORDER_ATOMS
 /* enables support for small simulation boxes (i.e. a simulation box with any
  * dimension less than twice the Verlet list cutoff distance, vlist_cut) */
-//#define SMALL_BOX_SUPPORT
+#define SMALL_BOX_SUPPORT
 
 #define SUCCESS (1)
 #define FAILURE (0)

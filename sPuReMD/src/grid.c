@@ -409,12 +409,12 @@ void Setup_Grid( reax_system* system )
 
 void Update_Grid( reax_system* system )
 {
-    int  d, i, j, k, x, y, z, itr;
+    int d, i, j, k, x, y, z, itr;
     ivec ncell;
     ivec *nbrs;
     rvec *nbrs_cp;
-    grid *g = &( system->g );
-    simulation_box *my_box = &( system->box );
+    grid *g = &system->g;
+    simulation_box *my_box = &system->box;
 
     /* determine number of grid cells in each direction */
     ivec_rScale( ncell, 1. / g->cell_size, my_box->box_norms );
@@ -427,7 +427,8 @@ void Update_Grid( reax_system* system )
         }
     }
 
-    if ( ivec_isEqual( ncell, g->ncell ) ) /* ncell are unchanged */
+    /* ncell are unchanged */
+    if ( ivec_isEqual( ncell, g->ncell ) )
     {
         /* update cell lengths */
         rvec_iDivide( g->len, my_box->box_norms, g->ncell );
@@ -462,9 +463,11 @@ void Update_Grid( reax_system* system )
     else
     {
         Deallocate_Grid_Space( g );
+
         /* update number of grid cells */
         g->total = ncell[0] * ncell[1] * ncell[2];
         ivec_Copy( g->ncell, ncell );
+
         /* update cell lengths */
         rvec_iDivide( g->len, my_box->box_norms, g->ncell );
         rvec_Invert( g->inv_len, g->len );
@@ -537,9 +540,11 @@ void Finalize_Grid( reax_system* system )
 static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 {
     dest->type = src->type;
+    strncpy( dest->name, src->name, 8 );
     rvec_Copy( dest->x, src->x );
     rvec_Copy( dest->v, src->v );
-    strncpy( dest->name, src->name, 8 );
+    rvec_Copy( dest->f, src->f );
+    dest->q = src->q;
 }
 
 
@@ -554,13 +559,13 @@ static void Copy_Storage( reax_system *system, static_storage *workspace,
         v[i][top] = workspace->v[i][old_id];
     }
 
-    for ( i = 0; i < 3; ++i )
+    for ( i = 0; i < 5; ++i )
     {
         s[i][top] = workspace->s[i][old_id];
         t[i][top] = workspace->t[i][old_id];
     }
 
-    orig_id[top]  = workspace->orig_id[old_id];
+    orig_id[top] = workspace->orig_id[old_id];
 
     workspace->b_s[top] = -system->reaxprm.sbp[ old_type ].chi;
     workspace->b_t[top] = -1.0;
@@ -615,44 +620,35 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
         control_params *control )
 {
     int i, j, k, l, top, old_id, num_H;
-    reax_atom  *old_atom;
+    reax_atom *old_atom, *new_atoms;
     grid *g;
-    reax_atom  *new_atoms;
     int *orig_id ;
     real **v;
     real **s, **t;
     rvec *f_old;
 
     num_H = 0;
-    g = &( system->g );
-    new_atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
-            "Cluster_Atoms::new_atoms" );
-    orig_id = (int  *) scalloc( system->N, sizeof( int ),
-            "Cluster_Atoms::orig_id" );
-    f_old = (rvec*) scalloc( system->N, sizeof(rvec),
-            "Cluster_Atoms::f_old" );
+    top = 0;
+    g = &system->g;
 
-    s = (real**) scalloc( 3, sizeof( real* ),
-            "Cluster_Atoms::s" );
-    t = (real**) scalloc( 3, sizeof( real* ),
-            "Cluster_Atoms::t" );
-    for ( i = 0; i < 3; ++i )
+    new_atoms = scalloc( system->N, sizeof(reax_atom), "Cluster_Atoms::new_atoms" );
+    orig_id = scalloc( system->N, sizeof( int ), "Cluster_Atoms::orig_id" );
+    f_old = scalloc( system->N, sizeof(rvec), "Cluster_Atoms::f_old" );
+
+    s = scalloc( 5, sizeof( real* ), "Cluster_Atoms::s" );
+    t = scalloc( 5, sizeof( real* ), "Cluster_Atoms::t" );
+    for ( i = 0; i < 5; ++i )
     {
-        s[i] = (real *) scalloc( system->N, sizeof( real ),
-                "Cluster_Atoms::s[i]" );
-        t[i] = (real *) scalloc( system->N, sizeof( real ),
-                "Cluster_Atoms::t[i]" );
+        s[i] = scalloc( system->N_cm, sizeof( real ), "Cluster_Atoms::s[i]" );
+        t[i] = scalloc( system->N_cm, sizeof( real ), "Cluster_Atoms::t[i]" );
     }
 
-    v = (real**) scalloc( control->cm_solver_restart + 1, sizeof( real* ),
+    v = scalloc( control->cm_solver_restart + 1, sizeof( real* ),
             "Cluster_Atoms::v" );
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
-        v[i] = (real *) scalloc( system->N, sizeof( real ),
-                "Cluster_Atoms::v[i]" );
+        v[i] = scalloc( system->N_cm, sizeof( real ), "Cluster_Atoms::v[i]" );
     }
-
-    top = 0;
 
     for ( i = 0; i < g->ncell[0]; i++ )
     {
@@ -664,13 +660,14 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
 
                 for ( l = 0; l < g->top[i][j][k]; ++l )
                 {
-                    old_id   = g->atoms[i][j][k][l];
-                    old_atom = &( system->atoms[old_id] );
+                    old_id = g->atoms[i][j][k][l];
+                    old_atom = &system->atoms[old_id];
                     // fprintf( stderr, "%d <-- %d\n", top, old_id );
 
-                    reax_atom_Copy( &(new_atoms[top]), old_atom );
+                    reax_atom_Copy( &new_atoms[top], old_atom );
                     Copy_Storage( system, workspace, control, top, old_id, old_atom->type,
                             &num_H, v, s, t, orig_id, f_old );
+
                     ++top;
                 }
 
@@ -678,7 +675,6 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
             }
         }
     }
-
 
     sfree( system->atoms, "Cluster_Atoms::system->atoms" );
     Free_Storage( workspace, control );

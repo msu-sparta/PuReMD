@@ -1,7 +1,8 @@
-simulation_name         water.6.notab           ! output files will carry this name + their specific extension
+simulation_name         water_6540_notab_qeq           ! output files will carry this name + their specific extension
 ensemble_type           0                       ! 0: NVE, 1: NVT, 2: anisotropic NPT, 3: semi-isotropic NPT, 4: isotropic NPT 6: berendsen NVT
 nsteps                  100                     ! number of simulation steps
 dt                      0.25                    ! time step in fs
+periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 
 reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
 restrict_bonds          0                       ! enforce the bonds given in CONECT lines of pdb file for this many steps

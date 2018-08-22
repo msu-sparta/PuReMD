@@ -1069,7 +1069,7 @@ void Analysis( reax_system *system, control_params *control,
     if ( control->dipole_anal && steps % control->freq_dipole_anal == 0 )
     {
         Calculate_Dipole_Moment( system, control, data, workspace,
-                &(*lists)[BONDS], out_control->dpl );
+                lists[BONDS], out_control->dpl );
     }
 
     /****** Drift ******/

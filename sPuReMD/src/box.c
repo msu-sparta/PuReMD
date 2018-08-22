@@ -350,8 +350,10 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
 }
 
 
-int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
-        real cutoff, far_neighbor_data *data )
+/* Similar to Find_Periodic_Far_Neighbors_Big_Box but does not
+ * update the far neighbors list */
+int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2,
+        simulation_box *box, real cutoff, far_neighbor_data *data )
 {
     real norm_sqr, d, tmp, ret;
     int i;
@@ -369,28 +371,22 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
             if ( x2[i] > x1[i] )
             {
                 d -= box->box_norms[i];
-                data->rel_box[i] = -1;
             }
             else
             {
                 d += box->box_norms[i];
-                data->rel_box[i] = +1;
             }
 
-            data->dvec[i] = d;
             norm_sqr += SQR( d );
         }
         else
         {
-            data->dvec[i] = d;
             norm_sqr += tmp;
-            data->rel_box[i] = 0;
         }
     }
 
     if ( norm_sqr <= SQR( cutoff ) )
     {
-        data->d = SQRT( norm_sqr );
         ret = TRUE;
     }
 
@@ -401,40 +397,44 @@ int Are_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
 /* Determines if the distance between atoms x1 and x2 is strictly less than
  * vlist_cut.  If so, this neighborhood is added to the list of far neighbors.
  * Note: Periodic boundary conditions do not apply. */
-void Get_NonPeriodic_Far_Neighbors( rvec x1, rvec x2, simulation_box *box,
-        control_params *control, far_neighbor_data *new_nbrs, int *count )
+int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
+        simulation_box *box, real cutoff, far_neighbor_data *data )
 {
     real norm_sqr;
+    int count;
 
-    rvec_ScaledSum( new_nbrs[0].dvec, 1.0, x2, -1.0, x1 );
-    norm_sqr = rvec_Norm_Sqr( new_nbrs[0].dvec );
+    rvec_ScaledSum( data[0].dvec, 1.0, x2, -1.0, x1 );
+    norm_sqr = rvec_Norm_Sqr( data[0].dvec );
 
-    if ( norm_sqr <= SQR( control->vlist_cut ) )
+    if ( norm_sqr <= SQR( cutoff ) )
     {
-        *count = 1;
-        new_nbrs[0].d = SQRT( norm_sqr );
+        count = 1;
+        data[0].d = SQRT( norm_sqr );
+        data[0].nbr = nbr_atom;
 
-        ivec_MakeZero( new_nbrs[0].rel_box );
-        // rvec_MakeZero( new_nbrs[0].ext_factor );
+        ivec_MakeZero( data[0].rel_box );
+        // rvec_MakeZero( data[0].ext_factor );
     }
     else
     {
-        *count = 0;
+        count = 0;
     }
+
+    return count;
 }
 
 
 /* Finds periodic neighbors in a 'big_box'. Here 'big_box' means the current
  * simulation box has all dimensions strictly greater than twice of vlist_cut.
- * If the periodic distance between x1 and x2 is than vlist_cut, this
+ * If the periodic distance between x1 and x2 is less than vlist_cut, this
  * neighborhood is added to the list of far neighbors. */
-void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
-        control_params *control, far_neighbor_data *periodic_nbrs, int *count )
+int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_atom,
+        simulation_box *box, real cutoff, far_neighbor_data *data )
 {
-    real norm_sqr, d, tmp;
+    real norm_sqr, d, tmp, count;
     int i;
 
-    norm_sqr = 0;
+    norm_sqr = 0.0;
 
     for ( i = 0; i < 3; i++ )
     {
@@ -446,37 +446,40 @@ void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
             if ( x2[i] > x1[i] )
             {
                 d -= box->box_norms[i];
-                periodic_nbrs[0].rel_box[i] = -1;
-                // periodic_nbrs[0].ext_factor[i] = +1;
+                data[0].rel_box[i] = -1;
+//                data[0].ext_factor[i] = +1;
             }
             else
             {
                 d += box->box_norms[i];
-                periodic_nbrs[0].rel_box[i] = +1;
-                // periodic_nbrs[0].ext_factor[i] = -1;
+                data[0].rel_box[i] = +1;
+//                data[0].ext_factor[i] = -1;
             }
 
-            periodic_nbrs[0].dvec[i] = d;
+            data[0].dvec[i] = d;
             norm_sqr += SQR(d);
         }
         else
         {
-            periodic_nbrs[0].dvec[i] = d;
+            data[0].dvec[i] = d;
             norm_sqr += tmp;
-            periodic_nbrs[0].rel_box[i]   = 0;
-            // periodic_nbrs[0].ext_factor[i] = 0;
+            data[0].rel_box[i] = 0;
+//            data[0].ext_factor[i] = 0;
         }
     }
 
-    if ( norm_sqr <= SQR( control->vlist_cut ) )
+    if ( norm_sqr <= SQR( cutoff ) )
     {
-        *count = 1;
-        periodic_nbrs[0].d = SQRT( norm_sqr );
+        count = 1;
+        data[0].d = SQRT( norm_sqr );
+        data[0].nbr = nbr_atom;
     }
     else
     {
-        *count = 0;
+        count = 0;
     }
+
+    return count;
 }
 
 
@@ -488,19 +491,20 @@ void Get_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, simulation_box *box,
  * NOTE: This part might need some improvement. In NPT, the simulation box
  * might get too small (such as <5 A!). In this case we have to consider the
  * periodic images of x2 that are two boxs away!!! */
-void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box,
-        control_params *control, far_neighbor_data *periodic_nbrs, int *count )
+int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_atom,
+        simulation_box *box, real cutoff, far_neighbor_data *data )
 {
-    int i, j, k;
+    int i, j, k, count;
     int imax, jmax, kmax;
     real sqr_norm, d_i, d_j, d_k;
 
-    *count = 0;
+    count = 0;
+
     /* determine the max stretch of imaginary boxs in each direction
      * to handle periodic boundary conditions correctly */
-    imax = (int)(control->vlist_cut / box->box_norms[0] + 1);
-    jmax = (int)(control->vlist_cut / box->box_norms[1] + 1);
-    kmax = (int)(control->vlist_cut / box->box_norms[2] + 1);
+    imax = (int)(cutoff / box->box_norms[0] + 1);
+    jmax = (int)(cutoff / box->box_norms[1] + 1);
+    kmax = (int)(cutoff / box->box_norms[2] + 1);
 
     /*if( imax > 1 || jmax > 1 || kmax > 1 )
       fprintf( stderr, "box %8.3f x %8.3f x %8.3f --> %2d %2d %2d\n",
@@ -511,56 +515,79 @@ void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box
     {
         d_i = (x2[0] + i * box->box_norms[0]) - x1[0];
 
-        if ( FABS(d_i) <= control->vlist_cut )
+        if ( FABS(d_i) <= cutoff )
         {
             for ( j = -jmax; j <= jmax; ++j )
             {
                 d_j = (x2[1] + j * box->box_norms[1]) - x1[1];
 
-                if ( FABS(d_j) <= control->vlist_cut )
+                if ( FABS(d_j) <= cutoff )
                 {
                     for ( k = -kmax; k <= kmax; ++k )
                     {
                         d_k = (x2[2] + k * box->box_norms[2]) - x1[2];
 
-                        if ( FABS(d_k) <= control->vlist_cut )
+                        if ( FABS(d_k) <= cutoff )
                         {
                             sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
 
-                            if ( sqr_norm <= SQR(control->vlist_cut) )
+                            if ( sqr_norm <= SQR(cutoff) && (atom != nbr_atom
+                                        || (atom == nbr_atom && SQRT( sqr_norm ) >= 0.1)) )
                             {
-                                periodic_nbrs[ *count ].d = SQRT( sqr_norm );
+                                data[count].d = SQRT( sqr_norm );
 
-                                periodic_nbrs[ *count ].dvec[0] = d_i;
-                                periodic_nbrs[ *count ].dvec[1] = d_j;
-                                periodic_nbrs[ *count ].dvec[2] = d_k;
+                                data[count].dvec[0] = d_i;
+                                data[count].dvec[1] = d_j;
+                                data[count].dvec[2] = d_k;
 
-                                periodic_nbrs[ *count ].rel_box[0] = i;
-                                periodic_nbrs[ *count ].rel_box[1] = j;
-                                periodic_nbrs[ *count ].rel_box[2] = k;
+                                data[count].rel_box[0] = i;
+                                data[count].rel_box[1] = j;
+                                data[count].rel_box[2] = k;
 
-                                /* if( i || j || k ) {
-                                   fprintf(stderr, "x1: %.2f %.2f %.2f\n", x1[0], x1[1], x1[2]);
-                                   fprintf(stderr, "x2: %.2f %.2f %.2f\n", x2[0], x2[1], x2[2]);
-                                   fprintf( stderr, "d : %8.2f%8.2f%8.2f\n\n", d_i, d_j, d_k );
-                                   } */
+//                                if ( i || j || k )
+//                                {
+//                                   fprintf( stderr, "x1: %.2f %.2f %.2f\n", x1[0], x1[1], x1[2] );
+//                                   fprintf( stderr, "x2: %.2f %.2f %.2f\n", x2[0], x2[1], x2[2] );
+//                                   fprintf( stderr, "d : %8.2f%8.2f%8.2f\n\n", d_i, d_j, d_k );
+//                                }
+//
+//                                if ( i )
+//                                {
+//                                    data[count].ext_factor[0] = (real)i / -abs(i);
+//                                }
+//                                else
+//                                {
+//                                    data[count].ext_factor[0] = 0;
+//                                }
+// 
+//                                if ( j )
+//                                {
+//                                    data[count].ext_factor[1] = (real)j / -abs(j);
+//                                }
+//                                else
+//                                {
+//                                    data[count].ext_factor[1] = 0;
+//                                }
+// 
+//                                if ( k )
+//                                {
+//                                    data[count].ext_factor[2] = (real)k / -abs(k);
+//                                }
+//                                else
+//                                {
+//                                    data[count].ext_factor[2] = 0;
+//                                }
+// 
+//                                if ( i == 0 && j == 0 && k == 0 )
+//                                {
+//                                    data[count].imaginary = 0;
+//                                }
+//                                else
+//                                {
+//                                    data[count].imaginary = 1;
+//                                }
 
-                                /* if(i) periodic_nbrs[*count].ext_factor[0] = (real)i/-abs(i);
-                                   else  periodic_nbrs[*count].ext_factor[0] = 0;
-
-                                   if(j) periodic_nbrs[*count].ext_factor[1] = (real)j/-abs(j);
-                                   else  periodic_nbrs[*count].ext_factor[1] = 0;
-
-                                   if(k) periodic_nbrs[*count].ext_factor[2] = (real)k/-abs(k);
-                                   else  periodic_nbrs[*count].ext_factor[2] = 0; */
-
-
-                                /* if( i == 0 && j == 0 && k == 0 )
-                                 *  periodic_nbrs[ *count ].imaginary = 0;
-                                 *  else periodic_nbrs[ *count ].imaginary = 1;
-                                 */
-
-                                ++(*count);
+                                ++count;
                             }
                         }
                     }
@@ -568,6 +595,8 @@ void Get_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, simulation_box *box
             }
         }
     }
+
+    return count;
 }
 
 

@@ -706,7 +706,7 @@ static void Init_Lists( reax_system *system, control_params *control,
     int num_hbonds;
 #endif
 
-    num_nbrs = Estimate_NumNeighbors( system, control, workspace, lists );
+    num_nbrs = Estimate_Num_Neighbors( system, control, workspace, lists );
 
     Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
 
@@ -715,13 +715,13 @@ static void Init_Lists( reax_system *system, control_params *control,
              num_nbrs * sizeof(far_neighbor_data) / (1024 * 1024) );
 #endif
 
-    Generate_Neighbor_Lists(system, control, data, workspace, lists, out_control);
+    Generate_Neighbor_Lists( system, control, data, workspace, lists, out_control );
+
     Htop = 0;
-    hb_top = (int*) scalloc( system->N, sizeof(int),
-            "Init_Lists::hb_top" );
-    bond_top = (int*) scalloc( system->N, sizeof(int),
-            "Init_Lists::bond_top" );
+    hb_top = scalloc( system->N, sizeof(int), "Init_Lists::hb_top" );
+    bond_top = scalloc( system->N, sizeof(int), "Init_Lists::bond_top" );
     num_3body = 0;
+
     Estimate_Storage_Sizes( system, control, lists, &Htop,
             hb_top, bond_top, &num_3body );
     num_3body = MAX( num_3body, MIN_BONDS );
@@ -761,7 +761,7 @@ static void Init_Lists( reax_system *system, control_params *control,
         /* init H indexes */
         for ( i = 0; i < system->N; ++i )
         {
-            // H atom
+            /* H atom */
             if ( system->reaxprm.sbp[ system->atoms[i].type ].p_hbond == 1 )
             {
                 workspace->hbond_index[i] = workspace->num_H++;
