@@ -225,12 +225,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
                 ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
 
-        case ILUT_PC:
-            data->timing.cm_solver_pre_comp +=
-                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-            break;
-
-        case FG_ILUT_PC:
+        case ILUT_PAR_PC:
             data->timing.cm_solver_pre_comp +=
                 FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
                         workspace->L, workspace->U );
@@ -242,14 +237,13 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
                 sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
-            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
 #endif
             break;
 
         default:
-            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-                    control->cm_solver_pre_comp_type );
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
@@ -261,7 +255,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type != NONE_PC && 
             control->cm_solver_pre_comp_type != JACOBI_PC )
     {
-        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
+        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
         snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
@@ -293,9 +287,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //
 //    if ( ones == NULL )
 //    {
-//        ones = smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::ones" );
-//        x = smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::x" );
-//        y = smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::y" );
+//        ones = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::ones" );
+//        x = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::x" );
+//        y = (real*) smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::y" );
 //
 //        for ( i = 0; i < system->N; ++i )
 //        {
@@ -315,25 +309,14 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //            ICHOLT( Hptr, workspace->droptol, workspace->L_EE, workspace->U_EE );
 //        break;
 //
-//        case ILUT_PC:
-//            data->timing.cm_solver_pre_comp +=
-//                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-//            break;
-//
-//        case ILUT_PC:
-//            data->timing.cm_solver_pre_comp +=
-//                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-//            break;
-//
-//    case FG_ILUT_PC:
+//    case ILUT_PAR_PC:
 //        data->timing.cm_solver_pre_comp +=
 //            FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
 //                    workspace->L_EE, workspace->U_EE );
 //        break;
 //
 //    default:
-//            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-//                    control->cm_solver_pre_comp_type );
+//        fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
 //        exit( INVALID_INPUT );
 //        break;
 //    }
@@ -536,9 +519,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     Hptr = create_test_mat( );
 #endif
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
     }
@@ -567,12 +549,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
                 ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
 
-        case ILUT_PC:
-            data->timing.cm_solver_pre_comp +=
-                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-            break;
-
-        case FG_ILUT_PC:
+        case ILUT_PAR_PC:
             data->timing.cm_solver_pre_comp +=
                 FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
                         workspace->L, workspace->U );
@@ -584,14 +561,13 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
                 sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
-            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
 #endif
             break;
 
         default:
-            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-                   control->cm_solver_pre_comp_type );
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
@@ -608,9 +584,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         }
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
     }
@@ -622,7 +597,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type != NONE_PC && 
             control->cm_solver_pre_comp_type != JACOBI_PC )
     {
-        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
+        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
         snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
@@ -658,9 +633,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     Hptr = create_test_mat( );
 #endif
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
@@ -690,14 +664,9 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
                 ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
 
-        case ILUT_PC:
+        case ILUT_PAR_PC:
             data->timing.cm_solver_pre_comp +=
-                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-            break;
-
-        case FG_ILUT_PC:
-            data->timing.cm_solver_pre_comp +=
-                FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
+                ILUT_PAR( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
                         workspace->L, workspace->U );
             break;
 
@@ -707,14 +676,13 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
                 sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
-            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            fprintf( stderr, "LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
             exit( INVALID_INPUT );
 #endif
             break;
 
         default:
-            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-                   control->cm_solver_pre_comp_type );
+            fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
@@ -731,9 +699,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         }
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
@@ -746,7 +713,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type != NONE_PC || 
             control->cm_solver_pre_comp_type != JACOBI_PC )
     {
-        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
+        fprintf( stderr, "condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
         snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
@@ -794,7 +761,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case JACOBI_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+                workspace->Hdia_inv = (real *) scalloc( Hptr->n, sizeof( real ),
                         "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
@@ -806,39 +773,38 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
-                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
+                Allocate_Matrix( &(workspace->L), Hptr->n, fillin );
+                Allocate_Matrix( &(workspace->U), Hptr->n, fillin );
             }
             else if ( workspace->L->m < fillin )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
-                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
+                Allocate_Matrix( &(workspace->L), Hptr->n, fillin );
+                Allocate_Matrix( &(workspace->U), Hptr->n, fillin );
             }
             break;
 
-        case ILUT_PC:
-        case FG_ILUT_PC:
+        case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
             if ( workspace->L == NULL )
             {
-                /* safest storage estimate is ILU(0) (same as
-                 * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
+                Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m );
+                Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                /* safest storage estimate is ILU(0) (same as
-                 * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
+                Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m );
+                Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m );
             }
             break;
 
@@ -849,8 +815,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         default:
-            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-                   control->cm_solver_pre_comp_type );
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
@@ -885,9 +850,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
     }
@@ -900,8 +864,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case JACOBI_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
-                        "Setup_Preconditioner_EE::workspace->Hdiv_inv" );
+                workspace->Hdia_inv = (real *) scalloc( system->N_cm, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -912,27 +876,26 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                Allocate_Matrix( &workspace->L, system->N_cm, fillin + system->N_cm );
-                Allocate_Matrix( &workspace->U, system->N_cm, fillin + system->N_cm );
+                Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm );
+                Allocate_Matrix( &(workspace->U), system->N_cm, fillin + system->N_cm );
             }
             else if ( workspace->L->m < fillin + system->N_cm )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                Allocate_Matrix( &workspace->L, system->N_cm, fillin + system->N_cm );
-                Allocate_Matrix( &workspace->U, system->N_cm, fillin + system->N_cm );
+                Allocate_Matrix( &(workspace->L), system->N_cm, fillin + system->N_cm );
+                Allocate_Matrix( &(workspace->U), system->N_cm, fillin + system->N_cm );
             }
             break;
 
-        case ILUT_PC:
-        case FG_ILUT_PC:
+        case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
             if ( workspace->L == NULL )
             {
-                /* safest storage estimate is ILU(0) (same as
-                 * lower triangular portion of H), could improve later */
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
                 Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m );
                 Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m );
             }
@@ -941,10 +904,10 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                /* safest storage estimate is ILU(0) (same as
-                 * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
+                Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m );
+                Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m );
             }
             break;
 
@@ -955,15 +918,13 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         default:
-            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-                   control->cm_solver_pre_comp_type );
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
     }
@@ -998,9 +959,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
@@ -1014,8 +974,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case JACOBI_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
-                        "Setup_Preconditioner_ACKS2::workspace->Hdiv_inv" );
+                workspace->Hdia_inv = (real *) scalloc( Hptr->n, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
             }
             break;
 
@@ -1026,8 +986,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
-                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
+                Allocate_Matrix( &(workspace->L), Hptr->n, fillin );
+                Allocate_Matrix( &(workspace->U), Hptr->n, fillin );
             }
             else if ( workspace->L->m < fillin )
             {
@@ -1040,16 +1000,15 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             }
             break;
 
-        case ILUT_PC:
-        case FG_ILUT_PC:
+        case ILUT_PAR_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
             if ( workspace->L == NULL )
             {
-                /* safest storage estimate is ILU(0) (same as
-                 * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                /* TODO: safest storage estimate is ILU(0)
+                 * (same as lower triangular portion of H), could improve later */
+                Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m );
+                Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
@@ -1057,8 +1016,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Deallocate_Matrix( workspace->U );
 
                 /* factors have sparsity pattern as H */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m );
+                Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m );
             }
             break;
 
@@ -1069,15 +1028,13 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         default:
-            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-                   control->cm_solver_pre_comp_type );
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method. Terminating...\n" );
             exit( INVALID_INPUT );
             break;
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
+            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
@@ -1148,8 +1105,8 @@ static void QEq( reax_system * const system, control_params * const control,
 {
     int iters;
 
-    if ( control->cm_solver_pre_comp_refactor > 0
-            && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+    if ( control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
         
     {
         Setup_Preconditioner_QEq( system, control, data, workspace );
@@ -1204,8 +1161,7 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     default:
-        fprintf( stderr, "[ERROR] Unrecognized solver selection (%d). Terminating...\n",
-              control->cm_solver_type );
+        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }
@@ -1240,8 +1196,8 @@ static void EE( reax_system * const system, control_params * const control,
 {
     int iters;
 
-    if ( control->cm_solver_pre_comp_refactor > 0
-            && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+    if ( control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
     {
         Setup_Preconditioner_EE( system, control, data, workspace );
 
@@ -1285,8 +1241,7 @@ static void EE( reax_system * const system, control_params * const control,
         break;
 
     default:
-        fprintf( stderr, "[ERROR] Unrecognized solver selection (%d). Terminating...\n",
-              control->cm_solver_type );
+        fprintf( stderr, "Unrecognized EE solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }
@@ -1313,8 +1268,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
 {
     int iters;
 
-    if ( control->cm_solver_pre_comp_refactor > 0
-            && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+    if ( control->cm_solver_pre_comp_refactor > 0 &&
+            ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
     {
         Setup_Preconditioner_ACKS2( system, control, data, workspace );
 
@@ -1375,8 +1330,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
         break;
 
     default:
-        fprintf( stderr, "[ERROR] Unrecognized solver selection (%d). Terminating...\n",
-              control->cm_solver_type );
+        fprintf( stderr, "Unrecognized ACKS2 solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }

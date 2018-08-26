@@ -656,7 +656,7 @@ void Output_Results( reax_system *system, control_params *control,
         fflush( out_control->log );
 
         /* output pressure */
-        if ( control->ensemble == NPT || control->ensemble == iNPT ||
+        if ( control->ensemble == aNPT || control->ensemble == iNPT ||
                 control->ensemble == sNPT )
         {
             fprintf( out_control->prs, "%-8d%13.6f%13.6f%13.6f",

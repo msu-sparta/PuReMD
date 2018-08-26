@@ -40,25 +40,20 @@ int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 void Calculate_Droptol( const sparse_matrix * const,
         real * const, const real );
 
-#if defined(HAVE_SUPERLU_MT)
-real SuperLU_Factorize( const sparse_matrix * const,
-        sparse_matrix * const, sparse_matrix * const );
-#endif
-
-real diag_pre_comp( const sparse_matrix * const, real * const );
+real jacobi( const sparse_matrix * const, real * const );
 
 real ICHOLT( const sparse_matrix * const, const real * const,
         sparse_matrix * const, sparse_matrix * const );
 
+real ILUT( const sparse_matrix * const, const real * const,
+        sparse_matrix * const, sparse_matrix * const );
+
 #if defined(TESTING)
-real ICHOL_PAR( const sparse_matrix * const, const unsigned int,
+real FG_ICHOL( const sparse_matrix * const, const unsigned int,
         sparse_matrix * const, sparse_matrix * const );
 #endif
 
-real ILU_PAR( const sparse_matrix * const, const unsigned int,
-        sparse_matrix * const, sparse_matrix * const );
-
-real ILUT_PAR( const sparse_matrix * const, const real *,
+real FG_ILUT( const sparse_matrix * const, const real *,
         const unsigned int, sparse_matrix * const, sparse_matrix * const );
 
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)

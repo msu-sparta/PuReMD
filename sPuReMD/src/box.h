@@ -34,7 +34,7 @@ void Setup_Box( real, real, real, real, real, real, simulation_box* );
 /* Initializes box from box rtensor */
 void Update_Box( rtensor, simulation_box* );
 void Update_Box_Isotropic( simulation_box*, real );
-void Update_Box_SemiIsotropic( simulation_box*, rvec );
+void Update_Box_Semi_Isotropic( simulation_box*, rvec );
 
 int Count_Periodic_Far_Neighbors_Big_Box( rvec, rvec, simulation_box*, real,
         far_neighbor_data* );

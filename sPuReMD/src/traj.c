@@ -284,7 +284,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     }
 
     /* get correct pressure */
-    if ( control->ensemble == NPT || control->ensemble == sNPT )
+    if ( control->ensemble == aNPT || control->ensemble == sNPT )
     {
         P = data->flex_bar.P_scalar;
     }

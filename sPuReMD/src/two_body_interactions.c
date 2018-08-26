@@ -316,7 +316,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                 +(CEvd + CEclmb), nbr_pj->dvec );
 #endif
                     }
-                    /* NPT, iNPT or sNPT */
+                    /* aNPT, iNPT or sNPT */
                     else
                     {
                         /* for pressure coupling, terms not related to bond order
@@ -620,7 +620,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                 +(CEvd + CEclmb), nbr_pj->dvec );
 #endif
                     }
-                    else   // NPT, iNPT or sNPT
+                    /* aNPT, iNPT or sNPT */
+                    else
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */

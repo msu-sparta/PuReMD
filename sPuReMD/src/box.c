@@ -221,7 +221,7 @@ void Update_Box_Isotropic( simulation_box *box, real mu )
 }
 
 
-void Update_Box_SemiIsotropic( simulation_box *box, rvec mu )
+void Update_Box_Semi_Isotropic( simulation_box *box, rvec mu )
 {
     /*box->box[0][0] =
       POW( V_new / ( box->side_prop[1] * box->side_prop[2] ), 1.0/3.0 );

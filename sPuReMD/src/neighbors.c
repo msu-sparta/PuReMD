@@ -354,7 +354,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     far_nbrs = lists[FAR_NBRS];
 
     if ( control->ensemble == iNPT || control->ensemble == sNPT
-            || control->ensemble == NPT )
+            || control->ensemble == aNPT )
     {
         Update_Grid( system );
     }

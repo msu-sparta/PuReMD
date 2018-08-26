@@ -145,7 +145,7 @@ enum ensemble
     nhNVT = 2,
     sNPT = 3,
     iNPT = 4,
-    NPT = 5,
+    aNPT = 5,
     ens_N = 6,
 };
 
@@ -220,6 +220,7 @@ enum geo_formats
     GF_N = 5,
 };
 
+/* method used for computing atomic charges */
 enum charge_method
 {
     QEQ_CM = 0,
@@ -227,6 +228,7 @@ enum charge_method
     ACKS2_CM = 2,
 };
 
+/* iterative linear solver used for computing atomic charges */
 enum solver
 {
     GMRES_S = 0,
@@ -236,17 +238,18 @@ enum solver
     BiCGStab_S = 4,
 };
 
+/* preconditioner used with iterative linear solver */
 enum pre_comp
 {
     NONE_PC = 0,
-    DIAG_PC = 1,
+    JACOBI_PC = 1,
     ICHOLT_PC = 2,
-    ILU_PAR_PC = 3,
-    ILUT_PAR_PC = 4,
-    ILU_SUPERLU_MT_PC = 5,
+    ILUT_PC = 3,
+    FG_ILUT_PC = 5,
     SAI_PC = 6,
 };
 
+/* method used to apply preconditioner for 2-side incomplete factorizations (ICHOLT, ILU) */
 enum pre_app
 {
     TRI_SOLVE_PA = 0,
@@ -621,11 +624,12 @@ struct control_params
     int reposition_atoms;
 
     /* ensemble values:
-       0 : NVE
-       1 : NVT  (Nose-Hoover)
-       2 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic
-       3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
-       4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic */
+     * 0 : NVE
+     * 1 : NVT  (Berendsen)
+     * 2 : NVT  (Nose-Hoover)
+     * 3 : sNPT (Parrinello-Rehman-Nose-Hoover) semi-isotropic
+     * 4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
+     * 5 : aNPT  (Parrinello-Rehman-Nose-Hoover) anisotropic */
     int ensemble;
     int nsteps;
     int periodic_boundaries;
