@@ -260,10 +260,6 @@ static coll_unpacker Get_Unpacker( const int type )
 void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {
-
-    //fprintf( stdout, "Process %d entered the Dist\n", system->my_rank );
-    //fflush ( stdout );
-
     int d;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -282,7 +278,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
 
     for ( d = 0; d < 3; ++d )
     {
-
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
         if ( nbr1->atoms_cnt )

@@ -55,7 +55,7 @@ void Print_Far_Neighbors( reax_system*, reax_list**, control_params *);
 
 void Print_Sparse_Matrix( reax_system*, sparse_matrix* );
 
-void Print_Sparse_Matrix2( reax_system*, sparse_matrix*, char* );
+void Print_Sparse_Matrix2( const reax_system * const, sparse_matrix*, char* );
 
 void Print_Linear_System( reax_system*, control_params*, storage*, int );
 

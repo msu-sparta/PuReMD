@@ -844,14 +844,20 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
 }
 
 
-void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
+int ccompare_matrix_entry( const void *v1, const void *v2 )
+{
+    return ((sparse_matrix_entry *) v1)->j - ((sparse_matrix_entry *) v2)->j;
+}
+
+
+void Print_Sparse_Matrix2( const reax_system * const system, sparse_matrix *A, char *fname )
 {
     int i, pj;
     FILE *f;
     
     f = sfopen( fname, "w", "Print_Sparse_Matrix2::f" );
 
-    for ( i = 0; i < A->n; ++i )
+    /*for ( i = 0; i < A->n; ++i )
     {
         fprintf( f, "===> i = %d\n", i );
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
@@ -861,9 +867,55 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
                     system->my_atoms[A->entries[pj].j].orig_id,
                     A->entries[pj].val );
         }
+    }*/
+
+
+    int *pos = malloc( sizeof(int) * ( system->bigN + 1 ) );
+    sparse_matrix_entry *q = malloc( sizeof(sparse_matrix_entry) * (system->bigN + 1) );
+    int push;
+
+    for( i = 0; i <= system->bigN; i++ )
+        pos[i] = -1;
+
+    for ( i = 0; i < A->n; ++i )
+    {
+        pos[system->my_atoms[i].orig_id ] = i;
+        //fprintf( stdout, "atom %d is in row %d\n", system->my_atoms[i].orig_id, i );
+        //fflush( stdout );
+        /*for ( pj = A->start[i]; pj < A->end[i]; ++pj )
+        {
+            pos[system->my_atoms[A->entries[pj].j].orig_id ] = A->entries[pj].j;
+        }*/
+    }
+    
+    for ( i = 1; i <= system->bigN; ++i )
+    {
+        if( pos[i] < 0 || pos[i] >= A->n )
+        {
+            fprintf( stdout, "NO NO NO\n");
+            fflush(stdout);
+        }
+
+        push = 0;
+        for ( pj = A->start[ pos[i] ]; pj < A->end[ pos[i] ]; ++pj )
+        {
+            q[push].j = system->my_atoms[A->entries[pj].j].orig_id;
+            q[push].val = A->entries[pj].val;
+            push++;
+        }
+        qsort( q, push , sizeof(sparse_matrix_entry), ccompare_matrix_entry );
+
+        for ( pj = 0; pj < push; ++pj )
+        {
+            //fprintf( f, "%6d %6d %24.15e\n", i, q[pj].j, q[pj].val );
+            fprintf( f, "%d %d %.15lf\n", i, q[pj].j, q[pj].val );
+        }
     }
 
     sfclose( f, "Print_Sparse_Matrix2::f" );
+
+    fprintf( stdout, "Charge Matrix is written, just chill\n" );
+    fflush( stdout );
 }
 
 

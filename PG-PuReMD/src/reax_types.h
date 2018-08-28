@@ -1948,6 +1948,8 @@ struct sparse_matrix_entry
  */
 struct sparse_matrix
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int allocated;
     /* number of rows active for this processor */
     int n;
     /* max. number of rows active for this processor */

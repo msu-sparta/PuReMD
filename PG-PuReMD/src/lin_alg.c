@@ -74,18 +74,18 @@ static void Sparse_MatVec( const sparse_matrix * const A, const real * const x,
 #if defined(HALF_LIST)
         for ( k = si + 1; k < A->end[i]; ++k )
 #else
-            for ( k = si; k < A->end[i]; ++k )
+        for ( k = si; k < A->end[i]; ++k )
 #endif
-            {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+        {
+            j = A->entries[k].j;
+            val = A->entries[k].val;
 
-                b[i] += val * x[j];
+            b[i] += val * x[j];
 #if defined(HALF_LIST)
-                //if( j < A->n ) // comment out for tryQEq
-                b[j] += val * x[i];
+            //if( j < A->n ) // comment out for tryQEq
+            b[j] += val * x[i];
 #endif
-            }
+        }
     }
 }
 
@@ -227,6 +227,8 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
         const mpi_datatypes * const mpi_data, sparse_matrix *A, sparse_matrix *A_spar_patt,
         const int nprocs, const double filter )
 {
+    //Print_Sparse_Matrix2( system, A, "Charge_Matrix_MPI_Step0.txt" );
+
     int i, bin, total, pos, push;
     int n, n_gather, m, s_local, s, n_local;
     int target_proc;
@@ -265,7 +267,7 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
 
     comm = mpi_data->world;
 
-    if ( A_spar_patt == NULL || A_spar_patt->start == NULL)
+    if ( A_spar_patt->allocated == FALSE )
     {
         Allocate_Matrix(A_spar_patt, A->n, A->n_max, A->m );
     }
@@ -281,7 +283,8 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
         m += A->end[i] - A->start[i];
     }
     /* the sample ratio is 10% */
-    n_local = m/10; 
+    //n_local = m/10; 
+    n_local = m;
     s_local = (int) (12.0 * log2(n_local*nprocs));
     MPI_Allreduce(&n_local, &n, 1, MPI_INT, MPI_SUM, comm);
     MPI_Reduce(&s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, comm);
@@ -316,12 +319,14 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
     srand( time(NULL) + system->my_rank ); 
     for ( i = 0; i < n_local ; i++ )
     {
-        input_array[i] = local_entries[rand( ) % m];
+        //input_array[i] = local_entries[rand( ) % m];
+        input_array[i] = local_entries[ i ];
     }
 
     for ( i = 0; i < s_local; i++)
     {
-        samplelist_local[i] = input_array[rand( ) % n_local];
+        //samplelist_local[i] = input_array[rand( ) % n_local];
+        samplelist_local[i] = input_array[ i ];
     }
 
     /* gather samples at the root process */
@@ -490,15 +495,10 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
     }
 
     /*broadcast the filtering value*/
+    //threshold = 1.846110441744020;
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
 
-    /*if(system->my_rank == target_proc)
-    {
-        fprintf(stdout,"threshold is broadcasted, which is %.3lf\n", threshold);
-        fflush(stdout);
-    }*/
-
-    int nnz = 0;
+    //int nnz = 0;
     /*build entries of that pattern*/
     for ( i = 0; i < A->n; ++i )
     {
@@ -512,14 +512,14 @@ void setup_sparse_approx_inverse( const reax_system * const system, storage * co
                 A_spar_patt->entries[size].val = A->entries[pj].val;
                 A_spar_patt->entries[size].j = A->entries[pj].j;
                 size++;
-                nnz++;
+                //nnz++;
             }
         }
         A_spar_patt->end[i] = size;
     }
 
-    MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
-    /*if( system->my_rank == MASTER_NODE )
+    /*MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
+    if( system->my_rank == MASTER_NODE )
     {
         fprintf(stdout,"total nnz in all sparsity patterns = %d\n", nnz);
         fflush(stdout);
@@ -541,7 +541,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
 
     int cnt;
     reax_atom *atom;
-    int *mark, *row_nnz;
+    int *row_nnz;
     int **j_list;
     real **val_list;
 
@@ -559,16 +559,22 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
 
     start = Get_Time( );
     
-    //TODO: Matrices are not initially NULL
-    //if ( A_app_inv == NULL || A_app_inv->start == NULL )
-    //{
+    if ( A_app_inv->allocated == FALSE)
+    {
         Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m );
-    //}
+    }
 
-    /*else if ( (A_app_inv->m) < (A_spar_patt->m) )
+    else if ( (A_app_inv->m) < (A_spar_patt->m) )
     {
         Reallocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m );
-    }*/
+    }
+
+    pos_x = NULL;
+    X = NULL;
+
+    row_nnz = NULL;
+    j_list = NULL;
+    val_list = NULL;
 
     j_send = NULL;
     val_send = NULL;
@@ -578,14 +584,12 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
     val_recv2 = NULL;
 
     row_nnz = (int *) malloc( sizeof(int) * system->total_cap );
-    mark = (int *) malloc( sizeof(int) * system->total_cap );
 
     j_list = (int **) malloc( sizeof(int *) * system->N );
     val_list = (real **) malloc( sizeof(real *) * system->N );
 
     for ( i = 0; i < system->total_cap; ++i )
     {   
-        mark[i] = -1;
         row_nnz[i] = 0;
     }
 
@@ -594,21 +598,14 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
     {   
         row_nnz[i] = A->end[i] - A->start[i];
     }
-    for ( i = 0; i < system->N; ++i )
-    {
-        atom = &system->my_atoms[i];
-        mark[ atom->orig_id ] = i;
-    }
-
 
     /* Announce the nnz's in each row that will be communicated later */
     Dist( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
-
     
-    /*  Dist, not Coll */
+    /*  use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d)
     {
         flag1 = 0;
@@ -623,10 +620,10 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
             cnt = 0;
             for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                if( i >= A->n)
-                {
+                //if( i >= A->n)
+                //{
                     cnt += row_nnz[i];
-                }
+                //}
             }
 
             /* initiate Irecv */
@@ -647,10 +644,10 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
             cnt = 0;
             for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                if( i >= A->n )
-                {
+                //if( i >= A->n )
+                //{
                     cnt += row_nnz[i];
-                }
+                //}
             }
             
             /* initiate Irecv */
@@ -757,8 +754,8 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
             cnt = 0;
             for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                if( i >= A->n )
-                {
+                //if( i >= A->n )
+                //{
                     j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
                     val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
 
@@ -768,7 +765,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
                         val_list[i][pj] = val_recv1[cnt];
                         cnt++;
                     }
-                }
+                //}
             }
         }
 
@@ -781,8 +778,8 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
             cnt = 0;
             for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                if( i >= A->n )
-                {
+                //if( i >= A->n )
+                //{
                     j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
                     val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
 
@@ -792,7 +789,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
                         val_list[i][pj] = val_recv2[cnt];
                         cnt++;
                     }
-                }
+                //}
             }
         }
     }
@@ -851,11 +848,6 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
         {
             if ( X[k] != 0 )
             {
-                if( !k )
-                {
-                    fprintf( stdout, "HG HG PROBLEM\n" );
-                    fflush( stdout );
-                }
                 pos_x[k] = M;
                 if ( k == atom_pos )
                 {
@@ -864,7 +856,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
                 ++M;
             }
         }
-        
+
         /* allocate memory for NxM dense matrix */
         dense_matrix = (real *) malloc( sizeof(real) * N * M );
 
@@ -882,7 +874,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
             local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
             if( local_pos < 0 || local_pos >= system->N )
             {
-                fprintf( stdout, "NO NO NO NO\n");
+                fprintf( stdout, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
                 fflush( stdout );
             }
             if( local_pos < A->n )
@@ -892,7 +884,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
                     atom = &system->my_atoms[ A->entries[d_i].j ];
                     if (pos_x[ atom->orig_id ] >= M || d_j >=  N )
                     {
-                        fprintf( stdout, "HUGE PROBLEM orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
+                        fprintf( stdout, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
                         fflush( stdout );
                     }
                     if ( X[ atom->orig_id ] == 1 )
@@ -907,7 +899,7 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
                 {
                     if (pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N ) 
                     {
-                        fprintf( stdout, "HUGE HUGE PROBLEM %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j);
+                        fprintf( stdout, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j);
                         fflush( stdout );
                     }
                     if ( X[ j_list[local_pos][d_i] ] == 1 )
@@ -917,6 +909,25 @@ int sparse_approx_inverse(const reax_system * const system, storage * const work
                 }
             }
         }
+        
+        // printing dense matrix for a particular atom
+        /*if(atom_pos == 3001)
+        {
+            int tcnt = 0;
+            fprintf( stdout, "\nDENSE MATRIX IS %d by %d\n", M, N );
+            for( d_i = 0; d_i < M; d_i++ )
+            {
+                for( d_j = 0; d_j < N; d_j++ )
+                {
+                    fprintf( stdout, "%.2lf ", dense_matrix[ d_i*N + d_j ]);
+                    if( dense_matrix[d_i*N + d_j ] != 0.0 )
+                        tcnt++;
+                }
+                fprintf( stdout, "\n" );
+            }
+            fprintf( stdout, "DENSE MATRIX NNZ = %d\n", tcnt );
+            fflush( stdout );
+        }*/
         
         /* create the right hand side of the linear equation
          * that is the full column of the identity matrix */
@@ -1257,8 +1268,6 @@ int dual_CG( const reax_system * const system, const control_params * const cont
 
     dual_Sparse_MatVec( H, x, workspace->q2, N );
 
-    //  if (data->step > 0) return;
-
 #if defined(HALF_LIST)
     // tryQEq
     Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE,
@@ -1276,7 +1285,7 @@ int dual_CG( const reax_system * const system, const control_params * const cont
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->q2[j][1];
 
-        /* apply diagonal pre-conditioner */
+        // apply diagonal pre-conditioner
         //workspace->d2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
         //workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
     }
@@ -1504,6 +1513,51 @@ int dual_CG( const reax_system * const system, const control_params * const cont
     }
     
     return (i + 1) + iters;
+
+
+    /*int j, iters1, iters2, n;
+
+    n = system->n; 
+    if( 1 )
+    {
+        for ( j = 0; j < n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters1 = CG( system, control, workspace, data, mpi_data,
+                H, workspace->b_t, tol, workspace->t, fresh_pre );
+
+        for ( j = 0; j < n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+    }
+    if( 1 )
+    {
+        for ( j = 0; j < n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        iters2 = CG( system, control, workspace, data, mpi_data, 
+                H, workspace->b_s, tol, workspace->s, fresh_pre );
+
+        for ( j = 0; j < n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+    }
+
+
+    if ( iters1 >= control->cm_solver_max_iters  || iters2 >= control->cm_solver_max_iters )
+    {
+        fprintf( stderr, "[WARNING] Dual CG convergence failed (%d iters)\n", iters1 + iters2 );
+    }
+    
+    return iters1 + iters2;*/
+
+
 }
 
 

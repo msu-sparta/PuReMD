@@ -436,6 +436,16 @@ void Init_Workspace( reax_system * const system, control_params * const control,
     Reset_Workspace( system, workspace );
 
     Init_Taper( control, workspace );
+
+    workspace->H.allocated = FALSE;
+    workspace->H_full.allocated = FALSE;
+    workspace->H_sp.allocated = FALSE;
+    workspace->H_p.allocated = FALSE;
+    workspace->H_spar_patt.allocated = FALSE;
+    workspace->H_spar_patt_full.allocated = FALSE;
+    workspace->H_app_inv.allocated = FALSE;
+    workspace->L.allocated = FALSE;
+    workspace->U.allocated = FALSE;
 }
 
 
