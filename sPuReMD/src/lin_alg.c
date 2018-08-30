@@ -358,8 +358,14 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
 }
 
 
+/* Computes the 2-norm of each row of A, multiplied by the
+ * dropping tolerance dtol 
+ * 
+ * A: symmetric (lower triangular portion only stored), square matrix, CSR format
+ * droptol (output): row-wise dropping tolereances
+ * dtol: user-specified dropping tolerance */
 void Calculate_Droptol( const sparse_matrix * const A,
-                        real * const droptol, const real dtol )
+        real * const droptol, const real dtol )
 {
     int i, j, k;
     real val;
@@ -387,7 +393,6 @@ void Calculate_Droptol( const sparse_matrix * const A,
         #pragma omp barrier
 #endif
 
-        /* init droptol to 0 */
         for ( i = 0; i < A->n; ++i )
         {
 #ifdef _OPENMP
@@ -447,17 +452,13 @@ void Calculate_Droptol( const sparse_matrix * const A,
 #endif
 
         /* calculate local droptol for each row */
-        //fprintf( stderr, "droptol: " );
 #ifdef _OPENMP
         #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < A->n; ++i )
         {
-            //fprintf( stderr, "%f-->", droptol[i] );
             droptol[i] = SQRT( droptol[i] ) * dtol;
-            //fprintf( stderr, "%f  ", droptol[i] );
         }
-        //fprintf( stderr, "\n" );
     }
 }
 
@@ -668,122 +669,309 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
  * Iterative Methods for Sparse Linear System, Second Edition, 2003,
  * Yousef Saad
  *
- * A: symmetric, half-stored (lower triangular), CSR format
+ * A: symmetric (lower triangular portion only stored), square matrix, CSR format
  * droptol: row-wise tolerances used for dropping
  * L / U: (output) triangular matrices, A \approx LU, CSR format */
 real ILUT( const sparse_matrix * const A, const real * const droptol,
              sparse_matrix * const L, sparse_matrix * const U )
 {
-    int *tmp_j;
-    real *tmp_val;
-    int i, j, pj, k1, k2, tmptop, Ltop;
-    real val, start;
-    unsigned int *Utop;
+    int i, k, pj, Ltop, Utop, *nz_mask;
+    real *w, start;
+    sparse_matrix *A_T;
 
     start = Get_Time( );
 
-    Utop = smalloc( (A->n + 1) * sizeof(unsigned int), "ILUT::Utop" );
-    tmp_j = smalloc( A->n * sizeof(int), "ILUT::Utop" );
-    tmp_val = smalloc( A->n * sizeof(real), "ILUT::Utop" );
+    /* use a dense vector with masking for the intermediate row w */
+    w = smalloc( sizeof(real) * A->n, "ILUT::w" );
+    nz_mask = smalloc( sizeof(int) * A->n, "ILUT::nz_mask" );
+
+    /* need upper triangular portion of A, so transpose to get in CSR format */
+    Allocate_Matrix( &A_T, A->n, A->m );
+
+    Transpose( A, A_T );
 
     Ltop = 0;
-    tmptop = 0;
-    memset( L->start, 0, (A->n + 1) * sizeof(unsigned int) );
-    memset( U->start, 0, (A->n + 1) * sizeof(unsigned int) );
-    memset( Utop, 0, A->n * sizeof(unsigned int) );
+    Utop = 0;
 
     for ( i = 0; i < A->n; ++i )
     {
+        /* mark the start of new row i in L and U */
         L->start[i] = Ltop;
-        tmptop = 0;
+        U->start[i] = Utop;
 
-        for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
+        for ( k = 0; k < A->n; ++k )
         {
-            j = A->j[pj];
-            val = A->val[pj];
+            w[k] = 0.0;
+            nz_mask[k] = 0;
+        }
 
-            if ( FABS(val) > droptol[i] )
+        /* copy i-th row of A into w */
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+            k = A->j[pj];
+            w[k] = A->val[pj];
+            nz_mask[k] = 1;
+        }
+        for ( pj = A_T->start[i] + 1; pj < A_T->start[i + 1]; ++pj )
+        {
+            k = A_T->j[pj];
+            w[k] = A_T->val[pj];
+            nz_mask[k] = 1;
+        }
+
+        for ( k = 0; k < i; ++k )
+        {
+            if ( nz_mask[k] == 1 )
             {
-                k1 = 0;
-                k2 = L->start[j];
-                while ( k1 < tmptop && k2 < L->start[j + 1] )
+                w[k] /= A->val[A->start[k + 1] - 1];
+
+                /* apply dropping rule to w[k] */
+                if ( FABS( w[k] ) < droptol[k] )
                 {
-                    if ( tmp_j[k1] < L->j[k2] )
-                    {
-                        ++k1;
-                    }
-                    else if ( tmp_j[k1] > L->j[k2] )
-                    {
-                        ++k2;
-                    }
-                    else
-                    {
-                        val -= (tmp_val[k1++] * L->val[k2++]);
-                    }
+                    nz_mask[k] = 0;
                 }
 
-                /* L matrix is lower triangular,
-                 * so right before the start of next row comes jth diagonal */
-                val /= L->val[L->start[j + 1] - 1];
-
-                tmp_j[tmptop] = j;
-                tmp_val[tmptop] = val;
-                ++tmptop;
+                if ( nz_mask[k] == 1 )
+                {
+                    for ( pj = U->start[k]; pj < U->start[k + 1]; ++pj )
+                    {
+                        /* do not introduce new non-zeros (0-fillin) */
+                        if ( nz_mask[U->j[pj]] == 1 )
+                        {
+                            w[U->j[pj]] -= w[k] * U->val[pj];
+                        }
+                    }
+                }
             }
         }
 
-        /* sanity check */
-        if ( A->j[pj] != i )
+        /* apply dropping rule to w, but keep the diagonal regardless;
+         * note: this is different than Saad's suggested approach
+         * as we do not limit the NNZ per row */
+        for ( k = 0; k < A->n; ++k )
         {
-            fprintf( stderr, "[ERROR] badly built input matrix in ILUT (i = %d)\n", i );
-            exit( NUMERIC_BREAKDOWN );
-        }
-
-        /* compute the ith diagonal in L */
-        val = A->val[pj];
-        for ( k1 = 0; k1 < tmptop; ++k1 )
-        {
-            val -= (tmp_val[k1] * tmp_val[k1]);
-        }
-
-#if defined(DEBUG)
-        if ( val < 0.0 )
-        {
-            fprintf( stderr, "[ERROR] Numeric breakdown in ILUT (SQRT of negative on diagonal i = %d). Terminating.\n", i );
-            exit( NUMERIC_BREAKDOWN );
-
-        }
-#endif
-
-        tmp_j[tmptop] = i;
-        tmp_val[tmptop] = SQRT( val );
-
-        /* apply the dropping rule once again */
-        for ( k1 = 0; k1 < tmptop; ++k1 )
-        {
-            if ( FABS(tmp_val[k1]) > droptol[i] / tmp_val[tmptop] )
+            if ( nz_mask[k] == 1 && FABS( w[k] ) < droptol[i] )
             {
-                L->j[Ltop] = tmp_j[k1];
-                L->val[Ltop] = tmp_val[k1];
-                U->start[tmp_j[k1] + 1]++;
+                nz_mask[k] = 0;
+            }
+        }
+
+        /* copy w[0:i] to row i of L */
+        for ( k = 0; k < i; ++k )
+        {
+            if ( nz_mask[k] == 1 )
+            {
+                L->j[Ltop] = k;
+                L->val[Ltop] = w[k];
                 ++Ltop;
             }
         }
 
-        /* keep the diagonal in any case */
-        L->j[Ltop] = tmp_j[k1];
-        L->val[Ltop] = tmp_val[k1];
+        /* unit diagonal for L */
+        L->j[Ltop] = i;
+        L->val[Ltop] = 1.0;
         ++Ltop;
+
+        /* copy w[i:n] to row i of L */
+        for ( k = i; k < A->n; ++k )
+        {
+            if ( nz_mask[k] == 1 )
+            {
+                U->j[Utop] = k;
+                U->val[Utop] = w[k];
+                ++Utop;
+            }
+        }
     }
 
-    L->start[i] = Ltop;
+    /* record the total NNZ as the last entry in row pointer (start) */
+    L->start[L->n] = Ltop;
+    U->start[U->n] = Utop;
 
-    /* U = L^T (Cholesky factorization) */
-    Transpose( L, U );
+    Deallocate_Matrix( A_T );
+    sfree( nz_mask, "ILUT::nz_mask" );
+    sfree( w, "ILUT::w" );
 
-    sfree( tmp_val, "ILUT::tmp_val" );
-    sfree( tmp_j, "ILUT::tmp_j" );
-    sfree( Utop, "ILUT::Utop" );
+    return Get_Timing_Info( start );
+}
+
+
+/* Compute incomplete LU factorization with thresholding and partial pivoting
+ *
+ * Reference:
+ * Iterative Methods for Sparse Linear System, Second Edition, 2003,
+ * Yousef Saad
+ *
+ * A: symmetric (lower triangular portion only stored), square matrix, CSR format
+ * droptol: row-wise tolerances used for dropping
+ * L / U: (output) triangular matrices, A \approx LU, CSR format */
+real ILUTP( const sparse_matrix * const A, const real * const droptol,
+             sparse_matrix * const L, sparse_matrix * const U )
+{
+    int i, k, pj, Ltop, Utop, *nz_mask, *perm, *perm_inv, pivot_j;
+    real *w, start, pivot_val;
+    sparse_matrix *A_T;
+
+    start = Get_Time( );
+
+    /* use a dense vector with masking for the intermediate row w */
+    w = smalloc( sizeof(real) * A->n, "ILUTP::w" );
+    nz_mask = smalloc( sizeof(int) * A->n, "ILUTP::nz_mask" );
+    perm = smalloc( sizeof(int) * A->n, "ILUTP::perm" );
+    perm_inv = smalloc( sizeof(int) * A->n, "ILUTP::perm_inv" );
+
+    /* need upper triangular portion of A, so transpose to get in CSR format */
+    Allocate_Matrix( &A_T, A->n, A->m );
+
+    Transpose( A, A_T );
+
+    Ltop = 0;
+    Utop = 0;
+
+    for ( i = 0; i < A->n; ++i )
+    {
+        perm[i] = i;
+        perm_inv[perm[i]] = i;
+    }
+
+    for ( i = 0; i < A->n; ++i )
+    {
+        /* mark the start of new row i in L and U */
+        L->start[i] = Ltop;
+        U->start[i] = Utop;
+
+        for ( k = 0; k < A->n; ++k )
+        {
+            w[k] = 0.0;
+            nz_mask[k] = 0;
+        }
+
+        /* copy i-th row of A into w */
+        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        {
+            k = A->j[pj];
+            w[k] = A->val[pj];
+            nz_mask[k] = 1;
+        }
+        for ( pj = A_T->start[i] + 1; pj < A_T->start[i + 1]; ++pj )
+        {
+            k = A_T->j[pj];
+            w[k] = A_T->val[pj];
+            nz_mask[k] = 1;
+        }
+
+        /* partial pivoting by columns:
+         * find largest element in w, and make it the pivot */
+        pivot_val = FABS( w[0] );
+        pivot_j = 0;
+        for ( k = 1; k < A->n; ++k )
+        {
+            if ( FABS( w[k] ) > pivot_val )
+            {
+                pivot_val = FABS( w[k] );
+                pivot_j = k;
+            }
+        }
+        perm[i] = pivot_j;
+        perm_inv[perm[i]] = i;
+        perm[pivot_j] = i;
+        perm_inv[perm[pivot_j]] = pivot_j;
+
+        for ( k = 0; k < i; ++k )
+        {
+            if ( nz_mask[perm[k]] == 1 )
+            {
+                if ( pivot_j <= i )
+                {
+                    for ( pj = A->start[k]; pj < A->start[k + 1]; ++pj )
+                    {
+                        if ( A->j[pj] == perm_inv[k] )
+                        {
+                            w[perm[k]] /= A->val[pj];
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    for ( pj = A_T->start[k] + 1; pj < A_T->start[k + 1]; ++pj )
+                    {
+                        if ( A_T->j[pj] == perm_inv[k] )
+                        {
+                            w[perm[k]] /= A_T->val[pj];
+                            break;
+                        }
+                    }
+                }
+
+                /* apply dropping rule to w[perm[k]] */
+                if ( FABS( w[perm[k]] ) < droptol[perm[k]] )
+                {
+                    nz_mask[perm[k]] = 0;
+                }
+
+                if ( nz_mask[perm[k]] == 1 )
+                {
+                    for ( pj = U->start[k]; pj < U->start[k + 1]; ++pj )
+                    {
+                        /* do not introduce new non-zeros (0-fillin) */
+                        if ( nz_mask[perm[U->j[pj]]] == 1 )
+                        {
+                            w[perm[U->j[pj]]] -= w[perm[k]] * U->val[pj];
+                        }
+                    }
+                }
+            }
+        }
+
+        /* apply dropping rule to w, but keep the diagonal regardless;
+         * note: this is different than Saad's suggested approach
+         * as we do not limit the NNZ per row */
+        for ( k = 0; k < A->n; ++k )
+        {
+            if ( perm_inv[k] != i && nz_mask[k] == 1 && FABS( w[k] ) < droptol[i] )
+            {
+                nz_mask[k] = 0;
+            }
+        }
+
+        /* copy w[0:i] to row i of L */
+        for ( k = 0; k < i; ++k )
+        {
+            if ( nz_mask[perm_inv[k]] == 1 )
+            {
+                L->j[Ltop] = k;
+                L->val[Ltop] = w[perm_inv[k]];
+                ++Ltop;
+            }
+        }
+
+        /* unit diagonal for L */
+        L->j[Ltop] = i;
+        L->val[Ltop] = 1.0;
+        ++Ltop;
+
+        /* copy w[i:n] to row i of L */
+        for ( k = i; k < A->n; ++k )
+        {
+            if ( nz_mask[perm_inv[k]] == 1 )
+            {
+                U->j[Utop] = k;
+                U->val[Utop] = w[perm_inv[k]];
+                ++Utop;
+            }
+        }
+    }
+
+    /* record the total NNZ as the last entry in row pointer (start) */
+    L->start[L->n] = Ltop;
+    U->start[U->n] = Utop;
+
+    Deallocate_Matrix( A_T );
+    sfree( perm_inv, "ILUTP::perm_inv" );
+    sfree( perm, "ILUTP::perm" );
+    sfree( nz_mask, "ILUTP::nz_mask" );
+    sfree( w, "ILUTP::w" );
 
     return Get_Timing_Info( start );
 }
@@ -1411,12 +1599,13 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 #endif
 
 
-/* sparse matrix-vector product Ax = b
+/* sparse matrix, dense vector multiplication Ax = b
  *
  * workspace: storage container for workspace structures
- * A: lower triangular matrix, stored in CSR format
- * x: vector
- * b (output): vector */
+ * A: symmetric (lower triangular portion only stored), square matrix,
+ *    stored in CSR format
+ * x: dense vector, size equal to num. columns in A
+ * b (output): dense vector, size equal to num. columns in A */
 static void Sparse_MatVec( const static_storage * const workspace,
         const sparse_matrix * const A, const real * const x, real * const b )
 {
@@ -1475,13 +1664,13 @@ static void Sparse_MatVec( const static_storage * const workspace,
 }
 
 
-/* sparse matrix-vector product Ax = b
- * where:
- *   A: matrix, stored in CSR format
- *   x: vector
- *   b: vector (result) */
+/* sparse matrix, dense vector multiplication Ax = b
+ *
+ * A: square matrix, stored in CSR format
+ * x: dense vector, size equal to num. columns in A
+ * b (output): dense vector, size equal to num. columns in A */
 static void Sparse_MatVec_full( const sparse_matrix * const A,
-                                const real * const x, real * const b )
+        const real * const x, real * const b )
 {
     int i, pj;
 
@@ -1708,10 +1897,10 @@ void tri_solve_level_sched( static_storage * workspace,
 
                 workspace->levels_L = levels;
 
-                //#if defined(DEBUG)
-                fprintf(stderr, "levels(L): %d\n", levels);
-                fprintf(stderr, "NNZ(L): %d\n", LU->start[N]);
-                //#endif
+#if defined(DEBUG)
+                fprintf(stderr, "[INFO] levels(L): %d\n", levels);
+                fprintf(stderr, "[INFO] NNZ(L): %d\n", LU->start[N]);
+#endif
             }
             else
             {
@@ -1730,10 +1919,10 @@ void tri_solve_level_sched( static_storage * workspace,
 
                 workspace->levels_U = levels;
 
-                //#if defined(DEBUG)
-                fprintf(stderr, "levels(U): %d\n", levels);
-                fprintf(stderr, "NNZ(U): %d\n", LU->start[N]);
-                //#endif
+#if defined(DEBUG)
+                fprintf(stderr, "[INFO] levels(U): %d\n", levels);
+                fprintf(stderr, "[INFO] NNZ(U): %d\n", LU->start[N]);
+#endif
             }
 
             for ( i = 1; i < levels + 1; ++i )

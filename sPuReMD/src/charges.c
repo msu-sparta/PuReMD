@@ -216,8 +216,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case JACOBI_PC:
-            data->timing.cm_solver_pre_comp +=
-                jacobi( Hptr, workspace->Hdia_inv );
+            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
             break;
 
         case ICHOLT_PC:
@@ -228,6 +227,11 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         case ILUT_PC:
             data->timing.cm_solver_pre_comp +=
                 ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            break;
+
+        case ILUTP_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
 
         case FG_ILUT_PC:
@@ -242,7 +246,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
                 sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
-            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile to enable. Terminating...\n" );
             exit( INVALID_INPUT );
 #endif
             break;
@@ -306,8 +310,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //    switch ( control->cm_solver_pre_comp_type )
 //    {
 //    case JACOBI_PC:
-//        data->timing.cm_solver_pre_comp +=
-//            jacobi( Hptr, workspace->Hdia_inv );
+//        data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
 //        break;
 //
 //    case ICHOLT_PC:
@@ -320,10 +323,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
 //            break;
 //
-//        case ILUT_PC:
+//        case ILUTP_PC:
 //            data->timing.cm_solver_pre_comp +=
-//                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-//            break;
+//                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
 //
 //    case FG_ILUT_PC:
 //        data->timing.cm_solver_pre_comp +=
@@ -538,6 +540,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -558,8 +561,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
 
         case JACOBI_PC:
-            data->timing.cm_solver_pre_comp +=
-                jacobi( Hptr, workspace->Hdia_inv );
+            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
             break;
 
         case ICHOLT_PC:
@@ -571,6 +573,10 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             data->timing.cm_solver_pre_comp +=
                 ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
+
+        case ILUTP_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
 
         case FG_ILUT_PC:
             data->timing.cm_solver_pre_comp +=
@@ -584,7 +590,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
                 sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
-            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile to enable. Terminating...\n" );
             exit( INVALID_INPUT );
 #endif
             break;
@@ -610,6 +616,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -660,6 +667,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -681,8 +689,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case JACOBI_PC:
-            data->timing.cm_solver_pre_comp +=
-                jacobi( Hptr, workspace->Hdia_inv );
+            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
             break;
 
         case ICHOLT_PC:
@@ -694,6 +701,10 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             data->timing.cm_solver_pre_comp +=
                 ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
             break;
+
+        case ILUTP_PC:
+            data->timing.cm_solver_pre_comp +=
+                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
 
         case FG_ILUT_PC:
             data->timing.cm_solver_pre_comp +=
@@ -707,7 +718,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
                 sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
-            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+            fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile to enable. Terminating...\n" );
             exit( INVALID_INPUT );
 #endif
             break;
@@ -733,6 +744,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -820,6 +832,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case ILUT_PC:
+        case ILUTP_PC:
         case FG_ILUT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
@@ -887,6 +900,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -926,6 +940,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case ILUT_PC:
+        case ILUTP_PC:
         case FG_ILUT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
@@ -963,6 +978,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -1000,6 +1016,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -1041,6 +1058,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case ILUT_PC:
+        case ILUTP_PC:
         case FG_ILUT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
@@ -1077,6 +1095,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;

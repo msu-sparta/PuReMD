@@ -349,6 +349,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     workspace->Hdia_inv = NULL;
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         workspace->droptol = scalloc( system->N_cm, sizeof( real ),
@@ -1203,6 +1204,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     Deallocate_Matrix( workspace->H_sp );
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Deallocate_Matrix( workspace->L );
@@ -1233,6 +1235,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );

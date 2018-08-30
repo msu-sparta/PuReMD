@@ -245,6 +245,7 @@ enum pre_comp
     JACOBI_PC = 1,
     ICHOLT_PC = 2,
     ILUT_PC = 3,
+    ILUTP_PC = 4,
     FG_ILUT_PC = 5,
     SAI_PC = 6,
 };
