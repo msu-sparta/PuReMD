@@ -1776,7 +1776,7 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
 }
 
 
-/* Solve triangular system LU*x = y using level scheduling
+/* Solve triangular system LU*x = y using forward/backward substitution
  *
  * LU: lower/upper triangular, stored in CSR
  * y: constants in linear system (RHS)
@@ -2551,6 +2551,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
                     break;
@@ -2571,6 +2572,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
                             workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
@@ -2594,6 +2596,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
 #ifdef _OPENMP
                     #pragma omp for schedule(static)
@@ -2623,6 +2626,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
                     /* construct D^{-1}_L */
                     if ( fresh_pre == TRUE )
@@ -2669,6 +2673,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
                     break;
@@ -2690,6 +2695,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
                             workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
@@ -2710,6 +2716,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
                             workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
@@ -2731,6 +2738,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
+                case ILUTP_PC:
                 case FG_ILUT_PC:
                     /* construct D^{-1}_U */
                     if ( fresh_pre == TRUE )

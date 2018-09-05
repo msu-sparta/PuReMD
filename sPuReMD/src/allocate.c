@@ -79,19 +79,15 @@ void Allocate_Matrix( sparse_matrix **pH, int n, int m )
 {
     sparse_matrix *H;
 
-    *pH = (sparse_matrix*) smalloc( sizeof(sparse_matrix),
-            "Allocate_Matrix::pH" );
+    *pH = smalloc( sizeof(sparse_matrix), "Allocate_Matrix::pH" );
 
     H = *pH;
     H->n = n;
     H->m = m;
 
-    H->start = (unsigned int*) smalloc( sizeof(unsigned int) * (n + 1),
-            "Allocate_Matrix::H->start" );
-    H->j = (unsigned int*) smalloc( sizeof(unsigned int) * m,
-            "Allocate_Matrix::H->j" );
-    H->val = (real*) smalloc( sizeof(real) * m,
-            "Allocate_Matrix::H->val" );
+    H->start = smalloc( sizeof(unsigned int) * (n + 1), "Allocate_Matrix::H->start" );
+    H->j = smalloc( sizeof(unsigned int) * m, "Allocate_Matrix::H->j" );
+    H->val = smalloc( sizeof(real) * m, "Allocate_Matrix::H->val" );
 }
 
 

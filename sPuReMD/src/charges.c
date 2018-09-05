@@ -540,7 +540,6 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -616,7 +615,6 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -667,7 +665,6 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -744,7 +741,6 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -948,8 +944,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &(workspace->L), Hptr->n, Hptr->m );
-                Allocate_Matrix( &(workspace->U), Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
@@ -1052,8 +1048,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Deallocate_Matrix( workspace->U );
 
                 /* factors have sparsity pattern as H */
-                Allocate_Matrix( &(workspace->L), Hptr->n, fillin );
-                Allocate_Matrix( &(workspace->U), Hptr->n, fillin );
+                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
+                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
             }
             break;
 
