@@ -867,6 +867,42 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
 }
 
 
+/* Read sparse matrix in COO format (1-based indexing)
+ * and store in a CSR sparse matrix (preallocated)
+ *
+ * Note: the file must be sorted in increasing order of
+ * columns than rows */
+void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
+{
+    int top, cur_row, row, col, val;
+    FILE *f;
+   
+    f = sfopen( fname, "r" );
+    top = 0;
+    cur_row = 0;
+
+    A->start[cur_row] = top;
+
+    while ( fscanf( f, "%d %d %f", &row, &col, &val ) == 3 )
+    {
+        if ( cur_row != row - 1 )
+        {
+            cur_row++;
+            A->start[cur_row] = top;
+        }
+
+        A->j[top] = col - 1;
+        A->val[top] = val;
+
+        top++;
+    }
+
+    A->start[A->n] = top;
+
+    sfclose( f, "Read_Sparse_Matrix2::f" );
+}
+
+
 /* Note: watch out for portability issues with endianness
  * due to serialization of numeric types (integer, IEEE 754) */
 void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )

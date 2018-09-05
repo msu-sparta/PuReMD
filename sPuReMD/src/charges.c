@@ -314,18 +314,19 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //        break;
 //
 //    case ICHOLT_PC:
-//        data->timing.cm_solver_pre_comp +=
-//            ICHOLT( Hptr, workspace->droptol, workspace->L_EE, workspace->U_EE );
+//        fprintf( stderr, "[ERROR] ICHOLT is not supported for indefinite, symmetric matrices of EE. Terminating...\n" );
+//        exit( INVALID_INPUT );
 //        break;
 //
-//        case ILUT_PC:
-//            data->timing.cm_solver_pre_comp +=
-//                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-//            break;
+//    case ILUT_PC:
+//        data->timing.cm_solver_pre_comp +=
+//            ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+//        break;
 //
-//        case ILUTP_PC:
-//            data->timing.cm_solver_pre_comp +=
-//                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
+//    case ILUTP_PC:
+//        data->timing.cm_solver_pre_comp +=
+//            ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
+//        break;
 //
 //    case FG_ILUT_PC:
 //        data->timing.cm_solver_pre_comp +=
@@ -538,8 +539,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     Hptr = create_test_mat( );
 #endif
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -564,8 +564,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
 
         case ICHOLT_PC:
-            data->timing.cm_solver_pre_comp +=
-                ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            fprintf( stderr, "[ERROR] ICHOLT is not supported for indefinite, symmetric matrices of EE. Terminating...\n" );
+            exit( INVALID_INPUT );
             break;
 
         case ILUT_PC:
@@ -576,6 +576,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         case ILUTP_PC:
             data->timing.cm_solver_pre_comp +=
                 ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
+            break;
 
         case FG_ILUT_PC:
             data->timing.cm_solver_pre_comp +=
@@ -613,8 +614,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         }
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -663,8 +663,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     Hptr = create_test_mat( );
 #endif
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -690,8 +689,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case ICHOLT_PC:
-            data->timing.cm_solver_pre_comp +=
-                ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            fprintf( stderr, "[ERROR] ICHOLT is not supported for indefinite, symmetric matrices of ACKS2. Terminating...\n" );
+            exit( INVALID_INPUT );
             break;
 
         case ILUT_PC:
@@ -702,6 +701,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         case ILUTP_PC:
             data->timing.cm_solver_pre_comp +=
                 ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
+            break;
 
         case FG_ILUT_PC:
             data->timing.cm_solver_pre_comp +=
@@ -739,8 +739,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         }
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -894,9 +893,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -916,23 +913,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case ICHOLT_PC:
-            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
-
-            fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-
-            if ( workspace->L == NULL )
-            {
-                Allocate_Matrix( &workspace->L, system->N_cm, fillin + system->N_cm );
-                Allocate_Matrix( &workspace->U, system->N_cm, fillin + system->N_cm );
-            }
-            else if ( workspace->L->m < fillin + system->N_cm )
-            {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
-
-                Allocate_Matrix( &workspace->L, system->N_cm, fillin + system->N_cm );
-                Allocate_Matrix( &workspace->U, system->N_cm, fillin + system->N_cm );
-            }
+            fprintf( stderr, "[ERROR] ICHOLT is not supported for indefinite, symmetric matrices of EE. Terminating...\n" );
+            exit( INVALID_INPUT );
             break;
 
         case ILUT_PC:
@@ -972,9 +954,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
@@ -1010,9 +990,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
@@ -1033,24 +1011,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case ICHOLT_PC:
-            Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
-
-            fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
-
-            if ( workspace->L == NULL )
-            {
-                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
-                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
-            }
-            else if ( workspace->L->m < fillin )
-            {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
-
-                /* factors have sparsity pattern as H */
-                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
-                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
-            }
+            fprintf( stderr, "[ERROR] ICHOLT is not supported for indefinite, symmetric matrices of ACKS2. Terminating...\n" );
+            exit( INVALID_INPUT );
             break;
 
         case ILUT_PC:
@@ -1089,9 +1051,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
     }
 
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
+    if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
