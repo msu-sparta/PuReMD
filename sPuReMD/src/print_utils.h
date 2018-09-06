@@ -54,6 +54,8 @@ void Print_Sparse_Matrix( sparse_matrix* );
 
 void Print_Sparse_Matrix2( sparse_matrix*, char*, char* );
 
+void Read_Sparse_Matrix2( sparse_matrix *, char * );
+
 void Print_Sparse_Matrix_Binary( sparse_matrix*, char* );
 
 void Print_Bonds( reax_system*, reax_list*, char* );

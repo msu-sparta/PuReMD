@@ -874,7 +874,8 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
  * columns than rows */
 void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 {
-    int top, cur_row, row, col, val;
+    int top, cur_row, row, col;
+    real val;
     FILE *f;
    
     f = sfopen( fname, "r" );
@@ -883,8 +884,9 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 
     A->start[cur_row] = top;
 
-    while ( fscanf( f, "%d %d %f", &row, &col, &val ) == 3 )
+    while ( fscanf( f, "%6d %6d %24.15lf", &row, &col, &val ) == 3 )
     {
+        /* assumption: every row has at least one nonzero (diagonal) */
         if ( cur_row != row - 1 )
         {
             cur_row++;
@@ -893,7 +895,6 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 
         A->j[top] = col - 1;
         A->val[top] = val;
-
         top++;
     }
 
