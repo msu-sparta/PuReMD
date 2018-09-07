@@ -44,10 +44,16 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
     for ( i = 0; i < A->n; ++i )
     {
         si = A->start[i];
+#if defined(HALF_LIST)
         b[i][0] += A->entries[si].val * x[i][0];
         b[i][1] += A->entries[si].val * x[i][1];
+#endif
 
+#if defined(HALF_LIST)
         for ( k = si + 1; k < A->end[i]; ++k )
+#else
+        for ( k = si; k < A->end[i]; ++k )
+#endif
         {
             j = A->entries[k].j;
             H = A->entries[k].val;
@@ -55,11 +61,13 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
             b[i][0] += H * x[j][0];
             b[i][1] += H * x[j][1];
 
+#if defined(HALF_LIST)
             // comment out for tryQEq
             //if( j < A->n ) {
             b[j][0] += H * x[i][0];
             b[j][1] += H * x[i][1];
             //}
+#endif
         }
     }
 }
@@ -91,8 +99,10 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
     Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
     dual_Sparse_MatVec( H, x, workspace->q2, N );
+#if defined(HALF_LIST)
     // tryQEq
     Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+#endif
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -142,8 +152,10 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     {
         Dist(system, mpi_data, workspace->d2, mpi_data->mpi_rvec2, scale, rvec2_packer);
         dual_Sparse_MatVec( H, workspace->d2, workspace->q2, N );
+#if defined(HALF_LIST)
         // tryQEq
         Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+#endif
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
@@ -265,14 +277,25 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
     for ( i = 0; i < A->n; ++i )
     {
         si = A->start[i];
+
+#if defined(HALF_LIST)
         b[i] += A->entries[si].val * x[i];
+#endif
+
+#if defined(HALF_LIST)
         for ( k = si + 1; k < A->end[i]; ++k )
+#else
+        for ( k = si; k < A->end[i]; ++k )
+#endif
         {
             j = A->entries[k].j;
             H = A->entries[k].val;
+            
             b[i] += H * x[j];
+#if defined(HALF_LIST)
             //if( j < A->n ) // comment out for tryQEq
             b[j] += H * x[i];
+#endif
         }
     }
 }
@@ -322,8 +345,10 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
     scale = sizeof(real) / sizeof(void);
     Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
     Sparse_MatVec( H, x, workspace->q, system->N );
+#if defined(HALF_LIST)
     // tryQEq
     Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+#endif
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -356,8 +381,10 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
     {
         Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+#if defined(HALF_LIST)
         //tryQEq
         Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+#endif
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )

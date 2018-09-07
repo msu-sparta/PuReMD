@@ -57,7 +57,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d@count atoms:\n", system->my_rank );
-    fprintf( stderr, "p%d: bigN = %d\n", system->my_rank, system->bigN );
+    fprintf( stderr, "p%d: bigNNN = %d\n", system->my_rank, system->bigN );
     fprintf( stderr, "p%d: n = %d\n", system->my_rank, system->n );
     fprintf( stderr, "p%d: N = %d\n\n", system->my_rank, system->N );
 #endif
@@ -241,7 +241,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
     //#if defined(DEBUG)
     fprintf( stderr, "p%d@count atoms:\n", system->my_rank );
-    fprintf( stderr, "p%d: bigN = %d\n", system->my_rank, system->bigN );
+    fprintf( stderr, "p%d: bigNNN = %d\n", system->my_rank, system->bigN );
     fprintf( stderr, "p%d: n = %d\n", system->my_rank, system->n );
     fprintf( stderr, "p%d: N = %d\n\n", system->my_rank, system->N );
     //#endif

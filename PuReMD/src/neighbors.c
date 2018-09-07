@@ -91,7 +91,9 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncells[0]; i++ )
+    {
         for ( j = 0; j < g->ncells[1]; j++ )
+        {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 gci = &(g->cells[i][j][k]);
@@ -108,11 +110,23 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                     itr = 0;
                     while ( (gcj = gci->nbrs[itr]) != NULL )
                     {
-                        if ( gci->str <= gcj->str &&
+                        if ( 
+#if defined(HALF_LIST)
+                                gci->str <= gcj->str &&
+#endif
                                 (DistSqr_to_Special_Point(gci->nbrs_cp[itr], atom1->x) <= cutoff) )
+                        {
                             /* pick up another atom from the neighbor cell */
                             for ( m = gcj->str; m < gcj->end; ++m )
-                                if ( l < m )  // prevent recounting same pairs within a gcell
+                            {
+#if defined(HALF_LIST)      
+                                /* prevent recounting same pairs within a gcell and
+                                 * make half-list */
+                                if ( l < m )
+#else                           
+                                /* prevent recounting same pairs within a gcell */
+                                if ( l != m )
+#endif      
                                 {
                                     atom2 = &(system->my_atoms[m]);
                                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -125,20 +139,22 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                         nbr_data->nbr = m;
                                         nbr_data->d = sqrt(d);
                                         rvec_Copy( nbr_data->dvec, dvec );
-                                        //ivec_Copy( nbr_data->rel_box, gcj->rel_box );
                                         ivec_ScaledSum( nbr_data->rel_box,
                                                         1, gcj->rel_box, -1, gci->rel_box );
                                         ++num_far;
                                     }
                                 }
+                            }
+                        }
+
                         ++itr;
                     }
+
                     Set_End_Index( l, num_far, far_nbrs );
-                    //fprintf(stderr, "i:%d, start: %d, end: %d - itr: %d\n",
-                    //  atom1,Start_Index(atom1,far_nbrs),End_Index(atom1,far_nbrs),
-                    //  itr);
                 }
             }
+        }
+    }
 
     workspace->realloc.num_far = num_far;
 
@@ -180,7 +196,9 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
 
     /* first pick up a cell in the grid */
     for ( i = 0; i < g->ncells[0]; i++ )
+    {
         for ( j = 0; j < g->ncells[1]; j++ )
+        {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 gci = &(g->cells[i][j][k]);
@@ -196,12 +214,23 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
                     itr = 0;
                     while ( (gcj = gci->nbrs[itr]) != NULL )
                     {
-                        if (gci->str <= gcj->str &&
+                        if (
+#if defined(HALF_LIST)
+                                gci->str <= gcj->str &&
+#endif
                                 (DistSqr_to_Special_Point(gci->nbrs_cp[itr], atom1->x) <= cutoff))
-                            //fprintf( stderr, "\t\tgcell2: %d\n", itr );
+                        {
                             /* pick up another atom from the neighbor cell */
                             for ( m = gcj->str; m < gcj->end; ++m )
+                            {
+#if defined(HALF_LIST)
+                                /* prevent recounting same pairs within a gcell and
+                                 * make half-list */
                                 if ( l < m )
+#else
+                                /* prevent recounting same pairs within a gcell */
+                                if ( l != m )
+#endif
                                 {
                                     //fprintf( stderr, "\t\t\tatom2=%d\n", m );
                                     atom2 = &(system->my_atoms[m]);
@@ -212,13 +241,15 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
                                     if ( d <= cutoff )
                                         ++num_far;
                                 }
+                            }
+                        }
 
                         ++itr;
                     }
-                    //fprintf( stderr, "itr: %d, tested: %d, num_nbrs: %d\n",
-                    //   itr, tested, num_far-tmp );
                 }
             }
+        }
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: estimate nbrs done - num_far=%d\n",

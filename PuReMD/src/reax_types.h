@@ -39,6 +39,7 @@
 
 //#define DEBUG
 //#define DEBUG_FOCUS
+//#define HALF_LIST
 //#define TEST_ENERGY
 //#define TEST_FORCES
 //#define CG_PERFORMANCE
