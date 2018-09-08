@@ -1,7 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
 
-AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing #-finline-functions -finline-limit=15 -qhot
-
 bin_PROGRAMS = bin/puremd
 bin_puremd_SOURCES = src/allocate.c src/basic_comm.c src/ffield.c src/grid.c src/list.c src/lookup.c \
       src/io_tools.c src/reset_tools.c src/restart.c src/random.c src/tool_box.c src/traj.c \
@@ -18,5 +16,5 @@ include_HEADERS = src/reax_defs.h src/reax_types.h \
       src/bonds.h src/valence_angles.h src/hydrogen_bonds.h src/torsion_angles.h src/nonbonded.h src/forces.h \
       src/integrate.h src/init_md.h
 
-bin_puremd_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS)
-bin_puremd_LDFLAGS = $(AM_LDFLAGS) $(MPI_LDFLAGS)
+bin_puremd_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS) $(CFLAGS)
+bin_puremd_LDADD = $(AM_LDADD) $(MPI_LIBS) $(LDADD)

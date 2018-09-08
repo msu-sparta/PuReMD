@@ -22,6 +22,11 @@
 #ifndef __REAX_TYPES_H_
 #define __REAX_TYPES_H_
 
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "config.h"
+#endif
+
 #include <ctype.h>
 #include <math.h>
 #include <mpi.h>

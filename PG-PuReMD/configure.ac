@@ -27,7 +27,7 @@ AC_LANG([C])
 # Checks for programs.
 AC_PROG_CC([icc gcc clang cc])
 AC_PROG_CPP
-CFLAGS="$sav_CFLAGS"
+CFLAGS="${sav_CFLAGS}"
 
 AC_CONFIG_SRCDIR([src/torsion_angles.h])
 AC_CONFIG_HEADERS([src/config.h])
