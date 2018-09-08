@@ -589,9 +589,9 @@ int  Init_Lists( reax_system *system, control_params *control,
     workspace->U = NULL;
     
     //TODO: uncomment for SAI
-//    Allocate_Matrix( &(workspace->H_spar_patt), workspace->H->n, workspace->H->m );
+    Allocate_Matrix2( &(workspace->H_spar_patt), workspace->H->n, system->local_cap, workspace->H->m, comm );
 //    Allocate_Matrix( &(workspace->H_spar_patt_full), workspace->H->n, 2 * workspace->H->m - workspace->H->n );
-//    Allocate_Matrix( &(workspace->H_app_inv), workspace->H->n, 2 * workspace->H->m - workspace->H->n );
+    Allocate_Matrix2( &(workspace->H_app_inv), workspace->H->n, system->local_cap, workspace->H->m, comm );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated H matrix: Htop=%d, space=%dMB\n",

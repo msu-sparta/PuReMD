@@ -24,6 +24,7 @@
 
 #include "reax_types.h"
 
+void int_packer( void*, mpi_out_data* );
 void real_packer( void*, mpi_out_data* );
 void rvec_packer( void*, mpi_out_data* );
 void rvec2_packer( void*, mpi_out_data* );

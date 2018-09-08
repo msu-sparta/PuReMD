@@ -419,6 +419,23 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m, MPI_Comm comm )
 
     return SUCCESS;
 }
+int Allocate_Matrix2( sparse_matrix **pH, int n, int cap, int m, MPI_Comm comm )
+{
+    sparse_matrix *H;
+
+    *pH = (sparse_matrix*)
+          smalloc( sizeof(sparse_matrix), "sparse_matrix", comm );
+    H = *pH;
+    H->n = n;
+    H->cap = cap;
+    H->m = m;
+    H->start = (int*) smalloc( sizeof(int) * cap, "matrix_start", comm );
+    H->end = (int*) smalloc( sizeof(int) * cap, "matrix_end", comm );
+    H->entries = (sparse_matrix_entry*)
+                 smalloc( sizeof(sparse_matrix_entry) * m, "matrix_entries", comm );
+
+    return SUCCESS;
+}
 
 
 void Deallocate_Matrix( sparse_matrix *H )

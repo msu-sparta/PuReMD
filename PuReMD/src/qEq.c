@@ -41,7 +41,7 @@ void Sort_Matrix_Rows( sparse_matrix *A )
         si = A->start[i];
         ei = A->end[i];
         qsort( &(A->entries[si]), ei - si,
-               sizeof(sparse_matrix_entry), compare_matrix_entry );
+                sizeof(sparse_matrix_entry), compare_matrix_entry );
     }
 }
 
@@ -103,7 +103,7 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
 
 
 void ICHOLT( sparse_matrix *A, real *droptol,
-             sparse_matrix *L, sparse_matrix *U )
+        sparse_matrix *L, sparse_matrix *U )
 {
     sparse_matrix_entry tmp[1000];
     int i, j, pj, k1, k2, tmptop, Utop;
@@ -231,89 +231,89 @@ void ICHOLT( sparse_matrix *A, real *droptol,
 
 
 void Init_MatVec( reax_system *system, simulation_data *data,
-                  control_params *control,  storage *workspace,
-                  mpi_datatypes *mpi_data )
+        control_params *control,  storage *workspace,
+        mpi_datatypes *mpi_data )
 {
     int i; //, fillin;
     reax_atom *atom;
 
     /*if( (data->step - data->prev_steps) % control->refactor == 0 ||
-        workspace->L == NULL ) {
-      //Print_Linear_System( system, control, workspace, data->step );
-      Sort_Matrix_Rows( workspace->H );
-      fprintf( stderr, "H matrix sorted\n" );
-      Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
-      fprintf( stderr, "drop tolerances calculated\n" );
-      if( workspace->L == NULL ) {
-        fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
+      workspace->L == NULL ) {
+    //Print_Linear_System( system, control, workspace, data->step );
+    Sort_Matrix_Rows( workspace->H );
+    fprintf( stderr, "H matrix sorted\n" );
+    Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
+    fprintf( stderr, "drop tolerances calculated\n" );
+    if( workspace->L == NULL ) {
+    fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
 
-        if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin ) == 0 ||
-      Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin ) == 0 ) {
+    if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin ) == 0 ||
+    Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin ) == 0 ) {
     fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
     MPI_Abort( mpi_data->world, INSUFFICIENT_MEMORY );
-        }
+    }
 
-        workspace->L->n = workspace->H->n;
-        workspace->U->n = workspace->H->n;
-    #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: n=%d, fillin = %d\n",
-           system->my_rank, workspace->L->n, fillin );
-        fprintf( stderr, "p%d: allocated memory: L = U = %ldMB\n",
-                 system->my_rank,fillin*sizeof(sparse_matrix_entry)/(1024*1024) );
-    #endif
-      }
+    workspace->L->n = workspace->H->n;
+    workspace->U->n = workspace->H->n;
+#if defined(DEBUG_FOCUS)
+fprintf( stderr, "p%d: n=%d, fillin = %d\n",
+system->my_rank, workspace->L->n, fillin );
+fprintf( stderr, "p%d: allocated memory: L = U = %ldMB\n",
+system->my_rank,fillin*sizeof(sparse_matrix_entry)/(1024*1024) );
+#endif
+}
 
-      ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
-    #if defined(DEBUG_FOCUS)
-      fprintf( stderr, "p%d: icholt finished\n", system->my_rank );
-      //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-      //Print_Sparse_Matrix2( workspace->L, fname );
-      //Print_Sparse_Matrix( U );
-    #endif
-    }*/
+ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+#if defined(DEBUG_FOCUS)
+fprintf( stderr, "p%d: icholt finished\n", system->my_rank );
+    //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+    //Print_Sparse_Matrix2( workspace->L, fname );
+    //Print_Sparse_Matrix( U );
+#endif
+}*/
 
     //TODO: fill in code for setting up and computing SAI, see sPuReMD code,
     //  and remove diagonal preconditioner computation below (workspace->Hdia_inv)
-//    setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-//            &workspace->H_spar_patt_full, &workspace->H_app_inv,
-//            control->cm_solver_pre_comp_sai_thres );
+    //    setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+    //            &workspace->H_spar_patt_full, &workspace->H_app_inv,
+    //            control->cm_solver_pre_comp_sai_thres );
 
     for ( i = 0; i < system->n; ++i )
-    {
-        atom = &( system->my_atoms[i] );
+{
+    atom = &( system->my_atoms[i] );
 
-        /* init pre-conditioner for H and init solution vectors */
-        workspace->Hdia_inv[i] = 1. / system->reax_param.sbp[ atom->type ].eta;
-        workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
-        workspace->b_t[i] = -1.0;
-        workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
-        workspace->b[i][1] = -1.0;
+    /* init pre-conditioner for H and init solution vectors */
+    workspace->Hdia_inv[i] = 1. / system->reax_param.sbp[ atom->type ].eta;
+    workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
+    workspace->b_t[i] = -1.0;
+    workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
+    workspace->b[i][1] = -1.0;
 
-        /* linear extrapolation for s and for t */
-        // newQEq: no extrapolation!
-        //workspace->s[i] = 2 * atom->s[0] - atom->s[1]; //0;
-        //workspace->t[i] = 2 * atom->t[0] - atom->t[1]; //0;
-        //workspace->x[i][0] = 2 * atom->s[0] - atom->s[1]; //0;
-        //workspace->x[i][1] = 2 * atom->t[0] - atom->t[1]; //0;
+    /* linear extrapolation for s and for t */
+    // newQEq: no extrapolation!
+    //workspace->s[i] = 2 * atom->s[0] - atom->s[1]; //0;
+    //workspace->t[i] = 2 * atom->t[0] - atom->t[1]; //0;
+    //workspace->x[i][0] = 2 * atom->s[0] - atom->s[1]; //0;
+    //workspace->x[i][1] = 2 * atom->t[0] - atom->t[1]; //0;
 
-        /* quadratic extrapolation for s and t */
-        // workspace->s[i] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
-        // workspace->t[i] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
-        //workspace->x[i][0] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
-        workspace->x[i][1] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
+    /* quadratic extrapolation for s and t */
+    // workspace->s[i] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
+    // workspace->t[i] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
+    //workspace->x[i][0] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
+    workspace->x[i][1] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
 
-        /* cubic extrapolation for s and t */
-        workspace->x[i][0] = 4 * (atom->s[0] + atom->s[2]) - (6 * atom->s[1] + atom->s[3]);
-        //workspace->x[i][1] = 4*(atom->t[0]+atom->t[2])-(6*atom->t[1]+atom->t[3]);
+    /* cubic extrapolation for s and t */
+    workspace->x[i][0] = 4 * (atom->s[0] + atom->s[2]) - (6 * atom->s[1] + atom->s[3]);
+    //workspace->x[i][1] = 4*(atom->t[0]+atom->t[2])-(6*atom->t[1]+atom->t[3]);
 
-        // fprintf(stderr, "i=%d s=%f t=%f\n", i, workspace->s[i], workspace->t[i]);
-    }
+    // fprintf(stderr, "i=%d s=%f t=%f\n", i, workspace->s[i], workspace->t[i]);
+}
 }
 
 
 
 void Calculate_Charges( reax_system *system, storage *workspace,
-                        mpi_datatypes *mpi_data )
+        mpi_datatypes *mpi_data )
 {
     int        i, scale;
     real       u;//, s_sum, t_sum;
@@ -365,17 +365,37 @@ void Calculate_Charges( reax_system *system, storage *workspace,
 }
 
 
+static void Setup_Preconditioner_QEq( reax_system *system, control_params *control, 
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+{
+    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    Sort_Matrix_Rows( workspace->H );
+
+    //TODO: add sai filtering value, which will be passed as the last parameter
+    setup_sparse_approx_inverse( system, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
+            control->nprocs, 0.1 );
+}
+
+static void Compute_Preconditioner_QEq( reax_system *system, control_params *control, 
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+{
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+    sparse_approx_inverse( system, workspace, mpi_data,
+            workspace->H, workspace->H_spar_patt, &workspace->H_app_inv );
+#else
+    fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+    exit( INVALID_INPUT );
+#endif
+}
+
 void QEq( reax_system *system, control_params *control, simulation_data *data,
-          storage *workspace, output_controls *out_control,
-          mpi_datatypes *mpi_data )
+        storage *workspace, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
     int j, s_matvecs, t_matvecs;
 
     Init_MatVec( system, data, control, workspace, mpi_data );
 
-    //if( data->step == 50010 ) {
-    //  Print_Linear_System( system, control, workspace, data->step );
-    // }
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized qEq\n", system->my_rank );
     //Print_Linear_System( system, control, workspace, data->step );
@@ -385,10 +405,20 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //          control->q_err, workspace->x, mpi_data, out_control->log);
     //t_matvecs = 0;
 
+#if defined(SAI_PRECONDITIONER)
+    if( control->refactor > 0 && ((data->step - data->prev_steps) % control->refactor == 0))
+    {
+        Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+
+        Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+    }
+#endif
+
+
     for ( j = 0; j < system->n; ++j )
         workspace->s[j] = workspace->x[j][0];
     s_matvecs = CG(system, workspace, workspace->H, workspace->b_s,//newQEq sCG
-                   control->q_err, workspace->s, mpi_data, out_control->log );
+            control->q_err, workspace->s, mpi_data, out_control->log );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][0] = workspace->s[j];
 
@@ -402,7 +432,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     for ( j = 0; j < system->n; ++j )
         workspace->t[j] = workspace->x[j][1];
     t_matvecs = CG(system, workspace, workspace->H, workspace->b_t,//newQEq sCG
-                   control->q_err, workspace->t, mpi_data, out_control->log );
+            control->q_err, workspace->t, mpi_data, out_control->log );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][1] = workspace->t[j];
 

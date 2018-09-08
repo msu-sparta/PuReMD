@@ -36,10 +36,10 @@
 
 #define PURE_REAX
 //#define LAMMPS_REAX
-
+#define SAI_PRECONDITIONER
+//#define HALF_LIST
 //#define DEBUG
 //#define DEBUG_FOCUS
-//#define HALF_LIST
 //#define TEST_ENERGY
 //#define TEST_FORCES
 //#define CG_PERFORMANCE

@@ -24,6 +24,12 @@
 
 #include "reax_types.h"
 
+void setup_sparse_approx_inverse( reax_system*, storage*, mpi_datatypes*, 
+        sparse_matrix *, sparse_matrix **, int, double );
+
+void sparse_approx_inverse( reax_system*, storage*, mpi_datatypes*, 
+        sparse_matrix*, sparse_matrix*, sparse_matrix** );
+
 int GMRES( reax_system*, storage*, sparse_matrix*,
            real*, real, real*, mpi_datatypes*, FILE* );
 int GMRES_HouseHolder( reax_system*, storage*, sparse_matrix*,
