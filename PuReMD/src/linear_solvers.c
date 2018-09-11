@@ -146,18 +146,17 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
 
     comm = mpi_data->world;
 
+   // fprintf("%d\n",);
+
     if ( *A_spar_patt == NULL )
     {
-        //TODO
         Allocate_Matrix2(A_spar_patt, A->n, system->local_cap, A->m, comm );
     }
 
-    else if ( (*A_spar_patt)->m < A->m )
+    else /*if ( (*A_spar_patt)->m < A->m )*/
     {
-        //TODO
         Deallocate_Matrix( *A_spar_patt );
         Allocate_Matrix2( A_spar_patt, A->n, system->local_cap, A->m, comm );
-        //Reallocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
 
     m = 0;
@@ -378,8 +377,6 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
            } */
     }
 
-    /*if(system->my_rank == target_proc)
-      fprintf(stdout,"threshold = %.15lf\n", threshold);*/
     /*broadcast the filtering value*/
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
 
@@ -438,9 +435,9 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
     int *j_send, *j_recv1, *j_recv2;
     real *val_send, *val_recv1, *val_recv2;
 
-    real start;
+    /*real start;
 
-    /* start = Get_Time( ); */
+    start = Get_Time( ); */
 
     comm = mpi_data->world;
 
@@ -449,7 +446,7 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
         Allocate_Matrix2( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m, comm );
     }
 
-    else if ( (*A_app_inv)->m < A_spar_patt->m )
+    else /* if ( (*A_app_inv)->m < A_spar_patt->m ) */
     {
         Deallocate_Matrix( *A_app_inv );
         Allocate_Matrix2( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m, comm );
@@ -495,6 +492,8 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
     /*  use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d)
     {
+        //fprintf( stderr, "p%d, d = %d\n", system->my_rank, d);
+
         flag1 = 0;
         flag2 = 0;
         cnt = 0;
@@ -681,12 +680,15 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
             }
         }
     }
+    
+    fprintf( stderr,"p%d, After Manual Dist Call\n", system->my_rank );
 
     X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
     pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
 
     for ( i = 0; i < A_spar_patt->n; ++i )
     {
+        //fprintf( stderr, "p%d, column %d\n", system->my_rank, i);
         N = 0;
         M = 0;
         for ( k = 0; k <= system->bigN; ++k )
@@ -839,6 +841,9 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
         free( dense_matrix );
         free( e_j );
     }
+
+
+    fprintf( stderr,"p%d, After Building SAI Matrix\n", system->my_rank );
 
     free( pos_x);
     free( X );
@@ -1175,12 +1180,16 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
 
+    /* pre-conditioning */
+#if defined(SAI_PRECONDITIONER)
+    Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+    Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+#else
     for ( j = 0; j < system->n; ++j )
     {
-        workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j]; //pre-condition
+        workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
     }
-    //TODO: apply SAI preconditioner here, comment out diagonal preconditioning above
-    //    Sparse_MatVec_full( workspace->H_app_inv, workspace->r, workspace->d );
+#endif
 
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
@@ -1198,7 +1207,6 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
         Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
 #if defined(HALF_LIST)
-        //tryQEq
         Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
 #endif
 
@@ -1215,12 +1223,15 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
 
         /* pre-conditioning */
+#if defined(SAI_PRECONDITIONER)
+        Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
+#else
         for ( j = 0; j < system->n; ++j )
         {
             workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        //TODO: apply SAI preconditioner here, comment out diagonal preconditioning above
-        //        Sparse_MatVec_full( workspace->H_app_inv, workspace->r, workspace->d );
+#endif
 
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
