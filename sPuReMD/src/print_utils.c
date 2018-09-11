@@ -884,7 +884,7 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 
     A->start[cur_row] = top;
 
-    while ( fscanf( f, "%6d %6d %24.15lf", &row, &col, &val ) == 3 )
+    while ( fscanf( f, "%6d %6d %24lf", &row, &col, &val ) == 3 )
     {
         /* assumption: every row has at least one nonzero (diagonal) */
         if ( cur_row != row - 1 )
@@ -901,6 +901,28 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
     A->start[A->n] = top;
 
     sfclose( f, "Read_Sparse_Matrix2::f" );
+}
+
+
+/* Read permuation matrix in COO format (1-based indexing)
+ * and store in a dense vector (preallocated)
+ *
+ * Note: the file must be sorted in increasing order of
+ * columns than rows */
+void Read_Permutation_Matrix( int *v, char *fname )
+{
+    int row, col;
+    real val;
+    FILE *f;
+   
+    f = sfopen( fname, "r" );
+
+    while ( fscanf( f, "%6d %6d %24lf", &row, &col, &val ) == 3 )
+    {
+        v[row - 1] = col - 1;
+    }
+
+    sfclose( f, "Read_Permuation_Matrix::f" );
 }
 
 

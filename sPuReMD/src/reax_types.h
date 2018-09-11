@@ -1116,7 +1116,7 @@ struct static_storage
     real *b_local;
 #endif
 
-    /* Level scheduling related storage for applying, e.g. ICHOLT and ILU(T),
+    /* Level scheduling related storage for applying ICHOLT/ILUT(P)/FG-ILUT
      * preconditioners */
     int levels_L;
     int levels_U;
@@ -1128,7 +1128,7 @@ struct static_storage
     unsigned int *level_rows_cnt_U;
     unsigned int *top;
 
-    /* Graph coloring related storage for applying, e.g. ICHOLT and ILU(T),
+    /* Graph coloring related storage for applying ICHOLT/ILUT(P)/FG-ILUT
      * preconditioners */
     unsigned int *color;
     unsigned int *to_color;
@@ -1142,13 +1142,18 @@ struct static_storage
     real *y_p;
     real *x_p;
 
-    /* Jacobi iteration related storage for applying, e.g. ICHOLT and ILU(T),
+    /* Jacobi iteration related storage for applying ICHOLT/ILUT(P)/FG-ILUT
      * preconditioners */
     real *Dinv_L;
     real *Dinv_U;
     real *Dinv_b;
     real *rp;
     real *rp2;
+
+    /* permutation for ILUTP */
+    int *perm_ilutp;
+    /* permuted residual for preconditioning with ILUTP */
+    real *r_p;
 
     int num_H;
     int *hbond_index; // for hydrogen bonds

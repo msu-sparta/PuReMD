@@ -2011,7 +2011,7 @@ void graph_coloring( const control_params * const control,
         const sparse_matrix * const A, const TRIANGULARITY tri )
 {
 #ifdef _OPENMP
-    #pragma omp parallel
+    #pragma omp parallel num_threads(1)
 #endif
     {
         int i, pj, v;
@@ -2209,6 +2209,28 @@ void sort_rows_by_colors( const static_storage * const workspace,
 }
 
 
+/* Apply permutation P*x = x_p
+ *
+ * x: vector to permute
+ * perm: vector containing mapping if computing P*x
+ * x_p (output): permuted vector
+ * n: number of entries in x
+ */
+static void permute_vector( const real * const x, const int * const perm,
+        real * const x_p, const unsigned int n )
+{
+    unsigned int i;
+
+#ifdef _OPENMP
+    #pragma omp for schedule(static)
+#endif
+    for ( i = 0; i < n; ++i )
+    {
+        x_p[i] = x[perm[i]];
+    }
+}
+
+
 /* Apply permutation Q^T*x or Q*x based on graph coloring
  *
  * workspace: storage container for workspace structures
@@ -2218,7 +2240,7 @@ void sort_rows_by_colors( const static_storage * const workspace,
  * invert_map: if TRUE, use Q^T, otherwise use Q
  * tri: coloring to triangular factor to use (lower/upper)
  */
-static void permute_vector( const static_storage * const workspace,
+static void permute_vector_gc( const static_storage * const workspace,
         real * const x, const unsigned int n, const int invert_map,
         const TRIANGULARITY tri )
 {
@@ -2514,7 +2536,7 @@ void jacobi_iter( const static_storage * const workspace,
  * control: data struct containing parameters
  * y: vector to which to apply preconditioning,
  *  specific to internals of iterative solver being used
- * x: preconditioned vector (output)
+ * x (output): preconditioned vector
  * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
  * side: used in determining how to apply preconditioner if the preconditioner is
  *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
@@ -2522,9 +2544,9 @@ void jacobi_iter( const static_storage * const workspace,
  * Assumptions:
  *   Matrices have non-zero diagonals
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
-static void apply_preconditioner( const static_storage * const workspace, const control_params * const control,
-                                  const real * const y, real * const x, const int fresh_pre,
-                                  const int side )
+static void apply_preconditioner( const static_storage * const workspace,
+        const control_params * const control, const real * const y, real * const x,
+        const int fresh_pre, const int side )
 {
     int i, si;
 
@@ -2551,15 +2573,18 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
-                case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+                    break;
+                case ILUTP_PC:
+                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
+                    tri_solve( workspace->L, workspace->r_p, x, workspace->L->n, LOWER );
                     break;
                 case SAI_PC:
                     Sparse_MatVec_full( workspace->H_app_inv, y, x );
                     break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
@@ -2572,16 +2597,20 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
-                case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
                             workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                    break;
+                case ILUTP_PC:
+                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
+                    tri_solve_level_sched( (static_storage *) workspace,
+                            workspace->L, workspace->r_p, x, workspace->L->n, LOWER, fresh_pre );
                     break;
                 case SAI_PC:
                     Sparse_MatVec_full( workspace->H_app_inv, y, x );
                     break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
@@ -2591,12 +2620,11 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 {
                 case JACOBI_PC:
                 case SAI_PC:
-                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
-                case ILUTP_PC:
                 case FG_ILUT_PC:
 #ifdef _OPENMP
                     #pragma omp for schedule(static)
@@ -2606,12 +2634,27 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                         workspace->y_p[i] = y[i];
                     }
 
-                    permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+                    permute_vector_gc( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+                    tri_solve_level_sched( (static_storage *) workspace,
+                            workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+                    break;
+                case ILUTP_PC:
+                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
+
+#ifdef _OPENMP
+                    #pragma omp for schedule(static)
+#endif
+                    for ( i = 0; i < workspace->H->n; ++i )
+                    {
+                        workspace->y_p[i] = workspace->r_p[i];
+                    }
+
+                    permute_vector_gc( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
                     tri_solve_level_sched( (static_storage *) workspace,
                             workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
                     break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
@@ -2621,12 +2664,11 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 {
                 case JACOBI_PC:
                 case SAI_PC:
-                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
-                case ILUTP_PC:
                 case FG_ILUT_PC:
                     /* construct D^{-1}_L */
                     if ( fresh_pre == TRUE )
@@ -2644,14 +2686,33 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
                             y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
                     break;
+                case ILUTP_PC:
+                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
+
+                    /* construct D^{-1}_L */
+                    if ( fresh_pre == TRUE )
+                    {
+#ifdef _OPENMP
+                        #pragma omp for schedule(static)
+#endif
+                        for ( i = 0; i < workspace->L->n; ++i )
+                        {
+                            si = workspace->L->start[i + 1] - 1;
+                            workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
+                        }
+                    }
+
+                    jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+                            workspace->r_p, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+                    break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
                 break;
             default:
-                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                 exit( INVALID_INPUT );
                 break;
 
@@ -2678,7 +2739,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                     tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
                     break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
@@ -2701,7 +2762,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                             workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
                     break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
@@ -2711,7 +2772,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 {
                 case JACOBI_PC:
                 case SAI_PC:
-                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 case ICHOLT_PC:
@@ -2720,10 +2781,10 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
                             workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
-                    permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
+                    permute_vector_gc( workspace, x, workspace->H->n, TRUE, UPPER );
                     break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
@@ -2733,7 +2794,7 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                 {
                 case JACOBI_PC:
                 case SAI_PC:
-                    fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 case ICHOLT_PC:
@@ -2757,13 +2818,13 @@ static void apply_preconditioner( const static_storage * const workspace, const 
                             y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
                     break;
                 default:
-                    fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                    fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                     exit( INVALID_INPUT );
                     break;
                 }
                 break;
             default:
-                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
                 exit( INVALID_INPUT );
                 break;
 

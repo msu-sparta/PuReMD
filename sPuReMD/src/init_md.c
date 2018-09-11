@@ -618,6 +618,20 @@ static void Init_Workspace( reax_system *system, control_params *control,
         workspace->rp2 = NULL;
     }
 
+    /* ILUTP preconditioner related */
+    if ( control->cm_solver_pre_comp_type == ILUTP_PC )
+    {
+        workspace->perm_ilutp = smalloc( sizeof( int ) * system->N_cm,
+               "Init_Workspace::workspace->perm_ilutp" );
+        workspace->r_p = smalloc( sizeof( real ) * system->N_cm,
+               "Init_Workspace::workspace->r_p" );
+    }
+    else
+    {
+        workspace->perm_ilutp = NULL;
+        workspace->r_p = NULL;
+    }
+
     /* integrator storage */
     workspace->a = smalloc( system->N * sizeof( rvec ),
            "Init_Workspace::workspace->a" );
@@ -1347,6 +1361,13 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->Dinv_b, "Finalize_Workspace::Dinv_b" );
         sfree( workspace->rp, "Finalize_Workspace::rp" );
         sfree( workspace->rp2, "Finalize_Workspace::rp2" );
+    }
+
+    /* ILUTP preconditioner related */
+    if ( control->cm_solver_pre_comp_type == ILUTP_PC )
+    {
+        sfree( workspace->perm_ilutp, "Finalize_Workspace::workspace->perm_ilutp" );
+        sfree( workspace->r_p, "Finalize_Workspace::workspace->r_p" );
     }
 
     /* integrator storage */

@@ -871,7 +871,6 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int fillin;
     real time;
     sparse_matrix *Hptr;
 
@@ -968,7 +967,6 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int fillin;
     real time;
     sparse_matrix *Hptr;
 
