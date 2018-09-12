@@ -2011,7 +2011,7 @@ void graph_coloring( const control_params * const control,
         const sparse_matrix * const A, const TRIANGULARITY tri )
 {
 #ifdef _OPENMP
-    #pragma omp parallel num_threads(1)
+    #pragma omp parallel
 #endif
     {
         int i, pj, v;
@@ -2842,7 +2842,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
            const real tol, real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
-    real cc, tmp1, tmp2, temp, bnorm;
+    real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
     real t_start, t_ortho, t_pa, t_spmv, t_ts, t_vops;
 
     N = H->n;
@@ -2857,7 +2857,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
     private(i, j, k, itr, bnorm, temp, t_start) \
-    shared(N, cc, tmp1, tmp2, g_itr, g_j, stderr) \
+    shared(N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
 #endif
     {
@@ -3023,6 +3023,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         {
             g_j = j;
             g_itr = itr;
+            g_bnorm = bnorm;
         }
     }
 
@@ -3035,7 +3036,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] GMRES convergence failed (%d outer iters)\n", g_itr );
-        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", FABS(workspace->g[g_j]) / bnorm );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", FABS(workspace->g[g_j]) / g_bnorm );
         return g_itr * (control->cm_solver_restart + 1) + g_j + 1;
     }
 
@@ -3049,7 +3050,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                        real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
-    real cc, tmp1, tmp2, temp, bnorm;
+    real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
     real v[10000], z[control->cm_solver_restart + 2][10000], w[control->cm_solver_restart + 2];
     real u[control->cm_solver_restart + 2][10000];
     real t_start, t_ortho, t_pa, t_spmv, t_ts, t_vops;
@@ -3065,7 +3066,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
     private(i, j, k, itr, bnorm, temp, t_start) \
-    shared(v, z, w, u, tol, N, cc, tmp1, tmp2, g_itr, g_j, stderr) \
+    shared(v, z, w, u, tol, N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
 #endif
     {
@@ -3265,6 +3266,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         {
             g_j = j;
             g_itr = itr;
+            g_bnorm = bnorm;
         }
     }
 
@@ -3277,7 +3279,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] GMRES convergence failed (%d outer iters)\n", g_itr );
-        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", FABS(w[g_j]) / bnorm );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", FABS(w[g_j]) / g_bnorm );
         return g_itr * (control->cm_solver_restart + 1) + j + 1;
     }
 
@@ -3291,7 +3293,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         const real tol, real * const x, const int fresh_pre )
 {
     int i, g_itr, N;
-    real tmp, alpha, beta, b_norm, r_norm;
+    real tmp, alpha, beta, bnorm, g_bnorm, rnorm, g_rnorm;
     real *d, *r, *p, *z;
     real sig_old, sig_new;
     real t_start, t_pa, t_spmv, t_vops;
@@ -3307,9 +3309,9 @@ int CG( const static_storage * const workspace, const control_params * const con
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
-    private(i, tmp, alpha, beta, b_norm, r_norm, sig_old, sig_new, t_start) \
+    private(i, tmp, alpha, beta, bnorm, rnorm, sig_old, sig_new, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, N, d, r, p, z)
+    shared(g_itr, g_bnorm, g_rnorm, N, d, r, p, z)
 #endif
     {
         t_pa = 0.0;
@@ -3317,7 +3319,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         t_vops = 0.0;
 
         t_start = Get_Time( );
-        b_norm = Norm( b, N );
+        bnorm = Norm( b, N );
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3326,7 +3328,7 @@ int CG( const static_storage * const workspace, const control_params * const con
 
         t_start = Get_Time( );
         Vector_Sum( r, 1.0,  b, -1.0, d, N );
-        r_norm = Norm( r, N );
+        rnorm = Norm( r, N );
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3339,7 +3341,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         sig_new = Dot( r, p, N );
         t_vops += Get_Timing_Info( t_start );
 
-        for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
+        for ( i = 0; i < control->cm_solver_max_iters && rnorm / bnorm > tol; ++i )
         {
             t_start = Get_Time( );
             Sparse_MatVec( workspace, H, p, d );
@@ -3350,7 +3352,7 @@ int CG( const static_storage * const workspace, const control_params * const con
             alpha = sig_new / tmp;
             Vector_Add( x, alpha, p, N );
             Vector_Add( r, -1.0 * alpha, d, N );
-            r_norm = Norm( r, N );
+            rnorm = Norm( r, N );
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3369,7 +3371,11 @@ int CG( const static_storage * const workspace, const control_params * const con
 #ifdef _OPENMP
         #pragma omp single
 #endif
-        g_itr = i;
+        {
+            g_itr = i;
+            g_bnorm = bnorm;
+            g_rnorm = rnorm;
+        }
     }
 
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
@@ -3379,7 +3385,7 @@ int CG( const static_storage * const workspace, const control_params * const con
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", g_itr );
-        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", r_norm / b_norm );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", g_rnorm / g_bnorm );
         return g_itr;
     }
 
@@ -3404,7 +3410,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
         const real tol, real * const x, const int fresh_pre )
 {
     int i, g_itr, N;
-    real tmp, alpha, beta, omega, rho, rho_old, sigma, r_norm, b_norm;
+    real tmp, alpha, beta, omega, rho, rho_old, sigma, rnorm, g_rnorm, bnorm, g_bnorm;
     real t_start, t_pa, t_spmv, t_vops;
 
     N = H->n;
@@ -3414,9 +3420,9 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
-    private(i, tmp, alpha, beta, omega, rho, rho_old, sigma, r_norm, b_norm, t_start) \
+    private(i, tmp, alpha, beta, omega, rho, rho_old, sigma, rnorm, bnorm, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, N)
+    shared(g_itr, g_rnorm, g_bnorm, N)
 #endif
     {
         t_pa = 0.0;
@@ -3428,18 +3434,18 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
         t_spmv += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        b_norm = Norm( b, N );
+        bnorm = Norm( b, N );
         Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->d, N );
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
         Vector_Copy( workspace->r_hat, workspace->r, N );
-        r_norm = Norm( workspace->r, N );
+        rnorm = Norm( workspace->r, N );
         Vector_Copy( workspace->p, workspace->r, N );
         rho_old = Dot( workspace->r, workspace->r_hat, N );
         t_vops += Get_Timing_Info( t_start );
 
-        for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
+        for ( i = 0; i < control->cm_solver_max_iters && rnorm / bnorm > tol; ++i )
         {
             t_start = Get_Time( );
             Sparse_MatVec( workspace, H, workspace->p, workspace->d );
@@ -3462,7 +3468,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
             Vector_Sum( workspace->z, alpha, workspace->p, omega, workspace->q, N );
             Vector_Add( x, 1.0, workspace->z, N );
             Vector_Sum( workspace->r, 1.0, workspace->q, -1.0 * omega, workspace->y, N );
-            r_norm = Norm( workspace->r, N );
+            rnorm = Norm( workspace->r, N );
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3477,7 +3483,11 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
 #ifdef _OPENMP
         #pragma omp single
 #endif
-        g_itr = i;
+        {
+            g_itr = i;
+            g_rnorm = rnorm;
+            g_bnorm = bnorm;
+        }
     }
 
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
@@ -3487,7 +3497,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] BiCGStab convergence failed (%d iters)\n", g_itr );
-        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", r_norm / b_norm );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", g_rnorm / g_bnorm );
         return g_itr;
     }
 
@@ -3501,8 +3511,8 @@ int SDM( const static_storage * const workspace, const control_params * const co
          const real tol, real * const x, const int fresh_pre )
 {
     int i, g_itr, N;
-    real tmp, alpha, b_norm;
-    real sig;
+    real tmp, alpha, bnorm, g_bnorm;
+    real sig, g_sig;
     real t_start, t_pa, t_spmv, t_vops;
 
     N = H->n;
@@ -3512,9 +3522,9 @@ int SDM( const static_storage * const workspace, const control_params * const co
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
-    private(i, tmp, alpha, b_norm, sig, t_start) \
+    private(i, tmp, alpha, bnorm, sig, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, N)
+    shared(g_itr, g_sig, g_bnorm, N)
 #endif
     {
         t_pa = 0.0;
@@ -3522,7 +3532,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
         t_vops = 0.0;
 
         t_start = Get_Time( );
-        b_norm = Norm( b, N );
+        bnorm = Norm( b, N );
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3542,7 +3552,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
         sig = Dot( workspace->r, workspace->d, N );
         t_vops += Get_Timing_Info( t_start );
 
-        for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / b_norm > tol; ++i )
+        for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / bnorm > tol; ++i )
         {
             t_start = Get_Time( );
             Sparse_MatVec( workspace, H, workspace->d, workspace->q );
@@ -3575,7 +3585,11 @@ int SDM( const static_storage * const workspace, const control_params * const co
 #ifdef _OPENMP
         #pragma omp single
 #endif
-        g_itr = i;
+        {
+            g_itr = i;
+            g_sig = sig;
+            g_bnorm = bnorm;
+        }
     }
 
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
@@ -3585,7 +3599,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
     if ( g_itr >= control->cm_solver_max_iters  )
     {
         fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", g_itr );
-        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", SQRT(sig) / b_norm );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", SQRT(g_sig) / g_bnorm );
         return g_itr;
     }
 
