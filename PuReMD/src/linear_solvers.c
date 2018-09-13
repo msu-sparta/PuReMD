@@ -104,10 +104,8 @@ int find_bucket( double *list, int len, double a )
 
 void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data, sparse_matrix *A, sparse_matrix **A_spar_patt,
-        int nprocs, double filter )
+        int nprocs, real filter )
 {
-    /* Print_Sparse_Matrix2( system, A, "Charge_Matrix_MPI_Step0.txt" ); */
-
     int i, bin, total, pos, push;
     int n, n_gather, m, s_local, s, n_local;
     int target_proc;
@@ -145,8 +143,6 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     local_entries = NULL;
 
     comm = mpi_data->world;
-
-   // fprintf("%d\n",);
 
     if ( *A_spar_patt == NULL )
     {
@@ -492,8 +488,6 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
     /*  use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d)
     {
-        //fprintf( stderr, "p%d, d = %d\n", system->my_rank, d);
-
         flag1 = 0;
         flag2 = 0;
         cnt = 0;
@@ -681,14 +675,11 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
         }
     }
     
-    fprintf( stderr,"p%d, After Manual Dist Call\n", system->my_rank );
-
     X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
     pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
 
     for ( i = 0; i < A_spar_patt->n; ++i )
     {
-        //fprintf( stderr, "p%d, column %d\n", system->my_rank, i);
         N = 0;
         M = 0;
         for ( k = 0; k <= system->bigN; ++k )
@@ -764,8 +755,9 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
             local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
             if( local_pos < 0 || local_pos >= system->N )
             {
-                fprintf( stdout, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
-                fflush( stdout );
+                fprintf( stderr, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
+                fflush( stderr );
+
             }
             if( local_pos < A->n )
             {
@@ -774,8 +766,8 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
                     atom = &system->my_atoms[ A->entries[d_i].j ];
                     if (pos_x[ atom->orig_id ] >= M || d_j >=  N )
                     {
-                        fprintf( stdout, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
-                        fflush( stdout );
+                        fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
+                        fflush( stderr );
                     }
                     if ( X[ atom->orig_id ] == 1 )
                     {
@@ -789,8 +781,8 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
                 {
                     if (pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N )
                     {
-                        fprintf( stdout, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j);
-                        fflush( stdout );
+                        fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j);
+                        fflush( stderr );
                     }
                     if ( X[ j_list[local_pos][d_i] ] == 1 )
                     {
@@ -811,7 +803,7 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
         e_j[identity_pos] = 1.0;
 
         /* Solve the overdetermined system AX = B through the least-squares problem:
-         *          *          * min ||B - AX||_2 */
+         * min ||B - AX||_2 */
         m = M;
         n = N;
         nrhs = 1;
@@ -841,9 +833,6 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
         free( dense_matrix );
         free( e_j );
     }
-
-
-    fprintf( stderr,"p%d, After Building SAI Matrix\n", system->my_rank );
 
     free( pos_x);
     free( X );
@@ -1047,7 +1036,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
             workspace->t[j] = workspace->x[j][1];
         }
         matvecs = CG( system, workspace, H, workspace->b_t, tol,
-                workspace->t,mpi_data, fout );
+                workspace->t,mpi_data, fout, -1 );
         for ( j = 0; j < n; ++j )
         {
             workspace->x[j][1] = workspace->t[j];
@@ -1060,7 +1049,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
             workspace->s[j] = workspace->x[j][0];
         }
         matvecs = CG( system, workspace, H, workspace->b_s, tol, workspace->s,
-                mpi_data, fout );
+                mpi_data, fout, -1 );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->x[j][0] = workspace->s[j];
@@ -1126,34 +1115,34 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
  * where:
  *   A: matrix, stored in CSR format
  *   x: vector
- *   b: vector (result) */
+ *   b: vector (result) 
 static void Sparse_MatVec_full( const sparse_matrix * const A,
         const real * const x, real * const b )
 {
-    //TODO: implement full SpMV in MPI
-    //    int i, pj;
-    //
-    //    Vector_MakeZero( b, A->n );
-    //
-    //#ifdef _OPENMP
-    //    #pragma omp for schedule(static)
-    //#endif
-    //    for ( i = 0; i < A->n; ++i )
-    //    {
-    //        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
-    //        {
-    //            b[i] += A->val[pj] * x[A->j[pj]];
-    //        }
-    //    }
-}
+    TODO: implement full SpMV in MPI
+        int i, pj;
+    
+        Vector_MakeZero( b, A->n );
+    
+    #ifdef _OPENMP
+        #pragma omp for schedule(static)
+    #endif
+        for ( i = 0; i < A->n; ++i )
+        {
+            for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+            {
+                b[i] += A->val[pj] * x[A->j[pj]];
+            }
+        }
+}*/
 
 
 int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
+        real tol, real *x, mpi_datatypes* mpi_data, FILE *fout, int step )
 {
-    int  i, j, scale;
+    int  i, scale;
     real tmp, alpha, beta, b_norm;
-    real sig_old, sig_new, sig0;
+    real sig_old, sig_new;
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -1167,7 +1156,6 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
     Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
     Sparse_MatVec( H, x, workspace->q, system->N );
 #if defined(HALF_LIST)
-    // tryQEq
     Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
 #endif
 
@@ -1193,7 +1181,6 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
-    sig0 = sig_new;
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -1248,7 +1235,7 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
 
     if ( i >= 300 )
     {
-        fprintf( stderr, "CG convergence failed!\n" );
+        fprintf( stderr, "CG convergence failed at step %d!\n", step );
         return i;
     }
 
@@ -1269,7 +1256,7 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H,
 {
     int  i, j, scale;
     real tmp, alpha, beta, b_norm;
-    real sig_old, sig_new, sig0;
+    real sig_old, sig_new;
 
     scale = sizeof(real) / sizeof(void);
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
@@ -1293,7 +1280,6 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H,
 
     sig_new = Parallel_Dot( workspace->r, workspace->d, system->n,
             mpi_data->world );
-    sig0 = sig_new;
 #if defined(DEBUG)
     //if( system->my_rank == MASTER_NODE ) {
     fprintf( stderr, "p%d CG:sig_new=%24.15e,d_norm=%24.15e,q_norm=%24.15e\n",
@@ -1437,11 +1423,15 @@ int PCG( reax_system *system, storage *workspace,
         sparse_matrix *L, sparse_matrix *U, real *x,
         mpi_datatypes* mpi_data, FILE *fout )
 {
-    int  i, me, n, N, scale;
+    int  i, n, N, scale;
     real tmp, alpha, beta, b_norm, r_norm, sig_old, sig_new;
     MPI_Comm world;
 
+#if defined(DEBUG_FOCUS)
+    int me;
     me = system->my_rank;
+#endif
+
     n = system->n;
     N = system->N;
     world = mpi_data->world;
@@ -1525,7 +1515,7 @@ int sCG( reax_system *system, storage *workspace, sparse_matrix *H,
 {
     int  i, j;
     real tmp, alpha, beta, b_norm;
-    real sig_old, sig_new, sig0;
+    real sig_old, sig_new;
 
     b_norm = Norm( b, system->n );
 #if defined(DEBUG)
@@ -1547,7 +1537,6 @@ int sCG( reax_system *system, storage *workspace, sparse_matrix *H,
         workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j]; //pre-condition
 
     sig_new = Dot( workspace->r, workspace->d, system->n );
-    sig0 = sig_new;
 #if defined(DEBUG)
     if ( system->my_rank == MASTER_NODE )
     {

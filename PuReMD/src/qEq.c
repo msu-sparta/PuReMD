@@ -373,7 +373,7 @@ static void Setup_Preconditioner_QEq( reax_system *system, control_params *contr
 
     //TODO: add sai filtering value, which will be passed as the last parameter
     setup_sparse_approx_inverse( system, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
-            control->nprocs, 0.1 );
+            control->nprocs, control->sai_thres );
 }
 
 static void Compute_Preconditioner_QEq( reax_system *system, control_params *control, 
@@ -406,7 +406,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //t_matvecs = 0;
 
 #if defined(SAI_PRECONDITIONER)
-    //if( control->refactor > 0 && ((data->step - data->prev_steps) % control->refactor == 0))
+    if( control->refactor > 0 && ((data->step - data->prev_steps) % control->refactor == 0))
     {
         Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
@@ -418,7 +418,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     for ( j = 0; j < system->n; ++j )
         workspace->s[j] = workspace->x[j][0];
     s_matvecs = CG(system, workspace, workspace->H, workspace->b_s,//newQEq sCG
-            control->q_err, workspace->s, mpi_data, out_control->log );
+            control->q_err, workspace->s, mpi_data, out_control->log , data->step );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][0] = workspace->s[j];
 
@@ -432,7 +432,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     for ( j = 0; j < system->n; ++j )
         workspace->t[j] = workspace->x[j][1];
     t_matvecs = CG(system, workspace, workspace->H, workspace->b_t,//newQEq sCG
-            control->q_err, workspace->t, mpi_data, out_control->log );
+            control->q_err, workspace->t, mpi_data, out_control->log, data->step );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][1] = workspace->t[j];
 

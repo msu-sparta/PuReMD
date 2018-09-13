@@ -75,6 +75,7 @@ char Read_Control_File( char *control_file, control_params* control,
 
     control->qeq_freq = 1;
     control->q_err = 1e-6;
+    control->sai_thres = 0.1;
     control->refactor = 100;
     control->droptol = 1e-2;;
 
@@ -203,6 +204,7 @@ char Read_Control_File( char *control_file, control_params* control,
         {
             ival = atoi( tmp[1] );
             control->reneighbor = ival;
+            control->refactor = ival;
         }
         else if ( strcmp(tmp[0], "vlist_buffer") == 0 )
         {
@@ -248,6 +250,11 @@ char Read_Control_File( char *control_file, control_params* control,
         {
             val = atof( tmp[1] );
             control->q_err = val;
+        }
+        else if ( strcmp(tmp[0], "sai_thres") == 0 )
+        {
+            val = atof( tmp[1] );
+            control->sai_thres = val;
         }
         else if ( strcmp(tmp[0], "ilu_refactor") == 0 )
         {

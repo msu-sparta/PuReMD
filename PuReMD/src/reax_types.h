@@ -41,8 +41,8 @@
 
 #define PURE_REAX
 //#define LAMMPS_REAX
-#define SAI_PRECONDITIONER
-//#define HALF_LIST
+//#define SAI_PRECONDITIONER
+#define HALF_LIST
 //#define DEBUG
 //#define DEBUG_FOCUS
 //#define TEST_ENERGY
@@ -535,6 +535,7 @@ typedef struct
 
     int qeq_freq;
     real q_err;
+    real sai_thres;
     int refactor;
     real droptol;
 

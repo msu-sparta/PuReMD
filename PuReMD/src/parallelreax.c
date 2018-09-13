@@ -211,6 +211,7 @@ int main( int argc, char* argv[] )
 #endif
 
     /* start the simulation */
+    int total_itr = data->timing.s_matvecs + data->timing.t_matvecs;
     for ( ++data->step; data->step <= control->nsteps; data->step++ )
     {
         if ( control->T_mode )
@@ -218,6 +219,10 @@ int main( int argc, char* argv[] )
 
         Evolve( system, control, data, workspace, lists, out_control, mpi_data );
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
+        if( system->my_rank == MASTER_NODE )
+        {
+            total_itr += data->timing.s_matvecs + data->timing.t_matvecs;
+        }
         Output_Results( system, control, data, lists, out_control, mpi_data );
         //Analysis(system, control, data, workspace, lists, out_control, mpi_data);
 
@@ -230,6 +235,8 @@ int main( int argc, char* argv[] )
             else if ( out_control->restart_format == WRITE_BINARY )
                 Write_Binary_Restart( system, control, data, out_control, mpi_data );
         }
+        /*if(data->step == 1 || data->step == control->nsteps)
+            Write_PDB( system, lists, data, control, mpi_data, out_control );*/
 
 #if defined(DEBUG)
         fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
@@ -242,9 +249,10 @@ int main( int argc, char* argv[] )
     {
         t_elapsed = Get_Timing_Info( t_start );
         fprintf( out_control->out, "Total Simulation Time: %.2f secs\n", t_elapsed );
+        fprintf( out_control->log, "Avg. # of Solver Itrs: %.2f\n", total_itr/((double)control->nsteps) );
     }
 
-    // Write_PDB( &system, &(lists[BOND]), &out_control );
+    //Write_PDB( system, lists, data, control, mpi_data, out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
 
     MPI_Finalize();

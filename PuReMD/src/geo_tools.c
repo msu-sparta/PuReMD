@@ -57,7 +57,7 @@ void Count_Geo_Atoms( FILE *geo, reax_system *system )
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d@count atoms:\n", system->my_rank );
-    fprintf( stderr, "p%d: bigNNN = %d\n", system->my_rank, system->bigN );
+    fprintf( stderr, "p%d: bigN = %d\n", system->my_rank, system->bigN );
     fprintf( stderr, "p%d: n = %d\n", system->my_rank, system->n );
     fprintf( stderr, "p%d: N = %d\n\n", system->my_rank, system->N );
 #endif
@@ -239,12 +239,12 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
     system->N = system->n;
 
-    //#if defined(DEBUG)
+#if defined(DEBUG)
     fprintf( stderr, "p%d@count atoms:\n", system->my_rank );
-    fprintf( stderr, "p%d: bigNNN = %d\n", system->my_rank, system->bigN );
+    fprintf( stderr, "p%d: bigN = %d\n", system->my_rank, system->bigN );
     fprintf( stderr, "p%d: n = %d\n", system->my_rank, system->n );
     fprintf( stderr, "p%d: N = %d\n\n", system->my_rank, system->N );
-    //#endif
+#endif
 }
 
 
@@ -497,7 +497,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
    Also, we do not write connect lines yet.
 */
 
-char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
+char Write_PDB(reax_system* system, reax_list** bonds, simulation_data *data,
                control_params *control, mpi_datatypes *mpi_data,
                output_controls *out_control)
 {
@@ -551,13 +551,13 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
 
         sprintf(fname, "%s-%d.pdb", control->sim_name, data->step);
         pdb = fopen(fname, "w");
-        fprintf( pdb, PDB_CRYST1_FORMAT_O,
+        /*fprintf( pdb, PDB_CRYST1_FORMAT_O,
                  "CRYST1",
                  system->big_box.box_norms[0], system->big_box.box_norms[1],
                  system->big_box.box_norms[2],
                  RAD2DEG(alpha), RAD2DEG(beta), RAD2DEG(gamma), " ", 0 );
         fprintf( out_control->log, "Box written\n" );
-        fflush( out_control->log );
+        fflush( out_control->log );*/
     }
 
     /*write atom lines to buffer*/
@@ -566,11 +566,13 @@ char Write_PDB(reax_system* system, reax_list* bonds, simulation_data *data,
         p_atom = &(system->my_atoms[i]);
         strncpy(name, p_atom->name, 8);
         Trim_Spaces(name);
-        sprintf( line, PDB_ATOM_FORMAT_O,
+        /*sprintf( line, PDB_ATOM_FORMAT_O,
                  "ATOM  ", p_atom->orig_id, p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
-                 1.0, 0.0, "0", name, "  " );
-        fprintf(stderr, "PDB NAME <%s>\n", p_atom->name);
+                 1.0, 0.0, "0", name, "  " );*/
+        sprintf( line, PDB_ATOM_FORMAT_O,
+                 p_atom->orig_id, p_atom->x[0], p_atom->x[1], p_atom->x[2] );
+        //fprintf( stderr, "PDB NAME <%s>\n", p_atom->name);
         strncpy( buffer + i * PDB_ATOM_FORMAT_O_LENGTH, line,
                  PDB_ATOM_FORMAT_O_LENGTH );
     }
