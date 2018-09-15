@@ -41,13 +41,13 @@
 
 #define PURE_REAX
 //#define LAMMPS_REAX
-//#define SAI_PRECONDITIONER
-#define HALF_LIST
+#define SAI_PRECONDITIONER
+//#define HALF_LIST
 //#define DEBUG
 //#define DEBUG_FOCUS
 //#define TEST_ENERGY
 //#define TEST_FORCES
-//#define CG_PERFORMANCE
+#define CG_PERFORMANCE
 #define LOG_PERFORMANCE
 #define STANDARD_BOUNDARIES
 //#define OLD_BOUNDARIES

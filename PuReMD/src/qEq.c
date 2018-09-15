@@ -405,7 +405,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //          control->q_err, workspace->x, mpi_data, out_control->log);
     //t_matvecs = 0;
 
-#if defined(SAI_PRECONDITIONER)
+#if defined(SAI_PRECONDITIONER) && !defined(HALF_LIST)
     if( control->refactor > 0 && ((data->step - data->prev_steps) % control->refactor == 0))
     {
         Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );

@@ -106,8 +106,8 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data, sparse_matrix *A, sparse_matrix **A_spar_patt,
         int nprocs, real filter )
 {
-    int i, bin, total, pos, push;
-    int n, n_gather, m, s_local, s, n_local;
+    int i, bin, total, pos;
+    int n, n_gather, s_local, s, n_local;
     int target_proc;
     int k;
     int pj, size;
@@ -118,7 +118,6 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     real *samplelist_local, *samplelist;
     real *pivotlist;
     real *bucketlist_local, *bucketlist;
-    real *local_entries;
 
     int *srecv, *sdispls;
     int *scounts_local, *scounts;
@@ -140,7 +139,6 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     dspls_local = NULL;
     dspls = NULL;
     bin_elements = NULL;
-    local_entries = NULL;
 
     comm = mpi_data->world;
 
@@ -155,15 +153,13 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
         Allocate_Matrix2( A_spar_patt, A->n, system->local_cap, A->m, comm );
     }
 
-    m = 0;
+    n_local = 0;
     for( i = 0; i < A->n; ++i )
     {
-        m += A->end[i] - A->start[i];
+        n_local += A->end[i] - A->start[i];
     }
-    /* the sample ratio is 10% */
-    /*n_local = m/10; */
-    n_local = m;
     s_local = (int) (12.0 * log2(n_local*nprocs));
+    
     MPI_Allreduce(&n_local, &n, 1, MPI_INT, MPI_SUM, comm);
     MPI_Reduce(&s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, comm);
 
@@ -177,7 +173,6 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     dspls = malloc( sizeof(int) * nprocs );
     pivotlist = malloc( sizeof(real) *  (nprocs - 1) );
     samplelist_local = malloc( sizeof(real) * s_local );
-    local_entries = malloc ( sizeof(real) * m );
     if ( system->my_rank == MASTER_NODE )
     {
         samplelist = malloc( sizeof(real) * s );
@@ -185,20 +180,13 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
         sdispls = malloc( sizeof(int) * nprocs );
     }
 
-    push = 0;
+    n_local = 0;
     for( i = 0; i < A->n; ++i )
     {
         for( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
-            local_entries[push++] = A->entries[pj].val;
+            input_array[n_local++] = A->entries[pj].val;
         }
-    }
-
-    srand( time(NULL) + system->my_rank );
-    for ( i = 0; i < n_local ; i++ )
-    {
-        /* input_array[i] = local_entries[rand( ) % m]; */
-        input_array[i] = local_entries[ i ];
     }
 
     for ( i = 0; i < s_local; i++)
@@ -376,8 +364,9 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     /*broadcast the filtering value*/
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
 
-    int nnz = 0;
-    /*build entries of that pattern*/
+    // int nnz = 0; uncomment to check the nnz's in the sparsity pattern
+
+    /* build entries of that pattern*/
     for ( i = 0; i < A->n; ++i )
     {
         (*A_spar_patt)->start[i] = A->start[i];
@@ -390,18 +379,18 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
                 (*A_spar_patt)->entries[size].val = A->entries[pj].val;
                 (*A_spar_patt)->entries[size].j = A->entries[pj].j;
                 size++;
-                nnz++;
+                //nnz++;
             }
         }
         (*A_spar_patt)->end[i] = size;
     }
 
-    MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
+    /*MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
     if( system->my_rank == MASTER_NODE )
     {
         fprintf(stdout,"total nnz in all sparsity patterns = %d\nthreshold = %.15lf\n", nnz, threshold);
         fflush(stdout);
-    }
+    }*/
 
 }
 
@@ -500,7 +489,7 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
             cnt = 0;
             for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                if( i >= A->n)
+                //if( i >= A->n)
                 {
                     cnt += row_nnz[i];
                 }
@@ -518,13 +507,13 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
-        if ( nbr1->atoms_cnt )
+        if ( nbr2->atoms_cnt )
         {
             /* calculate the total data that will be received */
             cnt = 0;
             for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                if( i >= A->n )
+                //if( i >= A->n )
                 {
                     cnt += row_nnz[i];
                 }
@@ -635,7 +624,7 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
             cnt = 0;
             for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                if( i >= A->n )
+                //if( i >= A->n )
                 {
                     j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
                     val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
@@ -659,7 +648,7 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
             cnt = 0;
             for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                if( i >= A->n )
+                //if( i >= A->n )
                 {
                     j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
                     val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
@@ -674,7 +663,7 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
             }
         }
     }
-    
+
     X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
     pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
 
@@ -1143,6 +1132,9 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
     int  i, scale;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;
+#if defined(HALF_LIST)
+    int j;
+#endif
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -1169,7 +1161,7 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
 
     /* pre-conditioning */
-#if defined(SAI_PRECONDITIONER)
+#if defined(SAI_PRECONDITIONER) && !defined(HALF_LIST)
     Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
     Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #else
@@ -1210,7 +1202,7 @@ int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
 
         /* pre-conditioning */
-#if defined(SAI_PRECONDITIONER)
+#if defined(SAI_PRECONDITIONER) && !defined(HALF_LIST)
         Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
         Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
 #else
