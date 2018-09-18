@@ -6,7 +6,7 @@
 #
 ###############################################
 
-./compile_all_executables.sh
+#./compile_all_executables.sh
 
 # Will be submitting multiple jobs
 # First, one for all the short jobs
@@ -16,17 +16,17 @@ qsub short_jobs.sh
 qsub med_jobs.sh
 
 # Finally, one for each of the long jobs
-qsub water_long_mpi.sh
-qsub water_long_mpi_gpu.sh
-qsub water_long_mpi_not_gpu.sh
-
-qsub silica_long_mpi.sh
-qsub silica_long_mpi_gpu.sh
-qsub silica_long_mpi_not_gpu.sh
-
-qsub bilayer_long_mpi.sh
-qsub bilayer_long_mpi_gpu.sh
-qsub bilayer_long_mpi_not_gpu.sh
+#qsub water_long_mpi.sh
+#qsub water_long_mpi_gpu.sh
+#qsub water_long_mpi_not_gpu.sh
+#
+#qsub silica_long_mpi.sh
+#qsub silica_long_mpi_gpu.sh
+#qsub silica_long_mpi_not_gpu.sh
+#
+#qsub bilayer_long_mpi.sh
+#qsub bilayer_long_mpi_gpu.sh
+#qsub bilayer_long_mpi_not_gpu.sh
 
 echo "All jobs submitted"
 
