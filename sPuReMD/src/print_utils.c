@@ -854,13 +854,13 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
         for ( j = A->start[i]; j < A->start[i + 1] - 1; ++j )
         {
             //Convert 0-based to 1-based (for Matlab)
-            fprintf( f, "%6d %6d %24.15e\n", i + 1, A->j[j] + 1, A->val[j] );
+            fprintf( f, "%6d %6d %24.15f\n", i + 1, A->j[j] + 1, A->val[j] );
             /* print symmetric entry */
-//            fprintf( f, "%6d %6d %24.15e\n", A->j[j] + 1, i + 1, A->val[j] );
+//            fprintf( f, "%6d %6d %24.15f\n", A->j[j] + 1, i + 1, A->val[j] );
         }
 
         /* diagonal */
-        fprintf( f, "%6d %6d %24.15e\n", i + 1, A->j[A->start[i + 1] - 1] + 1, A->val[A->start[i + 1] - 1] );
+        fprintf( f, "%6d %6d %24.15f\n", i + 1, A->j[A->start[i + 1] - 1] + 1, A->val[A->start[i + 1] - 1] );
     }
 
     sfclose( f, "Print_Sparse_Matrix2::f" );
@@ -909,15 +909,15 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
  *
  * Note: the file must be sorted in increasing order of
  * columns than rows */
-void Read_Permutation_Matrix( int *v, char *fname )
+void Read_Permutation_Matrix( unsigned int *v, char *fname )
 {
-    int row, col;
-    real val;
+    unsigned int row, col;
+    double val;
     FILE *f;
    
     f = sfopen( fname, "r" );
 
-    while ( fscanf( f, "%6d %6d %24lf", &row, &col, &val ) == 3 )
+    while ( fscanf( f, "%6u %6u %24lf", &row, &col, &val ) == 3 )
     {
         v[row - 1] = col - 1;
     }

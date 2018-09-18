@@ -1139,6 +1139,9 @@ struct static_storage
     unsigned int *color_top;
     unsigned int *permuted_row_col;
     unsigned int *permuted_row_col_inv;
+
+    /* Graph coloring related storage for applying ICHOLT/ILUT(P)/FG-ILUT
+     * preconditioners OR any application with ILUTP */
     real *y_p;
     real *x_p;
 
@@ -1151,9 +1154,7 @@ struct static_storage
     real *rp2;
 
     /* permutation for ILUTP */
-    int *perm_ilutp;
-    /* permuted residual for preconditioning with ILUTP */
-    real *r_p;
+    unsigned int *perm_ilutp;
 
     int num_H;
     int *hbond_index; // for hydrogen bonds

@@ -56,7 +56,7 @@ void Print_Sparse_Matrix2( sparse_matrix*, char*, char* );
 
 void Read_Sparse_Matrix2( sparse_matrix *, char * );
 
-void Read_Permutation_Matrix( int *, char * );
+void Read_Permutation_Matrix( unsigned int *, char * );
 
 void Print_Sparse_Matrix_Binary( sparse_matrix*, char* );
 

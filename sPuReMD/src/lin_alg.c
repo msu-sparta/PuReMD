@@ -1788,7 +1788,7 @@ static void diag_pre_app( const real * const Hdia_inv, const real * const y,
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 void tri_solve( const sparse_matrix * const LU, const real * const y,
-                real * const x, const int N, const TRIANGULARITY tri )
+        real * const x, const TRIANGULARITY tri )
 {
     int i, pj, j, si, ei;
     real val;
@@ -1799,7 +1799,7 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
     {
         if ( tri == LOWER )
         {
-            for ( i = 0; i < N; ++i )
+            for ( i = 0; i < LU->n; ++i )
             {
                 x[i] = y[i];
                 si = LU->start[i];
@@ -1815,7 +1815,7 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
         }
         else
         {
-            for ( i = N - 1; i >= 0; --i )
+            for ( i = LU->n - 1; i >= 0; --i )
             {
                 x[i] = y[i];
                 si = LU->start[i];
@@ -1838,7 +1838,7 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
  * workspace: storage container for workspace structures
  * LU: lower/upper triangular, stored in CSR
  * y: constants in linear system (RHS)
- * x: solution
+ * x (output): solution to triangular system
  * N: dimensions of matrix and vectors
  * tri: triangularity of LU (lower/upper)
  * find_levels: perform level search if positive, otherwise reuse existing levels
@@ -1847,8 +1847,7 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
  *   LU has non-zero diagonals
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 void tri_solve_level_sched( static_storage * workspace,
-        const sparse_matrix * const LU,
-        const real * const y, real * const x, const int N,
+        const sparse_matrix * const LU, const real * const y, real * const x,
         const TRIANGULARITY tri, int find_levels )
 {
     int i, j, pj, local_row, local_level;
@@ -1875,14 +1874,14 @@ void tri_solve_level_sched( static_storage * workspace,
         /* find levels (row dependencies in substitutions) */
         if ( find_levels == TRUE )
         {
-            memset( row_levels, 0, N * sizeof(unsigned int) );
-            memset( level_rows_cnt, 0, N * sizeof(unsigned int) );
-            memset( workspace->top, 0, N * sizeof(unsigned int) );
+            memset( row_levels, 0, LU->n * sizeof(unsigned int) );
+            memset( level_rows_cnt, 0, LU->n * sizeof(unsigned int) );
+            memset( workspace->top, 0, LU->n * sizeof(unsigned int) );
             levels = 1;
 
             if ( tri == LOWER )
             {
-                for ( i = 0; i < N; ++i )
+                for ( i = 0; i < LU->n; ++i )
                 {
                     local_level = 1;
                     for ( pj = LU->start[i]; pj < LU->start[i + 1] - 1; ++pj )
@@ -1898,13 +1897,13 @@ void tri_solve_level_sched( static_storage * workspace,
                 workspace->levels_L = levels;
 
 #if defined(DEBUG)
-                fprintf(stderr, "[INFO] levels(L): %d\n", levels);
-                fprintf(stderr, "[INFO] NNZ(L): %d\n", LU->start[N]);
+                fprintf( stderr, "[INFO] levels(L): %d\n", levels );
+                fprintf( stderr, "[INFO] NNZ(L): %d\n", LU->start[LU->n] );
 #endif
             }
             else
             {
-                for ( i = N - 1; i >= 0; --i )
+                for ( i = LU->n - 1; i >= 0; --i )
                 {
                     local_level = 1;
                     for ( pj = LU->start[i] + 1; pj < LU->start[i + 1]; ++pj )
@@ -1920,8 +1919,8 @@ void tri_solve_level_sched( static_storage * workspace,
                 workspace->levels_U = levels;
 
 #if defined(DEBUG)
-                fprintf(stderr, "[INFO] levels(U): %d\n", levels);
-                fprintf(stderr, "[INFO] NNZ(U): %d\n", LU->start[N]);
+                fprintf( stderr, "[INFO] levels(U): %d\n", levels );
+                fprintf( stderr, "[INFO] NNZ(U): %d\n", LU->start[LU->n] );
 #endif
             }
 
@@ -1931,7 +1930,7 @@ void tri_solve_level_sched( static_storage * workspace,
                 workspace->top[i] = level_rows_cnt[i];
             }
 
-            for ( i = 0; i < N; ++i )
+            for ( i = 0; i < LU->n; ++i )
             {
                 level_rows[workspace->top[row_levels[i] - 1]] = i;
                 ++workspace->top[row_levels[i] - 1];
@@ -2211,13 +2210,14 @@ void sort_rows_by_colors( const static_storage * const workspace,
 
 /* Apply permutation P*x = x_p
  *
- * x: vector to permute
- * perm: vector containing mapping if computing P*x
  * x_p (output): permuted vector
+ * x: vector to permute
+ * perm: dense vector representing Permutation matrix for computing x_p = P*x;
+ *  this maps i-th position to its permuted position
  * n: number of entries in x
  */
-static void permute_vector( const real * const x, const int * const perm,
-        real * const x_p, const unsigned int n )
+static void permute_vector( real * const x_p, const real * const x,
+        const unsigned int * const perm, const unsigned int n )
 {
     unsigned int i;
 
@@ -2231,49 +2231,6 @@ static void permute_vector( const real * const x, const int * const perm,
 }
 
 
-/* Apply permutation Q^T*x or Q*x based on graph coloring
- *
- * workspace: storage container for workspace structures
- * color: vertex color (1-based); vertices represent matrix rows/columns
- * x: vector to permute (in-place)
- * n: number of entries in x
- * invert_map: if TRUE, use Q^T, otherwise use Q
- * tri: coloring to triangular factor to use (lower/upper)
- */
-static void permute_vector_gc( const static_storage * const workspace,
-        real * const x, const unsigned int n, const int invert_map,
-        const TRIANGULARITY tri )
-{
-    unsigned int i;
-    unsigned int *mapping;
-
-    if ( invert_map == TRUE )
-    {
-        mapping = workspace->permuted_row_col_inv;
-    }
-    else
-    {
-        mapping = workspace->permuted_row_col;
-    }
-
-#ifdef _OPENMP
-    #pragma omp for schedule(static)
-#endif
-    for ( i = 0; i < n; ++i )
-    {
-        workspace->x_p[i] = x[mapping[i]];
-    }
-
-#ifdef _OPENMP
-    #pragma omp for schedule(static)
-#endif
-    for ( i = 0; i < n; ++i )
-    {
-        x[i] = workspace->x_p[i];
-    }
-}
-
-
 /* Apply permutation Q^T*(LU)*Q based on graph coloring
  *
  * workspace: storage container for workspace structures
@@ -2281,7 +2238,7 @@ static void permute_vector_gc( const static_storage * const workspace,
  * LU: matrix to permute, stored in CSR format
  * tri: triangularity of LU (lower/upper)
  */
-void permute_matrix( const static_storage * const workspace,
+static void permute_matrix( const static_storage * const workspace,
         sparse_matrix * const LU, const TRIANGULARITY tri )
 {
     int i, pj, nr, nc;
@@ -2574,11 +2531,11 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case FG_ILUT_PC:
-                    tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+                    tri_solve( workspace->L, y, x, LOWER );
                     break;
                 case ILUTP_PC:
-                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
-                    tri_solve( workspace->L, workspace->r_p, x, workspace->L->n, LOWER );
+                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->H->n );
+                    tri_solve( workspace->L, workspace->y_p, x, LOWER );
                     break;
                 case SAI_PC:
                     Sparse_MatVec_full( workspace->H_app_inv, y, x );
@@ -2599,12 +2556,12 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ILUT_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                            workspace->L, y, x, LOWER, fresh_pre );
                     break;
                 case ILUTP_PC:
-                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
+                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->L->n );
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, workspace->r_p, x, workspace->L->n, LOWER, fresh_pre );
+                            workspace->L, workspace->y_p, x, LOWER, fresh_pre );
                     break;
                 case SAI_PC:
                     Sparse_MatVec_full( workspace->H_app_inv, y, x );
@@ -2626,32 +2583,15 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case FG_ILUT_PC:
-#ifdef _OPENMP
-                    #pragma omp for schedule(static)
-#endif
-                    for ( i = 0; i < workspace->H->n; ++i )
-                    {
-                        workspace->y_p[i] = y[i];
-                    }
-
-                    permute_vector_gc( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+                    permute_vector( workspace->y_p, y, workspace->permuted_row_col, workspace->L->n );
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+                            workspace->L, workspace->y_p, x, LOWER, fresh_pre );
                     break;
                 case ILUTP_PC:
-                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
-
-#ifdef _OPENMP
-                    #pragma omp for schedule(static)
-#endif
-                    for ( i = 0; i < workspace->H->n; ++i )
-                    {
-                        workspace->y_p[i] = workspace->r_p[i];
-                    }
-
-                    permute_vector_gc( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+                    permute_vector( workspace->y_p, y, workspace->permuted_row_col, workspace->L->n );
+                    permute_vector( workspace->x_p, workspace->y_p, workspace->perm_ilutp, workspace->L->n );
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+                            workspace->L, workspace->x_p, x, LOWER, fresh_pre );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2687,7 +2627,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                             y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
                     break;
                 case ILUTP_PC:
-                    permute_vector( y, workspace->perm_ilutp, workspace->r_p, workspace->H->n );
+                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->H->n );
 
                     /* construct D^{-1}_L */
                     if ( fresh_pre == TRUE )
@@ -2703,7 +2643,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                     }
 
                     jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
-                            workspace->r_p, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+                            workspace->y_p, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2736,7 +2676,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ILUT_PC:
                 case ILUTP_PC:
                 case FG_ILUT_PC:
-                    tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
+                    tri_solve( workspace->U, y, x, UPPER );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2759,7 +2699,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+                            workspace->U, y, x, UPPER, fresh_pre );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2780,8 +2720,9 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
-                    permute_vector_gc( workspace, x, workspace->H->n, TRUE, UPPER );
+                            workspace->U, y, x, UPPER, fresh_pre );
+                    permute_vector( workspace->x_p, x, workspace->permuted_row_col_inv, workspace->U->n );
+                    Vector_Copy( x, workspace->x_p, workspace->U->n );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2829,6 +2770,11 @@ static void apply_preconditioner( const static_storage * const workspace,
                 break;
 
             }
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner application side. Terminating...\n" );
+            exit( INVALID_INPUT );
             break;
         }
     }
@@ -2887,9 +2833,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
             t_start = Get_Time( );
             apply_preconditioner( workspace, control, workspace->b_prc, workspace->b_prm,
-                                  itr == 0 ? fresh_pre : FALSE, LEFT );
+                    itr == 0 ? fresh_pre : FALSE, LEFT );
             apply_preconditioner( workspace, control, workspace->b_prm, workspace->v[0],
-                                  itr == 0 ? fresh_pre : FALSE, RIGHT );
+                    itr == 0 ? fresh_pre : FALSE, RIGHT );
             t_pa += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3627,8 +3573,8 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 
     memset( e, 1., N * sizeof(real) );
 
-    tri_solve( L, e, e, L->n, LOWER );
-    tri_solve( U, e, e, U->n, UPPER );
+    tri_solve( L, e, e, LOWER );
+    tri_solve( U, e, e, UPPER );
 
     /* compute 1-norm of vector e */
     c = FABS(e[0]);

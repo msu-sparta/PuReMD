@@ -578,8 +578,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 "Init_Workspace::premuted_row_col" );
         workspace->permuted_row_col_inv = smalloc( sizeof(unsigned int) * system->N_cm,
                 "Init_Workspace::premuted_row_col_inv" );
-        workspace->y_p = smalloc( sizeof(real) * system->N_cm, "Init_Workspace::y_p" );
-        workspace->x_p = smalloc( sizeof(real) * system->N_cm, "Init_Workspace::x_p" );
     }
     else
     {
@@ -591,6 +589,17 @@ static void Init_Workspace( reax_system *system, control_params *control,
         workspace->color_top = NULL;
         workspace->permuted_row_col = NULL;
         workspace->permuted_row_col_inv = NULL;
+    }
+
+    /* graph coloring related OR ILUTP preconditioner */
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
+            || control->cm_solver_pre_comp_type == ILUTP_PC )
+    {
+        workspace->y_p = smalloc( sizeof(real) * system->N_cm, "Init_Workspace::y_p" );
+        workspace->x_p = smalloc( sizeof(real) * system->N_cm, "Init_Workspace::x_p" );
+    }
+    else
+    {
         workspace->y_p = NULL;
         workspace->x_p = NULL;
     }
@@ -623,13 +632,10 @@ static void Init_Workspace( reax_system *system, control_params *control,
     {
         workspace->perm_ilutp = smalloc( sizeof( int ) * system->N_cm,
                "Init_Workspace::workspace->perm_ilutp" );
-        workspace->r_p = smalloc( sizeof( real ) * system->N_cm,
-               "Init_Workspace::workspace->r_p" );
     }
     else
     {
         workspace->perm_ilutp = NULL;
-        workspace->r_p = NULL;
     }
 
     /* integrator storage */
@@ -1349,6 +1355,12 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->color_top, "Finalize_Workspace::workspace->color_top" );
         sfree( workspace->permuted_row_col, "Finalize_Workspace::workspace->permuted_row_col" );
         sfree( workspace->permuted_row_col_inv, "Finalize_Workspace::workspace->permuted_row_col_inv" );
+    }
+
+    /* graph coloring related OR ILUTP preconditioner */
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
+            || control->cm_solver_pre_comp_type == ILUTP_PC )
+    {
         sfree( workspace->y_p, "Finalize_Workspace::workspace->y_p" );
         sfree( workspace->x_p, "Finalize_Workspace::workspace->x_p" );
     }
@@ -1367,7 +1379,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     if ( control->cm_solver_pre_comp_type == ILUTP_PC )
     {
         sfree( workspace->perm_ilutp, "Finalize_Workspace::workspace->perm_ilutp" );
-        sfree( workspace->r_p, "Finalize_Workspace::workspace->r_p" );
     }
 
     /* integrator storage */

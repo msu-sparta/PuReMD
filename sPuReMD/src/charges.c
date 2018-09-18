@@ -346,9 +346,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //        switch ( control->cm_solver_pre_app_type )
 //        {
 //            case TRI_SOLVE_PA:
-//                tri_solve( workspace->L_EE, ones, x, workspace->L_EE->n, LOWER );
+//                tri_solve( workspace->L_EE, ones, x, LOWER );
 //                Transpose_I( workspace->U_EE );
-//                tri_solve( workspace->U_EE, ones, y, workspace->U_EE->n, LOWER );
+//                tri_solve( workspace->U_EE, ones, y, LOWER );
 //                Transpose_I( workspace->U_EE );
 //
 //                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
@@ -394,9 +394,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //                break;
 //
 //            case TRI_SOLVE_LEVEL_SCHED_PA:
-//                tri_solve_level_sched( workspace->L_EE, ones, x, workspace->L_EE->n, LOWER, TRUE );
+//                tri_solve_level_sched( workspace->L_EE, ones, x, LOWER, TRUE );
 //                Transpose_I( workspace->U_EE );
-//                tri_solve_level_sched( workspace->U_EE, ones, y, workspace->U_EE->n, LOWER, TRUE );
+//                tri_solve_level_sched( workspace->U_EE, ones, y, LOWER, TRUE );
 //                Transpose_I( workspace->U_EE );
 //
 //                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
@@ -443,9 +443,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //
 //            //TODO: add Jacobi iter, etc.?
 //            default:
-//                tri_solve( workspace->L_EE, ones, x, workspace->L_EE->n, LOWER );
+//                tri_solve( workspace->L_EE, ones, x, LOWER );
 //                Transpose_I( workspace->U_EE );
-//                tri_solve( workspace->U_EE, ones, y, workspace->U_EE->n, LOWER );
+//                tri_solve( workspace->U_EE, ones, y, LOWER );
 //                Transpose_I( workspace->U_EE );
 //
 //                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );

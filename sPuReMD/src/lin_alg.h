@@ -69,11 +69,11 @@ void Transpose( const sparse_matrix * const, sparse_matrix * const );
 void Transpose_I( sparse_matrix * const );
 
 void tri_solve( const sparse_matrix * const, const real * const,
-        real * const, const int, const TRIANGULARITY );
+        real * const, const TRIANGULARITY );
 
 void tri_solve_level_sched( static_storage *,
         const sparse_matrix * const,
-        const real * const, real * const, const int,
+        const real * const, real * const,
         const TRIANGULARITY, int );
 
 void jacobi_iter( const static_storage * const,
