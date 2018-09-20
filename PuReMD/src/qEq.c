@@ -237,12 +237,12 @@ void Init_MatVec( reax_system *system, simulation_data *data,
     int i; //, fillin;
     reax_atom *atom;
 
-    /*if( (data->step - data->prev_steps) % control->refactor == 0 ||
+    /*if( (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 ||
       workspace->L == NULL ) {
     //Print_Linear_System( system, control, workspace, data->step );
     Sort_Matrix_Rows( workspace->H );
     fprintf( stderr, "H matrix sorted\n" );
-    Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
+    Calculate_Droptol( workspace->H, workspace->droptol, control->cm_solver_pre_comp_droptol );
     fprintf( stderr, "drop tolerances calculated\n" );
     if( workspace->L == NULL ) {
     fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
@@ -376,7 +376,7 @@ static void Setup_Preconditioner_QEq( reax_system *system, control_params *contr
     t_sort = Get_Timing_Info( time );
 
     t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
-            control->nprocs, control->sai_thres );
+            control->nprocs, control->cm_solver_pre_comp_sai_thres );
 
 
     MPI_Reduce(&t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
@@ -424,7 +424,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     if( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        if( control->refactor > 0 && ((data->step - data->prev_steps) % control->refactor == 0))
+        if( control->cm_solver_pre_comp_refactor > 0 && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0))
         {
             Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
@@ -436,7 +436,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     for ( j = 0; j < system->n; ++j )
         workspace->s[j] = workspace->x[j][0];
     iters = CG(system, control, data, workspace, workspace->H, workspace->b_s,
-            control->q_err, workspace->s, mpi_data, out_control->log , control->nprocs );
+            control->cm_solver_q_err, workspace->s, mpi_data, out_control->log , control->nprocs );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][0] = workspace->s[j];
 
@@ -447,7 +447,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     for ( j = 0; j < system->n; ++j )
         workspace->t[j] = workspace->x[j][1];
     iters += CG(system, control, data, workspace, workspace->H, workspace->b_t,//newQEq sCG
-            control->q_err, workspace->t, mpi_data, out_control->log, control->nprocs );
+            control->cm_solver_q_err, workspace->t, mpi_data, out_control->log, control->nprocs );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][1] = workspace->t[j];
 

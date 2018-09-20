@@ -70,16 +70,44 @@
 #endif
 
 
+/* method for computing atomic charges */
+enum charge_method
+{
+    QEQ_CM = 0,
+    EE_CM = 1,
+    ACKS2_CM = 2,
+};
+
+/* linear solver type used in charge method */
+enum solver
+{
+    GMRES_S = 0,
+    GMRES_H_S = 1,
+    CG_S = 2,
+    SDM_S = 3,
+    BiCGStab_S = 4,
+};
+
 /* preconditioner computation type for charge method linear solver */
 enum pre_comp
 {
     NONE_PC = 0,
-    DIAG_PC = 1,
+    JACOBI_PC = 1,
     ICHOLT_PC = 2,
-    ILU_PAR_PC = 3,
-    ILUT_PAR_PC = 4,
-    ILU_SUPERLU_MT_PC = 5,
+    ILUT__PC = 3,
+    ILUTP_PC = 4,
+    FG_ILUT_PC = 5,
     SAI_PC = 6,
+};
+
+/* preconditioner application type for ICHOL/ILU preconditioners,
+ * used for charge method linear solver */
+enum pre_app
+{
+    TRI_SOLVE_PA = 0,
+    TRI_SOLVE_LEVEL_SCHED_PA = 1,
+    TRI_SOLVE_GC_PA = 2,
+    JACOBI_ITER_PA = 3,
 };
 
 
@@ -513,67 +541,161 @@ typedef struct
 /* system control parameters */
 typedef struct
 {
+    /* simulation name, as supplied via control file */
     char sim_name[REAX_MAX_STR];
-    int  nprocs;
+    /* number of MPI processors, as supplied via control file */
+    int nprocs;
+    /* MPI processors per each simulation dimension (cartesian topology),
+     * as supplied via control file */
     ivec procs_by_dim;
-    /* ensemble values:
-       0 : NVE
-       1 : bNVT (Berendsen)
-       2 : nhNVT (Nose-Hoover)
-       3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
-       4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
-       5 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic*/
-    int  ensemble;
-    int  nsteps;
+    /* ensemble type for simulation, values:
+     * 0 : NVE
+     * 1 : bNVT (Berendsen)
+     * 2 : nhNVT (Nose-Hoover)
+     * 3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
+     * 4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
+     * 5 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic */
+    int ensemble;
+    /* num. of simulation time steps */
+    int nsteps;
+    /* length of time step, in femtoseconds */
     real dt;
-    int  geo_format;
-    int  restart;
+    /* format of geometry input file */
+    int geo_format;
+    /* format of restart file */
+    int restart;
 
-    int  restrict_bonds;
-    int  remove_CoM_vel;
-    int  random_vel;
-    int  reposition_atoms;
+    /**/
+    int restrict_bonds;
+    /* flag to control if center of mass velocity is removed */
+    int remove_CoM_vel;
+    /* flag to control if atomic initial velocity is randomly assigned */
+    int random_vel;
+    /* flag to control how atom repositioning is performed, values:
+     * 0: fit to periodic box
+     * 1: put center of mass to box center
+     * 2: put center of mass to box origin  */
+    int reposition_atoms;
 
-    int  reneighbor;
+    /* flag to control the frequency (in terms of simulation time stesp)
+     * at which atom reneighboring is performed */
+    int reneighbor;
+    /* far neighbor (Verlet list) interaction cutoff, in Angstroms */
     real vlist_cut;
+    /* bond interaction cutoff, in Angstroms */
     real bond_cut;
-    real nonb_cut, nonb_low;
+    /* non-bonded interaction cutoff, in Angstroms */
+    real nonb_cut;
+    /* ???, as supplied by force field parameters, in Angstroms */
+    real nonb_low;
+    /* hydrogen bond interaction cutoff, in Angstroms */
     real hbond_cut;
+    /* ghost region cutoff (user-supplied via control file), in Angstroms */
     real user_ghost_cut;
 
+    /* bond graph cutoff, as supplied by control file, in Angstroms */
     real bg_cut;
+    /* bond order cutoff, as supplied by force field parameters, in Angstroms */
     real bo_cut;
+    /* three body interaction cutoff, as supplied by control file, in Angstroms */
     real thb_cut;
 
+    /* flag to control if force computations are tablulated */
     int tabulate;
 
-    int qeq_freq;
-    int cm_solver_max_iters;
-    real q_err;
-    int cm_solver_pre_comp_type;
-    real sai_thres;
-    int refactor;
-    real droptol;
+    /* method for computing atomic charges */
+    unsigned int charge_method;
+    /* frequency (in terms of simulation time steps) at which to
+     * re-compute atomic charge distribution */
+    int charge_freq;
+    /* iterative linear solver type */
+    unsigned int cm_solver_type;
+    /* system net charge */
+    real cm_q_net;
+    /* max. iterations for linear solver */
+    unsigned int cm_solver_max_iters;
+    /* max. iterations before restarting in specific solvers, e.g., GMRES(k) */
+    unsigned int cm_solver_restart;
+    /* error tolerance of solution produced by charge distribution
+     * sparse iterative linear solver */
+    real cm_solver_q_err;
+    /* ratio used in computing sparser charge matrix,
+     * between 0.0 and 1.0 */
+    real cm_domain_sparsity;
+    /* TRUE if enabled, FALSE otherwise */
+    unsigned int cm_domain_sparsify_enabled;
+    /* order of spline extrapolation used for computing initial guess
+     * to linear solver */
+    unsigned int cm_init_guess_extrap1;
+    /* order of spline extrapolation used for computing initial guess
+     * to linear solver */
+    unsigned int cm_init_guess_extrap2;
+    /* preconditioner type for linear solver */
+    unsigned int cm_solver_pre_comp_type;
+    /* frequency (in terms of simulation time steps) at which to recompute
+     * incomplete factorizations */
+    unsigned int cm_solver_pre_comp_refactor;
+    /* drop tolerance of incomplete factorization schemes (ILUT, ICHOLT, etc.)
+     * used for preconditioning the iterative linear solver used in charge distribution */
+    real cm_solver_pre_comp_droptol;
+    /* num. of sweeps for computing preconditioner factors
+     * in fine-grained iterative methods (FG-ICHOL, FG-ILU) */
+    unsigned int cm_solver_pre_comp_sweeps;
+    /* relative num. of non-zeros to charge matrix used to
+     * compute the sparse approximate inverse preconditioner,
+     * between 0.0 and 1.0 */
+    real cm_solver_pre_comp_sai_thres;
+    /* preconditioner application type */
+    unsigned int cm_solver_pre_app_type;
+    /* num. of iterations used to apply preconditioner via
+     * Jacobi relaxation scheme (truncated Neumann series) */
+    unsigned int cm_solver_pre_app_jacobi_iters;
 
-    real T_init, T_final, T;
+    /* initial temperature of simulation, in Kelvin */
+    real T_init;
+    /* final temperature of simulation, in Kelvin */
+    real T_final;
+    /* current temperature of simulation, in Kelvin */
+    real T;
+    /**/
     real Tau_T;
+    /**/
     int  T_mode;
-    real T_rate, T_freq;
+    /**/
+    real T_rate;
+    /**/
+    real T_freq;
 
+    /**/
     int  virial;
-    rvec P, Tau_P, Tau_PT;
-    int  press_mode;
+    /**/
+    rvec P;
+    /**/
+    rvec Tau_P;
+    /**/
+    rvec Tau_PT;
+    /**/
+    int press_mode;
+    /**/
     real compressibility;
 
-    int  molecular_analysis;
-    int  num_ignored;
+    /**/
+    int molecular_analysis;
+    /**/
+    int num_ignored;
+    /**/
     int  ignore[REAX_MAX_ATOM_TYPES];
 
-    int  dipole_anal;
-    int  freq_dipole_anal;
-    int  diffusion_coef;
-    int  freq_diffusion_coef;
-    int  restrict_type;
+    /**/
+    int dipole_anal;
+    /**/
+    int freq_dipole_anal;
+    /**/
+    int diffusion_coef;
+    /**/
+    int freq_diffusion_coef;
+    /**/
+    int restrict_type;
 } control_params;
 
 

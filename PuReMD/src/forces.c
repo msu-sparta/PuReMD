@@ -978,7 +978,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     comm = mpi_data->world;
     /********* init forces ************/
 #if defined(PURE_REAX)
-    if ( control->qeq_freq && (data->step - data->prev_steps) % control->qeq_freq == 0 )
+    if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
         qeq_flag = 1;
     else qeq_flag = 0;
 #elif defined(LAMMPS_REAX)

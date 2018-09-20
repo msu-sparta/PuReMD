@@ -1227,7 +1227,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         t_pa += Get_Timing_Info( t_start );
     }
 
-    else if ( control->cm_solver_pre_comp_type == DIAG_PC)
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
     {
         t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
@@ -1277,7 +1277,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
             t_pa += Get_Timing_Info( t_start );
         }
 
-        else if ( control->cm_solver_pre_comp_type == DIAG_PC)
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
         {
             t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )

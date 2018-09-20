@@ -66,4 +66,8 @@ void *smalloc( long, char*, MPI_Comm );
 void *scalloc( int, int, char*, MPI_Comm );
 void sfree( void*, char* );
 
+FILE * sfopen( const char *, const char *, const char * );
+
+void sfclose( FILE *, const char * );
+
 #endif
