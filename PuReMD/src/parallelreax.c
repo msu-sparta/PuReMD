@@ -211,7 +211,7 @@ int main( int argc, char* argv[] )
 #endif
 
     /* start the simulation */
-    int total_itr = data->timing.s_matvecs + data->timing.t_matvecs;
+    int total_itr = data->timing.cm_solver_iters;
     for ( ++data->step; data->step <= control->nsteps; data->step++ )
     {
         if ( control->T_mode )
@@ -221,7 +221,7 @@ int main( int argc, char* argv[] )
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
         if( system->my_rank == MASTER_NODE )
         {
-            total_itr += data->timing.s_matvecs + data->timing.t_matvecs;
+            total_itr += data->timing.cm_solver_iters;
         }
         Output_Results( system, control, data, lists, out_control, mpi_data );
         //Analysis(system, control, data, workspace, lists, out_control, mpi_data);

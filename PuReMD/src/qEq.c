@@ -368,20 +368,41 @@ void Calculate_Charges( reax_system *system, storage *workspace,
 static void Setup_Preconditioner_QEq( reax_system *system, control_params *control, 
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
-    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-    Sort_Matrix_Rows( workspace->H );
+    real time, t_sort, t_pc, total_sort, total_pc;
 
-    //TODO: add sai filtering value, which will be passed as the last parameter
-    setup_sparse_approx_inverse( system, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
+    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    time = Get_Time( );
+    Sort_Matrix_Rows( workspace->H );
+    t_sort = Get_Timing_Info( time );
+
+    t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
             control->nprocs, control->sai_thres );
+
+
+    MPI_Reduce(&t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(&t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_sort_mat_rows += total_sort / control->nprocs;
+        data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+    }
 }
 
 static void Compute_Preconditioner_QEq( reax_system *system, control_params *control, 
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
+    real t_pc, total_pc;
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-    sparse_approx_inverse( system, workspace, mpi_data,
-            workspace->H, workspace->H_spar_patt, &workspace->H_app_inv );
+    t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
+            workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
+
+    MPI_Reduce(&t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+    }
 #else
     fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
     exit( INVALID_INPUT );
@@ -392,7 +413,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    int j, s_matvecs, t_matvecs;
+    int j, iters;
 
     Init_MatVec( system, data, control, workspace, mpi_data );
 
@@ -401,44 +422,35 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //Print_Linear_System( system, control, workspace, data->step );
 #endif
 
-    //s_matvecs = dual_CG(system, workspace, workspace->H, workspace->b,
-    //          control->q_err, workspace->x, mpi_data, out_control->log);
-    //t_matvecs = 0;
-
-#if defined(SAI_PRECONDITIONER) && !defined(HALF_LIST)
-    if( control->refactor > 0 && ((data->step - data->prev_steps) % control->refactor == 0))
+    if( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+        if( control->refactor > 0 && ((data->step - data->prev_steps) % control->refactor == 0))
+        {
+            Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
-        Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+            Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+        }
     }
-#endif
 
 
     for ( j = 0; j < system->n; ++j )
         workspace->s[j] = workspace->x[j][0];
-    s_matvecs = CG(system, workspace, workspace->H, workspace->b_s,//newQEq sCG
-            control->q_err, workspace->s, mpi_data, out_control->log , data->step );
+    iters = CG(system, control, data, workspace, workspace->H, workspace->b_s,
+            control->q_err, workspace->s, mpi_data, out_control->log , control->nprocs );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][0] = workspace->s[j];
 
-    //s_matvecs = PCG( system, workspace, workspace->H, workspace->b_s,
-    //   control->q_err, workspace->L, workspace->U, workspace->s,
-    //   mpi_data, out_control->log );
 #if defined(DEBUG)
     fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
 #endif
 
     for ( j = 0; j < system->n; ++j )
         workspace->t[j] = workspace->x[j][1];
-    t_matvecs = CG(system, workspace, workspace->H, workspace->b_t,//newQEq sCG
-            control->q_err, workspace->t, mpi_data, out_control->log, data->step );
+    iters += CG(system, control, data, workspace, workspace->H, workspace->b_t,//newQEq sCG
+            control->q_err, workspace->t, mpi_data, out_control->log, control->nprocs );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][1] = workspace->t[j];
 
-    //t_matvecs = PCG( system, workspace, workspace->H, workspace->b_t,
-    //   control->q_err, workspace->L, workspace->U, workspace->t,
-    //   mpi_data, out_control->log );
 #if defined(DEBUG)
     fprintf( stderr, "p%d: second CG completed\n", system->my_rank );
 #endif
@@ -452,8 +464,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.s_matvecs += s_matvecs;
-        data->timing.t_matvecs += t_matvecs;
+        data->timing.cm_solver_iters += iters;
     }
 #endif
 }

@@ -34,9 +34,9 @@
 #include "lapacke.h"
 #endif
 
-#if defined(CG_PERFORMANCE)
+/*#if defined(CG_PERFORMANCE)
 real t_start, t_elapsed, matvec_time, dot_time;
-#endif
+#endif*/
 
 int compare_dbls( const void* arg1, const void* arg2 )
 {   
@@ -102,7 +102,7 @@ int find_bucket( double *list, int len, double a )
     return s;
 }
 
-void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
+real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, storage *workspace,
         mpi_datatypes *mpi_data, sparse_matrix *A, sparse_matrix **A_spar_patt,
         int nprocs, real filter )
 {
@@ -125,6 +125,12 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     int *bin_elements;
 
     MPI_Comm comm;
+
+    real start, t_start, t_comm;
+    real total_comm;
+
+    start = Get_Time();
+    t_comm = 0.0;
 
     srecv = NULL;
     sdispls = NULL;
@@ -160,8 +166,10 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     }
     s_local = (int) (12.0 * log2(n_local*nprocs));
     
+    t_start = Get_Time( );
     MPI_Allreduce(&n_local, &n, 1, MPI_INT, MPI_SUM, comm);
     MPI_Reduce(&s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, comm);
+    t_comm += Get_Timing_Info( t_start );
 
     /* count num. bin elements for each processor, uniform bin sizes */
     input_array = malloc( sizeof(real) * n_local );
@@ -196,7 +204,9 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     }
 
     /* gather samples at the root process */
+    t_start = Get_Time( );
     MPI_Gather( &s_local, 1, MPI_INT, srecv, 1, MPI_INT, MASTER_NODE, comm );
+    t_comm += Get_Timing_Info( t_start );
 
     if( system->my_rank == MASTER_NODE )
     {
@@ -207,8 +217,10 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
         }
     }
 
+    t_start = Get_Time( );
     MPI_Gatherv( samplelist_local, s_local, MPI_DOUBLE,
             samplelist, srecv, sdispls, MPI_DOUBLE, MASTER_NODE, comm);
+    t_comm += Get_Timing_Info( t_start );
 
     /* sort samples at the root process and select pivots */
     if ( system->my_rank == MASTER_NODE )
@@ -222,7 +234,9 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     }
 
     /* broadcast pivots */
+    t_start = Get_Time( );
     MPI_Bcast( pivotlist, nprocs - 1, MPI_DOUBLE, MASTER_NODE, comm );
+    t_comm += Get_Timing_Info( t_start );
 
     for ( i = 0; i < nprocs; ++i )
     {
@@ -258,7 +272,9 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     }
 
     /* determine counts for elements per process */
+    t_start = Get_Time( );
     MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM, comm );
+    t_comm += Get_Timing_Info( t_start );
 
     /* find the target process */
     target_proc = 0;
@@ -283,7 +299,10 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     }
 
     /* send local buckets to target processor for quickselect */
+    t_start = Get_Time( );
     MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts, 1, MPI_INT, target_proc, comm );
+    t_comm += Get_Timing_Info( t_start );
+
     if ( system->my_rank == target_proc )
     {
         dspls[0] = 0;
@@ -293,8 +312,10 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
         }
     }
 
+    t_start = Get_Time( );
     MPI_Gatherv( bucketlist_local + dspls_local[target_proc], scounts_local[target_proc], MPI_DOUBLE,
             bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, comm);
+    t_comm += Get_Timing_Info( t_start );
 
     /* apply quick select algorithm at the target process */
     if( system->my_rank == target_proc)
@@ -362,7 +383,9 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
     }
 
     /*broadcast the filtering value*/
+    t_start = Get_Time( );
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
+    t_comm += Get_Timing_Info( t_start );
 
     // int nnz = 0; uncomment to check the nnz's in the sparsity pattern
 
@@ -391,11 +414,19 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
         fprintf(stdout,"total nnz in all sparsity patterns = %d\nthreshold = %.15lf\n", nnz, threshold);
         fflush(stdout);
     }*/
+ 
+    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
 
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_solver_comm += total_comm / nprocs;
+    }
+
+    return Get_Timing_Info( start );
 }
 
-void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatypes *mpi_data, 
-        sparse_matrix *A, sparse_matrix *A_spar_patt, sparse_matrix **A_app_inv )
+real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *workspace, mpi_datatypes *mpi_data, 
+        sparse_matrix *A, sparse_matrix *A_spar_patt, sparse_matrix **A_app_inv, int nprocs )
 {
     int N, M, d_i, d_j;
     int i, k, pj, j_temp;
@@ -420,9 +451,11 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
     int *j_send, *j_recv1, *j_recv2;
     real *val_send, *val_recv1, *val_recv2;
 
-    /*real start;
+    real start, t_start, t_comm;
+    real total_comm;
 
-    start = Get_Time( ); */
+    start = Get_Time( );
+    t_comm = 0.0;
 
     comm = mpi_data->world;
 
@@ -468,8 +501,10 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
     }
 
     /* Announce the nnz's in each row that will be communicated later */
+    t_start = Get_Time( );
     scale = sizeof(int) / sizeof(void);
     Dist( system, mpi_data, row_nnz, MPI_INT, scale, int_packer );
+    t_comm += Get_Timing_Info( t_start );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -501,8 +536,11 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
                 flag1 = 1;
                 j_recv1 = (int *) malloc( sizeof(int) * cnt );
                 val_recv1 = (real *) malloc( sizeof(real) * cnt );
+
+                t_start = Get_Time( );
                 MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
                 MPI_Irecv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm, &req2 );
+                t_comm += Get_Timing_Info( t_start );
             }
         }
 
@@ -525,8 +563,11 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
                 flag2 = 1;
                 j_recv2 = (int *) malloc( sizeof(int) * cnt );
                 val_recv2 = (real *) malloc( sizeof(real) * cnt );
+
+                t_start = Get_Time( );
                 MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
                 MPI_Irecv( val_recv2, cnt, MPI_DOUBLE, nbr2->rank, 2 * d, comm, &req4 );
+                t_comm += Get_Timing_Info( t_start );
             }
         }
 
@@ -568,8 +609,10 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
                     }
                 }
 
+                t_start = Get_Time( );
                 MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d, comm );
                 MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d, comm );
+                t_comm += Get_Timing_Info( t_start );
             }
         }
 
@@ -610,16 +653,20 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
                     }
                 }
 
+                t_start = Get_Time( );
                 MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm );
                 MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm );
+                t_comm += Get_Timing_Info( t_start );
             }
 
         }
 
         if( flag1 )
         {
+            t_start = Get_Time( );
             MPI_Wait( &req1, &stat1 );
             MPI_Wait( &req2, &stat2 );
+            t_comm += Get_Timing_Info( t_start );
 
             cnt = 0;
             for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
@@ -641,9 +688,10 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
 
         if( flag2 )
         {
+            t_start = Get_Time( );
             MPI_Wait( &req3, &stat3 );
             MPI_Wait( &req4, &stat4 );
-
+            t_comm += Get_Timing_Info( t_start );
 
             cnt = 0;
             for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
@@ -826,7 +874,14 @@ void sparse_approx_inverse(reax_system *system, storage *workspace, mpi_datatype
     free( pos_x);
     free( X );
 
-    /* return Get_Timing_Info( start ); */
+    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_solver_comm += total_comm / nprocs;
+    }
+
+    return Get_Timing_Info( start );
 }
 
 void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
@@ -872,7 +927,7 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 }
 
 
-int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
+/*int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int  i, j, n, N, matvecs, scale;
@@ -912,15 +967,15 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 
     for ( j = 0; j < system->n; ++j )
     {
-        /* residual */
+        // residual
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->q2[j][1];
-        /* apply diagonal pre-conditioner */
+        // apply diagonal pre-conditioner
         workspace->d2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
         workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
     }
 
-    /* norm of b */
+    // norm of b
     my_sum[0] = my_sum[1] = 0;
     for ( j = 0; j < n; ++j )
     {
@@ -932,7 +987,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
     b_norm[1] = sqrt( norm_sqr[1] );
     //fprintf( stderr, "bnorm = %f %f\n", b_norm[0], b_norm[1] );
 
-    /* dot product: r.d */
+    // dot product: r.d
     my_dot[0] = my_dot[1] = 0;
     for ( j = 0; j < n; ++j )
     {
@@ -963,7 +1018,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         }
 #endif
 
-        /* dot product: d.q */
+        // dot product: d.q
         my_dot[0] = my_dot[1] = 0;
         for ( j = 0; j < n; ++j )
         {
@@ -978,16 +1033,16 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         my_dot[0] = my_dot[1] = 0;
         for ( j = 0; j < system->n; ++j )
         {
-            /* update x */
+            // update x
             x[j][0] += alpha[0] * workspace->d2[j][0];
             x[j][1] += alpha[1] * workspace->d2[j][1];
-            /* update residual */
+            // update residual
             workspace->r2[j][0] -= alpha[0] * workspace->q2[j][0];
             workspace->r2[j][1] -= alpha[1] * workspace->q2[j][1];
-            /* apply diagonal pre-conditioner */
+            // apply diagonal pre-conditioner
             workspace->p2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
             workspace->p2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
-            /* dot product: r.p */
+            // dot product: r.p
             my_dot[0] += workspace->r2[j][0] * workspace->p2[j][0];
             my_dot[1] += workspace->r2[j][1] * workspace->p2[j][1];
         }
@@ -1012,7 +1067,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
         beta[1] = sig_new[1] / sig_old[1];
         for ( j = 0; j < system->n; ++j )
         {
-            /* d = p + beta * d */
+            // d = p + beta * d
             workspace->d2[j][0] = workspace->p2[j][0] + beta[0] * workspace->d2[j][0];
             workspace->d2[j][1] = workspace->p2[j][1] + beta[1] * workspace->d2[j][1];
         }
@@ -1059,7 +1114,7 @@ int dual_CG( reax_system *system, storage *workspace, sparse_matrix *H,
 #endif
 
     return (i + 1) + matvecs;
-}
+}*/
 
 
 void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
@@ -1126,124 +1181,146 @@ static void Sparse_MatVec_full( const sparse_matrix * const A,
 }*/
 
 
-int CG( reax_system *system, storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data, FILE *fout, int step )
+int CG( reax_system *system, control_params *control, simulation_data *data,
+        storage *workspace, sparse_matrix *H, real *b,
+        real tol, real *x, mpi_datatypes* mpi_data, FILE *fout, int nprocs )
 {
-    int  i, scale;
+    int  i, j, scale;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;
-#if defined(HALF_LIST)
-    int j;
-#endif
+    real t_start, t_pa, t_spmv, t_vops, t_comm;
+    real total_pa, total_spmv, total_vops, total_comm;
 
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_start = matvec_time = dot_time = 0;
-        t_start = Get_Time( );
-    }
-#endif
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_vops = 0.0;
+    t_comm = 0.0;
 
+    t_start = Get_Time( );
     scale = sizeof(real) / sizeof(void);
     Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
+    t_comm += Get_Timing_Info( t_start );
+
+    t_start = Get_Time( );
     Sparse_MatVec( H, x, workspace->q, system->N );
+    t_spmv += Get_Timing_Info( t_start );
+
 #if defined(HALF_LIST)
+    t_start = Get_Time( );
     Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+    t_comm += Get_Timing_Info( t_start );
 #endif
 
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &matvec_time );
-    }
-#endif
-
+    t_start = Get_Time( );
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
+    t_vops += Get_Timing_Info( t_start );
 
     /* pre-conditioning */
-#if defined(SAI_PRECONDITIONER) && !defined(HALF_LIST)
-    Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
-    Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
-#else
-    for ( j = 0; j < system->n; ++j )
+    if( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        t_start = Get_Time( );
+        Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+        t_comm += Get_Timing_Info( t_start );
+        
+        t_start = Get_Time( );
+        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+        t_pa += Get_Timing_Info( t_start );
     }
-#endif
 
+    else if ( control->cm_solver_pre_comp_type == DIAG_PC)
+    {
+        t_start = Get_Time( );
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        }
+        t_pa += Get_Timing_Info( t_start );
+    }
+
+    t_start = Get_Time( );
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
+    t_vops += Get_Timing_Info( t_start );
 
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
+    for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
-        Update_Timing_Info( &t_start, &dot_time );
-    }
-#endif
-
-    for ( i = 1; i < 300 && sqrt(sig_new) / b_norm > tol; ++i )
-    {
+        t_start = Get_Time( );
         Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
+        t_comm += Get_Timing_Info( t_start );
+
+        t_start = Get_Time( );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+        t_spmv += Get_Timing_Info( t_start );
+
 #if defined(HALF_LIST)
+        t_start = Get_Time( );
         Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+        t_comm += Get_Timing_Info( t_start );
 #endif
 
-#if defined(CG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &matvec_time );
-        }
-#endif
-
+        t_start = Get_Time( );
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);
         alpha = sig_new / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
+        t_vops += Get_Timing_Info( t_start );
 
         /* pre-conditioning */
-#if defined(SAI_PRECONDITIONER) && !defined(HALF_LIST)
-        Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
-#else
-        for ( j = 0; j < system->n; ++j )
+        if( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
-        }
-#endif
+            t_start = Get_Time( );
+            Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+            t_comm += Get_Timing_Info( t_start );
 
+            t_start = Get_Time( );
+            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
+            t_pa += Get_Timing_Info( t_start );
+        }
+
+        else if ( control->cm_solver_pre_comp_type == DIAG_PC)
+        {
+            t_start = Get_Time( );
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
+            }
+            t_pa += Get_Timing_Info( t_start );
+        }
+
+        t_start = Get_Time( );
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, system->n );
-
-#if defined(CG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &dot_time );
-        }
-#endif
+        t_vops += Get_Timing_Info( t_start );
     }
 
-    if ( i >= 300 )
+    MPI_Reduce(&t_pa, &total_pa, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(&t_spmv, &total_spmv, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(&t_vops, &total_vops, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+    if( system->my_rank == MASTER_NODE )
     {
-        fprintf( stderr, "CG convergence failed at step %d!\n", step );
+        data->timing.cm_solver_pre_app += total_pa / nprocs;
+        data->timing.cm_solver_spmv += total_spmv / nprocs;
+        data->timing.cm_solver_vector_ops += total_vops / nprocs;
+        data->timing.cm_solver_comm += total_comm / nprocs;
+    }
+
+    MPI_Barrier(mpi_data->world);
+
+    if ( i >= control->cm_solver_max_iters )
+    {
+        fprintf( stderr, "CG convergence failed!\n" );
         return i;
     }
-
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        fprintf( fout, "QEq %d iters. matvecs: %f  dot: %f\n", i, matvec_time,
-                dot_time );
-    }
-#endif
 
     return i;
 }
 
 
-int CG_test( reax_system *system, storage *workspace, sparse_matrix *H,
+/*int CG_test( reax_system *system, storage *workspace, sparse_matrix *H,
         real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int  i, j, scale;
@@ -1327,7 +1404,7 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H,
 
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
-        /* pre-conditioning */
+        // pre-conditioning
         for ( j = 0; j < system->n; ++j )
             workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
 
@@ -1365,10 +1442,10 @@ int CG_test( reax_system *system, storage *workspace, sparse_matrix *H,
     }
 
     return i;
-}
+}*/
 
 
-void Forward_Subs( sparse_matrix *L, real *b, real *y )
+/*void Forward_Subs( sparse_matrix *L, real *b, real *y )
 {
     int i, pj, j, si, ei;
     real val;
@@ -1386,10 +1463,10 @@ void Forward_Subs( sparse_matrix *L, real *b, real *y )
         }
         y[i] /= L->entries[pj].val;
     }
-}
+}*/
 
 
-void Backward_Subs( sparse_matrix *U, real *y, real *x )
+/*void Backward_Subs( sparse_matrix *U, real *y, real *x )
 {
     int i, pj, j, si, ei;
     real val;
@@ -1407,10 +1484,10 @@ void Backward_Subs( sparse_matrix *U, real *y, real *x )
         }
         x[i] /= U->entries[si].val;
     }
-}
+}*/
 
 
-int PCG( reax_system *system, storage *workspace,
+/*int PCG( reax_system *system, storage *workspace,
         sparse_matrix *H, real *b, real tol,
         sparse_matrix *L, sparse_matrix *U, real *x,
         mpi_datatypes* mpi_data, FILE *fout )
@@ -1498,11 +1575,11 @@ int PCG( reax_system *system, storage *workspace,
         fprintf( stderr, "PCG convergence failed!\n" );
 
     return i;
-}
+}*/
 
 
 #if defined(OLD_STUFF)
-int sCG( reax_system *system, storage *workspace, sparse_matrix *H,
+/*int sCG( reax_system *system, storage *workspace, sparse_matrix *H,
         real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int  i, j;
@@ -1563,7 +1640,7 @@ int sCG( reax_system *system, storage *workspace, sparse_matrix *H,
 
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
-        /* pre-conditioning */
+        // pre-conditioning
         for ( j = 0; j < system->n; ++j )
             workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
 
@@ -1591,10 +1668,10 @@ int sCG( reax_system *system, storage *workspace, sparse_matrix *H,
     }
 
     return i;
-}
+}*/
 
 
-int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
+/*int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
         real *b, real tol, real *x, mpi_datatypes* mpi_data, FILE *fout )
 {
     int i, j, k, itr, N;
@@ -1603,14 +1680,14 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
     N = system->N;
     bnorm = Norm( b, N );
 
-    /* apply the diagonal pre-conditioner to rhs */
+    // apply the diagonal pre-conditioner to rhs
     for ( i = 0; i < N; ++i )
         workspace->b_prc[i] = b[i] * workspace->Hdia_inv[i];
 
-    /* GMRES outer-loop */
+    // GMRES outer-loop
     for ( itr = 0; itr < MAX_ITR; ++itr )
     {
-        /* calculate r0 */
+        // calculate r0
         Sparse_MatVec( H, x, workspace->b_prm, N );
         for ( i = 0; i < N; ++i )
             workspace->b_prm[i] *= workspace->Hdia_inv[i]; // pre-conditioner
@@ -1623,17 +1700,17 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
 
         // fprintf( stderr, "%10.6f\n", workspace->g[0] );
 
-        /* GMRES inner-loop */
+        // GMRES inner-loop
         for ( j = 0; j < RESTART && fabs(workspace->g[j]) / bnorm > tol; j++ )
         {
-            /* matvec */
+            // matvec
             Sparse_MatVec( H, workspace->v[j], workspace->v[j + 1], N );
 
             for ( k = 0; k < N; ++k )
                 workspace->v[j + 1][k] *= workspace->Hdia_inv[k]; // pre-conditioner
             // fprintf( stderr, "%d-%d: matvec done.\n", itr, j );
 
-            /* apply modified Gram-Schmidt to orthogonalize the new residual */
+            // apply modified Gram-Schmidt to orthogonalize the new residual
             for ( i = 0; i <= j; i++ )
             {
                 workspace->h[i][j] = Dot(workspace->v[i], workspace->v[j + 1], N);
@@ -1646,7 +1723,7 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
                     1. / workspace->h[j + 1][j], workspace->v[j + 1], N );
             // fprintf(stderr, "%d-%d: orthogonalization completed.\n", itr, j);
 
-            /* Givens rotations on the H matrix to make it U */
+            // Givens rotations on the H matrix to make it U
             for ( i = 0; i <= j; i++ )
             {
                 if ( i == j )
@@ -1665,7 +1742,7 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
                 workspace->h[i + 1][j] = tmp2;
             }
 
-            /* apply Givens rotations to the rhs as well */
+            // apply Givens rotations to the rhs as well
             tmp1 =  workspace->hc[j] * workspace->g[j];
             tmp2 = -workspace->hs[j] * workspace->g[j];
             workspace->g[j] = tmp1;
@@ -1674,8 +1751,8 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
             // fprintf( stderr, "%10.6f\n", fabs(workspace->g[j+1]) );
         }
 
-        /* solve Hy = g.
-           H is now upper-triangular, do back-substitution */
+        // solve Hy = g.
+        //   H is now upper-triangular, do back-substitution
         for ( i = j - 1; i >= 0; i-- )
         {
             temp = workspace->g[i];
@@ -1684,23 +1761,23 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
             workspace->y[i] = temp / workspace->h[i][i];
         }
 
-        /* update x = x_0 + Vy */
+        // update x = x_0 + Vy
         for ( i = 0; i < j; i++ )
             Vector_Add( x, workspace->y[i], workspace->v[i], N );
 
-        /* stopping condition */
+        // stopping condition
         if ( fabs(workspace->g[j]) / bnorm <= tol )
             break;
     }
 
-    /*Sparse_MatVec( system, H, x, workspace->b_prm, mpi_data );
-      for( i = 0; i < N; ++i )
-      workspace->b_prm[i] *= workspace->Hdia_inv[i];
+    //Sparse_MatVec( system, H, x, workspace->b_prm, mpi_data );
+    //  for( i = 0; i < N; ++i )
+    //  workspace->b_prm[i] *= workspace->Hdia_inv[i];
 
-      fprintf( fout, "\n%10s%15s%15s\n", "b_prc", "b_prm", "x" );
-      for( i = 0; i < N; ++i )
-      fprintf( fout, "%10.5f%15.12f%15.12f\n",
-      workspace->b_prc[i], workspace->b_prm[i], x[i] );*/
+    //  fprintf( fout, "\n%10s%15s%15s\n", "b_prc", "b_prm", "x" );
+     // for( i = 0; i < N; ++i )
+      //fprintf( fout, "%10.5f%15.12f%15.12f\n",
+      //workspace->b_prc[i], workspace->b_prm[i], x[i] );
 
     fprintf( fout, "GMRES outer: %d, inner: %d - |rel residual| = %15.10f\n",
             itr, j, fabs( workspace->g[j] ) / bnorm );
@@ -1712,10 +1789,10 @@ int GMRES( reax_system *system, storage *workspace, sparse_matrix *H,
     }
 
     return SUCCESS;
-}
+}*/
 
 
-int GMRES_HouseHolder( reax_system *system, storage *workspace,
+/*int GMRES_HouseHolder( reax_system *system, storage *workspace,
         sparse_matrix *H, real *b, real tol, real *x,
         mpi_datatypes* mpi_data, FILE *fout )
 {
@@ -1727,18 +1804,18 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
     N = system->N;
     bnorm = Norm( b, N );
 
-    /* apply the diagonal pre-conditioner to rhs */
+    // apply the diagonal pre-conditioner to rhs
     for ( i = 0; i < N; ++i )
         workspace->b_prc[i] = b[i] * workspace->Hdia_inv[i];
 
-    /* GMRES outer-loop */
+    // GMRES outer-loop
     for ( itr = 0; itr < MAX_ITR; ++itr )
     {
-        /* compute z = r0 */
+        // compute z = r0
         Sparse_MatVec( H, x, workspace->b_prm, N );
 
         for ( i = 0; i < N; ++i )
-            workspace->b_prm[i] *= workspace->Hdia_inv[i]; /* pre-conditioner */
+            workspace->b_prm[i] *= workspace->Hdia_inv[i]; // pre-conditioner
 
         Vector_Sum( z[0], 1.,  workspace->b_prc, -1., workspace->b_prm, N );
 
@@ -1752,28 +1829,28 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
         w[0]    *= ( u[0][0] < 0.0 ?  1 : -1 );
         // fprintf( stderr, "\n\n%12.6f\n", w[0] );
 
-        /* GMRES inner-loop */
+        // GMRES inner-loop
         for ( j = 0; j < RESTART && fabs( w[j] ) / bnorm > tol; j++ )
         {
-            /* compute v_j */
+            // compute v_j
             Vector_Scale( z[j], -2 * u[j][j], u[j], N );
-            z[j][j] += 1.; /* due to e_j */
+            z[j][j] += 1.; // due to e_j
 
             for ( i = j - 1; i >= 0; --i )
                 Vector_Add( z[j] + i, -2 * Dot( u[i] + i, z[j] + i, N - i ), u[i] + i, N - i );
 
-            /* matvec */
+            // matvec
             Sparse_MatVec( H, z[j], v, N );
 
             for ( k = 0; k < N; ++k )
-                v[k] *= workspace->Hdia_inv[k]; /* pre-conditioner */
+                v[k] *= workspace->Hdia_inv[k]; // pre-conditioner
 
             for ( i = 0; i <= j; ++i )
                 Vector_Add( v + i, -2 * Dot( u[i] + i, v + i, N - i ), u[i] + i, N - i );
 
             if ( !Vector_isZero( v + (j + 1), N - (j + 1) ) )
             {
-                /* compute the HouseHolder unit vector u_j+1 */
+                // compute the HouseHolder unit vector u_j+1
                 for ( i = 0; i <= j; ++i )
                     u[j + 1][i] = 0;
 
@@ -1784,14 +1861,14 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
 
                 Vector_Scale( u[j + 1], 1 / Norm( u[j + 1], N ), u[j + 1], N );
 
-                /* overwrite v with P_m+1 * v */
+                // overwrite v with P_m+1 * v
                 v[j + 1] -=
                     2 * Dot( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) ) * u[j + 1][j + 1];
                 Vector_MakeZero( v + (j + 2), N - (j + 2) );
             }
 
 
-            /* previous Givens rotations on H matrix to make it U */
+            // previous Givens rotations on H matrix to make it U
             for ( i = 0; i < j; i++ )
             {
                 tmp1 =  workspace->hc[i] * v[i] + workspace->hs[i] * v[i + 1];
@@ -1801,7 +1878,7 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
                 v[i + 1] = tmp2;
             }
 
-            /* apply the new Givens rotation to H and right-hand side */
+            // apply the new Givens rotation to H and right-hand side
             if ( fabs(v[j + 1]) >= ALMOST_ZERO )
             {
                 cc = sqrt( SQR( v[j] ) + SQR( v[j + 1] ) );
@@ -1814,14 +1891,14 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
                 v[j]   = tmp1;
                 v[j + 1] = tmp2;
 
-                /* Givens rotations to rhs */
+                / Givens rotations to rhs
                 tmp1 =  workspace->hc[j] * w[j];
                 tmp2 = -workspace->hs[j] * w[j];
                 w[j]   = tmp1;
                 w[j + 1] = tmp2;
             }
 
-            /* extend R */
+            // extend R
             for ( i = 0; i <= j; ++i )
                 workspace->h[i][j] = v[i];
 
@@ -1834,8 +1911,8 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
         }
 
 
-        /* solve Hy = w.
-           H is now upper-triangular, do back-substitution */
+        // solve Hy = w.
+        //   H is now upper-triangular, do back-substitution 
         for ( i = j - 1; i >= 0; i-- )
         {
             temp = w[i];
@@ -1848,7 +1925,7 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
         for ( i = j - 1; i >= 0; i-- )
             Vector_Add( x, workspace->y[i], z[i], N );
 
-        /* stopping condition */
+        // stopping condition
         if ( fabs( w[j] ) / bnorm <= tol )
             break;
     }
@@ -1872,5 +1949,5 @@ int GMRES_HouseHolder( reax_system *system, storage *workspace,
     }
 
     return SUCCESS;
-}
+}*/
 #endif

@@ -74,6 +74,7 @@ char Read_Control_File( char *control_file, control_params* control,
     control->tabulate = 0;
 
     control->qeq_freq = 1;
+    control->cm_solver_max_iters = 100;
     control->q_err = 1e-6;
     control->sai_thres = 0.1;
     control->refactor = 100;
@@ -246,10 +247,20 @@ char Read_Control_File( char *control_file, control_params* control,
             ival = atoi( tmp[1] );
             control->qeq_freq = ival;
         }
+        else if ( strcmp(tmp[0], "cm_solver_max_iters") == 0 )
+        {
+            ival = atoi( tmp[1] );
+            control->cm_solver_max_iters = ival;
+        }
         else if ( strcmp(tmp[0], "q_err") == 0 )
         {
             val = atof( tmp[1] );
             control->q_err = val;
+        }
+        else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
+        {
+            val = atoi( tmp[1] );
+            control->cm_solver_pre_comp_type = val;
         }
         else if ( strcmp(tmp[0], "sai_thres") == 0 )
         {

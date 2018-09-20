@@ -968,7 +968,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     MPI_Comm comm;
     int qeq_flag;
 #if defined(LOG_PERFORMANCE)
-    real t_start = 0;
+    real t_start = 0, t_elapsed;
 
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
@@ -1005,7 +1005,9 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &(data->timing.bonded) );
+    {
+        t_start = Get_Time( );
+    }
 #endif
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: completed bonded\n",
@@ -1022,7 +1024,10 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &(data->timing.qEq) );
+    {
+        t_elapsed = Get_Timing_Info( t_start );
+        data->timing.cm += t_elapsed;
+    }
 #endif
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);

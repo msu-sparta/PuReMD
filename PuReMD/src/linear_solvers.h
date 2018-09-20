@@ -24,11 +24,11 @@
 
 #include "reax_types.h"
 
-void setup_sparse_approx_inverse( reax_system*, storage*, mpi_datatypes*, 
+real setup_sparse_approx_inverse( reax_system*, simulation_data*, storage*, mpi_datatypes*, 
         sparse_matrix *, sparse_matrix **, int, double );
 
-void sparse_approx_inverse( reax_system*, storage*, mpi_datatypes*, 
-        sparse_matrix*, sparse_matrix*, sparse_matrix** );
+real sparse_approx_inverse( reax_system*, simulation_data*, storage*, mpi_datatypes*, 
+        sparse_matrix*, sparse_matrix*, sparse_matrix**, int );
 
 int GMRES( reax_system*, storage*, sparse_matrix*,
            real*, real, real*, mpi_datatypes*, FILE* );
@@ -36,7 +36,7 @@ int GMRES_HouseHolder( reax_system*, storage*, sparse_matrix*,
                        real*, real, real*, mpi_datatypes*, FILE* );
 int dual_CG( reax_system*, storage*, sparse_matrix*,
              rvec2*, real, rvec2*, mpi_datatypes*, FILE* );
-int CG( reax_system*, storage*, sparse_matrix*,
+int CG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
         real*, real, real*, mpi_datatypes*, FILE*, int );
 int PCG( reax_system*, storage*, sparse_matrix*, real*, real,
          sparse_matrix*, sparse_matrix*, real*, mpi_datatypes*, FILE* );

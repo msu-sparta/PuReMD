@@ -41,18 +41,18 @@
 
 #define PURE_REAX
 //#define LAMMPS_REAX
-#define SAI_PRECONDITIONER
 //#define HALF_LIST
 //#define DEBUG
 //#define DEBUG_FOCUS
 //#define TEST_ENERGY
 //#define TEST_FORCES
-#define CG_PERFORMANCE
+//#define CG_PERFORMANCE
 #define LOG_PERFORMANCE
 #define STANDARD_BOUNDARIES
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
 
+#define ZERO                    (0.000000000000000e+00)
 #define REAX_MAX_STR            1024
 #define REAX_MAX_NBRS           6
 #define REAX_MAX_3BODY_PARAM    5
@@ -68,6 +68,20 @@
 #warn "No support for NaN"
 #define NAN_REAL(a) (0)
 #endif
+
+
+/* preconditioner computation type for charge method linear solver */
+enum pre_comp
+{
+    NONE_PC = 0,
+    DIAG_PC = 1,
+    ICHOLT_PC = 2,
+    ILU_PAR_PC = 3,
+    ILUT_PAR_PC = 4,
+    ILU_SUPERLU_MT_PC = 5,
+    SAI_PC = 6,
+};
+
 
 /********************** TYPE DEFINITIONS ********************/
 typedef int  ivec[3];
@@ -534,7 +548,9 @@ typedef struct
     int tabulate;
 
     int qeq_freq;
+    int cm_solver_max_iters;
     real q_err;
+    int cm_solver_pre_comp_type;
     real sai_thres;
     int refactor;
     real droptol;
@@ -603,19 +619,44 @@ typedef struct
 
 typedef struct
 {
+    /* start time of event */
     real start;
+    /* end time of event */
     real end;
+    /* total elapsed time of event */
     real elapsed;
-
+    /* total simulation time */
     real total;
+    /* communication time */
     real comm;
+    /* neighbor list generation time */
     real nbrs;
+    /* force initialization time */
     real init_forces;
+    /* bonded force calculation time */
     real bonded;
+    /* non-bonded force calculation time */
     real nonb;
-    real qEq;
-    int  s_matvecs;
-    int  t_matvecs;
+    /* atomic charge distribution calculation time */
+    real cm;
+    /**/
+    real cm_sort_mat_rows;
+    /**/
+    real cm_solver_comm;
+    /**/
+    real cm_solver_pre_comp;
+    /**/
+    real cm_solver_pre_app; // update CG()
+    /* num. of steps in iterative linear solver for charge distribution */
+    int cm_solver_iters;
+    /**/
+    real cm_solver_spmv; // update CG()
+    /**/
+    real cm_solver_vector_ops; // update CG()
+    /**/
+    real cm_solver_orthog;
+    /**/
+    real cm_solver_tri_solve;
 } reax_timing;
 
 
