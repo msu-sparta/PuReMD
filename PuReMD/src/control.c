@@ -43,7 +43,7 @@ char Read_Control_File( char *control_file, control_params* control,
     /* assign default values */
     strcpy( control->sim_name, "default.sim" );
     control->ensemble = NVE;
-    control->nsteps = 0;
+    control->nsteps = 100;
     control->dt = 0.25;
     control->nprocs = 1;
     control->procs_by_dim[0] = 1;
@@ -73,9 +73,9 @@ char Read_Control_File( char *control_file, control_params* control,
     control->charge_method = QEQ_CM;
     control->charge_freq = 1;
     control->cm_q_net = 0.0;
-    control->cm_solver_type = GMRES_S;
-    control->cm_solver_max_iters = 100;
-    control->cm_solver_restart = 50;
+    control->cm_solver_type = CG_S;
+    control->cm_solver_max_iters = 1000;
+    control->cm_solver_restart = 100;
     control->cm_solver_q_err = 0.000001;
     control->cm_domain_sparsify_enabled = FALSE;
     control->cm_init_guess_extrap1 = 3;
@@ -107,8 +107,8 @@ char Read_Control_File( char *control_file, control_params* control,
     out_control->traj_method = REG_TRAJ;
     strcpy( out_control->traj_title, "default_title" );
     out_control->atom_info = 0;
-    out_control->bond_info = 0;
-    out_control->angle_info = 0;
+    out_control->bond_info = 1;
+    out_control->angle_info = 1;
 
     control->molecular_analysis = 0;
     control->dipole_anal = 0;
