@@ -31,15 +31,9 @@ class TestCase():
                     r'(?P<key>ensemble_type\s+)\S+(?P<comment>.*)', r'\g<key>{0}\g<comment>'.format(x), l), \
                 'nsteps': lambda l, x: sub(
                     r'(?P<key>nsteps\s+)\S+(?P<comment>.*)', r'\g<key>{0}\g<comment>'.format(x), l), \
-                'proc_by_dim1': lambda l, x: sub(
-                    r'(?P<key>proc_by_dim\s+)\S+(?P<proc_by_dim2>\s+\S+)(?P<proc_by_dim3>\s+\S+)(?P<comment>.*)',
-                    r'\g<key>{0}\g<proc_by_dim2>\g<proc_by_dim3>\g<comment>'.format(x), l), \
-                'proc_by_dim2': lambda l, x: sub(
-                    r'(?P<key>proc_by_dim\s+)(?P<proc_by_dim1>\S+\s+)\S+(?P<proc_by_dim3>\s+\S+)(?P<comment>.*)',
-                    r'\g<key>\g<proc_by_dim1>{0}\g<proc_by_dim3>\g<comment>'.format(x), l), \
-                'proc_by_dim3': lambda l, x: sub(
-                    r'(?P<key>proc_by_dim\s+)(?P<proc_by_dim1>\S+\s+)(?P<proc_by_dim2>\S+\s+)\S+(?P<comment>.*)',
-                    r'\g<key>\g<proc_by_dim1>\g<proc_by_dim2>{0}\g<comment>'.format(x), l), \
+                'proc_by_dim': lambda l, x: sub(
+                    r'(?P<key>proc_by_dim\s+)\S+\s+\S+\s+\S+(?P<comment>.*)',
+                    r'\g<key>{0} {1} {2}\g<comment>'.format(*(x.split(':'))), l), \
                 'tabulate_long_range': lambda l, x: sub(
                     r'(?P<key>tabulate_long_range\s+)\S+(?P<comment>.*)', r'\g<key>{0}\g<comment>'.format(x), l), \
                 'reneighbor': lambda l, x: sub(
@@ -100,15 +94,18 @@ class TestCase():
         fp_temp.close()
 
     def run(self, binary, process_results=False):
+        from operator import mul
+        from functools import reduce
+
         # command to run as subprocess
         args = [
                 'mpirun',
                 '-np',
-                # placeholder, substituted below
-                '0',
+                '0', # placeholder, substituted below
                 binary,
                 self.__geo_file,
                 self.__ffield_file,
+                '', # placeholder, substituted below
         ]
         env = dict(environ)
 
@@ -128,9 +125,7 @@ class TestCase():
             param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
                 + '_cm' + param_dict['charge_method'] \
                 + '_s' + param_dict['nsteps'] \
-                + '_proc' + param_dict['proc_by_dim1'] \
-                    + '_' + param_dict['proc_by_dim2'] \
-                    + '_' + param_dict['proc_by_dim3'] \
+                + '_proc' + param_dict['proc_by_dim'].replace(':', '_') \
                 + '_ren' + param_dict['reneighbor'] \
                 + '_skind' + param_dict['vlist_buffer'] \
                 + '_q' + param_dict['cm_solver_type'] \
@@ -144,16 +139,14 @@ class TestCase():
                 + '_pa' + param_dict['cm_solver_pre_app_type'] \
                 + '_paji'+ str(param_dict['cm_solver_pre_app_jacobi_iters'])
         
-            args[2] = str(int(param_dict['proc_by_dim1'])
-                * int(param_dict['proc_by_dim2'])
-                * int(param_dict['proc_by_dim3']));
+            args[2] = str(reduce(mul,
+                map(int, param_dict['proc_by_dim'].split(':')), 1))
             
             if not process_results:
                 self._setup(param_dict, temp_file)
-    
                 #env['OMP_NUM_THREADS'] = param_dict['threads']
                 start = time()
-                args.append(temp_file);
+                args[6] = temp_file;
                 proc_handle = Popen(args, stdout=PIPE, stderr=PIPE, env=env, universal_newlines=True)
                 stdout, stderr = proc_handle.communicate()
                 stop = time()
@@ -167,7 +160,6 @@ class TestCase():
 
             else:
                 self._process_result(fout, param_dict, self.__min_step, self.__max_step)
-            break
 
         fout.close()
         if path.exists(temp_file):
@@ -275,9 +267,7 @@ if __name__ == '__main__':
     params = {
             'ensemble_type': ['0'],
             'nsteps': ['100'],
-            'proc_by_dim1': ['1'],
-            'proc_by_dim2': ['1'],
-            'proc_by_dim3': ['1'],
+            'proc_by_dim': ['1:1:1'],
             'tabulate_long_range': ['0'],
             'reneighbor': ['1'],
             'vlist_buffer': ['0'],
