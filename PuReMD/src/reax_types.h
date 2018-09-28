@@ -766,6 +766,8 @@ typedef struct
     /**/
     real cm_solver_comm;
     /**/
+    real cm_solver_allreduce;
+    /**/
     real cm_solver_pre_comp;
     /**/
     real cm_solver_pre_app; // update CG()

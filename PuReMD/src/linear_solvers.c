@@ -387,7 +387,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
     t_comm += Get_Timing_Info( t_start );
 
-    // int nnz = 0; uncomment to check the nnz's in the sparsity pattern
+    //int nnz = 0; //uncomment to check the nnz's in the sparsity pattern
 
     /* build entries of that pattern*/
     for ( i = 0; i < A->n; ++i )
@@ -508,6 +508,8 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
+
+    //fprintf(stderr, "Before dist call, p%d\n", system->my_rank );
 
     /*  use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d)
@@ -654,8 +656,8 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
                 }
 
                 t_start = Get_Time( );
-                MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm );
-                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm );
+                MPI_Send( j_send, cnt, MPI_INT, nbr2->rank, 2 * d + 1, comm );
+                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr2->rank, 2 * d + 1, comm );
                 t_comm += Get_Timing_Info( t_start );
             }
 
@@ -711,6 +713,9 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
             }
         }
     }
+    
+    //fprintf(stderr, "After dist call, p%d\n", system->my_rank );
+    //fflush(stderr);
 
     X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
     pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
@@ -1188,13 +1193,14 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     int  i, j, scale;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;
-    real t_start, t_pa, t_spmv, t_vops, t_comm;
-    real total_pa, total_spmv, total_vops, total_comm;
+    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
+    real total_pa, total_spmv, total_vops, total_comm, total_allreduce;
 
     t_pa = 0.0;
     t_spmv = 0.0;
     t_vops = 0.0;
     t_comm = 0.0;
+    t_allreduce = 0.0;
 
     t_start = Get_Time( );
     scale = sizeof(real) / sizeof(void);
@@ -1260,6 +1266,10 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
         t_start = Get_Time( );
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);
+        //TODO: all_Reduce time
+        t_allreduce += Get_Timing_Info ( t_start );
+
+        t_start = Get_Time( );
         alpha = sig_new / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
@@ -1290,6 +1300,10 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         t_start = Get_Time( );
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
+        //TODO all_reduce time
+        t_allreduce += Get_Timing_Info( t_start );
+
+        t_start = Get_Time( );
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, system->n );
         t_vops += Get_Timing_Info( t_start );
@@ -1299,6 +1313,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     MPI_Reduce(&t_spmv, &total_spmv, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
     MPI_Reduce(&t_vops, &total_vops, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
     MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(&t_allreduce, &total_allreduce, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
 
     if( system->my_rank == MASTER_NODE )
     {
@@ -1306,6 +1321,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         data->timing.cm_solver_spmv += total_spmv / nprocs;
         data->timing.cm_solver_vector_ops += total_vops / nprocs;
         data->timing.cm_solver_comm += total_comm / nprocs;
+        data->timing.cm_solver_allreduce += total_allreduce / nprocs;
     }
 
     MPI_Barrier(mpi_data->world);
