@@ -113,9 +113,9 @@ int Init_Output_Files( reax_system *system, control_params *control,
             sprintf( temp, "%s.log", control->sim_name );
             if ( (out_control->log = fopen( temp, "w" )) != NULL )
             {
-                fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
-                        "step", "total", "comm", "neighbors", "init", "bonded",
-                        "nonbonded", "CM", "CM Sort", "S iters", "S comm", "Pre Comp", "Pre App",
+                fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
+                        "step", "total", "comm", "neighbors", "init", "bonded", "nonbonded", 
+                        "CM", "CM Sort", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
                         "S spmv", "S vec ops", "S orthog", "S tsolve" );
                 fflush( out_control->log );
             }
@@ -1267,7 +1267,7 @@ void Output_Results( reax_system *system, control_params *control,
                 denom = 1.0 / out_control->energy_update_freq;
             else denom = 1;
 
-            fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
+            fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                     data->step,
                     t_elapsed * denom,
                     data->timing.comm * denom,
@@ -1278,9 +1278,10 @@ void Output_Results( reax_system *system, control_params *control,
                     data->timing.cm * denom,
                     data->timing.cm_sort_mat_rows * denom,
                     (double)( data->timing.cm_solver_iters * denom),
-                    data->timing.cm_solver_comm * denom,
                     data->timing.cm_solver_pre_comp * denom,
                     data->timing.cm_solver_pre_app * denom,
+                    data->timing.cm_solver_comm * denom,
+                    data->timing.cm_solver_allreduce * denom,
                     data->timing.cm_solver_spmv * denom,
                     data->timing.cm_solver_vector_ops * denom,
                     data->timing.cm_solver_orthog * denom,
@@ -1295,9 +1296,10 @@ void Output_Results( reax_system *system, control_params *control,
             data->timing.nonb = 0;
             data->timing.cm = ZERO;
             data->timing.cm_sort_mat_rows = ZERO;
-            data->timing.cm_solver_comm = ZERO;
             data->timing.cm_solver_pre_comp = ZERO;
             data->timing.cm_solver_pre_app = ZERO;
+            data->timing.cm_solver_comm = ZERO;
+            data->timing.cm_solver_allreduce = ZERO;
             data->timing.cm_solver_iters = 0;
             data->timing.cm_solver_spmv = ZERO;
             data->timing.cm_solver_vector_ops = ZERO;
