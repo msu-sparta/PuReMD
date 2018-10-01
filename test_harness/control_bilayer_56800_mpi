@@ -1,4 +1,4 @@
-simulation_name         silica_6000_notab_nve_qeq_mpi    ! output files will carry this name + their specific ext.
+simulation_name         bilayer_56800_notab_nve_qeq_mpi    ! output files will carry this name + their specific ext.
 ensemble_type           0                       ! 0: NVE, 1: Berendsen NVT, 2: nose-Hoover NVT, 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT
 nsteps                  100                     ! number of simulation steps
 dt                      0.10                    ! time step in fs

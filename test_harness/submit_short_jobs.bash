@@ -52,20 +52,20 @@ JOB_PPN="1"
 JOB_FEATURE="lac"
 JOB_MEM="120gb"
 
-sub_job_serial  "../data/benchmarks/water/water_6540.pdb" \
-	"../data/benchmarks/water/ffield.water" \
-	"control_water_6540_serial" \
-	"water_6540_serial"
+sub_job_serial  "../data/benchmarks/metal/zno_6912.pdb" \
+        "../data/benchmarks/metal/ffield.zno" \
+	"control_zno_6912_serial" \
+	"zno_6912_serial"
 
 sub_job_serial "../data/benchmarks/silica/silica_6000.pdb" \
 	"../data/benchmarks/silica/ffield-bio" \
 	"control_silica_6000_serial" \
 	"silica_6000_serial"
 
-sub_job_serial  "../data/benchmarks/metal/zno_6912.pdb" \
-        "../data/benchmarks/metal/ffield.zno" \
-	"control_zno_6912_serial" \
-	"zno_6912_serial"
+sub_job_serial  "../data/benchmarks/water/water_6540.pdb" \
+	"../data/benchmarks/water/ffield.water" \
+	"control_water_6540_serial" \
+	"water_6540_serial"
 
 ############
 # MPI Runs #
@@ -76,20 +76,20 @@ JOB_PPN="2"
 JOB_FEATURE="lac"
 JOB_MEM="120gb"
 
-sub_job_mpi "../data/benchmarks/water/water_6540.pdb" \
-	"../data/benchmarks/water/ffield.water" \
-       	"control_water_6540_mpi" \
-	"water_6540_mpi"
+sub_job_mpi "../data/benchmarks/metal/zno_6912.pdb"
+	"../data/benchmarks/metal/ffield.zno" \
+	"control_zno_6912_mpi" \
+	"zno_6912_mpi"
 
 sub_job_mpi "../data/benchmarks/silica/silica_6000.pdb" \
 	"../data/benchmarks/silica/ffield-bio" \
 	"control_silica_6000_mpi" \
 	"silica_6000_mpi"
 
-sub_job_mpi "../data/benchmarks/metal/zno_6912.pdb"
-	"../data/benchmarks/metal/ffield.zno" \
-	"control_zno_6912_mpi" \
-	"zno_6912_mpi"
+sub_job_mpi "../data/benchmarks/water/water_6540.pdb" \
+	"../data/benchmarks/water/ffield.water" \
+       	"control_water_6540_mpi" \
+	"water_6540_mpi"
 
 ################
 # MPI-GPU Runs #
@@ -100,17 +100,17 @@ JOB_PPN="1"
 JOB_FEATURE="lac"
 JOB_MEM="120gb"
 
-sub_job_mpi_gpu "../data/benchmarks/water/water_6540.pdb" \
-	"../data/benchmarks/water/ffield.water" \
-	"control_water_6540_mpi_gpu" \
-	"water_6540_mpi_gpu"
+sub_job_mpi_gpu "../data/benchmarks/metal/zno_6912.pdb" \
+	"../data/benchmarks/metal/ffield.zno" 
+	"control_zno_6912_mpi_gpu" \
+	"zno_6912_mpi_gpu"
 
 sub_job_mpi_gpu "../data/benchmarks/silica/silica_6000.pdb" \
 	"../data/benchmarks/silica/ffield-bio" \
 	"control_silica_6000_mpi_gpu" \
 	"silica_6000_mpi_gpu"
 
-sub_job_mpi_gpu "../data/benchmarks/metal/zno_6912.pdb" \
-	"../data/benchmarks/metal/ffield.zno" 
-	"control_zno_6912_mpi_gpu" \
-	"zno_6912_mpi_gpu"
+sub_job_mpi_gpu "../data/benchmarks/water/water_6540.pdb" \
+	"../data/benchmarks/water/ffield.water" \
+	"control_water_6540_mpi_gpu" \
+	"water_6540_mpi_gpu"

@@ -1,8 +1,8 @@
-simulation_name	        bilayer.340800_mpi    ! output files will carry this name + their specific ext.
-ensemble_type	 	1	! 0: NVE  1: Berendsen NVT  2: Nose-Hoover NVT(under testing)  3: semi-isotropic NPT  4: isotropic NPT  5: anisotropic NPT (under development)
+simulation_name	        bilayer_340800_notab_nve_qeq_mpi    ! output files will carry this name + their specific ext.
+ensemble_type	 	0	! 0: NVE  1: Berendsen NVT  2: Nose-Hoover NVT(under testing)  3: semi-isotropic NPT  4: isotropic NPT  5: anisotropic NPT (under development)
 nsteps			100    ! number of simulation steps
 dt			0.10 	! time step in fs
-proc_by_dim             2 2 2   ! distribution of processors by dimensions
+proc_by_dim             1 1 2   ! distribution of processors by dimensions
 geo_format 		0 	! 0: custom  1: pdb (only if natoms < 100000) 2: ASCII restart 3: binary restart
 
 tabulate_long_range	0	! number of sampling points for cubic spline interpolation, 0 no interpolation
