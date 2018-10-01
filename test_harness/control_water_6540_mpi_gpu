@@ -1,11 +1,11 @@
-simulation_name         water_327000_notab_nve_qeq_mpi    ! output files will carry this name + their specific ext.
+simulation_name         water_6540_notab_nve_qeq_mpi    ! output files will carry this name + their specific ext.
 ensemble_type           0                       ! 0: NVE, 1: Berendsen NVT, 2: nose-Hoover NVT, 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT
 nsteps                  100                     ! number of simulation steps
 dt                      0.10                    ! time step in fs
 periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 proc_by_dim             1 1 2                   ! distribution of processors by dimensions
 gpus_per_node           2                       ! GPUs per node
-geo_format              0                       ! 0: custom  1: pdb (only if natoms < 100000) 2: ASCII restart 3: binary restart
+geo_format              1                       ! 0: custom  1: pdb (only if natoms < 100000) 2: ASCII restart 3: binary restart
 
 reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
 restrict_bonds          0                       ! enforce the bonds given in CONECT lines of pdb file for this many steps

@@ -1,44 +1,50 @@
-simulation_name	        silica.300000_mpi_gpu   ! output files will carry this name + their specific ext.
-ensemble_type	 	1	! 0: NVE  1: Berendsen NVT  2: Nose-Hoover NVT(under testing)  3: semi-isotropic NPT  4: isotropic NPT  5: anisotropic NPT (under development)
-nsteps			100    ! number of simulation steps
-dt			0.10 	! time step in fs
-proc_by_dim             2 2 2   ! distribution of processors by dimensions
-geo_format 		0 	! 0: custom  1: pdb (only if natoms < 100000) 2: ASCII restart 3: binary restart
+simulation_name         silica_300000_notab_nve_qeq_mpi    ! output files will carry this name + their specific ext.
+ensemble_type           0                       ! 0: NVE, 1: Berendsen NVT, 2: nose-Hoover NVT, 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT
+nsteps                  100                     ! number of simulation steps
+dt                      0.10                    ! time step in fs
+periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
+proc_by_dim             1 1 2                   ! distribution of processors by dimensions
+gpus_per_node           2                       ! GPUs per node
+geo_format              0                       ! 0: custom  1: pdb (only if natoms < 100000) 2: ASCII restart 3: binary restart
 
-tabulate_long_range	0	! number of sampling points for cubic spline interpolation, 0 no interpolation
-energy_update_freq 	10
-remove_CoM_vel	        500	! remove the transrot vel of CoM every 'this many' steps
-reposition_atoms	1	! 1:center of mass to center of box
+reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
+restrict_bonds          0                       ! enforce the bonds given in CONECT lines of pdb file for this many steps
+tabulate_long_range     0                       ! denotes the granularity of long range tabulation, 0 means no tabulation
+energy_update_freq      1
+remove_CoM_vel          500                     ! remove the translational and rotational vel around the center of mass at every 'this many' steps
 
 reneighbor              1
 vlist_buffer            0
-nbrhood_cutoff		4.5 	! bond cutoff in A
-hbond_cutoff		0	! hbond cutoff in A
-thb_cutoff		0.001	! cutoff value for three body interactions
 
-qeq_freq                1       ! frequency to update charges with QEq
-q_err			1e-6	! norm of the relative residual in QEq solve
+nbrhood_cutoff          4.5                     ! near neighbors cutoff for bond calculations (Angstroms)
+bond_graph_cutoff       0.3                     ! bond strength cutoff for bond graphs (Angstroms)
+thb_cutoff              0.001                   ! cutoff value for three body interactions (Angstroms)
+hbond_cutoff            7.50                    ! cutoff distance for hydrogen bond interactions (Angstroms)
 
-temp_init	        0.01	! initial temperature of the system
-temp_final 	        300.0	! final temperature of the system
-t_mass		        500.0   ! 0.16666 for nhNVT ! 500.0 for bNVT, iNPT, sNPT ! in fs, thermal inertia
-t_rate                  5.0                  ! in K
-t_freq                  1.0                     ! in ps
-t_mode			2	! 2: constant slope
+qeq_freq                1                       ! frequency to update charges with QEq
+q_err                   1e-6                    ! norm of the relative residual in QEq solve
 
-pressure 		0.000101325 0.000101325 0.000101325	! desired pressure of the simulated system in GPa, 1atm = 0.000101325 GPa
-p_mass		        10000.00     10000.00     10000.00  	! in fs, pressure inertia parameter
+temp_init               0.0                     ! desired initial temperature of the simulated system
+temp_final              300.0                   ! desired final temperature of the simulated system
+t_mass                  0.16666                 ! 0.16666 for Nose-Hoover nvt ! 100.0 for npt! in fs, thermal inertia parameter
+t_mode                  0                       ! 0: T-coupling only, 1: step-wise, 2: constant slope
+t_rate                  -100.0                  ! in K
+t_freq                  4.0                     ! in ps
 
-write_freq		0	! write trajectory after so many steps
-traj_method		1	! 0: simple parallel I/O, 1: MPI I/O
-traj_title		micelle	! (no white spaces)
-atom_info		1	! 0: no atom info, 1: print basic atom info in the trajectory file
-atom_forces		0	! 0: basic atom format, 1: print force on each atom in the trajectory file
-atom_velocities		1	! 0: basic atom format, 1: print the velocity of each atom in the trajectory file
-bond_info		1	! 0: do not print bonds, 1: print bonds in the trajectory file
-angle_info		1	! 0: do not print angles, 1: print angles in the trajectory file 
+pressure                0.000101325 0.000101325 0.000101325     ! desired pressure of the simulated system in GPa, 1atm = 0.000101325 GPa
+p_mass                  5000.00     5000.00     5000.00      ! in fs, pressure inertia parameter
+compress                0.008134                ! in ps^2 * A / amu ( 4.5X10^(-5) bar^(-1) )
+press_mode              0                       ! 0: internal + external pressure, 1: ext only, 2: int only
 
-restart_format          1    ! 0: restarts in ASCII  1: restarts in binary
-restart_freq		10000    ! 0: do not output any restart files. >0: output a restart file at every 'this many' steps
+geo_format              1                       ! 0: custom, 1: pdb, 2: bgf
+write_freq              0                       ! write trajectory after so many steps
+traj_method             1                       ! 0: simple parallel I/O, 1: MPI I/O
+traj_title              WATER_NVE               ! (no white spaces)
+atom_info               1                       ! 0: no atom info, 1: print basic atom info in the trajectory file
+atom_forces             0                       ! 0: basic atom format, 1: print force on each atom in the trajectory file
+atom_velocities         0                       ! 0: basic atom format, 1: print the velocity of each atom in the trajectory file
+bond_info               1                       ! 0: do not print bonds, 1: print bonds in the trajectory file
+angle_info              1                       ! 0: do not print angles, 1: print angles in the trajectory file
 
-bond_graph_cutoff	0.3  ! bond strength cutoff for bond graphs
+restart_format          1                       ! 0: restarts in ASCII  1: restarts in binary
+restart_freq            0                       ! 0: do not output any restart files. >0: output a restart file at every 'this many' steps
