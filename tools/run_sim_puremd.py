@@ -168,12 +168,24 @@ class TestCase():
             rmdir(temp_dir)
 
     def _process_result(self, fout, param, min_step, max_step):
-        time = 0.
+        from operator import mul
+        from functools import reduce
+        
+        total = 0.
+        comm = 0.
+        neighbors = 0.
+        init = 0.
+        bonded = 0.
+        nonbonded = 0.
         cm = 0.
-        iters = 0.
+        cm_sort = 0.
+        s_iters = 0.
         pre_comp = 0.
         pre_app = 0.
-        spmv = 0.
+        s_comm = 0.
+        s_allr = 0.
+        s_spmv = 0.
+        s_vec_ops = 0.
         cnt = 0
         line_cnt = 0
         log_file = param['name'] + '.log'
@@ -189,39 +201,63 @@ class TestCase():
                     (min_step and not max_step and cnt >= min_step) or \
                     (not min_step and max_step and cnt <= max_step) or \
                     (cnt >= min_step and cnt <= max_step):
-                        cm = cm + float(line[6])
-                        iters = iters + float(line[8])
-                        pre_comp = pre_comp + float(line[9])
-                        pre_app = pre_app + float(line[10])
-                        spmv = spmv + float(line[11])
-                        cnt = cnt + 1
+                        if ( int(line[0]) < int(param['nsteps']) ):
+                            total = total + float(line[1])
+                            comm = comm + float(line[2])
+                            neighbors = neighbors + float(line[3])
+                            init = init + float(line[4])
+                            bonded = bonded + float(line[5])
+                            nonbonded = nonbonded + float(line[6])
+                            cm = cm + float(line[7])
+                            cm_sort = cm_sort + float(line[8])
+                            s_iters = s_iters + float(line[9])
+                            pre_comp = pre_comp + float(line[10])
+                            pre_app = pre_app + float(line[11])
+                            s_comm = s_comm + float(line[12])
+                            s_allr = s_allr + float(line[13])
+                            s_spmv = s_spmv + float(line[14])
+                            s_vec_ops = s_vec_ops + float(line[15])
+                            cnt = cnt + 1
                 except Exception:
                     pass
-                if line[0] == 'total:':
-                    try:
-                        time = float(line[1])
-                    except Exception:
-                        pass
                 line_cnt = line_cnt + 1
             if cnt > 0:
+                comm = comm / cnt
+                neighbors = neighbors / cnt
+                init = init / cnt
+                bonded = bonded / cnt
+                nonbonded = nonbonded / cnt
                 cm = cm / cnt
-                iters = iters / cnt
+                cm_sort = cm_sort / cnt
+                s_iters = s_iters / cnt
                 pre_comp = pre_comp / cnt
                 pre_app = pre_app / cnt
-                spmv = spmv / cnt
+                s_comm = s_comm / cnt
+                s_allr = s_allr / cnt
+                s_spmv = s_spmv / cnt
+                s_vec_ops = s_vec_ops / cnt
 
         # subtract for header, footer (total time), and extra step
         # (e.g., 100 steps means steps 0 through 100, inclusive)
-        if (line_cnt - 3) == int(param['nsteps']):
-            fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-                param['nsteps'], param['charge_method'], param['cm_solver_type'],
-                param['cm_solver_q_err'], param['cm_domain_sparsity'],
-                param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'],
-                param['cm_solver_pre_comp_sweeps'], param['cm_solver_pre_comp_sai_thres'],
-                param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'],
-                pre_comp, pre_app, iters, spmv,
-                cm, param['threads'], time))
+        if (line_cnt - 1) >= int(param['nsteps']):
+            fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
+                str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
+                param['nsteps'], param['cm_solver_pre_comp_type'],
+                param['cm_solver_q_err'],
+                param['reneighbor'],
+                param['cm_solver_pre_comp_sai_thres'],
+                total, comm, neighbors, init, bonded, nonbonded, cm, cm_sort,
+                s_iters, pre_comp, pre_app, s_comm, s_allr, s_spmv, s_vec_ops))
         else:
+            fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
+                str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
+                param['nsteps'], param['cm_solver_pre_comp_type'],
+                param['cm_solver_q_err'],
+                param['reneighbor'],
+                param['cm_solver_pre_comp_sai_thres'],
+                float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'),
+                float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan')))
+
             print('**WARNING: nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
                 log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
         fout.flush()
@@ -259,10 +295,11 @@ if __name__ == '__main__':
     control_dir = path.join(base_dir, 'environ')
     data_dir = path.join(base_dir, 'data/benchmarks')
 
-    header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
-    header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre Comp',
-            'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
-    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+    header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
+    header_str = ['Data Set', 'Proc', 'Steps', 'PreCt', 'Q Tol', 'Ren', 'PCSAI',
+            'total', 'comm', 'neighbors', 'init', 'bonded', 'nonbonded', 'CM', 'CM Sort',
+            'S Iters', 'Pre Comm', 'Pre App', 'S Comm', 'S Allr', 'S SpMV', 'S Vec Ops']
+    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
 
     params = {
             'ensemble_type': ['0'],
