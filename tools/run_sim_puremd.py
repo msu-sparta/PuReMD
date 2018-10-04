@@ -155,7 +155,7 @@ class TestCase():
                 + '_pa' + param_dict['cm_solver_pre_app_type'] \
                 + '_paji'+ str(param_dict['cm_solver_pre_app_jacobi_iters'])
 
-            temp_dir = mkdtemp()
+            temp_dir = mkdtemp(dir=getcwd())
             temp_file = path.join(temp_dir, path.basename(self.__control_file))
         
             # add MPI execution arguments to subprocess argument list
@@ -491,4 +491,4 @@ if __name__ == '__main__':
 
     for test in test_cases:
         test.run(binary, process_results=args.process_results,
-                mpi_cmd=args.mpi_cmd.split(':'))
+                mpi_cmd=args.mpi_cmd[0].split(':'))
