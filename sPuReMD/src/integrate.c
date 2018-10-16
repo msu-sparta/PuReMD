@@ -57,11 +57,11 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
 
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                -0.5 * dt_sqr * F_CONV * inv_m, system->atoms[i].f );
-        Inc_on_T3( system->atoms[i].x, dx, &( system->box ) );
-
+                0.5 * dt_sqr * -F_CONV * inv_m, system->atoms[i].f );
+//        Inc_on_T3( system->atoms[i].x, dx, &system->box );
+        rvec_Add( system->atoms[i].x, dx );
         rvec_ScaledAdd( system->atoms[i].v,
-                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
+                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
     }
 
 #if defined(DEBUG_FOCUS)
@@ -69,6 +69,7 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
 #endif
 
     Reallocate( system, control, workspace, lists, renbr );
+
     Reset( system, control, data, workspace, lists );
 
     if ( renbr )
@@ -83,7 +84,7 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
     {
         inv_m = 1.0 / system->reaxprm.sbp[system->atoms[i].type].mass;
         rvec_ScaledAdd( system->atoms[i].v,
-                -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
+                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
     }
 
 #if defined(DEBUG_FOCUS)

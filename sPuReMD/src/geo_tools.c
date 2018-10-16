@@ -56,7 +56,7 @@ static void Count_Geo_Atoms( FILE *geo, reax_system *system )
 
 static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 {
-    int ret;
+    int ret, cryst_len;
     char *cryst;
     char line[MAX_LINE + 1];
     char descriptor[9];
@@ -73,10 +73,12 @@ static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
     {
         case PDB:
             cryst = "CRYST1";
+            cryst_len = 6;
             break;
 
         default:
             cryst = "BOX";
+            cryst_len = 3;
             break;
     }
 
@@ -84,7 +86,7 @@ static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
        initialize the big box */
     while ( fgets( line, MAX_LINE, geo ) )
     {
-        if ( strncmp( line, cryst, 6 ) == 0 )
+        if ( strncmp( line, cryst, cryst_len ) == 0 )
         {
             if ( geo_format == PDB )
             {
@@ -100,6 +102,7 @@ static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
                         &system->box );
 
                 ret = SUCCESS;
+                break;
             }
         }
     }
@@ -172,15 +175,14 @@ static void Count_PDB_Atoms( FILE *geo, reax_system *system )
     char s_x[9], s_y[9], s_z[9];
     rvec x;
 
-    /* initialize variables */
-    fseek( geo, 0, SEEK_SET ); /* set the pointer to the beginning of the file */
+    fseek( geo, 0, SEEK_SET );
     system->N = 0;
 
     /* increment number of atoms for each line denoting an atom desc */
     while ( fgets( line, MAX_LINE, geo ) )
     {
-        if ( strncmp( line, "ATOM", 4 ) == 0 ||
-                strncmp( line, "HETATM", 6 ) == 0 )
+        if ( strncmp( line, "ATOM", 4 ) == 0
+                || strncmp( line, "HETATM", 6 ) == 0 )
         {
             system->N++;
 
@@ -231,8 +233,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )
     {
-        fprintf( stderr, "Read_Box_Info: no CRYST line in the pdb file!" );
-        fprintf( stderr, "terminating...\n" );
+        fprintf( stderr, "[ERROR] Read_Box_Info: no CRYST line in the pdb file!" );
+        fprintf( stderr, " Terminating...\n" );
         exit( INVALID_GEO );
     }
 
@@ -289,7 +291,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 strncpy( &charge[0], s1 + 78, 2 );
                 charge[2] = 0;
             }
-            else if (strncmp(tmp[0], "HETATM", 6) == 0)
+            else if ( strncmp(tmp[0], "HETATM", 6) == 0 )
             {
                 strncpy( &descriptor[0], s1, 6 );
                 descriptor[6] = 0;
@@ -324,36 +326,38 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             }
 
             /* if the point is inside my_box, add it to my lists */
-            Make_Point( strtod( &s_x[0], &endptr ),
-                        strtod( &s_y[0], &endptr ),
-                        strtod( &s_z[0], &endptr ), &x );
+            Make_Point( strtod( &s_x[0], &endptr ), strtod( &s_y[0], &endptr ),
+                    strtod( &s_z[0], &endptr ), &x );
 
-            Fit_to_Periodic_Box( &(system->box), &x );
+            Fit_to_Periodic_Box( &system->box, &x );
 
-            /* store orig_id, type, name and coord info of the new atom */
-            atom = &(system->atoms[top]);
-            pdb_serial = (int) strtod( &serial[0], &endptr );
-            workspace->orig_id[top] = pdb_serial;
+            if ( is_Inside_Box( &system->box, x ) )
+            {
+                /* store orig_id, type, name and coord info of the new atom */
+                atom = &system->atoms[top];
+                pdb_serial = (int) strtod( &serial[0], &endptr );
+                workspace->orig_id[top] = pdb_serial;
 
-            Trim_Spaces( element, 9 );
-            atom->type = Get_Atom_Type( &(system->reaxprm), element );
-            strncpy( atom->name, atom_name, 8 );
+                Trim_Spaces( element, 9 );
+                atom->type = Get_Atom_Type( &system->reaxprm, element );
+                strncpy( atom->name, atom_name, 8 );
 
-            rvec_Copy( atom->x, x );
-            rvec_MakeZero( atom->v );
-            rvec_MakeZero( atom->f );
-            atom->q = 0;
+                rvec_Copy( atom->x, x );
+                rvec_MakeZero( atom->v );
+                rvec_MakeZero( atom->f );
+                atom->q = 0;
 
-            top++;
+                top++;
+            }
             c++;
         }
 
         /* IMPORTANT: We do not check for the soundness of restrictions here.
-           When atom2 is on atom1's restricted list, and there is a restriction
-           on atom2, then atom1 has to be on atom2's restricted list, too.
-           However, we do not check if this is the case in the input file,
-           this is upto the user. */
-        else if (!strncmp( tmp[0], "CONECT", 6 ))
+         * When atom2 is on atom1's restricted list, and there is a restriction
+         * on atom2, then atom1 has to be on atom2's restricted list, too.
+         * However, we do not check if this is the case in the input file,
+         * this is upto the user. */
+        else if ( !strncmp( tmp[0], "CONECT", 6 ) )
         {
             if ( control->restrict_bonds )
             {

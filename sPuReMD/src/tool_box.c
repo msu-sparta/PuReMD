@@ -74,66 +74,41 @@ void Fit_to_Periodic_Box( simulation_box *box, rvec *p )
 
     for ( i = 0; i < 3; ++i )
     {
-        //TODO: verify box boundary coordinates -- assuming orthogonal box pinned at origin
-        if ( (*p)[i] < 0. )
+        if ( (*p)[i] < box->min[i] )
         {
             /* handle lower coords */
-            while ( (*p)[i] < 0. )
+            while ( (*p)[i] < box->min[i] )
+            {
                 (*p)[i] += box->box_norms[i];
+            }
         }
-        else if ( (*p)[i] >= box->box_norms[i] )
+        else if ( (*p)[i] >= box->max[i] )
         {
             /* handle higher coords */
-            while ( (*p)[i] >= box->box_norms[i] )
+            while ( (*p)[i] >= box->max[i] )
+            {
                 (*p)[i] -= box->box_norms[i];
+            }
         }
-//        if ( (*p)[i] < box->min[i] )
-//        {
-//            /* handle lower coords */
-//            while ( (*p)[i] < box->min[i] )
-//                (*p)[i] += box->box_norms[i];
-//        }
-//        else if ( (*p)[i] >= box->max[i] )
-//        {
-//            /* handle higher coords */
-//            while ( (*p)[i] >= box->max[i] )
-//                (*p)[i] -= box->box_norms[i];
-//        }
     }
 }
 
 
-/* determine the touch point, tp, of a box to
-   its neighbor denoted by the relative coordinate rl */
-/*
-static inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
-{
-    int d;
-
-    for ( d = 0; d < 3; ++d )
-        if ( rl[d] == -1 )
-            tp[d] = box->min[d];
-        else if ( rl[d] == 0 )
-            tp[d] = NEG_INF - 1.;
-        else
-            tp[d] = box->max[d];
-}
-*/
-
-
 /* determine whether point p is inside the box */
 /* assumes orthogonal box */
-/*
-static inline int is_Inside_Box( simulation_box *box, rvec p )
+int is_Inside_Box( simulation_box *box, rvec p )
 {
-    if ( p[0] < box->min[0] || p[0] >= box->max[0] ||
-            p[1] < box->min[1] || p[1] >= box->max[1] ||
-            p[2] < box->min[2] || p[2] >= box->max[2] )
-        return FALSE;
+    int ret = TRUE;
 
-    return TRUE;
+    if ( p[0] < box->min[0] || p[0] >= box->max[0]
+            || p[1] < box->min[1] || p[1] >= box->max[1]
+            || p[2] < box->min[2] || p[2] >= box->max[2] )
+    {
+        ret = FALSE;
+    }
+
+    return ret;
 }
-*/
 
 
 /*
@@ -365,16 +340,13 @@ void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 {
     int i;
 
-    *line = (char*) smalloc( sizeof(char) * MAX_LINE,
-            "Allocate_Tokenizer_Space::*line" );
-    *backup = (char*) smalloc( sizeof(char) * MAX_LINE,
-            "Allocate_Tokenizer_Space::*backup" );
-    *tokens = (char**) smalloc( sizeof(char*) * MAX_TOKENS,
-            "Allocate_Tokenizer_Space::*tokens" );
+    *line = smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::*line" );
+    *backup = smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::*backup" );
+    *tokens = smalloc( sizeof(char*) * MAX_TOKENS, "Allocate_Tokenizer_Space::*tokens" );
 
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        (*tokens)[i] = (char*) smalloc(sizeof(char) * MAX_TOKEN_LEN,
+        (*tokens)[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN,
                 "Allocate_Tokenizer_Space::(*tokens)[i]" );
     }
 }
@@ -404,7 +376,8 @@ int Tokenize( char* s, char*** tok )
 
     strncpy( test, s, MAX_LINE );
 
-    for ( word = strtok_r(test, sep, &saveptr); word; word = strtok_r(NULL, sep, &saveptr) )
+    for ( word = strtok_r(test, sep, &saveptr); word != NULL;
+            word = strtok_r(NULL, sep, &saveptr) )
     {
         strncpy( (*tok)[count], word, MAX_LINE );
         count++;

@@ -35,48 +35,48 @@ void Make_List( int n, int total_intrs, int type, reax_list* l )
     switch ( type )
     {
     case TYP_VOID:
-        l->select.v = smalloc( l->total_intrs * sizeof(void),
-                "Make_List::l->select.v" );
+        l->v = smalloc( l->total_intrs * sizeof(void),
+                "Make_List::l->v" );
         break;
 
     case TYP_THREE_BODY:
-        l->select.three_body_list = smalloc( l->total_intrs * sizeof(three_body_interaction_data),
-                "Make_List::l->select.three_body_list" );
+        l->three_body_list = smalloc( l->total_intrs * sizeof(three_body_interaction_data),
+                "Make_List::l->three_body_list" );
         break;
 
     case TYP_BOND:
-        l->select.bond_list = smalloc( l->total_intrs * sizeof(bond_data),
-                "Make_List::l->select.bond_list" );
+        l->bond_list = smalloc( l->total_intrs * sizeof(bond_data),
+                "Make_List::l->bond_list" );
         break;
 
     case TYP_DBO:
-        l->select.dbo_list = smalloc( l->total_intrs * sizeof(dbond_data),
-                "Make_List::l->select.dbo_list" );
+        l->dbo_list = smalloc( l->total_intrs * sizeof(dbond_data),
+                "Make_List::l->dbo_list" );
         break;
 
     case TYP_DDELTA:
-        l->select.dDelta_list = smalloc( l->total_intrs * sizeof(dDelta_data),
-                "Make_List::l->select.dDelta_list" );
+        l->dDelta_list = smalloc( l->total_intrs * sizeof(dDelta_data),
+                "Make_List::l->dDelta_list" );
         break;
 
     case TYP_FAR_NEIGHBOR:
-        l->select.far_nbr_list = smalloc( l->total_intrs * sizeof(far_neighbor_data),
-                "Make_List::l->select.far_nbr_list" );
+        l->far_nbr_list = smalloc( l->total_intrs * sizeof(far_neighbor_data),
+                "Make_List::l->far_nbr_list" );
         break;
 
     case TYP_NEAR_NEIGHBOR:
-        l->select.near_nbr_list = smalloc( l->total_intrs * sizeof(near_neighbor_data),
-                "Make_List::l->select.near_nbr_list" );
+        l->near_nbr_list = smalloc( l->total_intrs * sizeof(near_neighbor_data),
+                "Make_List::l->near_nbr_list" );
         break;
 
     case TYP_HBOND:
-        l->select.hbond_list = smalloc( l->total_intrs * sizeof(hbond_data),
-                "Make_List::l->select.hbond_list" );
+        l->hbond_list = smalloc( l->total_intrs * sizeof(hbond_data),
+                "Make_List::l->hbond_list" );
         break;
 
     default:
-        l->select.v = smalloc( l->total_intrs * sizeof(void),
-                "Make_List::l->select.v" );
+        l->v = smalloc( l->total_intrs * sizeof(void),
+                "Make_List::l->v" );
         break;
     }
 }
@@ -90,35 +90,35 @@ void Delete_List( int type, reax_list* l )
     switch ( type )
     {
     case TYP_VOID:
-        sfree( l->select.v, "Delete_List::l->select.v" );
+        sfree( l->v, "Delete_List::l->v" );
         break;
 
     case TYP_THREE_BODY:
-        sfree( l->select.three_body_list, "Delete_List::l->select.three_body_list" );
+        sfree( l->three_body_list, "Delete_List::l->three_body_list" );
         break;
 
     case TYP_BOND:
-        sfree( l->select.bond_list, "Delete_List::l->select.bond_list" );
+        sfree( l->bond_list, "Delete_List::l->bond_list" );
         break;
 
     case TYP_DBO:
-        sfree( l->select.dbo_list, "Delete_List::l->select.dbo_list" );
+        sfree( l->dbo_list, "Delete_List::l->dbo_list" );
         break;
 
     case TYP_DDELTA:
-        sfree( l->select.dDelta_list, "Delete_List::l->select.dDelta_list" );
+        sfree( l->dDelta_list, "Delete_List::l->dDelta_list" );
         break;
 
     case TYP_FAR_NEIGHBOR:
-        sfree( l->select.far_nbr_list, "Delete_List::l->select.far_nbr_list" );
+        sfree( l->far_nbr_list, "Delete_List::l->far_nbr_list" );
         break;
 
     case TYP_NEAR_NEIGHBOR:
-        sfree( l->select.near_nbr_list, "Delete_List::l->select.near_nbr_list" );
+        sfree( l->near_nbr_list, "Delete_List::l->near_nbr_list" );
         break;
 
     case TYP_HBOND:
-        sfree( l->select.hbond_list, "Delete_List::l->select.hbond_list" );
+        sfree( l->hbond_list, "Delete_List::l->hbond_list" );
         break;
 
     default:

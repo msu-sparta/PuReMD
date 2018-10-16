@@ -245,7 +245,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
     v0_vdw = 0;
 
     num_atom_types = system->reaxprm.num_atom_types;
-    dr = control->r_cut / control->tabulate;
+    dr = control->nonb_cut / control->tabulate;
     h = scalloc( (control->tabulate + 1), sizeof(real),
             "Make_LR_Lookup_Table::h" );
     fh = scalloc( (control->tabulate + 1), sizeof(real),
@@ -292,10 +292,10 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
                 if ( existing_types[j] )
                 {
                     workspace->LR[i][j].xmin = 0;
-                    workspace->LR[i][j].xmax = control->r_cut;
+                    workspace->LR[i][j].xmax = control->nonb_cut;
                     workspace->LR[i][j].n = control->tabulate + 1;
                     workspace->LR[i][j].dx = dr;
-                    workspace->LR[i][j].inv_dx = control->tabulate / control->r_cut;
+                    workspace->LR[i][j].inv_dx = control->tabulate / control->nonb_cut;
                     workspace->LR[i][j].y = 
                         smalloc( workspace->LR[i][j].n * sizeof(LR_data),
                               "Make_LR_Lookup_Table::LR[i][j].y" );

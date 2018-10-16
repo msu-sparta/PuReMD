@@ -46,7 +46,7 @@
 #define REORDER_ATOMS
 /* enables support for small simulation boxes (i.e. a simulation box with any
  * dimension less than twice the Verlet list cutoff distance, vlist_cut) */
-#define SMALL_BOX_SUPPORT
+//#define SMALL_BOX_SUPPORT
 
 #define SUCCESS (1)
 #define FAILURE (0)
@@ -562,6 +562,8 @@ struct simulation_box
 {
     real volume;
 
+    rvec min;
+    rvec max;
     rvec box_norms;
     rvec side_prop;
     rvec nbr_box_press[27];
@@ -632,22 +634,40 @@ struct control_params
      * 4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
      * 5 : aNPT  (Parrinello-Rehman-Nose-Hoover) anisotropic */
     int ensemble;
+    /* number of simulation time steps */
     int nsteps;
+    /* */
     int periodic_boundaries;
+    /* */
     int restrict_bonds;
+    /* */
     int tabulate;
+    /* simulation time step length (in fs) */
     real dt;
-
+    /* number of simulation steps to elapse before
+     * recomputing the verlet lists */
     int reneighbor;
+    /* cutoff (in Angstroms) used for for constructing the
+     * long range interaction Verlet list (a.k.a. far neighbor list) */
     real vlist_cut;
-    real nbr_cut;
-    /* upper and lower taper */
-    real r_cut;
-    real r_sp_cut;
-    real r_low;
+    /* bonded interaction cutoff (in Angstroms) */
+    real bond_cut;
+    /* nonbonded interaction cutoff (in Angstroms),
+     * also used as upper taper radius */
+    real nonb_cut;
+    /* shorter version of nonbonded interaction cutoff (in Angstroms),
+     * used for computing sparser charge matrix
+     * for electrostatic interactions */
+    real nonb_sp_cut;
+    /* shorter version of nonbonded interaction cutoff (in Angstroms),
+     * used for lower taper radius */
+    real nonb_low;
+    /* bond order cutoff (in Angstroms) */
     real bo_cut;
+    /* three body (valence angle) cutoff (in Angstroms) */
     real thb_cut;
-    real hb_cut;
+    /* hydrogen bonding cutoff (in Angstroms) */
+    real hbond_cut;
 
     real T_init;
     real T_final;
@@ -1223,25 +1243,41 @@ struct reax_list
     /* max. num. of interactions per atom */
     int *max_intrs;
     /* interaction list (polymorphic via union dereference) */
-    union
-    {
-        /* typeless interaction list */
-        void *v;
-        /* three body interaction list */
-        three_body_interaction_data *three_body_list;
-        /* bond interaction list */
-        bond_data *bond_list;
-        /* bond interaction list */
-        dbond_data *dbo_list;
-        /* test forces interaction list */
-        dDelta_data *dDelta_list;
-        /* far neighbor interaction list */
-        far_neighbor_data *far_nbr_list;
-        /* near neighbor interaction list */
-        near_neighbor_data *near_nbr_list;
-        /* hydrogen bond interaction list */
-        hbond_data *hbond_list;
-    } select;
+//    union
+//    {
+//        /* typeless interaction list */
+//        void *v;
+//        /* three body interaction list */
+//        three_body_interaction_data *three_body_list;
+//        /* bond interaction list */
+//        bond_data *bond_list;
+//        /* bond interaction list */
+//        dbond_data *dbo_list;
+//        /* test forces interaction list */
+//        dDelta_data *dDelta_list;
+//        /* far neighbor interaction list */
+//        far_neighbor_data *far_nbr_list;
+//        /* near neighbor interaction list */
+//        near_neighbor_data *near_nbr_list;
+//        /* hydrogen bond interaction list */
+//        hbond_data *hbond_list;
+//    } select;
+    /* typeless interaction list */
+    void *v;
+    /* three body interaction list */
+    three_body_interaction_data *three_body_list;
+    /* bond interaction list */
+    bond_data *bond_list;
+    /* bond interaction list */
+    dbond_data *dbo_list;
+    /* test forces interaction list */
+    dDelta_data *dDelta_list;
+    /* far neighbor interaction list */
+    far_neighbor_data *far_nbr_list;
+    /* near neighbor interaction list */
+    near_neighbor_data *near_nbr_list;
+    /* hydrogen bond interaction list */
+    hbond_data *hbond_list;
 };
 
 

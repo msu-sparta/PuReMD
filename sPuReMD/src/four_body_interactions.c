@@ -239,7 +239,7 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
 
             for ( pk = start_j; pk < end_j; ++pk )
             {
-                pbond_jk = &( bonds->select.bond_list[pk] );
+                pbond_jk = &( bonds->bond_list[pk] );
                 k = pbond_jk->nbr;
                 bo_jk = &( pbond_jk->bo_data );
                 BOA_jk = bo_jk->BO - control->thb_cut;
@@ -280,10 +280,10 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                         /* pick i up from j-k interaction where j is the centre atom */
                         for ( pi = start_pk; pi < end_pk; ++pi )
                         {
-                            p_ijk = &( thb_intrs->select.three_body_list[pi] );
+                            p_ijk = &thb_intrs->three_body_list[pi];
                             pij = p_ijk->pthb; // pij is pointer to i on j's bond_list
-                            pbond_ij = &( bonds->select.bond_list[pij] );
-                            bo_ij = &( pbond_ij->bo_data );
+                            pbond_ij = &bonds->bond_list[pij];
+                            bo_ij = &pbond_ij->bo_data;
 
                             if ( bo_ij->BO > control->thb_cut/*0*/ )
                             {
@@ -321,15 +321,15 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                 /* pick l up from j-k intr. where k is the centre */
                                 for ( pl = start_pj; pl < end_pj; ++pl )
                                 {
-                                    p_jkl = &( thb_intrs->select.three_body_list[pl] );
+                                    p_jkl = &thb_intrs->three_body_list[pl];
                                     l = p_jkl->thb;
                                     plk = p_jkl->pthb; //pointer to l on k's bond_list!
-                                    pbond_kl = &( bonds->select.bond_list[plk] );
-                                    bo_kl = &( pbond_kl->bo_data );
+                                    pbond_kl = &bonds->bond_list[plk];
+                                    bo_kl = &pbond_kl->bo_data;
                                     type_l = system->atoms[l].type;
-                                    fbh = &(system->reaxprm.fbp[type_i][type_j][type_k][type_l]);
-                                    fbp = &(system->reaxprm.fbp[type_i][type_j]
-                                            [type_k][type_l].prm[0]);
+                                    fbh = &system->reaxprm.fbp[type_i][type_j][type_k][type_l];
+                                    fbp = &system->reaxprm.fbp[type_i][type_j]
+                                            [type_k][type_l].prm[0];
 
                                     if ( i != l && fbh->cnt && bo_kl->BO > control->thb_cut &&
                                             bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )

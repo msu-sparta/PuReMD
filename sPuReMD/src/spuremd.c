@@ -44,9 +44,8 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     rvec diff, cross;
 
     /* remove rotational and translational velocity of the center of mass */
-    if ( control->ensemble != NVE &&
-            control->remove_CoM_vel &&
-            data->step && data->step % control->remove_CoM_vel == 0 )
+    if ( control->ensemble != NVE && control->remove_CoM_vel
+            && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
         Compute_Center_of_Mass( system, data, out_control->prs );
@@ -227,10 +226,16 @@ int simulate( const void * const handle )
 
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
 
-        Compute_Total_Energy( spmd_handle->system, spmd_handle->data );
-
         if ( spmd_handle->output_enabled == TRUE )
         {
+            if ( (spmd_handle->out_control->energy_update_freq > 0
+                        && spmd_handle->data->step % spmd_handle->out_control->energy_update_freq == 0)
+                    || (spmd_handle->out_control->write_steps > 0
+                        && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0) )
+            {
+                Compute_Total_Energy( spmd_handle->system, spmd_handle->data );
+            }
+
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
         }
@@ -242,10 +247,9 @@ int simulate( const void * const handle )
             spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
                     spmd_handle->lists );
         }
-        ++spmd_handle->data->step;
         //}
         
-        for ( ; spmd_handle->data->step <= spmd_handle->control->nsteps; spmd_handle->data->step++ )
+        for ( ++spmd_handle->data->step; spmd_handle->data->step <= spmd_handle->control->nsteps; spmd_handle->data->step++ )
         {
             if ( spmd_handle->control->T_mode )
             {

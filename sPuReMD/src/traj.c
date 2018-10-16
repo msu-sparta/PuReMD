@@ -53,12 +53,12 @@ int Write_Custom_Header( reax_system *system, control_params *control,
              control->reposition_atoms,
              control->restrict_bonds,
              control->tabulate,
-             control->nbr_cut,
-             control->r_cut,
+             control->bond_cut,
+             control->nonb_cut,
              control->bg_cut,
              control->bo_cut,
              control->thb_cut,
-             control->hb_cut,
+             control->hbond_cut,
              control->cm_solver_q_err,
              control->T_init,
              control->T_final,
@@ -230,8 +230,8 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
         {
             for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j )
             {
-                if ( i < bonds->select.bond_list[j].nbr &&
-                        bonds->select.bond_list[j].bo_data.BO >= control->bg_cut )
+                if ( i < bonds->bond_list[j].nbr &&
+                        bonds->bond_list[j].bo_data.BO >= control->bg_cut )
                 {
                     ++num_bonds;
                 }
@@ -259,19 +259,19 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
         {
             for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
             {
-                if ( bonds->select.bond_list[pi].bo_data.BO >= control->bg_cut )
+                if ( bonds->bond_list[pi].bo_data.BO >= control->bg_cut )
                 {
                     // physical j&i bond
                     for ( pk = Start_Index( pi, thb_intrs );
                             pk < End_Index( pi, thb_intrs ); ++pk )
                     {
-                        if ( bonds->select.bond_list[pi].nbr <
-                                thb_intrs->select.three_body_list[pk].thb )
+                        if ( bonds->bond_list[pi].nbr <
+                                thb_intrs->three_body_list[pk].thb )
                         {
                             // get k's pointer on j's bond list
-                            pk_j = thb_intrs->select.three_body_list[pk].pthb;
+                            pk_j = thb_intrs->three_body_list[pk].pthb;
 
-                            if ( bonds->select.bond_list[pk_j].bo_data.BO >= control->bg_cut )
+                            if ( bonds->bond_list[pk_j].bo_data.BO >= control->bg_cut )
                             {
                                 // physical j&k bond
                                 ++num_thb_intrs;
@@ -408,10 +408,10 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
         {
             for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j )
             {
-                if ( i < bonds->select.bond_list[j].nbr &&
-                        bonds->select.bond_list[j].bo_data.BO >= control->bg_cut )
+                if ( i < bonds->bond_list[j].nbr &&
+                        bonds->bond_list[j].bo_data.BO >= control->bg_cut )
                 {
-                    bo_ij = &( bonds->select.bond_list[j] );
+                    bo_ij = &bonds->bond_list[j];
                     out_control->write( out_control->trj, BOND_BASIC,
                                         workspace->orig_id[i],
                                         workspace->orig_id[bo_ij->nbr],
@@ -426,10 +426,10 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
         {
             for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j )
             {
-                if ( i < bonds->select.bond_list[j].nbr &&
-                        bonds->select.bond_list[j].bo_data.BO >= control->bg_cut )
+                if ( i < bonds->bond_list[j].nbr &&
+                        bonds->bond_list[j].bo_data.BO >= control->bg_cut )
                 {
-                    bo_ij = &( bonds->select.bond_list[j] );
+                    bo_ij = &bonds->bond_list[j];
                     out_control->write( out_control->trj, BOND_FULL,
                                         workspace->orig_id[i],
                                         workspace->orig_id[bo_ij->nbr],
@@ -454,26 +454,26 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
         {
             for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
             {
-                if ( bonds->select.bond_list[pi].bo_data.BO >= control->bg_cut )
+                if ( bonds->bond_list[pi].bo_data.BO >= control->bg_cut )
                 {
                     // physical j&i bond
                     for ( pk = Start_Index( pi, thb_intrs );
                             pk < End_Index( pi, thb_intrs ); ++pk )
                     {
-                        if ( bonds->select.bond_list[pi].nbr <
-                                thb_intrs->select.three_body_list[pk].thb )
+                        if ( bonds->bond_list[pi].nbr <
+                                thb_intrs->three_body_list[pk].thb )
                         {
-                            pk_j = thb_intrs->select.three_body_list[pk].pthb;
+                            pk_j = thb_intrs->three_body_list[pk].pthb;
                             // get k's pointer on j's bond list
 
-                            if ( bonds->select.bond_list[pk_j].bo_data.BO >= control->bg_cut )
+                            if ( bonds->bond_list[pk_j].bo_data.BO >= control->bg_cut )
                             {
                                 // physical j&k bond
                                 out_control->write( out_control->trj, ANGLE_BASIC,
-                                                    workspace->orig_id[bonds->select.bond_list[pi].nbr],
+                                                    workspace->orig_id[bonds->bond_list[pi].nbr],
                                                     workspace->orig_id[j],
-                                                    workspace->orig_id[thb_intrs->select.three_body_list[pk].thb],
-                                                    RAD2DEG(thb_intrs->select.three_body_list[pk].theta) );
+                                                    workspace->orig_id[thb_intrs->three_body_list[pk].thb],
+                                                    RAD2DEG(thb_intrs->three_body_list[pk].theta) );
                             }
                         }
                     }

@@ -152,6 +152,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
 
     case nhNVT:
         data->N_f = 3 * system->N + 1;
+        *Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         //control->Tau_T = 100 * data->N_f * K_B * control->T_final;
 
         if ( !control->restart || (control->restart && control->random_vel) )
@@ -168,8 +169,6 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
                      data->N_f, data->therm.v_xi );
 #endif
         }
-
-        *Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
         break;
 
     /* anisotropic NPT */
@@ -178,6 +177,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         exit( UNKNOWN_OPTION );
 
         data->N_f = 3 * system->N + 9;
+        *Evolve = Velocity_Verlet_Berendsen_Isotropic_NPT;
 
         if ( !control->restart )
         {
@@ -188,8 +188,6 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
             //data->inv_W = 1. / (data->N_f*K_B*control->T*SQR(control->Tau_P));
             //Compute_Pressure( system, data, workspace );
         }
-
-        *Evolve = Velocity_Verlet_Berendsen_Isotropic_NPT;
         break;
 
     /* semi-isotropic NPT */
@@ -238,8 +236,8 @@ static void Init_Taper( control_params *control, static_storage *workspace )
     real swa, swa2, swa3;
     real swb, swb2, swb3;
 
-    swa = control->r_low;
-    swb = control->r_cut;
+    swa = control->nonb_low;
+    swb = control->nonb_cut;
 
     if ( FABS( swa ) > 0.01 )
     {
@@ -779,7 +777,7 @@ static void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     workspace->num_H = 0;
-    if ( control->hb_cut > 0.0 )
+    if ( control->hbond_cut > 0.0 )
     {
         /* init H indexes */
         for ( i = 0; i < system->N; ++i )
@@ -797,7 +795,7 @@ static void Init_Lists( reax_system *system, control_params *control,
 
         if ( workspace->num_H == 0 )
         {
-            control->hb_cut = 0.0;
+            control->hbond_cut = 0.0;
         }
         else
         {
@@ -1439,7 +1437,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 static void Finalize_Lists( control_params *control, reax_list **lists )
 {
     Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-    if ( control->hb_cut > 0.0 )
+    if ( control->hbond_cut > 0.0 )
     {
         Delete_List( TYP_HBOND, lists[HBONDS] );
     }

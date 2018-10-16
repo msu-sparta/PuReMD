@@ -54,13 +54,13 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
     {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            bo_ij = &(bonds->select.bond_list[pj].bo_data);
+            bo_ij = &(bonds->bond_list[pj].bo_data);
             fprintf( out_control->fbo, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
                      //workspace->orig_id[i],
-                     //workspace->orig_id[bonds->select.bond_list[pj].nbr],
+                     //workspace->orig_id[bonds->bond_list[pj].nbr],
                      i + 1,
-                     bonds->select.bond_list[pj].nbr + 1,
-                     bonds->select.bond_list[pj].d,
+                     bonds->bond_list[pj].nbr + 1,
+                     bonds->bond_list[pj].d,
                      bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
         }
     }
@@ -75,29 +75,29 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
         {
             /*fprintf( out_control->fdbo, "%6d %6d\tstart: %6d\tend: %6d\n",
             workspace->orig_id[i],
-            workspace->orig_id[bonds->select.bond_list[pj].nbr],
+            workspace->orig_id[bonds->bond_list[pj].nbr],
             Start_Index( pj, dBOs ), End_Index( pj, dBOs ) );*/
 
             for ( pk = Start_Index(pj, dBOs); pk < End_Index(pj, dBOs); ++pk )
             {
-                dbo_k = &(dBOs->select.dbo_list[pk]);
+                dbo_k = &dBOs->dbo_list[pk];
 
                 //if( !rvec_isZero( dbo_k->dBO ) )
                 fprintf( out_control->fdbo, "%6d%6d%6d%23.15e%23.15e%23.15e\n",
                          workspace->orig_id[i],
-                         workspace->orig_id[bonds->select.bond_list[pj].nbr],
+                         workspace->orig_id[bonds->bond_list[pj].nbr],
                          workspace->orig_id[dbo_k->wrt],
                          dbo_k->dBO[0], dbo_k->dBO[1], dbo_k->dBO[2] );
 
                 fprintf( out_control->fdbo, "%6d%6d%6d%23.15e%23.15e%23.15e\n",
                          workspace->orig_id[i],
-                         workspace->orig_id[bonds->select.bond_list[pj].nbr],
+                         workspace->orig_id[bonds->bond_list[pj].nbr],
                          workspace->orig_id[dbo_k->wrt],
                          dbo_k->dBOpi[0], dbo_k->dBOpi[1], dbo_k->dBOpi[2] );
 
                 fprintf( out_control->fdbo, "%6d%6d%6d%23.15e%23.15e%23.15e\n",
                          workspace->orig_id[i],
-                         workspace->orig_id[bonds->select.bond_list[pj].nbr],
+                         workspace->orig_id[bonds->bond_list[pj].nbr],
                          workspace->orig_id[dbo_k->wrt],
                          dbo_k->dBOpi2[0], dbo_k->dBOpi2[1], dbo_k->dBOpi2[2] );
             }
@@ -415,15 +415,15 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
 
         for ( j = Start_Index(i, near_nbrs); j < End_Index(i, near_nbrs); ++j )
         {
-            id_j = workspace->orig_id[near_nbrs->select.near_nbr_list[j].nbr];
+            id_j = workspace->orig_id[near_nbrs->near_nbr_list[j].nbr];
 
             // if( id_i < id_j )
             fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
                      id_i, id_j,
-                     near_nbrs->select.near_nbr_list[j].d,
-                     near_nbrs->select.near_nbr_list[j].dvec[0],
-                     near_nbrs->select.near_nbr_list[j].dvec[1],
-                     near_nbrs->select.near_nbr_list[j].dvec[2] );
+                     near_nbrs->near_nbr_list[j].d,
+                     near_nbrs->near_nbr_list[j].dvec[0],
+                     near_nbrs->near_nbr_list[j].dvec[1],
+                     near_nbrs->near_nbr_list[j].dvec[2] );
         }
     }
 
@@ -449,15 +449,15 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
         fprintf( fout, "%6d:", id_i);
         for ( j = Start_Index(i, near_nbrs); j < End_Index(i, near_nbrs); ++j )
         {
-            id_j = workspace->orig_id[near_nbrs->select.near_nbr_list[j].nbr];
+            id_j = workspace->orig_id[near_nbrs->near_nbr_list[j].nbr];
             fprintf( fout, "%6d", id_j);
 
             /* fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
             id_i, id_j,
-             near_nbrs->select.near_nbr_list[j].d,
-             near_nbrs->select.near_nbr_list[j].dvec[0],
-             near_nbrs->select.near_nbr_list[j].dvec[1],
-             near_nbrs->select.near_nbr_list[j].dvec[2] ); */
+             near_nbrs->near_nbr_list[j].d,
+             near_nbrs->near_nbr_list[j].dvec[0],
+             near_nbrs->near_nbr_list[j].dvec[1],
+             near_nbrs->near_nbr_list[j].dvec[2] ); */
         }
         fprintf( fout, "\n");
     }
@@ -484,21 +484,21 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
 
         for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
         {
-            id_j = workspace->orig_id[far_nbrs->select.far_nbr_list[j].nbr];
+            id_j = workspace->orig_id[far_nbrs->far_nbr_list[j].nbr];
 
             fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
                      id_i, id_j,
-                     far_nbrs->select.far_nbr_list[j].d,
-                     far_nbrs->select.far_nbr_list[j].dvec[0],
-                     far_nbrs->select.far_nbr_list[j].dvec[1],
-                     far_nbrs->select.far_nbr_list[j].dvec[2] );
+                     far_nbrs->far_nbr_list[j].d,
+                     far_nbrs->far_nbr_list[j].dvec[0],
+                     far_nbrs->far_nbr_list[j].dvec[1],
+                     far_nbrs->far_nbr_list[j].dvec[2] );
 
             fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
                      id_j, id_i,
-                     far_nbrs->select.far_nbr_list[j].d,
-                     -far_nbrs->select.far_nbr_list[j].dvec[0],
-                     -far_nbrs->select.far_nbr_list[j].dvec[1],
-                     -far_nbrs->select.far_nbr_list[j].dvec[2] );
+                     far_nbrs->far_nbr_list[j].d,
+                     -far_nbrs->far_nbr_list[j].dvec[0],
+                     -far_nbrs->far_nbr_list[j].dvec[1],
+                     -far_nbrs->far_nbr_list[j].dvec[2] );
         }
     }
 
@@ -533,7 +533,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
 
         for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
         {
-            id_j = workspace->orig_id[far_nbrs->select.far_nbr_list[j].nbr];
+            id_j = workspace->orig_id[far_nbrs->far_nbr_list[j].nbr];
             temp[num++] = id_j;
         }
         qsort(&temp, num, sizeof(int), fn_qsort_intcmp);
@@ -974,8 +974,8 @@ void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
     {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            pbond = &(bonds->select.bond_list[pj]);
-            bo_ij = &(pbond->bo_data);
+            pbond = &bonds->bond_list[pj];
+            bo_ij = &pbond->bo_data;
             //fprintf( f, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
             //       i+1, pbond->nbr+1, pbond->d,
             //       bo_ij->BO, bo_ij->BO_s, bo_ij->BO_pi, bo_ij->BO_pi2 );
@@ -1002,7 +1002,7 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
         fprintf( f, "%6d:", id_i);
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            nbr = bonds->select.bond_list[pj].nbr;
+            nbr = bonds->bond_list[pj].nbr;
             id_j = nbr + 1; //system->my_atoms[nbr].orig_id;
             if ( id_i < id_j )
             {
@@ -1010,7 +1010,7 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
             }
         }
 
-        qsort(&temp, num, sizeof(int), fn_qsort_intcmp);
+        qsort( &temp, num, sizeof(int), fn_qsort_intcmp );
         for ( j = 0; j < num; j++ )
         {
             fprintf( f, "%6d", temp[j] );

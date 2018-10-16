@@ -56,7 +56,7 @@ void Init_Bonded_Force_Functions( control_params *control )
     //*/Dummy_Interaction;
     control->intr_funcs[3] = &Three_Body_Interactions; //*/Dummy_Interaction;
     control->intr_funcs[4] = &Four_Body_Interactions;  //*/Dummy_Interaction;
-    if ( control->hb_cut > 0.0 )
+    if ( control->hbond_cut > 0.0 )
     {
         control->intr_funcs[5] = &Hydrogen_Bonds; //*/Dummy_Interaction;
     }
@@ -182,7 +182,7 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
         {
             for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
             {
-                if ( i < bonds->select.bond_list[pj].nbr )
+                if ( i < bonds->bond_list[pj].nbr )
                 {
                     if ( control->ensemble == NVE || control->ensemble == nhNVT
                             || control->ensemble == bNVT )
@@ -497,18 +497,18 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
                 for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
                 {
-                    if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+                    if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
                     {
-                        j = far_nbrs->select.far_nbr_list[pj].nbr;
+                        j = far_nbrs->far_nbr_list[pj].nbr;
 
                         xcut = ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
                                 + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 )
                             / 2.0;
 
-                        if ( far_nbrs->select.far_nbr_list[pj].d < xcut &&
-                                far_nbrs->select.far_nbr_list[pj].d > 0.001 )
+                        if ( far_nbrs->far_nbr_list[pj].d < xcut &&
+                                far_nbrs->far_nbr_list[pj].d > 0.001 )
                         {
-                            d = far_nbrs->select.far_nbr_list[pj].d / xcut;
+                            d = far_nbrs->far_nbr_list[pj].d / xcut;
                             bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 ) * POW( 1.0 - d, 6.0 );
 
                             H->j[*Htop] = system->N + j + 1;
@@ -631,49 +631,58 @@ static void Init_Forces( reax_system *system, control_params *control,
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
         sbp_i = &system->reaxprm.sbp[type_i];
-        ihb = ihb_top = -1;
+        ihb = -1;
+        ihb_top = -1;
 
-        if ( control->hb_cut > 0 && (ihb = sbp_i->p_hbond) == 1 )
+        if ( control->hbond_cut > 0.0 )
         {
-            ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+            ihb = sbp_i->p_hbond;
+
+            if ( ihb == 1 )
+            {
+                ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+            }
         }
 
+        /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &far_nbrs->select.far_nbr_list[pj];
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
             atom_j = &system->atoms[j];
+            flag = FALSE;
+            flag_sp = FALSE;
 
-            flag = 0;
-            flag_sp = 0;
+            /* check if reneighboring step */
             if ( (data->step - data->prev_steps) % control->reneighbor == 0 )
             {
-                if ( nbr_pj->d <= control->r_cut )
+                if ( nbr_pj->d <= control->nonb_cut )
                 {
-                    flag = 1;
-                    if ( nbr_pj->d <= control->r_sp_cut )
+                    flag = TRUE;
+                    if ( nbr_pj->d <= control->nonb_sp_cut )
                     {
-                        flag_sp = 1;
+                        flag_sp = TRUE;
                     }
                 }
-                else
-                {
-                    flag = 0;
-                    flag_sp = 0;
-                }
             }
-            else if ((nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &(system->box),
-                            nbr_pj->dvec)) <= SQR(control->r_cut))
+            else
             {
-                if ( nbr_pj->d <= SQR(control->r_sp_cut))
+                nbr_pj->d = Sq_Distance_on_T3( atom_i->x, atom_j->x,
+                        &system->box, nbr_pj->dvec );
+
+                if ( nbr_pj->d <= SQR(control->nonb_cut) )
                 {
-                    flag_sp = 1;
+                    if ( nbr_pj->d <= SQR(control->nonb_sp_cut) )
+                    {
+                        flag_sp = TRUE;
+                    }
+
+                    nbr_pj->d = SQRT( nbr_pj->d );
+                    flag = TRUE;
                 }
-                nbr_pj->d = SQRT( nbr_pj->d );
-                flag = 1;
             }
 
-            if ( flag )
+            if ( flag == TRUE )
             {
                 type_j = system->atoms[j].type;
                 r_ij = nbr_pj->d;
@@ -686,7 +695,7 @@ static void Init_Forces( reax_system *system, control_params *control,
                 ++Htop;
 
                 /* H_sp matrix entry */
-                if ( flag_sp )
+                if ( flag_sp == TRUE )
                 {
                     H_sp->j[H_sp_top] = j;
                     H_sp->val[H_sp_top] = H->val[Htop - 1];
@@ -694,32 +703,33 @@ static void Init_Forces( reax_system *system, control_params *control,
                 }
 
                 /* hydrogen bond lists */
-                if ( control->hb_cut > 0 && (ihb == 1 || ihb == 2) &&
-                        nbr_pj->d <= control->hb_cut )
+                if ( control->hbond_cut > 0.0 && (ihb == 1 || ihb == 2)
+                        && nbr_pj->d <= control->hbond_cut )
                 {
                     // fprintf( stderr, "%d %d\n", atom1, atom2 );
                     jhb = sbp_j->p_hbond;
+
                     if ( ihb == 1 && jhb == 2 )
                     {
-                        hbonds->select.hbond_list[ihb_top].nbr = j;
-                        hbonds->select.hbond_list[ihb_top].scl = 1;
-                        hbonds->select.hbond_list[ihb_top].ptr = nbr_pj;
+                        hbonds->hbond_list[ihb_top].nbr = j;
+                        hbonds->hbond_list[ihb_top].scl = 1;
+                        hbonds->hbond_list[ihb_top].ptr = nbr_pj;
                         ++ihb_top;
                         ++num_hbonds;
                     }
                     else if ( ihb == 2 && jhb == 1 )
                     {
                         jhb_top = End_Index( workspace->hbond_index[j], hbonds );
-                        hbonds->select.hbond_list[jhb_top].nbr = i;
-                        hbonds->select.hbond_list[jhb_top].scl = -1;
-                        hbonds->select.hbond_list[jhb_top].ptr = nbr_pj;
+                        hbonds->hbond_list[jhb_top].nbr = i;
+                        hbonds->hbond_list[jhb_top].scl = -1;
+                        hbonds->hbond_list[jhb_top].ptr = nbr_pj;
                         Set_End_Index( workspace->hbond_index[j], jhb_top + 1, hbonds );
                         ++num_hbonds;
                     }
                 }
 
                 /* uncorrected bond orders */
-                if ( far_nbrs->select.far_nbr_list[pj].d <= control->nbr_cut )
+                if ( nbr_pj->d <= control->bond_cut )
                 {
                     r2 = SQR( r_ij );
 
@@ -730,8 +740,8 @@ static void Init_Forces( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        BO_s = 0.0;
                         C12 = 0.0;
+                        BO_s = 0.0;
                     }
 
                     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
@@ -741,8 +751,8 @@ static void Init_Forces( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        BO_pi = 0.0;
                         C34 = 0.0;
+                        BO_pi = 0.0;
                     }
 
                     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
@@ -752,8 +762,8 @@ static void Init_Forces( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        BO_pi2 = 0.0;
                         C56 = 0.0;
+                        BO_pi2 = 0.0;
                     }
 
                     /* Initially BO values are the uncorrected ones, page 1 */
@@ -763,9 +773,9 @@ static void Init_Forces( reax_system *system, control_params *control,
                     {
                         num_bonds += 2;
                         /****** bonds i-j and j-i ******/
-                        ibond = &bonds->select.bond_list[btop_i];
+                        ibond = &bonds->bond_list[btop_i];
                         btop_j = End_Index( j, bonds );
-                        jbond = &bonds->select.bond_list[btop_j];
+                        jbond = &bonds->bond_list[btop_j];
 
                         ibond->nbr = j;
                         jbond->nbr = i;
@@ -783,11 +793,15 @@ static void Init_Forces( reax_system *system, control_params *control,
                         Set_End_Index( j, btop_j + 1, bonds );
 
                         bo_ij = &ibond->bo_data;
+                        bo_ij->BO = BO;
+                        bo_ij->BO_s = BO_s;
+                        bo_ij->BO_pi = BO_pi;
+                        bo_ij->BO_pi2 = BO_pi2;
                         bo_ji = &jbond->bo_data;
-                        bo_ji->BO = bo_ij->BO = BO;
-                        bo_ji->BO_s = bo_ij->BO_s = BO_s;
-                        bo_ji->BO_pi = bo_ij->BO_pi = BO_pi;
-                        bo_ji->BO_pi2 = bo_ij->BO_pi2 = BO_pi2;
+                        bo_ji->BO = BO;
+                        bo_ji->BO_s = BO_s;
+                        bo_ji->BO_pi = BO_pi;
+                        bo_ji->BO_pi2 = BO_pi2;
 
                         /* Bond Order page2-3, derivative of total bond order prime */
                         Cln_BOp_s = twbp->p_bo2 * C12 / r2;
@@ -799,17 +813,16 @@ static void Init_Forces( reax_system *system, control_params *control,
                         rvec_Scale( bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
                         rvec_Scale( bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
                         rvec_Scale( bo_ij->dln_BOp_pi2,
-                                   -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+                                -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
                         rvec_Scale( bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s );
                         rvec_Scale( bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
                         rvec_Scale( bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
 
                         /* Only dBOp wrt. dr_i is stored here, note that
                            dBOp/dr_i = -dBOp/dr_j and all others are 0 */
-                        rvec_Scale( bo_ij->dBOp,
-                                    -(bo_ij->BO_s * Cln_BOp_s +
-                                      bo_ij->BO_pi * Cln_BOp_pi +
-                                      bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
+                        rvec_Scale( bo_ij->dBOp, -(bo_ij->BO_s * Cln_BOp_s
+                                    + bo_ij->BO_pi * Cln_BOp_pi
+                                    + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
                         rvec_Scale( bo_ji->dBOp, -1., bo_ij->dBOp );
 
                         rvec_Add( workspace->dDeltap_self[i], bo_ij->dBOp );
@@ -915,54 +928,64 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
         sbp_i = &system->reaxprm.sbp[type_i];
-        ihb = ihb_top = -1;
+        ihb = -1;
+        ihb_top = -1;
 
-        if ( control->hb_cut > 0 && (ihb = sbp_i->p_hbond) == 1 )
+        if ( control->hbond_cut > 0.0 )
         {
-            ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+            ihb = sbp_i->p_hbond;
+
+            if ( ihb == 1 )
+            {
+                ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+            }
         }
 
+        /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &far_nbrs->select.far_nbr_list[pj];
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
             atom_j = &system->atoms[j];
+            flag = FALSE;
+            flag_sp = FALSE;
 
-            flag = 0;
-            flag_sp = 0;
+            /* check if reneighboring step */
             if ( (data->step - data->prev_steps) % control->reneighbor == 0 )
             {
-                if (nbr_pj->d <= control->r_cut)
+                if (nbr_pj->d <= control->nonb_cut)
                 {
-                    flag = 1;
-                    if ( nbr_pj->d <= control->r_sp_cut )
+                    flag = TRUE;
+                    if ( nbr_pj->d <= control->nonb_sp_cut )
                     {
-                        flag_sp = 1;
+                        flag_sp = TRUE;
                     }
-                }
-                else
-                {
-                    flag = 0;
-                    flag_sp = 0;
                 }
             }
             else if ((nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &system->box,
-                            nbr_pj->dvec)) <= SQR(control->r_cut))
+                            nbr_pj->dvec)) <= SQR(control->nonb_cut))
             {
-                if ( nbr_pj->d <= SQR(control->r_sp_cut))
+                nbr_pj->d = Sq_Distance_on_T3( atom_i->x, atom_j->x,
+                        &system->box, nbr_pj->dvec );
+
+                if ( nbr_pj->d  <= SQR(control->nonb_cut) )
                 {
-                    flag_sp = 1;
+                    if ( nbr_pj->d <= SQR(control->nonb_sp_cut))
+                    {
+                        flag_sp = TRUE;
+                    }
+
+                    nbr_pj->d = SQRT( nbr_pj->d );
+                    flag = TRUE;
                 }
-                nbr_pj->d = SQRT( nbr_pj->d );
-                flag = 1;
             }
 
-            if ( flag )
+            if ( flag == TRUE )
             {
                 type_j = system->atoms[j].type;
                 r_ij = nbr_pj->d;
-                sbp_j = &(system->reaxprm.sbp[type_j]);
-                twbp = &(system->reaxprm.tbp[type_i][type_j]);
+                sbp_j = &system->reaxprm.sbp[type_j];
+                twbp = &system->reaxprm.tbp[type_i][type_j];
 
                 H->j[Htop] = j;
                 H->val[Htop] = Init_Charge_Matrix_Entry( system, control,
@@ -970,7 +993,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                 ++Htop;
 
                 /* H_sp matrix entry */
-                if ( flag_sp )
+                if ( flag_sp == TRUE )
                 {
                     H_sp->j[H_sp_top] = j;
                     H_sp->val[H_sp_top] = H->val[Htop - 1];
@@ -978,32 +1001,33 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                 }
 
                 /* hydrogen bond lists */
-                if ( control->hb_cut > 0 && (ihb == 1 || ihb == 2) &&
-                        nbr_pj->d <= control->hb_cut )
+                if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2)
+                        && nbr_pj->d <= control->hbond_cut )
                 {
                     // fprintf( stderr, "%d %d\n", atom1, atom2 );
                     jhb = sbp_j->p_hbond;
+
                     if ( ihb == 1 && jhb == 2 )
                     {
-                        hbonds->select.hbond_list[ihb_top].nbr = j;
-                        hbonds->select.hbond_list[ihb_top].scl = 1;
-                        hbonds->select.hbond_list[ihb_top].ptr = nbr_pj;
+                        hbonds->hbond_list[ihb_top].nbr = j;
+                        hbonds->hbond_list[ihb_top].scl = 1;
+                        hbonds->hbond_list[ihb_top].ptr = nbr_pj;
                         ++ihb_top;
                         ++num_hbonds;
                     }
                     else if ( ihb == 2 && jhb == 1 )
                     {
                         jhb_top = End_Index( workspace->hbond_index[j], hbonds );
-                        hbonds->select.hbond_list[jhb_top].nbr = i;
-                        hbonds->select.hbond_list[jhb_top].scl = -1;
-                        hbonds->select.hbond_list[jhb_top].ptr = nbr_pj;
+                        hbonds->hbond_list[jhb_top].nbr = i;
+                        hbonds->hbond_list[jhb_top].scl = -1;
+                        hbonds->hbond_list[jhb_top].ptr = nbr_pj;
                         Set_End_Index( workspace->hbond_index[j], jhb_top + 1, hbonds );
                         ++num_hbonds;
                     }
                 }
 
                 /* uncorrected bond orders */
-                if ( far_nbrs->select.far_nbr_list[pj].d <= control->nbr_cut )
+                if ( nbr_pj->d <= control->bond_cut )
                 {
                     r2 = SQR( r_ij );
 
@@ -1014,8 +1038,8 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        BO_s = 0.0;
                         C12 = 0.0;
+                        BO_s = 0.0;
                     }
 
                     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
@@ -1025,8 +1049,8 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        BO_pi = 0.0;
                         C34 = 0.0;
+                        BO_pi = 0.0;
                     }
 
                     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
@@ -1036,8 +1060,8 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        BO_pi2 = 0.0;
                         C56 = 0.0;
+                        BO_pi2 = 0.0;
                     }
 
                     /* Initially BO values are the uncorrected ones, page 1 */
@@ -1047,9 +1071,9 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                     {
                         num_bonds += 2;
                         /****** bonds i-j and j-i ******/
-                        ibond = &bonds->select.bond_list[btop_i];
+                        ibond = &bonds->bond_list[btop_i];
                         btop_j = End_Index( j, bonds );
-                        jbond = &bonds->select.bond_list[btop_j];
+                        jbond = &bonds->bond_list[btop_j];
 
                         ibond->nbr = j;
                         jbond->nbr = i;
@@ -1066,12 +1090,16 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                         ++btop_i;
                         Set_End_Index( j, btop_j + 1, bonds );
 
-                        bo_ij = &( ibond->bo_data );
-                        bo_ji = &( jbond->bo_data );
-                        bo_ji->BO = bo_ij->BO = BO;
-                        bo_ji->BO_s = bo_ij->BO_s = BO_s;
-                        bo_ji->BO_pi = bo_ij->BO_pi = BO_pi;
-                        bo_ji->BO_pi2 = bo_ij->BO_pi2 = BO_pi2;
+                        bo_ij = &ibond->bo_data;
+                        bo_ij->BO = BO;
+                        bo_ij->BO_s = BO_s;
+                        bo_ij->BO_pi = BO_pi;
+                        bo_ij->BO_pi2 = BO_pi2;
+                        bo_ji = &jbond->bo_data;
+                        bo_ji->BO = BO;
+                        bo_ji->BO_s = BO_s;
+                        bo_ji->BO_pi = BO_pi;
+                        bo_ji->BO_pi2 = BO_pi2;
 
                         /* Bond Order page2-3, derivative of total bond order prime */
                         Cln_BOp_s = twbp->p_bo2 * C12 / r2;
@@ -1083,17 +1111,16 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                         rvec_Scale( bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
                         rvec_Scale( bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
                         rvec_Scale( bo_ij->dln_BOp_pi2,
-                                   -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+                                -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
                         rvec_Scale( bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s );
                         rvec_Scale( bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
                         rvec_Scale( bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
 
                         /* Only dBOp wrt. dr_i is stored here, note that
                            dBOp/dr_i = -dBOp/dr_j and all others are 0 */
-                        rvec_Scale( bo_ij->dBOp,
-                                    -(bo_ij->BO_s * Cln_BOp_s +
-                                      bo_ij->BO_pi * Cln_BOp_pi +
-                                      bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
+                        rvec_Scale( bo_ij->dBOp, -(bo_ij->BO_s * Cln_BOp_s
+                                    + bo_ij->BO_pi * Cln_BOp_pi
+                                    + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
                         rvec_Scale( bo_ji->dBOp, -1., bo_ij->dBOp );
 
                         rvec_Add( workspace->dDeltap_self[i], bo_ij->dBOp );
@@ -1178,27 +1205,28 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
     {
         atom_i = &system->atoms[i];
         type_i = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i = End_Index(i, far_nbrs);
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
         sbp_i = &system->reaxprm.sbp[type_i];
         ihb = sbp_i->p_hbond;
 
+        /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &far_nbrs->select.far_nbr_list[pj];
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
             atom_j = &system->atoms[j];
             type_j = atom_j->type;
             sbp_j = &system->reaxprm.sbp[type_j];
             twbp = &system->reaxprm.tbp[type_i][type_j];
 
-            if ( nbr_pj->d <= control->r_cut )
+            if ( nbr_pj->d <= control->nonb_cut )
             {
                 ++(*Htop);
 
                 /* hydrogen bond lists */
-                if ( control->hb_cut > 0.1 && (ihb == 1 || ihb == 2) &&
-                        nbr_pj->d <= control->hb_cut )
+                if ( control->hbond_cut > 0.0 && (ihb == 1 || ihb == 2)
+                        && nbr_pj->d <= control->hbond_cut )
                 {
                     jhb = sbp_j->p_hbond;
 
@@ -1213,7 +1241,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
                 }
 
                 /* uncorrected bond orders */
-                if ( nbr_pj->d <= control->nbr_cut )
+                if ( nbr_pj->d <= control->bond_cut )
                 {
                     r_ij = nbr_pj->d;
 
@@ -1268,7 +1296,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         hb_top[i] = MAX( hb_top[i] * SAFE_HBONDS, MIN_HBONDS );
-        *num_3body += SQR(bond_top[i]);
+        *num_3body += SQR( bond_top[i] );
         bond_top[i] = MAX( bond_top[i] * 2, MIN_BONDS );
     }
     *num_3body *= SAFE_ZONE;

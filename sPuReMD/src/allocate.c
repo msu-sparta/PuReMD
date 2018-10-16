@@ -31,24 +31,24 @@ void PreAllocate_Space( reax_system *system, control_params *control,
 {
     int i;
 
-    system->atoms = (reax_atom*) scalloc( system->N,
-            sizeof(reax_atom), "PreAllocate_Space::system->atoms" );
-    workspace->orig_id = (int*) scalloc( system->N,
-            sizeof(int), "PreAllocate_Space::workspace->orid_id" );
+    system->atoms = scalloc( system->N, sizeof(reax_atom),
+            "PreAllocate_Space::system->atoms" );
+    workspace->orig_id = scalloc( system->N, sizeof(int),
+            "PreAllocate_Space::workspace->orid_id" );
 
     /* space for keeping restriction info, if any */
     if ( control->restrict_bonds )
     {
-        workspace->restricted = (int*) scalloc( system->N,
-                sizeof(int), "PreAllocate_Space::workspace->restricted_atoms" );
+        workspace->restricted = scalloc( system->N, sizeof(int),
+                "PreAllocate_Space::workspace->restricted_atoms" );
 
-        workspace->restricted_list = (int**) scalloc( system->N,
-                sizeof(int*), "PreAllocate_Space::workspace->restricted_list" );
+        workspace->restricted_list = scalloc( system->N, sizeof(int*),
+                "PreAllocate_Space::workspace->restricted_list" );
 
         for ( i = 0; i < system->N; ++i )
         {
-            workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT,
-                    sizeof(int), "PreAllocate_Space::workspace->restricted_list[i]" );
+            workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
+                    "PreAllocate_Space::workspace->restricted_list[i]" );
         }
     }
 }
@@ -258,7 +258,7 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
         workspace->U = NULL;
     }
 
-    if ( control->hb_cut > 0.0 && realloc->hbonds > 0 )
+    if ( control->hbond_cut > 0.0 && realloc->hbonds > 0 )
     {
         Reallocate_HBonds_List( system->N, workspace->num_H, workspace->hbond_index,
                 lists[HBONDS] );

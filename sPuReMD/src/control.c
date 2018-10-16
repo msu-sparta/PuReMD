@@ -57,13 +57,18 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->periodic_boundaries = 1;
 
     control->reneighbor = 1;
-    control->vlist_cut = 0;
-    control->nbr_cut = 4.;
-    control->r_cut = 10.;
-    control->r_sp_cut = 10.;
-    control->bo_cut = 0.01;
+
+    /* interaction cutoffs from force field global paramters */
+    control->bo_cut = 0.01 * system->reaxprm.gp.l[29];
+    control->nonb_low = system->reaxprm.gp.l[11];
+    control->nonb_cut = system->reaxprm.gp.l[12];
+
+    /* defaults values for other cutoffs */
+    control->vlist_cut = control->nonb_cut;
+    control->bond_cut = 5.0;
+    control->bg_cut = 0.3;
     control->thb_cut = 0.001;
-    control->hb_cut = 0.0;
+    control->hbond_cut = 0.0;
 
     control->tabulate = 0;
 
@@ -125,7 +130,6 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     control->molec_anal = NO_ANALYSIS;
     control->freq_molec_anal = 0;
-    control->bg_cut = 0.3;
     control->num_ignored = 0;
     memset( control->ignore, 0, sizeof(int) * MAX_ATOM_TYPES );
 
@@ -223,12 +227,12 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             else if ( strncmp(tmp[0], "vlist_buffer", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
-                control->vlist_cut = val;
+                control->vlist_cut = val + control->nonb_cut;
             }
             else if ( strncmp(tmp[0], "nbrhood_cutoff", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
-                control->nbr_cut = val;
+                control->bond_cut = val;
             }
             else if ( strncmp(tmp[0], "thb_cutoff", MAX_LINE) == 0 )
             {
@@ -238,7 +242,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             else if ( strncmp(tmp[0], "hbond_cutoff", MAX_LINE) == 0 )
             {
                 val = atof( tmp[1] );
-                control->hb_cut = val;
+                control->hbond_cut = val;
             }
             else if ( strncmp(tmp[0], "charge_method", MAX_LINE) == 0 )
             {
@@ -560,7 +564,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     if (ferror(fp))
     {
-        fprintf(stderr, "Error reading control file. Terminating.\n");
+        fprintf( stderr, "Error reading control file. Terminating.\n" );
         exit( INVALID_INPUT );
     }
 
@@ -574,14 +578,10 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         control->T = control->T_init;
     }
 
-    /* near neighbor and far neighbor cutoffs */
-    control->bo_cut = 0.01 * system->reaxprm.gp.l[29];
-    control->r_low  = system->reaxprm.gp.l[11];
-    control->r_cut  = system->reaxprm.gp.l[12];
-    control->r_sp_cut  = control->r_cut * control->cm_domain_sparsity;
-    control->vlist_cut += control->r_cut;
+    /* derived cutoffs */
+    control->nonb_sp_cut = control->nonb_cut * control->cm_domain_sparsity;
 
-    system->g.cell_size = control->vlist_cut / 2.;
+    system->g.cell_size = control->vlist_cut / 2.0;
     for ( i = 0; i < 3; ++i )
     {
         system->g.spread[i] = 2;

@@ -60,15 +60,16 @@ void Make_Consistent( simulation_box* box )
     box->box_inv[2][2] = (box->box[0][0] * box->box[1][1] -
                           box->box[0][1] * box->box[1][0]) * one_vol;
 
-    box->box_norms[0] = SQRT( SQR(box->box[0][0]) +
-                              SQR(box->box[0][1]) +
-                              SQR(box->box[0][2]) );
-    box->box_norms[1] = SQRT( SQR(box->box[1][0]) +
-                              SQR(box->box[1][1]) +
-                              SQR(box->box[1][2]) );
-    box->box_norms[2] = SQRT( SQR(box->box[2][0]) +
-                              SQR(box->box[2][1]) +
-                              SQR(box->box[2][2]) );
+    box->box_norms[0] = SQRT( SQR(box->box[0][0]) + SQR(box->box[0][1])
+            + SQR(box->box[0][2]) );
+    box->box_norms[1] = SQRT( SQR(box->box[1][0]) + SQR(box->box[1][1])
+            + SQR(box->box[1][2]) );
+    box->box_norms[2] = SQRT( SQR(box->box[2][0]) + SQR(box->box[2][1])
+            + SQR(box->box[2][2]) );
+
+    box->max[0] = box->min[0] + box->box_norms[0];
+    box->max[1] = box->min[1] + box->box_norms[1];
+    box->max[2] = box->min[2] + box->box_norms[2];
 
     box->trans[0][0] = box->box[0][0] / box->box_norms[0];
     box->trans[0][1] = box->box[1][0] / box->box_norms[0];
@@ -168,6 +169,8 @@ void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
     c_gamma = COS( DEG2RAD(gamma) );
     s_gamma = SIN( DEG2RAD(gamma) );
     zi = (c_alpha - c_beta * c_gamma) / s_gamma;
+
+    rvec_MakeZero( box->min );
 
     box->box[0][0] = a;
     box->box[0][1] = 0.0;

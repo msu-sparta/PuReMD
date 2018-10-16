@@ -32,9 +32,7 @@ void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
 
 void Fit_to_Periodic_Box( simulation_box*, rvec* );
 
-//void Box_Touch_Point( simulation_box*, ivec, rvec );
-
-//int is_Inside_Box( simulation_box*, rvec );
+int is_Inside_Box( simulation_box*, rvec );
 
 //int iown_midpoint( simulation_box*, rvec, rvec );
 

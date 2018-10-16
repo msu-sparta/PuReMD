@@ -95,9 +95,9 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
     total_bo = workspace->total_bond_order;
     bonds = lists[BONDS];
-    bond_list = bonds->select.bond_list;
+    bond_list = bonds->bond_list;
     thb_intrs = lists[THREE_BODIES];
-    thb_list = thb_intrs->select.three_body_list;
+    thb_list = thb_intrs->three_body_list;
     /* global parameters used in these calculations */
     p_pen2 = system->reaxprm.gp.l[19];
     p_pen3 = system->reaxprm.gp.l[20];
@@ -158,9 +158,9 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
             start_j = Start_Index(j, bonds);
             end_j = End_Index(j, bonds);
 //#ifdef _OPENMP
-//            f_j = &(workspace->f_local[tid * system->N + j]);
+//            f_j = &workspace->f_local[tid * system->N + j];
 //#else
-            f_j = &(system->atoms[j].f);
+            f_j = &system->atoms[j].f;
 //#endif
 
             p_val3 = system->reaxprm.sbp[ type_j ].p_val3;
@@ -168,10 +168,11 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
             SBOp = 0.0;
             prod_SBO = 1.0;
+
             for ( t = start_j; t < end_j; ++t )
             {
-                bo_jt = &(bond_list[t].bo_data);
-                SBOp += (bo_jt->BO_pi + bo_jt->BO_pi2);
+                bo_jt = &bond_list[t].bo_data;
+                SBOp += bo_jt->BO_pi + bo_jt->BO_pi2;
                 temp = SQR( bo_jt->BO );
                 temp *= temp;
                 temp *= temp;
@@ -222,8 +223,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
             for ( pi = start_j; pi < end_j; ++pi )
             {
                 Set_Start_Index( pi, num_thb_intrs, thb_intrs );
-                pbond_ij = &(bond_list[pi]);
-                bo_ij = &(pbond_ij->bo_data);
+                pbond_ij = &bond_list[pi];
+                bo_ij = &pbond_ij->bo_data;
                 BOA_ij = bo_ij->BO - control->thb_cut;
 
                 if ( BOA_ij > 0.0 )
@@ -233,7 +234,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 //#ifdef _OPENMP
 //                    f_i = &(workspace->f_local[tid * system->N + i]);
 //#else
-                    f_i = &(system->atoms[i].f);
+                    f_i = &system->atoms[i].f;
 //#endif
 
                     /* first copy 3-body intrs from previously computed ones where i>k.
@@ -272,16 +273,16 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                     /* and this is the second for loop mentioned above */
                     for ( pk = pi + 1; pk < end_j; ++pk )
                     {
-                        pbond_jk = &(bond_list[pk]);
-                        bo_jk = &(pbond_jk->bo_data);
+                        pbond_jk = &bond_list[pk];
+                        bo_jk = &pbond_jk->bo_data;
                         BOA_jk = bo_jk->BO - control->thb_cut;
                         k = pbond_jk->nbr;
                         type_k = system->atoms[k].type;
-                        p_ijk = &( thb_list[num_thb_intrs] );
+                        p_ijk = &thb_list[num_thb_intrs];
 //#ifdef _OPENMP
-//                        f_k = &(workspace->f_local[tid * system->N + k]);
+//                        f_k = &workspace->f_local[tid * system->N + k];
 //#else
-                        f_k = &(system->atoms[k].f);
+                        f_k = &system->atoms[k].f;
 //#endif
 
                         //CHANGE ORIGINAL
@@ -312,10 +313,9 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                         ++num_thb_intrs;
 
-                        if ( BOA_jk > 0.0 &&
-                                (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut)/*0*/)
+                        if ( BOA_jk > 0.0 && (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut) )
                         {
-                            thbh = &( system->reaxprm.thbp[type_i][type_j][type_k] );
+                            thbh = &system->reaxprm.thbp[type_i][type_j][type_k];
 
                             /* if( workspace->orig_id[i] < workspace->orig_id[k] )
                                fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
@@ -330,7 +330,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                             {
                                 if ( FABS(thbh->prm[cnt].p_val1) > 0.001 )
                                 {
-                                    thbp = &( thbh->prm[cnt] );
+                                    thbp = &thbh->prm[cnt];
 
                                     /* ANGLE ENERGY */
                                     p_val1 = thbp->p_val1;
@@ -373,11 +373,11 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     CEval1 = Cf7ij * f7_jk * f8_Dj * expval12theta;
                                     CEval2 = Cf7jk * f7_ij * f8_Dj * expval12theta;
                                     CEval3 = Cf8j  * f7_ij * f7_jk * expval12theta;
-                                    CEval4 = -2.0 * p_val1 * p_val2 * f7_ij * f7_jk * f8_Dj *
-                                        expval2theta * (theta_0 - theta);
+                                    CEval4 = -2.0 * p_val1 * p_val2 * f7_ij * f7_jk * f8_Dj
+                                        * expval2theta * (theta_0 - theta);
 
-                                    Ctheta_0 = p_val10 * DEG2RAD(theta_00) *
-                                        EXP( -p_val10 * (2.0 - SBO2) );
+                                    Ctheta_0 = p_val10 * DEG2RAD(theta_00)
+                                        * EXP( -p_val10 * (2.0 - SBO2) );
 
                                     CEval5 = -CEval4 * Ctheta_0 * CSBO2;
                                     CEval6 = CEval5 * dSBO1;
@@ -452,8 +452,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                                     for ( t = start_j; t < end_j; ++t )
                                     {
-                                        pbond_jt = &( bond_list[t] );
-                                        bo_jt = &(pbond_jt->bo_data);
+                                        pbond_jt = &bond_list[t];
+                                        bo_jt = &pbond_jt->bo_data;
                                         temp_bo_jt = bo_jt->BO;
                                         temp = CUBE( temp_bo_jt );
                                         pBOjt7 = temp * temp * temp_bo_jt;
@@ -465,7 +465,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 #ifdef _OPENMP
 //                                        #pragma omp atomic
 #endif
-                                        bo_jt->Cdbo += (CEval6 * pBOjt7);
+                                        bo_jt->Cdbo += CEval6 * pBOjt7;
 #ifdef _OPENMP
 //                                        #pragma omp atomic
 #endif
@@ -593,8 +593,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                                     for ( t = start_j; t < end_j; ++t )
                                     {
-                                        pbond_jt = &( bond_list[t] );
-                                        bo_jt = &(pbond_jt->bo_data);
+                                        pbond_jt = &bond_list[t];
+                                        bo_jt = &pbond_jt->bo_data;
                                         temp_bo_jt = bo_jt->BO;
                                         temp = CUBE( temp_bo_jt );
                                         pBOjt7 = temp * temp * temp_bo_jt;
@@ -708,9 +708,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         num_hb_intrs = 0;
 #endif
         bonds = lists[BONDS];
-        bond_list = bonds->select.bond_list;
+        bond_list = bonds->bond_list;
         hbonds = lists[HBONDS];
-        hbond_list = hbonds->select.hbond_list;
+        hbond_list = hbonds->hbond_list;
 
         /* loops below discover the Hydrogen bonds between i-j-k triplets.
            here j is H atom and there has to be some bond between i and j.
@@ -732,17 +732,17 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 hb_start_j = Start_Index( workspace->hbond_index[j], hbonds );
                 hb_end_j = End_Index( workspace->hbond_index[j], hbonds );
 #ifdef _OPENMP
-                f_j = &(workspace->f_local[tid * system->N + j]);
+                f_j = &workspace->f_local[tid * system->N + j];
 #else
-                f_j = &(system->atoms[j].f);
+                f_j = &system->atoms[j].f;
 #endif
 
                 top = 0;
                 for ( pi = start_j; pi < end_j; ++pi )
                 {
-                    pbond_ij = &( bond_list[pi] );
+                    pbond_ij = &bond_list[pi];
                     i = pbond_ij->nbr;
-                    bo_ij = &(pbond_ij->bo_data);
+                    bo_ij = &pbond_ij->bo_data;
                     type_i = system->atoms[i].type;
 
                     if ( system->reaxprm.sbp[type_i].p_hbond == 2 &&
@@ -761,9 +761,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                     r_jk = nbr_jk->d;
                     rvec_Scale( dvec_jk, hbond_list[pk].scl, nbr_jk->dvec );
 #ifdef _OPENMP
-                    f_k = &(workspace->f_local[tid * system->N + k]);
+                    f_k = &workspace->f_local[tid * system->N + k];
 #else
-                    f_k = &(system->atoms[k].f);
+                    f_k = &system->atoms[k].f;
 #endif
 
                     for ( itr = 0; itr < top; ++itr )
@@ -774,14 +774,14 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                         if ( i != k )
                         {
-                            bo_ij = &(pbond_ij->bo_data);
+                            bo_ij = &pbond_ij->bo_data;
                             type_i = system->atoms[i].type;
                             r_ij = pbond_ij->d;
-                            hbp = &(system->reaxprm.hbp[ type_i ][ type_j ][ type_k ]);
+                            hbp = &system->reaxprm.hbp[ type_i ][ type_j ][ type_k ];
 #ifdef _OPENMP
-                            f_i = &(workspace->f_local[tid * system->N + i]);
+                            f_i = &workspace->f_local[tid * system->N + i];
 #else
-                            f_i = &(system->atoms[i].f);
+                            f_i = &system->atoms[i].f;
 #endif
 
 #ifdef TEST_FORCES

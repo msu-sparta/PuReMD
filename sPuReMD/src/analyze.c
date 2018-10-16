@@ -68,13 +68,13 @@ static void Copy_Bond_List( reax_system *system, control_params *control,
 
         // fprintf( stdout, "%d: ", i );
         for ( j = Start_Index( i, new_bonds ); j < End_Index( i, new_bonds ); ++j )
-            if ( new_bonds->select.bond_list[j].bo_data.BO >= control->bg_cut )
+            if ( new_bonds->bond_list[j].bo_data.BO >= control->bg_cut )
             {
-                // fprintf( stderr, "%d ", new_bonds->select.bond_list[j].nbr );
-                old_bonds->select.bond_list[ top_old ].nbr =
-                    new_bonds->select.bond_list[j].nbr;
-                old_bonds->select.bond_list[ top_old ].bo_data.BO =
-                    new_bonds->select.bond_list[j].bo_data.BO;
+                // fprintf( stderr, "%d ", new_bonds->bond_list[j].nbr );
+                old_bonds->bond_list[ top_old ].nbr =
+                    new_bonds->bond_list[j].nbr;
+                old_bonds->bond_list[ top_old ].bo_data.BO =
+                    new_bonds->bond_list[j].bo_data.BO;
                 top_old++;
             }
 
@@ -95,14 +95,14 @@ static int Compare_Bond_Lists( int atom, control_params *control, reax_list **li
     /*fprintf( stdout, "\n%d\nold_bonds:", atom );
       for( oldp = Start_Index( atom, old_bonds );
            oldp < End_Index( atom, old_bonds ); ++oldp )
-      if( old_bonds->select.bond_list[oldp].bo_data.BO >= control->bg_cut )
-      fprintf( stdout, "%5d", old_bonds->select.bond_list[oldp].nbr );
+      if( old_bonds->bond_list[oldp].bo_data.BO >= control->bg_cut )
+      fprintf( stdout, "%5d", old_bonds->bond_list[oldp].nbr );
 
       fprintf( stdout, "\nnew_bonds:" );
       for( newp = Start_Index( atom, new_bonds );
            newp < End_Index( atom, new_bonds ); ++newp )
-      if( new_bonds->select.bond_list[newp].bo_data.BO >= control->bg_cut )
-      fprintf( stdout, "%5d", new_bonds->select.bond_list[newp].nbr );*/
+      if( new_bonds->bond_list[newp].bo_data.BO >= control->bg_cut )
+      fprintf( stdout, "%5d", new_bonds->bond_list[newp].nbr );*/
 
 
     for ( oldp = Start_Index( atom, old_bonds ),
@@ -112,28 +112,28 @@ static int Compare_Bond_Lists( int atom, control_params *control, reax_list **li
             newp = MIN( newp + 1, End_Index( atom, new_bonds ) ) )
     {
         while ( oldp < End_Index( atom, old_bonds )
-                && old_bonds->select.bond_list[oldp].bo_data.BO < control->bg_cut )
+                && old_bonds->bond_list[oldp].bo_data.BO < control->bg_cut )
         {
             ++oldp;
         }
 
         while ( newp < End_Index( atom, new_bonds )
-                && new_bonds->select.bond_list[newp].bo_data.BO < control->bg_cut )
+                && new_bonds->bond_list[newp].bo_data.BO < control->bg_cut )
         {
             ++newp;
         }
 
         /*fprintf( fout, "%d, oldp: %d - %d, newp: %d - %d",
-          atom, oldp, old_bonds->select.bond_list[oldp].nbr,
-          newp,  new_bonds->select.bond_list[newp].nbr );*/
+          atom, oldp, old_bonds->bond_list[oldp].nbr,
+          newp,  new_bonds->bond_list[newp].nbr );*/
 
         if ( oldp < End_Index( atom, old_bonds ) )
         {
             /* there are some other bonds in the old list */
             if ( newp < End_Index( atom, new_bonds ) )
             {
-                if ( old_bonds->select.bond_list[oldp].nbr !=
-                        new_bonds->select.bond_list[newp].nbr )
+                if ( old_bonds->bond_list[oldp].nbr !=
+                        new_bonds->bond_list[newp].nbr )
                 {
                     //fprintf( fout, " --> case1, return 1\n" );
                     return 1;
@@ -187,10 +187,10 @@ static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
 
     for ( i = start; i < end; ++i )
     {
-        if ( bonds->select.bond_list[i].bo_data.BO >= control->bg_cut &&
-                !mark[bonds->select.bond_list[i].nbr] )
+        if ( bonds->bond_list[i].bo_data.BO >= control->bg_cut &&
+                !mark[bonds->bond_list[i].nbr] )
         {
-            Get_Molecule( bonds->select.bond_list[i].nbr, m, mark,
+            Get_Molecule( bonds->bond_list[i].nbr, m, mark,
                           system, control, bonds, print, fout );
         }
     }
@@ -399,11 +399,11 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
         fprintf( fout, "%5d(%s) was connected to:", rev1, system->atoms[a1].name );
         for ( i = Start_Index(a1, old_bonds); i < End_Index(a1, old_bonds); ++i )
         {
-            if ( old_bonds->select.bond_list[i].bo_data.BO >= control->bg_cut )
+            if ( old_bonds->bond_list[i].bo_data.BO >= control->bg_cut )
             {
                 fprintf( fout, " %5d(%s)",
-                         workspace->orig_id[ old_bonds->select.bond_list[i].nbr ],
-                         system->atoms[ old_bonds->select.bond_list[i].nbr ].name );
+                         workspace->orig_id[ old_bonds->bond_list[i].nbr ],
+                         system->atoms[ old_bonds->bond_list[i].nbr ].name );
             }
         }
         fprintf( fout, "\n" );
@@ -411,11 +411,11 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
         fprintf( fout, "%5d(%s) was connected to:", rev2, system->atoms[a2].name );
         for ( i = Start_Index(a2, old_bonds); i < End_Index(a2, old_bonds); ++i )
         {
-            if ( old_bonds->select.bond_list[i].bo_data.BO >= control->bg_cut )
+            if ( old_bonds->bond_list[i].bo_data.BO >= control->bg_cut )
             {
                 fprintf( fout, " %5d(%s)",
-                         workspace->orig_id[ old_bonds->select.bond_list[i].nbr ],
-                         system->atoms[ old_bonds->select.bond_list[i].nbr ].name );
+                         workspace->orig_id[ old_bonds->bond_list[i].nbr ],
+                         system->atoms[ old_bonds->bond_list[i].nbr ].name );
             }
         }
         fprintf( fout, "\n" );
@@ -433,69 +433,69 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
     /* fprintf( fout, "\n%d\nold_bonds:", atom );
        for( oldp = Start_Index( atom, old_bonds );
             oldp < End_Index( atom, old_bonds ); ++oldp )
-       if( old_bonds->select.bond_list[oldp].bo_data.BO >= control->bg_cut )
-       fprintf( fout, "%5d", old_bonds->select.bond_list[oldp].nbr );
+       if( old_bonds->bond_list[oldp].bo_data.BO >= control->bg_cut )
+       fprintf( fout, "%5d", old_bonds->bond_list[oldp].nbr );
 
        fprintf( fout, "\nnew_bonds:" );
        for( newp = Start_Index( atom, new_bonds );
             newp < End_Index( atom, new_bonds ); ++newp )
-       if( new_bonds->select.bond_list[newp].bo_data.BO >= control->bg_cut )
-       fprintf( fout, "%6d", new_bonds->select.bond_list[newp].nbr );
+       if( new_bonds->bond_list[newp].bo_data.BO >= control->bg_cut )
+       fprintf( fout, "%6d", new_bonds->bond_list[newp].nbr );
        fprintf( fout, "\n" ); */
 
     for ( oldp = Start_Index( atom, old_bonds );
             oldp < End_Index( atom, old_bonds )
-            && old_bonds->select.bond_list[oldp].nbr < atom; ++oldp )
+            && old_bonds->bond_list[oldp].nbr < atom; ++oldp )
         ;
 
     for ( newp = Start_Index( atom, new_bonds );
             newp < End_Index( atom, new_bonds )
-            && new_bonds->select.bond_list[newp].nbr < atom; ++newp )
+            && new_bonds->bond_list[newp].nbr < atom; ++newp )
         ;
 
     while ( oldp < End_Index( atom, old_bonds ) ||
             newp < End_Index( atom, new_bonds ) )
     {
         while ( oldp < End_Index( atom, old_bonds ) &&
-                old_bonds->select.bond_list[oldp].bo_data.BO < control->bg_cut )
+                old_bonds->bond_list[oldp].bo_data.BO < control->bg_cut )
         {
             ++oldp;
         }
 
         while ( newp < End_Index( atom, new_bonds ) &&
-                new_bonds->select.bond_list[newp].bo_data.BO < control->bg_cut )
+                new_bonds->bond_list[newp].bo_data.BO < control->bg_cut )
         {
             ++newp;
         }
 
         /*fprintf( fout, "%d, oldp: %d - %d: %f    newp: %d - %d: %f",
-          atom, oldp, old_bonds->select.bond_list[oldp].nbr,
-          old_bonds->select.bond_list[oldp].bo_data.BO,
-          newp,  new_bonds->select.bond_list[newp].nbr,
-          new_bonds->select.bond_list[newp].bo_data.BO ); */
+          atom, oldp, old_bonds->bond_list[oldp].nbr,
+          old_bonds->bond_list[oldp].bo_data.BO,
+          newp,  new_bonds->bond_list[newp].nbr,
+          new_bonds->bond_list[newp].bo_data.BO ); */
 
         if ( oldp < End_Index( atom, old_bonds ) )
         {
             /* there are some more bonds in the old list */
             if ( newp < End_Index( atom, new_bonds ) )
             {
-                if ( old_bonds->select.bond_list[oldp].nbr <
-                        new_bonds->select.bond_list[newp].nbr )
+                if ( old_bonds->bond_list[oldp].nbr <
+                        new_bonds->bond_list[newp].nbr )
                 {
                     // fprintf( fout, "%5d-%5d bond broken\n",
-                    // atom, old_bonds->select.bond_list[oldp].nbr );
+                    // atom, old_bonds->bond_list[oldp].nbr );
                     Report_Bond_Change( system, control, workspace, old_bonds, new_bonds,
-                                        atom, old_bonds->select.bond_list[oldp].nbr, 0,
+                                        atom, old_bonds->bond_list[oldp].nbr, 0,
                                         fout );
                     ++oldp;
                 }
-                else if ( old_bonds->select.bond_list[oldp].nbr >
-                          new_bonds->select.bond_list[newp].nbr )
+                else if ( old_bonds->bond_list[oldp].nbr >
+                          new_bonds->bond_list[newp].nbr )
                 {
                     // fprintf( fout, "%5d-%5d bond formed\n",
-                    // atom, new_bonds->select.bond_list[newp].nbr );
+                    // atom, new_bonds->bond_list[newp].nbr );
                     Report_Bond_Change( system, control, workspace, old_bonds, new_bonds,
-                                        atom, new_bonds->select.bond_list[newp].nbr, 1,
+                                        atom, new_bonds->bond_list[newp].nbr, 1,
                                         fout );
                     ++newp;
                 }
@@ -509,13 +509,13 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
                 /* there is no other bond in the new list */
                 while ( oldp < End_Index( atom, old_bonds ) )
                 {
-                    if ( old_bonds->select.bond_list[oldp].bo_data.BO >= control->bg_cut )
+                    if ( old_bonds->bond_list[oldp].bo_data.BO >= control->bg_cut )
                     {
                         // fprintf( fout, "%5d-%5d bond broken\n",
-                        // atom, old_bonds->select.bond_list[oldp].nbr );
+                        // atom, old_bonds->bond_list[oldp].nbr );
                         Report_Bond_Change( system, control, workspace,
                                             old_bonds, new_bonds, atom,
-                                            old_bonds->select.bond_list[oldp].nbr, 0,
+                                            old_bonds->bond_list[oldp].nbr, 0,
                                             fout );
                     }
                     ++oldp;
@@ -529,13 +529,13 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
                 /* there is at least one other bond in the new list */
                 while ( newp < End_Index( atom, new_bonds ) )
                 {
-                    if ( new_bonds->select.bond_list[newp].bo_data.BO >= control->bg_cut )
+                    if ( new_bonds->bond_list[newp].bo_data.BO >= control->bg_cut )
                     {
                         // fprintf( fout, "%5d-%5d bond formed\n",
-                        // atom, new_bonds->select.bond_list[newp].nbr );
+                        // atom, new_bonds->bond_list[newp].nbr );
                         Report_Bond_Change( system, control, workspace,
                                 old_bonds, new_bonds, atom,
-                                new_bonds->select.bond_list[newp].nbr, 1, fout );
+                                new_bonds->bond_list[newp].nbr, 1, fout );
                     }
                     ++newp;
                 }
@@ -568,8 +568,8 @@ static void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
     end = End_Index( atom, bonds );
     for ( i = start; i < end; ++i )
     {
-        nbr = bonds->select.bond_list[i].nbr;
-        bo = bonds->select.bond_list[i].bo_data.BO;
+        nbr = bonds->bond_list[i].nbr;
+        bo = bonds->bond_list[i].bo_data.BO;
         if ( bo >= control->bg_cut && !mark[nbr] )
             Visit_Bonds( nbr, mark, type, system, control, bonds, ignore );
     }
@@ -675,7 +675,7 @@ static void Analyze_Silica( reax_system *system, control_params *control,
         for ( newp = Start_Index( atom, new_bonds );
                 newp < End_Index( atom, new_bonds ); ++newp )
         {
-            if ( new_bonds->select.bond_list[newp].bo_data.BO >= control->bg_cut )
+            if ( new_bonds->bond_list[newp].bo_data.BO >= control->bg_cut )
             {
                 ++coord;
             }
@@ -726,40 +726,40 @@ static void Analyze_Silica( reax_system *system, control_params *control,
         {
             for ( pi = Start_Index(j, new_bonds); pi < End_Index(j, new_bonds); ++pi )
             {
-                if ( new_bonds->select.bond_list[pi].bo_data.BO >= control->bg_cut )
+                if ( new_bonds->bond_list[pi].bo_data.BO >= control->bg_cut )
                 {
-                    i = new_bonds->select.bond_list[pi].nbr;
+                    i = new_bonds->bond_list[pi].nbr;
 
                     if (system->atoms[i].type == O_ATOM || system->atoms[i].type == SI_ATOM)
                     {
                         for ( pk = Start_Index( pi, thb_intrs );
                                 pk < End_Index( pi, thb_intrs ); ++pk )
                         {
-                            k = thb_intrs->select.three_body_list[pk].thb;
-                            pk_j = thb_intrs->select.three_body_list[pk].pthb;
+                            k = thb_intrs->three_body_list[pk].thb;
+                            pk_j = thb_intrs->three_body_list[pk].pthb;
                             // get k's pointer on j's bond list
 
-                            if ( new_bonds->select.bond_list[pk_j].bo_data.BO >=
+                            if ( new_bonds->bond_list[pk_j].bo_data.BO >=
                                     control->bg_cut )   // physical j&k bond
                             {
                                 /*fprintf( fout, "%5d(%d) %5d(%d) %5d(%d)   %8.3f\n",
                                   i, system->atoms[i].type, j, system->atoms[j].type,
                                   k, system->atoms[k].type,
-                                  thb_intrs->select.three_body_list[pk].theta );*/
+                                  thb_intrs->three_body_list[pk].theta );*/
 
                                 if ( system->atoms[i].type == O_ATOM &&
                                         system->atoms[j].type == SI_ATOM &&
                                         system->atoms[k].type == O_ATOM )
                                 {
                                     O_SI_O_count++;
-                                    O_SI_O += thb_intrs->select.three_body_list[pk].theta;
+                                    O_SI_O += thb_intrs->three_body_list[pk].theta;
                                 }
                                 else if ( system->atoms[i].type == SI_ATOM &&
                                           system->atoms[j].type == O_ATOM &&
                                           system->atoms[k].type == SI_ATOM )
                                 {
                                     SI_O_SI_count++;
-                                    SI_O_SI += thb_intrs->select.three_body_list[pk].theta;
+                                    SI_O_SI += thb_intrs->three_body_list[pk].theta;
                                 }
                             }
                         }

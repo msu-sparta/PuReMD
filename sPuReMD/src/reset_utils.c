@@ -130,7 +130,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
         Set_End_Index( i, tmp, bonds );
     }
 
-    if ( control->hb_cut > 0 )
+    if ( control->hbond_cut > 0 )
     {
         for ( i = 0; i < system->N; ++i )
         {

@@ -67,16 +67,16 @@ void Bond_Energy( reax_system *system, control_params *control,
 
             for ( pj = start_i; pj < end_i; ++pj )
             {
-                if ( i < bonds->select.bond_list[pj].nbr )
+                if ( i < bonds->bond_list[pj].nbr )
                 {
                     /* set the pointers */
-                    j = bonds->select.bond_list[pj].nbr;
+                    j = bonds->bond_list[pj].nbr;
                     type_i = system->atoms[i].type;
                     type_j = system->atoms[j].type;
-                    sbp_i = &( system->reaxprm.sbp[type_i] );
-                    sbp_j = &( system->reaxprm.sbp[type_j] );
-                    twbp = &( system->reaxprm.tbp[type_i][type_j] );
-                    bo_ij = &( bonds->select.bond_list[pj].bo_data );
+                    sbp_i = &system->reaxprm.sbp[type_i];
+                    sbp_j = &system->reaxprm.sbp[type_j];
+                    twbp = &system->reaxprm.tbp[type_i][type_j];
+                    bo_ij = &bonds->bond_list[pj].bo_data;
 
                     /* calculate the constants */
                     pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
@@ -218,9 +218,9 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
             for ( pj = start_i; pj < end_i; ++pj )
             {
-                if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+                if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
                 {
-                    nbr_pj = &far_nbrs->select.far_nbr_list[pj];
+                    nbr_pj = &far_nbrs->far_nbr_list[pj];
                     j = nbr_pj->nbr;
                     r_ij = nbr_pj->d;
                     twbp = &system->reaxprm.tbp[ system->atoms[i].type ]
@@ -563,16 +563,16 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
             for ( pj = start_i; pj < end_i; ++pj )
             {
-                if ( far_nbrs->select.far_nbr_list[pj].d <= control->r_cut )
+                if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
                 {
-                    nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
+                    nbr_pj = &far_nbrs->far_nbr_list[pj];
                     j = nbr_pj->nbr;
                     type_j = system->atoms[j].type;
                     r_ij = nbr_pj->d;
                     self_coef = (i == j) ? 0.5 : 1.0;
                     tmin = MIN( type_i, type_j );
                     tmax = MAX( type_i, type_j );
-                    t = &( workspace->LR[tmin][tmax] );
+                    t = &workspace->LR[tmin][tmax];
 
                     /* Cubic Spline Interpolation */
                     r = (int)(r_ij * t->inv_dx);

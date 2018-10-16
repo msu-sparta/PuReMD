@@ -95,15 +95,15 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
         {
             for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
             {
-                if ( i < bonds->select.bond_list[pj].nbr )
+                if ( i < bonds->bond_list[pj].nbr )
                 {
-                    j = bonds->select.bond_list[pj].nbr;
+                    j = bonds->bond_list[pj].nbr;
                     type_j = system->atoms[j].type;
 
                     if ( !strncmp( system->reaxprm.sbp[type_j].name, "C", 15 ) )
                     {
-                        twbp = &( system->reaxprm.tbp[type_i][type_j]);
-                        bo_ij = &( bonds->select.bond_list[pj].bo_data );
+                        twbp = &system->reaxprm.tbp[type_i][type_j];
+                        bo_ij = &bonds->bond_list[pj].bo_data;
                         Di = workspace->Delta[i];
                         vov3 = bo_ij->BO - Di - 0.040 * POW(Di, 4.);
 
@@ -155,10 +155,10 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
 
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            j = bonds->select.bond_list[pj].nbr;
+            j = bonds->bond_list[pj].nbr;
             type_j = system->atoms[j].type;
-            bo_ij = &(bonds->select.bond_list[pj].bo_data);
-            twbp = &(system->reaxprm.tbp[ type_i ][ type_j ]);
+            bo_ij = &bonds->bond_list[pj].bo_data;
+            twbp = &system->reaxprm.tbp[ type_i ][ type_j ];
 
             sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
             sum_ovun2 += (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]) *
@@ -220,11 +220,11 @@ void LonePair_OverUnder_Coordination_Energy( reax_system *system, control_params
 
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            pbond = &(bonds->select.bond_list[pj]);
+            pbond = &bonds->bond_list[pj];
             j = pbond->nbr;
             type_j = system->atoms[j].type;
-            bo_ij = &(pbond->bo_data);
-            twbp  = &(system->reaxprm.tbp[ type_i ][ type_j ]);
+            bo_ij = &pbond->bo_data;
+            twbp = &system->reaxprm.tbp[ type_i ][ type_j ];
 
             bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s; // OvCoor - 1st
             workspace->CdDelta[j] += CEover4 * (1.0 - dfvl * workspace->dDelta_lp[j]) *

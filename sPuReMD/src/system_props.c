@@ -30,7 +30,8 @@ void Temperature_Control( control_params *control, simulation_data *data,
 {
     real tmp;
 
-    if ( control->T_mode == 1 )  // step-wise temperature control
+    /* step-wise temperature control */
+    if ( control->T_mode == 1 )
     {
         if ( (data->step - data->prev_steps) %
                 ((int)(control->T_freq / control->dt)) == 0 )
@@ -45,7 +46,8 @@ void Temperature_Control( control_params *control, simulation_data *data,
             }
         }
     }
-    else if ( control->T_mode == 2 )  // constant slope control
+    /* constant slope control */
+    else if ( control->T_mode == 2 )
     {
         tmp = control->T_rate * control->dt / control->T_freq;
 
@@ -195,15 +197,12 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 
         rvec_Scale( p, m, system->atoms[i].v );
         data->E_Kin += 0.5 * rvec_Dot( p, system->atoms[i].v );
-
-        /* fprintf(stderr,"%d, %lf, %lf, %lf %lf\n",
-           i,system->atoms[i].v[0], system->atoms[i].v[1], system->atoms[i].v[2],
-           system->reaxprm.sbp[system->atoms[i].type].mass); */
     }
 
-    data->therm.T = (2. * data->E_Kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B);
 
-    if ( FABS(data->therm.T) < ALMOST_ZERO ) /* avoid T being an absolute zero! */
+    /* avoid T being an absolute zero! */
+    if ( FABS( data->therm.T ) < ALMOST_ZERO )
     {
         data->therm.T = ALMOST_ZERO;
     }
