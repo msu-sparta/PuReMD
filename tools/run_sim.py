@@ -19,47 +19,91 @@ class TestCase():
         self.__result_file = result_file
         self.__control_regexes = { \
                 'name': lambda l, x: sub(
-                    r'(?P<key>simulation_name\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>simulation_name\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'ensemble_type': lambda l, x: sub(
-                    r'(?P<key>ensemble_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>ensemble_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'nsteps': lambda l, x: sub(
-                    r'(?P<key>nsteps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>nsteps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'dt': lambda l, x: sub(
+                    r'^(?P<key>dt\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'periodic_boundaries': lambda l, x: sub(
+                    r'^(?P<key>periodic_boundaries\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'reposition_atoms': lambda l, x: sub(
+                    r'^(?P<key>reposition_atoms\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'remove_CoM_vel': lambda l, x: sub(
+                    r'^(?P<key>remove_CoM_vel\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'reneighbor': lambda l, x: sub(
+                    r'^(?P<key>reneighbor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'update_energy_freq': lambda l, x: sub(
+                    r'^(?P<key>update_energy_freq\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'tabulate_long_range': lambda l, x: sub(
-                    r'(?P<key>tabulate_long_range\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>tabulate_long_range\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'vlist_buffer': lambda l, x: sub(
+                    r'^(?P<key>vlist_buffer\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'nbrhood_cutoff': lambda l, x: sub(
+                    r'^(?P<key>nbrhood_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'hbond_cutoff': lambda l, x: sub(
+                    r'^(?P<key>hbond_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'thb_cutoff': lambda l, x: sub(
+                    r'^(?P<key>thb_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'bond_graph_cutoff': lambda l, x: sub(
+                    r'^(?P<key>bond_graph_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'charge_method': lambda l, x: sub(
-                    r'(?P<key>charge_method\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>charge_method\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_q_net': lambda l, x: sub(
-                    r'(?P<key>cm_q_net\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_q_net\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_type': lambda l, x: sub(
-                    r'(?P<key>cm_solver_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_max_iters': lambda l, x: sub(
-                    r'(?P<key>cm_solver_max_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_max_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_restart': lambda l, x: sub(
-                    r'(?P<key>cm_solver_restart\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_restart\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_q_err': lambda l, x: sub(
-                    r'(?P<key>cm_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_domain_sparsity': lambda l, x: sub(
-                    r'(?P<key>cm_domain_sparsity\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_domain_sparsity\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_init_guess_extrap1': lambda l, x: sub(
-                    r'(?P<key>cm_init_guess_extrap1\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_init_guess_extrap1\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_init_guess_extrap2': lambda l, x: sub(
-                    r'(?P<key>cm_init_guess_extrap2\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_init_guess_extrap2\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_type': lambda l, x: sub(
-                    r'(?P<key>cm_solver_pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_droptol': lambda l, x: sub(
-                    r'(?P<key>cm_solver_pre_comp_droptol\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_pre_comp_droptol\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_refactor': lambda l, x: sub(
-                    r'(?P<key>cm_solver_pre_comp_refactor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_pre_comp_refactor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_sweeps': lambda l, x: sub(
-                    r'(?P<key>cm_solver_pre_comp_sweeps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_pre_comp_sweeps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_sai_thres': lambda l, x: sub(
-                    r'(?P<key>cm_solver_pre_comp_sai_thres\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_pre_comp_sai_thres\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_app_type': lambda l, x: sub(
-                    r'(?P<key>cm_solver_pre_app_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_pre_app_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_app_jacobi_iters': lambda l, x: sub(
-                    r'(?P<key>cm_solver_pre_app_jacobi_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>cm_solver_pre_app_jacobi_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'geo_format': lambda l, x: sub(
-                    r'(?P<key>geo_format\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'^(?P<key>geo_format\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'temp_init': lambda l, x: sub(
+                    r'^(?P<key>temp_init\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'temp_final': lambda l, x: sub(
+                    r'^(?P<key>temp_final\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                't_mass': lambda l, x: sub(
+                    r'^(?P<key>t_mass\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                't_mode': lambda l, x: sub(
+                    r'^(?P<key>t_mode\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                't_rate': lambda l, x: sub(
+                    r'^(?P<key>t_rate\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                't_freq': lambda l, x: sub(
+                    r'^(?P<key>t_freq\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'pressure': lambda l, x: sub(
+                    r'^(?P<key>pressure\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'p_mass': lambda l, x: sub(
+                    r'^(?P<key>p_mass\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'pt_mass': lambda l, x: sub(
+                    r'^(?P<key>pt_mass\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'compress': lambda l, x: sub(
+                    r'^(?P<key>compress\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'press_mode': lambda l, x: sub(
+                    r'^(?P<key>press_mode\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
         }
         self.__params['geo_format'] = geo_format
         self.__min_step = min_step
@@ -83,15 +127,17 @@ dt                      0.25                    ! time step in fs
 periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 
 reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
-restrict_bonds          0                       ! enforce the bonds given in CONECT lines of pdb file for this many steps
-tabulate_long_range     0                       ! denotes the granularity of long range tabulation, 0 means no tabulation
-energy_update_freq      1
 remove_CoM_vel          500                     ! remove the translational and rotational vel around the center of mass at every 'this many' steps
+reneighbor              1                       ! frequency to recompute Verlet lists
+restrict_bonds          0                       ! enforce the bonds given in CONECT lines of pdb file for this many steps
+energy_update_freq      1
+tabulate_long_range     0                       ! denotes the granularity of long range tabulation, 0 means no tabulation
 
-nbrhood_cutoff          5.0                     ! near neighbors cutoff for bond calculations (Angstroms)
-bond_graph_cutoff       0.3                     ! bond strength cutoff for bond graphs (Angstroms)
+vlist_buffer            0.0                     ! skim distance on top of non-bonded interaction cutoff (Angstroms)
+nbrhood_cutoff          5.0                     ! cutoff distance for bond interaction (Angstroms)
+hbond_cutoff            7.5                     ! cutoff distance for hydrogen bond interactions (Angstroms)
 thb_cutoff              0.001                   ! cutoff value for three body interactions (Angstroms)
-hbond_cutoff            7.50                    ! cutoff distance for hydrogen bond interactions (Angstroms)
+bond_graph_cutoff       0.3                     ! bond strength cutoff for bond graphs (Angstroms)
 
 charge_method         		  0             ! charge method: 0 = QEq, 1 = EEM, 2 = ACKS2
 cm_q_net              		  0.0           ! net system charge
@@ -143,7 +189,7 @@ freq_diffusion_coef     1                       ! calculate diffusion coefficien
 restrict_type           2                       ! -1: all types of atoms, 0 and up: only this type of atoms
 
 restart_format          1                       ! 0: restarts in ASCII  1: restarts in binary
-restart_freq            0                       ! 0: do not output any restart files. >0: output a restart file at every 'this many' steps
+restart_freq            0                       ! 0: do not output any restart files. >0: output a restart file at every 'this many' steps\
 """
 
         # substitute key-value pairs in the text of the control file
@@ -207,10 +253,8 @@ restart_freq            0                       ! 0: do not output any restart f
             if proc_handle.returncode < 0:
                 print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
 
-            print('stdout:')
-            print(stdout)
-            print('stderr:')
-            print(stderr)
+            print('stdout:\n{0}'.format(stdout), end='')
+            print('stderr:\n{0}'.format(stderr), end='')
 
             if path.exists(temp_file):
                 remove(temp_file)
@@ -315,8 +359,8 @@ restart_freq            0                       ! 0: do not output any restart f
     def _build_slurm_script(self, binary, param_values):
         from os import path
 
-        # back up two directory levels
-        base_dir = path.dirname(path.dirname(path.dirname(binary)))
+        # remove executable and back up two directory levels
+        base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
 
         job_script = """\
 #!/bin/bash -login
@@ -346,8 +390,8 @@ python3 {0}/tools/run_sim.py run_md \\
     def _build_pbs_script(self, binary, param_values):
         from os import path
 
-        # back up two directory levels
-        base_dir = path.dirname(path.dirname(path.dirname(binary)))
+        # remove executable and back up two directory levels
+        base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
 
         job_script = """\
 #!/bin/bash -login
@@ -390,12 +434,10 @@ python3 {0}/tools/run_sim.py run_md \\
 
             if proc_handle.returncode < 0:
                 print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
-                print('stdout:')
-                print(stdout)
-                print('stderr:')
-                print(stderr)
+                print('stdout:\n{0}'.format(stdout), end='')
+                print('stderr:\n{0}'.format(stderr), end='')
             else:
-                print(stdout)
+                print(stdout, end='')
 
 
 if __name__ == '__main__':
@@ -404,12 +446,13 @@ if __name__ == '__main__':
     from sys import exit
 
     def setup_parser():
-        DATA = [ \
+        DATA_SETS = [ \
                 'bilayer_56800', 'bilayer_340800', \
                 'dna_19733', \
                 'petn_48256', \
                 'silica_6000', 'silica_72000', 'silica_300000', \
                 'water_6540', 'water_78480', 'water_327000', \
+                'zno_6912', \
                 ]
         JOB_TYPES = ['pbs', 'slurm']
 
@@ -424,7 +467,7 @@ if __name__ == '__main__':
         run_md_parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
                 help='Paramater name and value pairs for the simulation, with multiple values comma delimited.')
         run_md_parser.add_argument('data_sets', nargs='+',
-                choices=DATA, help='Data sets for which to run simulations.')
+                choices=DATA_SETS, help='Data sets for which to run simulations.')
         run_md_parser.set_defaults(func=run_md)
 
         parse_results_parser.add_argument('-f', '--out_file', metavar='out_file', default=None, nargs=1,
@@ -436,7 +479,7 @@ if __name__ == '__main__':
         parse_results_parser.add_argument('-x', '--max_step', metavar='max_step', default=None, nargs=1,
                 help='Maxiumum simulation step for aggregating results.')
         parse_results_parser.add_argument('data_sets', nargs='+',
-                choices=DATA, help='Data sets for which to parse results.')
+                choices=DATA_SETS, help='Data sets for which to parse results.')
         parse_results_parser.set_defaults(func=parse_results)
 
         submit_jobs_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
@@ -446,7 +489,7 @@ if __name__ == '__main__':
         submit_jobs_parser.add_argument('job_script_type', nargs=1,
                 choices=JOB_TYPES, help='Type of job script.')
         submit_jobs_parser.add_argument('data_sets', nargs='+',
-                choices=DATA, help='Data sets for which to run simulations.')
+                choices=DATA_SETS, help='Data sets for which to run simulations.')
         submit_jobs_parser.set_defaults(func=submit_jobs)
 
         return parser
@@ -457,7 +500,18 @@ if __name__ == '__main__':
         control_params_dict = {
                 'ensemble_type': ['0'],
                 'nsteps': ['20'],
+                'dt': ['0.25'],
+                'periodic_boundaries': ['1'],
+                'reposition_atoms': ['0'],
+                'remove_CoM_vel': ['500'],
+                'reneighbor': ['1'],
+                'update_energy_freq': ['1'],
                 'tabulate_long_range': ['0'],
+                'vlist_buffer': ['0.0'],
+                'nbrhood_cutoff': ['5.0'],
+                'hbond_cutoff': ['0.0'],
+                'thb_cutoff': ['0.001'],
+                'bond_graph_cutoff': ['0.3'],
                 'charge_method': ['0'],
                 'cm_q_net': ['0.0'],
                 'cm_solver_type': ['0'],
@@ -476,6 +530,17 @@ if __name__ == '__main__':
                 'cm_solver_pre_app_jacobi_iters': ['30'],
                 'threads': ['1'],
                 'geo_format': [],
+                'temp_init': ['0.0'],
+                'temp_final': ['300.0'],
+                't_mass': ['0.166666'],
+                't_mode': ['0'],
+                't_rate': ['-100.0'],
+                't_freq': ['4.0'],
+                'pressure': ['0.000101325'],
+                'p_mass': ['5000.0'],
+                'pt_mass': ['5000.0'],
+                'compress': ['0.008134'],
+                'press_mode': ['0'],
         }
         return control_dir, data_dir, control_params_dict
 
@@ -582,16 +647,27 @@ if __name__ == '__main__':
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['1'], result_file=result_file,
                     min_step=min_step, max_step=max_step))
+        if 'zno_6912' in data_sets:
+            test_cases.append(
+                TestCase('zno_6912',
+                    path.join(data_dir, 'metal/zno_6912.pdb'),
+                    path.join(data_dir, 'metal/ffield.zno'),
+                    path.join(control_dir, 'param.gpu.water'),
+                    params=control_params, result_header_fmt=header_fmt_str,
+                    result_header = header_str, result_body_fmt=body_fmt_str,
+                    geo_format=['1'], result_file=result_file,
+                    min_step=min_step, max_step=max_step))
 
         return test_cases
 
     def run_md(args):
-        base_dir = getcwd()
-        control_dir, data_dir, control_params_dict = setup_defaults(base_dir)
-
         if args.binary:
             binary = args.binary[0]
+            # remove executable and back up two directory levels
+            base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
+            control_dir, data_dir, control_params_dict = setup_defaults(base_dir)
         else:
+            base_dir = getcwd()
             binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
 
         # overwrite default control file parameter values if supplied via command line args
@@ -640,12 +716,13 @@ if __name__ == '__main__':
             test.parse_results()
 
     def submit_jobs(args):
-        base_dir = getcwd()
-        control_dir, data_dir, control_params_dict = setup_defaults(base_dir)
-
         if args.binary:
             binary = args.binary[0]
+            # remove executable and back up two directory levels
+            base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
+            control_dir, data_dir, control_params_dict = setup_defaults(base_dir)
         else:
+            base_dir = getcwd()
             binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
 
         # overwrite default control file parameter values if supplied via command line args
