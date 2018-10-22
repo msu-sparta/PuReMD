@@ -134,11 +134,11 @@ class TestCase():
 
             if proc_handle.returncode < 0:
                 print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
-            else:
-                print('stdout:')
-                print(stdout)
-                print('stderr:')
-                print(stderr)
+
+            print('stdout:')
+            print(stdout)
+            print('stderr:')
+            print(stderr)
 
             if path.exists(temp_file):
                 remove(temp_file)
@@ -154,6 +154,7 @@ class TestCase():
         pre_app = 0.
         spmv = 0.
         cnt = 0
+        cnt_valid = 0
         line_cnt = 0
         log_file = param['name'] + '.log'
 
@@ -165,15 +166,16 @@ class TestCase():
                 line = line.split()
                 try:
                     if (not min_step and not max_step) or \
-                    (min_step and not max_step and cnt >= min_step) or \
-                    (not min_step and max_step and cnt <= max_step) or \
-                    (cnt >= min_step and cnt <= max_step):
+                    (min_step and not max_step and cnt_valid >= min_step) or \
+                    (not min_step and max_step and cnt_valid <= max_step) or \
+                    (cnt_valid >= min_step and cnt_valid <= max_step):
                         cm = cm + float(line[6])
                         iters = iters + float(line[8])
                         pre_comp = pre_comp + float(line[9])
                         pre_app = pre_app + float(line[10])
                         spmv = spmv + float(line[11])
                         cnt = cnt + 1
+                    cnt_valid = cnt_valid + 1
                 except Exception:
                     pass
                 if line[0] == 'total:':
@@ -308,11 +310,11 @@ python3 tools/run_sim.py \\\
 
             if proc_handle.returncode < 0:
                 print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
-            else:
-                print('stdout:')
-                print(stdout)
-                print('stderr:')
-                print(stderr)
+
+            print('stdout:')
+            print(stdout)
+            print('stderr:')
+            print(stderr)
 
 
 if __name__ == '__main__':
