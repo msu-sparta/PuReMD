@@ -71,7 +71,7 @@ static void Allocate_Space_for_Grid( reax_system *system )
     int i, j, k, l;
     grid *g;
 
-    g = &(system->g);
+    g = &system->g;
     g->max_nbrs = (2 * g->spread[0] + 1)
         * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
 
@@ -491,9 +491,12 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
 {
     int i, j, k, l;
     int max_atoms;
-    grid *g = &( system->g );
+    grid *g;
+
+    g = &system->g;
 
     Reset_Grid( g );
+
     for ( l = 0; l < system->N; l++ )
     {
         i = (int)(system->atoms[l].x[0] * g->inv_len[0]);
