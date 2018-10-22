@@ -67,12 +67,84 @@ class TestCase():
 
     def _create_control_file(self, param, new_control_file):
         # read in template control file
-        try:
-            with open(self.__control_file, 'r') as fp:
-                lines = fp.read()
-        except Exception as e:
-            print("ERROR: Coult not read template control file!")
-            raise e
+#        try:
+#            with open(self.__control_file, 'r') as fp:
+#                lines = fp.read()
+#        except Exception as e:
+#            print("ERROR: Coult not read template control file!")
+#            raise e
+
+        # inline template control file
+        lines = """\
+simulation_name         water_6540_notab_qeq           ! output files will carry this name + their specific extension
+ensemble_type           0                       ! 0: NVE, 1: Berendsen NVT, 2: nose-Hoover NVT, 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT
+nsteps                  100                     ! number of simulation steps
+dt                      0.25                    ! time step in fs
+periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
+
+reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
+restrict_bonds          0                       ! enforce the bonds given in CONECT lines of pdb file for this many steps
+tabulate_long_range     0                       ! denotes the granularity of long range tabulation, 0 means no tabulation
+energy_update_freq      1
+remove_CoM_vel          500                     ! remove the translational and rotational vel around the center of mass at every 'this many' steps
+
+nbrhood_cutoff          5.0                     ! near neighbors cutoff for bond calculations (Angstroms)
+bond_graph_cutoff       0.3                     ! bond strength cutoff for bond graphs (Angstroms)
+thb_cutoff              0.001                   ! cutoff value for three body interactions (Angstroms)
+hbond_cutoff            7.50                    ! cutoff distance for hydrogen bond interactions (Angstroms)
+
+charge_method         		  0             ! charge method: 0 = QEq, 1 = EEM, 2 = ACKS2
+cm_q_net              		  0.0           ! net system charge
+cm_solver_type        		  0             ! iterative linear solver for charge method: 0 = GMRES(k), 1 = GMRES_H(k), 2 = CG, 3 = SDM
+cm_solver_max_iters   		  20            ! max solver iterations
+cm_solver_restart     		  100           ! inner iterations of before restarting (GMRES(k)/GMRES_H(k))
+cm_solver_q_err       		  1e-6          ! relative residual norm threshold used in solver
+cm_domain_sparsity     		  1.0           ! scalar for scaling cut-off distance, used to sparsify charge matrix (between 0.0 and 1.0)
+cm_init_guess_extrap1		  3             ! order of spline extrapolation for initial guess (s)
+cm_init_guess_extrap2		  2             ! order of spline extrapolation for initial guess (t)
+cm_solver_pre_comp_type           1             ! method used to compute preconditioner, if applicable
+cm_solver_pre_comp_refactor       1000          ! number of steps before recomputing preconditioner
+cm_solver_pre_comp_droptol        0.0           ! threshold tolerance for dropping values in preconditioner computation (ICHOLT/ILUT/FG-ILUT)
+cm_solver_pre_comp_sweeps         3             ! number of sweeps used to compute preconditioner (FG-ILUT)
+cm_solver_pre_comp_sai_thres      0.1           ! ratio of charge matrix NNZ's used to compute preconditioner (SAI)
+cm_solver_pre_app_type            1             ! method used to apply preconditioner (ICHOLT/ILUT/FG-ILUT)
+cm_solver_pre_app_jacobi_iters    50            ! num. Jacobi iterations used for applying precondition (ICHOLT/ILUT/FG-ILUT)
+
+temp_init               0.0                     ! desired initial temperature of the simulated system
+temp_final              300.0                   ! desired final temperature of the simulated system
+t_mass                  0.16666                 ! 0.16666 for Nose-Hoover nvt ! 100.0 for npt! in fs, thermal inertia parameter
+t_mode                  0                       ! 0: T-coupling only, 1: step-wise, 2: constant slope
+t_rate                  -100.0                  ! in K
+t_freq                  4.0                     ! in ps
+
+pressure                0.000101325             ! desired pressure of the simulated system in GPa, 1atm = 0.000101325 GPa
+p_mass                  5000.00                 ! in fs, pressure inertia parameter
+compress                0.008134                ! in ps^2 * A / amu ( 4.5X10^(-5) bar^(-1) )
+press_mode              0                       ! 0: internal + external pressure, 1: ext only, 2: int only
+
+geo_format              1                       ! 0: custom, 1: pdb, 2: bgf
+write_freq              0                       ! write trajectory after so many steps
+traj_compress           0                       ! 0: no compression  1: uses zlib to compress trajectory output
+traj_format             0                       ! 0: our own format (below options apply to this only), 1: xyz, 2: bgf, 3: pdb
+traj_title              WATER_NVE               ! (no white spaces)
+atom_info               1                       ! 0: no atom info, 1: print basic atom info in the trajectory file
+atom_forces             0                       ! 0: basic atom format, 1: print force on each atom in the trajectory file
+atom_velocities         0                       ! 0: basic atom format, 1: print the velocity of each atom in the trajectory file
+bond_info               1                       ! 0: do not print bonds, 1: print bonds in the trajectory file
+angle_info              1                       ! 0: do not print angles, 1: print angles in the trajectory file
+test_forces             0                       ! 0: normal run, 1: at every timestep print each force type into a different file
+
+molec_anal              0                       ! 1: outputs newly formed molecules as the simulation progresses
+freq_molec_anal         0                       ! perform molecular analysis at every 'this many' timesteps
+dipole_anal             0                       ! 1: calculate a electric dipole moment of the system
+freq_dipole_anal        1                       ! calculate electric dipole moment at every 'this many' steps
+diffusion_coef          0                       ! 1: calculate diffusion coefficient of the system
+freq_diffusion_coef     1                       ! calculate diffusion coefficient at every 'this many' steps
+restrict_type           2                       ! -1: all types of atoms, 0 and up: only this type of atoms
+
+restart_format          1                       ! 0: restarts in ASCII  1: restarts in binary
+restart_freq            0                       ! 0: do not output any restart files. >0: output a restart file at every 'this many' steps
+"""
 
         # substitute key-value pairs in the text of the control file
         # using a dict of regexes (used to match and substitute
@@ -241,7 +313,12 @@ class TestCase():
                 self._process_result(fout, param_dict, self.__min_step, self.__max_step)
 
     def _build_slurm_script(self, binary, param_values):
-            job_script = """\
+        from os import path
+
+        # back up two directory levels
+        base_dir = path.dirname(path.dirname(path.dirname(binary)))
+
+        job_script = """\
 #!/bin/bash -login
 
 #SBATCH --time=03:59:00
@@ -253,22 +330,26 @@ class TestCase():
 module purge
 module load GCC/7.3.0-2.30
 
-cd \${SLURM_SUBMIT_DIR}
+cd ${{SLURM_SUBMIT_DIR}}
 
-python3 tools/run_sim.py \\\
-"""
+python3 {0}/tools/run_sim.py run_md \\
+    -b {1} \\\
+""".format(base_dir, binary)
 
-            job_script += "\n -b " + binary + " \\"
+        for (k, v) in zip(self.__param_names, param_values):
+            job_script += "\n    -p {0} {1} \\".format(k, v)
 
-            for (k, v) in zip(self.__param_names, param_values):
-                job_script += "\n -p " + k + " " + v + " \\"
+        job_script += "\n    {0}".format(self.__data_set)
 
-            job_script += "\n " + self.__data_set
-
-            return job_script
+        return job_script
 
     def _build_pbs_script(self, binary, param_values):
-            job_script = """\
+        from os import path
+
+        # back up two directory levels
+        base_dir = path.dirname(path.dirname(path.dirname(binary)))
+
+        job_script = """\
 #!/bin/bash -login
 
 #PBS -l walltime=03:59:00,nodes=1:ppn=28,mem=120gb,feature=lac
@@ -276,19 +357,18 @@ python3 tools/run_sim.py \\\
 module purge
 module load GCC/7.3.0-2.30
 
-cd \${PBS_O_WORKDIR}
+cd ${{PBS_O_WORKDIR}}
 
-python3 tools/run_sim.py \\\
-"""
+python3 {0}/tools/run_sim.py run_md \\
+    -b {1} \\\
+""".format(base_dir, binary)
 
-            job_script += "\n -b " + binary + " \\"
+        for (k, v) in zip(self.__param_names, param_values):
+            job_script += "\n    -p {0} {1} \\".format(k, v)
 
-            for (k, v) in zip(self.__param_names, param_values):
-                job_script += "\n -p " + k + " " + v + " \\"
+        job_script += "\n    {0}".format(self.__data_set)
 
-            job_script += "\n " + self.__data_set
-
-            return job_script
+        return job_script
 
     def submit_jobs(self, binary, job_script_type):
         from itertools import product
@@ -310,11 +390,12 @@ python3 tools/run_sim.py \\\
 
             if proc_handle.returncode < 0:
                 print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
-
-            print('stdout:')
-            print(stdout)
-            print('stderr:')
-            print(stderr)
+                print('stdout:')
+                print(stdout)
+                print('stderr:')
+                print(stderr)
+            else:
+                print(stdout)
 
 
 if __name__ == '__main__':
