@@ -94,6 +94,7 @@
 
 #define MASTER_NODE 0
 #define MAX_NBRS 6 //27
+#define MAX_NT_NBRS 6
 #define MYSELF   13  // encoding of relative coordinate (0,0,0)
 
 #define MAX_ITR 10

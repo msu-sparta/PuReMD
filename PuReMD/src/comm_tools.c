@@ -26,6 +26,143 @@
 #include "vector.h"
 
 
+void Setup_NT_Comm( reax_system* system, control_params* control,
+                 mpi_datatypes *mpi_data )
+{
+    int i, d;
+    real bndry_cut;
+    neighbor_proc *nbr_pr;
+    simulation_box *my_box;
+    ivec nbr_coords;
+    ivec r[12] = {
+        {0, 0, -1}, // -z
+        {0, 0, +1}, // +z
+        {0, -1, 0}, // -y
+        {-1, -1, 0}, // -x-y
+        {-1, 0, 0}, // -x
+        {-1, +1, 0},  // -x+y
+
+        {0, 0, +1}, // +z
+        {0, 0, -1}, // -z
+        {0, +1, 0}, // +y
+        {+1, +1, 0}, // +x+y
+        {+1, 0, 0}, // -x
+        {+1, -1, 0}  // -x+y
+    };
+    my_box = &(system->my_box);
+    bndry_cut = system->bndry_cuts.ghost_cutoff;
+
+    /* identify my neighbors */
+    system->num_nt_nbrs = MAX_NT_NBRS;
+    for ( i = 0; i < system->num_nt_nbrs; ++i )
+    {
+        ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */
+        nbr_pr = &(system->my_nt_nbrs[i]);
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &(nbr_pr->rank) );
+        
+        /* set the rank of the neighbor processor in the receiving direction */
+        ivec_Sum( nbr_coords, system->my_coords, r[i + 6] ); /* actual nbr coords */
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &(nbr_pr->receive_rank) );
+
+        for ( d = 0; d < 3; ++d )
+        {
+            /* determine the boundary area with this nbr */
+            if ( r[i][d] < 0 )
+            {
+                nbr_pr->bndry_min[d] = my_box->min[d];
+                nbr_pr->bndry_max[d] = my_box->min[d] + bndry_cut;
+            }
+            else if ( r[i][d] > 0 )
+            {
+                nbr_pr->bndry_min[d] = my_box->max[d] - bndry_cut;
+                nbr_pr->bndry_max[d] = my_box->max[d];
+            }
+            else
+            {
+                nbr_pr->bndry_min[d] = my_box->min[d];
+                nbr_pr->bndry_max[d] = my_box->max[d];
+            }
+
+            /* determine if it is a periodic neighbor */
+            if ( nbr_coords[d] < 0 )
+                nbr_pr->prdc[d] = -1;
+            else if ( nbr_coords[d] >= control->procs_by_dim[d] )
+                nbr_pr->prdc[d] = +1;
+            else
+                nbr_pr->prdc[d] = 0;
+        }
+
+    }
+}
+
+
+void Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_bufs )
+{
+    int i, d, p, out_cnt;
+    reax_atom *atoms;
+    simulation_box *my_box;
+    boundary_atom *out_buf;
+    neighbor_proc *nbr_pr;
+
+    atoms = system->my_atoms;
+    my_box = &( system->my_box );
+
+    /* place each atom into the appropriate outgoing list */
+    nbr_pr = &( system->my_nt_nbrs[dir] );
+    for ( i = 0; i < system->n; ++i )
+    {
+        if ( nbr_pr->bndry_min[0] <= atoms[i].x[0] &&
+            atoms[i].x[0] < nbr_pr->bndry_max[0] &&
+            nbr_pr->bndry_min[1] <= atoms[i].x[1] &&
+            atoms[i].x[1] < nbr_pr->bndry_max[1] &&
+            nbr_pr->bndry_min[2] <= atoms[i].x[2] &&
+            atoms[i].x[2] < nbr_pr->bndry_max[2] )
+        {
+            out_bufs[dir].index[out_cnt] = i;
+            out_bufs[dir].cnt++;
+        }
+    }
+}
+
+
+void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
+{
+    int d, start, end, cnt;
+    mpi_out_data *out_bufs;
+    void *in;
+    MPI_Comm comm;
+    MPI_Request req;
+    MPI_Status stat;
+    neighbor_proc *nbr;
+
+    Reset_Out_Buffers( mpi_data->out_nt_buffers, system->num_nt_nbrs );
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_nt_buffers;
+    cnt = 0;
+    end = system->n;
+
+    for ( d = 0; d < 6; ++d )
+    {
+        Sort_Neutral_Territory( system, d, out_bufs );
+        start = end;
+        
+        MPI_Irecv( &cnt, 1, MPI_INT, nbr->receive_rank, d, comm, &req );
+        MPI_Send( &(out_bufs[d].cnt), 1, MPI_INT, nbr->rank, d, comm );
+        MPI_Wait( &req, &stat );
+        
+        if( mpi_data->in_nt_buffer[d] == NULL )
+        {
+            mpi_data->in_nt_buffer[d] = (void *) smalloc( SAFER_ZONE * out_bufs[d].cnt * sizeof(real), "in", comm );
+        }
+
+        nbr = &(system->my_nt_nbrs[d]);
+        nbr->atoms_str = end;
+        nbr->atoms_cnt = cnt;
+        end += cnt;
+    }
+}
+
+
 void Setup_Comm( reax_system* system, control_params* control,
                  mpi_datatypes *mpi_data )
 {
@@ -653,6 +790,10 @@ void Comm_Atoms( reax_system *system, control_params *control,
 #endif
 
         Bin_Boundary_Atoms( system );
+
+#if defined(NEUTRAL_TERRITORY)
+        Init_Neutral_Territory( system, mpi_data );
+#endif
     }
     else
     {

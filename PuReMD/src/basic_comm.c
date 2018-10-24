@@ -129,6 +129,60 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data,
 }
 
 
+void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
+        void *buf, MPI_Datatype type, int scale, dist_packer pack )
+{
+    int d;
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req[6];
+    MPI_Status stat[6];
+    neighbor_proc *nbr;
+
+#if defined(DEBUG)
+    fprintf( stderr, "p%d dist: entered\n", system->my_rank );
+#endif
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_nt_buffers;
+
+    /* initiate recvs */
+    for( d = 0; d < 6; ++d )
+    {
+        nbr = &(system->my_nt_nbrs[d]);
+        if ( nbr->atoms_cnt )
+        {
+            MPI_Irecv( buf + nbr->atoms_str * scale, nbr->atoms_cnt, type,
+                    nbr->receive_rank, d, comm, &(req[d]) );
+        }
+    }
+
+    for( d = 0; d < 6; ++d)
+    {
+        /* send both messages in dimension d */
+        if ( out_bufs[d].cnt )
+        {
+            pack( buf, out_bufs + d );
+            MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
+                    nbr->rank, d, comm );
+        }
+    }
+
+    for( d = 0; d < 6; ++d )
+    {
+        nbr = &(system->my_nbrs[d]);
+        if ( nbr->atoms_cnt )
+        {
+            // TODO: Wait(MPI_WAITANY)
+            MPI_Wait( &(req[d]), &(stat[d]) );
+        }
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "p%d dist: done\n", system->my_rank );
+#endif
+}
+
+
 void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
 {
     int i;
@@ -236,6 +290,63 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data,
     fprintf( stderr, "p%d coll: done\n", system->my_rank );
 #endif
 }
+
+
+void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
+        void *buf, MPI_Datatype type, int scale, coll_unpacker unpack )
+{
+    int d;
+    void *in[6];
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req[6];
+    MPI_Status stat[6];
+    neighbor_proc *nbr;
+
+#if defined(DEBUG)
+    fprintf( stderr, "p%d coll: entered\n", system->my_rank );
+#endif
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_buffers;
+
+    for ( d = 0; d < 6; ++d )
+    {
+        /* initiate recvs */
+        nbr = &(system->my_nbrs[d]);
+        in[d] = mpi_data->in_nt_buffer[d];
+        if ( out_bufs[d].cnt )
+        {
+            MPI_Irecv(in[d], out_bufs[d].cnt, type, nbr->receive_rank, d, comm, &(req[d]));
+        }
+    }
+
+    for( d = 0; d < 6; ++d )
+    {
+        /* send both messages in direction d */
+        nbr = &(system->my_nbrs[d]);
+        if ( nbr->atoms_cnt )
+        {
+            MPI_Send( buf + nbr->atoms_str * scale, nbr->atoms_cnt, type,
+                    nbr->rank, d, comm );
+        }
+    }
+
+    for( d = 0; d < 6; ++d )
+    {
+        if ( out_bufs[d].cnt )
+        {
+            //TODO: WAITANY
+            MPI_Wait( &(req[d]), &(stat[d]));
+            unpack( in[d], buf, out_bufs + d );
+        }
+    }
+
+#if defined(DEBUG)
+    fprintf( stderr, "p%d coll: done\n", system->my_rank );
+#endif
+}
+
+
 #endif /*PURE_REAX*/
 
 /*****************************************************************************/

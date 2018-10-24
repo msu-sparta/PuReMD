@@ -1266,7 +1266,6 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
         t_start = Get_Time( );
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);
-        //TODO: all_Reduce time
         t_allreduce += Get_Timing_Info ( t_start );
 
         t_start = Get_Time( );
@@ -1300,7 +1299,6 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         t_start = Get_Time( );
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
-        //TODO all_reduce time
         t_allreduce += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
