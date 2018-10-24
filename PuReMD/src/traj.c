@@ -527,7 +527,7 @@ int Init_Traj( reax_system *system, control_params *control,
     else if ( out_control->traj_method == REG_TRAJ)
     {
         if ( system->my_rank == MASTER_NODE )
-            out_control->strj = fopen( fname, "w" );
+            out_control->strj = sfopen( fname, "w", "Init_Traj" );
     }
     else
     {
@@ -538,7 +538,7 @@ int Init_Traj( reax_system *system, control_params *control,
     if ( out_control->traj_method == REG_TRAJ)
     {
         if ( system->my_rank == MASTER_NODE )
-            out_control->strj = fopen( fname, "w" );
+            out_control->strj = sfopen( fname, "w", "Init_Traj" );
     }
     else
     {
@@ -1116,10 +1116,10 @@ int End_Traj( int my_rank, output_controls *out_control )
     if ( out_control->traj_method == MPI_TRAJ )
         MPI_File_close( &(out_control->trj) );
     else if ( my_rank == MASTER_NODE )
-        fclose( out_control->strj );
+        sfclose( out_control->strj, "End_Traj" );
 #elif defined(LAMMPS_REAX)
     if ( my_rank == MASTER_NODE )
-        fclose( out_control->strj );
+        sfclose( out_control->strj, "End_Traj" );
 #endif
 
     sfree( out_control->buffer, "out_control->buffer" );

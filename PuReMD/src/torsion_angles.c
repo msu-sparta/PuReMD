@@ -197,7 +197,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
     // FILE *ftor;
 
     // sprintf( fname, "tor%d.out", system->my_rank );
-    // ftor = fopen( fname, "w" );
+    // ftor = sfopen( fname, "w", "Torsion_Angles" );
 
     natoms = system->n;
 
