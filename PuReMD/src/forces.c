@@ -378,6 +378,7 @@ void Init_Forces( reax_system *system, control_params *control,
 #endif
         sbp_i = &(system->reax_param.sbp[type_i]);
 
+        //TODO: edit this part to include NT atoms
         if ( i < system->n )
         {
             local = 1;
