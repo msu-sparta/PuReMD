@@ -110,23 +110,18 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                     itr = 0;
                     while ( (gcj = gci->nbrs[itr]) != NULL )
                     {
-                        if ( 
-#if defined(HALF_LIST)
-                                gci->str <= gcj->str &&
-#endif
-                                (DistSqr_to_Special_Point(gci->nbrs_cp[itr], atom1->x) <= cutoff) )
+                        if ( ((far_nbrs->format == HALF_LIST && gci->str <= gcj->str)
+                                    || far_nbrs->format == FULL_LIST)
+                            && (DistSqr_to_Special_Point(gci->nbrs_cp[itr], atom1->x) <= cutoff) )
                         {
                             /* pick up another atom from the neighbor cell */
                             for ( m = gcj->str; m < gcj->end; ++m )
                             {
-#if defined(HALF_LIST)      
-                                /* prevent recounting same pairs within a gcell and
-                                 * make half-list */
-                                if ( l < m )
-#else                           
-                                /* prevent recounting same pairs within a gcell */
-                                if ( l != m )
-#endif      
+                                /* HALF_LIST: prevent recounting same pairs within a gcell and
+                                 *  make half-list
+                                 * FULL_LIST: prevent recounting same pairs within a gcell */
+                                if ( (far_nbrs->format == HALF_LIST && l < m)
+                                  || (far_nbrs->format == FULL_LIST && l != m) )
                                 {
                                     atom2 = &(system->my_atoms[m]);
                                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -181,7 +176,8 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 }
 
 
-int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
+int Estimate_NumNeighbors( reax_system *system, reax_list **lists,
+       int far_nbr_list_format )
 {
     int  i, j, k, l, m, itr, num_far; //, tmp, tested;
     real d, cutoff;
@@ -214,23 +210,18 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists )
                     itr = 0;
                     while ( (gcj = gci->nbrs[itr]) != NULL )
                     {
-                        if (
-#if defined(HALF_LIST)
-                                gci->str <= gcj->str &&
-#endif
-                                (DistSqr_to_Special_Point(gci->nbrs_cp[itr], atom1->x) <= cutoff))
+                        if ( ((far_nbr_list_format == HALF_LIST && gci->str <= gcj->str)
+                                    || far_nbr_list_format == FULL_LIST)
+                                && (DistSqr_to_Special_Point(gci->nbrs_cp[itr], atom1->x) <= cutoff))
                         {
                             /* pick up another atom from the neighbor cell */
                             for ( m = gcj->str; m < gcj->end; ++m )
                             {
-#if defined(HALF_LIST)
-                                /* prevent recounting same pairs within a gcell and
-                                 * make half-list */
-                                if ( l < m )
-#else
-                                /* prevent recounting same pairs within a gcell */
-                                if ( l != m )
-#endif
+                                /* HALF_LIST: prevent recounting same pairs within a gcell and
+                                 *  make half-list
+                                 * FULL_LIST: prevent recounting same pairs within a gcell */
+                                if ( (far_nbr_list_format == HALF_LIST && l < m)
+                                  || (far_nbr_list_format == FULL_LIST && l != m) )
                                 {
                                     //fprintf( stderr, "\t\t\tatom2=%d\n", m );
                                     atom2 = &(system->my_atoms[m]);

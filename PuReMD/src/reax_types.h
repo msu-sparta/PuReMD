@@ -41,7 +41,6 @@
 
 #define PURE_REAX
 //#define LAMMPS_REAX
-//#define HALF_LIST
 //#define DEBUG
 //#define DEBUG_FOCUS
 //#define TEST_ENERGY
@@ -108,6 +107,26 @@ enum pre_app
     TRI_SOLVE_LEVEL_SCHED_PA = 1,
     TRI_SOLVE_GC_PA = 2,
     JACOBI_ITER_PA = 3,
+};
+
+/* interaction list (reax_list) storage format */
+enum reax_list_format
+{
+    /* store half of interactions, when i < j (atoms i and j) */
+    HALF_LIST = 0,
+    /* store all interactions */
+    FULL_LIST = 1,
+};
+
+/* sparse matrix (sparse_matrix) storage format */
+enum sparse_matrix_format
+{
+    /* store upper half of nonzeros in a symmetric matrix (a_{ij}, i >= j) */
+    SYM_HALF_MATRIX = 0,
+    /* store all nonzeros in a symmetric matrix */
+    SYM_FULL_MATRIX = 1,
+    /* store all nonzeros in a matrix */
+    FULL_MATRIX = 2,
 };
 
 
@@ -935,6 +954,8 @@ typedef struct
 
 typedef struct
 {
+    /* matrix storage format */
+    int format;
     int cap, n, m;
     int *start, *end;
     sparse_matrix_entry *entries;
@@ -1065,6 +1086,9 @@ typedef struct
 
     int type;
 //    list_type select;
+
+    /* list storage format (half or full) */
+    int format;
 
     void *v;
     three_body_interaction_data *three_body_list;

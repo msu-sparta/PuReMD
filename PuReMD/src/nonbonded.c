@@ -71,11 +71,9 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
             j = nbr_pj->nbr;
             orig_j  = system->my_atoms[j].orig_id;
 
-#if defined(HALF_LIST)
-            if ( nbr_pj->d <= control->nonb_cut && (j < natoms || orig_i < orig_j) )
-#else
-            if ( nbr_pj->d <= control->nonb_cut && orig_i < orig_j )
-#endif
+            if ( nbr_pj->d <= control->nonb_cut
+                    && ((far_nbrs->format == HALF_LIST && (j < natoms || orig_i < orig_j))
+                        || (far_nbrs->format == FULL_LIST && orig_i < orig_j)) )
             {
                 r_ij = nbr_pj->d;
                 twbp = &(system->reax_param.tbp[ system->my_atoms[i].type ]
@@ -253,11 +251,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
             j = nbr_pj->nbr;
             orig_j  = system->my_atoms[j].orig_id;
 
-#if defined(HALF_LIST)
-            if ( nbr_pj->d <= control->nonb_cut && (j < natoms || orig_i < orig_j) )
-#else
-            if ( nbr_pj->d <= control->nonb_cut && orig_i < orig_j )
-#endif
+            if ( nbr_pj->d <= control->nonb_cut
+                    && ((far_nbrs->format == HALF_LIST && (j < natoms || orig_i < orig_j))
+                        || (far_nbrs->format == FULL_LIST && orig_i < orig_j)) )
             {
                 j = nbr_pj->nbr;
                 type_j = system->my_atoms[j].type;

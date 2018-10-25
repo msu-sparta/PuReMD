@@ -394,8 +394,12 @@ int Allocate_Workspace( reax_system *system, control_params *control,
 void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs,
                                MPI_Comm comm )
 {
+    int format;
+
+    format = far_nbrs->format;
+
     Delete_List( far_nbrs, comm );
-    if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs, comm ))
+    if (!Make_List( n, num_intrs, TYP_FAR_NEIGHBOR, format, far_nbrs, comm ))
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -403,7 +407,8 @@ void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int num_intrs,
 }
 
 
-int Allocate_Matrix( sparse_matrix **pH, int cap, int m, MPI_Comm comm )
+int Allocate_Matrix( sparse_matrix **pH, int cap, int m,
+       int format, MPI_Comm comm )
 {
     sparse_matrix *H;
 
@@ -412,6 +417,7 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m, MPI_Comm comm )
     H = *pH;
     H->cap = cap;
     H->m = m;
+    H->format = format;
     H->start = (int*) smalloc( sizeof(int) * cap, "matrix_start", comm );
     H->end = (int*) smalloc( sizeof(int) * cap, "matrix_end", comm );
     H->entries = (sparse_matrix_entry*)
@@ -419,7 +425,8 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m, MPI_Comm comm )
 
     return SUCCESS;
 }
-int Allocate_Matrix2( sparse_matrix **pH, int n, int cap, int m, MPI_Comm comm )
+int Allocate_Matrix2( sparse_matrix **pH, int n, int cap, int m,
+        int format, MPI_Comm comm )
 {
     sparse_matrix *H;
 
@@ -429,6 +436,7 @@ int Allocate_Matrix2( sparse_matrix **pH, int n, int cap, int m, MPI_Comm comm )
     H->n = n;
     H->cap = cap;
     H->m = m;
+    H->format = format;
     H->start = (int*) smalloc( sizeof(int) * cap, "matrix_start", comm );
     H->end = (int*) smalloc( sizeof(int) * cap, "matrix_end", comm );
     H->entries = (sparse_matrix_entry*)
@@ -450,8 +458,12 @@ void Deallocate_Matrix( sparse_matrix *H )
 int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name,
                        MPI_Comm comm )
 {
+    int format;
+
+    format = (*H)->format;
+
     Deallocate_Matrix( *H );
-    if ( !Allocate_Matrix( H, n, m, comm ) )
+    if ( !Allocate_Matrix( H, n, m, format, comm ) )
     {
         fprintf(stderr, "not enough space for %s matrix. terminating!\n", name);
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -469,7 +481,9 @@ int Reallocate_Matrix( sparse_matrix **H, int n, int m, char *name,
 int Reallocate_HBonds_List( reax_system *system, reax_list *hbonds,
                             MPI_Comm comm )
 {
-    int i, id, total_hbonds;
+    int i, id, total_hbonds, format;
+
+    format = hbonds->format;
 
     total_hbonds = 0;
     for ( i = 0; i < system->n; ++i )
@@ -483,7 +497,7 @@ int Reallocate_HBonds_List( reax_system *system, reax_list *hbonds,
     total_hbonds = (int)(MAX( total_hbonds * SAFER_ZONE, MIN_CAP * MIN_HBONDS ));
 
     Delete_List( hbonds, comm );
-    if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND, hbonds, comm ) )
+    if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND, format, hbonds, comm ) )
     {
         fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -496,7 +510,9 @@ int Reallocate_HBonds_List( reax_system *system, reax_list *hbonds,
 int Reallocate_Bonds_List( reax_system *system, reax_list *bonds,
                            int *total_bonds, int *est_3body, MPI_Comm comm )
 {
-    int i;
+    int i, format;
+
+    format = bonds->format;
 
     *total_bonds = 0;
     *est_3body = 0;
@@ -510,7 +526,7 @@ int Reallocate_Bonds_List( reax_system *system, reax_list *bonds,
     *total_bonds = (int)(MAX( *total_bonds * SAFE_ZONE, MIN_CAP * MIN_BONDS ));
 
     Delete_List( bonds, comm );
-    if (!Make_List(system->total_cap, *total_bonds, TYP_BOND, bonds, comm))
+    if (!Make_List(system->total_cap, *total_bonds, TYP_BOND, format, bonds, comm))
     {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -746,7 +762,7 @@ void ReAllocate( reax_system *system, control_params *control,
 {
     int i, j, k, p;
     int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
-    int renbr;
+    int renbr, format;
     reallocate_data *realloc;
     reax_list *far_nbrs;
     sparse_matrix *H;
@@ -928,6 +944,9 @@ void ReAllocate( reax_system *system, control_params *control,
                  (int)(realloc->num_3body * sizeof(three_body_interaction_data) /
                        (1024 * 1024)) );
 #endif
+
+        format = lists[THREE_BODIES]->format;
+
         Delete_List( lists[THREE_BODIES], comm );
 
         if ( num_bonds == -1 )
@@ -936,7 +955,7 @@ void ReAllocate( reax_system *system, control_params *control,
         realloc->num_3body = (int)(MAX(realloc->num_3body * SAFE_ZONE, MIN_3BODIES));
 
         if ( !Make_List( num_bonds, realloc->num_3body, TYP_THREE_BODY,
-                         lists[THREE_BODIES], comm ) )
+                    format, lists[THREE_BODIES], comm ) )
         {
             fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
             MPI_Abort( comm, CANNOT_INITIALIZE );

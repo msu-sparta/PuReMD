@@ -568,7 +568,7 @@ int  Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data, char *msg )
 {
-    int i, num_nbrs;
+    int i, num_nbrs, far_nbr_list_format, cm_format;
     int total_hbonds, total_bonds, bond_cap, num_3body, cap_3body, Htop;
     int *hb_top, *bond_top;
     MPI_Comm comm;
@@ -579,10 +579,23 @@ int  Init_Lists( reax_system *system, control_params *control,
 #endif
 
     comm = mpi_data->world;
+
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        far_nbr_list_format = FULL_LIST;
+        cm_format = SYM_FULL_MATRIX;
+    }
+    else
+    {
+        far_nbr_list_format = HALF_LIST;
+        cm_format = SYM_HALF_MATRIX;
+    }
+
     //for( i = 0; i < MAX_NBRS; ++i ) nrecv[i] = system->my_nbrs[i].est_recv;
     //system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
     //        Sort_Boundary_Atoms, Unpack_Exchange_Message, 1 );
-    num_nbrs = Estimate_NumNeighbors( system, lists );
+
+    num_nbrs = Estimate_NumNeighbors( system, lists, far_nbr_list_format );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: after est_nbrs - local_cap=%d, total_cap=%d\n",
@@ -590,11 +603,12 @@ int  Init_Lists( reax_system *system, control_params *control,
 #endif
 
     if ( !Make_List( system->total_cap, num_nbrs, TYP_FAR_NEIGHBOR,
-                lists[FAR_NBRS], comm ) )
+                far_nbr_list_format, lists[FAR_NBRS], comm ) )
     {
         fprintf(stderr, "Problem in initializing far nbrs list. Terminating!\n");
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
     }
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated far_nbrs: num_far=%d, space=%dMB\n",
             system->my_rank, num_nbrs,
@@ -620,14 +634,18 @@ int  Init_Lists( reax_system *system, control_params *control,
     Estimate_Storages( system, control, lists,
             &Htop, hb_top, bond_top, &num_3body, comm );
 
-    Allocate_Matrix( &(workspace->H), system->local_cap, Htop, comm );
+    Allocate_Matrix( &(workspace->H), system->local_cap, Htop,
+            cm_format, comm );
     workspace->L = NULL;
     workspace->U = NULL;
 
     //TODO: uncomment for SAI
-    //    Allocate_Matrix2( &(workspace->H_spar_patt), workspace->H->n, system->local_cap, workspace->H->m, comm );
-    //    Allocate_Matrix( &(workspace->H_spar_patt_full), workspace->H->n, 2 * workspace->H->m - workspace->H->n );
-    //    Allocate_Matrix2( &(workspace->H_app_inv), workspace->H->n, system->local_cap, workspace->H->m, comm );
+//    Allocate_Matrix2( &(workspace->H_spar_patt), workspace->H->n, system->local_cap,
+//            workspace->H->m, SYM_HALF_MATRIX, comm );
+//    Allocate_Matrix( &(workspace->H_spar_patt_full), workspace->H->n,
+//            2 * workspace->H->m - workspace->H->n, SYM_FULL_MATRIX, comm );
+//    Allocate_Matrix2( &(workspace->H_app_inv), workspace->H->n, system->local_cap,
+//            workspace->H->m, SYM_FULL_MATRIX, comm );
     workspace->H_spar_patt = NULL;
     workspace->H_app_inv = NULL;
 
@@ -649,7 +667,7 @@ int  Init_Lists( reax_system *system, control_params *control,
         total_hbonds = MAX( total_hbonds * SAFER_ZONE, MIN_CAP * MIN_HBONDS );
 
         if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND,
-                    lists[HBONDS], comm ) )
+                    HALF_LIST, lists[HBONDS], comm ) )
         {
             fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
             MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -673,7 +691,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     bond_cap = MAX( total_bonds * SAFE_ZONE, MIN_CAP * MIN_BONDS );
 
     if ( !Make_List( system->total_cap, bond_cap, TYP_BOND,
-                lists[BONDS], comm ) )
+                HALF_LIST, lists[BONDS], comm ) )
     {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -687,7 +705,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     /* 3bodies list */
     cap_3body = MAX( num_3body * SAFE_ZONE, MIN_3BODIES );
     if ( !Make_List( bond_cap, cap_3body, TYP_THREE_BODY,
-                lists[THREE_BODIES], comm ) )
+                HALF_LIST, lists[THREE_BODIES], comm ) )
     {
         fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -700,7 +718,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 
 #if defined(TEST_FORCES)
     if ( !Make_List( system->total_cap, bond_cap * 8, TYP_DDELTA,
-                lists[DDELTAS], comm ) )
+                HALF_LIST, lists[DDELTAS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dDelta list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -709,7 +727,7 @@ int  Init_Lists( reax_system *system, control_params *control,
             system->my_rank, bond_cap * 30,
             bond_cap * 8 * sizeof(dDelta_data) / (1024 * 1024) );
 
-    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, lists[DBOS], comm ) )
+    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, HALF_LIST, lists[DBOS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dBO list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -724,6 +742,8 @@ int  Init_Lists( reax_system *system, control_params *control,
 
     return SUCCESS;
 }
+
+
 #elif defined(LAMMPS_REAX)
 int  Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
@@ -736,6 +756,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     MPI_Comm comm;
 
     comm = mpi_data->world;
+
     bond_top = (int*) calloc( system->total_cap, sizeof(int) );
     hb_top = (int*) calloc( system->local_cap, sizeof(int) );
     Estimate_Storages( system, control, lists,
@@ -753,7 +774,7 @@ int  Init_Lists( reax_system *system, control_params *control,
         total_hbonds = (int)(MAX( total_hbonds * SAFER_ZONE, MIN_CAP * MIN_HBONDS ));
 
         if ( !Make_List( system->Hcap, total_hbonds, TYP_HBOND,
-                    lists[HBONDS], comm ) )
+                    HALF_LIST, lists[HBONDS], comm ) )
         {
             fprintf( stderr, "not enough space for hbonds list. terminating!\n" );
             MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -777,7 +798,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     bond_cap = (int)(MAX( total_bonds * SAFE_ZONE, MIN_CAP * MIN_BONDS ));
 
     if ( !Make_List( system->total_cap, bond_cap, TYP_BOND,
-                lists[BONDS], comm ) )
+                HALF_LIST, lists[BONDS], comm ) )
     {
         fprintf( stderr, "not enough space for bonds list. terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -791,7 +812,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     /* 3bodies list */
     cap_3body = (int)(MAX( num_3body * SAFE_ZONE, MIN_3BODIES ));
     if ( !Make_List( bond_cap, cap_3body, TYP_THREE_BODY,
-                lists[THREE_BODIES], comm ) )
+                HALF_LIST, lists[THREE_BODIES], comm ) )
     {
         fprintf( stderr, "Problem in initializing angles list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -804,7 +825,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 
 #if defined(TEST_FORCES)
     if ( !Make_List( system->total_cap, bond_cap * 8, TYP_DDELTA,
-                lists[DDELTAS], comm ) )
+                HALF_LIST, lists[DDELTAS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dDelta list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
@@ -813,7 +834,7 @@ int  Init_Lists( reax_system *system, control_params *control,
             system->my_rank, bond_cap * 30,
             bond_cap * 8 * sizeof(dDelta_data) / (1024 * 1024) );
 
-    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, lists[DBOS], comm ) )
+    if ( !Make_List( bond_cap, bond_cap * 50, TYP_DBO, HALF_LIST, lists[DBOS], comm ) )
     {
         fprintf( stderr, "Problem in initializing dBO list. Terminating!\n" );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );

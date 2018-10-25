@@ -247,8 +247,8 @@ void Init_MatVec( reax_system *system, simulation_data *data,
     if( workspace->L == NULL ) {
     fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
 
-    if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin ) == 0 ||
-    Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin ) == 0 ) {
+    if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin, FULL_MATRIX, comm ) == 0 ||
+    Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin, FULL_MATRIX, comm ) == 0 ) {
     fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
     MPI_Abort( mpi_data->world, INSUFFICIENT_MEMORY );
     }

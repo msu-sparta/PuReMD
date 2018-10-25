@@ -150,13 +150,15 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
 
     if ( *A_spar_patt == NULL )
     {
-        Allocate_Matrix2(A_spar_patt, A->n, system->local_cap, A->m, comm );
+        Allocate_Matrix2( A_spar_patt, A->n, system->local_cap, A->m,
+                A->format, comm );
     }
 
     else /*if ( (*A_spar_patt)->m < A->m )*/
     {
         Deallocate_Matrix( *A_spar_patt );
-        Allocate_Matrix2( A_spar_patt, A->n, system->local_cap, A->m, comm );
+        Allocate_Matrix2( A_spar_patt, A->n, system->local_cap, A->m,
+                A->format, comm );
     }
 
     n_local = 0;
@@ -425,8 +427,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     return Get_Timing_Info( start );
 }
 
-real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *workspace, mpi_datatypes *mpi_data, 
-        sparse_matrix *A, sparse_matrix *A_spar_patt, sparse_matrix **A_app_inv, int nprocs )
+real sparse_approx_inverse( reax_system *system, simulation_data *data,
+        storage *workspace, mpi_datatypes *mpi_data, 
+        sparse_matrix *A, sparse_matrix *A_spar_patt,
+        sparse_matrix **A_app_inv, int nprocs )
 {
     int N, M, d_i, d_j;
     int i, k, pj, j_temp;
@@ -434,13 +438,11 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
     lapack_int m, n, nrhs, lda, ldb, info;
     int *pos_x, *X;
     real *e_j, *dense_matrix;
-
     int cnt, scale;
     reax_atom *atom;
     int *row_nnz;
     int **j_list;
     real **val_list;
-
     int d;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -450,7 +452,6 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
     const neighbor_proc *nbr1, *nbr2;
     int *j_send, *j_recv1, *j_recv2;
     real *val_send, *val_recv1, *val_recv2;
-
     real start, t_start, t_comm;
     real total_comm;
 
@@ -461,13 +462,15 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
 
     if ( *A_app_inv == NULL)
     {
-        Allocate_Matrix2( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m, comm );
+        Allocate_Matrix2( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
+                SYM_FULL_MATRIX, comm );
     }
 
     else /* if ( (*A_app_inv)->m < A_spar_patt->m ) */
     {
         Deallocate_Matrix( *A_app_inv );
-        Allocate_Matrix2( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m, comm );
+        Allocate_Matrix2( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
+                SYM_FULL_MATRIX, comm );
     }
 
     pos_x = NULL;
@@ -899,20 +902,17 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
         b[i][0] = b[i][1] = 0;
     }
 
-    /* perform multiplication */
-    for ( i = 0; i < A->n; ++i )
+    if ( A->format == SYM_HALF_MATRIX )
     {
-        si = A->start[i];
-#if defined(HALF_LIST)
-        b[i][0] += A->entries[si].val * x[i][0];
-        b[i][1] += A->entries[si].val * x[i][1];
-#endif
+        /* perform multiplication */
+        for ( i = 0; i < A->n; ++i )
+        {
+            si = A->start[i];
 
-#if defined(HALF_LIST)
-        for ( k = si + 1; k < A->end[i]; ++k )
-#else
-            for ( k = si; k < A->end[i]; ++k )
-#endif
+            b[i][0] += A->entries[si].val * x[i][0];
+            b[i][1] += A->entries[si].val * x[i][1];
+
+            for ( k = si + 1; k < A->end[i]; ++k )
             {
                 j = A->entries[k].j;
                 H = A->entries[k].val;
@@ -920,14 +920,30 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
                 b[i][0] += H * x[j][0];
                 b[i][1] += H * x[j][1];
 
-#if defined(HALF_LIST)
                 // comment out for tryQEq
                 //if( j < A->n ) {
                 b[j][0] += H * x[i][0];
                 b[j][1] += H * x[i][1];
                 //}
-#endif
             }
+        }
+    }
+    else if ( A->format == SYM_FULL_MATRIX )
+    {
+        /* perform multiplication */
+        for ( i = 0; i < A->n; ++i )
+        {
+            si = A->start[i];
+
+            for ( k = si; k < A->end[i]; ++k )
+            {
+                j = A->entries[k].j;
+                H = A->entries[k].val;
+
+                b[i][0] += H * x[j][0];
+                b[i][1] += H * x[j][1];
+            }
+        }
     }
 }
 
@@ -958,10 +974,10 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 
     Dist( system, mpi_data, x, mpi_data->mpi_rvec2, scale, rvec2_packer );
     dual_Sparse_MatVec( H, x, workspace->q2, N );
-#if defined(HALF_LIST)
-    // tryQEq
-    Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
-#endif
+    if ( H->format == SYM_HALF_MATRIX )
+    {
+        Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+    }
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -1011,10 +1027,10 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
     {
         Dist(system, mpi_data, workspace->d2, mpi_data->mpi_rvec2, scale, rvec2_packer);
         dual_Sparse_MatVec( H, workspace->d2, workspace->q2, N );
-#if defined(HALF_LIST)
-        // tryQEq
-        Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
-#endif
+        if ( H->format == SYM_HALF_MATRIX )
+        {
+            Coll(system, mpi_data, workspace->q2, mpi_data->mpi_rvec2, scale, rvec2_unpacker);
+        }
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
@@ -1124,66 +1140,50 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 
 void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 {
-    int  i, j, k, si;
-    real H;
+    int i, j, k, si;
+    real val;
 
     for ( i = 0; i < N; ++i )
     {
         b[i] = 0;
     }
 
-    /* perform multiplication */
-    for ( i = 0; i < A->n; ++i )
+    if ( A->format == SYM_HALF_MATRIX )
     {
-        si = A->start[i];
-
-#if defined(HALF_LIST)
-        b[i] += A->entries[si].val * x[i];
-#endif
-
-#if defined(HALF_LIST)
-        for ( k = si + 1; k < A->end[i]; ++k )
-#else
-            for ( k = si; k < A->end[i]; ++k )
-#endif
-            {
-                j = A->entries[k].j;
-                H = A->entries[k].val;
-
-                b[i] += H * x[j];
-#if defined(HALF_LIST)
-                //if( j < A->n ) // comment out for tryQEq
-                b[j] += H * x[i];
-#endif
-            }
-    }
-}
-
-
-/* sparse matrix-vector product Ax = b
- * where:
- *   A: matrix, stored in CSR format
- *   x: vector
- *   b: vector (result) 
-static void Sparse_MatVec_full( const sparse_matrix * const A,
-        const real * const x, real * const b )
-{
-    TODO: implement full SpMV in MPI
-        int i, pj;
-    
-        Vector_MakeZero( b, A->n );
-    
-    #ifdef _OPENMP
-        #pragma omp for schedule(static)
-    #endif
         for ( i = 0; i < A->n; ++i )
         {
-            for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+            si = A->start[i];
+
+            /* diagonal only contributes once */
+            b[i] += A->entries[si].val * x[i];
+
+            for ( k = si + 1; k < A->end[i]; ++k )
             {
-                b[i] += A->val[pj] * x[A->j[pj]];
+                j = A->entries[k].j;
+                val = A->entries[k].val;
+
+                b[i] += val * x[j];
+                //if( j < A->n ) // comment out for tryQEq
+                b[j] += val * x[i];
             }
         }
-}*/
+    }
+    else if ( A->format == SYM_FULL_MATRIX )
+    {
+        for ( i = 0; i < A->n; ++i )
+        {
+            si = A->start[i];
+
+            for ( k = si; k < A->end[i]; ++k )
+            {
+                j = A->entries[k].j;
+                val = A->entries[k].val;
+
+                b[i] += val * x[j];
+            }
+        }
+    }
+}
 
 
 int CG( reax_system *system, control_params *control, simulation_data *data,
@@ -1211,11 +1211,12 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     Sparse_MatVec( H, x, workspace->q, system->N );
     t_spmv += Get_Timing_Info( t_start );
 
-#if defined(HALF_LIST)
-    t_start = Get_Time( );
-    Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
-    t_comm += Get_Timing_Info( t_start );
-#endif
+    if ( H->format == SYM_HALF_MATRIX )
+    {
+        t_start = Get_Time( );
+        Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+        t_comm += Get_Timing_Info( t_start );
+    }
 
     t_start = Get_Time( );
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
@@ -1258,11 +1259,12 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
         t_spmv += Get_Timing_Info( t_start );
 
-#if defined(HALF_LIST)
-        t_start = Get_Time( );
-        Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
-        t_comm += Get_Timing_Info( t_start );
-#endif
+        if ( H->format == SYM_HALF_MATRIX )
+        {
+            t_start = Get_Time( );
+            Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+            t_comm += Get_Timing_Info( t_start );
+        }
 
         t_start = Get_Time( );
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);

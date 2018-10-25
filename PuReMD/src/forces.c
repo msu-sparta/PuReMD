@@ -336,12 +336,9 @@ void Init_Forces( reax_system *system, control_params *control,
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
-#if defined(HALF_LIST)
     int jhb_top;
-#else
     int start_j, end_j;
     int btop_j;
-#endif
 
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
@@ -369,13 +366,16 @@ void Init_Forces( reax_system *system, control_params *control,
         type_i  = atom_i->type;
         start_i = Start_Index(i, far_nbrs);
         end_i   = End_Index(i, far_nbrs);
-#if defined(HALF_LIST)
-        /* start at end because other atoms
-         * can add to this atom's list (half-list) */
-        btop_i = End_Index( i, bonds );
-#else
-        btop_i = Start_Index( i, bonds );
-#endif
+        if ( far_nbrs->format == HALF_LIST )
+        {
+            /* start at end because other atoms
+             * can add to this atom's list (half-list) */
+            btop_i = End_Index( i, bonds );
+        }
+        else if ( far_nbrs->format == FULL_LIST )
+        {
+            btop_i = Start_Index( i, bonds );
+        }
         sbp_i = &(system->reax_param.sbp[type_i]);
 
         if ( i < system->n )
@@ -403,13 +403,16 @@ void Init_Forces( reax_system *system, control_params *control,
                 ihb = sbp_i->p_hbond;
                 if ( ihb == 1 )
                 {
-#if defined(HALF_LIST)
-                    /* start at end because other atoms
-                     * can add to this atom's list (half-list) */ 
-                    ihb_top = End_Index( atom_i->Hindex, hbonds );
-#else
-                    ihb_top = Start_Index( atom_i->Hindex, hbonds );
-#endif
+                    if ( far_nbrs->format == HALF_LIST )
+                    {
+                        /* start at end because other atoms
+                         * can add to this atom's list (half-list) */ 
+                        ihb_top = End_Index( atom_i->Hindex, hbonds );
+                    }
+                    else if ( far_nbrs->format == FULL_LIST )
+                    {
+                        ihb_top = Start_Index( atom_i->Hindex, hbonds );
+                    }
                 }
                 else
                 {
@@ -457,9 +460,9 @@ void Init_Forces( reax_system *system, control_params *control,
                 if ( local )
                 {
                     /* H matrix entry */
-#if defined(HALF_LIST)
-                    if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq||1
-#endif
+                    if ( (far_nbrs->format == HALF_LIST
+                            && (j < system->n || atom_i->orig_id < atom_j->orig_id))
+                      || far_nbrs->format == FULL_LIST )
                     {
                         H->entries[Htop].j = j;
                         if ( control->tabulate == 0 )
@@ -482,9 +485,9 @@ void Init_Forces( reax_system *system, control_params *control,
                             ++ihb_top;
                             ++num_hbonds;
                         }
-#if defined(HALF_LIST)
                         /* only add to list for local j (far nbrs is half-list) */
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        else if ( far_nbrs->format == HALF_LIST
+                                && (j < system->n && ihb == 2 && jhb == 1) )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbonds );
                             hbonds->hbond_list[jhb_top].nbr = i;
@@ -493,7 +496,6 @@ void Init_Forces( reax_system *system, control_params *control,
                             Set_End_Index( atom_j->Hindex, jhb_top + 1, hbonds );
                             ++num_hbonds;
                         }
-#endif
                     }
                 }
 
@@ -501,7 +503,8 @@ void Init_Forces( reax_system *system, control_params *control,
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
                     nbr_pj->d <= control->bond_cut &&
                     BOp( workspace, bonds, control->bo_cut,
-                         i , btop_i, nbr_pj, sbp_i, sbp_j, twbp ) )
+                         i, btop_i, nbr_pj, far_nbrs->format,
+                         sbp_i, sbp_j, twbp ) )
                 {
                     num_bonds += 2;
                     ++btop_i;
@@ -525,30 +528,31 @@ void Init_Forces( reax_system *system, control_params *control,
         }
     }
 
-#if !defined(HALF_LIST)
-    /* set sym_index for bonds list (far_nbrs full list) */
-    for ( i = 0; i < system->N; ++i )
+    if ( far_nbrs->format == FULL_LIST )
     {
-        start_i = Start_Index( i, bonds );
-        end_i = End_Index( i, bonds );
-
-        for ( btop_i = start_i; btop_i < end_i; ++btop_i )
+        /* set sym_index for bonds list (far_nbrs full list) */
+        for ( i = 0; i < system->N; ++i )
         {
-            j = bonds->bond_list[btop_i].nbr;
-            start_j = Start_Index( j, bonds );
-            end_j = End_Index( j, bonds );
+            start_i = Start_Index( i, bonds );
+            end_i = End_Index( i, bonds );
 
-            for ( btop_j = start_j; btop_j < end_j; ++btop_j )
+            for ( btop_i = start_i; btop_i < end_i; ++btop_i )
             {
-                if ( bonds->bond_list[btop_j].nbr == i )
+                j = bonds->bond_list[btop_i].nbr;
+                start_j = Start_Index( j, bonds );
+                end_j = End_Index( j, bonds );
+
+                for ( btop_j = start_j; btop_j < end_j; ++btop_j )
                 {
-                    bonds->bond_list[btop_i].sym_index = btop_j;
-                    break;
+                    if ( bonds->bond_list[btop_j].nbr == i )
+                    {
+                        bonds->bond_list[btop_i].sym_index = btop_j;
+                        break;
+                    }
                 }
             }
         }
     }
-#endif
 
     workspace->realloc.Htop = Htop;
     workspace->realloc.num_bonds = num_bonds;
@@ -595,12 +599,9 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
     reax_atom *atom_i, *atom_j;
-#if defined(HALF_LIST)
     int jhb_top;
-#else
     int start_j, end_j;
     int btop_j;
-#endif
 
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
@@ -625,13 +626,16 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
         type_i  = atom_i->type;
         start_i = Start_Index(i, far_nbrs);
         end_i   = End_Index(i, far_nbrs);
-#if defined(HALF_LIST)
-        /* start at end because other atoms
-         * can add to this atom's list (half-list) */
-        btop_i = End_Index( i, bonds );
-#else
-        btop_i = Start_Index( i, bonds );
-#endif
+        if ( far_nbrs->format == HALF_LIST )
+        {
+            /* start at end because other atoms
+             * can add to this atom's list (half-list) */
+            btop_i = End_Index( i, bonds );
+        }
+        else if ( far_nbrs->format == FULL_LIST )
+        {
+            btop_i = Start_Index( i, bonds );
+        }
         sbp_i = &(system->reax_param.sbp[type_i]);
 
         if ( i < system->n )
@@ -652,13 +656,16 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
             ihb = sbp_i->p_hbond;
             if ( ihb == 1 )
             {
-#if defined(HALF_LIST)
-                /* start at end because other atoms
-                 * can add to this atom's list (half-list) */
-                ihb_top = End_Index( atom_i->Hindex, hbonds );
-#else
-                ihb_top = Start_Index( atom_i->Hindex, hbonds );
-#endif
+                if ( far_nbrs->format == HALF_LIST )
+                {
+                    /* start at end because other atoms
+                     * can add to this atom's list (half-list) */
+                    ihb_top = End_Index( atom_i->Hindex, hbonds );
+                }
+                else if ( far_nbrs->format == FULL_LIST )
+                {
+                    ihb_top = Start_Index( atom_i->Hindex, hbonds );
+                }
             }
             else 
             {
@@ -719,9 +726,9 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
                             ++ihb_top;
                             ++num_hbonds;
                         }
-#if defined(HALF_LIST)
                         /* only add to list for local j (far nbrs is half-list) */
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        else if ( far_nbrs->format == HALF_LIST
+                                && (j < system->n && ihb == 2 && jhb == 1) )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbonds );
                             hbonds->hbond_list[jhb_top].nbr = i;
@@ -730,7 +737,6 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
                             Set_End_Index( atom_j->Hindex, jhb_top + 1, hbonds );
                             ++num_hbonds;
                         }
-#endif
                     }
                 }
 
@@ -739,7 +745,8 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
                     nbr_pj->d <= control->bond_cut &&
                     BOp( workspace, bonds, control->bo_cut,
-                         i , btop_i, nbr_pj, sbp_i, sbp_j, twbp ) )
+                         i, btop_i, nbr_pj, far_nbrs->format,
+                         sbp_i, sbp_j, twbp ) )
                 {
                     num_bonds += 2;
                     ++btop_i;
@@ -763,30 +770,31 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
             Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
     }
 
-#if !defined(HALF_LIST)
-    /* set sym_index for bonds list (far_nbrs full list) */
-    for ( i = 0; i < system->N; ++i )
+    if ( far_nbrs->format == FULL_LIST )
     {
-        start_i = Start_Index( i, bonds );
-        end_i = End_Index( i, bonds );
-
-        for ( btop_i = start_i; btop_i < end_i; ++btop_i )
+        /* set sym_index for bonds list (far_nbrs full list) */
+        for ( i = 0; i < system->N; ++i )
         {
-            j = bonds->bond_list[btop_i].nbr;
-            start_j = Start_Index( j, bonds );
-            end_j = End_Index( j, bonds );
+            start_i = Start_Index( i, bonds );
+            end_i = End_Index( i, bonds );
 
-            for ( btop_j = start_j; btop_j < end_j; ++btop_j )
+            for ( btop_i = start_i; btop_i < end_i; ++btop_i )
             {
-                if ( bonds->bond_list[btop_j].nbr == i )
+                j = bonds->bond_list[btop_i].nbr;
+                start_j = Start_Index( j, bonds );
+                end_j = End_Index( j, bonds );
+
+                for ( btop_j = start_j; btop_j < end_j; ++btop_j )
                 {
-                    bonds->bond_list[btop_i].sym_index = btop_j;
-                    break;
+                    if ( bonds->bond_list[btop_j].nbr == i )
+                    {
+                        bonds->bond_list[btop_i].sym_index = btop_j;
+                        break;
+                    }
                 }
             }
         }
     }
-#endif
 
     workspace->realloc.num_bonds = num_bonds;
     workspace->realloc.num_hbonds = num_hbonds;
@@ -823,10 +831,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
-    reax_atom *atom_i;
-#if defined(HALF_LIST)
-    reax_atom *atom_j;
-#endif
+    reax_atom *atom_i, *atom_j;
 
     far_nbrs = lists[FAR_NBRS];
     *Htop = 0;
@@ -860,9 +865,10 @@ void Estimate_Storages( reax_system *system, control_params *control,
         {
             nbr_pj = &( far_nbrs->far_nbr_list[pj] );
             j = nbr_pj->nbr;
-#if defined(HALF_LIST)
-            atom_j = &(system->my_atoms[j]);
-#endif
+            if ( far_nbrs->format == HALF_LIST )
+            {
+                atom_j = &(system->my_atoms[j]);
+            }
 
             if (nbr_pj->d <= cutoff)
             {
@@ -873,9 +879,9 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
                 if ( local )
                 {
-#if defined(HALF_LIST)
-                    if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
-#endif
+                    if ( (far_nbrs->format == HALF_LIST
+                            && (j < system->n || atom_i->orig_id < atom_j->orig_id))
+                      || far_nbrs->format == FULL_LIST )
                     {
                         ++(*Htop);
                     }
@@ -890,12 +896,11 @@ void Estimate_Storages( reax_system *system, control_params *control,
                             ++hb_top[i];
                         }
                         /* only add to list for local j (far nbrs is half-list) */
-#if defined(HALF_LIST)
-                        else if ( j < system->n && ihb == 2 && jhb == 1 )
+                        else if ( far_nbrs->format == HALF_LIST
+                                && (j < system->n && ihb == 2 && jhb == 1) )
                         {
                             ++hb_top[j];
                         }
-#endif
                     }
                 }
 
@@ -931,9 +936,10 @@ void Estimate_Storages( reax_system *system, control_params *control,
                     if ( BO >= control->bo_cut )
                     {
                         ++bond_top[i];
-#if defined(HALF_LIST)
-                        ++bond_top[j];
-#endif
+                        if ( far_nbrs->format == HALF_LIST )
+                        {
+                            ++bond_top[j];
+                        }
                     }
                 }
             }

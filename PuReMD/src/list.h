@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-int Make_List( int, int, int, reax_list*, MPI_Comm );
+int Make_List( int, int, int, int, reax_list*, MPI_Comm );
 
 void Delete_List( reax_list*, MPI_Comm );
 

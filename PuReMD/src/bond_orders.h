@@ -52,8 +52,9 @@ void Add_dDelta_to_Forces( reax_system *, reax_list**, int, real );
 void Add_dBond_to_Forces( int, int, storage*, reax_list** );
 void Add_dBond_to_Forces_NPT( int, int, simulation_data*,
                               storage*, reax_list** );
-int BOp(storage*, reax_list*, real, int, int, far_neighbor_data*,
-        single_body_parameters*, single_body_parameters*, two_body_parameters*);
+int BOp( storage*, reax_list*, real, int, int, far_neighbor_data*,
+        int, single_body_parameters*, single_body_parameters*,
+        two_body_parameters* );
 void BO( reax_system*, control_params*, simulation_data*,
          storage*, reax_list**, output_controls* );
 #endif

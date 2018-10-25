@@ -30,7 +30,8 @@
 
 
 /************* allocate list space ******************/
-int Make_List(int n, int num_intrs, int type, reax_list *l, MPI_Comm comm)
+int Make_List( int n, int num_intrs, int type, int format,
+        reax_list *l, MPI_Comm comm )
 {
     l->allocated = 1;
 
@@ -41,6 +42,7 @@ int Make_List(int n, int num_intrs, int type, reax_list *l, MPI_Comm comm)
     l->end_index = (int*) smalloc( n * sizeof(int), "list:end_index", comm );
 
     l->type = type;
+    l->format = format;
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "list: n=%d num_intrs=%d type=%d\n", l->n, l->num_intrs, l->type );
