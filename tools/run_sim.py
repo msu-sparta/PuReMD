@@ -2,7 +2,7 @@
 
 
 class TestCase():
-    def __init__(self, data_set, geo_file, ffield_file, control_file, params={}, result_header_fmt='',
+    def __init__(self, data_set, geo_file, ffield_file, params={}, result_header_fmt='',
             result_header='', result_body_fmt='', result_file='results.txt', geo_format='1',
             min_step=None, max_step=None):
         from re import sub
@@ -10,7 +10,6 @@ class TestCase():
         self.__data_set = data_set
         self.__geo_file = geo_file
         self.__ffield_file = ffield_file
-        self.__control_file = control_file
         self.__param_names = sorted(params.keys())
         self.__params = params
         self.__result_header_fmt = result_header_fmt
@@ -19,111 +18,110 @@ class TestCase():
         self.__result_file = result_file
         self.__control_regexes = { \
                 'name': lambda l, x: sub(
-                    r'^(?P<key>simulation_name\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bsimulation_name\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'ensemble_type': lambda l, x: sub(
-                    r'^(?P<key>ensemble_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bensemble_type\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'nsteps': lambda l, x: sub(
-                    r'^(?P<key>nsteps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bnsteps\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'dt': lambda l, x: sub(
-                    r'^(?P<key>dt\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bdt\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'gpus_per_node': lambda l, x: sub(
+                    r'(?P<key>\bgpus_per_node\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'proc_by_dim': lambda l, x: sub(
+                    r'(?P<key>\bproc_by_dim\b\s+)\S+\s+\S+\s+\S+(?P<comment>.*)',
+                    r'\g<key>{0} {1} {2}\g<comment>'.format(*(x.split(':'))), l), \
                 'periodic_boundaries': lambda l, x: sub(
-                    r'^(?P<key>periodic_boundaries\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bperiodic_boundaries\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'reposition_atoms': lambda l, x: sub(
-                    r'^(?P<key>reposition_atoms\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\breposition_atoms\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'remove_CoM_vel': lambda l, x: sub(
-                    r'^(?P<key>remove_CoM_vel\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bremove_CoM_vel\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'reneighbor': lambda l, x: sub(
-                    r'^(?P<key>reneighbor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\breneighbor\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'update_energy_freq': lambda l, x: sub(
-                    r'^(?P<key>update_energy_freq\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bupdate_energy_freq\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'tabulate_long_range': lambda l, x: sub(
-                    r'^(?P<key>tabulate_long_range\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\btabulate_long_range\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'vlist_buffer': lambda l, x: sub(
-                    r'^(?P<key>vlist_buffer\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bvlist_buffer\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'nbrhood_cutoff': lambda l, x: sub(
-                    r'^(?P<key>nbrhood_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bnbrhood_cutoff\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'hbond_cutoff': lambda l, x: sub(
-                    r'^(?P<key>hbond_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bhbond_cutoff\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'thb_cutoff': lambda l, x: sub(
-                    r'^(?P<key>thb_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bthb_cutoff\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'bond_graph_cutoff': lambda l, x: sub(
-                    r'^(?P<key>bond_graph_cutoff\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bbond_graph_cutoff\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'charge_method': lambda l, x: sub(
-                    r'^(?P<key>charge_method\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcharge_method\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_q_net': lambda l, x: sub(
-                    r'^(?P<key>cm_q_net\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_q_net\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_type': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_type\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_max_iters': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_max_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_max_iters\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_restart': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_restart\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_restart\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_q_err': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_q_err\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_q_err\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_domain_sparsity': lambda l, x: sub(
-                    r'^(?P<key>cm_domain_sparsity\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_domain_sparsity\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_init_guess_extrap1': lambda l, x: sub(
-                    r'^(?P<key>cm_init_guess_extrap1\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_init_guess_extrap1\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_init_guess_extrap2': lambda l, x: sub(
-                    r'^(?P<key>cm_init_guess_extrap2\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_init_guess_extrap2\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_type': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_pre_comp_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_pre_comp_type\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_droptol': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_pre_comp_droptol\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_pre_comp_droptol\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_refactor': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_pre_comp_refactor\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_pre_comp_refactor\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_sweeps': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_pre_comp_sweeps\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_pre_comp_sweeps\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_comp_sai_thres': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_pre_comp_sai_thres\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_pre_comp_sai_thres\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_app_type': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_pre_app_type\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_pre_app_type\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'cm_solver_pre_app_jacobi_iters': lambda l, x: sub(
-                    r'^(?P<key>cm_solver_pre_app_jacobi_iters\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcm_solver_pre_app_jacobi_iters\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'geo_format': lambda l, x: sub(
-                    r'^(?P<key>geo_format\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bgeo_format\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'temp_init': lambda l, x: sub(
-                    r'^(?P<key>temp_init\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\btemp_init\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'temp_final': lambda l, x: sub(
-                    r'^(?P<key>temp_final\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\btemp_final\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 't_mass': lambda l, x: sub(
-                    r'^(?P<key>t_mass\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bt_mass\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 't_mode': lambda l, x: sub(
-                    r'^(?P<key>t_mode\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bt_mode\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 't_rate': lambda l, x: sub(
-                    r'^(?P<key>t_rate\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bt_rate\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 't_freq': lambda l, x: sub(
-                    r'^(?P<key>t_freq\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bt_freq\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'pressure': lambda l, x: sub(
-                    r'^(?P<key>pressure\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bpressure\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'p_mass': lambda l, x: sub(
-                    r'^(?P<key>p_mass\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bp_mass\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'pt_mass': lambda l, x: sub(
-                    r'^(?P<key>pt_mass\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bpt_mass\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'compress': lambda l, x: sub(
-                    r'^(?P<key>compress\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bcompress\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'press_mode': lambda l, x: sub(
-                    r'^(?P<key>press_mode\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                    r'(?P<key>\bpress_mode\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
         }
         self.__params['geo_format'] = geo_format
         self.__min_step = min_step
         self.__max_step = max_step
 
     def _create_control_file(self, param, new_control_file):
-        # read in template control file
-#        try:
-#            with open(self.__control_file, 'r') as fp:
-#                lines = fp.read()
-#        except Exception as e:
-#            print("ERROR: Coult not read template control file!")
-#            raise e
-
         # inline template control file
         lines = """\
 simulation_name         water_6540_notab_qeq           ! output files will carry this name + their specific extension
 ensemble_type           0                       ! 0: NVE, 1: Berendsen NVT, 2: nose-Hoover NVT, 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT
 nsteps                  100                     ! number of simulation steps
 dt                      0.25                    ! time step in fs
+proc_by_dim             1 1 1                   ! distribution of processors by dimensions
+gpus_per_node           1                       ! GPUs per node
 periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 
 reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
@@ -206,19 +204,60 @@ restart_freq            0                       ! 0: do not output any restart f
         with open(new_control_file, 'w') as fp:
             fp.write(lines)
 
-    def run(self, binary, process_results=False):
-        from itertools import product
-        from os import environ, path, remove, rmdir
-        from subprocess import Popen, PIPE
-        from tempfile import mkdtemp
-        from time import time
+    def _create_md_cmd(self, binary, control_file, run_type, mpi_cmd, param_dict, env):
+        from operator import mul
+        from functools import reduce
+        from sys import exit
 
-        env = dict(environ)
-        temp_dir = mkdtemp()
+        if run_type == 'openmp':
+            env['OMP_NUM_THREADS'] = param_dict['threads']
 
-        # create Cartesian product of all supplied sets of parameter values
-        for p in product(*[self.__params[k] for k in self.__param_names]):
-            param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
+        if run_type == 'serial' or run_type == 'openmp':
+            cmd_args = binary.split() + [
+                self.__geo_file,
+                self.__ffield_file,
+                control_file,
+            ]
+        # add MPI execution command and arguments to subprocess argument list
+        elif run_type == 'mpi' or run_type == 'mpi+gpu':
+            if mpi_cmd[0] == 'mpirun':
+                cmd_args = [
+                    'mpirun',
+                    '-np',
+                    # total number of MPI processes
+                    str(reduce(mul,
+                        map(int, param_dict['proc_by_dim'].split(':')), 1)),
+                ] + binary.split() + [
+                    self.__geo_file,
+                    self.__ffield_file,
+                    control_file,
+                ]
+            elif mpi_cmd[0] == 'srun':
+                # slurm scheduler wraps MPI commands (e.g., NERSC)
+                cmd_args = [
+                    'srun',
+                    '-N',
+                    # number of nodes
+                    mpi_cmd[1],
+                    '-n',
+                    # number of tasks
+                    mpi_cmd[2],
+                    '-c',
+                    # number of cores per task
+                    mpi_cmd[3],
+                ] + binary.split() + [
+                    self.__geo_file,
+                    self.__ffield_file,
+                    control_file,
+                ]
+            else:
+                print("[ERROR] Invalid MPI application type ({0}). Terminating...".format(mpi_cmd[0]))
+                exit(-1)
+
+        return cmd_args, env
+
+    def _create_output_file_base(self, run_type, param_dict):
+        if run_type == 'serial' or run_type == 'openmp':
             param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
                 + '_cm' + param_dict['charge_method'] \
                 + '_s' + param_dict['nsteps'] \
@@ -233,17 +272,46 @@ restart_freq            0                       ! 0: do not output any restart f
                 + '_pa' + param_dict['cm_solver_pre_app_type'] \
                 + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
 		+ '_t' + param_dict['threads']
+        elif run_type == 'mpi' or run_type == 'mpi+gpu':
+            param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
+                + '_cm' + param_dict['charge_method'] \
+                + '_s' + param_dict['nsteps'] \
+                + '_proc' + param_dict['proc_by_dim'].replace(':', '_') \
+                + '_ren' + param_dict['reneighbor'] \
+                + '_skind' + param_dict['vlist_buffer'] \
+                + '_q' + param_dict['cm_solver_type'] \
+                + '_qtol' + param_dict['cm_solver_q_err'] \
+                + '_qds' + param_dict['cm_domain_sparsity'] \
+                + '_pc' + param_dict['cm_solver_pre_comp_type'] \
+                + '_pcr' + param_dict['cm_solver_pre_comp_refactor'] \
+                + '_pctol' + param_dict['cm_solver_pre_comp_droptol'] \
+                + '_pcs' + param_dict['cm_solver_pre_comp_sweeps'] \
+                + '_pcsai' + param_dict['cm_solver_pre_comp_sai_thres'] \
+                + '_pa' + param_dict['cm_solver_pre_app_type'] \
+                + '_paji'+ str(param_dict['cm_solver_pre_app_jacobi_iters'])
 
-            temp_file = path.join(temp_dir, path.basename(self.__control_file))
+        return param_dict
+
+    def run_md(self, binary, run_type, mpi_cmd):
+        from itertools import product
+        from os import environ, path, remove, rmdir
+        from subprocess import Popen, PIPE
+        from tempfile import mkdtemp
+        from time import time
+
+        env = dict(environ)
+        temp_dir = mkdtemp(dir=getcwd())
+
+        # create Cartesian product of all supplied sets of parameter values
+        for p in product(*[self.__params[k] for k in self.__param_names]):
+            param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
+            param_dict = self._create_output_file_base(run_type, param_dict)
+
+            temp_file = path.join(temp_dir, 'control')
             self._create_control_file(param_dict, temp_file)
 
-            env['OMP_NUM_THREADS'] = param_dict['threads']
-
-            cmd_args = binary.split()
-            cmd_args.append(self.__geo_file)
-            cmd_args.append(self.__ffield_file)
-            cmd_args.append("")
-            cmd_args[-1] = temp_file
+            cmd_args, env = self._create_md_cmd(binary, temp_file, run_type,
+                    mpi_cmd, param_dict, env)
 
             start = time()
             proc_handle = Popen(cmd_args, stdout=PIPE, stderr=PIPE, env=env, universal_newlines=True)
@@ -323,7 +391,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
         fout.flush()
 
-    def parse_results(self):
+    def parse_results(self, run_type):
         from itertools import product
         from os import path
 
@@ -339,24 +407,11 @@ restart_freq            0                       ! 0: do not output any restart f
             # create Cartesian product of all supplied sets of parameter values
             for p in product(*[self.__params[k] for k in self.__param_names]):
                 param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
-                param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
-                    + '_cm' + param_dict['charge_method'] \
-                    + '_s' + param_dict['nsteps'] \
-                    + '_q' + param_dict['cm_solver_type'] \
-                    + '_qtol' + param_dict['cm_solver_q_err'] \
-                    + '_qds' + param_dict['cm_domain_sparsity'] \
-                    + '_pc' + param_dict['cm_solver_pre_comp_type'] \
-                    + '_pcr' + param_dict['cm_solver_pre_comp_refactor'] \
-                    + '_pctol' + param_dict['cm_solver_pre_comp_droptol'] \
-                    + '_pcs' + param_dict['cm_solver_pre_comp_sweeps'] \
-                    + '_pcsai' + param_dict['cm_solver_pre_comp_sai_thres'] \
-                    + '_pa' + param_dict['cm_solver_pre_app_type'] \
-                    + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
-                    + '_t' + param_dict['threads']
+                param_dict = self._create_output_file_base(run_type, param_dict)
 
                 self._process_result(fout, param_dict, self.__min_step, self.__max_step)
 
-    def _build_slurm_script(self, binary, param_values):
+    def _build_slurm_script(self, binary, run_type, mpi_cmd, param_values):
         from os import path
 
         # remove executable and back up two directory levels
@@ -383,11 +438,14 @@ python3 {0}/tools/run_sim.py run_md \\
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
 
-        job_script += "\n    {0}".format(self.__data_set)
+        if run_type == 'mpi' or run_type == 'mpi+gpu':
+            job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
+
+        job_script += "\n    {0} {1}".format(run_type, self.__data_set)
 
         return job_script
 
-    def _build_pbs_script(self, binary, param_values):
+    def _build_pbs_script(self, binary, run_type, mpi_cmd, param_values):
         from os import path
 
         # remove executable and back up two directory levels
@@ -410,22 +468,25 @@ python3 {0}/tools/run_sim.py run_md \\
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
 
-        job_script += "\n    {0}".format(self.__data_set)
+        if run_type == 'mpi' or run_type == 'mpi+gpu':
+            job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
+
+        job_script += "\n    {0} {1}".format(run_type, self.__data_set)
 
         return job_script
 
-    def submit_jobs(self, binary, job_script_type):
+    def submit_jobs(self, binary, run_type, job_script_type, mpi_cmd):
         from itertools import product
         from subprocess import Popen, PIPE
 
         for p in product(*[self.__params[k] for k in self.__param_names]):
             if job_script_type == 'slurm':
-                job_script = self._build_slurm_script(binary, p)
+                job_script = self._build_slurm_script(binary, run_type, mpi_cmd, p)
 
                 cmd_args = ['sbatch']
 
             if job_script_type == 'pbs':
-                job_script = self._build_pbs_script(binary, p)
+                job_script = self._build_pbs_script(binary, run_type, mpi_cmd, p)
                 
                 cmd_args = ['qsub']
 
@@ -455,19 +516,26 @@ if __name__ == '__main__':
                 'zno_6912', \
                 ]
         JOB_TYPES = ['pbs', 'slurm']
+        RUN_TYPES = ['serial', 'openmp', 'mpi', 'mpi+gpu']
 
         parser = argparse.ArgumentParser(description='Molecular dynamics simulation tools used with specified data sets.')
-        subparsers = parser.add_subparsers(help="Actions types.")
+        subparsers = parser.add_subparsers(help="Actions.")
         run_md_parser = subparsers.add_parser("run_md")
         parse_results_parser = subparsers.add_parser("parse_results")
         submit_jobs_parser = subparsers.add_parser("submit_jobs")
 
         run_md_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
-                help='Binary file to run.')
+                help='Binary file used for running the MD simulation(s).')
         run_md_parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
-                help='Paramater name and value pairs for the simulation, with multiple values comma delimited.')
+                help='Paramater name and value pairs for the simulation as defined in the control file.'
+                + ' Multiple values for a parameter can be specified using commas, and each'
+                + ' value will constitute a separate MD simulation.')
+        run_md_parser.add_argument('-m', '--mpi_cmd', metavar='mpi_cmd', default=['mpirun'], nargs=1,
+                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:1\'.')
+        run_md_parser.add_argument('run_type', nargs=1,
+                choices=RUN_TYPES, help='Run type for the MD simulation(s).')
         run_md_parser.add_argument('data_sets', nargs='+',
-                choices=DATA_SETS, help='Data sets for which to run simulations.')
+                choices=DATA_SETS, help='Data set(s) used for the MD simulation(s).')
         run_md_parser.set_defaults(func=run_md)
 
         parse_results_parser.add_argument('-f', '--out_file', metavar='out_file', default=None, nargs=1,
@@ -478,29 +546,36 @@ if __name__ == '__main__':
                 help='Minimum simulation step to begin aggregating results.')
         parse_results_parser.add_argument('-x', '--max_step', metavar='max_step', default=None, nargs=1,
                 help='Maxiumum simulation step for aggregating results.')
+        parse_results_parser.add_argument('run_type', nargs=1,
+                choices=RUN_TYPES, help='Run type for the MD simulation(s).')
         parse_results_parser.add_argument('data_sets', nargs='+',
-                choices=DATA_SETS, help='Data sets for which to parse results.')
+                choices=DATA_SETS, help='Data set(s) for which to parse MD simulation results.')
         parse_results_parser.set_defaults(func=parse_results)
 
         submit_jobs_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
                 help='Binary file to run.')
         submit_jobs_parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
                 help='Paramater name and value pairs for the simulation, with multiple values comma delimited.')
+        submit_jobs_parser.add_argument('-m', '--mpi_cmd', metavar='mpi_cmd', default=['mpirun'], nargs=1,
+                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:1\'.')
         submit_jobs_parser.add_argument('job_script_type', nargs=1,
                 choices=JOB_TYPES, help='Type of job script.')
+        submit_jobs_parser.add_argument('run_type', nargs=1,
+                choices=RUN_TYPES, help='Run type for the MD simulation(s).')
         submit_jobs_parser.add_argument('data_sets', nargs='+',
-                choices=DATA_SETS, help='Data sets for which to run simulations.')
+                choices=DATA_SETS, help='Data set(s) for which to run MD simulation(s).')
         submit_jobs_parser.set_defaults(func=submit_jobs)
 
         return parser
 
     def setup_defaults(base_dir):
-        control_dir = path.join(base_dir, 'environ')
         data_dir = path.join(base_dir, 'data/benchmarks')
         control_params_dict = {
                 'ensemble_type': ['0'],
                 'nsteps': ['20'],
                 'dt': ['0.25'],
+                'gpus_per_node': ['1'],
+                'proc_by_dim': ['1:1:1'],
                 'periodic_boundaries': ['1'],
                 'reposition_atoms': ['0'],
                 'remove_CoM_vel': ['500'],
@@ -542,9 +617,9 @@ if __name__ == '__main__':
                 'compress': ['0.008134'],
                 'press_mode': ['0'],
         }
-        return control_dir, data_dir, control_params_dict
+        return data_dir, control_params_dict
 
-    def setup_test_cases(data_sets, data_dir, control_dir, control_params, header_fmt_str=None,
+    def setup_test_cases(data_sets, data_dir, control_params, header_fmt_str=None,
             header_str=None, body_fmt_str=None, result_file='result.txt', min_step=None, max_step=None):
         test_cases = []
 
@@ -553,7 +628,6 @@ if __name__ == '__main__':
                 TestCase('water_6540',
                     path.join(data_dir, 'water/water_6540.pdb'),
                     path.join(data_dir, 'water/ffield_acks2.water'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['1'], result_file=result_file,
@@ -562,7 +636,6 @@ if __name__ == '__main__':
             test_cases.append('water_78480',
                 TestCase(path.join(data_dir, 'water/water_78480.geo'),
                     path.join(data_dir, 'water/ffield_acks2.water'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['0'], result_file=result_file,
@@ -572,7 +645,6 @@ if __name__ == '__main__':
                 TestCase('water_327000',
                     path.join(data_dir, 'water/water_327000.geo'),
                     path.join(data_dir, 'water/ffield_acks2.water'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['0'], result_file=result_file,
@@ -582,7 +654,6 @@ if __name__ == '__main__':
                 TestCase('bilayer_56800',
                     path.join(data_dir, 'bilayer/bilayer_56800.pdb'),
                     path.join(data_dir, 'bilayer/ffield-bio'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['1'], result_file=result_file,
@@ -592,7 +663,6 @@ if __name__ == '__main__':
                 TestCase('bilayer_340800',
                     path.join(data_dir, 'bilayer/bilayer_340800.geo'),
                     path.join(data_dir, 'bilayer/ffield-bio'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['0'], result_file=result_file,
@@ -602,7 +672,6 @@ if __name__ == '__main__':
                 TestCase('dna_19733',
                     path.join(data_dir, 'dna/dna_19733.pdb'),
                     path.join(data_dir, 'dna/ffield-dna'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['1'], result_file=result_file,
@@ -612,7 +681,6 @@ if __name__ == '__main__':
                 TestCase('silica_6000',
                     path.join(data_dir, 'silica/silica_6000.pdb'),
                     path.join(data_dir, 'silica/ffield-bio'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['1'], result_file=result_file,
@@ -622,7 +690,6 @@ if __name__ == '__main__':
                 TestCase('silica_72000',
                     path.join(data_dir, 'silica/silica_72000.geo'),
                     path.join(data_dir, 'silica/ffield-bio'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['0'], result_file=result_file,
@@ -632,7 +699,6 @@ if __name__ == '__main__':
                 TestCase('silica_300000',
                     path.join(data_dir, 'silica/silica_300000.geo'),
                     path.join(data_dir, 'silica/ffield-bio'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['0'], result_file=result_file,
@@ -642,7 +708,6 @@ if __name__ == '__main__':
                 TestCase('petn_48256',
                     path.join(data_dir, 'petn/petn_48256.pdb'),
                     path.join(data_dir, 'petn/ffield.petn'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['1'], result_file=result_file,
@@ -652,7 +717,6 @@ if __name__ == '__main__':
                 TestCase('zno_6912',
                     path.join(data_dir, 'metal/zno_6912.pdb'),
                     path.join(data_dir, 'metal/ffield.zno'),
-                    path.join(control_dir, 'param.gpu.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
                     geo_format=['1'], result_file=result_file,
@@ -665,10 +729,16 @@ if __name__ == '__main__':
             binary = args.binary[0]
             # remove executable and back up two directory levels
             base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
-            control_dir, data_dir, control_params_dict = setup_defaults(base_dir)
         else:
             base_dir = getcwd()
-            binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
+                binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            elif args.run_type[0] == 'mpi':
+                binary = path.join(base_dir, 'PuReMD/bin/puremd')
+            elif args.run_type[0] == 'mpi+gpu':
+                binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
+
+        data_dir, control_params_dict = setup_defaults(base_dir)
 
         # overwrite default control file parameter values if supplied via command line args
         if args.params:
@@ -679,10 +749,10 @@ if __name__ == '__main__':
                     print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
-        test_cases = setup_test_cases(args.data_sets, data_dir, control_dir, control_params_dict)
+        test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict)
 
         for test in test_cases:
-            test.run(binary)
+            test.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'))
 
     def parse_results(args):
         header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
@@ -691,7 +761,7 @@ if __name__ == '__main__':
         body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
 
         base_dir = getcwd()
-        control_dir, data_dir, control_params_dict = setup_defaults(base_dir)
+        data_dir, control_params_dict = setup_defaults(base_dir)
 
         if args.out_file:
             result_file = args.out_file[0]
@@ -708,22 +778,28 @@ if __name__ == '__main__':
         else:
             max_step = None
 
-        test_cases = setup_test_cases(args.data_sets, data_dir, control_dir, control_params_dict,
+        test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict,
                 header_fmt_str=header_fmt_str, header_str=header_str, body_fmt_str=body_fmt_str,
                 result_file=result_file, min_step=min_step, max_step=max_step)
 
         for test in test_cases:
-            test.parse_results()
+            test.parse_results(args.run_type[0])
 
     def submit_jobs(args):
         if args.binary:
             binary = args.binary[0]
             # remove executable and back up two directory levels
             base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
-            control_dir, data_dir, control_params_dict = setup_defaults(base_dir)
         else:
             base_dir = getcwd()
-            binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
+                binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            elif args.run_type[0] == 'mpi':
+                binary = path.join(base_dir, 'PuReMD/bin/puremd')
+            elif args.run_type[0] == 'mpi+gpu':
+                binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
+
+        data_dir, control_params_dict = setup_defaults(base_dir)
 
         # overwrite default control file parameter values if supplied via command line args
         if args.params:
@@ -734,10 +810,11 @@ if __name__ == '__main__':
                     print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
-        test_cases = setup_test_cases(args.data_sets, data_dir, control_dir, control_params_dict)
+        test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict)
 
         for test in test_cases:
-            test.submit_jobs(binary, args.job_script_type[0])
+            test.submit_jobs(binary, args.run_type[0], args.job_script_type[0],
+                    args.mpi_cmd[0].split(':'))
 
     parser = setup_parser()
     args = parser.parse_args()

@@ -199,6 +199,16 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 val = atof(tmp[1]);
                 control->dt = val * 1.e-3;  // convert dt from fs to ps!
             }
+            else if ( strncmp(tmp[0], "gpus_per_node", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to shared memory code
+                ;
+            }
+            else if ( strncmp(tmp[0], "proc_by_dim", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to shared memory code
+                ;
+            }
             else if ( strncmp(tmp[0], "periodic_boundaries", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
