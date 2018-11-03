@@ -342,10 +342,15 @@ void Init_Forces( reax_system *system, control_params *control,
     int start_j, end_j;
     int btop_j;
 #endif
+    int total_cnt[6];
+    int bin[6];
+    int total_sum[6];
+    int nt_flag;
 
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
+
 
     for ( i = 0; i < system->n; ++i )
         workspace->bond_mark[i] = 0;
@@ -356,12 +361,46 @@ void Init_Forces( reax_system *system, control_params *control,
     }
 
     H = workspace->H;
-    H->n = system->n;
+    H->n = system->N;
     Htop = 0;
     num_bonds = 0;
     num_hbonds = 0;
     btop_i = 0;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+
+    if( renbr )
+    {
+        for ( i = 0; i < 6; ++i )
+        {
+            total_cnt[i] = 0;
+            bin[i] = 0;
+            total_sum[i] = 0;
+        }
+        for ( i = system->n; i < system->N; ++i )
+        {
+            atom_i = &(system->my_atoms[i]);
+            if( atom_i->nt_dir != -1 )
+            {
+                total_cnt[ atom_i->nt_dir ]++;
+            }
+        }
+        total_sum[0] = system->n;
+        for ( i = 1; i < 6; ++i )
+        {
+            total_sum[i] = total_sum[i-1] + total_cnt[i-1];
+        }
+        for ( i = system->n; i < system->N; ++i )
+        {
+            atom_i = &(system->my_atoms[i]);
+            if( atom_i->nt_dir != -1 )
+            {
+                atom_i->pos = total_sum[ atom_i->nt_dir ] + bin[ atom_i->nt_dir ];
+                bin[ atom_i->nt_dir ]++;
+            }
+        }
+        H->NT = total_sum[6] + total_cnt[6];
+
+    }
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -378,11 +417,16 @@ void Init_Forces( reax_system *system, control_params *control,
 #endif
         sbp_i = &(system->reax_param.sbp[type_i]);
 
-        //TODO: edit this part to include NT atoms
         if ( i < system->n )
         {
             local = 1;
             cutoff = control->nonb_cut;
+        }
+        else if( atom_i->nt_dir != -1 )
+        {
+            local = 2;
+            cutoff = control->nonb_cut;
+            nt_flag = 0;
         }
         else
         {
@@ -392,7 +436,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
         ihb = -1;
         ihb_top = -1;
-        if ( local )
+        if ( local == 1 )
         {
             H->start[i] = Htop;
             H->entries[Htop].j = i;
@@ -418,6 +462,14 @@ void Init_Forces( reax_system *system, control_params *control,
                 }
             }
         }
+        // TODO: Diag entries for NT atoms?
+        /*else if( local == 2 )
+        {
+            H->start[atom_i->pos] = Htop;
+            H->entries[Htop].j = atom_i->pos;
+            H->entries[Htop].val = sbp_i->eta;
+            ++Htop;
+        }*/
 
         /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
@@ -455,18 +507,34 @@ void Init_Forces( reax_system *system, control_params *control,
                 sbp_j = &(system->reax_param.sbp[type_j]);
                 twbp = &(system->reax_param.tbp[type_i][type_j]);
 
-                if ( local )
+                if ( local == 1 )
                 {
                     /* H matrix entry */
 #if defined(HALF_LIST)
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq||1
 #endif
                     {
-                        H->entries[Htop].j = j;
-                        if ( control->tabulate == 0 )
-                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
-                        else H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
-                        ++Htop;
+                        if( atom_j->nt_dir != -1 || j < system->n )
+                        {
+                            if( j < system->n )
+                            {
+                                H->entries[Htop].j = j;
+                            }
+                            else
+                            {
+                                H->entries[Htop].j = atom_i->pos;
+                            }
+
+                            if ( control->tabulate == 0 )
+                            {
+                                H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                            }
+                            else 
+                            {
+                                H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                            }
+                            ++Htop;
+                        }
                     }
 
                     /* hydrogen bond lists */
@@ -497,6 +565,42 @@ void Init_Forces( reax_system *system, control_params *control,
 #endif
                     }
                 }
+                else if ( local == 2 )
+                {
+                    /* H matrix entry */
+#if defined(HALF_LIST)
+                    if ( j < system->n || atom_i->orig_id < atom_j->orig_id )
+#endif
+                    {
+                        if( atom_j->nt_dir != -1 || j < system->n )
+                        {
+                            if( !nt_flag )
+                            {
+                                nt_flag = 1;
+                                H->start[atom_i->pos] = Htop;
+                            }
+                            if( j < system->n )
+                            {
+                                H->entries[Htop].j = j;
+                            }
+                            else
+                            {
+                                H->entries[Htop].j = atom_i->pos;
+                            }
+
+                            if ( control->tabulate == 0 )
+                            {
+                                H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                            }
+                            else 
+                            {
+                                H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                            }
+                            ++Htop;
+                        }
+                    }
+
+                }
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
@@ -517,8 +621,17 @@ void Init_Forces( reax_system *system, control_params *control,
             }
         }
 
+        if ( local == 1 )
+        {
+            H->end[i] = Htop;
+        }
+        else if ( local == 2 )
+        {
+            H->end[atom_i->pos] = Htop;
+        }
+
         Set_End_Index( i, btop_i, bonds );
-        if ( local )
+        if ( local == 1 )
         {
             H->end[i] = Htop;
             if ( ihb == 1 )
@@ -809,7 +922,7 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
 
 void Estimate_Storages( reax_system *system, control_params *control,
                         reax_list **lists, int *Htop, int *hb_top,
-                        int *bond_top, int *num_3body, MPI_Comm comm )
+                        int *bond_top, int *num_3body, MPI_Comm comm, int *matrix_dim )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -831,6 +944,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
     far_nbrs = lists[FAR_NBRS];
     *Htop = 0;
+    *matrix_dim = 0;
     memset( hb_top, 0, sizeof(int) * system->local_cap );
     memset( bond_top, 0, sizeof(int) * system->total_cap );
     *num_3body = 0;
@@ -848,7 +962,17 @@ void Estimate_Storages( reax_system *system, control_params *control,
             local = 1;
             cutoff = control->nonb_cut;
             ++(*Htop);
+            ++(*matrix_dim);
             ihb = sbp_i->p_hbond;
+        }
+        else if ( atom_i->nt_dir != -1 )
+        {
+            local = 2;
+            cutoff = control->nonb_cut;
+            // TODO: Diag entries for NT atoms?
+            //++(*Htop);
+            //++(*matrix_dim);
+            ihb = -1;
         }
         else
         {
@@ -872,13 +996,16 @@ void Estimate_Storages( reax_system *system, control_params *control,
                 sbp_j = &(system->reax_param.sbp[type_j]);
                 twbp = &(system->reax_param.tbp[type_i][type_j]);
 
-                if ( local )
+                if ( local == 1 )
                 {
 #if defined(HALF_LIST)
                     if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
 #endif
                     {
-                        ++(*Htop);
+                        if( j < system->n || (system->my_atoms[j]).nt_dir != -1 )
+                        {
+                            ++(*Htop);
+                        }
                     }
 
                     /* hydrogen bond lists */
@@ -897,6 +1024,20 @@ void Estimate_Storages( reax_system *system, control_params *control,
                             ++hb_top[j];
                         }
 #endif
+                    }
+                }
+
+                else if ( local == 2 )
+                {
+
+#if defined(HALF_LIST)
+                    if ( j < system->n || atom_i->orig_id < atom_j->orig_id ) //tryQEq ||1
+#endif
+                    {
+                        if( j < system->n || (system->my_atoms[j]).nt_dir != -1 )
+                        {
+                            ++(*Htop);
+                        }
                     }
                 }
 
@@ -942,6 +1083,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     }
 
     *Htop = (int)(MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES ));
+    *matrix_dim = (int)(MAX( *matrix_dim * SAFE_ZONE, MIN_CAP ));
     for ( i = 0; i < system->n; ++i )
         hb_top[i] = (int)(MAX( hb_top[i] * SAFER_ZONE, MIN_HBONDS ));
 
@@ -985,13 +1127,21 @@ void Compute_Forces( reax_system *system, control_params *control,
 #elif defined(LAMMPS_REAX)
     qeq_flag = 0;
 #endif
-
+#if defined(NT_DEBUG)
+    fprintf( stdout, "forces.c before Init_Forces call\n");
+    fflush( stdout);
+#endif
     if ( qeq_flag )
         Init_Forces( system, control, data, workspace, lists, out_control, comm );
     else
         Init_Forces_noQEq( system, control, data, workspace,
                            lists, out_control, comm );
 
+#if defined(NT_DEBUG)
+    //MPI_Barrier(MPI_COMM_WORLD);  
+    fprintf( stdout, "p%d, forces.c after Init_Forces call\n", system->my_rank);
+    fflush( stdout);
+#endif
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
@@ -1002,6 +1152,11 @@ void Compute_Forces( reax_system *system, control_params *control,
     /********* bonded interactions ************/
     Compute_Bonded_Forces( system, control, data, workspace,
                            lists, out_control, mpi_data->world );
+#if defined(NT_DEBUG)
+    fprintf( stdout, "forces.c after Compute_Bonded_Forces call\n");
+    fflush( stdout);
+    MPI_Barrier( mpi_data->world );
+#endif
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
@@ -1016,11 +1171,20 @@ void Compute_Forces( reax_system *system, control_params *control,
     MPI_Barrier( mpi_data->world );
 #endif
 
+#if defined(NT_DEBUG)
+    fprintf( stdout, "p%d, forces.c before QEq call\n", system->my_rank );
+    fflush( stdout);
+    MPI_Barrier( mpi_data->world );
+#endif
 
     /**************** qeq ************************/
 #if defined(PURE_REAX)
     if ( qeq_flag )
         QEq( system, control, data, workspace, out_control, mpi_data );
+#if defined(NT_DEBUG)
+    fprintf( stdout, "forces.c after QEq call\n");
+    fflush( stdout);
+#endif
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );

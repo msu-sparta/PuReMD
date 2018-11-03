@@ -40,6 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
+#define NT_DEBUG
 //#define LAMMPS_REAX
 //#define HALF_LIST
 //#define DEBUG
@@ -422,6 +423,8 @@ typedef struct
     int num_bonds;
     int num_hbonds;
     int renumber;
+    int nt_dir;
+    int pos;
 } reax_atom;
 
 
@@ -875,6 +878,15 @@ typedef struct
 typedef struct
 {
     int nbr;
+    ivec rel_box;
+    real d;
+    rvec dvec;
+} nt_neighbor_data;
+
+
+typedef struct
+{
+    int nbr;
     int scl;
     far_neighbor_data *ptr;
 } hbond_data;
@@ -940,7 +952,7 @@ typedef struct
 
 typedef struct
 {
-    int cap, n, m;
+    int cap, n, m, NT;
     int *start, *end;
     sparse_matrix_entry *entries;
 } sparse_matrix;
@@ -1054,6 +1066,7 @@ typedef union
     //dbond_data         *dbo_list;
     //dDelta_data        *dDelta_list;
     //far_neighbor_data  *far_nbr_list;
+    //nt_neighbor_data   *nt_nbr_list;
     //hbond_data         *hbond_list;
 } list_type;
 
@@ -1077,6 +1090,7 @@ typedef struct
     dbond_data *dbo_list;
     dDelta_data *dDelta_list;
     far_neighbor_data *far_nbr_list;
+    nt_neighbor_data *nt_nbr_list;
     hbond_data *hbond_list;
 } reax_list;
 

@@ -714,9 +714,6 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
         }
     }
     
-    //fprintf(stderr, "After dist call, p%d\n", system->my_rank );
-    //fflush(stderr);
-
     X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
     pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
 
@@ -738,7 +735,7 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
             ++N;
 
             /* for each of those indices
-             *              * search through the row of full A of that index */
+             * search through the row of full A of that index */
 
             /* the case where the local matrix has that index's row */
             if( j_temp < A->n )
@@ -835,7 +832,7 @@ real sparse_approx_inverse(reax_system *system, simulation_data *data, storage *
         }
 
         /* create the right hand side of the linear equation
-         *          * that is the full column of the identity matrix */
+         * that is the full column of the identity matrix */
         e_j = (real *) malloc( sizeof(real) * M );
 
         for ( k = 0; k < M; ++k )
@@ -1204,16 +1201,19 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     t_start = Get_Time( );
     scale = sizeof(real) / sizeof(void);
-    Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
+    //Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
+    Dist_NT( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
     t_comm += Get_Timing_Info( t_start );
 
     t_start = Get_Time( );
-    Sparse_MatVec( H, x, workspace->q, system->N );
+    //Sparse_MatVec( H, x, workspace->q, system->N );
+    Sparse_MatVec( H, x, workspace->q, H->NT );
     t_spmv += Get_Timing_Info( t_start );
 
 #if defined(HALF_LIST)
     t_start = Get_Time( );
-    Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+    //Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+    Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
     t_comm += Get_Timing_Info( t_start );
 #endif
 
@@ -1225,11 +1225,13 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     if( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_start = Get_Time( );
-        Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+        //Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+        Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
         t_comm += Get_Timing_Info( t_start );
         
         t_start = Get_Time( );
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+        //Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
         t_pa += Get_Timing_Info( t_start );
     }
 
@@ -1251,16 +1253,19 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
         t_start = Get_Time( );
-        Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
+        //Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
+        Dist_NT( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
         t_comm += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+        //Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+        Sparse_MatVec( H, workspace->d, workspace->q, H->NT );
         t_spmv += Get_Timing_Info( t_start );
 
 #if defined(HALF_LIST)
         t_start = Get_Time( );
-        Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+        //Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+        Coll_NT(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
         t_comm += Get_Timing_Info( t_start );
 #endif
 
@@ -1278,11 +1283,13 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         if( control->cm_solver_pre_comp_type == SAI_PC )
         {
             t_start = Get_Time( );
-            Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+            //Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+            Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
             t_comm += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
+            //Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
+            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, H->NT );
             t_pa += Get_Timing_Info( t_start );
         }
 
