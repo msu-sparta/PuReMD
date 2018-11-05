@@ -209,7 +209,7 @@ typedef struct
     mpi_out_data out_nt_buffers[REAX_MAX_NT_NBRS];
     void *in1_buffer;
     void *in2_buffer;
-    void *in_nt_buffer[REAX_MAX_NT_NBRS]
+    void *in_nt_buffer[REAX_MAX_NT_NBRS];
 } mpi_datatypes;
 
 

@@ -5,7 +5,7 @@ AC_PREREQ([2.69])
 
 AC_INIT([PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
 # Do not allow AC_PROG_CC to set CFLAGS (this line must be after AC_INIT but before AC_PROG_CC)
-sav_CFLAGS="${CFLAGS}"
+save_CFLAGS="${CFLAGS}"
 : ${CFLAGS=""}
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 # Enable silent build rules by default.
@@ -26,7 +26,7 @@ AC_LANG([C])
 # Checks for programs.
 AC_PROG_CC([cc icc gcc])
 AC_PROG_CPP
-CFLAGS="${sav_CFLAGS}"
+CFLAGS="${save_CFLAGS}"
 
 AC_CONFIG_SRCDIR([src/torsion_angles.h])
 AC_CONFIG_HEADERS([src/config.h])
@@ -50,32 +50,37 @@ AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset pow sqrt])
 
-# Check for compiler vendor
+# Check for compiler vendor. If the compiler is recognized,
+#   the variable ax_cv_c_compiler_vendor is set accordingly.
 AX_COMPILER_VENDOR
 if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
 	if test "x${BUILD_DEBUG}" = "x"; then
-		CFLAGS="${CFLAGS} -Wall -O3 -funroll-loops"
+		CFLAGS="-Wall -O2 -funroll-loops"
 	else
-		CFLAGS="${CFLAGS} -Wall -O0 -g"
+		CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 	fi
-fi
-if test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
+elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 	if test "x${BUILD_DEBUG}" = "x"; then
-		CFLAGS="$CFLAGS -fast"
+		CFLAGS="-Wall -O2 -funroll-loops"
+	else
+		CFLAGS="-Wall -O0"
 	fi
 fi
 
-# Check for MPI support.
+# Check for MPI support. If found, sets the following variables:
+#   Compiler-related: MPICC, MPICXX, MPIF77
+#   Library linking: MPILIBS
+#   Compilation support (via preprocessor def): HAVE_MPI
 CONFIGURE_HEADLINE([ MPI compiler ])
 ACX_MPI([], [AC_MSG_ERROR([could not find mpi library])])
 AC_CHECK_PROG(MPIRUN, mpirun, mpirun)
 AC_SUBST(MPIRUN)
 
 # try to find if we are using OpenMPI / MPICH by looking inside mpi.h
-sav_CC="${CC}"
-sav_CFLAGS="${CFLAGS}"
+save_CC="${CC}"
+save_CFLAGS="${CFLAGS}"
 CC="${MPICC}"
-CFLAGS="${CFLAGS}"
+CFLAGS=""
 AC_CHECK_DECL([OPEN_MPI], [mpi_vendor="OpenMPI"],
 	     [], [#include "mpi.h"])
 # MPICH v2
@@ -84,8 +89,8 @@ AC_CHECK_DECL([MPICH2], [mpi_vendor="MPICH2"],
 # MPICH v3
 AC_CHECK_DECL([MPICH_VERSION], [mpi_vendor="MPICH3"],
 	     [], [#include "mpi.h"])
-CC="${sav_CC}"
-CFLAGS="${sav_CFLAGS}"
+CC="${save_CC}"
+CFLAGS="${save_CFLAGS}"
 
 # try to set MPI_CFLAGS and MPI_LIBS
 MPI_CFLAGS=
@@ -104,7 +109,7 @@ then
 	MPI_CFLAGS=
 	for i in $tmp
 	do 
-		case $i in 
+		case ${i} in 
 			-[[DIUbi]]*)
 				MPI_CFLAGS="${MPI_CFLAGS} ${i}"
 				;;
@@ -114,7 +119,7 @@ then
 	tmp=`${MPICC} -link-info | awk '{$1=""; print $0 }'`
 	for i in $tmp
 	do 
-		case $i in 
+		case ${i} in 
 			[[\\/]]*.a | ?:[[\\/]]*.a | -[[lLRu]]* | -Wl* )
 				MPI_LIBS="${MPI_LIBS} ${i}"
 				;;
@@ -138,7 +143,10 @@ then
 		       [-lmkl_sequential -lmkl_core -lpthread -lm -ldl])
 	AS_IF([test "x${MKL_FOUND_LIBS}" != "xyes"],
 	      [AC_MSG_ERROR([Unable to find MKL LAPACKE library.])])
-	LIBS="${LIBS} -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl"
+	# dynamic linking
+	#LIBS="${LIBS} -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl"
+	# static linking
+	LIBS="${LIBS} -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl"
 	AC_DEFINE([HAVE_LAPACKE_MKL], [1], [Define to 1 if you have MKL LAPACKE support enabled.])
 else
 	AC_CHECK_HEADERS([lapacke.h], [LAPACKE_FOUND_HEADERS="yes"])

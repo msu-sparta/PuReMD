@@ -16,5 +16,5 @@ include_HEADERS = src/reax_defs.h src/reax_types.h \
       src/bonds.h src/valence_angles.h src/hydrogen_bonds.h src/torsion_angles.h src/nonbonded.h src/forces.h \
       src/integrate.h src/init_md.h
 
-bin_puremd_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS) $(CFLAGS)
-bin_puremd_LDADD = $(AM_LDADD) $(MPI_LIBS) $(LDADD)
+bin_puremd_CFLAGS = $(CFLAGS) $(MPI_CFLAGS)
+bin_puremd_LDADD = $(LDADD) $(MPI_LIBS)
