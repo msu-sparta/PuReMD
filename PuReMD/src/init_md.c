@@ -568,7 +568,7 @@ int  Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data, char *msg )
 {
-    int i, num_nbrs;
+    int i, num_nbrs, matrix_dim;
     int total_hbonds, total_bonds, bond_cap, num_3body, cap_3body, Htop;
     int *hb_top, *bond_top;
     MPI_Comm comm;
@@ -617,17 +617,13 @@ int  Init_Lists( reax_system *system, control_params *control,
     hb_top = (int*) calloc( system->local_cap, sizeof(int) );
     //bond_top = (int*) malloc( system->total_cap * sizeof(int) );
     //hb_top = (int*) malloc( system->local_cap * sizeof(int) );
+    
     Estimate_Storages( system, control, lists,
-            &Htop, hb_top, bond_top, &num_3body, comm );
+            &Htop, hb_top, bond_top, &num_3body, comm, &matrix_dim );
 
-    Allocate_Matrix( &(workspace->H), system->local_cap, Htop, comm );
+    Allocate_Matrix( &(workspace->H), matrix_dim, Htop, comm );
     workspace->L = NULL;
     workspace->U = NULL;
-
-    //TODO: uncomment for SAI
-    //    Allocate_Matrix2( &(workspace->H_spar_patt), workspace->H->n, system->local_cap, workspace->H->m, comm );
-    //    Allocate_Matrix( &(workspace->H_spar_patt_full), workspace->H->n, 2 * workspace->H->m - workspace->H->n );
-    //    Allocate_Matrix2( &(workspace->H_app_inv), workspace->H->n, system->local_cap, workspace->H->m, comm );
     workspace->H_spar_patt = NULL;
     workspace->H_app_inv = NULL;
 
@@ -729,7 +725,7 @@ int  Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data, char *msg )
 {
-    int i, num_nbrs;
+    int i, num_nbrs, matrix_dim;
     int total_hbonds, total_bonds, bond_cap, num_3body, cap_3body, Htop;
     int *hb_top, *bond_top;
     int nrecv[MAX_NBRS];
@@ -739,7 +735,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     bond_top = (int*) calloc( system->total_cap, sizeof(int) );
     hb_top = (int*) calloc( system->local_cap, sizeof(int) );
     Estimate_Storages( system, control, lists,
-            &Htop, hb_top, bond_top, &num_3body, comm );
+            &Htop, hb_top, bond_top, &num_3body, comm, &matrix_dim );
 
     if ( control->hbond_cut > 0 )
     {
