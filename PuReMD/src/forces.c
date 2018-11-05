@@ -361,12 +361,13 @@ void Init_Forces( reax_system *system, control_params *control,
     }
 
     H = workspace->H;
-    H->n = system->N;
+    H->n = system->n;
     Htop = 0;
     num_bonds = 0;
     num_hbonds = 0;
     btop_i = 0;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    nt_flag = 1;
 
     if( renbr )
     {
@@ -398,8 +399,7 @@ void Init_Forces( reax_system *system, control_params *control,
                 bin[ atom_i->nt_dir ]++;
             }
         }
-        H->NT = total_sum[6] + total_cnt[6];
-
+        H->NT = total_sum[5] + total_cnt[5];
     }
 
     for ( i = 0; i < system->N; ++i )
@@ -522,7 +522,7 @@ void Init_Forces( reax_system *system, control_params *control,
                             }
                             else
                             {
-                                H->entries[Htop].j = atom_i->pos;
+                                H->entries[Htop].j = atom_j->pos;
                             }
 
                             if ( control->tabulate == 0 )
@@ -585,7 +585,7 @@ void Init_Forces( reax_system *system, control_params *control,
                             }
                             else
                             {
-                                H->entries[Htop].j = atom_i->pos;
+                                H->entries[Htop].j = atom_j->pos;
                             }
 
                             if ( control->tabulate == 0 )
@@ -621,21 +621,16 @@ void Init_Forces( reax_system *system, control_params *control,
             }
         }
 
-        if ( local == 1 )
-        {
-            H->end[i] = Htop;
-        }
-        else if ( local == 2 )
-        {
-            H->end[atom_i->pos] = Htop;
-        }
-
         Set_End_Index( i, btop_i, bonds );
         if ( local == 1 )
         {
             H->end[i] = Htop;
             if ( ihb == 1 )
                 Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
+        }
+        else if ( local == 2 )
+        {
+            H->end[atom_i->pos] = Htop;
         }
     }
 
@@ -1127,21 +1122,12 @@ void Compute_Forces( reax_system *system, control_params *control,
 #elif defined(LAMMPS_REAX)
     qeq_flag = 0;
 #endif
-#if defined(NT_DEBUG)
-    fprintf( stdout, "forces.c before Init_Forces call\n");
-    fflush( stdout);
-#endif
     if ( qeq_flag )
         Init_Forces( system, control, data, workspace, lists, out_control, comm );
     else
         Init_Forces_noQEq( system, control, data, workspace,
                            lists, out_control, comm );
 
-#if defined(NT_DEBUG)
-    //MPI_Barrier(MPI_COMM_WORLD);  
-    fprintf( stdout, "p%d, forces.c after Init_Forces call\n", system->my_rank);
-    fflush( stdout);
-#endif
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
@@ -1152,11 +1138,6 @@ void Compute_Forces( reax_system *system, control_params *control,
     /********* bonded interactions ************/
     Compute_Bonded_Forces( system, control, data, workspace,
                            lists, out_control, mpi_data->world );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "forces.c after Compute_Bonded_Forces call\n");
-    fflush( stdout);
-    MPI_Barrier( mpi_data->world );
-#endif
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
@@ -1171,20 +1152,11 @@ void Compute_Forces( reax_system *system, control_params *control,
     MPI_Barrier( mpi_data->world );
 #endif
 
-#if defined(NT_DEBUG)
-    fprintf( stdout, "p%d, forces.c before QEq call\n", system->my_rank );
-    fflush( stdout);
-    MPI_Barrier( mpi_data->world );
-#endif
 
     /**************** qeq ************************/
 #if defined(PURE_REAX)
     if ( qeq_flag )
         QEq( system, control, data, workspace, out_control, mpi_data );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "forces.c after QEq call\n");
-    fflush( stdout);
-#endif
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );

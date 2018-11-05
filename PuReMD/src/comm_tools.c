@@ -50,8 +50,9 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
         {+1, -1, 0}  // +x-y
     };
     my_box = &(system->my_box);
-    bndry_cut = system->bndry_cuts.ghost_cutoff;
-
+    // TODO: verify this line
+    //bndry_cut = system->bndry_cuts.ghost_cutoff;
+    bndry_cut = control->vlist_cut;
     /* identify my neighbors */
     system->num_nt_nbrs = MAX_NT_NBRS;
     for ( i = 0; i < system->num_nt_nbrs; ++i )
@@ -96,19 +97,17 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
 }
 
 
-void Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_bufs )
+int Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_bufs, int write )
 {
-    int i, d, p, out_cnt;
+    int i, cnt;
     reax_atom *atoms;
-    simulation_box *my_box;
-    boundary_atom *out_buf;
     neighbor_proc *nbr_pr;
 
+    cnt = 0;
     atoms = system->my_atoms;
-    my_box = &( system->my_box );
-
     /* place each atom into the appropriate outgoing list */
     nbr_pr = &( system->my_nt_nbrs[dir] );
+
     for ( i = 0; i < system->n; ++i )
     {
         if ( nbr_pr->bndry_min[0] <= atoms[i].x[0] &&
@@ -118,18 +117,26 @@ void Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_buf
             nbr_pr->bndry_min[2] <= atoms[i].x[2] &&
             atoms[i].x[2] < nbr_pr->bndry_max[2] )
         {
-            out_bufs[dir].index[out_cnt] = i;
-            out_bufs[dir].cnt++;
+            if( write )
+            {
+                out_bufs[dir].index[out_bufs[dir].cnt] = i;
+                out_bufs[dir].cnt++;
+            }
+            else
+            {
+                cnt++;
+            }
         }
     }
+
+    return cnt;
 }
 
 
 void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
 {
-    int d, start, end, cnt;
+    int d, end, cnt;
     mpi_out_data *out_bufs;
-    void *in;
     MPI_Comm comm;
     MPI_Request req;
     MPI_Status stat;
@@ -143,8 +150,9 @@ void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
 
     for ( d = 0; d < 6; ++d )
     {
-        Sort_Neutral_Territory( system, d, out_bufs );
-        start = end;
+        nbr = &( system->my_nt_nbrs[d] );
+        
+        Sort_Neutral_Territory( system, d, out_bufs, 1 );
         
         MPI_Irecv( &cnt, 1, MPI_INT, nbr->receive_rank, d, comm, &req );
         MPI_Send( &(out_bufs[d].cnt), 1, MPI_INT, nbr->rank, d, comm );
@@ -152,13 +160,40 @@ void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
         
         if( mpi_data->in_nt_buffer[d] == NULL )
         {
-            mpi_data->in_nt_buffer[d] = (void *) smalloc( SAFER_ZONE * out_bufs[d].cnt * sizeof(real), "in", comm );
+            mpi_data->in_nt_buffer[d] = (void *) smalloc( SAFER_ZONE * cnt * sizeof(real), "in", comm );
         }
 
         nbr = &(system->my_nt_nbrs[d]);
         nbr->atoms_str = end;
         nbr->atoms_cnt = cnt;
         end += cnt;
+    }
+}
+
+void Estimate_NT_Atoms( reax_system *system, mpi_datatypes *mpi_data )
+{
+    int d;
+    mpi_out_data *out_bufs;
+    neighbor_proc *nbr;
+
+    out_bufs = mpi_data->out_nt_buffers;
+
+    for( d = 0; d < 6; ++d )
+    {
+        /* count the number of atoms in each processor's outgoing list */
+        nbr = &( system->my_nt_nbrs[d] );
+        nbr->est_send = Sort_Neutral_Territory( system, d, out_bufs, 0 );
+
+        /* estimate the space based on the count above */
+        nbr->est_send = MAX( MIN_SEND, nbr->est_send * SAFER_ZONE );
+
+        /* allocate the estimated space */
+        out_bufs[d].index = (int*) calloc( nbr->est_send, sizeof(int) );
+        out_bufs[d].out_atoms = (void*) calloc( nbr->est_send, sizeof(real) );
+
+        /* sort the atoms to their outgoing buffers */
+        // TODO: ???
+        //Sort_Neutral_Territory( system, d, out_bufs, 1 );
     }
 }
 
@@ -407,7 +442,6 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
 {
     int i, d, p, out_cnt;
     reax_atom *atoms;
-    simulation_box *my_box;
     boundary_atom *out_buf;
     neighbor_proc *nbr_pr;
 
@@ -417,7 +451,6 @@ void Sort_Boundary_Atoms( reax_system *system, int start, int end,
 #endif
 
     atoms = system->my_atoms;
-    my_box = &( system->my_box );
 
     /* place each atom into the appropriate outgoing list */
     for ( i = start; i < end; ++i )
@@ -457,7 +490,6 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
 {
     int i, p, out_cnt;
     reax_atom *atoms;
-    simulation_box *my_box;
     boundary_atom *out_buf;
     neighbor_proc *nbr1, *nbr2, *nbr_pr;
 
@@ -466,7 +498,6 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
              system->my_rank, start, end, d );
 #endif
     atoms = system->my_atoms;
-    my_box = &( system->my_box );
     nbr1 = &(system->my_nbrs[2 * d]);
     nbr2 = &(system->my_nbrs[2 * d + 1]);
     nbr1->est_send = 0;
@@ -790,10 +821,8 @@ void Comm_Atoms( reax_system *system, control_params *control,
 #endif
 
         Bin_Boundary_Atoms( system );
-
-#if defined(NEUTRAL_TERRITORY)
+        
         Init_Neutral_Territory( system, mpi_data );
-#endif
     }
     else
     {

@@ -155,6 +155,7 @@ int Init_System( reax_system *system, control_params *control,
             Estimate_Boundary_Atoms, Unpack_Estimate_Message, 1 );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
+    Estimate_NT_Atoms( system, mpi_data );
 
     //fprintf( stderr, "p%d SEND RECV SEND!\n", system->my_rank );
     //MPI_Barrier( mpi_data->world );
@@ -468,6 +469,10 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     /* init mpi buffers  */
     mpi_data->in1_buffer = NULL;
     mpi_data->in2_buffer = NULL;
+    for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
+    {
+        mpi_data->in_nt_buffer[i] = NULL;
+    }
 
     /* mpi_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, name,
        x, v, f_old, s, t] */

@@ -285,6 +285,8 @@ void Setup_Environment( reax_system *system, control_params *control,
     Setup_My_Box( system, control );
     Setup_My_Ext_Box( system, control );
     Setup_Comm( system, control, mpi_data );
+    Setup_NT_Comm( system, control, mpi_data );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coord: %d %d %d\n",
              system->my_rank,
