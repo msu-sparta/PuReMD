@@ -8,6 +8,13 @@ lib_libspuremd_la_SOURCES = src/ffield.c src/grid.c src/list.c src/lookup.c src/
 		  src/single_body_interactions.c src/two_body_interactions.c \
 		  src/three_body_interactions.c src/four_body_interactions.c src/forces.c \
 		  src/integrate.c src/init_md.c src/spuremd.c
+		  src/ffield.h src/grid.h src/list.h src/lookup.h src/print_utils.h \
+		  src/reset_utils.h src/restart.h src/random.h src/tool_box.h src/traj.h \
+		  src/vector.h src/allocate.h src/analyze.h src/box.h src/system_props.h src/control.h \
+		  src/geo_tools.h src/neighbors.h src/lin_alg.h src/charges.h src/bond_orders.h \
+		  src/single_body_interactions.h src/two_body_interactions.h \
+		  src/three_body_interactions.h src/four_body_interactions.h src/forces.h \
+		  src/integrate.h src/init_md.h src/spuremd.h src/reax_types.h
 lib_libspuremd_la_CFLAGS = -I src
 lib_libspuremd_la_LDFLAGS = -version-info 1:0:0
 

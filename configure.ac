@@ -92,20 +92,13 @@ AC_ARG_ENABLE([gprof],
 	[AS_HELP_STRING([--enable-gprof],
 		[enable support for profiling with gprof @<:@default: no@:>@])],
 	[case "${enableval}" in
-		gnu | yes) 
-			# GNU
-			export BUILD_GPROF="true"
-			export GPROF_FLAGS="-pg"
-			;;
-		intel)
-			# Intel
-			export BUILD_GPROF="true"
-			export GPROF_FLAGS="-p"
+		yes) 
+			export BUILD_GPROF="yes"
 			;;
 		no)
 			;;
 		*)
-			AC_MSG_ERROR([bad value ${enableval} for --enable-gprof (only yes, gnu or intel are possible)]) ;;
+			AC_MSG_ERROR([bad value ${enableval} for --enable-gprof (only yes or no are possible)]) ;;
 	esac],
 	[]	      
 )

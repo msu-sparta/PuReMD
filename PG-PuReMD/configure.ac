@@ -5,7 +5,7 @@ AC_PREREQ([2.69])
 
 AC_INIT([PG-PuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
 # Do not allow AC_PROG_CC to set CFLAGS (this line must be after AC_INIT but before AC_PROG_CC)
-sav_CFLAGS="$CFLAGS"
+save_CFLAGS="$CFLAGS"
 : ${CFLAGS=""}
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 # Enable silent build rules by default.
@@ -24,13 +24,13 @@ AC_DEFUN([CONFIGURE_HEADLINE],
 
 AC_LANG([C])
 
+AC_CONFIG_SRCDIR([src/torsion_angles.h])
+AC_CONFIG_HEADERS([src/config.h])
+
 # Checks for programs.
 AC_PROG_CC([icc gcc clang cc])
 AC_PROG_CPP
-CFLAGS="$sav_CFLAGS"
-
-AC_CONFIG_SRCDIR([src/torsion_angles.h])
-AC_CONFIG_HEADERS([src/config.h])
+CFLAGS="${save_CFLAGS}"
 
 # Checks for libraries.
 AC_SEARCH_LIBS([exp], [m])
@@ -53,18 +53,26 @@ AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset])
 
-# Check for compiler vendor
+# Check for compiler vendor. If the compiler is recognized,
+#   the variable ax_cv_c_compiler_vendor is set accordingly.
 AX_COMPILER_VENDOR
 if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
-	if test "x${BUILD_DEBUG}" = "x"; then
-		CFLAGS="${CFLAGS} -Wall -O3 -funroll-loops"
+	if test "x${BUILD_DEBUG}" = "xyes"; then
+		CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 	else
-		CFLAGS="${CFLAGS} -Wall -O0 -g"
+		CFLAGS="-Wall -O2 -funroll-loops"
 	fi
-fi
-if test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
-	if test "x${BUILD_DEBUG}" = "x"; then
-		CFLAGS="$CFLAGS -fast"
+	if test "x${BUILD_GPROF}" = "xyes"; then
+		CFLAGS="${CFLAGS} -pg"
+	fi
+elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
+	if test "x${BUILD_DEBUG}" = "xyes"; then
+		CFLAGS="-Wall -O0"
+	else
+		CFLAGS="-Wall -O2 -funroll-loops"
+	fi
+	if test "x${BUILD_GPROF}" = "xyes"; then
+		CFLAGS="${CFLAGS} -p"
 	fi
 fi
 
@@ -75,8 +83,8 @@ AC_CHECK_PROG(MPIRUN, mpirun, mpirun)
 AC_SUBST(MPIRUN)
 
 # try to find if we are using OpenMPI / MPICH by looking inside mpi.h
-sav_CC="${CC}"
-sav_CFLAGS="${CFLAGS}"
+save_CC="${CC}"
+save_CFLAGS="${CFLAGS}"
 CC="${MPICC}"
 CFLAGS="${CFLAGS}"
 AC_CHECK_DECL([OPEN_MPI], [mpi_vendor="OpenMPI"],
@@ -87,8 +95,8 @@ AC_CHECK_DECL([MPICH2], [mpi_vendor="MPICH2"],
 # MPICH v3
 AC_CHECK_DECL([MPICH_VERSION], [mpi_vendor="MPICH3"],
 	     [], [#include "mpi.h"])
-CC="${sav_CC}"
-CFLAGS="${sav_CFLAGS}"
+CC="${save_CC}"
+CFLAGS="${save_CFLAGS}"
 
 # try to set MPI_CFLAGS and MPI_LIBS
 MPI_CFLAGS=
@@ -105,9 +113,9 @@ then
 	# build MPI_CFLAGS
 	tmp=`${MPICC} -compile-info | awk '{$1=""; print $0 }'`
 	MPI_CFLAGS=
-	for i in $tmp
+	for i in ${tmp}
 	do 
-		case $i in 
+		case ${i} in 
 			-[[DIUbi]]*)
 				MPI_CFLAGS="${MPI_CFLAGS} ${i}"
 				;;
@@ -115,9 +123,9 @@ then
 	done
 	# build MPI_LIBS
 	tmp=`${MPICC} -link-info | awk '{$1=""; print $0 }'`
-	for i in $tmp
+	for i in ${tmp}
 	do 
-		case $i in 
+		case ${i} in 
 			[[\\/]]*.a | ?:[[\\/]]*.a | -[[lLRu]]* | -Wl* )
 				MPI_LIBS="${MPI_LIBS} ${i}"
 				;;
@@ -176,7 +184,7 @@ if test "x${BUILD_GPU}" = "xyes"; then
 
         NVCCFLAGS=
 	NVCCFLAGS+=" -ccbin=${CXX}"
-	if test "x${BUILD_DEBUG}" = "xtrue"
+	if test "x${BUILD_DEBUG}" = "xyes"
 	then
 		NVCCFLAGS+=" -g -G"
 
@@ -185,9 +193,9 @@ if test "x${BUILD_GPU}" = "xyes"; then
 else
 	AM_CONDITIONAL(USE_CUDA, test "x" = "xyes")
 fi
-AM_CONDITIONAL(DEBUG, test "x${BUILD_DEBUG}" = "xtrue")
+AM_CONDITIONAL(DEBUG, test "x${BUILD_DEBUG}" = "xyes")
 
-if test "BUILD_PROF" = "true"
+if test "x${BUILD_GPROF}" = "xyes"
 then
 	if test "x${BUILD_GPU}" = "xyes"; then
 		NVCCFLAGS+=" --compiler-options ${gprof_flags}"

@@ -4,6 +4,8 @@
 AC_PREREQ([2.69])
 
 AC_INIT([sPuReMD], [1.0], [ohearnku@msu.edu hma@msu.edu])
+# Do not allow AC_PROG_CC to set CFLAGS (this line must be after AC_INIT but before AC_PROG_CC)
+save_CFLAGS="${CFLAGS}"
 : ${CFLAGS=""}
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 # Enable silent build rules by default.
@@ -11,6 +13,14 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERB
 AM_PROG_AR
 LT_PREREQ([2.2])
 LT_INIT([dlopen])
+
+AC_CONFIG_MACRO_DIR([../m4])
+
+# Headline formatter
+AC_DEFUN([CONFIGURE_HEADLINE],
+[
+        echo; echo "+++ $1 +++"
+])
 
 AC_LANG([C])
 
@@ -20,6 +30,7 @@ AC_CONFIG_HEADERS([src/config.h])
 # Checks for programs.
 AC_PROG_CC([icc gcc cc])
 AC_PROG_CPP
+CFLAGS="${save_CFLAGS}"
 
 # Checks for libraries.
 AC_SEARCH_LIBS([exp], [m])
@@ -38,25 +49,35 @@ AC_SEARCH_LIBS([gzclose], [z])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
-AC_CHECK_TYPES([gzFile], [], [AC_MSG_FAILURE([gzFile type not found in zlib.h], [1])], [#include<zlib.h>])
+AC_CHECK_TYPES([gzFile], [],
+	       [AC_MSG_FAILURE([gzFile type not found in zlib.h], [1])], [#include<zlib.h>])
 
 # Checks for library functions.
 AC_FUNC_MALLOC
+AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset])
 
-# Check for compiler vendor
+# Check for compiler vendor. If the compiler is recognized,
+#   the variable ax_cv_c_compiler_vendor is set accordingly.
 AX_COMPILER_VENDOR
-if test "x$ax_cv_c_compiler_vendor" = "xgnu"; then
-	if test "x$BUILD_DEBUG" = "x"; then
-		CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
+if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
+	if test "x${BUILD_DEBUG}" = "xyes"; then
+		CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 	else
-		CFLAGS="$CFLAGS -Wall -O0 -g"
+		CFLAGS="-Wall -O2 -funroll-loops"
 	fi
-fi
-if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
-	if test "x$BUILD_DEBUG" = "x"; then
-		CFLAGS="$CFLAGS -fast"
+	if test "x${BUILD_GPROF}" = "xyes"; then
+		CFLAGS="${CFLAGS} -pg"
+	fi
+elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
+	if test "x${BUILD_DEBUG}" = "xyes"; then
+		CFLAGS="-Wall -O0"
+	else
+		CFLAGS="-Wall -O2 -funroll-loops"
+	fi
+	if test "x${BUILD_GPROF}" = "xyes"; then
+		CFLAGS="${CFLAGS} -p"
 	fi
 fi
 
@@ -74,20 +95,10 @@ if test "x${BUILD_OPENMP}" = "xyes"; then
 		if test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 			OPENMP_CFLAGS="-qopenmp"
 		fi
-		AC_SUBST(AM_CFLAGS, "$OPENMP_CFLAGS")
-		AC_SUBST(AM_CPPFLAGS, "$OPENMP_CFLAGS")
+		AC_SUBST(AM_CFLAGS, "${OPENMP_CFLAGS}")
+		AC_SUBST(AM_CPPFLAGS, "${OPENMP_CFLAGS}")
 		LIBS="${LIBS} -lgomp"
 	fi
-fi
-
-if test "x$BUILD_DEBUG" != "x"
-then
-	CFLAGS="${CFLAGS} ${DEBUG_FLAGS}"
-fi
-
-if test "x$BUILD_GPROF" != "x"
-then
-	CFLAGS="${CFLAGS} ${GPROF_FLAGS}"
 fi
 
 # Check for LAPACKE

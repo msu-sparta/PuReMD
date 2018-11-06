@@ -5,19 +5,11 @@ SUFFIXES = .cu
 include ../cuda.am
 endif
 
-AM_CFLAGS = -Wall -O3 -funroll-loops -fstrict-aliasing -m64
-AM_CPPFLAGS =
-AM_LDFLAGS =
-
-# default CUDA nvcc flags
-#   Note: cc 13 for Tesla
-#   Note: cc 20 for Fermi
-#   Note: cc 30 for Kepler K10
-#   Note: cc 35 for Kepler K20
-NVCCFLAGS += -use_fast_math 
-NVCCFLAGS += -gencode arch=compute_35,code=sm_35
-NVCCFLAGS += --compiler-options "$(DEFS) -D__SM_35__ -O3 -funroll-loops -fstrict-aliasing"
-#NVCCFLAGS += -Xcompiler -fPIC -dc
+# flags for CUDA compilation via NVCC (see cuda.am)
+#   Note: cc 13 for Tesla, cc 20 for Fermi, cc 30 for Kepler K10, cc 35 for Kepler K20/K40, etc.
+#NVCCFLAGS += -use_fast_math -gencode arch=compute_35,code=sm_35
+NVCCFLAGS += -use_fast_math $(NVCC_OPT_CODE)
+NVCCFLAGS += --compiler-options "$(DEFS) $(NVCC_OPT_CODE_DEFS) -O2 -funroll-loops"
 #NVCCFLAGS += --ptxas-options -v
 
 bin_PROGRAMS = bin/spuremd
@@ -31,8 +23,8 @@ bin_spuremd_SOURCES = src/analyze.c src/print_utils.c \
 	src/reset_utils.c src/single_body_interactions.c \
 	src/system_props.c src/three_body_interactions.c \
 	src/traj.c src/two_body_interactions.c src/vector.c \
-	src/testmd.c
-include_HEADERS = src/mytypes.h src/analyze.h src/print_utils.h \
+	src/testmd.c \
+	src/mytypes.h src/analyze.h src/print_utils.h \
         src/restart.h src/tool_box.c src/control.h src/ffield.c \
 	src/geo_tools.h src/box.h \
 	src/lin_alg.h src/qeq.h src/allocate.h src/bond_orders.h \
@@ -55,8 +47,8 @@ bin_spuremd_SOURCES += src/cuda_utils.cu src/cuda_copy.cu \
 	src/cuda_reset_utils.cu src/cuda_single_body_interactions.cu \
         src/cuda_system_props.cu src/cuda_three_body_interactions.cu \
 	src/cuda_two_body_interactions.cu src/cuda_environment.cu \
-	src/cuda_post_evolve.cu
-include_HEADERS += src/cuda_utils.h src/cuda_copy.h \
+	src/cuda_post_evolve.cu \
+	src/cuda_utils.h src/cuda_copy.h \
 	src/cuda_init.h src/cuda_reduction.h \
 	src/cuda_center_mass.h src/cuda_box.h src/cuda_validation.h \
         src/cuda_allocate.h src/cuda_bond_orders.h \
@@ -74,12 +66,7 @@ nodist_EXTRA_bin_spuremd_SOURCES = src/dummy.c
 
 endif
 
-
-bin_spuremd_CFLAGS = $(AM_CFLAGS) $(CFLAGS)
-bin_spuremd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
-bin_spuremd_LDFLAGS = $(AM_LDFLAGS) $(LDFLAGS)
-
 if USE_CUDA
-bin_spuremd_CFLAGS += $(CUDA_CFLAGS)
-bin_spuremd_LDFLAGS += $(CUDA_LIBS)
+bin_spuremd_CFLAGS = $(CUDA_CFLAGS)
+bin_spuremd_LDFLAGS = $(CUDA_LIBS)
 endif

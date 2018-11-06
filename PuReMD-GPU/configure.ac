@@ -4,6 +4,8 @@
 AC_PREREQ([2.69])
 
 AC_INIT([PuReMD-GPU], [1.0], [ohearnku@msu.edu hma@msu.edu])
+# Do not allow AC_PROG_CC to set CFLAGS (this line must be after AC_INIT but before AC_PROG_CC)
+save_CFLAGS="${CFLAGS}"
 : ${CFLAGS=""}
 AM_INIT_AUTOMAKE([1.15 subdir-objects -Wall -Werror foreign])
 # Enable silent build rules by default.
@@ -13,20 +15,21 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])], [AC_SUBST([AM_DEFAULT_VERB
 
 AC_CONFIG_MACRO_DIR([../m4])
 
-AC_LANG([C])
-
-AC_CONFIG_SRCDIR([src/analyze.c])
-AC_CONFIG_HEADERS([src/config.h])
-
 # Headline formatter
 AC_DEFUN([CONFIGURE_HEADLINE],
 [
         echo; echo "+++ $1 +++"
 ])
 
+AC_LANG([C])
+
+AC_CONFIG_SRCDIR([src/analyze.c])
+AC_CONFIG_HEADERS([src/config.h])
+
 # Checks for programs.
 AC_PROG_CC([icc gcc cc])
 AC_PROG_CPP
+CFLAGS="${save_CFLAGS}"
 
 # Checks for libraries.
 AC_SEARCH_LIBS([exp], [m])
@@ -52,26 +55,35 @@ AC_CHECK_TYPES([gzFile], [],
 
 # Checks for library functions.
 AC_FUNC_MALLOC
+AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([gettimeofday memset pow sqrt])
 
-# Check for compiler vendor
+# Check for compiler vendor. If the compiler is recognized,
+#   the variable ax_cv_c_compiler_vendor is set accordingly.
 AX_COMPILER_VENDOR
-if test "x$ax_cv_c_compiler_vendor" = "xgnu"; then
-	if test "x$BUILD_DEBUG" = "x"; then
-		CFLAGS="$CFLAGS -Wall -O3 -funroll-loops -fstrict-aliasing"
+if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
+	if test "x${BUILD_DEBUG}" = "xyes"; then
+		CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 	else
-		CFLAGS="$CFLAGS -Wall"
+		CFLAGS="-Wall -O2 -funroll-loops"
 	fi
-fi
-if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
-	if test "x$BUILD_DEBUG" = "x"; then
-		CFLAGS="$CFLAGS -fast"
+	if test "x${BUILD_GPROF}" = "xyes"; then
+		CFLAGS="${CFLAGS} -pg"
+	fi
+elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
+	if test "x${BUILD_DEBUG}" = "xyes"; then
+		CFLAGS="-Wall -O0"
+	else
+		CFLAGS="-Wall -O2 -funroll-loops"
+	fi
+	if test "x${BUILD_GPROF}" = "xyes"; then
+		CFLAGS="${CFLAGS} -p"
 	fi
 fi
 
 # Check for OpenMP support.
-if test "x$BUILD_OPENMP" = "xyes"; then
+if test "x${BUILD_OPENMP}" = "xyes"; then
 	AC_OPENMP
 	if test "x${OPENMP_CFLAGS}" = "x"; then
 		AC_MSG_WARN([
@@ -81,62 +93,22 @@ if test "x$BUILD_OPENMP" = "xyes"; then
 	  -----------------------------------------------])
 	else
 		# bug due to recent Intel compiler change (?)
-		if test "x$ax_cv_c_compiler_vendor" = "xintel"; then
+		if test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 			OPENMP_CFLAGS="-qopenmp"
 		fi
-		AC_SUBST(CFLAGS, "$OPENMP_CFLAGS")
-		AC_SUBST(CPPFLAGS, "$OPENMP_CFLAGS")
+		AC_SUBST(CFLAGS, "${OPENMP_CFLAGS}")
+		AC_SUBST(CPPFLAGS, "${OPENMP_CFLAGS}")
+		LIBS="${LIBS} -lgomp"
 	fi
 fi
 
-if test "x$BUILD_SUPERLU_MT" != "x"
-then
-	CPPFLAGS="${CPPFLAGS} -I${BUILD_SUPERLU_MT}/include"
-	LDFLAGS="${LDFLAGS} -L${BUILD_SUPERLU_MT}/lib"
-	#TODO: implement better BLAS detection
-	LIBS="${LIBS} -lblas"
-#	BLAS_FOUND_LIBS="yes"
-#	AC_SEARCH_LIBS([dtrsv_], [blas blas_OPENMP],
-#		        [], [BLAS_FOUND_LIBS="no"], [])
-#	AS_IF([test "x${BLAS_FOUND_LIBS}" != "xyes"],
-#	      [AC_MSG_ERROR([Unable to find BLAS library.])])
-	AC_CHECK_HEADERS([slu_mt_ddefs.h], [SUPERLU_MT_FOUND_HEADERS="yes"])
-	AS_IF([test "x${SUPERLU_MT_FOUND_HEADERS}" != "xyes"],
-	      [AC_MSG_ERROR([Unable to find SuperLU MT headers.])])
-	SUPERLU_MT_FOUND_LIBS="yes"
-	#TODO: fix issue where multiple -l flags added, one for each call below
-	AC_SEARCH_LIBS([intMalloc], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
-	AC_SEARCH_LIBS([get_perm_c], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
-	AC_SEARCH_LIBS([pdgstrf_init], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp -lblas -lblas_OPENMP])
-	AC_SEARCH_LIBS([pdgstrf], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp -lblas -lblas_OPENMP])
-	AC_SEARCH_LIBS([pxgstrf_finalize], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp -lblas -lblas_OPENMP])
-	AC_SEARCH_LIBS([StatAlloc], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
-	AC_SEARCH_LIBS([StatInit], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
-	AC_SEARCH_LIBS([StatFree], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
-	AC_SEARCH_LIBS([Destroy_SuperNode_SCP], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
-	AC_SEARCH_LIBS([Destroy_CompCol_NCP], [superlu_mt superlu_mt_OPENMP],
-		        [], [SUPERLU_MT_FOUND_LIBS="no"], [-lgomp])
-	AS_IF([test "x${SUPERLU_MT_FOUND_LIBS}" != "xyes"],
-	      [AC_MSG_ERROR([Unable to find SuperLU MT library.])])
-	AC_DEFINE([HAVE_SUPERLU_MT], [1], [Define to 1 if you have SuperLU_MT support enabled.])
-fi
-
 # Check for CUDA support.
-if test "x$BUILD_GPU" = "xyes"
+if test "x${BUILD_GPU}" = "xyes"
 then
 	CONFIGURE_HEADLINE([ CUDA support ])
 	AX_CUDA
 	NVCCFLAGS=
-	if test "BUILD_DEBUG" = "true"
+	if test "x${BUILD_DEBUG}" = "xyes"
 	then
 		NVCCFLAGS+=" -g -G"
 	fi
@@ -175,17 +147,7 @@ else
 	AM_CONDITIONAL(USE_CUDA, test "x" = "xyes")
 fi
 
-if test "x$BUILD_DEBUG" = "xyes"
-then
-	CFLAGS="${CFLAGS} ${DEBUG_FLAGS}"
-fi
-
-if test "x$BUILD_GPROF" = "xyes"
-then
-	CFLAGS="${CFLAGS} ${GPROF_FLAGS}"
-fi
-
-if test "x$BUILD_PROF" = "xtrue"
+if test "x${BUILD_GPROF}" = "xtrue"
 then
 	NVCCFLAGS+=" --compiler-options ${gprof_flags}"
 fi
