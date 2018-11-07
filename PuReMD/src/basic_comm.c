@@ -132,7 +132,7 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data,
 void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
         void *buf, MPI_Datatype type, int scale, dist_packer pack )
 {
-    int d;
+    int d, count, index;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req[6];
@@ -145,12 +145,14 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
 
+    count = 0;
     /* initiate recvs */
     for( d = 0; d < 6; ++d )
     {
         nbr = &(system->my_nt_nbrs[d]);
         if ( nbr->atoms_cnt )
         {
+            count++;
             MPI_Irecv( buf + nbr->atoms_str * scale, nbr->atoms_cnt, type,
                     nbr->receive_rank, d, comm, &(req[d]) );
         }
@@ -167,15 +169,21 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
         }
     }
 
+    /*
     for( d = 0; d < 6; ++d )
     {
         nbr = &(system->my_nbrs[d]);
         if ( nbr->atoms_cnt )
         {
-            // TODO: Wait(MPI_WAITANY)
             MPI_Wait( &(req[d]), &(stat[d]) );
         }
     }
+    */
+    for( d = 0; d < count; ++d )
+    {
+        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+    }
+
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
@@ -295,7 +303,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data,
 void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         void *buf, MPI_Datatype type, int scale, coll_unpacker unpack )
 {
-    int d;
+    int d, count, index;
     void *in[6];
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -309,6 +317,7 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
 
+    count = 0;
     for ( d = 0; d < 6; ++d )
     {
         /* initiate recvs */
@@ -316,6 +325,7 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         in[d] = mpi_data->in_nt_buffer[d];
         if ( out_bufs[d].cnt )
         {
+            count++;
             MPI_Irecv(in[d], out_bufs[d].cnt, type, nbr->receive_rank, d, comm, &(req[d]));
         }
     }
@@ -331,14 +341,20 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         }
     }
 
+    /*
     for( d = 0; d < 6; ++d )
     {
         if ( out_bufs[d].cnt )
         {
-            //TODO: WAITANY
             MPI_Wait( &(req[d]), &(stat[d]));
             unpack( in[d], buf, out_bufs + d );
         }
+    }
+    */
+    for( d = 0; d < count; ++d )
+    {
+        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        unpack( in[index], buf, out_bufs + index );
     }
 
 #if defined(DEBUG)

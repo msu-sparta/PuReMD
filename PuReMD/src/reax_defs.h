@@ -131,7 +131,7 @@ enum exchanges { NONE = 0, NEAR_EXCH = 1, FULL_EXCH = 2 };
 
 enum gcell_types { NO_NBRS = 0, NEAR_ONLY = 1, HBOND_ONLY = 2, FAR_ONLY = 4,
                    NEAR_HBOND = 3, NEAR_FAR = 5, HBOND_FAR = 6, FULL_NBRS = 7,
-                   NATIVE = 8
+                   NATIVE = 8, NT_NBRS = 9 // 9 through 14
                  };
 
 enum atoms { C_ATOM = 0, H_ATOM = 1, O_ATOM = 2, N_ATOM = 3,
