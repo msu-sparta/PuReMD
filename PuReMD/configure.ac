@@ -74,7 +74,6 @@ fi
 CONFIGURE_HEADLINE([ MPI compiler ])
 ACX_MPI([], [AC_MSG_ERROR([could not find mpi library])])
 AC_CHECK_PROG(MPIRUN, mpirun, mpirun)
-AC_SUBST(MPIRUN)
 
 # try to find if we are using OpenMPI / MPICH by looking inside mpi.h
 save_CC="${CC}"

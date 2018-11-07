@@ -84,9 +84,7 @@ if test "x${DEBUG}" = "xyes"
 then
 #	#TODO: fix exporting to subdirs
 #	# See: http://stackoverflow.com/questions/34124337/changing-flags-in-configure-ac-vs-caching-with-subprojects
-#	CFLAGS="-g3 -O0 -D_GLIBCXX_DEBUG ${CFLAGS}"
-	export BUILD_DEBUG="true"
-	export DEBUG_FLAGS="-g2 -O0 -D_GLIBCXX_DEBUG"
+	export BUILD_DEBUG="yes"
 fi
 
 # gprof flags.
