@@ -64,66 +64,45 @@ int Init_Output_Files( reax_system *system, control_params *control,
         {
             /* init out file */
             sprintf( temp, "%s.out", control->sim_name );
-            if ( (out_control->out = fopen( temp, "w" )) != NULL )
-            {
+            out_control->out = sfopen( temp, "w", "Init_Output_Files" );
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
-                fprintf( out_control->out, "%-6s%14s%14s%14s%11s%13s%13s\n",
-                        "step", "total energy", "potential", "kinetic",
-                        "T(K)", "V(A^3)", "P(Gpa)" );
+            fprintf( out_control->out, "%-6s%14s%14s%14s%11s%13s%13s\n",
+                    "step", "total energy", "potential", "kinetic",
+                    "T(K)", "V(A^3)", "P(Gpa)" );
 #else
-                fprintf( out_control->out, "%-6s%24s%24s%24s%13s%16s%13s\n",
-                        "step", "total energy", "potential", "kinetic",
-                        "T(K)", "V(A^3)", "P(GPa)" );
+            fprintf( out_control->out, "%-6s%24s%24s%24s%13s%16s%13s\n",
+                    "step", "total energy", "potential", "kinetic",
+                    "T(K)", "V(A^3)", "P(GPa)" );
 #endif
-                fflush( out_control->out );
-            }
-            else
-            {
-                strcpy( msg, "init_out_controls: .out file could not be opened\n" );
-                return FAILURE;
-            }
+            fflush( out_control->out );
 
             /* init potentials file */
             sprintf( temp, "%s.pot", control->sim_name );
-            if ( (out_control->pot = fopen( temp, "w" )) != NULL )
-            {
+            out_control->pot = sfopen( temp, "w", "Init_Output_Files" );
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
-                fprintf( out_control->pot,
-                        "%-6s%14s%14s%14s%14s%14s%14s%14s%14s%14s%14s%14s\n",
-                        "step", "ebond", "eatom", "elp",
-                        "eang", "ecoa", "ehb", "etor", "econj",
-                        "evdw", "ecoul", "epol" );
+            fprintf( out_control->pot,
+                    "%-6s%14s%14s%14s%14s%14s%14s%14s%14s%14s%14s%14s\n",
+                    "step", "ebond", "eatom", "elp",
+                    "eang", "ecoa", "ehb", "etor", "econj",
+                    "evdw", "ecoul", "epol" );
 #else
-                fprintf( out_control->pot,
-                        "%-6s%24s%24s%24s%24s%24s%24s%24s%24s%24s%24s%24s\n",
-                        "step", "ebond", "eatom", "elp",
-                        "eang", "ecoa", "ehb", "etor", "econj",
-                        "evdw", "ecoul", "epol" );
+            fprintf( out_control->pot,
+                    "%-6s%24s%24s%24s%24s%24s%24s%24s%24s%24s%24s%24s\n",
+                    "step", "ebond", "eatom", "elp",
+                    "eang", "ecoa", "ehb", "etor", "econj",
+                    "evdw", "ecoul", "epol" );
 #endif
-                fflush( out_control->pot );
-            }
-            else
-            {
-                strcpy( msg, "init_out_controls: .pot file could not be opened\n" );
-                return FAILURE;
-            }
+            fflush( out_control->pot );
 
             /* init log file */
 #if defined(LOG_PERFORMANCE)
             sprintf( temp, "%s.log", control->sim_name );
-            if ( (out_control->log = fopen( temp, "w" )) != NULL )
-            {
-                fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
-                        "step", "total", "comm", "neighbors", "init", "bonded", "nonbonded", 
-                        "CM", "CM Sort", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
-                        "S spmv", "S vec ops", "S orthog", "S tsolve" );
-                fflush( out_control->log );
-            }
-            else
-            {
-                strcpy( msg, "init_out_controls: .log file could not be opened\n" );
-                return FAILURE;
-            }
+            out_control->log = sfopen( temp, "w", "Init_Output_Files" );
+            fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
+                    "step", "total", "comm", "neighbors", "init", "bonded", "nonbonded", 
+                    "CM", "CM Sort", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
+                    "S spmv", "S vec ops", "S orthog", "S tsolve" );
+            fflush( out_control->log );
 #endif
         }
 
@@ -133,52 +112,31 @@ int Init_Output_Files( reax_system *system, control_params *control,
                 control->ensemble == sNPT )
         {
             sprintf( temp, "%s.prs", control->sim_name );
-            if ( (out_control->prs = fopen( temp, "w" )) != NULL )
-            {
-                fprintf(out_control->prs, "%8s%13s%13s%13s%13s%13s%13s%13s\n",
-                        "step", "Pint/norm[x]", "Pint/norm[y]", "Pint/norm[z]",
-                        "Pext/Ptot[x]", "Pext/Ptot[y]", "Pext/Ptot[z]", "Pkin/V" );
-                fflush( out_control->prs );
-            }
-            else
-            {
-                strcpy(msg, "init_out_controls: .prs file couldn't be opened\n");
-                return FAILURE;
-            }
+            out_control->prs = sfopen( temp, "w", "Init_Output_Files" );
+            fprintf(out_control->prs, "%8s%13s%13s%13s%13s%13s%13s%13s\n",
+                    "step", "Pint/norm[x]", "Pint/norm[y]", "Pint/norm[z]",
+                    "Pext/Ptot[x]", "Pext/Ptot[y]", "Pext/Ptot[z]", "Pkin/V" );
+            fflush( out_control->prs );
         }
 
         /* init electric dipole moment analysis file */
         if ( control->dipole_anal )
         {
             sprintf( temp, "%s.dpl", control->sim_name );
-            if ( (out_control->dpl = fopen( temp, "w" )) != NULL )
-            {
-                fprintf( out_control->dpl, "%6s%20s%30s",
-                        "step", "molecule count", "avg dipole moment norm" );
-                fflush( out_control->dpl );
-            }
-            else
-            {
-                strcpy(msg, "init_out_controls: .dpl file couldn't be opened\n");
-                return FAILURE;
-            }
+            out_control->dpl = sfopen( temp, "w", "Init_Output_Files" );
+            fprintf( out_control->dpl, "%6s%20s%30s",
+                    "step", "molecule count", "avg dipole moment norm" );
+            fflush( out_control->dpl );
         }
 
         /* init diffusion coef analysis file */
         if ( control->diffusion_coef )
         {
             sprintf( temp, "%s.drft", control->sim_name );
-            if ( (out_control->drft = fopen( temp, "w" )) != NULL )
-            {
-                fprintf( out_control->drft, "%7s%20s%20s\n",
-                        "step", "type count", "avg disp^2" );
-                fflush( out_control->drft );
-            }
-            else
-            {
-                strcpy(msg, "init_out_controls: .drft file couldn't be opened\n");
-                return FAILURE;
-            }
+            out_control->drft = sfopen( temp, "w", "Init_Output_Files" );
+            fprintf( out_control->drft, "%7s%20s%20s\n",
+                    "step", "type count", "avg disp^2" );
+            fflush( out_control->drft );
         }
     }
 
@@ -190,9 +148,7 @@ int Init_Output_Files( reax_system *system, control_params *control,
     /*if( control->molecular_analysis ) {
       if( system->my_rank == MASTER_NODE ) {
       sprintf( temp, "%s.mol", control->sim_name );
-      if( (out_control->mol = fopen( temp, "w" )) == NULL ) {
-      strcpy(msg,"init_out_controls: .mol file could not be opened\n");
-      return FAILURE;
+      out_control->mol = sfopen( temp, "w", "Init_Output_Files" );
       }
       }
 
@@ -203,233 +159,121 @@ int Init_Output_Files( reax_system *system, control_params *control,
 #ifdef TEST_ENERGY
     /* open bond energy file */
     sprintf( temp, "%s.ebond.%d", control->sim_name, system->my_rank );
-    if ( (out_control->ebond = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .ebond file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->ebond = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open lone-pair energy file */
     sprintf( temp, "%s.elp.%d", control->sim_name, system->my_rank );
-    if ( (out_control->elp = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .elp file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->elp = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open overcoordination energy file */
     sprintf( temp, "%s.eov.%d", control->sim_name, system->my_rank );
-    if ( (out_control->eov = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .eov file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->eov = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open undercoordination energy file */
     sprintf( temp, "%s.eun.%d", control->sim_name, system->my_rank );
-    if ( (out_control->eun = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .eun file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->eun = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open angle energy file */
     sprintf( temp, "%s.eval.%d", control->sim_name, system->my_rank );
-    if ( (out_control->eval = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .eval file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->eval = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open coalition energy file */
     sprintf( temp, "%s.ecoa.%d", control->sim_name, system->my_rank );
-    if ( (out_control->ecoa = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .ecoa file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->ecoa = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open penalty energy file */
     sprintf( temp, "%s.epen.%d", control->sim_name, system->my_rank );
-    if ( (out_control->epen = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .epen file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->epen = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open torsion energy file */
     sprintf( temp, "%s.etor.%d", control->sim_name, system->my_rank );
-    if ( (out_control->etor = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .etor file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->etor = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open conjugation energy file */
     sprintf( temp, "%s.econ.%d", control->sim_name, system->my_rank );
-    if ( (out_control->econ = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .econ file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->econ = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open hydrogen bond energy file */
     sprintf( temp, "%s.ehb.%d", control->sim_name, system->my_rank );
-    if ( (out_control->ehb = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .ehb file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->ehb = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open vdWaals energy file */
     sprintf( temp, "%s.evdw.%d", control->sim_name, system->my_rank );
-    if ( (out_control->evdw = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .evdw file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->evdw = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open coulomb energy file */
     sprintf( temp, "%s.ecou.%d", control->sim_name, system->my_rank );
-    if ( (out_control->ecou = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .ecou file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->ecou = sfopen( temp, "w", "Init_Output_Files" );
 #endif
 
 
 #ifdef TEST_FORCES
     /* open bond orders file */
     sprintf( temp, "%s.fbo.%d", control->sim_name, system->my_rank );
-    if ( (out_control->fbo = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .fbo file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->fbo = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open bond orders derivatives file */
     sprintf( temp, "%s.fdbo.%d", control->sim_name, system->my_rank );
-    if ( (out_control->fdbo = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .fdbo file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->fdbo = sfopen( temp, "w", "Init_Output_Files" );
 
     /* produce a single force file - to be written by p0 */
     if ( system->my_rank == MASTER_NODE )
     {
         /* open bond forces file */
         sprintf( temp, "%s.fbond", control->sim_name );
-        if ( (out_control->fbond = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fbond file couldn't be opened\n");
-            return FAILURE;
-        }
+        Output_Files" )) == NULL )
 
         /* open lone-pair forces file */
         sprintf( temp, "%s.flp", control->sim_name );
-        if ( (out_control->flp = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .flp file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->flp = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open overcoordination forces file */
         sprintf( temp, "%s.fov", control->sim_name );
-        if ( (out_control->fov = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fov file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fov = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open undercoordination forces file */
         sprintf( temp, "%s.fun", control->sim_name );
-        if ( (out_control->fun = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fun file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fun = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open angle forces file */
         sprintf( temp, "%s.fang", control->sim_name );
-        if ( (out_control->fang = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fang file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fang = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open coalition forces file */
         sprintf( temp, "%s.fcoa", control->sim_name );
-        if ( (out_control->fcoa = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fcoa file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fcoa = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open penalty forces file */
         sprintf( temp, "%s.fpen", control->sim_name );
-        if ( (out_control->fpen = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fpen file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fpen = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open torsion forces file */
         sprintf( temp, "%s.ftor", control->sim_name );
-        if ( (out_control->ftor = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .ftor file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->ftor = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open conjugation forces file */
         sprintf( temp, "%s.fcon", control->sim_name );
-        if ( (out_control->fcon = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fcon file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fcon = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open hydrogen bond forces file */
         sprintf( temp, "%s.fhb", control->sim_name );
-        if ( (out_control->fhb = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fhb file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fhb = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open vdw forces file */
         sprintf( temp, "%s.fvdw", control->sim_name );
-        if ( (out_control->fvdw = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fvdw file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fvdw = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open nonbonded forces file */
         sprintf( temp, "%s.fele", control->sim_name );
-        if ( (out_control->fele = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fele file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fele = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open total force file */
         sprintf( temp, "%s.ftot", control->sim_name );
-        if ( (out_control->ftot = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .ftot file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->ftot = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open force comprison file */
         sprintf( temp, "%s.fcomp", control->sim_name );
-        if ( (out_control->fcomp = fopen( temp, "w" )) == NULL )
-        {
-            strcpy(msg, "Init_Out_Files: .fcomp file couldn't be opened\n");
-            return FAILURE;
-        }
+        out_control->fcomp = sfopen( temp, "w", "Init_Output_Files" );
     }
 #endif
 
@@ -437,27 +281,15 @@ int Init_Output_Files( reax_system *system, control_params *control,
 #if defined(TEST_FORCES) || defined(TEST_ENERGY)
     /* open far neighbor list file */
     sprintf( temp, "%s.far_nbrs_list.%d", control->sim_name, system->my_rank );
-    if ( (out_control->flist = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .far_nbrs_list file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->flist = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open bond list file */
     sprintf( temp, "%s.bond_list.%d", control->sim_name, system->my_rank );
-    if ( (out_control->blist = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .bond_list file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->blist = sfopen( temp, "w", "Init_Output_Files" );
 
     /* open near neighbor list file */
     sprintf( temp, "%s.near_nbrs_list.%d", control->sim_name, system->my_rank );
-    if ( (out_control->nlist = fopen( temp, "w" )) == NULL )
-    {
-        strcpy(msg, "Init_Out_Files: .near_nbrs_list file couldn't be opened\n");
-        return FAILURE;
-    }
+    out_control->nlist = sfopen( temp, "w", "Init_Output_Files" );
 #endif
 #endif
 
@@ -476,65 +308,68 @@ int Close_Output_Files( reax_system *system, control_params *control,
     {
         if ( out_control->energy_update_freq > 0 )
         {
-            fclose( out_control->out );
-            fclose( out_control->pot );
+            sfclose( out_control->out, "Close_Output_Files" );
+            sfclose( out_control->pot, "Close_Output_Files" );
 #if defined(LOG_PERFORMANCE)
-            fclose( out_control->log );
+            sfclose( out_control->log, "Close_Output_Files" );
 #endif
         }
 
         if ( control->ensemble == NPT || control->ensemble == iNPT ||
                 control->ensemble == sNPT )
-            fclose( out_control->prs );
+            sfclose( out_control->prs, "Close_Output_Files" );
 
-        if ( control->dipole_anal ) fclose( out_control->dpl );
-        if ( control->diffusion_coef ) fclose( out_control->drft );
-        if ( control->molecular_analysis ) fclose( out_control->mol );
+        if ( control->dipole_anal )
+            sfclose( out_control->dpl, "Close_Output_Files" );
+        if ( control->diffusion_coef )
+            sfclose( out_control->drft, "Close_Output_Files" );
+        if ( control->molecular_analysis )
+            sfclose( out_control->mol, "Close_Output_Files" );
     }
 
 #ifdef TEST_ENERGY
-    fclose( out_control->ebond );
-    fclose( out_control->elp );
-    fclose( out_control->eov );
-    fclose( out_control->eun );
-    fclose( out_control->eval );
-    fclose( out_control->epen );
-    fclose( out_control->ecoa );
-    fclose( out_control->ehb );
-    fclose( out_control->etor );
-    fclose( out_control->econ );
-    fclose( out_control->evdw );
-    fclose( out_control->ecou );
+    sfclose( out_control->ebond, "Close_Output_Files" );
+    sfclose( out_control->elp, "Close_Output_Files" );
+    sfclose( out_control->eov, "Close_Output_Files" );
+    sfclose( out_control->eun, "Close_Output_Files" );
+    sfclose( out_control->eval, "Close_Output_Files" );
+    sfclose( out_control->epen, "Close_Output_Files" );
+    sfclose( out_control->ecoa, "Close_Output_Files" );
+    sfclose( out_control->ehb, "Close_Output_Files" );
+    sfclose( out_control->etor, "Close_Output_Files" );
+    sfclose( out_control->econ, "Close_Output_Files" );
+    sfclose( out_control->evdw, "Close_Output_Files" );
+    sfclose( out_control->ecou, "Close_Output_Files" );
 #endif
 
 #ifdef TEST_FORCES
-    fclose( out_control->fbo );
-    fclose( out_control->fdbo );
+    sfclose( out_control->fbo, "Close_Output_Files" );
+    sfclose( out_control->fdbo, "Close_Output_Files" );
 
     if ( system->my_rank == MASTER_NODE )
     {
-        fclose( out_control->fbond );
-        fclose( out_control->flp );
-        fclose( out_control->fov );
-        fclose( out_control->fun );
-        fclose( out_control->fang );
-        fclose( out_control->fcoa );
-        fclose( out_control->fpen );
-        fclose( out_control->ftor );
-        fclose( out_control->fcon );
-        fclose( out_control->fhb );
-        fclose( out_control->fvdw );
-        fclose( out_control->fele );
-        fclose( out_control->ftot );
-        fclose( out_control->fcomp );
+        sfclose( out_control->fbond, "Close_Output_Files" );
+        sfclose( out_control->flp, "Close_Output_Files" );
+        sfclose( out_control->fov, "Close_Output_Files" );
+        sfclose( out_control->fun, "Close_Output_Files" );
+        sfclose( out_control->fang, "Close_Output_Files" );
+        sfclose( out_control->fcoa, "Close_Output_Files" );
+        sfclose( out_control->fpen, "Close_Output_Files" );
+        sfclose( out_control->ftor, "Close_Output_Files" );
+        sfclose( out_control->fcon, "Close_Output_Files" );
+        sfclose( out_control->fhb, "Close_Output_Files" );
+        sfclose( out_control->fvdw, "Close_Output_Files" );
+        sfclose( out_control->fele, "Close_Output_Files" );
+        sfclose( out_control->ftot, "Close_Output_Files" );
+        sfclose( out_control->fcomp, "Close_Output_Files" );
     }
 #endif
 
 #if defined(PURE_REAX)
 #if defined(TEST_FORCES) || defined(TEST_ENERGY)
-    fclose( out_control->flist );
-    fclose( out_control->blist );
-    fclose( out_control->nlist );
+    sfclose( out_control->flist, "Close_Output_Files" );
+    sfclose( out_control->blist, "Close_Output_Files" );
+    sfclose( out_control->nlist, "Close_Output_Files" );
 #endif
 #endif
 
@@ -668,7 +503,7 @@ void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
     char exch[3][10] = { "NONE", "NEAR_EXCH", "FULL_EXCH" };
 
     sprintf( fname, "gcell_exchange_bounds%d", my_rank );
-    f = fopen( fname, "w" );
+    f = sfopen( fname, "w", "Print_GCell_Exchange_Bounds" );
 
     /* loop over neighbor processes */
     for ( r[0] = -1; r[0] <= 1; ++r[0])
@@ -696,7 +531,7 @@ void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
                             nbr_pr->end_recv[2] );
                 }
 
-    fclose(f);
+    sfclose( f, "Print_GCell_Exchange_Bounds" );
 }
 
 
@@ -715,7 +550,7 @@ void Print_Native_GCells( reax_system *system )
     };
 
     sprintf( fname, "native_gcells.%d", system->my_rank );
-    f = fopen( fname, "w" );
+    f = sfopen( fname, "w", "Print_Native_GCells" );
     g = &(system->my_grid);
 
     for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
@@ -735,7 +570,7 @@ void Print_Native_GCells( reax_system *system )
                 fprintf( f, "\n" );
             }
 
-    fclose(f);
+    sfclose( f, "Print_Native_GCells" );
 }
 
 
@@ -754,7 +589,7 @@ void Print_All_GCells( reax_system *system )
     };
 
     sprintf( fname, "all_gcells.%d", system->my_rank );
-    f = fopen( fname, "w" );
+    f = sfopen( fname, "w", "Print_All_GCells" );
     g = &(system->my_grid);
 
     for ( i = 0; i < g->ncells[0]; i++ )
@@ -774,7 +609,7 @@ void Print_All_GCells( reax_system *system )
                 fprintf( f, "\n" );
             }
 
-    fclose(f);
+    sfclose( f, "Print_All_GCells" );
 }
 
 
@@ -786,11 +621,7 @@ void Print_My_Atoms( reax_system *system, control_params *control, int step )
     FILE *fh;
 
     sprintf( fname, "%s.my_atoms.%d.%d", control->sim_name, step, system->my_rank );
-    if ( (fh = fopen( fname, "w" )) == NULL )
-    {
-        fprintf( stderr, "error in opening my_atoms file" );
-        MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
-    }
+    fh = sfopen( fname, "w", "Print_My_Atoms" );
 
     // fprintf( stderr, "p%d had %d atoms\n",
     //   system->my_rank, system->n );
@@ -803,7 +634,7 @@ void Print_My_Atoms( reax_system *system, control_params *control, int step )
                 system->my_atoms[i].x[1],
                 system->my_atoms[i].x[2] );
 
-    fclose( fh );
+    sfclose( fh, "Print_My_Atoms" );
 }
 
 
@@ -814,11 +645,7 @@ void Print_My_Ext_Atoms( reax_system *system )
     FILE *fh;
 
     sprintf( fname, "my_ext_atoms.%d", system->my_rank );
-    if ( (fh = fopen( fname, "w" )) == NULL )
-    {
-        fprintf( stderr, "error in opening my_ext_atoms file" );
-        MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
-    }
+    fh = sfopen( fname, "w", "Print_My_Ext_Atoms" );
 
     // fprintf( stderr, "p%d had %d atoms\n",
     //   system->my_rank, system->n );
@@ -831,7 +658,7 @@ void Print_My_Ext_Atoms( reax_system *system )
                 system->my_atoms[i].x[1],
                 system->my_atoms[i].x[2] );
 
-    fclose( fh );
+    sfclose( fh, "Print_My_Ext_Atoms" );
 }
 
 
@@ -844,7 +671,7 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
     reax_list *far_nbrs;
 
     sprintf( fname, "%s.far_nbrs.%d", control->sim_name, system->my_rank );
-    fout      = fopen( fname, "w" );
+    fout = sfopen( fname, "w", "Print_Far_Neighbors" );
     far_nbrs = lists[FAR_NBRS];
     natoms = system->N;
 
@@ -871,7 +698,7 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
         }
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Far_Neighbors" );
 }
 
 
@@ -891,7 +718,7 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
 void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
 {
     int i, j;
-    FILE *f = fopen( fname, "w" );
+    FILE *f = sfopen( fname, "w", "Print_Sparse_Matrix2" );
 
     for ( i = 0; i < A->n; ++i )
         for ( j = A->start[i]; j < A->end[i]; ++j )
@@ -900,7 +727,7 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
                     system->my_atoms[A->entries[j].j].orig_id,
                     A->entries[j].val );
 
-    fclose(f);
+    sfclose( f, "Print_Sparse_Matrix2" );
 }
 
 
@@ -908,7 +735,7 @@ void Print_Symmetric_Sparse(reax_system *system, sparse_matrix *A, char *fname)
 {
     int i, j;
     reax_atom *ai, *aj;
-    FILE *f = fopen( fname, "w" );
+    FILE *f = sfopen( fname, "w", "Print_Symmetric_Sparse" );
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -924,7 +751,7 @@ void Print_Symmetric_Sparse(reax_system *system, sparse_matrix *A, char *fname)
         }
     }
 
-    fclose(f);
+    sfclose( f, "Print_Symmetric_Sparse" );
 }
 
 
@@ -939,7 +766,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     // print rhs and init guesses for QEq
     sprintf( fname, "%s.p%dstate%d", control->sim_name, system->my_rank, step );
-    out = fopen( fname, "w" );
+    out = sfopen( fname, "w", "Print_Linear_System" );
     for ( i = 0; i < system->n; i++ )
     {
         ai = &(system->my_atoms[i]);
@@ -948,7 +775,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
                 workspace->s[i], workspace->b_s[i],
                 workspace->t[i], workspace->b_t[i] );
     }
-    fclose( out );
+    sfclose( out, "Print_Linear_System" );
 
     // print QEq coef matrix
     sprintf( fname, "%s.p%dH%d", control->sim_name, system->my_rank, step );
@@ -956,7 +783,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     // print the incomplete H matrix
     /*sprintf( fname, "%s.p%dHinc%d", control->sim_name, system->my_rank, step );
-      out = fopen( fname, "w" );
+      out = sfopen( fname, "w", "Print_Linear_System" );
       H = workspace->H;
       for( i = 0; i < H->n; ++i ) {
       ai = &(system->my_atoms[i]);
@@ -970,7 +797,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
       aj->orig_id, ai->orig_id, H->entries[j].val );
       }
       }
-      fclose( out );*/
+      sfclose( out, "Print_Linear_System" );*/
 
     // print the L from incomplete cholesky decomposition
     /*sprintf( fname, "%s.p%dL%d", control->sim_name, system->my_rank, step );
@@ -985,13 +812,13 @@ void Print_LinSys_Soln( reax_system *system, real *x, real *b_prm, real *b )
     FILE  *fout;
 
     sprintf( fname, "qeq.%d.out", system->my_rank );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w", "Print_LinSys_Soln" );
 
     for ( i = 0; i < system->n; ++i )
         fprintf( fout, "%6d%10.4f%10.4f%10.4f\n",
                 system->my_atoms[i].orig_id, x[i], b_prm[i], b[i] );
 
-    fclose( fout );
+    sfclose( fout, "Print_LinSys_Soln" );
 }
 
 
@@ -1002,7 +829,7 @@ void Print_Charges( reax_system *system )
     FILE  *fout;
 
     sprintf( fname, "q.%d.out", system->my_rank );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w", "Print_Charges" );
 
     for ( i = 0; i < system->n; ++i )
         fprintf( fout, "%6d %10.7f %10.7f %10.7f\n",
@@ -1011,7 +838,7 @@ void Print_Charges( reax_system *system )
                 system->my_atoms[i].t[0],
                 system->my_atoms[i].q );
 
-    fclose( fout );
+    sfclose( fout, "Print_Charges" );
 }
 
 
@@ -1025,7 +852,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     reax_list *hbonds = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w", "Print_HBonds" );
 
     for ( i = 0; i < system->numH; ++i )
     {
@@ -1040,7 +867,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
         }
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_HBonds" );
 }
 
 
@@ -1053,7 +880,7 @@ void Print_HBond_Indices( reax_system *system, reax_list **lists,
     reax_list *hbonds = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds_indices.%d.%d", control->sim_name, step, system->my_rank );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w", "Print_HBond_Indices" );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1061,7 +888,7 @@ void Print_HBond_Indices( reax_system *system, reax_list **lists,
                 i, Start_Index(i, hbonds), End_Index(i, hbonds) );
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_HBond_Indices" );
 }
 
 
@@ -1076,7 +903,7 @@ void Print_Bonds( reax_system *system, reax_list **lists,
     reax_list *bonds = lists[BONDS];
 
     sprintf( fname, "%s.bonds.%d.%d", control->sim_name, step, system->my_rank );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w", "Print_Bonds" );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1093,7 +920,7 @@ void Print_Bonds( reax_system *system, reax_list **lists,
         }
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Bonds" );
 }
 
 
@@ -1105,7 +932,7 @@ int fn_qsort_intcmp( const void *a, const void *b )
 void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 {
     int i, j, id_i, id_j, nbr, pj;
-    FILE *f = fopen( fname, "w" );
+    FILE *f = sfopen( fname, "w", "Print_Bond_List2" );
     int temp[500];
     int num = 0;
 
@@ -1156,7 +983,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
     FILE *fout;
 
     sprintf( fname, "%s.far.%d.%d", control->sim_name, step, system->my_rank );
-    fout = fopen( fname, "w" );
+    fout = sfopen( fname, "w", "Print_Far_Neighbors_Adj_Format" );
 
     num_intrs = 0;
     intrs = NULL;
@@ -1203,7 +1030,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
         free( intrs );
     }
 
-    fclose( fout );
+    sfclose( fout, "Print_Far_Neighbors_List_Adj_Format" );
 }
 
 void Output_Results( reax_system *system, control_params *control,

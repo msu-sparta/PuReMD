@@ -709,7 +709,8 @@ void Deallocate_Grid( grid *g )
    buffers are void*, type cast to the correct pointer type to access
    the allocated buffers */
 int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
-                           neighbor_proc *my_nbrs, char *msg )
+                           neighbor_proc *my_nbrs,
+                           char *msg )
 {
     int i;
     mpi_out_data  *mpi_buf;
@@ -734,6 +735,19 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
                              scalloc( my_nbrs[i].est_send, sizeof(boundary_atom), "mpibuf:out_atoms",
                                       comm );
     }
+#if defined(NEUTRAL_TERRITORY)
+    /* Neutral Territory out buffers */
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
+    {
+        mpi_buf = &( mpi_data->out_nt_buffers[i] );
+        /* allocate storage for the neighbor processor i */
+        mpi_buf->index = (int*)
+                         scalloc( my_nbrs[i].est_send, sizeof(int), "mpibuf:nt_index", comm );
+        mpi_buf->out_atoms = (void*)
+                             scalloc( my_nbrs[i].est_send, sizeof(boundary_atom), "mpibuf:nt_out_atoms",
+                                      comm );
+    }
+#endif
 
     return SUCCESS;
 }
@@ -753,6 +767,14 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
         sfree( mpi_buf->index, "mpibuf:index" );
         sfree( mpi_buf->out_atoms, "mpibuf:out_atoms" );
     }
+#if defined(NEUTRAL_TERRITORY)
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
+    {
+        mpi_buf = &( mpi_data->out_nt_buffers[i] );
+        sfree( mpi_buf->index, "mpibuf:nt_index" );
+        sfree( mpi_buf->out_atoms, "mpibuf:nt_out_atoms" );
+    }
+#endif
 }
 
 
@@ -1004,6 +1026,20 @@ void ReAllocate( reax_system *system, control_params *control,
                 break;
             }
         }
+#if defined(NEUTRAL_TERRITORY)
+        // otherwise check individual outgoing Neutral Territory buffers
+        mpi_flag = 0;
+        for ( p = 0; p < MAX_NT_NBRS; ++p )
+        {
+            nbr_pr   = &( system->my_nt_nbrs[p] );
+            nbr_data = &( mpi_data->out_nt_buffers[p] );
+            if ( nbr_data->cnt >= nbr_pr->est_send * 0.90 )
+            {
+                mpi_flag = 1;
+                break;
+            }
+        }
+#endif
     }
 
     if ( mpi_flag )
@@ -1020,6 +1056,7 @@ void ReAllocate( reax_system *system, control_params *control,
         system->est_trans =
             (system->est_recv * sizeof(boundary_atom)) / sizeof(mpi_atom);
         total_send = 0;
+
         for ( p = 0; p < MAX_NBRS; ++p )
         {
             nbr_pr   = &( system->my_nbrs[p] );
@@ -1027,6 +1064,15 @@ void ReAllocate( reax_system *system, control_params *control,
             nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
             total_send += nbr_pr->est_send;
         }
+#if defined(NEUTRAL_TERRITORY)
+        for ( p = 0; p < MAX_NT_NBRS; ++p )
+        {
+            nbr_pr   = &( system->my_nt_nbrs[p] );
+            nbr_data = &( mpi_data->out_nt_buffers[p] );
+            nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
+        }
+#endif
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
                  system->my_rank, system->est_recv, total_send,

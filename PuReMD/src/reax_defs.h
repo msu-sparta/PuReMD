@@ -100,7 +100,6 @@
 #define RESTART (30)
 
 
-
 /******************* ENUMERATIONS *************************/
 enum geo_formats { CUSTOM = 0, PDB = 1, ASCII_RESTART = 2, BINARY_RESTART = 3, GF_N = 4 };
 

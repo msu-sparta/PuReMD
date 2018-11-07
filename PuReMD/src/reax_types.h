@@ -54,6 +54,7 @@
 #define ZERO                    (0.000000000000000e+00)
 #define REAX_MAX_STR            1024
 #define REAX_MAX_NBRS           6
+#define REAX_MAX_NT_NBRS        6
 #define REAX_MAX_3BODY_PARAM    5
 #define REAX_MAX_4BODY_PARAM    5
 #define REAX_MAX_ATOM_TYPES     25
@@ -224,8 +225,10 @@ typedef struct
     //MPI_Status   recv_stat2[REAX_MAX_NBRS];
 
     mpi_out_data out_buffers[REAX_MAX_NBRS];
+    mpi_out_data out_nt_buffers[REAX_MAX_NT_NBRS];
     void *in1_buffer;
     void *in2_buffer;
+    void *in_nt_buffer[REAX_MAX_NT_NBRS];
 } mpi_datatypes;
 
 
@@ -503,6 +506,7 @@ typedef struct
 typedef struct
 {
     int  rank;
+    int  receive_rank;
     int  est_send, est_recv;
     int  atoms_str, atoms_cnt;
     ivec rltv, prdc;
@@ -544,9 +548,10 @@ typedef struct
     int              n, N, bigN, numH;
     int              local_cap, total_cap, gcell_cap, Hcap;
     int              est_recv, est_trans, max_recved;
-    int              wsize, my_rank, num_nbrs;
+    int              wsize, my_rank, num_nbrs, num_nt_nbrs;
     ivec             my_coords;
     neighbor_proc    my_nbrs[REAX_MAX_NBRS];
+    neighbor_proc    my_nt_nbrs[REAX_MAX_NT_NBRS];
     int             *global_offset;
     simulation_box   big_box, my_box, my_ext_box;
     grid             my_grid;
