@@ -29,12 +29,13 @@ void real_packer( void*, mpi_out_data* );
 void rvec_packer( void*, mpi_out_data* );
 void rvec2_packer( void*, mpi_out_data* );
 void Dist(reax_system*, mpi_datatypes*, void*, MPI_Datatype, int, dist_packer);
+void Dist_NT(reax_system*, mpi_datatypes*, void*, MPI_Datatype, int, dist_packer);
 
 void real_unpacker( void*, void*, mpi_out_data* );
 void rvec_unpacker( void*, void*, mpi_out_data* );
 void rvec2_unpacker( void*, void*, mpi_out_data* );
-void Coll( reax_system*, mpi_datatypes*, void*, MPI_Datatype,
-           int, coll_unpacker );
+void Coll( reax_system*, mpi_datatypes*, void*, MPI_Datatype, int, coll_unpacker );
+void Coll_NT( reax_system*, mpi_datatypes*, void*, MPI_Datatype, int, coll_unpacker );
 
 real Parallel_Norm( real*, int, MPI_Comm );
 real Parallel_Dot( real*, real*, int, MPI_Comm );

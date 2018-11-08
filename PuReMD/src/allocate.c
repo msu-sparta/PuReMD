@@ -242,13 +242,11 @@ int Allocate_Workspace( reax_system *system, control_params *control,
                         storage *workspace, int local_cap, int total_cap,
                         MPI_Comm comm, char *msg )
 {
-    int i, total_real, total_rvec, local_int, local_real, local_rvec;
+    int i, total_real, total_rvec, local_rvec;
 
     workspace->allocated = 1;
     total_real = total_cap * sizeof(real);
     total_rvec = total_cap * sizeof(rvec);
-    local_int = local_cap * sizeof(int);
-    local_real = local_cap * sizeof(real);
     local_rvec = local_cap * sizeof(rvec);
 
     /* communication storage */
@@ -543,10 +541,11 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
     ivec c;
     grid *g;
     grid_cell *gc;
-    simulation_box *big_box, *my_ext_box;
+    simulation_box *my_ext_box;
+    //simulation_box *big_box;
     reax_atom *atoms;
 
-    big_box    = &(system->big_box);
+    //big_box    = &(system->big_box);
     my_ext_box = &(system->my_ext_box);
     g          = &(system->my_grid);
     atoms      = system->my_atoms;
@@ -735,7 +734,9 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
                              scalloc( my_nbrs[i].est_send, sizeof(boundary_atom), "mpibuf:out_atoms",
                                       comm );
     }
-#if defined(NEUTRAL_TERRITORY)
+
+    /* Note that in_nt_buffers are allocated in comm_tools.c */
+    
     /* Neutral Territory out buffers */
     for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
@@ -747,7 +748,6 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
                              scalloc( my_nbrs[i].est_send, sizeof(boundary_atom), "mpibuf:nt_out_atoms",
                                       comm );
     }
-#endif
 
     return SUCCESS;
 }
@@ -767,14 +767,16 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
         sfree( mpi_buf->index, "mpibuf:index" );
         sfree( mpi_buf->out_atoms, "mpibuf:out_atoms" );
     }
-#if defined(NEUTRAL_TERRITORY)
+
+
     for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
+        sfree( mpi_data->in_nt_buffer[i], "in_nt_buffer" );
+
         mpi_buf = &( mpi_data->out_nt_buffers[i] );
         sfree( mpi_buf->index, "mpibuf:nt_index" );
         sfree( mpi_buf->out_atoms, "mpibuf:nt_out_atoms" );
     }
-#endif
 }
 
 
@@ -1026,8 +1028,7 @@ void ReAllocate( reax_system *system, control_params *control,
                 break;
             }
         }
-#if defined(NEUTRAL_TERRITORY)
-        // otherwise check individual outgoing Neutral Territory buffers
+        // also check individual outgoing Neutral Territory buffers
         mpi_flag = 0;
         for ( p = 0; p < MAX_NT_NBRS; ++p )
         {
@@ -1039,7 +1040,6 @@ void ReAllocate( reax_system *system, control_params *control,
                 break;
             }
         }
-#endif
     }
 
     if ( mpi_flag )
@@ -1064,14 +1064,13 @@ void ReAllocate( reax_system *system, control_params *control,
             nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
             total_send += nbr_pr->est_send;
         }
-#if defined(NEUTRAL_TERRITORY)
+
         for ( p = 0; p < MAX_NT_NBRS; ++p )
         {
             nbr_pr   = &( system->my_nt_nbrs[p] );
             nbr_data = &( mpi_data->out_nt_buffers[p] );
             nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
         }
-#endif
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
@@ -1084,6 +1083,7 @@ void ReAllocate( reax_system *system, control_params *control,
 #endif
 
         /* reallocate mpi buffers */
+
         Deallocate_MPI_Buffers( mpi_data );
         ret = Allocate_MPI_Buffers( mpi_data, system->est_recv,
                                     system->my_nbrs, msg );

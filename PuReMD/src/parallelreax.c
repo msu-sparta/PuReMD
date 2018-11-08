@@ -115,11 +115,6 @@ static void usage(char* argv[])
 
 int main( int argc, char* argv[] )
 {
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main beginning\n");
-    fflush( stdout);    
-#endif
-
     reax_system *system;
     control_params *control;
     simulation_data *data;
@@ -168,10 +163,6 @@ int main( int argc, char* argv[] )
         lists[i]->far_nbr_list = NULL;
         lists[i]->hbond_list = NULL;
     }
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main reax lists allocated\n");
-    fflush( stdout);    
-#endif
     out_control = (output_controls *)
         smalloc( sizeof(output_controls), "out_control", MPI_COMM_WORLD );
     mpi_data = (mpi_datatypes *)
@@ -187,14 +178,10 @@ int main( int argc, char* argv[] )
     /* read system description files */
     Read_System( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
-
+    
 #if defined(DEBUG)
     fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
     MPI_Barrier( MPI_COMM_WORLD );
-#endif
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main simulatin info read\n");
-    fflush( stdout);    
 #endif
 
     /* measure total simulation time after input is read */
@@ -203,10 +190,6 @@ int main( int argc, char* argv[] )
 
     /* initialize datastructures */
     Initialize( system, control, data, workspace, lists, out_control, mpi_data );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main data structures initialized\n");
-    fflush( stdout);    
-#endif
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
@@ -215,32 +198,13 @@ int main( int argc, char* argv[] )
 
     /* compute f_0 */
     Comm_Atoms( system, control, data, workspace, lists, mpi_data, 1 );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main after calling Comm_Atoms\n");
-    fflush( stdout);    
-#endif
     Reset( system, control, data, workspace, lists, MPI_COMM_WORLD );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main system is reset\n");
-    fflush( stdout);    
-#endif
     Generate_Neighbor_Lists( system, data, workspace, lists );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main neighbor lists are generated\n");
-    fflush( stdout);    
-#endif
     Compute_Forces( system, control, data, workspace,
             lists, out_control, mpi_data );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main forces are computed\n");
-    fflush( stdout);    
-#endif
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
     Output_Results( system, control, data, lists, out_control, mpi_data );
-#if defined(NT_DEBUG)
-    fprintf( stdout, "main results are written\n");
-    fflush( stdout);    
-#endif
+    
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
