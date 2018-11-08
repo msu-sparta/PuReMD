@@ -738,7 +738,7 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
     /* Note that in_nt_buffers are allocated in comm_tools.c */
     
     /* Neutral Territory out buffers */
-    for ( i = 0; i < MAX_NT_NBRS; ++i )
+    for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
     {
         mpi_buf = &( mpi_data->out_nt_buffers[i] );
         /* allocate storage for the neighbor processor i */
@@ -769,7 +769,7 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
     }
 
 
-    for ( i = 0; i < MAX_NT_NBRS; ++i )
+    for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
     {
         sfree( mpi_data->in_nt_buffer[i], "in_nt_buffer" );
 
@@ -1030,7 +1030,7 @@ void ReAllocate( reax_system *system, control_params *control,
         }
         // also check individual outgoing Neutral Territory buffers
         mpi_flag = 0;
-        for ( p = 0; p < MAX_NT_NBRS; ++p )
+        for ( p = 0; p < REAX_MAX_NT_NBRS; ++p )
         {
             nbr_pr   = &( system->my_nt_nbrs[p] );
             nbr_data = &( mpi_data->out_nt_buffers[p] );
@@ -1065,7 +1065,7 @@ void ReAllocate( reax_system *system, control_params *control,
             total_send += nbr_pr->est_send;
         }
 
-        for ( p = 0; p < MAX_NT_NBRS; ++p )
+        for ( p = 0; p < REAX_MAX_NT_NBRS; ++p )
         {
             nbr_pr   = &( system->my_nt_nbrs[p] );
             nbr_data = &( mpi_data->out_nt_buffers[p] );

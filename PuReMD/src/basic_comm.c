@@ -181,7 +181,7 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
     */
     for( d = 0; d < count; ++d )
     {
-        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
     }
 
 
@@ -353,7 +353,7 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
     */
     for( d = 0; d < count; ++d )
     {
-        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
         unpack( in[index], buf, out_bufs + index );
     }
 
