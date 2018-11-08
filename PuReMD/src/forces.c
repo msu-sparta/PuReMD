@@ -55,6 +55,13 @@
 
 interaction_function Interaction_Functions[NUM_INTRS];
 
+
+static int compare_bonds( const void *p1, const void *p2 )
+{
+    return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
+}
+
+
 void Dummy_Interaction( reax_system *system, control_params *control,
                         simulation_data *data, storage *workspace,
                         reax_list **lists, output_controls *out_control )
@@ -531,6 +538,11 @@ void Init_Forces( reax_system *system, control_params *control,
 
     if ( far_nbrs->format == FULL_LIST )
     {
+
+        for( i = 0; i < system->N; ++i )
+            qsort( &bonds->bond_list[Start_Index(i, bonds)],
+                    Num_Entries(i, bonds), sizeof(bond_data), compare_bonds );
+
         /* set sym_index for bonds list (far_nbrs full list) */
         for ( i = 0; i < system->N; ++i )
         {

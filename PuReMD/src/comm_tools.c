@@ -53,7 +53,7 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
     bndry_cut = system->bndry_cuts.ghost_cutoff;
 
     /* identify my neighbors */
-    system->num_nt_nbrs = MAX_NT_NBRS;
+    system->num_nt_nbrs = REAX_MAX_NT_NBRS;
     for ( i = 0; i < system->num_nt_nbrs; ++i )
     {
         ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */

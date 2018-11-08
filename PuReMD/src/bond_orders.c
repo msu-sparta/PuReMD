@@ -802,7 +802,7 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
 }
 
 
-int compare_bonds( const void *p1, const void *p2 )
+static int compare_bonds( const void *p1, const void *p2 )
 {
     return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
 }

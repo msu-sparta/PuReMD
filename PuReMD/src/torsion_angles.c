@@ -342,7 +342,8 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                                  fbp->V2 * exp_tor1 * (1.0 - cos2omega) +
                                                  fbp->V3 * (1.0 + cos3omega) );
 
-                                    data->my_en.e_tor += e_tor = fn10 * sin_ijk * sin_jkl * CV;
+                                    e_tor = fn10 * sin_ijk * sin_jkl * CV;
+                                    data->my_en.e_tor += e_tor;
 
                                     dfn11 = (-p_tor3 * exp_tor3_DjDk +
                                              (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk) *
@@ -375,9 +376,8 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                     /* 4-body conjugation energy */
                                     fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
-                                    data->my_en.e_con += e_con =
-                                                             fbp->p_cot1 * fn12 *
-                                                             (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+                                    e_con = fbp->p_cot1 * fn12 * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+                                    data->my_en.e_con += e_con;
 
                                     Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2 *
                                             (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
