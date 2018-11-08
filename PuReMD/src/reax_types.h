@@ -40,6 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
+//#define NT_DEBUG
 //#define LAMMPS_REAX
 //#define DEBUG
 //#define DEBUG_FOCUS
@@ -217,14 +218,7 @@ typedef struct
     MPI_Datatype angle_line;
     MPI_Datatype angle_view;
 
-    //MPI_Request  send_req1[REAX_MAX_NBRS];
-    //MPI_Request  send_req2[REAX_MAX_NBRS];
-    //MPI_Status   send_stat1[REAX_MAX_NBRS];
-    //MPI_Status   send_stat2[REAX_MAX_NBRS];
-    //MPI_Status   recv_stat1[REAX_MAX_NBRS];
-    //MPI_Status   recv_stat2[REAX_MAX_NBRS];
-
-    mpi_out_data out_buffers[REAX_MAX_NBRS];
+    mpi_out_data out_buffers[REAX_MAX_NT_NBRS];
     mpi_out_data out_nt_buffers[REAX_MAX_NT_NBRS];
     void *in1_buffer;
     void *in2_buffer;
@@ -441,6 +435,8 @@ typedef struct
     int num_bonds;
     int num_hbonds;
     int renumber;
+    int nt_dir;
+    int pos;
 } reax_atom;
 
 
@@ -894,6 +890,15 @@ typedef struct
 typedef struct
 {
     int nbr;
+    ivec rel_box;
+    real d;
+    rvec dvec;
+} nt_neighbor_data;
+
+
+typedef struct
+{
+    int nbr;
     int scl;
     far_neighbor_data *ptr;
 } hbond_data;
@@ -961,7 +966,7 @@ typedef struct
 {
     /* matrix storage format */
     int format;
-    int cap, n, m;
+    int cap, n, m, NT;
     int *start, *end;
     sparse_matrix_entry *entries;
 } sparse_matrix;
@@ -1075,6 +1080,7 @@ typedef union
     //dbond_data         *dbo_list;
     //dDelta_data        *dDelta_list;
     //far_neighbor_data  *far_nbr_list;
+    //nt_neighbor_data   *nt_nbr_list;
     //hbond_data         *hbond_list;
 } list_type;
 
@@ -1101,6 +1107,7 @@ typedef struct
     dbond_data *dbo_list;
     dDelta_data *dDelta_list;
     far_neighbor_data *far_nbr_list;
+    nt_neighbor_data *nt_nbr_list;
     hbond_data *hbond_list;
 } reax_list;
 

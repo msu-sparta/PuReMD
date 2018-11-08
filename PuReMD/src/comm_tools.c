@@ -46,8 +46,8 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
         {0, 0, -1}, // -z
         {0, +1, 0}, // +y
         {+1, +1, 0}, // +x+y
-        {+1, 0, 0}, // -x
-        {+1, -1, 0}  // -x+y
+        {+1, 0, 0}, // +x
+        {+1, -1, 0}  // +x-y
     };
     my_box = &(system->my_box);
     bndry_cut = system->bndry_cuts.ghost_cutoff;
