@@ -1201,20 +1201,29 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     t_start = Get_Time( );
     scale = sizeof(real) / sizeof(void);
+#if defined(NEUTRAL_TERRITORY)
+    Dist_NT( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
+#else
     Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
-//    Dist_NT( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
+#endif
     t_comm += Get_Timing_Info( t_start );
 
     t_start = Get_Time( );
-    //Sparse_MatVec( H, x, workspace->q, system->N );
+#if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec( H, x, workspace->q, H->NT );
+#else
+    Sparse_MatVec( H, x, workspace->q, system->N );
+#endif
     t_spmv += Get_Timing_Info( t_start );
 
     if ( H->format == SYM_HALF_MATRIX )
     {
         t_start = Get_Time( );
+#if defined(NEUTRAL_TERRITORY)
+        Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+#else
         Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
-//        Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+#endif
         t_comm += Get_Timing_Info( t_start );
     }
 
@@ -1226,13 +1235,19 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     if( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_start = Get_Time( );
+#if defined(NEUTRAL_TERRITORY)
+        Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+#else
         Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
-//        Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+#endif
         t_comm += Get_Timing_Info( t_start );
         
         t_start = Get_Time( );
-        //Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+#if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
+#else
+        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+#endif
         t_pa += Get_Timing_Info( t_start );
     }
 
@@ -1254,20 +1269,29 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
         t_start = Get_Time( );
+#if defined(NEUTRAL_TERRITORY)
+        Dist_NT( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
+#else
         Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
-//        Dist_NT( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
+#endif
         t_comm += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        //Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+#if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec( H, workspace->d, workspace->q, H->NT );
+#else
+        Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+#endif
         t_spmv += Get_Timing_Info( t_start );
 
         if ( H->format == SYM_HALF_MATRIX )
         {
             t_start = Get_Time( );
+#if defined(NEUTRAL_TERRITORY)
+            Coll_NT(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+#else
             Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
-//            Coll_NT(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
+#endif
             t_comm += Get_Timing_Info( t_start );
         }
 
@@ -1285,13 +1309,19 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         if( control->cm_solver_pre_comp_type == SAI_PC )
         {
             t_start = Get_Time( );
+#if defined(NEUTRAL_TERRITORY)
+            Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+#else
             Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
-//            Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
+#endif
             t_comm += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            //Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
+#if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, H->NT );
+#else
+            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
+#endif
             t_pa += Get_Timing_Info( t_start );
         }
 

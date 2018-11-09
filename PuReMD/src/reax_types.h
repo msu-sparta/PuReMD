@@ -217,12 +217,15 @@ typedef struct
     MPI_Datatype bond_view;
     MPI_Datatype angle_line;
     MPI_Datatype angle_view;
+    mpi_out_data out_buffers[REAX_MAX_NBRS];
 
-    mpi_out_data out_buffers[REAX_MAX_NT_NBRS];
-    mpi_out_data out_nt_buffers[REAX_MAX_NT_NBRS];
     void *in1_buffer;
     void *in2_buffer;
+
+#if defined(NEUTRAL_TERRITORY)
+    mpi_out_data out_nt_buffers[REAX_MAX_NT_NBRS];
     void *in_nt_buffer[REAX_MAX_NT_NBRS];
+#endif
 } mpi_datatypes;
 
 
@@ -435,8 +438,10 @@ typedef struct
     int num_bonds;
     int num_hbonds;
     int renumber;
+#if defined(NEUTRAL_TERRITORY)
     int nt_dir;
     int pos;
+#endif
 } reax_atom;
 
 
@@ -544,16 +549,20 @@ typedef struct
     int              n, N, bigN, numH;
     int              local_cap, total_cap, gcell_cap, Hcap;
     int              est_recv, est_trans, max_recved;
-    int              wsize, my_rank, num_nbrs, num_nt_nbrs;
+    int              wsize, my_rank, num_nbrs;
     ivec             my_coords;
     neighbor_proc    my_nbrs[REAX_MAX_NBRS];
-    neighbor_proc    my_nt_nbrs[REAX_MAX_NT_NBRS];
     int             *global_offset;
     simulation_box   big_box, my_box, my_ext_box;
     grid             my_grid;
     boundary_cutoff  bndry_cuts;
 
     reax_atom       *my_atoms;
+
+#if defined(NEUTRAL_TERRITORY)
+    int              num_nt_nbrs;
+    neighbor_proc    my_nt_nbrs[REAX_MAX_NT_NBRS];
+#endif
 } reax_system;
 
 
@@ -887,6 +896,7 @@ typedef struct
 } far_neighbor_data;
 
 
+#if defined(NEUTRAL_TERRITORY)
 typedef struct
 {
     int nbr;
@@ -894,6 +904,7 @@ typedef struct
     real d;
     rvec dvec;
 } nt_neighbor_data;
+#endif
 
 
 typedef struct
@@ -966,7 +977,10 @@ typedef struct
 {
     /* matrix storage format */
     int format;
-    int cap, n, m, NT;
+    int cap, n, m;
+#if defined(NEUTRAL_TERRITORY)
+    int NT;
+#endif
     int *start, *end;
     sparse_matrix_entry *entries;
 } sparse_matrix;
@@ -1080,7 +1094,6 @@ typedef union
     //dbond_data         *dbo_list;
     //dDelta_data        *dDelta_list;
     //far_neighbor_data  *far_nbr_list;
-    //nt_neighbor_data   *nt_nbr_list;
     //hbond_data         *hbond_list;
 } list_type;
 
@@ -1107,7 +1120,9 @@ typedef struct
     dbond_data *dbo_list;
     dDelta_data *dDelta_list;
     far_neighbor_data *far_nbr_list;
+#if defined(NEUTRAL_TERRITORY)
     nt_neighbor_data *nt_nbr_list;
+#endif
     hbond_data *hbond_list;
 } reax_list;
 

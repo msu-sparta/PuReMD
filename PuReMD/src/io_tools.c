@@ -851,8 +851,18 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     FILE *fout;
     reax_list *hbonds = lists[HBONDS];
 
-    sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
-    fout = sfopen( fname, "w", "Print_HBonds" );
+    snprintf( fname, MAX_STR, "hbonds.%d.%d", step, system->my_rank );
+    
+    fprintf( stdout, "p%d, Round 1, Printing H bonds, numH = %d\n", system->my_rank, system->numH );
+    fflush( stdout );
+    MPI_Barrier( MPI_COMM_WORLD );
+    
+    //fout = sfopen( fname, "w", "Print_HBonds" );
+    fout = fopen( fname, "w" );
+
+    fprintf( stdout, "p%d, Round 2, Printing H bonds, numH = %d\n", system->my_rank, system->numH );
+    fflush( stdout );
+    MPI_Barrier( MPI_COMM_WORLD );
 
     for ( i = 0; i < system->numH; ++i )
     {
@@ -866,6 +876,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
             //                  phbond->scl, phbond->sym_index );
         }
     }
+
 
     sfclose( fout, "Print_HBonds" );
 }

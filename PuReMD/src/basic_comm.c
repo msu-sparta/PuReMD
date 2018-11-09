@@ -129,6 +129,7 @@ void Dist( reax_system* system, mpi_datatypes *mpi_data,
 }
 
 
+#if defined(NEUTRAL_TERRITORY)
 void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
         void *buf, MPI_Datatype type, int scale, dist_packer pack )
 {
@@ -189,6 +190,7 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
 #endif
 }
+#endif
 
 
 void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
@@ -299,7 +301,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data,
 #endif
 }
 
-
+#if defined(NEUTRAL_TERRITORY)
 void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         void *buf, MPI_Datatype type, int scale, coll_unpacker unpack )
 {
@@ -361,6 +363,7 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
     fprintf( stderr, "p%d coll: done\n", system->my_rank );
 #endif
 }
+#endif
 
 
 #endif /*PURE_REAX*/

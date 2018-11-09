@@ -25,7 +25,7 @@
 #include "tool_box.h"
 #include "vector.h"
 
-
+#if defined(NEUTRAL_TERRITORY)
 void Setup_NT_Comm( reax_system* system, control_params* control,
                  mpi_datatypes *mpi_data )
 {
@@ -95,8 +95,10 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
 
     }
 }
+#endif
 
 
+#if defined(NEUTRAL_TERRITORY)
 int Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_bufs, int write )
 {
     int i, cnt;
@@ -131,8 +133,10 @@ int Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_bufs
 
     return cnt;
 }
+#endif
 
 
+#if defined(NEUTRAL_TERRITORY)
 void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
 {
     int d, end, cnt;
@@ -169,7 +173,10 @@ void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
         end += cnt;
     }
 }
+#endif
 
+
+#if defined(NEUTRAL_TERRITORY)
 void Estimate_NT_Atoms( reax_system *system, mpi_datatypes *mpi_data )
 {
     int d;
@@ -196,6 +203,7 @@ void Estimate_NT_Atoms( reax_system *system, mpi_datatypes *mpi_data )
         //Sort_Neutral_Territory( system, d, out_bufs, 1 );
     }
 }
+#endif
 
 
 void Setup_Comm( reax_system* system, control_params* control,
@@ -822,7 +830,9 @@ void Comm_Atoms( reax_system *system, control_params *control,
 
         Bin_Boundary_Atoms( system );
         
+#if defined(NEUTRAL_TERRITORY)
         Init_Neutral_Territory( system, mpi_data );
+#endif
     }
     else
     {

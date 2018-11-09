@@ -346,10 +346,12 @@ void Init_Forces( reax_system *system, control_params *control,
     int jhb_top;
     int start_j, end_j;
     int btop_j;
+#if defined(NEUTRAL_TERRITORY)
     int total_cnt[6];
     int bin[6];
     int total_sum[6];
     int nt_flag;
+#endif
 
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
@@ -371,8 +373,11 @@ void Init_Forces( reax_system *system, control_params *control,
     num_hbonds = 0;
     btop_i = 0;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+#if defined(NEUTRAL_TERRITORY)
     nt_flag = 1;
+#endif
 
+#if defined(NEUTRAL_TERRITORY)
     if( renbr )
     {
         for ( i = 0; i < 6; ++i )
@@ -405,6 +410,7 @@ void Init_Forces( reax_system *system, control_params *control,
         }
         H->NT = total_sum[5] + total_cnt[5];
     }
+#endif
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -429,12 +435,14 @@ void Init_Forces( reax_system *system, control_params *control,
             local = 1;
             cutoff = control->nonb_cut;
         }
+#if defined(NEUTRAL_TERRITORY)
         else if( atom_i->nt_dir != -1 )
         {
             local = 2;
             cutoff = control->nonb_cut;
             nt_flag = 0;
         }
+#endif
         else
         {
             local = 0;
@@ -524,6 +532,7 @@ void Init_Forces( reax_system *system, control_params *control,
                             && (j < system->n || atom_i->orig_id < atom_j->orig_id))
                       || far_nbrs->format == FULL_LIST )
                     {
+#if defined(NEUTRAL_TERRITORY)
                         if( atom_j->nt_dir != -1 || j < system->n )
                         {
                             if( j < system->n )
@@ -545,6 +554,18 @@ void Init_Forces( reax_system *system, control_params *control,
                             }
                             ++Htop;
                         }
+#else
+                        H->entries[Htop].j = j;
+                        if ( control->tabulate == 0 )
+                        {
+                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                        }
+                        else
+                        {
+                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                        }
+                        ++Htop;
+#endif
                     }
 
                     /* hydrogen bond lists */
@@ -574,6 +595,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         }
                     }
                 }
+#if defined(NEUTRAL_TERRITORY)
                 else if ( local == 2 )
                 {
                     /* H matrix entry */
@@ -610,6 +632,7 @@ void Init_Forces( reax_system *system, control_params *control,
                     }
 
                 }
+#endif
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
@@ -638,10 +661,12 @@ void Init_Forces( reax_system *system, control_params *control,
             if ( ihb == 1 )
                 Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
         }
+#if defined(NEUTRAL_TERRITORY)
         else if ( local == 2 )
         {
             H->end[atom_i->pos] = Htop;
         }
+#endif
     }
 
     if ( far_nbrs->format == FULL_LIST )
@@ -977,15 +1002,17 @@ void Estimate_Storages( reax_system *system, control_params *control,
             ++(*matrix_dim);
             ihb = sbp_i->p_hbond;
         }
+#if defined(NEUTRAL_TERRITORY)
         else if ( atom_i->nt_dir != -1 )
         {
             local = 2;
             cutoff = control->nonb_cut;
             // TODO: Diag entries for NT atoms?
             //++(*Htop);
-            //++(*matrix_dim);
+            ++(*matrix_dim);
             ihb = -1;
         }
+#endif
         else
         {
             local = 0;
@@ -1015,7 +1042,9 @@ void Estimate_Storages( reax_system *system, control_params *control,
                             && (j < system->n || atom_i->orig_id < atom_j->orig_id))
                       || far_nbrs->format == FULL_LIST )
                     {
+#if defined(NEUTRAL_TERRITORY)
                         if( j < system->n || (system->my_atoms[j]).nt_dir != -1 )
+#endif
                         {
                             ++(*Htop);
                         }
@@ -1039,6 +1068,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
                     }
                 }
 
+#if defined(NEUTRAL_TERRITORY)
                 else if ( local == 2 )
                 {
 
@@ -1052,6 +1082,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
                         }
                     }
                 }
+#endif
 
                 /* uncorrected bond orders */
                 if ( nbr_pj->d <= control->bond_cut )

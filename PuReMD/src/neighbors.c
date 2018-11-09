@@ -104,6 +104,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                 for (l = gci->str; l < gci->end; ++l )
                 {
                     atom1 = &(system->my_atoms[l]);
+#if defined(NEUTRAL_TERRITORY)
                     if( gci->type >= NT_NBRS && gci->type < NT_NBRS + 6 )
                     {
                         atom1->nt_dir = gci->type - NT_NBRS;
@@ -112,6 +113,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                     {
                         atom1->nt_dir = -1;
                     }
+#endif
                     Set_Start_Index( l, num_far, far_nbrs );
                     //fprintf( stderr, "\tatom %d\n", atom1 );
 
@@ -213,6 +215,7 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists,
                 for ( l = gci->str; l < gci->end; ++l )
                 {
                     atom1 = &(system->my_atoms[l]);
+#if defined(NEUTRAL_TERRITORY)
                     if( gci->type >= NT_NBRS && gci->type < NT_NBRS + 6 )
                     {
                         atom1->nt_dir = gci->type - NT_NBRS;
@@ -221,6 +224,7 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists,
                     {
                         atom1->nt_dir = -1;
                     }
+#endif
                     //fprintf( stderr, "\tatom %d: ", l );
                     //tmp = num_far; tested = 0;
                     itr = 0;

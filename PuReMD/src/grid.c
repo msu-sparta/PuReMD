@@ -35,8 +35,8 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
     ivec send_span, recv_span;
     ivec str_send, end_send;
     ivec str_recv, end_recv;
+#if defined(NEUTRAL_TERRITORY)
     ivec nt_str, nt_end;
-
     ivec dir[6] = {
         {0, 0, +1}, // +z
         {0, 0, -1}, // -z
@@ -45,6 +45,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
         {+1, 0, 0}, // +x
         {+1, -1, 0}  // +x-y
     };
+#endif
 
     /* clear all gcell type info */
     for ( x = 0; x < g->ncells[0]; x++ )
@@ -61,6 +62,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
                 ivec_MakeZero( g->cells[x][y][z].rel_box );
             }
     
+#if defined(NEUTRAL_TERRITORY)
     /* mark NT cells */
     for ( i = 0; i < 6; ++i )
     {
@@ -93,6 +95,7 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
             }
         }
     }
+#endif
 
     /* loop over neighbors */
     for ( r[0] = -1; r[0] <= 1; ++r[0])
@@ -179,8 +182,11 @@ void Find_Neighbor_GridCells( grid *g, control_params *control )
                 gc = &(g->cells[ci[0]][ci[1]][ci[2]]);
                 top = 0;
                 //fprintf( stderr, "grid1: %d %d %d:\n", ci[0], ci[1], ci[2] );
-
+#if defined(NEUTRAL_TERRITORY)
                 if ( gc->type == NATIVE || ( gc->type >= NT_NBRS && gc->type < NT_NBRS + 6 ) )
+#else
+                if ( gc->type == NATIVE )
+#endif
                     gc->cutoff = control->vlist_cut;
                 else gc->cutoff = control->bond_cut;
 

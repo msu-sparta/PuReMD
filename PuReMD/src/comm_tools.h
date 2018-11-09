@@ -25,12 +25,16 @@
 #include "reax_types.h"
 
 void Setup_Comm( reax_system*, control_params*, mpi_datatypes* );
+#if defined(NEUTRAL_TERRITORY)
 void Setup_NT_Comm( reax_system*, control_params*, mpi_datatypes* );
+#endif
 void Update_Comm( reax_system* );
 
 void Sort_Boundary_Atoms( reax_system*, int, int, int, mpi_out_data* );
 void Estimate_Boundary_Atoms( reax_system*, int, int, int, mpi_out_data* );
+#if defined(NEUTRAL_TERRITORY)
 void Estimate_NT_Atoms( reax_system*, mpi_datatypes* );
+#endif
 void Unpack_Exchange_Message( reax_system*, int, void*, int,
                               neighbor_proc*, int );
 void Unpack_Estimate_Message( reax_system*, int, void*, int,

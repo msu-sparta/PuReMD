@@ -155,7 +155,9 @@ int Init_System( reax_system *system, control_params *control,
             Estimate_Boundary_Atoms, Unpack_Estimate_Message, 1 );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
+#if defined(NEUTRAL_TERRITORY)
     Estimate_NT_Atoms( system, mpi_data );
+#endif
 
     //fprintf( stderr, "p%d SEND RECV SEND!\n", system->my_rank );
     //MPI_Barrier( mpi_data->world );
@@ -469,10 +471,12 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     /* init mpi buffers  */
     mpi_data->in1_buffer = NULL;
     mpi_data->in2_buffer = NULL;
+#if defined(NEUTRAL_TERRITORY)
     for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
     {
         mpi_data->in_nt_buffer[i] = NULL;
     }
+#endif
 
     /* mpi_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, name,
        x, v, f_old, s, t] */
@@ -640,7 +644,11 @@ int  Init_Lists( reax_system *system, control_params *control,
     Estimate_Storages( system, control, lists,
             &Htop, hb_top, bond_top, &num_3body, comm, &matrix_dim );
 
+#if defined(NEUTRAL_TERRITORY)
     Allocate_Matrix( &(workspace->H), matrix_dim, Htop, cm_format, comm );
+#else
+    Allocate_Matrix( &(workspace->H), system->local_cap, Htop, comm );
+#endif
     workspace->L = NULL;
     workspace->U = NULL;
     workspace->H_spar_patt = NULL;
