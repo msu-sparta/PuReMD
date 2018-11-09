@@ -1048,8 +1048,8 @@ void ReAllocate( reax_system *system, control_params *control,
                 break;
             }
         }
-    }
 #endif
+    }
 
     if ( mpi_flag )
     {
@@ -1094,7 +1094,6 @@ void ReAllocate( reax_system *system, control_params *control,
 #endif
 
         /* reallocate mpi buffers */
-
         Deallocate_MPI_Buffers( mpi_data );
         ret = Allocate_MPI_Buffers( mpi_data, system->est_recv,
                                     system->my_nbrs, msg );

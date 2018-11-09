@@ -596,8 +596,13 @@ int  Init_Lists( reax_system *system, control_params *control,
     }
     else
     {
+#if defined(NEUTRAL_TERRITORY)
+        far_nbr_list_format = FULL_LIST;
+        cm_format = SYM_FULL_MATRIX;
+#else
         far_nbr_list_format = HALF_LIST;
         cm_format = SYM_HALF_MATRIX;
+#endif
     }
 
     //for( i = 0; i < MAX_NBRS; ++i ) nrecv[i] = system->my_nbrs[i].est_recv;
@@ -647,7 +652,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 #if defined(NEUTRAL_TERRITORY)
     Allocate_Matrix( &(workspace->H), matrix_dim, Htop, cm_format, comm );
 #else
-    Allocate_Matrix( &(workspace->H), system->local_cap, Htop, comm );
+    Allocate_Matrix( &(workspace->H), system->local_cap, Htop, cm_format, comm );
 #endif
     workspace->L = NULL;
     workspace->U = NULL;
