@@ -584,7 +584,7 @@ if __name__ == '__main__':
                 'tabulate_long_range': ['0'],
                 'vlist_buffer': ['0.0'],
                 'nbrhood_cutoff': ['5.0'],
-                'hbond_cutoff': ['0.0'],
+                'hbond_cutoff': ['7.5'],
                 'thb_cutoff': ['0.001'],
                 'bond_graph_cutoff': ['0.3'],
                 'charge_method': ['0'],

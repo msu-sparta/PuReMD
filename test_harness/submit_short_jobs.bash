@@ -111,9 +111,9 @@ pushd "${DATA_DIR}" &> /dev/null
 
 submit_job_mpi "slurm" "mpi" "zno_6912"
 
-submit_job_mpi "slurm" "mpi" "silica_6000_mpi"
+submit_job_mpi "slurm" "mpi" "silica_6000"
 
-submit_job_mpi "slurm" "mpi" "water_6540_mpi"
+submit_job_mpi "slurm" "mpi" "water_6540"
 
 popd &> /dev/null
 
@@ -125,10 +125,10 @@ if [ ! -d "${DATA_DIR}" ]; then
 fi
 pushd "${DATA_DIR}" &> /dev/null
 
-submit_job_mpi_gpu "slurm" "mpi+gpu" "zno_6912_mpi_gpu"
+submit_job_mpi_gpu "slurm" "mpi+gpu" "zno_6912"
 
-submit_job_mpi_gpu "slurm" "mpi+gpu" "silica_6000_mpi_gpu"
+submit_job_mpi_gpu "slurm" "mpi+gpu" "silica_6000"
 
-submit_job_mpi_gpu "slurm" "mpi+gpu" "water_6540_mpi_gpu"
+submit_job_mpi_gpu "slurm" "mpi+gpu" "water_6540"
 
 popd &> /dev/null
