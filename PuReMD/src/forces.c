@@ -926,7 +926,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     comm = mpi_data->world;
     /********* init forces ************/
 #if defined(PURE_REAX)
-    if ( control->qeq_freq && (data->step - data->prev_steps) % control->qeq_freq == 0 )
+    if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
         qeq_flag = 1;
     else qeq_flag = 0;
 #elif defined(LAMMPS_REAX)
@@ -970,7 +970,7 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &(data->timing.qEq) );
+        Update_Timing_Info( &t_start, &data->timing.cm );
 #endif
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);

@@ -1274,8 +1274,8 @@ void Output_Results( reax_system *system, control_params *control,
                      data->timing.init_forces * denom,
                      data->timing.bonded * denom,
                      data->timing.nonb * denom,
-                     data->timing.qEq * denom,
-                     (int)((data->timing.s_matvecs + data->timing.t_matvecs)*denom) );
+                     data->timing.cm * denom,
+                     (int)(data->timing.cm_solver_iters * denom) );
 
             Reset_Timing( &(data->timing) );
             fflush( out_control->log );

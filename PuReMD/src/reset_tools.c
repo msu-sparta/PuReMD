@@ -107,14 +107,13 @@ void Reset_Simulation_Data( simulation_data* data, int virial )
 void Reset_Timing( reax_timing *rt )
 {
     rt->total = Get_Time();
-    rt->comm = 0;
-    rt->nbrs = 0;
-    rt->init_forces = 0;
-    rt->bonded = 0;
-    rt->nonb = 0;
-    rt->qEq = 0;
-    rt->s_matvecs = 0;
-    rt->t_matvecs = 0;
+    rt->comm = 0.0;
+    rt->nbrs = 0.0;
+    rt->init_forces = 0.0;
+    rt->bonded = 0.0;
+    rt->nonb = 0.0;
+    rt->cm = 0.0;
+    rt->cm_solver_iters = 0;
 }
 
 #ifdef TEST_FORCES

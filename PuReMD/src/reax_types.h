@@ -22,6 +22,11 @@
 #ifndef __REAX_TYPES_H_
 #define __REAX_TYPES_H_
 
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "config.h"
+#endif
+
 #include <ctype.h>
 #include <math.h>
 #include <mpi.h>
@@ -36,7 +41,6 @@
 
 #define PURE_REAX
 //#define LAMMPS_REAX
-
 //#define DEBUG
 //#define DEBUG_FOCUS
 //#define TEST_ENERGY
@@ -47,12 +51,13 @@
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
 
-#define REAX_MAX_STR            1024
-#define REAX_MAX_NBRS           6
-#define REAX_MAX_3BODY_PARAM    5
-#define REAX_MAX_4BODY_PARAM    5
-#define REAX_MAX_ATOM_TYPES     25
-#define REAX_MAX_MOLECULE_SIZE  20
+#define ZERO                    (0.000000000000000e+00)
+#define REAX_MAX_STR            (1024)
+#define REAX_MAX_NBRS           (6)
+#define REAX_MAX_3BODY_PARAM    (5)
+#define REAX_MAX_4BODY_PARAM    (5)
+#define REAX_MAX_ATOM_TYPES     (25)
+#define REAX_MAX_MOLECULE_SIZE  (20)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -62,6 +67,68 @@
 #warn "No support for NaN"
 #define NAN_REAL(a) (0)
 #endif
+
+
+/* method for computing atomic charges */
+enum charge_method
+{
+    QEQ_CM = 0,
+    EE_CM = 1,
+    ACKS2_CM = 2,
+};
+
+/* linear solver type used in charge method */
+enum solver
+{
+    GMRES_S = 0,
+    GMRES_H_S = 1,
+    CG_S = 2,
+    SDM_S = 3,
+    BiCGStab_S = 4,
+};
+
+/* preconditioner computation type for charge method linear solver */
+enum pre_comp
+{
+    NONE_PC = 0,
+    JACOBI_PC = 1,
+    ICHOLT_PC = 2,
+    ILUT__PC = 3,
+    ILUTP_PC = 4,
+    FG_ILUT_PC = 5,
+    SAI_PC = 6,
+};
+
+/* preconditioner application type for ICHOL/ILU preconditioners,
+ * used for charge method linear solver */
+enum pre_app
+{
+    TRI_SOLVE_PA = 0,
+    TRI_SOLVE_LEVEL_SCHED_PA = 1,
+    TRI_SOLVE_GC_PA = 2,
+    JACOBI_ITER_PA = 3,
+};
+
+/* interaction list (reax_list) storage format */
+enum reax_list_format
+{
+    /* store half of interactions, when i < j (atoms i and j) */
+    HALF_LIST = 0,
+    /* store all interactions */
+    FULL_LIST = 1,
+};
+
+/* sparse matrix (sparse_matrix) storage format */
+enum sparse_matrix_format
+{
+    /* store upper half of nonzeros in a symmetric matrix (a_{ij}, i >= j) */
+    SYM_HALF_MATRIX = 0,
+    /* store all nonzeros in a symmetric matrix */
+    SYM_FULL_MATRIX = 1,
+    /* store all nonzeros in a matrix */
+    FULL_MATRIX = 2,
+};
+
 
 /********************** TYPE DEFINITIONS ********************/
 typedef int  ivec[3];
@@ -148,15 +215,8 @@ typedef struct
     MPI_Datatype bond_view;
     MPI_Datatype angle_line;
     MPI_Datatype angle_view;
-
-    //MPI_Request  send_req1[REAX_MAX_NBRS];
-    //MPI_Request  send_req2[REAX_MAX_NBRS];
-    //MPI_Status   send_stat1[REAX_MAX_NBRS];
-    //MPI_Status   send_stat2[REAX_MAX_NBRS];
-    //MPI_Status   recv_stat1[REAX_MAX_NBRS];
-    //MPI_Status   recv_stat2[REAX_MAX_NBRS];
-
     mpi_out_data out_buffers[REAX_MAX_NBRS];
+
     void *in1_buffer;
     void *in2_buffer;
 } mpi_datatypes;
@@ -493,64 +553,161 @@ typedef struct
 /* system control parameters */
 typedef struct
 {
+    /* simulation name, as supplied via control file */
     char sim_name[REAX_MAX_STR];
-    int  nprocs;
+    /* number of MPI processors, as supplied via control file */
+    int nprocs;
+    /* MPI processors per each simulation dimension (cartesian topology),
+     * as supplied via control file */
     ivec procs_by_dim;
-    /* ensemble values:
-       0 : NVE
-       1 : bNVT (Berendsen)
-       2 : nhNVT (Nose-Hoover)
-       3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
-       4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
-       5 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic*/
-    int  ensemble;
-    int  nsteps;
+    /* ensemble type for simulation, values:
+     * 0 : NVE
+     * 1 : bNVT (Berendsen)
+     * 2 : nhNVT (Nose-Hoover)
+     * 3 : sNPT (Parrinello-Rehman-Nose-Hoover) semiisotropic
+     * 4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
+     * 5 : NPT  (Parrinello-Rehman-Nose-Hoover) Anisotropic */
+    int ensemble;
+    /* num. of simulation time steps */
+    int nsteps;
+    /* length of time step, in femtoseconds */
     real dt;
-    int  geo_format;
-    int  restart;
+    /* format of geometry input file */
+    int geo_format;
+    /* format of restart file */
+    int restart;
 
-    int  restrict_bonds;
-    int  remove_CoM_vel;
-    int  random_vel;
-    int  reposition_atoms;
+    /**/
+    int restrict_bonds;
+    /* flag to control if center of mass velocity is removed */
+    int remove_CoM_vel;
+    /* flag to control if atomic initial velocity is randomly assigned */
+    int random_vel;
+    /* flag to control how atom repositioning is performed, values:
+     * 0: fit to periodic box
+     * 1: put center of mass to box center
+     * 2: put center of mass to box origin  */
+    int reposition_atoms;
 
-    int  reneighbor;
+    /* flag to control the frequency (in terms of simulation time stesp)
+     * at which atom reneighboring is performed */
+    int reneighbor;
+    /* far neighbor (Verlet list) interaction cutoff, in Angstroms */
     real vlist_cut;
+    /* bond interaction cutoff, in Angstroms */
     real bond_cut;
-    real nonb_cut, nonb_low;
+    /* non-bonded interaction cutoff, in Angstroms */
+    real nonb_cut;
+    /* ???, as supplied by force field parameters, in Angstroms */
+    real nonb_low;
+    /* hydrogen bond interaction cutoff, in Angstroms */
     real hbond_cut;
+    /* ghost region cutoff (user-supplied via control file), in Angstroms */
     real user_ghost_cut;
 
+    /* bond graph cutoff, as supplied by control file, in Angstroms */
     real bg_cut;
+    /* bond order cutoff, as supplied by force field parameters, in Angstroms */
     real bo_cut;
+    /* three body interaction cutoff, as supplied by control file, in Angstroms */
     real thb_cut;
 
+    /* flag to control if force computations are tablulated */
     int tabulate;
 
-    int qeq_freq;
-    real q_err;
-    int refactor;
-    real droptol;
+    /* method for computing atomic charges */
+    unsigned int charge_method;
+    /* frequency (in terms of simulation time steps) at which to
+     * re-compute atomic charge distribution */
+    int charge_freq;
+    /* iterative linear solver type */
+    unsigned int cm_solver_type;
+    /* system net charge */
+    real cm_q_net;
+    /* max. iterations for linear solver */
+    unsigned int cm_solver_max_iters;
+    /* max. iterations before restarting in specific solvers, e.g., GMRES(k) */
+    unsigned int cm_solver_restart;
+    /* error tolerance of solution produced by charge distribution
+     * sparse iterative linear solver */
+    real cm_solver_q_err;
+    /* ratio used in computing sparser charge matrix,
+     * between 0.0 and 1.0 */
+    real cm_domain_sparsity;
+    /* TRUE if enabled, FALSE otherwise */
+    unsigned int cm_domain_sparsify_enabled;
+    /* order of spline extrapolation used for computing initial guess
+     * to linear solver */
+    unsigned int cm_init_guess_extrap1;
+    /* order of spline extrapolation used for computing initial guess
+     * to linear solver */
+    unsigned int cm_init_guess_extrap2;
+    /* preconditioner type for linear solver */
+    unsigned int cm_solver_pre_comp_type;
+    /* frequency (in terms of simulation time steps) at which to recompute
+     * incomplete factorizations */
+    unsigned int cm_solver_pre_comp_refactor;
+    /* drop tolerance of incomplete factorization schemes (ILUT, ICHOLT, etc.)
+     * used for preconditioning the iterative linear solver used in charge distribution */
+    real cm_solver_pre_comp_droptol;
+    /* num. of sweeps for computing preconditioner factors
+     * in fine-grained iterative methods (FG-ICHOL, FG-ILU) */
+    unsigned int cm_solver_pre_comp_sweeps;
+    /* relative num. of non-zeros to charge matrix used to
+     * compute the sparse approximate inverse preconditioner,
+     * between 0.0 and 1.0 */
+    real cm_solver_pre_comp_sai_thres;
+    /* preconditioner application type */
+    unsigned int cm_solver_pre_app_type;
+    /* num. of iterations used to apply preconditioner via
+     * Jacobi relaxation scheme (truncated Neumann series) */
+    unsigned int cm_solver_pre_app_jacobi_iters;
 
-    real T_init, T_final, T;
+    /* initial temperature of simulation, in Kelvin */
+    real T_init;
+    /* final temperature of simulation, in Kelvin */
+    real T_final;
+    /* current temperature of simulation, in Kelvin */
+    real T;
+    /**/
     real Tau_T;
+    /**/
     int  T_mode;
-    real T_rate, T_freq;
+    /**/
+    real T_rate;
+    /**/
+    real T_freq;
 
+    /**/
     int  virial;
-    rvec P, Tau_P, Tau_PT;
-    int  press_mode;
+    /**/
+    rvec P;
+    /**/
+    rvec Tau_P;
+    /**/
+    rvec Tau_PT;
+    /**/
+    int press_mode;
+    /**/
     real compressibility;
 
-    int  molecular_analysis;
-    int  num_ignored;
+    /**/
+    int molecular_analysis;
+    /**/
+    int num_ignored;
+    /**/
     int  ignore[REAX_MAX_ATOM_TYPES];
 
-    int  dipole_anal;
-    int  freq_dipole_anal;
-    int  diffusion_coef;
-    int  freq_diffusion_coef;
-    int  restrict_type;
+    /**/
+    int dipole_anal;
+    /**/
+    int freq_dipole_anal;
+    /**/
+    int diffusion_coef;
+    /**/
+    int freq_diffusion_coef;
+    /**/
+    int restrict_type;
 } control_params;
 
 
@@ -596,19 +753,46 @@ typedef struct
 
 typedef struct
 {
+    /* start time of event */
     real start;
+    /* end time of event */
     real end;
+    /* total elapsed time of event */
     real elapsed;
-
+    /* total simulation time */
     real total;
+    /* communication time */
     real comm;
+    /* neighbor list generation time */
     real nbrs;
+    /* force initialization time */
     real init_forces;
+    /* bonded force calculation time */
     real bonded;
+    /* non-bonded force calculation time */
     real nonb;
-    real qEq;
-    int  s_matvecs;
-    int  t_matvecs;
+    /* atomic charge distribution calculation time */
+    real cm;
+    /**/
+    real cm_sort_mat_rows;
+    /**/
+    real cm_solver_comm;
+    /**/
+    real cm_solver_allreduce;
+    /**/
+    real cm_solver_pre_comp;
+    /**/
+    real cm_solver_pre_app; // update CG()
+    /* num. of steps in iterative linear solver for charge distribution */
+    int cm_solver_iters;
+    /**/
+    real cm_solver_spmv; // update CG()
+    /**/
+    real cm_solver_vector_ops; // update CG()
+    /**/
+    real cm_solver_orthog;
+    /**/
+    real cm_solver_tri_solve;
 } reax_timing;
 
 
@@ -763,6 +947,8 @@ typedef struct
 
 typedef struct
 {
+    /* matrix storage format */
+    int format;
     int cap, n, m;
     int *start, *end;
     sparse_matrix_entry *entries;
@@ -893,6 +1079,9 @@ typedef struct
 
     int type;
 //    list_type select;
+
+    /* list storage format (half or full) */
+    int format;
 
     void *v;
     three_body_interaction_data *three_body_list;

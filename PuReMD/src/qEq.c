@@ -382,18 +382,18 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 #endif
 
     //s_matvecs = dual_CG(system, workspace, workspace->H, workspace->b,
-    //          control->q_err, workspace->x, mpi_data, out_control->log);
+    //          control->cm_solver_q_err, workspace->x, mpi_data, out_control->log);
     //t_matvecs = 0;
 
     for ( j = 0; j < system->n; ++j )
         workspace->s[j] = workspace->x[j][0];
     s_matvecs = CG(system, workspace, workspace->H, workspace->b_s,//newQEq sCG
-                   control->q_err, workspace->s, mpi_data, out_control->log );
+                   control->cm_solver_q_err, workspace->s, mpi_data, out_control->log );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][0] = workspace->s[j];
 
     //s_matvecs = PCG( system, workspace, workspace->H, workspace->b_s,
-    //   control->q_err, workspace->L, workspace->U, workspace->s,
+    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->s,
     //   mpi_data, out_control->log );
 #if defined(DEBUG)
     fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
@@ -402,12 +402,12 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     for ( j = 0; j < system->n; ++j )
         workspace->t[j] = workspace->x[j][1];
     t_matvecs = CG(system, workspace, workspace->H, workspace->b_t,//newQEq sCG
-                   control->q_err, workspace->t, mpi_data, out_control->log );
+                   control->cm_solver_q_err, workspace->t, mpi_data, out_control->log );
     for ( j = 0; j < system->n; ++j )
         workspace->x[j][1] = workspace->t[j];
 
     //t_matvecs = PCG( system, workspace, workspace->H, workspace->b_t,
-    //   control->q_err, workspace->L, workspace->U, workspace->t,
+    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->t,
     //   mpi_data, out_control->log );
 #if defined(DEBUG)
     fprintf( stderr, "p%d: second CG completed\n", system->my_rank );
@@ -422,8 +422,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.s_matvecs += s_matvecs;
-        data->timing.t_matvecs += t_matvecs;
+        data->timing.cm_solver_iters += s_matvecs + t_matvecs;
     }
 #endif
 }
