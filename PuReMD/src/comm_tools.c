@@ -33,7 +33,7 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
     real bndry_cut;
     neighbor_proc *nbr_pr;
     simulation_box *my_box;
-    ivec nbr_coords;
+    ivec nbr_coords, nbr_recv_coords;
     ivec r[12] = {
         {0, 0, -1}, // -z
         {0, 0, +1}, // +z
@@ -50,20 +50,18 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
         {+1, -1, 0}  // +x-y
     };
     my_box = &(system->my_box);
-    // TODO: verify this line
-    //bndry_cut = system->bndry_cuts.ghost_cutoff;
-    bndry_cut = control->vlist_cut;
+    bndry_cut = system->bndry_cuts.ghost_cutoff;
     /* identify my neighbors */
     system->num_nt_nbrs = REAX_MAX_NT_NBRS;
     for ( i = 0; i < system->num_nt_nbrs; ++i )
     {
-        ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */
         nbr_pr = &(system->my_nt_nbrs[i]);
+        ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */
         MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &(nbr_pr->rank) );
         
         /* set the rank of the neighbor processor in the receiving direction */
-        ivec_Sum( nbr_coords, system->my_coords, r[i + 6] ); /* actual nbr coords */
-        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &(nbr_pr->receive_rank) );
+        ivec_Sum( nbr_recv_coords, system->my_coords, r[i + 6] ); /* actual nbr coords */
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_recv_coords, &(nbr_pr->receive_rank) );
 
         for ( d = 0; d < 3; ++d )
         {
@@ -164,7 +162,8 @@ void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
         
         if( mpi_data->in_nt_buffer[d] == NULL )
         {
-            mpi_data->in_nt_buffer[d] = (void *) smalloc( SAFER_ZONE * cnt * sizeof(real), "in", comm );
+            //TODO
+            mpi_data->in_nt_buffer[d] = (void *) smalloc( 100 * cnt * sizeof(real), "in", comm );
         }
 
         nbr = &(system->my_nt_nbrs[d]);
@@ -199,7 +198,7 @@ void Estimate_NT_Atoms( reax_system *system, mpi_datatypes *mpi_data )
         out_bufs[d].out_atoms = (void*) calloc( nbr->est_send, sizeof(real) );
 
         /* sort the atoms to their outgoing buffers */
-        // TODO: ???
+        // TODO: to call or not to call?
         //Sort_Neutral_Territory( system, d, out_bufs, 1 );
     }
 }

@@ -978,9 +978,10 @@ typedef struct
     /* matrix storage format */
     int format;
     int cap, n, m;
-#if defined(NEUTRAL_TERRITORY)
+    //TODO: uncomment
+//#if defined(NEUTRAL_TERRITORY)
     int NT;
-#endif
+//#endif
     int *start, *end;
     sparse_matrix_entry *entries;
 } sparse_matrix;

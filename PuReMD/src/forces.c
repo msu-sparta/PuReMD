@@ -412,6 +412,22 @@ void Init_Forces( reax_system *system, control_params *control,
     }
 #endif
 
+    //TODO: remove those variables
+    int local_to_local = 0;
+    //FILE *fp;
+#if defined(NEUTRAL_TERRITORY)
+    //TODO: remove those variables
+    int local_to_nt = 0;
+    int nt_to_local = 0;
+    int nt_to_nt = 0;
+    //fp = fopen( "NT_Pairs.txt", "w" );
+    int mark[6];
+    mark[0] = mark[1] = 1;
+    mark[2] = mark[3] = mark[4] = mark[5] = 2;
+#else
+    //fp = fopen( "Jacobi_Pairs.txt", "w" );
+#endif
+
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &(system->my_atoms[i]);
@@ -451,12 +467,16 @@ void Init_Forces( reax_system *system, control_params *control,
 
         ihb = -1;
         ihb_top = -1;
+        //TODO: undo
         if ( local == 1 )
         {
             H->start[i] = Htop;
             H->entries[Htop].j = i;
             H->entries[Htop].val = sbp_i->eta;
             ++Htop;
+            //TODO:
+            //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_i->orig_id );
+            ++local_to_local;
 
             if ( control->hbond_cut > 0 )
             {
@@ -480,14 +500,6 @@ void Init_Forces( reax_system *system, control_params *control,
                 }
             }
         }
-        // TODO: Diag entries for NT atoms?
-        /*else if( local == 2 )
-        {
-            H->start[atom_i->pos] = Htop;
-            H->entries[Htop].j = atom_i->pos;
-            H->entries[Htop].val = sbp_i->eta;
-            ++Htop;
-        }*/
 
         /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
@@ -533,14 +545,18 @@ void Init_Forces( reax_system *system, control_params *control,
                       || far_nbrs->format == FULL_LIST )
                     {
 #if defined(NEUTRAL_TERRITORY)
-                        if( atom_j->nt_dir != -1 || j < system->n )
+                        if( atom_j->nt_dir > 0  || j < system->n )
                         {
+                            //TODO
+                            //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_j->orig_id );
                             if( j < system->n )
                             {
+                                ++local_to_local;
                                 H->entries[Htop].j = j;
                             }
                             else
                             {
+                                ++local_to_nt;
                                 H->entries[Htop].j = atom_j->pos;
                             }
 
@@ -555,6 +571,10 @@ void Init_Forces( reax_system *system, control_params *control,
                             ++Htop;
                         }
 #else
+                        //TODO
+                        //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_j->orig_id );
+                        if( j < system->n )
+                            ++local_to_local;
                         H->entries[Htop].j = j;
                         if ( control->tabulate == 0 )
                         {
@@ -599,38 +619,36 @@ void Init_Forces( reax_system *system, control_params *control,
                 else if ( local == 2 )
                 {
                     /* H matrix entry */
-#if defined(HALF_LIST)
-                    if ( j < system->n || atom_i->orig_id < atom_j->orig_id )
-#endif
+                    //TODO
+                    if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] ) || ( j < system->n && atom_i->nt_dir != 0 ))
                     {
-                        if( atom_j->nt_dir != -1 || j < system->n )
+                        //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_j->orig_id );
+                        if( !nt_flag )
                         {
-                            if( !nt_flag )
-                            {
-                                nt_flag = 1;
-                                H->start[atom_i->pos] = Htop;
-                            }
-                            if( j < system->n )
-                            {
-                                H->entries[Htop].j = j;
-                            }
-                            else
-                            {
-                                H->entries[Htop].j = atom_j->pos;
-                            }
-
-                            if ( control->tabulate == 0 )
-                            {
-                                H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
-                            }
-                            else 
-                            {
-                                H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
-                            }
-                            ++Htop;
+                            nt_flag = 1;
+                            H->start[atom_i->pos] = Htop;
                         }
-                    }
+                        if( j < system->n )
+                        {
+                            ++nt_to_local;
+                            H->entries[Htop].j = j;
+                        }
+                        else
+                        {
+                            ++nt_to_nt;
+                            H->entries[Htop].j = atom_j->pos;
+                        }
 
+                        if ( control->tabulate == 0 )
+                        {
+                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                        }
+                        else 
+                        {
+                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                        }
+                        ++Htop;
+                    }
                 }
 #endif
 
@@ -664,7 +682,15 @@ void Init_Forces( reax_system *system, control_params *control,
 #if defined(NEUTRAL_TERRITORY)
         else if ( local == 2 )
         {
-            H->end[atom_i->pos] = Htop;
+            if( nt_flag )
+            {
+                H->end[atom_i->pos] = Htop;
+            }
+            else
+            {
+                 H->start[atom_i->pos] = 0;
+                 H->end[atom_i->pos] = 0;
+            }
         }
 #endif
     }
@@ -700,6 +726,30 @@ void Init_Forces( reax_system *system, control_params *control,
         }
     }
 
+    int Htot, localtot;
+
+    MPI_Allreduce(&Htop, &Htot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_to_local, &localtot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+#if defined(NEUTRAL_TERRITORY)
+    int tot2, tot3, tot4;
+    MPI_Allreduce(&local_to_nt, &tot2, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&nt_to_local, &tot3, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&nt_to_nt, &tot4, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+    if(system->my_rank == MASTER_NODE )
+    {
+        fprintf( stdout, "total number of entries across all matrices: %d\n", Htot );
+        fprintf( stdout, "total number of local to local entries across all matrices: %d\n", localtot );
+#if defined(NEUTRAL_TERRITORY)
+        fprintf( stdout, "total number of local to nt entries across all matrices: %d\n", tot2 );
+        fprintf( stdout, "total number of nt to local entries across all matrices: %d\n", tot3 );
+        fprintf( stdout, "total number of nt to nt entries across all matrices: %d\n", tot4 );
+#endif
+        fflush( stdout );
+    }
+
     workspace->realloc.Htop = Htop;
     workspace->realloc.num_bonds = num_bonds;
     workspace->realloc.num_hbonds = num_hbonds;
@@ -725,6 +775,8 @@ void Init_Forces( reax_system *system, control_params *control,
 
     Validate_Lists( system, workspace, lists, data->step,
                     system->n, system->N, system->numH, comm );
+
+    //fclose( fp );
 }
 
 
@@ -1109,10 +1161,6 @@ void Estimate_Storages( reax_system *system, control_params *control,
                         BO_pi2 = exp( C56 );
                     }
                     else BO_pi2 = C56 = 0.0;
-
-                    /* Initially BO values are the uncorrected ones, page 1 */
-                    BO = BO_s + BO_pi + BO_pi2;
-
                     if ( BO >= control->bo_cut )
                     {
                         ++bond_top[i];
@@ -1229,6 +1277,8 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
+        Update_Timing_Info( &t_start, &(data->timing.nonb) );
+#endif
         Update_Timing_Info( &t_start, &(data->timing.nonb) );
 #endif
 #if defined(DEBUG_FOCUS)

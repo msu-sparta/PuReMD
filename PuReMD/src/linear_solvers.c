@@ -1137,7 +1137,7 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 
 void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 {
-    int i, j, k, si;
+    int i, j, k, si, dim;
     real val;
 
     for ( i = 0; i < N; ++i )
@@ -1145,9 +1145,14 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
         b[i] = 0;
     }
 
+#if defined(NEUTRAL_TERRITORY)
+    dim = A->NT;
+#else
+    dim = A->n;
+#endif
     if ( A->format == SYM_HALF_MATRIX )
     {
-        for ( i = 0; i < A->n; ++i )
+        for ( i = 0; i < dim; ++i )
         {
             si = A->start[i];
 
@@ -1167,7 +1172,7 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
     }
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
-        for ( i = 0; i < A->n; ++i )
+        for ( i = 0; i < dim; ++i )
         {
             si = A->start[i];
 
@@ -1187,6 +1192,9 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, sparse_matrix *H, real *b,
         real tol, real *x, mpi_datatypes* mpi_data, FILE *fout, int nprocs )
 {
+    fprintf(stdout, "%d %d\n", H->n, H->NT);
+    fflush(stdout);
+
     int  i, j, scale;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;
@@ -1225,6 +1233,18 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
 #endif
         t_comm += Get_Timing_Info( t_start );
+    }
+
+    else
+    {
+#if defined(NEUTRAL_TERRITORY)
+        fprintf(stdout,"BEFORE COLL\n");
+        fflush( stdout );
+
+        Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+        fprintf(stdout,"AFTER COLL\n");
+        fflush( stdout );
+#endif
     }
 
     t_start = Get_Time( );
@@ -1268,6 +1288,8 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
+        fprintf( stdout, "p%d, i = %d, res =  %.6f\n", system->my_rank, i, sqrt(sig_new) / b_norm );
+        fflush( stdout );
         t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Dist_NT( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
@@ -1293,6 +1315,12 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
             Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
 #endif
             t_comm += Get_Timing_Info( t_start );
+        }
+        else
+        {
+#if defined(NEUTRAL_TERRITORY)
+            Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
+#endif
         }
 
         t_start = Get_Time( );
@@ -1336,7 +1364,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         }
 
         t_start = Get_Time( );
-        sig_old = sig_new;
+        //sig_new = Parallel_Dot(workspace->r, workspace->p, H->NT, mpi_data->world);
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
         t_allreduce += Get_Timing_Info( t_start );
 

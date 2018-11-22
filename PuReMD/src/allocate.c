@@ -708,7 +708,7 @@ void Deallocate_Grid( grid *g )
    buffers are void*, type cast to the correct pointer type to access
    the allocated buffers */
 int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
-                           neighbor_proc *my_nbrs,
+                           neighbor_proc *my_nbrs, neighbor_proc *my_nt_nbrs,
                            char *msg )
 {
     int i;
@@ -744,6 +744,7 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
         mpi_data->in_nt_buffer[i] = (void*) 
             scalloc( my_nbrs[i].est_recv, sizeof(real), "mpibuf:in_nt_buffer", comm );
 
+        //TODO
         mpi_buf = &( mpi_data->out_nt_buffers[i] );
         /* allocate storage for the neighbor processor i */
         mpi_buf->index = (int*)
@@ -1096,7 +1097,8 @@ void ReAllocate( reax_system *system, control_params *control,
         /* reallocate mpi buffers */
         Deallocate_MPI_Buffers( mpi_data );
         ret = Allocate_MPI_Buffers( mpi_data, system->est_recv,
-                                    system->my_nbrs, msg );
+                                    system->my_nbrs, system->my_nt_nbrs, 
+                                    msg );
         if ( ret != SUCCESS )
         {
             fprintf( stderr, "%s", msg );
