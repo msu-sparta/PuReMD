@@ -742,15 +742,15 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
         //TODO: add an exact number
         /* in buffers */
         mpi_data->in_nt_buffer[i] = (void*) 
-            scalloc( my_nbrs[i].est_recv, sizeof(real), "mpibuf:in_nt_buffer", comm );
+            scalloc( my_nt_nbrs[i].est_recv, sizeof(real), "mpibuf:in_nt_buffer", comm );
 
         //TODO
         mpi_buf = &( mpi_data->out_nt_buffers[i] );
         /* allocate storage for the neighbor processor i */
         mpi_buf->index = (int*)
-                         scalloc( my_nbrs[i].est_send, sizeof(int), "mpibuf:nt_index", comm );
+                         scalloc( my_nt_nbrs[i].est_send, sizeof(int), "mpibuf:nt_index", comm );
         mpi_buf->out_atoms = (void*)
-                             scalloc( my_nbrs[i].est_send, sizeof(real), "mpibuf:nt_out_atoms",
+                             scalloc( my_nt_nbrs[i].est_send, sizeof(real), "mpibuf:nt_out_atoms",
                                       comm );
     }
 #endif

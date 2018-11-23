@@ -156,22 +156,11 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
             MPI_Irecv( buf + nbr->atoms_str * scale, nbr->atoms_cnt, type,
                     nbr->receive_rank, d, comm, &(req[d]) );
         }
-
-        /*if(d==0)
-        {
-            fprintf( stdout, "p%d dist: entered and need to receive %d numbers from %d\n", system->my_rank, nbr->atoms_cnt, nbr->receive_rank );
-            fflush( stdout );
-        }*/
     }
 
     for( d = 0; d < 6; ++d)
     {
         nbr = &(system->my_nt_nbrs[d]);
-        if(d==0)
-        {
-            //fprintf( stdout, "p%d dist: entered and need to send %d numbers to %d\n", system->my_rank, out_bufs[d].cnt, nbr->rank );
-            //fflush( stdout );
-        }
         /* send both messages in dimension d */
         if ( out_bufs[d].cnt )
         {
@@ -181,16 +170,8 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
         }
     }
 
-    /*
-    MPI_Barrier( MPI_COMM_WORLD );
-    fprintf( stdout, "p%d dist: MISSION COMPLETED\n", system->my_rank );
-    fflush( stdout );
-    */
-    
     for( d = 0; d < 6; ++d )
     {
-        //fprintf( stdout, "p%d dist: direction %d\n", system->my_rank, d );
-        //fflush( stdout );
         nbr = &(system->my_nbrs[d]);
         if ( nbr->atoms_cnt )
         {
@@ -198,20 +179,11 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
         }
     }
     
-    
     /*for( d = 0; d < count; ++d )
     {
         MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
     }*/
     
-    
-    /*
-    MPI_Barrier( MPI_COMM_WORLD );
-    fprintf( stdout, "p%d dist: MPI_Waitany is done\n", system->my_rank );
-    fflush( stdout );
-    */
-
-
 #if defined(DEBUG)
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
 #endif
@@ -373,8 +345,8 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
     
     for( d = 0; d < 6; ++d )
     {
-        fprintf( stderr, "p%d coll: d = %d\n", system->my_rank, d );
-        fflush( stdout );
+        //fprintf( stderr, "p%d coll: d = %d\n", system->my_rank, d );
+        //fflush( stdout );
         if ( out_bufs[d].cnt )
         {
             MPI_Wait( &(req[d]), &(stat[d]));

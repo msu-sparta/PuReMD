@@ -1238,12 +1238,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     else
     {
 #if defined(NEUTRAL_TERRITORY)
-        fprintf(stdout,"BEFORE COLL\n");
-        fflush( stdout );
-
         Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
-        fprintf(stdout,"AFTER COLL\n");
-        fflush( stdout );
 #endif
     }
 
@@ -1288,8 +1283,8 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
-        fprintf( stdout, "p%d, i = %d, res =  %.6f\n", system->my_rank, i, sqrt(sig_new) / b_norm );
-        fflush( stdout );
+        //fprintf( stdout, "p%d, i = %d, res =  %.6f\n", system->my_rank, i, sqrt(sig_new) / b_norm );
+        //fflush( stdout );
         t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Dist_NT( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
@@ -1364,7 +1359,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         }
 
         t_start = Get_Time( );
-        //sig_new = Parallel_Dot(workspace->r, workspace->p, H->NT, mpi_data->world);
+        sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
         t_allreduce += Get_Timing_Info( t_start );
 

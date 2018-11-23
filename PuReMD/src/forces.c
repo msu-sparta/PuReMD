@@ -1161,6 +1161,10 @@ void Estimate_Storages( reax_system *system, control_params *control,
                         BO_pi2 = exp( C56 );
                     }
                     else BO_pi2 = C56 = 0.0;
+
+                    /* Initially BO values are the uncorrected ones, page 1 */
+                    BO = BO_s + BO_pi + BO_pi2;
+
                     if ( BO >= control->bo_cut )
                     {
                         ++bond_top[i];
@@ -1277,8 +1281,6 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &(data->timing.nonb) );
-#endif
         Update_Timing_Info( &t_start, &(data->timing.nonb) );
 #endif
 #if defined(DEBUG_FOCUS)

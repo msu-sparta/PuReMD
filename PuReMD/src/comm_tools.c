@@ -163,12 +163,13 @@ void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
         if( mpi_data->in_nt_buffer[d] == NULL )
         {
             //TODO
-            mpi_data->in_nt_buffer[d] = (void *) smalloc( 100 * cnt * sizeof(real), "in", comm );
+            mpi_data->in_nt_buffer[d] = (void *) smalloc( SAFER_ZONE * cnt * sizeof(real), "in", comm );
         }
 
         nbr = &(system->my_nt_nbrs[d]);
         nbr->atoms_str = end;
         nbr->atoms_cnt = cnt;
+        nbr->est_recv = MAX( SAFER_ZONE * cnt, MIN_SEND );
         end += cnt;
     }
 }
