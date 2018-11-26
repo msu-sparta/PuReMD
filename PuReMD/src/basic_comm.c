@@ -170,19 +170,19 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
         }
     }
 
-    for( d = 0; d < 6; ++d )
+    /*for( d = 0; d < 6; ++d )
     {
         nbr = &(system->my_nbrs[d]);
         if ( nbr->atoms_cnt )
         {
             MPI_Wait( &(req[d]), &(stat[d]) );
         }
-    }
+    }*/
     
-    /*for( d = 0; d < count; ++d )
+    for( d = 0; d < count; ++d )
     {
         MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
-    }*/
+    }
     
 #if defined(DEBUG)
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
@@ -326,8 +326,7 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         if ( out_bufs[d].cnt )
         {
             count++;
-            MPI_Irecv(in[d], out_bufs[d].cnt, type, nbr->receive_rank, d, comm, &(req[d]));
-            //fprintf( stdout, "p%d coll: d = %d, receive_rank = %d, cnt = %d\n", system->my_rank, d, nbr->receive_rank, out_bufs[d].cnt );
+            MPI_Irecv(in[d], out_bufs[d].cnt, type, nbr->rank, d, comm, &(req[d]));
         }
     }
 
@@ -338,31 +337,24 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         if ( nbr->atoms_cnt )
         {
             MPI_Send( buf + nbr->atoms_str * scale, nbr->atoms_cnt, type,
-                    nbr->rank, d, comm );
-            //fprintf( stdout, "p%d coll: d = %d, send_rank = %d, cnt = %d\n", system->my_rank, d, nbr->rank, nbr->atoms_cnt );
+                    nbr->receive_rank, d, comm );
         }
     }
     
-    for( d = 0; d < 6; ++d )
+    /*for( d = 0; d < 6; ++d )
     {
-        //fprintf( stderr, "p%d coll: d = %d\n", system->my_rank, d );
-        //fflush( stdout );
         if ( out_bufs[d].cnt )
         {
             MPI_Wait( &(req[d]), &(stat[d]));
-            //fprintf( stderr, "p%d coll: %d status complete\n", system->my_rank, d );
-            //fflush( stdout );
             unpack( in[d], buf, out_bufs + d );
         }
-    }
-    //fprintf( stderr, "p%d coll: entered\n", system->my_rank );
-    fflush( stdout );
+    }*/
     
-    /*for( d = 0; d < count; ++d )
+    for( d = 0; d < count; ++d )
     {
         MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
         unpack( in[index], buf, out_bufs + index );
-    }*/
+    }
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d coll: done\n", system->my_rank );

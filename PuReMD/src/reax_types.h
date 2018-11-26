@@ -552,6 +552,7 @@ typedef struct
     int              wsize, my_rank, num_nbrs;
     ivec             my_coords;
     neighbor_proc    my_nbrs[REAX_MAX_NBRS];
+    neighbor_proc    my_nt_nbrs[REAX_MAX_NT_NBRS];
     int             *global_offset;
     simulation_box   big_box, my_box, my_ext_box;
     grid             my_grid;
@@ -561,7 +562,6 @@ typedef struct
 
 #if defined(NEUTRAL_TERRITORY)
     int              num_nt_nbrs;
-    neighbor_proc    my_nt_nbrs[REAX_MAX_NT_NBRS];
 #endif
 } reax_system;
 

@@ -589,7 +589,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 
     comm = mpi_data->world;
 
-    if ( control->cm_solver_pre_comp_type == SAI_PC || 1 )
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         far_nbr_list_format = FULL_LIST;
         cm_format = SYM_FULL_MATRIX;

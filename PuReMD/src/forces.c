@@ -412,15 +412,13 @@ void Init_Forces( reax_system *system, control_params *control,
     }
 #endif
 
-    //TODO: remove those variables
-    int local_to_local = 0;
-    //FILE *fp;
+    /*int local_to_local = 0;
+    FILE *fp;*/
 #if defined(NEUTRAL_TERRITORY)
-    //TODO: remove those variables
-    int local_to_nt = 0;
+    /*int local_to_nt = 0;
     int nt_to_local = 0;
     int nt_to_nt = 0;
-    //fp = fopen( "NT_Pairs.txt", "w" );
+    fp = fopen( "NT_Pairs.txt", "w" );*/
     int mark[6];
     mark[0] = mark[1] = 1;
     mark[2] = mark[3] = mark[4] = mark[5] = 2;
@@ -474,9 +472,8 @@ void Init_Forces( reax_system *system, control_params *control,
             H->entries[Htop].j = i;
             H->entries[Htop].val = sbp_i->eta;
             ++Htop;
-            //TODO:
-            //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_i->orig_id );
-            ++local_to_local;
+            /*fprintf( fp, "%d %d\n", atom_i->orig_id, atom_i->orig_id );
+            ++local_to_local;*/
 
             if ( control->hbond_cut > 0 )
             {
@@ -547,16 +544,15 @@ void Init_Forces( reax_system *system, control_params *control,
 #if defined(NEUTRAL_TERRITORY)
                         if( atom_j->nt_dir > 0  || j < system->n )
                         {
-                            //TODO
                             //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_j->orig_id );
                             if( j < system->n )
                             {
-                                ++local_to_local;
+                                //++local_to_local;
                                 H->entries[Htop].j = j;
                             }
                             else
                             {
-                                ++local_to_nt;
+                                //++local_to_nt;
                                 H->entries[Htop].j = atom_j->pos;
                             }
 
@@ -571,10 +567,9 @@ void Init_Forces( reax_system *system, control_params *control,
                             ++Htop;
                         }
 #else
-                        //TODO
-                        //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_j->orig_id );
+                        /*fprintf( fp, "%d %d\n", atom_i->orig_id, atom_j->orig_id );
                         if( j < system->n )
-                            ++local_to_local;
+                            ++local_to_local;*/
                         H->entries[Htop].j = j;
                         if ( control->tabulate == 0 )
                         {
@@ -619,7 +614,6 @@ void Init_Forces( reax_system *system, control_params *control,
                 else if ( local == 2 )
                 {
                     /* H matrix entry */
-                    //TODO
                     if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] ) || ( j < system->n && atom_i->nt_dir != 0 ))
                     {
                         //fprintf( fp, "%d %d\n", atom_i->orig_id, atom_j->orig_id );
@@ -630,12 +624,12 @@ void Init_Forces( reax_system *system, control_params *control,
                         }
                         if( j < system->n )
                         {
-                            ++nt_to_local;
+                            //++nt_to_local;
                             H->entries[Htop].j = j;
                         }
                         else
                         {
-                            ++nt_to_nt;
+                            //++nt_to_nt;
                             H->entries[Htop].j = atom_j->pos;
                         }
 
@@ -726,7 +720,7 @@ void Init_Forces( reax_system *system, control_params *control,
         }
     }
 
-    int Htot, localtot;
+/*    int Htot, localtot;
 
     MPI_Allreduce(&Htop, &Htot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&local_to_local, &localtot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -748,7 +742,7 @@ void Init_Forces( reax_system *system, control_params *control,
         fprintf( stdout, "total number of nt to nt entries across all matrices: %d\n", tot4 );
 #endif
         fflush( stdout );
-    }
+    }*/
 
     workspace->realloc.Htop = Htop;
     workspace->realloc.num_bonds = num_bonds;

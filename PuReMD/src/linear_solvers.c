@@ -1192,9 +1192,6 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, sparse_matrix *H, real *b,
         real tol, real *x, mpi_datatypes* mpi_data, FILE *fout, int nprocs )
 {
-    fprintf(stdout, "%d %d\n", H->n, H->NT);
-    fflush(stdout);
-
     int  i, j, scale;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;
@@ -1283,8 +1280,6 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
-        //fprintf( stdout, "p%d, i = %d, res =  %.6f\n", system->my_rank, i, sqrt(sig_new) / b_norm );
-        //fflush( stdout );
         t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Dist_NT( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
