@@ -1157,9 +1157,17 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
             si = A->start[i];
 
             /* diagonal only contributes once */
-            b[i] += A->entries[si].val * x[i];
+            if( i < A->n )
+            {
+                b[i] += A->entries[si].val * x[i];
+                k = si + 1;
+            }
+            else
+            {
+                k = si;
+            }
 
-            for ( k = si + 1; k < A->end[i]; ++k )
+            for ( ; k < A->end[i]; ++k )
             {
                 j = A->entries[k].j;
                 val = A->entries[k].val;

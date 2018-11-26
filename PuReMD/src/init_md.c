@@ -598,7 +598,7 @@ int  Init_Lists( reax_system *system, control_params *control,
     {
 #if defined(NEUTRAL_TERRITORY)
         far_nbr_list_format = FULL_LIST;
-        cm_format = SYM_FULL_MATRIX;
+        cm_format = SYM_HALF_MATRIX;
 #else
         far_nbr_list_format = HALF_LIST;
         cm_format = SYM_HALF_MATRIX;
@@ -646,8 +646,8 @@ int  Init_Lists( reax_system *system, control_params *control,
     //bond_top = (int*) malloc( system->total_cap * sizeof(int) );
     //hb_top = (int*) malloc( system->local_cap * sizeof(int) );
     
-    Estimate_Storages( system, control, lists,
-            &Htop, hb_top, bond_top, &num_3body, comm, &matrix_dim );
+    Estimate_Storages( system, control, lists, &Htop, hb_top, 
+            bond_top, &num_3body, comm, &matrix_dim, cm_format );
 
 #if defined(NEUTRAL_TERRITORY)
     Allocate_Matrix( &(workspace->H), matrix_dim, Htop, cm_format, comm );
@@ -769,8 +769,9 @@ int  Init_Lists( reax_system *system, control_params *control,
 
     bond_top = (int*) calloc( system->total_cap, sizeof(int) );
     hb_top = (int*) calloc( system->local_cap, sizeof(int) );
-    Estimate_Storages( system, control, lists,
-            &Htop, hb_top, bond_top, &num_3body, comm, &matrix_dim );
+    //TODO: add one paramater at the end for charge matrix format - half or full
+    Estimate_Storages( system, control, lists, &Htop, hb_top, 
+            bond_top, &num_3body, comm, &matrix_dim );
 
     if ( control->hbond_cut > 0 )
     {
