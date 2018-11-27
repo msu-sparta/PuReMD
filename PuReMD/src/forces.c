@@ -385,22 +385,27 @@ void Init_Forces( reax_system *system, control_params *control,
             bin[i] = 0;
             total_sum[i] = 0;
         }
+
         for ( i = system->n; i < system->N; ++i )
         {
-            atom_i = &(system->my_atoms[i]);
+            atom_i = &system->my_atoms[i];
+
             if( atom_i->nt_dir != -1 )
             {
                 total_cnt[ atom_i->nt_dir ]++;
             }
         }
+
         total_sum[0] = system->n;
         for ( i = 1; i < 6; ++i )
         {
             total_sum[i] = total_sum[i-1] + total_cnt[i-1];
         }
+
         for ( i = system->n; i < system->N; ++i )
         {
-            atom_i = &(system->my_atoms[i]);
+            atom_i = &system->my_atoms[i];
+
             if( atom_i->nt_dir != -1 )
             {
                 atom_i->pos = total_sum[ atom_i->nt_dir ] + bin[ atom_i->nt_dir ];
@@ -416,10 +421,11 @@ void Init_Forces( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
-        atom_i = &(system->my_atoms[i]);
+        atom_i = &system->my_atoms[i];
         type_i  = atom_i->type;
         start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
+        end_i = End_Index(i, far_nbrs);
+
         if ( far_nbrs->format == HALF_LIST )
         {
             /* start at end because other atoms
@@ -430,7 +436,7 @@ void Init_Forces( reax_system *system, control_params *control,
         {
             btop_i = Start_Index( i, bonds );
         }
-        sbp_i = &(system->reax_param.sbp[type_i]);
+        sbp_i = &system->reax_param.sbp[type_i];
 
         if ( i < system->n )
         {
@@ -438,7 +444,7 @@ void Init_Forces( reax_system *system, control_params *control,
             cutoff = control->nonb_cut;
         }
 #if defined(NEUTRAL_TERRITORY)
-        else if( atom_i->nt_dir != -1 )
+        else if ( atom_i->nt_dir != -1 )
         {
             local = 2;
             cutoff = control->nonb_cut;
@@ -523,7 +529,8 @@ void Init_Forces( reax_system *system, control_params *control,
                 {
                     /* H matrix entry */
 #if defined(NEUTRAL_TERRITORY)
-                    if( atom_j->nt_dir > 0 || (j < system->n && (H->format == SYM_FULL_MATRIX
+                    if ( atom_j->nt_dir > 0 || (j < system->n
+                                && (H->format == SYM_FULL_MATRIX
                                     || (H->format == SYM_HALF_MATRIX && i < j))) )
                     {
                         if( j < system->n )
@@ -543,6 +550,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         {
                             H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
                         }
+
                         ++Htop;
                     }
 #else
@@ -551,7 +559,8 @@ void Init_Forces( reax_system *system, control_params *control,
                       || far_nbrs->format == FULL_LIST )
                     {
                         if( j < system->n )
-                        H->entries[Htop].j = j;
+                            H->entries[Htop].j = j;
+
                         if ( control->tabulate == 0 )
                         {
                             H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
@@ -560,6 +569,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         {
                             H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
                         }
+
                         ++Htop;
                     }
 #endif
@@ -596,7 +606,8 @@ void Init_Forces( reax_system *system, control_params *control,
                 {
                     /* H matrix entry */
                     if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] 
-                                && ( H->format == SYM_FULL_MATRIX || (H->format == SYM_HALF_MATRIX && atom_i->pos < atom_j->pos))) 
+                                && ( H->format == SYM_FULL_MATRIX
+                                    || (H->format == SYM_HALF_MATRIX && atom_i->pos < atom_j->pos))) 
                             || ( j < system->n && atom_i->nt_dir != 0 && H->format == SYM_FULL_MATRIX ))
                     {
                         if( !nt_flag )
@@ -604,6 +615,7 @@ void Init_Forces( reax_system *system, control_params *control,
                             nt_flag = 1;
                             H->start[atom_i->pos] = Htop;
                         }
+
                         if( j < system->n )
                         {
                             H->entries[Htop].j = j;
@@ -621,6 +633,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         {
                             H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
                         }
+
                         ++Htop;
                     }
                 }
@@ -709,6 +722,7 @@ void Init_Forces( reax_system *system, control_params *control,
              system->my_rank, data->step, Htop, num_bonds, num_hbonds );
     MPI_Barrier( comm );
 #endif
+
 #if defined( DEBUG )
     Print_Bonds( system, bonds, "debugbonds.out" );
     Print_Bond_List2( system, bonds, "pbonds.out" );
@@ -989,18 +1003,16 @@ void Estimate_Storages( reax_system *system, control_params *control,
     *num_3body = 0;
 
 #if defined(NEUTRAL_TERRITORY)
-    int mark[6];
-    mark[0] = mark[1] = 1;
-    mark[2] = mark[3] = mark[4] = mark[5] = 2;
+    int mark[6] = {1, 1, 2, 2, 2, 2};
 #endif
 
     for ( i = 0; i < system->N; ++i )
     {
-        atom_i = &(system->my_atoms[i]);
+        atom_i = &system->my_atoms[i];
         type_i  = atom_i->type;
         start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
-        sbp_i = &(system->reax_param.sbp[type_i]);
+        end_i = End_Index(i, far_nbrs);
+        sbp_i = &system->reax_param.sbp[type_i];
 
         if ( i < system->n )
         {
@@ -1030,9 +1042,11 @@ void Estimate_Storages( reax_system *system, control_params *control,
         {
             nbr_pj = &( far_nbrs->far_nbr_list[pj] );
             j = nbr_pj->nbr;
-            //if ( far_nbrs->format == HALF_LIST )
+#if !defined(NEUTRAL_TERRITORY)
+            if ( far_nbrs->format == HALF_LIST )
+#endif
             {
-                atom_j = &(system->my_atoms[j]);
+                atom_j = &system->my_atoms[j];
             }
 
             if (nbr_pj->d <= cutoff)
@@ -1079,9 +1093,6 @@ void Estimate_Storages( reax_system *system, control_params *control,
 #if defined(NEUTRAL_TERRITORY)
                 else if ( local == 2 )
                 {
-                    /*if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir]
-                                && ( cm_format == SYM_FULL_MATRIX || (cm_format == SYM_HALF_MATRIX && atom_i->pos < atom_j->pos)))
-                            || ( j < system->n && atom_i->nt_dir != 0 && cm_format == SYM_FULL_MATRIX ))*/
                     if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] ) 
                             || ( j < system->n && atom_i->nt_dir != 0 ))
                     {
@@ -1133,18 +1144,21 @@ void Estimate_Storages( reax_system *system, control_params *control,
     }
 
 #if defined(NEUTRAL_TERRITORY)
-
-    /* Since we don't know the NT atoms' position yet, Htop cannot be calculated accurately
-    Therefore, we assume it is full and divide 2 if necessary */
-    if( cm_format == SYM_HALF_MATRIX )
+    /* Since we don't know the NT atoms' position yet, Htop cannot be calculated accurately.
+     * Therefore, we assume it is full and divide 2 if necessary. */
+    if ( cm_format == SYM_HALF_MATRIX )
     {
-        *Htop = (*Htop + system->n)/2;
+        *Htop = (*Htop + system->n) / 2;
     }
 #endif
-    *Htop = (int)(MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES ));
-    *matrix_dim = (int)(MAX( *matrix_dim * SAFE_ZONE, MIN_CAP ));
+
+    *Htop = (int) MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES );
+    *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE, MIN_CAP );
+
     for ( i = 0; i < system->n; ++i )
-        hb_top[i] = (int)(MAX( hb_top[i] * SAFER_ZONE, MIN_HBONDS ));
+    {
+        hb_top[i] = (int) MAX( hb_top[i] * SAFER_ZONE, MIN_HBONDS );
+    }
 
     for ( i = 0; i < system->N; ++i )
     {

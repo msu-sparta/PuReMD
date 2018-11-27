@@ -1137,7 +1137,7 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 
 void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 {
-    int i, j, k, si, dim;
+    int i, j, k, si, num_rows;
     real val;
 
     for ( i = 0; i < N; ++i )
@@ -1146,13 +1146,11 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
     }
 
 #if defined(NEUTRAL_TERRITORY)
-    dim = A->NT;
-#else
-    dim = A->n;
-#endif
+    num_rows = A->NT;
+
     if ( A->format == SYM_HALF_MATRIX )
     {
-        for ( i = 0; i < dim; ++i )
+        for ( i = 0; i < num_rows; ++i )
         {
             si = A->start[i];
 
@@ -1162,6 +1160,11 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
                 b[i] += A->entries[si].val * x[i];
                 k = si + 1;
             }
+            /* zeros on the diagonal for i >= A->n,
+             * so skip the diagonal multplication step as zeros
+             * are not stored (idea: keep the NNZ's the same
+             * for full shell and neutral territory half-stored
+             * charge matrices to make debugging easier) */
             else
             {
                 k = si;
@@ -1173,14 +1176,13 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
                 val = A->entries[k].val;
 
                 b[i] += val * x[j];
-                //if( j < A->n ) // comment out for tryQEq
                 b[j] += val * x[i];
             }
         }
     }
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
-        for ( i = 0; i < dim; ++i )
+        for ( i = 0; i < num_rows; ++i )
         {
             si = A->start[i];
 
@@ -1193,6 +1195,44 @@ void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
             }
         }
     }
+#else
+    num_rows = A->n;
+
+    if ( A->format == SYM_HALF_MATRIX )
+    {
+        for ( i = 0; i < num_rows; ++i )
+        {
+            si = A->start[i];
+
+            /* diagonal only contributes once */
+            b[i] += A->entries[si].val * x[i];
+
+            for ( k = si + 1; k < A->end[i]; ++k )
+            {
+                j = A->entries[k].j;
+                val = A->entries[k].val;
+
+                b[i] += val * x[j];
+                b[j] += val * x[i];
+            }
+        }
+    }
+    else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
+    {
+        for ( i = 0; i < num_rows; ++i )
+        {
+            si = A->start[i];
+
+            for ( k = si; k < A->end[i]; ++k )
+            {
+                j = A->entries[k].j;
+                val = A->entries[k].val;
+
+                b[i] += val * x[j];
+            }
+        }
+    }
+#endif
 }
 
 

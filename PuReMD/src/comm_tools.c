@@ -49,19 +49,20 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
         {+1, 0, 0}, // +x
         {+1, -1, 0}  // +x-y
     };
-    my_box = &(system->my_box);
+    my_box = &system->my_box;
     bndry_cut = system->bndry_cuts.ghost_cutoff;
-    /* identify my neighbors */
     system->num_nt_nbrs = REAX_MAX_NT_NBRS;
+
+    /* identify my neighbors */
     for ( i = 0; i < system->num_nt_nbrs; ++i )
     {
-        nbr_pr = &(system->my_nt_nbrs[i]);
+        nbr_pr = &system->my_nt_nbrs[i];
         ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */
-        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &(nbr_pr->rank) );
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &nbr_pr->rank );
         
         /* set the rank of the neighbor processor in the receiving direction */
         ivec_Sum( nbr_recv_coords, system->my_coords, r[i + 6] ); /* actual nbr coords */
-        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_recv_coords, &(nbr_pr->receive_rank) );
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_recv_coords, &nbr_pr->receive_rank );
 
         for ( d = 0; d < 3; ++d )
         {
@@ -84,11 +85,17 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
 
             /* determine if it is a periodic neighbor */
             if ( nbr_coords[d] < 0 )
+            {
                 nbr_pr->prdc[d] = -1;
+            }
             else if ( nbr_coords[d] >= control->procs_by_dim[d] )
-                nbr_pr->prdc[d] = +1;
+            {
+                nbr_pr->prdc[d] = 1;
+            }
             else
+            {
                 nbr_pr->prdc[d] = 0;
+            }
         }
 
     }
@@ -110,14 +117,14 @@ int Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_bufs
 
     for ( i = 0; i < system->n; ++i )
     {
-        if ( nbr_pr->bndry_min[0] <= atoms[i].x[0] &&
-            atoms[i].x[0] < nbr_pr->bndry_max[0] &&
-            nbr_pr->bndry_min[1] <= atoms[i].x[1] &&
-            atoms[i].x[1] < nbr_pr->bndry_max[1] &&
-            nbr_pr->bndry_min[2] <= atoms[i].x[2] &&
-            atoms[i].x[2] < nbr_pr->bndry_max[2] )
+        if ( nbr_pr->bndry_min[0] <= atoms[i].x[0]
+                && atoms[i].x[0] < nbr_pr->bndry_max[0]
+                && nbr_pr->bndry_min[1] <= atoms[i].x[1]
+                && atoms[i].x[1] < nbr_pr->bndry_max[1]
+                && nbr_pr->bndry_min[2] <= atoms[i].x[2]
+                && atoms[i].x[2] < nbr_pr->bndry_max[2] )
         {
-            if( write )
+            if ( write )
             {
                 out_bufs[dir].index[out_bufs[dir].cnt] = i;
                 out_bufs[dir].cnt++;
@@ -152,21 +159,22 @@ void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
 
     for ( d = 0; d < 6; ++d )
     {
-        nbr = &( system->my_nt_nbrs[d] );
+        nbr = &system->my_nt_nbrs[d];
         
         Sort_Neutral_Territory( system, d, out_bufs, 1 );
         
         MPI_Irecv( &cnt, 1, MPI_INT, nbr->receive_rank, d, comm, &req );
-        MPI_Send( &(out_bufs[d].cnt), 1, MPI_INT, nbr->rank, d, comm );
+        MPI_Send( &out_bufs[d].cnt, 1, MPI_INT, nbr->rank, d, comm );
         MPI_Wait( &req, &stat );
         
-        if( mpi_data->in_nt_buffer[d] == NULL )
+        if ( mpi_data->in_nt_buffer[d] == NULL )
         {
             //TODO
-            mpi_data->in_nt_buffer[d] = (void *) smalloc( SAFER_ZONE * cnt * sizeof(real), "in", comm );
+            mpi_data->in_nt_buffer[d] = smalloc( SAFER_ZONE * cnt * sizeof(real),
+                    "Init_Neural_Territory::mpi_data->in_nt_buffer[d]", comm );
         }
 
-        nbr = &(system->my_nt_nbrs[d]);
+        nbr = &system->my_nt_nbrs[d];
         nbr->atoms_str = end;
         nbr->atoms_cnt = cnt;
         nbr->est_recv = MAX( SAFER_ZONE * cnt, MIN_SEND );
@@ -185,18 +193,20 @@ void Estimate_NT_Atoms( reax_system *system, mpi_datatypes *mpi_data )
 
     out_bufs = mpi_data->out_nt_buffers;
 
-    for( d = 0; d < 6; ++d )
+    for ( d = 0; d < 6; ++d )
     {
         /* count the number of atoms in each processor's outgoing list */
-        nbr = &( system->my_nt_nbrs[d] );
+        nbr = &system->my_nt_nbrs[d];
         nbr->est_send = Sort_Neutral_Territory( system, d, out_bufs, 0 );
 
         /* estimate the space based on the count above */
         nbr->est_send = MAX( MIN_SEND, nbr->est_send * SAFER_ZONE );
 
         /* allocate the estimated space */
-        out_bufs[d].index = (int*) calloc( nbr->est_send, sizeof(int) );
-        out_bufs[d].out_atoms = (void*) calloc( nbr->est_send, sizeof(real) );
+        out_bufs[d].index = scalloc( nbr->est_send, sizeof(int),
+                "Estimate_NT_Atoms::out_bufs[d].index", MPI_COMM_WORLD );
+        out_bufs[d].out_atoms = scalloc( nbr->est_send, sizeof(real),
+                "Estimate_NT_Atoms::out_bufs[d].out_atoms", MPI_COMM_WORLD );
 
         /* sort the atoms to their outgoing buffers */
         // TODO: to call or not to call?

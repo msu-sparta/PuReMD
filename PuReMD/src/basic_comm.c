@@ -170,16 +170,7 @@ void Dist_NT( reax_system* system, mpi_datatypes *mpi_data,
         }
     }
 
-    /*for( d = 0; d < 6; ++d )
-    {
-        nbr = &(system->my_nbrs[d]);
-        if ( nbr->atoms_cnt )
-        {
-            MPI_Wait( &(req[d]), &(stat[d]) );
-        }
-    }*/
-    
-    for( d = 0; d < count; ++d )
+    for ( d = 0; d < count; ++d )
     {
         MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
     }
@@ -198,7 +189,9 @@ void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
     real *buf = (real*) dummy_buf;
 
     for ( i = 0; i < out_buf->cnt; ++i )
+    {
         buf[ out_buf->index[i] ] += in[i];
+    }
 }
 
 
@@ -211,6 +204,7 @@ void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
     for ( i = 0; i < out_buf->cnt; ++i )
     {
         rvec_Add( buf[ out_buf->index[i] ], in[i] );
+
 #if defined(DEBUG)
         fprintf( stderr, "rvec_unpacker: cnt=%d  i =%d  index[i]=%d\n",
                 out_buf->cnt, i, out_buf->index[i] );
@@ -247,6 +241,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data,
 #if defined(DEBUG)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
 #endif
+
     comm = mpi_data->comm_mesh3D;
     in1 = mpi_data->in1_buffer;
     in2 = mpi_data->in2_buffer;
@@ -299,6 +294,7 @@ void Coll( reax_system* system, mpi_datatypes *mpi_data,
 #endif
 }
 
+
 #if defined(NEUTRAL_TERRITORY)
 void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         void *buf, MPI_Datatype type, int scale, coll_unpacker unpack )
@@ -314,14 +310,14 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
 #if defined(DEBUG)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
 #endif
+
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
 
     count = 0;
     for ( d = 0; d < 6; ++d )
     {
-        /* initiate recvs */
-        nbr = &(system->my_nt_nbrs[d]);
+        nbr = &system->my_nt_nbrs[d];
         in[d] = mpi_data->in_nt_buffer[d];
         if ( out_bufs[d].cnt )
         {
@@ -341,16 +337,7 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
         }
     }
     
-    /*for( d = 0; d < 6; ++d )
-    {
-        if ( out_bufs[d].cnt )
-        {
-            MPI_Wait( &(req[d]), &(stat[d]));
-            unpack( in[d], buf, out_bufs + d );
-        }
-    }*/
-    
-    for( d = 0; d < count; ++d )
+    for ( d = 0; d < count; ++d )
     {
         MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
         unpack( in[index], buf, out_bufs + index );
@@ -361,9 +348,8 @@ void Coll_NT( reax_system* system, mpi_datatypes *mpi_data,
 #endif
 }
 #endif
-
-
 #endif /*PURE_REAX*/
+
 
 /*****************************************************************************/
 real Parallel_Norm( real *v, int n, MPI_Comm comm )
@@ -458,5 +444,4 @@ void Coll_rvecs_at_Master( reax_system *system, storage *workspace,
             workspace->f_all, workspace->rcounts, workspace->displs,
             mpi_data->mpi_rvec, MASTER_NODE, mpi_data->world );
 }
-
 #endif

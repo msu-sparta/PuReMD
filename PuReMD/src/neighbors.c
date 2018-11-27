@@ -101,9 +101,9 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                 //fprintf( stderr, "gridcell %d %d %d\n", i, j, k );
 
                 /* pick up an atom from the current cell */
-                for (l = gci->str; l < gci->end; ++l )
+                for ( l = gci->str; l < gci->end; ++l )
                 {
-                    atom1 = &(system->my_atoms[l]);
+                    atom1 = &system->my_atoms[l];
 #if defined(NEUTRAL_TERRITORY)
                     if( gci->type >= NT_NBRS && gci->type < NT_NBRS + 6 )
                     {
@@ -214,7 +214,7 @@ int Estimate_NumNeighbors( reax_system *system, reax_list **lists,
                 /* pick up an atom from the current cell */
                 for ( l = gci->str; l < gci->end; ++l )
                 {
-                    atom1 = &(system->my_atoms[l]);
+                    atom1 = &system->my_atoms[l];
 #if defined(NEUTRAL_TERRITORY)
                     if( gci->type >= NT_NBRS && gci->type < NT_NBRS + 6 )
                     {

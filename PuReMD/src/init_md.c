@@ -650,9 +650,9 @@ int  Init_Lists( reax_system *system, control_params *control,
             bond_top, &num_3body, comm, &matrix_dim, cm_format );
 
 #if defined(NEUTRAL_TERRITORY)
-    Allocate_Matrix( &(workspace->H), matrix_dim, Htop, cm_format, comm );
+    Allocate_Matrix( &workspace->H, matrix_dim, Htop, cm_format, comm );
 #else
-    Allocate_Matrix( &(workspace->H), system->local_cap, Htop, cm_format, comm );
+    Allocate_Matrix( &workspace->H, system->local_cap, Htop, cm_format, comm );
 #endif
     workspace->L = NULL;
     workspace->U = NULL;

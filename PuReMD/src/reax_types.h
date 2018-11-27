@@ -40,7 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
-#define NEUTRAL_TERRITORY
+//#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
 //#define DEBUG_FOCUS
@@ -561,7 +561,7 @@ typedef struct
     reax_atom       *my_atoms;
 
 #if defined(NEUTRAL_TERRITORY)
-    int              num_nt_nbrs;
+    int num_nt_nbrs;
 #endif
 } reax_system;
 
@@ -978,10 +978,9 @@ typedef struct
     /* matrix storage format */
     int format;
     int cap, n, m;
-    //TODO: uncomment
-//#if defined(NEUTRAL_TERRITORY)
+#if defined(NEUTRAL_TERRITORY)
     int NT;
-//#endif
+#endif
     int *start, *end;
     sparse_matrix_entry *entries;
 } sparse_matrix;

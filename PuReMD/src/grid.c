@@ -70,12 +70,13 @@ void Mark_GCells( reax_system* system, grid *g, ivec procs, MPI_Comm comm )
         {
             if ( dir[i][d] > 0 )
             {
-                nt_str[d] = MIN(g->native_end[d], g->ncells[d]);
-                nt_end[d] = MIN(g->native_end[d] + g->vlist_span[d], g->ncells[d]);
+                nt_str[d] = MIN( g->native_end[d], g->ncells[d] );
+                nt_end[d] = MIN( g->native_end[d] + g->vlist_span[d],
+                        g->ncells[d] );
             }
             else if ( dir[i][d] < 0 )
             {
-                nt_str[d] = MAX(0, g->native_str[d] - g->vlist_span[d] );
+                nt_str[d] = MAX( 0, g->native_str[d] - g->vlist_span[d] );
                 nt_end[d] = g->native_str[d];
             }
             else
