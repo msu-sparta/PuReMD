@@ -558,8 +558,7 @@ void Init_Forces( reax_system *system, control_params *control,
                             && (j < system->n || atom_i->orig_id < atom_j->orig_id))
                       || far_nbrs->format == FULL_LIST )
                     {
-                        if( j < system->n )
-                            H->entries[Htop].j = j;
+                        H->entries[Htop].j = j;
 
                         if ( control->tabulate == 0 )
                         {
