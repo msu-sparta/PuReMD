@@ -1151,8 +1151,12 @@ void Estimate_Storages( reax_system *system, control_params *control,
     }
 #endif
 
-    *Htop = (int) MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES );
+/*#if defined(NEUTRAL_TERRITORY)
+    *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE_NT, MIN_CAP );
+    *Htop = (int) MAX( *Htop * SAFE_ZONE_NT, MIN_CAP * MIN_HENTRIES );
+#endif*/
     *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE, MIN_CAP );
+    *Htop = (int) MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES );
 
     for ( i = 0; i < system->n; ++i )
     {

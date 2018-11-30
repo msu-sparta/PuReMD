@@ -82,6 +82,8 @@
 #define MIN_SEND       (100)
 #define SAFE_ZONE      (1.2)
 #define SAFER_ZONE     (1.4)
+#define SAFE_ZONE_NT   (2.0)
+#define SAFER_ZONE_NT  (2.5)
 #define DANGER_ZONE    (0.90)
 #define LOOSE_ZONE     (0.75)
 #define MAX_3BODY_PARAM     (5)

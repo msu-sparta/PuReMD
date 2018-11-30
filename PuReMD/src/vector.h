@@ -29,8 +29,18 @@ int  Vector_isZero( real*, int );
 void Vector_MakeZero( real*, int );
 void Vector_Copy( real*, real*, int );
 void Vector_Scale( real*, real, real*, int );
-void Vector_Sum( real*, real, real*, real, real*, int );
-void Vector_Add( real*, real, real*, int );
+static inline void Vector_Sum( real* dest, real c, real* v, real d, real* y, int k )
+{
+    int i;
+    for ( i = 0; i < k; ++i )
+        dest[i] = c * v[i] + d * y[i];
+}
+static inline void Vector_Add( real* dest, real c, real* v, int k )
+{
+    int i;
+    for ( i = 0; i < k; ++i )
+        dest[i] += c * v[i];
+}
 real Dot( real*, real*, int );
 real Norm( real*, int );
 void Vector_Print( FILE*, char*, real*, int );

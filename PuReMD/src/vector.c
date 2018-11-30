@@ -27,6 +27,7 @@
 #include "reax_vector.h"
 #endif
 
+//TODO change the order ( from 0 to k-1 )
 int Vector_isZero( real* v, int k )
 {
     for ( --k; k >= 0; --k )
@@ -58,18 +59,18 @@ void Vector_Scale( real* dest, real c, real* v, int k )
 }
 
 
-void Vector_Sum( real* dest, real c, real* v, real d, real* y, int k )
+/*void Vector_Sum( real* dest, real c, real* v, real d, real* y, int k )
 {
     for ( --k; k >= 0; --k )
         dest[k] = c * v[k] + d * y[k];
-}
+}*/
 
 
-void Vector_Add( real* dest, real c, real* v, int k )
+/*void Vector_Add( real* dest, real c, real* v, int k )
 {
     for ( --k; k >= 0; --k )
         dest[k] += c * v[k];
-}
+}*/
 
 
 real Dot( real* v1, real* v2, int k )

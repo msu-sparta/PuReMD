@@ -112,6 +112,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     int k;
     int pj, size;
     int left, right, p, turn;
+    int num_rows;
 
     real threshold, pivot, tmp;
     real *input_array;
@@ -147,22 +148,39 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     bin_elements = NULL;
 
     comm = mpi_data->world;
+#if defined(NEUTRAL_TERRITORY)
+    num_rows = A->NT;
+    fprintf(stdout,"%d %d %d\n", A->n, A->NT, A->m );
+    fflush( stdout );
+#else
+    num_rows = A->n;
+#endif
 
     if ( *A_spar_patt == NULL )
     {
+#if defined(NEUTRAL_TERRITORY)
+        Allocate_Matrix2( A_spar_patt, A->n, A->NT, A->m,
+                A->format, comm );
+#else
         Allocate_Matrix2( A_spar_patt, A->n, system->local_cap, A->m,
                 A->format, comm );
+#endif
     }
 
     else /*if ( (*A_spar_patt)->m < A->m )*/
     {
         Deallocate_Matrix( *A_spar_patt );
+#if defined(NEUTRAL_TERRITORY)
+        Allocate_Matrix2( A_spar_patt, A->n, A->NT, A->m,
+                A->format, comm );
+#else
         Allocate_Matrix2( A_spar_patt, A->n, system->local_cap, A->m,
                 A->format, comm );
+#endif
     }
 
     n_local = 0;
-    for( i = 0; i < A->n; ++i )
+    for( i = 0; i < num_rows; ++i )
     {
         n_local += A->end[i] - A->start[i];
     }
@@ -191,7 +209,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     n_local = 0;
-    for( i = 0; i < A->n; ++i )
+    for( i = 0; i < num_rows; ++i )
     {
         for( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
@@ -389,10 +407,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
     t_comm += Get_Timing_Info( t_start );
 
-    //int nnz = 0; //uncomment to check the nnz's in the sparsity pattern
+    int nnz = 0; //uncomment to check the nnz's in the sparsity pattern
 
     /* build entries of that pattern*/
-    for ( i = 0; i < A->n; ++i )
+    for ( i = 0; i < num_rows; ++i )
     {
         (*A_spar_patt)->start[i] = A->start[i];
         size = A->start[i];
@@ -404,18 +422,18 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
                 (*A_spar_patt)->entries[size].val = A->entries[pj].val;
                 (*A_spar_patt)->entries[size].j = A->entries[pj].j;
                 size++;
-                //nnz++;
+                nnz++;
             }
         }
         (*A_spar_patt)->end[i] = size;
     }
 
-    /*MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
+    MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
     if( system->my_rank == MASTER_NODE )
     {
         fprintf(stdout,"total nnz in all sparsity patterns = %d\nthreshold = %.15lf\n", nnz, threshold);
         fflush(stdout);
-    }*/
+    }
  
     MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
 
@@ -427,6 +445,398 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     return Get_Timing_Info( start );
 }
 
+
+#if defined(NEUTRAL_TERRITORY)
+real sparse_approx_inverse( reax_system *system, simulation_data *data,
+        storage *workspace, mpi_datatypes *mpi_data, 
+        sparse_matrix *A, sparse_matrix *A_spar_patt,
+        sparse_matrix **A_app_inv, int nprocs )
+{
+    ///////////////
+    int N, M, d_i, d_j;
+    int i, k, pj, j_temp;
+    int local_pos, atom_pos, identity_pos;
+    lapack_int m, n, nrhs, lda, ldb, info;
+    int *pos_x, *X;
+    real *e_j, *dense_matrix;
+    int cnt, scale;
+    
+    reax_atom *atom;
+    int *row_nnz;
+    int **j_list;
+    real **val_list;
+
+    int d, count, index;
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req[12];
+    MPI_Status stat[12];
+    neighbor_proc *nbr;
+    int *j_send, *j_recv[6];
+    real *val_send, *val_recv[6];
+    
+    real start, t_start, t_comm;
+    real total_comm;
+    ///////////////////
+    start = Get_Time( );
+    t_comm = 0.0;
+
+    comm = mpi_data->world;
+
+    if ( *A_app_inv == NULL)
+    {
+        //TODO: FULL_MATRIX?
+        Allocate_Matrix2( A_app_inv, A_spar_patt->n, A->NT, A_spar_patt->m,
+                SYM_FULL_MATRIX, comm );
+    }
+    
+    else /* if ( (*A_app_inv)->m < A_spar_patt->m ) */
+    {
+        Deallocate_Matrix( *A_app_inv );
+        Allocate_Matrix2( A_app_inv, A_spar_patt->n, A->NT, A_spar_patt->m,
+                SYM_FULL_MATRIX, comm );
+    }
+
+    pos_x = NULL;
+    X = NULL;
+
+    row_nnz = NULL;
+    j_list = NULL;
+    val_list = NULL;
+
+    j_send = NULL;
+    val_send = NULL;
+    for( d = 0; d < 6; ++d )
+    {
+        j_recv[d] = NULL;
+        val_recv[d] = NULL;
+    }
+    ////////////////////
+    row_nnz = (int *) malloc( sizeof(int) * A->NT );
+
+    //TODO: allocation size
+    j_list = (int **) malloc( sizeof(int *) * system->N );
+    val_list = (real **) malloc( sizeof(real *) * system->N );
+
+    for ( i = 0; i < A->NT; ++i )
+    {
+        row_nnz[i] = 0;
+    }
+
+    /* mark the atoms that already have their row stored in the local matrix */
+    for ( i = 0; i < A->n; ++i )
+    {
+        row_nnz[i] = A->end[i] - A->start[i];
+    }
+
+    /* Announce the nnz's in each row that will be communicated later */
+    t_start = Get_Time( );
+    scale = sizeof(int) / sizeof(void);
+    Dist_NT( system, mpi_data, row_nnz, MPI_INT, scale, int_packer );
+    t_comm += Get_Timing_Info( t_start );
+    fprintf( stdout,"SAI after Dist_NT call\n");
+    fflush( stdout );
+
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_nt_buffers;
+    count = 0;
+
+    /*  use a Dist-like approach to send the row information */
+    for ( d = 0; d < 6; ++d)
+    {
+        /* initiate recvs */
+        nbr = &(system->my_nt_nbrs[d]);
+        if ( nbr->atoms_cnt )
+        {
+            /* calculate the total data that will be received */
+            cnt = 0;
+            for( i = nbr->atoms_str; i < (nbr->atoms_str + nbr->atoms_cnt); ++i )
+            {
+                cnt += row_nnz[i];
+            }
+
+            /* initiate Irecv */
+            if( cnt )
+            {
+                count += 2;
+
+                j_recv[d] = (int *) malloc( sizeof(int) * cnt );
+                val_recv[d] = (real *) malloc( sizeof(real) * cnt );
+
+                fprintf( stdout,"Dist_NT communication receive phase direction %d will receive %d\n", d, cnt);
+                fflush( stdout );
+                t_start = Get_Time( );
+                MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank, d, comm, &(req[2*d]) );
+                MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank, d, comm, &(req[2*d+1]) );
+                t_comm += Get_Timing_Info( t_start );
+            }
+        }
+    }
+    /////////////////////
+    for( d = 0; d < 6; ++d)
+    {
+        nbr = &(system->my_nt_nbrs[d]);
+        /* send both messages in dimension d */
+        if( out_bufs[d].cnt )
+        {
+            cnt = 0;
+            for( i = 0; i < out_bufs[d].cnt; ++i )
+            {
+                cnt += A->end[ out_bufs[d].index[i] ] - A->start[ out_bufs[d].index[i] ];
+                if(out_bufs[d].index[i] < 0 || out_bufs[d].index[i] >= A->n)
+                {
+                    fprintf( stdout, "INDEXING ERROR %d > %d\n", out_bufs[d].index[i], A->n );
+                    fflush( stdout );
+                }
+               //     row_nnz[ out_bufs[d].index[i] ];
+            }
+            fprintf( stdout,"Dist_NT communication    send phase direction %d should  send %d\n", d, cnt);
+            fflush( stdout );
+
+            if( cnt )
+            {
+                j_send = (int *) malloc( sizeof(int) * cnt );
+                val_send = (real *) malloc( sizeof(real) * cnt );
+
+                cnt = 0;
+                for( i = 0; i < out_bufs[d].cnt; ++i )
+                {
+                    for( pj = A->start[ out_bufs[d].index[i] ]; pj < A->end[ out_bufs[d].index[i] ]; ++pj )
+                    {
+                        atom = &system->my_atoms[ A->entries[pj].j ];
+                        j_send[cnt] = atom->orig_id;
+                        val_send[cnt] = A->entries[pj].val;
+                        cnt++;
+                    }
+                }
+
+                fprintf( stdout,"Dist_NT communication    send phase direction %d will    send %d\n", d, cnt );
+                fflush( stdout );
+
+                t_start = Get_Time( );
+                MPI_Send( j_send, cnt, MPI_INT, nbr->rank, d, comm );
+                fprintf( stdout,"Dist_NT communication send phase direction %d cnt = %d\n", d, cnt);
+                fflush( stdout );
+                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank, d, comm );
+                fprintf( stdout,"Dist_NT communication send phase direction %d cnt = %d\n", d, cnt);
+                fflush( stdout );
+                t_comm += Get_Timing_Info( t_start );
+            }
+        }
+    }
+    fprintf( stdout," Dist_NT communication for sending row info before waitany\n");
+    fflush( stdout );
+    ///////////////////////
+    for ( d = 0; d < count; ++d )
+    {
+        t_start = Get_Time( );
+        MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
+        t_comm += Get_Timing_Info( t_start );
+
+        nbr = &(system->my_nt_nbrs[index/2]);
+        cnt = 0;
+        for( i = nbr->atoms_str; i < (nbr->atoms_str + nbr->atoms_cnt); ++i )
+        {
+            if( (index%2) == 0 )
+            {
+                j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
+                for( pj = 0; pj < row_nnz[i]; ++pj )
+                {
+                    j_list[i][pj] = j_recv[index/2][cnt];
+                    cnt++;
+                }
+            }
+            else
+            {
+                val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
+                for( pj = 0; pj < row_nnz[i]; ++pj )
+                {
+                    val_list[i][pj] = val_recv[index/2][cnt];
+                    cnt++;
+                }
+            }
+
+        }
+    }
+    //////////////////////
+    fprintf( stdout," wow wow wow, Dist_NT communication for sending row info worked\n");
+    fflush( stdout );
+    //TODO: size?
+    X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
+    pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
+
+    for ( i = 0; i < A_spar_patt->NT; ++i )
+    {
+        N = 0;
+        M = 0;
+        for ( k = 0; k <= system->bigN; ++k )
+        {
+            X[k] = 0;
+            pos_x[k] = 0;
+        }
+
+        /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
+        for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
+        {
+            j_temp = A_spar_patt->entries[pj].j;
+            atom = &system->my_atoms[j_temp];
+            ++N;
+
+            /* for each of those indices
+             * search through the row of full A of that index */
+
+            /* the case where the local matrix has that index's row */
+            if( j_temp < A->NT )
+            {
+                for ( k = A->start[ j_temp ]; k < A->end[ j_temp ]; ++k )
+                {
+                    /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
+                    atom = &system->my_atoms[ A->entries[k].j ];
+                    X[atom->orig_id] = 1;
+                }
+            }
+
+            /* the case where we communicated that index's row */
+            else
+            {
+                for ( k = 0; k < row_nnz[j_temp]; ++k )
+                {
+                    /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
+                    X[ j_list[j_temp][k] ] = 1;
+                }
+            }
+        }
+
+        /* enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix */
+        identity_pos = M;
+        atom = &system->my_atoms[ i ];
+        atom_pos = atom->orig_id;
+
+        for ( k = 0; k <= system->bigN; k++)
+        {
+            if ( X[k] != 0 )
+            {
+                pos_x[k] = M;
+                if ( k == atom_pos )
+                {
+                    identity_pos = M;
+                }
+                ++M;
+            }
+        }
+
+        /* allocate memory for NxM dense matrix */
+        dense_matrix = (real *) malloc( sizeof(real) * N * M );
+
+        /* fill in the entries of dense matrix */
+        for ( d_j = 0; d_j < N; ++d_j)
+        {
+            /* all rows are initialized to zero */
+            for ( d_i = 0; d_i < M; ++d_i )
+            {
+                dense_matrix[d_i * N + d_j] = 0.0;
+            }
+            /* change the value if any of the column indices is seen */
+
+            /* it is in the original list */
+            local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
+            if( local_pos < 0 || local_pos >= system->N )
+            {
+                fprintf( stderr, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
+                fflush( stderr );
+
+            }
+            /////////////////////////////
+            if( local_pos < A->NT )
+            {
+                for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
+                {
+                    atom = &system->my_atoms[ A->entries[d_i].j ];
+                    if (pos_x[ atom->orig_id ] >= M || d_j >=  N )
+                    {
+                        fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
+                        fflush( stderr );
+                    }
+                    if ( X[ atom->orig_id ] == 1 )
+                    {
+                        dense_matrix[ pos_x[ atom->orig_id ] * N + d_j ] = A->entries[d_i].val;
+                    }
+                }
+            }
+            else
+            {
+                for ( d_i = 0; d_i < row_nnz[ local_pos ]; ++d_i )
+                {
+                    if (pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N )
+                    {
+                        fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j);
+                        fflush( stderr );
+                    }
+                    if ( X[ j_list[local_pos][d_i] ] == 1 )
+                    {
+                        dense_matrix[ pos_x[ j_list[local_pos][d_i] ] * N + d_j ] = val_list[local_pos][d_i];
+                    }
+                }
+            }
+        }
+
+        /* create the right hand side of the linear equation
+         * that is the full column of the identity matrix */
+        e_j = (real *) malloc( sizeof(real) * M );
+        //////////////////////
+        for ( k = 0; k < M; ++k )
+        {
+            e_j[k] = 0.0;
+        }
+        e_j[identity_pos] = 1.0;
+
+        /* Solve the overdetermined system AX = B through the least-squares problem:
+         * min ||B - AX||_2 */
+        m = M;
+        n = N;
+        nrhs = 1;
+        lda = N;
+        ldb = nrhs;
+
+        info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
+                e_j, ldb );
+
+        /* Check for the full rank */
+        if ( info > 0 )
+        {
+            fprintf( stderr, "The diagonal element %i of the triangular factor ", info );
+            fprintf( stderr, "of A is zero, so that A does not have full rank;\n" );
+            fprintf( stderr, "the least squares solution could not be computed.\n" );
+            exit( INVALID_INPUT );
+        }
+
+        /* accumulate the resulting vector to build A_app_inv */
+        (*A_app_inv)->start[i] = A_spar_patt->start[i];
+        (*A_app_inv)->end[i] = A_spar_patt->end[i];
+        for ( k = (*A_app_inv)->start[i]; k < (*A_app_inv)->end[i]; ++k)
+        {
+            (*A_app_inv)->entries[k].j = A_spar_patt->entries[k].j;
+            (*A_app_inv)->entries[k].val = e_j[k - A_spar_patt->start[i]];
+        }
+        free( dense_matrix );
+        free( e_j );
+    }
+
+    free( pos_x);
+    free( X );
+    /////////////////////
+    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_solver_comm += total_comm / nprocs;
+    }
+
+    return Get_Timing_Info( start );
+}
+#endif
+
+#if !defined(NEUTRAL_TERRITORY)
 real sparse_approx_inverse( reax_system *system, simulation_data *data,
         storage *workspace, mpi_datatypes *mpi_data, 
         sparse_matrix *A, sparse_matrix *A_spar_patt,
@@ -888,6 +1298,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
     return Get_Timing_Info( start );
 }
+#endif
 
 void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 {
@@ -1324,7 +1735,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     t_start = Get_Time( );
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
-    t_vops += Get_Timing_Info( t_start );
+    t_allreduce += Get_Timing_Info( t_start );
 
     for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
@@ -1429,6 +1840,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     MPI_Barrier(mpi_data->world);
 
+    //TODO only master node should report it
     if ( i >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "CG convergence failed!\n" );

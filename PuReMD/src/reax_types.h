@@ -40,7 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
-//#define NEUTRAL_TERRITORY
+#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
 //#define DEBUG_FOCUS
@@ -507,7 +507,9 @@ typedef struct
 typedef struct
 {
     int  rank;
+#if defined(NEUTRAL_TERRITORY)
     int  receive_rank;
+#endif
     int  est_send, est_recv;
     int  atoms_str, atoms_cnt;
     ivec rltv, prdc;

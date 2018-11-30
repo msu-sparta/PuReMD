@@ -739,12 +739,11 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
     /* Neutral Territory out buffers */
     for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
     {
-        //TODO: add an exact number
         /* in buffers */
         mpi_data->in_nt_buffer[i] = scalloc( my_nt_nbrs[i].est_recv, sizeof(real),
                 "mpibuf:in_nt_buffer", comm );
 
-        //TODO
+        /* out buffer */
         mpi_buf = &mpi_data->out_nt_buffers[i];
         /* allocate storage for the neighbor processor i */
         mpi_buf->index = scalloc( my_nt_nbrs[i].est_send, sizeof(int),
@@ -829,9 +828,19 @@ void ReAllocate( reax_system *system, control_params *control,
     if ( system->n >= DANGER_ZONE * system->local_cap ||
             (0 && system->n <= LOOSE_ZONE * system->local_cap) )
     {
+#if !defined(NEUTRAL_TERRITORY)
         nflag = 1;
+#endif
         system->local_cap = (int)(system->n * SAFE_ZONE);
     }
+
+#if defined(NEUTRAL_TERRITORY)
+    if ( workspace->H->NT >= DANGER_ZONE * workspace->H->cap )
+    {
+        nflag = 1;
+        workspace->H->cap = (int)(workspace->H->NT * SAFE_ZONE);
+    }
+#endif
 
     Nflag = 0;
     if ( system->N >= DANGER_ZONE * system->total_cap ||
@@ -918,8 +927,13 @@ void ReAllocate( reax_system *system, control_params *control,
                  (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
                        (1024 * 1024)) );
 #endif
+#if defined(NEUTRAL_TERRITORY)
+        Reallocate_Matrix( &(workspace->H), H->cap,
+                           realloc->Htop * SAFE_ZONE, "H", comm );
+#else
         Reallocate_Matrix( &(workspace->H), system->local_cap,
                            realloc->Htop * SAFE_ZONE, "H", comm );
+#endif
         //Deallocate_Matrix( workspace->L );
         //Deallocate_Matrix( workspace->U );
         workspace->L = NULL;
@@ -1037,7 +1051,6 @@ void ReAllocate( reax_system *system, control_params *control,
 
 #if defined(NEUTRAL_TERRITORY)
         /* also check individual outgoing Neutral Territory buffers */
-        mpi_flag = 0;
         for ( p = 0; p < REAX_MAX_NT_NBRS; ++p )
         {
             nbr_pr = &system->my_nt_nbrs[p];
