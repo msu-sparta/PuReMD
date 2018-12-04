@@ -1022,7 +1022,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 flag2 = 1;
                 j_recv2 = smalloc( sizeof(int) * cnt,
                         "sparse_approx_inverse::j_recv2", MPI_COMM_WORLD );
-                val_recv2 = malloc( sizeof(real) * cnt,
+                val_recv2 = smalloc( sizeof(real) * cnt,
                         "sparse_approx_inverse::val_recv2", MPI_COMM_WORLD );
 
                 t_start = Get_Time( );
