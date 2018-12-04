@@ -38,7 +38,8 @@
 real t_start, t_elapsed, matvec_time, dot_time;
 #endif*/
 
-int compare_dbls( const void* arg1, const void* arg2 )
+
+static int compare_dbls( const void* arg1, const void* arg2 )
 {   
     int ret;
     double a1, a2;
@@ -62,17 +63,19 @@ int compare_dbls( const void* arg1, const void* arg2 )
     return ret;
 }
 
-void qsort_dbls( double *array, int array_len )
+
+static void qsort_dbls( double *array, int array_len )
 {
-    qsort( array, (size_t)array_len, sizeof(double),
+    qsort( array, (size_t) array_len, sizeof(double),
             compare_dbls );
 }
 
-int find_bucket( double *list, int len, double a )
+
+static int find_bucket( double *list, int len, double a )
 {
     int s, e, m;
 
-    if( len == 0 )
+    if ( len == 0 )
     {
         return 0;
     }
@@ -101,6 +104,7 @@ int find_bucket( double *list, int len, double a )
 
     return s;
 }
+
 
 real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, storage *workspace,
         mpi_datatypes *mpi_data, sparse_matrix *A, sparse_matrix **A_spar_patt,
@@ -150,7 +154,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     comm = mpi_data->world;
 #if defined(NEUTRAL_TERRITORY)
     num_rows = A->NT;
-    fprintf(stdout,"%d %d %d\n", A->n, A->NT, A->m );
+    fprintf( stdout,"%d %d %d\n", A->n, A->NT, A->m );
     fflush( stdout );
 #else
     num_rows = A->n;
@@ -184,34 +188,46 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     {
         n_local += A->end[i] - A->start[i];
     }
-    s_local = (int) (12.0 * log2(n_local*nprocs));
+    s_local = (int) (12.0 * log2(n_local * nprocs));
     
     t_start = Get_Time( );
-    MPI_Allreduce(&n_local, &n, 1, MPI_INT, MPI_SUM, comm);
-    MPI_Reduce(&s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, comm);
+    MPI_Allreduce( &n_local, &n, 1, MPI_INT, MPI_SUM, comm );
+    MPI_Reduce( &s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, comm );
     t_comm += Get_Timing_Info( t_start );
 
     /* count num. bin elements for each processor, uniform bin sizes */
-    input_array = malloc( sizeof(real) * n_local );
-    scounts_local = malloc( sizeof(int) * nprocs );
-    scounts = malloc( sizeof(int) * nprocs );
-    bin_elements = malloc( sizeof(int) * nprocs );
-    dspls_local = malloc( sizeof(int) * nprocs );
-    bucketlist_local = malloc( sizeof(real) * n_local  );
-    dspls = malloc( sizeof(int) * nprocs );
-    pivotlist = malloc( sizeof(real) *  (nprocs - 1) );
-    samplelist_local = malloc( sizeof(real) * s_local );
+    input_array = smalloc( sizeof(real) * n_local,
+           "setup_sparse_approx_inverse::input_array", MPI_COMM_WORLD );
+    scounts_local = smalloc( sizeof(int) * nprocs,
+           "setup_sparse_approx_inverse::scounts_local", MPI_COMM_WORLD );
+    scounts = smalloc( sizeof(int) * nprocs,
+           "setup_sparse_approx_inverse::scounts", MPI_COMM_WORLD );
+    bin_elements = smalloc( sizeof(int) * nprocs,
+           "setup_sparse_approx_inverse::bin_elements", MPI_COMM_WORLD );
+    dspls_local = smalloc( sizeof(int) * nprocs,
+           "setup_sparse_approx_inverse::displs_local", MPI_COMM_WORLD );
+    bucketlist_local = smalloc( sizeof(real) * n_local,
+          "setup_sparse_approx_inverse::bucketlist_local", MPI_COMM_WORLD );
+    dspls = smalloc( sizeof(int) * nprocs,
+           "setup_sparse_approx_inverse::dspls", MPI_COMM_WORLD );
+    pivotlist = smalloc( sizeof(real) *  (nprocs - 1),
+           "setup_sparse_approx_inverse::pivotlist", MPI_COMM_WORLD );
+    samplelist_local = smalloc( sizeof(real) * s_local,
+           "setup_sparse_approx_inverse::samplelist_local", MPI_COMM_WORLD );
     if ( system->my_rank == MASTER_NODE )
     {
-        samplelist = malloc( sizeof(real) * s );
-        srecv = malloc( sizeof(int) * nprocs );
-        sdispls = malloc( sizeof(int) * nprocs );
+        samplelist = smalloc( sizeof(real) * s,
+               "setup_sparse_approx_inverse::samplelist", MPI_COMM_WORLD );
+        srecv = smalloc( sizeof(int) * nprocs,
+               "setup_sparse_approx_inverse::srecv", MPI_COMM_WORLD );
+        sdispls = smalloc( sizeof(int) * nprocs,
+               "setup_sparse_approx_inverse::sdispls", MPI_COMM_WORLD );
     }
 
     n_local = 0;
-    for( i = 0; i < num_rows; ++i )
+    for ( i = 0; i < num_rows; ++i )
     {
-        for( pj = A->start[i]; pj < A->end[i]; ++pj )
+        for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
             input_array[n_local++] = A->entries[pj].val;
         }
@@ -299,10 +315,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     /* find the target process */
     target_proc = 0;
     total = 0;
-    k = n*filter;
-    for(i = nprocs - 1; i >= 0; --i )
+    k = n * filter;
+    for (i = nprocs - 1; i >= 0; --i )
     {
-        if( total + scounts[i] >= k )
+        if ( total + scounts[i] >= k )
         {
             /* global k becomes local k*/
             k -= total;
@@ -313,14 +329,16 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     n_gather = scounts[target_proc];
-    if( system->my_rank == target_proc )
+    if ( system->my_rank == target_proc )
     {
-        bucketlist = malloc( sizeof( real ) * n_gather );
+        bucketlist = smalloc( sizeof( real ) * n_gather,
+               "setup_sparse_approx_inverse::bucketlist", MPI_COMM_WORLD );
     }
 
     /* send local buckets to target processor for quickselect */
     t_start = Get_Time( );
-    MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts, 1, MPI_INT, target_proc, comm );
+    MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts,
+            1, MPI_INT, target_proc, comm );
     t_comm += Get_Timing_Info( t_start );
 
     if ( system->my_rank == target_proc )
@@ -338,19 +356,19 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     t_comm += Get_Timing_Info( t_start );
 
     /* apply quick select algorithm at the target process */
-    if( system->my_rank == target_proc)
+    if ( system->my_rank == target_proc )
     {
         left = 0;
         right = n_gather-1;
 
         turn = 0;
-        while( k ) {
-
+        while( k )
+        {
             p  = left;
             turn = 1 - turn;
 
             /* alternating pivots in order to handle corner cases */
-            if( turn == 1)
+            if ( turn == 1 )
             {
                 pivot = bucketlist[right];
             }
@@ -358,9 +376,9 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
             {
                 pivot = bucketlist[left];
             }
-            for( i = left + 1 - turn; i <= right-turn; ++i )
+            for ( i = left + 1 - turn; i <= right-turn; ++i )
             {
-                if( bucketlist[i] > pivot )
+                if ( bucketlist[i] > pivot )
                 {
                     tmp = bucketlist[i];
                     bucketlist[i] = bucketlist[p];
@@ -368,7 +386,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
                     p++;
                 }
             }
-            if(turn == 1)
+            if ( turn == 1 )
             {
                 tmp = bucketlist[p];
                 bucketlist[p] = bucketlist[right];
@@ -402,12 +420,14 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
            } */
     }
 
-    /*broadcast the filtering value*/
+    /* broadcast the filtering value */
     t_start = Get_Time( );
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
     t_comm += Get_Timing_Info( t_start );
 
+#if defined(DEBUG)
     int nnz = 0; //uncomment to check the nnz's in the sparsity pattern
+#endif
 
     /* build entries of that pattern*/
     for ( i = 0; i < num_rows; ++i )
@@ -422,30 +442,59 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
                 (*A_spar_patt)->entries[size].val = A->entries[pj].val;
                 (*A_spar_patt)->entries[size].j = A->entries[pj].j;
                 size++;
+
+#if defined(DEBUG)
                 nnz++;
+#endif
             }
         }
         (*A_spar_patt)->end[i] = size;
     }
 
+#if defined(DEBUG)
     MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
-    if( system->my_rank == MASTER_NODE )
+#if defined(NEUTRAL_TERRITORY)
+    if ( system->my_rank == MASTER_NODE )
     {
-        fprintf(stdout,"total nnz in all sparsity patterns = %d\nthreshold = %.15lf\n", nnz, threshold);
-        fflush(stdout);
+        fprintf( stdout, "    [INFO] total nnz in all sparsity patterns = %d\nthreshold = %.15lf\n",
+                nnz, threshold );
     }
+#endif
+#endif
  
-    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE,
+            mpi_data->world );
 
     if( system->my_rank == MASTER_NODE )
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
 
+    sfree( input_array, "setup_sparse_approx_inverse::input_array" );
+    sfree( scounts_local, "setup_sparse_approx_inverse::scounts_local" );
+    sfree( scounts, "setup_sparse_approx_inverse::scounts" );
+    sfree( bin_elements, "setup_sparse_approx_inverse::bin_elements" );
+    sfree( dspls_local, "setup_sparse_approx_inverse::displs_local" );
+    sfree( bucketlist_local, "setup_sparse_approx_inverse::bucketlist_local" );
+    sfree( dspls, "setup_sparse_approx_inverse::dspls" );
+    sfree( pivotlist, "setup_sparse_approx_inverse::pivotlist" );
+    sfree( samplelist_local, "setup_sparse_approx_inverse::samplelist_local" );
+    if ( system->my_rank == MASTER_NODE )
+    {
+        sfree( samplelist, "setup_sparse_approx_inverse::samplelist" );
+        sfree( srecv, "setup_sparse_approx_inverse::srecv" );
+        sfree( sdispls, "setup_sparse_approx_inverse::sdispls" );
+    }
+    if ( system->my_rank == target_proc )
+    {
+        sfree( bucketlist, "setup_sparse_approx_inverse::bucketlist" );
+    }
+
     return Get_Timing_Info( start );
 }
 
 
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 #if defined(NEUTRAL_TERRITORY)
 real sparse_approx_inverse( reax_system *system, simulation_data *data,
         storage *workspace, mpi_datatypes *mpi_data, 
@@ -834,9 +883,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
     return Get_Timing_Info( start );
 }
-#endif
-
-#if !defined(NEUTRAL_TERRITORY)
+#else
 real sparse_approx_inverse( reax_system *system, simulation_data *data,
         storage *workspace, mpi_datatypes *mpi_data, 
         sparse_matrix *A, sparse_matrix *A_spar_patt,
@@ -875,7 +922,6 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         Allocate_Matrix2( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
                 SYM_FULL_MATRIX, comm );
     }
-
     else /* if ( (*A_app_inv)->m < A_spar_patt->m ) */
     {
         Deallocate_Matrix( *A_app_inv );
@@ -885,11 +931,6 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
     pos_x = NULL;
     X = NULL;
-
-    row_nnz = NULL;
-    j_list = NULL;
-    val_list = NULL;
-
     j_send = NULL;
     val_send = NULL;
     j_recv1 = NULL;
@@ -897,10 +938,12 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     val_recv1 = NULL;
     val_recv2 = NULL;
 
-    row_nnz = (int *) malloc( sizeof(int) * system->total_cap );
-
-    j_list = (int **) malloc( sizeof(int *) * system->N );
-    val_list = (real **) malloc( sizeof(real *) * system->N );
+    row_nnz = smalloc( sizeof(int) * system->total_cap,
+           "sparse_approx_inverse::row_nnz", MPI_COMM_WORLD );
+    j_list = smalloc( sizeof(int *) * system->N,
+           "sparse_approx_inverse::j_list", MPI_COMM_WORLD );
+    val_list = smalloc( sizeof(real *) * system->N,
+           "sparse_approx_inverse::val_list", MPI_COMM_WORLD );
 
     for ( i = 0; i < system->total_cap; ++i )
     {
@@ -922,9 +965,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
 
-    //fprintf(stderr, "Before dist call, p%d\n", system->my_rank );
-
-    /*  use a Dist-like approach to send the row information */
+    /* use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d)
     {
         flag1 = 0;
@@ -935,8 +976,9 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         nbr1 = &system->my_nbrs[2 * d];
         if ( nbr1->atoms_cnt )
         {
-            /* calculate the total data that will be received */
             cnt = 0;
+
+            /* calculate the total data that will be received */
             for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
                 //if( i >= A->n)
@@ -949,8 +991,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             if( cnt )
             {
                 flag1 = 1;
-                j_recv1 = (int *) malloc( sizeof(int) * cnt );
-                val_recv1 = (real *) malloc( sizeof(real) * cnt );
+                j_recv1 = smalloc( sizeof(int) * cnt,
+                        "sparse_approx_inverse::j_recv1", MPI_COMM_WORLD );
+                val_recv1 = smalloc( sizeof(real) * cnt,
+                        "sparse_approx_inverse::val_recv1", MPI_COMM_WORLD );
 
                 t_start = Get_Time( );
                 MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
@@ -976,8 +1020,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             if( cnt )
             {
                 flag2 = 1;
-                j_recv2 = (int *) malloc( sizeof(int) * cnt );
-                val_recv2 = (real *) malloc( sizeof(real) * cnt );
+                j_recv2 = smalloc( sizeof(int) * cnt,
+                        "sparse_approx_inverse::j_recv2", MPI_COMM_WORLD );
+                val_recv2 = malloc( sizeof(real) * cnt,
+                        "sparse_approx_inverse::val_recv2", MPI_COMM_WORLD );
 
                 t_start = Get_Time( );
                 MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
@@ -987,25 +1033,27 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         }
 
         /* send both messages in dimension d */
-        if( out_bufs[2 * d].cnt )
+        if ( out_bufs[2 * d].cnt )
         {
             cnt = 0;
-            for( i = 0; i < out_bufs[2 * d].cnt; ++i )
+            for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
             {
                 cnt += row_nnz[ out_bufs[2 * d].index[i] ];
             }
 
-            if( cnt )
+            if ( cnt > 0 )
             {
-                j_send = (int *) malloc( sizeof(int) * cnt );
-                val_send = (real *) malloc( sizeof(real) * cnt );
+                j_send = smalloc( sizeof(int) * cnt,
+                        "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
+                val_send = smalloc( sizeof(real) * cnt,
+                        "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
 
                 cnt = 0;
-                for( i = 0; i < out_bufs[2 * d].cnt; ++i )
+                for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
                 {
-                    if( out_bufs[2 * d].index[i] < A->n )
+                    if ( out_bufs[2 * d].index[i] < A->n )
                     {
-                        for( pj = A->start[ out_bufs[2 * d].index[i] ]; pj < A->end[ out_bufs[2 * d].index[i] ]; ++pj )
+                        for ( pj = A->start[ out_bufs[2 * d].index[i] ]; pj < A->end[ out_bufs[2 * d].index[i] ]; ++pj )
                         {
                             atom = &system->my_atoms[ A->entries[pj].j ];
                             j_send[cnt] = atom->orig_id;
@@ -1015,7 +1063,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                     }
                     else
                     {
-                        for( pj = 0; pj < row_nnz[ out_bufs[2 * d].index[i] ]; ++pj )
+                        for ( pj = 0; pj < row_nnz[ out_bufs[2 * d].index[i] ]; ++pj )
                         {
                             j_send[cnt] = j_list[ out_bufs[2 * d].index[i] ][pj];
                             val_send[cnt] = val_list[ out_bufs[2 * d].index[i] ][pj];
@@ -1031,25 +1079,27 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             }
         }
 
-        if( out_bufs[2 * d + 1].cnt )
+        if ( out_bufs[2 * d + 1].cnt )
         {
             cnt = 0;
-            for( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
+            for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
             {
                 cnt += row_nnz[ out_bufs[2 * d + 1].index[i] ];
             }
 
-            if( cnt )
+            if ( cnt > 0 )
             {
-                j_send = (int *) malloc( sizeof(int) * cnt );
-                val_send = (real *) malloc( sizeof(real) * cnt );
+                j_send = smalloc( sizeof(int) * cnt,
+                        "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
+                val_send = smalloc( sizeof(real) * cnt,
+                        "sparse_approx_inverse::val_send", MPI_COMM_WORLD );
 
                 cnt = 0;
-                for( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
+                for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
                 {
-                    if( out_bufs[2 * d + 1].index[i] < A->n )
+                    if ( out_bufs[2 * d + 1].index[i] < A->n )
                     {
-                        for( pj = A->start[ out_bufs[2 * d + 1].index[i] ]; pj < A->end[ out_bufs[2 * d + 1].index[i] ]; ++pj )
+                        for ( pj = A->start[ out_bufs[2 * d + 1].index[i] ]; pj < A->end[ out_bufs[2 * d + 1].index[i] ]; ++pj )
                         {
                             atom = &system->my_atoms[ A->entries[pj].j ];
                             j_send[cnt] = atom->orig_id;
@@ -1059,7 +1109,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                     }
                     else
                     {
-                        for( pj = 0; pj < row_nnz[ out_bufs[2 * d + 1].index[i] ]; ++pj )
+                        for ( pj = 0; pj < row_nnz[ out_bufs[2 * d + 1].index[i] ]; ++pj )
                         {
                             j_send[cnt] = j_list[ out_bufs[2 * d + 1].index[i] ][pj];
                             val_send[cnt] = val_list[ out_bufs[2 * d + 1].index[i] ][pj];
@@ -1076,7 +1126,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
         }
 
-        if( flag1 )
+        if ( flag1 )
         {
             t_start = Get_Time( );
             MPI_Wait( &req1, &stat1 );
@@ -1084,14 +1134,16 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             t_comm += Get_Timing_Info( t_start );
 
             cnt = 0;
-            for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
+            for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
                 //if( i >= A->n )
                 {
-                    j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
-                    val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
+                    j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
+                           "sparse_approx_inverse::j_list[i]", MPI_COMM_WORLD );
+                    val_list[i] = smalloc( sizeof(real) * row_nnz[i],
+                           "sparse_approx_inverse::val_list[i]", MPI_COMM_WORLD );
 
-                    for( pj = 0; pj < row_nnz[i]; ++pj )
+                    for ( pj = 0; pj < row_nnz[i]; ++pj )
                     {
                         j_list[i][pj] = j_recv1[cnt];
                         val_list[i][pj] = val_recv1[cnt];
@@ -1101,7 +1153,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             }
         }
 
-        if( flag2 )
+        if ( flag2 )
         {
             t_start = Get_Time( );
             MPI_Wait( &req3, &stat3 );
@@ -1109,14 +1161,16 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             t_comm += Get_Timing_Info( t_start );
 
             cnt = 0;
-            for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
+            for ( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                //if( i >= A->n )
+                //if ( i >= A->n )
                 {
-                    j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
-                    val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
+                    j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
+                           "sparse_approx_inverse::j_list[i]", MPI_COMM_WORLD );
+                    val_list[i] = smalloc( sizeof(real) * row_nnz[i],
+                           "sparse_approx_inverse::val_list[i]", MPI_COMM_WORLD );
 
-                    for( pj = 0; pj < row_nnz[i]; ++pj )
+                    for ( pj = 0; pj < row_nnz[i]; ++pj )
                     {
                         j_list[i][pj] = j_recv2[cnt];
                         val_list[i][pj] = val_recv2[cnt];
@@ -1127,8 +1181,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         }
     }
     
-    X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
-    pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
+    X = smalloc( sizeof(int) * (system->bigN + 1),
+           "sparse_approx_inverse::X", MPI_COMM_WORLD );
+    pos_x = smalloc( sizeof(int) * (system->bigN + 1),
+           "sparse_approx_inverse::pos_x", MPI_COMM_WORLD );
 
     for ( i = 0; i < A_spar_patt->n; ++i )
     {
@@ -1191,7 +1247,8 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         }
 
         /* allocate memory for NxM dense matrix */
-        dense_matrix = (real *) malloc( sizeof(real) * N * M );
+        dense_matrix = smalloc( sizeof(real) * N * M,
+               "sparse_approx_inverse::dense_matrix", MPI_COMM_WORLD );
 
         /* fill in the entries of dense matrix */
         for ( d_j = 0; d_j < N; ++d_j)
@@ -1205,22 +1262,32 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
             /* it is in the original list */
             local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
-            if( local_pos < 0 || local_pos >= system->N )
-            {
-                fprintf( stderr, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
-                fflush( stderr );
 
+#if defined(DEBUG)
+            if ( local_pos < 0 || local_pos >= system->N )
+            {
+                fprintf( stderr, "[ERROR] Sparse_Approx_Inverse: LOCAL POSITION OF THE ATOM IS NOT VALID\n" );
+                fprintf( stderr, "    [INFO] row %d, position %d\n", i, local_pos );
+                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
             }
-            if( local_pos < A->n )
+#endif
+
+            if ( local_pos < A->n )
             {
                 for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
                 {
                     atom = &system->my_atoms[ A->entries[d_i].j ];
-                    if (pos_x[ atom->orig_id ] >= M || d_j >=  N )
+
+#if defined(DEBUG)
+                    if ( pos_x[ atom->orig_id ] >= M || d_j >=  N )
                     {
-                        fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
-                        fflush( stderr );
+                        fprintf( stderr, "[ERROR] Sparse_Approx_Inverse: index out-of-bounds (QR matrix)" );
+                        fprintf( stderr, "    [INFO] orig_id = %d, i =  %d, j = %d, M = %d N = %d\n",
+                                atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
+                        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
                     }
+#endif
+
                     if ( X[ atom->orig_id ] == 1 )
                     {
                         dense_matrix[ pos_x[ atom->orig_id ] * N + d_j ] = A->entries[d_i].val;
@@ -1231,11 +1298,15 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             {
                 for ( d_i = 0; d_i < row_nnz[ local_pos ]; ++d_i )
                 {
-                    if (pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N )
+#if defined(DEBUG)
+                    if ( pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N )
                     {
-                        fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j);
-                        fflush( stderr );
+                        fprintf( stderr, "[ERROR] Sparse_Approx_Inverse: index out-of-bounds (QR matrix)" );
+                        fprintf( stderr, "    [INFO] %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j );
+                        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
                     }
+#endif
+
                     if ( X[ j_list[local_pos][d_i] ] == 1 )
                     {
                         dense_matrix[ pos_x[ j_list[local_pos][d_i] ] * N + d_j ] = val_list[local_pos][d_i];
@@ -1246,7 +1317,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
         /* create the right hand side of the linear equation
          * that is the full column of the identity matrix */
-        e_j = (real *) malloc( sizeof(real) * M );
+        e_j = smalloc( sizeof(real) * M, "sparse_approx_inverse::e_j", MPI_COMM_WORLD );
 
         for ( k = 0; k < M; ++k )
         {
@@ -1268,10 +1339,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         /* Check for the full rank */
         if ( info > 0 )
         {
-            fprintf( stderr, "The diagonal element %i of the triangular factor ", info );
+            fprintf( stderr, "[ERROR] The diagonal element %i of the triangular factor ", info );
             fprintf( stderr, "of A is zero, so that A does not have full rank;\n" );
             fprintf( stderr, "the least squares solution could not be computed.\n" );
-            exit( INVALID_INPUT );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
         /* accumulate the resulting vector to build A_app_inv */
@@ -1282,16 +1353,17 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             (*A_app_inv)->entries[k].j = A_spar_patt->entries[k].j;
             (*A_app_inv)->entries[k].val = e_j[k - A_spar_patt->start[i]];
         }
-        free( dense_matrix );
-        free( e_j );
+        sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
+        sfree( e_j, "sparse_approx_inverse::e_j" );
     }
 
-    free( pos_x);
-    free( X );
+    sfree( pos_x, "sparse_approx_inverse::pox_x" );
+    sfree( X, "sparse_approx_inverse::X" );
 
-    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE,
+            mpi_data->world );
 
-    if( system->my_rank == MASTER_NODE )
+    if ( system->my_rank == MASTER_NODE )
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
@@ -1299,6 +1371,8 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     return Get_Timing_Info( start );
 }
 #endif
+#endif
+
 
 void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 {

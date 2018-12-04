@@ -397,7 +397,7 @@ static void Compute_Preconditioner_QEq( reax_system *system, control_params *con
     t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
             workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
 
-    MPI_Reduce(&t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
 
     if( system->my_rank == MASTER_NODE )
     {
@@ -408,6 +408,7 @@ static void Compute_Preconditioner_QEq( reax_system *system, control_params *con
     exit( INVALID_INPUT );
 #endif
 }
+
 
 void QEq( reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, output_controls *out_control,

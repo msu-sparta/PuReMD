@@ -126,7 +126,8 @@ enum message_tags { INIT = 0, UPDATE = 1, BNDRY = 2, UPDATE_BNDRY = 3,
 enum errors { FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
               CANNOT_OPEN_FILE = -12, CANNOT_INITIALIZE = -13,
               INSUFFICIENT_MEMORY = -14, UNKNOWN_OPTION = -15,
-              INVALID_INPUT = -16, INVALID_GEO = -17
+              INVALID_INPUT = -16, INVALID_GEO = -17,
+              RUNTIME_ERROR = -18,
             };
 
 enum exchanges { NONE = 0, NEAR_EXCH = 1, FULL_EXCH = 2 };
