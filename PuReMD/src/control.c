@@ -174,6 +174,11 @@ char Read_Control_File( char *control_file, control_params* control,
                 control->nprocs = control->procs_by_dim[0] * control->procs_by_dim[1] *
                         control->procs_by_dim[2];
             }
+            else if ( strncmp(tmp[0], "periodic_boundaries", MAX_LINE) == 0 )
+            {
+                // skip since not supported in distributed memory code
+                ;
+            }
             //else if( strcmp(tmp[0], "restart") == 0 ) {
             //  ival = atoi(tmp[1]);
             //  control->restart = ival;
@@ -449,6 +454,11 @@ char Read_Control_File( char *control_file, control_params* control,
                 ival = atoi(tmp[1]);
                 out_control->traj_compress = ival;
             }
+            else if ( strncmp(tmp[0], "traj_format", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to distributed memory code
+                ;
+            }
             else if ( strcmp(tmp[0], "traj_method") == 0 )
             {
                 ival = atoi(tmp[1]);
@@ -483,10 +493,21 @@ char Read_Control_File( char *control_file, control_params* control,
                 ival = atoi(tmp[1]);
                 out_control->angle_info = ival;
             }
-            else if ( strcmp(tmp[0], "molecular_analysis") == 0 )
+            else if ( strncmp(tmp[0], "test_forces", MAX_LINE) == 0 )
+            {
+                // skip since not supported in distributed memory code
+                ;
+            }
+            else if ( strcmp(tmp[0], "molecular_analysis") == 0 
+                    || strncmp(tmp[0], "molec_anal", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->molecular_analysis = ival;
+            }
+            else if ( strncmp(tmp[0], "freq_molec_anal", MAX_LINE) == 0 )
+            {
+                // skip since not supported in distributed memory code
+                ;
             }
             else if ( strcmp(tmp[0], "ignore") == 0 )
             {
