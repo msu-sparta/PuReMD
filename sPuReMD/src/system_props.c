@@ -209,7 +209,8 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 }
 
 
-void Compute_Total_Energy( reax_system* system, simulation_data* data )
+void Compute_Total_Energy( reax_system* system, control_params *control,
+        simulation_data* data, static_storage *workspace )
 {
     int i, type_i;
     real e_pol, q;
@@ -217,18 +218,41 @@ void Compute_Total_Energy( reax_system* system, simulation_data* data )
     /* Compute Polarization Energy */
     e_pol = 0.0;
 
-#ifdef _OPENMP
-    #pragma omp parallel for default(none) private(q, type_i) shared(system) \
-        reduction(+: e_pol) schedule(static)
-#endif
-    for ( i = 0; i < system->N; i++ )
+    if ( control->charge_method == QEQ_CM
+            || control->charge_method == EE_CM )
     {
-        q = system->atoms[i].q;
-        type_i = system->atoms[i].type;
+#ifdef _OPENMP
+        #pragma omp parallel for default(none) private(q, type_i) shared(system) \
+            reduction(+: e_pol) schedule(static)
+#endif
+        for ( i = 0; i < system->N; i++ )
+        {
+            q = system->atoms[i].q;
+            type_i = system->atoms[i].type;
 
-        e_pol += ( system->reaxprm.sbp[ type_i ].chi * q
-                + (system->reaxprm.sbp[ type_i ].eta / 2.0) * SQR( q ) )
-            * KCALpMOL_to_EV;
+            e_pol += ( system->reaxprm.sbp[ type_i ].chi * q
+                    + (system->reaxprm.sbp[ type_i ].eta / 2.0) * SQR( q ) )
+                * KCALpMOL_to_EV;
+        }
+    }
+    else if ( control->charge_method == ACKS2_CM )
+    {
+#ifdef _OPENMP
+        #pragma omp parallel for default(none) private(q, type_i) shared(system) \
+            reduction(+: e_pol) schedule(static)
+#endif
+        for ( i = 0; i < system->N; i++ )
+        {
+            q = system->atoms[i].q;
+            type_i = system->atoms[i].type;
+
+            /* energy due to first and second order EE parameters */
+            e_pol += KCALpMOL_to_EV * ( system->reaxprm.sbp[ type_i ].chi
+                    + system->reaxprm.sbp[ type_i ].eta / 2.0 * q) *  q;
+
+            /* energy due to coupling with kinetic energy potential */
+            e_pol += KCALpMOL_to_EV * system->atoms[i].q * workspace->s[0][ system->N + i ];
+        }
     }
 
     data->E_Pol = e_pol;

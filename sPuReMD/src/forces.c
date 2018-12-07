@@ -340,7 +340,7 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
                 dif = r_ij - base;
                 val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
                     t->ele[r].a;
-                val *= EV_to_KCALpMOL / C_ele;
+                val *= EV_to_KCALpMOL / C_ELE;
 
                 ret = ((i == j) ? 0.5 : 1.0) * val;
             break;
@@ -378,6 +378,38 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
     {
     case QEQ_CM:
     case EE_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                Tap = workspace->Tap[7] * r_ij + workspace->Tap[6];
+                Tap = Tap * r_ij + workspace->Tap[5];
+                Tap = Tap * r_ij + workspace->Tap[4];
+                Tap = Tap * r_ij + workspace->Tap[3];
+                Tap = Tap * r_ij + workspace->Tap[2];
+                Tap = Tap * r_ij + workspace->Tap[1];
+                Tap = Tap * r_ij + workspace->Tap[0];
+
+                /* shielding */
+                dr3gamij_1 = ( r_ij * r_ij * r_ij +
+                        system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
+                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                /* i == j: non-periodic self-interaction term
+                 * i != j: periodic self-interaction term */
+                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
+            break;
+
+            case DIAGONAL:
+                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+            break;
+
+            default:
+                fprintf( stderr, "[ERROR] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
     case ACKS2_CM:
         switch ( pos )
         {
@@ -395,10 +427,14 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                         system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
+                /* i == j: non-periodic self-interaction term
+                 * i != j: periodic self-interaction term */
                 ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
             break;
 
             case DIAGONAL:
+                /* EE parameters in electron-volts */
+//                ret = 2.0 * system->reaxprm.sbp[system->atoms[i].type].eta;
                 ret = system->reaxprm.sbp[system->atoms[i].type].eta;
             break;
 
@@ -424,7 +460,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
         sparse_matrix * H, sparse_matrix * H_sp,
         int * Htop, int * H_sp_top )
 {
-    int i, j, pj;
+    int i, j, pj, target, val_flag;
     real d, xcut, bond_softness, * X_diag;
 
     switch ( control->charge_method )
@@ -457,36 +493,20 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             break;
 
         case ACKS2_CM:
-            X_diag = (real*) scalloc( system->N, sizeof(real),
+            X_diag = smalloc( sizeof(real) * system->N,
                     "Init_Charge_Matrix_Remaining_Entries::X_diag" );
 
-            H->start[system->N] = *Htop;
-            H_sp->start[system->N] = *H_sp_top;
-
             for ( i = 0; i < system->N; ++i )
             {
-                H->j[*Htop] = i;
-                H->val[*Htop] = 1.0;
-                *Htop = *Htop + 1;
-
-                H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = 1.0;
-                *H_sp_top = *H_sp_top + 1;
+                X_diag[i] = 0.0;
             }
 
-            H->j[*Htop] = system->N;
-            H->val[*Htop] = 0.0;
-            *Htop = *Htop + 1;
-
-            H_sp->j[*H_sp_top] = system->N;
-            H_sp->val[*H_sp_top] = 0.0;
-            *H_sp_top = *H_sp_top + 1;
-
             for ( i = 0; i < system->N; ++i )
             {
-                H->start[system->N + i + 1] = *Htop;
-                H_sp->start[system->N + i + 1] = *H_sp_top;
+                H->start[system->N + i] = *Htop;
+                H_sp->start[system->N + i] = *H_sp_top;
 
+                /* constraint on ref. value for kinetic energy potential */
                 H->j[*Htop] = i;
                 H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
@@ -495,55 +515,94 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 H_sp->val[*H_sp_top] = 1.0;
                 *H_sp_top = *H_sp_top + 1;
 
+                /* kinetic energy terms */
                 for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
                 {
+                    /* exclude self-periodic images of atoms for
+                     * kinetic energy term because the effective
+                     * potential is the same on an atom and its periodic image */
                     if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
                     {
                         j = far_nbrs->far_nbr_list[pj].nbr;
 
-                        xcut = ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
-                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 )
-                            / 2.0;
+                        xcut = 0.5 * ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
+                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 );
 
-                        if ( far_nbrs->far_nbr_list[pj].d < xcut &&
-                                far_nbrs->far_nbr_list[pj].d > 0.001 )
+                        if ( far_nbrs->far_nbr_list[pj].d < xcut )
                         {
                             d = far_nbrs->far_nbr_list[pj].d / xcut;
-                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 ) * POW( 1.0 - d, 6.0 );
+                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 )
+                                * POW( 1.0 - d, 6.0 );
 
-                            H->j[*Htop] = system->N + j + 1;
-                            H->val[*Htop] = MAX( 0.0, bond_softness );
-                            *Htop = *Htop + 1;
+                            if ( bond_softness > 0.0 )
+                            {
+                                val_flag = FALSE;
 
-                            H_sp->j[*H_sp_top] = system->N + j + 1;
-                            H_sp->val[*H_sp_top] = MAX( 0.0, bond_softness );
-                            *H_sp_top = *H_sp_top + 1;
+                                for ( target = H->start[system->N + i]; target < *Htop; ++target )
+                                {
+                                    if ( H->j[target] == system->N + j )
+                                    {
+                                        H->val[target] += bond_softness;
+                                        val_flag = TRUE;
+                                        break;
+                                    }
+                                }
 
-                            X_diag[i] -= bond_softness;
-                            X_diag[j] -= bond_softness;
+                                if ( val_flag == FALSE )
+                                {
+                                    H->j[*Htop] = system->N + j;
+                                    H->val[*Htop] = bond_softness;
+                                    ++(*Htop);
+                                }
+
+                                val_flag = FALSE;
+
+                                for ( target = H_sp->start[system->N + i]; target < *H_sp_top; ++target )
+                                {
+                                    if ( H_sp->j[target] == system->N + j )
+                                    {
+                                        H_sp->val[target] += bond_softness;
+                                        val_flag = TRUE;
+                                        break;
+                                    }
+                                }
+
+                                if ( val_flag == FALSE )
+                                {
+                                    H_sp->j[*H_sp_top] = system->N + j;
+                                    H_sp->val[*H_sp_top] = bond_softness;
+                                    ++(*H_sp_top);
+                                }
+
+                                X_diag[i] -= bond_softness;
+                                X_diag[j] -= bond_softness;
+                            }
                         }
                     }
                 }
 
-                H->j[*Htop] = system->N + i + 1;
+                /* placeholders for diagonal entries, to be replaced below */
+                H->j[*Htop] = system->N + i;
                 H->val[*Htop] = 0.0;
                 *Htop = *Htop + 1;
 
-                H_sp->j[*H_sp_top] = system->N + i + 1;
+                H_sp->j[*H_sp_top] = system->N + i;
                 H_sp->val[*H_sp_top] = 0.0;
                 *H_sp_top = *H_sp_top + 1;
             }
 
-            H->start[system->N_cm - 1] = *Htop;
-            H_sp->start[system->N_cm - 1] = *H_sp_top;
+            /* second to last row */
+            H->start[system->N_cm - 2] = *Htop;
+            H_sp->start[system->N_cm - 2] = *H_sp_top;
 
-            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+            /* place accumulated diagonal entries (needed second to last row marker above before this code) */
+            for ( i = system->N; i < 2 * system->N; ++i )
             {
                 for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
                 {
                     if ( H->j[pj] == i )
                     {
-                        H->val[pj] = X_diag[i - system->N - 1];
+                        H->val[pj] = X_diag[i - system->N];
                         break;
                     }
                 }
@@ -552,13 +611,38 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 {
                     if ( H_sp->j[pj] == i )
                     {
-                        H_sp->val[pj] = X_diag[i - system->N - 1];
+                        H_sp->val[pj] = X_diag[i - system->N];
                         break;
                     }
                 }
             }
 
-            for ( i = system->N + 1; i < system->N_cm - 1; ++i )
+            /* coupling with the kinetic energy potential */
+            for ( i = 0; i < system->N; ++i )
+            {
+                H->j[*Htop] = system->N + i;
+                H->val[*Htop] = 1.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = system->N + i;
+                H_sp->val[*H_sp_top] = 1.0;
+                *H_sp_top = *H_sp_top + 1;
+            }
+
+            /* explicitly store zero on diagonal */
+            H->j[*Htop] = system->N_cm - 2;
+            H->val[*Htop] = 0.0;
+            *Htop = *Htop + 1;
+
+            H_sp->j[*H_sp_top] = system->N_cm - 2;
+            H_sp->val[*H_sp_top] = 0.0;
+            *H_sp_top = *H_sp_top + 1;
+
+            /* last row */
+            H->start[system->N_cm - 1] = *Htop;
+            H_sp->start[system->N_cm - 1] = *H_sp_top;
+
+            for ( i = 0; i < system->N; ++i )
             {
                 H->j[*Htop] = i;
                 H->val[*Htop] = 1.0;
@@ -569,6 +653,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 *H_sp_top = *H_sp_top + 1;
             }
 
+            /* explicitly store zero on diagonal */
             H->j[*Htop] = system->N_cm - 1;
             H->val[*Htop] = 0.0;
             *Htop = *Htop + 1;
@@ -576,6 +661,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             H_sp->j[*H_sp_top] = system->N_cm - 1;
             H_sp->val[*H_sp_top] = 0.0;
             *H_sp_top = *H_sp_top + 1;
+
 
             sfree( X_diag, "Init_Charge_Matrix_Remaining_Entries::X_diag" );
             break;
@@ -591,12 +677,13 @@ static void Init_Forces( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
     int i, j, pj;
+    int target;
     int start_i, end_i;
     int type_i, type_j;
     int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top, jhb_top;
     int flag, flag_sp;
-    real r_ij, r2;
+    real r_ij, r2, val, val_flag;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
@@ -689,17 +776,48 @@ static void Init_Forces( reax_system *system, control_params *control,
                 sbp_j = &system->reaxprm.sbp[type_j];
                 twbp = &system->reaxprm.tbp[type_i][type_j];
 
-                H->j[Htop] = j;
-                H->val[Htop] = Init_Charge_Matrix_Entry( system, control,
-                        workspace, i, j, r_ij, OFF_DIAGONAL );
-                ++Htop;
+                val = Init_Charge_Matrix_Entry( system, control,
+                            workspace, i, j, r_ij, OFF_DIAGONAL );
+                val_flag = FALSE;
+
+                for ( target = H->start[i]; target < Htop; ++target )
+                {
+                    if ( H->j[target] == j )
+                    {
+                        H->val[target] += val;
+                        val_flag = TRUE;
+                        break;
+                    }
+                }
+
+                if ( val_flag == FALSE )
+                {
+                    H->j[Htop] = j;
+                    H->val[Htop] = val;
+                    ++Htop;
+                }
 
                 /* H_sp matrix entry */
                 if ( flag_sp == TRUE )
                 {
-                    H_sp->j[H_sp_top] = j;
-                    H_sp->val[H_sp_top] = H->val[Htop - 1];
-                    ++H_sp_top;
+                    val_flag = FALSE;
+
+                    for ( target = H_sp->start[i]; target < H_sp_top; ++target )
+                    {
+                        if ( H_sp->j[target] == j )
+                        {
+                            H_sp->val[target] += val;
+                            val_flag = TRUE;
+                            break;
+                        }
+                    }
+
+                    if ( val_flag == FALSE )
+                    {
+                        H_sp->j[H_sp_top] = j;
+                        H_sp->val[H_sp_top] = val;
+                        ++H_sp_top;
+                    }
                 }
 
                 /* hydrogen bond lists */

@@ -240,7 +240,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
             if ( reax->sbp[i].gamma_w > 0.5 )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 3 )
-                    fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters\n" \
+                    fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters!\n" \
                              "  Force field parameters for element %s\n"        \
                              "  indicate inner wall+shielding, but earlier\n"   \
                              "  atoms indicate different vdWaals-method.\n"     \
@@ -262,7 +262,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 2 )
                 {
-                    fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters\n" \
+                    fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters!\n" \
                              "  Force field parameters for element %s\n"        \
                              "  indicate inner wall without shielding, but earlier\n" \
                              "  atoms indicate different vdWaals-method.\n"     \
@@ -288,9 +288,9 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
             if ( reax->sbp[i].gamma_w > 0.5 )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 1 )
-                    fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters\n" \
+                    fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters!\n" \
                              "  Force field parameters for element %s\n"        \
-                             "  indicate  shielding without inner wall, but earlier\n" \
+                             "  indicate shielding without inner wall, but earlier\n" \
                              "  atoms indicate different vdWaals-method.\n"     \
                              "  This may cause division-by-zero errors.\n"      \
                              "  Keeping vdWaals-setting for earlier atoms.\n",

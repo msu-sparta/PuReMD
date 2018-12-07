@@ -45,8 +45,9 @@
 /* enables reordering atoms after neighbor list generation (optimization) */
 #define REORDER_ATOMS
 /* enables support for small simulation boxes (i.e. a simulation box with any
- * dimension less than twice the Verlet list cutoff distance, vlist_cut) */
-//#define SMALL_BOX_SUPPORT
+ * dimension less than twice the Verlet list cutoff distance, vlist_cut),
+ * which means multiple periodic images must be searched for interactions */
+#define SMALL_BOX_SUPPORT
 
 #define SUCCESS (1)
 #define FAILURE (0)
@@ -60,19 +61,34 @@
 #else
   #define PI (3.14159265)
 #endif
-#define C_ele (332.06371)
-//#define K_B (503.398008)   // kcal/mol/K
-#define K_B (0.831687)   // amu A^2 / ps^2 / K
-#define F_CONV (1e6 / 48.88821291 / 48.88821291)   // --> amu A / ps^2
-#define E_CONV (0.002391)   // amu A^2 / ps^2 --> kcal/mol
-#define EV_to_KCALpMOL (14.400000)   // ElectronVolt --> KCAL per MOLe
-#define KCALpMOL_to_EV (23.060549)   // 23.020000//KCAL per MOLe --> ElectronVolt
-#define ECxA_to_DEBYE (4.803204)      // elem. charge * angstrom -> debye conv
-#define CAL_to_JOULES (4.184000)      // CALories --> JOULES
-#define JOULES_to_CAL (1.0 / 4.184000)    // JOULES --> CALories
+/* */
+#define C_ELE (332.06371)
+/* kcal/mol/K */
+//#define K_B (503.398008)
+/* amu A^2 / ps^2 / K */
+#define K_B (0.831687)
+/* --> amu A / ps^2 */
+#define F_CONV (1e6 / 48.88821291 / 48.88821291)
+/* amu A^2 / ps^2 --> kcal/mol */
+#define E_CONV (0.002391)
+/* conversion constant from electron volts to kilo-calories per mole */
+#define EV_to_KCALpMOL (14.400000)
+/* conversion constant from kilo-calories per mole to electron volts */
+//#define KCALpMOL_to_EV (23.060549)  // value used in LAMMPS
+#define KCALpMOL_to_EV (23.0200000)   // value used in ReaxFF Fortran code
+/* elem. charge * angstrom -> debye conv */
+#define ECxA_to_DEBYE (4.803204)
+/* CALories --> JOULES */
+#define CAL_to_JOULES (4.184000)
+/* JOULES --> CALories */
+#define JOULES_to_CAL (1.0 / 4.184000)
+/* */
 #define AMU_to_GRAM (1.6605e-24)
+/* */
 #define ANG_to_CM (1.0e-8)
+/* */
 #define AVOGNR (6.0221367e23)
+/* */
 #define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
 
 #define MAX_STR (1024)

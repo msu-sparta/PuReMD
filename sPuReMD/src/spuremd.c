@@ -69,7 +69,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
             || (out_control->write_steps > 0
                 && data->step % out_control->write_steps == 0) )
     {
-        Compute_Total_Energy( system, data );
+        Compute_Total_Energy( system, control, data, workspace );
     }
 }
 
@@ -220,7 +220,6 @@ int simulate( const void * const handle )
         Generate_Neighbor_Lists( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
-        //fprintf( stderr, "total: %.2f secs\n", data.timing.nbrs);
         Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
@@ -233,7 +232,8 @@ int simulate( const void * const handle )
                     || (spmd_handle->out_control->write_steps > 0
                         && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0) )
             {
-                Compute_Total_Energy( spmd_handle->system, spmd_handle->data );
+                Compute_Total_Energy( spmd_handle->system, spmd_handle->control,
+                        spmd_handle->data, spmd_handle->workspace );
             }
 
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,

@@ -416,16 +416,22 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
             }
 
-            workspace->b_s[system->N] = control->cm_q_net;
-            workspace->b[system->N] = control->cm_q_net;
-
-            for ( i = system->N + 1; i < system->N_cm; ++i )
+            /* Non-zero total charge can lead to unphysical results.
+             * As such, set the ACKS2 reference charge of every atom
+             * to the total charge divided by the number of atoms.
+             * Except for trivial cases, this leads to fractional
+             * reference charges, which is usually not desirable. */
+            for ( i = 0; i < system->N; ++i )
             {
-                workspace->b_s[i] = 0.0;
+                workspace->b_s[system->N + i] = control->cm_q_net / system->N;
 
                 //TODO: check if unused (redundant)
-                workspace->b[i] = 0.0;
+                workspace->b[system->N + i] = control->cm_q_net / system->N;
             }
+
+            /* system charge defines the total charge constraint */
+            workspace->b_s[system->N_cm] = control->cm_q_net;
+            workspace->b[system->N_cm] = control->cm_q_net;
             break;
 
         default:

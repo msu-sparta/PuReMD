@@ -1108,6 +1108,26 @@ static void Calculate_Charges_EE( const reax_system * const system,
 }
 
 
+/* Get atomic charge q for ACKS2 method
+ */
+static void Calculate_Charges_ACKS2( const reax_system * const system,
+        static_storage * const workspace )
+{
+    int i;
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        system->atoms[i].q = workspace->s[0][i];
+
+#if defined(DEBUG_FOCUS)
+        printf( "atom %4d: %f\n", i, system->atoms[i].q );
+        printf( "  x[0]: %10.5f, x[1]: %10.5f, x[2]:  %10.5f\n",
+               system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );
+#endif
+    }
+}
+
+
 /* Main driver method for QEq kernel
  *  1) init / setup routines for preconditioning of linear solver
  *  2) compute preconditioner
@@ -1356,7 +1376,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
     data->timing.cm_solver_iters += iters;
 
-    Calculate_Charges_EE( system, workspace );
+    Calculate_Charges_ACKS2( system, workspace );
 }
 
 
