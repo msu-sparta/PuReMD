@@ -185,9 +185,6 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
     for ( i = 0; i < A->n; ++i )
     {
 
-        if ((*A_full)->start == NULL)
-        {
-        }
         (*A_full)->start[i] = count;
 
         /* A: symmetric, lower triangular portion only stored */
