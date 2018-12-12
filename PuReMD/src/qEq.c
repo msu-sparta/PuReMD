@@ -433,6 +433,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         }
     }
     
+    //TODO: used for timing to sync processors going into the linear solve, but remove for production code
     MPI_Barrier( mpi_data->world ); 
     for ( j = 0; j < system->n; ++j )
         workspace->s[j] = workspace->x[j][0];
