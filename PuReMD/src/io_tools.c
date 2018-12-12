@@ -718,21 +718,20 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
 void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
 {
     int i, j;
-    //FILE *f = fopen( "water_6540_p64_cm.txt", "w" );
+    FILE *f = sfopen( fname, "w", "Print_Sparse_Matrix2" );
 
     if( system->my_rank == 0 )
     {
-        for ( i = 0; i < A->NT; ++i )
-        {
+        for ( i = 0; i < A->n; ++i )
             for ( j = A->start[i]; j < A->end[i]; ++j )
-            {
-                fprintf( stdout, "%d %d %.15e\n",
-                        i + 1, A->entries[j].j + 1, A->entries[j].val );
-            }
-        }
+                fprintf( f, "%d %d %.15e\n",
+                        system->my_atoms[i].orig_id,
+                        system->my_atoms[A->entries[j].j].orig_id,
+                        A->entries[j].val );
+
     }
 
-    //fclose( f );
+    sfclose( f, "Print_Sparse_Matrix2" );
 }
 
 
