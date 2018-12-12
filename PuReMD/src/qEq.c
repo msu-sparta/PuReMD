@@ -432,8 +432,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
             Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
         }
     }
-
-
+    
+    MPI_Barrier( mpi_data->world ); 
     for ( j = 0; j < system->n; ++j )
         workspace->s[j] = workspace->x[j][0];
     iters = CG(system, control, data, workspace, workspace->H, workspace->b_s,

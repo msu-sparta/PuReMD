@@ -838,7 +838,7 @@ void ReAllocate( reax_system *system, control_params *control,
     if ( workspace->H->NT >= DANGER_ZONE * workspace->H->cap )
     {
         nflag = 1;
-        workspace->H->cap = (int)(workspace->H->NT * SAFE_ZONE);
+        workspace->H->cap = (int)(workspace->H->NT * SAFE_ZONE_NT);
     }
 #endif
 
@@ -929,7 +929,7 @@ void ReAllocate( reax_system *system, control_params *control,
 #endif
 #if defined(NEUTRAL_TERRITORY)
         Reallocate_Matrix( &(workspace->H), H->cap,
-                           realloc->Htop * SAFE_ZONE, "H", comm );
+                           realloc->Htop * SAFE_ZONE_NT, "H", comm );
 #else
         Reallocate_Matrix( &(workspace->H), system->local_cap,
                            realloc->Htop * SAFE_ZONE, "H", comm );
@@ -1093,7 +1093,7 @@ void ReAllocate( reax_system *system, control_params *control,
         {
             nbr_pr = &system->my_nt_nbrs[p];
             nbr_data = &mpi_data->out_nt_buffers[p];
-            nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
+            nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE_NT, MIN_SEND );
         }
 #endif
 

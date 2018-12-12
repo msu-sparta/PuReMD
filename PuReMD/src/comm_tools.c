@@ -169,7 +169,7 @@ void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
         
         if ( mpi_data->in_nt_buffer[d] == NULL )
         {
-            nbr->est_recv = MAX( SAFER_ZONE * cnt, MIN_SEND );
+            nbr->est_recv = MAX( SAFER_ZONE_NT * cnt, MIN_SEND );
             mpi_data->in_nt_buffer[d] = smalloc( nbr->est_recv * sizeof(real),
                     "Init_Neural_Territory::mpi_data->in_nt_buffer[d]", comm );
         }
@@ -199,7 +199,7 @@ void Estimate_NT_Atoms( reax_system *system, mpi_datatypes *mpi_data )
         nbr->est_send = Sort_Neutral_Territory( system, d, out_bufs, 0 );
 
         /* estimate the space needed based on the count above */
-        nbr->est_send = MAX( MIN_SEND, nbr->est_send * SAFER_ZONE );
+        nbr->est_send = MAX( MIN_SEND, nbr->est_send * SAFER_ZONE_NT );
 
         /* allocate the estimated space */
         out_bufs[d].index = scalloc( nbr->est_send, sizeof(int),

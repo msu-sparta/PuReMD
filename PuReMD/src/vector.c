@@ -27,7 +27,6 @@
 #include "reax_vector.h"
 #endif
 
-//TODO change the order ( from 0 to k-1 )
 int Vector_isZero( real* v, int k )
 {
     for ( --k; k >= 0; --k )

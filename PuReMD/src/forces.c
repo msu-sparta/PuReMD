@@ -712,6 +712,10 @@ void Init_Forces( reax_system *system, control_params *control,
         }
     }
 
+#if defined(DEBUG)
+    Print_Sparse_Matrix2( system, H, NULL );
+#endif
+
     workspace->realloc.Htop = Htop;
     workspace->realloc.num_bonds = num_bonds;
     workspace->realloc.num_hbonds = num_hbonds;
@@ -1151,12 +1155,13 @@ void Estimate_Storages( reax_system *system, control_params *control,
     }
 #endif
 
-/*#if defined(NEUTRAL_TERRITORY)
+#if defined(NEUTRAL_TERRITORY)
     *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE_NT, MIN_CAP );
     *Htop = (int) MAX( *Htop * SAFE_ZONE_NT, MIN_CAP * MIN_HENTRIES );
-#endif*/
+#else
     *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE, MIN_CAP );
     *Htop = (int) MAX( *Htop * SAFE_ZONE, MIN_CAP * MIN_HENTRIES );
+#endif
 
     for ( i = 0; i < system->n; ++i )
     {
