@@ -291,7 +291,7 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
         data->timing.bonded = 0;
         data->timing.nonb = 0;
         data->timing.cm = ZERO;
-        data->timing.cm_sort_mat_rows = ZERO;
+        data->timing.init_qeq = ZERO;
         data->timing.cm_solver_comm = ZERO;
         data->timing.cm_solver_allreduce = ZERO;
         data->timing.cm_solver_pre_comp = ZERO;
@@ -365,7 +365,7 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
         data->timing.bonded = 0;
         data->timing.nonb = 0;
         data->timing.cm = ZERO;
-        data->timing.cm_sort_mat_rows = ZERO;
+        data->timing.init_qeq = ZERO;
         data->timing.cm_solver_comm = ZERO;
         data->timing.cm_solver_allreduce = ZERO;
         data->timing.cm_solver_pre_comp = ZERO;

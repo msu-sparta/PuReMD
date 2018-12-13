@@ -328,7 +328,7 @@ real Compute_tabH( real r_ij, int ti, int tj )
 
 void Init_Forces( reax_system *system, control_params *control,
                   simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm )
+                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -353,6 +353,9 @@ void Init_Forces( reax_system *system, control_params *control,
     int total_sum[6];
     int nt_flag;
 #endif
+    real t_start, t_cm_init, total_cm_init;
+
+    t_cm_init = 0;
 
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
@@ -376,6 +379,7 @@ void Init_Forces( reax_system *system, control_params *control,
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
 
 #if defined(NEUTRAL_TERRITORY)
+    t_start = Get_Time( );
     nt_flag = 1;
     if( renbr )
     {
@@ -417,6 +421,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
     mark[0] = mark[1] = 1;
     mark[2] = mark[3] = mark[4] = mark[5] = 2;
+    t_cm_init += Get_Timing_Info( t_start );
 #endif
 
     for ( i = 0; i < system->N; ++i )
@@ -461,10 +466,12 @@ void Init_Forces( reax_system *system, control_params *control,
         ihb_top = -1;
         if ( local == 1 )
         {
+            t_start = Get_Time( );
             H->start[i] = Htop;
             H->entries[Htop].j = i;
             H->entries[Htop].val = sbp_i->eta;
             ++Htop;
+            t_cm_init += Get_Timing_Info( t_start );
 
             if ( control->hbond_cut > 0 )
             {
@@ -527,6 +534,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
                 if ( local == 1 )
                 {
+                    t_start = Get_Time( );
                     /* H matrix entry */
 #if defined(NEUTRAL_TERRITORY)
                     if ( atom_j->nt_dir > 0 || (j < system->n
@@ -572,6 +580,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         ++Htop;
                     }
 #endif
+                    t_cm_init += Get_Timing_Info( t_start );
 
                     /* hydrogen bond lists */
                     if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2) &&
@@ -603,6 +612,7 @@ void Init_Forces( reax_system *system, control_params *control,
 #if defined(NEUTRAL_TERRITORY)
                 else if ( local == 2 )
                 {
+                    t_start = Get_Time( );
                     /* H matrix entry */
                     if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] 
                                 && ( H->format == SYM_FULL_MATRIX
@@ -635,6 +645,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
                         ++Htop;
                     }
+                    t_cm_init += Get_Timing_Info( t_start );
                 }
 #endif
 
@@ -659,6 +670,7 @@ void Init_Forces( reax_system *system, control_params *control,
         }
 
         Set_End_Index( i, btop_i, bonds );
+        t_start = Get_Time( );
         if ( local == 1 )
         {
             H->end[i] = Htop;
@@ -679,6 +691,7 @@ void Init_Forces( reax_system *system, control_params *control,
             }
         }
 #endif
+        t_cm_init += Get_Timing_Info( t_start );
     }
 
     if ( far_nbrs->format == FULL_LIST )
@@ -710,6 +723,12 @@ void Init_Forces( reax_system *system, control_params *control,
                 }
             }
         }
+    }
+
+    MPI_Reduce(&t_cm_init, &total_cm_init, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.init_qeq += total_cm_init / control->nprocs;
     }
 
 #if defined(DEBUG)
@@ -1178,16 +1197,16 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ estimate storages: Htop = %d, num_3body = %d\n",
-             system->my_rank, *Htop, *num_3body );
+            system->my_rank, *Htop, *num_3body );
     MPI_Barrier( comm );
 #endif
 }
 
 
 void Compute_Forces( reax_system *system, control_params *control,
-                     simulation_data *data, storage *workspace,
-                     reax_list **lists, output_controls *out_control,
-                     mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
     MPI_Comm comm;
     int qeq_flag;
@@ -1209,7 +1228,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     qeq_flag = 0;
 #endif
     if ( qeq_flag )
-        Init_Forces( system, control, data, workspace, lists, out_control, comm );
+        Init_Forces( system, control, data, workspace, lists, out_control, comm, mpi_data );
     else
         Init_Forces_noQEq( system, control, data, workspace,
                            lists, out_control, comm );

@@ -100,7 +100,7 @@ int Init_Output_Files( reax_system *system, control_params *control,
             out_control->log = sfopen( temp, "w", "Init_Output_Files" );
             fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                     "step", "total", "comm", "neighbors", "init", "bonded", "nonbonded", 
-                    "CM", "CM Sort", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
+                    "CM", "QEq Init", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
                     "S spmv", "S vec ops", "S orthog", "S tsolve" );
             fflush( out_control->log );
 #endif
@@ -1107,7 +1107,7 @@ void Output_Results( reax_system *system, control_params *control,
                     data->timing.bonded * denom,
                     data->timing.nonb * denom,
                     data->timing.cm * denom,
-                    data->timing.cm_sort_mat_rows * denom,
+                    data->timing.init_qeq * denom,
                     (double)( data->timing.cm_solver_iters * denom),
                     data->timing.cm_solver_pre_comp * denom,
                     data->timing.cm_solver_pre_app * denom,
@@ -1126,7 +1126,7 @@ void Output_Results( reax_system *system, control_params *control,
             data->timing.bonded = 0;
             data->timing.nonb = 0;
             data->timing.cm = ZERO;
-            data->timing.cm_sort_mat_rows = ZERO;
+            data->timing.init_qeq = ZERO;
             data->timing.cm_solver_pre_comp = ZERO;
             data->timing.cm_solver_pre_app = ZERO;
             data->timing.cm_solver_comm = ZERO;

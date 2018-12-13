@@ -1915,7 +1915,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     MPI_Barrier(mpi_data->world);
 
     //TODO only master node should report it
-    if ( i >= control->cm_solver_max_iters )
+    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
     {
         fprintf( stderr, "CG convergence failed!\n" );
         return i;

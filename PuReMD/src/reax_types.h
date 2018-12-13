@@ -792,8 +792,8 @@ typedef struct
     real nonb;
     /* atomic charge distribution calculation time */
     real cm;
-    /**/
-    real cm_sort_mat_rows;
+    /* matrix initiation and sort time */
+    real init_qeq;
     /**/
     real cm_solver_comm;
     /**/
