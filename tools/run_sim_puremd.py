@@ -309,8 +309,8 @@ if __name__ == '__main__':
             'bilayer_56800', 'bilayer_340800', \
             'dna_19733', \
             'petn_48256', \
-            'silica_6000', 'silica_72000', 'silica_300000', \
-            'water_6540', 'water_78480', 'water_327000', \
+            'silica_6000', 'silica_72000', 'silica_300000', 'silica_5832000', \
+            'water_6540', 'water_78480', 'water_327000', 'water_6540000', \
             ]
 
     parser = argparse.ArgumentParser(description='Run molecular dynamics simulations on specified data sets.')
@@ -425,6 +425,15 @@ if __name__ == '__main__':
                 result_header = header_str, result_body_fmt=body_fmt_str,
                 geo_format=['0'], result_file=result_file,
                 min_step=min_step, max_step=max_step))
+    if 'water_6540000' in args.data:
+        test_cases.append(
+            TestCase(path.join(data_dir, 'water/water_6540000.geo'),
+                path.join(data_dir, 'water/ffield_acks2.water'),
+                path.join(control_dir, 'parallel_control'),
+                params=params, result_header_fmt=header_fmt_str,
+                result_header = header_str, result_body_fmt=body_fmt_str,
+                geo_format=['0'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
     if 'bilayer_56800' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'bilayer/bilayer_56800.pdb'),
@@ -473,6 +482,15 @@ if __name__ == '__main__':
     if 'silica_300000' in args.data:
         test_cases.append(
             TestCase(path.join(data_dir, 'silica/silica_300000.geo'),
+                path.join(data_dir, 'silica/ffield-bio'),
+                path.join(control_dir, 'parallel_control'),
+                params=params, result_header_fmt=header_fmt_str,
+                result_header = header_str, result_body_fmt=body_fmt_str,
+                geo_format=['0'], result_file=result_file,
+                min_step=min_step, max_step=max_step))
+    if 'silica_5832000' in args.data:
+        test_cases.append(
+            TestCase(path.join(data_dir, 'silica/silica_5832000.geo'),
                 path.join(data_dir, 'silica/ffield-bio'),
                 path.join(control_dir, 'parallel_control'),
                 params=params, result_header_fmt=header_fmt_str,
