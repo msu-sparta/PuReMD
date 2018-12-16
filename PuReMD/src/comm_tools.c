@@ -794,7 +794,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
 
     if ( system->my_rank == MASTER_NODE )
     {
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
     }
 #endif
 
@@ -862,7 +862,7 @@ void Comm_Atoms( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = MPI_Wtime() - t_start;
         data->timing.comm += t_elapsed;
     }
 #endif

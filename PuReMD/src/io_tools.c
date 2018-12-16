@@ -1093,7 +1093,7 @@ void Output_Results( reax_system *system, control_params *control,
 #endif //DEBUG
 
 #if defined(LOG_PERFORMANCE)
-            t_elapsed = Get_Timing_Info( data->timing.total );
+            t_elapsed = MPI_Wtime() - data->timing.total;
             if ( data->step - data->prev_steps > 0 )
                 denom = 1.0 / out_control->energy_update_freq;
             else denom = 1;
@@ -1119,7 +1119,7 @@ void Output_Results( reax_system *system, control_params *control,
                     data->timing.cm_solver_tri_solve * denom );
 
             //Reset_Timing( &(data->timing) );
-            data->timing.total = Get_Time( );
+            data->timing.total = MPI_Wtime();
             data->timing.comm = ZERO;
             data->timing.nbrs = 0;
             data->timing.init_forces = 0;

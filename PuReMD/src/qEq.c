@@ -376,9 +376,9 @@ static void Setup_Preconditioner_QEq( reax_system *system, control_params *contr
     real time, t_sort, t_pc, total_sort, total_pc;
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-    time = Get_Time( );
+    time = MPI_Wtime();
     Sort_Matrix_Rows( workspace->H );
-    t_sort = Get_Timing_Info( time );
+    t_sort = MPI_Wtime() - time;
 
     t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
             control->nprocs, control->cm_solver_pre_comp_sai_thres );

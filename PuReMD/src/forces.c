@@ -379,7 +379,7 @@ void Init_Forces( reax_system *system, control_params *control,
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
 
 #if defined(NEUTRAL_TERRITORY)
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     nt_flag = 1;
     if( renbr )
     {
@@ -421,7 +421,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
     mark[0] = mark[1] = 1;
     mark[2] = mark[3] = mark[4] = mark[5] = 2;
-    t_cm_init += Get_Timing_Info( t_start );
+    t_cm_init += MPI_Wtime() - t_start;
 #endif
 
     for ( i = 0; i < system->N; ++i )
@@ -466,12 +466,12 @@ void Init_Forces( reax_system *system, control_params *control,
         ihb_top = -1;
         if ( local == 1 )
         {
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
             H->start[i] = Htop;
             H->entries[Htop].j = i;
             H->entries[Htop].val = sbp_i->eta;
             ++Htop;
-            t_cm_init += Get_Timing_Info( t_start );
+            t_cm_init += MPI_Wtime() - t_start;
 
             if ( control->hbond_cut > 0 )
             {
@@ -534,7 +534,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
                 if ( local == 1 )
                 {
-                    t_start = Get_Time( );
+                    t_start = MPI_Wtime();
                     /* H matrix entry */
 #if defined(NEUTRAL_TERRITORY)
                     if ( atom_j->nt_dir > 0 || (j < system->n
@@ -580,7 +580,7 @@ void Init_Forces( reax_system *system, control_params *control,
                         ++Htop;
                     }
 #endif
-                    t_cm_init += Get_Timing_Info( t_start );
+                    t_cm_init += MPI_Wtime() - t_start;
 
                     /* hydrogen bond lists */
                     if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2) &&
@@ -612,7 +612,7 @@ void Init_Forces( reax_system *system, control_params *control,
 #if defined(NEUTRAL_TERRITORY)
                 else if ( local == 2 )
                 {
-                    t_start = Get_Time( );
+                    t_start = MPI_Wtime();
                     /* H matrix entry */
                     if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] 
                                 && ( H->format == SYM_FULL_MATRIX
@@ -645,7 +645,7 @@ void Init_Forces( reax_system *system, control_params *control,
 
                         ++Htop;
                     }
-                    t_cm_init += Get_Timing_Info( t_start );
+                    t_cm_init += MPI_Wtime() - t_start;
                 }
 #endif
 
@@ -670,7 +670,7 @@ void Init_Forces( reax_system *system, control_params *control,
         }
 
         Set_End_Index( i, btop_i, bonds );
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
         if ( local == 1 )
         {
             H->end[i] = Htop;
@@ -691,7 +691,7 @@ void Init_Forces( reax_system *system, control_params *control,
             }
         }
 #endif
-        t_cm_init += Get_Timing_Info( t_start );
+        t_cm_init += MPI_Wtime() - t_start;
     }
 
     if ( far_nbrs->format == FULL_LIST )
@@ -725,11 +725,11 @@ void Init_Forces( reax_system *system, control_params *control,
         }
     }
 
-    MPI_Reduce(&t_cm_init, &total_cm_init, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    /*MPI_Reduce(&t_cm_init, &total_cm_init, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
     if( system->my_rank == MASTER_NODE )
     {
         data->timing.init_qeq += total_cm_init / control->nprocs;
-    }
+    }*/
 
 #if defined(DEBUG)
     Print_Sparse_Matrix2( system, H, NULL );
@@ -1215,7 +1215,7 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 #endif
 
     comm = mpi_data->world;
@@ -1236,7 +1236,12 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &(data->timing.init_forces) );
+    {
+        //Update_Timing_Info( &t_start, &(data->timing.init_forces) );
+        real t_end = MPI_Wtime();
+        data->timing.init_forces += t_end - t_start;
+        t_start = t_end;
+    }
 #endif
 
 
@@ -1248,7 +1253,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
     }
 #endif
 #if defined(DEBUG_FOCUS)
@@ -1267,7 +1272,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = MPI_Wtime() - t_start;
         data->timing.cm += t_elapsed;
     }
 #endif
@@ -1285,7 +1290,12 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &(data->timing.nonb) );
+    {
+        //Update_Timing_Info( &t_start, &(data->timing.nonb) );
+        real t_end = MPI_Wtime();
+        data->timing.nonb += t_end - t_start;
+        t_start = t_end;
+    }
 #endif
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
@@ -1300,7 +1310,12 @@ void Compute_Forces( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &(data->timing.bonded) );
+    {
+        //Update_Timing_Info( &t_start, &(data->timing.bonded) );
+        real t_end = MPI_Wtime();
+        data->timing.bonded += t_end - t_start;
+        t_start = t_end;
+    }
 #endif
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: total forces computed\n",

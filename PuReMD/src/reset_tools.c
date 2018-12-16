@@ -106,7 +106,7 @@ void Reset_Simulation_Data( simulation_data* data, int virial )
 
 void Reset_Timing( reax_timing *rt )
 {
-    /*rt->total = Get_Time();
+    /*rt->total = MPI_Wtime();
     rt->comm = 0;
     rt->nbrs = 0;
     rt->init_forces = 0;

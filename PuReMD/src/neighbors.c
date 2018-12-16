@@ -81,7 +81,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     real t_start = 0, t_elapsed = 0;
 
     if ( system->my_rank == MASTER_NODE )
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 #endif
 
     // fprintf( stderr, "\n\tentered nbrs - " );
@@ -166,7 +166,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = MPI_Wtime() - t_start;
         data->timing.nbrs += t_elapsed;
     }
 #endif

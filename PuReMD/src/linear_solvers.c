@@ -134,7 +134,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     real start, t_start, t_comm;
     real total_comm;
 
-    start = Get_Time();
+    start = MPI_Wtime();
     t_comm = 0.0;
 
     srecv = NULL;
@@ -190,10 +190,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
     s_local = (int) (12.0 * log2(n_local * nprocs));
     
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Allreduce( &n_local, &n, 1, MPI_INT, MPI_SUM, comm );
     MPI_Reduce( &s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, comm );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     /* count num. bin elements for each processor, uniform bin sizes */
     input_array = smalloc( sizeof(real) * n_local,
@@ -240,9 +240,9 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     /* gather samples at the root process */
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Gather( &s_local, 1, MPI_INT, srecv, 1, MPI_INT, MASTER_NODE, comm );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     if( system->my_rank == MASTER_NODE )
     {
@@ -253,10 +253,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
         }
     }
 
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Gatherv( samplelist_local, s_local, MPI_DOUBLE,
             samplelist, srecv, sdispls, MPI_DOUBLE, MASTER_NODE, comm);
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     /* sort samples at the root process and select pivots */
     if ( system->my_rank == MASTER_NODE )
@@ -270,9 +270,9 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     /* broadcast pivots */
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Bcast( pivotlist, nprocs - 1, MPI_DOUBLE, MASTER_NODE, comm );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     for ( i = 0; i < nprocs; ++i )
     {
@@ -308,9 +308,9 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     /* determine counts for elements per process */
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM, comm );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     /* find the target process */
     target_proc = 0;
@@ -336,10 +336,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     /* send local buckets to target processor for quickselect */
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts,
             1, MPI_INT, target_proc, comm );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     if ( system->my_rank == target_proc )
     {
@@ -350,10 +350,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
         }
     }
 
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Gatherv( bucketlist_local + dspls_local[target_proc], scounts_local[target_proc], MPI_DOUBLE,
             bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, comm);
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     /* apply quick select algorithm at the target process */
     if ( system->my_rank == target_proc )
@@ -421,9 +421,9 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     /* broadcast the filtering value */
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
 #if defined(DEBUG)
     int nnz = 0; //uncomment to check the nnz's in the sparsity pattern
@@ -490,7 +490,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
         sfree( bucketlist, "setup_sparse_approx_inverse::bucketlist" );
     }
 
-    return Get_Timing_Info( start );
+    return MPI_Wtime() - start;
 }
 
 
@@ -527,7 +527,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     real start, t_start, t_comm;
     real total_comm;
     ///////////////////
-    start = Get_Time( );
+    start = MPI_Wtime();
     t_comm = 0.0;
 
     comm = mpi_data->world;
@@ -579,10 +579,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     }
 
     /* Announce the nnz's in each row that will be communicated later */
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     scale = sizeof(int) / sizeof(void);
     Dist_NT( system, mpi_data, row_nnz, MPI_INT, scale, int_packer );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
     fprintf( stdout,"SAI after Dist_NT call\n");
     fflush( stdout );
 
@@ -614,10 +614,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
                 fprintf( stdout,"Dist_NT communication receive phase direction %d will receive %d\n", d, cnt);
                 fflush( stdout );
-                t_start = Get_Time( );
+                t_start = MPI_Wtime();
                 MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank, d, comm, &(req[2*d]) );
                 MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank, d, comm, &(req[2*d+1]) );
-                t_comm += Get_Timing_Info( t_start );
+                t_comm += MPI_Wtime() - t_start;
             }
         }
     }
@@ -662,14 +662,14 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 fprintf( stdout,"Dist_NT communication    send phase direction %d will    send %d\n", d, cnt );
                 fflush( stdout );
 
-                t_start = Get_Time( );
+                t_start = MPI_Wtime();
                 MPI_Send( j_send, cnt, MPI_INT, nbr->rank, d, comm );
                 fprintf( stdout,"Dist_NT communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
                 MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank, d, comm );
                 fprintf( stdout,"Dist_NT communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
-                t_comm += Get_Timing_Info( t_start );
+                t_comm += MPI_Wtime() - t_start;
             }
         }
     }
@@ -678,9 +678,9 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     ///////////////////////
     for ( d = 0; d < count; ++d )
     {
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
         MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
-        t_comm += Get_Timing_Info( t_start );
+        t_comm += MPI_Wtime() - t_start;
 
         nbr = &(system->my_nt_nbrs[index/2]);
         cnt = 0;
@@ -881,7 +881,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
 
-    return Get_Timing_Info( start );
+    return MPI_Wtime() - start;
 }
 #else
 real sparse_approx_inverse( reax_system *system, simulation_data *data,
@@ -912,7 +912,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     real start, t_start, t_comm;
     real total_comm;
 
-    start = Get_Time( );
+    start = MPI_Wtime();
     t_comm = 0.0;
 
     comm = mpi_data->world;
@@ -957,10 +957,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     }
 
     /* Announce the nnz's in each row that will be communicated later */
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     scale = sizeof(int) / sizeof(void);
     Dist( system, mpi_data, row_nnz, MPI_INT, scale, int_packer );
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -996,10 +996,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 val_recv1 = smalloc( sizeof(real) * cnt,
                         "sparse_approx_inverse::val_recv1", MPI_COMM_WORLD );
 
-                t_start = Get_Time( );
+                t_start = MPI_Wtime();
                 MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
                 MPI_Irecv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm, &req2 );
-                t_comm += Get_Timing_Info( t_start );
+                t_comm += MPI_Wtime() - t_start;
             }
         }
 
@@ -1025,10 +1025,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 val_recv2 = smalloc( sizeof(real) * cnt,
                         "sparse_approx_inverse::val_recv2", MPI_COMM_WORLD );
 
-                t_start = Get_Time( );
+                t_start = MPI_Wtime();
                 MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
                 MPI_Irecv( val_recv2, cnt, MPI_DOUBLE, nbr2->rank, 2 * d, comm, &req4 );
-                t_comm += Get_Timing_Info( t_start );
+                t_comm += MPI_Wtime() - t_start;
             }
         }
 
@@ -1072,10 +1072,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                     }
                 }
 
-                t_start = Get_Time( );
+                t_start = MPI_Wtime();
                 MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d, comm );
                 MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d, comm );
-                t_comm += Get_Timing_Info( t_start );
+                t_comm += MPI_Wtime() - t_start;
             }
         }
 
@@ -1118,20 +1118,20 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                     }
                 }
 
-                t_start = Get_Time( );
+                t_start = MPI_Wtime();
                 MPI_Send( j_send, cnt, MPI_INT, nbr2->rank, 2 * d + 1, comm );
                 MPI_Send( val_send, cnt, MPI_DOUBLE, nbr2->rank, 2 * d + 1, comm );
-                t_comm += Get_Timing_Info( t_start );
+                t_comm += MPI_Wtime() - t_start;
             }
 
         }
 
         if ( flag1 )
         {
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
             MPI_Wait( &req1, &stat1 );
             MPI_Wait( &req2, &stat2 );
-            t_comm += Get_Timing_Info( t_start );
+            t_comm += MPI_Wtime() - t_start;
 
             cnt = 0;
             for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
@@ -1155,10 +1155,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
         if ( flag2 )
         {
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
             MPI_Wait( &req3, &stat3 );
             MPI_Wait( &req4, &stat4 );
-            t_comm += Get_Timing_Info( t_start );
+            t_comm += MPI_Wtime() - t_start;
 
             cnt = 0;
             for ( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
@@ -1368,7 +1368,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
 
-    return Get_Timing_Info( start );
+    return MPI_Wtime() - start;
 }
 #endif
 #endif
@@ -1450,7 +1450,7 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
     {
         matvecs = 0;
         t_start = matvec_time = dot_time = 0;
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
     }
 #endif
 
@@ -1464,7 +1464,10 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        Update_Timing_Info( &t_start, &matvec_time );
+        //Update_Timing_Info( &t_start, &matvec_time );
+        real t_end = MPI_Wtime();
+        matvec_time += t_end - t_start;
+        t_start = t_end;
     }
 #endif
 
@@ -1502,7 +1505,12 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 
 #if defined(CG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
-        Update_Timing_Info( &t_start, &dot_time );
+    {
+        //Update_Timing_Info( &t_start, &dot_time );
+        real t_end = MPI_Wtime();
+        dot_time += t_end - t_start;
+        t_start = t_end;
+    }
 #endif
 
     for ( i = 1; i < 300; ++i )
@@ -1517,7 +1525,10 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
         {
-            Update_Timing_Info( &t_start, &matvec_time );
+            //Update_Timing_Info( &t_start, &matvec_time );
+            real t_end = MPI_Wtime();
+            matvec_time += t_end - t_start;
+            t_start = t_end;
         }
 #endif
 
@@ -1557,7 +1568,10 @@ void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
         {
-            Update_Timing_Info( &t_start, &dot_time );
+            //Update_Timing_Info( &t_start, &dot_time );
+            real t_end = MPI_Wtime();
+            dot_time += t_end - t_start;
+            t_start = t_end;
         }
 #endif
 
@@ -1737,164 +1751,168 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     scale = sizeof(real) / sizeof(void);
 #if defined(NEUTRAL_TERRITORY)
     Dist_NT( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
 #else
     Dist( system, mpi_data, x, MPI_DOUBLE, scale, real_packer );
 #endif
-    t_comm += Get_Timing_Info( t_start );
+    t_comm += MPI_Wtime() - t_start;
 
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec( H, x, workspace->q, H->NT );
 #else
     Sparse_MatVec( H, x, workspace->q, system->N );
 #endif
-    t_spmv += Get_Timing_Info( t_start );
+    t_spmv += MPI_Wtime() - t_start;
 
     if ( H->format == SYM_HALF_MATRIX )
     {
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
         Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
 #else
         Coll( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
 #endif
-        t_comm += Get_Timing_Info( t_start );
+        t_comm += MPI_Wtime() - t_start;
     }
 
     else
     {
+        t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
         Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
 #endif
+        t_comm += MPI_Wtime() - t_start;
     }
 
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
-    t_vops += Get_Timing_Info( t_start );
+    t_vops += MPI_Wtime() - t_start;
 
     /* pre-conditioning */
     if( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
         Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
 #else
         Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
 #endif
-        t_comm += Get_Timing_Info( t_start );
+        t_comm += MPI_Wtime() - t_start;
         
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
         Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
-        t_pa += Get_Timing_Info( t_start );
+        t_pa += MPI_Wtime() - t_start;
     }
 
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
     {
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
         for ( j = 0; j < system->n; ++j )
         {
             workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        t_pa += Get_Timing_Info( t_start );
+        t_pa += MPI_Wtime() - t_start;
     }
 
-    t_start = Get_Time( );
+    t_start = MPI_Wtime();
     b_norm = Parallel_Norm( b, system->n, mpi_data->world );
     sig_new = Parallel_Dot(workspace->r, workspace->d, system->n, mpi_data->world);
-    t_allreduce += Get_Timing_Info( t_start );
+    t_allreduce += MPI_Wtime() - t_start;
 
     for ( i = 0; i < control->cm_solver_max_iters && sqrt(sig_new) / b_norm > tol; ++i )
     {
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
         Dist_NT( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
 #else
         Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
 #endif
-        t_comm += Get_Timing_Info( t_start );
+        t_comm += MPI_Wtime() - t_start;
 
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec( H, workspace->d, workspace->q, H->NT );
 #else
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
 #endif
-        t_spmv += Get_Timing_Info( t_start );
+        t_spmv += MPI_Wtime() - t_start;
 
         if ( H->format == SYM_HALF_MATRIX )
         {
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
             Coll_NT(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
 #else
             Coll(system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker);
 #endif
-            t_comm += Get_Timing_Info( t_start );
+            t_comm += MPI_Wtime() - t_start;
         }
         else
         {
+            t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
             Coll_NT( system, mpi_data, workspace->q, MPI_DOUBLE, scale, real_unpacker );
 #endif
+            t_comm += MPI_Wtime() - t_start;
         }
 
-        t_start = Get_Time( );
+        t_start =  MPI_Wtime();
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);
-        t_allreduce += Get_Timing_Info ( t_start );
+        t_allreduce += MPI_Wtime() - t_start;
 
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
         alpha = sig_new / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += MPI_Wtime() - t_start;
 
         /* pre-conditioning */
         if( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
             Dist_NT( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
 #else
             Dist( system, mpi_data, workspace->r, MPI_DOUBLE, scale, real_packer );
 #endif
-            t_comm += Get_Timing_Info( t_start );
+            t_comm += MPI_Wtime() - t_start;
 
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, H->NT );
 #else
             Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
 #endif
-            t_pa += Get_Timing_Info( t_start );
+            t_pa += MPI_Wtime() - t_start;
         }
 
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
         {
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
             }
-            t_pa += Get_Timing_Info( t_start );
+            t_pa += MPI_Wtime() - t_start;
         }
 
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
         sig_old = sig_new;
         sig_new = Parallel_Dot(workspace->r, workspace->p, system->n, mpi_data->world);
-        t_allreduce += Get_Timing_Info( t_start );
+        t_allreduce += MPI_Wtime() - t_start;
 
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += MPI_Wtime() - t_start;
     }
 
     MPI_Reduce(&t_pa, &total_pa, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
@@ -1914,7 +1932,6 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     MPI_Barrier(mpi_data->world);
 
-    //TODO only master node should report it
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
     {
         fprintf( stderr, "CG convergence failed!\n" );
@@ -1970,7 +1987,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     {
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
 #endif
         Dist( system, mpi_data, workspace->d, MPI_DOUBLE, scale, real_packer );
         Sparse_MatVec( H, workspace->d, workspace->q, system->N );
@@ -1979,14 +1996,14 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
         {
-            t_elapsed = Get_Timing_Info( t_start );
+            t_elapsed = MPI_Wtime() - t_start;
             matvec_time += t_elapsed;
         }
 #endif
 
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
-            t_start = Get_Time( );
+            t_start = MPI_Wtime();
 #endif
         tmp = Parallel_Dot(workspace->d, workspace->q, system->n, mpi_data->world);
         alpha = sig_new / tmp;
@@ -2026,7 +2043,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 #if defined(CG_PERFORMANCE)
         if ( system->my_rank == MASTER_NODE )
         {
-            t_elapsed = Get_Timing_Info( t_start );
+            t_elapsed = MPI_Wtime() - t_start;
             dot_time += t_elapsed;
         }
 #endif

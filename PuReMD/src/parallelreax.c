@@ -186,7 +186,7 @@ int main( int argc, char* argv[] )
 
     /* measure total simulation time after input is read */
     if ( system->my_rank == MASTER_NODE )
-        t_start = Get_Time( );
+        t_start = MPI_Wtime();
 
     /* initialize datastructures */
     Initialize( system, control, data, workspace, lists, out_control, mpi_data );
@@ -248,7 +248,7 @@ int main( int argc, char* argv[] )
     /* end of the simulation, write total simulation time */
     if ( system->my_rank == MASTER_NODE )
     {
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = MPI_Wtime() - t_start;
         fprintf( out_control->out, "Total Simulation Time: %.2f secs\n", t_elapsed );
         fprintf( out_control->log, "Avg. # of Solver Itrs: %.2f\n", total_itr/((double)control->nsteps) );
     }

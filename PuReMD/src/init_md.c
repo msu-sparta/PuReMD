@@ -280,7 +280,7 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
     MPI_Barrier( mpi_data->world );  // wait for everyone to come here
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.start = Get_Time( );
+        data->timing.start = MPI_Wtime();
 #if defined(LOG_PERFORMANCE)
         //Reset_Timing( &data->timing );
         /* init timing info */
@@ -354,7 +354,7 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
     /* initialize the timer(s) */
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.start = Get_Time( );
+        data->timing.start = MPI_Wtime();
 #if defined(LOG_PERFORMANCE)
         //Reset_Timing( &data->timing );
         /* init timing info */
