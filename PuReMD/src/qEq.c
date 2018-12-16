@@ -328,9 +328,6 @@ void Calculate_Charges( reax_system *system, storage *workspace,
     q = (real*) malloc(system->N * sizeof(real));
 
     //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
-    q = (real*) malloc(system->N * sizeof(real));
-
-    //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
     //t_sum = Parallel_Vector_Acc(workspace->t, system->n, mpi_data->world);
     my_sum[0] = my_sum[1] = 0;
     for ( i = 0; i < system->n; ++i )
@@ -352,7 +349,8 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         /* backup s & t */
         atom->s[3] = atom->s[2];
         atom->s[2] = atom->s[1];
-
+        atom->s[1] = atom->s[0];
+        //atom->s[0] = workspace->s[i];
         atom->s[0] = workspace->x[i][0];
 
         atom->t[3] = atom->t[2];
@@ -432,7 +430,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     {
         if( control->cm_solver_pre_comp_refactor > 0 && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0))
         {
-            Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+            Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+
             Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
         }
     }
