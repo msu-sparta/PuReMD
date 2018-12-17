@@ -725,11 +725,11 @@ void Init_Forces( reax_system *system, control_params *control,
         }
     }
 
-    /*MPI_Reduce(&t_cm_init, &total_cm_init, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(&t_cm_init, &total_cm_init, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
     if( system->my_rank == MASTER_NODE )
     {
         data->timing.init_qeq += total_cm_init / control->nprocs;
-    }*/
+    }
 
 #if defined(DEBUG)
     Print_Sparse_Matrix2( system, H, NULL );
