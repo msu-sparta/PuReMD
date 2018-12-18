@@ -41,10 +41,10 @@
  * Define the preprocessor definition SMALL_BOX_SUPPORT to enable (in
  * reax_types.h). */
 typedef int (*count_far_neighbors_function)( rvec, rvec, int, int,
-        simulation_box*, real );
+        simulation_box*, real, real );
 
 typedef int (*find_far_neighbors_function)( rvec, rvec, int, int,
-        simulation_box*, real, far_neighbor_data* );
+        simulation_box*, real, real, far_neighbor_data* );
 
 
 static void Choose_Neighbor_Counter( reax_system *system, control_params *control,
@@ -186,7 +186,8 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
                                 {
                                     count = Count_Far_Neighbors( system->atoms[atom1].x,
                                                 system->atoms[atom2].x, atom1, atom2, 
-                                                &system->box, control->vlist_cut );
+                                                &system->box, control->nonb_cut,
+                                                control->vlist_cut );
 
                                     num_far += count;
                                 }
@@ -281,7 +282,8 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
                                     count = Find_Far_Neighbors( system->atoms[atom1].x,
                                             system->atoms[atom2].x, atom1, atom2,
-                                            &system->box, control->vlist_cut, nbr_data );
+                                            &system->box, control->nonb_cut,
+                                            control->vlist_cut, nbr_data );
 
                                     num_far += count;
                                 }

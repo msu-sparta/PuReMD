@@ -160,7 +160,7 @@ void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
     if ( IS_NAN_REAL(a) || IS_NAN_REAL(b) || IS_NAN_REAL(c)
             || IS_NAN_REAL(alpha) || IS_NAN_REAL(beta) || IS_NAN_REAL(gamma) )
     {
-        fprintf( stderr, "Invalid simulation box boundaries for big box (NaN). Terminating...\n" );
+        fprintf( stderr, "[ERROR] Invalid simulation box boundaries for big box (NaN). Terminating...\n" );
         exit( INVALID_INPUT );
     }
 
@@ -357,7 +357,7 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
  * vlist_cut.  If so, this neighborhood is added to the list of far neighbors.
  * Note: Periodic boundary conditions do not apply. */
 int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real cutoff, far_neighbor_data *data )
+        simulation_box *box, real nonb_cut, real vlist_cut, far_neighbor_data *data )
 {
     int count;
     real norm_sqr;
@@ -366,7 +366,7 @@ int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
     rvec_ScaledSum( dvec, 1.0, x2, -1.0, x1 );
     norm_sqr = rvec_Norm_Sqr( dvec );
 
-    if ( norm_sqr <= SQR( cutoff ) )
+    if ( norm_sqr <= SQR( vlist_cut ) )
     {
         data->nbr = nbr_atom;
         ivec_MakeZero( data->rel_box );
@@ -387,7 +387,7 @@ int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
 /* Similar to Find_Non_Periodic_Far_Neighbors but does not
  * update the far neighbors list */
 int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real cutoff )
+        simulation_box *box, real nonb_cut, real vlist_cut )
 {
     real norm_sqr;
     rvec d;
@@ -396,7 +396,7 @@ int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
     rvec_ScaledSum( d, 1.0, x2, -1.0, x1 );
     norm_sqr = rvec_Norm_Sqr( d );
 
-    if ( norm_sqr <= SQR( cutoff ) )
+    if ( norm_sqr <= SQR( vlist_cut ) )
     {
         count = 1;
     }
@@ -414,7 +414,7 @@ int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
  * If the periodic distance between x1 and x2 is less than vlist_cut, this
  * neighborhood is added to the list of far neighbors. */
 int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real cutoff, far_neighbor_data *data )
+        simulation_box *box, real nonb_cut, real vlist_cut, far_neighbor_data *data )
 {
     int i;
     real norm_sqr, tmp, count;
@@ -454,7 +454,7 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
         }
     }
 
-    if ( norm_sqr <= SQR( cutoff ) )
+    if ( norm_sqr <= SQR( vlist_cut ) )
     {
         data->nbr = nbr_atom;
         ivec_Copy( data->rel_box, rel_box );
@@ -475,7 +475,7 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
 /* Similar to Find_Periodic_Far_Neighbors_Big_Box but does not
  * update the far neighbors list */
 int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real cutoff )
+        simulation_box *box, real nonb_cut, real vlist_cut )
 {
     real norm_sqr, d, tmp, count;
     int i;
@@ -506,7 +506,7 @@ int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_at
         }
     }
 
-    if ( norm_sqr <= SQR( cutoff ) )
+    if ( norm_sqr <= SQR( vlist_cut ) )
     {
         count = 1;
     }
@@ -528,103 +528,172 @@ int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_at
  * might get too small (such as <5 A!). In this case we have to consider the
  * periodic images of x2 that are two boxs away!!! */
 int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real cutoff, far_neighbor_data *data )
+        simulation_box *box, real nonb_cut, real vlist_cut, far_neighbor_data *data )
 {
     int i, j, k, count;
     int imax, jmax, kmax;
-    real sqr_norm, d_i, d_j, d_k;
+    real sqr_norm, d_i, d_j, d_k, sqr_cutoff2;
 
     count = 0;
+    sqr_cutoff2 = SQR( vlist_cut );
 
     /* determine the max stretch of imaginary boxs in each direction
      * to handle periodic boundary conditions correctly */
-    imax = (int)(cutoff / box->box_norms[0] + 1);
-    jmax = (int)(cutoff / box->box_norms[1] + 1);
-    kmax = (int)(cutoff / box->box_norms[2] + 1);
+//    imax = (int)(nonb_cut / box->box_norms[0] + 1);
+//    jmax = (int)(nonb_cut / box->box_norms[1] + 1);
+//    kmax = (int)(nonb_cut / box->box_norms[2] + 1);
+    imax = (int)(2.0 * nonb_cut / box->box_norms[0]);
+    jmax = (int)(2.0 * nonb_cut / box->box_norms[1]);
+    kmax = (int)(2.0 * nonb_cut / box->box_norms[2]);
 
-    /*if( imax > 1 || jmax > 1 || kmax > 1 )
-      fprintf( stderr, "box %8.3f x %8.3f x %8.3f --> %2d %2d %2d\n",
-      box->box_norms[0], box->box_norms[1], box->box_norms[2],
-      imax, jmax, kmax ); */
-
-    for ( i = -imax; i <= imax; ++i )
+    /* non-self interactions */
+    if ( atom != nbr_atom )
     {
-        d_i = (x2[0] + i * box->box_norms[0]) - x1[0];
-
-        if ( FABS(d_i) <= cutoff )
+        /* assumption: orthogonal coordinates */
+        for ( i = -imax; i <= imax; ++i )
         {
+            d_i = x2[0] - x1[0] + i * box->box_norms[0];
+
             for ( j = -jmax; j <= jmax; ++j )
             {
-                d_j = (x2[1] + j * box->box_norms[1]) - x1[1];
+                d_j = x2[1] - x1[1] + j * box->box_norms[1];
 
-                if ( FABS(d_j) <= cutoff )
+                for ( k = -kmax; k <= kmax; ++k )
                 {
-                    for ( k = -kmax; k <= kmax; ++k )
+                    d_k = x2[2] - x1[2] + k * box->box_norms[2];
+
+                    sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
+
+                    if ( sqr_norm <= sqr_cutoff2 )
                     {
-                        d_k = (x2[2] + k * box->box_norms[2]) - x1[2];
+                        data[count].nbr = nbr_atom;
 
-                        if ( FABS(d_k) <= cutoff )
-                        {
-                            sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
+                        data[count].rel_box[0] = i;
+                        data[count].rel_box[1] = j;
+                        data[count].rel_box[2] = k;
 
-                            if ( sqr_norm <= SQR(cutoff) && (atom != nbr_atom
-                                        || (atom == nbr_atom && SQRT( sqr_norm ) >= 0.1)) )
-                            {
-                                data[count].nbr = nbr_atom;
+//                        if ( i )
+//                        {
+//                            data[count].ext_factor[0] = (real)i / -abs(i);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[0] = 0;
+//                        }
+//
+//                        if ( j )
+//                        {
+//                            data[count].ext_factor[1] = (real)j / -abs(j);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[1] = 0;
+//                        }
+//
+//                        if ( k )
+//                        {
+//                            data[count].ext_factor[2] = (real)k / -abs(k);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[2] = 0;
+//                        }
+//
+//                        if ( i == 0 && j == 0 && k == 0 )
+//                        {
+//                            data[count].imaginary = 0;
+//                        }
+//                        else
+//                        {
+//                            data[count].imaginary = 1;
+//                        }
 
-                                data[count].rel_box[0] = i;
-                                data[count].rel_box[1] = j;
-                                data[count].rel_box[2] = k;
+                        data[count].d = SQRT( sqr_norm );
 
-//                                if ( i )
-//                                {
-//                                    data[count].ext_factor[0] = (real)i / -abs(i);
-//                                }
-//                                else
-//                                {
-//                                    data[count].ext_factor[0] = 0;
-//                                }
-// 
-//                                if ( j )
-//                                {
-//                                    data[count].ext_factor[1] = (real)j / -abs(j);
-//                                }
-//                                else
-//                                {
-//                                    data[count].ext_factor[1] = 0;
-//                                }
-// 
-//                                if ( k )
-//                                {
-//                                    data[count].ext_factor[2] = (real)k / -abs(k);
-//                                }
-//                                else
-//                                {
-//                                    data[count].ext_factor[2] = 0;
-//                                }
-// 
-//                                if ( i == 0 && j == 0 && k == 0 )
-//                                {
-//                                    data[count].imaginary = 0;
-//                                }
-//                                else
-//                                {
-//                                    data[count].imaginary = 1;
-//                                }
+                        data[count].dvec[0] = d_i;
+                        data[count].dvec[1] = d_j;
+                        data[count].dvec[2] = d_k;
 
-                                data[count].d = SQRT( sqr_norm );
-
-                                data[count].dvec[0] = d_i;
-                                data[count].dvec[1] = d_j;
-                                data[count].dvec[2] = d_k;
-
-                                ++count;
-                            }
-                        }
+                        ++count;
                     }
                 }
             }
         }
+    }
+    /* self interactions */
+    else
+    {
+        /* assumption: orthogonal coordinates */
+        for ( i = -imax; i <= imax; ++i )
+        {
+            d_i = x2[0] - x1[0] + i * box->box_norms[0];
+
+            for ( j = -jmax; j <= jmax; ++j )
+            {
+                d_j = x2[1] - x1[1] + j * box->box_norms[1];
+
+                for ( k = -kmax; k <= kmax; ++k )
+                {
+                    d_k = x2[2] - x1[2] + k * box->box_norms[2];
+
+                    sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
+
+                    if ( sqr_norm <= sqr_cutoff2 && sqr_norm >= 0.01 )
+                    {
+                        data[count].nbr = nbr_atom;
+
+                        data[count].rel_box[0] = i;
+                        data[count].rel_box[1] = j;
+                        data[count].rel_box[2] = k;
+
+//                        if ( i )
+//                        {
+//                            data[count].ext_factor[0] = (real)i / -abs(i);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[0] = 0;
+//                        }
+//
+//                        if ( j )
+//                        {
+//                            data[count].ext_factor[1] = (real)j / -abs(j);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[1] = 0;
+//                        }
+//
+//                        if ( k )
+//                        {
+//                            data[count].ext_factor[2] = (real)k / -abs(k);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[2] = 0;
+//                        }
+//
+//                        if ( i == 0 && j == 0 && k == 0 )
+//                        {
+//                            data[count].imaginary = 0;
+//                        }
+//                        else
+//                        {
+//                            data[count].imaginary = 1;
+//                        }
+
+                        data[count].d = SQRT( sqr_norm );
+
+                        data[count].dvec[0] = d_i;
+                        data[count].dvec[1] = d_j;
+                        data[count].dvec[2] = d_k;
+
+                        ++count;
+                    }
+                }
+            }
+        }
+
     }
 
     return count;
@@ -634,46 +703,69 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 /* Similar to Find_Periodic_Far_Neighbors_Small_Box but does not
  * update the far neighbors list */
 int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real cutoff )
+        simulation_box *box, real nonb_cut, real vlist_cut )
 {
     int i, j, k, count;
     int imax, jmax, kmax;
-    real sqr_norm, d_i, d_j, d_k;
+    real sqr_norm, d_i, d_j, d_k, sqr_cutoff2;
 
     count = 0;
+    sqr_cutoff2 = SQR( vlist_cut );
 
     /* determine the max stretch of imaginary boxs in each direction
      * to handle periodic boundary conditions correctly */
-    imax = (int)(cutoff / box->box_norms[0] + 1);
-    jmax = (int)(cutoff / box->box_norms[1] + 1);
-    kmax = (int)(cutoff / box->box_norms[2] + 1);
+//    imax = (int)(nonb_cut / box->box_norms[0] + 1);
+//    jmax = (int)(nonb_cut / box->box_norms[1] + 1);
+//    kmax = (int)(nonb_cut / box->box_norms[2] + 1);
+    imax = (int)(2.0 * nonb_cut / box->box_norms[0]);
+    jmax = (int)(2.0 * nonb_cut / box->box_norms[1]);
+    kmax = (int)(2.0 * nonb_cut / box->box_norms[2]);
 
-    for ( i = -imax; i <= imax; ++i )
+    /* non-self interactions */
+    if ( atom != nbr_atom )
     {
-        d_i = (x2[0] + i * box->box_norms[0]) - x1[0];
-
-        if ( FABS(d_i) <= cutoff )
+        for ( i = -imax; i <= imax; ++i )
         {
+            d_i = x2[0] - x1[0] + i * box->box_norms[0];
+
             for ( j = -jmax; j <= jmax; ++j )
             {
-                d_j = (x2[1] + j * box->box_norms[1]) - x1[1];
+                d_j = x2[1] - x1[1] + j * box->box_norms[1];
 
-                if ( FABS(d_j) <= cutoff )
+                for ( k = -kmax; k <= kmax; ++k )
                 {
-                    for ( k = -kmax; k <= kmax; ++k )
+                    d_k = x2[2] - x1[2] + k * box->box_norms[2];
+
+                    sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
+
+                    if ( sqr_norm <= sqr_cutoff2 )
                     {
-                        d_k = (x2[2] + k * box->box_norms[2]) - x1[2];
+                        ++count;
+                    }
+                }
+            }
+        }
+    }
+    /* self interactions */
+    else
+    {
+        for ( i = -imax; i <= imax; ++i )
+        {
+            d_i = x2[0] - x1[0] + i * box->box_norms[0];
 
-                        if ( FABS(d_k) <= cutoff )
-                        {
-                            sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
+            for ( j = -jmax; j <= jmax; ++j )
+            {
+                d_j = x2[1] - x1[1] + j * box->box_norms[1];
 
-                            if ( sqr_norm <= SQR(cutoff) && (atom != nbr_atom
-                                        || (atom == nbr_atom && SQRT( sqr_norm ) >= 0.1)) )
-                            {
-                                ++count;
-                            }
-                        }
+                for ( k = -kmax; k <= kmax; ++k )
+                {
+                    d_k = x2[2] - x1[2] + k * box->box_norms[2];
+
+                    sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
+
+                    if ( sqr_norm <= sqr_cutoff2 && sqr_norm >= 0.01 )
+                    {
+                        ++count;
                     }
                 }
             }

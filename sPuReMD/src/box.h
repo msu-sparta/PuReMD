@@ -37,22 +37,22 @@ void Update_Box_Isotropic( simulation_box*, real );
 void Update_Box_Semi_Isotropic( simulation_box*, rvec );
 
 int Find_Non_Periodic_Far_Neighbors( rvec, rvec, int, int,
-        simulation_box*, real, far_neighbor_data* );
+        simulation_box*, real, real, far_neighbor_data* );
 
 int Count_Non_Periodic_Far_Neighbors( rvec, rvec, int, int,
-        simulation_box*, real );
+        simulation_box*, real, real );
 
 int Find_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int, int,
-        simulation_box*, real, far_neighbor_data* );
+        simulation_box*, real, real, far_neighbor_data* );
 
 int Count_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int, int,
-        simulation_box*, real );
+        simulation_box*, real, real );
 
 int Find_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
-        simulation_box*, real, far_neighbor_data* );
+        simulation_box*, real, real, far_neighbor_data* );
 
 int Count_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
-        simulation_box*, real );
+        simulation_box*, real, real );
 
 void Distance_on_T3_Gen( rvec, rvec, simulation_box*, rvec );
 

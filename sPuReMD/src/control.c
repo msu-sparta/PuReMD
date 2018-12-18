@@ -64,7 +64,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->nonb_cut = system->reaxprm.gp.l[12];
 
     /* defaults values for other cutoffs */
-    control->vlist_cut = control->nonb_cut;
+    control->vlist_cut = control->nonb_cut + 2.5;
     control->bond_cut = 5.0;
     control->bg_cut = 0.3;
     control->thb_cut = 0.001;

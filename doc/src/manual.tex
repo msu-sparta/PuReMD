@@ -377,14 +377,14 @@ Defaults: 4.0, 0.001, 0.0
 \label{sec:vlist_buffer}
 
 \begin{verbatim}
-  reneighbor     10
-  vlist_buffer   2 
+  reneighbor     1
+  vlist_buffer   2.5
 \end{verbatim}
 PuReMD features delayed neighbor generation by using Verlet lists. 
 {\tt reneighbor} controls the reneighboring frequency and {\tt vlist\_buffer} 
 controls the buffer space beyond the maximum ReaxFF interaction cutoff. 
 
-Defaults: 1 (reneighbor every step), 0
+Defaults: 1 (reneighbor every step), 2.5
 
 \subsubsection{charge\_method}
 \label{sec:charge_method}
