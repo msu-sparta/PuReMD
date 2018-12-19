@@ -56,16 +56,16 @@ void Velocity_Verlet_NVE( reax_system* system, control_params* control,
         /* HACK: currently required that preconditioner (re)computation step
          * and reneighbor step (i.e., (re)construct far nbr list)
          * are the same value, so use reneighbor for now */
-        if ( renbr )
-        {
-            lists[FAR_NBRS]->format = FULL_LIST;
-            workspace->H->format = SYM_FULL_MATRIX;
-        }
-        else
-        {
-            lists[FAR_NBRS]->format = HALF_LIST;
-            workspace->H->format = SYM_HALF_MATRIX;
-        }
+//        if ( renbr )
+//        {
+//            lists[FAR_NBRS]->format = FULL_LIST;
+//            workspace->H->format = SYM_FULL_MATRIX;
+//        }
+//        else
+//        {
+//            lists[FAR_NBRS]->format = HALF_LIST;
+//            workspace->H->format = SYM_HALF_MATRIX;
+//        }
     }
 
     for ( i = 0; i < system->n; i++ )
@@ -135,16 +135,16 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         /* HACK: currently required that preconditioner (re)computation step
          * and reneighbor step (i.e., (re)construct far nbr list)
          * are the same value, so use reneighbor for now */
-        if ( renbr )
-        {
-            lists[FAR_NBRS]->format = FULL_LIST;
-            workspace->H->format = SYM_FULL_MATRIX;
-        }
-        else
-        {
-            lists[FAR_NBRS]->format = HALF_LIST;
-            workspace->H->format = SYM_HALF_MATRIX;
-        }
+//        if ( renbr )
+//        {
+//            lists[FAR_NBRS]->format = FULL_LIST;
+//            workspace->H->format = SYM_FULL_MATRIX;
+//        }
+//        else
+//        {
+//            lists[FAR_NBRS]->format = HALF_LIST;
+//            workspace->H->format = SYM_HALF_MATRIX;
+//        }
     }
 
     for ( i = 0; i < system->n; i++ )
@@ -246,16 +246,16 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         /* HACK: currently required that preconditioner (re)computation step
          * and reneighbor step (i.e., (re)construct far nbr list)
          * are the same value, so use reneighbor for now */
-        if ( renbr )
-        {
-            lists[FAR_NBRS]->format = FULL_LIST;
-            workspace->H->format = SYM_FULL_MATRIX;
-        }
-        else
-        {
-            lists[FAR_NBRS]->format = HALF_LIST;
-            workspace->H->format = SYM_HALF_MATRIX;
-        }
+//        if ( renbr )
+//        {
+//            lists[FAR_NBRS]->format = FULL_LIST;
+//            workspace->H->format = SYM_FULL_MATRIX;
+//        }
+//        else
+//        {
+//            lists[FAR_NBRS]->format = HALF_LIST;
+//            workspace->H->format = SYM_HALF_MATRIX;
+//        }
     }
 
     /* velocity verlet, 1st part */
@@ -353,16 +353,16 @@ void Velocity_Verlet_Berendsen_NPT( reax_system* system,
         /* HACK: currently required that preconditioner (re)computation step
          * and reneighbor step (i.e., (re)construct far nbr list)
          * are the same value, so use reneighbor for now */
-        if ( renbr )
-        {
-            lists[FAR_NBRS]->format = FULL_LIST;
-            workspace->H->format = SYM_FULL_MATRIX;
-        }
-        else
-        {
-            lists[FAR_NBRS]->format = HALF_LIST;
-            workspace->H->format = SYM_HALF_MATRIX;
-        }
+//        if ( renbr )
+//        {
+//            lists[FAR_NBRS]->format = FULL_LIST;
+//            workspace->H->format = SYM_FULL_MATRIX;
+//        }
+//        else
+//        {
+//            lists[FAR_NBRS]->format = HALF_LIST;
+//            workspace->H->format = SYM_HALF_MATRIX;
+//        }
     }
 
     /* velocity verlet, 1st part */

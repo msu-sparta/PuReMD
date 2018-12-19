@@ -188,7 +188,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     {
         n_local += A->end[i] - A->start[i];
     }
-    s_local = (int) (12.0 * log2(n_local * nprocs));
+    s_local = (int) (12.0 * (log2(n_local) + log2(nprocs)));
     
     t_start = MPI_Wtime();
     MPI_Allreduce( &n_local, &n, 1, MPI_INT, MPI_SUM, comm );
