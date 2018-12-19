@@ -366,7 +366,7 @@ int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
     rvec_ScaledSum( dvec, 1.0, x2, -1.0, x1 );
     norm_sqr = rvec_Norm_Sqr( dvec );
 
-    if ( norm_sqr <= SQR( vlist_cut ) )
+    if ( norm_sqr <= SQR( vlist_cut ) && norm_sqr >= 0.01 )
     {
         data->nbr = nbr_atom;
         ivec_MakeZero( data->rel_box );
@@ -396,7 +396,7 @@ int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
     rvec_ScaledSum( d, 1.0, x2, -1.0, x1 );
     norm_sqr = rvec_Norm_Sqr( d );
 
-    if ( norm_sqr <= SQR( vlist_cut ) )
+    if ( norm_sqr <= SQR( vlist_cut ) && norm_sqr >= 0.01 )
     {
         count = 1;
     }
@@ -454,7 +454,7 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
         }
     }
 
-    if ( norm_sqr <= SQR( vlist_cut ) )
+    if ( norm_sqr <= SQR( vlist_cut ) && norm_sqr >= 0.01 )
     {
         data->nbr = nbr_atom;
         ivec_Copy( data->rel_box, rel_box );
@@ -506,7 +506,7 @@ int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_at
         }
     }
 
-    if ( norm_sqr <= SQR( vlist_cut ) )
+    if ( norm_sqr <= SQR( vlist_cut ) && norm_sqr >= 0.01 )
     {
         count = 1;
     }
@@ -532,10 +532,10 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 {
     int i, j, k, count;
     int imax, jmax, kmax;
-    real sqr_norm, d_i, d_j, d_k, sqr_cutoff2;
+    real sqr_norm, d_i, d_j, d_k, sqr_vlist_cut;
 
     count = 0;
-    sqr_cutoff2 = SQR( vlist_cut );
+    sqr_vlist_cut = SQR( vlist_cut );
 
     /* determine the max stretch of imaginary boxs in each direction
      * to handle periodic boundary conditions correctly */
@@ -564,7 +564,7 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 
                     sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
 
-                    if ( sqr_norm <= sqr_cutoff2 )
+                    if ( sqr_norm <= sqr_vlist_cut )
                     {
                         data[count].nbr = nbr_atom;
 
@@ -638,7 +638,7 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 
                     sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
 
-                    if ( sqr_norm <= sqr_cutoff2 && sqr_norm >= 0.01 )
+                    if ( sqr_norm <= sqr_vlist_cut && sqr_norm >= 0.01 )
                     {
                         data[count].nbr = nbr_atom;
 
@@ -707,10 +707,10 @@ int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_
 {
     int i, j, k, count;
     int imax, jmax, kmax;
-    real sqr_norm, d_i, d_j, d_k, sqr_cutoff2;
+    real sqr_norm, d_i, d_j, d_k, sqr_vlist_cut;
 
     count = 0;
-    sqr_cutoff2 = SQR( vlist_cut );
+    sqr_vlist_cut = SQR( vlist_cut );
 
     /* determine the max stretch of imaginary boxs in each direction
      * to handle periodic boundary conditions correctly */
@@ -738,7 +738,7 @@ int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_
 
                     sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
 
-                    if ( sqr_norm <= sqr_cutoff2 )
+                    if ( sqr_norm <= sqr_vlist_cut )
                     {
                         ++count;
                     }
@@ -763,7 +763,7 @@ int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_
 
                     sqr_norm = SQR(d_i) + SQR(d_j) + SQR(d_k);
 
-                    if ( sqr_norm <= sqr_cutoff2 && sqr_norm >= 0.01 )
+                    if ( sqr_norm <= sqr_vlist_cut && sqr_norm >= 0.01 )
                     {
                         ++count;
                     }
