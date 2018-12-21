@@ -907,7 +907,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     if ( control->ensemble == aNPT || control->ensemble == iNPT
             || control->ensemble == sNPT )
     {
-        strncpy( temp, control->sim_name, MAX_STR );
+        strncpy( temp, control->sim_name, TEMP_SIZE );
         strcat( temp, ".prs" );
         out_control->prs = sfopen( temp, "w" );
         fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s%13s\n",
