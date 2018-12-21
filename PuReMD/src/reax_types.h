@@ -40,7 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
-//#define NEUTRAL_TERRITORY
+#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
 //#define DEBUG_FOCUS
@@ -790,10 +790,16 @@ typedef struct
     real bonded;
     /* non-bonded force calculation time */
     real nonb;
+    /* distance between pairs calculation time */
+    real init_dist;
+    /* charge matrix calculation time */
+    real init_cm;
+    /* bonded interactions calculation time */
+    real init_bond;
     /* atomic charge distribution calculation time */
     real cm;
-    /* matrix initiation and sort time */
-    real init_qeq;
+    /**/
+    real cm_sort;
     /**/
     real cm_solver_comm;
     /**/

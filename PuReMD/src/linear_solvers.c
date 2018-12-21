@@ -1743,7 +1743,8 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real total_pa, total_spmv, total_vops, total_comm, total_allreduce;
+    //real total_pa, total_spmv, total_vops, total_comm, total_allreduce;
+    real timings[5], total_t[5];
 
     t_pa = 0.0;
     t_spmv = 0.0;
@@ -1915,19 +1916,31 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         t_vops += MPI_Wtime() - t_start;
     }
 
-    MPI_Reduce(&t_pa, &total_pa, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
-    MPI_Reduce(&t_spmv, &total_spmv, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
-    MPI_Reduce(&t_vops, &total_vops, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
-    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
-    MPI_Reduce(&t_allreduce, &total_allreduce, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    timings[0] = t_pa;
+    timings[1] = t_spmv;
+    timings[2] = t_vops;
+    timings[3] = t_comm;
+    timings[4] = t_allreduce;
 
-    if( system->my_rank == MASTER_NODE )
+    //MPI_Reduce(&t_pa, &total_pa, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    //MPI_Reduce(&t_spmv, &total_spmv, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    //MPI_Reduce(&t_vops, &total_vops, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    //MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    //MPI_Reduce(&t_allreduce, &total_allreduce, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(timings, total_t, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+    if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.cm_solver_pre_app += total_pa / nprocs;
-        data->timing.cm_solver_spmv += total_spmv / nprocs;
-        data->timing.cm_solver_vector_ops += total_vops / nprocs;
-        data->timing.cm_solver_comm += total_comm / nprocs;
-        data->timing.cm_solver_allreduce += total_allreduce / nprocs;
+        //data->timing.cm_solver_pre_app += total_pa / nprocs;
+        //data->timing.cm_solver_spmv += total_spmv / nprocs;
+        //data->timing.cm_solver_vector_ops += total_vops / nprocs;
+        //data->timing.cm_solver_comm += total_comm / nprocs;
+        //data->timing.cm_solver_allreduce += total_allreduce / nprocs;
+        data->timing.cm_solver_pre_app += total_t[0] / nprocs;
+        data->timing.cm_solver_spmv += total_t[1] / nprocs;
+        data->timing.cm_solver_vector_ops += total_t[2] / nprocs;
+        data->timing.cm_solver_comm += total_t[3] / nprocs;
+        data->timing.cm_solver_allreduce += total_t[4] / nprocs;
     }
 
     MPI_Barrier(mpi_data->world);

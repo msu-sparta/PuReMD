@@ -98,9 +98,10 @@ int Init_Output_Files( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
             sprintf( temp, "%s.log", control->sim_name );
             out_control->log = sfopen( temp, "w", "Init_Output_Files" );
-            fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
+            fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                     "step", "total", "comm", "neighbors", "init", "bonded", "nonbonded", 
-                    "CM", "QEq Init", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
+                    "Init Dist", "Init CM", "Init Bond", 
+                    "CM", "CM Sort", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
                     "S spmv", "S vec ops", "S orthog", "S tsolve" );
             fflush( out_control->log );
 #endif
@@ -1098,7 +1099,7 @@ void Output_Results( reax_system *system, control_params *control,
                 denom = 1.0 / out_control->energy_update_freq;
             else denom = 1;
 
-            fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
+            fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                     data->step,
                     t_elapsed * denom,
                     data->timing.comm * denom,
@@ -1106,8 +1107,11 @@ void Output_Results( reax_system *system, control_params *control,
                     data->timing.init_forces * denom,
                     data->timing.bonded * denom,
                     data->timing.nonb * denom,
+                    data->timing.init_dist * denom,
+                    data->timing.init_cm * denom,
+                    data->timing.init_bond * denom,
                     data->timing.cm * denom,
-                    data->timing.init_qeq * denom,
+                    data->timing.cm_sort * denom,
                     (double)( data->timing.cm_solver_iters * denom),
                     data->timing.cm_solver_pre_comp * denom,
                     data->timing.cm_solver_pre_app * denom,
@@ -1125,8 +1129,11 @@ void Output_Results( reax_system *system, control_params *control,
             data->timing.init_forces = 0;
             data->timing.bonded = 0;
             data->timing.nonb = 0;
+            data->timing.init_dist = ZERO;
+            data->timing.init_cm = ZERO;
+            data->timing.init_bond = ZERO;
             data->timing.cm = ZERO;
-            data->timing.init_qeq = ZERO;
+            data->timing.cm_sort = ZERO;
             data->timing.cm_solver_pre_comp = ZERO;
             data->timing.cm_solver_pre_app = ZERO;
             data->timing.cm_solver_comm = ZERO;

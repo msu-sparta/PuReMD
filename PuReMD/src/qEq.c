@@ -387,7 +387,7 @@ static void Setup_Preconditioner_QEq( reax_system *system, control_params *contr
 
     if( system->my_rank == MASTER_NODE )
     {
-        data->timing.init_qeq += total_sort / control->nprocs;
+        data->timing.cm_sort += total_sort / control->nprocs;
         data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
     }
 }
