@@ -62,27 +62,33 @@ static int compare_bonds( const void *p1, const void *p2 )
 }
 
 
-void Dummy_Interaction( reax_system *system, control_params *control,
-                        simulation_data *data, storage *workspace,
-                        reax_list **lists, output_controls *out_control )
+static void Dummy_Interaction( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control )
 {
+    ;
 }
 
 
 void Init_Force_Functions( control_params *control )
 {
-    Interaction_Functions[0] = BO;
-    Interaction_Functions[1] = Bonds; //Dummy_Interaction;
-    Interaction_Functions[2] = Atom_Energy; //Dummy_Interaction;
-    Interaction_Functions[3] = Valence_Angles; //Dummy_Interaction;
-    Interaction_Functions[4] = Torsion_Angles; //Dummy_Interaction;
+    Interaction_Functions[0] = &BO;
+    Interaction_Functions[1] = &Bonds; //Dummy_Interaction;
+    Interaction_Functions[2] = &Atom_Energy; //Dummy_Interaction;
+    Interaction_Functions[3] = &Valence_Angles; //Dummy_Interaction;
+    Interaction_Functions[4] = &Torsion_Angles; //Dummy_Interaction;
     if ( control->hbond_cut > 0 )
-        Interaction_Functions[5] = Hydrogen_Bonds;
-    else Interaction_Functions[5] = Dummy_Interaction;
-    Interaction_Functions[6] = Dummy_Interaction; //empty
-    Interaction_Functions[7] = Dummy_Interaction; //empty
-    Interaction_Functions[8] = Dummy_Interaction; //empty
-    Interaction_Functions[9] = Dummy_Interaction; //empty
+    {
+        Interaction_Functions[5] = &Hydrogen_Bonds;
+    }
+    else
+    {
+        Interaction_Functions[5] = &Dummy_Interaction;
+    }
+    Interaction_Functions[6] = &Dummy_Interaction; //empty
+    Interaction_Functions[7] = &Dummy_Interaction; //empty
+    Interaction_Functions[8] = &Dummy_Interaction; //empty
+    Interaction_Functions[9] = &Dummy_Interaction; //empty
 }
 
 
@@ -140,7 +146,6 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 }
 
 
-
 /* this version of Compute_Total_Force computes forces from
    coefficients accumulated by all interaction functions.
    Saves enormous time & space! */
@@ -190,7 +195,8 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 #endif
 }
 
-void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
+
+static void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
                      int step, int n, int N, int numH, MPI_Comm comm )
 {
     int i, comp, Hindex;
@@ -285,7 +291,7 @@ void Validate_Lists( reax_system *system, storage *workspace, reax_list **lists,
 }
 
 
-real Compute_H( real r, real gamma, real *ctap )
+static real Compute_H( real r, real gamma, real *ctap )
 {
     real taper, dr3gamij_1, dr3gamij_3;
 
@@ -303,7 +309,7 @@ real Compute_H( real r, real gamma, real *ctap )
 }
 
 
-real Compute_tabH( real r_ij, int ti, int tj )
+static real Compute_tabH( real r_ij, int ti, int tj )
 {
     int r, tmin, tmax;
     real val, dif, base;
@@ -326,9 +332,9 @@ real Compute_tabH( real r_ij, int ti, int tj )
 }
 
 
-void Init_Distance( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_Distance( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -350,9 +356,9 @@ void Init_Distance( reax_system *system, control_params *control,
         /* update i-j distance for non-reneighboring steps */
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
             
             if ( !renbr )
             {
@@ -360,7 +366,7 @@ void Init_Distance( reax_system *system, control_params *control,
                 nbr_pj->dvec[1] = atom_j->x[1] - atom_i->x[1];
                 nbr_pj->dvec[2] = atom_j->x[2] - atom_i->x[2];
                 nbr_pj->d = rvec_Norm_Sqr( nbr_pj->dvec );
-                nbr_pj->d = sqrt(nbr_pj->d);
+                nbr_pj->d = sqrt( nbr_pj->d );
             }
 
         }
@@ -369,9 +375,9 @@ void Init_Distance( reax_system *system, control_params *control,
 
 
 #if defined(NEUTRAL_TERRITORY)
-void Init_CM_Half_NT( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_CM_Half_NT( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -443,9 +449,9 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &system->my_atoms[i];
-        type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i = End_Index(i, far_nbrs);
+        type_i = atom_i->type;
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
 
         sbp_i = &system->reax_param.sbp[type_i];
 
@@ -476,9 +482,10 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
+
             if ( nbr_pj->d <= cutoff )
             {
                 flag = 1;
@@ -492,14 +499,14 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
             {
                 type_j = atom_j->type;
                 r_ij = nbr_pj->d;
-                twbp = &(system->reax_param.tbp[type_i][type_j]);
+                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local == 1 )
                 {
                     /* H matrix entry */
-                    if ( atom_j->nt_dir > 0 || (j < system->n && i < j))
+                    if ( atom_j->nt_dir > 0 || (j < system->n && i < j) )
                     {
-                        if( j < system->n )
+                        if ( j < system->n )
                         {
                             H->entries[Htop].j = j;
                         }
@@ -510,11 +517,11 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
                         }
                         else 
                         {
-                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
                         }
 
                         ++Htop;
@@ -524,15 +531,17 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
                 else if ( local == 2 )
                 {
                     /* H matrix entry */
-                    if ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] && atom_i->pos < atom_j->pos )
+                    if ( atom_j->nt_dir != -1
+                            && mark[atom_i->nt_dir] != mark[atom_j->nt_dir]
+                            && atom_i->pos < atom_j->pos )
                     {
-                        if( !nt_flag )
+                        if ( !nt_flag )
                         {
                             nt_flag = 1;
                             H->start[atom_i->pos] = Htop;
                         }
 
-                        if( j < system->n )
+                        if ( j < system->n )
                         {
                             H->entries[Htop].j = j;
                         }
@@ -543,11 +552,11 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
                         }
                         else 
                         {
-                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
                         }
 
                         ++Htop;
@@ -563,7 +572,7 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
         }
         else if ( local == 2 )
         {
-            if( nt_flag )
+            if ( nt_flag )
             {
                 H->end[atom_i->pos] = Htop;
             }
@@ -592,9 +601,9 @@ void Init_CM_Half_NT( reax_system *system, control_params *control,
 }
 
 
-void Init_CM_Full_NT( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_CM_Full_NT( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -622,7 +631,7 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
 
     nt_flag = 1;
-    if( renbr )
+    if ( renbr )
     {
         for ( i = 0; i < 6; ++i )
         {
@@ -635,7 +644,7 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
         {
             atom_i = &system->my_atoms[i];
 
-            if( atom_i->nt_dir != -1 )
+            if ( atom_i->nt_dir != -1 )
             {
                 total_cnt[ atom_i->nt_dir ]++;
             }
@@ -651,7 +660,7 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
         {
             atom_i = &system->my_atoms[i];
 
-            if( atom_i->nt_dir != -1 )
+            if ( atom_i->nt_dir != -1 )
             {
                 atom_i->pos = total_sum[ atom_i->nt_dir ] + bin[ atom_i->nt_dir ];
                 bin[ atom_i->nt_dir ]++;
@@ -666,9 +675,9 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &system->my_atoms[i];
-        type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i = End_Index(i, far_nbrs);
+        type_i = atom_i->type;
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
 
         sbp_i = &system->reax_param.sbp[type_i];
 
@@ -699,9 +708,10 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
+
             if ( nbr_pj->d <= cutoff )
             {
                 flag = 1;
@@ -715,14 +725,14 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
             {
                 type_j = atom_j->type;
                 r_ij = nbr_pj->d;
-                twbp = &(system->reax_param.tbp[type_i][type_j]);
+                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local == 1 )
                 {
                     /* H matrix entry */
                     if ( atom_j->nt_dir > 0 || (j < system->n) )
                     {
-                        if( j < system->n )
+                        if ( j < system->n )
                         {
                             H->entries[Htop].j = j;
                         }
@@ -747,16 +757,17 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
                 else if ( local == 2 )
                 {
                     /* H matrix entry */
-                    if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] ) || 
-                            ( j < system->n && atom_i->nt_dir != 0 ) )
+                    if ( ( atom_j->nt_dir != -1
+                                && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] )
+                            || ( j < system->n && atom_i->nt_dir != 0 ) )
                     {
-                        if( !nt_flag )
+                        if ( !nt_flag )
                         {
                             nt_flag = 1;
                             H->start[atom_i->pos] = Htop;
                         }
 
-                        if( j < system->n )
+                        if ( j < system->n )
                         {
                             H->entries[Htop].j = j;
                         }
@@ -767,11 +778,11 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
                         }
                         else 
                         {
-                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
                         }
 
                         ++Htop;
@@ -787,7 +798,7 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
         }
         else if ( local == 2 )
         {
-            if( nt_flag )
+            if ( nt_flag )
             {
                 H->end[atom_i->pos] = Htop;
             }
@@ -817,9 +828,9 @@ void Init_CM_Full_NT( reax_system *system, control_params *control,
 
 
 #else
-void Init_CM_Half_FS( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_CM_Half_FS( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -843,9 +854,9 @@ void Init_CM_Half_FS( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &system->my_atoms[i];
-        type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i = End_Index(i, far_nbrs);
+        type_i = atom_i->type;
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
 
         sbp_i = &system->reax_param.sbp[type_i];
 
@@ -870,11 +881,11 @@ void Init_CM_Half_FS( reax_system *system, control_params *control,
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
             
-            if (nbr_pj->d <= cutoff)
+            if ( nbr_pj->d <= cutoff )
             {
                 flag = 1;
             }
@@ -887,7 +898,7 @@ void Init_CM_Half_FS( reax_system *system, control_params *control,
             {
                 type_j = atom_j->type;
                 r_ij = nbr_pj->d;
-                twbp = &(system->reax_param.tbp[type_i][type_j]);
+                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local )
                 {
@@ -898,11 +909,11 @@ void Init_CM_Half_FS( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
                         }
                         else
                         {
-                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
                         }
 
                         ++Htop;
@@ -933,9 +944,9 @@ void Init_CM_Half_FS( reax_system *system, control_params *control,
 }
 
 
-void Init_CM_Full_FS( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_CM_Full_FS( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -959,9 +970,9 @@ void Init_CM_Full_FS( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &system->my_atoms[i];
-        type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i = End_Index(i, far_nbrs);
+        type_i = atom_i->type;
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
 
         sbp_i = &system->reax_param.sbp[type_i];
 
@@ -986,11 +997,11 @@ void Init_CM_Full_FS( reax_system *system, control_params *control,
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
             
-            if (nbr_pj->d <= cutoff)
+            if ( nbr_pj->d <= cutoff )
             {
                 flag = 1;
             }
@@ -1003,7 +1014,7 @@ void Init_CM_Full_FS( reax_system *system, control_params *control,
             {
                 type_j = atom_j->type;
                 r_ij = nbr_pj->d;
-                twbp = &(system->reax_param.tbp[type_i][type_j]);
+                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local )
                 {
@@ -1047,9 +1058,9 @@ void Init_CM_Full_FS( reax_system *system, control_params *control,
 #endif
 
 
-void Init_Bond_Half( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_Bond_Half( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1069,9 +1080,10 @@ void Init_Bond_Half( reax_system *system, control_params *control,
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
 
-
     for ( i = 0; i < system->n; ++i )
+    {
         workspace->bond_mark[i] = 0;
+    }
     for ( i = system->n; i < system->N; ++i )
     {
         workspace->bond_mark[i] = 1000; // put ghost atoms to an infinite distance
@@ -1085,9 +1097,9 @@ void Init_Bond_Half( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &system->my_atoms[i];
-        type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i = End_Index(i, far_nbrs);
+        type_i = atom_i->type;
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
 
         /* start at end because other atoms
          * can add to this atom's list (half-list) */
@@ -1128,11 +1140,11 @@ void Init_Bond_Half( reax_system *system, control_params *control,
         /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
             
-            if (nbr_pj->d <= cutoff)
+            if ( nbr_pj->d <= cutoff )
             {
                 flag = 1;
             }
@@ -1144,17 +1156,19 @@ void Init_Bond_Half( reax_system *system, control_params *control,
             if ( flag )
             {
                 type_j = atom_j->type;
-                sbp_j = &(system->reax_param.sbp[type_j]);
-                twbp = &(system->reax_param.tbp[type_i][type_j]);
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local == 1 )
                 {
                     /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2) &&
-                            nbr_pj->d <= control->hbond_cut )
+                    if ( control->hbond_cut > 0
+                            && (ihb == 1 || ihb == 2)
+                            && nbr_pj->d <= control->hbond_cut )
                     {
                         // fprintf( stderr, "%d %d\n", atom1, atom2 );
                         jhb = sbp_j->p_hbond;
+
                         if ( ihb == 1 && jhb == 2 )
                         {
                             hbonds->hbond_list[ihb_top].nbr = j;
@@ -1178,8 +1192,8 @@ void Init_Bond_Half( reax_system *system, control_params *control,
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    nbr_pj->d <= control->bond_cut &&
-                    BOp( workspace, bonds, control->bo_cut,
+                    nbr_pj->d <= control->bond_cut
+                    && BOp( workspace, bonds, control->bo_cut,
                          i, btop_i, nbr_pj, far_nbrs->format,
                          sbp_i, sbp_j, twbp ) )
                 {
@@ -1187,7 +1201,9 @@ void Init_Bond_Half( reax_system *system, control_params *control,
                     ++btop_i;
 
                     if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
+                    {
                         workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
+                    }
                     else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
                     {
                         workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
@@ -1197,10 +1213,13 @@ void Init_Bond_Half( reax_system *system, control_params *control,
         }
 
         Set_End_Index( i, btop_i, bonds );
+
         if ( local == 1 )
         {
             if ( ihb == 1 )
+            {
                 Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
+            }
         }
     }
 
@@ -1219,14 +1238,14 @@ void Init_Bond_Half( reax_system *system, control_params *control,
 #endif
 
     Validate_Lists( system, workspace, lists, data->step,
-                    system->n, system->N, system->numH, comm );
+            system->n, system->N, system->numH, comm );
 
 }
 
 
-void Init_Bond_Full( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_Bond_Full( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1249,7 +1268,9 @@ void Init_Bond_Full( reax_system *system, control_params *control,
 
 
     for ( i = 0; i < system->n; ++i )
+    {
         workspace->bond_mark[i] = 0;
+    }
     for ( i = system->n; i < system->N; ++i )
     {
         workspace->bond_mark[i] = 1000; // put ghost atoms to an infinite distance
@@ -1263,9 +1284,9 @@ void Init_Bond_Full( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         atom_i = &system->my_atoms[i];
-        type_i  = atom_i->type;
-        start_i = Start_Index(i, far_nbrs);
-        end_i = End_Index(i, far_nbrs);
+        type_i = atom_i->type;
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
 
         btop_i = Start_Index( i, bonds );
         sbp_i = &system->reax_param.sbp[type_i];
@@ -1288,6 +1309,7 @@ void Init_Bond_Full( reax_system *system, control_params *control,
             if ( control->hbond_cut > 0 )
             {
                 ihb = sbp_i->p_hbond;
+
                 if ( ihb == 1 )
                 {
                     ihb_top = Start_Index( atom_i->Hindex, hbonds );
@@ -1302,11 +1324,11 @@ void Init_Bond_Full( reax_system *system, control_params *control,
         /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &( far_nbrs->far_nbr_list[pj] );
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &(system->my_atoms[j]);
+            atom_j = &system->my_atoms[j];
             
-            if (nbr_pj->d <= cutoff)
+            if ( nbr_pj->d <= cutoff )
             {
                 flag = 1;
             }
@@ -1318,17 +1340,19 @@ void Init_Bond_Full( reax_system *system, control_params *control,
             if ( flag )
             {
                 type_j = atom_j->type;
-                sbp_j = &(system->reax_param.sbp[type_j]);
-                twbp = &(system->reax_param.tbp[type_i][type_j]);
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local == 1 )
                 {
                     /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2) &&
-                            nbr_pj->d <= control->hbond_cut )
+                    if ( control->hbond_cut > 0
+                            && (ihb == 1 || ihb == 2)
+                            && nbr_pj->d <= control->hbond_cut )
                     {
                         // fprintf( stderr, "%d %d\n", atom1, atom2 );
                         jhb = sbp_j->p_hbond;
+
                         if ( ihb == 1 && jhb == 2 )
                         {
                             hbonds->hbond_list[ihb_top].nbr = j;
@@ -1342,8 +1366,8 @@ void Init_Bond_Full( reax_system *system, control_params *control,
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    nbr_pj->d <= control->bond_cut &&
-                    BOp( workspace, bonds, control->bo_cut,
+                    nbr_pj->d <= control->bond_cut
+                    && BOp( workspace, bonds, control->bo_cut,
                          i, btop_i, nbr_pj, far_nbrs->format,
                          sbp_i, sbp_j, twbp ) )
                 {
@@ -1351,7 +1375,9 @@ void Init_Bond_Full( reax_system *system, control_params *control,
                     ++btop_i;
 
                     if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
+                    {
                         workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
+                    }
                     else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
                     {
                         workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
@@ -1361,16 +1387,21 @@ void Init_Bond_Full( reax_system *system, control_params *control,
         }
 
         Set_End_Index( i, btop_i, bonds );
+
         if ( local == 1 )
         {
             if ( ihb == 1 )
+            {
                 Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
+            }
         }
     }
 
     for( i = 0; i < system->N; ++i )
+    {
         qsort( &bonds->bond_list[Start_Index(i, bonds)],
                 Num_Entries(i, bonds), sizeof(bond_data), compare_bonds );
+    }
 
     /* set sym_index for bonds list (far_nbrs full list) */
     for ( i = 0; i < system->N; ++i )
@@ -1410,7 +1441,7 @@ void Init_Bond_Full( reax_system *system, control_params *control,
 #endif
 
     Validate_Lists( system, workspace, lists, data->step,
-                    system->n, system->N, system->numH, comm );
+            system->n, system->N, system->numH, comm );
 
 }
 
@@ -1422,11 +1453,11 @@ void Init_Forces( reax_system *system, control_params *control,
     double t_start, t_dist, t_cm, t_bond;
     double timings[3], t_total[3];
     
-    t_start = MPI_Wtime();
+    t_start = MPI_Wtime( );
 
     Init_Distance( system, control, data, workspace, lists, out_control, comm, mpi_data );
 
-    t_dist = MPI_Wtime();
+    t_dist = MPI_Wtime( );
 
 #if defined(NEUTRAL_TERRITORY)
     if ( workspace->H->format == SYM_HALF_MATRIX )
@@ -1465,7 +1496,7 @@ void Init_Forces( reax_system *system, control_params *control,
     timings[1] = t_cm - t_dist;
     timings[2] = t_bond - t_cm;
 
-    MPI_Reduce(timings, t_total, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce( timings, t_total, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
 
     if ( system->my_rank == MASTER_NODE ) 
     {
@@ -1898,9 +1929,8 @@ void Init_Forces( reax_system *system, control_params *control,
 
 
 void Init_Forces_noQEq( reax_system *system, control_params *control,
-                        simulation_data *data, storage *workspace,
-                        reax_list **lists, output_controls *out_control,
-                        MPI_Comm comm )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control, MPI_Comm comm )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -2343,33 +2373,45 @@ void Compute_Forces( reax_system *system, control_params *control,
     MPI_Comm comm;
     int qeq_flag;
 #if defined(LOG_PERFORMANCE)
-    real t_start, t_end;
+    real t_start = 0.0, t_end;
 
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
+    {
         t_start = MPI_Wtime();
+    }
 #endif
-
     comm = mpi_data->world;
+
     /********* init forces ************/
 #if defined(PURE_REAX)
     if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
+    {
         qeq_flag = 1;
-    else qeq_flag = 0;
+    }
+    else
+    {
+        qeq_flag = 0;
+    }
 #elif defined(LAMMPS_REAX)
     qeq_flag = 0;
 #endif
+
     if ( qeq_flag )
+    {
         Init_Forces( system, control, data, workspace, lists, out_control, comm, mpi_data );
+    }
     else
+    {
         Init_Forces_noQEq( system, control, data, workspace,
-                           lists, out_control, comm );
+                lists, out_control, comm );
+    }
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
-        t_end = MPI_Wtime();
+        t_end = MPI_Wtime( );
         data->timing.init_forces += t_end - t_start;
         t_start = t_end;
     }
@@ -2383,7 +2425,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
-        t_end = MPI_Wtime();
+        t_end = MPI_Wtime( );
         data->timing.bonded += t_end - t_start;
         t_start = t_end;
     }
@@ -2403,7 +2445,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
-        t_end = MPI_Wtime();
+        t_end = MPI_Wtime( );
         data->timing.cm += t_end - t_start;
         t_start = t_end;
     }
@@ -2422,7 +2464,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
-        t_end = MPI_Wtime();
+        t_end = MPI_Wtime( );
         data->timing.nonb += t_end - t_start + data->timing.cm;;
         t_start = t_end;
     }
@@ -2440,7 +2482,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     //MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
-        t_end = MPI_Wtime();
+        t_end = MPI_Wtime( );
         data->timing.bonded += t_end - t_start;
     }
 #endif

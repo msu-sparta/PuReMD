@@ -99,10 +99,10 @@ int Init_Output_Files( reax_system *system, control_params *control,
             sprintf( temp, "%s.log", control->sim_name );
             out_control->log = sfopen( temp, "w", "Init_Output_Files" );
             fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
-                    "step", "total", "comm", "neighbors", "init", "bonded", "nonbonded", 
-                    "Init Dist", "Init CM", "Init Bond", 
-                    "CM", "CM Sort", "S iters", "Pre Comp", "Pre App", "S comm", "S allr",
-                    "S spmv", "S vec ops", "S orthog", "S tsolve" );
+                    "step", "total", "comm", "neighbors", "init",
+                    "init_dist", "init_cm", "init_bond", "bonded", "nonbonded",  
+                    "cm", "cm_sort", "s_iters", "pre_comp", "pre_app", "s_comm", "s_allr",
+                    "s_spmv", "s_vec_ops", "s_orthog", "s_tsolve" );
             fflush( out_control->log );
 #endif
         }
@@ -222,7 +222,7 @@ int Init_Output_Files( reax_system *system, control_params *control,
     {
         /* open bond forces file */
         sprintf( temp, "%s.fbond", control->sim_name );
-        Output_Files" )) == NULL )
+        out_control->fbond = sfopen( temp, "w", "Init_Output_Files" );
 
         /* open lone-pair forces file */
         sprintf( temp, "%s.flp", control->sim_name );
@@ -763,10 +763,12 @@ void Print_Symmetric_Sparse(reax_system *system, sparse_matrix *A, char *fname)
 void Print_Linear_System( reax_system *system, control_params *control,
         storage *workspace, int step )
 {
-    int   i, j;
-    char  fname[100];
-    reax_atom *ai, *aj;
-    sparse_matrix *H;
+    int i;
+//    int j;
+    char fname[100];
+    reax_atom *ai;
+//    reax_atom *aj;
+//    sparse_matrix *H;
     FILE *out;
 
     // print rhs and init guesses for QEq
@@ -787,26 +789,35 @@ void Print_Linear_System( reax_system *system, control_params *control,
     Print_Symmetric_Sparse( system, workspace->H, fname );
 
     // print the incomplete H matrix
-    /*sprintf( fname, "%s.p%dHinc%d", control->sim_name, system->my_rank, step );
-      out = sfopen( fname, "w", "Print_Linear_System" );
-      H = workspace->H;
-      for( i = 0; i < H->n; ++i ) {
-      ai = &(system->my_atoms[i]);
-      for( j = H->start[i]; j < H->end[i]; ++j )
-      if( H->entries[j].j < system->n ) {
-      aj = &(system->my_atoms[H->entries[j].j]);
-      fprintf( out, "%d %d %.15e\n",
-      ai->orig_id, aj->orig_id, H->entries[j].val );
-      if( ai->orig_id != aj->orig_id )
-      fprintf( out, "%d %d %.15e\n",
-      aj->orig_id, ai->orig_id, H->entries[j].val );
-      }
-      }
-      sfclose( out, "Print_Linear_System" );*/
+//    sprintf( fname, "%s.p%dHinc%d", control->sim_name, system->my_rank, step );
+//    out = sfopen( fname, "w", "Print_Linear_System" );
+//    H = workspace->H;
+//
+//    for( i = 0; i < H->n; ++i )
+//    {
+//        ai = &(system->my_atoms[i]);
+//
+//        for( j = H->start[i]; j < H->end[i]; ++j )
+//        {
+//            if( H->entries[j].j < system->n ) {
+//                aj = &(system->my_atoms[H->entries[j].j]);
+//
+//                fprintf( out, "%d %d %.15e\n",
+//                        ai->orig_id, aj->orig_id, H->entries[j].val );
+//
+//                if( ai->orig_id != aj->orig_id )
+//                {
+//                    fprintf( out, "%d %d %.15e\n",
+//                            aj->orig_id, ai->orig_id, H->entries[j].val );
+//                }
+//            }
+//        }
+//    }
+//    sfclose( out, "Print_Linear_System" );
 
     // print the L from incomplete cholesky decomposition
-    /*sprintf( fname, "%s.p%dL%d", control->sim_name, system->my_rank, step );
-      Print_Sparse_Matrix2( system, workspace->L, fname );*/
+//    sprintf( fname, "%s.p%dL%d", control->sim_name, system->my_rank, step );
+//    Print_Sparse_Matrix2( system, workspace->L, fname );
 }
 
 
@@ -1096,8 +1107,13 @@ void Output_Results( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
             t_elapsed = MPI_Wtime() - data->timing.total;
             if ( data->step - data->prev_steps > 0 )
+            {
                 denom = 1.0 / out_control->energy_update_freq;
-            else denom = 1;
+            }
+            else
+            {
+                denom = 1.0;
+            }
 
             fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                     data->step,
@@ -1105,14 +1121,14 @@ void Output_Results( reax_system *system, control_params *control,
                     data->timing.comm * denom,
                     data->timing.nbrs * denom,
                     data->timing.init_forces * denom,
-                    data->timing.bonded * denom,
-                    data->timing.nonb * denom,
                     data->timing.init_dist * denom,
                     data->timing.init_cm * denom,
                     data->timing.init_bond * denom,
+                    data->timing.bonded * denom,
+                    data->timing.nonb * denom,
                     data->timing.cm * denom,
                     data->timing.cm_sort * denom,
-                    (double)( data->timing.cm_solver_iters * denom),
+                    (double)(data->timing.cm_solver_iters * denom),
                     data->timing.cm_solver_pre_comp * denom,
                     data->timing.cm_solver_pre_app * denom,
                     data->timing.cm_solver_comm * denom,
@@ -1123,15 +1139,15 @@ void Output_Results( reax_system *system, control_params *control,
                     data->timing.cm_solver_tri_solve * denom );
 
             //Reset_Timing( &(data->timing) );
-            data->timing.total = MPI_Wtime();
+            data->timing.total = MPI_Wtime( );
             data->timing.comm = ZERO;
-            data->timing.nbrs = 0;
-            data->timing.init_forces = 0;
-            data->timing.bonded = 0;
-            data->timing.nonb = 0;
+            data->timing.nbrs = ZERO;
+            data->timing.init_forces = ZERO;
             data->timing.init_dist = ZERO;
             data->timing.init_cm = ZERO;
             data->timing.init_bond = ZERO;
+            data->timing.bonded = ZERO;
+            data->timing.nonb = ZERO;
             data->timing.cm = ZERO;
             data->timing.cm_sort = ZERO;
             data->timing.cm_solver_pre_comp = ZERO;
