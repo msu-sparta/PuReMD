@@ -663,11 +663,10 @@ void Add_dBond_to_Forces( int i, int pj,
 
 
 int BOp( storage *workspace, reax_list *bonds, real bo_cut,
-         int i, int btop_i, far_neighbor_data *nbr_pj,
+         int i, int btop_i, int j, ivec *rel_box, real d, rvec *dvec,
          int far_nbr_list_format, single_body_parameters *sbp_i,
          single_body_parameters *sbp_j, two_body_parameters *twbp )
 {
-    int j;
     real r2, C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
@@ -677,26 +676,25 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
     bond_data *jbond;
     bond_order_data *bo_ji;
 
-    j = nbr_pj->nbr;
-    r2 = SQR(nbr_pj->d);
+    r2 = SQR(d);
 
     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
     {
-        C12 = twbp->p_bo1 * pow( nbr_pj->d / twbp->r_s, twbp->p_bo2 );
+        C12 = twbp->p_bo1 * pow( d / twbp->r_s, twbp->p_bo2 );
         BO_s = (1.0 + bo_cut) * exp( C12 );
     }
     else BO_s = C12 = 0.0;
 
     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
     {
-        C34 = twbp->p_bo3 * pow( nbr_pj->d / twbp->r_p, twbp->p_bo4 );
+        C34 = twbp->p_bo3 * pow( d / twbp->r_p, twbp->p_bo4 );
         BO_pi = exp( C34 );
     }
     else BO_pi = C34 = 0.0;
 
     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
     {
-        C56 = twbp->p_bo5 * pow( nbr_pj->d / twbp->r_pp, twbp->p_bo6 );
+        C56 = twbp->p_bo5 * pow( d / twbp->r_pp, twbp->p_bo6 );
         BO_pi2 = exp( C56 );
     }
     else BO_pi2 = C56 = 0.0;
@@ -707,25 +705,25 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
     if ( BO >= bo_cut )
     {
         /****** bonds i-j and j-i ******/
-        ibond = &( bonds->bond_list[btop_i] );
+        ibond = &bonds->bond_list[btop_i];
         if ( far_nbr_list_format == HALF_LIST )
         {
             btop_j = End_Index( j, bonds );
-            jbond = &(bonds->bond_list[btop_j]);
+            jbond = &bonds->bond_list[btop_j];
         }
 
         ibond->nbr = j;
-        ibond->d = nbr_pj->d;
-        rvec_Copy( ibond->dvec, nbr_pj->dvec );
-        ivec_Copy( ibond->rel_box, nbr_pj->rel_box );
+        ibond->d = d;
+        rvec_Copy( ibond->dvec, *dvec );
+        ivec_Copy( ibond->rel_box, *rel_box );
         ibond->dbond_index = btop_i;
         if ( far_nbr_list_format == HALF_LIST )
         {
             ibond->sym_index = btop_j;
             jbond->nbr = i;
-            jbond->d = nbr_pj->d;
-            rvec_Scale( jbond->dvec, -1.0, nbr_pj->dvec );
-            ivec_Scale( jbond->rel_box, -1.0, nbr_pj->rel_box );
+            jbond->d = d;
+            rvec_Scale( jbond->dvec, -1.0, *dvec );
+            ivec_Scale( jbond->rel_box, -1.0, *rel_box );
             jbond->dbond_index = btop_i;
             jbond->sym_index = btop_i;
 

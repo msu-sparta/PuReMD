@@ -74,7 +74,6 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     grid *g;
     grid_cell *gci, *gcj;
     reax_list *far_nbrs;
-    far_neighbor_data *nbr_data;
     reax_atom *atom1, *atom2;
 
 #if defined(LOG_PERFORMANCE)
@@ -140,12 +139,11 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                     d = rvec_Norm_Sqr( dvec );
                                     if ( d <= cutoff )
                                     {
-                                        nbr_data = &(far_nbrs->far_nbr_list[num_far]);
-                                        nbr_data->nbr = m;
-                                        nbr_data->d = sqrt(d);
-                                        rvec_Copy( nbr_data->dvec, dvec );
-                                        ivec_ScaledSum( nbr_data->rel_box,
-                                                        1, gcj->rel_box, -1, gci->rel_box );
+                                        far_nbrs->far_nbr_list.nbr[num_far] = m;
+                                        far_nbrs->far_nbr_list.d[num_far] = sqrt(d);
+                                        rvec_Copy( far_nbrs->far_nbr_list.dvec[num_far], dvec );
+                                        ivec_ScaledSum( far_nbrs->far_nbr_list.rel_box[num_far],
+                                                1, gcj->rel_box, -1, gci->rel_box );
                                         ++num_far;
                                     }
                                 }

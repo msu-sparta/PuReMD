@@ -160,7 +160,6 @@ int main( int argc, char* argv[] )
         lists[i]->bond_list = NULL;
         lists[i]->dbo_list = NULL;
         lists[i]->dDelta_list = NULL;
-        lists[i]->far_nbr_list = NULL;
         lists[i]->hbond_list = NULL;
     }
     out_control = (output_controls *)

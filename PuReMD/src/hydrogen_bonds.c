@@ -39,12 +39,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                      simulation_data *data, storage *workspace,
                      reax_list **lists, output_controls *out_control )
 {
-    int  i, j, k, pi, pk;
-    int  type_i, type_j, type_k;
-    int  start_j, end_j, hb_start_j, hb_end_j;
-    int  hblist[MAX_BONDS];
-    int  itr, top;
-    int  num_hb_intrs = 0;
+    int i, j, k, pi, pk;
+    int type_i, type_j, type_k;
+    int start_j, end_j, hb_start_j, hb_end_j;
+    int hblist[MAX_BONDS];
+    int itr, top;
+    int num_hb_intrs = 0;
+    int nbr_jk;
     ivec rel_jk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
@@ -54,11 +55,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     hbond_parameters *hbp;
     bond_order_data *bo_ij;
     bond_data *pbond_ij;
-    far_neighbor_data *nbr_jk;
-    reax_list *bonds, *hbonds;
+    reax_list *far_nbrs, *bonds, *hbonds;
     bond_data *bond_list;
     hbond_data *hbond_list;
 
+    far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
     bond_list = bonds->bond_list;
     hbonds = lists[HBONDS];
@@ -102,8 +103,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 k = hbond_list[pk].nbr;
                 type_k = system->my_atoms[k].type;
                 nbr_jk = hbond_list[pk].ptr;
-                r_jk = nbr_jk->d;
-                rvec_Scale( dvec_jk, hbond_list[pk].scl, nbr_jk->dvec );
+                r_jk = far_nbrs->far_nbr_list.d[nbr_jk];
+                rvec_Scale( dvec_jk, hbond_list[pk].scl, far_nbrs->far_nbr_list.dvec[nbr_jk] );
 
                 for ( itr = 0; itr < top; ++itr )
                 {
@@ -174,7 +175,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                             rvec_ScaledAdd( workspace->f[j], +CEhb2, dcos_theta_dj );
 
-                            ivec_Scale( rel_jk, hbond_list[pk].scl, nbr_jk->rel_box );
+                            ivec_Scale( rel_jk, hbond_list[pk].scl,
+                                    far_nbrs->far_nbr_list.rel_box[nbr_jk] );
                             rvec_Scale( force, +CEhb2, dcos_theta_dk );
                             rvec_Add( workspace->f[k], force );
                             rvec_iMultiply( ext_press, rel_jk, force );

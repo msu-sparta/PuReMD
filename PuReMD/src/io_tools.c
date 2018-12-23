@@ -682,20 +682,20 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
 
         for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
         {
-            nbr = far_nbrs->far_nbr_list[j].nbr;
+            nbr = far_nbrs->far_nbr_list.nbr[j];
             id_j = system->my_atoms[nbr].orig_id;
 
             fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                    id_i, id_j, far_nbrs->far_nbr_list[j].d,
-                    far_nbrs->far_nbr_list[j].dvec[0],
-                    far_nbrs->far_nbr_list[j].dvec[1],
-                    far_nbrs->far_nbr_list[j].dvec[2] );
+                    id_i, id_j, far_nbrs->far_nbr_list.d[j],
+                    far_nbrs->far_nbr_list.dvec[j][0],
+                    far_nbrs->far_nbr_list.dvec[j][1],
+                    far_nbrs->far_nbr_list.dvec[j][2] );
 
             fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                    id_j, id_i, far_nbrs->far_nbr_list[j].d,
-                    -far_nbrs->far_nbr_list[j].dvec[0],
-                    -far_nbrs->far_nbr_list[j].dvec[1],
-                    -far_nbrs->far_nbr_list[j].dvec[2] );
+                    id_j, id_i, far_nbrs->far_nbr_list.d[j],
+                    -far_nbrs->far_nbr_list.dvec[j][0],
+                    -far_nbrs->far_nbr_list.dvec[j][1],
+                    -far_nbrs->far_nbr_list.dvec[j][2] );
         }
     }
 
@@ -865,6 +865,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     char fname[MAX_STR]; 
     hbond_data *phbond;
     FILE *fout;
+    reax_list *far_nbrs = lists[FAR_NBRS];
     reax_list *hbonds = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
@@ -877,7 +878,9 @@ void Print_HBonds( reax_system *system, reax_list **lists,
             phbond = &hbonds->hbond_list[pj];
 
             fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, phbond->nbr,
-                    phbond->ptr->dvec[0], phbond->ptr->dvec[1], phbond->ptr->dvec[2] );
+                    far_nbrs->far_nbr_list.dvec[phbond->ptr][0],
+                    far_nbrs->far_nbr_list.dvec[phbond->ptr][1],
+                    far_nbrs->far_nbr_list.dvec[phbond->ptr][2] );
             //            fprintf( fout, "%8d%8d %8d %8d\n", i, phbond->nbr,
             //                  phbond->scl, phbond->sym_index );
         }
@@ -1024,7 +1027,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
 
         for ( pj = Start_Index(i, list); pj < End_Index(i, list); ++pj )
         {
-            nbr = list->far_nbr_list[pj].nbr;
+            nbr = list->far_nbr_list.nbr[pj];
             id_j = system->my_atoms[nbr].orig_id;
             intrs[cnt++] = id_j;
         }

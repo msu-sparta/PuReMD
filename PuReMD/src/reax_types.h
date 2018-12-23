@@ -897,10 +897,16 @@ typedef struct
 
 typedef struct
 {
-    int nbr;
-    ivec rel_box;
-    real d;
-    rvec dvec;
+    /* neighbor atom IDs */
+    int *nbr;
+    /* set of three integers which deterimine if the neighbor
+     * atom is a non-periodic neighbor (all zeros) or a periodic
+     * neighbor and which perioidic image this neighbor comes from */
+    ivec *rel_box;
+    /* distance to the neighboring atom */
+    real *d;
+    /* difference between positions of this atom and its neighboring atom */
+    rvec *dvec;
 } far_neighbor_data;
 
 
@@ -917,9 +923,12 @@ typedef struct
 
 typedef struct
 {
+    /* neighbor atom ID */
     int nbr;
+    /* ??? */
     int scl;
-    far_neighbor_data *ptr;
+    /* position of neighbor in far neighbor list */
+    int ptr;
 } hbond_data;
 
 
@@ -1127,7 +1136,7 @@ typedef struct
     bond_data *bond_list;
     dbond_data *dbo_list;
     dDelta_data *dDelta_list;
-    far_neighbor_data *far_nbr_list;
+    far_neighbor_data far_nbr_list;
 #if defined(NEUTRAL_TERRITORY)
     nt_neighbor_data *nt_nbr_list;
 #endif
