@@ -186,7 +186,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     n_local = 0;
     for( i = 0; i < num_rows; ++i )
     {
-        n_local += A->end[i] - A->start[i];
+        n_local += (A->end[i] - A->start[i] + 9)/10;
     }
     s_local = (int) (12.0 * (log2(n_local) + log2(nprocs)));
     
@@ -227,7 +227,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     n_local = 0;
     for ( i = 0; i < num_rows; ++i )
     {
-        for ( pj = A->start[i]; pj < A->end[i]; ++pj )
+        for ( pj = A->start[i]; pj < A->end[i]; pj += 10 )
         {
             input_array[n_local++] = A->entries[pj].val;
         }
@@ -426,7 +426,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     t_comm += MPI_Wtime() - t_start;
 
 #if defined(DEBUG)
-    int nnz = 0; //uncomment to check the nnz's in the sparsity pattern
+    int nnz = 0;
 #endif
 
     /* build entries of that pattern*/
@@ -453,13 +453,11 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
 
 #if defined(DEBUG)
     MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
-#if defined(NEUTRAL_TERRITORY)
     if ( system->my_rank == MASTER_NODE )
     {
-        fprintf( stdout, "    [INFO] total nnz in all sparsity patterns = %d\nthreshold = %.15lf\n",
-                nnz, threshold );
+        fprintf( stdout, "    [INFO] \ntotal nnz in all charge matrices = %d\ntotal nnz in all sparsity patterns = %d\nthreshold = %.15lf\n",
+                n, nnz, threshold );
     }
-#endif
 #endif
  
     MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE,
