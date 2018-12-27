@@ -457,6 +457,8 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     {
         fprintf( stdout, "    [INFO] \ntotal nnz in all charge matrices = %d\ntotal nnz in all sparsity patterns = %d\nthreshold = %.15lf\n",
                 n, nnz, threshold );
+        fprintf( stdout, "SAI SETUP takes %.2f seconds\n", MPI_Wtime() - start );
+        fflush( stdout );
     }
 #endif
  
@@ -893,6 +895,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     lapack_int m, n, nrhs, lda, ldb, info;
     int *pos_x, *X;
     real *e_j, *dense_matrix;
+    int size_e, size_dense;
     int cnt, scale;
     reax_atom *atom;
     int *row_nnz;
@@ -906,6 +909,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     MPI_Status stat1, stat2, stat3, stat4;
     const neighbor_proc *nbr1, *nbr2;
     int *j_send, *j_recv1, *j_recv2;
+    int size_send, size_recv1, size_recv2;
     real *val_send, *val_recv1, *val_recv2;
     real start, t_start, t_comm;
     real total_comm;
@@ -935,6 +939,15 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     j_recv2 = NULL;
     val_recv1 = NULL;
     val_recv2 = NULL;
+    size_send = 0;
+    size_recv1 = 0;
+    size_recv2 = 0;
+
+    e_j = NULL;
+    dense_matrix = NULL;
+    size_e = 0;
+    size_dense = 0;
+
 
     row_nnz = smalloc( sizeof(int) * system->total_cap,
            "sparse_approx_inverse::row_nnz", MPI_COMM_WORLD );
@@ -989,10 +1002,22 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             if( cnt )
             {
                 flag1 = 1;
-                j_recv1 = smalloc( sizeof(int) * cnt,
-                        "sparse_approx_inverse::j_recv1", MPI_COMM_WORLD );
-                val_recv1 = smalloc( sizeof(real) * cnt,
-                        "sparse_approx_inverse::val_recv1", MPI_COMM_WORLD );
+                
+                if ( size_recv1 < cnt )
+                {
+                    if ( size_recv1 )
+                    {
+                        sfree( j_recv1, "sparse_approx_inverse::j_recv1" );
+                        sfree( val_recv1, "sparse_approx_inverse::val_recv1" );
+                    }
+
+                    size_recv1 = cnt * SAFE_ZONE;
+
+                    j_recv1 = smalloc( sizeof(int) * size_recv1,
+                            "sparse_approx_inverse::j_recv1", MPI_COMM_WORLD );
+                    val_recv1 = smalloc( sizeof(real) * size_recv1,
+                            "sparse_approx_inverse::val_recv1", MPI_COMM_WORLD );
+                }
 
                 t_start = MPI_Wtime();
                 MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
@@ -1018,10 +1043,22 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             if( cnt )
             {
                 flag2 = 1;
-                j_recv2 = smalloc( sizeof(int) * cnt,
-                        "sparse_approx_inverse::j_recv2", MPI_COMM_WORLD );
-                val_recv2 = smalloc( sizeof(real) * cnt,
-                        "sparse_approx_inverse::val_recv2", MPI_COMM_WORLD );
+
+                if ( size_recv2 < cnt )
+                {
+                    if ( size_recv2 )
+                    {
+                        sfree( j_recv2, "sparse_approx_inverse::j_recv2" );
+                        sfree( val_recv2, "sparse_approx_inverse::val_recv2" );
+                    }
+
+                    size_recv2 = cnt * SAFE_ZONE;
+
+                    j_recv2 = smalloc( sizeof(int) * size_recv2,
+                            "sparse_approx_inverse::j_recv2", MPI_COMM_WORLD );
+                    val_recv2 = smalloc( sizeof(real) * size_recv2,
+                            "sparse_approx_inverse::val_recv2", MPI_COMM_WORLD );
+                }
 
                 t_start = MPI_Wtime();
                 MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
@@ -1041,10 +1078,21 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
             if ( cnt > 0 )
             {
-                j_send = smalloc( sizeof(int) * cnt,
-                        "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
-                val_send = smalloc( sizeof(real) * cnt,
-                        "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
+                if ( size_send < cnt )
+                {
+                    if ( size_send )
+                    {
+                        sfree( j_send, "sparse_approx_inverse::j_send" );
+                        sfree( val_send, "sparse_approx_inverse::val_send" );
+                    }
+
+                    size_send = cnt * SAFE_ZONE;
+
+                    j_send = smalloc( sizeof(int) * size_send,
+                            "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
+                    val_send = smalloc( sizeof(real) * size_send,
+                            "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
+                }
 
                 cnt = 0;
                 for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
@@ -1087,10 +1135,22 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
             if ( cnt > 0 )
             {
-                j_send = smalloc( sizeof(int) * cnt,
-                        "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
-                val_send = smalloc( sizeof(real) * cnt,
-                        "sparse_approx_inverse::val_send", MPI_COMM_WORLD );
+
+                if ( size_send < cnt )
+                {
+                    if ( size_send )
+                    {
+                        sfree( j_send, "sparse_approx_inverse::j_send" );
+                        sfree( val_send, "sparse_approx_inverse::j_send" );
+                    }
+
+                    size_send = cnt * SAFE_ZONE;
+
+                    j_send = smalloc( sizeof(int) * size_send,
+                            "sparse_approx_inverse::j_send", MPI_COMM_WORLD );
+                    val_send = smalloc( sizeof(real) * size_send,
+                            "sparse_approx_inverse::val_send", MPI_COMM_WORLD );
+                }
 
                 cnt = 0;
                 for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
@@ -1178,6 +1238,22 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             }
         }
     }
+
+    sfree( j_send, "sparse_approx_inverse::j_send" );
+    sfree( val_send, "sparse_approx_inverse::val_send" );
+    sfree( j_recv1, "sparse_approx_inverse::j_recv1" );
+    sfree( j_recv2, "sparse_approx_inverse::j_recv2" );
+    sfree( val_recv1, "sparse_approx_inverse::val_recv1" );
+    sfree( val_recv2, "sparse_approx_inverse::val_recv2" );
+
+#if defined(DEBUG)
+    if ( system->my_rank == MASTER_NODE )
+    {
+        fprintf( stdout, "bigN = %d, N = %d, n = %d\n", system->bigN, system->N, system->n );
+        fprintf( stdout, "SAI COMP initialization and exchanging row info takes %.2f seconds\n", MPI_Wtime() - start );
+        fflush( stdout );
+    }
+#endif
     
     X = smalloc( sizeof(int) * (system->bigN + 1),
            "sparse_approx_inverse::X", MPI_COMM_WORLD );
@@ -1245,8 +1321,18 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         }
 
         /* allocate memory for NxM dense matrix */
-        dense_matrix = smalloc( sizeof(real) * N * M,
-               "sparse_approx_inverse::dense_matrix", MPI_COMM_WORLD );
+        if ( size_dense < N * M )
+        {
+            if ( size_dense )
+            {
+                sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
+            }
+            
+            size_dense = N * M * SAFE_ZONE;
+
+            dense_matrix = smalloc( sizeof(real) * size_dense,
+                "sparse_approx_inverse::dense_matrix", MPI_COMM_WORLD );
+        }
 
         /* fill in the entries of dense matrix */
         for ( d_j = 0; d_j < N; ++d_j)
@@ -1315,7 +1401,17 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
         /* create the right hand side of the linear equation
          * that is the full column of the identity matrix */
-        e_j = smalloc( sizeof(real) * M, "sparse_approx_inverse::e_j", MPI_COMM_WORLD );
+        if ( size_e < M )
+        {
+            if ( size_e )
+            {
+                sfree( e_j, "sparse_approx_inverse::e_j" );
+            }
+
+            size_e = M * SAFE_ZONE;
+
+            e_j = smalloc( sizeof(real) * size_e, "sparse_approx_inverse::e_j", MPI_COMM_WORLD );
+        }
 
         for ( k = 0; k < M; ++k )
         {
@@ -1351,12 +1447,20 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             (*A_app_inv)->entries[k].j = A_spar_patt->entries[k].j;
             (*A_app_inv)->entries[k].val = e_j[k - A_spar_patt->start[i]];
         }
-        sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
-        sfree( e_j, "sparse_approx_inverse::e_j" );
     }
 
+    sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
+    sfree( e_j, "sparse_approx_inverse::e_j" );
     sfree( pos_x, "sparse_approx_inverse::pox_x" );
     sfree( X, "sparse_approx_inverse::X" );
+    /*for ( i = 0; i < system->N; ++i )
+    {
+        sfree( j_list[i], "sparse_approx_inverse::j_list" );
+        sfree( val_list[i], "sparse_approx_inverse::val_list" );
+    }
+    sfree( j_list, "sparse_approx_inverse::j_list" );
+    sfree( val_list, "sparse_approx_inverse::val_list" );*/
+    sfree( row_nnz, "sparse_approx_inverse::row_nnz" );
 
     MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE,
             mpi_data->world );
