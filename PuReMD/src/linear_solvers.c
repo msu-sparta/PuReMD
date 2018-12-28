@@ -889,7 +889,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         sparse_matrix *A, sparse_matrix *A_spar_patt,
         sparse_matrix **A_app_inv, int nprocs )
 {
-    int N, M, d_i, d_j;
+    int N, M, d_i, d_j, mark;
     int i, k, pj, j_temp;
     int local_pos, atom_pos, identity_pos;
     lapack_int m, n, nrhs, lda, ldb, info;
@@ -1244,6 +1244,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     {
         N = 0;
         M = 0;
+        mark = i + system->bigN;
         
         /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
         for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
@@ -1262,7 +1263,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
                     atom = &system->my_atoms[ A->entries[k].j ];
-                    X[atom->orig_id] = i;
+                    X[atom->orig_id] = mark;
                 }
             }
 
@@ -1272,7 +1273,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 for ( k = 0; k < row_nnz[j_temp]; ++k )
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    X[ j_list[j_temp][k] ] = i;
+                    X[ j_list[j_temp][k] ] = mark;
                 }
             }
         }
@@ -1284,7 +1285,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
         for ( k = 0; k <= system->bigN; k++)
         {
-            if ( X[k] == i )
+            if ( X[k] == mark )
             {
                 X[k] = M;
                 if ( k == atom_pos )
