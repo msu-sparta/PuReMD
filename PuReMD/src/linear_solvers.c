@@ -893,7 +893,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     int i, k, pj, j_temp;
     int local_pos, atom_pos, identity_pos;
     lapack_int m, n, nrhs, lda, ldb, info;
-    int *pos_x, *X;
+    int *X;
     real *e_j, *dense_matrix;
     int size_e, size_dense;
     int cnt, scale;
@@ -931,7 +931,6 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 SYM_FULL_MATRIX, comm );
     }
 
-    pos_x = NULL;
     X = NULL;
     j_send = NULL;
     val_send = NULL;
@@ -992,10 +991,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             /* calculate the total data that will be received */
             for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                //if( i >= A->n)
-                {
-                    cnt += row_nnz[i];
-                }
+                cnt += row_nnz[i];
             }
 
             /* initiate Irecv */
@@ -1033,10 +1029,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             cnt = 0;
             for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                //if( i >= A->n )
-                {
-                    cnt += row_nnz[i];
-                }
+                cnt += row_nnz[i];
             }
 
             /* initiate Irecv */
@@ -1194,19 +1187,16 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             cnt = 0;
             for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                //if( i >= A->n )
-                {
-                    j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
-                           "sparse_approx_inverse::j_list[i]", MPI_COMM_WORLD );
-                    val_list[i] = smalloc( sizeof(real) * row_nnz[i],
-                           "sparse_approx_inverse::val_list[i]", MPI_COMM_WORLD );
+                j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
+                       "sparse_approx_inverse::j_list[i]", MPI_COMM_WORLD );
+                val_list[i] = smalloc( sizeof(real) * row_nnz[i],
+                       "sparse_approx_inverse::val_list[i]", MPI_COMM_WORLD );
 
-                    for ( pj = 0; pj < row_nnz[i]; ++pj )
-                    {
-                        j_list[i][pj] = j_recv1[cnt];
-                        val_list[i][pj] = val_recv1[cnt];
-                        cnt++;
-                    }
+                for ( pj = 0; pj < row_nnz[i]; ++pj )
+                {
+                    j_list[i][pj] = j_recv1[cnt];
+                    val_list[i][pj] = val_recv1[cnt];
+                    cnt++;
                 }
             }
         }
@@ -1221,19 +1211,16 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             cnt = 0;
             for ( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                //if ( i >= A->n )
-                {
-                    j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
-                           "sparse_approx_inverse::j_list[i]", MPI_COMM_WORLD );
-                    val_list[i] = smalloc( sizeof(real) * row_nnz[i],
-                           "sparse_approx_inverse::val_list[i]", MPI_COMM_WORLD );
+                j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
+                       "sparse_approx_inverse::j_list[i]", MPI_COMM_WORLD );
+                val_list[i] = smalloc( sizeof(real) * row_nnz[i],
+                       "sparse_approx_inverse::val_list[i]", MPI_COMM_WORLD );
 
-                    for ( pj = 0; pj < row_nnz[i]; ++pj )
-                    {
-                        j_list[i][pj] = j_recv2[cnt];
-                        val_list[i][pj] = val_recv2[cnt];
-                        cnt++;
-                    }
+                for ( pj = 0; pj < row_nnz[i]; ++pj )
+                {
+                    j_list[i][pj] = j_recv2[cnt];
+                    val_list[i][pj] = val_recv2[cnt];
+                    cnt++;
                 }
             }
         }
@@ -1246,30 +1233,18 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     sfree( val_recv1, "sparse_approx_inverse::val_recv1" );
     sfree( val_recv2, "sparse_approx_inverse::val_recv2" );
 
-#if defined(DEBUG)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        fprintf( stdout, "bigN = %d, N = %d, n = %d\n", system->bigN, system->N, system->n );
-        fprintf( stdout, "SAI COMP initialization and exchanging row info takes %.2f seconds\n", MPI_Wtime() - start );
-        fflush( stdout );
-    }
-#endif
-    
     X = smalloc( sizeof(int) * (system->bigN + 1),
            "sparse_approx_inverse::X", MPI_COMM_WORLD );
-    pos_x = smalloc( sizeof(int) * (system->bigN + 1),
-           "sparse_approx_inverse::pos_x", MPI_COMM_WORLD );
-
+    for ( i = 0; i <= system->bigN; ++i )
+    {
+        X[i] = -1;
+    }
+    
     for ( i = 0; i < A_spar_patt->n; ++i )
     {
         N = 0;
         M = 0;
-        for ( k = 0; k <= system->bigN; ++k )
-        {
-            X[k] = 0;
-            pos_x[k] = 0;
-        }
-
+        
         /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
         for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
         {
@@ -1287,7 +1262,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
                     atom = &system->my_atoms[ A->entries[k].j ];
-                    X[atom->orig_id] = 1;
+                    X[atom->orig_id] = i;
                 }
             }
 
@@ -1297,7 +1272,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 for ( k = 0; k < row_nnz[j_temp]; ++k )
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    X[ j_list[j_temp][k] ] = 1;
+                    X[ j_list[j_temp][k] ] = i;
                 }
             }
         }
@@ -1309,9 +1284,9 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
         for ( k = 0; k <= system->bigN; k++)
         {
-            if ( X[k] != 0 )
+            if ( X[k] == i )
             {
-                pos_x[k] = M;
+                X[k] = M;
                 if ( k == atom_pos )
                 {
                     identity_pos = M;
@@ -1347,54 +1322,19 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             /* it is in the original list */
             local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
 
-#if defined(DEBUG)
-            if ( local_pos < 0 || local_pos >= system->N )
-            {
-                fprintf( stderr, "[ERROR] Sparse_Approx_Inverse: LOCAL POSITION OF THE ATOM IS NOT VALID\n" );
-                fprintf( stderr, "    [INFO] row %d, position %d\n", i, local_pos );
-                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
-            }
-#endif
-
             if ( local_pos < A->n )
             {
                 for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
                 {
                     atom = &system->my_atoms[ A->entries[d_i].j ];
-
-#if defined(DEBUG)
-                    if ( pos_x[ atom->orig_id ] >= M || d_j >=  N )
-                    {
-                        fprintf( stderr, "[ERROR] Sparse_Approx_Inverse: index out-of-bounds (QR matrix)" );
-                        fprintf( stderr, "    [INFO] orig_id = %d, i =  %d, j = %d, M = %d N = %d\n",
-                                atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
-                        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
-                    }
-#endif
-
-                    if ( X[ atom->orig_id ] == 1 )
-                    {
-                        dense_matrix[ pos_x[ atom->orig_id ] * N + d_j ] = A->entries[d_i].val;
-                    }
+                    dense_matrix[ X[ atom->orig_id ] * N + d_j ] = A->entries[d_i].val;
                 }
             }
             else
             {
                 for ( d_i = 0; d_i < row_nnz[ local_pos ]; ++d_i )
                 {
-#if defined(DEBUG)
-                    if ( pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N )
-                    {
-                        fprintf( stderr, "[ERROR] Sparse_Approx_Inverse: index out-of-bounds (QR matrix)" );
-                        fprintf( stderr, "    [INFO] %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j );
-                        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
-                    }
-#endif
-
-                    if ( X[ j_list[local_pos][d_i] ] == 1 )
-                    {
-                        dense_matrix[ pos_x[ j_list[local_pos][d_i] ] * N + d_j ] = val_list[local_pos][d_i];
-                    }
+                    dense_matrix[ X[ j_list[local_pos][d_i] ] * N + d_j ] = val_list[local_pos][d_i];
                 }
             }
         }
@@ -1451,7 +1391,6 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
     sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
     sfree( e_j, "sparse_approx_inverse::e_j" );
-    sfree( pos_x, "sparse_approx_inverse::pox_x" );
     sfree( X, "sparse_approx_inverse::X" );
     /*for ( i = 0; i < system->N; ++i )
     {
