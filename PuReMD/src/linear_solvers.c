@@ -890,10 +890,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         sparse_matrix **A_app_inv, int nprocs )
 {
     int N, M, d_i, d_j, mark;
-    int i, k, pj, j_temp;
+    int i, k, pj, j_temp, push;
     int local_pos, atom_pos, identity_pos;
     lapack_int m, n, nrhs, lda, ldb, info;
-    int *X;
+    int *X, *q;
     real *e_j, *dense_matrix;
     int size_e, size_dense;
     int cnt, scale;
@@ -1234,16 +1234,20 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     sfree( val_recv2, "sparse_approx_inverse::val_recv2" );
 
     X = smalloc( sizeof(int) * (system->bigN + 1),
-           "sparse_approx_inverse::X", MPI_COMM_WORLD );
+            "sparse_approx_inverse::X", MPI_COMM_WORLD );
+    q = smalloc( sizeof(int) * system->N * 2,
+            "sparse_approx_inverse::q", MPI_COMM_WORLD );
+
     for ( i = 0; i <= system->bigN; ++i )
     {
         X[i] = -1;
     }
-    
+
     for ( i = 0; i < A_spar_patt->n; ++i )
     {
         N = 0;
         M = 0;
+        push = 0;
         mark = i + system->bigN;
         
         /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
@@ -1264,6 +1268,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
                     atom = &system->my_atoms[ A->entries[k].j ];
                     X[atom->orig_id] = mark;
+                    q[push++] = atom->orig_id;
                 }
             }
 
@@ -1274,6 +1279,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
                     X[ j_list[j_temp][k] ] = mark;
+                    q[push++] = j_list[j_temp][k];
                 }
             }
         }
@@ -1283,18 +1289,15 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         atom = &system->my_atoms[ i ];
         atom_pos = atom->orig_id;
 
-        for ( k = 0; k <= system->bigN; k++)
+        for ( k = 0; k < push; k++)
         {
-            if ( X[k] == mark )
+            if ( X[ q[k] ] == mark )
             {
-                X[k] = M;
-                if ( k == atom_pos )
-                {
-                    identity_pos = M;
-                }
+                X[ q[k] ] = M;
                 ++M;
             }
         }
+        identity_pos = X[atom_pos];
 
         /* allocate memory for NxM dense matrix */
         if ( size_dense < N * M )
