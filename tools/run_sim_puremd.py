@@ -205,22 +205,25 @@ class TestCase():
         from operator import mul
         from functools import reduce
         
-        total = 0.
-        comm = 0.
-        neighbors = 0.
-        init = 0.
-        bonded = 0.
-        nonbonded = 0.
-        time = 0.
-        cm = 0.
-        cm_sort = 0.
-        s_iters = 0.
-        pre_comp = 0.
-        pre_app = 0.
-        s_comm = 0.
-        s_allr = 0.
-        s_spmv = 0.
-        s_vec_ops = 0.
+        total = 0.0
+        comm = 0.0
+        neighbors = 0.0
+        init = 0.0
+        init_dist = 0.0
+        init_cm = 0.0
+        init_bond = 0.0
+        bonded = 0.0
+        nonbonded = 0.0
+        time = 0.0
+        cm = 0.0
+        cm_sort = 0.0
+        s_iters = 0.0
+        pre_comp = 0.0
+        pre_app = 0.0
+        s_comm = 0.0
+        s_allr = 0.0
+        s_spmv = 0.0
+        s_vec_ops = 0.0
         cnt = 0
         cnt_valid = 0
         line_cnt = 0
@@ -241,17 +244,20 @@ class TestCase():
                         comm = comm + float(line[2])
                         neighbors = neighbors + float(line[3])
                         init = init + float(line[4])
-                        bonded = bonded + float(line[5])
-                        nonbonded = nonbonded + float(line[6])
-                        cm = cm + float(line[7])
-                        cm_sort = cm_sort + float(line[8])
-                        s_iters = s_iters + float(line[9])
-                        pre_comp = pre_comp + float(line[10])
-                        pre_app = pre_app + float(line[11])
-                        s_comm = s_comm + float(line[12])
-                        s_allr = s_allr + float(line[13])
-                        s_spmv = s_spmv + float(line[14])
-                        s_vec_ops = s_vec_ops + float(line[15])
+                        init_dist = init_dist + float(line[5])
+                        init_cm = init_cm + float(line[6])
+                        init_bond = init_bond + float(line[7])
+                        bonded = bonded + float(line[8])
+                        nonbonded = nonbonded + float(line[9])
+                        cm = cm + float(line[10])
+                        cm_sort = cm_sort + float(line[11])
+                        s_iters = s_iters + float(line[12])
+                        pre_comp = pre_comp + float(line[13])
+                        pre_app = pre_app + float(line[14])
+                        s_comm = s_comm + float(line[15])
+                        s_allr = s_allr + float(line[16])
+                        s_spmv = s_spmv + float(line[17])
+                        s_vec_ops = s_vec_ops + float(line[18])
                         cnt = cnt + 1
                     cnt_valid = cnt_valid + 1
                 except Exception:
@@ -266,6 +272,9 @@ class TestCase():
                 comm = comm / cnt
                 neighbors = neighbors / cnt
                 init = init / cnt
+                init_dist = init_dist / cnt
+                init_cm = init_cm / cnt
+                init_bond = init_bond / cnt
                 bonded = bonded / cnt
                 nonbonded = nonbonded / cnt
                 cm = cm / cnt
@@ -287,7 +296,8 @@ class TestCase():
                 param['cm_solver_q_err'],
                 param['reneighbor'],
                 param['cm_solver_pre_comp_sai_thres'],
-                total, comm, neighbors, init, bonded, nonbonded, cm, cm_sort,
+                total, comm, neighbors, init, init_dist, init_cm, init_bond,
+                bonded, nonbonded, cm, cm_sort,
                 s_iters, pre_comp, pre_app, s_comm, s_allr, s_spmv, s_vec_ops))
         else:
             fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
@@ -296,8 +306,11 @@ class TestCase():
                 param['cm_solver_q_err'],
                 param['reneighbor'],
                 param['cm_solver_pre_comp_sai_thres'],
-                float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'),
-                float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan'), float('nan')))
+                float('nan'), float('nan'), float('nan'), float('nan'),
+                float('nan'), float('nan'), float('nan'), float('nan'),
+                float('nan'), float('nan'), float('nan'), float('nan'),
+                float('nan'), float('nan'), float('nan'), float('nan'),
+                float('nan'), float('nan')))
 
             print('**WARNING: nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
                 log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
@@ -338,11 +351,12 @@ if __name__ == '__main__':
     control_dir = path.join(base_dir, 'environ')
     data_dir = path.join(base_dir, 'data/benchmarks')
 
-    header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
-    header_str = ['Data Set', 'Proc', 'Steps', 'PreCt', 'Q Tol', 'Ren', 'PCSAI',
-            'total', 'comm', 'neighbors', 'init', 'bonded', 'nonbonded', 'CM', 'CM Sort',
-            'S Iters', 'Pre Comm', 'Pre App', 'S Comm', 'S Allr', 'S SpMV', 'S Vec Ops']
-    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
+    header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
+    header_str = ['Data_Set', 'Proc', 'Steps', 'PreCt', 'Q_Tol', 'Ren', 'PCSAI',
+            'total', 'comm', 'neighbors', 'init', 'init_dist', 'init_cm', 'init_bond',
+            'bonded', 'nonbonded', 'cm', 'cm_sort',
+            's_iters', 'pre_comm', 'pre_app', 's_comm', 's_allr', 's_spmv', 's_vec_ops']
+    body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
 
     params = {
             'ensemble_type': ['0'],
