@@ -1235,7 +1235,12 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
     X = smalloc( sizeof(int) * (system->bigN + 1),
             "sparse_approx_inverse::X", MPI_COMM_WORLD );
-    q = smalloc( sizeof(int) * system->N * 2,
+    //size of q should be equal to the maximum possible cardinalty 
+    //of the set formed by neighbors of neighbors of an atom
+    //i.e, maximum number of rows of dense matrix
+    //for water systems, this number is 34000
+    //for silica systems, it is 12000
+    q = smalloc( sizeof(int) * 50000,
             "sparse_approx_inverse::q", MPI_COMM_WORLD );
 
     for ( i = 0; i <= system->bigN; ++i )
