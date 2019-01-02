@@ -345,27 +345,26 @@ static void Init_Distance( reax_system *system, control_params *control,
     far_nbrs = lists[FAR_NBRS];
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
 
-    for ( i = 0; i < system->N; ++i )
+    if ( !renbr )
     {
-        atom_i = &system->my_atoms[i];
-        start_i = Start_Index( i, far_nbrs );
-        end_i = End_Index( i, far_nbrs );
-
-        /* update i-j distance for non-reneighboring steps */
-        for ( pj = start_i; pj < end_i; ++pj )
+        for ( i = 0; i < system->N; ++i )
         {
-            j = far_nbrs->far_nbr_list.nbr[pj];
-            atom_j = &system->my_atoms[j];
-            
-            if ( !renbr )
+            atom_i = &system->my_atoms[i];
+            start_i = Start_Index( i, far_nbrs );
+            end_i = End_Index( i, far_nbrs );
+
+            /* update i-j distance for non-reneighboring steps */
+            for ( pj = start_i; pj < end_i; ++pj )
             {
+                j = far_nbrs->far_nbr_list.nbr[pj];
+                atom_j = &system->my_atoms[j];
+                
                 far_nbrs->far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
                 far_nbrs->far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
                 far_nbrs->far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
                 far_nbrs->far_nbr_list.d[pj] = rvec_Norm_Sqr( far_nbrs->far_nbr_list.dvec[pj] );
                 far_nbrs->far_nbr_list.d[pj] = sqrt( far_nbrs->far_nbr_list.d[pj] );
             }
-
         }
     }
 }
@@ -380,8 +379,8 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int Htop;
-    int local, flag, renbr;
-    real r_ij, cutoff;
+    int local, renbr;
+    real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
     single_body_parameters *sbp_i;
@@ -454,18 +453,15 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
         if ( i < system->n )
         {
             local = 1;
-            cutoff = control->nonb_cut;
         }
         else if ( atom_i->nt_dir != -1 )
         {
             local = 2;
-            cutoff = control->nonb_cut;
             nt_flag = 0;
         }
         else
         {
-            local = 0;
-            cutoff = control->bond_cut;
+            continue;
         }
 
         if ( local == 1 )
@@ -481,16 +477,7 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
 
-            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
-            {
-                flag = 1;
-            }
-            else
-            {
-                flag = 0;
-            }
-
-            if ( flag )
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
             {
                 type_j = atom_j->type;
                 r_ij = far_nbrs->far_nbr_list.d[pj];
@@ -536,6 +523,7 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
                             H->start[atom_i->pos] = Htop;
                         }
 
+                        //TODO: necessary?
                         if ( j < system->n )
                         {
                             H->entries[Htop].j = j;
@@ -604,8 +592,8 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int Htop;
-    int local, flag, renbr;
-    real r_ij, cutoff;
+    int local, renbr;
+    real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
     single_body_parameters *sbp_i;
@@ -678,18 +666,15 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
         if ( i < system->n )
         {
             local = 1;
-            cutoff = control->nonb_cut;
         }
         else if ( atom_i->nt_dir != -1 )
         {
             local = 2;
-            cutoff = control->nonb_cut;
             nt_flag = 0;
         }
         else
         {
-            local = 0;
-            cutoff = control->bond_cut;
+            continue;
         }
 
         if ( local == 1 )
@@ -702,20 +687,11 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            j = far_nbrs->far_nbr_list.nbr[pj];
-            atom_j = &system->my_atoms[j];
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
+            {
+                j = far_nbrs->far_nbr_list.nbr[pj];
+                atom_j = &system->my_atoms[j];
 
-            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
-            {
-                flag = 1;
-            }
-            else
-            {
-                flag = 0;
-            }
-
-            if ( flag )
-            {
                 type_j = atom_j->type;
                 r_ij = far_nbrs->far_nbr_list.d[pj];
                 twbp = &system->reax_param.tbp[type_i][type_j];
@@ -829,8 +805,7 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int Htop;
-    int local, flag;
-    real r_ij, cutoff;
+    real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
     single_body_parameters *sbp_i;
@@ -843,7 +818,7 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
     H->n = system->n;
     Htop = 0;
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->n; ++i )
     {
         atom_i = &system->my_atoms[i];
         type_i = atom_i->type;
@@ -852,71 +827,42 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
 
         sbp_i = &system->reax_param.sbp[type_i];
 
-        if ( i < system->n )
-        {
-            local = 1;
-            cutoff = control->nonb_cut;
-        }
-        else
-        {
-            local = 0;
-            cutoff = control->bond_cut;
-        }
-
-        if ( local )
-        {
-            H->start[i] = Htop;
-            H->entries[Htop].j = i;
-            H->entries[Htop].val = sbp_i->eta;
-            ++Htop;
-        }
+        H->start[i] = Htop;
+        H->entries[Htop].j = i;
+        H->entries[Htop].val = sbp_i->eta;
+        ++Htop;
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            j = far_nbrs->far_nbr_list.nbr[pj];
-            atom_j = &system->my_atoms[j];
+            // H matrix entry
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
+            {
+                j = far_nbrs->far_nbr_list.nbr[pj];
+                atom_j = &system->my_atoms[j];
             
-            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
-            {
-                flag = 1;
-            }
-            else
-            {
-                flag = 0;
-            }
-
-            if ( flag )
-            {
-                type_j = atom_j->type;
-                r_ij = far_nbrs->far_nbr_list.d[pj];
-                twbp = &system->reax_param.tbp[type_i][type_j];
-
-                if ( local )
+                if ( j < system->n || atom_i->orig_id < atom_j->orig_id )
                 {
-                    // H matrix entry
-                    if ( j < system->n || atom_i->orig_id < atom_j->orig_id )
+                    type_j = atom_j->type;
+                    r_ij = far_nbrs->far_nbr_list.d[pj];
+                    twbp = &system->reax_param.tbp[type_i][type_j];
+
+                    H->entries[Htop].j = j;
+
+                    if ( control->tabulate == 0 )
                     {
-                        H->entries[Htop].j = j;
-
-                        if ( control->tabulate == 0 )
-                        {
-                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
-                        }
-                        else
-                        {
-                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
-                        }
-
-                        ++Htop;
+                        H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
                     }
+                    else
+                    {
+                        H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
+                    }
+
+                    ++Htop;
                 }
             }
         }
 
-        if ( local )
-        {
-            H->end[i] = Htop;
-        }
+        H->end[i] = Htop;
     }
 
     workspace->realloc.Htop = Htop;
@@ -943,8 +889,7 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int Htop;
-    int local, flag;
-    real r_ij, cutoff;
+    real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
     single_body_parameters *sbp_i;
@@ -957,7 +902,7 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
     H->n = system->n;
     Htop = 0;
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->n; ++i )
     {
         atom_i = &system->my_atoms[i];
         type_i = atom_i->type;
@@ -966,68 +911,38 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
 
         sbp_i = &system->reax_param.sbp[type_i];
 
-        if ( i < system->n )
-        {
-            local = 1;
-            cutoff = control->nonb_cut;
-        }
-        else
-        {
-            local = 0;
-            cutoff = control->bond_cut;
-        }
-
-        if ( local )
-        {
-            H->start[i] = Htop;
-            H->entries[Htop].j = i;
-            H->entries[Htop].val = sbp_i->eta;
-            ++Htop;
-        }
+        H->start[i] = Htop;
+        H->entries[Htop].j = i;
+        H->entries[Htop].val = sbp_i->eta;
+        ++Htop;
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            j = far_nbrs->far_nbr_list.nbr[pj];
-            atom_j = &system->my_atoms[j];
-            
-            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
             {
-                flag = 1;
-            }
-            else
-            {
-                flag = 0;
-            }
-
-            if ( flag )
-            {
+                j = far_nbrs->far_nbr_list.nbr[pj];
+                atom_j = &system->my_atoms[j];
                 type_j = atom_j->type;
                 r_ij = far_nbrs->far_nbr_list.d[pj];
                 twbp = &system->reax_param.tbp[type_i][type_j];
 
-                if ( local )
+                // H matrix entry
+                H->entries[Htop].j = j;
+
+                if ( control->tabulate == 0 )
                 {
-                    // H matrix entry
-                    H->entries[Htop].j = j;
-
-                    if ( control->tabulate == 0 )
-                    {
-                        H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
-                    }
-                    else
-                    {
-                        H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
-                    }
-
-                    ++Htop;
+                    H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
                 }
+                else
+                {
+                    H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                }
+
+                ++Htop;
             }
         }
 
-        if ( local )
-        {
-            H->end[i] = Htop;
-        }
+        H->end[i] = Htop;
     }
 
     workspace->realloc.Htop = Htop;
@@ -1056,8 +971,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
     int type_i, type_j;
     int btop_i, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top;
-    int local, flag;
-    real cutoff;
+    int local;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -1097,12 +1011,10 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
         if ( i < system->n )
         {
             local = 1;
-            cutoff = control->nonb_cut;
         }
         else
         {
             local = 0;
-            cutoff = control->bond_cut;
         }
 
         ihb = -1;
@@ -1112,6 +1024,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
             if ( control->hbond_cut > 0 )
             {
                 ihb = sbp_i->p_hbond;
+
                 if ( ihb == 1 )
                 {
                     /* start at end because other atoms
@@ -1131,16 +1044,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
             
-            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
-            {
-                flag = 1;
-            }
-            else
-            {
-                flag = 0;
-            }
-
-            if ( flag )
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
@@ -1179,8 +1083,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    far_nbrs->far_nbr_list.d[pj] <= control->bond_cut
-                    && BOp( workspace, bonds, control->bo_cut,
+                    BOp( workspace, bonds, control->bo_cut,
                          i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
                          &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
                          &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
@@ -1203,12 +1106,9 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
 
         Set_End_Index( i, btop_i, bonds );
 
-        if ( local == 1 )
+        if ( local == 1 && ihb == 1 )
         {
-            if ( ihb == 1 )
-            {
-                Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
-            }
+            Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
         }
     }
 
@@ -1241,8 +1141,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     int type_i, type_j;
     int btop_i, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top;
-    int local, flag;
-    real cutoff;
+    int local;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -1253,7 +1152,6 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
-
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -1282,12 +1180,10 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         if ( i < system->n )
         {
             local = 1;
-            cutoff = control->nonb_cut;
         }
         else
         {
             local = 0;
-            cutoff = control->bond_cut;
         }
 
         ihb = -1;
@@ -1315,16 +1211,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
             
-            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
-            {
-                flag = 1;
-            }
-            else
-            {
-                flag = 0;
-            }
-
-            if ( flag )
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
@@ -1353,8 +1240,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
 
                 /* uncorrected bond orders */
                 if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    far_nbrs->far_nbr_list.d[pj] <= control->bond_cut
-                    && BOp( workspace, bonds, control->bo_cut,
+                    BOp( workspace, bonds, control->bo_cut,
                          i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
                          &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
                          &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
@@ -1377,12 +1263,9 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
 
         Set_End_Index( i, btop_i, bonds );
 
-        if ( local == 1 )
+        if ( local == 1 && ihb == 1 )
         {
-            if ( ihb == 1 )
-            {
-                Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
-            }
+            Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
         }
     }
 
