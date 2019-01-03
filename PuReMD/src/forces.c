@@ -972,6 +972,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
     int btop_i, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top;
     int local;
+    real cutoff;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -1011,10 +1012,12 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
         if ( i < system->n )
         {
             local = 1;
+            cutoff = control->nonb_cut;
         }
         else
         {
             local = 0;
+            cutoff = control->bond_cut;
         }
 
         ihb = -1;
@@ -1044,7 +1047,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
             
-            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
+            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
@@ -1142,6 +1145,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     int btop_i, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top;
     int local;
+    real cutoff;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -1180,10 +1184,12 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         if ( i < system->n )
         {
             local = 1;
+            cutoff = control->nonb_cut;
         }
         else
         {
             local = 0;
+            cutoff = control->bond_cut;
         }
 
         ihb = -1;
@@ -1211,7 +1217,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
             
-            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
+            if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
