@@ -83,6 +83,22 @@ real Dot( real* v1, real* v2, int k )
 }
 
 
+real Dot_local( real *v1, real *v2, int k )
+{
+    int i;
+    real sum;
+
+    sum = 0.0;
+
+    for ( i = 0; i < k; ++i )
+    {
+        sum += v1[i] * v2[i];
+    }
+
+    return sum;
+}
+
+
 real Norm( real* v1, int k )
 {
     real ret = 0;

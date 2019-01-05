@@ -134,21 +134,15 @@ int main( int argc, char* argv[] )
     }
 
     /* allocated main datastructures */
-    system = (reax_system *)
-        smalloc( sizeof(reax_system), "system", MPI_COMM_WORLD );
-    control = (control_params *)
-        smalloc( sizeof(control_params), "control", MPI_COMM_WORLD );
-    data = (simulation_data *)
-        smalloc( sizeof(simulation_data), "data", MPI_COMM_WORLD );
+    system = smalloc( sizeof(reax_system), "system", MPI_COMM_WORLD );
+    control = smalloc( sizeof(control_params), "control", MPI_COMM_WORLD );
+    data = smalloc( sizeof(simulation_data), "data", MPI_COMM_WORLD );
 
-    workspace = (storage *)
-        smalloc( sizeof(storage), "workspace", MPI_COMM_WORLD );
-    lists = (reax_list **)
-        smalloc( LIST_N * sizeof(reax_list*), "lists", MPI_COMM_WORLD );
+    workspace = smalloc( sizeof(storage), "workspace", MPI_COMM_WORLD );
+    lists = smalloc( LIST_N * sizeof(reax_list*), "lists", MPI_COMM_WORLD );
     for ( i = 0; i < LIST_N; ++i )
     {
-        lists[i] = (reax_list *)
-            smalloc( sizeof(reax_list), "lists[i]", MPI_COMM_WORLD );
+        lists[i] = smalloc( sizeof(reax_list), "lists[i]", MPI_COMM_WORLD );
         lists[i]->allocated = 0;
         lists[i]->n = 0;
         lists[i]->num_intrs = 0;
@@ -162,17 +156,15 @@ int main( int argc, char* argv[] )
         lists[i]->dDelta_list = NULL;
         lists[i]->hbond_list = NULL;
     }
-    out_control = (output_controls *)
-        smalloc( sizeof(output_controls), "out_control", MPI_COMM_WORLD );
-    mpi_data = (mpi_datatypes *)
-        smalloc( sizeof(mpi_datatypes), "mpi_data", MPI_COMM_WORLD );
+    out_control = smalloc( sizeof(output_controls), "out_control", MPI_COMM_WORLD );
+    mpi_data = smalloc( sizeof(mpi_datatypes), "mpi_data", MPI_COMM_WORLD );
 
     /* setup the parallel environment */
-    MPI_Comm_size( MPI_COMM_WORLD, &(control->nprocs) );
-    MPI_Comm_rank( MPI_COMM_WORLD, &(system->my_rank) );
+    MPI_Comm_size( MPI_COMM_WORLD, &control->nprocs );
+    MPI_Comm_rank( MPI_COMM_WORLD, &system->my_rank );
     system->wsize = control->nprocs;
-    system->global_offset = (int*)
-        scalloc( system->wsize + 1, sizeof(int), "global_offset", MPI_COMM_WORLD );
+    system->global_offset = scalloc( system->wsize + 1, sizeof(int),
+            "global_offset", MPI_COMM_WORLD );
 
     /* read system description files */
     Read_System( argv[1], argv[2], argv[3], system, control,
@@ -185,7 +177,9 @@ int main( int argc, char* argv[] )
 
     /* measure total simulation time after input is read */
     if ( system->my_rank == MASTER_NODE )
-        t_start = MPI_Wtime();
+    {
+        t_start = MPI_Wtime( );
+    }
 
     /* initialize datastructures */
     Initialize( system, control, data, workspace, lists, out_control, mpi_data );
@@ -203,7 +197,6 @@ int main( int argc, char* argv[] )
             lists, out_control, mpi_data );
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
     Output_Results( system, control, data, lists, out_control, mpi_data );
-    
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
@@ -215,28 +208,39 @@ int main( int argc, char* argv[] )
     for ( ++data->step; data->step <= control->nsteps; data->step++ )
     {
         if ( control->T_mode )
+        {
             Temperature_Control( control, data );
+        }
 
         Evolve( system, control, data, workspace, lists, out_control, mpi_data );
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
+
         if( system->my_rank == MASTER_NODE )
         {
             total_itr += data->timing.cm_solver_iters;
         }
+
         Output_Results( system, control, data, lists, out_control, mpi_data );
         //Analysis(system, control, data, workspace, lists, out_control, mpi_data);
 
         /* dump restart info */
-        if ( out_control->restart_freq &&
-                (data->step - data->prev_steps) % out_control->restart_freq == 0 )
+        if ( out_control->restart_freq
+                && (data->step - data->prev_steps) % out_control->restart_freq == 0 )
         {
             if ( out_control->restart_format == WRITE_ASCII )
+            {
                 Write_Restart( system, control, data, out_control, mpi_data );
+            }
             else if ( out_control->restart_format == WRITE_BINARY )
+            {
                 Write_Binary_Restart( system, control, data, out_control, mpi_data );
+            }
         }
-        /*if(data->step == 1 || data->step == control->nsteps)
-            Write_PDB( system, lists, data, control, mpi_data, out_control );*/
+
+//        if ( data->step == 1 || data->step == control->nsteps )
+//        {
+//            Write_PDB( system, lists, data, control, mpi_data, out_control );
+//        }
 
 #if defined(DEBUG)
         fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
@@ -255,7 +259,7 @@ int main( int argc, char* argv[] )
     //Write_PDB( system, lists, data, control, mpi_data, out_control );
     Close_Output_Files( system, control, out_control, mpi_data );
 
-    MPI_Finalize();
+    MPI_Finalize( );
 
     /* de-allocate data structures */
     sfree( system, "system" );

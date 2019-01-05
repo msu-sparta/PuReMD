@@ -147,49 +147,60 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 
 
 /* this version of Compute_Total_Force computes forces from
-   coefficients accumulated by all interaction functions.
-   Saves enormous time & space! */
+ * coefficients accumulated by all interaction functions.
+ * Saves enormous time & space! */
 void Compute_Total_Force( reax_system *system, control_params *control,
-                          simulation_data *data, storage *workspace,
-                          reax_list **lists, mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, mpi_datatypes *mpi_data )
 {
     int i, pj;
     reax_list *bonds = lists[BONDS];
 
     for ( i = 0; i < system->N; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
+        {
             if ( i < bonds->bond_list[pj].nbr )
             {
                 if ( control->virial == 0 )
+                {
                     Add_dBond_to_Forces( i, pj, workspace, lists );
+                }
                 else
+                {
                     Add_dBond_to_Forces_NPT( i, pj, data, workspace, lists );
+                }
             }
+        }
+    }
 
     //Print_Total_Force( system, data, workspace );
+
 #if defined(PURE_REAX)
     /* now all forces are computed to their partially-final values
-       based on the neighbors information each processor has had.
-       final values of force on each atom needs to be computed by adding up
-       all partially-final pieces */
-    Coll( system, mpi_data, workspace->f, mpi_data->mpi_rvec,
-          sizeof(rvec) / sizeof(void), rvec_unpacker );
+     * based on the neighbors information each processor has had.
+     * final values of force on each atom needs to be computed by adding up
+     * all partially-final pieces */
+    Coll( system, mpi_data, workspace->f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+
     for ( i = 0; i < system->n; ++i )
+    {
         rvec_Copy( system->my_atoms[i].f, workspace->f[i] );
+    }
 
 #if defined(TEST_FORCES)
-    Coll( system, mpi_data, workspace->f_ele, mpi_data->mpi_rvec, rvec_unpacker);
-    Coll( system, mpi_data, workspace->f_vdw, mpi_data->mpi_rvec, rvec_unpacker);
-    Coll( system, mpi_data, workspace->f_be, mpi_data->mpi_rvec, rvec_unpacker );
-    Coll( system, mpi_data, workspace->f_lp, mpi_data->mpi_rvec, rvec_unpacker );
-    Coll( system, mpi_data, workspace->f_ov, mpi_data->mpi_rvec, rvec_unpacker );
-    Coll( system, mpi_data, workspace->f_un, mpi_data->mpi_rvec, rvec_unpacker );
-    Coll( system, mpi_data, workspace->f_ang, mpi_data->mpi_rvec, rvec_unpacker);
-    Coll( system, mpi_data, workspace->f_coa, mpi_data->mpi_rvec, rvec_unpacker);
-    Coll( system, mpi_data, workspace->f_pen, mpi_data->mpi_rvec, rvec_unpacker);
-    Coll( system, mpi_data, workspace->f_hb, mpi_data->mpi_rvec, rvec_unpacker );
-    Coll( system, mpi_data, workspace->f_tor, mpi_data->mpi_rvec, rvec_unpacker);
-    Coll( system, mpi_data, workspace->f_con, mpi_data->mpi_rvec, rvec_unpacker);
+    Coll( system, mpi_data, workspace->f_ele, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_vdw, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_be, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_lp, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_ov, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_un, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_ang, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_coa, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_pen, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_hb, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_tor, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_con, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
 #endif
 
 #endif
@@ -2309,7 +2320,7 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     /********* bonded interactions ************/
     Compute_Bonded_Forces( system, control, data, workspace,
-                           lists, out_control, mpi_data->world );
+            lists, out_control, mpi_data->world );
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
@@ -2320,6 +2331,7 @@ void Compute_Forces( reax_system *system, control_params *control,
         t_start = t_end;
     }
 #endif
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: completed bonded\n",
              system->my_rank, data->step );
@@ -2329,7 +2341,9 @@ void Compute_Forces( reax_system *system, control_params *control,
     /**************** qeq ************************/
 #if defined(PURE_REAX)
     if ( qeq_flag )
+    {
         QEq( system, control, data, workspace, out_control, mpi_data );
+    }
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
@@ -2340,6 +2354,7 @@ void Compute_Forces( reax_system *system, control_params *control,
         t_start = t_end;
     }
 #endif
+
 #if defined(DEBUG_FOCUS)
     fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
     MPI_Barrier( mpi_data->world );
@@ -2348,7 +2363,7 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     /********* nonbonded interactions ************/
     Compute_NonBonded_Forces( system, control, data, workspace,
-                              lists, out_control, mpi_data->world );
+            lists, out_control, mpi_data->world );
 
 #if defined(LOG_PERFORMANCE)
     //MPI_Barrier( mpi_data->world );
@@ -2359,6 +2374,7 @@ void Compute_Forces( reax_system *system, control_params *control,
         t_start = t_end;
     }
 #endif
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
              system->my_rank, data->step );
@@ -2376,6 +2392,7 @@ void Compute_Forces( reax_system *system, control_params *control,
         data->timing.bonded += t_end - t_start;
     }
 #endif
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: total forces computed\n",
              system->my_rank, data->step );

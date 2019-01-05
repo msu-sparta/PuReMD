@@ -147,7 +147,7 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     sfree( workspace->bond_mark, "bond_mark" );
     sfree( workspace->done_after, "done_after" );
 
-    /* QEq storage */
+    /* CM storage */
     sfree( workspace->Hdia_inv, "Hdia_inv" );
     sfree( workspace->b_s, "b_s" );
     sfree( workspace->b_t, "b_t" );
@@ -159,28 +159,54 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     sfree( workspace->b, "b" );
     sfree( workspace->x, "x" );
 
-    /* GMRES storage */
-    for ( i = 0; i < RESTART + 1; ++i )
+    if ( control->cm_solver_type == GMRES_S
+            || control->cm_solver_type == GMRES_H_S )
     {
-        sfree( workspace->h[i], "h[i]" );
-        sfree( workspace->v[i], "v[i]" );
+        for ( i = 0; i < RESTART + 1; ++i )
+        {
+            sfree( workspace->h[i], "h[i]" );
+            sfree( workspace->v[i], "v[i]" );
+        }
+
+        sfree( workspace->y, "y" );
+        sfree( workspace->g, "g" );
+        sfree( workspace->hc, "hc" );
+        sfree( workspace->hs, "hs" );
+        sfree( workspace->h, "h" );
+        sfree( workspace->v, "v" );
     }
-    sfree( workspace->h, "h" );
-    sfree( workspace->v, "v" );
-    sfree( workspace->y, "y" );
-    sfree( workspace->z, "z" );
-    sfree( workspace->g, "g" );
-    sfree( workspace->hs, "hs" );
-    sfree( workspace->hc, "hc" );
-    /* CG storage */
-    sfree( workspace->r, "r" );
-    sfree( workspace->d, "d" );
-    sfree( workspace->q, "q" );
-    sfree( workspace->p, "p" );
-    sfree( workspace->r2, "r2" );
-    sfree( workspace->d2, "d2" );
-    sfree( workspace->q2, "q2" );
-    sfree( workspace->p2, "p2" );
+
+    if ( control->cm_solver_type == GMRES_S
+            || control->cm_solver_type == GMRES_H_S
+            || control->cm_solver_type == PIPECG_S )
+    {
+        sfree( workspace->z, "z" );
+    }
+
+    if ( control->cm_solver_type == CG_S
+            || control->cm_solver_type == PIPECG_S )
+    {
+        sfree( workspace->d, "d" );
+        sfree( workspace->p, "p" );
+        sfree( workspace->q, "q" );
+        sfree( workspace->r, "r" );
+    }
+
+    if ( control->cm_solver_type == PIPECG_S )
+    {
+        sfree( workspace->m, "m" );
+        sfree( workspace->n, "n" );
+        sfree( workspace->u, "u" );
+        sfree( workspace->w, "w" );
+    }
+
+    if ( control->cm_solver_type == CG_S )
+    {
+        sfree( workspace->r2, "r2" );
+        sfree( workspace->d2, "d2" );
+        sfree( workspace->q2, "q2" );
+        sfree( workspace->p2, "p2" );
+    }
 
     /* integrator */
     // sfree( workspace->f_old );
@@ -239,8 +265,8 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
 
 
 int Allocate_Workspace( reax_system *system, control_params *control,
-                        storage *workspace, int local_cap, int total_cap,
-                        MPI_Comm comm, char *msg )
+        storage *workspace, int local_cap, int total_cap,
+        MPI_Comm comm, char *msg )
 {
     int i, total_real, total_rvec, local_rvec;
 
@@ -252,129 +278,147 @@ int Allocate_Workspace( reax_system *system, control_params *control,
     /* communication storage */
     for ( i = 0; i < MAX_NBRS; ++i )
     {
-        workspace->tmp_dbl[i] = (real*)
-                                scalloc( total_cap, sizeof(real), "tmp_dbl", comm );
-        workspace->tmp_rvec[i] = (rvec*)
-                                 scalloc( total_cap, sizeof(rvec), "tmp_rvec", comm );
-        workspace->tmp_rvec2[i] = (rvec2*)
-                                  scalloc( total_cap, sizeof(rvec2), "tmp_rvec2", comm );
+        workspace->tmp_dbl[i] = scalloc( total_cap, sizeof(real), "tmp_dbl", comm );
+        workspace->tmp_rvec[i] = scalloc( total_cap, sizeof(rvec), "tmp_rvec", comm );
+        workspace->tmp_rvec2[i] = scalloc( total_cap, sizeof(rvec2), "tmp_rvec2", comm );
     }
 
     /* bond order related storage  */
-    workspace->within_bond_box = (int*)
-                                 scalloc( total_cap, sizeof(int), "skin", comm );
-    workspace->total_bond_order = (real*) smalloc( total_real, "total_bo", comm );
-    workspace->Deltap = (real*) smalloc( total_real, "Deltap", comm );
-    workspace->Deltap_boc = (real*) smalloc( total_real, "Deltap_boc", comm );
-    workspace->dDeltap_self = (rvec*) smalloc( total_rvec, "dDeltap_self", comm );
-    workspace->Delta = (real*) smalloc( total_real, "Delta", comm );
-    workspace->Delta_lp = (real*) smalloc( total_real, "Delta_lp", comm );
-    workspace->Delta_lp_temp = (real*)
-                               smalloc( total_real, "Delta_lp_temp", comm );
-    workspace->dDelta_lp = (real*) smalloc( total_real, "dDelta_lp", comm );
-    workspace->dDelta_lp_temp = (real*)
-                                smalloc( total_real, "dDelta_lp_temp", comm );
-    workspace->Delta_e = (real*) smalloc( total_real, "Delta_e", comm );
-    workspace->Delta_boc = (real*) smalloc( total_real, "Delta_boc", comm );
-    workspace->nlp = (real*) smalloc( total_real, "nlp", comm );
-    workspace->nlp_temp = (real*) smalloc( total_real, "nlp_temp", comm );
-    workspace->Clp = (real*) smalloc( total_real, "Clp", comm );
-    workspace->vlpex = (real*) smalloc( total_real, "vlpex", comm );
-    workspace->bond_mark = (int*)
-                           scalloc( total_cap, sizeof(int), "bond_mark", comm );
-    workspace->done_after = (int*)
-                            scalloc( total_cap, sizeof(int), "done_after", comm );
-    // fprintf( stderr, "p%d: bond order storage\n", system->my_rank );
+    workspace->within_bond_box = scalloc( total_cap, sizeof(int), "skin", comm );
+    workspace->total_bond_order = smalloc( total_real, "total_bo", comm );
+    workspace->Deltap = smalloc( total_real, "Deltap", comm );
+    workspace->Deltap_boc = smalloc( total_real, "Deltap_boc", comm );
+    workspace->dDeltap_self = smalloc( total_rvec, "dDeltap_self", comm );
+    workspace->Delta = smalloc( total_real, "Delta", comm );
+    workspace->Delta_lp = smalloc( total_real, "Delta_lp", comm );
+    workspace->Delta_lp_temp = smalloc( total_real, "Delta_lp_temp", comm );
+    workspace->dDelta_lp = smalloc( total_real, "dDelta_lp", comm );
+    workspace->dDelta_lp_temp = smalloc( total_real, "dDelta_lp_temp", comm );
+    workspace->Delta_e = smalloc( total_real, "Delta_e", comm );
+    workspace->Delta_boc = smalloc( total_real, "Delta_boc", comm );
+    workspace->nlp = smalloc( total_real, "nlp", comm );
+    workspace->nlp_temp = smalloc( total_real, "nlp_temp", comm );
+    workspace->Clp = smalloc( total_real, "Clp", comm );
+    workspace->vlpex = smalloc( total_real, "vlpex", comm );
+    workspace->bond_mark = scalloc( total_cap, sizeof(int), "bond_mark", comm );
+    workspace->done_after = scalloc( total_cap, sizeof(int), "done_after", comm );
 
-    /* QEq storage */
-    workspace->Hdia_inv = (real*)
-                          scalloc( total_cap, sizeof(real), "Hdia_inv", comm );
-    workspace->b_s = (real*) scalloc( total_cap, sizeof(real), "b_s", comm );
-    workspace->b_t = (real*) scalloc( total_cap, sizeof(real), "b_t", comm );
-    workspace->b_prc = (real*) scalloc( total_cap, sizeof(real), "b_prc", comm );
-    workspace->b_prm = (real*) scalloc( total_cap, sizeof(real), "b_prm", comm );
-    workspace->s = (real*) scalloc( total_cap, sizeof(real), "s", comm );
-    workspace->t = (real*) scalloc( total_cap, sizeof(real), "t", comm );
-    workspace->droptol = (real*)
-                         scalloc( total_cap, sizeof(real), "droptol", comm );
-    workspace->b = (rvec2*) scalloc( total_cap, sizeof(rvec2), "b", comm );
-    workspace->x = (rvec2*) scalloc( total_cap, sizeof(rvec2), "x", comm );
+    /* CM storage */
+    workspace->Hdia_inv = scalloc( total_cap, sizeof(real), "Hdia_inv", comm );
+    workspace->b_s = scalloc( total_cap, sizeof(real), "b_s", comm );
+    workspace->b_t = scalloc( total_cap, sizeof(real), "b_t", comm );
+    workspace->b_prc = scalloc( total_cap, sizeof(real), "b_prc", comm );
+    workspace->b_prm = scalloc( total_cap, sizeof(real), "b_prm", comm );
+    workspace->s = scalloc( total_cap, sizeof(real), "s", comm );
+    workspace->t = scalloc( total_cap, sizeof(real), "t", comm );
+    workspace->droptol = scalloc( total_cap, sizeof(real), "droptol", comm );
+    workspace->b = scalloc( total_cap, sizeof(rvec2), "b", comm );
+    workspace->x = scalloc( total_cap, sizeof(rvec2), "x", comm );
 
-    /* GMRES storage */
-    workspace->y = (real*) scalloc( RESTART + 1, sizeof(real), "y", comm );
-    workspace->z = (real*) scalloc( RESTART + 1, sizeof(real), "z", comm );
-    workspace->g = (real*) scalloc( RESTART + 1, sizeof(real), "g", comm );
-    workspace->h = (real**) scalloc( RESTART + 1, sizeof(real*), "h", comm );
-    workspace->hs = (real*) scalloc( RESTART + 1, sizeof(real), "hs", comm );
-    workspace->hc = (real*) scalloc( RESTART + 1, sizeof(real), "hc", comm );
-    workspace->v = (real**) scalloc( RESTART + 1, sizeof(real*), "v", comm );
-
-    for ( i = 0; i < RESTART + 1; ++i )
+    if ( control->cm_solver_type == GMRES_S
+            || control->cm_solver_type == GMRES_H_S )
     {
-        workspace->h[i] = (real*) scalloc( RESTART + 1, sizeof(real), "h[i]", comm );
-        workspace->v[i] = (real*) scalloc( total_cap, sizeof(real), "v[i]", comm );
+        workspace->y = scalloc( RESTART + 1, sizeof(real), "y", comm );
+        workspace->g = scalloc( RESTART + 1, sizeof(real), "g", comm );
+        workspace->hc = scalloc( RESTART + 1, sizeof(real), "hc", comm );
+        workspace->hs = scalloc( RESTART + 1, sizeof(real), "hs", comm );
+        workspace->h = scalloc( RESTART + 1, sizeof(real*), "h", comm );
+        workspace->v = scalloc( RESTART + 1, sizeof(real*), "v", comm );
+
+        for ( i = 0; i < RESTART + 1; ++i )
+        {
+            workspace->h[i] = (real*) scalloc( RESTART + 1, sizeof(real), "h[i]", comm );
+            workspace->v[i] = (real*) scalloc( total_cap, sizeof(real), "v[i]", comm );
+        }
     }
 
-    /* CG storage */
-    workspace->r = (real*) scalloc( total_cap, sizeof(real), "r", comm );
-    workspace->d = (real*) scalloc( total_cap, sizeof(real), "d", comm );
-    workspace->q = (real*) scalloc( total_cap, sizeof(real), "q", comm );
-    workspace->p = (real*) scalloc( total_cap, sizeof(real), "p", comm );
-    workspace->r2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "r2", comm );
-    workspace->d2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "d2", comm );
-    workspace->q2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "q2", comm );
-    workspace->p2 = (rvec2*) scalloc( total_cap, sizeof(rvec2), "p2", comm );
+    if ( control->cm_solver_type == GMRES_S
+            || control->cm_solver_type == GMRES_H_S
+            || control->cm_solver_type == PIPECG_S )
+    {
+        workspace->z = scalloc( RESTART + 1, sizeof(real), "z", comm );
+    }
+    else if ( control->cm_solver_type == PIPECG_S )
+    {
+        workspace->z = scalloc( total_cap, sizeof(real), "z", comm );
+    }
+
+    if ( control->cm_solver_type == CG_S
+            || control->cm_solver_type == PIPECG_S )
+    {
+        workspace->d = scalloc( total_cap, sizeof(real), "d", comm );
+        workspace->p = scalloc( total_cap, sizeof(real), "p", comm );
+        workspace->q = scalloc( total_cap, sizeof(real), "q", comm );
+        workspace->r = scalloc( total_cap, sizeof(real), "r", comm );
+    }
+
+    if ( control->cm_solver_type == PIPECG_S )
+    {
+        workspace->m = scalloc( total_cap, sizeof(real), "m", comm );
+        workspace->n = scalloc( total_cap, sizeof(real), "n", comm );
+        workspace->u = scalloc( total_cap, sizeof(real), "u", comm );
+        workspace->w = scalloc( total_cap, sizeof(real), "w", comm );
+    }
+
+    if ( control->cm_solver_type == CG_S )
+    {
+        workspace->d2 = scalloc( total_cap, sizeof(rvec2), "d2", comm );
+        workspace->r2 = scalloc( total_cap, sizeof(rvec2), "r2", comm );
+        workspace->p2 = scalloc( total_cap, sizeof(rvec2), "p2", comm );
+        workspace->q2 = scalloc( total_cap, sizeof(rvec2), "q2", comm );
+    }
 
     /* integrator storage */
-    workspace->v_const = (rvec*) smalloc( local_rvec, "v_const", comm );
+    workspace->v_const = smalloc( local_rvec, "v_const", comm );
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
     {
-        workspace->mark = (int*) scalloc( local_cap, sizeof(int), "mark", comm );
-        workspace->old_mark = (int*)
-                              scalloc( local_cap, sizeof(int), "old_mark", comm );
+        workspace->mark = scalloc( local_cap, sizeof(int), "mark", comm );
+        workspace->old_mark = scalloc( local_cap, sizeof(int), "old_mark", comm );
     }
     else
-        workspace->mark = workspace->old_mark = NULL;
+    {
+        workspace->mark = NULL;
+        workspace->old_mark = NULL;
+    }
 
     if ( control->diffusion_coef )
-        workspace->x_old = (rvec*)
-                           scalloc( local_cap, sizeof(rvec), "x_old", comm );
-    else workspace->x_old = NULL;
+    {
+        workspace->x_old = scalloc( local_cap, sizeof(rvec), "x_old", comm );
+    }
+    else
+    {
+        workspace->x_old = NULL;
+    }
 
     /* force related storage */
-    workspace->f = (rvec*) scalloc( total_cap, sizeof(rvec), "f", comm );
-    workspace->CdDelta = (real*)
-                         scalloc( total_cap, sizeof(real), "CdDelta", comm );
+    workspace->f = scalloc( total_cap, sizeof(rvec), "f", comm );
+    workspace->CdDelta = scalloc( total_cap, sizeof(real), "CdDelta", comm );
 
 #ifdef TEST_FORCES
-    workspace->dDelta = (rvec*) smalloc( total_rvec, "dDelta", comm );
-    workspace->f_ele = (rvec*) smalloc( total_rvec, "f_ele", comm );
-    workspace->f_vdw = (rvec*) smalloc( total_rvec, "f_vdw", comm );
-    workspace->f_bo = (rvec*) smalloc( total_rvec, "f_bo", comm );
-    workspace->f_be = (rvec*) smalloc( total_rvec, "f_be", comm );
-    workspace->f_lp = (rvec*) smalloc( total_rvec, "f_lp", comm );
-    workspace->f_ov = (rvec*) smalloc( total_rvec, "f_ov", comm );
-    workspace->f_un = (rvec*) smalloc( total_rvec, "f_un", comm );
-    workspace->f_ang = (rvec*) smalloc( total_rvec, "f_ang", comm );
-    workspace->f_coa = (rvec*) smalloc( total_rvec, "f_coa", comm );
-    workspace->f_pen = (rvec*) smalloc( total_rvec, "f_pen", comm );
-    workspace->f_hb = (rvec*) smalloc( total_rvec, "f_hb", comm );
-    workspace->f_tor = (rvec*) smalloc( total_rvec, "f_tor", comm );
-    workspace->f_con = (rvec*) smalloc( total_rvec, "f_con", comm );
-    workspace->f_tot = (rvec*) smalloc( total_rvec, "f_tot", comm );
+    workspace->dDelta = smalloc( total_rvec, "dDelta", comm );
+    workspace->f_ele = smalloc( total_rvec, "f_ele", comm );
+    workspace->f_vdw = smalloc( total_rvec, "f_vdw", comm );
+    workspace->f_bo = smalloc( total_rvec, "f_bo", comm );
+    workspace->f_be = smalloc( total_rvec, "f_be", comm );
+    workspace->f_lp = smalloc( total_rvec, "f_lp", comm );
+    workspace->f_ov = smalloc( total_rvec, "f_ov", comm );
+    workspace->f_un = smalloc( total_rvec, "f_un", comm );
+    workspace->f_ang = smalloc( total_rvec, "f_ang", comm );
+    workspace->f_coa = smalloc( total_rvec, "f_coa", comm );
+    workspace->f_pen = smalloc( total_rvec, "f_pen", comm );
+    workspace->f_hb = smalloc( total_rvec, "f_hb", comm );
+    workspace->f_tor = smalloc( total_rvec, "f_tor", comm );
+    workspace->f_con = smalloc( total_rvec, "f_con", comm );
+    workspace->f_tot = smalloc( total_rvec, "f_tot", comm );
 
     if ( system->my_rank == MASTER_NODE )
     {
-        workspace->rcounts = (int*)
-                             smalloc( system->wsize * sizeof(int), "rcount", comm );
-        workspace->displs = (int*)
-                            smalloc( system->wsize * sizeof(int), "displs", comm );
-        workspace->id_all = (int*)
-                            smalloc( system->bigN * sizeof(int), "id_all", comm );
-        workspace->f_all = (rvec*)
-                           smalloc( system->bigN * sizeof(rvec), "f_all", comm );
+        workspace->rcounts = smalloc( system->wsize * sizeof(int), "rcount", comm );
+        workspace->displs = smalloc( system->wsize * sizeof(int), "displs", comm );
+        workspace->id_all = smalloc( system->bigN * sizeof(int), "id_all", comm );
+        workspace->f_all = smalloc( system->bigN * sizeof(rvec), "f_all", comm );
     }
     else
     {
@@ -717,22 +761,27 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
 
     comm = mpi_data->world;
 
-    /* in buffers */
-    mpi_data->in1_buffer = (void*)
-                           scalloc( est_recv, sizeof(boundary_atom), "in1_buffer", comm );
-    mpi_data->in2_buffer = (void*)
-                           scalloc( est_recv, sizeof(boundary_atom), "in2_buffer", comm );
+    /* buffers for incoming messages,
+     * see SendRecv for MPI datatypes sent */
+    mpi_data->in1_buffer = scalloc( est_recv,
+            MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
+            "Allocate_MPI_Buffers::in1_buffer", comm );
+    mpi_data->in2_buffer = scalloc( est_recv,
+            MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
+            "Allocate_MPI_Buffers::in2_buffer", comm );
 
-    /* out buffers */
+    /* buffers for outgoing messages,
+     * see SendRecv for MPI datatypes sent */
     for ( i = 0; i < MAX_NBRS; ++i )
     {
-        mpi_buf = &( mpi_data->out_buffers[i] );
+        mpi_buf = &mpi_data->out_buffers[i];
+
         /* allocate storage for the neighbor processor i */
-        mpi_buf->index = (int*)
-                         scalloc( my_nbrs[i].est_send, sizeof(int), "mpibuf:index", comm );
-        mpi_buf->out_atoms = (void*)
-                             scalloc( my_nbrs[i].est_send, sizeof(boundary_atom), "mpibuf:out_atoms",
-                                      comm );
+        mpi_buf->index = scalloc( my_nbrs[i].est_send, sizeof(int),
+                "Allocate_MPI_Buffers::mpi_buf->index", comm );
+        mpi_buf->out_atoms = scalloc( my_nbrs[i].est_send,
+                MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
+                "Allocate_MPI_Buffers::mpi_buf->out_atoms", comm );
     }
 
 #if defined(NEUTRAL_TERRITORY)
@@ -742,9 +791,9 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
         /* in buffers */
         mpi_data->in_nt_buffer[i] = scalloc( my_nt_nbrs[i].est_recv, sizeof(real),
                 "mpibuf:in_nt_buffer", comm );
-
         /* out buffer */
         mpi_buf = &mpi_data->out_nt_buffers[i];
+
         /* allocate storage for the neighbor processor i */
         mpi_buf->index = scalloc( my_nt_nbrs[i].est_send, sizeof(int),
                 "mpibuf:nt_index", comm );
@@ -762,14 +811,14 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
     int i;
     mpi_out_data  *mpi_buf;
 
-    sfree( mpi_data->in1_buffer, "in1_buffer" );
-    sfree( mpi_data->in2_buffer, "in2_buffer" );
+    sfree( mpi_data->in1_buffer, "Deallocate_MPI_Buffers::in1_buffer" );
+    sfree( mpi_data->in2_buffer, "Deallocate_MPI_Buffers::in2_buffer" );
 
     for ( i = 0; i < MAX_NBRS; ++i )
     {
         mpi_buf = &mpi_data->out_buffers[i];
-        sfree( mpi_buf->index, "mpibuf:index" );
-        sfree( mpi_buf->out_atoms, "mpibuf:out_atoms" );
+        sfree( mpi_buf->index, "Deallocate_MPI_Buffers::mpi_buf->index" );
+        sfree( mpi_buf->out_atoms, "Deallocate_MPI_Buffers::mpi_buf->out_atoms" );
     }
 
 #if defined(NEUTRAL_TERRITORY)

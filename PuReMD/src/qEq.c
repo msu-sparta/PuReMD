@@ -318,14 +318,13 @@ void Init_MatVec( reax_system *system, simulation_data *data,
 void Calculate_Charges( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int        i, scale;
-    real       u;//, s_sum, t_sum;
-    rvec2      my_sum, all_sum;
+    int i;
+    real u;//, s_sum, t_sum;
+    rvec2 my_sum, all_sum;
     reax_atom *atom;
     real *q;
 
-    scale = sizeof(real) / sizeof(void);
-    q = (real*) malloc(system->N * sizeof(real));
+    q = malloc( system->N * sizeof(real) );
 
     //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
     //t_sum = Parallel_Vector_Acc(workspace->t, system->n, mpi_data->world);
@@ -360,11 +359,14 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         atom->t[0] = workspace->x[i][1];
     }
 
-    Dist( system, mpi_data, q, MPI_DOUBLE, scale, real_packer );
-    for ( i = system->n; i < system->N; ++i )
-        system->my_atoms[i].q = q[i];
+    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    sfree(q, "q");
+    for ( i = system->n; i < system->N; ++i )
+    {
+        system->my_atoms[i].q = q[i];
+    }
+
+    sfree( q, "q" );
 }
 
 
@@ -419,6 +421,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 {
     int j, iters;
 
+    iters = 0;
+
     Init_MatVec( system, data, control, workspace, mpi_data );
 
 #if defined(DEBUG)
@@ -428,7 +432,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     if( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        if( control->cm_solver_pre_comp_refactor > 0 && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0))
+        if( control->cm_solver_pre_comp_refactor > 0
+                && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0))
         {
             Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
@@ -438,29 +443,80 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     
     //TODO: used for timing to sync processors going into the linear solve, but remove for production code
     MPI_Barrier( mpi_data->world ); 
-    for ( j = 0; j < system->n; ++j )
-        workspace->s[j] = workspace->x[j][0];
-    iters = CG(system, control, data, workspace, workspace->H, workspace->b_s,
-            control->cm_solver_q_err, workspace->s, mpi_data, out_control->log , control->nprocs );
-    for ( j = 0; j < system->n; ++j )
-        workspace->x[j][0] = workspace->s[j];
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
-#endif
+    switch ( control->cm_solver_type )
+    {
+    case CG_S:
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
 
-    for ( j = 0; j < system->n; ++j )
-        workspace->t[j] = workspace->x[j][1];
-    iters += CG(system, control, data, workspace, workspace->H, workspace->b_t,//newQEq sCG
-            control->cm_solver_q_err, workspace->t, mpi_data, out_control->log, control->nprocs );
-    for ( j = 0; j < system->n; ++j )
-        workspace->x[j][1] = workspace->t[j];
+        iters = CG( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
 
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: second CG completed\n", system->my_rank );
-#endif
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += CG( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+        break;
+
+    case PIPECG_S:
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        iters = PIPECG( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += PIPECG( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+        break;
+
+    case GMRES_S:
+    case GMRES_H_S:
+    case SDM_S:
+    case BiCGStab_S:
+        fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
+        break;
+
+    default:
+        fprintf( stderr, "[ERROR] Unrecognized solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
 
     Calculate_Charges( system, workspace, mpi_data );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed charges\n", system->my_rank );
     //Print_Charges( system );

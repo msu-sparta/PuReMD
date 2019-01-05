@@ -87,6 +87,7 @@ enum solver
     CG_S = 2,
     SDM_S = 3,
     BiCGStab_S = 4,
+    PIPECG_S = 5,
 };
 
 /* preconditioner computation type for charge method linear solver */
@@ -807,13 +808,13 @@ typedef struct
     /**/
     real cm_solver_pre_comp;
     /**/
-    real cm_solver_pre_app; // update CG()
+    real cm_solver_pre_app;
     /* num. of steps in iterative linear solver for charge distribution */
     int cm_solver_iters;
     /**/
-    real cm_solver_spmv; // update CG()
+    real cm_solver_spmv;
     /**/
-    real cm_solver_vector_ops; // update CG()
+    real cm_solver_vector_ops;
     /**/
     real cm_solver_orthog;
     /**/
@@ -1046,11 +1047,16 @@ typedef struct
     rvec2 *b, *x;
 
     /* GMRES storage */
-    real *y, *z, *g;
+    real *y, *g;
     real *hc, *hs;
     real **h, **v;
-    /* CG storage */
-    real *r, *d, *q, *p;
+    /* GMRES, PIPECG storage */
+    real *z;
+    /* CG, PIPECG storage */
+    real *d, *p, *q, *r;
+    /* PIPECG storage */
+    real *m, *n, *u, *w;
+    /* dual-CG storage */
     rvec2 *r2, *d2, *q2, *p2;
     /* Taper */
     real Tap[8]; //Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
