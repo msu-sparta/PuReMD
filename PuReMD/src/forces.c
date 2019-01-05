@@ -342,6 +342,14 @@ static void Init_Distance( reax_system *system, control_params *control,
     reax_list *far_nbrs;
     reax_atom *atom_i, *atom_j;
 
+    int type_i, type_j;
+    int k, push;
+    int btop_i, num_bonds;
+    int *q;
+    reax_list *bonds;
+    single_body_parameters *sbp_i, *sbp_j;
+    two_body_parameters *twbp;
+
     far_nbrs = lists[FAR_NBRS];
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
 
@@ -367,6 +375,153 @@ static void Init_Distance( reax_system *system, control_params *control,
             }
         }
     }
+
+
+    //Computing bond_mark
+    push = 0;
+    num_bonds = 0;
+    btop_i = 0;
+    bonds = lists[BONDS];
+    q = smalloc( sizeof( int ) * (system->N - system->n),
+            "Init_Distance::q", MPI_COMM_WORLD );
+
+    for ( i = 0; i < system->n; ++i )
+    {
+        workspace->bond_mark[i] = 0;
+    }
+    for ( i = system->n; i < system->N; ++i )
+    {
+        workspace->bond_mark[i] = 1000;// put ghost atoms to an infinite distance
+        //workspace->done_after[i] = Start_Index( i, far_nbrs );
+    }
+
+    //bonds that are directly connected to local atoms
+    for ( i = 0; i < system->n; ++i )
+    {
+        atom_i = &system->my_atoms[i];
+        type_i = atom_i->type;
+        btop_i = End_Index( i, bonds );
+        sbp_i = &system->reax_param.sbp[type_i];
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            j = far_nbrs->far_nbr_list.nbr[pj];
+            atom_j = &system->my_atoms[j];
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
+            {
+                type_j = atom_j->type;
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[type_i][type_j];
+
+                if (  BOp( workspace, bonds, control->bo_cut,
+                            i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
+                            &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
+                            &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
+                            sbp_i, sbp_j, twbp ) )
+                {
+                    num_bonds += 2;
+                    ++btop_i;
+
+                    if ( workspace->bond_mark[j] == 1000 )
+                    {
+                        workspace->bond_mark[j] = 1;
+                        q[ push++ ] = j;
+                    }
+                }
+            }
+        }
+
+        Set_End_Index( i, btop_i, bonds );
+    }
+
+    //bonds that are indirectly connected to local atoms
+    for ( k = 0; k < push; ++k )
+    {
+        i = q[k];
+        if( workspace->bond_mark[i] == 0 || workspace->bond_mark[i] == 1000 || i < system->n)
+        {
+            fprintf( stdout, "we got a problem, mark[%d] = %d\n\n", i , workspace->bond_mark[i] );
+            fflush( stdout );
+        }
+        atom_i = &system->my_atoms[i];
+        type_i = atom_i->type;
+        btop_i = End_Index( i, bonds );
+        sbp_i = &system->reax_param.sbp[type_i];
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            j = far_nbrs->far_nbr_list.nbr[pj];
+            atom_j = &system->my_atoms[j];
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
+            {
+                type_j = atom_j->type;
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[type_i][type_j];
+
+                if (  BOp( workspace, bonds, control->bo_cut,
+                            i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
+                            &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
+                            &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
+                            sbp_i, sbp_j, twbp ) )
+                {
+                    num_bonds += 2;
+                    ++btop_i;
+
+                    if ( workspace->bond_mark[j] == 1000 )
+                    {
+                        workspace->bond_mark[j] =  workspace->bond_mark[i] + 1;
+                        q[ push++ ] = j;
+                    }
+                }
+            }
+        }
+
+        Set_End_Index( i, btop_i, bonds );
+    }
+
+    //bonds that are between ghost atoms
+    for ( i = system->n; i < system->N; ++i )
+    {
+        if ( workspace->bond_mark[i] == 1000 )
+        {
+            atom_i = &system->my_atoms[i];
+            type_i = atom_i->type;
+            btop_i = End_Index( i, bonds );
+            sbp_i = &system->reax_param.sbp[type_i];
+            start_i = Start_Index( i, far_nbrs );
+            end_i = End_Index( i, far_nbrs );
+
+            for ( pj = start_i; pj < end_i; ++pj )
+            {
+                j = far_nbrs->far_nbr_list.nbr[pj];
+                atom_j = &system->my_atoms[j];
+                if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
+                {
+                    type_j = atom_j->type;
+                    sbp_j = &system->reax_param.sbp[type_j];
+                    twbp = &system->reax_param.tbp[type_i][type_j];
+
+                    if (  BOp( workspace, bonds, control->bo_cut,
+                                i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
+                                &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
+                                &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
+                                sbp_i, sbp_j, twbp ) )
+                    {
+                        num_bonds += 2;
+                        ++btop_i;
+                    }
+                }
+            }
+
+            Set_End_Index( i, btop_i, bonds );
+        }
+    }
+    workspace->realloc.num_bonds = num_bonds;
+
 }
 
 
@@ -969,33 +1124,19 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
-    int btop_i, num_bonds, num_hbonds;
+    int num_hbonds;
     int ihb, jhb, ihb_top;
     int local;
     real cutoff;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
     int jhb_top;
     
     far_nbrs = lists[FAR_NBRS];
-    bonds = lists[BONDS];
     hbonds = lists[HBONDS];
 
-    for ( i = 0; i < system->n; ++i )
-    {
-        workspace->bond_mark[i] = 0;
-    }
-    for ( i = system->n; i < system->N; ++i )
-    {
-        workspace->bond_mark[i] = 1000; // put ghost atoms to an infinite distance
-        //workspace->done_after[i] = Start_Index( i, far_nbrs );
-    }
-
-    num_bonds = 0;
     num_hbonds = 0;
-    btop_i = 0;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1006,7 +1147,6 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
 
         /* start at end because other atoms
          * can add to this atom's list (half-list) */
-        btop_i = End_Index( i, bonds );
         sbp_i = &system->reax_param.sbp[type_i];
 
         if ( i < system->n )
@@ -1051,7 +1191,6 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
-                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local == 1 )
                 {
@@ -1084,30 +1223,8 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
                     }
                 }
 
-                /* uncorrected bond orders */
-                if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    BOp( workspace, bonds, control->bo_cut,
-                         i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
-                         &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
-                         &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-                         sbp_i, sbp_j, twbp ) )
-                {
-                    num_bonds += 2;
-                    ++btop_i;
-
-                    if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
-                    {
-                        workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
-                    }
-                    else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
-                    {
-                        workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
-                    }
-                }
             }
         }
-
-        Set_End_Index( i, btop_i, bonds );
 
         if ( local == 1 && ihb == 1 )
         {
@@ -1115,12 +1232,11 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
         }
     }
 
-    workspace->realloc.num_bonds = num_bonds;
     workspace->realloc.num_hbonds = num_hbonds;
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: Htop = %d num_bonds = %d num_hbonds = %d\n",
-             system->my_rank, data->step, workspace->realloc.Htop, num_bonds, num_hbonds );
+             system->my_rank, data->step, workspace->realloc.Htop, workspace->realloc.num_bonds, num_hbonds );
     MPI_Barrier( comm );
 #endif
 
@@ -1142,34 +1258,21 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
-    int btop_i, num_bonds, num_hbonds;
+    int num_hbonds;
     int ihb, jhb, ihb_top;
     int local;
     real cutoff;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
     int start_j, end_j;
-    int btop_j;
+    int btop_i, btop_j;
     
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
 
-    for ( i = 0; i < system->n; ++i )
-    {
-        workspace->bond_mark[i] = 0;
-    }
-    for ( i = system->n; i < system->N; ++i )
-    {
-        workspace->bond_mark[i] = 1000; // put ghost atoms to an infinite distance
-        //workspace->done_after[i] = Start_Index( i, far_nbrs );
-    }
-
-    num_bonds = 0;
     num_hbonds = 0;
-    btop_i = 0;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1178,7 +1281,6 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         start_i = Start_Index( i, far_nbrs );
         end_i = End_Index( i, far_nbrs );
 
-        btop_i = Start_Index( i, bonds );
         sbp_i = &system->reax_param.sbp[type_i];
 
         if ( i < system->n )
@@ -1221,7 +1323,6 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
-                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 if ( local == 1 )
                 {
@@ -1244,30 +1345,8 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
                     }
                 }
 
-                /* uncorrected bond orders */
-                if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    BOp( workspace, bonds, control->bo_cut,
-                         i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
-                         &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
-                         &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-                         sbp_i, sbp_j, twbp ) )
-                {
-                    num_bonds += 2;
-                    ++btop_i;
-
-                    if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
-                    {
-                        workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
-                    }
-                    else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
-                    {
-                        workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
-                    }
-                }
             }
         }
-
-        Set_End_Index( i, btop_i, bonds );
 
         if ( local == 1 && ihb == 1 )
         {
@@ -1304,12 +1383,11 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         }
     }
 
-    workspace->realloc.num_bonds = num_bonds;
     workspace->realloc.num_hbonds = num_hbonds;
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: Htop = %d num_bonds = %d num_hbonds = %d\n",
-             system->my_rank, data->step, workspace->realloc.Htop, num_bonds, num_hbonds );
+             system->my_rank, data->step, workspace->realloc.Htop, workspace->realloc.num_bonds, num_hbonds );
     MPI_Barrier( comm );
 #endif
 
