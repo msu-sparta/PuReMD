@@ -27,57 +27,70 @@
 #include "reax_vector.h"
 #endif
 
+
 int Vector_isZero( real* v, int k )
 {
-    for ( --k; k >= 0; --k )
-        if ( fabs( v[k] ) > ALMOST_ZERO )
-            return 0;
+    int i, ret;
 
-    return 1;
+    ret = 1;
+
+    for ( i = 0; i < k; ++i )
+    {
+        if ( fabs( v[i] ) > ALMOST_ZERO )
+        {
+            ret = 0;
+            break;
+        }
+    }
+
+    return ret;
 }
 
 
 void Vector_MakeZero( real *v, int k )
 {
-    for ( --k; k >= 0; --k )
-        v[k] = 0;
+    int i;
+
+    for ( i = 0; i < k; ++i )
+    {
+        v[i] = 0;
+    }
 }
 
 
 void Vector_Copy( real* dest, real* v, int k )
 {
-    for ( --k; k >= 0; --k )
-        dest[k] = v[k];
+    int i;
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = v[i];
+    }
 }
 
 
 void Vector_Scale( real* dest, real c, real* v, int k )
 {
-    for ( --k; k >= 0; --k )
-        dest[k] = c * v[k];
+    int i;
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = c * v[i];
+    }
 }
-
-
-/*void Vector_Sum( real* dest, real c, real* v, real d, real* y, int k )
-{
-    for ( --k; k >= 0; --k )
-        dest[k] = c * v[k] + d * y[k];
-}*/
-
-
-/*void Vector_Add( real* dest, real c, real* v, int k )
-{
-    for ( --k; k >= 0; --k )
-        dest[k] += c * v[k];
-}*/
 
 
 real Dot( real* v1, real* v2, int k )
 {
-    real ret = 0;
+    int i;
+    real ret;
 
-    for ( --k; k >= 0; --k )
-        ret +=  v1[k] * v2[k];
+    ret = 0.0;
+
+    for ( i = 0; i < k; ++i )
+    {
+        ret += v1[i] * v2[i];
+    }
 
     return ret;
 }
@@ -101,10 +114,15 @@ real Dot_local( real *v1, real *v2, int k )
 
 real Norm( real* v1, int k )
 {
-    real ret = 0;
+    int i;
+    real ret;
 
-    for ( --k; k >= 0; --k )
-        ret +=  SQR( v1[k] );
+    ret = 0.0;
+
+    for ( i = 0; i < k; ++i )
+    {
+        ret +=  SQR( v1[i] );
+    }
 
     return sqrt( ret );
 }

@@ -56,6 +56,7 @@ static inline void Vector_Add( real* dest, real c, real* v, int k )
     }
 }
 
+
 real Dot( real*, real*, int );
 
 real Dot_local( real*, real*, int );

@@ -88,6 +88,7 @@ enum solver
     SDM_S = 3,
     BiCGStab_S = 4,
     PIPECG_S = 5,
+    PIPECR_S = 6,
 };
 
 /* preconditioner computation type for charge method linear solver */
@@ -199,8 +200,8 @@ typedef struct
 
 typedef struct
 {
-    MPI_Comm     world;
-    MPI_Comm     comm_mesh3D;
+    MPI_Comm world;
+    MPI_Comm comm_mesh3D;
 
     MPI_Datatype sys_info;
     MPI_Datatype mpi_atom_type;

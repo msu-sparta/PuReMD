@@ -502,6 +502,34 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         }
         break;
 
+    case PIPECR_S:
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        iters = PIPECR( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += PIPECR( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+        break;
+
     case GMRES_S:
     case GMRES_H_S:
     case SDM_S:
