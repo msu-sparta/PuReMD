@@ -26,6 +26,10 @@
 
 
 /************** taken from box.c **************/
+/* Applies transformation to and from 
+ * Cartesian to Triclinic coordinates based on flag
+ * 
+ * flag: -1 for Cartesian -> Triclinic, +1 for reverse transformation */
 void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
 {
     int i, j;

@@ -368,13 +368,15 @@ static void Find_Neighbor_GridCells( grid *g )
 }
 
 
-
 void Setup_Grid( reax_system* system )
 {
-    int  d;
+    int d;
     ivec ncell;
-    grid *g = &( system->g );
-    simulation_box *my_box = &( system->box );
+    grid *g;
+    simulation_box *my_box;
+
+    g = &system->g;
+    my_box = &system->box;
 
     /* determine number of grid cells in each direction */
     ivec_rScale( ncell, 1. / g->cell_size, my_box->box_norms );
@@ -536,7 +538,7 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
 
 void Finalize_Grid( reax_system* system )
 {
-    Deallocate_Grid_Space( &( system->g ) );
+    Deallocate_Grid_Space( &system->g );
 }
 
 

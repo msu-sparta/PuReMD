@@ -407,51 +407,56 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
             {
                 for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
                 {
-                    if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
+                    nbr_pj = &far_nbrs->far_nbr_list[pj];
+                    j = nbr_pj->nbr;
+
+                    /* kinetic energy terms */
+                    xcut = 0.5 * ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
+                            + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 );
+
+                    if ( far_nbrs->far_nbr_list[pj].d < xcut )
                     {
-                        nbr_pj = &far_nbrs->far_nbr_list[pj];
-                        j = nbr_pj->nbr;
+                        d = far_nbrs->far_nbr_list[pj].d / xcut;
+                        bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 )
+                            * POW( 1.0 - d, 6.0 );
 
-                        /* kinetic energy terms */
-                        xcut = 0.5 * ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
-                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 );
-
-                        if ( far_nbrs->far_nbr_list[pj].d < xcut )
+                        if ( bond_softness > 0.0 )
                         {
-                            d = far_nbrs->far_nbr_list[pj].d / xcut;
-                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 )
-                                * POW( 1.0 - d, 6.0 );
+                            /* Coulombic energy contribution */
+                            effpot_diff = workspace->s[0][system->N + i]
+                                - workspace->s[0][system->N + j];
+                            e_ele = -0.5 * KCALpMOL_to_EV * bond_softness
+                                * SQR( effpot_diff );
+                            e_ele_total += e_ele;
 
-                            if ( bond_softness > 0.0 )
-                            {
-                                /* Coulombic energy contribution */
-                                effpot_diff = workspace->s[0][system->N + i]
-                                    - workspace->s[0][system->N + j];
-                                e_ele = -0.5 * KCALpMOL_to_EV * bond_softness
-                                    * SQR( effpot_diff );
-                                e_ele_total += e_ele;
+                            /* forces contribution */
+                            d_bond_softness = system->reaxprm.gp.l[34]
+                                * 3.0 / xcut * POW( d, 2.0 )
+                                * POW( 1.0 - d, 5.0 ) * (1.0 - 3.0 * d);
+                            d_bond_softness = -0.5 * d_bond_softness
+                                * SQR( effpot_diff );
+                            d_bond_softness = KCALpMOL_to_EV * d_bond_softness
+                                / far_nbrs->far_nbr_list[pj].d;
 
-                                /* forces contribution */
-                                d_bond_softness = system->reaxprm.gp.l[34]
-                                    * 3.0 / xcut * POW( d, 2.0 )
-                                    * POW( 1.0 - d, 5.0 ) * (1.0 - 3.0 * d);
-                                d_bond_softness = -0.5 * d_bond_softness
-                                    * SQR( effpot_diff );
-                                d_bond_softness = KCALpMOL_to_EV * d_bond_softness
-                                    / far_nbrs->far_nbr_list[pj].d;
+#if defined(DEBUG_FOCUS)
+                            fprintf( stderr, "%6d%6d%12.5f%12.5f%12.5f\n",
+                                    j + 1, i + 1,
+                                    d_bond_softness * nbr_pj->dvec[0],
+                                    d_bond_softness * nbr_pj->dvec[1],
+                                    d_bond_softness * nbr_pj->dvec[2] ); fflush( stderr );
+#endif
 
 #ifndef _OPENMP
-                                rvec_ScaledAdd( system->atoms[i].f,
-                                        -d_bond_softness, nbr_pj->dvec );
-                                rvec_ScaledAdd( system->atoms[j].f,
-                                        d_bond_softness, nbr_pj->dvec );
+                            rvec_ScaledAdd( system->atoms[i].f,
+                                    -d_bond_softness, nbr_pj->dvec );
+                            rvec_ScaledAdd( system->atoms[j].f,
+                                    d_bond_softness, nbr_pj->dvec );
 #else
-                                rvec_ScaledAdd( workspace->f_local[tid * system->N + i],
-                                        -d_bond_softness, nbr_pj->dvec );
-                                rvec_ScaledAdd( workspace->f_local[tid * system->N + j],
-                                        d_bond_softness, nbr_pj->dvec );
+                            rvec_ScaledAdd( workspace->f_local[tid * system->N + i],
+                                    -d_bond_softness, nbr_pj->dvec );
+                            rvec_ScaledAdd( workspace->f_local[tid * system->N + j],
+                                    d_bond_softness, nbr_pj->dvec );
 #endif
-                            }
                         }
                     }
                 }

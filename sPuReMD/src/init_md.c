@@ -108,7 +108,7 @@ static void Init_System( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
-        Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
+        Inc_on_T3( system->atoms[i].x, dx, &system->box );
 
         /*fprintf( stderr, "%6d%2d%8.3f%8.3f%8.3f\n",
           i, system->atoms[i].type,
