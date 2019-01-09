@@ -1033,9 +1033,9 @@ typedef struct
     real *dDelta_lp, *dDelta_lp_temp;
     real *nlp, *nlp_temp, *Clp, *vlpex;
     rvec *dDeltap_self;
-    int *bond_mark, *done_after;
+    int *bond_mark;
 
-    /* QEq storage */
+    /* charge matrix storage */
     sparse_matrix *H;
     sparse_matrix *L;
     sparse_matrix *U;
@@ -1051,23 +1051,23 @@ typedef struct
     real *y, *g;
     real *hc, *hs;
     real **h, **v;
-    /* GMRES, PIPECG storage */
+    /* GMRES, PIPECG, PIPECR storage */
     real *z;
-    /* CG, PIPECG storage */
+    /* CG, PIPECG, PIPECR storage */
     real *d, *p, *q, *r;
-    /* PIPECG storage */
+    /* PIPECG, PIPECR storage */
     real *m, *n, *u, *w;
     /* dual-CG storage */
     rvec2 *r2, *d2, *q2, *p2;
     /* Taper */
-    real Tap[8]; //Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
+    real Tap[8];
 
     /* storage for analysis */
-    int  *mark, *old_mark;
+    int *mark, *old_mark;
     rvec *x_old;
 
     /* storage space for bond restrictions */
-    int  *restricted;
+    int *restricted;
     int **restricted_list;
 
     /* integrator */

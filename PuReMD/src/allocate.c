@@ -145,7 +145,6 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     sfree( workspace->Clp, "Clp" );
     sfree( workspace->vlpex, "vlpex" );
     sfree( workspace->bond_mark, "bond_mark" );
-    sfree( workspace->done_after, "done_after" );
 
     /* CM storage */
     sfree( workspace->Hdia_inv, "Hdia_inv" );
@@ -304,7 +303,6 @@ int Allocate_Workspace( reax_system *system, control_params *control,
     workspace->Clp = smalloc( total_real, "Clp", comm );
     workspace->vlpex = smalloc( total_real, "vlpex", comm );
     workspace->bond_mark = scalloc( total_cap, sizeof(int), "bond_mark", comm );
-    workspace->done_after = scalloc( total_cap, sizeof(int), "done_after", comm );
 
     /* CM storage */
     workspace->Hdia_inv = scalloc( total_cap, sizeof(real), "Hdia_inv", comm );
