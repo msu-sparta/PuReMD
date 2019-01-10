@@ -999,11 +999,12 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
                 }
 
                 /* uncorrected bond orders */
-                if ( BOp( workspace, bonds, control->bo_cut,
-                        i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
-                        &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
-                        &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-                        sbp_i, sbp_j, twbp ) )
+                if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut
+                        && BOp( workspace, bonds, control->bo_cut,
+                            i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
+                            &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
+                            &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
+                            sbp_i, sbp_j, twbp ) )
                 {
                     num_bonds += 2;
                     ++btop_i;
@@ -1146,8 +1147,8 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
 
-//            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
-            if ( i <= j && far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
+//            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
+            if ( i <= j && far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
@@ -1211,7 +1212,8 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
             atom_j = &system->my_atoms[j];
 
 //            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
-            if (  workspace->bond_mark[j] > 100 && far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
+            if (  workspace->bond_mark[j] > 100
+                    && far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
