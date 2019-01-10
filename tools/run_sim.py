@@ -108,6 +108,14 @@ class TestCase():
                     r'(?P<key>\bcompress\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'press_mode': lambda l, x: sub(
                     r'(?P<key>\bpress_mode\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'write_freq': lambda l, x: sub(
+                    r'(?P<key>\bwrite_freq\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'traj_compress': lambda l, x: sub(
+                    r'(?P<key>\btraj_compress\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'traj_format': lambda l, x: sub(
+                    r'(?P<key>\btraj_format\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'traj_title': lambda l, x: sub(
+                    r'(?P<key>\btraj_title\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
         }
         self.__params['geo_format'] = geo_format
         self.__min_step = min_step
@@ -258,7 +266,7 @@ restart_freq            0                       ! 0: do not output any restart f
 
     def _create_output_file_base(self, run_type, param_dict):
         if run_type == 'serial' or run_type == 'openmp':
-            param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
+            name = path.basename(self.__geo_file).split('.')[0] \
                 + '_cm' + param_dict['charge_method'] \
                 + '_s' + param_dict['nsteps'] \
 		+ '_q' + param_dict['cm_solver_type'] \
@@ -273,7 +281,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
 		+ '_t' + param_dict['threads']
         elif run_type == 'mpi' or run_type == 'mpi+gpu':
-            param_dict['name'] = path.basename(self.__geo_file).split('.')[0] \
+            name = path.basename(self.__geo_file).split('.')[0] \
                 + '_cm' + param_dict['charge_method'] \
                 + '_s' + param_dict['nsteps'] \
                 + '_proc' + param_dict['proc_by_dim'].replace(':', '_') \
@@ -289,8 +297,10 @@ restart_freq            0                       ! 0: do not output any restart f
                 + '_pcsai' + param_dict['cm_solver_pre_comp_sai_thres'] \
                 + '_pa' + param_dict['cm_solver_pre_app_type'] \
                 + '_paji'+ str(param_dict['cm_solver_pre_app_jacobi_iters'])
+        else:
+            name = 'default_sim'
 
-        return param_dict
+        return name
 
     def run_md(self, binary, run_type, mpi_cmd):
         from itertools import product
@@ -305,7 +315,9 @@ restart_freq            0                       ! 0: do not output any restart f
         # create Cartesian product of all supplied sets of parameter values
         for p in product(*[self.__params[k] for k in self.__param_names]):
             param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
-            param_dict = self._create_output_file_base(run_type, param_dict)
+            param_dict['name'] = self._create_output_file_base(run_type, param_dict)
+            if not param_dict['traj_title']:
+                param_dict['traj_title'] = param_dict['name'] + '.trj'
 
             temp_file = path.join(temp_dir, 'control')
             self._create_control_file(param_dict, temp_file)
@@ -407,7 +419,7 @@ restart_freq            0                       ! 0: do not output any restart f
             # create Cartesian product of all supplied sets of parameter values
             for p in product(*[self.__params[k] for k in self.__param_names]):
                 param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
-                param_dict = self._create_output_file_base(run_type, param_dict)
+                param_dict['name'] = self._create_output_file_base(run_type, param_dict)
 
                 self._process_result(fout, param_dict, self.__min_step, self.__max_step)
 
@@ -521,6 +533,7 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Molecular dynamics simulation tools used with specified data sets.')
         subparsers = parser.add_subparsers(help="Actions.")
         run_md_parser = subparsers.add_parser("run_md")
+        run_md_custom_parser = subparsers.add_parser("run_md_custom")
         parse_results_parser = subparsers.add_parser("parse_results")
         submit_jobs_parser = subparsers.add_parser("submit_jobs")
 
@@ -537,6 +550,22 @@ if __name__ == '__main__':
         run_md_parser.add_argument('data_sets', nargs='+',
                 choices=DATA_SETS, help='Data set(s) used for the MD simulation(s).')
         run_md_parser.set_defaults(func=run_md)
+
+        run_md_custom_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
+                help='Binary file used for running the MD simulation(s).')
+        run_md_custom_parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
+                help='Paramater name and value pairs for the simulation as defined in the control file.'
+                + ' Multiple values for a parameter can be specified using commas, and each'
+                + ' value will constitute a separate MD simulation.')
+        run_md_custom_parser.add_argument('-m', '--mpi_cmd', metavar='mpi_cmd', default=['mpirun'], nargs=1,
+                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:1\'.')
+        run_md_custom_parser.add_argument('run_type', nargs=1,
+                choices=RUN_TYPES, help='Run type for the MD simulation(s).')
+        run_md_custom_parser.add_argument('geo_file', nargs=1,
+                help='Geometry file used for the MD simulation.')
+        run_md_custom_parser.add_argument('ffield_file', nargs=1,
+                help='Force field parameter file used for the MD simulation.')
+        run_md_custom_parser.set_defaults(func=run_md_custom)
 
         parse_results_parser.add_argument('-f', '--out_file', metavar='out_file', default=None, nargs=1,
                 help='Output file to write results.')
@@ -616,6 +645,10 @@ if __name__ == '__main__':
                 'pt_mass': ['5000.0'],
                 'compress': ['0.008134'],
                 'press_mode': ['0'],
+                'write_freq': ['0'],
+                'traj_format': ['0'],
+                'traj_compress': ['0'],
+                'traj_title': [None],
         }
         return data_dir, control_params_dict
 
@@ -753,6 +786,45 @@ if __name__ == '__main__':
 
         for test in test_cases:
             test.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'))
+
+    def run_md_custom(args):
+        if args.binary:
+            binary = args.binary[0]
+            # remove executable and back up two directory levels
+            base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
+        else:
+            base_dir = getcwd()
+            if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
+                binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            elif args.run_type[0] == 'mpi':
+                binary = path.join(base_dir, 'PuReMD/bin/puremd')
+            elif args.run_type[0] == 'mpi+gpu':
+                binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
+
+        _, control_params_dict = setup_defaults(base_dir)
+
+        # overwrite default control file parameter values if supplied via command line args
+        if args.params:
+            for param in args.params:
+                if param[0] in control_params_dict:
+                    control_params_dict[param[0]] = param[1].split(',')
+                else:
+                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    exit(-1)
+
+        geo_base, geo_ext = path.splitext(args.geo_file[0])
+        if geo_ext == '.pdb':
+            geo_format = ['1']
+        elif geo_ext == '.geo':
+            geo_format = ['0']
+        else:
+            print("ERROR: unrecognized geometry format {0}. Terminating...".format(ext))
+            exit(-1)
+
+        test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
+                params=control_params_dict, geo_format=geo_format)
+
+        test_case.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'))
 
     def parse_results(args):
         header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
