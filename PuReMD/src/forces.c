@@ -1075,50 +1075,11 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
     num_hbonds = 0;
-
-    /* hbonds */
-    if ( control->hbond_cut > 0.0 )
-    {
-        for ( i = 0; i < system->n; ++i )
-        {
-            atom_i = &system->my_atoms[i];
-            type_i = atom_i->type;
-            sbp_i = &system->reax_param.sbp[type_i];
-            ihb = sbp_i->p_hbond;
-
-            if ( ihb == 1 )
-            {
-                start_i = Start_Index( i, far_nbrs );
-                end_i = End_Index( i, far_nbrs );
-                ihb_top = Start_Index( atom_i->Hindex, hbonds );
-
-                /* check if j is within cutoff */
-                for ( pj = start_i; pj < end_i; ++pj )
-                {
-                    j = far_nbrs->far_nbr_list.nbr[pj];
-                    atom_j = &system->my_atoms[j];
-                    
-                    if ( far_nbrs->far_nbr_list.d[pj] <= control->hbond_cut
-                      && system->reax_param.sbp[atom_j->type].p_hbond == 2 )
-                    {
-                        hbonds->hbond_list[ihb_top].nbr = j;
-                        hbonds->hbond_list[ihb_top].scl = 1;
-                        hbonds->hbond_list[ihb_top].ptr = pj;
-                        ++ihb_top;
-                        ++num_hbonds;
-                    }
-                }
-
-                Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
-            }
-        }
-    }
-
-    /* compute bond_mark */
     push = 0;
     num_bonds = 0;
     btop_i = 0;
     bonds = lists[BONDS];
+
     q = smalloc( sizeof(int) * (system->N - system->n),
             "Init_Distance::q", MPI_COMM_WORLD );
 
@@ -1141,24 +1102,34 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         sbp_i = &system->reax_param.sbp[type_i];
         start_i = Start_Index( i, far_nbrs );
         end_i = End_Index( i, far_nbrs );
+        ihb = sbp_i->p_hbond;
+        ihb_top = Start_Index( atom_i->Hindex, hbonds );
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
 
-//            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
+            if ( control->hbond_cut > 0.0 && ihb == 1 )
+            {
+                /* check if j is within cutoff */
+                if ( far_nbrs->far_nbr_list.d[pj] <= control->hbond_cut
+                  && system->reax_param.sbp[atom_j->type].p_hbond == 2 )
+                {
+                    hbonds->hbond_list[ihb_top].nbr = j;
+                    hbonds->hbond_list[ihb_top].scl = 1;
+                    hbonds->hbond_list[ihb_top].ptr = pj;
+                    ++ihb_top;
+                    ++num_hbonds;
+                }
+            }
+
             if ( i <= j && far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
             {
                 type_j = atom_j->type;
                 sbp_j = &system->reax_param.sbp[type_j];
                 twbp = &system->reax_param.tbp[type_i][type_j];
 
-//                if ( BOp_redundant( workspace, bonds, control->bo_cut,
-//                            i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
-//                            &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
-//                            &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-//                            sbp_i, sbp_j, twbp ) )
                 if ( BOp( workspace, bonds, control->bo_cut,
                             i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
                             &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
@@ -1177,6 +1148,11 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
                     }
                 }
             }
+        }
+
+        if ( control->hbond_cut > 0.0 && ihb == 1 )
+        {
+            Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
         }
 
         Set_End_Index( i, btop_i, bonds );
@@ -1203,15 +1179,9 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
             {
                 continue;
             }
-/*            if ( i>j && workspace->bond_mark[i] > workspace->bond_mark[j] 
-                    && workspace->bond_mark[j] == 1000 )
-            {
-                continue;
-            }*/
 
             atom_j = &system->my_atoms[j];
 
-//            if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
             if (  workspace->bond_mark[j] > 100
                     && far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
             {
@@ -1219,11 +1189,6 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
                 sbp_j = &system->reax_param.sbp[type_j];
                 twbp = &system->reax_param.tbp[type_i][type_j];
 
-//                if ( BOp_redundant( workspace, bonds, control->bo_cut,
-//                            i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
-//                            &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
-//                            &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-//                            sbp_i, sbp_j, twbp ) )
                 if ( BOp( workspace, bonds, control->bo_cut,
                             i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
                             &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
@@ -1249,79 +1214,8 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         Set_End_Index( i, btop_i, bonds );
     }
 
-    //we do not need to include bonded interactions
-    //between ghost atoms that do not share any
-    //neighborhood relationship with any local atoms
-    //those atoms have their bond_mark value still
-    //equal to 1000
-//    for ( i = system->n; i < system->N; ++i )
-//    {
-//        if ( workspace->bond_mark[i] == 1000 )
-//        {
-//            atom_i = &system->my_atoms[i];
-//            type_i = atom_i->type;
-//            btop_i = End_Index( i, bonds );
-//            sbp_i = &system->reax_param.sbp[type_i];
-//            start_i = Start_Index( i, far_nbrs );
-//            end_i = End_Index( i, far_nbrs );
-//
-//            for ( pj = start_i; pj < end_i; ++pj )
-//            {
-//                j = far_nbrs->far_nbr_list.nbr[pj];
-//                atom_j = &system->my_atoms[j];
-//                if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
-//                {
-//                    type_j = atom_j->type;
-//                    sbp_j = &system->reax_param.sbp[type_j];
-//                    twbp = &system->reax_param.tbp[type_i][type_j];
-//
-//                    if ( BOp( workspace, bonds, control->bo_cut,
-//                                i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
-//                                &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
-//                                &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-//                                sbp_i, sbp_j, twbp ) )
-//                    {
-//                        num_bonds += 2;
-//                        ++btop_i;
-//                    }
-//                }
-//            }
-//
-//            Set_End_Index( i, btop_i, bonds );
-//        }
-//    }
-
     workspace->realloc.num_bonds = num_bonds;
     sfree( q, "Init_Bond_Full::q" );
-
-    for ( i = 0; i < system->N; ++i )
-    {
-        qsort( &bonds->bond_list[Start_Index(i, bonds)],
-                Num_Entries(i, bonds), sizeof(bond_data), compare_bonds );
-    }
-
-    /* set sym_index for bonds list (far_nbrs full list) */
-    for ( i = 0; i < system->N; ++i )
-    {
-        start_i = Start_Index( i, bonds );
-        end_i = End_Index( i, bonds );
-
-        for ( btop_i = start_i; btop_i < end_i; ++btop_i )
-        {
-            j = bonds->bond_list[btop_i].nbr;
-            start_j = Start_Index( j, bonds );
-            end_j = End_Index( j, bonds );
-
-            for ( btop_j = start_j; btop_j < end_j; ++btop_j )
-            {
-                if ( bonds->bond_list[btop_j].nbr == i )
-                {
-                    bonds->bond_list[btop_i].sym_index = btop_j;
-                    break;
-                }
-            }
-        }
-    }
 
     workspace->realloc.num_hbonds = num_hbonds;
 
