@@ -403,6 +403,9 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
          * kinetic energy */
         if ( control->charge_method == ACKS2_CM )
         {
+#ifdef _OPENMP
+            #pragma omp for schedule(guided)
+#endif
             for ( i = 0; i < system->N; ++i )
             {
                 for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )

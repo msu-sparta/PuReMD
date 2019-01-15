@@ -238,7 +238,7 @@ void Compute_Total_Energy( reax_system* system, control_params *control,
     else if ( control->charge_method == ACKS2_CM )
     {
 #ifdef _OPENMP
-        #pragma omp parallel for default(none) private(q, type_i) shared(system) \
+        #pragma omp parallel for default(none) private(q, type_i) shared(system, workspace) \
             reduction(+: e_pol) schedule(static)
 #endif
         for ( i = 0; i < system->N; i++ )

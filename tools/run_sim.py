@@ -813,13 +813,17 @@ if __name__ == '__main__':
                     exit(-1)
 
         geo_base, geo_ext = path.splitext(args.geo_file[0])
-        if geo_ext == '.pdb':
-            geo_format = ['1']
-        elif geo_ext == '.geo':
-            geo_format = ['0']
+        if 'geo_format' in control_params_dict:
+            geo_format = control_params_dict['geo_format']
+        # infer geometry file format by file extension
         else:
-            print("ERROR: unrecognized geometry format {0}. Terminating...".format(ext))
-            exit(-1)
+            if geo_ext.lower() == '.pdb':
+                geo_format = ['1']
+            elif geo_ext.lower() == '.geo':
+                geo_format = ['0']
+            else:
+                print("ERROR: unrecognized geometry format {0}. Terminating...".format(ext))
+                exit(-1)
 
         test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
                 params=control_params_dict, geo_format=geo_format)
