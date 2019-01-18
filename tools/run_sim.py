@@ -38,8 +38,8 @@ class TestCase():
                     r'(?P<key>\bremove_CoM_vel\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'reneighbor': lambda l, x: sub(
                     r'(?P<key>\breneighbor\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
-                'update_energy_freq': lambda l, x: sub(
-                    r'(?P<key>\bupdate_energy_freq\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'energy_update_freq': lambda l, x: sub(
+                    r'(?P<key>\benergy_update_freq\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'tabulate_long_range': lambda l, x: sub(
                     r'(?P<key>\btabulate_long_range\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'vlist_buffer': lambda l, x: sub(
@@ -609,7 +609,7 @@ if __name__ == '__main__':
                 'reposition_atoms': ['0'],
                 'remove_CoM_vel': ['500'],
                 'reneighbor': ['1'],
-                'update_energy_freq': ['1'],
+                'energy_update_freq': ['1'],
                 'tabulate_long_range': ['0'],
                 'vlist_buffer': ['0.0'],
                 'nbrhood_cutoff': ['5.0'],
