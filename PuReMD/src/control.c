@@ -151,6 +151,11 @@ char Read_Control_File( char *control_file, control_params* control,
                 val = atof(tmp[1]);
                 control->dt = val * 1.e-3;  // convert dt from fs to ps!
             }
+            else if ( strncmp(tmp[0], "gpus_per_node", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to MPI code
+                ;
+            }
             else if ( strcmp(tmp[0], "proc_by_dim") == 0 )
             {
                 if ( c < 4 )
@@ -168,6 +173,11 @@ char Read_Control_File( char *control_file, control_params* control,
 
                 control->nprocs = control->procs_by_dim[0] * control->procs_by_dim[1] *
                         control->procs_by_dim[2];
+            }
+            else if ( strncmp(tmp[0], "periodic_boundaries", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to MPI code
+                ;
             }
             //else if( strcmp(tmp[0], "restart") == 0 ) {
             //  ival = atoi(tmp[1]);
@@ -444,6 +454,11 @@ char Read_Control_File( char *control_file, control_params* control,
                 ival = atoi(tmp[1]);
                 out_control->traj_compress = ival;
             }
+            else if ( strncmp(tmp[0], "traj_format", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to MPI code
+                ;
+            }
             else if ( strcmp(tmp[0], "traj_method") == 0 )
             {
                 ival = atoi(tmp[1]);
@@ -477,6 +492,21 @@ char Read_Control_File( char *control_file, control_params* control,
             {
                 ival = atoi(tmp[1]);
                 out_control->angle_info = ival;
+            }
+            else if ( strncmp(tmp[0], "test_forces", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to MPI code
+                ;
+            }
+            else if ( strncmp(tmp[0], "molec_anal", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to MPI code
+                ;
+            }
+            else if ( strncmp(tmp[0], "freq_molec_anal", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to MPI code
+                ;
             }
             else if ( strcmp(tmp[0], "molecular_analysis") == 0 )
             {
