@@ -41,7 +41,7 @@ char Read_Control_File( char *control_file, control_params* control,
     fp = sfopen( control_file, "r", "Read_Control_File::fp" );
 
     /* assign default values */
-    strcpy( control->sim_name, "default.sim" );
+    strncpy( control->sim_name, "default.sim", REAX_MAX_STR );
     control->ensemble = NVE;
     control->nsteps = 100;
     control->dt = 0.25;
@@ -105,7 +105,7 @@ char Read_Control_File( char *control_file, control_params* control,
     out_control->write_steps = 0;
     out_control->traj_compress = 0;
     out_control->traj_method = REG_TRAJ;
-    strcpy( out_control->traj_title, "default_title" );
+    strncpy( out_control->traj_title, "default_title", REAX_MAX_STR );
     out_control->atom_info = 0;
     out_control->bond_info = 1;
     out_control->angle_info = 1;
@@ -134,7 +134,7 @@ char Read_Control_File( char *control_file, control_params* control,
         {
             if ( strcmp(tmp[0], "simulation_name") == 0 )
             {
-                strcpy( control->sim_name, tmp[1] );
+                strncpy( control->sim_name, tmp[1], REAX_MAX_STR );
             }
             else if ( strcmp(tmp[0], "ensemble_type") == 0 )
             {
@@ -182,9 +182,6 @@ char Read_Control_File( char *control_file, control_params* control,
             //else if( strcmp(tmp[0], "restart") == 0 ) {
             //  ival = atoi(tmp[1]);
             //  control->restart = ival;
-            //}
-            //else if( strcmp(tmp[0], "restart_from") == 0 ) {
-            //  strcpy( control->restart_from, tmp[1] );
             //}
             else if ( strcmp(tmp[0], "random_vel") == 0 )
             {
@@ -466,7 +463,7 @@ char Read_Control_File( char *control_file, control_params* control,
             }
             else if ( strcmp(tmp[0], "traj_title") == 0 )
             {
-                strcpy( out_control->traj_title, tmp[1] );
+                strncpy( out_control->traj_title, tmp[1], REAX_MAX_STR );
             }
             else if ( strcmp(tmp[0], "atom_info") == 0 )
             {

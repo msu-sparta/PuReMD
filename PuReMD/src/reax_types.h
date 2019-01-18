@@ -1180,7 +1180,7 @@ typedef struct
     int   write_steps;
     int   traj_compress;
     int   traj_method;
-    char  traj_title[81];
+    char  traj_title[REAX_MAX_STR];
     int   atom_info;
     int   bond_info;
     int   angle_info;
