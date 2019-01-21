@@ -266,35 +266,33 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
     MPI_Comm comm;
     MPI_Request req[6];
     MPI_Status stat[6];
-    neighbor_proc *nbr;
+    dist_packer pack;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
+    pack = Get_Packer( buf_type );
     count = 0;
 
     /* initiate recvs */
     for ( d = 0; d < 6; ++d )
     {
-        nbr = &system->my_nt_nbrs[d];
-
-        if ( nbr->atoms_cnt )
+        if ( system->my_nt_nbrs[d].atoms_cnt )
         {
             count++;
-            MPI_Irecv( Get_Buffer_Offset( buf, nbr->atoms_str, buf_type ),
-                    nbr->atoms_cnt, type, nbr->receive_rank, d, comm, &req[d] );
+            MPI_Irecv( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+                    system->my_nt_nbrs[d].atoms_cnt, type,
+                    system->my_nt_nbrs[d].receive_rank, d, comm, &req[d] );
         }
     }
 
     for ( d = 0; d < 6; ++d)
     {
-        nbr = &system->my_nt_nbrs[d];
-
         /* send both messages in dimension d */
         if ( out_bufs[d].cnt )
         {
-            pack( buf, out_bufs[d] );
+            pack( buf, &out_bufs[d] );
             MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
-                    nbr->rank, d, comm );
+                    system->my_nt_nbrs[d].rank, d, comm );
         }
     }
 
@@ -384,7 +382,7 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
     MPI_Comm comm;
     MPI_Request req[6];
     MPI_Status stat[6];
-    neighbor_proc *nbr;
+    coll_unpacker unpack;
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
@@ -392,36 +390,36 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
+    unpack = Get_Unpacker( buf_type );
     count = 0;
 
     for ( d = 0; d < 6; ++d )
     {
-        nbr = &system->my_nt_nbrs[d];
         in[d] = mpi_data->in_nt_buffer[d];
 
         if ( out_bufs[d].cnt )
         {
             count++;
-            MPI_Irecv( in[d], out_bufs[d].cnt, type, nbr->rank, d, comm, &req[d] );
+            MPI_Irecv( in[d], out_bufs[d].cnt, type,
+                    system->my_nt_nbrs[d].rank, d, comm, &req[d] );
         }
     }
 
     for ( d = 0; d < 6; ++d )
     {
-        nbr = &system->my_nt_nbrs[d];
-
         /* send both messages in direction d */
-        if ( nbr->atoms_cnt )
+        if ( system->my_nt_nbrs[d].atoms_cnt )
         {
-            MPI_Send( Get_Buffer_Offset( buf, nbr->atoms_str, buf_type ),
-                    nbr->atoms_cnt, type, nbr->receive_rank, d, comm );
+            MPI_Send( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+                    system->my_nt_nbrs[d].atoms_cnt, type,
+                    system->my_nt_nbrs[d].receive_rank, d, comm );
         }
     }
     
     for ( d = 0; d < count; ++d )
     {
         MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
-        unpack( in[index], buf, out_bufs[index] );
+        unpack( in[index], buf, &out_bufs[index] );
     }
 
 #if defined(DEBUG)
