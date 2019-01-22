@@ -116,6 +116,10 @@ class TestCase():
                     r'(?P<key>\btraj_format\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'traj_title': lambda l, x: sub(
                     r'(?P<key>\btraj_title\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'restart_format': lambda l, x: sub(
+                    r'(?P<key>\brestart_format\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'restart_freq': lambda l, x: sub(
+                    r'(?P<key>\brestart_freq\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
         }
         self.__params['geo_format'] = geo_format
         self.__min_step = min_step
@@ -649,6 +653,8 @@ if __name__ == '__main__':
                 'traj_format': ['0'],
                 'traj_compress': ['0'],
                 'traj_title': [None],
+                'restart_format': ['0'],
+                'restart_freq': ['0'],
         }
         return data_dir, control_params_dict
 
