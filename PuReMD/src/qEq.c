@@ -359,7 +359,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         atom->t[0] = workspace->x[i][1];
     }
 
-    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
+    Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
     for ( i = system->n; i < system->N; ++i )
     {

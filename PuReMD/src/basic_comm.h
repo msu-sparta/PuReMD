@@ -37,7 +37,13 @@ enum pointer_type
 void Dist( const reax_system * const, mpi_datatypes * const,
         void*, int, MPI_Datatype );
 
+void Dist_FS( const reax_system * const, mpi_datatypes * const,
+        void*, int, MPI_Datatype );
+
 void Coll( const reax_system * const, mpi_datatypes * const,
+        void*, int, MPI_Datatype );
+
+void Coll_FS( const reax_system * const, mpi_datatypes * const,
         void*, int, MPI_Datatype );
 
 real Parallel_Norm( real*, int, MPI_Comm );
