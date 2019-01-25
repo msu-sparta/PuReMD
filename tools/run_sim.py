@@ -331,11 +331,17 @@ restart_freq            0                       ! 0: do not output any restart f
 
             start = time()
             proc_handle = Popen(cmd_args, stdout=PIPE, stderr=PIPE, env=env, universal_newlines=True)
-            stdout, stderr = proc_handle.communicate()
+            try:
+                stdout, stderr = proc_handle.communicate()
+            except KeyboardInterrupt:
+                # Slurm jobs require sending 2 SIGINT signals within 1 second to exit,
+                # so instead use a bigger hammer (SIGKILL)
+                proc_handle.kill()
+                raise
             stop = time()
 
             if proc_handle.returncode < 0:
-                print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
+                print("[WARNING] process terminated with code {0}".format(proc_handle.returncode))
 
             print('stdout:\n{0}'.format(stdout), end='')
             print('stderr:\n{0}'.format(stderr), end='')
@@ -346,66 +352,184 @@ restart_freq            0                       ! 0: do not output any restart f
         if path.exists(temp_dir):
             rmdir(temp_dir)
 
-    def _process_result(self, fout, param, min_step, max_step):
-        time = 0.
-        cm = 0.
-        iters = 0.
-        pre_comp = 0.
-        pre_app = 0.
-        spmv = 0.
-        cnt = 0
-        cnt_valid = 0
-        line_cnt = 0
-        log_file = param['name'] + '.log'
+    def _process_result(self, fout, param, min_step, max_step, run_type):
+        if run_type == 'serial' or run_type == 'openmp':
+            time = 0.
+            cm = 0.
+            iters = 0.
+            pre_comp = 0.
+            pre_app = 0.
+            spmv = 0.
+            cnt = 0
+            cnt_valid = 0
+            line_cnt = 0
+            log_file = param['name'] + '.log'
 
-        if not path.exists(log_file):
-            print('***WARNING: {0} does not exist!'.format(log_file))
-            return
-        with open(log_file, 'r') as fp:
-            for line in fp:
-                line = line.split()
-                try:
-                    if (not min_step and not max_step) or \
-                    (min_step and not max_step and cnt_valid >= min_step) or \
-                    (not min_step and max_step and cnt_valid <= max_step) or \
-                    (cnt_valid >= min_step and cnt_valid <= max_step):
-                        cm = cm + float(line[6])
-                        iters = iters + float(line[8])
-                        pre_comp = pre_comp + float(line[9])
-                        pre_app = pre_app + float(line[10])
-                        spmv = spmv + float(line[11])
-                        cnt = cnt + 1
-                    cnt_valid = cnt_valid + 1
-                except Exception:
-                    pass
-                if line[0] == 'total:':
+            if not path.exists(log_file):
+                print('[WARNING] {0} does not exist!'.format(log_file))
+                return
+            with open(log_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
                     try:
-                        time = float(line[1])
+                        if (not min_step and not max_step) or \
+                        (min_step and not max_step and cnt_valid >= min_step) or \
+                        (not min_step and max_step and cnt_valid <= max_step) or \
+                        (cnt_valid >= min_step and cnt_valid <= max_step):
+                            cm = cm + float(line[6])
+                            iters = iters + float(line[8])
+                            pre_comp = pre_comp + float(line[9])
+                            pre_app = pre_app + float(line[10])
+                            spmv = spmv + float(line[11])
+                            cnt = cnt + 1
+                        cnt_valid = cnt_valid + 1
                     except Exception:
                         pass
-                line_cnt = line_cnt + 1
-            if cnt > 0:
-                cm = cm / cnt
-                iters = iters / cnt
-                pre_comp = pre_comp / cnt
-                pre_app = pre_app / cnt
-                spmv = spmv / cnt
+                    if line[0] == 'total:':
+                        try:
+                            time = float(line[1])
+                        except Exception:
+                            pass
+                    line_cnt = line_cnt + 1
+                if cnt > 0:
+                    cm = cm / cnt
+                    iters = iters / cnt
+                    pre_comp = pre_comp / cnt
+                    pre_app = pre_app / cnt
+                    spmv = spmv / cnt
 
-        # subtract for header, footer (total time), and extra step
-        # (e.g., 100 steps means steps 0 through 100, inclusive)
-        if (line_cnt - 3) == int(param['nsteps']):
-            fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-                param['nsteps'], param['charge_method'], param['cm_solver_type'],
-                param['cm_solver_q_err'], param['cm_domain_sparsity'],
-                param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'],
-                param['cm_solver_pre_comp_sweeps'], param['cm_solver_pre_comp_sai_thres'],
-                param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'],
-                pre_comp, pre_app, iters, spmv,
-                cm, param['threads'], time))
-        else:
-            print('**WARNING: nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
-                log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
-        fout.flush()
+            # subtract for header, footer (total time), and extra step
+            # (e.g., 100 steps means steps 0 through 100, inclusive)
+            if (line_cnt - 3) == int(param['nsteps']):
+                fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
+                    param['nsteps'], param['charge_method'], param['cm_solver_type'],
+                    param['cm_solver_q_err'], param['cm_domain_sparsity'],
+                    param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'],
+                    param['cm_solver_pre_comp_sweeps'], param['cm_solver_pre_comp_sai_thres'],
+                    param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'],
+                    pre_comp, pre_app, iters, spmv,
+                    cm, param['threads'], time))
+            else:
+                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
+                    log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
+            fout.flush()
+        elif run_type == 'mpi':
+            from operator import mul
+            from functools import reduce
+            
+            total = 0.0
+            comm = 0.0
+            neighbors = 0.0
+            init = 0.0
+            init_dist = 0.0
+            init_cm = 0.0
+            init_bond = 0.0
+            bonded = 0.0
+            nonbonded = 0.0
+            time = 0.0
+            cm = 0.0
+            cm_sort = 0.0
+            s_iters = 0.0
+            pre_comp = 0.0
+            pre_app = 0.0
+            s_comm = 0.0
+            s_allr = 0.0
+            s_spmv = 0.0
+            s_vec_ops = 0.0
+            cnt = 0
+            cnt_valid = 0
+            line_cnt = 0
+            log_file = param['name'] + '.log'
+
+            if not path.exists(log_file):
+                print('[WARNING] {0} does not exist!'.format(log_file))
+                return
+            with open(log_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
+                    try:
+                        if (not min_step and not max_step) or \
+                        (min_step and not max_step and cnt_valid >= min_step) or \
+                        (not min_step and max_step and cnt_valid <= max_step) or \
+                        (cnt_valid >= min_step and cnt_valid <= max_step):
+                            total = total + float(line[1])
+                            comm = comm + float(line[2])
+                            neighbors = neighbors + float(line[3])
+                            init = init + float(line[4])
+                            init_dist = init_dist + float(line[5])
+                            init_cm = init_cm + float(line[6])
+                            init_bond = init_bond + float(line[7])
+                            bonded = bonded + float(line[8])
+                            nonbonded = nonbonded + float(line[9])
+                            cm = cm + float(line[10])
+                            cm_sort = cm_sort + float(line[11])
+                            s_iters = s_iters + float(line[12])
+                            pre_comp = pre_comp + float(line[13])
+                            pre_app = pre_app + float(line[14])
+                            s_comm = s_comm + float(line[15])
+                            s_allr = s_allr + float(line[16])
+                            s_spmv = s_spmv + float(line[17])
+                            s_vec_ops = s_vec_ops + float(line[18])
+                            cnt = cnt + 1
+                        cnt_valid = cnt_valid + 1
+                    except Exception:
+                        pass
+                    if line[0] == 'total:':
+                        try:
+                            time = float(line[1])
+                        except Exception:
+                            pass
+                    line_cnt = line_cnt + 1
+                if cnt > 0:
+                    comm = comm / cnt
+                    neighbors = neighbors / cnt
+                    init = init / cnt
+                    init_dist = init_dist / cnt
+                    init_cm = init_cm / cnt
+                    init_bond = init_bond / cnt
+                    bonded = bonded / cnt
+                    nonbonded = nonbonded / cnt
+                    cm = cm / cnt
+                    cm_sort = cm_sort / cnt
+                    s_iters = s_iters / cnt
+                    pre_comp = pre_comp / cnt
+                    pre_app = pre_app / cnt
+                    s_comm = s_comm / cnt
+                    s_allr = s_allr / cnt
+                    s_spmv = s_spmv / cnt
+                    s_vec_ops = s_vec_ops / cnt
+
+            # subtract for header, footer (total time), and extra step
+            # (e.g., 100 steps means steps 0 through 100, inclusive)
+            if (line_cnt - 1) >= int(param['nsteps']):
+                fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
+                    str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
+                    param['nsteps'], param['cm_solver_pre_comp_type'],
+                    param['cm_solver_q_err'],
+                    param['reneighbor'],
+                    param['cm_solver_pre_comp_sai_thres'],
+                    total, comm, neighbors, init, init_dist, init_cm, init_bond,
+                    bonded, nonbonded, cm, cm_sort,
+                    s_iters, pre_comp, pre_app, s_comm, s_allr, s_spmv, s_vec_ops))
+            else:
+                fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
+                    str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
+                    param['nsteps'], param['cm_solver_pre_comp_type'],
+                    param['cm_solver_q_err'],
+                    param['reneighbor'],
+                    param['cm_solver_pre_comp_sai_thres'],
+                    float('nan'), float('nan'), float('nan'), float('nan'),
+                    float('nan'), float('nan'), float('nan'), float('nan'),
+                    float('nan'), float('nan'), float('nan'), float('nan'),
+                    float('nan'), float('nan'), float('nan'), float('nan'),
+                    float('nan'), float('nan')))
+
+                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
+                    log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
+            fout.flush()
+        elif run_type == 'mpi+gpu':
+            #TODO
+            pass
 
     def parse_results(self, run_type):
         from itertools import product
@@ -425,7 +549,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
                 param_dict['name'] = self._create_output_file_base(run_type, param_dict)
 
-                self._process_result(fout, param_dict, self.__min_step, self.__max_step)
+                self._process_result(fout, param_dict, self.__min_step, self.__max_step, run_type)
 
     def _build_slurm_script(self, binary, run_type, mpi_cmd, param_values):
         from os import path
@@ -507,10 +631,16 @@ python3 {0}/tools/run_sim.py run_md \\
                 cmd_args = ['qsub']
 
             proc_handle = Popen(cmd_args, stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-            stdout, stderr = proc_handle.communicate(job_script)
+            try:
+                stdout, stderr = proc_handle.communicate(job_script)
+            except KeyboardInterrupt:
+                # Slurm jobs require sending 2 SIGINT signals within 1 second to exit,
+                # so instead use a bigger hammer (SIGKILL)
+                proc_handle.kill()
+                raise
 
             if proc_handle.returncode < 0:
-                print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
+                print("[WARNING] process terminated with code {0}".format(proc_handle.returncode))
                 print('stdout:\n{0}'.format(stdout), end='')
                 print('stderr:\n{0}'.format(stderr), end='')
             else:
@@ -571,6 +701,8 @@ if __name__ == '__main__':
                 help='Force field parameter file used for the MD simulation.')
         run_md_custom_parser.set_defaults(func=run_md_custom)
 
+        parse_results_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
+                help='Binary file to run.')
         parse_results_parser.add_argument('-f', '--out_file', metavar='out_file', default=None, nargs=1,
                 help='Output file to write results.')
         parse_results_parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
@@ -581,8 +713,10 @@ if __name__ == '__main__':
                 help='Maxiumum simulation step for aggregating results.')
         parse_results_parser.add_argument('run_type', nargs=1,
                 choices=RUN_TYPES, help='Run type for the MD simulation(s).')
-        parse_results_parser.add_argument('data_sets', nargs='+',
-                choices=DATA_SETS, help='Data set(s) for which to parse MD simulation results.')
+        parse_results_parser.add_argument('geo_file', nargs=1,
+                help='Geometry file used for the MD simulation.')
+        parse_results_parser.add_argument('ffield_file', nargs=1,
+                help='Force field parameter file used for the MD simulation.')
         parse_results_parser.set_defaults(func=parse_results)
 
         submit_jobs_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
@@ -837,13 +971,52 @@ if __name__ == '__main__':
         test_case.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'))
 
     def parse_results(args):
-        header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
-        header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre Comp',
-                'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
-        body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+        if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
+            header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
+            header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre Comp',
+                    'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+        elif args.run_type[0] == 'mpi':
+            header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
+            header_str = ['Data_Set', 'Proc', 'Steps', 'PreCt', 'Q_Tol', 'Ren', 'PCSAI',
+                    'total', 'comm', 'neighbors', 'init', 'init_dist', 'init_cm', 'init_bond',
+                    'bonded', 'nonbonded', 'cm', 'cm_sort',
+                    's_iters', 'pre_comm', 'pre_app', 's_comm', 's_allr', 's_spmv', 's_vec_ops']
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
+        elif args.run_type[0] == 'mpi+gpu':
+            #TODO
+            pass
 
-        base_dir = getcwd()
-        data_dir, control_params_dict = setup_defaults(base_dir)
+        if args.binary:
+            binary = args.binary[0]
+            # remove executable and back up two directory levels
+            base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
+        else:
+            base_dir = getcwd()
+
+        _, control_params_dict = setup_defaults(base_dir)
+
+        # overwrite default control file parameter values if supplied via command line args
+        if args.params:
+            for param in args.params:
+                if param[0] in control_params_dict:
+                    control_params_dict[param[0]] = param[1].split(',')
+                else:
+                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    exit(-1)
+
+        geo_base, geo_ext = path.splitext(args.geo_file[0])
+        if 'geo_format' in control_params_dict:
+            geo_format = control_params_dict['geo_format']
+        # infer geometry file format by file extension
+        else:
+            if geo_ext.lower() == '.pdb':
+                geo_format = ['1']
+            elif geo_ext.lower() == '.geo':
+                geo_format = ['0']
+            else:
+                print("ERROR: unrecognized geometry format {0}. Terminating...".format(ext))
+                exit(-1)
 
         if args.out_file:
             result_file = args.out_file[0]
@@ -860,12 +1033,12 @@ if __name__ == '__main__':
         else:
             max_step = None
 
-        test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict,
-                header_fmt_str=header_fmt_str, header_str=header_str, body_fmt_str=body_fmt_str,
+        test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
+                params=control_params_dict, geo_format=geo_format,
+                result_header_fmt=header_fmt_str, result_header=header_str, result_body_fmt=body_fmt_str,
                 result_file=result_file, min_step=min_step, max_step=max_step)
 
-        for test in test_cases:
-            test.parse_results(args.run_type[0])
+        test_case.parse_results(args.run_type[0])
 
     def submit_jobs(args):
         if args.binary:
