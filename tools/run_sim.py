@@ -352,8 +352,9 @@ restart_freq            0                       ! 0: do not output any restart f
         if path.exists(temp_dir):
             rmdir(temp_dir)
 
-    def _process_result(self, fout, param, min_step, max_step, run_type):
+    def _process_result(self, fout, param, min_step, max_step, freq_step, run_type):
         if run_type == 'serial' or run_type == 'openmp':
+            step_0_cnt = 0
             time = 0.
             cm = 0.
             iters = 0.
@@ -382,6 +383,9 @@ restart_freq            0                       ! 0: do not output any restart f
                             pre_app = pre_app + float(line[10])
                             spmv = spmv + float(line[11])
                             cnt = cnt + 1
+
+                            if line[0] == '0':
+                                step_0_cnt = step_0_cnt + 1
                         cnt_valid = cnt_valid + 1
                     except Exception:
                         pass
@@ -400,7 +404,7 @@ restart_freq            0                       ! 0: do not output any restart f
 
             # subtract for header, footer (total time), and extra step
             # (e.g., 100 steps means steps 0 through 100, inclusive)
-            if (line_cnt - 3) == int(param['nsteps']):
+            if (line_cnt - 2 - step_0_cnt) == (int(param['nsteps']) / freq_step):
                 fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
                     param['nsteps'], param['charge_method'], param['cm_solver_type'],
                     param['cm_solver_q_err'], param['cm_domain_sparsity'],
@@ -410,13 +414,14 @@ restart_freq            0                       ! 0: do not output any restart f
                     pre_comp, pre_app, iters, spmv,
                     cm, param['threads'], time))
             else:
-                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
-                    log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
+                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
+                    log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
             fout.flush()
         elif run_type == 'mpi':
             from operator import mul
             from functools import reduce
             
+            step_0_cnt = 0
             total = 0.0
             comm = 0.0
             neighbors = 0.0
@@ -471,6 +476,9 @@ restart_freq            0                       ! 0: do not output any restart f
                             s_spmv = s_spmv + float(line[17])
                             s_vec_ops = s_vec_ops + float(line[18])
                             cnt = cnt + 1
+
+                            if line[0] == '0':
+                                step_0_cnt = step_0_cnt + 1
                         cnt_valid = cnt_valid + 1
                     except Exception:
                         pass
@@ -501,7 +509,7 @@ restart_freq            0                       ! 0: do not output any restart f
 
             # subtract for header, footer (total time), and extra step
             # (e.g., 100 steps means steps 0 through 100, inclusive)
-            if (line_cnt - 1) >= int(param['nsteps']):
+            if (line_cnt - 2 - step_0_cnt) == (int(param['nsteps']) / freq_step):
                 fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
                     str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
                     param['nsteps'], param['cm_solver_pre_comp_type'],
@@ -524,8 +532,8 @@ restart_freq            0                       ! 0: do not output any restart f
                     float('nan'), float('nan'), float('nan'), float('nan'),
                     float('nan'), float('nan')))
 
-                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
-                    log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
+                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
+                    log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
             fout.flush()
         elif run_type == 'mpi+gpu':
             #TODO
@@ -549,7 +557,9 @@ restart_freq            0                       ! 0: do not output any restart f
                 param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
                 param_dict['name'] = self._create_output_file_base(run_type, param_dict)
 
-                self._process_result(fout, param_dict, self.__min_step, self.__max_step, run_type)
+                self._process_result(fout, param_dict,
+                        self.__min_step, self.__max_step,
+                        int(param_dict['energy_update_freq']), run_type)
 
     def _build_slurm_script(self, binary, run_type, mpi_cmd, param_values):
         from os import path
