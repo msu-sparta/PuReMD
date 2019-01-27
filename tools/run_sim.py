@@ -507,9 +507,9 @@ restart_freq            0                       ! 0: do not output any restart f
             with open(out_file, 'r') as fp:
                 for line in fp:
                     line = line.split()
-                    if line[0] == 'total:':
+                    if line[0] == 'Total' and line[1] == 'Simulation' and line[2] == 'Time:':
                         try:
-                            total_time = float(line[1])
+                            total_time = float(line[3])
                         except Exception:
                             pass
 
