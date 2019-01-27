@@ -373,19 +373,27 @@ restart_freq            0                       ! 0: do not output any restart f
                 for line in fp:
                     line = line.split()
                     try:
+                        _cm = float(line[6])
+                        _iters = float(line[8])
+                        _pre_comp = float(line[9])
+                        _pre_app = float(line[10])
+                        _spmv = float(line[11])
+
                         if (not min_step and not max_step) or \
                         (min_step and not max_step and cnt_valid >= min_step) or \
                         (not min_step and max_step and cnt_valid <= max_step) or \
                         (cnt_valid >= min_step and cnt_valid <= max_step):
-                            cm = cm + float(line[6])
-                            iters = iters + float(line[8])
-                            pre_comp = pre_comp + float(line[9])
-                            pre_app = pre_app + float(line[10])
-                            spmv = spmv + float(line[11])
+                            cm = cm + _cm
+                            iters = iters + _iters
+                            pre_comp = pre_comp + _pre_comp
+                            pre_app = pre_app + _pre_app
+                            spmv = spmv + _spmv
+
                             cnt = cnt + 1
 
                             if line[0] == '0':
                                 step_0_cnt = step_0_cnt + 1
+
                         cnt_valid = cnt_valid + 1
                     except Exception:
                         pass
@@ -453,53 +461,74 @@ restart_freq            0                       ! 0: do not output any restart f
                 for line in fp:
                     line = line.split()
                     try:
+                        _comm = float(line[2])
+                        _neighbors = float(line[3])
+                        _init = float(line[4])
+                        _init_dist = float(line[5])
+                        _init_cm = float(line[6])
+                        _init_bond = float(line[7])
+                        _bonded = float(line[8])
+                        _nonbonded = float(line[9])
+                        _cm = float(line[10])
+                        _cm_sort = float(line[11])
+                        _s_iters = float(line[12])
+                        _pre_comp = float(line[13])
+                        _pre_app = float(line[14])
+                        _s_comm = float(line[15])
+                        _s_allr = float(line[16])
+                        _s_spmv = float(line[17])
+                        _s_vec_ops = float(line[18])
+
                         if (not min_step and not max_step) or \
                         (min_step and not max_step and cnt_valid >= min_step) or \
                         (not min_step and max_step and cnt_valid <= max_step) or \
                         (cnt_valid >= min_step and cnt_valid <= max_step):
-                            comm = comm + float(line[2])
-                            neighbors = neighbors + float(line[3])
-                            init = init + float(line[4])
-                            init_dist = init_dist + float(line[5])
-                            init_cm = init_cm + float(line[6])
-                            init_bond = init_bond + float(line[7])
-                            bonded = bonded + float(line[8])
-                            nonbonded = nonbonded + float(line[9])
-                            cm = cm + float(line[10])
-                            cm_sort = cm_sort + float(line[11])
-                            s_iters = s_iters + float(line[12])
-                            pre_comp = pre_comp + float(line[13])
-                            pre_app = pre_app + float(line[14])
-                            s_comm = s_comm + float(line[15])
-                            s_allr = s_allr + float(line[16])
-                            s_spmv = s_spmv + float(line[17])
-                            s_vec_ops = s_vec_ops + float(line[18])
+                            comm = comm + _comm
+                            neighbors = neighbors + _neighbors
+                            init = init + _init
+                            init_dist = init_dist + _init_dist
+                            init_cm = init_cm + _init_cm
+                            init_bond = init_bond + _init_bond
+                            bonded = bonded + _bonded
+                            nonbonded = nonbonded + _nonbonded
+                            cm = cm + _cm
+                            cm_sort = cm_sort + _cm_sort
+                            s_iters = s_iters + _s_iters
+                            pre_comp = pre_comp + _pre_comp
+                            pre_app = pre_app + _pre_app
+                            s_comm = s_comm + _s_comm
+                            s_allr = s_allr + _s_allr
+                            s_spmv = s_spmv + _s_spmv
+                            s_vec_ops = s_vec_ops + _s_vec_ops
+
                             cnt = cnt + 1
 
                             if line[0] == '0':
                                 step_0_cnt = step_0_cnt + 1
+
                         cnt_valid = cnt_valid + 1
                     except Exception:
                         pass
                     line_cnt = line_cnt + 1
-                if cnt > 0:
-                    comm = comm / cnt
-                    neighbors = neighbors / cnt
-                    init = init / cnt
-                    init_dist = init_dist / cnt
-                    init_cm = init_cm / cnt
-                    init_bond = init_bond / cnt
-                    bonded = bonded / cnt
-                    nonbonded = nonbonded / cnt
-                    cm = cm / cnt
-                    cm_sort = cm_sort / cnt
-                    s_iters = s_iters / cnt
-                    pre_comp = pre_comp / cnt
-                    pre_app = pre_app / cnt
-                    s_comm = s_comm / cnt
-                    s_allr = s_allr / cnt
-                    s_spmv = s_spmv / cnt
-                    s_vec_ops = s_vec_ops / cnt
+
+            if cnt > 0:
+                comm = comm / cnt
+                neighbors = neighbors / cnt
+                init = init / cnt
+                init_dist = init_dist / cnt
+                init_cm = init_cm / cnt
+                init_bond = init_bond / cnt
+                bonded = bonded / cnt
+                nonbonded = nonbonded / cnt
+                cm = cm / cnt
+                cm_sort = cm_sort / cnt
+                s_iters = s_iters / cnt
+                pre_comp = pre_comp / cnt
+                pre_app = pre_app / cnt
+                s_comm = s_comm / cnt
+                s_allr = s_allr / cnt
+                s_spmv = s_spmv / cnt
+                s_vec_ops = s_vec_ops / cnt
 
             if not path.exists(out_file):
                 print('[WARNING] {0} does not exist!'.format(out_file))
