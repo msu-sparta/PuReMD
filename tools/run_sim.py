@@ -355,7 +355,7 @@ restart_freq            0                       ! 0: do not output any restart f
     def _process_result(self, fout, param, min_step, max_step, freq_step, run_type):
         if run_type == 'serial' or run_type == 'openmp':
             step_0_cnt = 0
-            time = 0.
+            total_time = 0.
             cm = 0.
             iters = 0.
             pre_comp = 0.
@@ -391,7 +391,7 @@ restart_freq            0                       ! 0: do not output any restart f
                         pass
                     if line[0] == 'total:':
                         try:
-                            time = float(line[1])
+                            total_time = float(line[1])
                         except Exception:
                             pass
                     line_cnt = line_cnt + 1
@@ -412,7 +412,7 @@ restart_freq            0                       ! 0: do not output any restart f
                     param['cm_solver_pre_comp_sweeps'], param['cm_solver_pre_comp_sai_thres'],
                     param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'],
                     pre_comp, pre_app, iters, spmv,
-                    cm, param['threads'], time))
+                    cm, param['threads'], total_time))
             else:
                 print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
                     log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
@@ -422,7 +422,7 @@ restart_freq            0                       ! 0: do not output any restart f
             from functools import reduce
             
             step_0_cnt = 0
-            total = 0.0
+            total_time = 0.0
             comm = 0.0
             neighbors = 0.0
             init = 0.0
@@ -431,7 +431,6 @@ restart_freq            0                       ! 0: do not output any restart f
             init_bond = 0.0
             bonded = 0.0
             nonbonded = 0.0
-            time = 0.0
             cm = 0.0
             cm_sort = 0.0
             s_iters = 0.0
@@ -445,6 +444,7 @@ restart_freq            0                       ! 0: do not output any restart f
             cnt_valid = 0
             line_cnt = 0
             log_file = param['name'] + '.log'
+            out_file = param['name'] + '.out'
 
             if not path.exists(log_file):
                 print('[WARNING] {0} does not exist!'.format(log_file))
@@ -457,7 +457,6 @@ restart_freq            0                       ! 0: do not output any restart f
                         (min_step and not max_step and cnt_valid >= min_step) or \
                         (not min_step and max_step and cnt_valid <= max_step) or \
                         (cnt_valid >= min_step and cnt_valid <= max_step):
-                            total = total + float(line[1])
                             comm = comm + float(line[2])
                             neighbors = neighbors + float(line[3])
                             init = init + float(line[4])
@@ -482,11 +481,6 @@ restart_freq            0                       ! 0: do not output any restart f
                         cnt_valid = cnt_valid + 1
                     except Exception:
                         pass
-                    if line[0] == 'total:':
-                        try:
-                            time = float(line[1])
-                        except Exception:
-                            pass
                     line_cnt = line_cnt + 1
                 if cnt > 0:
                     comm = comm / cnt
@@ -507,6 +501,18 @@ restart_freq            0                       ! 0: do not output any restart f
                     s_spmv = s_spmv / cnt
                     s_vec_ops = s_vec_ops / cnt
 
+            if not path.exists(out_file):
+                print('[WARNING] {0} does not exist!'.format(out_file))
+                return
+            with open(out_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
+                    if line[0] == 'total:':
+                        try:
+                            total_time = float(line[1])
+                        except Exception:
+                            pass
+
             # subtract for header, footer (total time), and extra step
             # (e.g., 100 steps means steps 0 through 100, inclusive)
             if (line_cnt - 2 - step_0_cnt) == (int(param['nsteps']) / freq_step):
@@ -516,22 +522,10 @@ restart_freq            0                       ! 0: do not output any restart f
                     param['cm_solver_q_err'],
                     param['reneighbor'],
                     param['cm_solver_pre_comp_sai_thres'],
-                    total, comm, neighbors, init, init_dist, init_cm, init_bond,
+                    total_time, comm, neighbors, init, init_dist, init_cm, init_bond,
                     bonded, nonbonded, cm, cm_sort,
                     s_iters, pre_comp, pre_app, s_comm, s_allr, s_spmv, s_vec_ops))
             else:
-                fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
-                    str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
-                    param['nsteps'], param['cm_solver_pre_comp_type'],
-                    param['cm_solver_q_err'],
-                    param['reneighbor'],
-                    param['cm_solver_pre_comp_sai_thres'],
-                    float('nan'), float('nan'), float('nan'), float('nan'),
-                    float('nan'), float('nan'), float('nan'), float('nan'),
-                    float('nan'), float('nan'), float('nan'), float('nan'),
-                    float('nan'), float('nan'), float('nan'), float('nan'),
-                    float('nan'), float('nan')))
-
                 print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
                     log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
             fout.flush()
