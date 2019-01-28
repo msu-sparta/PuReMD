@@ -1014,7 +1014,7 @@ if __name__ == '__main__':
                     'Pre_App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
             body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
         elif args.run_type[0] == 'mpi':
-            header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
+            header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
             header_str = ['Data_Set', 'Proc', 'Steps', 'PreCT', 'Q_Tol', 'Ren', 'PCSAI',
                     'total_time', 'step_time', 'comm', 'neighbors', 'init', 'init_dist', 'init_cm', 'init_bond',
                     'bonded', 'nonbonded', 'cm', 'cm_sort',
