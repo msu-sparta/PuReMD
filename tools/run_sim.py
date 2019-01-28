@@ -431,6 +431,7 @@ restart_freq            0                       ! 0: do not output any restart f
             
             step_0_cnt = 0
             total_time = 0.0
+            step_time = 0.0
             comm = 0.0
             neighbors = 0.0
             init = 0.0
@@ -461,6 +462,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 for line in fp:
                     line = line.split()
                     try:
+                        _step_time = float(line[1])
                         _comm = float(line[2])
                         _neighbors = float(line[3])
                         _init = float(line[4])
@@ -483,6 +485,7 @@ restart_freq            0                       ! 0: do not output any restart f
                         (min_step and not max_step and cnt_valid >= min_step) or \
                         (not min_step and max_step and cnt_valid <= max_step) or \
                         (cnt_valid >= min_step and cnt_valid <= max_step):
+                            step_time = step_time + _step_time
                             comm = comm + _comm
                             neighbors = neighbors + _neighbors
                             init = init + _init
@@ -512,6 +515,7 @@ restart_freq            0                       ! 0: do not output any restart f
                     line_cnt = line_cnt + 1
 
             if cnt > 0:
+                step_time = step_time / cnt
                 comm = comm / cnt
                 neighbors = neighbors / cnt
                 init = init / cnt
@@ -551,7 +555,7 @@ restart_freq            0                       ! 0: do not output any restart f
                     param['cm_solver_q_err'],
                     param['reneighbor'],
                     param['cm_solver_pre_comp_sai_thres'],
-                    total_time, comm, neighbors, init, init_dist, init_cm, init_bond,
+                    total_time, step_time, comm, neighbors, init, init_dist, init_cm, init_bond,
                     bonded, nonbonded, cm, cm_sort,
                     s_iters, pre_comp, pre_app, s_comm, s_allr, s_spmv, s_vec_ops))
             else:
@@ -952,7 +956,7 @@ if __name__ == '__main__':
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
                 else:
-                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict)
@@ -982,7 +986,7 @@ if __name__ == '__main__':
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
                 else:
-                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         geo_base, geo_ext = path.splitext(args.geo_file[0])
@@ -995,7 +999,7 @@ if __name__ == '__main__':
             elif geo_ext.lower() == '.geo':
                 geo_format = ['0']
             else:
-                print("ERROR: unrecognized geometry format {0}. Terminating...".format(ext))
+                print("[ERROR] unrecognized geometry format {0}. Terminating...".format(ext))
                 exit(-1)
 
         test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
@@ -1006,16 +1010,16 @@ if __name__ == '__main__':
     def parse_results(args):
         if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
             header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
-            header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre Comp',
-                    'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
+            header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q_Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre_Comp',
+                    'Pre_App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
             body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
         elif args.run_type[0] == 'mpi':
             header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
-            header_str = ['Data_Set', 'Proc', 'Steps', 'PreCt', 'Q_Tol', 'Ren', 'PCSAI',
-                    'total', 'comm', 'neighbors', 'init', 'init_dist', 'init_cm', 'init_bond',
+            header_str = ['Data_Set', 'Proc', 'Steps', 'PreCT', 'Q_Tol', 'Ren', 'PCSAI',
+                    'total_time', 'step_time', 'comm', 'neighbors', 'init', 'init_dist', 'init_cm', 'init_bond',
                     'bonded', 'nonbonded', 'cm', 'cm_sort',
                     's_iters', 'pre_comm', 'pre_app', 's_comm', 's_allr', 's_spmv', 's_vec_ops']
-            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
         elif args.run_type[0] == 'mpi+gpu':
             #TODO
             pass
@@ -1035,7 +1039,7 @@ if __name__ == '__main__':
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
                 else:
-                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         geo_base, geo_ext = path.splitext(args.geo_file[0])
@@ -1048,7 +1052,7 @@ if __name__ == '__main__':
             elif geo_ext.lower() == '.geo':
                 geo_format = ['0']
             else:
-                print("ERROR: unrecognized geometry format {0}. Terminating...".format(ext))
+                print("[ERROR] unrecognized geometry format {0}. Terminating...".format(ext))
                 exit(-1)
 
         if args.out_file:
@@ -1095,7 +1099,7 @@ if __name__ == '__main__':
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
                 else:
-                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict)

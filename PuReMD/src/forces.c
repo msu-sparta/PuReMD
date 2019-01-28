@@ -2425,7 +2425,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     if ( system->my_rank == MASTER_NODE )
     {
         t_end = MPI_Wtime( );
-        data->timing.nonb += t_end - t_start + data->timing.cm;;
+        data->timing.nonb += t_end - t_start;
         t_start = t_end;
     }
 #endif
