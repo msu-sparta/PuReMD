@@ -215,7 +215,9 @@ int main( int argc, char* argv[] )
         Evolve( system, control, data, workspace, lists, out_control, mpi_data );
         Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
 
-        if( system->my_rank == MASTER_NODE )
+        if ( system->my_rank == MASTER_NODE 
+                && out_control->energy_update_freq > 0
+                && data->step % out_control->energy_update_freq == 0 )
         {
             total_itr += data->timing.cm_solver_iters;
         }
