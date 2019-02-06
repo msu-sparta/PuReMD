@@ -61,7 +61,7 @@ AC_ARG_WITH([cuda],
 	want_cuda="yes"
 ])
 
-AM_CONDITIONAL(USE_CUDA, test "x${want_cuda}" = xyes)
+#AM_CONDITIONAL(USE_CUDA, test "x${want_cuda}" = xyes)
 
 if test "$want_cuda" = "yes"
 then
@@ -215,7 +215,7 @@ if test x$EMULATION = xtrue
 then
     NVCCFLAGS=" -deviceemu"
 fi
-#
+ 
 #AS_IF([test "x$want_cuda" = xyes],
 #    [AS_IF([test "x$NVCCFLAGS" = x],
 #        [dnl generate CUDA code for broad spectrum of devices
