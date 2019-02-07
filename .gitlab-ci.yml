@@ -1,0 +1,32 @@
+variables:
+  OMP_NUM_THREADS: 1
+  GIT_STRATEGY: clone
+  APPLICATION: PuReMD
+
+before_script:
+  - echo "[INFO] Starting..."
+
+stages:
+  - build
+  - test
+
+compile:
+  stage: build
+  artifacts:
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+    untrack: true
+    expire_in: 1 week
+  script:
+    - ./configure && make
+
+run:
+  stage: test
+  dependencies:
+    - compile
+  script:
+    - echo "[INFO] Testing..."
+    - sPuReMD/bin/spuremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
+    - echo "[INFO] Done testing"
+
+after_script:
+  - echo "[INFO] Complete"
