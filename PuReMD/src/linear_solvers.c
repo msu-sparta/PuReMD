@@ -108,57 +108,113 @@ static int find_bucket( double *list, int len, double a )
 
 static void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 {
-    int  i, j, k, si;
-    real H;
+    int i, j, k, si, num_rows;
+    real val;
 
     for ( i = 0; i < N; ++i )
     {
-        b[i][0] = b[i][1] = 0;
+        b[i][0] = 0.0;
+        b[i][1] = 0.0;
     }
+
+#if defined(NEUTRAL_TERRITORY)
+    num_rows = A->NT;
 
     if ( A->format == SYM_HALF_MATRIX )
     {
-        /* perform multiplication */
-        for ( i = 0; i < A->n; ++i )
+        for ( i = 0; i < num_rows; ++i )
         {
             si = A->start[i];
 
-            b[i][0] += A->entries[si].val * x[i][0];
-            b[i][1] += A->entries[si].val * x[i][1];
+            /* diagonal only contributes once */
+            if( i < A->n )
+            {
+                b[i][0] += A->entries[si].val * x[i][0];
+                b[i][1] += A->entries[si].val * x[i][1];
+                k = si + 1;
+            }
+            /* zeros on the diagonal for i >= A->n,
+             * so skip the diagonal multplication step as zeros
+             * are not stored (idea: keep the NNZ's the same
+             * for full shell and neutral territory half-stored
+             * charge matrices to make debugging easier) */
+            else
+            {
+                k = si;
+            }
 
-            for ( k = si + 1; k < A->end[i]; ++k )
+            for ( ; k < A->end[i]; ++k )
             {
                 j = A->entries[k].j;
-                H = A->entries[k].val;
+                val = A->entries[k].val;
 
-                b[i][0] += H * x[j][0];
-                b[i][1] += H * x[j][1];
-
-                // comment out for tryQEq
-                //if( j < A->n ) {
-                b[j][0] += H * x[i][0];
-                b[j][1] += H * x[i][1];
-                //}
+                b[i][0] += val * x[j][0];
+                b[i][1] += val * x[j][1];
+                
+                b[j][0] += val * x[i][0];
+                b[j][1] += val * x[i][1];
             }
         }
     }
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
-        /* perform multiplication */
-        for ( i = 0; i < A->n; ++i )
+        for ( i = 0; i < num_rows; ++i )
         {
             si = A->start[i];
 
             for ( k = si; k < A->end[i]; ++k )
             {
                 j = A->entries[k].j;
-                H = A->entries[k].val;
+                val = A->entries[k].val;
 
-                b[i][0] += H * x[j][0];
-                b[i][1] += H * x[j][1];
+                b[i][0] += val * x[j][0];
+                b[i][1] += val * x[j][1];
             }
         }
     }
+#else
+    num_rows = A->n;
+
+    if ( A->format == SYM_HALF_MATRIX )
+    {
+        for ( i = 0; i < num_rows; ++i )
+        {
+            si = A->start[i];
+
+            /* diagonal only contributes once */
+            b[i][0] += A->entries[si].val * x[i][0];
+            b[i][1] += A->entries[si].val * x[i][1];
+
+            for ( k = si + 1; k < A->end[i]; ++k )
+            {
+                j = A->entries[k].j;
+                val = A->entries[k].val;
+
+                b[i][0] += val * x[j][0];
+                b[i][1] += val * x[j][1];
+                
+                b[j][0] += val * x[i][0];
+                b[j][1] += val * x[i][1];
+            }
+        }
+    }
+    else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
+    {
+        for ( i = 0; i < num_rows; ++i )
+        {
+            si = A->start[i];
+
+            for ( k = si; k < A->end[i]; ++k )
+            {
+                j = A->entries[k].j;
+                val = A->entries[k].val;
+
+                b[i][0] += val * x[j][0];
+                b[i][1] += val * x[j][1];
+            }
+        }
+    }
+#endif
 }
 
 
