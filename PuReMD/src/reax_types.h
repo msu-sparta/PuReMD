@@ -40,6 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
+//#define DUAL_CG
 //#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG

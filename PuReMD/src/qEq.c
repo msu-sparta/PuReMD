@@ -349,13 +349,11 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         atom->s[3] = atom->s[2];
         atom->s[2] = atom->s[1];
         atom->s[1] = atom->s[0];
-        //atom->s[0] = workspace->s[i];
         atom->s[0] = workspace->x[i][0];
 
         atom->t[3] = atom->t[2];
         atom->t[2] = atom->t[1];
         atom->t[1] = atom->t[0];
-        //atom->t[0] = workspace->t[i];
         atom->t[0] = workspace->x[i][1];
     }
 
@@ -447,6 +445,10 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     switch ( control->cm_solver_type )
     {
     case CG_S:
+#if defined(DUAL_CG)
+        iters = dual_CG( system, control, data, workspace, workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data );
+#else
         for ( j = 0; j < system->n; ++j )
         {
             workspace->s[j] = workspace->x[j][0];
@@ -472,6 +474,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         {
             workspace->x[j][1] = workspace->t[j];
         }
+#endif
         break;
 
     case PIPECG_S:

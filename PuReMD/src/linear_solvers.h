@@ -32,7 +32,7 @@ real sparse_approx_inverse( reax_system*, simulation_data*, storage*, mpi_dataty
         sparse_matrix*, sparse_matrix*, sparse_matrix**, int );
 
 int dual_CG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
-             rvec2*, real, rvec2*, mpi_datatypes*, FILE* );
+             rvec2*, real, rvec2*, mpi_datatypes* );
 
 int CG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
         real*, real, real*, mpi_datatypes* );

@@ -1583,66 +1583,124 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
 int dual_CG( reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, sparse_matrix *H, rvec2 *b,
-        real tol, rvec2 *x, mpi_datatypes* mpi_data, FILE *fout )
+        real tol, rvec2 *x, mpi_datatypes* mpi_data )
 {
-    int  i, j, n, N, matvecs;
+    int  i, j;
     rvec2 tmp, alpha, beta;
-    rvec2 my_sum, norm_sqr, b_norm, my_dot;
+    rvec2 norm, b_norm;
     rvec2 sig_old, sig_new;
-    MPI_Comm comm;
+    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
+    real timings[5], redux[6];
 
-    n = system->n;
-    N = system->N;
-    comm = mpi_data->world;
-    matvecs = 0;
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_vops = 0.0;
+    t_comm = 0.0;
+    t_allreduce = 0.0;
 
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        matvecs = 0;
-        t_start = matvec_time = dot_time = 0;
-        t_start = MPI_Wtime();
-    }
-#endif
-
+    t_start = MPI_Wtime( );
     Dist( system, mpi_data, x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-    dual_Sparse_MatVec( H, x, workspace->q2, N );
+    t_comm += MPI_Wtime( ) - t_start;
+
+    t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+    dual_Sparse_MatVec( H, x, workspace->q2, H->NT );
+#else
+    dual_Sparse_MatVec( H, x, workspace->q2, system->N );
+#endif
+    t_spmv += MPI_Wtime( ) - t_start;
+
+
     if ( H->format == SYM_HALF_MATRIX )
     {
+        t_start = MPI_Wtime( );
         Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
     }
-
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
+#if defined(NEUTRAL_TERRITORY)
+    else
     {
-        //Update_Timing_Info( &t_start, &matvec_time );
-        real t_end = MPI_Wtime();
-        matvec_time += t_end - t_start;
-        t_start = t_end;
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
     }
 #endif
 
+    t_start = MPI_Wtime( );
     for ( j = 0; j < system->n; ++j )
     {
         // residual
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->q2[j][1];
-        // apply diagonal pre-conditioner
-        workspace->d2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
-        workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
+    }
+    t_vops += MPI_Wtime( ) - t_start;
+
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+         t_start = MPI_Wtime( );
+         Dist( system, mpi_data, workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+         t_comm += MPI_Wtime( ) - t_start;
+
+         t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+         dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->d2, H->NT );
+#else
+         dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->d2, system->n );
+#endif
+         t_pa += MPI_Wtime( ) - t_start;
+    }
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
+    {
+        t_start = MPI_Wtime( );
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->d2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
+            workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
+        }
+        t_pa += MPI_Wtime( ) - t_start;
     }
 
-    // norm of b
+    t_start = MPI_Wtime( );
+    for ( j = 0; j < 6; ++j )
+    {
+        redux[j] = 0;
+    }
+    for ( j = 0; j < system->n; ++j )
+    {
+        redux[0] += workspace->r2[j][0] * workspace->d2[j][0];
+        redux[1] += workspace->r2[j][1] * workspace->d2[j][1];
+        
+        redux[2] += workspace->d2[j][0] * workspace->d2[j][0];
+        redux[3] += workspace->d2[j][1] * workspace->d2[j][1];
+
+        redux[4] += b[j][0] * b[j][0];
+        redux[5] += b[j][1] * b[j][1];
+    }
+    t_vops += MPI_Wtime( ) - t_start;
+
+    t_start = MPI_Wtime( );
+    MPI_Allreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+    t_allreduce += MPI_Wtime( ) - t_start;
+
+    sig_new[0] = redux[0];
+    sig_new[1] = redux[1];
+    norm[0] = sqrt( redux[2] );
+    norm[1] = sqrt( redux[3] );
+    b_norm[0] = sqrt( redux[4] );
+    b_norm[1] = sqrt( redux[5] );
+
+    /*// norm of b
     my_sum[0] = my_sum[1] = 0;
     for ( j = 0; j < n; ++j )
     {
         my_sum[0] += SQR( b[j][0] );
         my_sum[1] += SQR( b[j][1] );
     }
+
     MPI_Allreduce( &my_sum, &norm_sqr, 2, MPI_DOUBLE, MPI_SUM, comm );
+
     b_norm[0] = sqrt( norm_sqr[0] );
     b_norm[1] = sqrt( norm_sqr[1] );
-    //fprintf( stderr, "bnorm = %f %f\n", b_norm[0], b_norm[1] );
 
     // dot product: r.d
     my_dot[0] = my_dot[1] = 0;
@@ -1651,51 +1709,60 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
         my_dot[0] += workspace->r2[j][0] * workspace->d2[j][0];
         my_dot[1] += workspace->r2[j][1] * workspace->d2[j][1];
     }
-    MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
-    //fprintf( stderr, "sig_new: %f %f\n", sig_new[0], sig_new[1] );
 
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        //Update_Timing_Info( &t_start, &dot_time );
-        real t_end = MPI_Wtime();
-        dot_time += t_end - t_start;
-        t_start = t_end;
-    }
-#endif
+    MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );*/
 
-    for ( i = 1; i < 300; ++i )
+    for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
-        Dist( system, mpi_data, workspace->d2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        dual_Sparse_MatVec( H, workspace->d2, workspace->q2, N );
-        if ( H->format == SYM_HALF_MATRIX )
+        if ( norm[0] / b_norm[0] <= tol || norm[1] / b_norm[1] <= tol )
         {
-            Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+            break;
         }
 
-#if defined(CG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
+        t_start = MPI_Wtime( );
+        Dist( system, mpi_data, workspace->d2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+
+        t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+        dual_Sparse_MatVec( H, workspace->d2, workspace->q2, H->NT );
+#else
+        dual_Sparse_MatVec( H, workspace->d2, workspace->q2, system->N );
+#endif
+        t_spmv += MPI_Wtime( ) - t_start;
+
+        if ( H->format == SYM_HALF_MATRIX )
         {
-            //Update_Timing_Info( &t_start, &matvec_time );
-            real t_end = MPI_Wtime();
-            matvec_time += t_end - t_start;
-            t_start = t_end;
+            t_start = MPI_Wtime( );
+            Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+            t_comm += MPI_Wtime( ) - t_start;
+        }
+#if defined(NEUTRAL_TERRITORY)
+        else
+        {
+            t_start = MPI_Wtime( );
+            Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+            t_comm += MPI_Wtime( ) - t_start;
         }
 #endif
 
         // dot product: d.q
-        my_dot[0] = my_dot[1] = 0;
-        for ( j = 0; j < n; ++j )
+        t_start =  MPI_Wtime( );
+        redux[0] = redux[1] = 0;
+        for ( j = 0; j < system->n; ++j )
         {
-            my_dot[0] += workspace->d2[j][0] * workspace->q2[j][0];
-            my_dot[1] += workspace->d2[j][1] * workspace->q2[j][1];
+            redux[0] += workspace->d2[j][0] * workspace->q2[j][0];
+            redux[1] += workspace->d2[j][1] * workspace->q2[j][1];
         }
-        MPI_Allreduce( &my_dot, &tmp, 2, MPI_DOUBLE, MPI_SUM, comm );
-        //fprintf( stderr, "tmp: %f %f\n", tmp[0], tmp[1] );
+        t_vops += MPI_Wtime( ) - t_start;
 
+        t_start =  MPI_Wtime( );
+        MPI_Allreduce( &redux, &tmp, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+        t_allreduce += MPI_Wtime( ) - t_start;
+
+        t_start = MPI_Wtime( );
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
-        my_dot[0] = my_dot[1] = 0;
         for ( j = 0; j < system->n; ++j )
         {
             // update x
@@ -1704,33 +1771,62 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
             // update residual
             workspace->r2[j][0] -= alpha[0] * workspace->q2[j][0];
             workspace->r2[j][1] -= alpha[1] * workspace->q2[j][1];
-            // apply diagonal pre-conditioner
-            workspace->p2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
-            workspace->p2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
-            // dot product: r.p
-            my_dot[0] += workspace->r2[j][0] * workspace->p2[j][0];
-            my_dot[1] += workspace->r2[j][1] * workspace->p2[j][1];
         }
+        t_vops += MPI_Wtime( ) - t_start;
+
+        if ( control->cm_solver_pre_comp_type == SAI_PC )
+        {
+             t_start = MPI_Wtime( );
+             Dist( system, mpi_data, workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+             t_comm += MPI_Wtime( ) - t_start;
+
+             t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+             dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->p2, H->NT );
+#else
+             dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->p2, system->n );
+#endif
+             t_pa += MPI_Wtime( ) - t_start;
+        }
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
+        {
+            t_start = MPI_Wtime( );
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->p2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
+                workspace->p2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
+            }
+            t_pa += MPI_Wtime( ) - t_start;
+        }
+
+        t_start = MPI_Wtime( );
+        redux[0] = 0.0;
+        redux[1] = 0.0;
+        redux[2] = 0.0;
+        redux[3] = 0.0;
+        for ( j = 0; j < system->n; ++j )
+        {
+            // dot product: r.p
+            redux[0] += workspace->r2[j][0] * workspace->p2[j][0];
+            redux[1] += workspace->r2[j][1] * workspace->p2[j][1];
+
+            // dot product: p.p
+            redux[2] += workspace->p2[j][0] * workspace->p2[j][0];
+            redux[3] += workspace->p2[j][1] * workspace->p2[j][1];
+        }
+        t_vops += MPI_Wtime( ) - t_start;
+
+        t_start = MPI_Wtime( );
+        MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+        t_allreduce += MPI_Wtime( ) - t_start;
+        
+        t_start = MPI_Wtime( );
         sig_old[0] = sig_new[0];
         sig_old[1] = sig_new[1];
-        MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );
-        //fprintf( stderr, "sig_new: %f %f\n", sig_new[0], sig_new[1] );
-
-#if defined(CG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            //Update_Timing_Info( &t_start, &dot_time );
-            real t_end = MPI_Wtime();
-            dot_time += t_end - t_start;
-            t_start = t_end;
-        }
-#endif
-
-        if ( sqrt(sig_new[0]) / b_norm[0] <= tol || sqrt(sig_new[1]) / b_norm[1] <= tol )
-        {
-            break;
-        }
-
+        sig_new[0] = redux[0];
+        sig_new[1] = redux[1];
+        norm[0] = sqrt( redux[2] );
+        norm[1] = sqrt( redux[3] );
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
         for ( j = 0; j < system->n; ++j )
@@ -1739,31 +1835,39 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
             workspace->d2[j][0] = workspace->p2[j][0] + beta[0] * workspace->d2[j][0];
             workspace->d2[j][1] = workspace->p2[j][1] + beta[1] * workspace->d2[j][1];
         }
+        t_vops += MPI_Wtime( ) - t_start;
     }
 
-    if ( sqrt(sig_new[0]) / b_norm[0] <= tol )
+    timings[0] = t_pa;
+    timings[1] = t_spmv;
+    timings[2] = t_vops;
+    timings[3] = t_comm;
+    timings[4] = t_allreduce;
+    
+    if ( system->my_rank == MASTER_NODE )
     {
-        for ( j = 0; j < n; ++j )
-        {
-            workspace->t[j] = workspace->x[j][1];
-        }
-
-        matvecs = CG( system, control, data, workspace,
-                H, workspace->b_t, tol, workspace->t, mpi_data );
-
-        for ( j = 0; j < n; ++j )
-        {
-            workspace->x[j][1] = workspace->t[j];
-        }
+        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+ 
+        data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
+        data->timing.cm_solver_spmv += timings[1] / control->nprocs;
+        data->timing.cm_solver_vector_ops += timings[2] / control->nprocs;
+        data->timing.cm_solver_comm += timings[3] / control->nprocs;
+        data->timing.cm_solver_allreduce += timings[4] / control->nprocs;
     }
-    else if ( sqrt(sig_new[1]) / b_norm[1] <= tol )
+    else
     {
-        for ( j = 0; j < n; ++j )
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+    }
+
+    // continue to solve the system that is not converged yet
+    if ( norm[0] / b_norm[0] > tol )
+    {
+        for ( j = 0; j < system->n; ++j )
         {
             workspace->s[j] = workspace->x[j][0];
         }
 
-        matvecs = CG( system, control, data, workspace,
+        i += CG( system, control, data, workspace,
                 H, workspace->b_s, tol, workspace->s, mpi_data );
 
         for ( j = 0; j < system->n; ++j )
@@ -1771,21 +1875,30 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
             workspace->x[j][0] = workspace->s[j];
         }
     }
+    else if ( norm[1] / b_norm[1] > tol )
+    {
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
 
-    if ( i >= 300 )
+        i += CG( system, control, data, workspace,
+                H, workspace->b_t, tol, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+    }
+
+    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
     {
         fprintf( stderr, "[WARNING] CG convergence failed!\n" );
+        return i;
     }
 
-#if defined(CG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        fprintf( fout, "QEq %d + %d iters. matvecs: %f  dot: %f\n", i + 1,
-                matvecs, matvec_time, dot_time );
-    }
-#endif
+    return i;
 
-    return (i + 1) + matvecs;
 }
 
 
@@ -2411,6 +2524,7 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
     //TODO: better loop unrolling and termination condition check
     norm = tol + 1.0;
 
+    // TODO: warning: b_norm might be uninitialized
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
         /* pre-conditioning */
