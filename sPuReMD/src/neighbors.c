@@ -41,10 +41,10 @@
  * Define the preprocessor definition SMALL_BOX_SUPPORT to enable (in
  * reax_types.h). */
 typedef int (*count_far_neighbors_function)( rvec, rvec, int, int,
-        simulation_box*, real, real );
+        simulation_box*, real );
 
 typedef int (*find_far_neighbors_function)( rvec, rvec, int, int,
-        simulation_box*, real, real, far_neighbor_data* );
+        simulation_box*, real, far_neighbor_data* );
 
 
 static void Choose_Neighbor_Counter( reax_system *system, control_params *control,
@@ -186,8 +186,7 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
                                 {
                                     count = Count_Far_Neighbors( system->atoms[atom1].x,
                                                 system->atoms[atom2].x, atom1, atom2, 
-                                                &system->box, control->nonb_cut,
-                                                control->vlist_cut );
+                                                &system->box, control->vlist_cut );
 
                                     num_far += count;
                                 }
@@ -239,7 +238,8 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
     Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
 
-    /* first pick up a cell in the grid */
+    /* for each cell in the grid along the 3
+     * Cartesian directions: (i, j, k) => (x, y, z) */
     for ( i = 0; i < g->ncell[0]; i++ )
     {
         for ( j = 0; j < g->ncell[1]; j++ )
@@ -249,22 +249,25 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                 nbrs = g->nbrs[i][j][k];
                 nbrs_cp = g->nbrs_cp[i][j][k];
 
-                /* pick up an atom from the current cell */
+                /* for each atom in the current cell */
                 for ( l = 0; l < g->top[i][j][k]; ++l )
                 {
                     atom1 = g->atoms[i][j][k][l];
                     Set_Start_Index( atom1, num_far, far_nbrs );
                     itr = 0;
 
+                    /* for each of the neighboring grid cells within
+                     * the Verlet list cutoff distance */
                     while ( nbrs[itr][0] >= 0 )
                     {
-                        x = nbrs[itr][0];
-                        y = nbrs[itr][1];
-                        z = nbrs[itr][2];
-
+                        /* if the Verlet list cutoff covers this neighboring
+                         * grid cell, then search through it's atoms */
                         if ( DistSqr_to_CP(nbrs_cp[itr], system->atoms[atom1].x )
                                 <= SQR(control->vlist_cut) )
                         {
+                            x = nbrs[itr][0];
+                            y = nbrs[itr][1];
+                            z = nbrs[itr][2];
                             nbr_atoms = g->atoms[x][y][z];
                             max = g->top[x][y][z];
 
@@ -282,8 +285,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
                                     count = Find_Far_Neighbors( system->atoms[atom1].x,
                                             system->atoms[atom2].x, atom1, atom2,
-                                            &system->box, control->nonb_cut,
-                                            control->vlist_cut, nbr_data );
+                                            &system->box, control->vlist_cut, nbr_data );
 
                                     num_far += count;
                                 }
@@ -324,7 +326,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 #endif
 
 #if defined(TEST_ENERGY)
-    Print_Far_Neighbors( system, control, workspace, lists );
+    Print_Far_Neighbors( system, control, data, workspace, lists );
 #endif
 
     t_elapsed = Get_Timing_Info( t_start );

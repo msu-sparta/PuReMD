@@ -468,14 +468,14 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
 
 /* far nbrs contain only i-j nbrhood info, no j-i. */
 void Print_Far_Neighbors( reax_system *system, control_params *control,
-        static_storage *workspace, reax_list **lists )
+        simulation_data *data, static_storage *workspace, reax_list **lists )
 {
     int i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *far_nbrs = lists[FAR_NBRS];
 
-    snprintf( fname, MAX_STR, "%.*s.far_nbrs", MAX_STR - 10, control->sim_name );
+    snprintf( fname, MAX_STR, "%.*s.%d.far_nbrs", MAX_STR - 10, control->sim_name, data->step );
     fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
@@ -486,19 +486,26 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
         {
             id_j = workspace->orig_id[far_nbrs->far_nbr_list[j].nbr];
 
-            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
-                     id_i, id_j,
-                     far_nbrs->far_nbr_list[j].d,
-                     far_nbrs->far_nbr_list[j].dvec[0],
-                     far_nbrs->far_nbr_list[j].dvec[1],
-                     far_nbrs->far_nbr_list[j].dvec[2] );
-
-            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
+            fprintf( fout, "%6d%6d%3d%3d%3d %12.7f\n",
                      id_j, id_i,
-                     far_nbrs->far_nbr_list[j].d,
-                     -far_nbrs->far_nbr_list[j].dvec[0],
-                     -far_nbrs->far_nbr_list[j].dvec[1],
-                     -far_nbrs->far_nbr_list[j].dvec[2] );
+                     far_nbrs->far_nbr_list[j].rel_box[0],
+                     far_nbrs->far_nbr_list[j].rel_box[1],
+                     far_nbrs->far_nbr_list[j].rel_box[2],
+                     far_nbrs->far_nbr_list[j].d );
+
+//            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
+//                     id_i, id_j,
+//                     far_nbrs->far_nbr_list[j].d,
+//                     far_nbrs->far_nbr_list[j].dvec[0],
+//                     far_nbrs->far_nbr_list[j].dvec[1],
+//                     far_nbrs->far_nbr_list[j].dvec[2] );
+//
+//            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
+//                     id_j, id_i,
+//                     far_nbrs->far_nbr_list[j].d,
+//                     -far_nbrs->far_nbr_list[j].dvec[0],
+//                     -far_nbrs->far_nbr_list[j].dvec[1],
+//                     -far_nbrs->far_nbr_list[j].dvec[2] );
         }
     }
 
@@ -546,25 +553,35 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
 }
 
 
-#if defined(TEST_FORCES)
 void Print_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
     int i;
+    char fname[MAX_STR];
+    FILE *fout;
+
+    snprintf( fname, MAX_STR, "%.*s.%d.forces", MAX_STR - 10, control->sim_name, data->step );
+    fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
     {
-        fprintf( out_control->ftot, "%6d %23.15e %23.15e %23.15e\n",
-                //fprintf(out_control->ftot, "%6d %19.9e %19.9e %19.9e\n",
-                //fprintf(out_control->ftot, "%3d %12.6f %12.6f %12.6f\n",
+        fprintf( fout, "%6d %23.15e %23.15e %23.15e\n",
                 workspace->orig_id[i],
                 system->atoms[i].f[0], system->atoms[i].f[1], system->atoms[i].f[2] );
+
+//        fprintf( out_control->ftot, "%6d %23.15e %23.15e %23.15e\n",
+//                //fprintf(out_control->ftot, "%6d %19.9e %19.9e %19.9e\n",
+//                //fprintf(out_control->ftot, "%3d %12.6f %12.6f %12.6f\n",
+//                workspace->orig_id[i],
+//                system->atoms[i].f[0], system->atoms[i].f[1], system->atoms[i].f[2] );
     }
 
-    fflush( out_control->ftot );
+//    fflush( out_control->ftot );
+    fflush( fout );
+
+    sfclose( fout, "Print_Total_Force::fout" );
 }
-#endif
 
 
 void Output_Results( reax_system *system, control_params *control,

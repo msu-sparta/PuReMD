@@ -30,19 +30,19 @@ char *Get_Element( reax_system*, int );
 char *Get_Atom_Name( reax_system*, int );
 
 void Print_Near_Neighbors( reax_system*, control_params*, static_storage*,
-                           reax_list** );
+        reax_list** );
 
-void Print_Far_Neighbors( reax_system*, control_params*, static_storage*,
-                          reax_list** );
+void Print_Far_Neighbors( reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list** );
 
 void Print_Total_Force( reax_system*, control_params*, simulation_data*,
-                        static_storage*, reax_list**, output_controls* );
+        static_storage*, reax_list**, output_controls* );
 
 void Output_Results( reax_system*, control_params*, simulation_data*,
-                     static_storage*, reax_list**, output_controls* );
+        static_storage*, reax_list**, output_controls* );
 
 void Print_Bond_Orders( reax_system*, control_params*, simulation_data*,
-                        static_storage*, reax_list**, output_controls* );
+        static_storage*, reax_list**, output_controls* );
 
 void Print_Linear_System( reax_system*, control_params*, static_storage*, int );
 

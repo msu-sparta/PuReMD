@@ -28,10 +28,11 @@
 
 
 /* calculates the theta angle between i-j-k */
-void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+static void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         real *theta, real *cos_theta )
 {
-    (*cos_theta) = rvec_Dot( dvec_ji, dvec_jk ) / ( d_ji * d_jk );
+    *cos_theta = rvec_Dot( dvec_ji, dvec_jk ) / ( d_ji * d_jk );
+
     if ( *cos_theta > 1.0 )
     {
         *cos_theta  = 1.0;
@@ -41,12 +42,12 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         *cos_theta  = -1.0;
     }
 
-    (*theta) = ACOS( *cos_theta );
+    *theta = ACOS( *cos_theta );
 }
 
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
-void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+static void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         rvec* dcos_theta_di, rvec* dcos_theta_dj, rvec* dcos_theta_dk )
 {
     int t;
@@ -61,14 +62,14 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
     for ( t = 0; t < 3; ++t )
     {
-        (*dcos_theta_di)[t] = dvec_jk[t] * inv_dists -
-            Cdot_inv3 * sqr_d_jk * dvec_ji[t];
+        (*dcos_theta_di)[t] = dvec_jk[t] * inv_dists
+            - Cdot_inv3 * sqr_d_jk * dvec_ji[t];
 
-        (*dcos_theta_dj)[t] = -(dvec_jk[t] + dvec_ji[t]) * inv_dists +
-            Cdot_inv3 * ( sqr_d_jk * dvec_ji[t] + sqr_d_ji * dvec_jk[t] );
+        (*dcos_theta_dj)[t] = -(dvec_jk[t] + dvec_ji[t]) * inv_dists
+            + Cdot_inv3 * ( sqr_d_jk * dvec_ji[t] + sqr_d_ji * dvec_jk[t] );
 
-        (*dcos_theta_dk)[t] = dvec_ji[t] * inv_dists -
-            Cdot_inv3 * sqr_d_ji * dvec_jk[t];
+        (*dcos_theta_dk)[t] = dvec_ji[t] * inv_dists
+            - Cdot_inv3 * sqr_d_ji * dvec_jk[t];
     }
 
     /*fprintf( stderr,

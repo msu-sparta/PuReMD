@@ -37,34 +37,31 @@ void Update_Box_Isotropic( simulation_box*, real );
 void Update_Box_Semi_Isotropic( simulation_box*, rvec );
 
 int Find_Non_Periodic_Far_Neighbors( rvec, rvec, int, int,
-        simulation_box*, real, real, far_neighbor_data* );
+        simulation_box*, real, far_neighbor_data* );
 
 int Count_Non_Periodic_Far_Neighbors( rvec, rvec, int, int,
-        simulation_box*, real, real );
+        simulation_box*, real );
 
 int Find_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int, int,
-        simulation_box*, real, real, far_neighbor_data* );
+        simulation_box*, real, far_neighbor_data* );
 
 int Count_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int, int,
-        simulation_box*, real, real );
+        simulation_box*, real );
 
 int Find_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
-        simulation_box*, real, real, far_neighbor_data* );
+        simulation_box*, real, far_neighbor_data* );
 
 int Count_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
-        simulation_box*, real, real );
+        simulation_box*, real );
 
 void Distance_on_T3_Gen( rvec, rvec, simulation_box*, rvec );
 
 void Inc_on_T3_Gen( rvec, rvec, simulation_box* );
 
-/*int Get_Nbr_Box( simulation_box*, int, int, int );
-rvec Get_Nbr_Box_Press( simulation_box*, int, int, int );
-void Inc_Nbr_Box_Press( simulation_box*, int, int, int, rvec );*/
-
 /* These functions assume that the coordinates are in triclinic system */
 /* this function returns cartesian norm but triclinic distance vector */
 real Sq_Distance_on_T3( rvec, rvec, simulation_box*, rvec );
+
 void Inc_on_T3( rvec, rvec, simulation_box* );
 
 real Metric_Product( rvec, rvec, simulation_box* );
