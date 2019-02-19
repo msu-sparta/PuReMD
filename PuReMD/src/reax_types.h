@@ -41,7 +41,7 @@
 
 #define PURE_REAX
 #define DUAL_SOLVER
-#define NEUTRAL_TERRITORY
+//#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
 //#define DEBUG_FOCUS
