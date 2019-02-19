@@ -445,7 +445,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     switch ( control->cm_solver_type )
     {
     case CG_S:
-#if defined(DUAL_CG)
+#if defined(DUAL_SOLVER)
         iters = dual_CG( system, control, data, workspace, workspace->H, workspace->b,
                 control->cm_solver_q_err, workspace->x, mpi_data );
 #else
@@ -478,6 +478,10 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         break;
 
     case PIPECG_S:
+#if defined(DUAL_SOLVER)
+        iters = dual_PIPECG( system, control, data, workspace, workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data );
+#else
         for ( j = 0; j < system->n; ++j )
         {
             workspace->s[j] = workspace->x[j][0];
@@ -503,6 +507,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         {
             workspace->x[j][1] = workspace->t[j];
         }
+#endif
         break;
 
     case PIPECR_S:

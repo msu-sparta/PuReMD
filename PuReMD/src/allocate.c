@@ -202,12 +202,22 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
         sfree( workspace->w, "w" );
     }
 
-    if ( control->cm_solver_type == CG_S )
+    if ( control->cm_solver_type == CG_S 
+            || control->cm_solver_type == PIPECG_S )
     {
         sfree( workspace->r2, "r2" );
         sfree( workspace->d2, "d2" );
         sfree( workspace->q2, "q2" );
         sfree( workspace->p2, "p2" );
+    }
+
+    if ( control->cm_solver_type == PIPECG_S )
+    {
+        sfree( workspace->m2, "m2" );
+        sfree( workspace->n2, "n2" );
+        sfree( workspace->u2, "u2" );
+        sfree( workspace->w2, "w2" );
+        sfree( workspace->w2, "z2" );
     }
 
     /* integrator */
@@ -363,12 +373,22 @@ int Allocate_Workspace( reax_system *system, control_params *control,
         workspace->w = scalloc( total_cap, sizeof(real), "w", comm );
     }
 
-    if ( control->cm_solver_type == CG_S )
+    if ( control->cm_solver_type == CG_S
+            || control->cm_solver_type == PIPECG_S )
     {
         workspace->d2 = scalloc( total_cap, sizeof(rvec2), "d2", comm );
         workspace->r2 = scalloc( total_cap, sizeof(rvec2), "r2", comm );
         workspace->p2 = scalloc( total_cap, sizeof(rvec2), "p2", comm );
         workspace->q2 = scalloc( total_cap, sizeof(rvec2), "q2", comm );
+    }
+
+    if ( control->cm_solver_type == PIPECG_S )
+    {
+        workspace->m2 = scalloc( total_cap, sizeof(rvec2), "m2", comm );
+        workspace->n2 = scalloc( total_cap, sizeof(rvec2), "n2", comm );
+        workspace->u2 = scalloc( total_cap, sizeof(rvec2), "u2", comm );
+        workspace->w2 = scalloc( total_cap, sizeof(rvec2), "w2", comm );
+        workspace->z2 = scalloc( total_cap, sizeof(rvec2), "z2", comm );
     }
 
     /* integrator storage */

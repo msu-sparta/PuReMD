@@ -40,8 +40,8 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
-//#define DUAL_CG
-//#define NEUTRAL_TERRITORY
+#define DUAL_SOLVER
+#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
 //#define DEBUG_FOCUS
@@ -1059,7 +1059,9 @@ typedef struct
     /* PIPECG, PIPECR storage */
     real *m, *n, *u, *w;
     /* dual-CG storage */
-    rvec2 *r2, *d2, *q2, *p2;
+    rvec2 *d2, *p2, *q2, *r2;
+    /* dual-PIPECG storage */
+    rvec2 *m2, *n2, *u2, *w2, *z2;
     /* Taper */
     real Tap[8];
 

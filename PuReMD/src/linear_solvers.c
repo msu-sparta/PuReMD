@@ -423,8 +423,11 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
           "setup_sparse_approx_inverse::bucketlist_local", MPI_COMM_WORLD );
     dspls = smalloc( sizeof(int) * nprocs,
            "setup_sparse_approx_inverse::dspls", MPI_COMM_WORLD );
-    pivotlist = smalloc( sizeof(real) *  (nprocs - 1),
-           "setup_sparse_approx_inverse::pivotlist", MPI_COMM_WORLD );
+    if ( nprocs > 1 )
+    {
+        pivotlist = smalloc( sizeof(real) *  (nprocs - 1),
+                "setup_sparse_approx_inverse::pivotlist", MPI_COMM_WORLD );
+    }
     samplelist_local = smalloc( sizeof(real) * s_local,
            "setup_sparse_approx_inverse::samplelist_local", MPI_COMM_WORLD );
     if ( system->my_rank == MASTER_NODE )
@@ -690,7 +693,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     sfree( dspls_local, "setup_sparse_approx_inverse::displs_local" );
     sfree( bucketlist_local, "setup_sparse_approx_inverse::bucketlist_local" );
     sfree( dspls, "setup_sparse_approx_inverse::dspls" );
-    sfree( pivotlist, "setup_sparse_approx_inverse::pivotlist" );
+    if ( nprocs > 1)
+    {
+        sfree( pivotlist, "setup_sparse_approx_inverse::pivotlist" );
+    }
     sfree( samplelist_local, "setup_sparse_approx_inverse::samplelist_local" );
     if ( system->my_rank == MASTER_NODE )
     {
@@ -1745,29 +1751,6 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
     b_norm[0] = sqrt( redux[4] );
     b_norm[1] = sqrt( redux[5] );
 
-    /*// norm of b
-    my_sum[0] = my_sum[1] = 0;
-    for ( j = 0; j < n; ++j )
-    {
-        my_sum[0] += SQR( b[j][0] );
-        my_sum[1] += SQR( b[j][1] );
-    }
-
-    MPI_Allreduce( &my_sum, &norm_sqr, 2, MPI_DOUBLE, MPI_SUM, comm );
-
-    b_norm[0] = sqrt( norm_sqr[0] );
-    b_norm[1] = sqrt( norm_sqr[1] );
-
-    // dot product: r.d
-    my_dot[0] = my_dot[1] = 0;
-    for ( j = 0; j < n; ++j )
-    {
-        my_dot[0] += workspace->r2[j][0] * workspace->d2[j][0];
-        my_dot[1] += workspace->r2[j][1] * workspace->d2[j][1];
-    }
-
-    MPI_Allreduce( &my_dot, &sig_new, 2, MPI_DOUBLE, MPI_SUM, comm );*/
-
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
         if ( norm[0] / b_norm[0] <= tol || norm[1] / b_norm[1] <= tol )
@@ -1915,7 +1898,7 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
         MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
-    // continue to solve the system that is not converged yet
+    // continue to solve the system that has not converged yet
     if ( norm[0] / b_norm[0] > tol )
     {
         for ( j = 0; j < system->n; ++j )
@@ -2150,6 +2133,446 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
     {
         fprintf( stderr, "[WARNING] CG convergence failed!\n" );
+        return i;
+    }
+
+    return i;
+}
+
+
+/* Pipelined Preconditioned Conjugate Gradient Method
+ *
+ * References:
+ * 1) Hiding global synchronization latency in the preconditioned Conjugate Gradient algorithm,
+ *  P. Ghysels and W. Vanroose, Parallel Computing, 2014.
+ * 2) Scalable Non-blocking Preconditioned Conjugate Gradient Methods,
+ *  Paul R. Eller and William Gropp, SC '16 Proceedings of the International Conference
+ *  for High Performance Computing, Networking, Storage and Analysis, 2016.
+ *  */
+int dual_PIPECG( reax_system *system, control_params *control, simulation_data *data,
+        storage *workspace, sparse_matrix *H, rvec2 *b,
+        real tol, rvec2 *x, mpi_datatypes* mpi_data )
+{
+    int i, j;
+    rvec2 alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
+    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
+    real timings[5], redux[8];
+    MPI_Request req;
+
+    t_pa = 0.0;
+    t_spmv = 0.0;
+    t_vops = 0.0;
+    t_comm = 0.0;
+    t_allreduce = 0.0;
+
+    t_start = MPI_Wtime( );
+    Dist( system, mpi_data, x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+    t_comm += MPI_Wtime( ) - t_start;
+
+    t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+    dual_Sparse_MatVec( H, x, workspace->u2, H->NT );
+#else
+    dual_Sparse_MatVec( H, x, workspace->u2, system->N );
+#endif
+    t_spmv += MPI_Wtime( ) - t_start;
+
+    if ( H->format == SYM_HALF_MATRIX )
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#if defined(NEUTRAL_TERRITORY)
+    else
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#endif
+
+    t_start = MPI_Wtime( );
+    //Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
+    for ( j = 0; j < system->n; ++j )
+    {
+        workspace->r2[j][0] = b[j][0] - workspace->u2[j][0];
+        workspace->r2[j][1] = b[j][1] - workspace->u2[j][1];
+    }
+    t_vops += MPI_Wtime( ) - t_start;
+
+    /* pre-conditioning */
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    {
+        //Vector_Copy( workspace->u, workspace->r, system->n );
+        for ( j = 0; j < system->n ; ++j )
+        {
+            workspace->u2[j][0] = workspace->r2[j][0];
+            workspace->u2[j][1] = workspace->r2[j][1];
+        }
+    }
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+    {
+        t_start = MPI_Wtime( );
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->u2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
+            workspace->u2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
+        }
+        t_pa += MPI_Wtime( ) - t_start;
+    }
+    else if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        t_start = MPI_Wtime( );
+        Dist( system, mpi_data, workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+        
+        t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+        dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->u2, H->NT );
+#else
+        dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->u2, system->n );
+#endif
+        t_pa += MPI_Wtime( ) - t_start;
+    }
+
+    t_start = MPI_Wtime( );
+    Dist( system, mpi_data, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+    t_comm += MPI_Wtime( ) - t_start;
+
+    t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+    dual_Sparse_MatVec( H, workspace->u2, workspace->w2, H->NT );
+#else
+    dual_Sparse_MatVec( H, workspace->u2, workspace->w2, system->N );
+#endif
+    t_spmv += MPI_Wtime( ) - t_start;
+
+    if ( H->format == SYM_HALF_MATRIX )
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#if defined(NEUTRAL_TERRITORY)
+    else
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#endif
+
+    t_start = MPI_Wtime( );
+    //redux[0] = Dot_local( workspace->w, workspace->u, system->n );
+    //redux[1] = Dot_local( workspace->r, workspace->u, system->n );
+    //redux[2] = Dot_local( workspace->u, workspace->u, system->n );
+    //redux[3] = Dot_local( b, b, system->n );
+    for ( j = 0; j < 8; ++j )
+    {
+        redux[j] = 0.0;
+    }
+    for( j = 0; j < system->n; ++j )
+    {
+        redux[0] += workspace->w2[j][0] * workspace->u2[j][0];
+        redux[1] += workspace->w2[j][1] * workspace->u2[j][1];
+
+        redux[2] += workspace->r2[j][0] * workspace->u2[j][0];
+        redux[3] += workspace->r2[j][1] * workspace->u2[j][1];
+
+        redux[4] += workspace->u2[j][0] * workspace->u2[j][0];
+        redux[5] += workspace->u2[j][1] * workspace->u2[j][1];
+
+        redux[6] += b[j][0] * b[j][0];
+        redux[7] += b[j][1] * b[j][1];
+    }
+    t_vops += MPI_Wtime( ) - t_start;
+
+    MPI_Iallreduce( MPI_IN_PLACE, redux, 8, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+
+    /* pre-conditioning */
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    {
+        //Vector_Copy( workspace->m, workspace->w, system->n );
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->m2[j][0] = workspace->w2[j][0];
+            workspace->m2[j][1] = workspace->w2[j][1];
+        }
+    }
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+    {
+        t_start = MPI_Wtime( );
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->m2[j][0] = workspace->w2[j][0] * workspace->Hdia_inv[j];
+            workspace->m2[j][1] = workspace->w2[j][1] * workspace->Hdia_inv[j];
+        }
+        t_pa += MPI_Wtime( ) - t_start;
+    }
+    else if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        t_start = MPI_Wtime( );
+        Dist( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+        
+        t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+        dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
+#else
+        dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
+#endif
+        t_pa += MPI_Wtime( ) - t_start;
+    }
+
+    t_start = MPI_Wtime( );
+    Dist( system, mpi_data, workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+    t_comm += MPI_Wtime( ) - t_start;
+
+    t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+    dual_Sparse_MatVec( H, workspace->m2, workspace->n2, H->NT );
+#else
+    dual_Sparse_MatVec( H, workspace->m2, workspace->n2, system->N );
+#endif
+    t_spmv += MPI_Wtime( ) - t_start;
+
+    if ( H->format == SYM_HALF_MATRIX )
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#if defined(NEUTRAL_TERRITORY)
+    else
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#endif
+
+    t_start = MPI_Wtime( );
+    MPI_Wait( &req, MPI_STATUS_IGNORE );
+    t_allreduce += MPI_Wtime( ) - t_start;
+    delta[0] = redux[0];
+    delta[1] = redux[1];
+    gamma_new[0] = redux[2];
+    gamma_new[1] = redux[3];
+    norm[0] = sqrt( redux[4] );
+    norm[1] = sqrt( redux[5] );
+    b_norm[0] = sqrt( redux[6] );
+    b_norm[1] = sqrt( redux[7] );
+
+    for ( i = 0; i < control->cm_solver_max_iters; ++i )
+    {
+        if ( norm[0] / b_norm[0] <= tol || norm[1] / b_norm[1] <= tol )
+        {
+            break;
+        }
+        if ( i > 0 )
+        {
+            beta[0] = gamma_new[0] / gamma_old[0];
+            beta[1] = gamma_new[1] / gamma_old[1];
+            alpha[0] = gamma_new[0] / (delta[0] - beta[0] / alpha[0] * gamma_new[0]);
+            alpha[1] = gamma_new[1] / (delta[1] - beta[1] / alpha[1] * gamma_new[1]);
+        }
+        else
+        {
+            beta[0] = 0.0;
+            beta[1] = 0.0;
+            alpha[0] = gamma_new[0] / delta[0];
+            alpha[1] = gamma_new[1] / delta[1];
+        }
+
+        t_start = MPI_Wtime( );
+        //Vector_Sum( workspace->z, 1.0, workspace->n, beta, workspace->z, system->n );
+        //Vector_Sum( workspace->q, 1.0, workspace->m, beta, workspace->q, system->n );
+        //Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
+        //Vector_Sum( workspace->d, 1.0, workspace->w, beta, workspace->d, system->n );
+        //Vector_Sum( x, 1.0, x, alpha, workspace->p, system->n );
+        //Vector_Sum( workspace->u, 1.0, workspace->u, -alpha, workspace->q, system->n );
+        //Vector_Sum( workspace->w, 1.0, workspace->w, -alpha, workspace->z, system->n );
+        //Vector_Sum( workspace->r, 1.0, workspace->r, -alpha, workspace->d, system->n );
+        //redux[0] = Dot_local( workspace->w, workspace->u, system->n );
+        //redux[1] = Dot_local( workspace->r, workspace->u, system->n );
+        //redux[2] = Dot_local( workspace->u, workspace->u, system->n );
+        for ( j = 0; j < 6; ++j )
+        {
+            redux[j] = 0.0;
+        }
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->z2[j][0] = workspace->n2[j][0] + beta[0] * workspace->z2[j][0];
+            workspace->z2[j][1] = workspace->n2[j][1] + beta[1] * workspace->z2[j][1];
+
+            workspace->q2[j][0] = workspace->m2[j][0] + beta[0] * workspace->q2[j][0];
+            workspace->q2[j][1] = workspace->m2[j][1] + beta[1] * workspace->q2[j][1];
+
+            workspace->p2[j][0] = workspace->u2[j][0] + beta[0] * workspace->p2[j][0];
+            workspace->p2[j][1] = workspace->u2[j][1] + beta[1] * workspace->p2[j][1];
+
+            workspace->d2[j][0] = workspace->w2[j][0] + beta[0] * workspace->d2[j][0];
+            workspace->d2[j][1] = workspace->w2[j][1] + beta[1] * workspace->d2[j][1];
+
+            x[j][0] += alpha[0] * workspace->p2[j][0];
+            x[j][1] += alpha[1] * workspace->p2[j][1];
+
+            workspace->u2[j][0] -= alpha[0] * workspace->q2[j][0];
+            workspace->u2[j][1] -= alpha[1] * workspace->q2[j][1];
+
+            workspace->w2[j][0] -= alpha[0] * workspace->z2[j][0];
+            workspace->w2[j][1] -= alpha[1] * workspace->z2[j][1];
+
+            workspace->r2[j][0] -= alpha[0] * workspace->d2[j][0];
+            workspace->r2[j][1] -= alpha[1] * workspace->d2[j][1];
+
+            redux[0] += workspace->w2[j][0] * workspace->u2[j][0];
+            redux[1] += workspace->w2[j][1] * workspace->u2[j][1];
+            
+            redux[2] += workspace->r2[j][0] * workspace->u2[j][0];
+            redux[3] += workspace->r2[j][1] * workspace->u2[j][1];
+            
+            redux[4] += workspace->u2[j][0] * workspace->u2[j][0];
+            redux[5] += workspace->u2[j][1] * workspace->u2[j][1];
+
+        }
+        t_vops += MPI_Wtime( ) - t_start;
+
+        MPI_Iallreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+
+        /* pre-conditioning */
+        if ( control->cm_solver_pre_comp_type == NONE_PC )
+        {
+            //Vector_Copy( workspace->m, workspace->w, system->n );
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->m2[j][0] = workspace->w2[j][0];
+                workspace->m2[j][1] = workspace->w2[j][1];
+            }
+        }
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+        {
+            t_start = MPI_Wtime( );
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->m2[j][0] = workspace->w2[j][0] * workspace->Hdia_inv[j];
+                workspace->m2[j][1] = workspace->w2[j][1] * workspace->Hdia_inv[j];
+            }
+            t_pa += MPI_Wtime( ) - t_start;
+        }
+        else if ( control->cm_solver_pre_comp_type == SAI_PC )
+        {
+            t_start = MPI_Wtime( );
+            Dist( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+            t_comm += MPI_Wtime( ) - t_start;
+            
+            t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+            dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
+#else
+            dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
+#endif
+            t_pa += MPI_Wtime( ) - t_start;
+        }
+
+        t_start = MPI_Wtime( );
+        Dist( system, mpi_data, workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2);
+        t_comm += MPI_Wtime( ) - t_start;
+
+        t_start = MPI_Wtime( );
+#if defined(NEUTRAL_TERRITORY)
+        dual_Sparse_MatVec( H, workspace->m2, workspace->n2, H->NT );
+#else
+        dual_Sparse_MatVec( H, workspace->m2, workspace->n2, system->N );
+#endif
+        t_spmv += MPI_Wtime( ) - t_start;
+
+        if ( H->format == SYM_HALF_MATRIX )
+        {
+            t_start = MPI_Wtime( );
+            Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+            t_comm += MPI_Wtime( ) - t_start;
+        }
+#if defined(NEUTRAL_TERRITORY)
+        else
+        {
+            t_start = MPI_Wtime( );
+            Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2);
+            t_comm += MPI_Wtime( ) - t_start;
+        }
+#endif
+
+        gamma_old[0] = gamma_new[0];
+        gamma_old[1] = gamma_new[1];
+
+        t_start = MPI_Wtime( );
+        MPI_Wait( &req, MPI_STATUS_IGNORE );
+        t_allreduce += MPI_Wtime( ) - t_start;
+        delta[0] = redux[0];
+        delta[1] = redux[1];
+        gamma_new[0] = redux[2];
+        gamma_new[1] = redux[3];
+        norm[0] = sqrt( redux[4] );
+        norm[1] = sqrt( redux[5] );
+    }
+
+    timings[0] = t_pa;
+    timings[1] = t_spmv;
+    timings[2] = t_vops;
+    timings[3] = t_comm;
+    timings[4] = t_allreduce;
+
+    if ( system->my_rank == MASTER_NODE )
+    {
+        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+
+        data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
+        data->timing.cm_solver_spmv += timings[1] / control->nprocs;
+        data->timing.cm_solver_vector_ops += timings[2] / control->nprocs;
+        data->timing.cm_solver_comm += timings[3] / control->nprocs;
+        data->timing.cm_solver_allreduce += timings[4] / control->nprocs;
+    }
+    else
+    {
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+    }
+
+    // continue to solve the system that has not converged yet
+    if ( norm[0] / b_norm[0] > tol )
+    {
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        i += PIPECG( system, control, data, workspace,
+                H, workspace->b_s, tol, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+    }
+    else if ( norm[1] / b_norm[1] > tol )
+    {
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        i += PIPECG( system, control, data, workspace,
+                H, workspace->b_t, tol, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+    }
+
+    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    {
+        fprintf( stderr, "[WARNING] PIPECG convergence failed!\n" );
         return i;
     }
 
@@ -2647,7 +3070,6 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
             t_comm += MPI_Wtime( ) - t_start;
         }
 #endif
-
         t_start = MPI_Wtime( );
         MPI_Wait( &req, MPI_STATUS_IGNORE );
         t_allreduce += MPI_Wtime( ) - t_start;
