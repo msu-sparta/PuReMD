@@ -47,7 +47,6 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     real e_ele, e_vdW, e_core;
     rvec temp, ext_press;
     two_body_parameters *twbp;
-    far_neighbor_data *nbr_pj;
     reax_list *far_nbrs;
     // rtensor temp_rtensor, total_rtensor;
 
@@ -60,25 +59,25 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
     for ( i = 0; i < natoms; ++i )
     {
-        start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
+        start_i = Start_Index( i, far_nbrs );
+        end_i = End_Index( i, far_nbrs );
         orig_i  = system->my_atoms[i].orig_id;
         //fprintf( stderr, "i:%d, start_i: %d, end_i: %d\n", i, start_i, end_i );
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &(far_nbrs->far_nbr_list[pj]);
-            j = nbr_pj->nbr;
-            orig_j  = system->my_atoms[j].orig_id;
+            j = far_nbrs->far_nbr_list.nbr[pj];
+            orig_j = system->my_atoms[j].orig_id;
 
-            if ( nbr_pj->d <= control->nonb_cut && (j < natoms || orig_i < orig_j) )
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut
+                    && ((far_nbrs->format == HALF_LIST && (j < natoms || orig_i < orig_j))
+                        || (far_nbrs->format == FULL_LIST && orig_i < orig_j)) )
             {
-                r_ij = nbr_pj->d;
-                twbp = &(system->reax_param.tbp[ system->my_atoms[i].type ]
-                         [ system->my_atoms[j].type ]);
+                r_ij = far_nbrs->far_nbr_list.d[pj];
+                twbp = &system->reax_param.tbp[ 
+                    system->my_atoms[i].type ][ system->my_atoms[j].type ];
 
                 /* Calculate Taper and its derivative */
-                // Tap = nbr_pj->Tap;   -- precomputed during compte_H
                 Tap = workspace->Tap[7] * r_ij + workspace->Tap[6];
                 Tap = Tap * r_ij + workspace->Tap[5];
                 Tap = Tap * r_ij + workspace->Tap[4];
@@ -94,12 +93,13 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                 dTap = dTap * r_ij + 2 * workspace->Tap[2];
                 dTap += workspace->Tap[1] / r_ij;
 
-                /*vdWaals Calculations*/
-                if (system->reax_param.gp.vdw_type == 1 || system->reax_param.gp.vdw_type == 3)
+                /* vdWaals Calculations */
+                if ( system->reax_param.gp.vdw_type == 1
+                        || system->reax_param.gp.vdw_type == 3 )
                 {
                     // shielding
-                    powr_vdW1 = pow(r_ij, p_vdW1);
-                    powgi_vdW1 = pow( 1.0 / twbp->gamma_w, p_vdW1);
+                    powr_vdW1 = pow( r_ij, p_vdW1 );
+                    powgi_vdW1 = pow( 1.0 / twbp->gamma_w, p_vdW1 );
 
                     fn13 = pow( powr_vdW1 + powgi_vdW1, p_vdW1i );
                     exp1 = exp( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
@@ -108,11 +108,11 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     e_vdW = twbp->D * (exp1 - 2.0 * exp2);
                     data->my_en.e_vdW += Tap * e_vdW;
 
-                    dfn13 = pow( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) *
-                            pow(r_ij, p_vdW1 - 2.0);
+                    dfn13 = pow( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 )
+                        * pow( r_ij, p_vdW1 - 2.0 );
 
-                    CEvd = dTap * e_vdW -
-                           Tap * twbp->D * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
+                    CEvd = dTap * e_vdW - Tap * twbp->D
+                        * (twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13;
                 }
                 else  // no shielding
                 {
@@ -154,24 +154,30 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                 if ( control->virial == 0 )
                 {
-                    rvec_ScaledAdd( workspace->f[i], -(CEvd + CEclmb), nbr_pj->dvec );
-                    rvec_ScaledAdd( workspace->f[j], +(CEvd + CEclmb), nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f[i], -(CEvd + CEclmb),
+                            far_nbrs->far_nbr_list.dvec[pj] );
+                    rvec_ScaledAdd( workspace->f[j], +(CEvd + CEclmb),
+                            far_nbrs->far_nbr_list.dvec[pj] );
                 }
                 else   /* NPT, iNPT or sNPT */
                 {
                     /* for pressure coupling, terms not related to bond order
                        derivatives are added directly into pressure vector/tensor */
-                    rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
+                    rvec_Scale( temp, CEvd + CEclmb,
+                            far_nbrs->far_nbr_list.dvec[pj] );
 
                     rvec_ScaledAdd( workspace->f[i], -1., temp );
                     rvec_Add( workspace->f[j], temp );
 
-                    rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
+                    rvec_iMultiply( ext_press,
+                            far_nbrs->far_nbr_list.rel_box[pj], temp );
                     rvec_Add( data->my_ext_press, ext_press );
 
                     // fprintf( stderr, "nonbonded(%d,%d): rel_box (%f %f %f)
                     //   force(%f %f %f) ext_press (%12.6f %12.6f %12.6f)\n",
-                    //   i, j, nbr_pj->rel_box[0], nbr_pj->rel_box[1], nbr_pj->rel_box[2],
+                    //   i, j, far_nbrs->far_nbr_list.rel_box[pj][0],
+                    //   far_nbrs->far_nbr_list.rel_box[pj][1],
+                    //   far_nbrs->far_nbr_list.rel_box[pj][2],
                     //   temp[0], temp[1], temp[2],
                     //   data->ext_press[0], data->ext_press[1], data->ext_press[2] );
                 }
@@ -193,10 +199,14 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                          e_ele, data->my_en.e_ele );
 #endif
 #ifdef TEST_FORCES
-                rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
+                rvec_ScaledAdd( workspace->f_vdw[i], -CEvd,
+                        far_nbrs->far_nbr_list.dvec[pj] );
+                rvec_ScaledAdd( workspace->f_vdw[j], +CEvd,
+                        far_nbrs->far_nbr_list.dvec[pj] );
+                rvec_ScaledAdd( workspace->f_ele[i], -CEclmb,
+                        far_nbrs->far_nbr_list.dvec[pj] );
+                rvec_ScaledAdd( workspace->f_ele[j], +CEclmb,
+                        far_nbrs->far_nbr_list.dvec[pj] );
 #endif
             }
         }
@@ -225,7 +235,6 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     real e_vdW, e_ele;
     real CEvd, CEclmb;
     rvec temp, ext_press;
-    far_neighbor_data *nbr_pj;
     reax_list *far_nbrs;
     LR_lookup_table *t;
 
@@ -245,19 +254,19 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            nbr_pj = &(far_nbrs->far_nbr_list[pj]);
-            j = nbr_pj->nbr;
-            orig_j  = system->my_atoms[j].orig_id;
+            j = far_nbrs->far_nbr_list.nbr[pj];
+            orig_j = system->my_atoms[j].orig_id;
 
-            if ( nbr_pj->d <= control->nonb_cut && (j < natoms || orig_i < orig_j) )
+            if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut
+                    && ((far_nbrs->format == HALF_LIST && (j < natoms || orig_i < orig_j))
+                        || (far_nbrs->format == FULL_LIST && orig_i < orig_j)) )
             {
-                j = nbr_pj->nbr;
                 type_j = system->my_atoms[j].type;
-                r_ij   = nbr_pj->d;
-                tmin  = MIN( type_i, type_j );
-                tmax  = MAX( type_i, type_j );
-                t = &( LR[tmin][tmax] );
-                // table = &( LR[type_i][type_j] );
+                r_ij = far_nbrs->far_nbr_list.d[pj];
+                tmin = MIN( type_i, type_j );
+                tmax = MAX( type_i, type_j );
+                t = &LR[tmin][tmax];
+                // table = &LR[type_i][type_j];
 
                 /* Cubic Spline Interpolation */
                 r = (int)(r_ij * t->inv_dx);
@@ -288,19 +297,21 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                 if ( control->virial == 0 )
                 {
-                    rvec_ScaledAdd( workspace->f[i], -(CEvd + CEclmb), nbr_pj->dvec );
-                    rvec_ScaledAdd( workspace->f[j], +(CEvd + CEclmb), nbr_pj->dvec );
+                    rvec_ScaledAdd( workspace->f[i], -(CEvd + CEclmb),
+                            far_nbrs->far_nbr_list.dvec[pj] );
+                    rvec_ScaledAdd( workspace->f[j], +(CEvd + CEclmb),
+                            far_nbrs->far_nbr_list.dvec[pj] );
                 }
                 else   // NPT, iNPT or sNPT
                 {
                     /* for pressure coupling, terms not related to bond order derivatives
                        are added directly into pressure vector/tensor */
-                    rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
+                    rvec_Scale( temp, CEvd + CEclmb, far_nbrs->far_nbr_list.dvec[pj] );
 
                     rvec_ScaledAdd( workspace->f[i], -1., temp );
                     rvec_Add( workspace->f[j], temp );
 
-                    rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
+                    rvec_iMultiply( ext_press, far_nbrs->far_nbr_list.rel_box[pj], temp );
                     rvec_Add( data->my_ext_press, ext_press );
                 }
 
@@ -316,10 +327,14 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                          e_ele, data->my_en.e_ele );
 #endif
 #ifdef TEST_FORCES
-                rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
-                rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
+                rvec_ScaledAdd( workspace->f_vdw[i], -CEvd,
+                        far_nbrs->far_nbr_list.dvec[pj] );
+                rvec_ScaledAdd( workspace->f_vdw[j], +CEvd,
+                        far_nbrs->far_nbr_list.dvec[pj] );
+                rvec_ScaledAdd( workspace->f_ele[i], -CEclmb,
+                        far_nbrs->far_nbr_list.dvec[pj] );
+                rvec_ScaledAdd( workspace->f_ele[j], +CEclmb,
+                        far_nbrs->far_nbr_list.dvec[pj] );
 #endif
             }
         }

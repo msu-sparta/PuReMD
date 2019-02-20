@@ -24,24 +24,39 @@
 
 #include "reax_types.h"
 
-void real_packer( void*, mpi_out_data* );
-void rvec_packer( void*, mpi_out_data* );
-void rvec2_packer( void*, mpi_out_data* );
-void Dist(reax_system*, mpi_datatypes*, void*, MPI_Datatype, int, dist_packer);
 
-void real_unpacker( void*, void*, mpi_out_data* );
-void rvec_unpacker( void*, void*, mpi_out_data* );
-void rvec2_unpacker( void*, void*, mpi_out_data* );
-void Coll( reax_system*, mpi_datatypes*, void*, MPI_Datatype,
-           int, coll_unpacker );
+enum pointer_type
+{
+    INT_PTR_TYPE = 0,
+    REAL_PTR_TYPE = 1,
+    RVEC_PTR_TYPE = 2,
+    RVEC2_PTR_TYPE = 3,
+};
+
+
+void Dist( const reax_system * const, mpi_datatypes * const,
+        void*, int, MPI_Datatype );
+
+void Dist_FS( const reax_system * const, mpi_datatypes * const,
+        void*, int, MPI_Datatype );
+
+void Coll( const reax_system * const, mpi_datatypes * const,
+        void*, int, MPI_Datatype );
+
+void Coll_FS( const reax_system * const, mpi_datatypes * const,
+        void*, int, MPI_Datatype );
 
 real Parallel_Norm( real*, int, MPI_Comm );
+
 real Parallel_Dot( real*, real*, int, MPI_Comm );
+
 real Parallel_Vector_Acc( real*, int, MPI_Comm );
 
 #if defined(TEST_FORCES)
 void Coll_ids_at_Master( reax_system*, storage*, mpi_datatypes* );
+
 void Coll_rvecs_at_Master( reax_system*, storage*, mpi_datatypes*, rvec* );
 #endif
+
 
 #endif

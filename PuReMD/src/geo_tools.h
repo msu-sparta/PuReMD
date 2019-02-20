@@ -110,14 +110,16 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 #define PDB_CONECT_FORMAT "%6s%5d%5d%5d%5d%5d\n"
 #define PDB_CRYST1_FORMAT "%6s%9s%9s%9s%7s%7s%7s%11s%4s\n"
 
-#define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n"
-#define PDB_ATOM_FORMAT_O_LENGTH 81
+//#define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n"
+#define PDB_ATOM_FORMAT_O "%5d%8.3f%8.3f%8.3f\n"
+//#define PDB_ATOM_FORMAT_O_LENGTH 81
+#define PDB_ATOM_FORMAT_O_LENGTH 30
 #define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
 
 char Read_PDB( char*, reax_system*, control_params*,
                simulation_data*, storage*, mpi_datatypes* );
 
-char Write_PDB( reax_system*, reax_list*, simulation_data*,
+char Write_PDB( reax_system*, reax_list**, simulation_data*,
                 control_params*, mpi_datatypes*, output_controls* );
 
 #endif

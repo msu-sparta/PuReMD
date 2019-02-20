@@ -26,10 +26,10 @@
 #define inline __inline__
 #endif /*IBMC*/
 
-#define SUCCESS  1
-#define FAILURE  0
-#define TRUE  1
-#define FALSE 0
+#define SUCCESS  (1)
+#define FAILURE  (0)
+#define TRUE  (1)
+#define FALSE (0)
 
 #define SQR(x)        ((x)*(x))
 #define CUBE(x)       ((x)*(x)*(x))
@@ -39,66 +39,67 @@
 #define MIN(x,y)      (((x) < (y)) ? (x) : (y))
 #define MAX3(x,y,z)   MAX( MAX(x,y), z)
 
-#define constPI        3.14159265
-#define C_ele          332.06371
-//#define K_B         503.398008   // kcal/mol/K
-#define K_B             0.831687   // amu A^2 / ps^2 / K
-#define F_CONV          1e6 / 48.88821291 / 48.88821291   // --> amu A / ps^2
-#define E_CONV          0.002391   // amu A^2 / ps^2 --> kcal/mol
-#define EV_to_KCALpMOL 14.400000   // ElectronVolt --> KCAL per MOLe
-#define KCALpMOL_to_EV 23.02       // 23.060549 //KCAL per MOLe --> ElectronVolt
-#define ECxA_to_DEBYE   4.803204   // elem. charge * Ang -> debye
-#define CAL_to_JOULES   4.184000   // CALories --> JOULES
-#define JOULES_to_CAL   1/4.184000 // JOULES --> CALories
-#define AMU_to_GRAM     1.6605e-24
-#define ANG_to_CM       1e-8
-#define AVOGNR          6.0221367e23
-#define P_CONV          1e-24 * AVOGNR * JOULES_to_CAL
+#define constPI        (3.14159265)
+#define C_ele          (332.06371)
+//#define K_B         (503.398008)   // kcal/mol/K
+#define K_B             (0.831687)   // amu A^2 / ps^2 / K
+#define F_CONV          (1e6 / 48.88821291 / 48.88821291)   // --> amu A / ps^2
+#define E_CONV          (0.002391)   // amu A^2 / ps^2 --> kcal/mol
+#define EV_to_KCALpMOL (14.400000)   // ElectronVolt --> KCAL per MOLe
+#define KCALpMOL_to_EV (23.02)       // 23.060549 //KCAL per MOLe --> ElectronVolt
+#define ECxA_to_DEBYE   (4.803204)   // elem. charge * Ang -> debye
+#define CAL_to_JOULES   (4.184000)   // CALories --> JOULES
+#define JOULES_to_CAL   (1/4.184000) // JOULES --> CALories
+#define AMU_to_GRAM     (1.6605e-24)
+#define ANG_to_CM       (1e-8)
+#define AVOGNR          (6.0221367e23)
+#define P_CONV          (1e-24 * AVOGNR * JOULES_to_CAL)
 
-#define MAX_STR             1024
-#define MAX_LINE            1024
-#define MAX_TOKENS          1024
-#define MAX_TOKEN_LEN       1024
+#define MAX_STR             (1024)
+#define MAX_LINE            (1024)
+#define MAX_TOKENS          (1024)
+#define MAX_TOKEN_LEN       (1024)
 
-#define MAX_ATOM_ID         100000
-#define MAX_RESTRICT        15
-#define MAX_MOLECULE_SIZE   20
-#define MAX_ATOM_TYPES      25
+#define MAX_ATOM_ID         (100000)
+#define MAX_RESTRICT        (15)
+#define MAX_MOLECULE_SIZE   (20)
+#define MAX_ATOM_TYPES      (25)
 
-#define NUM_INTRS      10
-#define ALMOST_ZERO    1e-10
-#define NEG_INF       -1e10
-#define NO_BOND        1e-3  // 0.001
-#define HB_THRESHOLD   1e-2  // 0.01
+#define NUM_INTRS      (10)
+#define ALMOST_ZERO    (1e-10)
+#define NEG_INF       (-1e10)
+#define NO_BOND        (1e-3)  // 0.001
+#define HB_THRESHOLD   (1e-2)  // 0.01
 
-#define MIN_CAP        50
-#define MIN_NBRS       100
-#define MIN_HENTRIES   100
-#define MAX_BONDS      30
-#define MIN_BONDS      15
-#define MIN_HBONDS     25
-#define MIN_3BODIES    1000
-#define MIN_GCELL_POPL 50
-#define MIN_SEND       100
-#define SAFE_ZONE      1.2
-#define SAFER_ZONE     1.4
-#define DANGER_ZONE    0.90
-#define LOOSE_ZONE     0.75
-#define MAX_3BODY_PARAM     5
-#define MAX_4BODY_PARAM     5
+#define MIN_CAP        (50)
+#define MIN_NBRS       (100)
+#define MIN_HENTRIES   (100)
+#define MAX_BONDS      (30)
+#define MIN_BONDS      (15)
+#define MIN_HBONDS     (25)
+#define MIN_3BODIES    (1000)
+#define MIN_GCELL_POPL (50)
+#define MIN_SEND       (100)
+#define SAFE_ZONE      (1.2)
+#define SAFER_ZONE     (1.4)
+#define SAFE_ZONE_NT   (2.0)
+#define SAFER_ZONE_NT  (2.5)
+#define DANGER_ZONE    (0.90)
+#define LOOSE_ZONE     (0.75)
+#define MAX_3BODY_PARAM     (5)
+#define MAX_4BODY_PARAM     (5)
 
-#define MAX_dV              1.01
-#define MIN_dV              0.99
-#define MAX_dT              4.00
-#define MIN_dT              0.00
+#define MAX_dV              (1.01)
+#define MIN_dV              (0.99)
+#define MAX_dT              (4.00)
+#define MIN_dT              (0.00)
 
-#define MASTER_NODE 0
-#define MAX_NBRS 6 //27
-#define MYSELF   13  // encoding of relative coordinate (0,0,0)
+#define MASTER_NODE (0)
+#define MAX_NBRS (6) //27
+#define MYSELF   (13)  // encoding of relative coordinate (0,0,0)
 
-#define MAX_ITR 10
-#define RESTART 30
-
+#define MAX_ITR (10)
+#define RESTART (30)
 
 
 /******************* ENUMERATIONS *************************/
@@ -125,15 +126,17 @@ enum message_tags { INIT = 0, UPDATE = 1, BNDRY = 2, UPDATE_BNDRY = 3,
 enum errors { FILE_NOT_FOUND = -10, UNKNOWN_ATOM_TYPE = -11,
               CANNOT_OPEN_FILE = -12, CANNOT_INITIALIZE = -13,
               INSUFFICIENT_MEMORY = -14, UNKNOWN_OPTION = -15,
-              INVALID_INPUT = -16, INVALID_GEO = -17
+              INVALID_INPUT = -16, INVALID_GEO = -17,
+              RUNTIME_ERROR = -18,
             };
 
 enum exchanges { NONE = 0, NEAR_EXCH = 1, FULL_EXCH = 2 };
 
 enum gcell_types { NO_NBRS = 0, NEAR_ONLY = 1, HBOND_ONLY = 2, FAR_ONLY = 4,
                    NEAR_HBOND = 3, NEAR_FAR = 5, HBOND_FAR = 6, FULL_NBRS = 7,
-                   NATIVE = 8
+                   NATIVE = 8, NT_NBRS = 9 // 9 through 14
                  };
+enum nt_atom_type { TOWER = 1, PLATE = 2 };
 
 enum atoms { C_ATOM = 0, H_ATOM = 1, O_ATOM = 2, N_ATOM = 3,
              S_ATOM = 4, SI_ATOM = 5, GE_ATOM = 6, X_ATOM = 7

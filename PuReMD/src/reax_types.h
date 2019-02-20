@@ -40,6 +40,8 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
+#define DUAL_SOLVER
+//#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
 //#define DEBUG_FOCUS
@@ -85,6 +87,8 @@ enum solver
     CG_S = 2,
     SDM_S = 3,
     BiCGStab_S = 4,
+    PIPECG_S = 5,
+    PIPECR_S = 6,
 };
 
 /* preconditioner computation type for charge method linear solver */
@@ -196,8 +200,8 @@ typedef struct
 
 typedef struct
 {
-    MPI_Comm     world;
-    MPI_Comm     comm_mesh3D;
+    MPI_Comm world;
+    MPI_Comm comm_mesh3D;
 
     MPI_Datatype sys_info;
     MPI_Datatype mpi_atom_type;
@@ -219,6 +223,11 @@ typedef struct
 
     void *in1_buffer;
     void *in2_buffer;
+
+#if defined(NEUTRAL_TERRITORY)
+    mpi_out_data out_nt_buffers[REAX_MAX_NT_NBRS];
+    void *in_nt_buffer[REAX_MAX_NT_NBRS];
+#endif
 } mpi_datatypes;
 
 
@@ -431,6 +440,10 @@ typedef struct
     int num_bonds;
     int num_hbonds;
     int renumber;
+#if defined(NEUTRAL_TERRITORY)
+    int nt_dir;
+    int pos;
+#endif
 } reax_atom;
 
 
@@ -496,6 +509,9 @@ typedef struct
 typedef struct
 {
     int  rank;
+#if defined(NEUTRAL_TERRITORY)
+    int  receive_rank;
+#endif
     int  est_send, est_recv;
     int  atoms_str, atoms_cnt;
     ivec rltv, prdc;
@@ -540,12 +556,17 @@ typedef struct
     int              wsize, my_rank, num_nbrs;
     ivec             my_coords;
     neighbor_proc    my_nbrs[REAX_MAX_NBRS];
+    neighbor_proc    my_nt_nbrs[REAX_MAX_NT_NBRS];
     int             *global_offset;
     simulation_box   big_box, my_box, my_ext_box;
     grid             my_grid;
     boundary_cutoff  bndry_cuts;
 
     reax_atom       *my_atoms;
+
+#if defined(NEUTRAL_TERRITORY)
+    int num_nt_nbrs;
+#endif
 } reax_system;
 
 
@@ -771,10 +792,16 @@ typedef struct
     real bonded;
     /* non-bonded force calculation time */
     real nonb;
+    /* distance between pairs calculation time */
+    real init_dist;
+    /* charge matrix calculation time */
+    real init_cm;
+    /* bonded interactions calculation time */
+    real init_bond;
     /* atomic charge distribution calculation time */
     real cm;
     /**/
-    real cm_sort_mat_rows;
+    real cm_sort;
     /**/
     real cm_solver_comm;
     /**/
@@ -782,13 +809,13 @@ typedef struct
     /**/
     real cm_solver_pre_comp;
     /**/
-    real cm_solver_pre_app; // update CG()
+    real cm_solver_pre_app;
     /* num. of steps in iterative linear solver for charge distribution */
     int cm_solver_iters;
     /**/
-    real cm_solver_spmv; // update CG()
+    real cm_solver_spmv;
     /**/
-    real cm_solver_vector_ops; // update CG()
+    real cm_solver_vector_ops;
     /**/
     real cm_solver_orthog;
     /**/
@@ -872,18 +899,38 @@ typedef struct
 
 typedef struct
 {
+    /* neighbor atom IDs */
+    int *nbr;
+    /* set of three integers which deterimine if the neighbor
+     * atom is a non-periodic neighbor (all zeros) or a periodic
+     * neighbor and which perioidic image this neighbor comes from */
+    ivec *rel_box;
+    /* distance to the neighboring atom */
+    real *d;
+    /* difference between positions of this atom and its neighboring atom */
+    rvec *dvec;
+} far_neighbor_data;
+
+
+#if defined(NEUTRAL_TERRITORY)
+typedef struct
+{
     int nbr;
     ivec rel_box;
     real d;
     rvec dvec;
-} far_neighbor_data;
+} nt_neighbor_data;
+#endif
 
 
 typedef struct
 {
+    /* neighbor atom ID */
     int nbr;
+    /* ??? */
     int scl;
-    far_neighbor_data *ptr;
+    /* position of neighbor in far neighbor list */
+    int ptr;
 } hbond_data;
 
 
@@ -950,6 +997,9 @@ typedef struct
     /* matrix storage format */
     int format;
     int cap, n, m;
+#if defined(NEUTRAL_TERRITORY)
+    int NT;
+#endif
     int *start, *end;
     sparse_matrix_entry *entries;
 } sparse_matrix;
@@ -983,9 +1033,9 @@ typedef struct
     real *dDelta_lp, *dDelta_lp_temp;
     real *nlp, *nlp_temp, *Clp, *vlpex;
     rvec *dDeltap_self;
-    int *bond_mark, *done_after;
+    int *bond_mark;
 
-    /* QEq storage */
+    /* charge matrix storage */
     sparse_matrix *H;
     sparse_matrix *L;
     sparse_matrix *U;
@@ -998,21 +1048,28 @@ typedef struct
     rvec2 *b, *x;
 
     /* GMRES storage */
-    real *y, *z, *g;
+    real *y, *g;
     real *hc, *hs;
     real **h, **v;
-    /* CG storage */
-    real *r, *d, *q, *p;
-    rvec2 *r2, *d2, *q2, *p2;
+    /* GMRES, PIPECG, PIPECR storage */
+    real *z;
+    /* CG, PIPECG, PIPECR storage */
+    real *d, *p, *q, *r;
+    /* PIPECG, PIPECR storage */
+    real *m, *n, *u, *w;
+    /* dual-CG storage */
+    rvec2 *d2, *p2, *q2, *r2;
+    /* dual-PIPECG storage */
+    rvec2 *m2, *n2, *u2, *w2, *z2;
     /* Taper */
-    real Tap[8]; //Tap7, Tap6, Tap5, Tap4, Tap3, Tap2, Tap1, Tap0;
+    real Tap[8];
 
     /* storage for analysis */
-    int  *mark, *old_mark;
+    int *mark, *old_mark;
     rvec *x_old;
 
     /* storage space for bond restrictions */
-    int  *restricted;
+    int *restricted;
     int **restricted_list;
 
     /* integrator */
@@ -1088,7 +1145,10 @@ typedef struct
     bond_data *bond_list;
     dbond_data *dbo_list;
     dDelta_data *dDelta_list;
-    far_neighbor_data *far_nbr_list;
+    far_neighbor_data far_nbr_list;
+#if defined(NEUTRAL_TERRITORY)
+    nt_neighbor_data *nt_nbr_list;
+#endif
     hbond_data *hbond_list;
 } reax_list;
 
@@ -1122,7 +1182,7 @@ typedef struct
     int   write_steps;
     int   traj_compress;
     int   traj_method;
-    char  traj_title[81];
+    char  traj_title[REAX_MAX_STR];
     int   atom_info;
     int   bond_info;
     int   angle_info;

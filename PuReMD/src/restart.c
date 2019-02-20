@@ -49,11 +49,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     {
         /* master handles the restart file */
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
-        if ( (fres = fopen( fname, "wb" )) == NULL )
-        {
-            fprintf( stderr, "ERROR: can't open the restart file! terminating...\n" );
-            MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
-        }
+        fres = sfopen( fname, "wb", "Write_Binary_Restart" );
 
         /* master can write the header by itself */
         res_header.step = data->step;
@@ -108,7 +104,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         fwrite( buffer, system->bigN, sizeof(restart_atom), fres );
-        fclose( fres );
+        sfclose( fres, "Write_Binary_Restart" );
     }
 
     sfree(buffer, "buffer");
@@ -139,11 +135,7 @@ void Write_Restart( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
-        if ( (fres = fopen( fname, "w" )) == NULL )
-        {
-            fprintf( stderr, "ERROR: can't open the restart file! terminating...\n" );
-            MPI_Abort( MPI_COMM_WORLD, FILE_NOT_FOUND );
-        }
+        fres = sfopen( fname, "w", "Write_Restart" );
 
         /* write the header - only master writes it */
         fprintf( fres, RESTART_HEADER,
@@ -204,7 +196,7 @@ void Write_Restart( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         fprintf( fres, "%s", buffer );
-        fclose( fres );
+        sfclose( fres, "Write_Restart" );
     }
     sfree(buffer, "buffer");
     sfree(line, "line");
@@ -250,11 +242,7 @@ void Read_Binary_Restart( char *res_file, reax_system *system,
 
     comm = MPI_COMM_WORLD;
 
-    if ( (fres = fopen(res_file, "rb")) == NULL )
-    {
-        fprintf( stderr, "ERROR: cannot open the restart file! terminating...\n" );
-        MPI_Abort( comm, FILE_NOT_FOUND );
-    }
+    fres = sfopen( res_file, "rb", "Read_Binary_Restart" );
 
     /* first read the header lines */
     fread(&res_header, sizeof(restart_header), 1, fres);
@@ -313,7 +301,7 @@ void Read_Binary_Restart( char *res_file, reax_system *system,
         }
     }
 
-    fclose( fres );
+    sfclose( fres, "Read_Binary_Restart" );
 
     data->step = data->prev_steps;
     // nsteps is updated based on the number of steps in the previous run
@@ -368,11 +356,7 @@ void Read_Restart( char *res_file, reax_system *system,
 
     comm = MPI_COMM_WORLD;
 
-    if ( (fres = fopen(res_file, "r")) == NULL )
-    {
-        fprintf( stderr, "ERROR: cannot open the restart file! terminating...\n" );
-        MPI_Abort( comm, FILE_NOT_FOUND );
-    }
+    fres = sfopen( res_file, "r", "Read_Binary_Restart" );
 
     s = (char*) malloc(sizeof(char) * MAX_LINE);
     tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
@@ -464,7 +448,7 @@ void Read_Restart( char *res_file, reax_system *system,
             top++;
         }
     }
-    fclose( fres );
+    sfclose( fres, "Read_Restart" );
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
         sfree( tmp[i], "tmp[i]" );

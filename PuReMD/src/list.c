@@ -30,17 +30,19 @@
 
 
 /************* allocate list space ******************/
-int Make_List(int n, int num_intrs, int type, reax_list *l, MPI_Comm comm)
+int Make_List( int n, int num_intrs, int type, int format,
+        reax_list *l, MPI_Comm comm )
 {
     l->allocated = 1;
 
     l->n = n;
     l->num_intrs = num_intrs;
 
-    l->index = (int*) smalloc( n * sizeof(int), "list:index", comm );
-    l->end_index = (int*) smalloc( n * sizeof(int), "list:end_index", comm );
+    l->index = smalloc( n * sizeof(int), "Make_List:index", comm );
+    l->end_index = smalloc( n * sizeof(int), "Make_List:end_index", comm );
 
     l->type = type;
+    l->format = format;
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "list: n=%d num_intrs=%d type=%d\n", l->n, l->num_intrs, l->type );
@@ -49,42 +51,48 @@ int Make_List(int n, int num_intrs, int type, reax_list *l, MPI_Comm comm)
     switch ( l->type )
     {
     case TYP_VOID:
-        l->v = (void*) smalloc(l->num_intrs * sizeof(void*), "list:v", comm);
+        l->v = smalloc( l->num_intrs * sizeof(void*),
+                "Make_List:v", comm );
         break;
 
     case TYP_THREE_BODY:
-        l->three_body_list = (three_body_interaction_data*)
-                             smalloc( l->num_intrs * sizeof(three_body_interaction_data),
-                                      "list:three_bodies", comm );
+        l->three_body_list = smalloc( l->num_intrs * sizeof(three_body_interaction_data),
+                "Make_List:three_bodies", comm );
         break;
 
     case TYP_BOND:
-        l->bond_list = (bond_data*)
-                       smalloc( l->num_intrs * sizeof(bond_data), "list:bonds", comm );
+        l->bond_list = smalloc( l->num_intrs * sizeof(bond_data),
+                "Make_List:bonds", comm );
         break;
 
     case TYP_DBO:
-        l->dbo_list = (dbond_data*)
-                      smalloc( l->num_intrs * sizeof(dbond_data), "list:dbonds", comm );
+        l->dbo_list = smalloc( l->num_intrs * sizeof(dbond_data),
+                "Make_List:dbonds", comm );
         break;
 
     case TYP_DDELTA:
-        l->dDelta_list = (dDelta_data*)
-                         smalloc( l->num_intrs * sizeof(dDelta_data), "list:dDeltas", comm );
+        l->dDelta_list = smalloc( l->num_intrs * sizeof(dDelta_data),
+                "Make_List:dDeltas", comm );
         break;
 
     case TYP_FAR_NEIGHBOR:
-        l->far_nbr_list = (far_neighbor_data*)
-                          smalloc(l->num_intrs * sizeof(far_neighbor_data), "list:far_nbrs", comm);
+        l->far_nbr_list.nbr = smalloc( l->num_intrs * sizeof(int),
+                "Make_List:far_nbr_list.nbr", comm );
+        l->far_nbr_list.rel_box = smalloc( l->num_intrs * sizeof(ivec),
+                "Make_List:far_nbr_list.rel_box", comm );
+        l->far_nbr_list.d = smalloc( l->num_intrs * sizeof(real),
+                "Make_List:far_nbr_list.d", comm );
+        l->far_nbr_list.dvec = smalloc( l->num_intrs * sizeof(rvec),
+                "Make_List:far_nbr_list.dvec", comm );
         break;
 
     case TYP_HBOND:
-        l->hbond_list = (hbond_data*)
-                        smalloc( l->num_intrs * sizeof(hbond_data), "list:hbonds", comm );
+        l->hbond_list = smalloc( l->num_intrs * sizeof(hbond_data),
+                "Make_List:hbonds", comm );
         break;
 
     default:
-        fprintf( stderr, "ERROR: no %d list type defined!\n", l->type );
+        fprintf( stderr, "[ERROR]: no %d list type defined!\n", l->type );
         MPI_Abort( comm, INVALID_INPUT );
     }
 
@@ -98,31 +106,34 @@ void Delete_List( reax_list *l, MPI_Comm comm )
         return;
     l->allocated = 0;
 
-    sfree( l->index, "list:index" );
-    sfree( l->end_index, "list:end_index" );
+    sfree( l->index, "Delete_List:index" );
+    sfree( l->end_index, "Delete_List:end_index" );
 
     switch (l->type)
     {
     case TYP_VOID:
-        sfree( l->v, "list:v" );
+        sfree( l->v, "Delete_List:v" );
         break;
     case TYP_HBOND:
-        sfree( l->hbond_list, "list:hbonds" );
+        sfree( l->hbond_list, "Delete_List:hbonds" );
         break;
     case TYP_FAR_NEIGHBOR:
-        sfree( l->far_nbr_list, "list:far_nbrs" );
+        sfree( l->far_nbr_list.nbr, "Delete_List:far_nbr_list.nbr" );
+        sfree( l->far_nbr_list.rel_box, "Delete_List:far_nbr_list.rel_box" );
+        sfree( l->far_nbr_list.d, "Delete_List:far_nbr_list.d" );
+        sfree( l->far_nbr_list.dvec, "Delete_List:far_nbr_list.dvec" );
         break;
     case TYP_BOND:
-        sfree( l->bond_list, "list:bonds" );
+        sfree( l->bond_list, "Delete_List:bonds" );
         break;
     case TYP_DBO:
-        sfree( l->dbo_list, "list:dbos" );
+        sfree( l->dbo_list, "Delete_List:dbos" );
         break;
     case TYP_DDELTA:
-        sfree( l->dDelta_list, "list:dDeltas" );
+        sfree( l->dDelta_list, "Delete_List:dDeltas" );
         break;
     case TYP_THREE_BODY:
-        sfree( l->three_body_list, "list:three_bodies" );
+        sfree( l->three_body_list, "Delete_List:three_bodies" );
         break;
 
     default:

@@ -41,7 +41,7 @@ void Sort_Matrix_Rows( sparse_matrix *A )
         si = A->start[i];
         ei = A->end[i];
         qsort( &(A->entries[si]), ei - si,
-               sizeof(sparse_matrix_entry), compare_matrix_entry );
+                sizeof(sparse_matrix_entry), compare_matrix_entry );
     }
 }
 
@@ -103,7 +103,7 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
 
 
 void ICHOLT( sparse_matrix *A, real *droptol,
-             sparse_matrix *L, sparse_matrix *U )
+        sparse_matrix *L, sparse_matrix *U )
 {
     sparse_matrix_entry tmp[1000];
     int i, j, pj, k1, k2, tmptop, Utop;
@@ -231,52 +231,55 @@ void ICHOLT( sparse_matrix *A, real *droptol,
 
 
 void Init_MatVec( reax_system *system, simulation_data *data,
-                  control_params *control,  storage *workspace,
-                  mpi_datatypes *mpi_data )
+        control_params *control,  storage *workspace,
+        mpi_datatypes *mpi_data )
 {
     int i; //, fillin;
     reax_atom *atom;
 
-    /*if( (data->step - data->prev_steps) % control->refactor == 0 ||
-        workspace->L == NULL ) {
-      //Print_Linear_System( system, control, workspace, data->step );
-      Sort_Matrix_Rows( workspace->H );
-      fprintf( stderr, "H matrix sorted\n" );
-      Calculate_Droptol( workspace->H, workspace->droptol, control->droptol );
-      fprintf( stderr, "drop tolerances calculated\n" );
-      if( workspace->L == NULL ) {
-        fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
+    /*if( (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 ||
+      workspace->L == NULL ) 
+    {
+        //Print_Linear_System( system, control, workspace, data->step );
+        Sort_Matrix_Rows( workspace->H );
+        fprintf( stderr, "H matrix sorted\n" );
+        Calculate_Droptol( workspace->H, workspace->droptol, control->cm_solver_pre_comp_droptol );
+        fprintf( stderr, "drop tolerances calculated\n" );
+        if( workspace->L == NULL ) 
+        {
+            fillin = Estimate_LU_Fill( workspace->H, workspace->droptol );
 
-        if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin ) == 0 ||
-      Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin ) == 0 ) {
-    fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
-    MPI_Abort( mpi_data->world, INSUFFICIENT_MEMORY );
+            if( Allocate_Matrix( &(workspace->L), workspace->H->cap, fillin, FULL_MATRIX, comm ) == 0 ||
+            Allocate_Matrix( &(workspace->U), workspace->H->cap, fillin, FULL_MATRIX, comm ) == 0 ) 
+            {
+                fprintf( stderr, "not enough memory for LU matrices. terminating.\n" );
+                MPI_Abort( mpi_data->world, INSUFFICIENT_MEMORY );
+            }
+
+            workspace->L->n = workspace->H->n;
+            workspace->U->n = workspace->H->n;
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr, "p%d: n=%d, fillin = %d\n",
+            system->my_rank, workspace->L->n, fillin );
+            fprintf( stderr, "p%d: allocated memory: L = U = %ldMB\n",
+            system->my_rank,fillin*sizeof(sparse_matrix_entry)/(1024*1024) );
+#endif
         }
 
-        workspace->L->n = workspace->H->n;
-        workspace->U->n = workspace->H->n;
-    #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: n=%d, fillin = %d\n",
-           system->my_rank, workspace->L->n, fillin );
-        fprintf( stderr, "p%d: allocated memory: L = U = %ldMB\n",
-                 system->my_rank,fillin*sizeof(sparse_matrix_entry)/(1024*1024) );
-    #endif
-      }
-
-      ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
-    #if defined(DEBUG_FOCUS)
-      fprintf( stderr, "p%d: icholt finished\n", system->my_rank );
-      //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
-      //Print_Sparse_Matrix2( workspace->L, fname );
-      //Print_Sparse_Matrix( U );
-    #endif
+        ICHOLT( workspace->H, workspace->droptol, workspace->L, workspace->U );
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d: icholt finished\n", system->my_rank );
+        //sprintf( fname, "%s.L%d.out", control->sim_name, data->step );
+        //Print_Sparse_Matrix2( workspace->L, fname );
+        //Print_Sparse_Matrix( U );
+#endif
     }*/
 
     //TODO: fill in code for setting up and computing SAI, see sPuReMD code,
     //  and remove diagonal preconditioner computation below (workspace->Hdia_inv)
-//    setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-//            &workspace->H_spar_patt_full, &workspace->H_app_inv,
-//            control->cm_solver_pre_comp_sai_thres );
+    //    setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
+    //            &workspace->H_spar_patt_full, &workspace->H_app_inv,
+    //            control->cm_solver_pre_comp_sai_thres );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -313,16 +316,15 @@ void Init_MatVec( reax_system *system, simulation_data *data,
 
 
 void Calculate_Charges( reax_system *system, storage *workspace,
-                        mpi_datatypes *mpi_data )
+        mpi_datatypes *mpi_data )
 {
-    int        i, scale;
-    real       u;//, s_sum, t_sum;
-    rvec2      my_sum, all_sum;
+    int i;
+    real u;//, s_sum, t_sum;
+    rvec2 my_sum, all_sum;
     reax_atom *atom;
     real *q;
 
-    scale = sizeof(real) / sizeof(void);
-    q = (real*) malloc(system->N * sizeof(real));
+    q = malloc( system->N * sizeof(real) );
 
     //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
     //t_sum = Parallel_Vector_Acc(workspace->t, system->n, mpi_data->world);
@@ -347,73 +349,210 @@ void Calculate_Charges( reax_system *system, storage *workspace,
         atom->s[3] = atom->s[2];
         atom->s[2] = atom->s[1];
         atom->s[1] = atom->s[0];
-        //atom->s[0] = workspace->s[i];
         atom->s[0] = workspace->x[i][0];
 
         atom->t[3] = atom->t[2];
         atom->t[2] = atom->t[1];
         atom->t[1] = atom->t[0];
-        //atom->t[0] = workspace->t[i];
         atom->t[0] = workspace->x[i][1];
     }
 
-    Dist( system, mpi_data, q, MPI_DOUBLE, scale, real_packer );
-    for ( i = system->n; i < system->N; ++i )
-        system->my_atoms[i].q = q[i];
+    Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    sfree(q, "q");
+    for ( i = system->n; i < system->N; ++i )
+    {
+        system->my_atoms[i].q = q[i];
+    }
+
+    sfree( q, "q" );
+}
+
+
+static void Setup_Preconditioner_QEq( reax_system *system, control_params *control, 
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+{
+    real time, t_sort, t_pc, total_sort, total_pc;
+
+    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    time = MPI_Wtime();
+    Sort_Matrix_Rows( workspace->H );
+    t_sort = MPI_Wtime() - time;
+
+    t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
+            control->nprocs, control->cm_solver_pre_comp_sai_thres );
+
+
+    MPI_Reduce(&t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce(&t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_sort += total_sort / control->nprocs;
+        data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+    }
+}
+
+static void Compute_Preconditioner_QEq( reax_system *system, control_params *control, 
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+{
+    real t_pc, total_pc;
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+    t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
+            workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
+
+    MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+
+    if( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+    }
+#else
+    fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+    exit( INVALID_INPUT );
+#endif
 }
 
 
 void QEq( reax_system *system, control_params *control, simulation_data *data,
-          storage *workspace, output_controls *out_control,
-          mpi_datatypes *mpi_data )
+        storage *workspace, output_controls *out_control,
+        mpi_datatypes *mpi_data )
 {
-    int j, s_matvecs, t_matvecs;
+    int j, iters;
+
+    iters = 0;
 
     Init_MatVec( system, data, control, workspace, mpi_data );
 
-    //if( data->step == 50010 ) {
-    //  Print_Linear_System( system, control, workspace, data->step );
-    // }
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized qEq\n", system->my_rank );
     //Print_Linear_System( system, control, workspace, data->step );
 #endif
 
-    //s_matvecs = dual_CG(system, workspace, workspace->H, workspace->b,
-    //          control->cm_solver_q_err, workspace->x, mpi_data, out_control->log);
-    //t_matvecs = 0;
+    if( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        if( control->cm_solver_pre_comp_refactor > 0
+                && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0))
+        {
+            Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
-    for ( j = 0; j < system->n; ++j )
-        workspace->s[j] = workspace->x[j][0];
-    s_matvecs = CG(system, workspace, workspace->H, workspace->b_s,//newQEq sCG
-                   control->cm_solver_q_err, workspace->s, mpi_data, out_control->log );
-    for ( j = 0; j < system->n; ++j )
-        workspace->x[j][0] = workspace->s[j];
+            Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+        }
+    }
+    
+    //TODO: used for timing to sync processors going into the linear solve, but remove for production code
+    MPI_Barrier( mpi_data->world ); 
 
-    //s_matvecs = PCG( system, workspace, workspace->H, workspace->b_s,
-    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->s,
-    //   mpi_data, out_control->log );
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: first CG completed\n", system->my_rank );
+    switch ( control->cm_solver_type )
+    {
+    case CG_S:
+#if defined(DUAL_SOLVER)
+        iters = dual_CG( system, control, data, workspace, workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data );
+#else
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        iters = CG( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += CG( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
 #endif
+        break;
 
-    for ( j = 0; j < system->n; ++j )
-        workspace->t[j] = workspace->x[j][1];
-    t_matvecs = CG(system, workspace, workspace->H, workspace->b_t,//newQEq sCG
-                   control->cm_solver_q_err, workspace->t, mpi_data, out_control->log );
-    for ( j = 0; j < system->n; ++j )
-        workspace->x[j][1] = workspace->t[j];
+    case PIPECG_S:
+#if defined(DUAL_SOLVER)
+        iters = dual_PIPECG( system, control, data, workspace, workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data );
+#else
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
 
-    //t_matvecs = PCG( system, workspace, workspace->H, workspace->b_t,
-    //   control->cm_solver_q_err, workspace->L, workspace->U, workspace->t,
-    //   mpi_data, out_control->log );
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: second CG completed\n", system->my_rank );
+        iters = PIPECG( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += PIPECG( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
 #endif
+        break;
+
+    case PIPECR_S:
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        iters = PIPECR( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += PIPECR( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+        break;
+
+    case GMRES_S:
+    case GMRES_H_S:
+    case SDM_S:
+    case BiCGStab_S:
+        fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
+        break;
+
+    default:
+        fprintf( stderr, "[ERROR] Unrecognized solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
 
     Calculate_Charges( system, workspace, mpi_data );
+
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed charges\n", system->my_rank );
     //Print_Charges( system );
@@ -422,7 +561,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        data->timing.cm_solver_iters += s_matvecs + t_matvecs;
+        data->timing.cm_solver_iters += iters;
     }
 #endif
 }

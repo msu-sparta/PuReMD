@@ -318,6 +318,8 @@ void Trim_Spaces( char *element )
 struct timeval tim;
 real t_end;
 
+// NOTE: these timing functions are not being used
+// replaced by MPI_Wtime()
 real Get_Time( )
 {
     gettimeofday(&tim, NULL );

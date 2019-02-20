@@ -24,17 +24,27 @@
 
 #include "reax_types.h"
 
-int GMRES( reax_system*, storage*, sparse_matrix*,
-           real*, real, real*, mpi_datatypes*, FILE* );
-int GMRES_HouseHolder( reax_system*, storage*, sparse_matrix*,
-                       real*, real, real*, mpi_datatypes*, FILE* );
-int dual_CG( reax_system*, storage*, sparse_matrix*,
-             rvec2*, real, rvec2*, mpi_datatypes*, FILE* );
-int CG( reax_system*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes*, FILE* );
-int PCG( reax_system*, storage*, sparse_matrix*, real*, real,
-         sparse_matrix*, sparse_matrix*, real*, mpi_datatypes*, FILE* );
-int sCG( reax_system*, storage*, sparse_matrix*,
-         real*, real, real*, mpi_datatypes*, FILE* );
+
+real setup_sparse_approx_inverse( reax_system*, simulation_data*, storage*, mpi_datatypes*, 
+        sparse_matrix *, sparse_matrix **, int, double );
+
+real sparse_approx_inverse( reax_system*, simulation_data*, storage*, mpi_datatypes*, 
+        sparse_matrix*, sparse_matrix*, sparse_matrix**, int );
+
+int dual_CG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
+             rvec2*, real, rvec2*, mpi_datatypes* );
+
+int CG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
+        real*, real, real*, mpi_datatypes* );
+
+int dual_PIPECG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
+        rvec2*, real, rvec2*, mpi_datatypes* );
+
+int PIPECG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
+        real*, real, real*, mpi_datatypes* );
+
+int PIPECR( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
+        real*, real, real*, mpi_datatypes* );
+
 
 #endif
