@@ -116,6 +116,7 @@ AC_LANG([C++])
 AC_PROG_CXX([icpc g++ clang++ CC c++])
 AC_PROG_CXXCPP
 
+AC_CONFIG_HEADERS([common/include/config.h])
 
 # sPuReMD
 if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; then
@@ -128,7 +129,6 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	AC_LANG_PUSH([C])
 
 	AC_CONFIG_SRCDIR([sPuReMD/src/traj.h])
-	AC_CONFIG_HEADERS([sPuReMD/src/config.h])
 
 	# Checks for libraries.
 	AC_SEARCH_LIBS([exp], [m])
@@ -249,7 +249,6 @@ if test "x${pack_gpu_enabled}" = "xyes"; then
 	AC_LANG_PUSH([C])
 
 	AC_CONFIG_SRCDIR([PuReMD-GPU/src/analyze.c])
-	AC_CONFIG_HEADERS([PuReMD-GPU/src/config.h])
 
 	# Checks for libraries.
 	AC_SEARCH_LIBS([exp], [m])
@@ -356,7 +355,6 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 	AC_LANG_PUSH([C])
 
 	AC_CONFIG_SRCDIR([PuReMD/src/torsion_angles.h])
-	AC_CONFIG_HEADERS([PuReMD/src/config.h])
 
 	# Checks for libraries.
 	AC_SEARCH_LIBS([exp], [m])
@@ -519,7 +517,6 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	AC_LANG_PUSH([C])
 
 	AC_CONFIG_SRCDIR([PG-PuReMD/src/torsion_angles.h])
-	AC_CONFIG_HEADERS([PG-PuReMD/src/config.h])
 
 	# Checks for libraries.
 	AC_SEARCH_LIBS([exp], [m])
