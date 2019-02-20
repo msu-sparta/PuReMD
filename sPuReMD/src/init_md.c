@@ -873,8 +873,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strcat( temp, ".out" );
         out_control->out = sfopen( temp, "w" );
         fprintf( out_control->out, "%-6s%16s%16s%16s%11s%11s%13s%13s%13s\n",
-                 "step", "total energy", "poten. energy", "kin. energy",
-                 "temp.", "target", "volume", "press.", "target" );
+                 "step", "total_energy", "poten_energy", "kin_energy",
+                 "temp", "target", "volume", "press", "target" );
         fflush( out_control->out );
 
         /* Init potentials file */
@@ -893,8 +893,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->log = sfopen( temp, "w" );
         fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                  "step", "total", "neighbors", "init", "bonded",
-                 "nonbonded", "CM", "CM Sort", "S iters", "Pre Comp", "Pre App",
-                 "S spmv", "S vec ops", "S orthog", "S tsolve" );
+                 "nonbonded", "cm", "cm_sort", "s_iters", "pre_comp", "pre_app",
+                 "s_spmv", "s_vec_ops", "s_orthog", "s_tsolve" );
     }
     else
     {
