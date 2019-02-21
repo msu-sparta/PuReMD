@@ -331,7 +331,7 @@ restart_freq            0                       ! 0: do not output any restart f
             stop = time()
 
             if proc_handle.returncode < 0:
-                print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
+                print("[WARNING] process terminated with code {0}".format(proc_handle.returncode))
 
             print('stdout:\n{0}'.format(stdout), end='')
             print('stderr:\n{0}'.format(stderr), end='')
@@ -355,7 +355,7 @@ restart_freq            0                       ! 0: do not output any restart f
         log_file = param['name'] + '.log'
 
         if not path.exists(log_file):
-            print('***WARNING: {0} does not exist!'.format(log_file))
+            print('[WARNING] {0} does not exist!'.format(log_file))
             return
         with open(log_file, 'r') as fp:
             for line in fp:
@@ -399,7 +399,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 pre_comp, pre_app, iters, spmv,
                 cm, param['threads'], time))
         else:
-            print('**WARNING: nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
+            print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
                 log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
         fout.flush()
 
@@ -506,7 +506,7 @@ python3 {0}/tools/run_sim.py run_md \\
             stdout, stderr = proc_handle.communicate(job_script)
 
             if proc_handle.returncode < 0:
-                print("WARNING: process terminated with code {0}".format(proc_handle.returncode))
+                print("[WARNING] process terminated with code {0}".format(proc_handle.returncode))
                 print('stdout:\n{0}'.format(stdout), end='')
                 print('stderr:\n{0}'.format(stderr), end='')
             else:
@@ -529,6 +529,7 @@ if __name__ == '__main__':
                 ]
         JOB_TYPES = ['pbs', 'slurm']
         RUN_TYPES = ['serial', 'openmp', 'mpi', 'mpi+gpu']
+        LOG_TYPES = ['out', 'pot', 'log']
 
         parser = argparse.ArgumentParser(description='Molecular dynamics simulation tools used with specified data sets.')
         subparsers = parser.add_subparsers(help="Actions.")
@@ -536,6 +537,7 @@ if __name__ == '__main__':
         run_md_custom_parser = subparsers.add_parser("run_md_custom")
         parse_results_parser = subparsers.add_parser("parse_results")
         submit_jobs_parser = subparsers.add_parser("submit_jobs")
+        compare_logs_parser = subparsers.add_parser("compare_logs")
 
         run_md_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
                 help='Binary file used for running the MD simulation(s).')
@@ -594,6 +596,18 @@ if __name__ == '__main__':
         submit_jobs_parser.add_argument('data_sets', nargs='+',
                 choices=DATA_SETS, help='Data set(s) for which to run MD simulation(s).')
         submit_jobs_parser.set_defaults(func=submit_jobs)
+
+        compare_logs_parser.add_argument('-t', '--tol', metavar='tolerance', default=1.0e-6, nargs=1,
+                help='Tolerance used for comparing the log files.')
+        compare_logs_parser.add_argument('run_type', nargs=1,
+                choices=RUN_TYPES, help='Run type for the MD simulation(s).')
+        compare_logs_parser.add_argument('log_file_type', nargs=1,
+                choices=LOG_TYPES, help='Log file type for the MD simulation(s).')
+        compare_logs_parser.add_argument('ref_log_file', nargs=1,
+                help='Reference log file to compare against.')
+        compare_logs_parser.add_argument('log_file', nargs='+',
+                help='Log file to compare.')
+        compare_logs_parser.set_defaults(func=compare_logs)
 
         return parser
 
@@ -779,7 +793,7 @@ if __name__ == '__main__':
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
                 else:
-                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict)
@@ -809,7 +823,7 @@ if __name__ == '__main__':
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
                 else:
-                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         geo_base, geo_ext = path.splitext(args.geo_file[0])
@@ -822,7 +836,7 @@ if __name__ == '__main__':
             elif geo_ext.lower() == '.geo':
                 geo_format = ['0']
             else:
-                print("ERROR: unrecognized geometry format {0}. Terminating...".format(ext))
+                print("[ERROR] unrecognized geometry format {0}. Terminating...".format(ext))
                 exit(-1)
 
         test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
@@ -883,7 +897,7 @@ if __name__ == '__main__':
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
                 else:
-                    print("ERROR: Invalid parameter {0}. Terminating...".format(param[0]))
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict)
@@ -891,6 +905,165 @@ if __name__ == '__main__':
         for test in test_cases:
             test.submit_jobs(binary, args.run_type[0], args.job_script_type[0],
                     args.mpi_cmd[0].split(':'))
+
+    def compare_logs(args):
+        import numpy as np
+        import pandas as pd
+
+        def _file_len(file_name):
+            i = -1
+            with open(file_name) as f:
+                for i, l in enumerate(f):
+                    pass
+            return i + 1
+
+        def _read_file_by_type(file_name, file_type, run_type):
+            if run_type == 'serial' or run_type == 'openmp':
+                if file_type == 'out':
+                     names=['Step', 'Total_Energy', 'Potential_Energy',
+                            'Kinetic_Energy', 'Temperature', 'Target_Temperature',
+                            'Volume', 'Pressure', 'Target_Pressure']
+                     dtype={'Step': np.int,
+                            'Total_Energy': np.float64, 'Potential_Energy': np.float64,
+                            'Kinetic_Energy': np.float64, 'Temperature': np.float64,
+                            'Target_Temperature': np.float64, 'Volume': np.float64,
+                            'Pressure': np.float64, 'Target_Pressure': np.float64}
+                     skiprows=[0]
+                elif file_type == 'pot':
+                     names=['Step', 'E_Bond', 'E_Atom',
+                            'E_LP', 'E_Ang', 'E_Coa',
+                            'E_HB', 'E_Tor', 'E_Conj',
+                            'E_vdW', 'E_Coul', 'E_Pol']
+                     dtype={'Step': np.int,
+                            'E_Bond': np.float64, 'E_Atom': np.float64,
+                            'E_LP': np.float64, 'E_Ang': np.float64,
+                            'E_Coa': np.float64, 'E_HB': np.float64,
+                            'E_Tor': np.float64, 'E_Conj': np.float64,
+                            'E_vdW': np.float64, 'E_Coul': np.float64,
+                            'E_Pol': np.float64}
+                     skiprows=[0]
+                elif file_type == 'log':
+                     names=['Step', 'T_Total', 'T_Nbrs',
+                            'T_Init', 'T_Bonded', 'T_Nonbonded',
+                            'T_CM', 'T_CM_Sort', 'Solver_Iters',
+                            'T_Pre_Comp', 'T_Pre_App', 'T_Solver_SpMV',
+                            'T_Solver_Vec_Ops', 'T_Solver_Orthog',
+                            'T_Solver_Tri_Solve']
+                     dtype={'Step': np.int,
+                            'T_Total': np.float64, 'T_Nbrs': np.float64,
+                            'T_Init': np.float64, 'T_Bonded': np.float64,
+                            'T_Nonbonded': np.float64, 'T_CM': np.float64,
+                            'T_CM_Sort': np.float64, 'Solver_Iters': np.float64,
+                            'T_Pre_Comp': np.float64, 'T_Pre_App': np.float64,
+                            'T_Solver_SpMV': np.float64,
+                            'T_Solver_Vec_Ops': np.float64, 'T_Solver_Orthog': np.float64,
+                            'T_Solver_Tri_Solve': np.float64}
+                     skiprows=[0, _file_len(file_name) - 1]
+                else:
+                    print("[ERROR] Invalid log file type {0}. Terminating...".format(file_type))
+                    exit(-1)
+            elif run_type == 'mpi' or run_type == 'mpi+gpu':
+                if file_type == 'out':
+                     names=['Step', 'Total_Energy', 'Potential_Energy',
+                            'Kinetic_Energy', 'Temperature',
+                            'Volume', 'Pressure']
+                     dtype={'Step': np.int,
+                            'Total_Energy': np.float64, 'Potential_Energy': np.float64,
+                            'Kinetic_Energy': np.float64, 'Temperature': np.float64,
+                            'Volume': np.float64, 'Pressure': np.float64}
+                     skiprows=[0, _file_len(file_name) - 1]
+                elif file_type == 'pot':
+                     names=['Step', 'E_Bond', 'E_Atom',
+                            'E_LP', 'E_Ang', 'E_Coa',
+                            'E_HB', 'E_Tor', 'E_Conj',
+                            'E_vdW', 'E_Coul', 'E_Pol']
+                     dtype={'Step': np.int,
+                            'E_Bond': np.float64, 'E_Atom': np.float64,
+                            'E_LP': np.float64, 'E_Ang': np.float64,
+                            'E_Coa': np.float64, 'E_HB': np.float64,
+                            'E_Tor': np.float64, 'E_Conj': np.float64,
+                            'E_vdW': np.float64, 'E_Coul': np.float64,
+                            'E_Pol': np.float64}
+                     skiprows=[0]
+                elif file_type == 'log':
+                     names=['Step', 'T_Total', 'T_Comm', 'T_Nbrs',
+                            'T_Init', 'T_Init_Dist', 'T_Init_CM', 'T_Init_Bond',
+                            'T_Bonded', 'T_Nonbonded',
+                            'T_CM', 'T_CM_Sort', 'Solver_Iters',
+                            'T_Pre_Comp', 'T_Pre_App', 
+                            'T_Solver_Comm', 'T_Solver_Allr', 'T_Solver_SpMV',
+                            'T_Solver_Vec_Ops', 'T_Solver_Orthog',
+                            'T_Solver_Tri_Solve']
+                     dtype={'Step': np.int,
+                            'T_Total': np.float64, 'T_Comm': np.float64, 'T_Nbrs': np.float64,
+                            'T_Init': np.float64, 'T_Init_Dist': np.float64,
+                            'T_Init_CM': np.float64, 'T_Init_Bond': np.float64, 'T_Bonded': np.float64,
+                            'T_Nonbonded': np.float64, 'T_CM': np.float64,
+                            'T_CM_Sort': np.float64, 'Solver_Iters': np.float64,
+                            'T_Pre_Comp': np.float64, 'T_Pre_App': np.float64,
+                            'T_Solver_Comm': np.float64, 'T_Solver_Allr': np.float64,
+                            'T_Solver_SpMV': np.float64,
+                            'T_Solver_Vec_Ops': np.float64, 'T_Solver_Orthog': np.float64,
+                            'T_Solver_Tri_Solve': np.float64}
+                     skiprows=[0, _file_len(file_name) - 1]
+                else:
+                    print("[ERROR] Invalid log file type {0}. Terminating...".format(file_type))
+                    exit(-1)
+            else:
+                print("[ERROR] Invalid run type {0}. Terminating...".format(run_type))
+                exit(-1)
+
+            try:
+                df = pd.read_csv(file_name, sep='\s+', skiprows=skiprows, names=names, dtype=dtype)
+            except Exception as e: 
+                print("[ERROR] failed to parse log file {0}. Terminating...".format(file_name))
+                print("    [INFO] {0}".format(str(e)))
+
+            return df
+
+        # read reference log
+        df_ref = _read_file_by_type(args.ref_log_file[0], args.log_file_type[0], args.run_type[0])
+
+        if df_ref.empty:
+            print("[ERROR] detected empty log file {0}. Terminating...".format(args.ref_log_file[0]))
+            exit(-1)
+
+        # compare other logs against reference
+        for log in args.log_file:
+            df = _read_file_by_type(log, args.log_file_type[0], args.run_type[0])
+
+            if df.empty:
+                print("[ERROR] detected empty log file {0}. Terminating...".format(log))
+                exit(-1)
+
+            if not len(df_ref.index) == len(df.index):
+                print("[ERROR] detected different number of records in log files ({0:d}, {1:d}). Terminating...".format(
+                    len(df_ref.index), len(df.index)))
+                exit(-1)
+
+            if args.log_file_type[0] == 'out':
+                for term in df_ref.columns.values.tolist()[1:4]:
+                    abs_diff = np.absolute(df_ref[term].values - df[term].values)
+                    max_diff = abs_diff.max()
+                    argmax_diff = abs_diff.argmax()
+                    print('{0}:'.format(term))
+                    print('    Max. Diff.: {0:E}'.format(max_diff))
+                    print('          Step: {0:d}'.format(df_ref['Step'].iat[argmax_diff]))
+            elif args.log_file_type[0] == 'pot':
+                for term in df_ref.columns.values.tolist()[1:]:
+                    abs_diff = np.absolute(df_ref[term].values - df[term].values)
+                    max_diff = abs_diff.max()
+                    argmax_diff = abs_diff.argmax()
+                    print('{0}:'.format(term))
+                    print('    Max. Diff.: {0:E}'.format(max_diff))
+                    print('          Step: {0:d}'.format(df_ref['Step'].iat[argmax_diff]))
+            elif args.log_file_type[0] == 'log':
+                abs_diff = np.absolute(df_ref['T_Total'].values - df['T_Total'].values)
+                max_diff = abs_diff.max()
+                argmax_diff = abs_diff.argmax()
+                print('Max. Diff.: {0:E}'.format(max_diff))
+                print('      Step: {0:d}'.format(df_ref['Step'].iat[argmax_diff]))
+
 
     parser = setup_parser()
     args = parser.parse_args()
