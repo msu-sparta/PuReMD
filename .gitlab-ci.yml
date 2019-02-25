@@ -5,6 +5,7 @@ variables:
 
 before_script:
   - echo "[INFO] Starting..."
+  - apt-get update -qq && apt-get install -y -qq autoconf automake libtool gcc
 
 stages:
   - build
@@ -17,7 +18,7 @@ compile:
     untrack: true
     expire_in: 1 week
   script:
-    - ./configure && make
+    - autoreconf -ivf && ./configure && make
 
 run:
   stage: test
@@ -26,6 +27,7 @@ run:
   script:
     - echo "[INFO] Testing..."
     - sPuReMD/bin/spuremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
+    - head -n 2 water_6540_nve_qeq.out && tail -n 2 water_6540_nve_qeq.out
     - echo "[INFO] Done testing"
 
 after_script:
