@@ -41,7 +41,7 @@ static void Count_Geo_Atoms( FILE *geo, reax_system *system )
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
-        Fit_to_Periodic_Box( &system->box, &x );
+        Fit_to_Periodic_Box( &system->box, x );
     }
 
     fseek( geo, 0, SEEK_SET );
@@ -144,7 +144,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
-        Fit_to_Periodic_Box( &system->box, &x );
+        Fit_to_Periodic_Box( &system->box, x );
 
 #if defined(DEBUG)
         fprintf( stderr, "atom%d: %s %s %f %f %f\n",
@@ -195,7 +195,7 @@ static void Count_PDB_Atoms( FILE *geo, reax_system *system )
             Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
                     strtod( s_z, &endptr ), &x );
 
-            Fit_to_Periodic_Box( &(system->box), &x );
+            Fit_to_Periodic_Box( &(system->box), x );
         }
     }
 
@@ -323,7 +323,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
                     strtod( s_z, &endptr ), &x );
 
-            Fit_to_Periodic_Box( &system->box, &x );
+            Fit_to_Periodic_Box( &system->box, x );
 
             if ( is_Inside_Box( &system->box, x ) )
             {
@@ -446,7 +446,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         Trim_Spaces( name, 8 );
 
         memcpy( x, p_atom->x, 3 * sizeof(real) );
-        Fit_to_Periodic_Box( &system->box, &x );
+        Fit_to_Periodic_Box( &system->box, x );
 
         snprintf( buffer, PDB_ATOM_FORMAT_O_LENGTH, PDB_ATOM_FORMAT_O,
                 "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',

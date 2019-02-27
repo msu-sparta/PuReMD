@@ -72,26 +72,26 @@ void Transform_to_UnitBox( rvec x1, simulation_box *box, char flag, rvec x2 )
 
 
 /* determine whether point p is inside the box */
-void Fit_to_Periodic_Box( simulation_box *box, rvec *p )
+void Fit_to_Periodic_Box( simulation_box *box, rvec p )
 {
     int i;
 
     for ( i = 0; i < 3; ++i )
     {
-        if ( (*p)[i] < box->min[i] )
+        if ( p[i] < box->min[i] )
         {
             /* handle lower coords */
-            while ( (*p)[i] < box->min[i] )
+            while ( p[i] < box->min[i] )
             {
-                (*p)[i] += box->box_norms[i];
+                p[i] += box->box_norms[i];
             }
         }
-        else if ( (*p)[i] >= box->max[i] )
+        else if ( p[i] >= box->max[i] )
         {
             /* handle higher coords */
-            while ( (*p)[i] >= box->max[i] )
+            while ( p[i] >= box->max[i] )
             {
-                (*p)[i] -= box->box_norms[i];
+                p[i] -= box->box_norms[i];
             }
         }
     }

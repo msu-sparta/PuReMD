@@ -1080,8 +1080,8 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                     }
                 }
             }
-            else if ((nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &system->box,
-                            nbr_pj->dvec)) <= SQR(control->nonb_cut))
+            else if ( (nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &system->box,
+                            nbr_pj->dvec)) <= SQR(control->nonb_cut) )
             {
                 nbr_pj->d = Sq_Distance_on_T3( atom_i->x, atom_j->x,
                         &system->box, nbr_pj->dvec );

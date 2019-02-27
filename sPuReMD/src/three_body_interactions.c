@@ -26,6 +26,8 @@
 #include "lookup.h"
 #include "vector.h"
 
+#include "tool_box.h"
+
 
 /* calculates the theta angle between i-j-k */
 static void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
@@ -155,6 +157,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
         for ( j = 0; j < system->N; ++j )
         {
             // fprintf( out_control->eval, "j: %d\n", j );
+
             type_j = system->atoms[j].type;
             start_j = Start_Index(j, bonds);
             end_j = End_Index(j, bonds);
@@ -167,7 +170,11 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
             p_val3 = system->reaxprm.sbp[ type_j ].p_val3;
             p_val5 = system->reaxprm.sbp[ type_j ].p_val5;
 
+            /* sum of pi and pi-pi BO terms for all neighbors of atom j,
+             * used in determining the equilibrium angle between i-j-k */
             SBOp = 0.0;
+            /* product of e^{-BO_j^8} terms for all neighbors of atom j,
+             * used in determining the equilibrium angle between i-j-k */
             prod_SBO = 1.0;
 
             for ( t = start_j; t < end_j; ++t )
@@ -189,7 +196,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
             else
             {
                 vlpadj = workspace->nlp[j];
-                dSBO2 = (prod_SBO - 1.0) * (1.0 - p_val8 * workspace->dDelta_lp[j]);
+                dSBO2 = (prod_SBO - 1.0) * (1.0 + p_val8 * workspace->dDelta_lp[j]);
             }
 
             SBO = SBOp + (1.0 - prod_SBO) * (-workspace->Delta_boc[j] - p_val8 * vlpadj);
@@ -228,7 +235,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                 bo_ij = &pbond_ij->bo_data;
                 BOA_ij = bo_ij->BO - control->thb_cut;
 
-                if ( BOA_ij > 0.0 )
+                if ( BOA_ij >= 0.0 )
                 {
                     i = pbond_ij->nbr;
                     type_i = system->atoms[i].type;
@@ -239,14 +246,15 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 //#endif
 
                     /* first copy 3-body intrs from previously computed ones where i>k.
-                       IMPORTANT: if it is less costly to compute theta and its
-                       derivative, we should definitely re-compute them,
-                       instead of copying!
-                       in the second for-loop below, we compute only new 3-body intrs
-                       where i < k */
+                     * IMPORTANT: if it is less costly to compute theta and its
+                     * derivative, we should definitely re-compute them,
+                     * instead of copying!
+                     * in the second for-loop below, we compute only new 3-body intrs
+                     * where i < k */
                     for ( pk = start_j; pk < pi; ++pk )
                     {
                         // fprintf( out_control->eval, "pk: %d\n", pk );
+
                         start_pk = Start_Index( pk, thb_intrs );
                         end_pk = End_Index( pk, thb_intrs );
 
@@ -254,11 +262,11 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                         {
                             if ( thb_list[t].thb == i )
                             {
-                                p_ijk = &(thb_list[num_thb_intrs]);
-                                p_kji = &(thb_list[t]);
+                                p_ijk = &thb_list[num_thb_intrs];
+                                p_kji = &thb_list[t];
 
                                 p_ijk->thb = bond_list[pk].nbr;
-                                p_ijk->pthb  = pk;
+                                p_ijk->pthb = pk;
                                 p_ijk->theta = p_kji->theta;
                                 rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
                                 rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
@@ -269,7 +277,6 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                             }
                         }
                     }
-
 
                     /* and this is the second for loop mentioned above */
                     for ( pk = pi + 1; pk < end_j; ++pk )
@@ -287,7 +294,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 //#endif
 
                         //CHANGE ORIGINAL
-                        if ( BOA_jk <= 0 )
+                        if ( BOA_jk < 0.0 )
                         {
                             continue;
                         }
@@ -299,8 +306,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                         Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d,
                                 pbond_jk->dvec, pbond_jk->d,
-                                &(p_ijk->dcos_di), &(p_ijk->dcos_dj),
-                                &(p_ijk->dcos_dk) );
+                                &p_ijk->dcos_di, &p_ijk->dcos_dj,
+                                &p_ijk->dcos_dk );
 
                         p_ijk->thb = k;
                         p_ijk->pthb = pk;
@@ -314,18 +321,21 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                         ++num_thb_intrs;
 
-                        if ( BOA_jk > 0.0 && (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut) )
+                        /* Fortran ReaxFF code hard-codes the constant below
+                         * as of 2019-02-27, so use that for now */
+//                        if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut) )
+                        if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) >= 0.00001 )
                         {
                             thbh = &system->reaxprm.thbp[type_i][type_j][type_k];
 
-                            /* if( workspace->orig_id[i] < workspace->orig_id[k] )
-                               fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-                               workspace->orig_id[i], workspace->orig_id[j],
-                               workspace->orig_id[k], bo_ij->BO, bo_jk->BO, p_ijk->theta );
-                               else
-                               fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-                               workspace->orig_id[k], workspace->orig_id[j],
-                               workspace->orig_id[i], bo_jk->BO, bo_ij->BO, p_ijk->theta ); */
+//                            if( workspace->orig_id[i] < workspace->orig_id[k] )
+//                                fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
+//                                        workspace->orig_id[i], workspace->orig_id[j],
+//                                        workspace->orig_id[k], bo_ij->BO, bo_jk->BO, p_ijk->theta );
+//                            else
+//                                fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
+//                                        workspace->orig_id[k], workspace->orig_id[j],
+//                                        workspace->orig_id[i], bo_jk->BO, bo_ij->BO, p_ijk->theta );
 
                             for ( cnt = 0; cnt < thbh->cnt; ++cnt )
                             {
@@ -333,7 +343,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                 {
                                     thbp = &thbh->prm[cnt];
 
-                                    /* ANGLE ENERGY */
+                                    /* calculate valence angle energy */
                                     p_val1 = thbp->p_val1;
                                     p_val2 = thbp->p_val2;
                                     p_val4 = thbp->p_val4;
@@ -352,15 +362,15 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                                     expval7 = EXP( -p_val7 * workspace->Delta_boc[j] );
                                     trm8 = 1.0 + expval6 + expval7;
-                                    f8_Dj = p_val5 - ( (p_val5 - 1.0) * (2.0 + expval6) / trm8 );
-                                    Cf8j = ( (1.0 - p_val5) / SQR(trm8) ) *
-                                        (p_val6 * expval6 * trm8 -
-                                         (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ));
+                                    f8_Dj = p_val5 - (p_val5 - 1.0) * (2.0 + expval6) / trm8;
+                                    Cf8j = ( (1.0 - p_val5) / SQR(trm8) )
+                                        * (p_val6 * expval6 * trm8
+                                        - (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ));
 
                                     theta_0 = 180.0 - theta_00 * (1.0 - EXP(-p_val10 * (2.0 - SBO2)));
                                     theta_0 = DEG2RAD( theta_0 );
 
-                                    expval2theta  = EXP(-p_val2 * SQR(theta_0 - theta));
+                                    expval2theta = EXP(-p_val2 * SQR(theta_0 - theta));
                                     if ( p_val1 >= 0 )
                                     {
                                         expval12theta = p_val1 * (1.0 - expval2theta);
@@ -387,9 +397,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                                     e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
                                     e_ang_total += e_ang;
-                                    /* END ANGLE ENERGY*/
 
-                                    /* PENALTY ENERGY */
+                                    /* calculate penalty for double bonds in valency angles */
                                     p_pen1 = thbp->p_pen1;
 
                                     exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
@@ -398,9 +407,9 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     exp_pen4 = EXP(  p_pen4 * workspace->Delta[j] );
                                     trm_pen34 = 1.0 + exp_pen3 + exp_pen4;
                                     f9_Dj = ( 2.0 + exp_pen3 ) / trm_pen34;
-                                    Cf9j = (-p_pen3 * exp_pen3 * trm_pen34 -
-                                            (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3 +
-                                                p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
+                                    Cf9j = (-p_pen3 * exp_pen3 * trm_pen34
+                                            - (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3
+                                                + p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
 
                                     e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                                     e_pen_total += e_pen;
@@ -409,27 +418,26 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     temp = -2.0 * p_pen2 * e_pen;
                                     CEpen2 = temp * (BOA_ij - 2.0);
                                     CEpen3 = temp * (BOA_jk - 2.0);
-                                    /* END PENALTY ENERGY */
 
-                                    /* COALITION ENERGY */
+                                    /* calculate valency angle conjugation energy */
                                     p_coa1 = thbp->p_coa1;
 
                                     exp_coa2 = EXP( p_coa2 * workspace->Delta_boc[j] );
-                                    e_coa = p_coa1 / (1. + exp_coa2) *
-                                        EXP( -p_coa3 * SQR(total_bo[i] - BOA_ij) ) *
-                                        EXP( -p_coa3 * SQR(total_bo[k] - BOA_jk) ) *
-                                        EXP( -p_coa4 * SQR(BOA_ij - 1.5) ) *
-                                        EXP( -p_coa4 * SQR(BOA_jk - 1.5) );
+                                    e_coa = p_coa1
+                                        * EXP( -p_coa4 * SQR(BOA_ij - 1.5) )
+                                        * EXP( -p_coa4 * SQR(BOA_jk - 1.5) )
+                                        * EXP( -p_coa3 * SQR(total_bo[i] - BOA_ij) )
+                                        * EXP( -p_coa3 * SQR(total_bo[k] - BOA_jk) )
+                                        / (1.0 + exp_coa2);
                                     e_coa_total += e_coa;
 
-                                    CEcoa1 = -2 * p_coa4 * (BOA_ij - 1.5) * e_coa;
-                                    CEcoa2 = -2 * p_coa4 * (BOA_jk - 1.5) * e_coa;
+                                    CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
+                                    CEcoa2 = -2.0 * p_coa4 * (BOA_jk - 1.5) * e_coa;
                                     CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1 + exp_coa2);
-                                    CEcoa4 = -2 * p_coa3 * (total_bo[i] - BOA_ij) * e_coa;
-                                    CEcoa5 = -2 * p_coa3 * (total_bo[k] - BOA_jk) * e_coa;
-                                    /* END COALITION ENERGY */
+                                    CEcoa4 = -2.0 * p_coa3 * (total_bo[i] - BOA_ij) * e_coa;
+                                    CEcoa5 = -2.0 * p_coa3 * (total_bo[k] - BOA_jk) * e_coa;
 
-                                    /* FORCES */
+                                    /* calculate force contributions */
 #ifdef _OPENMP
 //                                    #pragma omp atomic
 #endif
@@ -488,8 +496,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     else
                                     {
                                         /* terms not related to bond order derivatives
-                                           are added directly into
-                                           forces and pressure vector/tensor */
+                                         * are added directly into
+                                         * forces and pressure vector/tensor */
                                         rvec_Scale( force, CEval8, p_ijk->dcos_di );
                                         rvec_Add( *f_i, force );
                                         rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
