@@ -597,8 +597,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     /* angle forces */
                                     Add_dBO( system, lists, j, pi, CEval1, workspace->f_ang );
                                     Add_dBO( system, lists, j, pk, CEval2, workspace->f_ang );
-                                    Add_dDelta( system, lists,
-                                                j, CEval3 + CEval7, workspace->f_ang );
+                                    Add_dDelta( system, lists, j, CEval3 + CEval7, workspace->f_ang );
 
                                     for ( t = start_j; t < end_j; ++t )
                                     {
@@ -610,9 +609,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                                         Add_dBO( system, lists, j, t, pBOjt7 * CEval6,
                                                  workspace->f_ang );
-                                        Add_dBOpinpi2( system, lists, j, t,
-                                                       CEval5, CEval5,
-                                                       workspace->f_ang, workspace->f_ang );
+                                        Add_dBOpinpi2( system, lists, j, t, CEval5, CEval5,
+                                                workspace->f_ang, workspace->f_ang );
                                     }
 
                                     rvec_ScaledAdd( workspace->f_ang[i], CEval8, p_ijk->dcos_di );
@@ -627,10 +625,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     /* end penalty forces */
 
                                     /* coalition forces */
-                                    Add_dBO( system, lists,
-                                             j, pi, CEcoa1 - CEcoa4, workspace->f_coa );
-                                    Add_dBO( system, lists,
-                                             j, pk, CEcoa2 - CEcoa5, workspace->f_coa );
+                                    Add_dBO( system, lists, j, pi, CEcoa1 - CEcoa4, workspace->f_coa );
+                                    Add_dBO( system, lists, j, pk, CEcoa2 - CEcoa5, workspace->f_coa );
                                     Add_dDelta( system, lists, j, CEcoa3, workspace->f_coa );
                                     Add_dDelta( system, lists, i, CEcoa4, workspace->f_coa );
                                     Add_dDelta( system, lists, k, CEcoa5, workspace->f_coa );
@@ -680,9 +676,15 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
+#ifdef TEST_FORCES
+    int num_hb_intrs;
+#endif
     real e_hb_total;
 
     e_hb_total = 0.0;
+#ifdef TEST_FORCES
+    num_hb_intrs = 0;
+#endif
 
 #ifdef _OPENMP
     #pragma omp parallel default(shared) reduction(+: e_hb_total)
@@ -692,9 +694,6 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         int type_i, type_j, type_k;
         int start_j, end_j, hb_start_j, hb_end_j;
         int hblist[MAX_BONDS];
-#ifdef TEST_FORCES
-        int num_hb_intrs;
-#endif
         real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
         real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
         rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
@@ -713,9 +712,6 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         int tid = omp_get_thread_num( );
 #endif
 
-#ifdef TEST_FORCES
-        num_hb_intrs = 0;
-#endif
         bonds = lists[BONDS];
         bond_list = bonds->bond_list;
         hbonds = lists[HBONDS];
@@ -794,6 +790,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #endif
 
 #ifdef TEST_FORCES
+#ifdef _OPENMP
+                            #pragma omp atomic
+#endif
                             ++num_hb_intrs;
 #endif
 

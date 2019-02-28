@@ -321,7 +321,7 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
         }
     }
 
-    fprintf( stderr, "Unknown atom type %s. Terminating...\n", s );
+    fprintf( stderr, "[ERROR] Unknown atom type: %s. Terminating...\n", s );
     exit( UNKNOWN_ATOM_TYPE );
 
     return FAILURE;
@@ -378,7 +378,7 @@ int Tokenize( char* s, char*** tok )
     char *word, *saveptr;
     int count = 0;
 
-    strncpy( test, s, MAX_LINE );
+    strncpy( test, s, MAX_LINE - 1 );
 
     for ( word = strtok_r(test, sep, &saveptr); word != NULL;
             word = strtok_r(NULL, sep, &saveptr) )

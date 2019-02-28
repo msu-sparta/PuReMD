@@ -66,6 +66,7 @@ void Reset_Simulation_Data( simulation_data* data )
 #ifdef TEST_FORCES
 void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 {
+    memset( workspace->dDelta, 0, sizeof(rvec) * system->N );
     memset( workspace->f_ele, 0, system->N * sizeof(rvec) );
     memset( workspace->f_vdw, 0, system->N * sizeof(rvec) );
     memset( workspace->f_bo, 0, system->N * sizeof(rvec) );
@@ -108,7 +109,6 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
 #endif
 
 #ifdef TEST_FORCES
-    memset( workspace->dDelta, 0, sizeof(rvec) * system->N );
     Reset_Test_Forces( system, workspace );
 #endif
 }
@@ -118,13 +118,19 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
     int i, tmp;
-    reax_list *bonds;
-    reax_list *hbonds;
+    reax_list *bonds, *hbonds;
+#if defined(TEST_FORCES)
+    reax_list *dDeltas, *dBOs;
+#endif
 
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
+#if defined(TEST_FORCES)
+    dDeltas = lists[DDELTA];
+    dBOs = lists[DBO];
+#endif
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < bonds->n; ++i )
     {
         tmp = Start_Index( i, bonds );
         Set_End_Index( i, tmp, bonds );
@@ -132,7 +138,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
 
     if ( control->hbond_cut > 0 )
     {
-        for ( i = 0; i < system->N; ++i )
+        for ( i = 0; i < hbonds->n; ++i )
         {
             if ( system->reaxprm.sbp[system->atoms[i].type].p_hbond == 1)
             {
@@ -145,6 +151,20 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
             }
         }
     }
+
+#if defined(TEST_FORCES)
+    for ( i = 0; i < dDeltas->n; ++i )
+    {
+        tmp = Start_Index( i, dDeltas );
+        Set_End_Index( i, tmp, dDeltas );
+    }
+
+    for ( i = 0; i < dBOs->n; ++i )
+    {
+        tmp = Start_Index( i, dBOs );
+        Set_End_Index( i, tmp, dBOs );
+    }
+#endif
 }
 
 

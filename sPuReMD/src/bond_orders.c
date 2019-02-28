@@ -35,62 +35,17 @@ static inline real Cf45( real p1, real p2 )
 
 
 #ifdef TEST_FORCES
-void Get_dBO( reax_system *system, reax_list **lists,
-        int i, int pj, real C, rvec *v )
-{
-    reax_list *bonds;
-    reax_list *dBOs;
-    int start_pj, end_pj, k;
-
-    bonds = lists[BONDS];
-    dBOs = lists[DBO];
-    pj = bonds->bond_list[pj].dbond_index;
-    start_pj = Start_Index(pj, dBOs);
-    end_pj = End_Index(pj, dBOs);
-
-    for ( k = start_pj; k < end_pj; ++k )
-    {
-        rvec_Scale( v[dBOs->dbo_list[k].wrt],
-                C, dBOs->dbo_list[k].dBO );
-    }
-}
-
-
-void Get_dBOpinpi2( reax_system *system, reax_list **lists,
-        int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
-{
-    reax_list *bonds;
-    reax_list *dBOs;
-    dbond_data *dbo_k;
-    int start_pj, end_pj, k;
-
-    bonds = lists[BONDS];
-    dBOs = lists[DBO];
-    pj = bonds->bond_list[pj].dbond_index;
-    start_pj = Start_Index(pj, dBOs);
-    end_pj = End_Index(pj, dBOs);
-
-    for ( k = start_pj; k < end_pj; ++k )
-    {
-        dbo_k = &dBOs->dbo_list[k];
-        rvec_Scale( vpi[dbo_k->wrt], Cpi, dbo_k->dBOpi );
-        rvec_Scale( vpi2[dbo_k->wrt], Cpi2, dbo_k->dBOpi2 );
-    }
-}
-
-
 void Add_dBO( reax_system *system, reax_list **lists,
         int i, int pj, real C, rvec *v )
 {
-    reax_list *bonds;
-    reax_list *dBOs;
     int start_pj, end_pj, k;
+    reax_list *bonds, *dBOs;
 
     bonds = lists[BONDS];
     dBOs = lists[DBO];
     pj = bonds->bond_list[pj].dbond_index;
-    start_pj = Start_Index(pj, dBOs);
-    end_pj = End_Index(pj, dBOs);
+    start_pj = Start_Index( pj, dBOs );
+    end_pj = End_Index( pj, dBOs );
 
     //fprintf( stderr, "i=%d j=%d start=%d end=%d\n", i, pj, start_pj, end_pj );
 
@@ -105,10 +60,9 @@ void Add_dBO( reax_system *system, reax_list **lists,
 void Add_dBOpinpi2( reax_system *system, reax_list **lists,
         int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
-    reax_list *bonds;
-    reax_list *dBOs;
-    dbond_data *dbo_k;
     int start_pj, end_pj, k;
+    reax_list *bonds, *dBOs;
+    dbond_data *dbo_k;
 
     bonds = lists[BONDS];
     dBOs = lists[DBO];
@@ -171,8 +125,8 @@ void Add_dBOpinpi2_to_Forces( reax_system *system, reax_list **lists,
 
 void Add_dDelta( reax_system *system, reax_list **lists, int i, real C, rvec *v )
 {
-    reax_list *dDeltas;
     int start, end, k;
+    reax_list *dDeltas;
 
     dDeltas = lists[DDELTA];
     start = Start_Index( i, dDeltas );
@@ -235,28 +189,27 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
             top_dbo->wrt = nbr_l->nbr;
             rvec_Copy( dBOp, nbr_l->bo_data.dBOp );
 
-            rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, dBOp );  // dBO, 3rd
-            rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );  // dBOpi, 4th
-            rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );// dBOpipi, 4th
+            rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, dBOp );
+            rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );
+            rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );
 
             if ( nbr_l->nbr == i )
             {
                 rvec_Copy( dDeltap_self, workspace->dDeltap_self[i] );
 
                 /* dBO */
-                rvec_ScaledAdd( top_dbo->dBO, bo_ij->C1dbo, bo_ij->dBOp ); //1st
-                rvec_ScaledAdd( top_dbo->dBO, bo_ij->C2dbo, dDeltap_self ); //2nd
+                rvec_ScaledAdd( top_dbo->dBO, bo_ij->C1dbo, bo_ij->dBOp );
+                rvec_ScaledAdd( top_dbo->dBO, bo_ij->C2dbo, dDeltap_self );
 
                 /* dBOpi */
-                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C1dbopi, bo_ij->dln_BOp_pi ); //1
-                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C2dbopi, bo_ij->dBOp ); //2nd
-                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C3dbopi, dDeltap_self ); //3rd
+                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C1dbopi, bo_ij->dln_BOp_pi );
+                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C2dbopi, bo_ij->dBOp );
+                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C3dbopi, dDeltap_self );
 
-                /* dBOpp, 1st */
+                /* dBOpp */
                 rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2 );
-                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C2dbopi2, bo_ij->dBOp ); //2nd
-                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, dDeltap_self ); //3rd
-
+                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C2dbopi2, bo_ij->dBOp );
+                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, dDeltap_self );
             }
 
             ++(*top);
@@ -847,8 +800,8 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
 
                             f2 = exp_p1i + exp_p1j;
                             f3 = -1.0 / p_boc2 * log( 0.5 * ( exp_p2i  + exp_p2j ) );
-                            f1 = 0.5 * ( ( val_i + f2 ) / ( val_i + f2 + f3 ) +
-                                    ( val_j + f2 ) / ( val_j + f2 + f3 ) );
+                            f1 = 0.5 * ( ( val_i + f2 ) / ( val_i + f2 + f3 )
+                                    + ( val_j + f2 ) / ( val_j + f2 + f3 ) );
 
                             /* Now come the derivates */
                             /* Bond Order pages 5-7, derivative of f1 */
@@ -856,8 +809,8 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                             u1_ij = val_i + temp;
                             u1_ji = val_j + temp;
                             Cf1A_ij = 0.5 * f3 * (1.0 / SQR( u1_ij ) + 1.0 / SQR( u1_ji ));
-                            Cf1B_ij = -0.5 * (( u1_ij - f3 ) / SQR( u1_ij ) +
-                                    ( u1_ji - f3 ) / SQR( u1_ji ));
+                            Cf1B_ij = -0.5 * (( u1_ij - f3 ) / SQR( u1_ij )
+                                    + ( u1_ji - f3 ) / SQR( u1_ji ));
 
                             //Cf1_ij = -Cf1A_ij * p_boc1 * exp_p1i +
                             //          Cf1B_ij * exp_p2i / ( exp_p2i + exp_p2j );
@@ -867,8 +820,8 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                                     ((val_j + f2) / SQR(u1_ji)) * ( -p_boc1 * exp_p1i +
                                     exp_p2i / ( exp_p2i + exp_p2j ) ));
 
-                            Cf1_ji = -Cf1A_ij * p_boc1 * exp_p1j +
-                                Cf1B_ij * exp_p2j / ( exp_p2i + exp_p2j );
+                            Cf1_ji = -Cf1A_ij * p_boc1 * exp_p1j
+                                + Cf1B_ij * exp_p2j / ( exp_p2i + exp_p2j );
                         }
                         else
                         {
@@ -881,13 +834,13 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                         if ( twbp->v13cor >= 0.001 )
                         {
                             /* Correction for 1-3 bond orders */
-                            exp_f4 = EXP(-(twbp->p_boc4 * SQR( bo_ij->BO ) -
-                                           Deltap_boc_i) * twbp->p_boc3 + twbp->p_boc5);
-                            exp_f5 = EXP(-(twbp->p_boc4 * SQR( bo_ij->BO ) -
-                                           Deltap_boc_j) * twbp->p_boc3 + twbp->p_boc5);
+                            exp_f4 = EXP( -(twbp->p_boc4 * SQR( bo_ij->BO )
+                                        - Deltap_boc_i) * twbp->p_boc3 + twbp->p_boc5 );
+                            exp_f5 = EXP( -(twbp->p_boc4 * SQR( bo_ij->BO )
+                                        - Deltap_boc_j) * twbp->p_boc3 + twbp->p_boc5 );
 
-                            f4 = 1. / (1. + exp_f4);
-                            f5 = 1. / (1. + exp_f5);
+                            f4 = 1.0 / (1.0 + exp_f4);
+                            f5 = 1.0 / (1.0 + exp_f5);
                             f4f5 = f4 * f5;
 
                             /* Bond Order pages 8-9, derivative of f4 and f5 */
@@ -902,14 +855,17 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                         }
                         else
                         {
-                            f4 = f5 = f4f5 = 1.0;
-                            Cf45_ij = Cf45_ji = 0.0;
+                            f4 = 1.0;
+                            f5 = 1.0;
+                            f4f5 = 1.0;
+                            Cf45_ij = 0.0;
+                            Cf45_ji = 0.0;
                         }
 
                         /* Bond Order page 10, derivative of total bond order */
                         A0_ij = f1 * f4f5;
-                        A1_ij = -2 * twbp->p_boc3 * twbp->p_boc4 * bo_ij->BO *
-                            (Cf45_ij + Cf45_ji);
+                        A1_ij = -2.0 * twbp->p_boc3 * twbp->p_boc4 * bo_ij->BO
+                            * (Cf45_ij + Cf45_ji);
                         A2_ij = Cf1_ij / f1 + twbp->p_boc3 * Cf45_ij;
                         A2_ji = Cf1_ji / f1 + twbp->p_boc3 * Cf45_ji;
                         A3_ij = A2_ij + Cf1_ij / f1;
@@ -1100,20 +1056,20 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
 
             workspace->Delta[j] = workspace->total_bond_order[j] - sbp_j->valency;
             workspace->Delta_e[j] = workspace->total_bond_order[j] - sbp_j->valency_e;
-            workspace->Delta_boc[j] = workspace->total_bond_order[j] -
-                sbp_j->valency_boc;
+            workspace->Delta_boc[j] = workspace->total_bond_order[j]
+                - sbp_j->valency_boc;
 
-            workspace->vlpex[j] = workspace->Delta_e[j] -
-                2.0 * (int)(workspace->Delta_e[j] / 2.0);
+            workspace->vlpex[j] = workspace->Delta_e[j]
+                - 2.0 * (int)(workspace->Delta_e[j] / 2.0);
             explp1 = EXP(-p_lp1 * SQR(2.0 + workspace->vlpex[j]));
             workspace->nlp[j] = explp1 - (int)(workspace->Delta_e[j] / 2.0);
             workspace->Delta_lp[j] = sbp_j->nlp_opt - workspace->nlp[j];
             workspace->Clp[j] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[j]);
             /* Adri uses different dDelta_lp values than the ones in notes... */
             workspace->dDelta_lp[j] = workspace->Clp[j];
-            //workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5-workspace->Clp[j]) *
-            //((FABS(workspace->Delta_e[j]/2.0 -
-            //       (int)(workspace->Delta_e[j]/2.0)) < 0.1) ? 1 : 0 );
+//            workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5 - workspace->Clp[j])
+//                * ((FABS(workspace->Delta_e[j] / 2.0
+//                                - (int)(workspace->Delta_e[j] / 2.0)) < 0.1) ? 1 : 0 );
 
             if ( sbp_j->mass > 21.0 )
             {

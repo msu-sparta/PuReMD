@@ -29,6 +29,9 @@
 #include "neighbors.h"
 #include "list.h"
 #include "lookup.h"
+#ifdef TEST_FORCES
+  #include "print_utils.h"
+#endif
 #include "reset_utils.h"
 #include "system_props.h"
 #include "tool_box.h"
@@ -837,8 +840,8 @@ static void Init_Lists( reax_system *system, control_params *control,
 #endif
 
 #ifdef TEST_FORCES
-    Make_List( system->N, num_bonds * 8, TYP_DDELTA, lists[DDELTA] );
-
+    //TODO: increased num. of DDELTA list elements, find a better count later
+    Make_List( system->N, num_bonds * 20, TYP_DDELTA, lists[DDELTA] );
     Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, lists[DBO] );
 #endif
 

@@ -105,8 +105,8 @@ void Bond_Energy( reax_system *system, control_params *control,
 #ifdef TEST_FORCES
                     Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
                     Add_dBOpinpi2( system, lists, i, pj,
-                                   -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
-                                   workspace->f_be, workspace->f_be );
+                            -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
+                            workspace->f_be, workspace->f_be );
 #endif
 
                     /* Stabilisation terminal triple bond */

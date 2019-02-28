@@ -26,6 +26,9 @@
 #include "charges.h"
 #include "four_body_interactions.h"
 #include "list.h"
+#ifdef TEST_FORCES
+  #include "print_utils.h"
+#endif
 #include "system_props.h"
 #include "single_body_interactions.h"
 #include "three_body_interactions.h"
@@ -51,14 +54,13 @@ static void Dummy_Interaction( reax_system *system, control_params *control,
 void Init_Bonded_Force_Functions( control_params *control )
 {
     control->intr_funcs[0] = &Calculate_Bond_Orders;
-    control->intr_funcs[1] = &Bond_Energy;  //*/Dummy_Interaction;
+    control->intr_funcs[1] = &Bond_Energy;
     control->intr_funcs[2] = &LonePair_OverUnder_Coordination_Energy;
-    //*/Dummy_Interaction;
-    control->intr_funcs[3] = &Three_Body_Interactions; //*/Dummy_Interaction;
-    control->intr_funcs[4] = &Four_Body_Interactions;  //*/Dummy_Interaction;
+    control->intr_funcs[3] = &Three_Body_Interactions;
+    control->intr_funcs[4] = &Four_Body_Interactions;
     if ( control->hbond_cut > 0.0 )
     {
-        control->intr_funcs[5] = &Hydrogen_Bonds; //*/Dummy_Interaction;
+        control->intr_funcs[5] = &Hydrogen_Bonds;
     }
     else
     {
@@ -114,8 +116,8 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
                 lists, out_control );
 
 #ifdef TEST_FORCES
-        (Print_Interactions[i])(system, control, data, workspace,
-                                lists, out_control);
+        (Print_Interactions[i])( system, control, data, workspace,
+                lists, out_control );
 #endif
     }
 }
