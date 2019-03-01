@@ -15,7 +15,6 @@ compile:
   stage: build
   artifacts:
     name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
-    untrack: true
     expire_in: 1 week
   script:
     - autoreconf -ivf && ./configure && make
