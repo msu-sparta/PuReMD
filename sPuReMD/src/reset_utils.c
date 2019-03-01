@@ -47,6 +47,9 @@ static void Reset_Pressures( simulation_data *data )
 
 void Reset_Simulation_Data( simulation_data* data )
 {
+    data->E_Tot = 0.0;
+    data->E_Kin = 0.0;
+    data->E_Pot = 0.0;
     data->E_BE = 0.0;
     data->E_Ov = 0.0;
     data->E_Un = 0.0;
@@ -59,7 +62,7 @@ void Reset_Simulation_Data( simulation_data* data )
     data->E_Con = 0.0;
     data->E_vdW = 0.0;
     data->E_Ele = 0.0;
-    data->E_Kin = 0.0;
+    data->E_Pol = 0.0;
 }
 
 

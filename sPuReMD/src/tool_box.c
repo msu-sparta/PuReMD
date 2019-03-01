@@ -379,11 +379,13 @@ int Tokenize( char* s, char*** tok )
     int count = 0;
 
     strncpy( test, s, MAX_LINE - 1 );
+    test[MAX_LINE - 1] = '\0';
 
     for ( word = strtok_r(test, sep, &saveptr); word != NULL;
             word = strtok_r(NULL, sep, &saveptr) )
     {
-        strncpy( (*tok)[count], word, MAX_LINE );
+        strncpy( (*tok)[count], word, MAX_LINE - 1 );
+        (*tok)[count][MAX_LINE - 1] = '\0';
         count++;
     }
 

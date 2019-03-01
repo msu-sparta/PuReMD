@@ -115,14 +115,14 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
     sparse_matrix_entry *temp;
 
 #ifdef _OPENMP
-    //    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
+//    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
 #endif
     {
-        temp = smalloc( A->n * sizeof(sparse_matrix_entry), "Sort_Matrix_Rows::temp" );
+        temp = smalloc( sizeof(sparse_matrix_entry) * (A->n + 1), "Sort_Matrix_Rows::temp" );
 
         /* sort each row of A using column indices */
 #ifdef _OPENMP
-        //        #pragma omp for schedule(guided)
+//        #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < A->n; ++i )
         {
@@ -131,8 +131,8 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
 
             for ( j = 0; j < (ei - si); ++j )
             {
-                (temp + j)->j = A->j[si + j];
-                (temp + j)->val = A->val[si + j];
+                temp[j].j = A->j[si + j];
+                temp[j].val = A->val[si + j];
             }
 
             /* polymorphic sort in standard C library using column indices */
@@ -140,8 +140,8 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
 
             for ( j = 0; j < (ei - si); ++j )
             {
-                A->j[si + j] = (temp + j)->j;
-                A->val[si + j] = (temp + j)->val;
+                A->j[si + j] = temp[j].j;
+                A->val[si + j] = temp[j].val;
             }
         }
 

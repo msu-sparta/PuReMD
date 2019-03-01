@@ -119,9 +119,9 @@ void Print_Bond_Forces( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
-        fprintf(out_control->fbond, "%6d %23.15e%23.15e%23.15e\n",
-                workspace->orig_id[i],
-                workspace->f_be[i][0], workspace->f_be[i][1], workspace->f_be[i][2]);
+        fprintf( out_control->fbond, "%6d %23.15e%23.15e%23.15e\n",
+                workspace->orig_id[i], workspace->f_be[i][0],
+                workspace->f_be[i][1], workspace->f_be[i][2]);
     }
 }
 
@@ -383,16 +383,16 @@ void Compare_Total_Forces( reax_system *system, control_params *control,
 
 void Init_Force_Test_Functions( )
 {
-    Print_Interactions[0] = Print_Bond_Orders;
-    Print_Interactions[1] = Print_Bond_Forces;
-    Print_Interactions[2] = Print_LonePair_Forces;
-    Print_Interactions[3] = Print_OverUnderCoor_Forces;
-    Print_Interactions[4] = Print_Three_Body_Forces;
-    Print_Interactions[5] = Print_Four_Body_Forces;
-    Print_Interactions[6] = Print_Hydrogen_Bond_Forces;
-    Print_Interactions[7] = Dummy_Printer;
-    Print_Interactions[8] = Dummy_Printer;
-    Print_Interactions[9] = Dummy_Printer;
+    Print_Interactions[0] = &Print_Bond_Orders;
+    Print_Interactions[1] = &Print_Bond_Forces;
+    Print_Interactions[2] = &Print_LonePair_Forces;
+    Print_Interactions[3] = &Print_OverUnderCoor_Forces;
+    Print_Interactions[4] = &Print_Three_Body_Forces;
+    Print_Interactions[5] = &Print_Four_Body_Forces;
+    Print_Interactions[6] = &Print_Hydrogen_Bond_Forces;
+    Print_Interactions[7] = &Dummy_Printer;
+    Print_Interactions[8] = &Dummy_Printer;
+    Print_Interactions[9] = &Dummy_Printer;
 }
 #endif
 
@@ -475,7 +475,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
     FILE *fout;
     reax_list *far_nbrs = lists[FAR_NBRS];
 
-    snprintf( fname, MAX_STR, "%.*s.%d.far_nbrs", MAX_STR - 10, control->sim_name, data->step );
+    snprintf( fname, MAX_STR, "%.*s.%10d.far_nbrs", MAX_STR - 21, control->sim_name, data->step );
     fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )

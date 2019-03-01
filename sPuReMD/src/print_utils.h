@@ -25,6 +25,14 @@
 #include "reax_types.h"
 
 
+#ifdef TEST_FORCES
+typedef void (*print_interaction)(reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+
+print_interaction Print_Interactions[NO_OF_INTERACTIONS];
+#endif
+
+
 char *Get_Element( reax_system*, int );
 
 char *Get_Atom_Name( reax_system*, int );

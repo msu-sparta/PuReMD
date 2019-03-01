@@ -330,16 +330,25 @@ typedef struct output_controls output_controls;
 typedef struct spuremd_handle spuremd_handle;
 
 
-/* function pointer definitions */
-/**/
+/* function pointer for calculating an interaction */
 typedef void (*interaction_function)( reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls* );
-/**/
+/* function pointer for evolving the atomic system (i.e., updating the positions)
+ * given the pre-computed forces from the prescribed interactions */
 typedef void (*evolve_function)( reax_system*, control_params*,
         simulation_data*, static_storage*,
         reax_list**, output_controls* );
-/**/
+/* function pointer for a callback function to be triggered after
+ * completion of a simulation step -- useful for, e.g., the Python wrapper */
 typedef void (*callback_function)( reax_atom*, simulation_data*, reax_list** );
+/* function pointer for writing trajectory file header */
+typedef int (*write_header_function)( reax_system*, control_params*,
+        static_storage*, output_controls* );
+/* function pointer for apending a frame to the trajectory file */
+typedef int (*append_traj_frame_function)( reax_system*, control_params*,
+        simulation_data*, static_storage*, reax_list **, output_controls* );
+/* function pointer for writing to the trajectory file */
+typedef int (*write_function)( FILE *, const char *, ... );
 
 
 /* struct definitions */
@@ -1226,6 +1235,8 @@ struct static_storage
     LR_lookup_table **LR;
 
 #ifdef TEST_FORCES
+    /* Calculated on the fly in bond_orders.c */
+    rvec *dDelta;
     rvec *f_ele;
     rvec *f_vdw;
     rvec *f_bo;
@@ -1239,8 +1250,6 @@ struct static_storage
     rvec *f_hb;
     rvec *f_tor;
     rvec *f_con;
-    /* Calculated on the fly in bond_orders.c */
-    rvec *dDelta;
 #endif
 };
 
@@ -1323,11 +1332,10 @@ struct output_controls
     int debug_level;
     int energy_update_freq;
 
-    /* trajectory output function pointer definitions */
-    int (* write_header)( reax_system*, control_params*, static_storage*, void* );
-    int (* append_traj_frame)( reax_system*, control_params*,
-            simulation_data*, static_storage*, reax_list **, void* );
-    int (* write)( FILE *, const char *, ... );
+    /* trajectory file pointer pointers */
+    write_header_function write_header;
+    append_traj_frame_function append_traj_frame;
+    write_function write;
 
 #ifdef TEST_ENERGY
     FILE *ebond;

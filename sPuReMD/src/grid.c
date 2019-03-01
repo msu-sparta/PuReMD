@@ -545,7 +545,8 @@ void Finalize_Grid( reax_system* system )
 static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 {
     dest->type = src->type;
-    strncpy( dest->name, src->name, 8 );
+    strncpy( dest->name, src->name, 7 );
+    dest->name[7] = '\0';
     rvec_Copy( dest->x, src->x );
     rvec_Copy( dest->v, src->v );
     rvec_Copy( dest->f, src->f );

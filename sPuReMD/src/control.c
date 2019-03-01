@@ -36,12 +36,14 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     real val;
 
     /* assign default values */
-    strncpy( control->sim_name, "default.sim", MAX_STR );
+    strncpy( control->sim_name, "default.sim", MAX_STR - 1 );
+    control->sim_name[MAX_STR - 1] = '\0';
 
     control->restart = 0;
     out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;
     strncpy( control->restart_from, "default.res", MAX_STR );
+    control->restart_from[MAX_STR - 1] = '\0';
     out_control->restart_freq = 0;
     control->random_vel = 0;
 
@@ -114,16 +116,13 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     out_control->write_steps = 0;
     out_control->traj_compress = 0;
-    out_control->write = fprintf;
+    out_control->write = &fprintf;
     out_control->traj_format = 0;
-    out_control->write_header =
-        (int (*)( reax_system*, control_params*,
-                  static_storage*, void* )) Write_Custom_Header;
-    out_control->append_traj_frame =
-        (int (*)( reax_system*, control_params*, simulation_data*,
-                  static_storage*, reax_list **, void* )) Append_Custom_Frame;
+    out_control->write_header = &Write_Custom_Header;
+    out_control->append_traj_frame = &Append_Custom_Frame;
 
     strncpy( out_control->traj_title, "default_title", 81 );
+    out_control->traj_title[80] = '\0';
     out_control->atom_format = 0;
     out_control->bond_info = 0;
     out_control->angle_info = 0;
@@ -158,7 +157,8 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             if ( strncmp(tmp[0], "simulation_name", MAX_LINE) == 0 )
             {
-                strncpy( control->sim_name, tmp[1], MAX_STR );
+                strncpy( control->sim_name, tmp[1], MAX_STR - 1 );
+                control->sim_name[MAX_STR - 1] = '\0';
             }
             //else if( strncmp(tmp[0], "restart", MAX_LINE) == 0 ) {
             //  ival = atoi(tmp[1]);
@@ -458,8 +458,13 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 out_control->traj_compress = ival;
 
                 if ( out_control->traj_compress )
-                    out_control->write = (int (*)(FILE *, const char *, ...)) gzprintf;
-                else out_control->write = fprintf;
+                {
+                    out_control->write = (int (*)(FILE *, const char *, ...)) &gzprintf;
+                }
+                else
+                {
+                    out_control->write = &fprintf;
+                }
             }
             else if ( strncmp(tmp[0], "traj_format", MAX_LINE) == 0 )
             {
@@ -468,26 +473,19 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
                 if ( out_control->traj_format == 0 )
                 {
-                    out_control->write_header =
-                        (int (*)( reax_system*, control_params*,
-                                  static_storage*, void* )) Write_Custom_Header;
-                    out_control->append_traj_frame =
-                        (int (*)(reax_system*, control_params*, simulation_data*,
-                                 static_storage*, reax_list **, void*)) Append_Custom_Frame;
+                    out_control->write_header = &Write_Custom_Header;
+                    out_control->append_traj_frame = &Append_Custom_Frame;
                 }
                 else if ( out_control->traj_format == 1 )
                 {
-                    out_control->write_header =
-                        (int (*)( reax_system*, control_params*,
-                                  static_storage*, void* )) Write_xyz_Header;
-                    out_control->append_traj_frame =
-                        (int (*)( reax_system*,  control_params*, simulation_data*,
-                                  static_storage*, reax_list **, void* )) Append_xyz_Frame;
+                    out_control->write_header = &Write_xyz_Header;
+                    out_control->append_traj_frame = &Append_xyz_Frame;
                 }
             }
             else if ( strncmp(tmp[0], "traj_title", MAX_LINE) == 0 )
             {
-                strncpy( out_control->traj_title, tmp[1], 81 );
+                strncpy( out_control->traj_title, tmp[1], 80 );
+                out_control->traj_title[80] = '\0';
             }
             else if ( strncmp(tmp[0], "atom_info", MAX_LINE) == 0 )
             {
