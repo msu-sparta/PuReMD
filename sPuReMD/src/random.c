@@ -21,8 +21,6 @@
 
 #include "random.h"
 
-#include <time.h>
-
 
 /* This function seeds the system pseudo random number generator with
  * current time. Use this function once in the begining to initialize

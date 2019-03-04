@@ -154,8 +154,8 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         atom = &system->atoms[top];
         workspace->orig_id[i] = serial;
         atom->type = Get_Atom_Type( &system->reaxprm, element );
-        strncpy( atom->name, name, 7 );
-        atom->name[7] = '\0';
+        strncpy( atom->name, name, 8 );
+        atom->name[8] = '\0';
         rvec_Copy( atom->x, x );
         rvec_MakeZero( atom->v );
         rvec_MakeZero( atom->f );
@@ -210,19 +210,21 @@ static void Count_PDB_Atoms( FILE *geo, reax_system *system )
 void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
+    int i, c, c1, pdb_serial, top;
     FILE *pdb;
     char **tmp;
     char *s, *s1;
-    char descriptor[9], serial[9];
-    char atom_name[9], res_name[9], res_seq[9];
+    char descriptor[7], serial[6];
+    char atom_name[9], res_name[4], res_seq[5];
     char s_x[9], s_y[9], s_z[9];
-    char occupancy[9], temp_factor[9];
-    char seg_id[9], element[9], charge[9];
+    char occupancy[7], temp_factor[7];
+    char seg_id[5], element[3], charge[3];
     char alt_loc, chain_id, icode;
-    char *endptr = NULL;
-    int i, c, c1, pdb_serial, top;
+    char *endptr;
     rvec x;
     reax_atom *atom;
+
+    endptr = NULL;
 
     /* open pdb file */
     pdb = sfopen( pdb_file, "r" );
@@ -336,8 +338,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 
                 Trim_Spaces( element, 9 );
                 atom->type = Get_Atom_Type( &system->reaxprm, element );
-                strncpy( atom->name, atom_name, 7 );
-                atom->name[7] = '\0';
+                strncpy( atom->name, atom_name, 8 );
+                atom->name[8] = '\0';
 
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );
@@ -409,7 +411,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, static_storage *workspace, output_controls *out_control )
 {
     int i; 
-    char name[8];
+    char name[3];
     real alpha, beta, gamma;
     rvec x;
     reax_atom *p_atom;
@@ -431,7 +433,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                 + system->box.box[2][2] * system->box.box[1][2])
             / (system->box.box_norms[2] * system->box.box_norms[1]) );
 
-    /* open pdb and write header */
+    /* write header */
     snprintf( fname, MAX_STR + 9, "%s-%d.pdb", control->sim_name, data->step );
     pdb = sfopen( fname, "w" );
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
@@ -445,9 +447,9 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     {
         p_atom = &system->atoms[i];
 
-        strncpy( name, p_atom->name, 7 );
-        name[7] = '\0';
-        Trim_Spaces( name, 8 );
+        strncpy( name, p_atom->name, 2 );
+        name[2] = '\0';
+        Trim_Spaces( name, 2 );
 
         memcpy( x, p_atom->x, 3 * sizeof(real) );
         Fit_to_Periodic_Box( &system->box, x );
@@ -477,11 +479,11 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     FILE *bgf;
     char **tokens;
     char *line, *backup;
-    char descriptor[10], serial[10];
-    char atom_name[10], res_name[10], res_seq[10];
-    char s_x[12], s_y[12], s_z[12];
-    char occupancy[10], temp_factor[10];
-    char element[10], charge[10];
+    char descriptor[7], serial[6];
+    char atom_name[9], res_name[4], res_seq[6];
+    char s_x[11], s_y[11], s_z[11];
+    char occupancy[4], temp_factor[3];
+    char element[6], charge[9];
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     char *endptr = NULL;
@@ -522,10 +524,6 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         fprintf( stderr, "[ERROR] Unable to read BGF file. Terminating...\n" );
         exit( INVALID_INPUT );
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "system->N: %d\n", system->N );
-#endif
 
     sfclose( bgf, "Read_BGF::bgf" );
 
@@ -628,7 +626,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
             /* add to mapping */
             bgf_serial = strtod( serial, &endptr );
-            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "Invalid bgf serial" );
+            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "[ERROR] Invalid bgf serial" );
             workspace->map_serials[ bgf_serial ] = atom_cnt;
             workspace->orig_id[ atom_cnt ] = bgf_serial;
             // fprintf( stderr, "map %d --> %d\n", bgf_serial, atom_cnt );
@@ -639,9 +637,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->atoms[atom_cnt].x[2] = strtod( s_z, &endptr );
 
             /* atom name and type */
-            strncpy( system->atoms[atom_cnt].name, atom_name, 7 );
-            system->atoms[atom_cnt].name[7] = '\0';
-            Trim_Spaces( element, 10 );
+            strncpy( system->atoms[atom_cnt].name, atom_name, 9 );
+            system->atoms[atom_cnt].name[8] = '\0';
+            Trim_Spaces( element, 6 );
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &system->reaxprm, element );
 

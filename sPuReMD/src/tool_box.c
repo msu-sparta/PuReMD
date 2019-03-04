@@ -373,10 +373,10 @@ void Deallocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 
 int Tokenize( char* s, char*** tok )
 {
+    int count = 0;
     char test[MAX_LINE];
     char *sep = "\t \n!=";
     char *word, *saveptr;
-    int count = 0;
 
     strncpy( test, s, MAX_LINE - 1 );
     test[MAX_LINE - 1] = '\0';

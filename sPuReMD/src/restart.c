@@ -36,7 +36,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     restart_header res_header;
     restart_atom res_data;
 
-    snprintf( fname, MAX_STR + 8, "%s.res%d", control->sim_name, data->step );
+    snprintf( fname, MAX_STR, "%s.res%d", control->sim_name, data->step );
     fres = sfopen( fname, "wb" );
 
     res_header.step = data->step;
@@ -47,15 +47,16 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     res_header.v_xi_old = data->therm.v_xi_old;
     res_header.G_xi = data->therm.G_xi;
     rtensor_Copy( res_header.box, system->box.box );
-    fwrite(&res_header, sizeof(restart_header), 1, fres);
+    fwrite( &res_header, sizeof(restart_header), 1, fres );
 
     for ( i = 0; i < system->N; ++i )
     {
-        p_atom = &( system->atoms[i] );
+        p_atom = &system->atoms[i];
+
         res_data.orig_id = workspace->orig_id[i];
         res_data.type = p_atom->type;
-        strncpy( res_data.name, p_atom->name, 7 );
-        res_data.name[7] = '\0';
+        strncpy( res_data.name, p_atom->name, 8 );
+        res_data.name[8] = '\0';
         rvec_Copy( res_data.x, p_atom->x );
         rvec_Copy( res_data.v, p_atom->v );
         fwrite( &res_data, sizeof(restart_atom), 1, fres );
@@ -104,25 +105,25 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
 #endif
 
     /* memory allocations for atoms, atom maps, bond restrictions */
-    system->atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
+    system->atoms = scalloc( system->N, sizeof(reax_atom),
             "Read_Binary_Restart::system->atoms" );
 
-    workspace->map_serials = (int*) scalloc( MAX_ATOM_ID, sizeof(int),
+    workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
             "Read_Binary_Restart::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
         workspace->map_serials[i] = -1;
     }
 
-    workspace->orig_id = (int*) scalloc( system->N, sizeof(int),
+    workspace->orig_id = scalloc( system->N, sizeof(int),
             "Read_Binary_Restart::workspace->orig_id" );
-    workspace->restricted  = (int*) scalloc( system->N, sizeof(int),
+    workspace->restricted = scalloc( system->N, sizeof(int),
             "Read_Binary_Restart::workspace->restricted" );
-    workspace->restricted_list = (int**) scalloc( system->N, sizeof(int*),
+    workspace->restricted_list = scalloc( system->N, sizeof(int*),
             "Read_Binary_Restart::workspace->restricted_list" );
     for ( i = 0; i < system->N; ++i )
     {
-        workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT, sizeof(int),
+        workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
                 "Read_Binary_Restart::workspace->restricted_list[i]" );
     }
 
@@ -133,10 +134,10 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
         workspace->orig_id[i] = res_data.orig_id;
         workspace->map_serials[res_data.orig_id] = i;
 
-        p_atom = &( system->atoms[i] );
+        p_atom = &system->atoms[i];
         p_atom->type = res_data.type;
-        strncpy( p_atom->name, res_data.name, 7 );
-        p_atom->name[7] = '\0';
+        strncpy( p_atom->name, res_data.name, 8 );
+        p_atom->name[8] = '\0';
         rvec_Copy( p_atom->x, res_data.x );
         rvec_Copy( p_atom->v, res_data.v );
     }

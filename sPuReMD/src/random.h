@@ -22,8 +22,10 @@
 #ifndef __RANDOM_H_
 #define __RANDOM_H_
 
-/* Includes <stdlib.h> for random( ) */
 #include "reax_types.h"
+
+#include <time.h>
+#include <stdlib.h>
 
 
 /* This function seeds the system pseudo random number generator with

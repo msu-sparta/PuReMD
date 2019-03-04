@@ -61,7 +61,8 @@
 #else
   #define PI (3.14159265)
 #endif
-/* */
+/* Coulomb energy conversion */
+//#define C_ELE (332.0638) // Fortran ReaxFF code
 #define C_ELE (332.06371)
 /* kcal/mol/K */
 //#define K_B (503.398008)
@@ -75,7 +76,8 @@
 #define EV_to_KCALpMOL (14.400000)
 /* conversion constant from kilo-calories per mole to electron volts */
 //#define KCALpMOL_to_EV (23.060549)  // value used in LAMMPS
-#define KCALpMOL_to_EV (23.0200000)   // value used in ReaxFF Fortran code
+#define KCALpMOL_to_EV (23.0200000)   // value used in older ReaxFF Fortran code
+//#define KCALpMOL_to_EV (23.0408)   // value used in ReaxFF Fortran code
 /* elem. charge * angstrom -> debye conv */
 #define ECxA_to_DEBYE (4.803204)
 /* CALories --> JOULES */
@@ -118,12 +120,12 @@
 #define HB_THRESHOLD (1e-2)
 #define MAX_BONDS (40)
 #define MIN_BONDS (15)
-#define MIN_HBONDS (50)
-#define SAFE_HBONDS (1.4)
+#define MIN_HBONDS (200)
+#define SAFE_HBONDS (3.0)
 #define MIN_GCELL_POPL (50)
-#define SAFE_ZONE (1.2)
-#define DANGER_ZONE (0.95)
-#define LOOSE_ZONE (0.75)
+#define SAFE_ZONE (1.4)
+#define DANGER_ZONE (0.90)
+#define LOOSE_ZONE (0.70)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -571,7 +573,7 @@ struct reax_atom
     /* Type of this atom */
     int type;
     /**/
-    char name[8];
+    char name[9];
     /* position */
     rvec x;
     /* velocity */
@@ -1131,7 +1133,6 @@ struct static_storage
     real *Hdia_inv;
     /* row drop tolerences for incomplete Cholesky preconditioner */
     real *droptol;
-    real *b;
     real *b_s;
     real *b_t;
     real *b_prc;

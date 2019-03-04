@@ -316,8 +316,10 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
         real r_ij, MATRIX_ENTRY_POSITION pos )
 {
     int r;
-    real base, dif, val, ret = 0.0;
+    real base, dif, val, ret;
     LR_lookup_table *t;
+
+    ret = 0.0;
 
     switch ( control->charge_method )
     {
@@ -328,9 +330,8 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
         switch ( pos )
         {
             case OFF_DIAGONAL:
-                t = &( LR
-                        [MIN( system->atoms[i].type, system->atoms[j].type )]
-                        [MAX( system->atoms[i].type, system->atoms[j].type )] );
+                t = &LR[MIN( system->atoms[i].type, system->atoms[j].type )]
+                       [MAX( system->atoms[i].type, system->atoms[j].type )];
 
                 /* cubic spline interpolation */
                 r = (int)(r_ij * t->inv_dx);
@@ -340,8 +341,8 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
                 }
                 base = (real)(r + 1) * t->dx;
                 dif = r_ij - base;
-                val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
-                    t->ele[r].a;
+                val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b)
+                    * dif + t->ele[r].a;
                 val *= EV_to_KCALpMOL / C_ELE;
 
                 ret = ((i == j) ? 0.5 : 1.0) * val;
@@ -392,8 +393,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                 Tap = Tap * r_ij + workspace->Tap[0];
 
                 /* shielding */
-                dr3gamij_1 = ( r_ij * r_ij * r_ij +
-                        system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
+                dr3gamij_1 = ( r_ij * r_ij * r_ij
+                        + system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 /* i == j: non-periodic self-interaction term
@@ -425,8 +426,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                 Tap = Tap * r_ij + workspace->Tap[0];
 
                 /* shielding */
-                dr3gamij_1 = ( r_ij * r_ij * r_ij +
-                        system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
+                dr3gamij_1 = ( r_ij * r_ij * r_ij
+                        + system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 /* i == j: non-periodic self-interaction term
@@ -678,14 +679,13 @@ static void Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i, j, pj;
-    int target;
+    int i, j, pj, target;
     int start_i, end_i;
     int type_i, type_j;
     int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top, jhb_top;
-    int flag, flag_sp;
-    real r_ij, r2, val, val_flag;
+    int flag, flag_sp, val_flag;
+    real r_ij, r2, val;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
@@ -969,8 +969,8 @@ static void Init_Forces( reax_system *system, control_params *control,
 
         /* diagonal entry */
         H->j[Htop] = i;
-        H->val[Htop] = Init_Charge_Matrix_Entry( system, control, workspace,
-                i, i, r_ij, DIAGONAL );
+        H->val[Htop] = Init_Charge_Matrix_Entry( system, control,
+                workspace, i, i, r_ij, DIAGONAL );
         ++Htop;
 
         H_sp->j[H_sp_top] = i;
@@ -987,7 +987,6 @@ static void Init_Forces( reax_system *system, control_params *control,
     Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
             H, H_sp, &Htop, &H_sp_top );
 
-    // mark the end of j list
     H->start[system->N_cm] = Htop;
     H_sp->start[system->N_cm] = H_sp_top;
 
@@ -1007,13 +1006,13 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i, j, pj;
+    int i, j, pj, target;
     int start_i, end_i;
     int type_i, type_j;
     int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top, jhb_top;
-    int flag, flag_sp;
-    real r_ij, r2;
+    int flag, flag_sp, val_flag;
+    real r_ij, r2, val;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
@@ -1107,17 +1106,48 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                 sbp_j = &system->reaxprm.sbp[type_j];
                 twbp = &system->reaxprm.tbp[type_i][type_j];
 
-                H->j[Htop] = j;
-                H->val[Htop] = Init_Charge_Matrix_Entry( system, control,
+                val = Init_Charge_Matrix_Entry( system, control,
                         workspace, i, j, r_ij, OFF_DIAGONAL );
-                ++Htop;
+                val_flag = FALSE;
+
+                for ( target = H->start[i]; target < Htop; ++target )
+                {
+                    if ( H->j[target] == j )
+                    {
+                        H->val[target] += val;
+                        val_flag = TRUE;
+                        break;
+                    }
+                }
+
+                if ( val_flag == FALSE )
+                {
+                    H->j[Htop] = j;
+                    H->val[Htop] = val;
+                    ++Htop;
+                }
 
                 /* H_sp matrix entry */
                 if ( flag_sp == TRUE )
                 {
-                    H_sp->j[H_sp_top] = j;
-                    H_sp->val[H_sp_top] = H->val[Htop - 1];
-                    ++H_sp_top;
+                    val_flag = FALSE;
+
+                    for ( target = H_sp->start[i]; target < H_sp_top; ++target )
+                    {
+                        if ( H_sp->j[target] == j )
+                        {
+                            H_sp->val[target] += val;
+                            val_flag = TRUE;
+                            break;
+                        }
+                    }
+
+                    if ( val_flag == FALSE )
+                    {
+                        H_sp->j[H_sp_top] = j;
+                        H_sp->val[H_sp_top] = val;
+                        ++H_sp_top;
+                    }
                 }
 
                 /* hydrogen bond lists */
@@ -1285,7 +1315,6 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
     Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
             H, H_sp, &Htop, &H_sp_top );
 
-    // mark the end of j list
     H->start[system->N_cm] = Htop;
     H_sp->start[system->N_cm] = H_sp_top;
 

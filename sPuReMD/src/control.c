@@ -42,7 +42,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->restart = 0;
     out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;
-    strncpy( control->restart_from, "default.res", MAX_STR );
+    strncpy( control->restart_from, "default.res", MAX_STR - 1 );
     control->restart_from[MAX_STR - 1] = '\0';
     out_control->restart_freq = 0;
     control->random_vel = 0;
@@ -121,7 +121,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     out_control->write_header = &Write_Custom_Header;
     out_control->append_traj_frame = &Append_Custom_Frame;
 
-    strncpy( out_control->traj_title, "default_title", 81 );
+    strncpy( out_control->traj_title, "default_title", 80 );
     out_control->traj_title[80] = '\0';
     out_control->atom_format = 0;
     out_control->bond_info = 0;

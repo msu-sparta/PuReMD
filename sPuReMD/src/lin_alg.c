@@ -3035,7 +3035,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            Vector_Sum( workspace->b_prc, 1.,  workspace->b, -1., workspace->b_prm, N );
+            Vector_Sum( workspace->b_prc, 1.0,  b, -1.0, workspace->b_prm, N );
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );

@@ -364,12 +364,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 "Init_Workspace::workspace->droptol" );
     }
 
-    //TODO: check if unused
-    //workspace->w = scalloc( cm_lin_sys_size, sizeof( real ),
-    //"Init_Workspace::workspace->droptol" );
-    //TODO: check if unused
-    workspace->b = scalloc( system->N_cm * 2, sizeof( real ),
-            "Init_Workspace::workspace->b" );
     workspace->b_s = scalloc( system->N_cm, sizeof( real ),
             "Init_Workspace::workspace->b_s" );
     workspace->b_t = scalloc( system->N_cm, sizeof( real ),
@@ -397,10 +391,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
             {
                 workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
                 workspace->b_t[i] = -1.0;
-
-                //TODO: check if unused (redundant)
-                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-                workspace->b[i + system->N] = -1.0;
             }
             break;
 
@@ -408,22 +398,15 @@ static void Init_Workspace( reax_system *system, control_params *control,
             for ( i = 0; i < system->N; ++i )
             {
                 workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-
-                //TODO: check if unused (redundant)
-                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
             }
 
             workspace->b_s[system->N] = control->cm_q_net;
-            workspace->b[system->N] = control->cm_q_net;
             break;
 
         case ACKS2_CM:
             for ( i = 0; i < system->N; ++i )
             {
                 workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-
-                //TODO: check if unused (redundant)
-                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
             }
 
             /* Non-zero total charge can lead to unphysical results.
@@ -434,14 +417,10 @@ static void Init_Workspace( reax_system *system, control_params *control,
             for ( i = 0; i < system->N; ++i )
             {
                 workspace->b_s[system->N + i] = control->cm_q_net / system->N;
-
-                //TODO: check if unused (redundant)
-                workspace->b[system->N + i] = control->cm_q_net / system->N;
             }
 
             /* system charge defines the total charge constraint */
-            workspace->b_s[system->N_cm] = control->cm_q_net;
-            workspace->b[system->N_cm] = control->cm_q_net;
+            workspace->b_s[system->N_cm - 1] = control->cm_q_net;
             break;
 
         default:
@@ -1285,10 +1264,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     {
         sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
     }
-    //TODO: check if unused
-    //sfree( workspace->w, "Finalize_Workspace::workspace->w" );
-    //TODO: check if unused
-    sfree( workspace->b, "Finalize_Workspace::workspace->b" );
     sfree( workspace->b_s, "Finalize_Workspace::workspace->b_s" );
     sfree( workspace->b_t, "Finalize_Workspace::workspace->b_t" );
     sfree( workspace->b_prc, "Finalize_Workspace::workspace->b_prc" );
