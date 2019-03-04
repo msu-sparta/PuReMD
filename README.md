@@ -24,29 +24,29 @@ To build, the following versions of software are required:
 
 Instructions:
 ```bash
-	git clone https://gitlab.msu.edu/SParTA/PuReMD.git
-	cd PuReMD
-	git submodule init
-	git submodule update
-	autoreconf -ivf
-	./configure
-	make
+git clone https://gitlab.msu.edu/SParTA/PuReMD.git
+cd PuReMD
+git submodule init
+git submodule update
+autoreconf -ivf
+./configure
+make
 ```
 
 To build tarball releases after configuring a specific build target, run the following:
 
 ```bash
-	make dist
+make dist
 ```
 
 ## User
 
 ```bash
-	# Download release tarball
-	tar -xvf puremd-1.0.tar.gz
-	cd puremd-1.0
-	./configure
-	make
+# Download release tarball
+tar -xvf puremd-1.0.tar.gz
+cd puremd-1.0
+./configure
+make
 ```
 
 By default, the shared memory version with OpenMP support will be built. For other build targets,
@@ -54,7 +54,7 @@ run ./configure --help and consult the documentation. An example of building the
 is given below.
 
 ```bash
-	./configure --enable-openmp=no --enable-mpi-gpu=yes
+./configure --enable-openmp=no --enable-mpi-gpu=yes
 ```
 
 # References
