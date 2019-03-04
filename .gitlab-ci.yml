@@ -28,7 +28,7 @@ run:
   script:
     - echo "[INFO] Testing..."
     - sPuReMD/bin/spuremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
-    - head -n 2 water_6540_nve_qeq.out && tail -n 2 water_6540_nve_qeq.out
+    - head -n 2 water_6540_notab_qeq.out && tail -n 2 water_6540_notab_qeq.out
     - echo "[INFO] Done testing"
 
 after_script:
