@@ -1,3 +1,5 @@
+[![pipeline status](https://gitlab.com/ohearnk/PuReMD/badges/master/pipeline.svg)](https://gitlab.com/ohearnk/PuReMD/commits/master)
+
 [Introduction](https://gitlab.msu.edu/SParTA/PuReMD#introduction) |
 [Documentation](https://gitlab.msu.edu/SParTA/PuReMD/doc) |
 [Wiki](https://gitlab.msu.edu/SParTA/PuReMD/wikis/home)
