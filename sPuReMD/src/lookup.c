@@ -58,16 +58,11 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     real *a, *b, *c, *d, *v;
 
     /* allocate space for linear system */
-    a = smalloc( sizeof(real) * n,
-           "Natural_Cubic_Spline::a" );
-    b = smalloc( sizeof(real) * n,
-           "Natural_Cubic_Spline::b" );
-    c = smalloc( sizeof(real) * n,
-           "Natural_Cubic_Spline::c" );
-    d = smalloc( sizeof(real) * n,
-           "Natural_Cubic_Spline::d" );
-    v = smalloc( sizeof(real) * n,
-           "Natural_Cubic_Spline::v" );
+    a = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::a" );
+    b = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::b" );
+    c = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::c" );
+    d = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::d" );
+    v = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::v" );
 
     /* build linear system */
     a[0] = 0.0;
@@ -75,14 +70,14 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     a[n - 1] = 0.0;
     for ( i = 2; i < n - 1; ++i )
     {
-        a[i] = h[i];
+        a[i] = h[i - 1];
     }
 
     b[0] = 0.0;
     b[n - 1] = 0.0;
     for ( i = 1; i < n - 1; ++i )
     {
-        b[i] = 2.0 * (h[i] + h[i + 1]);
+        b[i] = 2.0 * (h[i - 1] + h[i]);
     }
 
     c[0] = 0.0;
@@ -90,7 +85,7 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     c[n - 1] = 0.0;
     for ( i = 1; i < n - 2; ++i )
     {
-        c[i] = h[i + 1];
+        c[i] = h[i];
     }
 
     d[0] = 0.0;
@@ -98,7 +93,7 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     for ( i = 1; i < n - 1; ++i )
     {
         d[i] = 6.0 * ((f[i + 1] - f[i])
-                / h[i + 1] - (f[i] - f[i - 1]) / h[i]);
+                / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
     }
 
     /*fprintf( stderr, "i  a        b        c        d\n" );
@@ -111,9 +106,9 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
 
     for ( i = 1; i < n; ++i )
     {
-        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i]);
+        coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
         coef[i - 1].c = v[i] / 2.0;
-        coef[i - 1].b = (f[i] - f[i - 1]) / h[i] + h[i]
+        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1]
             * (2.0 * v[i] + v[i - 1]) / 6.0;
         coef[i - 1].a = f[i];
     }
@@ -133,16 +128,11 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
     real *a, *b, *c, *d, *v;
 
     /* allocate space for the linear system */
-    a = smalloc( n * sizeof(real),
-           "Complete_Cubic_Spline::a" );
-    b = smalloc( n * sizeof(real),
-           "Complete_Cubic_Spline::b" );
-    c = smalloc( n * sizeof(real),
-           "Complete_Cubic_Spline::c" );
-    d = smalloc( n * sizeof(real),
-           "Complete_Cubic_Spline::d" );
-    v = smalloc( n * sizeof(real),
-           "Complete_Cubic_Spline::v" );
+    a = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::a" );
+    b = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::b" );
+    c = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::c" );
+    d = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::d" );
+    v = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::v" );
 
     /* build the linear system */
     a[0] = 0.0;
@@ -181,7 +171,8 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
     {
         coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
         coef[i - 1].c = v[i] / 2.0;
-        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1] * (2.0 * v[i] + v[i - 1]) / 6.0;
+        coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1]
+            + h[i - 1] * (2.0 * v[i] + v[i - 1]) / 6.0;
         coef[i - 1].a = f[i];
     }
 
@@ -246,17 +237,17 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 
     num_atom_types = system->reaxprm.num_atom_types;
     dr = control->nonb_cut / control->tabulate;
-    h = scalloc( (control->tabulate + 1), sizeof(real),
+    h = scalloc( control->tabulate + 2, sizeof(real),
             "Make_LR_Lookup_Table::h" );
-    fh = scalloc( (control->tabulate + 1), sizeof(real),
+    fh = scalloc( control->tabulate + 2, sizeof(real),
             "Make_LR_Lookup_Table::fh" );
-    fvdw = scalloc( (control->tabulate + 1), sizeof(real),
+    fvdw = scalloc( control->tabulate + 2, sizeof(real),
             "Make_LR_Lookup_Table::fvdw" );
-    fCEvd = scalloc( (control->tabulate + 1), sizeof(real),
+    fCEvd = scalloc( control->tabulate + 2, sizeof(real),
             "Make_LR_Lookup_Table::fCEvd" );
-    fele = scalloc( (control->tabulate + 1), sizeof(real),
+    fele = scalloc( control->tabulate + 2, sizeof(real),
             "Make_LR_Lookup_Table::fele" );
-    fCEclmb = scalloc( (control->tabulate + 1), sizeof(real),
+    fCEclmb = scalloc( control->tabulate + 2, sizeof(real),
             "Make_LR_Lookup_Table::fCEclmb" );
 
     /* allocate Long-Range LookUp Table space based on
@@ -338,39 +329,39 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
                         }
                     }
 
-                    Natural_Cubic_Spline( h, fh,
-                            workspace->LR[i][j].H, control->tabulate + 1 );
+                    Natural_Cubic_Spline( &h[1], &fh[1],
+                            &workspace->LR[i][j].H[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fh" );
 //                    for( r = 1; r <= control->tabulate; ++r )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fh[r] );
 
-                    Complete_Cubic_Spline( h, fvdw, v0_vdw, vlast_vdw,
-                            workspace->LR[i][j].vdW, control->tabulate + 1 );
+                    Complete_Cubic_Spline( &h[1], &fvdw[1], v0_vdw, vlast_vdw,
+                            &workspace->LR[i][j].vdW[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fvdw" );
 //                    for( r = 1; r <= control->tabulate; ++r )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fvdw[r] );
 //                    fprintf( stderr, "v0_vdw: %f, vlast_vdw: %f\n", v0_vdw, vlast_vdw );
 
-                    Natural_Cubic_Spline( h, fCEvd,
-                            workspace->LR[i][j].CEvd, control->tabulate + 1 );
+                    Natural_Cubic_Spline( &h[1], &fCEvd[1],
+                            &workspace->LR[i][j].CEvd[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
 //                    for( r = 1; r <= control->tabulate; ++r )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fele[r] );
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
-                    Complete_Cubic_Spline( h, fele, v0_ele, vlast_ele,
-                            workspace->LR[i][j].ele, control->tabulate + 1 );
+                    Complete_Cubic_Spline( &h[1], &fele[1], v0_ele, vlast_ele,
+                            &workspace->LR[i][j].ele[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
 //                    for( r = 1; r <= control->tabulate; ++r )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fele[r] );
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
-                    Natural_Cubic_Spline( h, fCEclmb,
-                            workspace->LR[i][j].CEclmb, control->tabulate + 1 );
+                    Natural_Cubic_Spline( &h[1], &fCEclmb[1],
+                            &workspace->LR[i][j].CEclmb[1], control->tabulate + 1 );
                 }
             }
         }
