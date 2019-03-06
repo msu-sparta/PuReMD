@@ -208,8 +208,13 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
     {
         /* print molecule summary */
         for ( j = 0; j < MAX_ATOM_TYPES; ++j )
+        {
             if ( m->mtypes[j] )
-                snprintf( s, size, "%s%s%d", s, system->reaxprm.sbp[j].name, m->mtypes[j] );
+            {
+                snprintf( s, size - 1, "%s%14s%3d", s, system->reaxprm.sbp[j].name, m->mtypes[j] );
+                s[size - 1] = '\0';
+            }
+        }
     }
     else if ( mode == 2 )
     {
@@ -621,7 +626,8 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
             if ( flag == 0 )
             {
                 /* it is a new one, add to the fragments list */
-                strncpy( fragments[num_fragment_types], fragment, MAX_ATOM_TYPES );
+                strncpy( fragments[num_fragment_types], fragment, MAX_ATOM_TYPES - 1 );
+                fragments[num_fragment_types][MAX_ATOM_TYPES - 1] = '\0';
                 fragment_count[num_fragment_types] = 1;
                 ++num_fragment_types;
             }

@@ -72,26 +72,26 @@ void Transform_to_UnitBox( rvec x1, simulation_box *box, char flag, rvec x2 )
 
 
 /* determine whether point p is inside the box */
-void Fit_to_Periodic_Box( simulation_box *box, rvec *p )
+void Fit_to_Periodic_Box( simulation_box *box, rvec p )
 {
     int i;
 
     for ( i = 0; i < 3; ++i )
     {
-        if ( (*p)[i] < box->min[i] )
+        if ( p[i] < box->min[i] )
         {
             /* handle lower coords */
-            while ( (*p)[i] < box->min[i] )
+            while ( p[i] < box->min[i] )
             {
-                (*p)[i] += box->box_norms[i];
+                p[i] += box->box_norms[i];
             }
         }
-        else if ( (*p)[i] >= box->max[i] )
+        else if ( p[i] >= box->max[i] )
         {
             /* handle higher coords */
-            while ( (*p)[i] >= box->max[i] )
+            while ( p[i] >= box->max[i] )
             {
-                (*p)[i] -= box->box_norms[i];
+                p[i] -= box->box_norms[i];
             }
         }
     }
@@ -321,7 +321,7 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
         }
     }
 
-    fprintf( stderr, "Unknown atom type %s. Terminating...\n", s );
+    fprintf( stderr, "[ERROR] Unknown atom type: %s. Terminating...\n", s );
     exit( UNKNOWN_ATOM_TYPE );
 
     return FAILURE;
@@ -373,17 +373,19 @@ void Deallocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 
 int Tokenize( char* s, char*** tok )
 {
+    int count = 0;
     char test[MAX_LINE];
     char *sep = "\t \n!=";
     char *word, *saveptr;
-    int count = 0;
 
-    strncpy( test, s, MAX_LINE );
+    strncpy( test, s, MAX_LINE - 1 );
+    test[MAX_LINE - 1] = '\0';
 
     for ( word = strtok_r(test, sep, &saveptr); word != NULL;
             word = strtok_r(NULL, sep, &saveptr) )
     {
-        strncpy( (*tok)[count], word, MAX_LINE );
+        strncpy( (*tok)[count], word, MAX_LINE - 1 );
+        (*tok)[count][MAX_LINE - 1] = '\0';
         count++;
     }
 

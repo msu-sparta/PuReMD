@@ -61,7 +61,8 @@
 #else
   #define PI (3.14159265)
 #endif
-/* */
+/* Coulomb energy conversion */
+//#define C_ELE (332.0638) // Fortran ReaxFF code
 #define C_ELE (332.06371)
 /* kcal/mol/K */
 //#define K_B (503.398008)
@@ -75,7 +76,8 @@
 #define EV_to_KCALpMOL (14.400000)
 /* conversion constant from kilo-calories per mole to electron volts */
 //#define KCALpMOL_to_EV (23.060549)  // value used in LAMMPS
-#define KCALpMOL_to_EV (23.0200000)   // value used in ReaxFF Fortran code
+#define KCALpMOL_to_EV (23.0200000)   // value used in older ReaxFF Fortran code
+//#define KCALpMOL_to_EV (23.0408)   // value used in ReaxFF Fortran code
 /* elem. charge * angstrom -> debye conv */
 #define ECxA_to_DEBYE (4.803204)
 /* CALories --> JOULES */
@@ -118,12 +120,12 @@
 #define HB_THRESHOLD (1e-2)
 #define MAX_BONDS (40)
 #define MIN_BONDS (15)
-#define MIN_HBONDS (50)
-#define SAFE_HBONDS (1.4)
+#define MIN_HBONDS (200)
+#define SAFE_HBONDS (3.0)
 #define MIN_GCELL_POPL (50)
-#define SAFE_ZONE (1.2)
-#define DANGER_ZONE (0.95)
-#define LOOSE_ZONE (0.75)
+#define SAFE_ZONE (1.4)
+#define DANGER_ZONE (0.90)
+#define LOOSE_ZONE (0.70)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -330,16 +332,25 @@ typedef struct output_controls output_controls;
 typedef struct spuremd_handle spuremd_handle;
 
 
-/* function pointer definitions */
-/**/
+/* function pointer for calculating an interaction */
 typedef void (*interaction_function)( reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls* );
-/**/
+/* function pointer for evolving the atomic system (i.e., updating the positions)
+ * given the pre-computed forces from the prescribed interactions */
 typedef void (*evolve_function)( reax_system*, control_params*,
         simulation_data*, static_storage*,
         reax_list**, output_controls* );
-/**/
+/* function pointer for a callback function to be triggered after
+ * completion of a simulation step -- useful for, e.g., the Python wrapper */
 typedef void (*callback_function)( reax_atom*, simulation_data*, reax_list** );
+/* function pointer for writing trajectory file header */
+typedef int (*write_header_function)( reax_system*, control_params*,
+        static_storage*, output_controls* );
+/* function pointer for apending a frame to the trajectory file */
+typedef int (*append_traj_frame_function)( reax_system*, control_params*,
+        simulation_data*, static_storage*, reax_list **, output_controls* );
+/* function pointer for writing to the trajectory file */
+typedef int (*write_function)( FILE *, const char *, ... );
 
 
 /* struct definitions */
@@ -562,7 +573,7 @@ struct reax_atom
     /* Type of this atom */
     int type;
     /**/
-    char name[8];
+    char name[9];
     /* position */
     rvec x;
     /* velocity */
@@ -1122,7 +1133,6 @@ struct static_storage
     real *Hdia_inv;
     /* row drop tolerences for incomplete Cholesky preconditioner */
     real *droptol;
-    real *b;
     real *b_s;
     real *b_t;
     real *b_prc;
@@ -1226,6 +1236,8 @@ struct static_storage
     LR_lookup_table **LR;
 
 #ifdef TEST_FORCES
+    /* Calculated on the fly in bond_orders.c */
+    rvec *dDelta;
     rvec *f_ele;
     rvec *f_vdw;
     rvec *f_bo;
@@ -1239,8 +1251,6 @@ struct static_storage
     rvec *f_hb;
     rvec *f_tor;
     rvec *f_con;
-    /* Calculated on the fly in bond_orders.c */
-    rvec *dDelta;
 #endif
 };
 
@@ -1323,11 +1333,10 @@ struct output_controls
     int debug_level;
     int energy_update_freq;
 
-    /* trajectory output function pointer definitions */
-    int (* write_header)( reax_system*, control_params*, static_storage*, void* );
-    int (* append_traj_frame)( reax_system*, control_params*,
-            simulation_data*, static_storage*, reax_list **, void* );
-    int (* write)( FILE *, const char *, ... );
+    /* trajectory file pointer pointers */
+    write_header_function write_header;
+    append_traj_frame_function append_traj_frame;
+    write_function write;
 
 #ifdef TEST_ENERGY
     FILE *ebond;

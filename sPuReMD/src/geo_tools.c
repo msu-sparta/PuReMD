@@ -41,7 +41,7 @@ static void Count_Geo_Atoms( FILE *geo, reax_system *system )
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
-        Fit_to_Periodic_Box( &system->box, &x );
+        Fit_to_Periodic_Box( &system->box, x );
     }
 
     fseek( geo, 0, SEEK_SET );
@@ -144,7 +144,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
-        Fit_to_Periodic_Box( &system->box, &x );
+        Fit_to_Periodic_Box( &system->box, x );
 
 #if defined(DEBUG)
         fprintf( stderr, "atom%d: %s %s %f %f %f\n",
@@ -155,6 +155,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         workspace->orig_id[i] = serial;
         atom->type = Get_Atom_Type( &system->reaxprm, element );
         strncpy( atom->name, name, 8 );
+        atom->name[8] = '\0';
         rvec_Copy( atom->x, x );
         rvec_MakeZero( atom->v );
         rvec_MakeZero( atom->f );
@@ -186,16 +187,16 @@ static void Count_PDB_Atoms( FILE *geo, reax_system *system )
             system->N++;
 
             strncpy( s_x, line + 30, 8 );
-            s_x[8] = 0;
+            s_x[8] = '\0';
             strncpy( s_y, line + 38, 8 );
-            s_y[8] = 0;
+            s_y[8] = '\0';
             strncpy( s_z, line + 46, 8 );
-            s_z[8] = 0;
+            s_z[8] = '\0';
 
             Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
                     strtod( s_z, &endptr ), &x );
 
-            Fit_to_Periodic_Box( &(system->box), &x );
+            Fit_to_Periodic_Box( &(system->box), x );
         }
     }
 
@@ -209,19 +210,21 @@ static void Count_PDB_Atoms( FILE *geo, reax_system *system )
 void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
+    int i, c, c1, pdb_serial, top;
     FILE *pdb;
     char **tmp;
     char *s, *s1;
-    char descriptor[9], serial[9];
-    char atom_name[9], res_name[9], res_seq[9];
+    char descriptor[7], serial[6];
+    char atom_name[9], res_name[4], res_seq[5];
     char s_x[9], s_y[9], s_z[9];
-    char occupancy[9], temp_factor[9];
-    char seg_id[9], element[9], charge[9];
+    char occupancy[7], temp_factor[7];
+    char seg_id[5], element[3], charge[3];
     char alt_loc, chain_id, icode;
-    char *endptr = NULL;
-    int i, c, c1, pdb_serial, top;
+    char *endptr;
     rvec x;
     reax_atom *atom;
+
+    endptr = NULL;
 
     /* open pdb file */
     pdb = sfopen( pdb_file, "r" );
@@ -250,7 +253,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     while ( fgets( s, MAX_LINE, pdb ) )
     {
         /* read new line and tokenize it */
-        strncpy( s1, s, MAX_LINE );
+        strncpy( s1, s, MAX_LINE - 1 );
+        s1[MAX_LINE - 1] = '\0';
         c1 = Tokenize( s, &tmp );
 
         /* process new line */
@@ -259,71 +263,71 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             if ( strncmp(tmp[0], "ATOM", 4) == 0 )
             {
                 strncpy( descriptor, s1, 6 );
-                descriptor[6] = 0;
+                descriptor[6] = '\0';
                 strncpy( serial, s1 + 6, 5 );
-                serial[5] = 0;
+                serial[5] = '\0';
                 strncpy( atom_name, s1 + 12, 4 );
-                atom_name[4] = 0;
+                atom_name[4] = '\0';
                 alt_loc = s1[16];
                 strncpy( res_name, s1 + 17, 3 );
-                res_name[3] = 0;
+                res_name[3] = '\0';
                 chain_id = s1[21];
                 strncpy( res_seq, s1 + 22, 4 );
-                res_seq[4] = 0;
+                res_seq[4] = '\0';
                 icode = s1[26];
                 strncpy( s_x, s1 + 30, 8 );
-                s_x[8] = 0;
+                s_x[8] = '\0';
                 strncpy( s_y, s1 + 38, 8 );
-                s_y[8] = 0;
+                s_y[8] = '\0';
                 strncpy( s_z, s1 + 46, 8 );
-                s_z[8] = 0;
+                s_z[8] = '\0';
                 strncpy( occupancy, s1 + 54, 6 );
-                occupancy[6] = 0;
+                occupancy[6] = '\0';
                 strncpy( temp_factor, s1 + 60, 6 );
-                temp_factor[6] = 0;
+                temp_factor[6] = '\0';
                 strncpy( seg_id, s1 + 72, 4 );
-                seg_id[4] = 0;
+                seg_id[4] = '\0';
                 strncpy( element, s1 + 76, 2 );
-                element[2] = 0;
+                element[2] = '\0';
                 strncpy( charge, s1 + 78, 2 );
-                charge[2] = 0;
+                charge[2] = '\0';
             }
             else if ( strncmp(tmp[0], "HETATM", 6) == 0 )
             {
                 strncpy( descriptor, s1, 6 );
-                descriptor[6] = 0;
+                descriptor[6] = '\0';
                 strncpy( serial, s1 + 6, 5 );
-                serial[5] = 0;
+                serial[5] = '\0';
                 strncpy( atom_name, s1 + 12, 4 );
-                atom_name[4] = 0;
+                atom_name[4] = '\0';
                 alt_loc = s1[16];
                 strncpy( res_name, s1 + 17, 3 );
-                res_name[3] = 0;
+                res_name[3] = '\0';
                 chain_id = s1[21];
                 strncpy( res_seq, s1 + 22, 4 );
-                res_seq[4] = 0;
+                res_seq[4] = '\0';
                 icode = s1[26];
                 strncpy( s_x, s1 + 30, 8 );
-                s_x[8] = 0;
+                s_x[8] = '\0';
                 strncpy( s_y, s1 + 38, 8 );
-                s_y[8] = 0;
+                s_y[8] = '\0';
                 strncpy( s_z, s1 + 46, 8 );
-                s_z[8] = 0;
+                s_z[8] = '\0';
                 strncpy( occupancy, s1 + 54, 6 );
-                occupancy[6] = 0;
+                occupancy[6] = '\0';
                 strncpy( temp_factor, s1 + 60, 6 );
-                temp_factor[6] = 0;
+                temp_factor[6] = '\0';
                 strncpy( element, s1 + 76, 2 );
-                element[2] = 0;
+                element[2] = '\0';
                 strncpy( charge, s1 + 78, 2 );
-                charge[2] = 0;
+                charge[2] = '\0';
             }
 
             /* if the point is inside my_box, add it to my lists */
             Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
                     strtod( s_z, &endptr ), &x );
 
-            Fit_to_Periodic_Box( &system->box, &x );
+            Fit_to_Periodic_Box( &system->box, x );
 
             if ( is_Inside_Box( &system->box, x ) )
             {
@@ -335,6 +339,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 Trim_Spaces( element, 9 );
                 atom->type = Get_Atom_Type( &system->reaxprm, element );
                 strncpy( atom->name, atom_name, 8 );
+                atom->name[8] = '\0';
 
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );
@@ -406,7 +411,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, static_storage *workspace, output_controls *out_control )
 {
     int i; 
-    char name[8];
+    char name[3];
     real alpha, beta, gamma;
     rvec x;
     reax_atom *p_atom;
@@ -428,7 +433,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                 + system->box.box[2][2] * system->box.box[1][2])
             / (system->box.box_norms[2] * system->box.box_norms[1]) );
 
-    /* open pdb and write header */
+    /* write header */
     snprintf( fname, MAX_STR + 9, "%s-%d.pdb", control->sim_name, data->step );
     pdb = sfopen( fname, "w" );
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
@@ -442,11 +447,12 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     {
         p_atom = &system->atoms[i];
 
-        strncpy( name, p_atom->name, 8 );
-        Trim_Spaces( name, 8 );
+        strncpy( name, p_atom->name, 2 );
+        name[2] = '\0';
+        Trim_Spaces( name, 2 );
 
         memcpy( x, p_atom->x, 3 * sizeof(real) );
-        Fit_to_Periodic_Box( &system->box, &x );
+        Fit_to_Periodic_Box( &system->box, x );
 
         snprintf( buffer, PDB_ATOM_FORMAT_O_LENGTH, PDB_ATOM_FORMAT_O,
                 "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
@@ -473,11 +479,11 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     FILE *bgf;
     char **tokens;
     char *line, *backup;
-    char descriptor[10], serial[10];
-    char atom_name[10], res_name[10], res_seq[10];
-    char s_x[12], s_y[12], s_z[12];
-    char occupancy[10], temp_factor[10];
-    char element[10], charge[10];
+    char descriptor[7], serial[6];
+    char atom_name[9], res_name[4], res_seq[6];
+    char s_x[11], s_y[11], s_z[11];
+    char occupancy[4], temp_factor[3];
+    char element[6], charge[9];
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     char *endptr = NULL;
@@ -519,10 +525,6 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         exit( INVALID_INPUT );
     }
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "system->N: %d\n", system->N );
-#endif
-
     sfclose( bgf, "Read_BGF::bgf" );
 
     /* memory allocations for atoms, atom maps, bond restrictions */
@@ -556,7 +558,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     while ( fgets( line, MAX_LINE, bgf ) )
     {
         /* read new line and tokenize it */
-        strncpy( backup, line, MAX_LINE );
+        strncpy( backup, line, MAX_LINE - 1 );
+        backup[MAX_LINE - 1] = '\0';
         token_cnt = Tokenize( line, &tokens );
 
         /* process new line */
@@ -565,65 +568,65 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             if ( !strncmp(tokens[0], "ATOM", 4) )
             {
                 strncpy( descriptor, backup, 6 );
-                descriptor[6] = 0;
+                descriptor[6] = '\0';
                 strncpy( serial, backup + 7, 5 );
-                serial[5] = 0;
+                serial[5] = '\0';
                 strncpy( atom_name, backup + 13, 5 );
-                atom_name[5] = 0;
+                atom_name[5] = '\0';
                 strncpy( res_name, backup + 19, 3 );
-                res_name[3] = 0;
+                res_name[3] = '\0';
                 chain_id = backup[23];
                 strncpy( res_seq, backup + 25, 5 );
-                res_seq[5] = 0;
+                res_seq[5] = '\0';
                 strncpy( s_x, backup + 30, 10 );
-                s_x[10] = 0;
+                s_x[10] = '\0';
                 strncpy( s_y, backup + 40, 10 );
-                s_y[10] = 0;
+                s_y[10] = '\0';
                 strncpy( s_z, backup + 50, 10 );
-                s_z[10] = 0;
+                s_z[10] = '\0';
                 strncpy( element, backup + 61, 5 );
-                element[5] = 0;
+                element[5] = '\0';
                 strncpy( occupancy, backup + 66, 3 );
-                occupancy[3] = 0;
+                occupancy[3] = '\0';
                 strncpy( temp_factor, backup + 69, 2 );
-                temp_factor[2] = 0;
+                temp_factor[2] = '\0';
                 strncpy( charge, backup + 72, 8 );
-                charge[8] = 0;
+                charge[8] = '\0';
             }
             else if ( !strncmp(tokens[0], "HETATM", 6) )
             {
                 /* bgf hetatm:
                    (7x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5) */
                 strncpy( descriptor, backup, 6 );
-                descriptor[6] = 0;
+                descriptor[6] = '\0';
                 strncpy( serial, backup + 7, 5 );
-                serial[5] = 0;
+                serial[5] = '\0';
                 strncpy( atom_name, backup + 13, 5 );
-                atom_name[5] = 0;
+                atom_name[5] = '\0';
                 strncpy( res_name, backup + 19, 3 );
-                res_name[3] = 0;
+                res_name[3] = '\0';
                 chain_id = backup[23];
                 strncpy( res_seq, backup + 25, 5 );
-                res_seq[5] = 0;
+                res_seq[5] = '\0';
                 strncpy( s_x, backup + 30, 10 );
-                s_x[10] = 0;
+                s_x[10] = '\0';
                 strncpy( s_y, backup + 40, 10 );
-                s_y[10] = 0;
+                s_y[10] = '\0';
                 strncpy( s_z, backup + 50, 10 );
-                s_z[10] = 0;
+                s_z[10] = '\0';
                 strncpy( element, backup + 61, 5 );
-                element[5] = 0;
+                element[5] = '\0';
                 strncpy( occupancy, backup + 66, 3 );
-                occupancy[3] = 0;
+                occupancy[3] = '\0';
                 strncpy( temp_factor, backup + 69, 2 );
-                temp_factor[2] = 0;
+                temp_factor[2] = '\0';
                 strncpy( charge, backup + 72, 8 );
-                charge[8] = 0;
+                charge[8] = '\0';
             }
 
             /* add to mapping */
             bgf_serial = strtod( serial, &endptr );
-            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "Invalid bgf serial" );
+            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "[ERROR] Invalid bgf serial" );
             workspace->map_serials[ bgf_serial ] = atom_cnt;
             workspace->orig_id[ atom_cnt ] = bgf_serial;
             // fprintf( stderr, "map %d --> %d\n", bgf_serial, atom_cnt );
@@ -634,8 +637,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->atoms[atom_cnt].x[2] = strtod( s_z, &endptr );
 
             /* atom name and type */
-            strncpy( system->atoms[atom_cnt].name, atom_name, 8 );
-            Trim_Spaces( element, 10 );
+            strncpy( system->atoms[atom_cnt].name, atom_name, 9 );
+            system->atoms[atom_cnt].name[8] = '\0';
+            Trim_Spaces( element, 6 );
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &system->reaxprm, element );
 

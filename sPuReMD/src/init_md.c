@@ -29,6 +29,9 @@
 #include "neighbors.h"
 #include "list.h"
 #include "lookup.h"
+#ifdef TEST_FORCES
+  #include "print_utils.h"
+#endif
 #include "reset_utils.h"
 #include "system_props.h"
 #include "tool_box.h"
@@ -129,8 +132,13 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
         evolve_function *Evolve )
 {
-
     Reset_Simulation_Data( data );
+
+    data->therm.T = 0.0;
+    data->therm.xi = 0.0;
+    data->therm.v_xi = 0.0;
+    data->therm.v_xi_old = 0.0;
+    data->therm.G_xi = 0.0;
 
     if ( !control->restart )
     {
@@ -138,21 +146,23 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         data->prev_steps = 0;
     }
 
+    data->time = 0.0;
+
     switch ( control->ensemble )
     {
     case NVE:
         data->N_f = 3 * system->N;
-        *Evolve = Velocity_Verlet_NVE;
+        *Evolve = &Velocity_Verlet_NVE;
         break;
 
     case bNVT:
         data->N_f = 3 * system->N + 1;
-        *Evolve = Velocity_Verlet_Berendsen_NVT;
+        *Evolve = &Velocity_Verlet_Berendsen_NVT;
         break;
 
     case nhNVT:
         data->N_f = 3 * system->N + 1;
-        *Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
+        *Evolve = &Velocity_Verlet_Nose_Hoover_NVT_Klein;
         //control->Tau_T = 100 * data->N_f * K_B * control->T_final;
 
         if ( !control->restart || (control->restart && control->random_vel) )
@@ -177,7 +187,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         exit( UNKNOWN_OPTION );
 
         data->N_f = 3 * system->N + 9;
-        *Evolve = Velocity_Verlet_Berendsen_Isotropic_NPT;
+        *Evolve = &Velocity_Verlet_Berendsen_Isotropic_NPT;
 
         if ( !control->restart )
         {
@@ -185,21 +195,21 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
                     data->N_f * K_B * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->iso_bar.eps = 1.0 / 3.0 * LOG( system->box.volume );
-            //data->inv_W = 1. / (data->N_f*K_B*control->T*SQR(control->Tau_P));
-            //Compute_Pressure( system, data, workspace );
+//            data->inv_W = 1.0 / (data->N_f * K_B * control->T * SQR(control->Tau_P));
+//            Compute_Pressure( system, data, workspace );
         }
         break;
 
     /* semi-isotropic NPT */
     case sNPT:
         data->N_f = 3 * system->N + 4;
-        *Evolve = Velocity_Verlet_Berendsen_Semi_Isotropic_NPT;
+        *Evolve = &Velocity_Verlet_Berendsen_Semi_Isotropic_NPT;
         break;
 
     /* isotropic NPT */
     case iNPT:
         data->N_f = 3 * system->N + 2;
-        *Evolve = Velocity_Verlet_Berendsen_Isotropic_NPT;
+        *Evolve = &Velocity_Verlet_Berendsen_Isotropic_NPT;
         break;
 
     default:
@@ -354,12 +364,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 "Init_Workspace::workspace->droptol" );
     }
 
-    //TODO: check if unused
-    //workspace->w = scalloc( cm_lin_sys_size, sizeof( real ),
-    //"Init_Workspace::workspace->droptol" );
-    //TODO: check if unused
-    workspace->b = scalloc( system->N_cm * 2, sizeof( real ),
-            "Init_Workspace::workspace->b" );
     workspace->b_s = scalloc( system->N_cm, sizeof( real ),
             "Init_Workspace::workspace->b_s" );
     workspace->b_t = scalloc( system->N_cm, sizeof( real ),
@@ -387,10 +391,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
             {
                 workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
                 workspace->b_t[i] = -1.0;
-
-                //TODO: check if unused (redundant)
-                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-                workspace->b[i + system->N] = -1.0;
             }
             break;
 
@@ -398,22 +398,15 @@ static void Init_Workspace( reax_system *system, control_params *control,
             for ( i = 0; i < system->N; ++i )
             {
                 workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-
-                //TODO: check if unused (redundant)
-                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
             }
 
             workspace->b_s[system->N] = control->cm_q_net;
-            workspace->b[system->N] = control->cm_q_net;
             break;
 
         case ACKS2_CM:
             for ( i = 0; i < system->N; ++i )
             {
                 workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
-
-                //TODO: check if unused (redundant)
-                workspace->b[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
             }
 
             /* Non-zero total charge can lead to unphysical results.
@@ -424,14 +417,10 @@ static void Init_Workspace( reax_system *system, control_params *control,
             for ( i = 0; i < system->N; ++i )
             {
                 workspace->b_s[system->N + i] = control->cm_q_net / system->N;
-
-                //TODO: check if unused (redundant)
-                workspace->b[system->N + i] = control->cm_q_net / system->N;
             }
 
             /* system charge defines the total charge constraint */
-            workspace->b_s[system->N_cm] = control->cm_q_net;
-            workspace->b[system->N_cm] = control->cm_q_net;
+            workspace->b_s[system->N_cm - 1] = control->cm_q_net;
             break;
 
         default:
@@ -837,8 +826,8 @@ static void Init_Lists( reax_system *system, control_params *control,
 #endif
 
 #ifdef TEST_FORCES
-    Make_List( system->N, num_bonds * 8, TYP_DDELTA, lists[DDELTA] );
-
+    //TODO: increased num. of DDELTA list elements, find a better count later
+    Make_List( system->N, num_bonds * 20, TYP_DDELTA, lists[DDELTA] );
     Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, lists[DBO] );
 #endif
 
@@ -853,10 +842,10 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 #define TEMP_SIZE (1000)
     char temp[TEMP_SIZE];
 
-    /* Init trajectory file */
     if ( out_control->write_steps > 0 )
     {
-        strncpy( temp, control->sim_name, TEMP_SIZE );
+        strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+        temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".trj" );
         out_control->trj = sfopen( temp, "w" );
         out_control->write_header( system, control, workspace, out_control );
@@ -868,8 +857,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 
     if ( out_control->energy_update_freq > 0 )
     {
-        /* Init out file */
-        strncpy( temp, control->sim_name, TEMP_SIZE );
+        strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+        temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".out" );
         out_control->out = sfopen( temp, "w" );
         fprintf( out_control->out, "%-6s%16s%16s%16s%11s%11s%13s%13s%13s\n",
@@ -877,8 +866,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
                  "temp", "target", "volume", "press", "target" );
         fflush( out_control->out );
 
-        /* Init potentials file */
-        strncpy( temp, control->sim_name, TEMP_SIZE );
+        strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+        temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".pot" );
         out_control->pot = sfopen( temp, "w" );
         fprintf( out_control->pot,
@@ -887,8 +876,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
                  "etor", "econj", "evdw", "ecoul", "epol" );
         fflush( out_control->pot );
 
-        /* Init log file */
-        strncpy( temp, control->sim_name, TEMP_SIZE );
+        strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+        temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".log" );
         out_control->log = sfopen( temp, "w" );
         fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
@@ -903,11 +892,11 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->log = NULL;
     }
 
-    /* Init pressure file */
     if ( control->ensemble == aNPT || control->ensemble == iNPT
             || control->ensemble == sNPT )
     {
-        strncpy( temp, control->sim_name, TEMP_SIZE );
+        strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+        temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".prs" );
         out_control->prs = sfopen( temp, "w" );
         fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s%13s\n",
@@ -937,10 +926,10 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->ign = NULL;
     }
 
-    /* Init electric dipole moment analysis file */
     if ( control->dipole_anal )
     {
-        strncpy( temp, control->sim_name, TEMP_SIZE );
+        strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+        temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".dpl" );
         out_control->dpl = sfopen( temp, "w" );
         fprintf( out_control->dpl,
@@ -952,10 +941,10 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->dpl = NULL;
     }
 
-    /* Init diffusion coef analysis file */
     if ( control->diffusion_coef )
     {
-        strncpy( temp, control->sim_name, TEMP_SIZE );
+        strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+        temp[TEMP_SIZE - 6] = '\0';
         strcat( temp, ".drft" );
         out_control->drft = sfopen( temp, "w" );
         fprintf( out_control->drft, "Step     Type Count   Avg Squared Disp\n" );
@@ -968,63 +957,63 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 
 
 #ifdef TEST_ENERGY
-    /* open bond energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ebond" );
     out_control->ebond = sfopen( temp, "w" );
 
-    /* open lone-pair energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+    temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".elp" );
     out_control->elp = sfopen( temp, "w" );
 
-    /* open overcoordination energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+    temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".eov" );
     out_control->eov = sfopen( temp, "w" );
 
-    /* open undercoordination energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+    temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".eun" );
     out_control->eun = sfopen( temp, "w" );
 
-    /* open angle energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".eval" );
     out_control->eval = sfopen( temp, "w" );
 
-    /* open penalty energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".epen" );
     out_control->epen = sfopen( temp, "w" );
 
-    /* open coalition energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ecoa" );
     out_control->ecoa = sfopen( temp, "w" );
 
-    /* open hydrogen bond energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+    temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".ehb" );
     out_control->ehb = sfopen( temp, "w" );
 
-    /* open torsion energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".etor" );
     out_control->etor = sfopen( temp, "w" );
 
-    /* open conjugation energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".econ" );
     out_control->econ = sfopen( temp, "w" );
 
-    /* open vdWaals energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".evdw" );
     out_control->evdw = sfopen( temp, "w" );
 
-    /* open coulomb energy file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ecou" );
     out_control->ecou = sfopen( temp, "w" );
 #endif
@@ -1032,57 +1021,68 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 
 #ifdef TEST_FORCES
     /* open bond orders file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+    temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".fbo" );
     out_control->fbo = sfopen( temp, "w" );
 
     /* open bond orders derivatives file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".fdbo" );
     out_control->fdbo = sfopen( temp, "w" );
 
     /* open bond forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
+    temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".fbond" );
     out_control->fbond = sfopen( temp, "w" );
 
     /* open lone-pair forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".flp" );
     out_control->flp = sfopen( temp, "w" );
 
     /* open overcoordination forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
+    temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".fatom" );
     out_control->fatom = sfopen( temp, "w" );
 
     /* open angle forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 8 );
+    temp[TEMP_SIZE - 8] = '\0';
     strcat( temp, ".f3body" );
     out_control->f3body = sfopen( temp, "w" );
 
     /* open hydrogen bond forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
+    temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".fhb" );
     out_control->fhb = sfopen( temp, "w" );
 
     /* open torsion forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 8 );
+    temp[TEMP_SIZE - 8] = '\0';
     strcat( temp, ".f4body" );
     out_control->f4body = sfopen( temp, "w" );
 
     /* open nonbonded forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
+    temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".fnonb" );
     out_control->fnonb = sfopen( temp, "w" );
 
     /* open total force file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
+    temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ftot" );
     out_control->ftot = sfopen( temp, "w" );
 
     /* open coulomb forces file */
-    strncpy( temp, control->sim_name, TEMP_SIZE );
+    strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
+    temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".ftot2" );
     out_control->ftot2 = sfopen( temp, "w" );
 #endif
@@ -1264,10 +1264,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     {
         sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
     }
-    //TODO: check if unused
-    //sfree( workspace->w, "Finalize_Workspace::workspace->w" );
-    //TODO: check if unused
-    sfree( workspace->b, "Finalize_Workspace::workspace->b" );
     sfree( workspace->b_s, "Finalize_Workspace::workspace->b_s" );
     sfree( workspace->b_t, "Finalize_Workspace::workspace->b_t" );
     sfree( workspace->b_prc, "Finalize_Workspace::workspace->b_prc" );

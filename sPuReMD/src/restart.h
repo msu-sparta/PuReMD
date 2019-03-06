@@ -34,7 +34,7 @@ typedef struct
 typedef struct
 {
     int orig_id, type;
-    char name[8];
+    char name[9];
     rvec x, v;
 } restart_atom;
 

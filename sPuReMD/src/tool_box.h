@@ -30,7 +30,7 @@ void Transform( rvec, simulation_box*, char, rvec );
 
 void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
 
-void Fit_to_Periodic_Box( simulation_box*, rvec* );
+void Fit_to_Periodic_Box( simulation_box*, rvec );
 
 int is_Inside_Box( simulation_box*, rvec );
 

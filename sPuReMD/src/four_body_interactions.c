@@ -168,6 +168,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
+#ifdef TEST_FORCES
+    int num_frb_intrs;
+#endif
     real p_tor2, p_tor3, p_tor4, p_cot2;
     reax_list *bonds, *thb_intrs;
     real e_tor_total, e_con_total;
@@ -180,6 +183,9 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
     thb_intrs = lists[THREE_BODIES];
     e_tor_total = 0.0;
     e_con_total = 0.0;
+#ifdef TEST_FORCES
+    num_frb_intrs = 0;
+#endif
 
 #ifdef _OPENMP
     #pragma omp parallel default(shared) reduction(+: e_tor_total, e_con_total)
@@ -189,9 +195,6 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
         int type_i, type_j, type_k, type_l;
         int start_j, end_j;
         int start_pj, end_pj, start_pk, end_pk;
-#ifdef TEST_FORCES
-        int num_frb_intrs = 0;
-#endif
         real Delta_j, Delta_k;
         real r_ij, r_jk, r_kl, r_li;
         real BOA_ij, BOA_jk, BOA_kl;
@@ -232,21 +235,21 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
             start_j = Start_Index(j, bonds);
             end_j = End_Index(j, bonds);
 #ifdef _OPENMP
-            f_j = &(workspace->f_local[tid * system->N + j]);
+            f_j = &workspace->f_local[tid * system->N + j];
 #else
-            f_j = &(system->atoms[j].f);
+            f_j = &system->atoms[j].f;
 #endif
 
             for ( pk = start_j; pk < end_j; ++pk )
             {
-                pbond_jk = &( bonds->bond_list[pk] );
+                pbond_jk = &bonds->bond_list[pk];
                 k = pbond_jk->nbr;
-                bo_jk = &( pbond_jk->bo_data );
+                bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
 #ifdef _OPENMP
-                f_k = &(workspace->f_local[tid * system->N + k]);
+                f_k = &workspace->f_local[tid * system->N + k];
 #else
-                f_k = &(system->atoms[k].f);
+                f_k = &system->atoms[k].f;
 #endif
 
                 /* see if there are any 3-body interactions involving j&k
@@ -335,12 +338,15 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
                                             bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
                                     {
 #ifdef _OPENMP
-                                        f_l = &(workspace->f_local[tid * system->N + l]);
+                                        f_l = &workspace->f_local[tid * system->N + l];
 #else
-                                        f_l = &(system->atoms[l].f);
+                                        f_l = &system->atoms[l].f;
 #endif
 
 #ifdef TEST_FORCES
+#ifdef _OPENMP
+                                        #pragma omp atomic
+#endif
                                         ++num_frb_intrs;
 #endif
 

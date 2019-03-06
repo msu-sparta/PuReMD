@@ -3,9 +3,6 @@ variables:
   GIT_STRATEGY: clone
   APPLICATION: PuReMD
 
-before_script:
-  - echo "[INFO] Starting..."
-
 stages:
   - build
   - test
@@ -13,11 +10,16 @@ stages:
 compile:
   stage: build
   artifacts:
-    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
-    untrack: true
-    expire_in: 1 week
+    name: "${CI_JOB_STAGE}_${CI_COMMIT_REF_NAME}"
+    paths: 
+      - sPuReMD/bin
+      - sPuReMD/lib
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq autoconf automake libtool gcc
   script:
-    - ./configure && make
+    - echo "[INFO] Building..."
+    - autoreconf -ivf && ./configure && make
+    - echo "[INFO] Done building"
 
 run:
   stage: test
@@ -26,6 +28,7 @@ run:
   script:
     - echo "[INFO] Testing..."
     - sPuReMD/bin/spuremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
+    - head -n 2 water_6540_notab_qeq.out && tail -n 2 water_6540_notab_qeq.out
     - echo "[INFO] Done testing"
 
 after_script:

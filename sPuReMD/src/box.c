@@ -240,6 +240,8 @@ void Update_Box_Semi_Isotropic( simulation_box *box, rvec mu )
 }
 
 
+/* Assumption: (0, 0, 0) is the minimum box coordinate,
+ * the the maximum coordinate is strictly positive in each dimension */
 void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
 {
     int i;
