@@ -140,6 +140,24 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
     Compute_Charges( system, control, data, workspace, out_control );
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.cm += t_elapsed;
+    
+    if ( control->cm_solver_pre_comp_refactor == -1 )
+    {
+        if ( data->step <= 4 || is_refactoring_step( control, data ) )
+        {
+            if ( is_refactoring_step( control, data ) )
+            {
+                data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
+            }
+            data->timing.cm_optimum = data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog + data->timing.cm_solver_tri_solve;
+            data->timing.cm_total_loss = ZERO;
+        }
+        else
+        {
+            data->timing.cm_total_loss += data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog + data->timing.cm_solver_tri_solve - data->timing.cm_optimum;
+        }
+    }
+
 
     if ( control->tabulate <= 0 )
     {

@@ -236,6 +236,9 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
     data->timing.cm_solver_vector_ops = ZERO;
     data->timing.cm_solver_orthog = ZERO;
     data->timing.cm_solver_tri_solve = ZERO;
+    data->timing.cm_last_pre_comp = ZERO;
+    data->timing.cm_total_loss = ZERO;
+    data->timing.cm_optimum = ZERO;
 }
 
 
