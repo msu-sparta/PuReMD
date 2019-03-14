@@ -59,31 +59,33 @@
   /* GNU C library (libc), defined in math.h */
   #define PI (M_PI)
 #else
-  #define PI (3.14159265)
+  #define PI (3.14159265) // Fortran ReaxFF code
 #endif
 /* Coulomb energy conversion */
-//#define C_ELE (332.0638) // Fortran ReaxFF code
-#define C_ELE (332.06371)
+#define C_ELE (332.0638) // Fortran ReaxFF code
+//#define C_ELE (332.06371)
 /* kcal/mol/K */
 //#define K_B (503.398008)
 /* amu A^2 / ps^2 / K */
-#define K_B (0.831687)
+//#define K_B (0.831687)
+#define K_B (0.8314510) // Fortran ReaxFF code
 /* --> amu A / ps^2 */
 #define F_CONV (1e6 / 48.88821291 / 48.88821291)
 /* amu A^2 / ps^2 --> kcal/mol */
 #define E_CONV (0.002391)
 /* conversion constant from electron volts to kilo-calories per mole */
-#define EV_to_KCALpMOL (14.400000)
+#define EV_to_KCALpMOL (14.40)
 /* conversion constant from kilo-calories per mole to electron volts */
-//#define KCALpMOL_to_EV (23.060549)  // value used in LAMMPS
-#define KCALpMOL_to_EV (23.0200000)   // value used in older ReaxFF Fortran code
-//#define KCALpMOL_to_EV (23.0408)   // value used in ReaxFF Fortran code
+//#define KCALpMOL_to_EV (23.060549) // value used in LAMMPS
+//#define KCALpMOL_to_EV (23.0408) // value used in ReaxFF Fortran code
+#define KCALpMOL_to_EV (23.02) // value used in ReaxFF Fortran code (ACKS2)
 /* elem. charge * angstrom -> debye conv */
-#define ECxA_to_DEBYE (4.803204)
+//#define ECxA_to_DEBYE (4.803204)
+#define ECxA_to_DEBYE (4.80320679913) // ReaxFF Fortran code
 /* CALories --> JOULES */
-#define CAL_to_JOULES (4.184000)
+#define CAL_to_JOULES (4.1840)
 /* JOULES --> CALories */
-#define JOULES_to_CAL (1.0 / 4.184000)
+#define JOULES_to_CAL (1.0 / 4.1840)
 /* */
 #define AMU_to_GRAM (1.6605e-24)
 /* */
@@ -120,12 +122,12 @@
 #define HB_THRESHOLD (1e-2)
 #define MAX_BONDS (40)
 #define MIN_BONDS (15)
-#define MIN_HBONDS (200)
-#define SAFE_HBONDS (3.0)
+#define MIN_HBONDS (50)
+#define SAFE_HBONDS (1.4)
 #define MIN_GCELL_POPL (50)
-#define SAFE_ZONE (1.4)
-#define DANGER_ZONE (0.90)
-#define LOOSE_ZONE (0.70)
+#define SAFE_ZONE (1.2)
+#define DANGER_ZONE (0.95)
+#define LOOSE_ZONE (0.75)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -1240,7 +1242,6 @@ struct static_storage
     rvec *dDelta;
     rvec *f_ele;
     rvec *f_vdw;
-    rvec *f_bo;
     rvec *f_be;
     rvec *f_lp;
     rvec *f_ov;

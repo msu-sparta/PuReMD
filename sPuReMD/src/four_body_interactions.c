@@ -782,7 +782,7 @@ void Four_Body_Interactions( reax_system *system, control_params *control,
     /* fprintf( stderr, "4body: ext_press (%23.15e %23.15e %23.15e)\n",
        data->ext_press[0], data->ext_press[1], data->ext_press[2] );*/
 
-#ifdef TEST_FORCES
+#if defined(DEBUG)
     fprintf( stderr, "Number of torsion angles: %d\n", num_frb_intrs );
     fprintf( stderr, "Torsion Energy: %g\t Conjugation Energy: %g\n",
              data->E_Tor, data->E_Con );

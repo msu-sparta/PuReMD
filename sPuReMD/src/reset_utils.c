@@ -31,7 +31,7 @@ void Reset_Atoms( reax_system* system )
 
     for ( i = 0; i < system->N; ++i )
     {
-        memset( system->atoms[i].f, 0.0, sizeof(rvec) );
+        rvec_MakeZero( system->atoms[i].f );
     }
 }
 
@@ -43,6 +43,67 @@ static void Reset_Pressures( simulation_data *data )
     rvec_MakeZero( data->int_press );
     rvec_MakeZero( data->ext_press );
 }
+
+
+#ifdef TEST_FORCES
+static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
+{
+    int i;
+
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->dDelta[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_ele[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_vdw[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_be[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_lp[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_ov[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_un[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_ang[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_coa[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_pen[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_hb[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_tor[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->f_con[i] );
+    }
+}
+#endif
 
 
 void Reset_Simulation_Data( simulation_data* data )
@@ -66,38 +127,25 @@ void Reset_Simulation_Data( simulation_data* data )
 }
 
 
-#ifdef TEST_FORCES
-void Reset_Test_Forces( reax_system *system, static_storage *workspace )
-{
-    memset( workspace->dDelta, 0, sizeof(rvec) * system->N );
-    memset( workspace->f_ele, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_vdw, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_bo, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_be, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_lp, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_ov, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_un, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_ang, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_coa, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_pen, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_hb, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_tor, 0, system->N * sizeof(rvec) );
-    memset( workspace->f_con, 0, system->N * sizeof(rvec) );
-}
-#endif
-
-
 void Reset_Workspace( reax_system *system, static_storage *workspace )
 {
+    int i;
 #ifdef _OPENMP
-    int i, tid;
+    int tid;
 #endif
 
-    memset( workspace->total_bond_order, 0, system->N * sizeof( real ) );
-    memset( workspace->dDeltap_self, 0, system->N * sizeof( rvec ) );
-
-    memset( workspace->CdDelta, 0, system->N * sizeof( real ) );
-    //memset( workspace->virial_forces, 0, system->N * sizeof( rvec ) );
+    for ( i = 0; i < system->N; i++ )
+    {
+        workspace->total_bond_order[i] = 0.0;
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_MakeZero( workspace->dDeltap_self[i] );
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        workspace->CdDelta[i] = 0.0;
+    }
 
 #ifdef _OPENMP
     #pragma omp parallel private(i, tid)
@@ -139,18 +187,18 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
         Set_End_Index( i, tmp, bonds );
     }
 
-    if ( control->hbond_cut > 0 )
+    if ( control->hbond_cut > 0.0 )
     {
-        for ( i = 0; i < hbonds->n; ++i )
+        for ( i = 0; i < system->N; ++i )
         {
-            if ( system->reaxprm.sbp[system->atoms[i].type].p_hbond == 1)
+            if ( system->reaxprm.sbp[system->atoms[i].type].p_hbond == 1 )
             {
                 tmp = Start_Index( workspace->hbond_index[i], hbonds );
                 Set_End_Index( workspace->hbond_index[i], tmp, hbonds );
 
-                /* fprintf( stderr, "i:%d, hbond: %d-%d\n",
-                   i, Start_Index( workspace->hbond_index[i], hbonds ),
-                   End_Index( workspace->hbond_index[i], hbonds ) );*/
+//                fprintf( stderr, "i:%d, hbond: %d-%d\n",
+//                        i, Start_Index( workspace->hbond_index[i], hbonds ),
+//                        End_Index( workspace->hbond_index[i], hbonds ) );
             }
         }
     }

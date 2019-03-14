@@ -81,8 +81,8 @@ void Bond_Energy( reax_system *system, control_params *control,
                     /* calculate the constants */
                     pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
                     exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
-                    CEbo = -twbp->De_s * exp_be12 *
-                           ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
+                    CEbo = -twbp->De_s * exp_be12
+                        * ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
 
                     /* calculate the Bond Energy */
                     ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
@@ -804,6 +804,13 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             rvec_ScaledAdd( workspace->f_local[tid * system->N + i],
                                     -d_bond_softness, nbr_pj->dvec );
                             rvec_ScaledAdd( workspace->f_local[tid * system->N + j],
+                                    d_bond_softness, nbr_pj->dvec );
+#endif
+
+#ifdef TEST_FORCES
+                            rvec_ScaledAdd( workspace->f_ele[i],
+                                    -d_bond_softness, nbr_pj->dvec );
+                            rvec_ScaledAdd( workspace->f_ele[j],
                                     d_bond_softness, nbr_pj->dvec );
 #endif
                         }

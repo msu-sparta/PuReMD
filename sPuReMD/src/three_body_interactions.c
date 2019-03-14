@@ -323,8 +323,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                         /* Fortran ReaxFF code hard-codes the constant below
                          * as of 2019-02-27, so use that for now */
-//                        if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut) )
                         if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) >= 0.00001 )
+//                        if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut) )
                         {
                             thbh = &system->reaxprm.thbp[type_i][type_j][type_k];
 
@@ -352,8 +352,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                                     exp3ij = EXP( -p_val3 * POW( BOA_ij, p_val4 ) );
                                     f7_ij = 1.0 - exp3ij;
-                                    Cf7ij = p_val3 * p_val4 *
-                                        POW( BOA_ij, p_val4 - 1.0 ) * exp3ij;
+                                    Cf7ij = p_val3 * p_val4
+                                        * POW( BOA_ij, p_val4 - 1.0 ) * exp3ij;
 
                                     exp3jk = EXP( -p_val3 * POW( BOA_jk, p_val4 ) );
                                     f7_jk = 1.0 - exp3jk;
@@ -370,30 +370,30 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                     theta_0 = 180.0 - theta_00 * (1.0 - EXP(-p_val10 * (2.0 - SBO2)));
                                     theta_0 = DEG2RAD( theta_0 );
 
-                                    expval2theta = EXP(-p_val2 * SQR(theta_0 - theta));
+                                    expval2theta = p_val1 * EXP(-p_val2 * SQR(theta_0 - theta));
                                     if ( p_val1 >= 0 )
                                     {
-                                        expval12theta = p_val1 * (1.0 - expval2theta);
+                                        expval12theta = p_val1 - expval2theta;
                                     }
                                     /* To avoid linear Me-H-Me angles (6/6/06) */
                                     else
                                     {
-                                        expval12theta = p_val1 * -expval2theta;
+                                        expval12theta = -expval2theta;
                                     }
 
                                     CEval1 = Cf7ij * f7_jk * f8_Dj * expval12theta;
                                     CEval2 = Cf7jk * f7_ij * f8_Dj * expval12theta;
-                                    CEval3 = Cf8j  * f7_ij * f7_jk * expval12theta;
-                                    CEval4 = -2.0 * p_val1 * p_val2 * f7_ij * f7_jk * f8_Dj
+                                    CEval3 = Cf8j * f7_ij * f7_jk * expval12theta;
+                                    CEval4 = 2.0 * p_val2 * f7_ij * f7_jk * f8_Dj
                                         * expval2theta * (theta_0 - theta);
 
                                     Ctheta_0 = p_val10 * DEG2RAD(theta_00)
                                         * EXP( -p_val10 * (2.0 - SBO2) );
 
-                                    CEval5 = -CEval4 * Ctheta_0 * CSBO2;
+                                    CEval5 = CEval4 * Ctheta_0 * CSBO2;
                                     CEval6 = CEval5 * dSBO1;
                                     CEval7 = CEval5 * dSBO2;
-                                    CEval8 = -CEval4 / sin_theta;
+                                    CEval8 = CEval4 / sin_theta;
 
                                     e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
                                     e_ang_total += e_ang;
@@ -433,7 +433,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
                                     CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
                                     CEcoa2 = -2.0 * p_coa4 * (BOA_jk - 1.5) * e_coa;
-                                    CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1 + exp_coa2);
+                                    CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1.0 + exp_coa2);
                                     CEcoa4 = -2.0 * p_coa3 * (total_bo[i] - BOA_ij) * e_coa;
                                     CEcoa5 = -2.0 * p_coa3 * (total_bo[k] - BOA_jk) * e_coa;
 
@@ -484,7 +484,6 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 #endif
                                         bo_jt->Cdbopi2 += CEval5;
                                     }
-
 
                                     if ( control->ensemble == NVE || control->ensemble == nhNVT
                                             || control->ensemble == bNVT )
@@ -607,7 +606,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                                         temp = CUBE( temp_bo_jt );
                                         pBOjt7 = temp * temp * temp_bo_jt;
 
-                                        Add_dBO( system, lists, j, t, pBOjt7 * CEval6,
+                                        Add_dBO( system, lists, j, t, CEval6 * pBOjt7,
                                                  workspace->f_ang );
                                         Add_dBOpinpi2( system, lists, j, t, CEval5, CEval5,
                                                 workspace->f_ang, workspace->f_ang );

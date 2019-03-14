@@ -243,8 +243,14 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
     molecule old_molecules[20], new_molecules[20];
 
     fprintf( fout, "molecular analysis @ %d\n", data->step );
-    memset( mark, 0, system->N * sizeof(int) );
-    memset( old_mark, 0, system->N * sizeof(int) );
+    for ( i = 0; i < system->N; i++ )
+    {
+        mark[i] = 0;
+    }
+    for ( i = 0; i < system->N; i++ )
+    {
+        old_mark[i] = 0;
+    }
 
     /* compare new molecules to old molecules */
     for ( atom = 0; atom < system->N; ++atom )
@@ -599,7 +605,10 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
     fprintf( fout, "step%d fragments\n", data->step );
     num_fragments = 0;
     num_fragment_types = 0;
-    memset( mark, 0, system->N * sizeof(int) );
+    for ( i = 0; i < system->N; i++ )
+    {
+        mark[i] = 0;
+    }
 
     for ( atom = 0; atom < system->N; ++atom )
     {

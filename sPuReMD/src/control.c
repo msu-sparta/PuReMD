@@ -130,7 +130,10 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->molec_anal = NO_ANALYSIS;
     control->freq_molec_anal = 0;
     control->num_ignored = 0;
-    memset( control->ignore, 0, sizeof(int) * MAX_ATOM_TYPES );
+    for ( i = 0; i < MAX_ATOM_TYPES; i++ )
+    {
+        control->ignore[i] = 0;
+    }
 
     control->dipole_anal = 0;
     control->freq_dipole_anal = 0;

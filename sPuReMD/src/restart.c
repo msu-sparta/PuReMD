@@ -207,7 +207,7 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
             &system->box.box[0][0], &system->box.box[0][1], &system->box.box[0][2],
             &system->box.box[1][0], &system->box.box[1][1], &system->box.box[1][2],
             &system->box.box[2][0], &system->box.box[2][1], &system->box.box[2][2]);
-    Make_Consistent( &(system->box) );
+    Make_Consistent( &system->box );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "restart step: %d\n", data->prev_steps );

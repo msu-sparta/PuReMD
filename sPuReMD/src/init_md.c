@@ -674,8 +674,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
            "Init_Workspace::workspace->f_ele" );
     workspace->f_vdw = smalloc( system->N * sizeof( rvec ),
            "Init_Workspace::workspace->f_vdw" );
-    workspace->f_bo = smalloc( system->N * sizeof( rvec ),
-           "Init_Workspace::workspace->f_bo" );
     workspace->f_be = smalloc( system->N * sizeof( rvec ),
            "Init_Workspace::workspace->f_be" );
     workspace->f_lp = smalloc( system->N * sizeof( rvec ),
@@ -828,7 +826,20 @@ static void Init_Lists( reax_system *system, control_params *control,
 #ifdef TEST_FORCES
     //TODO: increased num. of DDELTA list elements, find a better count later
     Make_List( system->N, num_bonds * 20, TYP_DDELTA, lists[DDELTA] );
+
+    for ( i = 0; i < lists[DDELTA]->n; ++i )
+    {
+        Set_Start_Index( i, 0, lists[DDELTA] );
+        Set_End_Index( i, 0, lists[DDELTA] );
+    }
+
     Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, lists[DBO] );
+
+    for ( i = 0; i < lists[DBO]->n; ++i )
+    {
+        Set_Start_Index( i, 0, lists[DBO] );
+        Set_End_Index( i, 0, lists[DBO] );
+    }
 #endif
 
     sfree( hb_top, "Init_Lists::hb_top" );
@@ -1421,7 +1432,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     sfree( workspace->dDelta, "Finalize_Workspace::workspace->dDelta" );
     sfree( workspace->f_ele, "Finalize_Workspace::workspace->f_ele" );
     sfree( workspace->f_vdw, "Finalize_Workspace::workspace->f_vdw" );
-    sfree( workspace->f_bo, "Finalize_Workspace::workspace->f_bo" );
     sfree( workspace->f_be, "Finalize_Workspace::workspace->f_be" );
     sfree( workspace->f_lp, "Finalize_Workspace::workspace->f_lp" );
     sfree( workspace->f_ov, "Finalize_Workspace::workspace->f_ov" );

@@ -29,10 +29,6 @@ void Reset_Atoms( reax_system* );
 
 void Reset_Simulation_Data( simulation_data* );
 
-#ifdef TEST_FORCES
-void Reset_Test_Forces( reax_system*, static_storage* );
-#endif
-
 void Reset_Workspace( reax_system*, static_storage* );
 
 void Reset_Neighbor_Lists( reax_system*, control_params*,

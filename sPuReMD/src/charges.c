@@ -542,7 +542,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+        Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
     }
 
     time = Get_Time( );
@@ -617,7 +617,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+        Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
     }
 
 #if defined(DEBUG)
@@ -666,7 +666,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
+        Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 1.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
     }
 
@@ -742,7 +742,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
+        Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 0.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
     }
 
@@ -892,12 +892,6 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
-    }
-
     switch ( control->cm_solver_pre_comp_type )
     {
         case NONE_PC:
@@ -919,7 +913,13 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case ILUT_PC:
         case ILUTP_PC:
         case FG_ILUT_PC:
+            /* replace zeros on diagonal with non-zero values */
+            Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+
+            /* put zeros back */
+            Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
             if ( workspace->L == NULL )
             {
@@ -951,12 +951,6 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                    control->cm_solver_pre_comp_type );
             exit( INVALID_INPUT );
             break;
-    }
-
-    if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
     }
 }
 
@@ -988,13 +982,6 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 1.0;
-        Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
-    }
-
     switch ( control->cm_solver_pre_comp_type )
     {
         case NONE_PC:
@@ -1016,7 +1003,15 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case ILUT_PC:
         case ILUTP_PC:
         case FG_ILUT_PC:
+            /* replace zeros on diagonal with non-zero values */
+            Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 1.0;
+            Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+
+            /* put zeros back */
+            Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 0.0;
+            Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
             if ( workspace->L == NULL )
             {
@@ -1047,13 +1042,6 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                    control->cm_solver_pre_comp_type );
             exit( INVALID_INPUT );
             break;
-    }
-
-    if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
-        Hptr->val[Hptr->start[system->N + 1] - 1] = 0.0;
-        Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
     }
 }
 

@@ -462,7 +462,7 @@ static inline int rvec_isZero( const rvec v )
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        ret = (FABS( v[i] ) > ALMOST_ZERO) && ret;
+        ret = (FABS( v[i] ) <= ALMOST_ZERO) && ret;
     }
 
     return ret;
