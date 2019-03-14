@@ -56,6 +56,7 @@
 #define ZERO                    (0.000000000000000e+00)
 #define REAX_MAX_STR            (1024)
 #define REAX_MAX_NBRS           (6)
+#define REAX_MAX_NT_NBRS        (6)
 #define REAX_MAX_3BODY_PARAM    (5)
 #define REAX_MAX_4BODY_PARAM    (5)
 #define REAX_MAX_ATOM_TYPES     (25)

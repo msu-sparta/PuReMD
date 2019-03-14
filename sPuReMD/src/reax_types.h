@@ -861,6 +861,12 @@ struct reax_timing
     real cm_solver_orthog;
     /**/
     real cm_solver_tri_solve;
+    /* time spent on last preconditioner computation */
+    real cm_last_pre_comp;
+    /* time lost for not refactoring */
+    real cm_total_loss;
+    /* solver time on last refactoring step */
+    real cm_optimum;
     /* num. of retries in main sim. loop */
     int num_retries;
 };
