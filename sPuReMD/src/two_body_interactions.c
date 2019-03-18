@@ -189,10 +189,10 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         int start_i, end_i;
         real self_coef;
         real powr_vdW1, powgi_vdW1;
-        real tmp, r_ij, fn13, exp1, exp2, e_base, de_base;
+        real r_ij, fn13, exp1, exp2, e_base, de_base;
         real Tap, dTap, dfn13, CEvd, CEclmb;
         real dr3gamij_1, dr3gamij_3;
-        real e_ele, e_vdW, e_core, de_core;
+        real e_ele, e_vdW, e_core, de_core, e_clb, de_clb;
         real d, xcut, bond_softness, d_bond_softness, effpot_diff;
         rvec temp, ext_press;
         //rtensor temp_rtensor, total_rtensor;
@@ -206,8 +206,6 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
         e_ele = 0.0;
         e_vdW = 0.0;
-        e_core = 0.0;
-        de_core = 0.0;
 
 #ifdef _OPENMP
         #pragma omp for schedule(guided)
@@ -292,7 +290,6 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     }
                     else
                     {
-
                         e_core = 0.0;
                         de_core = 0.0;
                     }
@@ -307,15 +304,21 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 #endif
 
                     /* Coulomb Calculations */
-                    dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
+                    dr3gamij_1 = r_ij * r_ij * r_ij
+                        + POW( twbp->gamma, -3.0 );
                     dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
-
-                    tmp = Tap / dr3gamij_3;
-                    e_ele = self_coef * C_ELE * system->atoms[i].q * system->atoms[j].q * tmp;
+                    e_clb = C_ELE * (system->atoms[i].q * system->atoms[j].q) / dr3gamij_3;
+                    e_ele = self_coef * (e_clb * Tap);
                     e_ele_total += e_ele;
 
-                    CEclmb = self_coef * (C_ELE * system->atoms[i].q * system->atoms[j].q
-                            * ( dTap - Tap * r_ij / dr3gamij_1 ) / dr3gamij_3);
+                    de_clb = -C_ELE * (system->atoms[i].q * system->atoms[j].q)
+                            * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0);
+                    CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+
+#if defined(DEBUG_FOCUS)
+                    fprintf( stderr, "%6d%6d%24.12f%24.12f\n",
+                            i + 1, j + 1, e_clb, de_clb ); fflush( stderr );
+#endif
 
                     if ( control->ensemble == NVE || control->ensemble == nhNVT
                             || control->ensemble == bNVT )
@@ -516,8 +519,6 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
     two_body_parameters *twbp;
 
     twbp = &system->reaxprm.tbp[i][j];
-    e_core = 0.0;
-    de_core = 0.0;
 
     /* calculate taper and its derivative */
     Tap = workspace->Tap[7] * r_ij
@@ -546,6 +547,7 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
     exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
 
     lr->e_vdW = Tap * twbp->D * (exp1 - 2.0 * exp2);
+
     /* fprintf(stderr,"vdW: Tap:%f, r: %f, f13:%f, D:%f, Energy:%f,\
        Gamma_w:%f, p_vdw: %f, alpha: %f, r_vdw: %f, %lf %lf\n",
        Tap, r_ij, fn13, twbp->D, Tap * twbp->D * (exp1 - 2.0 * exp2),
@@ -599,7 +601,8 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
     }
 
     /* Coulomb calculations */
-    dr3gamij_1 = ( r_ij * r_ij * r_ij + twbp->gamma );
+    dr3gamij_1 = r_ij * r_ij * r_ij
+        + POW( twbp->gamma, -3.0 );
     dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
     tmp = Tap / dr3gamij_3;
