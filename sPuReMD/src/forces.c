@@ -432,8 +432,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                 Tap = Tap * r_ij + workspace->Tap[0];
 
                 /* shielding */
-                dr3gamij_1 = ( r_ij * r_ij * r_ij
-                        + system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
+                dr3gamij_1 = r_ij * r_ij * r_ij
+                        + POW( system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 /* i == j: non-periodic self-interaction term
@@ -456,7 +456,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
         switch ( pos )
         {
             case OFF_DIAGONAL:
-                Tap = workspace->Tap[7] * r_ij + workspace->Tap[6];
+                Tap = workspace->Tap[7] * r_ij
+                    + workspace->Tap[6];
                 Tap = Tap * r_ij + workspace->Tap[5];
                 Tap = Tap * r_ij + workspace->Tap[4];
                 Tap = Tap * r_ij + workspace->Tap[3];
@@ -465,18 +466,17 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                 Tap = Tap * r_ij + workspace->Tap[0];
 
                 /* shielding */
-                dr3gamij_1 = ( r_ij * r_ij * r_ij
-                        + system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma );
+                dr3gamij_1 = r_ij * r_ij * r_ij
+                        + POW( system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 /* i == j: non-periodic self-interaction term
                  * i != j: periodic self-interaction term */
-                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
+                ret = ((i == j) ? 0.0 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
             break;
 
             case DIAGONAL:
-                /* EE parameters in electron-volts */
-//                ret = 2.0 * system->reaxprm.sbp[system->atoms[i].type].eta;
+                /* parameters in electron-volts */
                 ret = system->reaxprm.sbp[system->atoms[i].type].eta;
             break;
 
