@@ -44,6 +44,14 @@ typedef enum
 } MATRIX_ENTRY_POSITION;
 
 
+#if defined(TEST_FORCES)
+static int compare_bonds( const void *p1, const void *p2 )
+{
+    return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
+}
+#endif
+
+
 static void Dummy_Interaction( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -114,12 +122,15 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
     {
         (control->intr_funcs[i])( system, control, data, workspace,
                 lists, out_control );
+    }
 
 #ifdef TEST_FORCES
+    for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
+    {
         (Print_Interactions[i])( system, control, data, workspace,
                 lists, out_control );
-#endif
     }
+#endif
 }
 
 
@@ -149,15 +160,24 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
             {
                 data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
             }
-            data->timing.cm_optimum = data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog + data->timing.cm_solver_tri_solve;
+
+            data->timing.cm_optimum = data->timing.cm_solver_pre_app
+                + data->timing.cm_solver_spmv
+                + data->timing.cm_solver_vector_ops
+                + data->timing.cm_solver_orthog
+                + data->timing.cm_solver_tri_solve;
             data->timing.cm_total_loss = ZERO;
         }
         else
         {
-            data->timing.cm_total_loss += data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog + data->timing.cm_solver_tri_solve - data->timing.cm_optimum;
+            data->timing.cm_total_loss += data->timing.cm_solver_pre_app
+                + data->timing.cm_solver_spmv
+                + data->timing.cm_solver_vector_ops
+                + data->timing.cm_solver_orthog
+                + data->timing.cm_solver_tri_solve
+                - data->timing.cm_optimum;
         }
     }
-
 
     if ( control->tabulate <= 0 )
     {
@@ -218,6 +238,7 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
         }
 
 #ifdef _OPENMP
+        /* reduction (sum) on thread-local force vectors */
         #pragma omp for schedule(static)
         for ( i = 0; i < system->N; ++i )
         {
@@ -1010,6 +1031,18 @@ static void Init_Forces( reax_system *system, control_params *control,
 
     /* validate lists - decide if reallocation is required! */
     Validate_Lists( workspace, lists,
+
+#if defined(TEST_FORCES)
+    /* Calculate_dBO requires a sorted bonds list */
+//    for ( i = 0; i < bonds->n; ++i )
+//    {
+//        if ( Num_Entries(i, bonds) > 0 )
+//        {
+//            qsort( &bonds->bond_list[Start_Index(i, bonds)],
+//                    Num_Entries(i, bonds), sizeof(bond_data), compare_bonds );
+//        }
+//    }
+#endif
             data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
 
 #if defined(DEBUG_FOCUS)

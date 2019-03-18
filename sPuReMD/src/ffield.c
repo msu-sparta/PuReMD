@@ -233,10 +233,10 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
         val = atof(tmp[7]);
         reax->sbp[i].acore2 = val;
 
-        /* inner-wall */
-        if ( reax->sbp[i].rcore2 > 0.01 && reax->sbp[i].acore2 > 0.01 ) // Inner-wall
+        /* inner-wall parameters present */
+        if ( reax->sbp[i].rcore2 > 0.01 && reax->sbp[i].acore2 > 0.01 )
         {
-            /* shielding vdWaals */
+            /* shielding vdWaals parameters present */
             if ( reax->sbp[i].gamma_w > 0.5 )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 3 )
@@ -281,10 +281,10 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
                 }
             }
         }
-        /* no Inner wall parameters present */
+        /* no inner wall parameters present */
         else
         {
-            /* shielding vdWaals */
+            /* shielding vdWaals parameters present */
             if ( reax->sbp[i].gamma_w > 0.5 )
             {
                 if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 1 )
@@ -392,9 +392,9 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     }
 
     /* calculating combination rules and filling up remaining fields. */
-    for (i = 0; i < reax->num_atom_types; i++)
+    for ( i = 0; i < reax->num_atom_types; i++ )
     {
-        for (j = i; j < reax->num_atom_types; j++)
+        for ( j = i; j < reax->num_atom_types; j++ )
         {
             reax->tbp[i][j].r_s = 0.5 * (reax->sbp[i].r_s + reax->sbp[j].r_s);
             reax->tbp[j][i].r_s = 0.5 * (reax->sbp[j].r_s + reax->sbp[i].r_s);
@@ -405,30 +405,29 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
             reax->tbp[i][j].r_pp = 0.5 * (reax->sbp[i].r_pi_pi + reax->sbp[j].r_pi_pi);
             reax->tbp[j][i].r_pp = 0.5 * (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
 
-            reax->tbp[i][j].p_boc3 = SQRT(reax->sbp[i].b_o_132 * reax->sbp[j].b_o_132);
+            reax->tbp[i][j].p_boc3 = SQRT( reax->sbp[i].b_o_132 * reax->sbp[j].b_o_132);
+            reax->tbp[j][i].p_boc3 = SQRT( reax->sbp[j].b_o_132 * reax->sbp[i].b_o_132 );
 
-            reax->tbp[j][i].p_boc3 = SQRT(reax->sbp[j].b_o_132 * reax->sbp[i].b_o_132);
+            reax->tbp[i][j].p_boc4 = SQRT( reax->sbp[i].b_o_131 * reax->sbp[j].b_o_131 );
+            reax->tbp[j][i].p_boc4 = SQRT( reax->sbp[j].b_o_131 * reax->sbp[i].b_o_131 );
 
-            reax->tbp[i][j].p_boc4 = SQRT(reax->sbp[i].b_o_131 * reax->sbp[j].b_o_131);
-            reax->tbp[j][i].p_boc4 = SQRT(reax->sbp[j].b_o_131 * reax->sbp[i].b_o_131);
+            reax->tbp[i][j].p_boc5 = SQRT( reax->sbp[i].b_o_133 * reax->sbp[j].b_o_133 );
+            reax->tbp[j][i].p_boc5 = SQRT( reax->sbp[j].b_o_133 * reax->sbp[i].b_o_133 );
 
-            reax->tbp[i][j].p_boc5 = SQRT(reax->sbp[i].b_o_133 * reax->sbp[j].b_o_133);
-            reax->tbp[j][i].p_boc5 = SQRT(reax->sbp[j].b_o_133 * reax->sbp[i].b_o_133);
+            reax->tbp[i][j].D = SQRT( reax->sbp[i].epsilon * reax->sbp[j].epsilon );
+            reax->tbp[j][i].D = SQRT( reax->sbp[j].epsilon * reax->sbp[i].epsilon );
 
-            reax->tbp[i][j].D = SQRT(reax->sbp[i].epsilon * reax->sbp[j].epsilon);
-            reax->tbp[j][i].D = SQRT(reax->sbp[j].epsilon * reax->sbp[i].epsilon);
+            reax->tbp[i][j].alpha = SQRT( reax->sbp[i].alpha * reax->sbp[j].alpha );
+            reax->tbp[j][i].alpha = SQRT( reax->sbp[j].alpha * reax->sbp[i].alpha );
 
-            reax->tbp[i][j].alpha = SQRT(reax->sbp[i].alpha * reax->sbp[j].alpha);
-            reax->tbp[j][i].alpha = SQRT(reax->sbp[j].alpha * reax->sbp[i].alpha);
+            reax->tbp[i][j].r_vdW = 2.0 * SQRT( reax->sbp[i].r_vdw * reax->sbp[j].r_vdw );
+            reax->tbp[j][i].r_vdW = 2.0 * SQRT( reax->sbp[j].r_vdw * reax->sbp[i].r_vdw );
 
-            reax->tbp[i][j].r_vdW = 2.0 * SQRT(reax->sbp[i].r_vdw * reax->sbp[j].r_vdw);
-            reax->tbp[j][i].r_vdW = 2.0 * SQRT(reax->sbp[j].r_vdw * reax->sbp[i].r_vdw);
+            reax->tbp[i][j].gamma_w = SQRT( reax->sbp[i].gamma_w * reax->sbp[j].gamma_w );
+            reax->tbp[j][i].gamma_w = SQRT( reax->sbp[j].gamma_w * reax->sbp[i].gamma_w );
 
-            reax->tbp[i][j].gamma_w = SQRT(reax->sbp[i].gamma_w * reax->sbp[j].gamma_w);
-            reax->tbp[j][i].gamma_w = SQRT(reax->sbp[j].gamma_w * reax->sbp[i].gamma_w);
-
-            reax->tbp[i][j].gamma = POW(reax->sbp[i].gamma * reax->sbp[j].gamma, -1.5);
-            reax->tbp[j][i].gamma = POW(reax->sbp[j].gamma * reax->sbp[i].gamma, -1.5);
+            reax->tbp[i][j].gamma = POW( reax->sbp[i].gamma * reax->sbp[j].gamma, -3.0 );
+            reax->tbp[j][i].gamma = POW( reax->sbp[j].gamma * reax->sbp[i].gamma, -3.0 );
 
             reax->tbp[i][j].acore = SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
             reax->tbp[j][i].acore = SQRT( reax->sbp[j].acore2 * reax->sbp[i].acore2 );
@@ -448,7 +447,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     Tokenize(s, &tmp);
     l = atoi(tmp[0]);
 
-    for (i = 0; i < l; i++)
+    for ( i = 0; i < l; i++ )
     {
         fgets(s, MAX_LINE, fp);
         Tokenize(s, &tmp);
@@ -456,10 +455,10 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
 
-        if (j < reax->num_atom_types && k < reax->num_atom_types)
+        if ( j < reax->num_atom_types && k < reax->num_atom_types )
         {
             val = atof(tmp[2]);
-            if (val > 0.0)
+            if ( val > 0.0 )
             {
                 reax->tbp[j][k].D = val;
                 reax->tbp[k][j].D = val;
@@ -468,8 +467,8 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
             val = atof(tmp[3]);
             if (val > 0.0)
             {
-                reax->tbp[j][k].r_vdW = 2 * val;
-                reax->tbp[k][j].r_vdW = 2 * val;
+                reax->tbp[j][k].r_vdW = 2.0 * val;
+                reax->tbp[k][j].r_vdW = 2.0 * val;
             }
 
             val = atof(tmp[4]);
