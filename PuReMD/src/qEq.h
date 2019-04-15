@@ -27,4 +27,6 @@
 void QEq( reax_system*, control_params*, simulation_data*,
           storage*, output_controls*, mpi_datatypes* );
 
+int is_refactoring_step ( control_params* const, simulation_data* const );
+
 #endif

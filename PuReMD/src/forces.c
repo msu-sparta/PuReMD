@@ -240,7 +240,8 @@ static void Init_Distance( reax_system *system, control_params *control,
     reax_atom *atom_i, *atom_j;
 
     far_nbrs = lists[FAR_NBRS];
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    renbr = is_refactoring_step( control, data );
 
     if ( !renbr )
     {
@@ -297,7 +298,8 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
     H = workspace->H;
     H->n = system->n;
     Htop = 0;
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    is_refactoring_step( control, data );
 
     nt_flag = 1;
     if( renbr )
@@ -513,7 +515,8 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
     H = workspace->H;
     H->n = system->n;
     Htop = 0;
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    renbr = is_refactoring_step( control, data );
 
     nt_flag = 1;
     if ( renbr )
@@ -1901,7 +1904,8 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
     num_bonds = 0;
     num_hbonds = 0;
     btop_i = 0;
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    renbr = is_refactoring_step( control, data );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -2407,7 +2411,51 @@ void Compute_Forces( reax_system *system, control_params *control,
     {
         t_end = MPI_Wtime( );
         data->timing.cm += t_end - t_start;
+        if ( control->cm_solver_pre_comp_refactor == -1 )
+        {
+            // fprintf( stdout, "step =  %d --- pc time = %.3lf --- loss time = %.3lf\n", data->step, data->timing.cm_last_pre_comp + data->timing.last_nbrs, data->timing.cm_total_loss);
+            // fflush( stdout );
+            if ( data->refactor )
+            {
+                data->refactor = 0;
+                
+                data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
+
+                data->timing.last_nbrs = data->timing.nbrs;
+
+                data->last_pc_step = data->step;
+                
+                data->timing.cm_optimum = data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv 
+                    + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog 
+                    + data->timing.cm_solver_tri_solve;
+
+                data->timing.cm_total_loss = ZERO;
+
+            }
+            else if ( data->step <= 4 )
+            {
+                data->timing.cm_optimum = data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv
+                    + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog
+                    + data->timing.cm_solver_tri_solve;
+            }
+            else
+            {
+                data->timing.cm_total_loss += data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv 
+                    + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog 
+                    + data->timing.cm_solver_tri_solve - data->timing.cm_optimum;
+
+                if ( data->timing.cm_total_loss > data->timing.cm_last_pre_comp + data->timing.last_nbrs || 
+                        data->step - data->last_pc_step + 1 >= control->reneighbor )
+                {
+                    data->refactor = 1;
+                }
+            }
+        }
         t_start = t_end;
+    }
+    if ( control->cm_solver_pre_comp_refactor == -1 )
+    {
+        MPI_Bcast( &(data->refactor), 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
     }
 #endif
 

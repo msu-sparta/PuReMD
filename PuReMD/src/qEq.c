@@ -26,6 +26,29 @@
 #include "linear_solvers.h"
 #include "tool_box.h"
 
+
+int is_refactoring_step( control_params * const control,
+        simulation_data * const data )
+{
+    if ( control->cm_solver_pre_comp_refactor != -1 )
+    {
+        if ( control->cm_solver_pre_comp_refactor > 0
+                && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return data->refactor;
+    }
+}
+
+
 int compare_matrix_entry(const void *v1, const void *v2)
 {
     return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
@@ -418,8 +441,10 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         mpi_datatypes *mpi_data )
 {
     int j, iters;
+    int refactor;
 
     iters = 0;
+    refactor = is_refactoring_step( control, data );
 
     Init_MatVec( system, data, control, workspace, mpi_data );
 
@@ -428,10 +453,9 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //Print_Linear_System( system, control, workspace, data->step );
 #endif
 
-    if( control->cm_solver_pre_comp_type == SAI_PC )
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        if( control->cm_solver_pre_comp_refactor > 0
-                && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0))
+        if ( refactor )
         {
             Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 

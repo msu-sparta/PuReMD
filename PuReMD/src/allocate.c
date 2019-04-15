@@ -954,7 +954,9 @@ void ReAllocate( reax_system *system, control_params *control,
     }
 
 
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
+    renbr = is_refactoring_step( control, data );
+
     /* far neighbors */
     if ( renbr )
     {

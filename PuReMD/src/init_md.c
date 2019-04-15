@@ -207,7 +207,10 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
     Reset_Simulation_Data( data, control->virial );
 
     if ( !control->restart )
-        data->step = data->prev_steps = 0;
+    {
+        data->step = data->prev_steps = data->last_pc_step = 0;
+        data->refactor = 1;
+    }
 
     Compute_Total_Mass( system, data, mpi_data->comm_mesh3D );
     Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
@@ -304,6 +307,9 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
         data->timing.cm_solver_vector_ops = ZERO;
         data->timing.cm_solver_orthog = ZERO;
         data->timing.cm_solver_tri_solve = ZERO;
+        data->timing.cm_last_pre_comp = ZERO;
+        data->timing.cm_total_loss = ZERO;
+        data->timing.cm_optimum = ZERO;
 #endif
     }
 
@@ -385,7 +391,8 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
     }
 
     //if( !control->restart )
-    data->step = data->prev_steps = 0;
+    data->step = data->prev_steps = data->last_pc_step = 0;
+    data->refactor = 1;
 
     return SUCCESS;
 }

@@ -50,7 +50,8 @@ void Velocity_Verlet_NVE( reax_system* system, control_params* control,
     dt = control->dt;
     dt_sqr = SQR(dt);
     steps = data->step - data->prev_steps;
-    renbr = (steps % control->reneighbor == 0);
+    //renbr = (steps % control->reneighbor == 0);
+    renbr = is_refactoring_step( control, data );
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         /* HACK: currently required that preconditioner (re)computation step
@@ -129,7 +130,8 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     dt_sqr = SQR(dt);
     therm = &( data->therm );
     steps = data->step - data->prev_steps;
-    renbr = (steps % control->reneighbor == 0);
+    //renbr = (steps % control->reneighbor == 0);
+    renbr = is_refactoring_step( control, data );
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         /* HACK: currently required that preconditioner (re)computation step
@@ -240,7 +242,8 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 #endif
     dt = control->dt;
     steps = data->step - data->prev_steps;
-    renbr = (steps % control->reneighbor == 0);
+    //renbr = (steps % control->reneighbor == 0);
+    renbr = is_refactoring_step( control, data );
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         /* HACK: currently required that preconditioner (re)computation step
@@ -347,7 +350,8 @@ void Velocity_Verlet_Berendsen_NPT( reax_system* system,
 #endif
     dt = control->dt;
     steps = data->step - data->prev_steps;
-    renbr = (steps % control->reneighbor == 0);
+    //renbr = (steps % control->reneighbor == 0);
+    renbr = is_refactoring_step( control, data );
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         /* HACK: currently required that preconditioner (re)computation step
