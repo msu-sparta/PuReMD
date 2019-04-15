@@ -503,7 +503,7 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
 #endif
     for ( i = 0; i < H->n; ++i )
     {
-        if ( H->val[H->start[i + 1] - 1] != 0.0 )
+        if ( FABS( H->val[H->start[i + 1] - 1] ) <= 1.0e-15 )
         {
             Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
         }
@@ -1603,7 +1603,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
  *    stored in CSR format
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A */
-static void Sparse_MatVec( const static_storage * const workspace,
+static void sparse_matvec( const static_storage * const workspace,
         const sparse_matrix * const A, const real * const x, real * const b )
 {
     int i, j, k, n, si, ei;
@@ -1666,7 +1666,7 @@ static void Sparse_MatVec( const static_storage * const workspace,
  * A: square matrix, stored in CSR format
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A */
-static void Sparse_MatVec_full( const sparse_matrix * const A,
+static void sparse_matvec_full( const sparse_matrix * const A,
         const real * const x, real * const b )
 {
     int i, pj;
@@ -1758,7 +1758,7 @@ void Transpose_I( sparse_matrix * const A )
  * x: preconditioned residual
  * N: dimensions of preconditioner and vectors (# rows in H)
  */
-static void diag_pre_app( const real * const Hdia_inv, const real * const y,
+static void jacobi_app( const real * const Hdia_inv, const real * const y,
                           real * const x, const int N )
 {
     unsigned int i;
@@ -2523,7 +2523,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 switch ( control->cm_solver_pre_comp_type )
                 {
                 case JACOBI_PC:
-                    diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H->n );
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
@@ -2535,7 +2535,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                     tri_solve( workspace->L, workspace->y_p, x, LOWER );
                     break;
                 case SAI_PC:
-                    Sparse_MatVec_full( workspace->H_app_inv, y, x );
+                    sparse_matvec_full( workspace->H_app_inv, y, x );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2547,7 +2547,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 switch ( control->cm_solver_pre_comp_type )
                 {
                 case JACOBI_PC:
-                    diag_pre_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H->n );
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
@@ -2561,7 +2561,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                             workspace->L, workspace->y_p, x, LOWER, fresh_pre );
                     break;
                 case SAI_PC:
-                    Sparse_MatVec_full( workspace->H_app_inv, y, x );
+                    sparse_matvec_full( workspace->H_app_inv, y, x );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2821,7 +2821,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
         {
             /* calculate r0 */
             t_start = Get_Time( );
-            Sparse_MatVec( workspace, H, x, workspace->b_prm );
+            sparse_matvec( workspace, H, x, workspace->b_prm );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -2851,7 +2851,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             {
                 /* matvec */
                 t_start = Get_Time( );
-                Sparse_MatVec( workspace, H, workspace->v[j], workspace->b_prc );
+                sparse_matvec( workspace, H, workspace->v[j], workspace->b_prc );
                 t_spmv += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
@@ -3031,7 +3031,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         {
             /* compute z = r0 */
             t_start = Get_Time( );
-            Sparse_MatVec( workspace, H, x, workspace->b_prm );
+            sparse_matvec( workspace, H, x, workspace->b_prm );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3073,7 +3073,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 
                 /* matvec */
                 t_start = Get_Time( );
-                Sparse_MatVec( workspace, H, z[j], workspace->b_prc );
+                sparse_matvec( workspace, H, z[j], workspace->b_prc );
                 t_spmv += Get_Timing_Info( t_start );
 
                 t_start = Get_Time( );
@@ -3266,7 +3266,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        Sparse_MatVec( workspace, H, x, d );
+        sparse_matvec( workspace, H, x, d );
         t_spmv += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3287,7 +3287,7 @@ int CG( const static_storage * const workspace, const control_params * const con
         for ( i = 0; i < control->cm_solver_max_iters && rnorm / bnorm > tol; ++i )
         {
             t_start = Get_Time( );
-            Sparse_MatVec( workspace, H, p, d );
+            sparse_matvec( workspace, H, p, d );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3373,7 +3373,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
         t_vops = 0.0;
 
         t_start = Get_Time( );
-        Sparse_MatVec( workspace, H, x, workspace->d );
+        sparse_matvec( workspace, H, x, workspace->d );
         t_spmv += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3391,7 +3391,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
         for ( i = 0; i < control->cm_solver_max_iters && rnorm / bnorm > tol; ++i )
         {
             t_start = Get_Time( );
-            Sparse_MatVec( workspace, H, workspace->p, workspace->d );
+            sparse_matvec( workspace, H, workspace->p, workspace->d );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3401,7 +3401,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            Sparse_MatVec( workspace, H, workspace->q, workspace->y );
+            sparse_matvec( workspace, H, workspace->q, workspace->y );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
@@ -3479,7 +3479,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
-        Sparse_MatVec( workspace, H, x, workspace->q );
+        sparse_matvec( workspace, H, x, workspace->q );
         t_spmv += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
@@ -3498,7 +3498,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
         for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / bnorm > tol; ++i )
         {
             t_start = Get_Time( );
-            Sparse_MatVec( workspace, H, workspace->d, workspace->q );
+            sparse_matvec( workspace, H, workspace->d, workspace->q );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
