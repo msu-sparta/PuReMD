@@ -503,7 +503,7 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
 #endif
     for ( i = 0; i < H->n; ++i )
     {
-        if ( FABS( H->val[H->start[i + 1] - 1] ) <= 1.0e-15 )
+        if ( FABS( H->val[H->start[i + 1] - 1] ) > 1.0e-15 )
         {
             Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
         }
