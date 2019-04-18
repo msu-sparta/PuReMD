@@ -40,7 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
-#define DUAL_SOLVER
+//#define DUAL_SOLVER
 //#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
@@ -821,6 +821,14 @@ typedef struct
     real cm_solver_orthog;
     /**/
     real cm_solver_tri_solve;
+    /* time spent on last preconditioner computation */
+    real cm_last_pre_comp;
+    /* time lost for not refactoring */
+    real cm_total_loss;
+    /* solver time on last refactoring step */
+    real cm_optimum;
+    /* neighbor list generation time on last refactoring step */
+    real last_nbrs;
 } reax_timing;
 
 
@@ -849,6 +857,10 @@ typedef struct
 {
     int  step;
     int  prev_steps;
+    /* to decide when to compute preconditioner for dynamic refactoring */
+    int  refactor;
+    /* last refactoring step for dynamic refactoring */
+    int  last_pc_step;
     real time;
 
     real M;              // Total Mass
