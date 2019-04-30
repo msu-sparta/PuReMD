@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# coding=utf-8
 
 
 class TestCase():
@@ -439,13 +440,13 @@ restart_freq            0                       ! 0: do not output any restart f
 #SBATCH --constraint=lac
 
 module purge
-module load GCC/7.3.0-2.30
+module load GCC/8.2.0-2.31.1 OpenMPI/3.1.3 imkl/2019.1.144
 
 cd ${{SLURM_SUBMIT_DIR}}
 
-python3 {0}/tools/run_sim.py run_md \\
-    -b {1} \\\
-""".format(base_dir, binary)
+python3 {0}/tools/run_sim.py run_md {1} \\
+    -b {2} \\\
+""".format(base_dir, run_type, binary)
 
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
@@ -469,13 +470,13 @@ python3 {0}/tools/run_sim.py run_md \\
 #PBS -l walltime=03:59:00,nodes=1:ppn=28,mem=120gb,feature=lac
 
 module purge
-module load GCC/7.3.0-2.30
+module load GCC/8.2.0-2.31.1 OpenMPI/3.1.3 imkl/2019.1.144
 
 cd ${{PBS_O_WORKDIR}}
 
-python3 {0}/tools/run_sim.py run_md \\
-    -b {1} \\\
-""".format(base_dir, binary)
+python3 {0}/tools/run_sim.py run_md {1} \\
+    -b {2} \\\
+""".format(base_dir, run_type, binary)
 
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
@@ -680,8 +681,9 @@ if __name__ == '__main__':
                     geo_format=['1'], result_file=result_file,
                     min_step=min_step, max_step=max_step))
         if 'water_78480' in data_sets:
-            test_cases.append('water_78480',
-                TestCase(path.join(data_dir, 'water/water_78480.geo'),
+            test_cases.append(
+                TestCase('water_78480',
+                    path.join(data_dir, 'water/water_78480.geo'),
                     path.join(data_dir, 'water/ffield_acks2.water'),
                     params=control_params, result_header_fmt=header_fmt_str,
                     result_header = header_str, result_body_fmt=body_fmt_str,
@@ -773,7 +775,7 @@ if __name__ == '__main__':
 
     def run_md(args):
         if args.binary:
-            binary = args.binary[0]
+            binary = args.binary[0].split()[-1]
             # remove executable and back up two directory levels
             base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
         else:
@@ -867,6 +869,16 @@ if __name__ == '__main__':
             max_step = int(args.max_step[0])
         else:
             max_step = None
+
+        # overwrite default control file parameter values if supplied via command line args
+        if args.params:
+            for param in args.params:
+                if param[0] in control_params_dict:
+                    control_params_dict[param[0]] = param[1].split(',')
+                else:
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
+                    exit(-1)
+
 
         test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict,
                 header_fmt_str=header_fmt_str, header_str=header_str, body_fmt_str=body_fmt_str,
