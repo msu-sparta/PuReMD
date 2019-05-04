@@ -521,10 +521,10 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
 real ICHOLT( const sparse_matrix * const A, const real * const droptol,
              sparse_matrix * const L, sparse_matrix * const U )
 {
-    int *tmp_j;
-    real *tmp_val;
     int i, j, pj, k1, k2, tmptop, Ltop;
+    int *tmp_j;
     real val, start;
+    real *tmp_val;
     unsigned int *Utop;
 
     start = Get_Time( );
@@ -533,12 +533,14 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
     tmp_j = smalloc( A->n * sizeof(int), "ICHOLT::Utop" );
     tmp_val = smalloc( A->n * sizeof(real), "ICHOLT::Utop" );
 
-    // clear variables
     Ltop = 0;
     tmptop = 0;
-    memset( L->start, 0, (A->n + 1) * sizeof(unsigned int) );
-    memset( U->start, 0, (A->n + 1) * sizeof(unsigned int) );
-    memset( Utop, 0, A->n * sizeof(unsigned int) );
+    for ( i = 0; i < A->n + 1; ++i )
+        L->start[i] = 0;
+    for ( i = 0; i < A->n + 1; ++i )
+        U->start[i] = 0;
+    for ( i = 0; i < A->n; ++i )
+        Utop[i] = 0;
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -672,71 +674,65 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 real ILUT( const sparse_matrix * const A, const real * const droptol,
              sparse_matrix * const L, sparse_matrix * const U )
 {
-    int i, k, pj, Ltop, Utop, *nz_mask;
+    unsigned int i, k, pj, Ltop, Utop, *nz_mask;
     real *w, start;
-    sparse_matrix *A_T;
+    sparse_matrix *A_full = NULL;
 
     start = Get_Time( );
 
     /* use a dense vector with masking for the intermediate row w */
     w = smalloc( sizeof(real) * A->n, "ILUT::w" );
-    nz_mask = smalloc( sizeof(int) * A->n, "ILUT::nz_mask" );
+    nz_mask = smalloc( sizeof(unsigned int) * A->n, "ILUT::nz_mask" );
 
-    /* need upper triangular portion of A, so transpose to get in CSR format */
-    Allocate_Matrix( &A_T, A->n, A->m );
-
-    Transpose( A, A_T );
+    compute_full_sparse_matrix( A, &A_full );
 
     Ltop = 0;
     Utop = 0;
+    for ( i = 0; i < L->n + 1; ++i )
+        L->start[i] = 0;
+    for ( i = 0; i < U->n + 1; ++i )
+        U->start[i] = 0;
 
-    for ( i = 0; i < A->n; ++i )
+    for ( i = 0; i < A_full->n; ++i )
     {
         /* mark the start of new row i in L and U */
         L->start[i] = Ltop;
         U->start[i] = Utop;
 
-        for ( k = 0; k < A->n; ++k )
+        for ( k = 0; k < A_full->n; ++k )
         {
-            w[k] = 0.0;
             nz_mask[k] = 0;
+            w[k] = 0.0;
         }
 
-        /* copy i-th row of A into w */
-        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        /* copy i-th row of A_full into w */
+        for ( pj = A_full->start[i]; pj < A_full->start[i + 1]; ++pj )
         {
-            k = A->j[pj];
-            w[k] = A->val[pj];
             nz_mask[k] = 1;
-        }
-        for ( pj = A_T->start[i] + 1; pj < A_T->start[i + 1]; ++pj )
-        {
-            k = A_T->j[pj];
-            w[k] = A_T->val[pj];
-            nz_mask[k] = 1;
+            k = A_full->j[pj];
+            w[k] = A_full->val[pj];
         }
 
         for ( k = 0; k < i; ++k )
         {
             if ( nz_mask[k] == 1 )
             {
+                /* A symmetric, lower triangular portion stored */
                 w[k] /= A->val[A->start[k + 1] - 1];
 
                 /* apply dropping rule to w[k] */
-                if ( FABS( w[k] ) < droptol[k] )
+                if ( FABS( w[k] ) <= droptol[k] )
                 {
                     nz_mask[k] = 0;
                 }
 
+                /* subtract scaled k-th row of U from w */
                 if ( nz_mask[k] == 1 )
                 {
                     for ( pj = U->start[k]; pj < U->start[k + 1]; ++pj )
                     {
-                        /* do not introduce new non-zeros (0-fillin) */
-                        if ( nz_mask[U->j[pj]] == 1 )
-                        {
-                            w[U->j[pj]] -= w[k] * U->val[pj];
-                        }
+                        nz_mask[U->j[pj]] = 1;
+                        w[U->j[pj]] -= w[k] * U->val[pj];
                     }
                 }
             }
@@ -745,15 +741,15 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
         /* apply dropping rule to w, but keep the diagonal regardless;
          * note: this is different than Saad's suggested approach
          * as we do not limit the NNZ per row */
-        for ( k = 0; k < A->n; ++k )
+        for ( k = 0; k < A_full->n; ++k )
         {
-            if ( nz_mask[k] == 1 && FABS( w[k] ) < droptol[i] )
+            if ( FABS( w[k] ) <= droptol[i] )
             {
                 nz_mask[k] = 0;
             }
         }
 
-        /* copy w[0:i] to row i of L */
+        /* copy w[0:i-1] to row i of L */
         for ( k = 0; k < i; ++k )
         {
             if ( nz_mask[k] == 1 )
@@ -769,8 +765,13 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
         L->val[Ltop] = 1.0;
         ++Ltop;
 
-        /* copy w[i:n] to row i of L */
-        for ( k = i; k < A->n; ++k )
+        /* diagonal for U */
+        U->j[Utop] = i;
+        U->val[Utop] = w[i];
+        ++Utop;
+
+        /* copy w[i+1:n-1] to row i of U */
+        for ( k = i + 1; k < A_full->n; ++k )
         {
             if ( nz_mask[k] == 1 )
             {
@@ -785,7 +786,7 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
     L->start[L->n] = Ltop;
     U->start[U->n] = Utop;
 
-    Deallocate_Matrix( A_T );
+    Deallocate_Matrix( A_full );
     sfree( nz_mask, "ILUT::nz_mask" );
     sfree( w, "ILUT::w" );
 
@@ -793,7 +794,7 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
 }
 
 
-/* Compute incomplete LU factorization with thresholding and partial pivoting
+/* Compute incomplete LU factorization with thresholding and column-based partial pivoting
  *
  * Reference:
  * Iterative Methods for Sparse Linear System, Second Edition, 2003,
@@ -805,9 +806,9 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
 real ILUTP( const sparse_matrix * const A, const real * const droptol,
              sparse_matrix * const L, sparse_matrix * const U )
 {
-    int i, k, pj, Ltop, Utop, *nz_mask, *perm, *perm_inv, pivot_j;
+    unsigned int i, k, pj, Ltop, Utop, *nz_mask, *perm, *perm_inv, pivot_j;
     real *w, start, pivot_val;
-    sparse_matrix *A_T;
+    sparse_matrix *A_full = NULL;
 
     start = Get_Time( );
 
@@ -817,51 +818,41 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
     perm = smalloc( sizeof(int) * A->n, "ILUTP::perm" );
     perm_inv = smalloc( sizeof(int) * A->n, "ILUTP::perm_inv" );
 
-    /* need upper triangular portion of A, so transpose to get in CSR format */
-    Allocate_Matrix( &A_T, A->n, A->m );
-
-    Transpose( A, A_T );
+    compute_full_sparse_matrix( A, &A_full );
 
     Ltop = 0;
     Utop = 0;
 
     for ( i = 0; i < A->n; ++i )
-    {
         perm[i] = i;
-        perm_inv[perm[i]] = i;
-    }
-
     for ( i = 0; i < A->n; ++i )
+        perm_inv[perm[i]] = i;
+
+    for ( i = 0; i < A_full->n; ++i )
     {
         /* mark the start of new row i in L and U */
         L->start[i] = Ltop;
         U->start[i] = Utop;
 
-        for ( k = 0; k < A->n; ++k )
+        for ( k = 0; k < A_full->n; ++k )
         {
-            w[k] = 0.0;
             nz_mask[k] = 0;
+            w[k] = 0.0;
         }
 
-        /* copy i-th row of A into w */
-        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        /* copy i-th row of A_full into w */
+        for ( pj = A_full->start[i]; pj < A_full->start[i + 1]; ++pj )
         {
-            k = A->j[pj];
-            w[k] = A->val[pj];
             nz_mask[k] = 1;
-        }
-        for ( pj = A_T->start[i] + 1; pj < A_T->start[i + 1]; ++pj )
-        {
-            k = A_T->j[pj];
-            w[k] = A_T->val[pj];
-            nz_mask[k] = 1;
+            k = A_full->j[pj];
+            w[k] = A_full->val[pj];
         }
 
         /* partial pivoting by columns:
          * find largest element in w, and make it the pivot */
         pivot_val = FABS( w[0] );
         pivot_j = 0;
-        for ( k = 1; k < A->n; ++k )
+        for ( k = 1; k < A_full->n; ++k )
         {
             if ( FABS( w[k] ) > pivot_val )
             {
@@ -878,26 +869,12 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
         {
             if ( nz_mask[perm[k]] == 1 )
             {
-                if ( pivot_j <= i )
+                for ( pj = A->start[k]; pj < A->start[k + 1]; ++pj )
                 {
-                    for ( pj = A->start[k]; pj < A->start[k + 1]; ++pj )
+                    if ( A->j[pj] == perm_inv[k] )
                     {
-                        if ( A->j[pj] == perm_inv[k] )
-                        {
-                            w[perm[k]] /= A->val[pj];
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    for ( pj = A_T->start[k] + 1; pj < A_T->start[k + 1]; ++pj )
-                    {
-                        if ( A_T->j[pj] == perm_inv[k] )
-                        {
-                            w[perm[k]] /= A_T->val[pj];
-                            break;
-                        }
+                        w[perm[k]] /= A->val[pj];
+                        break;
                     }
                 }
 
@@ -907,15 +884,13 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
                     nz_mask[perm[k]] = 0;
                 }
 
+                /* subtract scaled k-th row of U from w */
                 if ( nz_mask[perm[k]] == 1 )
                 {
                     for ( pj = U->start[k]; pj < U->start[k + 1]; ++pj )
                     {
-                        /* do not introduce new non-zeros (0-fillin) */
-                        if ( nz_mask[perm[U->j[pj]]] == 1 )
-                        {
-                            w[perm[U->j[pj]]] -= w[perm[k]] * U->val[pj];
-                        }
+                        nz_mask[U->j[pj]] = 1;
+                        w[perm[U->j[pj]]] -= w[perm[k]] * U->val[pj];
                     }
                 }
             }
@@ -924,7 +899,7 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
         /* apply dropping rule to w, but keep the diagonal regardless;
          * note: this is different than Saad's suggested approach
          * as we do not limit the NNZ per row */
-        for ( k = 0; k < A->n; ++k )
+        for ( k = 0; k < A_full->n; ++k )
         {
             if ( perm_inv[k] != i && nz_mask[k] == 1 && FABS( w[k] ) < droptol[i] )
             {
@@ -932,7 +907,7 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
             }
         }
 
-        /* copy w[0:i] to row i of L */
+        /* copy w[0:i-1] to row i of L */
         for ( k = 0; k < i; ++k )
         {
             if ( nz_mask[perm_inv[k]] == 1 )
@@ -948,8 +923,13 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
         L->val[Ltop] = 1.0;
         ++Ltop;
 
-        /* copy w[i:n] to row i of L */
-        for ( k = i; k < A->n; ++k )
+        /* diagonal for U */
+        U->j[Utop] = i;
+        U->val[Utop] = w[perm_inv[i]];
+        ++Utop;
+
+        /* copy w[i-1:n] to row i of U */
+        for ( k = i + 1; k < A_full->n; ++k )
         {
             if ( nz_mask[perm_inv[k]] == 1 )
             {
@@ -964,7 +944,7 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
     L->start[L->n] = Ltop;
     U->start[U->n] = Utop;
 
-    Deallocate_Matrix( A_T );
+    Deallocate_Matrix( A_full );
     sfree( perm_inv, "ILUTP::perm_inv" );
     sfree( perm, "ILUTP::perm" );
     sfree( nz_mask, "ILUTP::nz_mask" );
@@ -1003,11 +983,13 @@ real FG_ICHOL( const sparse_matrix * const A, const unsigned int sweeps,
     for ( i = 0; i < A->n; ++i )
     {
         D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
-        D[i] = 1. / D_inv[i];
+        D[i] = 1.0 / D_inv[i];
     }
 
-    memset( U->start, 0, sizeof(unsigned int) * (A->n + 1) );
-    memset( Utop, 0, sizeof(unsigned int) * (A->n + 1) );
+    for ( i = 0; i < A->n + 1; ++i )
+        U->start[i] = 0;
+    for ( i = 0; i < A->n + 1; ++i )
+        Utop[i] = 0;
 
     /* to get convergence, A must have unit diagonal, so apply
      * transformation DAD, where D = D(1./SQRT(D(A))) */
@@ -1695,10 +1677,12 @@ void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
 {
     unsigned int i, j, pj, *A_t_top;
 
-    A_t_top = (unsigned int*) scalloc( A->n + 1, sizeof(unsigned int),
-                                       "Transpose::A_t_top" );
+    A_t_top = scalloc( A->n + 1, sizeof(unsigned int), "Transpose::A_t_top" );
 
-    memset( A_t->start, 0, (A->n + 1) * sizeof(unsigned int) );
+    for ( i = 0; i < A->n + 1; ++i )
+    {
+        A_t->start[i] = 0;
+    }
 
     /* count nonzeros in each column of A^T, store one row greater (see next loop) */
     for ( i = 0; i < A->n; ++i )
@@ -1712,7 +1696,8 @@ void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
     /* setup the row pointers for A^T */
     for ( i = 1; i <= A->n; ++i )
     {
-        A_t_top[i] = A_t->start[i] = A_t->start[i] + A_t->start[i - 1];
+        A_t->start[i] = A_t->start[i] + A_t->start[i - 1];
+        A_t_top[i] = A_t->start[i];
     }
 
     /* fill in A^T */
@@ -1871,9 +1856,12 @@ void tri_solve_level_sched( static_storage * workspace,
         /* find levels (row dependencies in substitutions) */
         if ( find_levels == TRUE )
         {
-            memset( row_levels, 0, LU->n * sizeof(unsigned int) );
-            memset( level_rows_cnt, 0, LU->n * sizeof(unsigned int) );
-            memset( workspace->top, 0, LU->n * sizeof(unsigned int) );
+            for ( i = 0; i < LU->n; ++i )
+                row_levels[i] = 0;
+            for ( i = 0; i < LU->n; ++i )
+                level_rows_cnt[i] = 0;
+            for ( i = 0; i < LU->n; ++i )
+                workspace->top[i] = 0;
             levels = 1;
 
             if ( tri == LOWER )
@@ -2066,7 +2054,8 @@ void graph_coloring( const control_params * const control,
 
         while ( workspace->recolor_cnt > 0 )
         {
-            memset( fb_color, -1, sizeof(int) * A->n );
+            for ( i = 0; i < A->n; ++i )
+                fb_color[i] = -1;
 
             /* color vertices */
 #ifdef _OPENMP
@@ -2175,7 +2164,8 @@ void sort_rows_by_colors( const static_storage * const workspace,
 {
     unsigned int i;
 
-    memset( workspace->color_top, 0, sizeof(unsigned int) * (n + 1) );
+    for ( i = 0; i < n + 1; ++i )
+        workspace->color_top[i] = 0;
 
     /* sort vertices by color (ascending within a color)
      *  1) count colors
@@ -2243,9 +2233,10 @@ static void permute_matrix( const static_storage * const workspace,
 
     Allocate_Matrix( &LUtemp, LU->n, LU->m );
 
-    /* count nonzeros in each row of permuted factor (re-use color_top for counting) */
-    memset( workspace->color_top, 0, sizeof(unsigned int) * (LU->n + 1) );
+    for ( i = 0; i < LU->n + 1; ++i )
+        workspace->color_top[i] = 0;
 
+    /* count nonzeros in each row of permuted factor (re-use color_top for counting) */
     if ( tri == LOWER )
     {
         for ( i = 0; i < LU->n; ++i )
@@ -3024,7 +3015,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
         bnorm = Norm( b, N );
         t_vops += Get_Timing_Info( t_start );
 
-        // memset( x, 0, sizeof(real) * N );
+//        memset( x, 0, sizeof(real) * N );
 
         /* GMRES outer-loop */
         for ( itr = 0; itr < control->cm_solver_max_iters; ++itr )
@@ -3568,7 +3559,8 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 
     e = smalloc( sizeof(real) * N, "condest::e" );
 
-    memset( e, 1., N * sizeof(real) );
+    for ( i = 0; i < N; ++i )
+        e[i] = 1.0;
 
     tri_solve( L, e, e, LOWER );
     tri_solve( U, e, e, UPPER );
