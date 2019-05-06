@@ -59,6 +59,9 @@ real FG_ICHOL( const sparse_matrix * const, const unsigned int,
 real FG_ILUT( const sparse_matrix * const, const real *,
         const unsigned int, sparse_matrix * const, sparse_matrix * const );
 
+real ILU( const sparse_matrix * const, sparse_matrix * const,
+        sparse_matrix * const );
+
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 real sparse_approx_inverse( const sparse_matrix * const, const sparse_matrix * const,
         sparse_matrix ** );

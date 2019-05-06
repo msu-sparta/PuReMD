@@ -359,7 +359,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     workspace->U = NULL;
     workspace->Hdia_inv = NULL;
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
+            || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
@@ -1272,7 +1272,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->Hdia_inv, "Finalize_Workspace::workspace->Hdia_inv" );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
+            || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {

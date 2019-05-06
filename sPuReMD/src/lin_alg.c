@@ -184,7 +184,6 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
     count = 0;
     for ( i = 0; i < A->n; ++i )
     {
-
         (*A_full)->start[i] = count;
 
         /* A: symmetric, lower triangular portion only stored */
@@ -203,7 +202,7 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
             ++count;
         }
     }
-    (*A_full)->start[i] = count;
+    (*A_full)->start[A->n] = count;
 
     Deallocate_Matrix( A_t );
 }
@@ -662,6 +661,119 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 }
 
 
+/* Compute incomplete LU factorization with 0-fillin and no pivoting
+ *
+ * Reference:
+ * Iterative Methods for Sparse Linear System, Second Edition, 2003,
+ * Yousef Saad
+ *
+ * A: symmetric (lower triangular portion only stored), square matrix, CSR format
+ * L / U: (output) triangular matrices, A \approx LU, CSR format */
+real ILU( const sparse_matrix * const A, sparse_matrix * const L,
+        sparse_matrix * const U )
+{
+    unsigned int i, pj, pk, pl, Ltop, Utop;
+    real start;
+    sparse_matrix *A_full = NULL;
+
+    start = Get_Time( );
+
+    compute_full_sparse_matrix( A, &A_full );
+
+    Ltop = 0;
+    Utop = 0;
+
+    for ( i = 0; i < A_full->n; ++i )
+    {
+        /* mark the start of new row i in L and U */
+        L->start[i] = Ltop;
+        U->start[i] = Utop;
+
+        /* for each non-zero in i-th row to the left of the diagonal:
+         * for k = 0, ..., i - 1 */
+        for ( pj = A_full->start[i]; pj < A_full->start[i + 1]; ++pj )
+        {
+            if ( A_full->j[pj] >= i )
+            {
+                break;
+            }
+
+            /* scan k-th row (A_full->j[pj]) to find a_{kk},
+             * and compute a_{ik} = a_{ik} / a_{kk} */
+            for ( pk = A_full->start[A_full->j[pj]]; pk < A_full->start[A_full->j[pj] + 1]; ++pk )
+            {
+                if ( A_full->j[pk] == A_full->j[pj] )
+                {
+                    A_full->val[pj] /= A_full->val[pk];
+                    break;
+                }
+            }
+
+            /* trailing row update (sparse vector-sparse vector product):
+             * for j = k + 1, ..., n - 1 
+             *   a_{ij} = a_{ij} - a_{ik} * a_{kj}
+             *
+             * pi: points to a_{ik}
+             * pl: points to a_{ij}
+             * pk: points to a_{kj}
+             * */
+            ++pk;
+            for ( pl = pj + 1; pl < A_full->start[i + 1] && pk < A_full->start[A_full->j[pj] + 1]; )
+            {
+                if ( A_full->j[pl] == A_full->j[pk] )
+                {
+                    A_full->val[pl] -= A_full->val[pj] * A_full->val[pk];
+                    ++pl;
+                    ++pk;
+                }
+                else if ( A_full->j[pl] < A_full->j[pk] )
+                {
+                    ++pl;
+                }
+                else
+                {
+                    ++pk;
+                }
+            }
+        }
+
+        /* copy A_full[0:i-1] to row i of L */
+        for ( pj = A_full->start[i]; pj < A_full->start[i + 1]; ++pj )
+        {
+            if ( A_full->j[pj] >= i )
+            {
+                break;
+            }
+
+            L->j[Ltop] = A_full->j[pj];
+            L->val[Ltop] = A_full->val[pj];
+            ++Ltop;
+        }
+
+        /* unit diagonal for row i of L */
+        L->j[Ltop] = i;
+        L->val[Ltop] = 1.0;
+        ++Ltop;
+
+        /* copy A_full[i:n-1] to row i of U */
+        for ( ; pj < A_full->start[i + 1]; ++pj )
+        {
+            U->j[Utop] = A_full->j[pj];
+            U->val[Utop] = A_full->val[pj];
+            ++Utop;
+        }
+    }
+
+    /* record the total NNZ as the last entry in row pointer (start) */
+    L->start[L->n] = Ltop;
+    U->start[U->n] = Utop;
+
+    Deallocate_Matrix( A_full );
+
+    return Get_Timing_Info( start );
+}
+
+
 /* Compute incomplete LU factorization with thresholding
  *
  * Reference:
@@ -677,6 +789,7 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
     unsigned int i, k, pj, Ltop, Utop, *nz_mask;
     real *w, start;
     sparse_matrix *A_full = NULL;
+    unsigned int nz_cnt;
 
     start = Get_Time( );
 
@@ -749,6 +862,18 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
             }
         }
 
+        nz_cnt = 0;
+        for ( k = i + 1; k < A_full->n; ++k )
+            if ( nz_mask[k] == 1 )
+                ++nz_cnt;
+
+        if ( Ltop + nz_cnt > L->m )
+        {
+            L->m = MAX( (5 * nz_cnt) + L->m, (unsigned int) (L->m * SAFE_ZONE) );
+            L->j = srealloc( L->j, sizeof(unsigned int) * L->m, "ILUT::L->j" );
+            L->val = srealloc( L->val, sizeof(real) * L->m, "ILUT::L->val" );
+        }
+
         /* copy w[0:i-1] to row i of L */
         for ( k = 0; k < i; ++k )
         {
@@ -764,6 +889,18 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
         L->j[Ltop] = i;
         L->val[Ltop] = 1.0;
         ++Ltop;
+
+        nz_cnt = 0;
+        for ( k = i + 1; k < A_full->n; ++k )
+            if ( nz_mask[k] == 1 )
+                ++nz_cnt;
+
+        if ( Utop + nz_cnt > U->m )
+        {
+            U->m = MAX( (5 * nz_cnt) + U->m, (unsigned int) (U->m * SAFE_ZONE) );
+            U->j = srealloc( U->j, sizeof(unsigned int) * U->m, "ILUT::L->j" );
+            U->val = srealloc( U->val, sizeof(real) * U->m, "ILUT::L->val" );
+        }
 
         /* diagonal for U */
         U->j[Utop] = i;

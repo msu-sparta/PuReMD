@@ -257,8 +257,16 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            data->timing.cm_solver_pre_comp +=
-                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            if ( control->cm_solver_pre_comp_droptol > 0.0 )
+            {
+                data->timing.cm_solver_pre_comp +=
+                    ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            }
+            else
+            {
+                data->timing.cm_solver_pre_comp +=
+                    ILU( Hptr, workspace->L, workspace->U );
+            }
             break;
 
         case ILUTP_PC:
@@ -357,8 +365,16 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //        break;
 //
 //    case ILUT_PC:
-//        data->timing.cm_solver_pre_comp +=
-//            ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+//        if ( control->cm_solver_pre_comp_droptol > 0.0 )
+//        {
+//            data->timing.cm_solver_pre_comp +=
+//                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+//        }
+//        else
+//        {
+//            data->timing.cm_solver_pre_comp +=
+//                ILU( Hptr, workspace->L, workspace->U );
+//        }
 //        break;
 //
 //    case ILUTP_PC:
@@ -607,8 +623,16 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            data->timing.cm_solver_pre_comp +=
-                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            if ( control->cm_solver_pre_comp_droptol > 0.0 )
+            {
+                data->timing.cm_solver_pre_comp +=
+                    ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            }
+            else
+            {
+                data->timing.cm_solver_pre_comp +=
+                    ILU( Hptr, workspace->L, workspace->U );
+            }
             break;
 
         case ILUTP_PC:
@@ -738,8 +762,16 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            data->timing.cm_solver_pre_comp +=
-                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            if ( control->cm_solver_pre_comp_droptol > 0.0 )
+            {
+                data->timing.cm_solver_pre_comp +=
+                    ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+            }
+            else
+            {
+                data->timing.cm_solver_pre_comp +=
+                    ILU( Hptr, workspace->L, workspace->U );
+            }
             break;
 
         case ILUTP_PC:
@@ -877,6 +909,26 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case ILUT_PC:
+            if ( control->cm_solver_pre_comp_droptol > 0.0 )
+            {
+                Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+            }
+
+            if ( workspace->L == NULL )
+            {
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+            }
+            else if ( workspace->L->m < Hptr->m )
+            {
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+            }
+            break;
+
         case ILUTP_PC:
         case FG_ILUT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
@@ -961,6 +1013,32 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case ILUT_PC:
+            if ( control->cm_solver_pre_comp_droptol > 0.0 )
+            {
+                /* replace zeros on diagonal with non-zero values */
+                Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+
+                Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+
+                /* put zeros back */
+                Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+            }
+
+            if ( workspace->L == NULL )
+            {
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+            }
+            else if ( workspace->L->m < Hptr->m )
+            {
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+            }
+            break;
+
         case ILUTP_PC:
         case FG_ILUT_PC:
             /* replace zeros on diagonal with non-zero values */
@@ -1051,6 +1129,34 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case ILUT_PC:
+            if ( control->cm_solver_pre_comp_droptol > 0.0 )
+            {
+                /* replace zeros on diagonal with non-zero values */
+                Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 1.0;
+                Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
+
+                Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
+
+                /* put zeros back */
+                Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 0.0;
+                Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
+            }
+
+            if ( workspace->L == NULL )
+            {
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+            }
+            else if ( workspace->L->m < Hptr->m )
+            {
+                Deallocate_Matrix( workspace->L );
+                Deallocate_Matrix( workspace->U );
+
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+            }
+            break;
+
         case ILUTP_PC:
         case FG_ILUT_PC:
             /* replace zeros on diagonal with non-zero values */
