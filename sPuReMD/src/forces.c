@@ -763,15 +763,19 @@ static void Init_Forces( reax_system *system, control_params *control,
         if ( control->hbond_cut > 0.0 )
         {
             ihb = sbp_i->p_hbond;
-
             if ( ihb == H_ATOM )
             {
                 ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+            }
+            else
+            {
+                ihb_top = -1;
             }
         }
         else
         {
             ihb = NON_H_BONDING_ATOM;
+            ihb_top = -1;
         }
 
         /* update i-j distance - check if j is within cutoff */
@@ -813,6 +817,9 @@ static void Init_Forces( reax_system *system, control_params *control,
 
             if ( flag == TRUE )
             {
+                type_j = system->atoms[j].type;
+                sbp_j = &system->reaxprm.sbp[type_j];
+                twbp = &system->reaxprm.tbp[type_i][type_j];
                 r_ij = nbr_pj->d;
 
                 val = Init_Charge_Matrix_Entry( system, control,
@@ -864,9 +871,6 @@ static void Init_Forces( reax_system *system, control_params *control,
                         && nbr_pj->d <= control->hbond_cut )
                 {
                     // fprintf( stderr, "%d %d\n", atom1, atom2 );
-                    type_j = system->atoms[j].type;
-                    sbp_j = &system->reaxprm.sbp[type_j];
-                    twbp = &system->reaxprm.tbp[type_i][type_j];
                     jhb = sbp_j->p_hbond;
 
                     if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
@@ -1103,15 +1107,19 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
         if ( control->hbond_cut > 0.0 )
         {
             ihb = sbp_i->p_hbond;
-
             if ( ihb == H_ATOM )
             {
                 ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+            }
+            else
+            {
+                ihb_top = -1;
             }
         }
         else
         {
             ihb = NON_H_BONDING_ATOM;
+            ihb_top = -1;
         }
 
         /* update i-j distance - check if j is within cutoff */
@@ -1153,6 +1161,9 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
 
             if ( flag == TRUE )
             {
+                type_j = system->atoms[j].type;
+                sbp_j = &system->reaxprm.sbp[type_j];
+                twbp = &system->reaxprm.tbp[type_i][type_j];
                 r_ij = nbr_pj->d;
 
                 val = Init_Charge_Matrix_Entry( system, control,
@@ -1204,9 +1215,6 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                         && nbr_pj->d <= control->hbond_cut )
                 {
                     // fprintf( stderr, "%d %d\n", atom1, atom2 );
-                    type_j = system->atoms[j].type;
-                    sbp_j = &system->reaxprm.sbp[type_j];
-                    twbp = &system->reaxprm.tbp[type_i][type_j];
                     jhb = sbp_j->p_hbond;
 
                     if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
