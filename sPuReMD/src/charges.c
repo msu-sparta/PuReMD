@@ -32,32 +32,33 @@
 int is_refactoring_step( control_params * const control,
         simulation_data * const data )
 {
+    int ret;
+
     if ( control->cm_solver_pre_comp_refactor != -1 )
     {
         if ( control->cm_solver_pre_comp_refactor > 0
                 && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
         {
-            return 1;
+            ret = TRUE;
         }
         else
         {
-            return 0;
+            ret = FALSE;
         }
     }
     else
     {
-        //fprintf( stdout, "step: %d, last pc time: %.4lf total loss: %.4lf\n", data->step, data->timing.cm_last_pre_comp, data->timing.cm_total_loss );
-        //fflush( stdout );
         if ( data->step == 0 || data->timing.cm_total_loss > data->timing.cm_last_pre_comp )
         {
-            //fprintf( stdout,"\n\n-------------------\nREFACTORING STEP\n-------------------\n\n");
-            return 1;
+            ret = TRUE;
         }
         else
         {
-            return 0;
+            ret = FALSE;
         }
     }
+
+    return ret;
 }
 
 
@@ -1283,14 +1284,11 @@ static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const output_controls * const out_control )
 {
-    int iters;
-    int refactor;
+    int iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
-    //if ( control->cm_solver_pre_comp_refactor > 0
-    //        && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
-    if ( refactor )    
+    if ( refactor == TRUE )    
     {
         Setup_Preconditioner_QEq( system, control, data, workspace );
 
@@ -1302,10 +1300,6 @@ static void QEq( reax_system * const system, control_params * const control,
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
-        //iters = GMRES( workspace, control, data, workspace->H,
-        //        workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-        //        (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         iters += GMRES( workspace, control, data, workspace->H,
@@ -1313,10 +1307,6 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case GMRES_H_S:
-        //iters = GMRES_HouseHolder( workspace, control, data, workspace->H,
-        //        workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-        //        (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters = GMRES_HouseHolder( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         iters += GMRES_HouseHolder( workspace, control, data, workspace->H,
@@ -1324,9 +1314,6 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case CG_S:
-        //iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         iters += CG( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
@@ -1334,9 +1321,6 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case SDM_S:
-        //iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         iters += SDM( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
@@ -1344,9 +1328,6 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
 
     case BiCGStab_S:
-        //iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         iters += BiCGStab( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
@@ -1388,14 +1369,11 @@ static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const output_controls * const out_control )
 {
-    int iters;
-    int refactor;
+    int iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
-    //if ( control->cm_solver_pre_comp_refactor > 0
-    //        && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
-    if ( refactor )
+    if ( refactor == TRUE )
     {
         Setup_Preconditioner_EE( system, control, data, workspace );
 
@@ -1407,43 +1385,26 @@ static void EE( reax_system * const system, control_params * const control,
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
-        //iters = GMRES( workspace, control, data, workspace->H,
-        //        workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-        //        (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case GMRES_H_S:
-        //iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
-        //        workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-        //        control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
         iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case CG_S:
-        //iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case SDM_S:
-        //iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case BiCGStab_S:
-        //iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
@@ -1475,14 +1436,11 @@ static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const output_controls * const out_control )
 {
-    int iters;
-    int refactor;
+    int iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
-    //if ( control->cm_solver_pre_comp_refactor > 0
-    //        && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
-    if ( refactor )
+    if ( refactor == TRUE )
     {
         Setup_Preconditioner_ACKS2( system, control, data, workspace );
 
@@ -1511,43 +1469,26 @@ static void ACKS2( reax_system * const system, control_params * const control,
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
-        //iters = GMRES( workspace, control, data, workspace->H,
-        //        workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-        //        (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE );
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case GMRES_H_S:
-        //iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
-        //        workspace->b_s, control->cm_solver_q_err, workspace->s[0],
-        //        control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0 );
         iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case CG_S:
-        //iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case SDM_S:
-        //iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case BiCGStab_S:
-        //iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
-        //        workspace->s[0], (control->cm_solver_pre_comp_refactor > 0 &&
-        //         (data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ? TRUE : FALSE ) + 1;
         iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;

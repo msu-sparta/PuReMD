@@ -1036,6 +1036,7 @@ static void Init_Forces( reax_system *system, control_params *control,
 
     /* validate lists - decide if reallocation is required! */
     Validate_Lists( workspace, lists,
+            data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
 
 #if defined(TEST_FORCES)
     /* Calculate_dBO requires a sorted bonds list */
@@ -1048,7 +1049,6 @@ static void Init_Forces( reax_system *system, control_params *control,
 //        }
 //    }
 #endif
-            data->step, system->N, H->m, Htop, num_bonds, num_hbonds );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "step%d: Htop = %d, num_bonds = %d, num_hbonds = %d\n",
