@@ -1346,7 +1346,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     {
         /* for each nonzero in L */
 #ifdef _OPENMP
-        #pragma omp parallel for schedule(static) \
+        #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
 #endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
@@ -1361,7 +1361,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                 if ( DAD->start[k] > j )
                 {
                     x = DAD->start[k - 1];
-                    ei_x = DAD->start[k];
+                    ei_x = j;
                     break;
                 }
             }
@@ -1369,36 +1369,34 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
             y = DAD->start[DAD->j[j]];
             ei_y = DAD->start[DAD->j[j] + 1];
 
-            /* sparse dot product:
-             *   dot( L(i,1:j-1), U(1:j-1,j) ) */
-            while ( L_temp->j[x] < L_temp->j[j] &&
-                    L_temp->j[y] < L_temp->j[j] &&
-                    x < ei_x && y < ei_y )
+            if ( j != DAD->start[k] )
             {
-                if ( L_temp->j[x] == L_temp->j[y] )
+                /* sparse vector-sparse vector inner product for nonzero (i, j):
+                 *   dot( L(i,1:j-1), U(1:j-1,j) ) */
+                for ( ; x < ei_x && y < ei_y && L_temp->j[x] < L_temp->j[j] && U_temp->j[y] < L_temp->j[j]; )
                 {
-                    sum += (L_temp->val[x] * U_temp->val[y]);
-                    ++x;
-                    ++y;
+                    if ( L_temp->j[x] == U_temp->j[y] )
+                    {
+                        sum += L_temp->val[x] * U_temp->val[y];
+                        ++x;
+                        ++y;
+                    }
+                    else if ( L_temp->j[x] < U_temp->j[y] )
+                    {
+                        ++x;
+                    }
+                    else
+                    {
+                        ++y;
+                    }
                 }
-                else if ( L_temp->j[x] < L_temp->j[y] )
-                {
-                    ++x;
-                }
-                else
-                {
-                    ++y;
-                }
-            }
 
-            if ( j != ei_x - 1 )
-            {
                 L_temp->val[j] = ( DAD->val[j] - sum ) / U_temp->val[ei_y - 1];
             }
         }
 
 #ifdef _OPENMP
-        #pragma omp parallel for schedule(static) \
+        #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
 #endif
         for ( j = 0; j < DAD->start[DAD->n]; ++j )
@@ -1421,19 +1419,17 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
             y = DAD->start[DAD->j[j]];
             ei_y = DAD->start[DAD->j[j] + 1];
 
-            /* sparse dot product:
-             *   dot( L(i,1:i-1), U(1:i-1,j) ) */
-            while ( U_temp->j[x] < U_temp->j[j] &&
-                    U_temp->j[y] < U_temp->j[j] &&
-                    x < ei_x && y < ei_y )
+            /* sparse vector-sparse vector inner product for nonzero (i, j):
+             *   dot( L(i,1:j-1), U(1:j-1,j) ) */
+            for ( ; x < ei_x && y < ei_y && U_temp->j[x] < U_temp->j[j] && L_temp->j[x] < U_temp->j[j]; )
             {
-                if ( U_temp->j[x] == U_temp->j[y] )
+                if ( U_temp->j[x] == L_temp->j[y] )
                 {
-                    sum += (L_temp->val[y] * U_temp->val[x]);
+                    sum += L_temp->val[y] * U_temp->val[x];
                     ++x;
                     ++y;
                 }
-                else if ( U_temp->j[x] < U_temp->j[y] )
+                else if ( U_temp->j[x] < L_temp->j[y] )
                 {
                     ++x;
                 }
