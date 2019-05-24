@@ -759,17 +759,19 @@ static void Init_Forces( reax_system *system, control_params *control,
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
         sbp_i = &system->reaxprm.sbp[type_i];
-        ihb = -1;
-        ihb_top = -1;
 
         if ( control->hbond_cut > 0.0 )
         {
             ihb = sbp_i->p_hbond;
 
-            if ( ihb == 1 )
+            if ( ihb == H_ATOM )
             {
                 ihb_top = End_Index( workspace->hbond_index[i], hbonds );
             }
+        }
+        else
+        {
+            ihb = NON_H_BONDING_ATOM;
         }
 
         /* update i-j distance - check if j is within cutoff */
@@ -777,24 +779,23 @@ static void Init_Forces( reax_system *system, control_params *control,
         {
             nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &system->atoms[j];
             flag = FALSE;
             flag_sp = FALSE;
 
             /* check if reneighboring step */
-            if ( (data->step - data->prev_steps) % control->reneighbor == 0 )
+            if ( (data->step - data->prev_steps) % control->reneighbor == 0
+                    && nbr_pj->d <= control->nonb_cut )
             {
-                if ( nbr_pj->d <= control->nonb_cut )
+                flag = TRUE;
+
+                if ( nbr_pj->d <= control->nonb_sp_cut )
                 {
-                    flag = TRUE;
-                    if ( nbr_pj->d <= control->nonb_sp_cut )
-                    {
-                        flag_sp = TRUE;
-                    }
+                    flag_sp = TRUE;
                 }
             }
             else
             {
+                atom_j = &system->atoms[j];
                 nbr_pj->d = Sq_Distance_on_T3( atom_i->x, atom_j->x,
                         &system->box, nbr_pj->dvec );
 
@@ -812,10 +813,7 @@ static void Init_Forces( reax_system *system, control_params *control,
 
             if ( flag == TRUE )
             {
-                type_j = system->atoms[j].type;
                 r_ij = nbr_pj->d;
-                sbp_j = &system->reaxprm.sbp[type_j];
-                twbp = &system->reaxprm.tbp[type_i][type_j];
 
                 val = Init_Charge_Matrix_Entry( system, control,
                             workspace, i, j, r_ij, OFF_DIAGONAL );
@@ -862,13 +860,16 @@ static void Init_Forces( reax_system *system, control_params *control,
                 }
 
                 /* hydrogen bond lists */
-                if ( control->hbond_cut > 0.0 && (ihb == 1 || ihb == 2)
+                if ( control->hbond_cut > 0.0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
                         && nbr_pj->d <= control->hbond_cut )
                 {
                     // fprintf( stderr, "%d %d\n", atom1, atom2 );
+                    type_j = system->atoms[j].type;
+                    sbp_j = &system->reaxprm.sbp[type_j];
+                    twbp = &system->reaxprm.tbp[type_i][type_j];
                     jhb = sbp_j->p_hbond;
 
-                    if ( ihb == 1 && jhb == 2 )
+                    if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                     {
                         hbonds->hbond_list[ihb_top].nbr = j;
                         hbonds->hbond_list[ihb_top].scl = 1;
@@ -876,7 +877,7 @@ static void Init_Forces( reax_system *system, control_params *control,
                         ++ihb_top;
                         ++num_hbonds;
                     }
-                    else if ( ihb == 2 && jhb == 1 )
+                    else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM )
                     {
                         jhb_top = End_Index( workspace->hbond_index[j], hbonds );
                         hbonds->hbond_list[jhb_top].nbr = i;
@@ -1017,7 +1018,7 @@ static void Init_Forces( reax_system *system, control_params *control,
         ++H_sp_top;
 
         Set_End_Index( i, btop_i, bonds );
-        if ( ihb == 1 )
+        if ( ihb == H_ATOM )
         {
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
         }
@@ -1098,17 +1099,19 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
         sbp_i = &system->reaxprm.sbp[type_i];
-        ihb = -1;
-        ihb_top = -1;
 
         if ( control->hbond_cut > 0.0 )
         {
             ihb = sbp_i->p_hbond;
 
-            if ( ihb == 1 )
+            if ( ihb == H_ATOM )
             {
                 ihb_top = End_Index( workspace->hbond_index[i], hbonds );
             }
+        }
+        else
+        {
+            ihb = NON_H_BONDING_ATOM;
         }
 
         /* update i-j distance - check if j is within cutoff */
@@ -1116,25 +1119,23 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
         {
             nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
-            atom_j = &system->atoms[j];
             flag = FALSE;
             flag_sp = FALSE;
 
             /* check if reneighboring step */
-            if ( (data->step - data->prev_steps) % control->reneighbor == 0 )
+            if ( (data->step - data->prev_steps) % control->reneighbor == 0
+                    && nbr_pj->d <= control->nonb_cut )
             {
-                if (nbr_pj->d <= control->nonb_cut)
+                flag = TRUE;
+
+                if ( nbr_pj->d <= control->nonb_sp_cut )
                 {
-                    flag = TRUE;
-                    if ( nbr_pj->d <= control->nonb_sp_cut )
-                    {
-                        flag_sp = TRUE;
-                    }
+                    flag_sp = TRUE;
                 }
             }
-            else if ( (nbr_pj->d = Sq_Distance_on_T3(atom_i->x, atom_j->x, &system->box,
-                            nbr_pj->dvec)) <= SQR(control->nonb_cut) )
+            else
             {
+                atom_j = &system->atoms[j];
                 nbr_pj->d = Sq_Distance_on_T3( atom_i->x, atom_j->x,
                         &system->box, nbr_pj->dvec );
 
@@ -1152,10 +1153,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
 
             if ( flag == TRUE )
             {
-                type_j = system->atoms[j].type;
                 r_ij = nbr_pj->d;
-                sbp_j = &system->reaxprm.sbp[type_j];
-                twbp = &system->reaxprm.tbp[type_i][type_j];
 
                 val = Init_Charge_Matrix_Entry( system, control,
                         workspace, i, j, r_ij, OFF_DIAGONAL );
@@ -1202,13 +1200,16 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                 }
 
                 /* hydrogen bond lists */
-                if ( control->hbond_cut > 0 && (ihb == 1 || ihb == 2)
+                if ( control->hbond_cut > 0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
                         && nbr_pj->d <= control->hbond_cut )
                 {
                     // fprintf( stderr, "%d %d\n", atom1, atom2 );
+                    type_j = system->atoms[j].type;
+                    sbp_j = &system->reaxprm.sbp[type_j];
+                    twbp = &system->reaxprm.tbp[type_i][type_j];
                     jhb = sbp_j->p_hbond;
 
-                    if ( ihb == 1 && jhb == 2 )
+                    if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                     {
                         hbonds->hbond_list[ihb_top].nbr = j;
                         hbonds->hbond_list[ihb_top].scl = 1;
@@ -1216,7 +1217,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                         ++ihb_top;
                         ++num_hbonds;
                     }
-                    else if ( ihb == 2 && jhb == 1 )
+                    else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM )
                     {
                         jhb_top = End_Index( workspace->hbond_index[j], hbonds );
                         hbonds->hbond_list[jhb_top].nbr = i;
@@ -1357,7 +1358,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
         ++H_sp_top;
 
         Set_End_Index( i, btop_i, bonds );
-        if ( ihb == 1 )
+        if ( ihb == H_ATOM )
         {
             Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
         }
@@ -1414,27 +1415,27 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
         for ( pj = start_i; pj < end_i; ++pj )
         {
             nbr_pj = &far_nbrs->far_nbr_list[pj];
-            j = nbr_pj->nbr;
-            atom_j = &system->atoms[j];
-            type_j = atom_j->type;
-            sbp_j = &system->reaxprm.sbp[type_j];
-            twbp = &system->reaxprm.tbp[type_i][type_j];
 
             if ( nbr_pj->d <= control->nonb_cut )
             {
+                j = nbr_pj->nbr;
+                atom_j = &system->atoms[j];
+                type_j = atom_j->type;
+                sbp_j = &system->reaxprm.sbp[type_j];
+                twbp = &system->reaxprm.tbp[type_i][type_j];
                 ++(*Htop);
 
                 /* hydrogen bond lists */
-                if ( control->hbond_cut > 0.0 && (ihb == 1 || ihb == 2)
+                if ( control->hbond_cut > 0.0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
                         && nbr_pj->d <= control->hbond_cut )
                 {
                     jhb = sbp_j->p_hbond;
 
-                    if ( ihb == 1 && jhb == 2 )
+                    if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                     {
                         ++hb_top[i];
                     }
-                    else if ( ihb == 2 && jhb == 1 )
+                    else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM )
                     {
                         ++hb_top[j];
                     }
