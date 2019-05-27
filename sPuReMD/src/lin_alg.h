@@ -51,10 +51,8 @@ real ILUT( const sparse_matrix * const, const real * const,
 real ILUTP( const sparse_matrix * const, const real * const,
         sparse_matrix * const, sparse_matrix * const );
 
-#if defined(TESTING)
-real FG_ICHOL( const sparse_matrix * const, const unsigned int,
-        sparse_matrix * const, sparse_matrix * const );
-#endif
+real FG_ICHOLT( const sparse_matrix * const, const real *,
+        const unsigned int, sparse_matrix * const, sparse_matrix * const );
 
 real FG_ILUT( const sparse_matrix * const, const real *,
         const unsigned int, sparse_matrix * const, sparse_matrix * const );
