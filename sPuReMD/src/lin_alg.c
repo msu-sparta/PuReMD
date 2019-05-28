@@ -1105,8 +1105,8 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
 real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
         const unsigned int sweeps, sparse_matrix * const U_T, sparse_matrix * const U )
 {
-    unsigned int i, k, pj, x = 0, y = 0, ei_x, ei_y, Utop, s;
-    real *D, *D_inv, sum, start;
+    unsigned int i, pj, x = 0, y = 0, ei_x, ei_y, Utop, s;
+    real *D, *D_inv, *gamma, sum, start;
     sparse_matrix *DAD, *U_T_temp;
 
     start = Get_Time( );
@@ -1116,6 +1116,25 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     D = smalloc( sizeof(real) * A->n, "FG_ICHOLT::D" );
     D_inv = smalloc( sizeof(real) * A->n, "FG_ICHOLT::D_inv" );
+    gamma = smalloc( sizeof(real) * A->n, "FG_ICHOLT::gamma" );
+
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(dynamic,512) \
+        default(none) shared(D, D_inv, gamma) private(i)
+#endif
+    for ( i = 0; i < A->n; ++i )
+    {
+        if ( A->val[A->start[i + 1] - 1] < ZERO )
+        {
+            gamma[i] = -1.0;
+        }
+        else
+        {
+            gamma[i] = 1.0;
+        }
+
+        D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
+    }
 
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,512) \
@@ -1123,38 +1142,25 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 #endif
     for ( i = 0; i < A->n; ++i )
     {
-#if defined(DEBUG_FOCUS)
-        /* sanity check */
-        if ( A->val[A->start[i + 1] - 1] < ZERO )
-        {
-            fprintf( stderr, "[ERROR] Numeric breakdown in FG_ICHOLT (negative diagonal entry). Terminating.\n");
-            fprintf( stderr, "  [INFO] A(%5d,%5d) = %10.3f\n",
-                     i, A->j[A->start[i + 1] - 1], A->val[A->start[i + 1] - 1] );
-            exit( NUMERIC_BREAKDOWN );
-        }
-#endif
-
-        D_inv[i] = SQRT( A->val[A->start[i + 1] - 1] );
         D[i] = 1.0 / D_inv[i];
     }
 
     /* to get convergence, A must have unit diagonal, so apply
      * transformation DAD, where D = D(1./SQRT(D(A))) */
     memcpy( DAD->start, A->start, sizeof(unsigned int) * (A->n + 1) );
+    memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,4096) \
-        default(none) shared(DAD, D) private(i, pj)
+        default(none) shared(DAD, D, gamma) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            DAD->j[pj] = A->j[pj];
-            DAD->val[pj] = D[i] * A->val[pj] * D[A->j[pj]];
+            DAD->val[pj] = gamma[i] * (D[i] * A->val[pj] * D[A->j[pj]]);
         }
         /* diagonal */
-        DAD->j[pj] = A->j[pj];
         DAD->val[pj] = 1.0;
     }
 
@@ -1169,7 +1175,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
         /* for each nonzero in U^{T} */
 #ifdef _OPENMP
         #pragma omp parallel for schedule(dynamic,4096) \
-            default(none) shared(DAD, U_T_temp, stderr) private(pj, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD, U_T_temp, stderr) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
         for ( pj = 0; pj < DAD->start[DAD->n]; ++pj )
         {
@@ -1177,19 +1183,19 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
             /* determine row bounds of current nonzero */
             x = 0;
-            ei_x = 0;
-            for ( k = 1; k <= DAD->n; ++k )
+            ei_x = pj;
+            for ( i = 1; i <= U_T_temp->n; ++i )
             {
-                if ( U_T_temp->start[k] > pj )
+                if ( U_T_temp->start[i] > pj )
                 {
-                    x = DAD->start[k - 1];
-                    ei_x = pj;
+                    --i;
+                    x = U_T_temp->start[i];
                     break;
                 }
             }
             /* column bounds of current nonzero */
-            y = DAD->start[DAD->j[pj]];
-            ei_y = DAD->start[DAD->j[pj] + 1];
+            y = U_T_temp->start[U_T_temp->j[pj]];
+            ei_y = U_T_temp->start[U_T_temp->j[pj] + 1];
 
             /* sparse vector-sparse vector inner product for nonzero (i, j):
              *   dot( U^T(i,1:j-1), U^T(j,1:j-1) ) */
@@ -1214,9 +1220,9 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
             sum = DAD->val[pj] - sum;
 
             /* non-diagonal entries */
-            if ( pj != DAD->start[k] )
+            if ( i != U_T_temp->j[pj] )
             {
-                U_T_temp->val[pj] = sum / U_T_temp->val[ei_x - 1];
+                U_T_temp->val[pj] = sum / U_T_temp->val[ei_y - 1];
             }
             else
             {
@@ -1226,7 +1232,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
                 {
                     fprintf( stderr, "[ERROR] Numeric breakdown in FG_ICHOLT. Terminating.\n");
                     fprintf( stderr, "  [INFO] DAD(%5d,%5d) = %10.3f\n",
-                             k - 1, DAD->j[pj], DAD->val[pj] );
+                             i, DAD->j[pj], DAD->val[pj] );
                     fprintf( stderr, "  [INFO] sum = %10.3f\n", sum);
                     exit( NUMERIC_BREAKDOWN );
                 }
@@ -1242,13 +1248,13 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
      * D^{-1}DADD^{-1} = A \approx D^{-1}U^{T}UD^{-1} */
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,4096) \
-        default(none) shared(U_T_temp, D_inv) private(i, pj)
+        default(none) shared(U_T_temp, D_inv, gamma) private(i, pj)
 #endif
     for ( i = 0; i < U_T_temp->n; ++i )
     {
         for ( pj = U_T_temp->start[i]; pj < U_T_temp->start[i + 1]; ++pj )
         {
-            U_T_temp->val[pj] = D_inv[i] * U_T_temp->val[pj];
+            U_T_temp->val[pj] = gamma[i] * (D_inv[i] * U_T_temp->val[pj]);
         }
     }
 
@@ -1285,6 +1291,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     Deallocate_Matrix( U_T_temp );
     Deallocate_Matrix( DAD );
+    sfree( gamma, "FG_ICHOLT::gamma" );
     sfree( D_inv, "FG_ICHOLT::D_inv" );
     sfree( D, "FG_ICHOLT::D" );
 
@@ -1306,18 +1313,37 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                const unsigned int sweeps, sparse_matrix * const L, sparse_matrix * const U )
 {
-    unsigned int i, j, k, pj, x, y, ei_x, ei_y, Ltop, Utop, s;
-    real *D, *D_inv, sum, start;
-    sparse_matrix *DAD, *L_temp, *U_temp;
+    unsigned int i, pj, x, y, ei_x, ei_y, Ltop, Utop, s;
+    real *D, *D_inv, *gamma, sum, start;
+    sparse_matrix *DAD, *L_temp, *U_T_temp;
 
     start = Get_Time( );
 
     Allocate_Matrix( &DAD, A->n, A->m );
     Allocate_Matrix( &L_temp, A->n, A->m );
-    Allocate_Matrix( &U_temp, A->n, A->m );
+    Allocate_Matrix( &U_T_temp, A->n, A->m );
 
     D = smalloc( sizeof(real) * A->n, "FG_ILUT::D" );
     D_inv = smalloc( sizeof(real) * A->n, "FG_ILUT::D_inv" );
+    gamma = smalloc( sizeof(real) * A->n, "FG_ILUT::gamma" );
+
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(dynamic,512) \
+        default(none) shared(D_inv, gamma) private(i)
+#endif
+    for ( i = 0; i < A->n; ++i )
+    {
+        if ( A->val[A->start[i + 1] - 1] < ZERO )
+        {
+            gamma[i] = -1.0;
+        }
+        else
+        {
+            gamma[i] = 1.0;
+        }
+
+        D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
+    }
 
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,512) \
@@ -1325,38 +1351,26 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 #endif
     for ( i = 0; i < A->n; ++i )
     {
-#if defined(DEBUG_FOCUS)
-        /* sanity check */
-        if ( A->val[A->start[i + 1] - 1] < ZERO )
-        {
-            fprintf( stderr, "[ERROR] Numeric breakdown in FG_ICHOLT (negative diagonal entry). Terminating.\n");
-            fprintf( stderr, "  [INFO] A(%5d,%5d) = %10.3f\n",
-                     i, A->j[A->start[i + 1] - 1], A->val[A->start[i + 1] - 1] );
-            exit( NUMERIC_BREAKDOWN );
-        }
-#endif
-
-        D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
         D[i] = 1.0 / D_inv[i];
     }
 
     /* to get convergence, A must have unit diagonal, so apply
-     * transformation DAD, where D = D(1./SQRT(D(A))) */
+     * transformation \gamma DAD, where D = D(1./SQRT(D(A)))
+     * and \gamma = {-1 if a_{ii} < 0, 1 otherwise} */
     memcpy( DAD->start, A->start, sizeof(unsigned int) * (A->n + 1) );
+    memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,4096) \
-        default(none) shared(DAD, D) private(i, pj)
+        default(none) shared(DAD, D, gamma) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
         /* non-diagonals */
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            DAD->j[pj] = A->j[pj];
-            DAD->val[pj] = D[i] * A->val[pj] * D[A->j[pj]];
+            DAD->val[pj] = gamma[i] * (D[i] * A->val[pj] * D[A->j[pj]]);
         }
         /* diagonal */
-        DAD->j[pj] = A->j[pj];
         DAD->val[pj] = 1.0;
     }
 
@@ -1366,9 +1380,9 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     memcpy( L_temp->j, DAD->j, sizeof(unsigned int) * DAD->start[DAD->n] );
     memcpy( L_temp->val, DAD->val, sizeof(real) * DAD->start[DAD->n] );
     /* store U^T in CSR for row-wise access and tranpose later */
-    memcpy( U_temp->start, DAD->start, sizeof(unsigned int) * (DAD->n + 1) );
-    memcpy( U_temp->j, DAD->j, sizeof(unsigned int) * DAD->start[DAD->n] );
-    memcpy( U_temp->val, DAD->val, sizeof(real) * DAD->start[DAD->n] );
+    memcpy( U_T_temp->start, DAD->start, sizeof(unsigned int) * (DAD->n + 1) );
+    memcpy( U_T_temp->j, DAD->j, sizeof(unsigned int) * DAD->start[DAD->n] );
+    memcpy( U_T_temp->val, DAD->val, sizeof(real) * DAD->start[DAD->n] );
 
     /* L has unit diagonal, by convention */
 #ifdef _OPENMP
@@ -1385,41 +1399,46 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         /* for each nonzero in L */
 #ifdef _OPENMP
         #pragma omp parallel for schedule(dynamic,4096) \
-            default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD, L_temp, U_T_temp) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
-        for ( j = 0; j < DAD->start[DAD->n]; ++j )
+        for ( pj = 0; pj < L_temp->start[L_temp->n]; ++pj )
         {
-            sum = ZERO;
-
             /* determine row bounds of current nonzero */
             x = 0;
-            ei_x = 0;
-            for ( k = 1; k <= DAD->n; ++k )
+            ei_x = pj;
+            for ( i = 1; i <= L_temp->n; ++i )
             {
-                if ( DAD->start[k] > j )
+                if ( L_temp->start[i] > pj )
                 {
-                    x = DAD->start[k - 1];
-                    ei_x = j;
+                    --i;
+                    x = L_temp->start[i];
                     break;
                 }
             }
-            /* determine column bounds of current nonzero */
-            y = DAD->start[DAD->j[j]];
-            ei_y = DAD->start[DAD->j[j] + 1];
 
-            if ( j != DAD->start[k] )
+            /* skip diagonals for L */
+            if ( i > L_temp->j[pj] )
             {
-                /* sparse vector-sparse vector inner product for nonzero (i, j):
-                 *   dot( L(i,1:j-1), U(1:j-1,j) ) */
-                for ( ; x < ei_x && y < ei_y && L_temp->j[x] < L_temp->j[j] && U_temp->j[y] < L_temp->j[j]; )
+                /* determine column bounds of current nonzero */
+                y = L_temp->start[L_temp->j[pj]];
+                ei_y = L_temp->start[L_temp->j[pj] + 1];
+
+                sum = ZERO;
+
+                /* sparse vector-sparse vector inner products for nonzero (i, j):
+                 *   dot( L(i,1:j-1), U^T(j,1:j-1) )
+                 *
+                 * Note: since L and U^T share the same sparsity pattern
+                 * (due to symmetry in A), just use column indices from L */
+                for ( ; x < ei_x && y < ei_y && L_temp->j[y] < L_temp->j[pj]; )
                 {
-                    if ( L_temp->j[x] == U_temp->j[y] )
+                    if ( L_temp->j[x] == L_temp->j[y] )
                     {
-                        sum += L_temp->val[x] * U_temp->val[y];
+                        sum += L_temp->val[x] * U_T_temp->val[y];
                         ++x;
                         ++y;
                     }
-                    else if ( L_temp->j[x] < U_temp->j[y] )
+                    else if ( L_temp->j[x] < L_temp->j[y] )
                     {
                         ++x;
                     }
@@ -1429,45 +1448,50 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                     }
                 }
 
-                L_temp->val[j] = ( DAD->val[j] - sum ) / U_temp->val[ei_y - 1];
+                L_temp->val[pj] = (DAD->val[pj] - sum) / U_T_temp->val[ei_y - 1];
             }
         }
 
+        /* for each nonzero in U^T */
 #ifdef _OPENMP
         #pragma omp parallel for schedule(dynamic,4096) \
-            default(none) shared(DAD, L_temp, U_temp) private(j, k, x, y, ei_x, ei_y, sum)
+            default(none) shared(DAD, L_temp, U_T_temp) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
-        for ( j = 0; j < DAD->start[DAD->n]; ++j )
+        for ( pj = 0; pj < L_temp->start[L_temp->n]; ++pj )
         {
-            sum = ZERO;
-
             /* determine row bounds of current nonzero */
             x = 0;
-            ei_x = 0;
-            for ( k = 1; k <= DAD->n; ++k )
+            ei_x = pj;
+            for ( i = 1; i <= L_temp->n; ++i )
             {
-                if ( DAD->start[k] > j )
+                if ( L_temp->start[i] > pj )
                 {
-                    x = DAD->start[k - 1];
-                    ei_x = DAD->start[k];
+                    --i;
+                    x = L_temp->start[i];
                     break;
                 }
             }
-            /* determine column bounds of current nonzero */
-            y = DAD->start[DAD->j[j]];
-            ei_y = DAD->start[DAD->j[j] + 1];
 
-            /* sparse vector-sparse vector inner product for nonzero (i, j):
-             *   dot( L(i,1:j-1), U(1:j-1,j) ) */
-            for ( ; x < ei_x && y < ei_y && U_temp->j[x] < U_temp->j[j] && L_temp->j[x] < U_temp->j[j]; )
+            /* determine column bounds of current nonzero */
+            y = L_temp->start[L_temp->j[pj]];
+            ei_y = L_temp->start[L_temp->j[pj] + 1];
+
+            sum = ZERO;
+
+            /* sparse vector-sparse vector inner products for nonzero (i, j):
+             *   dot( L(j,1:j-1), U^T(i,1:j-1) )
+             *
+             * Note: since L and U^T share the same sparsity pattern
+             * (due to symmetry in A), just use column indices from L */
+            for ( ; x < ei_x && y < ei_y && L_temp->j[y] < L_temp->j[pj]; )
             {
-                if ( U_temp->j[x] == L_temp->j[y] )
+                if ( L_temp->j[x] == L_temp->j[y] )
                 {
-                    sum += L_temp->val[y] * U_temp->val[x];
+                    sum += U_T_temp->val[x] * L_temp->val[y];
                     ++x;
                     ++y;
                 }
-                else if ( U_temp->j[x] < L_temp->j[y] )
+                else if ( L_temp->j[x] < L_temp->j[y] )
                 {
                     ++x;
                 }
@@ -1477,44 +1501,42 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                 }
             }
 
-            U_temp->val[j] = DAD->val[j] - sum;
+            U_T_temp->val[pj] = DAD->val[pj] - sum;
         }
     }
 
     /* apply inverse transformations:
-     * since DAD \approx LU, then
-     * D^{-1}DADD^{-1} = A \approx D^{-1}LUD^{-1} */
+     * since \gamma DAD \approx LU, then
+     * D^{-1}DADD^{-1} = A \approx D^{-1}\gamma^{-1}LUD^{-1} */
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,4096) \
-        default(none) shared(DAD, L_temp, D_inv) private(i, pj)
+        default(none) shared(DAD, L_temp, D_inv, gamma) private(i, pj)
 #endif
     for ( i = 0; i < L_temp->n; ++i )
     {
         for ( pj = L_temp->start[i]; pj < L_temp->start[i + 1]; ++pj )
         {
-            L_temp->val[pj] = D_inv[i] * L_temp->val[pj];
+            L_temp->val[pj] = gamma[i] * (D_inv[i] * L_temp->val[pj]);
         }
     }
+    /* note: since we're storing U^T, apply the transform from the left side */
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,4096) \
-        default(none) shared(DAD, U_temp, D_inv) private(i, pj)
+        default(none) shared(DAD, U_T_temp, D_inv) private(i, pj)
 #endif
-    for ( i = 0; i < U_temp->n; ++i )
+    for ( i = 0; i < U_T_temp->n; ++i )
     {
-        for ( pj = U_temp->start[i]; pj < U_temp->start[i + 1]; ++pj )
+        for ( pj = U_T_temp->start[i]; pj < U_T_temp->start[i + 1]; ++pj )
         {
-            /* currently storing U^T, so use row index instead of column index */
-            U_temp->val[pj] = U_temp->val[pj] * D_inv[i];
+            U_T_temp->val[pj] = D_inv[i] * U_T_temp->val[pj];
         }
     }
 
     /* apply the dropping rule */
     Ltop = 0;
-    Utop = 0;
-    for ( i = 0; i < DAD->n; ++i )
+    for ( i = 0; i < L_temp->n; ++i )
     {
         L->start[i] = Ltop;
-        U->start[i] = Utop;
 
         for ( pj = L_temp->start[i]; pj < L_temp->start[i + 1] - 1; ++pj )
         {
@@ -1530,25 +1552,30 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         L->j[Ltop] = L_temp->j[pj];
         L->val[Ltop] = L_temp->val[pj];
         ++Ltop;
+    }
+    L->start[L->n] = Ltop;
 
-        for ( pj = U_temp->start[i]; pj < U_temp->start[i + 1] - 1; ++pj )
+    Utop = 0;
+    for ( i = 0; i < U_T_temp->n; ++i )
+    {
+        U->start[i] = Utop;
+
+        for ( pj = U_T_temp->start[i]; pj < U_T_temp->start[i + 1] - 1; ++pj )
         {
-            if ( FABS( U_temp->val[pj] ) > FABS( droptol[i] / U_temp->val[U_temp->start[i + 1] - 1] ) )
+            if ( FABS( U_T_temp->val[pj] ) > FABS( droptol[i] / U_T_temp->val[U_T_temp->start[i + 1] - 1] ) )
             {
-                U->j[Utop] = U_temp->j[pj];
-                U->val[Utop] = U_temp->val[pj];
+                U->j[Utop] = U_T_temp->j[pj];
+                U->val[Utop] = U_T_temp->val[pj];
                 ++Utop;
             }
         }
 
         /* diagonal */
-        U->j[Utop] = U_temp->j[pj];
-        U->val[Utop] = U_temp->val[pj];
+        U->j[Utop] = U_T_temp->j[pj];
+        U->val[Utop] = U_T_temp->val[pj];
         ++Utop;
     }
-
-    L->start[i] = Ltop;
-    U->start[i] = Utop;
+    U->start[U->n] = Utop;
 
     Transpose_I( U );
 
@@ -1557,9 +1584,10 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     fprintf( stderr, "nnz(U): %d\n", U->start[U->n] );
 #endif
 
-    Deallocate_Matrix( U_temp );
+    Deallocate_Matrix( U_T_temp );
     Deallocate_Matrix( L_temp );
     Deallocate_Matrix( DAD );
+    sfree( gamma, "FG_ILUT::gamma" );
     sfree( D_inv, "FG_ILUT::D_inv" );
     sfree( D, "FG_ILUT::D_inv" );
 
