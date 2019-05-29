@@ -119,7 +119,14 @@ class ReaxList(Structure):
             ("index", POINTER(c_int)),
             ("end_index", POINTER(c_int)),
             ("max_intrs", POINTER(c_int)),
-            ("select", ReaxListSelector),
+            ("v", c_void_p),
+            ("three_body_interaction_data", POINTER(ThreeBodyData)),
+            ("bond_data", POINTER(BondData)),
+            ("dbond_data", POINTER(DBondData)),
+            ("dDelta_data", POINTER(DDeltaData)),
+            ("far_neighbor_data", POINTER(FarNbrData)),
+            ("near_neighbor_data", POINTER(NearNbrData)),
+            ("hbond_data", POINTER(HBondData)),
             ]
 
 
@@ -177,6 +184,10 @@ class ReaxTiming(Structure):
             ("cm_solver_vector_ops", c_double),
             ("cm_solver_orthog", c_double),
             ("cm_solver_tri_solve", c_double),
+            ("cm_last_pre_comp", c_double),
+            ("cm_total_loss", c_double),
+            ("cm_optimum", c_double),
+            ("num_retries", c_int),
             ]
 
 
@@ -230,7 +241,7 @@ class SimulationData(Structure):
 class ReaxAtom(Structure):
     _fields_ = [
             ("type", c_int),
-            ("name", c_char * 8),
+            ("name", c_char * 9),
             ("x", c_double * 3),
             ("v", c_double * 3),
             ("f", c_double * 3),
@@ -396,6 +407,7 @@ if __name__ == '__main__':
             POINTER(SimulationData), POINTER(POINTER(ReaxList)))
 
     setup_callback = lib.setup_callback
+    setup_callback.argtypes = [c_void_p, CALLBACKFUNC]
     setup_callback.restype = c_int
 
     set_output_enabled = lib.set_output_enabled
@@ -455,7 +467,7 @@ if __name__ == '__main__':
 
     handle = setup(b"data/benchmarks/water/water_6540.pdb",
             b"data/benchmarks/water/ffield.water",
-            b"environ/param.gpu.water")
+            b"environ/control_water")
 
     ret = setup_callback(handle, CALLBACKFUNC(get_simulation_step_results))
 

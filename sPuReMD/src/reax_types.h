@@ -821,7 +821,6 @@ struct flexible_barostat
     rtensor v_g0;
     rtensor v_g0_old;
     rtensor a_g0;
-
 };
 
 
