@@ -276,13 +276,13 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case FG_ILUT_PC:
-//            if ( control->charge_method == QEQ_CM )
-//            {
-//                data->timing.cm_solver_pre_comp +=
-//                    FG_ICHOLT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-//                            workspace->L, workspace->U );
-//            }
-//            else
+            if ( control->charge_method == QEQ_CM )
+            {
+                data->timing.cm_solver_pre_comp +=
+                    FG_ICHOLT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
+                            workspace->L, workspace->U );
+            }
+            else
             {
                 data->timing.cm_solver_pre_comp +=
                     FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,

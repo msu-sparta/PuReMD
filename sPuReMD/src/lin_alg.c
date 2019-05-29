@@ -1177,10 +1177,8 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
         #pragma omp parallel for schedule(dynamic,4096) \
             default(none) shared(DAD, U_T_temp, stderr) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
-        for ( pj = 0; pj < DAD->start[DAD->n]; ++pj )
+        for ( pj = 0; pj < U_T_temp->start[U_T_temp->n]; ++pj )
         {
-            sum = ZERO;
-
             /* determine row bounds of current nonzero */
             x = 0;
             ei_x = pj;
@@ -1196,6 +1194,8 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
             /* column bounds of current nonzero */
             y = U_T_temp->start[U_T_temp->j[pj]];
             ei_y = U_T_temp->start[U_T_temp->j[pj] + 1];
+
+            sum = ZERO;
 
             /* sparse vector-sparse vector inner product for nonzero (i, j):
              *   dot( U^T(i,1:j-1), U^T(j,1:j-1) ) */
@@ -1219,12 +1219,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
             sum = DAD->val[pj] - sum;
 
-            /* non-diagonal entries */
-            if ( i != U_T_temp->j[pj] )
-            {
-                U_T_temp->val[pj] = sum / U_T_temp->val[ei_y - 1];
-            }
-            else
+            if ( i == U_T_temp->j[pj] )
             {
 #if defined(DEBUG_FOCUS)
                 /* sanity check */
@@ -1238,14 +1233,19 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
                 }
 #endif
 
-                U_T_temp->val[pj] = SQRT( sum );
+                U_T_temp->val[pj] = SQRT( FABS( sum ) );
+            }
+            /* non-diagonal entries */
+            else
+            {
+                U_T_temp->val[pj] = sum / U_T_temp->val[ei_y - 1];
             }
         }
     }
 
-    /* apply inverse transformation D^{-1}U^{T},
-     * since DAD \approx U^{T}U, so
-     * D^{-1}DADD^{-1} = A \approx D^{-1}U^{T}UD^{-1} */
+    /* apply inverse transformation D^{-1}\gamma^{-1}U^{T},
+     * since \gamma DAD \approx U^{T}U, so
+     * D^{-1}\gamma^{-1}\gamma DADD^{-1} = A \approx D^{-1}\gamma^{-1}U^{T}UD^{-1} */
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(U_T_temp, D_inv, gamma) private(i, pj)
@@ -1260,7 +1260,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     /* apply the dropping rule */
     Utop = 0;
-    for ( i = 0; i < DAD->n; ++i )
+    for ( i = 0; i < U_T_temp->n; ++i )
     {
         U_T->start[i] = Utop;
 
@@ -1279,7 +1279,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
         U_T->val[Utop] = U_T_temp->val[pj];
         ++Utop;
     }
-    U_T->start[i] = Utop;
+    U_T->start[U_T->n] = Utop;
 
     /* transpose U^{T} and copy into U */
     Transpose( U_T, U );
