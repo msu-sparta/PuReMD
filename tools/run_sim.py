@@ -431,7 +431,7 @@ restart_freq            0                       ! 0: do not output any restart f
         base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
 
         job_script = """\
-#!/bin/bash -login
+#!/bin/bash --login
 
 #SBATCH --time=03:59:00
 #SBATCH --mem=120G
@@ -465,7 +465,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
         base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
 
         job_script = """\
-#!/bin/bash -login
+#!/bin/bash --login
 
 #PBS -l walltime=03:59:00,nodes=1:ppn=28,mem=120gb,feature=lac
 
