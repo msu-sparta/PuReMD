@@ -237,33 +237,35 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         Allocate_Matrix( A_spar_patt, A->n, A->m );
     }
 
+    list = smalloc( sizeof(real) * A->start[A->n],
+            "setup_sparse_approx_inverse::list" );
 
-    /* quick-select algorithm for finding the kth greatest element in the matrix*/
-    /* list: values from the matrix*/
-    /* left-right: search space of the quick-select */
-
-    list = smalloc( sizeof(real) * (A->start[A->n]),"setup_sparse_approx_inverse::list" );
+    /* quick-select algorithm for finding the k-th greatest element in the matrix, where
+     *  list: values from the matrix
+     *  left, right: search space of the quick-select */
 
     left = 0;
     right = A->start[A->n] - 1;
-    k = (int)( (A->start[A->n])*filter );
+    k = (int)( A->start[A->n] * filter );
     threshold = 0.0;
 
-    for( i = left; i <= right ; ++i )
+    for ( i = left; i <= right ; ++i )
     {
         list[i] = A->val[i];
-        if(list[i] < 0.0)
+
+        if ( list[i] < 0.0 )
         {
             list[i] = -list[i];
         }
     }
 
     turn = 0;
-    while( k ) {
-
-        p  = left;
+    while ( k > 0 )
+    {
+        p = left;
         turn = 1 - turn;
-        if( turn == 1)
+
+        if ( turn == 1 )
         {
             pivot = list[right];
         }
@@ -271,9 +273,10 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         {
             pivot = list[left];
         }
-        for( i = left + 1 - turn; i <= right-turn; ++i )
+
+        for ( i = left + 1 - turn; i <= right - turn; ++i )
         {
-            if( list[i] > pivot )
+            if ( list[i] > pivot )
             {
                 tmp = list[i];
                 list[i] = list[p];
@@ -281,7 +284,8 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
                 p++;
             }
         }
-        if(turn == 1)
+
+        if ( turn == 1 )
         {
             tmp = list[p];
             list[p] = list[right];
@@ -294,12 +298,12 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
             list[left] = tmp;
         }
 
-        if( p == k - 1)
+        if ( p == k - 1 )
         {
             threshold = list[p];
             break;
         }
-        else if( p > k - 1 )
+        else if ( p > k - 1 )
         {
             right = p - 1;
         }
@@ -309,28 +313,32 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         }
     }
 
-    if(threshold < 1.000000)
+    /* special case for EE/ACKS2 where chosen threshold is one of the
+     * many matrix entries with value 1.0 => exclude all 1.0 values */
+    if ( FABS( threshold - 1.0 ) < 1.0e-10 )
     {
         threshold = 1.000001;
     }
 
-    sfree( list, "setup_sparse_approx_inverse::list" );
-
     /* fill sparsity pattern */
-    /* diagonal entries are always included */
     for ( size = 0, i = 0; i < A->n; ++i )
     {
         (*A_spar_patt)->start[i] = size;
 
-        for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
+        for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            if ( ( A->val[pj] >= threshold )  || ( A->j[pj] == i ) )
+            if ( FABS( A->val[pj] ) >= threshold )
             {
                 (*A_spar_patt)->val[size] = A->val[pj];
                 (*A_spar_patt)->j[size] = A->j[pj];
                 size++;
             }
         }
+
+        /* diagonal entries are always included */
+        (*A_spar_patt)->val[size] = A->val[pj];
+        (*A_spar_patt)->j[size] = A->j[pj];
+        size++;
     }
     (*A_spar_patt)->start[A->n] = size;
 
@@ -343,7 +351,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
          * * as A_spar_patt_full (omit non-zero values) */
         Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
     }
-    else if ( ((*A_app_inv)->m) < (A->m) )
+    else if ( (*A_app_inv)->m < A->m )
     {
         Deallocate_Matrix( *A_app_inv );
 
@@ -351,6 +359,8 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
          * * as A_spar_patt_full (omit non-zero values) */
         Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
     }
+
+    sfree( list, "setup_sparse_approx_inverse::list" );
 }
 
 
