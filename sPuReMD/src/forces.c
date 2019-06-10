@@ -23,17 +23,19 @@
 
 #include "box.h"
 #include "bond_orders.h"
+#include "bonds.h"
 #include "charges.h"
-#include "four_body_interactions.h"
-#include "list.h"
-#ifdef TEST_FORCES
-  #include "print_utils.h"
+#include "hydrogen_bonds.h"
+#if defined(TEST_FORCES)
+  #include "io_tools.h"
 #endif
+#include "list.h"
+#include "multi_body.h"
+#include "nonbonded.h"
 #include "system_props.h"
-#include "single_body_interactions.h"
-#include "three_body_interactions.h"
+#include "torsion_angles.h"
 #include "tool_box.h"
-#include "two_body_interactions.h"
+#include "valence_angles.h"
 #include "vector.h"
 
 
@@ -61,11 +63,11 @@ static void Dummy_Interaction( reax_system *system, control_params *control,
 
 void Init_Bonded_Force_Functions( control_params *control )
 {
-    control->intr_funcs[0] = &Calculate_Bond_Orders;
-    control->intr_funcs[1] = &Bond_Energy;
-    control->intr_funcs[2] = &LonePair_OverUnder_Coordination_Energy;
-    control->intr_funcs[3] = &Three_Body_Interactions;
-    control->intr_funcs[4] = &Four_Body_Interactions;
+    control->intr_funcs[0] = &BO;
+    control->intr_funcs[1] = &Bonds;
+    control->intr_funcs[2] = &Atom_Energy;
+    control->intr_funcs[3] = &Valence_Angles;
+    control->intr_funcs[4] = &Torsion_Angles;
     if ( control->hbond_cut > 0.0 )
     {
         control->intr_funcs[5] = &Hydrogen_Bonds;
@@ -388,7 +390,7 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
             break;
 
             case DIAGONAL:
-                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+                ret = system->reax_param.sbp[system->atoms[i].type].eta;
             break;
 
             default:
@@ -433,7 +435,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
-                        + POW( system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
+                        + POW( system->reax_param.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 /* i == j: non-periodic self-interaction term
@@ -442,7 +444,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
             break;
 
             case DIAGONAL:
-                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+                ret = system->reax_param.sbp[system->atoms[i].type].eta;
             break;
 
             default:
@@ -467,7 +469,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
-                        + POW( system->reaxprm.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
+                        + POW( system->reax_param.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
                 /* i == j: non-periodic self-interaction term
@@ -477,7 +479,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 
             case DIAGONAL:
                 /* parameters in electron-volts */
-                ret = system->reaxprm.sbp[system->atoms[i].type].eta;
+                ret = system->reax_param.sbp[system->atoms[i].type].eta;
             break;
 
             default:
@@ -567,13 +569,13 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                     {
                         j = far_nbrs->far_nbr_list[pj].nbr;
 
-                        xcut = 0.5 * ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
-                                + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 );
+                        xcut = 0.5 * ( system->reax_param.sbp[ system->atoms[i].type ].b_s_acks2
+                                + system->reax_param.sbp[ system->atoms[j].type ].b_s_acks2 );
 
                         if ( far_nbrs->far_nbr_list[pj].d < xcut )
                         {
                             d = far_nbrs->far_nbr_list[pj].d / xcut;
-                            bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 )
+                            bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
                                 * POW( 1.0 - d, 6.0 );
 
                             if ( bond_softness > 0.0 )
@@ -758,7 +760,7 @@ static void Init_Forces( reax_system *system, control_params *control,
         H->start[i] = Htop;
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
-        sbp_i = &system->reaxprm.sbp[type_i];
+        sbp_i = &system->reax_param.sbp[type_i];
 
         if ( control->hbond_cut > 0.0 )
         {
@@ -818,8 +820,8 @@ static void Init_Forces( reax_system *system, control_params *control,
             if ( flag == TRUE )
             {
                 type_j = system->atoms[j].type;
-                sbp_j = &system->reaxprm.sbp[type_j];
-                twbp = &system->reaxprm.tbp[type_i][type_j];
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[type_i][type_j];
                 r_ij = nbr_pj->d;
 
                 val = Init_Charge_Matrix_Entry( system, control,
@@ -1102,7 +1104,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
         H->start[i] = Htop;
         H_sp->start[i] = H_sp_top;
         btop_i = End_Index( i, bonds );
-        sbp_i = &system->reaxprm.sbp[type_i];
+        sbp_i = &system->reax_param.sbp[type_i];
 
         if ( control->hbond_cut > 0.0 )
         {
@@ -1162,8 +1164,8 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
             if ( flag == TRUE )
             {
                 type_j = system->atoms[j].type;
-                sbp_j = &system->reaxprm.sbp[type_j];
-                twbp = &system->reaxprm.tbp[type_i][type_j];
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[type_i][type_j];
                 r_ij = nbr_pj->d;
 
                 val = Init_Charge_Matrix_Entry( system, control,
@@ -1416,7 +1418,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
         type_i = atom_i->type;
         start_i = Start_Index( i, far_nbrs );
         end_i = End_Index( i, far_nbrs );
-        sbp_i = &system->reaxprm.sbp[type_i];
+        sbp_i = &system->reax_param.sbp[type_i];
         ihb = sbp_i->p_hbond;
 
         /* update i-j distance - check if j is within cutoff */
@@ -1429,8 +1431,8 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
                 j = nbr_pj->nbr;
                 atom_j = &system->atoms[j];
                 type_j = atom_j->type;
-                sbp_j = &system->reaxprm.sbp[type_j];
-                twbp = &system->reaxprm.tbp[type_i][type_j];
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[type_i][type_j];
                 ++(*Htop);
 
                 /* hydrogen bond lists */

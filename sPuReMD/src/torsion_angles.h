@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------
-  PuReMD - Purdue ReaxFF Molecular Dynamics Program
+  SerialReax - Reax Force Field Simulator
 
   Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
@@ -19,14 +19,14 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __QEq_H_
-#define __QEq_H_
+#ifndef __TORSION_H_
+#define __TORSION_H_
 
 #include "reax_types.h"
 
-void QEq( reax_system*, control_params*, simulation_data*,
-          storage*, output_controls*, mpi_datatypes* );
 
-int is_refactoring_step ( control_params* const, simulation_data* const );
+void Torsion_Angles( reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+
 
 #endif

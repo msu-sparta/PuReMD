@@ -178,7 +178,7 @@ void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
     y->CEclmb = ((t->CEclmb[i].d * dif + t->CEclmb[i].c) * dif + t->CEclmb[i].b) * dif +
                 t->CEclmb[i].a;
 
-    y->H = y->e_ele * EV_to_KCALpMOL / C_ele;
+    y->H = y->e_ele * EV_to_KCALpMOL / C_ELE;
 }
 
 

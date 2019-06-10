@@ -31,45 +31,15 @@
 #include "reax_vector.h"
 #endif
 
+
+static inline real Cf45( real p1, real p2 )
+{
+    return  -EXP(-p2 / 2.0) /
+        ( SQR( EXP(-p1 / 2.0) + EXP(p1 / 2.0) ) * (EXP(-p2 / 2.0) + EXP(p2 / 2.0)) );
+}
+
+
 #ifdef TEST_FORCES
-void Get_dBO( reax_system *system, reax_list **lists,
-              int i, int pj, real C, rvec *v )
-{
-    reax_list *bonds = lists[BONDS];
-    reax_list *dBOs = lists[DBOS];
-    int start_pj, end_pj, k;
-
-    pj = bonds->bond_list[pj].dbond_index;
-    start_pj = Start_Index(pj, dBOs);
-    end_pj = End_Index(pj, dBOs);
-
-    for ( k = start_pj; k < end_pj; ++k )
-        rvec_Scale( v[dBOs->dbo_list[k].wrt],
-                    C, dBOs->dbo_list[k].dBO );
-}
-
-
-void Get_dBOpinpi2( reax_system *system, reax_list **lists,
-                    int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
-{
-    reax_list *bonds = lists[BONDS];
-    reax_list *dBOs = lists[DBOS];
-    dbond_data *dbo_k;
-    int start_pj, end_pj, k;
-
-    pj = bonds->bond_list[pj].dbond_index;
-    start_pj = Start_Index(pj, dBOs);
-    end_pj = End_Index(pj, dBOs);
-
-    for ( k = start_pj; k < end_pj; ++k )
-    {
-        dbo_k = &(dBOs->dbo_list[k]);
-        rvec_Scale( vpi[dbo_k->wrt], Cpi, dbo_k->dBOpi );
-        rvec_Scale( vpi2[dbo_k->wrt], Cpi2, dbo_k->dBOpi2 );
-    }
-}
-
-
 void Add_dBO( reax_system *system, reax_list **lists,
               int i, int pj, real C, rvec *v )
 {
@@ -659,6 +629,20 @@ void Add_dBond_to_Forces( int i, int pj,
     rvec_ScaledAdd( workspace->f[j], -coef.C2dbopi2, bo_ij->dBOp );
     /*3rd, dBOpi2*/
     rvec_ScaledAdd( workspace->f[j], coef.C4dbopi2, workspace->dDeltap_self[j] );
+}
+
+
+static inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data *src )
+{
+    dest->BO = src->BO;
+    dest->BO_s = src->BO_s;
+    dest->BO_pi = src->BO_pi;
+    dest->BO_pi2 = src->BO_pi2;
+
+    rvec_Scale( dest->dBOp, -1.0, src->dBOp );
+    rvec_Scale( dest->dln_BOp_s, -1.0, src->dln_BOp_s );
+    rvec_Scale( dest->dln_BOp_pi, -1.0, src->dln_BOp_pi );
+    rvec_Scale( dest->dln_BOp_pi2, -1.0, src->dln_BOp_pi2 );
 }
 
 
@@ -1363,44 +1347,3 @@ void BO( reax_system *system, control_params *control, simulation_data *data,
     Print_Bond_List( system, control, data, lists, out_control);
 #endif
 }
-
-
-#if defined(DEPRECATED)
-/* Locate j on i's list.
-   This function assumes that j is there for sure!
-   And this is the case given our method of neighbor generation*/
-int Locate_Symmetric_Bond( reax_list *bonds, int i, int j )
-{
-    int start = Start_Index(i, bonds);
-    int end = End_Index(i, bonds);
-    int mid = (start + end) / 2;
-    int mid_nbr;
-
-    while ( (mid_nbr = bonds->bond_list[mid].nbr) != j )
-    {
-        /*fprintf( stderr, "\tstart: %d   end: %d   mid: %d\n",
-          start, end, mid );*/
-        if ( mid_nbr < j )
-            start = mid + 1;
-        else end = mid - 1;
-
-        mid = (start + end) / 2;
-    }
-
-    return mid;
-}
-
-
-inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data *src )
-{
-    dest->BO = src->BO;
-    dest->BO_s = src->BO_s;
-    dest->BO_pi = src->BO_pi;
-    dest->BO_pi2 = src->BO_pi2;
-
-    rvec_Scale( dest->dBOp, -1.0, src->dBOp );
-    rvec_Scale( dest->dln_BOp_s, -1.0, src->dln_BOp_s );
-    rvec_Scale( dest->dln_BOp_pi, -1.0, src->dln_BOp_pi );
-    rvec_Scale( dest->dln_BOp_pi2, -1.0, src->dln_BOp_pi2 );
-}
-#endif

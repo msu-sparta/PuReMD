@@ -35,11 +35,6 @@ typedef struct
 
 
 #ifdef TEST_FORCES
-void Get_dBO( reax_system*, reax_list**, int, int, real, rvec* );
-
-void Get_dBOpinpi2( reax_system*, reax_list**,
-        int, int, real, real, rvec*, rvec* );
-
 void Add_dBO( reax_system*, reax_list**, int, int, real, rvec* );
 
 void Add_dBOpinpi2( reax_system*, reax_list**,

@@ -26,10 +26,10 @@
 #include "ffield.h"
 #include "forces.h"
 #include "init_md.h"
+#include "io_tools.h"
 #include "neighbors.h"
 #include "geo_tools.h"
-#include "print_utils.h"
-#include "reset_utils.h"
+#include "reset_tools.h"
 #include "restart.h"
 #include "system_props.h"
 #include "tool_box.h"
@@ -69,7 +69,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
             || (out_control->write_steps > 0
                 && data->step % out_control->write_steps == 0) )
     {
-        Compute_Total_Energy( system, control, data, workspace );
+        Compute_Total_Energy( data );
     }
 }
 
@@ -89,7 +89,7 @@ static void Read_System( const char * const geo_file,
     ctrl = sfopen( control_file, "r" );
 
     /* ffield file */
-    Read_Force_Field( ffield, &(system->reaxprm) );
+    Read_Force_Field( ffield, &system->reax_param );
 
     /* control file */
     Read_Control_File( ctrl, system, control, out_control );
@@ -232,8 +232,7 @@ int simulate( const void * const handle )
                     || (spmd_handle->out_control->write_steps > 0
                         && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0) )
             {
-                Compute_Total_Energy( spmd_handle->system, spmd_handle->control,
-                        spmd_handle->data, spmd_handle->workspace );
+                Compute_Total_Energy( spmd_handle->data );
             }
 
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,

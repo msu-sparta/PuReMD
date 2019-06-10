@@ -26,13 +26,13 @@
 #include "forces.h"
 #include "grid.h"
 #include "integrate.h"
+#if defined(TEST_FORCES)
+  #include "io_tools.h"
+#endif
 #include "neighbors.h"
 #include "list.h"
 #include "lookup.h"
-#ifdef TEST_FORCES
-  #include "print_utils.h"
-#endif
-#include "reset_utils.h"
+#include "reset_tools.h"
 #include "system_props.h"
 #include "tool_box.h"
 #include "vector.h"
@@ -57,7 +57,7 @@ static void Generate_Initial_Velocities( reax_system *system, real T )
             rvec_Random( system->atoms[i].v );
 
             norm = rvec_Norm_Sqr( system->atoms[i].v );
-            scale = SQRT( system->reaxprm.sbp[ system->atoms[i].type ].mass *
+            scale = SQRT( system->reax_param.sbp[ system->atoms[i].type ].mass *
                           norm / (3.0 * K_B * T) );
 
             rvec_Scale( system->atoms[i].v, 1.0 / scale, system->atoms[i].v );
@@ -392,7 +392,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         case QEQ_CM:
             for ( i = 0; i < system->N; ++i )
             {
-                workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+                workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
                 workspace->b_t[i] = -1.0;
             }
             break;
@@ -400,7 +400,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         case EE_CM:
             for ( i = 0; i < system->N; ++i )
             {
-                workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+                workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
 
             workspace->b_s[system->N] = control->cm_q_net;
@@ -409,7 +409,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         case ACKS2_CM:
             for ( i = 0; i < system->N; ++i )
             {
-                workspace->b_s[i] = -system->reaxprm.sbp[ system->atoms[i].type ].chi;
+                workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
 
             /* Non-zero total charge can lead to unphysical results.
@@ -779,7 +779,7 @@ static void Init_Lists( reax_system *system, control_params *control,
         for ( i = 0; i < system->N; ++i )
         {
             /* H atom */
-            if ( system->reaxprm.sbp[ system->atoms[i].type ].p_hbond == 1 )
+            if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == 1 )
             {
                 workspace->hbond_index[i] = workspace->num_H++;
             }
@@ -1173,7 +1173,7 @@ static void Finalize_System( reax_system *system, control_params *control,
     int i, j, k;
     reax_interaction *reax;
 
-    reax = &( system->reaxprm );
+    reax = &system->reax_param;
 
     Finalize_Grid( system );
 

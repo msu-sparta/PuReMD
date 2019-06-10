@@ -23,7 +23,6 @@
 
 #include "list.h"
 #include "lookup.h"
-#include "print_utils.h"
 #include "vector.h"
 
 
@@ -661,7 +660,7 @@ static inline void Copy_Bond_Order_Data( bond_order_data *dest, bond_order_data 
 /* A very important and crucial assumption here is that each segment
  * belonging to a different atom in nbrhoods->nbr_list is sorted in its own.
  * This can either be done in the general coordinator function or here */
-void Calculate_Bond_Orders( reax_system *system, control_params *control,
+void BO( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
@@ -673,9 +672,9 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
     reax_list *dBOs;
 #endif
 
-    p_lp1 = system->reaxprm.gp.l[15];
-    p_boc1 = system->reaxprm.gp.l[0];
-    p_boc2 = system->reaxprm.gp.l[1];
+    p_lp1 = system->reax_param.gp.l[15];
+    p_boc1 = system->reax_param.gp.l[0];
+    p_boc2 = system->reax_param.gp.l[1];
     bonds = lists[BONDS];
 #if defined(TEST_FORCES)
     dDeltas = lists[DDELTA];
@@ -717,7 +716,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
         for ( i = 0; i < system->N; ++i )
         {
             type_i = system->atoms[i].type;
-            sbp_i = &system->reaxprm.sbp[type_i];
+            sbp_i = &system->reax_param.sbp[type_i];
             workspace->Deltap[i] = workspace->total_bond_order[i] - sbp_i->valency;
             workspace->Deltap_boc[i] =
                 workspace->total_bond_order[i] - sbp_i->valency_val;
@@ -736,7 +735,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
         for ( i = 0; i < system->N; ++i )
         {
             type_i = system->atoms[i].type;
-            sbp_i = &system->reaxprm.sbp[type_i];
+            sbp_i = &system->reax_param.sbp[type_i];
             val_i = sbp_i->valency;
             Deltap_i = workspace->Deltap[i];
             Deltap_boc_i = workspace->Deltap_boc[i];
@@ -751,7 +750,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
 
                 if ( i < j )
                 {
-                    twbp = &system->reaxprm.tbp[type_i][type_j];
+                    twbp = &system->reax_param.tbp[type_i][type_j];
 
 #ifdef TEST_FORCES
                     Set_Start_Index( pj, top_dbo, dBOs );
@@ -798,7 +797,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        val_j = system->reaxprm.sbp[type_j].valency;
+                        val_j = system->reax_param.sbp[type_j].valency;
                         Deltap_j = workspace->Deltap[j];
                         Deltap_boc_j = workspace->Deltap_boc[j];
 
@@ -1065,7 +1064,7 @@ void Calculate_Bond_Orders( reax_system *system, control_params *control,
         for ( j = 0; j < system->N; ++j )
         {
             type_j = system->atoms[j].type;
-            sbp_j = &system->reaxprm.sbp[ type_j ];
+            sbp_j = &system->reax_param.sbp[ type_j ];
 
             workspace->Delta[j] = workspace->total_bond_order[j] - sbp_j->valency;
             workspace->Delta_e[j] = workspace->total_bond_order[j] - sbp_j->valency_e;

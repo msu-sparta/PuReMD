@@ -67,7 +67,7 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data )
 
     for ( i = 0; i < system->N; i++ )
     {
-        data->M += system->reaxprm.sbp[ system->atoms[i].type ].mass;
+        data->M += system->reax_param.sbp[ system->atoms[i].type ].mass;
     }
 
     data->inv_M = 1.0 / data->M;
@@ -90,7 +90,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     /* Compute the position, velocity and angular momentum about the CoM */
     for ( i = 0; i < system->N; ++i )
     {
-        m = system->reaxprm.sbp[ system->atoms[i].type ].mass;
+        m = system->reax_param.sbp[ system->atoms[i].type ].mass;
 
         rvec_ScaledAdd( data->xcm, m, system->atoms[i].x );
         rvec_ScaledAdd( data->vcm, m, system->atoms[i].v );
@@ -112,7 +112,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
     for ( i = 0; i < system->N; ++i )
     {
-        m = system->reaxprm.sbp[ system->atoms[i].type ].mass;
+        m = system->reax_param.sbp[ system->atoms[i].type ].mass;
 
         rvec_ScaledSum( diff, 1., system->atoms[i].x, -1., data->xcm );
         xx += diff[0] * diff[0] * m;
@@ -193,7 +193,7 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 
     for ( i = 0; i < system->N; i++ )
     {
-        m = system->reaxprm.sbp[system->atoms[i].type].mass;
+        m = system->reax_param.sbp[system->atoms[i].type].mass;
 
         rvec_Scale( p, m, system->atoms[i].v );
         data->E_Kin += 0.5 * rvec_Dot( p, system->atoms[i].v );
@@ -209,54 +209,8 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 }
 
 
-void Compute_Total_Energy( reax_system* system, control_params *control,
-        simulation_data* data, static_storage *workspace )
+void Compute_Total_Energy( simulation_data* data )
 {
-    int i, type_i;
-    real e_pol, q;
-
-    /* Compute Polarization Energy */
-    e_pol = 0.0;
-
-    if ( control->charge_method == QEQ_CM
-            || control->charge_method == EE_CM )
-    {
-#ifdef _OPENMP
-        #pragma omp parallel for default(none) private(q, type_i) shared(system) \
-            reduction(+: e_pol) schedule(static)
-#endif
-        for ( i = 0; i < system->N; i++ )
-        {
-            q = system->atoms[i].q;
-            type_i = system->atoms[i].type;
-
-            e_pol += ( system->reaxprm.sbp[ type_i ].chi * q
-                    + (system->reaxprm.sbp[ type_i ].eta / 2.0) * SQR( q ) )
-                * KCALpMOL_to_EV;
-        }
-    }
-    else if ( control->charge_method == ACKS2_CM )
-    {
-#ifdef _OPENMP
-        #pragma omp parallel for default(none) private(q, type_i) shared(system, workspace) \
-            reduction(+: e_pol) schedule(static)
-#endif
-        for ( i = 0; i < system->N; i++ )
-        {
-            q = system->atoms[i].q;
-            type_i = system->atoms[i].type;
-
-            /* energy due to first and second order EE parameters */
-            e_pol += KCALpMOL_to_EV * ( system->reaxprm.sbp[ type_i ].chi
-                    + system->reaxprm.sbp[ type_i ].eta / 2.0 * q) *  q;
-
-            /* energy due to coupling with kinetic energy potential */
-            e_pol += KCALpMOL_to_EV * system->atoms[i].q * workspace->s[0][ system->N + i ];
-        }
-    }
-
-    data->E_Pol = e_pol;
-
     data->E_Pot = data->E_BE + data->E_Ov + data->E_Un  + data->E_Lp +
         data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB +
         data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
@@ -396,7 +350,7 @@ void Compute_Pressure( reax_system* system, simulation_data* data,
         // Distance_on_T3_Gen( data->rcm, p_atom->x, &(system->box), &dx );
         rvec_OuterProduct( temp, p_atom->v, p_atom->v );
         rtensor_ScaledAdd( data->flex_bar.P,
-                           system->reaxprm.sbp[ p_atom->type ].mass, temp );
+                           system->reax_param.sbp[ p_atom->type ].mass, temp );
         // rvec_OuterProduct(temp, workspace->virial_forces[i], p_atom->x );
         rtensor_ScaledAdd( data->flex_bar.P, -F_CONV, temp );
     }

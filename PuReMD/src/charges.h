@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------
-  SerialReax - Reax Force Field Simulator
+  PuReMD - Purdue ReaxFF Molecular Dynamics Program
 
   Copyright (2010) Purdue University
   Hasan Metin Aktulga, haktulga@cs.purdue.edu
@@ -19,17 +19,14 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __THREE_BODY_INTERACTIONS_H_
-#define __THREE_BODY_INTERACTIONS_H_
+#ifndef __CHARGES_H_
+#define __CHARGES_H_
 
 #include "reax_types.h"
 
+void QEq( reax_system*, control_params*, simulation_data*,
+          storage*, output_controls*, mpi_datatypes* );
 
-void Three_Body_Interactions( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls* );
-
-void Hydrogen_Bonds( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls* );
-
+int is_refactoring_step ( control_params* const, simulation_data* const );
 
 #endif

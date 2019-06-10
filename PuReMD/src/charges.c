@@ -19,7 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "qEq.h"
+#include "charges.h"
+
 #include "allocate.h"
 #include "basic_comm.h"
 #include "io_tools.h"

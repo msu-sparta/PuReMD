@@ -21,7 +21,7 @@
 
 #include "grid.h"
 
-#include "reset_utils.h"
+#include "reset_tools.h"
 #include "tool_box.h"
 #include "vector.h"
 
@@ -545,8 +545,8 @@ void Finalize_Grid( reax_system* system )
 static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 {
     dest->type = src->type;
-    strncpy( dest->name, src->name, 8 );
-    dest->name[8] = '\0';
+    strncpy( dest->name, src->name, sizeof(dest->name) - 1 );
+    dest->name[sizeof(dest->name) - 1] = '\0';
     rvec_Copy( dest->x, src->x );
     rvec_Copy( dest->v, src->v );
     rvec_Copy( dest->f, src->f );
@@ -573,10 +573,10 @@ static void Copy_Storage( reax_system *system, static_storage *workspace,
 
     orig_id[top] = workspace->orig_id[old_id];
 
-    workspace->b_s[top] = -system->reaxprm.sbp[ old_type ].chi;
+    workspace->b_s[top] = -system->reax_param.sbp[ old_type ].chi;
     workspace->b_t[top] = -1.0;
 
-    if ( system->reaxprm.sbp[ old_type ].p_hbond == 1 ) // H atom
+    if ( system->reax_param.sbp[ old_type ].p_hbond == 1 ) // H atom
     {
         workspace->hbond_index[top] = (*num_H)++;
     }
@@ -628,7 +628,7 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
     int i, j, k, l, top, old_id, num_H;
     reax_atom *old_atom, *new_atoms;
     grid *g;
-    int *orig_id ;
+    int *orig_id;
     real **v;
     real **s, **t;
     rvec *f_old;

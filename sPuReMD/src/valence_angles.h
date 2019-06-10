@@ -19,13 +19,18 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __FOUR_BODY_INTERACTIONS_H_
-#define __FOUR_BODY_INTERACTIONS_H_
+#ifndef __VALENCE_ANGLES_H_
+#define __VALENCE_ANGLES_H_
 
 #include "reax_types.h"
 
 
-void Four_Body_Interactions( reax_system*, control_params*, simulation_data*,
+void Calculate_Theta( rvec, real, rvec, real, real*, real* );
+
+void Calculate_dCos_Theta( rvec, real, rvec, real,
+        rvec*, rvec*, rvec* );
+
+void Valence_Angles( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
 

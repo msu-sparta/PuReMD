@@ -36,14 +36,14 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     real val;
 
     /* assign default values */
-    strncpy( control->sim_name, "default.sim", MAX_STR - 1 );
-    control->sim_name[MAX_STR - 1] = '\0';
+    strncpy( control->sim_name, "default.sim", sizeof(control->sim_name) - 1 );
+    control->sim_name[sizeof(control->sim_name) - 1] = '\0';
 
     control->restart = 0;
     out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;
-    strncpy( control->restart_from, "default.res", MAX_STR - 1 );
-    control->restart_from[MAX_STR - 1] = '\0';
+    strncpy( control->restart_from, "default.res", sizeof(control->restart_from) - 1 );
+    control->restart_from[sizeof(control->restart_from) - 1] = '\0';
     out_control->restart_freq = 0;
     control->random_vel = 0;
 
@@ -61,9 +61,9 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->reneighbor = 1;
 
     /* interaction cutoffs from force field global paramters */
-    control->bo_cut = 0.01 * system->reaxprm.gp.l[29];
-    control->nonb_low = system->reaxprm.gp.l[11];
-    control->nonb_cut = system->reaxprm.gp.l[12];
+    control->bo_cut = 0.01 * system->reax_param.gp.l[29];
+    control->nonb_low = system->reax_param.gp.l[11];
+    control->nonb_cut = system->reax_param.gp.l[12];
 
     /* defaults values for other cutoffs */
     control->vlist_cut = control->nonb_cut + 2.5;
@@ -121,8 +121,8 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     out_control->write_header = &Write_Custom_Header;
     out_control->append_traj_frame = &Append_Custom_Frame;
 
-    strncpy( out_control->traj_title, "default_title", 80 );
-    out_control->traj_title[80] = '\0';
+    strncpy( out_control->traj_title, "default_title", sizeof(out_control->traj_title) - 1 );
+    out_control->traj_title[sizeof(out_control->traj_title) - 1] = '\0';
     out_control->atom_format = 0;
     out_control->bond_info = 0;
     out_control->angle_info = 0;
@@ -160,8 +160,8 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
         {
             if ( strncmp(tmp[0], "simulation_name", MAX_LINE) == 0 )
             {
-                strncpy( control->sim_name, tmp[1], MAX_STR - 1 );
-                control->sim_name[MAX_STR - 1] = '\0';
+                strncpy( control->sim_name, tmp[1], sizeof(control->sim_name) - 1 );
+                control->sim_name[sizeof(control->sim_name) - 1] = '\0';
             }
             //else if( strncmp(tmp[0], "restart", MAX_LINE) == 0 ) {
             //  ival = atoi(tmp[1]);
@@ -487,8 +487,8 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
             }
             else if ( strncmp(tmp[0], "traj_title", MAX_LINE) == 0 )
             {
-                strncpy( out_control->traj_title, tmp[1], 80 );
-                out_control->traj_title[80] = '\0';
+                strncpy( out_control->traj_title, tmp[1], sizeof(out_control->traj_title) - 1 );
+                out_control->traj_title[sizeof(out_control->traj_title) - 1] = '\0';
             }
             else if ( strncmp(tmp[0], "atom_info", MAX_LINE) == 0 )
             {

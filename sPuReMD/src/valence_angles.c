@@ -19,7 +19,7 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "three_body_interactions.h"
+#include "valence_angles.h"
 
 #include "bond_orders.h"
 #include "list.h"
@@ -30,7 +30,7 @@
 
 
 /* calculates the theta angle between i-j-k */
-static void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         real *theta, real *cos_theta )
 {
     *cos_theta = rvec_Dot( dvec_ji, dvec_jk ) / ( d_ji * d_jk );
@@ -49,7 +49,7 @@ static void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
 
 /* calculates the derivative of the cosine of the angle between i-j-k */
-static void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
+void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         rvec* dcos_theta_di, rvec* dcos_theta_dj, rvec* dcos_theta_dk )
 {
     int t;
@@ -82,7 +82,7 @@ static void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_
 
 /* this is a 3-body interaction in which the main role is
    played by j which sits in the middle of the other two. */
-void Three_Body_Interactions( reax_system *system, control_params *control,
+void Valence_Angles( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
@@ -101,17 +101,16 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
     bond_list = bonds->bond_list;
     thb_intrs = lists[THREE_BODIES];
     thb_list = thb_intrs->three_body_list;
-    /* global parameters used in these calculations */
-    p_pen2 = system->reaxprm.gp.l[19];
-    p_pen3 = system->reaxprm.gp.l[20];
-    p_pen4 = system->reaxprm.gp.l[21];
-    p_coa2 = system->reaxprm.gp.l[2];
-    p_coa3 = system->reaxprm.gp.l[38];
-    p_coa4 = system->reaxprm.gp.l[30];
-    p_val6 = system->reaxprm.gp.l[14];
-    p_val8 = system->reaxprm.gp.l[33];
-    p_val9 = system->reaxprm.gp.l[16];
-    p_val10 = system->reaxprm.gp.l[17];
+    p_pen2 = system->reax_param.gp.l[19];
+    p_pen3 = system->reax_param.gp.l[20];
+    p_pen4 = system->reax_param.gp.l[21];
+    p_coa2 = system->reax_param.gp.l[2];
+    p_coa3 = system->reax_param.gp.l[38];
+    p_coa4 = system->reax_param.gp.l[30];
+    p_val6 = system->reax_param.gp.l[14];
+    p_val8 = system->reax_param.gp.l[33];
+    p_val9 = system->reax_param.gp.l[16];
+    p_val10 = system->reax_param.gp.l[17];
     num_thb_intrs = 0;
     e_ang_total = 0.0;
     e_pen_total = 0.0;
@@ -167,8 +166,8 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
             f_j = &system->atoms[j].f;
 //#endif
 
-            p_val3 = system->reaxprm.sbp[ type_j ].p_val3;
-            p_val5 = system->reaxprm.sbp[ type_j ].p_val5;
+            p_val3 = system->reax_param.sbp[ type_j ].p_val3;
+            p_val5 = system->reax_param.sbp[ type_j ].p_val5;
 
             /* sum of pi and pi-pi BO terms for all neighbors of atom j,
              * used in determining the equilibrium angle between i-j-k */
@@ -293,12 +292,10 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                         f_k = &system->atoms[k].f;
 //#endif
 
-                        //CHANGE ORIGINAL
                         if ( BOA_jk < 0.0 )
                         {
                             continue;
                         }
-                        //CHANGE ORIGINAL
 
                         Calculate_Theta( pbond_ij->dvec, pbond_ij->d,
                                 pbond_jk->dvec, pbond_jk->d,
@@ -326,7 +323,7 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
                         if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) >= 0.00001 )
 //                        if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut) )
                         {
-                            thbh = &system->reaxprm.thbp[type_i][type_j][type_k];
+                            thbh = &system->reax_param.thbp[type_i][type_j][type_k];
 
 //                            if( workspace->orig_id[i] < workspace->orig_id[k] )
 //                                fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
@@ -667,283 +664,5 @@ void Three_Body_Interactions( reax_system *system, control_params *control,
 
     fprintf( stderr, "3body: ext_press (%23.15e %23.15e %23.15e)\n",
              data->ext_press[0], data->ext_press[1], data->ext_press[2] );
-#endif
-}
-
-
-void Hydrogen_Bonds( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
-{
-#ifdef TEST_FORCES
-    int num_hb_intrs;
-#endif
-    real e_hb_total;
-
-    e_hb_total = 0.0;
-#ifdef TEST_FORCES
-    num_hb_intrs = 0;
-#endif
-
-#ifdef _OPENMP
-    #pragma omp parallel default(shared) reduction(+: e_hb_total)
-#endif
-    {
-        int i, j, k, pi, pk, itr, top;
-        int type_i, type_j, type_k;
-        int start_j, end_j, hb_start_j, hb_end_j;
-        int hblist[MAX_BONDS];
-        real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
-        real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
-        rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
-        rvec dvec_jk, force, ext_press;
-        ivec rel_jk;
-        //rtensor temp_rtensor, total_rtensor;
-        hbond_parameters *hbp;
-        bond_order_data *bo_ij;
-        bond_data *pbond_ij;
-        far_neighbor_data *nbr_jk;
-        reax_list *bonds, *hbonds;
-        bond_data *bond_list;
-        hbond_data *hbond_list;
-        rvec *f_i, *f_j, *f_k;
-#ifdef _OPENMP
-        int tid = omp_get_thread_num( );
-#endif
-
-        bonds = lists[BONDS];
-        bond_list = bonds->bond_list;
-        hbonds = lists[HBONDS];
-        hbond_list = hbonds->hbond_list;
-
-        /* loops below discover the Hydrogen bonds between i-j-k triplets.
-           here j is H atom and there has to be some bond between i and j.
-           Hydrogen bond is between j and k.
-           so in this function i->X, j->H, k->Z when we map
-           variables onto the ones in the handout.*/
-#ifdef _OPENMP
-        #pragma omp for schedule(guided)
-#endif
-        for ( j = 0; j < system->N; ++j )
-        {
-            /* j must be H */
-            if ( system->reaxprm.sbp[system->atoms[j].type].p_hbond == 1 )
-            {
-                /* set j's variables */
-                type_j = system->atoms[j].type;
-                start_j = Start_Index( j, bonds );
-                end_j = End_Index( j, bonds );
-                hb_start_j = Start_Index( workspace->hbond_index[j], hbonds );
-                hb_end_j = End_Index( workspace->hbond_index[j], hbonds );
-#ifdef _OPENMP
-                f_j = &workspace->f_local[tid * system->N + j];
-#else
-                f_j = &system->atoms[j].f;
-#endif
-
-                top = 0;
-                for ( pi = start_j; pi < end_j; ++pi )
-                {
-                    pbond_ij = &bond_list[pi];
-                    i = pbond_ij->nbr;
-                    bo_ij = &pbond_ij->bo_data;
-                    type_i = system->atoms[i].type;
-
-                    if ( system->reaxprm.sbp[type_i].p_hbond == 2 &&
-                            bo_ij->BO >= HB_THRESHOLD )
-                    {
-                        hblist[top++] = pi;
-                    }
-                }
-
-                for ( pk = hb_start_j; pk < hb_end_j; ++pk )
-                {
-                    /* set k's varibles */
-                    k = hbond_list[pk].nbr;
-                    type_k = system->atoms[k].type;
-                    nbr_jk = hbond_list[pk].ptr;
-                    r_jk = nbr_jk->d;
-                    rvec_Scale( dvec_jk, hbond_list[pk].scl, nbr_jk->dvec );
-#ifdef _OPENMP
-                    f_k = &workspace->f_local[tid * system->N + k];
-#else
-                    f_k = &system->atoms[k].f;
-#endif
-
-                    for ( itr = 0; itr < top; ++itr )
-                    {
-                        pi = hblist[itr];
-                        pbond_ij = &( bond_list[pi] );
-                        i = pbond_ij->nbr;
-
-                        if ( i != k )
-                        {
-                            bo_ij = &pbond_ij->bo_data;
-                            type_i = system->atoms[i].type;
-                            r_ij = pbond_ij->d;
-                            hbp = &system->reaxprm.hbp[ type_i ][ type_j ][ type_k ];
-#ifdef _OPENMP
-                            f_i = &workspace->f_local[tid * system->N + i];
-#else
-                            f_i = &system->atoms[i].f;
-#endif
-
-#ifdef TEST_FORCES
-#ifdef _OPENMP
-                            #pragma omp atomic
-#endif
-                            ++num_hb_intrs;
-#endif
-
-                            Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
-                                    &theta, &cos_theta );
-                            /* the derivative of cos(theta) */
-                            Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
-                                    &dcos_theta_di, &dcos_theta_dj, &dcos_theta_dk );
-
-                            /* hydrogen bond energy */
-                            sin_theta2 = SIN( theta / 2.0 );
-                            sin_xhz4 = SQR( sin_theta2 );
-                            sin_xhz4 *= sin_xhz4;
-                            cos_xhz1 = ( 1.0 - cos_theta );
-                            exp_hb2 = EXP( -hbp->p_hb2 * bo_ij->BO );
-                            exp_hb3 = EXP( -hbp->p_hb3 * ( hbp->r0_hb / r_jk +
-                                        r_jk / hbp->r0_hb - 2.0 ) );
-
-                            e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                            e_hb_total += e_hb;
-
-                            CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
-                            CEhb2 = -hbp->p_hb1 / 2.0 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
-                            CEhb3 = -hbp->p_hb3 * e_hb * (-hbp->r0_hb / SQR( r_jk ) +
-                                    1.0 / hbp->r0_hb);
-
-                            /* hydrogen bond forces */
-                            /* dbo term,
-                             * note: safe to update across threads as this points
-                             * to the bond_order_data struct inside atom j's list,
-                             * and threads are partitioned across all j's */
-#ifdef _OPENMP
-                            #pragma omp atomic
-#endif
-                            bo_ij->Cdbo += CEhb1;
-
-                            if ( control->ensemble == NVE || control->ensemble == nhNVT
-                                    || control->ensemble == bNVT )
-                            {
-                                /* dcos terms */
-                                rvec_ScaledAdd( *f_i, +CEhb2, dcos_theta_di );
-                                rvec_ScaledAdd( *f_j, +CEhb2, dcos_theta_dj );
-                                rvec_ScaledAdd( *f_k, +CEhb2, dcos_theta_dk );
-
-                                /* dr terms */
-                                rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
-                                rvec_ScaledAdd( *f_k, +CEhb3 / r_jk, dvec_jk );
-                            }
-                            else
-                            {
-                                /* for pressure coupling, terms that are not related
-                                   to bond order derivatives are added directly into
-                                   pressure vector/tensor */
-
-                                /* dcos terms */
-                                rvec_Scale( force, +CEhb2, dcos_theta_di );
-                                rvec_Add( *f_i, force );
-                                rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-#ifdef _OPENMP
-                                #pragma omp critical (Hydrogen_Bonds_ext_press)
-#endif
-                                {
-                                    rvec_ScaledAdd( data->ext_press, 1.0, ext_press );
-                                }
-
-                                rvec_ScaledAdd( *f_j, +CEhb2, dcos_theta_dj );
-
-                                ivec_Scale( rel_jk, hbond_list[pk].scl, nbr_jk->rel_box );
-                                rvec_Scale( force, +CEhb2, dcos_theta_dk );
-                                rvec_Add( *f_k, force );
-                                rvec_iMultiply( ext_press, rel_jk, force );
-#ifdef _OPENMP
-                                #pragma omp critical (Hydrogen_Bonds_ext_press)
-#endif
-                                {
-                                    rvec_ScaledAdd( data->ext_press, 1.0, ext_press );
-                                }
-
-                                /* dr terms */
-                                rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
-
-                                rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
-                                rvec_Add( *f_k, force );
-                                rvec_iMultiply( ext_press, rel_jk, force );
-#ifdef _OPENMP
-                                #pragma omp critical (Hydrogen_Bonds_ext_press)
-#endif
-                                {
-                                    rvec_ScaledAdd( data->ext_press, 1.0, ext_press );
-                                }
-
-                                /* This part is intended for a fully-flexible box */
-                                /* rvec_OuterProduct( temp_rtensor,
-                                   dcos_theta_di, system->atoms[i].x );
-                                   rtensor_Scale( total_rtensor, -CEhb2, temp_rtensor );
-
-                                   rvec_ScaledSum( temp_rvec, -CEhb2, dcos_theta_dj,
-                                   -CEhb3/r_jk, pbond_jk->dvec );
-                                   rvec_OuterProduct( temp_rtensor,
-                                   temp_rvec, system->atoms[j].x );
-                                   rtensor_Add( total_rtensor, temp_rtensor );
-
-                                   rvec_ScaledSum( temp_rvec, -CEhb2, dcos_theta_dk,
-                                   +CEhb3/r_jk, pbond_jk->dvec );
-                                   rvec_OuterProduct( temp_rtensor,
-                                   temp_rvec, system->atoms[k].x );
-                                   rtensor_Add( total_rtensor, temp_rtensor );
-
-                                   if( pbond_ij->imaginary || pbond_jk->imaginary )
-                                   rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
-                                   else
-                                   rtensor_Add( data->flex_bar.P, total_rtensor ); */
-                            }
-
-#ifdef TEST_ENERGY
-                            /*fprintf( out_control->ehb,
-                              "%23.15e%23.15e%23.15e\n%23.15e%23.15e%23.15e\n%23.15e%23.15e%23.15e\n",
-                              dcos_theta_di[0], dcos_theta_di[1], dcos_theta_di[2],
-                              dcos_theta_dj[0], dcos_theta_dj[1], dcos_theta_dj[2],
-                              dcos_theta_dk[0], dcos_theta_dk[1], dcos_theta_dk[2]);
-                              fprintf( out_control->ehb, "%23.15e%23.15e%23.15e\n",
-                              CEhb1, CEhb2, CEhb3 ); */
-                            fprintf( stderr, //out_control->ehb,
-                                     "%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-                                     workspace->orig_id[i],
-                                     workspace->orig_id[j],
-                                     workspace->orig_id[k],
-                                     r_jk, theta, bo_ij->BO, e_hb, data->E_HB );
-#endif
-
-#ifdef TEST_FORCES
-                            /* dbo term */
-                            Add_dBO( system, lists, j, pi, +CEhb1, workspace->f_hb );
-                            /* dcos terms */
-                            rvec_ScaledAdd( workspace->f_hb[i], +CEhb2, dcos_theta_di );
-                            rvec_ScaledAdd( workspace->f_hb[j], +CEhb2, dcos_theta_dj );
-                            rvec_ScaledAdd( workspace->f_hb[k], +CEhb2, dcos_theta_dk );
-                            /* dr terms */
-                            rvec_ScaledAdd( workspace->f_hb[j], -CEhb3 / r_jk, dvec_jk );
-                            rvec_ScaledAdd( workspace->f_hb[k], +CEhb3 / r_jk, dvec_jk );
-#endif
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    data->E_HB += e_hb_total;
-
-#ifdef TEST_FORCES
-    fprintf( stderr, "Number of hydrogen bonds: %d\n", num_hb_intrs );
-    fprintf( stderr, "Hydrogen Bond Energy: %g\n", data->E_HB );
 #endif
 }

@@ -157,7 +157,7 @@ int Write_Custom_Header( reax_system *system, control_params *control,
                             workspace->orig_id[i],
                             system->atoms[i].type,
                             system->atoms[i].name,
-                            system->reaxprm.sbp[ system->atoms[i].type ].mass );
+                            system->reax_param.sbp[ system->atoms[i].type ].mass );
     }
 
     fflush( out_control->trj );
@@ -557,7 +557,7 @@ int Append_xyz_Frame( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; ++i )
     {
         out_control->write( out_control->trj, "%3s %10.5f %10.5f %10.5f\n",
-                system->reaxprm.sbp[ system->atoms[i].type ].name,
+                system->reax_param.sbp[ system->atoms[i].type ].name,
                 system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );
     }
 

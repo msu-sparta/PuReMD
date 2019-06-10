@@ -315,6 +315,21 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
         }
     }
 
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] vdWaals type: %d\n", reax->gp.vdw_type );
+#endif
+
+    /* Equate vval3 to valf for first-row elements (25/10/2004) */
+    for ( i = 0; i < reax->num_atom_types; i++ )
+    {
+        if ( reax->sbp[i].mass < 21.0
+                && reax->sbp[i].valency_val != reax->sbp[i].valency_boc )
+        {
+            fprintf( stderr, "[WARNING] changed valency_val to valency_boc for %s\n",
+                     reax->sbp[i].name );
+            reax->sbp[i].valency_val = reax->sbp[i].valency_boc;
+        }
+    }
 
     /* next line is number of two body combination and some comments */
     fgets(s, MAX_LINE, fp);

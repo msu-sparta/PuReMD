@@ -21,8 +21,8 @@
 
 #include "lookup.h"
 
+#include "nonbonded.h"
 #include "tool_box.h"
-#include "two_body_interactions.h"
 
 
 /* Fills solution into x. Warning: will modify c and d! */
@@ -235,7 +235,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
     v0_ele = 0;
     v0_vdw = 0;
 
-    num_atom_types = system->reaxprm.num_atom_types;
+    num_atom_types = system->reax_param.num_atom_types;
     dr = control->nonb_cut / control->tabulate;
     h = scalloc( control->tabulate + 2, sizeof(real),
             "Make_LR_Lookup_Table::h" );
@@ -431,7 +431,7 @@ void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
     int num_atom_types;
     int existing_types[MAX_ATOM_TYPES];
 
-    num_atom_types = system->reaxprm.num_atom_types;
+    num_atom_types = system->reax_param.num_atom_types;
 
     for ( i = 0; i < MAX_ATOM_TYPES; ++i )
     {

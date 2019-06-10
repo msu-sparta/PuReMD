@@ -161,7 +161,7 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     if ( control->cm_solver_type == GMRES_S
             || control->cm_solver_type == GMRES_H_S )
     {
-        for ( i = 0; i < RESTART + 1; ++i )
+        for ( i = 0; i < control->cm_solver_restart + 1; ++i )
         {
             sfree( workspace->h[i], "h[i]" );
             sfree( workspace->v[i], "v[i]" );
@@ -329,16 +329,16 @@ int Allocate_Workspace( reax_system *system, control_params *control,
     if ( control->cm_solver_type == GMRES_S
             || control->cm_solver_type == GMRES_H_S )
     {
-        workspace->y = scalloc( RESTART + 1, sizeof(real), "y", comm );
-        workspace->g = scalloc( RESTART + 1, sizeof(real), "g", comm );
-        workspace->hc = scalloc( RESTART + 1, sizeof(real), "hc", comm );
-        workspace->hs = scalloc( RESTART + 1, sizeof(real), "hs", comm );
-        workspace->h = scalloc( RESTART + 1, sizeof(real*), "h", comm );
-        workspace->v = scalloc( RESTART + 1, sizeof(real*), "v", comm );
+        workspace->y = scalloc( control->cm_solver_restart + 1, sizeof(real), "y", comm );
+        workspace->g = scalloc( control->cm_solver_restart + 1, sizeof(real), "g", comm );
+        workspace->hc = scalloc( control->cm_solver_restart + 1, sizeof(real), "hc", comm );
+        workspace->hs = scalloc( control->cm_solver_restart + 1, sizeof(real), "hs", comm );
+        workspace->h = scalloc( control->cm_solver_restart + 1, sizeof(real*), "h", comm );
+        workspace->v = scalloc( control->cm_solver_restart + 1, sizeof(real*), "v", comm );
 
-        for ( i = 0; i < RESTART + 1; ++i )
+        for ( i = 0; i < control->cm_solver_restart + 1; ++i )
         {
-            workspace->h[i] = scalloc( RESTART + 1, sizeof(real), "h[i]", comm );
+            workspace->h[i] = scalloc( control->cm_solver_restart + 1, sizeof(real), "h[i]", comm );
             workspace->v[i] = scalloc( total_cap, sizeof(real), "v[i]", comm );
         }
     }
@@ -346,7 +346,7 @@ int Allocate_Workspace( reax_system *system, control_params *control,
     if ( control->cm_solver_type == GMRES_S
             || control->cm_solver_type == GMRES_H_S )
     {
-        workspace->z = scalloc( RESTART + 1, sizeof(real), "z", comm );
+        workspace->z = scalloc( control->cm_solver_restart + 1, sizeof(real), "z", comm );
     }
     else if ( control->cm_solver_type == PIPECG_S
             || control->cm_solver_type == PIPECR_S )
@@ -809,7 +809,7 @@ int  Allocate_MPI_Buffers( mpi_datatypes *mpi_data, int est_recv,
 
 #if defined(NEUTRAL_TERRITORY)
     /* Neutral Territory out buffers */
-    for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
         /* in buffers */
         mpi_data->in_nt_buffer[i] = scalloc( my_nt_nbrs[i].est_recv, sizeof(real),
@@ -845,7 +845,7 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
     }
 
 #if defined(NEUTRAL_TERRITORY)
-    for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
         sfree( mpi_data->in_nt_buffer[i], "in_nt_buffer" );
 
@@ -1125,7 +1125,7 @@ void ReAllocate( reax_system *system, control_params *control,
 
 #if defined(NEUTRAL_TERRITORY)
         /* also check individual outgoing Neutral Territory buffers */
-        for ( p = 0; p < REAX_MAX_NT_NBRS; ++p )
+        for ( p = 0; p < MAX_NT_NBRS; ++p )
         {
             nbr_pr = &system->my_nt_nbrs[p];
             nbr_data = &mpi_data->out_nt_buffers[p];
@@ -1163,7 +1163,7 @@ void ReAllocate( reax_system *system, control_params *control,
         }
 
 #if defined(NEUTRAL_TERRITORY)
-        for ( p = 0; p < REAX_MAX_NT_NBRS; ++p )
+        for ( p = 0; p < MAX_NT_NBRS; ++p )
         {
             nbr_pr = &system->my_nt_nbrs[p];
             nbr_data = &mpi_data->out_nt_buffers[p];

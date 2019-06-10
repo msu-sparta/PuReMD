@@ -19,7 +19,7 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "two_body_interactions.h"
+#include "nonbonded.h"
 
 #include "bond_orders.h"
 #include "list.h"
@@ -27,142 +27,53 @@
 #include "vector.h"
 
 
-void Bond_Energy( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
+static void Compute_Polarization_Energy( reax_system* system,
+        control_params *control, simulation_data* data, static_storage *workspace )
 {
-    int i;
-    real gp3, gp4, gp7, gp10, gp37, ebond_total;
-    reax_list *bonds;
+    int i, type_i;
+    real e_pol, q;
 
-    bonds = lists[BONDS];
-    gp3 = system->reaxprm.gp.l[3];
-    gp4 = system->reaxprm.gp.l[4];
-    gp7 = system->reaxprm.gp.l[7];
-    gp10 = system->reaxprm.gp.l[10];
-    gp37 = (int) system->reaxprm.gp.l[37];
-    ebond_total = 0.0;
+    /* Compute Polarization Energy */
+    e_pol = 0.0;
 
+    if ( control->charge_method == QEQ_CM
+            || control->charge_method == EE_CM )
+    {
 #ifdef _OPENMP
-//    #pragma omp parallel default(shared) reduction(+: ebond_total)
+        #pragma omp parallel for default(none) private(q, type_i) shared(system) \
+            reduction(+: e_pol) schedule(static)
 #endif
-    { 
-        int j, pj;
-        int start_i, end_i;
-        int type_i, type_j;
-        real ebond, pow_BOs_be2, exp_be12, CEbo;
-        real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
-        real decobdbo, decobdboua, decobdboub;
-        single_body_parameters *sbp_i, *sbp_j;
-        two_body_parameters *twbp;
-        bond_order_data *bo_ij;
-
-#ifdef _OPENMP
-//        #pragma omp for schedule(guided)
-#endif
-        for ( i = 0; i < system->N; ++i )
+        for ( i = 0; i < system->N; i++ )
         {
-            start_i = Start_Index(i, bonds);
-            end_i = End_Index(i, bonds);
+            q = system->atoms[i].q;
+            type_i = system->atoms[i].type;
 
-            for ( pj = start_i; pj < end_i; ++pj )
-            {
-                if ( i < bonds->bond_list[pj].nbr )
-                {
-                    /* set the pointers */
-                    j = bonds->bond_list[pj].nbr;
-                    type_i = system->atoms[i].type;
-                    type_j = system->atoms[j].type;
-                    sbp_i = &system->reaxprm.sbp[type_i];
-                    sbp_j = &system->reaxprm.sbp[type_j];
-                    twbp = &system->reaxprm.tbp[type_i][type_j];
-                    bo_ij = &bonds->bond_list[pj].bo_data;
-
-                    /* calculate the constants */
-                    pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
-                    exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
-                    CEbo = -twbp->De_s * exp_be12
-                        * ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
-
-                    /* calculate the Bond Energy */
-                    ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
-                        - twbp->De_p * bo_ij->BO_pi
-                        - twbp->De_pp * bo_ij->BO_pi2;
-                    ebond_total += ebond;
-
-                    /* calculate derivatives of Bond Orders */
-                    bo_ij->Cdbo += CEbo;
-                    bo_ij->Cdbopi -= (CEbo + twbp->De_p);
-                    bo_ij->Cdbopi2 -= (CEbo + twbp->De_pp);
-
-#ifdef TEST_ENERGY
-                    fprintf( out_control->ebond, "%6d%6d%24.15e%24.15e\n",
-                             workspace->orig_id[i], workspace->orig_id[j],
-                             // i+1, j+1,
-                             bo_ij->BO, ebond );
+            e_pol += ( system->reax_param.sbp[ type_i ].chi * q
+                    + (system->reax_param.sbp[ type_i ].eta / 2.0) * SQR( q ) )
+                * KCALpMOL_to_EV;
+        }
+    }
+    else if ( control->charge_method == ACKS2_CM )
+    {
+#ifdef _OPENMP
+        #pragma omp parallel for default(none) private(q, type_i) shared(system, workspace) \
+            reduction(+: e_pol) schedule(static)
 #endif
+        for ( i = 0; i < system->N; i++ )
+        {
+            q = system->atoms[i].q;
+            type_i = system->atoms[i].type;
 
-#ifdef TEST_FORCES
-                    Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
-                    Add_dBOpinpi2( system, lists, i, pj,
-                            -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
-                            workspace->f_be, workspace->f_be );
-#endif
+            /* energy due to first and second order EE parameters */
+            e_pol += KCALpMOL_to_EV * ( system->reax_param.sbp[ type_i ].chi
+                    + system->reax_param.sbp[ type_i ].eta / 2.0 * q) *  q;
 
-                    /* Stabilisation terminal triple bond */
-                    if ( bo_ij->BO >= 1.00 )
-                    {
-                        if ( gp37 == 2
-                                || (FABS(sbp_i->mass - 12.0) < 0.0001 && FABS(sbp_j->mass - 15.9990) < 0.0001)
-                                || (FABS(sbp_j->mass - 12.0) < 0.0001 && FABS(sbp_i->mass - 15.9990) < 0.0001) )
-                        {
-                            //ba = SQR( bo_ij->BO - 2.5 );
-                            exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );
-                            //oboa = abo(j1) - boa;
-                            //obob = abo(j2) - boa;
-                            exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
-                            exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
-                            //ovoab = abo(j1) - aval(it1) + abo(j2) - aval(it2);
-                            exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
-                            hulpov = 1.0 / (1.0 + 25.0 * exphuov);
-
-                            estriph = gp10 * exphu * hulpov * (exphua1 + exphub1);
-                            //estrain(j1) = estrain(j1) + 0.5 * estriph;
-                            //estrain(j2) = estrain(j2) + 0.5 * estriph;
-                            ebond_total += estriph;
-
-                            decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1) *
-                                ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
-                            decobdboua = -gp10 * exphu * hulpov *
-                                (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
-                            decobdboub = -gp10 * exphu * hulpov *
-                                (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
-
-                            bo_ij->Cdbo += decobdbo;
-                            workspace->CdDelta[i] += decobdboua;
-                            workspace->CdDelta[j] += decobdboub;
-
-#ifdef TEST_ENERGY
-                            fprintf( out_control->ebond,
-                                     "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                                     workspace->orig_id[i], workspace->orig_id[j],
-                                     //i + 1, j + 1,
-                                     estriph, decobdbo, decobdboua, decobdboub );
-#endif
-
-#ifdef TEST_FORCES
-                            Add_dBO( system, lists, i, pj, decobdbo, workspace->f_be );
-                            Add_dDelta( system, lists, i, decobdboua, workspace->f_be );
-                            Add_dDelta( system, lists, j, decobdboub, workspace->f_be );
-#endif
-                        }
-                    }
-                }
-            }
+            /* energy due to coupling with kinetic energy potential */
+            e_pol += KCALpMOL_to_EV * system->atoms[i].q * workspace->s[0][ system->N + i ];
         }
     }
 
-    data->E_BE += ebond_total;
+    data->E_Pol = e_pol;
 }
 
 
@@ -175,7 +86,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     reax_list *far_nbrs;
     real e_vdW_total, e_ele_total;
 
-    p_vdW1 = system->reaxprm.gp.l[28];
+    p_vdW1 = system->reax_param.gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
     far_nbrs = lists[FAR_NBRS];
     e_vdW_total = 0.0;
@@ -222,7 +133,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     nbr_pj = &far_nbrs->far_nbr_list[pj];
                     j = nbr_pj->nbr;
                     r_ij = nbr_pj->d;
-                    twbp = &system->reaxprm.tbp[ system->atoms[i].type ]
+                    twbp = &system->reax_param.tbp[ system->atoms[i].type ]
                              [ system->atoms[j].type ];
                     /* i == j: self-interaction from periodic image,
                      * important for supporting small boxes! */
@@ -247,7 +158,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     dTap = dTap * r_ij + workspace->Tap[1];
 
                     /* vdWaals Calculations */
-                    if ( system->reaxprm.gp.vdw_type == 1 || system->reaxprm.gp.vdw_type == 3 )
+                    if ( system->reax_param.gp.vdw_type == 1 || system->reax_param.gp.vdw_type == 3 )
                     {
                         /* shielding */
                         powr_vdW1 = POW( r_ij, p_vdW1 );
@@ -259,7 +170,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
                         e_base = twbp->D * (exp1 - 2.0 * exp2);
 
-                        e_vdW = self_coef * e_base * Tap;
+                        e_vdW = self_coef * (e_base * Tap);
                         e_vdW_total += e_vdW;
 
                         dfn13 = POW( r_ij, p_vdW1 - 1.0 )
@@ -280,7 +191,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     }
 
                     /* calculate inner core repulsion */
-                    if ( system->reaxprm.gp.vdw_type == 2 || system->reaxprm.gp.vdw_type == 3 )
+                    if ( system->reax_param.gp.vdw_type == 2 || system->reax_param.gp.vdw_type == 3 )
                     {
                         e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
                         e_vdW += self_coef * (e_core * Tap);
@@ -351,13 +262,14 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
-                        rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
+                        rvec_Scale( temp,
+                                (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 
 #ifndef _OPENMP
-                        rvec_ScaledAdd( system->atoms[i].f, -1., temp );
+                        rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
                         rvec_Add( system->atoms[j].f, temp );
 #else
-                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1., temp );
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1.0, temp );
                         rvec_Add( workspace->f_local[tid * system->N + j], temp );
 #endif
 
@@ -443,13 +355,13 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     j = nbr_pj->nbr;
 
                     /* kinetic energy terms */
-                    xcut = 0.5 * ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
-                            + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 );
+                    xcut = 0.5 * ( system->reax_param.sbp[ system->atoms[i].type ].b_s_acks2
+                            + system->reax_param.sbp[ system->atoms[j].type ].b_s_acks2 );
 
                     if ( far_nbrs->far_nbr_list[pj].d < xcut )
                     {
                         d = far_nbrs->far_nbr_list[pj].d / xcut;
-                        bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 )
+                        bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
                             * POW( 1.0 - d, 6.0 );
 
                         if ( bond_softness > 0.0 )
@@ -462,7 +374,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             e_ele_total += e_ele;
 
                             /* forces contribution */
-                            d_bond_softness = system->reaxprm.gp.l[34]
+                            d_bond_softness = system->reax_param.gp.l[34]
                                 * 3.0 / xcut * POW( d, 2.0 )
                                 * POW( 1.0 - d, 5.0 ) * (1.0 - 3.0 * d);
                             d_bond_softness = -0.5 * d_bond_softness
@@ -503,124 +415,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     fprintf( stderr, "nonbonded: ext_press (%24.15e %24.15e %24.15e)\n",
             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
 #endif
-}
 
-
-void LR_vdW_Coulomb( reax_system *system, control_params *control,
-        static_storage *workspace, int i, int j, real r_ij, LR_data *lr )
-{
-    real p_vdW1 = system->reaxprm.gp.l[28];
-    real p_vdW1i = 1.0 / p_vdW1;
-    real powr_vdW1, powgi_vdW1;
-    real tmp, fn13, exp1, exp2;
-    real Tap, dTap, dfn13;
-    real dr3gamij_1, dr3gamij_3;
-    real e_core, de_core;
-    two_body_parameters *twbp;
-
-    twbp = &system->reaxprm.tbp[i][j];
-
-    /* calculate taper and its derivative */
-    Tap = workspace->Tap[7] * r_ij
-        + workspace->Tap[6];
-    Tap = Tap * r_ij + workspace->Tap[5];
-    Tap = Tap * r_ij + workspace->Tap[4];
-    Tap = Tap * r_ij + workspace->Tap[3];
-    Tap = Tap * r_ij + workspace->Tap[2];
-    Tap = Tap * r_ij + workspace->Tap[1];
-    Tap = Tap * r_ij + workspace->Tap[0];
-
-    dTap = 7.0 * workspace->Tap[7] * r_ij
-        + 6.0 * workspace->Tap[6];
-    dTap = dTap * r_ij + 5.0 * workspace->Tap[5];
-    dTap = dTap * r_ij + 4.0 * workspace->Tap[4];
-    dTap = dTap * r_ij + 3.0 * workspace->Tap[3];
-    dTap = dTap * r_ij + 2.0 * workspace->Tap[2];
-    dTap += workspace->Tap[1] / r_ij;
-
-    /* vdWaals calculations */
-    powr_vdW1 = POW( r_ij, p_vdW1 );
-    powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
-
-    fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-    exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-    exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-
-    lr->e_vdW = Tap * twbp->D * (exp1 - 2.0 * exp2);
-
-    /* fprintf(stderr,"vdW: Tap:%f, r: %f, f13:%f, D:%f, Energy:%f,\
-       Gamma_w:%f, p_vdw: %f, alpha: %f, r_vdw: %f, %lf %lf\n",
-       Tap, r_ij, fn13, twbp->D, Tap * twbp->D * (exp1 - 2.0 * exp2),
-       powgi_vdW1, p_vdW1, twbp->alpha, twbp->r_vdW, exp1, exp2); */
-
-    dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 )
-        * POW( r_ij, p_vdW1 - 2.0 );
-
-    lr->CEvd = (twbp->D * (exp1 - 2.0 * exp2)) * dTap
-        + (twbp->D * -(twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13) * Tap;
-
-    /* vdWaals Calculations */
-    if ( system->reaxprm.gp.vdw_type == 1 || system->reaxprm.gp.vdw_type == 3 )
-    {
-        // shielding
-        powr_vdW1 = POW( r_ij, p_vdW1 );
-        powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
-
-        fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-        exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-
-        lr->e_vdW = Tap * twbp->D * (exp1 - 2.0 * exp2);
-
-        dfn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0) *
-            POW( r_ij, p_vdW1 - 2.0 );
-
-        lr->CEvd = (twbp->D * (exp1 - 2.0 * exp2)) * dTap
-            + (twbp->D * -(twbp->alpha / twbp->r_vdW) * (exp1 - exp2) * dfn13) * Tap;
-    }
-    /* no shielding */
-    else
-    {
-        exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-
-        lr->e_vdW = (twbp->D * (exp1 - 2.0 * exp2)) * Tap;
-
-        lr->CEvd = (twbp->D * (exp1 - 2.0 * exp2)) * dTap
-            + (twbp->D * -(twbp->alpha / twbp->r_vdW) * (exp1 - exp2)) * Tap;
-    }
-
-    if ( system->reaxprm.gp.vdw_type == 2 || system->reaxprm.gp.vdw_type == 3 )
-    {
-        // innner wall
-        e_core = twbp->ecore * EXP(twbp->acore * (1.0 - (r_ij / twbp->rcore)));
-        lr->e_vdW += Tap * e_core;
-
-        de_core = -(twbp->acore / twbp->rcore) * e_core;
-        lr->CEvd += e_core * dTap + de_core * Tap;
-    }
-
-    /* Coulomb calculations */
-    dr3gamij_1 = r_ij * r_ij * r_ij
-        + POW( twbp->gamma, -3.0 );
-    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
-
-    tmp = Tap / dr3gamij_3;
-    lr->H = EV_to_KCALpMOL * tmp;
-    lr->e_ele = C_ELE * tmp;
-    /* fprintf( stderr,"i:%d(%d), j:%d(%d), gamma:%f,\
-       Tap:%f, dr3gamij_3:%f, qi: %f, qj: %f\n",
-       i, system->atoms[i].type, j, system->atoms[j].type,
-       twbp->gamma, Tap, dr3gamij_3,
-       system->atoms[i].q, system->atoms[j].q ); */
-
-    lr->CEclmb = C_ELE * ( dTap - Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
-    /* fprintf( stdout, "%d %d\t%g\t%g  %g\t%g  %g\t%g  %g\n",
-       i+1, j+1, r_ij, e_vdW, CEvd * r_ij,
-       system->atoms[i].q, system->atoms[j].q, e_ele, CEclmb * r_ij ); */
-
-    /* fprintf( stderr,"LR_Lookup:%3d%3d%5.3f-%8.5f,%8.5f%8.5f,%8.5f%8.5f\n",
-       i, j, r_ij, lr->H, lr->e_vdW, lr->CEvd, lr->e_ele, lr->CEclmb ); */
+    Compute_Polarization_Energy( system, control, data, workspace );
 }
 
 
@@ -709,7 +505,6 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     CEvd = ((t->CEvd[r].d * dif + t->CEvd[r].c) * dif + t->CEvd[r].b)
                         * dif + t->CEvd[r].a;
                     CEvd *= self_coef;
-//                    CEvd = (3 * t->vdW[r].d * dif + 2 * t->vdW[r].c) * dif + t->vdW[r].b;
 
                     CEclmb = ((t->CEclmb[r].d * dif + t->CEclmb[r].c) * dif + t->CEclmb[r].b)
                         * dif + t->CEclmb[r].a;
@@ -719,13 +514,15 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             || control->ensemble == bNVT )
                     {
 #ifndef _OPENMP
-                        rvec_ScaledAdd( system->atoms[i].f, -(CEvd + CEclmb), nbr_pj->dvec );
-                        rvec_ScaledAdd( system->atoms[j].f, +(CEvd + CEclmb), nbr_pj->dvec );
+                        rvec_ScaledAdd( system->atoms[i].f,
+                                -(CEvd + CEclmb) / r_ij, nbr_pj->dvec );
+                        rvec_ScaledAdd( system->atoms[j].f,
+                                (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 #else
                         rvec_ScaledAdd( workspace->f_local[tid * system->N + i],
-                                -(CEvd + CEclmb), nbr_pj->dvec );
+                                -(CEvd + CEclmb) / r_ij, nbr_pj->dvec );
                         rvec_ScaledAdd( workspace->f_local[tid * system->N + j],
-                                +(CEvd + CEclmb), nbr_pj->dvec );
+                                (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 #endif
                     }
                     /* aNPT, iNPT or sNPT */
@@ -733,12 +530,13 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
-                        rvec_Scale( temp, CEvd + CEclmb, nbr_pj->dvec );
+                        rvec_Scale( temp,
+                                (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 #ifndef _OPENMP
-                        rvec_ScaledAdd( system->atoms[i].f, -1., temp );
+                        rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
                         rvec_Add( system->atoms[j].f, temp );
 #else
-                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1., temp );
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1.0, temp );
                         rvec_Add( workspace->f_local[tid * system->N + j], temp );
 #endif
                         rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
@@ -746,7 +544,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         #pragma omp critical (Tabulated_vdW_Coulomb_Energy_ext_press)
 #endif
                         {
-                        rvec_Add( data->ext_press, ext_press );
+                            rvec_Add( data->ext_press, ext_press );
                         }
                     }
 
@@ -791,13 +589,13 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     j = nbr_pj->nbr;
 
                     /* kinetic energy terms */
-                    xcut = 0.5 * ( system->reaxprm.sbp[ system->atoms[i].type ].b_s_acks2
-                            + system->reaxprm.sbp[ system->atoms[j].type ].b_s_acks2 );
+                    xcut = 0.5 * ( system->reax_param.sbp[ system->atoms[i].type ].b_s_acks2
+                            + system->reax_param.sbp[ system->atoms[j].type ].b_s_acks2 );
 
                     if ( far_nbrs->far_nbr_list[pj].d < xcut )
                     {
                         d = far_nbrs->far_nbr_list[pj].d / xcut;
-                        bond_softness = system->reaxprm.gp.l[34] * POW( d, 3.0 )
+                        bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
                             * POW( 1.0 - d, 6.0 );
 
                         if ( bond_softness > 0.0 )
@@ -810,7 +608,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             e_ele_total += e_ele;
 
                             /* forces contribution */
-                            d_bond_softness = system->reaxprm.gp.l[34]
+                            d_bond_softness = system->reax_param.gp.l[34]
                                 * 3.0 / xcut * POW( d, 2.0 )
                                 * POW( 1.0 - d, 5.0 ) * (1.0 - 3.0 * d);
                             d_bond_softness = -0.5 * d_bond_softness
@@ -853,4 +651,113 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
     data->E_vdW += e_vdW_total;
     data->E_Ele += e_ele_total;
+
+    Compute_Polarization_Energy( system, control, data, workspace );
+}
+
+
+void LR_vdW_Coulomb( reax_system *system, control_params *control,
+        static_storage *workspace, int i, int j, real r_ij, LR_data *lr )
+{
+    real p_vdW1, p_vdW1i;
+    real powr_vdW1, powgi_vdW1;
+    real tmp, fn13, exp1, exp2, e_base, de_base;
+    real Tap, dTap, dfn13;
+    real dr3gamij_1, dr3gamij_3;
+    real e_core, de_core;
+    two_body_parameters *twbp;
+
+    p_vdW1 = system->reax_param.gp.l[28];
+    p_vdW1i = 1.0 / p_vdW1;
+    twbp = &system->reax_param.tbp[i][j];
+
+    /* Calculate Taper and its derivative */
+    Tap = workspace->Tap[7] * r_ij
+        + workspace->Tap[6];
+    Tap = Tap * r_ij + workspace->Tap[5];
+    Tap = Tap * r_ij + workspace->Tap[4];
+    Tap = Tap * r_ij + workspace->Tap[3];
+    Tap = Tap * r_ij + workspace->Tap[2];
+    Tap = Tap * r_ij + workspace->Tap[1];
+    Tap = Tap * r_ij + workspace->Tap[0];
+
+    dTap = 7.0 * workspace->Tap[7] * r_ij
+        + 6.0 * workspace->Tap[6];
+    dTap = dTap * r_ij + 5.0 * workspace->Tap[5];
+    dTap = dTap * r_ij + 4.0 * workspace->Tap[4];
+    dTap = dTap * r_ij + 3.0 * workspace->Tap[3];
+    dTap = dTap * r_ij + 2.0 * workspace->Tap[2];
+    dTap = dTap * r_ij + workspace->Tap[1];
+
+    /* vdWaals Calculations */
+    if ( system->reax_param.gp.vdw_type == 1 || system->reax_param.gp.vdw_type == 3 )
+    {
+        /* shielding */
+        powr_vdW1 = POW( r_ij, p_vdW1 );
+        //TODO: better to compute and cache these values at simulation start rather than computing on-the-fly
+        powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
+
+        fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
+        exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
+        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
+        e_base = twbp->D * (exp1 - 2.0 * exp2);
+
+        lr->e_vdW = e_base * Tap;
+
+        dfn13 = POW( r_ij, p_vdW1 - 1.0 )
+            * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
+        de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
+    }
+    /* no shielding */
+    else
+    {
+        exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
+        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
+        e_base = twbp->D * (exp1 - 2.0 * exp2);
+
+        lr->e_vdW = e_base * Tap;
+
+        de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
+    }
+
+    /* calculate inner core repulsion */
+    if ( system->reax_param.gp.vdw_type == 2 || system->reax_param.gp.vdw_type == 3 )
+    {
+        e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
+        lr->e_vdW += e_core * Tap;
+
+        de_core = -(twbp->acore / twbp->rcore) * e_core;
+    }
+    else
+    {
+        e_core = 0.0;
+        de_core = 0.0;
+    }
+
+    lr->CEvd = (de_base + de_core) * Tap
+            + (e_base + e_core) * dTap;
+
+    /* Coulomb calculations */
+    dr3gamij_1 = r_ij * r_ij * r_ij
+        + POW( twbp->gamma, -3.0 );
+    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+    tmp = Tap / dr3gamij_3;
+    lr->H = EV_to_KCALpMOL * tmp;
+    lr->e_ele = C_ELE * tmp;
+
+    /* fprintf( stderr,"i:%d(%d), j:%d(%d), gamma:%f,\
+       Tap:%f, dr3gamij_3:%f, qi: %f, qj: %f\n",
+       i, system->atoms[i].type, j, system->atoms[j].type,
+       twbp->gamma, Tap, dr3gamij_3,
+       system->atoms[i].q, system->atoms[j].q ); */
+
+    lr->CEclmb = C_ELE * ( dTap - Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
+
+    /* fprintf( stdout, "%d %d\t%g\t%g  %g\t%g  %g\t%g  %g\n",
+       i+1, j+1, r_ij, e_vdW, CEvd * r_ij,
+       system->atoms[i].q, system->atoms[j].q, e_ele, CEclmb * r_ij ); */
+
+    /* fprintf( stderr,"LR_Lookup:%3d%3d%5.3f-%8.5f,%8.5f%8.5f,%8.5f%8.5f\n",
+       i, j, r_ij, lr->H, lr->e_vdW, lr->CEvd, lr->e_ele, lr->CEclmb ); */
 }

@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __PRINT_UTILS_H_
-#define __PRINT_UTILS_H_
+#ifndef __IO_TOOLS_H_
+#define __IO_TOOLS_H_
 
 #include "reax_types.h"
 

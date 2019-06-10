@@ -24,12 +24,10 @@
 #include "box.h"
 #include "grid.h"
 #include "list.h"
-#include "reset_utils.h"
+#include "reset_tools.h"
 #include "system_props.h"
 #include "tool_box.h"
 #include "vector.h"
-
-#include "print_utils.h"
 
 
 /* If the code is not compiled to handle small periodic boxes (i.e. a

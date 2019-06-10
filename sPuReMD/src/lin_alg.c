@@ -25,8 +25,6 @@
 #include "tool_box.h"
 #include "vector.h"
 
-#include "print_utils.h"
-
 /* Intel MKL */
 #if defined(HAVE_LAPACKE_MKL)
   #include "mkl.h"

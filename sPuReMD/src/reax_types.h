@@ -637,7 +637,7 @@ struct reax_system
     /* atom info */
     reax_atom *atoms;
     /* atomic interaction parameters */
-    reax_interaction reaxprm;
+    reax_interaction reax_param;
     /* simulation space (a.k.a. box) parameters */
     simulation_box box;
     /* grid structure used for binning atoms and tracking neighboring bins */

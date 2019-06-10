@@ -485,7 +485,7 @@ int Init_MPI_Datatypes( reax_system *system, storage *workspace,
     mpi_data->in1_buffer = NULL;
     mpi_data->in2_buffer = NULL;
 #if defined(NEUTRAL_TERRITORY)
-    for ( i = 0; i < REAX_MAX_NT_NBRS; ++i )
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
         mpi_data->in_nt_buffer[i] = NULL;
     }

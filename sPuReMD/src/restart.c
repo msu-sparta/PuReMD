@@ -55,8 +55,8 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 
         res_data.orig_id = workspace->orig_id[i];
         res_data.type = p_atom->type;
-        strncpy( res_data.name, p_atom->name, 8 );
-        res_data.name[8] = '\0';
+        strncpy( res_data.name, p_atom->name, sizeof(res_data.name) - 1 );
+        res_data.name[sizeof(res_data.name) - 1] = '\0';
         rvec_Copy( res_data.x, p_atom->x );
         rvec_Copy( res_data.v, p_atom->v );
         fwrite( &res_data, sizeof(restart_atom), 1, fres );
@@ -136,8 +136,8 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
 
         p_atom = &system->atoms[i];
         p_atom->type = res_data.type;
-        strncpy( p_atom->name, res_data.name, 8 );
-        p_atom->name[8] = '\0';
+        strncpy( p_atom->name, res_data.name, sizeof(p_atom->name) - 1 );
+        p_atom->name[sizeof(p_atom->name) - 1] = '\0';
         rvec_Copy( p_atom->x, res_data.x );
         rvec_Copy( p_atom->v, res_data.v );
     }

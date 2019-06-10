@@ -23,22 +23,24 @@
 
 #if defined(PURE_REAX)
   #include "forces.h"
+
   #include "bond_orders.h"
   #include "bonds.h"
   #include "basic_comm.h"
+  #include "charges.h"
   #include "hydrogen_bonds.h"
   #include "io_tools.h"
   #include "list.h"
   #include "lookup.h"
   #include "multi_body.h"
   #include "nonbonded.h"
-  #include "qEq.h"
   #include "tool_box.h"
   #include "torsion_angles.h"
   #include "valence_angles.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_forces.h"
+
   #include "reax_bond_orders.h"
   #include "reax_bonds.h"
   #include "reax_basic_comm.h"
@@ -221,7 +223,7 @@ static real Compute_tabH( real r_ij, int ti, int tj )
     dif = r_ij - base;
     val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
           t->ele[r].a;
-    val *= EV_to_KCALpMOL / C_ele;
+    val *= EV_to_KCALpMOL / C_ELE;
 
     return val;
 }

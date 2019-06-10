@@ -53,26 +53,208 @@
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
 
-#define ZERO                    (0.000000000000000e+00)
-#define REAX_MAX_STR            (1024)
-#define REAX_MAX_NBRS           (6)
-#define REAX_MAX_NT_NBRS        (6)
-#define REAX_MAX_3BODY_PARAM    (5)
-#define REAX_MAX_4BODY_PARAM    (5)
-#define REAX_MAX_ATOM_TYPES     (25)
-#define REAX_MAX_MOLECULE_SIZE  (20)
+#define SUCCESS (1)
+#define FAILURE (0)
+#define TRUE (1)
+#define FALSE (0)
+
+/* transcendental constant pi */
+#if defined(M_PI)
+  /* GNU C library (libc), defined in math.h */
+  #define PI (M_PI)
+#else
+  #define PI (3.14159265) // Fortran ReaxFF code
+#endif
+/* Coulomb energy conversion */
+#define C_ELE (332.0638) // Fortran ReaxFF code
+//#define C_ELE (332.06371)
+/* kcal/mol/K */
+//#define K_B (503.398008)
+/* amu A^2 / ps^2 / K */
+//#define K_B (0.831687)
+#define K_B (0.8314510) // Fortran ReaxFF code
+/* --> amu A / ps^2 */
+#define F_CONV (1e6 / 48.88821291 / 48.88821291)
+/* amu A^2 / ps^2 --> kcal/mol */
+#define E_CONV (0.002391)
+/* conversion constant from electron volts to kilo-calories per mole */
+#define EV_to_KCALpMOL (14.40)
+/* conversion constant from kilo-calories per mole to electron volts */
+//#define KCALpMOL_to_EV (23.060549) // value used in LAMMPS
+//#define KCALpMOL_to_EV (23.0408) // value used in ReaxFF Fortran code
+#define KCALpMOL_to_EV (23.02) // value used in ReaxFF Fortran code (ACKS2)
+/* elem. charge * angstrom -> debye conv */
+//#define ECxA_to_DEBYE (4.803204)
+#define ECxA_to_DEBYE (4.80320679913) // ReaxFF Fortran code
+/* CALories --> JOULES */
+#define CAL_to_JOULES (4.1840)
+/* JOULES --> CALories */
+#define JOULES_to_CAL (1.0 / 4.1840)
+/* */
+#define AMU_to_GRAM (1.6605e-24)
+/* */
+#define ANG_to_CM (1.0e-8)
+/* */
+#define AVOGNR (6.0221367e23)
+/* */
+#define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
+
+#define MAX_STR (1024)
+#define MAX_LINE (1024)
+#define MAX_TOKENS (1024)
+#define MAX_TOKEN_LEN (1024)
+
+#define MAX_ATOM_ID (100000)
+#define MAX_RESTRICT (15)
+#define MAX_MOLECULE_SIZE (20)
+#define MAX_ATOM_TYPES (25)
+
+#define MAX_3BODY_PARAM (5)
+#define MAX_4BODY_PARAM (5)
+#define NUM_INTRS (10)
+
+#define MAX_dV (1.01)
+#define MIN_dV (0.99)
+#define MAX_dT (4.00)
+#define MIN_dT (0.00)
+
+#define ZERO (0.000000000000000e+00)
+#define ALMOST_ZERO (1e-10)
+#define NEG_INF (-1e10)
+#define NO_BOND (1e-3)
+#define HB_THRESHOLD (1e-2)
+#define MIN_CAP (50)
+#define MIN_NBRS (100)
+#define MIN_HENTRIES (100)
+#define MAX_BONDS (30)
+#define MIN_BONDS (15)
+#define MIN_HBONDS (25)
+#define MIN_3BODIES (1000)
+#define MIN_GCELL_POPL (50)
+#define MIN_SEND (100)
+#define SAFE_ZONE (1.2)
+#define SAFER_ZONE (1.4)
+#define SAFE_ZONE_NT (2.0)
+#define SAFER_ZONE_NT (2.5)
+#define DANGER_ZONE (0.90)
+#define LOOSE_ZONE (0.75)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
 #ifdef NAN
-#define IS_NAN_REAL(a) (isnan(a))
+  #define IS_NAN_REAL(a) (isnan(a))
 #else
-#warn "No support for NaN"
-#define NAN_REAL(a) (0)
+  #warn "No support for NaN"
+  #define IS_NAN_REAL(a) (0)
 #endif
+#define LOG (log)
+#define EXP (exp)
+#define SQRT (sqrt)
+#define POW (pow)
+#define ACOS (acos)
+#define COS (cos)
+#define SIN (sin)
+#define TAN (tan)
+#define CEIL (ceil)
+#define FLOOR (floor)
+#define FABS (fabs)
+#define FMOD (fmod)
+#define SQR(x) ((x)*(x))
+#define CUBE(x) ((x)*(x)*(x))
+#define DEG2RAD(a) ((a)*PI/180.0)
+#define RAD2DEG(a) ((a)*180.0/PI)
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define MAX3(x,y,z) (MAX( MAX(x,y), z))
+
+#define MASTER_NODE (0)
+#define MAX_NBRS (6) //27
+#define MAX_NT_NBRS (6)
+#define MYSELF (13)  // encoding of relative coordinate (0,0,0)
 
 
-/* method for computing atomic charges */
+/********************** TYPE DEFINITIONS ********************/
+typedef int  ivec[3];
+typedef double real;
+typedef real rvec[3];
+typedef real rtensor[3][3];
+typedef real rvec2[2];
+typedef real rvec4[4];
+
+
+/* ensemble type */
+enum ensemble
+{
+    NVE = 0,
+    bNVT = 1,
+    nhNVT = 2,
+    sNPT = 3,
+    iNPT = 4,
+    NPT = 5,
+    ens_N = 6,
+};
+
+/* interaction list type */
+enum interaction_list_offets
+{
+    BONDS = 0,
+    OLD_BONDS = 1,
+    THREE_BODIES = 2,
+    HBONDS = 3,
+    FAR_NBRS = 4,
+    DBOS = 5,
+    DDELTAS = 6,
+    LIST_N = 7,
+};
+
+/* interaction type */
+enum interaction_type
+{
+    TYP_VOID = 0,
+    TYP_BOND = 1,
+    TYP_THREE_BODY = 2,
+    TYP_HBOND = 3,
+    TYP_FAR_NEIGHBOR = 4,
+    TYP_DBO = 5,
+    TYP_DDELTA = 6,
+    TYP_N = 7,
+};
+
+/* error codes for simulation termination */
+enum errors
+{
+    FILE_NOT_FOUND = -10,
+    UNKNOWN_ATOM_TYPE = -11,
+    CANNOT_OPEN_FILE = -12,
+    CANNOT_INITIALIZE = -13,
+    INSUFFICIENT_MEMORY = -14,
+    UNKNOWN_OPTION = -15,
+    INVALID_INPUT = -16,
+    INVALID_GEO = -17,
+    NUMERIC_BREAKDOWN = -18,
+    MAX_RETRIES_REACHED = -19,
+    RUNTIME_ERROR = -20,
+};
+
+/* restart file format */
+enum restart_formats
+{
+    WRITE_ASCII = 0,
+    WRITE_BINARY = 1,
+    RF_N = 2,
+};
+
+/* geometry file format */
+enum geo_formats
+{
+    CUSTOM = 0,
+    PDB = 1,
+    ASCII_RESTART = 2,
+    BINARY_RESTART = 3,
+    GF_N = 4,
+};
+
+/* method used for computing atomic charges */
 enum charge_method
 {
     QEQ_CM = 0,
@@ -80,7 +262,7 @@ enum charge_method
     ACKS2_CM = 2,
 };
 
-/* linear solver type used in charge method */
+/* iterative linear solver used for computing atomic charges */
 enum solver
 {
     GMRES_S = 0,
@@ -92,20 +274,19 @@ enum solver
     PIPECR_S = 6,
 };
 
-/* preconditioner computation type for charge method linear solver */
+/* preconditioner used with iterative linear solver */
 enum pre_comp
 {
     NONE_PC = 0,
     JACOBI_PC = 1,
     ICHOLT_PC = 2,
-    ILUT__PC = 3,
+    ILUT_PC = 3,
     ILUTP_PC = 4,
     FG_ILUT_PC = 5,
     SAI_PC = 6,
 };
 
-/* preconditioner application type for ICHOL/ILU preconditioners,
- * used for charge method linear solver */
+/* method used to apply preconditioner for 2-side incomplete factorizations (ICHOLT, ILU) */
 enum pre_app
 {
     TRI_SOLVE_PA = 0,
@@ -113,6 +294,14 @@ enum pre_app
     TRI_SOLVE_GC_PA = 2,
     JACOBI_ITER_PA = 3,
 };
+
+/* atom types as pertains to hydrogen bonding */
+//enum hydrogen_bonding_atom_types
+//{
+//    NON_H_BONDING_ATOM = 0,
+//    H_ATOM = 1,
+//    H_BONDING_ATOM = 2,
+//};
 
 /* interaction list (reax_list) storage format */
 enum reax_list_format
@@ -134,14 +323,72 @@ enum sparse_matrix_format
     FULL_MATRIX = 2,
 };
 
+enum message_tags
+{
+    INIT = 0,
+    UPDATE = 1,
+    BNDRY = 2,
+    UPDATE_BNDRY = 3,
+    EXC_VEC1 = 4,
+    EXC_VEC2 = 5,
+    DIST_RVEC2 = 6,
+    COLL_RVEC2 = 7,
+    DIST_RVECS = 8,
+    COLL_RVECS = 9,
+    INIT_DESCS = 10,
+    ATOM_LINES = 11,
+    BOND_LINES = 12,
+    ANGLE_LINES = 13,
+    RESTART_ATOMS = 14,
+    TAGS_N = 15,
+};
 
-/********************** TYPE DEFINITIONS ********************/
-typedef int  ivec[3];
-typedef double real;
-typedef real rvec[3];
-typedef real rtensor[3][3];
-typedef real rvec2[2];
-typedef real rvec4[4];
+enum exchanges
+{
+    NONE = 0,
+    NEAR_EXCH = 1,
+    FULL_EXCH = 2,
+};
+
+enum gcell_types
+{
+    NO_NBRS = 0,
+    NEAR_ONLY = 1,
+    HBOND_ONLY = 2,
+    FAR_ONLY = 4,
+    NEAR_HBOND = 3,
+    NEAR_FAR = 5,
+    HBOND_FAR = 6,
+    FULL_NBRS = 7,
+    NATIVE = 8,
+    NT_NBRS = 9, // 9 through 14
+};
+
+enum atoms
+{
+    C_ATOM = 0,
+    H_ATOM = 1,
+    O_ATOM = 2,
+    N_ATOM = 3,
+    S_ATOM = 4,
+    SI_ATOM = 5,
+    GE_ATOM = 6,
+    X_ATOM = 7,
+};
+
+enum traj_methods
+{
+    REG_TRAJ = 0,
+    MPI_TRAJ = 1,
+    TF_N = 2,
+};
+
+enum molecules
+{
+    UNKNOWN = 0,
+    WATER = 1,
+};
+
 
 
 typedef struct
@@ -220,14 +467,14 @@ typedef struct
     MPI_Datatype bond_view;
     MPI_Datatype angle_line;
     MPI_Datatype angle_view;
-    mpi_out_data out_buffers[REAX_MAX_NBRS];
+    mpi_out_data out_buffers[MAX_NBRS];
 
     void *in1_buffer;
     void *in2_buffer;
 
 #if defined(NEUTRAL_TERRITORY)
-    mpi_out_data out_nt_buffers[REAX_MAX_NT_NBRS];
-    void *in_nt_buffer[REAX_MAX_NT_NBRS];
+    mpi_out_data out_nt_buffers[MAX_NT_NBRS];
+    void *in_nt_buffer[MAX_NT_NBRS];
 #endif
 } mpi_datatypes;
 
@@ -375,7 +622,7 @@ typedef struct
 typedef struct
 {
     int cnt;
-    three_body_parameters prm[REAX_MAX_3BODY_PARAM];
+    three_body_parameters prm[MAX_3BODY_PARAM];
 } three_body_header;
 
 
@@ -404,7 +651,7 @@ typedef struct
 typedef struct
 {
     int cnt;
-    four_body_parameters prm[REAX_MAX_4BODY_PARAM];
+    four_body_parameters prm[MAX_4BODY_PARAM];
 } four_body_header;
 
 
@@ -549,23 +796,57 @@ typedef struct
 
 typedef struct
 {
+    /* number of locally owned atoms by this processor */
+    int n;
+    /* number of locally owned and ghost atoms by this processor */
+    int N;
+    /* total number of atoms across all processors (sum of locally owned atoms) */
+    int bigN;
+    /* number of locally owned Hydrogen atoms by this processor */
+    int numH;
+    /**/
+    int local_cap;
+    /**/
+    int total_cap;
+    /**/
+    int gcell_cap;
+    /**/
+    int Hcap;
+    /**/
+    int est_recv;
+    /**/
+    int est_trans;
+    /**/
+    int max_recved;
+    /* size (in terms of number of processors) of MPI
+     * global communication (MPI_COMM_WORLD) */
+    int wsize;
+    /* MPI rank of the process */
+    int my_rank;
+    /**/
+    int num_nbrs;
+    /**/
+    ivec my_coords;
+    /**/
+    neighbor_proc my_nbrs[MAX_NBRS];
+    /**/
+    neighbor_proc my_nt_nbrs[MAX_NT_NBRS];
+    /**/
+    reax_atom *my_atoms;
+    /* simulation space (a.k.a. box) parameters */
+    simulation_box big_box;
+    /**/
+    simulation_box my_box;
+    /**/
+    simulation_box my_ext_box;
+    /* grid structure used for binning atoms and tracking neighboring bins */
+    grid my_grid;
+    /**/
+    boundary_cutoff bndry_cuts;
+    /* atomic interaction parameters */
     reax_interaction reax_param;
-
-    int              n, N, bigN, numH;
-    int              local_cap, total_cap, gcell_cap, Hcap;
-    int              est_recv, est_trans, max_recved;
-    int              wsize, my_rank, num_nbrs;
-    ivec             my_coords;
-    neighbor_proc    my_nbrs[REAX_MAX_NBRS];
-    neighbor_proc    my_nt_nbrs[REAX_MAX_NT_NBRS];
-    int             *global_offset;
-    simulation_box   big_box, my_box, my_ext_box;
-    grid             my_grid;
-    boundary_cutoff  bndry_cuts;
-
-    reax_atom       *my_atoms;
-
 #if defined(NEUTRAL_TERRITORY)
+    /**/
     int num_nt_nbrs;
 #endif
 } reax_system;
@@ -576,7 +857,7 @@ typedef struct
 typedef struct
 {
     /* simulation name, as supplied via control file */
-    char sim_name[REAX_MAX_STR];
+    char sim_name[MAX_STR];
     /* number of MPI processors, as supplied via control file */
     int nprocs;
     /* MPI processors per each simulation dimension (cartesian topology),
@@ -718,7 +999,7 @@ typedef struct
     /**/
     int num_ignored;
     /**/
-    int  ignore[REAX_MAX_ATOM_TYPES];
+    int  ignore[MAX_ATOM_TYPES];
 
     /**/
     int dipole_anal;
@@ -1034,9 +1315,9 @@ typedef struct
     int allocated;
 
     /* communication storage */
-    real *tmp_dbl[REAX_MAX_NBRS];
-    rvec *tmp_rvec[REAX_MAX_NBRS];
-    rvec2 *tmp_rvec2[REAX_MAX_NBRS];
+    real *tmp_dbl[MAX_NBRS];
+    rvec *tmp_rvec[MAX_NBRS];
+    rvec2 *tmp_rvec2[MAX_NBRS];
     int  *within_bond_box;
 
     /* bond order related storage */
@@ -1195,7 +1476,7 @@ typedef struct
     int   write_steps;
     int   traj_compress;
     int   traj_method;
-    char  traj_title[REAX_MAX_STR];
+    char  traj_title[MAX_STR];
     int   atom_info;
     int   bond_info;
     int   angle_info;
@@ -1236,8 +1517,8 @@ typedef struct
 typedef struct
 {
     int atom_count;
-    int atom_list[REAX_MAX_MOLECULE_SIZE];
-    int mtypes[REAX_MAX_ATOM_TYPES];
+    int atom_list[MAX_MOLECULE_SIZE];
+    int mtypes[MAX_ATOM_TYPES];
 } molecule;
 
 

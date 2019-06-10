@@ -19,13 +19,13 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __SINGLE_BODY_INTERACTIONS_H_
-#define __SINGLE_BODY_INTERACTIONS_H_
+#ifndef __MULTI_BODY_H_
+#define __MULTI_BODY_H_
 
 #include "reax_types.h"
 
 
-void LonePair_OverUnder_Coordination_Energy( reax_system*, control_params*,
+void Atom_Energy( reax_system*, control_params*,
         simulation_data*, static_storage*,
         reax_list**, output_controls* );
 

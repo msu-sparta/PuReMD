@@ -23,7 +23,7 @@
 #define __TOOL_BOX_H_
 
 #include "reax_types.h"
-#include "reax_defs.h"
+
 
 /* from comm_tools.h */
 int SumScan( int, int, int, MPI_Comm );
@@ -69,5 +69,6 @@ void sfree( void*, char* );
 FILE * sfopen( const char *, const char *, const char * );
 
 void sfclose( FILE *, const char * );
+
 
 #endif

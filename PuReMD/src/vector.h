@@ -23,7 +23,6 @@
 #define __VECTOR_H_
 
 #include "reax_types.h"
-#include "reax_defs.h"
 
 
 int  Vector_isZero( real*, int );

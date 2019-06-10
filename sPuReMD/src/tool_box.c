@@ -330,13 +330,13 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s )
 
 char *Get_Element( reax_system *system, int i )
 {
-    return &( system->reaxprm.sbp[system->atoms[i].type].name[0] );
+    return system->reax_param.sbp[system->atoms[i].type].name;
 }
 
 
 char *Get_Atom_Name( reax_system *system, int i )
 {
-    return &(system->atoms[i].name[0]);
+    return system->atoms[i].name;
 }
 
 
@@ -378,14 +378,14 @@ int Tokenize( char* s, char*** tok )
     char *sep = "\t \n!=";
     char *word, *saveptr;
 
-    strncpy( test, s, MAX_LINE - 1 );
-    test[MAX_LINE - 1] = '\0';
+    strncpy( test, s, sizeof(test) - 1 );
+    test[sizeof(test) - 1] = '\0';
 
     for ( word = strtok_r(test, sep, &saveptr); word != NULL;
             word = strtok_r(NULL, sep, &saveptr) )
     {
-        strncpy( (*tok)[count], word, MAX_LINE - 1 );
-        (*tok)[count][MAX_LINE - 1] = '\0';
+        strncpy( (*tok)[count], word, sizeof((*tok)[count]) - 1 );
+        (*tok)[count][sizeof((*tok)[count]) - 1] = '\0';
         count++;
     }
 

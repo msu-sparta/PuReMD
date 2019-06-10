@@ -897,7 +897,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     for ( d = 0; d < count; ++d )
     {
         t_start = MPI_Wtime();
-        MPI_Waitany( REAX_MAX_NT_NBRS, req, &index, stat);
+        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
         t_comm += MPI_Wtime() - t_start;
 
         nbr = &(system->my_nt_nbrs[index/2]);

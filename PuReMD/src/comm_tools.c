@@ -51,7 +51,7 @@ void Setup_NT_Comm( reax_system* system, control_params* control,
     };
     my_box = &system->my_box;
     bndry_cut = system->bndry_cuts.ghost_cutoff;
-    system->num_nt_nbrs = REAX_MAX_NT_NBRS;
+    system->num_nt_nbrs = MAX_NT_NBRS;
 
     /* identify my neighbors */
     for ( i = 0; i < system->num_nt_nbrs; ++i )

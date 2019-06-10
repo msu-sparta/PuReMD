@@ -13,6 +13,8 @@ sPuReMD_lib_libspuremd_la_SOURCES = sPuReMD/src/allocate.c \
 				    sPuReMD/src/analyze.h \
 				    sPuReMD/src/bond_orders.c \
 				    sPuReMD/src/bond_orders.h \
+				    sPuReMD/src/bonds.c \
+				    sPuReMD/src/bonds.h \
 				    sPuReMD/src/box.c \
 				    sPuReMD/src/box.h \
 				    sPuReMD/src/charges.c \
@@ -23,14 +25,16 @@ sPuReMD_lib_libspuremd_la_SOURCES = sPuReMD/src/allocate.c \
 				    sPuReMD/src/ffield.h \
 				    sPuReMD/src/forces.c \
 				    sPuReMD/src/forces.h \
-				    sPuReMD/src/four_body_interactions.c \
-				    sPuReMD/src/four_body_interactions.h \
+				    sPuReMD/src/hydrogen_bonds.c \
+				    sPuReMD/src/hydrogen_bonds.h \
 				    sPuReMD/src/geo_tools.c \
 				    sPuReMD/src/geo_tools.h \
 				    sPuReMD/src/grid.c \
 				    sPuReMD/src/grid.h \
 				    sPuReMD/src/init_md.c \
 				    sPuReMD/src/init_md.h \
+				    sPuReMD/src/io_tools.c \
+				    sPuReMD/src/io_tools.h \
 				    sPuReMD/src/integrate.c \
 				    sPuReMD/src/integrate.h \
 				    sPuReMD/src/lin_alg.c \
@@ -39,31 +43,31 @@ sPuReMD_lib_libspuremd_la_SOURCES = sPuReMD/src/allocate.c \
 				    sPuReMD/src/list.h \
 				    sPuReMD/src/lookup.c \
 				    sPuReMD/src/lookup.h \
+				    sPuReMD/src/multi_body.c \
+				    sPuReMD/src/multi_body.h \
 				    sPuReMD/src/neighbors.c \
 				    sPuReMD/src/neighbors.h \
-				    sPuReMD/src/print_utils.c \
-				    sPuReMD/src/print_utils.h \
+				    sPuReMD/src/nonbonded.c \
+				    sPuReMD/src/nonbonded.h \
 				    sPuReMD/src/random.c \
 				    sPuReMD/src/random.h \
 				    sPuReMD/src/reax_types.h \
-				    sPuReMD/src/reset_utils.c \
-				    sPuReMD/src/reset_utils.h \
+				    sPuReMD/src/reset_tools.c \
+				    sPuReMD/src/reset_tools.h \
 				    sPuReMD/src/restart.c \
 				    sPuReMD/src/restart.h \
-				    sPuReMD/src/single_body_interactions.c \
-				    sPuReMD/src/single_body_interactions.h \
 				    sPuReMD/src/spuremd.c \
 				    sPuReMD/src/spuremd.h \
 				    sPuReMD/src/system_props.c \
 				    sPuReMD/src/system_props.h \
-				    sPuReMD/src/three_body_interactions.c \
-				    sPuReMD/src/three_body_interactions.h \
+				    sPuReMD/src/torsion_angles.c \
+				    sPuReMD/src/torsion_angles.h \
 				    sPuReMD/src/tool_box.c \
 				    sPuReMD/src/tool_box.h \
 				    sPuReMD/src/traj.c \
 				    sPuReMD/src/traj.h \
-				    sPuReMD/src/two_body_interactions.c \
-				    sPuReMD/src/two_body_interactions.h \
+				    sPuReMD/src/valence_angles.c \
+				    sPuReMD/src/valence_angles.h \
 				    sPuReMD/src/vector.c \
 				    sPuReMD/src/vector.h
 sPuReMD_lib_libspuremd_la_CFLAGS = @DFT_CFLAGS@ @OMP_CFLAGS@
@@ -121,6 +125,8 @@ PuReMD_bin_puremd_SOURCES = PuReMD/src/allocate.c \
 			    PuReMD/src/bonds.h \
 			    PuReMD/src/box.c \
 			    PuReMD/src/box.h \
+			    PuReMD/src/charges.c \
+			    PuReMD/src/charges.h \
 			    PuReMD/src/comm_tools.c \
 			    PuReMD/src/comm_tools.h \
 			    PuReMD/src/control.c \
@@ -154,11 +160,8 @@ PuReMD_bin_puremd_SOURCES = PuReMD/src/allocate.c \
 			    PuReMD/src/nonbonded.c \
 			    PuReMD/src/nonbonded.h \
 			    PuReMD/src/parallelreax.c \
-			    PuReMD/src/qEq.c \
-			    PuReMD/src/qEq.h \
 			    PuReMD/src/random.c \
 			    PuReMD/src/random.h \
-			    PuReMD/src/reax_defs.h \
 			    PuReMD/src/reax_types.h \
 			    PuReMD/src/reset_tools.c \
 			    PuReMD/src/reset_tools.h \

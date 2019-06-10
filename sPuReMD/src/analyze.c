@@ -179,7 +179,7 @@ static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
     if ( print )
     {
         fprintf( fout, "%5d(%2s)",
-                 atom + 1, system->reaxprm.sbp[ system->atoms[atom].type ].name );
+                 atom + 1, system->reax_param.sbp[ system->atoms[atom].type ].name );
     }
     mark[atom] = 1;
     m->atom_list[ m->atom_count++ ] = atom;
@@ -211,7 +211,7 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
         {
             if ( m->mtypes[j] )
             {
-                snprintf( s, size - 1, "%s%14s%3d", s, system->reaxprm.sbp[j].name, m->mtypes[j] );
+                snprintf( s, size - 1, "%s%14s%3d", s, system->reax_param.sbp[j].name, m->mtypes[j] );
                 s[size - 1] = '\0';
             }
         }
@@ -223,7 +223,7 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
         {
             atom = m->atom_list[j];
             snprintf( s, size, "%s%s(%d)",
-                     s, system->reaxprm.sbp[ system->atoms[atom].type ].name, atom );
+                     s, system->reax_param.sbp[ system->atoms[atom].type ].name, atom );
         }
     }
 }
@@ -635,8 +635,9 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
             if ( flag == 0 )
             {
                 /* it is a new one, add to the fragments list */
-                strncpy( fragments[num_fragment_types], fragment, MAX_ATOM_TYPES - 1 );
-                fragments[num_fragment_types][MAX_ATOM_TYPES - 1] = '\0';
+                strncpy( fragments[num_fragment_types], fragment,
+                        sizeof(fragments[num_fragment_types]) - 1 );
+                fragments[num_fragment_types][sizeof(fragments[num_fragment_types]) - 1] = '\0';
                 fragment_count[num_fragment_types] = 1;
                 ++num_fragment_types;
             }

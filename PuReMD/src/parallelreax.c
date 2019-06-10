@@ -163,8 +163,6 @@ int main( int argc, char* argv[] )
     MPI_Comm_size( MPI_COMM_WORLD, &control->nprocs );
     MPI_Comm_rank( MPI_COMM_WORLD, &system->my_rank );
     system->wsize = control->nprocs;
-    system->global_offset = scalloc( system->wsize + 1, sizeof(int),
-            "global_offset", MPI_COMM_WORLD );
 
     /* read system description files */
     Read_System( argv[1], argv[2], argv[3], system, control,
