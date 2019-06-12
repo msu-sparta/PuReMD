@@ -230,7 +230,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     pdb = sfopen( pdb_file, "r" );
 
     /* allocate memory for tokenizing pdb lines */
-    Allocate_Tokenizer_Space( &s, &s1, &tmp );
+    Allocate_Tokenizer_Space( &s, MAX_LINE, &s1, MAX_LINE,
+            &tmp, MAX_TOKENS, MAX_TOKEN_LEN );
 
     /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )
@@ -253,9 +254,9 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     while ( fgets( s, MAX_LINE, pdb ) )
     {
         /* read new line and tokenize it */
-        strncpy( s1, s, sizeof(s1) - 1 );
-        s1[sizeof(s1) - 1] = '\0';
-        c1 = Tokenize( s, &tmp );
+        strncpy( s1, s, MAX_LINE - 1 );
+        s1[MAX_LINE - 1] = '\0';
+        c1 = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         /* process new line */
         if ( strncmp(tmp[0], "ATOM", 4) == 0 || strncmp(tmp[0], "HETATM", 6) == 0 )
@@ -509,7 +510,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     while ( fgets( line, MAX_LINE, bgf ) )
     {
         tokens[0][0] = 0;
-        token_cnt = Tokenize( line, &tokens );
+        token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
         if ( !strncmp( tokens[0], "ATOM", MAX_TOKEN_LEN )
                 || !strncmp( tokens[0], "HETATM", MAX_TOKEN_LEN ) )
@@ -558,9 +559,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     while ( fgets( line, MAX_LINE, bgf ) )
     {
         /* read new line and tokenize it */
-        strncpy( backup, line, sizeof(backup) - 1 );
-        backup[sizeof(backup) - 1] = '\0';
-        token_cnt = Tokenize( line, &tokens );
+        strncpy( backup, line, MAX_LINE - 1 );
+        backup[MAX_LINE - 1] = '\0';
+        token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
         /* process new line */
         if ( !strncmp(tokens[0], "ATOM", 4) || !strncmp(tokens[0], "HETATM", 6) )

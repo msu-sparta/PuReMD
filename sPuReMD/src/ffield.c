@@ -34,14 +34,11 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     int i, j, k, l, m, n, o, p, cnt;
     real val;
 
-    s = (char*) smalloc( sizeof(char) * MAX_LINE,
-            "Read_Force_Field::s" );
-    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS,
-            "Read_Force_Field::tmp" );
+    s = smalloc( sizeof(char) * MAX_LINE, "Read_Force_Field::s" );
+    tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Force_Field::tmp" );
     for (i = 0; i < MAX_TOKENS; i++)
     {
-        tmp[i] = (char*) smalloc( sizeof(char) * MAX_TOKEN_LEN,
-                "Read_Force_Field::tmp[i]" );
+        tmp[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN, "Read_Force_Field::tmp[i]" );
     }
 
     /* reading first header comment */
@@ -49,7 +46,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* line 2 is number of global parameters */
     fgets( s, MAX_LINE, fp );
-    Tokenize( s, &tmp );
+    Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
     /* reading the number of global parameters */
     n = atoi(tmp[0]);
@@ -64,10 +61,10 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
            "Read_Force_Field::reax->gp-l" );
 
     /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
-    for (i = 0; i < n; i++)
+    for ( i = 0; i < n; i++ )
     {
-        fgets(s, MAX_LINE, fp);
-        Tokenize(s, &tmp);
+        fgets( s, MAX_LINE, fp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         val = (real) atof(tmp[0]);
 
@@ -76,7 +73,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of atom types and some comments */
     fgets( s, MAX_LINE, fp );
-    Tokenize( s, &tmp );
+    Tokenize( s, &tmp, MAX_TOKEN_LEN );
     reax->num_atom_types = atoi(tmp[0]);
 
     /* 3 lines of comments */
@@ -145,7 +142,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     {
         /* line one */
         fgets( s, MAX_LINE, fp );
-        Tokenize( s, &tmp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         for ( j = 0; j < strnlen( tmp[0], MAX_TOKEN_LEN ); ++j )
         {
@@ -172,7 +169,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
         /* line two */
         fgets( s, MAX_LINE, fp );
-        Tokenize( s, &tmp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         val = atof(tmp[0]);
         reax->sbp[i].alpha = val;
@@ -196,7 +193,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
         /* line 3 */
         fgets( s, MAX_LINE, fp );
-        Tokenize( s, &tmp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         val = atof(tmp[0]);
         reax->sbp[i].r_pi_pi = val;
@@ -215,7 +212,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
         /* line 4  */
         fgets( s, MAX_LINE, fp );
-        Tokenize( s, &tmp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         val = atof(tmp[0]);
         reax->sbp[i].p_ovun2 = val;
@@ -332,8 +329,8 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     }
 
     /* next line is number of two body combination and some comments */
-    fgets(s, MAX_LINE, fp);
-    Tokenize(s, &tmp);
+    fgets( s, MAX_LINE, fp );
+    Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi(tmp[0]);
 
     /* a line of comments */
@@ -342,8 +339,8 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     for (i = 0; i < l; i++)
     {
         /* line 1 */
-        fgets(s, MAX_LINE, fp);
-        Tokenize(s, &tmp);
+        fgets( s, MAX_LINE, fp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -378,8 +375,8 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
             reax->tbp[k][j].p_ovun1 = val;
 
             /* line 2 */
-            fgets(s, MAX_LINE, fp);
-            Tokenize(s, &tmp);
+            fgets( s, MAX_LINE, fp );
+            Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             val = atof(tmp[0]);
             reax->tbp[j][k].p_be2 = val;
@@ -458,14 +455,14 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
     /* next line is number of 2-body offdiagonal combinations and some comments */
     /* these are two body off-diagonal terms that are different from the
      * combination rules defined above */
-    fgets(s, MAX_LINE, fp);
-    Tokenize(s, &tmp);
+    fgets( s, MAX_LINE, fp );
+    Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi(tmp[0]);
 
     for ( i = 0; i < l; i++ )
     {
-        fgets(s, MAX_LINE, fp);
-        Tokenize(s, &tmp);
+        fgets( s, MAX_LINE, fp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -532,13 +529,13 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of 3-body params and some comments */
     fgets( s, MAX_LINE, fp );
-    Tokenize( s, &tmp );
+    Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
-        fgets(s, MAX_LINE, fp);
-        Tokenize(s, &tmp);
+        fgets( s, MAX_LINE, fp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -608,13 +605,13 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of 4-body params and some comments */
     fgets( s, MAX_LINE, fp );
-    Tokenize( s, &tmp );
+    Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
         fgets( s, MAX_LINE, fp );
-        Tokenize( s, &tmp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -703,13 +700,13 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
 
     /* next line is number of hydrogen bond params and some comments */
     fgets( s, MAX_LINE, fp );
-    Tokenize( s, &tmp );
+    Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
         fgets( s, MAX_LINE, fp );
-        Tokenize( s, &tmp );
+        Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;

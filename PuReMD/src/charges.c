@@ -108,7 +108,7 @@ void Calculate_Droptol( sparse_matrix *A, real *droptol, real dtol )
 
 int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
 {
-    int i, j, pj;
+    int i, pj;
     int fillin;
     real val;
 
@@ -116,10 +116,11 @@ int Estimate_LU_Fill( sparse_matrix *A, real *droptol )
     for ( i = 0; i < A->n; ++i )
         for ( pj = A->start[i] + 1; A->entries[pj].j < A->n; ++pj )
         {
-            j = A->entries[pj].j;
             val = A->entries[pj].val;
             if ( fabs(val) > droptol[i] )
+            {
                 ++fillin;
+            }
         }
 
     return fillin + A->n;
@@ -348,11 +349,12 @@ void Calculate_Charges( reax_system *system, storage *workspace,
     reax_atom *atom;
     real *q;
 
-    q = malloc( system->N * sizeof(real) );
+    q = malloc( sizeof(real) * system->N );
 
     //s_sum = Parallel_Vector_Acc(workspace->s, system->n, mpi_data->world);
     //t_sum = Parallel_Vector_Acc(workspace->t, system->n, mpi_data->world);
-    my_sum[0] = my_sum[1] = 0;
+    my_sum[0] = 0.0;
+    my_sum[1] = 0.0;
     for ( i = 0; i < system->n; ++i )
     {
         my_sum[0] += workspace->x[i][0];
@@ -363,7 +365,7 @@ void Calculate_Charges( reax_system *system, storage *workspace,
     u = all_sum[0] / all_sum[1];
     for ( i = 0; i < system->n; ++i )
     {
-        atom = &( system->my_atoms[i] );
+        atom = &system->my_atoms[i];
 
         /* compute charge based on s & t */
         //atom->q = workspace->s[i] - u * workspace->t[i];
@@ -580,7 +582,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: computed charges\n", system->my_rank );
-    //Print_Charges( system );
+//    Print_Charges( system );
 #endif
 
 #if defined(LOG_PERFORMANCE)

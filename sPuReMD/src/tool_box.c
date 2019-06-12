@@ -340,17 +340,19 @@ char *Get_Atom_Name( reax_system *system, int i )
 }
 
 
-void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+void Allocate_Tokenizer_Space( char **line, size_t line_size,
+        char **backup, size_t backup_size,
+        char ***tokens, size_t num_tokens, size_t token_size )
 {
     int i;
 
-    *line = smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::*line" );
-    *backup = smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::*backup" );
-    *tokens = smalloc( sizeof(char*) * MAX_TOKENS, "Allocate_Tokenizer_Space::*tokens" );
+    *line = smalloc( sizeof(char) * line_size, "Allocate_Tokenizer_Space::*line" );
+    *backup = smalloc( sizeof(char) * backup_size, "Allocate_Tokenizer_Space::*backup" );
+    *tokens = smalloc( sizeof(char*) * num_tokens, "Allocate_Tokenizer_Space::*tokens" );
 
-    for ( i = 0; i < MAX_TOKENS; i++ )
+    for ( i = 0; i < num_tokens; i++ )
     {
-        (*tokens)[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN,
+        (*tokens)[i] = smalloc( sizeof(char) * token_size,
                 "Allocate_Tokenizer_Space::(*tokens)[i]" );
     }
 }
@@ -371,7 +373,7 @@ void Deallocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 }
 
 
-int Tokenize( char* s, char*** tok )
+int Tokenize( char* s, char*** tok, size_t token_len )
 {
     int count = 0;
     char test[MAX_LINE];
@@ -384,8 +386,8 @@ int Tokenize( char* s, char*** tok )
     for ( word = strtok_r(test, sep, &saveptr); word != NULL;
             word = strtok_r(NULL, sep, &saveptr) )
     {
-        strncpy( (*tok)[count], word, sizeof((*tok)[count]) - 1 );
-        (*tok)[count][sizeof((*tok)[count]) - 1] = '\0';
+        strncpy( (*tok)[count], word, token_len - 1 );
+        (*tok)[count][token_len - 1] = '\0';
         count++;
     }
 

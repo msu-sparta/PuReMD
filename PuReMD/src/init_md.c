@@ -412,22 +412,26 @@ void Init_Taper( control_params *control,  storage *workspace, MPI_Comm comm )
     swb = control->nonb_cut;
 
     if ( fabs( swa ) > 0.01 )
-        fprintf( stderr, "Warning: non-zero lower Taper-radius cutoff\n" );
-
-    if ( swb < 0 )
     {
-        fprintf( stderr, "Negative upper Taper-radius cutoff\n" );
+        fprintf( stderr, "[WARNING] non-zero value for lower Taper-radius cutoff (%f)\n", swa );
+    }
+
+    if ( swb < 0.0 )
+    {
+        fprintf( stderr, "[ERROR] Negative value for upper Taper-radius cutoff\n" );
         MPI_Abort( comm,  INVALID_INPUT );
     }
-    else if ( swb < 5 )
-        fprintf( stderr, "Warning: very low Taper-radius cutoff: %f\n", swb );
+    else if ( swb < 5.0 )
+    {
+        fprintf( stderr, "[WARNING] very low Taper-radius cutoff (%f)\n", swb );
+    }
 
     d1 = swb - swa;
-    d7 = pow( d1, 7.0 );
+    d7 = POW( d1, 7.0 );
     swa2 = SQR( swa );
-    swa3 = CUBE( swa );
+    swa3 = swa2 * swa;
     swb2 = SQR( swb );
-    swb3 = CUBE( swb );
+    swb3 = swb2 * swb;
 
     workspace->Tap[7] =  20.0 / d7;
     workspace->Tap[6] = -70.0 * (swa + swb) / d7;

@@ -68,11 +68,12 @@ char *Get_Element( reax_system*, int );
 
 char *Get_Atom_Name( reax_system*, int );
 
-void Allocate_Tokenizer_Space( char**, char**, char*** );
+void Allocate_Tokenizer_Space( char**, size_t, char**, size_t, char***,
+        size_t, size_t );
 
 void Deallocate_Tokenizer_Space( char **, char **, char *** );
 
-int Tokenize( char*, char*** );
+int Tokenize( char*, char***, size_t );
 
 /* from lammps */
 void *smalloc( size_t, const char * );

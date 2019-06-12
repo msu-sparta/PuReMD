@@ -143,18 +143,17 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->restrict_type = 0;
 
     /* memory allocations */
-    s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
-    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
+    s = smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
+    tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE,
-                "Read_Control_File::tmp[i]" );
+        tmp[i] = smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::tmp[i]" );
     }
 
     /* read control parameters file */
     while ( fgets( s, MAX_LINE, fp ) )
     {
-        c = Tokenize( s, &tmp );
+        c = Tokenize( s, &tmp, MAX_LINE );
 
         if ( c > 0 )
         {

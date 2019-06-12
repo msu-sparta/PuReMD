@@ -60,6 +60,13 @@
 interaction_function Interaction_Functions[NUM_INTRS];
 
 
+typedef enum
+{
+    DIAGONAL = 0,
+    OFF_DIAGONAL = 1,
+} MATRIX_ENTRY_POSITION;
+
+
 static int compare_bonds( const void *p1, const void *p2 )
 {
     return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
@@ -179,53 +186,146 @@ static void Validate_Lists( reax_system *system, storage *workspace,
 }
 
 
-/* Computes a charge matrix entry using the Taper function */
-static real Compute_H( real r, real gamma, real *ctap )
+static inline real Init_Charge_Matrix_Entry_Tab( reax_system *system,
+        control_params *control, LR_lookup_table **LR, int i, int j,
+        real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    real taper, dr3gamij_1, dr3gamij_3;
+    int r;
+    real base, dif, val, ret;
+    LR_lookup_table *t;
 
-    taper = ctap[7] * r + ctap[6];
-    taper = taper * r + ctap[5];
-    taper = taper * r + ctap[4];
-    taper = taper * r + ctap[3];
-    taper = taper * r + ctap[2];
-    taper = taper * r + ctap[1];
-    taper = taper * r + ctap[0];
+    ret = 0.0;
 
-    dr3gamij_1 = ( r * r * r + gamma );
-    dr3gamij_3 = pow( dr3gamij_1, 1.0 / 3.0 );
+    switch ( control->charge_method )
+    {
+    case QEQ_CM:
+    //TODO: tabulate other portions of matrices for EE, ACKS2?
+    case EE_CM:
+    case ACKS2_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                t = &LR[MIN( system->my_atoms[i].type, system->my_atoms[j].type )]
+                       [MAX( system->my_atoms[i].type, system->my_atoms[j].type )];
 
-    return taper * EV_to_KCALpMOL / dr3gamij_3;
+                /* cubic spline interpolation */
+                r = (int)(r_ij * t->inv_dx);
+                if ( r == 0 ) 
+                {
+                    ++r;
+                }
+                base = (real)(r + 1) * t->dx;
+                dif = r_ij - base;
+                val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b)
+                    * dif + t->ele[r].a;
+                val *= EV_to_KCALpMOL / C_ELE;
+
+                ret = ((i == j) ? 0.5 : 1.0) * val;
+            break;
+
+            case DIAGONAL:
+                ret = system->reax_param.sbp[system->my_atoms[i].type].eta;
+            break;
+
+            default:
+                fprintf( stderr, "[ERROR] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    default:
+        fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+    }
+
+    return ret;
 }
 
 
-/* Computes a charge matrix entry using the force tabulation
- * (i.e., an arithmetic-reducing optimization) */
-static real Compute_tabH( real r_ij, int ti, int tj )
+static inline real Init_Charge_Matrix_Entry( reax_system *system,
+        control_params *control, storage *workspace,
+        int i, int j, real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    int r, tmin, tmax;
-    real val, dif, base;
-    LR_lookup_table *t;
+    real Tap, dr3gamij_1, dr3gamij_3, ret;
 
-    tmin = MIN( ti, tj );
-    tmax = MAX( ti, tj );
-    t = &LR[tmin][tmax];
+    ret = 0.0;
 
-    /* cubic spline interpolation */
-    r = (int)(r_ij * t->inv_dx);
-
-    if ( r == 0 )
+    switch ( control->charge_method )
     {
-        ++r;
+    case QEQ_CM:
+    case EE_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                Tap = workspace->Tap[7] * r_ij + workspace->Tap[6];
+                Tap = Tap * r_ij + workspace->Tap[5];
+                Tap = Tap * r_ij + workspace->Tap[4];
+                Tap = Tap * r_ij + workspace->Tap[3];
+                Tap = Tap * r_ij + workspace->Tap[2];
+                Tap = Tap * r_ij + workspace->Tap[1];
+                Tap = Tap * r_ij + workspace->Tap[0];
+
+                /* shielding */
+                dr3gamij_1 = r_ij * r_ij * r_ij
+                        + POW( system->reax_param.tbp[system->my_atoms[i].type][system->my_atoms[j].type].gamma, -3.0 );
+                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
+            break;
+
+            case DIAGONAL:
+                ret = system->reax_param.sbp[system->my_atoms[i].type].eta;
+            break;
+
+            default:
+                fprintf( stderr, "[ERROR] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    case ACKS2_CM:
+        switch ( pos )
+        {
+            case OFF_DIAGONAL:
+                Tap = workspace->Tap[7] * r_ij
+                    + workspace->Tap[6];
+                Tap = Tap * r_ij + workspace->Tap[5];
+                Tap = Tap * r_ij + workspace->Tap[4];
+                Tap = Tap * r_ij + workspace->Tap[3];
+                Tap = Tap * r_ij + workspace->Tap[2];
+                Tap = Tap * r_ij + workspace->Tap[1];
+                Tap = Tap * r_ij + workspace->Tap[0];
+
+                /* shielding */
+                dr3gamij_1 = r_ij * r_ij * r_ij
+                        + POW( system->reax_param.tbp[system->my_atoms[i].type][system->my_atoms[j].type].gamma, -3.0 );
+                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+
+                ret = Tap * EV_to_KCALpMOL / dr3gamij_3;
+            break;
+
+            case DIAGONAL:
+                /* parameters in electron-volts */
+                ret = system->reax_param.sbp[system->my_atoms[i].type].eta;
+            break;
+
+            default:
+                fprintf( stderr, "[ERROR] Invalid matrix position. Terminating...\n" );
+                exit( INVALID_INPUT );
+            break;
+        }
+        break;
+
+    default:
+        fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
     }
 
-    base = (real)(r + 1) * t->dx;
-    dif = r_ij - base;
-    val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b) * dif +
-          t->ele[r].a;
-    val *= EV_to_KCALpMOL / C_ELE;
-
-    return val;
+    return ret;
 }
 
 
@@ -286,7 +386,6 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
     real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
-    single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
     int mark[6];
@@ -352,8 +451,6 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
         start_i = Start_Index( i, far_nbrs );
         end_i = End_Index( i, far_nbrs );
 
-        sbp_i = &system->reax_param.sbp[type_i];
-
         if ( i < system->n )
         {
             local = 1;
@@ -372,7 +469,8 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
         {
             H->start[i] = Htop;
             H->entries[Htop].j = i;
-            H->entries[Htop].val = sbp_i->eta;
+            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                    workspace, i, i, r_ij, DIAGONAL );
             ++Htop;
         }
 
@@ -403,11 +501,13 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                                    workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                                    LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -439,11 +539,13 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                                    workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                                    LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -503,7 +605,6 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
     real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
-    single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
     int mark[6];
@@ -569,8 +670,6 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
         start_i = Start_Index( i, far_nbrs );
         end_i = End_Index( i, far_nbrs );
 
-        sbp_i = &system->reax_param.sbp[type_i];
-
         if ( i < system->n )
         {
             local = 1;
@@ -589,7 +688,8 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
         {
             H->start[i] = Htop;
             H->entries[Htop].j = i;
-            H->entries[Htop].val = sbp_i->eta;
+            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                    workspace, i, i, r_ij, DIAGONAL );
             ++Htop;
         }
 
@@ -620,11 +720,13 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                                    workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                                    LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -655,11 +757,13 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                                    workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
+                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                                    LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -714,13 +818,10 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
 {
     int i, j, pj;
     int start_i, end_i;
-    int type_i, type_j;
     int Htop;
     real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
-    single_body_parameters *sbp_i;
-    two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
 
     far_nbrs = lists[FAR_NBRS];
@@ -732,15 +833,13 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
     for ( i = 0; i < system->n; ++i )
     {
         atom_i = &system->my_atoms[i];
-        type_i = atom_i->type;
         start_i = Start_Index( i, far_nbrs );
         end_i = End_Index( i, far_nbrs );
 
-        sbp_i = &system->reax_param.sbp[type_i];
-
         H->start[i] = Htop;
         H->entries[Htop].j = i;
-        H->entries[Htop].val = sbp_i->eta;
+        H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                workspace, i, i, r_ij, DIAGONAL );
         ++Htop;
 
         for ( pj = start_i; pj < end_i; ++pj )
@@ -753,19 +852,19 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
             
                 if ( j < system->n || atom_i->orig_id < atom_j->orig_id )
                 {
-                    type_j = atom_j->type;
                     r_ij = far_nbrs->far_nbr_list.d[pj];
-                    twbp = &system->reax_param.tbp[type_i][type_j];
 
                     H->entries[Htop].j = j;
 
                     if ( control->tabulate == 0 )
                     {
-                        H->entries[Htop].val = Compute_H( r_ij, twbp->gamma, workspace->Tap );
+                        H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                                workspace, i, j, r_ij, OFF_DIAGONAL );
                     }
                     else
                     {
-                        H->entries[Htop].val = Compute_tabH( r_ij, type_i, type_j );
+                        H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                                LR, i, j, r_ij, OFF_DIAGONAL );
                     }
 
                     ++Htop;
@@ -801,14 +900,10 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
 {
     int i, j, pj;
     int start_i, end_i;
-    int type_i, type_j;
     int Htop;
     real r_ij;
     sparse_matrix *H;
     reax_list *far_nbrs;
-    single_body_parameters *sbp_i;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
 
     far_nbrs = lists[FAR_NBRS];
 
@@ -818,16 +913,13 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->n; ++i )
     {
-        atom_i = &system->my_atoms[i];
-        type_i = atom_i->type;
         start_i = Start_Index( i, far_nbrs );
         end_i = End_Index( i, far_nbrs );
 
-        sbp_i = &system->reax_param.sbp[type_i];
-
         H->start[i] = Htop;
         H->entries[Htop].j = i;
-        H->entries[Htop].val = sbp_i->eta;
+        H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                workspace, i, j, r_ij, DIAGONAL );
         ++Htop;
 
         for ( pj = start_i; pj < end_i; ++pj )
@@ -835,21 +927,20 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
             if ( far_nbrs->far_nbr_list.d[pj] <= control->nonb_cut )
             {
                 j = far_nbrs->far_nbr_list.nbr[pj];
-                atom_j = &system->my_atoms[j];
-                type_j = atom_j->type;
                 r_ij = far_nbrs->far_nbr_list.d[pj];
-                twbp = &system->reax_param.tbp[type_i][type_j];
 
                 // H matrix entry
                 H->entries[Htop].j = j;
 
                 if ( control->tabulate == 0 )
                 {
-                    H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+                    H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+                            workspace, i, j, r_ij, OFF_DIAGONAL );
                 }
                 else
                 {
-                    H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+                    H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                            LR, i, j, r_ij, OFF_DIAGONAL );
                 }
 
                 ++Htop;
@@ -1065,14 +1156,12 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     int start_i, end_i;
     int type_i, type_j;
     int num_bonds, num_hbonds;
-    int ihb, jhb, ihb_top;
-    real cutoff;
+    int ihb, ihb_top;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
-    int start_j, end_j;
-    int btop_i, btop_j;
+    int btop_i;
     int k, push;
     int *q;
 
@@ -1582,7 +1671,8 @@ void Init_Forces( reax_system *system, control_params *control,
 //        {
 //            H->start[i] = Htop;
 //            H->entries[Htop].j = i;
-//            H->entries[Htop].val = sbp_i->eta;
+//            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+//                    workspace, i, j, r_ij, DIAGONAL );
 //            ++Htop;
 //
 //            if ( control->hbond_cut > 0 )
@@ -1665,11 +1755,13 @@ void Init_Forces( reax_system *system, control_params *control,
 //
 //                        if ( control->tabulate == 0 )
 //                        {
-//                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+//                                    workspace, i, j, r_ij, OFF_DIAGONAL );
 //                        }
 //                        else 
 //                        {
-//                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+//                                    LR, i, j, r_ij, OFF_DIAGONAL );
 //                        }
 //
 //                        ++Htop;
@@ -1683,11 +1775,13 @@ void Init_Forces( reax_system *system, control_params *control,
 //
 //                        if ( control->tabulate == 0 )
 //                        {
-//                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+//                                    workspace, i, j, r_ij, OFF_DIAGONAL );
 //                        }
 //                        else
 //                        {
-//                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+//                                    LR, i, j, r_ij, OFF_DIAGONAL );
 //                        }
 //
 //                        ++Htop;
@@ -1748,11 +1842,13 @@ void Init_Forces( reax_system *system, control_params *control,
 //
 //                        if ( control->tabulate == 0 )
 //                        {
-//                            H->entries[Htop].val = Compute_H(r_ij, twbp->gamma, workspace->Tap);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
+//                                    workspace, i, j, r_ij, OFF_DIAGONAL );
 //                        }
 //                        else 
 //                        {
-//                            H->entries[Htop].val = Compute_tabH(r_ij, type_i, type_j);
+//                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
+//                                    LR, i, j, r_ij, OFF_DIAGONAL );
 //                        }
 //
 //                        ++Htop;
@@ -1880,7 +1976,7 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
     int btop_i, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top;
     int local, flag, renbr;
-    real r_ij, cutoff;
+    real cutoff;
     reax_list *far_nbrs, *bonds, *hbonds;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -1925,7 +2021,7 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
         {
             btop_i = Start_Index( i, bonds );
         }
-        sbp_i = &(system->reax_param.sbp[type_i]);
+        sbp_i = &system->reax_param.sbp[type_i];
 
         if ( i < system->n )
         {
@@ -2000,7 +2096,6 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
             if ( flag )
             {
                 type_j = atom_j->type;
-                r_ij = far_nbrs->far_nbr_list.d[pj];
                 sbp_j = &system->reax_param.sbp[type_j];
                 twbp = &system->reax_param.tbp[type_i][type_j];
 
@@ -2122,7 +2217,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
     int ihb, jhb;
     int local;
     real cutoff;
-    real r_ij, r2;
+    real r_ij;
     real C12, C34, C56;
     real BO, BO_s, BO_pi, BO_pi2;
     reax_list *far_nbrs;
@@ -2241,8 +2336,6 @@ void Estimate_Storages( reax_system *system, control_params *control,
                 /* uncorrected bond orders */
                 if ( far_nbrs->far_nbr_list.d[pj] <= control->bond_cut )
                 {
-                    r2 = SQR(r_ij);
-
                     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
                     {
                         C12 = twbp->p_bo1 * pow( r_ij / twbp->r_s, twbp->p_bo2 );

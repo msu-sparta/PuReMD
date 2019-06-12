@@ -505,7 +505,7 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
     start = Get_Time( );
 
 #ifdef _OPENMP
-    #pragma omp parallel for schedule(static) \
+    #pragma omp parallel for schedule(dynamic,256) \
     default(none) private(i)
 #endif
     for ( i = 0; i < H->n; ++i )
@@ -1819,7 +1819,7 @@ static void sparse_matvec( const static_storage * const workspace,
 
     Vector_MakeZero( workspace->b_local, omp_get_num_threads() * n );
 
-    #pragma omp for schedule(static)
+    #pragma omp for schedule(guided)
 #endif
     for ( i = 0; i < n; ++i )
     {
@@ -1848,7 +1848,7 @@ static void sparse_matvec( const static_storage * const workspace,
     }
 
 #ifdef _OPENMP
-    #pragma omp for schedule(static)
+    #pragma omp for schedule(dynamic,256)
     for ( i = 0; i < n; ++i )
     {
         for ( j = 0; j < omp_get_num_threads(); ++j )
@@ -1873,7 +1873,7 @@ static void sparse_matvec_full( const sparse_matrix * const A,
     Vector_MakeZero( b, A->n );
 
 #ifdef _OPENMP
-    #pragma omp for schedule(static)
+    #pragma omp for schedule(guided)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1966,7 +1966,7 @@ static void jacobi_app( const real * const Hdia_inv, const real * const y,
     unsigned int i;
 
 #ifdef _OPENMP
-    #pragma omp for schedule(static)
+    #pragma omp for schedule(dynamic,256)
 #endif
     for ( i = 0; i < N; ++i )
     {

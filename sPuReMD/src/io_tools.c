@@ -804,7 +804,7 @@ void Print_Charges( reax_system *system, control_params *control,
     char fname[100];
     FILE *fout;
 
-    snprintf( fname, 100, "%.*s.q%10d", 87, control->sim_name, step );
+    snprintf( fname, 100, "%.*s.q%010d", 87, control->sim_name, step );
     fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
@@ -953,8 +953,8 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
     f = sfopen( fname, "wb" );
 
     /* header: # rows, # nonzeros */
-    fwrite( &(A->n), sizeof(unsigned int), 1, f );
-    fwrite( &(A->start[A->n]), sizeof(unsigned int), 1, f );
+    fwrite( &A->n, sizeof(unsigned int), 1, f );
+    fwrite( &A->start[A->n], sizeof(unsigned int), 1, f );
 
     /* row pointers */
     for ( i = 0; i <= A->n; ++i )

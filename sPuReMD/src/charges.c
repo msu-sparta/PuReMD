@@ -22,6 +22,9 @@
 #include "charges.h"
 
 #include "allocate.h"
+#if defined(DEBUG_FOCUS)
+  #include "io_tools.h"
+#endif
 #include "list.h"
 #include "lin_alg.h"
 #include "tool_box.h"
