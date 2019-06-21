@@ -766,12 +766,6 @@ static void Init_Lists( reax_system *system, control_params *control,
      *   (non-bonded, hydrogen, 3body, etc.) */
     Allocate_Matrix( &workspace->H_sp, system->N_cm, max_nnz );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "estimated storage - Htop: %d\n", Htop );
-    fprintf( stderr, "memory allocated: H = %ldMB\n",
-            Htop * sizeof(sparse_matrix_entry) / (1024 * 1024) );
-#endif
-
     workspace->num_H = 0;
     if ( control->hbond_cut > 0.0 )
     {

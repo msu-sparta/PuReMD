@@ -487,13 +487,15 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char element[6], charge[9];
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
-    char *endptr = NULL;
-    int i, atom_cnt, token_cnt, bgf_serial, ratom = 0;
+    char *endptr;
+    int i, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
 
-    /* open biograf file */
+    endptr = NULL;
+    ratom = 0;
+    crystx_found = FALSE;
+
     bgf = sfopen( bgf_file, "r" );
 
-    /* allocate memory for tokenizing biograf file lines */
     line = smalloc( sizeof(char) * MAX_LINE, "Read_BGF::line" );
     backup = smalloc( sizeof(char) * MAX_LINE, "Read_BGF::backup" );
     tokens = smalloc( sizeof(char*) * MAX_TOKENS, "Read_BGF::tokens" );
@@ -503,7 +505,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                "Read_BGF::tokens[i]" );
     }
 
-    /* count number of atoms in the pdb file */
+    /* count number of atoms in the BGF file */
     system->N = 0;
     line[0] = 0;
 
@@ -512,8 +514,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         tokens[0][0] = 0;
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
-        if ( !strncmp( tokens[0], "ATOM", MAX_TOKEN_LEN )
-                || !strncmp( tokens[0], "HETATM", MAX_TOKEN_LEN ) )
+        if ( !strncmp( tokens[0], "ATOM", 4 )
+                || !strncmp( tokens[0], "HETATM", 6 ) )
         {
             ++system->N;
         }
@@ -528,10 +530,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     sfclose( bgf, "Read_BGF::bgf" );
 
-    /* memory allocations for atoms, atom maps, bond restrictions */
     system->atoms = scalloc( system->N, sizeof(reax_atom),
             "Read_BGF::system->atoms" );
-
     workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
             "Read_BGF::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
@@ -551,7 +551,6 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                 "Read_BGF::workspace->restricted_list[i]" );
     }
 
-    /* start reading and processing bgf file */
     bgf = sfopen( bgf_file, "r" );
     atom_cnt = 0;
     token_cnt = 0;
@@ -564,7 +563,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
         /* process new line */
-        if ( !strncmp(tokens[0], "ATOM", 4) || !strncmp(tokens[0], "HETATM", 6) )
+        if ( !strncmp(tokens[0], "ATOM", 4)
+                || !strncmp(tokens[0], "HETATM", 6) )
         {
             if ( !strncmp(tokens[0], "ATOM", 4) )
             {
@@ -664,6 +664,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             Setup_Box( atof(s_a), atof(s_b), atof(s_c),
                     atof(s_alpha), atof(s_beta), atof(s_gamma),
                     &system->box );
+
+            crystx_found = TRUE;
         }
         else if ( !strncmp( tokens[0], "CONECT", 6 ) )
         {
@@ -706,6 +708,20 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         fprintf( stderr, "[ERROR] Unable to read BGF file. Terminating...\n" );
         exit( INVALID_INPUT );
     }
+
+    if ( crystx_found == FALSE )
+    {
+        fprintf( stderr, "[ERROR] improperly formatted BGF file (no CRYSTX keyword found). Terminating...\n" );
+        exit( INVALID_INPUT );
+    }
+
+    sfree( line, "Read_BGF::line" );
+    sfree( backup, "Read_BGF::backup" );
+    for ( i = 0; i < MAX_TOKENS; i++ )
+    {
+        sfree( tokens[i], "Read_BGF::tokens[i]" );
+    }
+    sfree( tokens, "Read_BGF::tokens" );
 
     sfclose( bgf, "Read_BGF::bgf" );
 }

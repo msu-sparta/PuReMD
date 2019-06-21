@@ -282,7 +282,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         }
 
 #if defined(DEBUG_FOCUS)
-                        fprintf( stderr, "nonbonded(%d,%d): rel_box (%f %f %f)",
+                        fprintf( stderr, "nonbonded(%d,%d): rel_box (%d %d %d)",
                                 i, j, nbr_pj->rel_box[0],
                                 nbr_pj->rel_box[1], nbr_pj->rel_box[2] );
 

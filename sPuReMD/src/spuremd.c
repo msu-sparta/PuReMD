@@ -22,6 +22,9 @@
 #include "spuremd.h"
 
 #include "analyze.h"
+#if defined(DEBUG_FOCUS)
+  #include "box.h"
+#endif
 #include "control.h"
 #include "ffield.h"
 #include "forces.h"
@@ -128,7 +131,7 @@ static void Read_System( const char * const geo_file,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "input files have been read...\n" );
-    Print_Box( &(system->box), stderr );
+    Print_Box( &system->box, stderr );
 #endif
 }
 
