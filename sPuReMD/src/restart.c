@@ -21,6 +21,7 @@
 
 #include "restart.h"
 
+#include "allocate.h"
 #include "box.h"
 #include "tool_box.h"
 #include "vector.h"
@@ -82,7 +83,9 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
 
     fres = sfopen( fname, "rb" );
 
+    /* parse header of restart file */
     fread( &res_header, sizeof(restart_header), 1, fres );
+
     data->prev_steps = res_header.step;
     system->N = res_header.N;
     data->therm.T = res_header.T;
@@ -90,7 +93,9 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     data->therm.v_xi = res_header.v_xi;
     data->therm.v_xi_old = res_header.v_xi_old;
     data->therm.G_xi = res_header.G_xi;
-    Update_Box( res_header.box, &(system->box) );
+
+    rvec_MakeZero( system->box.min );
+    Update_Box( res_header.box, &system->box );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "restart step: %d\n", data->prev_steps );
@@ -104,27 +109,14 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2] );
 #endif
 
-    /* memory allocations for atoms, atom maps, bond restrictions */
-    system->atoms = scalloc( system->N, sizeof(reax_atom),
-            "Read_Binary_Restart::system->atoms" );
+    PreAllocate_Space( system, control, workspace );
 
     workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
             "Read_Binary_Restart::workspace->map_serials" );
+
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
         workspace->map_serials[i] = -1;
-    }
-
-    workspace->orig_id = scalloc( system->N, sizeof(int),
-            "Read_Binary_Restart::workspace->orig_id" );
-    workspace->restricted = scalloc( system->N, sizeof(int),
-            "Read_Binary_Restart::workspace->restricted" );
-    workspace->restricted_list = scalloc( system->N, sizeof(int*),
-            "Read_Binary_Restart::workspace->restricted_list" );
-    for ( i = 0; i < system->N; ++i )
-    {
-        workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
-                "Read_Binary_Restart::workspace->restricted_list[i]" );
     }
 
     for ( i = 0; i < system->N; ++i )
@@ -149,7 +141,8 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     sfclose( fres, "Read_Binary_Restart::fres" );
 
     data->step = data->prev_steps;
-    // nsteps is updated based on the number of steps in the previous run
+    /* target num. of MD sim. steps (nsteps)
+     * is updated based on the number of steps in the previous run */
     control->nsteps += data->prev_steps;
 }
 
@@ -175,7 +168,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
-        p_atom = &( system->atoms[i] );
+        p_atom = &system->atoms[i];
         fprintf( fres, RESTART_LINE,
                  workspace->orig_id[i], p_atom->type, p_atom->name,
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
@@ -200,13 +193,15 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
 
     fres = sfopen( fname, "r" );
 
-    /* header */
+    /* parse header of restart file */
     fscanf( fres, READ_RESTART_HEADER,
             &data->prev_steps, &system->N, &data->therm.T, &data->therm.xi,
             &data->therm.v_xi, &data->therm.v_xi_old, &data->therm.G_xi,
             &system->box.box[0][0], &system->box.box[0][1], &system->box.box[0][2],
             &system->box.box[1][0], &system->box.box[1][1], &system->box.box[1][2],
             &system->box.box[2][0], &system->box.box[2][1], &system->box.box[2][2]);
+
+    rvec_MakeZero( system->box.min );
     Make_Consistent( &system->box );
 
 #if defined(DEBUG_FOCUS)
@@ -221,32 +216,19 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2] );
 #endif
 
-    /* memory allocations for atoms, atom maps, bond restrictions */
-    system->atoms = (reax_atom*) scalloc( system->N, sizeof(reax_atom),
-            "Read_ASCII_Restart::system->atoms" );
+    PreAllocate_Space( system, control, workspace );
 
-    workspace->map_serials = (int*) scalloc( MAX_ATOM_ID, sizeof(int),
+    workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
             "Read_ASCII_Restart::workspace->map_serials" );
+
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
         workspace->map_serials[i] = -1;
     }
 
-    workspace->orig_id = (int*) scalloc( system->N, sizeof(int),
-            "Read_ASCII_Restart::workspace->orig_id" );
-    workspace->restricted  = (int*) scalloc( system->N, sizeof(int),
-            "Read_ASCII_Restart::workspace->restricted" );
-    workspace->restricted_list = (int**) scalloc( system->N, sizeof(int*),
-            "Read_ASCII_Restart::workspace->restricted_list" );
     for ( i = 0; i < system->N; ++i )
     {
-        workspace->restricted_list[i] = (int*) scalloc( MAX_RESTRICT, sizeof(int),
-                "Read_ASCII_Restart::workspace->restricted_list[i]" );
-    }
-
-    for ( i = 0; i < system->N; ++i )
-    {
-        p_atom = &( system->atoms[i] );
+        p_atom = &system->atoms[i];
         fscanf( fres, READ_RESTART_LINE,
                 &workspace->orig_id[i], &p_atom->type, p_atom->name,
                 &p_atom->x[0], &p_atom->x[1], &p_atom->x[2],
@@ -257,7 +239,8 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
     sfclose( fres, "Read_ASCII_Restart::fres" );
 
     data->step = data->prev_steps;
-    // nsteps is updated based on the number of steps in the previous run
+    /* target num. of MD sim. steps (nsteps)
+     * is updated based on the number of steps in the previous run */
     control->nsteps += data->prev_steps;
 }
 

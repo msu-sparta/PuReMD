@@ -95,12 +95,12 @@ static void Init_System( reax_system *system, control_params *control,
     else if ( control->reposition_atoms == 1 )
     {
         rvec_Scale( dx, 0.5, system->box.box_norms );
-        rvec_ScaledAdd( dx, -1., data->xcm );
+        rvec_ScaledAdd( dx, -1.0, data->xcm );
     }
     /* put the center of mass to the origin */
     else if ( control->reposition_atoms == 2 )
     {
-        rvec_Scale( dx, -1., data->xcm );
+        rvec_Scale( dx, -1.0, data->xcm );
     }
     else
     {
@@ -111,6 +111,9 @@ static void Init_System( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
+        /* re-map the atom positions to fall within the simulation box,
+         * where the corners of the box are (0,0,0) and (d_x, d_y, d_z)
+         * with d_i being the box length along dimension i */
         Inc_on_T3( system->atoms[i].x, dx, &system->box );
 
         /*fprintf( stderr, "%6d%2d%8.3f%8.3f%8.3f\n",
@@ -354,6 +357,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     workspace->H_sp = NULL;
     workspace->H_p = NULL;
     workspace->H_spar_patt = NULL;
+    workspace->H_spar_patt_full = NULL;
     workspace->H_app_inv = NULL;
     workspace->L = NULL;
     workspace->U = NULL;

@@ -281,9 +281,9 @@ int simulate( const void * const handle )
 
             steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
 
-            if ( steps && spmd_handle->out_control->restart_freq &&
-                    steps % spmd_handle->out_control->restart_freq == 0 &&
-                    spmd_handle->output_enabled == TRUE )
+            if ( steps > 0 && spmd_handle->out_control->restart_freq
+                    && steps % spmd_handle->out_control->restart_freq == 0
+                    && spmd_handle->output_enabled == TRUE )
             {
                 Write_Restart( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, spmd_handle->out_control );
@@ -296,7 +296,8 @@ int simulate( const void * const handle )
             }
         }
 
-        if ( spmd_handle->out_control->write_steps > 0 && spmd_handle->output_enabled == TRUE )
+        if ( spmd_handle->out_control->write_steps > 0
+                && spmd_handle->output_enabled == TRUE )
         {
             Write_PDB( spmd_handle->system, spmd_handle->lists[BONDS], spmd_handle->data,
                     spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );

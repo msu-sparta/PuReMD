@@ -218,7 +218,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
         rvec_ScaledSum( dx, dt - 0.5 * dt_sqr * therm->v_xi, system->atoms[i].v,
                 -0.5 * dt_sqr * inv_m * F_CONV, system->atoms[i].f );
 
-        Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
+        Inc_on_T3( system->atoms[i].x, dx, &system->box );
 
         rvec_Copy( workspace->f_old[i], system->atoms[i].f );
     }
@@ -328,7 +328,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
         /* Compute x(t + dt) */
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
                 -0.5 * F_CONV * inv_m * SQR(dt), system->atoms[i].f );
-        Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
+        Inc_on_T3( system->atoms[i].x, dx, &system->box );
         /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
                 -0.5 * F_CONV * inv_m * dt, system->atoms[i].f );
@@ -445,7 +445,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
         /* Compute x(t + dt) */
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
                 -0.5 * F_CONV * inv_m * SQR(dt), system->atoms[i].f );
-        Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
+        Inc_on_T3( system->atoms[i].x, dx, &system->box );
         /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
                 -0.5 * F_CONV * inv_m * dt, system->atoms[i].f );
@@ -666,7 +666,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
                 system->atoms[i].v );
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
                 0.5 * dt_sqr, workspace->a[i] );
-        Inc_on_T3( system->atoms[i].x, dx, &(system->box) );
+        Inc_on_T3( system->atoms[i].x, dx, &system->box );
         rvec_Scale( system->atoms[i].x, exp_deps, system->atoms[i].x );
     }
 

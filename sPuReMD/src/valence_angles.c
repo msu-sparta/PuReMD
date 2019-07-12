@@ -37,11 +37,11 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
     if ( *cos_theta > 1.0 )
     {
-        *cos_theta  = 1.0;
+        *cos_theta = 1.0;
     }
     if ( *cos_theta < -1.0 )
     {
-        *cos_theta  = -1.0;
+        *cos_theta = -1.0;
     }
 
     *theta = ACOS( *cos_theta );
@@ -239,7 +239,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                     i = pbond_ij->nbr;
                     type_i = system->atoms[i].type;
 //#ifdef _OPENMP
-//                    f_i = &(workspace->f_local[tid * system->N + i]);
+//                    f_i = &workspace->f_local[tid * system->N + i];
 //#else
                     f_i = &system->atoms[i].f;
 //#endif
@@ -395,6 +395,18 @@ void Valence_Angles( reax_system *system, control_params *control,
                                     e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
                                     e_ang_total += e_ang;
 
+#if defined(DEBUG_FOCUS)
+                                    if ( IS_NAN_REAL(e_ang) )
+                                    {
+                                        fprintf( stderr, "[ERROR] NaN detected for e_ang (%d). Terminating...\n", j );
+                                        fprintf( stderr, "[INFO] f7_ij = %f\n", f7_ij );
+                                        fprintf( stderr, "[INFO] f7_jk = %f\n", f7_jk );
+                                        fprintf( stderr, "[INFO] f8_Dj = %f\n", f8_Dj );
+                                        fprintf( stderr, "[INFO] expval12theta = %f\n", expval12theta );
+                                        exit( NUMERIC_BREAKDOWN );
+                                    }
+#endif
+
                                     /* calculate penalty for double bonds in valency angles */
                                     p_pen1 = thbp->p_pen1;
 
@@ -410,6 +422,18 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                                     e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                                     e_pen_total += e_pen;
+
+#if defined(DEBUG_FOCUS)
+                                    if ( IS_NAN_REAL(e_ang) )
+                                    {
+                                        fprintf( stderr, "[ERROR] NaN detected for e_pen (%d). Terminating...\n", j );
+                                        fprintf( stderr, "[INFO] p_pen1 = %f\n", p_pen1 );
+                                        fprintf( stderr, "[INFO] f9_Dj = %f\n", f9_Dj );
+                                        fprintf( stderr, "[INFO] exp_pen2ij = %f\n", exp_pen2ij );
+                                        fprintf( stderr, "[INFO] exp_pen2jk = %f\n", exp_pen2jk );
+                                        exit( NUMERIC_BREAKDOWN );
+                                    }
+#endif
 
                                     CEpen1 = e_pen * Cf9j / f9_Dj;
                                     temp = -2.0 * p_pen2 * e_pen;

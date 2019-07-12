@@ -264,14 +264,18 @@ void Trim_Spaces( char * const element, const size_t size )
         return;
     }
 
+    /* skip initial space chars */
     for ( i = 0; element[i] == ' '; ++i )
-        ; // skip initial space chars
+        ;
 
+    /* make uppercase, offset to 0 */
     for ( j = i; j < n && element[j] != ' '; ++j )
     {
-        element[j - i] = toupper( element[j] ); // make uppercase, offset to 0
+        element[j - i] = toupper( element[j] );
     }
-    element[j - i] = 0; // finalize the string
+
+    /* NULL terminate */
+    element[j - i] = '\0';
 }
 
 

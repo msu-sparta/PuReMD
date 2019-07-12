@@ -337,7 +337,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 pdb_serial = (int) strtod( serial, &endptr );
                 workspace->orig_id[top] = pdb_serial;
 
-                Trim_Spaces( element, sizeof(atom_name) - 1 );
+                Trim_Spaces( element, sizeof(atom_name) );
                 atom->type = Get_Atom_Type( &system->reax_param, element );
                 strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
                 atom->name[sizeof(atom->name) - 1] = '\0';
@@ -444,13 +444,13 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
              RAD2DEG(alpha), RAD2DEG(beta), RAD2DEG(gamma), " ", 0 );
 
     /* write atom lines to buffer */
-    for ( i = 0; i < system->N; i++)
+    for ( i = 0; i < system->N; i++ )
     {
         p_atom = &system->atoms[i];
 
         strncpy( name, p_atom->name, sizeof(name) - 1 );
         name[sizeof(name) - 1] = '\0';
-        Trim_Spaces( name, sizeof(name) - 1 );
+        Trim_Spaces( name, sizeof(name) );
 
         memcpy( x, p_atom->x, 3 * sizeof(real) );
         Fit_to_Periodic_Box( &system->box, x );
@@ -641,7 +641,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             strncpy( system->atoms[atom_cnt].name, atom_name,
                     sizeof(system->atoms[atom_cnt].name) - 1 );
             system->atoms[atom_cnt].name[sizeof(system->atoms[atom_cnt].name) - 1] = '\0';
-            Trim_Spaces( element, 6 );
+            Trim_Spaces( element, sizeof(element) );
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &system->reax_param, element );
 

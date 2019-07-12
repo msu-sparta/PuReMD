@@ -50,7 +50,12 @@ int is_refactoring_step( control_params * const control,
     }
     else
     {
-        if ( data->step == 0 || data->timing.cm_total_loss > data->timing.cm_last_pre_comp )
+        /* cases:
+         *  - first overall MD step for non-restartedr OR restarted MD run
+         *  - total losses from degradation of prec. outweight costs of recomputing prec.
+         *  */
+        if ( data->step - data->prev_steps == 0
+                || data->timing.cm_total_loss > data->timing.cm_last_pre_comp )
         {
             ret = TRUE;
         }

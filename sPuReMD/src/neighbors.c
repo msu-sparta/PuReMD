@@ -23,6 +23,9 @@
 
 #include "box.h"
 #include "grid.h"
+#if defined(TEST_ENERGY)
+  #include "io_tools.h"
+#endif
 #include "list.h"
 #include "reset_tools.h"
 #include "system_props.h"
@@ -110,7 +113,9 @@ static int compare_far_nbrs(const void *v1, const void *v2)
 static inline real DistSqr_to_CP( rvec cp, rvec x )
 {
     int i;
-    real d_sqr = 0.0;
+    real d_sqr;
+
+    d_sqr = 0.0;
 
     for ( i = 0; i < 3; ++i )
     {
@@ -258,9 +263,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                      * the Verlet list cutoff distance */
                     while ( nbrs[itr][0] >= 0 )
                     {
-                        /* if the Verlet list cutoff covers this neighboring
-                         * grid cell, then search through it's atoms */
-                        if ( DistSqr_to_CP(nbrs_cp[itr], system->atoms[atom1].x )
+                        /* if the Verlet list cutoff covers the closest point
+                         * in the neighboring grid cell, then search through the cell's atoms */
+                        if ( DistSqr_to_CP( nbrs_cp[itr], system->atoms[atom1].x )
                                 <= SQR(control->vlist_cut) )
                         {
                             x = nbrs[itr][0];

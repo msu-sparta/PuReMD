@@ -32,7 +32,8 @@ static int Estimate_GCell_Population( reax_system* system )
     int max_atoms;
     grid *g;
 
-    g = &( system->g );
+    g = &system->g;
+
     Reset_Grid( g );
 
     for ( l = 0; l < system->N; l++ )
@@ -216,10 +217,12 @@ static void Deallocate_Grid_Space( grid *g )
 }
 
 
-int Shift( int p, int dp, int dim, grid *g )
+static inline int Shift( int p, int dp, int dim, grid *g )
 {
-    int dim_len = 0;
-    int newp = p + dp;
+    int dim_len, newp;
+
+    dim_len = 0;
+    newp = p + dp;
 
     switch ( dim )
     {
@@ -247,11 +250,11 @@ int Shift( int p, int dp, int dim, grid *g )
 
 
 /* finds the closest point between two grid cells denoted by c1 and c2.
-   periodic boundary conditions are taken into consideration as well. */
+ * periodic boundary conditions are taken into consideration as well. */
 static void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
         int c2x, int c2y, int c2z, rvec closest_point )
 {
-    int  i, d;
+    int i, d;
     ivec c1 = { c1x, c1y, c1z };
     ivec c2 = { c2x, c2y, c2z };
 
@@ -259,7 +262,7 @@ static void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
     {
         if ( g->ncell[i] < 5 )
         {
-            closest_point[i] = NEG_INF - 1.;
+            closest_point[i] = NEG_INF - 1.0;
             continue;
         }
 
@@ -294,7 +297,7 @@ static void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
 }
 
 
-static void Find_Neighbor_GridCells( grid *g )
+static void Find_Neighbor_Grid_Cells( grid *g )
 {
     int i, j, k;
     int di, dj, dk;
@@ -303,7 +306,7 @@ static void Find_Neighbor_GridCells( grid *g )
     ivec *nbrs_stack;
     rvec *cp_stack;
 
-    /* pick up a cell in the grid */
+    /* for each cell in the grid */
     for ( i = 0; i < g->ncell[0]; i++ )
     {
         for ( j = 0; j < g->ncell[1]; j++ )
@@ -315,7 +318,7 @@ static void Find_Neighbor_GridCells( grid *g )
                 stack_top = 0;
                 //fprintf( stderr, "grid1: %d %d %d\n", i, j, k );
 
-                /* choose an unmarked neighbor cell*/
+                /* choose an unmarked neighbor cell */
                 for ( di = -g->spread[0]; di <= g->spread[0]; di++ )
                 {
                     x = Shift( i, di, 0, g );
@@ -379,7 +382,7 @@ void Setup_Grid( reax_system* system )
     my_box = &system->box;
 
     /* determine number of grid cells in each direction */
-    ivec_rScale( ncell, 1. / g->cell_size, my_box->box_norms );
+    ivec_rScale( ncell, 1.0 / g->cell_size, my_box->box_norms );
 
     for ( d = 0; d < 3; ++d )
     {
@@ -398,7 +401,7 @@ void Setup_Grid( reax_system* system )
     rvec_Invert( g->inv_len, g->len );
 
     Allocate_Space_for_Grid( system );
-    Find_Neighbor_GridCells( g );
+    Find_Neighbor_Grid_Cells( g );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "setting up the grid: " );
@@ -415,11 +418,14 @@ void Update_Grid( reax_system* system )
     ivec ncell;
     ivec *nbrs;
     rvec *nbrs_cp;
-    grid *g = &system->g;
-    simulation_box *my_box = &system->box;
+    grid *g;
+    simulation_box *my_box;
+
+    g = &system->g;
+    my_box = &system->box;
 
     /* determine number of grid cells in each direction */
-    ivec_rScale( ncell, 1. / g->cell_size, my_box->box_norms );
+    ivec_rScale( ncell, 1.0 / g->cell_size, my_box->box_norms );
 
     for ( d = 0; d < 3; ++d )
     {
@@ -475,7 +481,7 @@ void Update_Grid( reax_system* system )
         rvec_Invert( g->inv_len, g->len );
 
         Allocate_Space_for_Grid( system );
-        Find_Neighbor_GridCells( g );
+        Find_Neighbor_Grid_Cells( g );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "updated grid: " );

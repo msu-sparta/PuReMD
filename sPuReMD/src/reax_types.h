@@ -608,22 +608,40 @@ struct simulation_box
 
 struct grid
 {
+    /* max. num. of atoms that can be binned within a grid cell;
+     * used for memory allocation purposes */
     int max_atoms;
+    /* max. num. of neighbors for a grid cell;
+     * used for memory allocation purposes */
     int max_nbrs;
+    /**/
     int total;
+    /* lengths of each dimesion of a grid cell */
     real cell_size;
+    /**/
     ivec spread;
-
+    /* num. of cells along each dimension for entire grid */
     ivec ncell;
+    /* lengths of each dimesion of a grid cell */
     rvec len;
+    /* multiplicative inverse of length of each dimesion of a grid cell */
     rvec inv_len;
-
+    /* binned atom list, where first 3 dimensions are indexed using 0-based grid cell
+     * coordinates */
     int **** atoms;
+    /**/
     int *** top;
+    /**/
     int *** mark;
+    /**/
     int *** start;
+    /**/
     int *** end;
+    /* list of neighboring grid cell positions for a specific grid cell, where the first
+     * 3 dimensions are indexed using the 0-based grid cell coordinates */
     ivec **** nbrs;
+    /* list of distances between the closest points of neighboring grid cells for a specific grid cell,
+     * where the first 3 dimensions are indexed using the 0-based grid cell coordinates */
     rvec **** nbrs_cp;
 };
 

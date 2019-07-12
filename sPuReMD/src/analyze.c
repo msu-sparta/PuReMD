@@ -836,7 +836,7 @@ static void Calculate_Dipole_Moment( reax_system *system, control_params *contro
                 {
                     Distance_on_T3_Gen( system->atoms[ m.atom_list[0] ].x,
                                         system->atoms[ m.atom_list[i] ].x,
-                                        &(system->box), tmpvec );
+                                        &system->box, tmpvec );
                     rvec_ScaledAdd( mu, -system->atoms[m.atom_list[0]].q / 2.0, tmpvec );
                 }
 
@@ -889,7 +889,7 @@ static void Calculate_Drift( reax_system *system, control_params *control,
             ++count[type];
 
             Distance_on_T3_Gen( workspace->x_old[i], system->atoms[i].x,
-                    &(system->box), driftvec );
+                    &system->box, driftvec );
 
             if ( FABS( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
                     FABS( driftvec[1] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||

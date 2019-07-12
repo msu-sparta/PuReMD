@@ -25,8 +25,6 @@
 #include "reax_types.h"
 
 
-int Shift( int, int, int, grid* );
-
 void Setup_Grid( reax_system* );
 
 void Update_Grid( reax_system* );
