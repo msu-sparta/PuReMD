@@ -62,7 +62,7 @@ real Get_Time( );
 real Get_Timing_Info( real );
 
 /* from io_tools.h */
-int Get_Atom_Type( reax_interaction*, char* );
+int Get_Atom_Type( reax_interaction*, char*, size_t );
 
 char *Get_Element( reax_system*, int );
 

@@ -32,30 +32,47 @@ void Delete_List( int, reax_list* );
 
 static inline int Num_Entries( int i, reax_list* l )
 {
+    assert( l != NULL );
+    assert( i >= 0 && i <= l->n );
+
     return l->end_index[i] - l->index[i];
 }
 
 
 static inline int Start_Index( int i, reax_list *l )
 {
+    assert( l != NULL );
+    assert( i >= 0 && i <= l->n );
+
     return l->index[i];
 }
 
 
 static inline int End_Index( int i, reax_list *l )
 {
+    assert( l != NULL );
+    assert( i >= 0 && i <= l->n );
+
     return l->end_index[i];
 }
 
 
 static inline void Set_Start_Index( int i, int val, reax_list *l )
 {
+    assert( l != NULL );
+    assert( i >= 0 && i <= l->n );
+    assert( val >= 0 && val <= l->total_intrs );
+
     l->index[i] = val;
 }
 
 
 static inline void Set_End_Index( int i, int val, reax_list *l )
 {
+    assert( l != NULL );
+    assert( i >= 0 && i <= l->n );
+    assert( val >= 0 && val <= l->total_intrs );
+
     l->end_index[i] = val;
 }
 

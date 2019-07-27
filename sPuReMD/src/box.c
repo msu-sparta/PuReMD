@@ -316,6 +316,7 @@ real Sq_Distance_on_T3( rvec x1, rvec x2, simulation_box* box, rvec r )
         }
     }
 
+    assert( norm > 0.0 );
     return norm;
 }
 
@@ -441,12 +442,13 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
         simulation_box *box, real vlist_cut, far_neighbor_data *data )
 {
     int i, count;
-    real norm_sqr, tmp;
+    real norm_sqr, tmp, sqr_vlist_cut;
     ivec rel_box;
 //    rvec ext_factor;
     rvec dvec;
 
     norm_sqr = 0.0;
+    sqr_vlist_cut = SQR( vlist_cut );
 
     for ( i = 0; i < 3; i++ )
     {
@@ -478,7 +480,7 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
         }
     }
 
-    if ( norm_sqr <= SQR( vlist_cut ) && norm_sqr >= MIN_NBR_DIST )
+    if ( norm_sqr <= sqr_vlist_cut && norm_sqr >= MIN_NBR_DIST )
     {
         data->nbr = nbr_atom;
         ivec_Copy( data->rel_box, rel_box );
@@ -631,6 +633,7 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 //                    }
 
                     data[count].d = SQRT( sqr_norm );
+                    assert( data[count].d > 0.0 );
 
                     data[count].dvec[0] = d_i;
                     data[count].dvec[1] = d_j;
@@ -667,17 +670,17 @@ int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_
 
     for ( i = -imax; i <= imax; ++i )
     {
-        d_i = x2[0] - x1[0] + i * box->box_norms[0];
+        d_i = (x2[0] + i * box->box_norms[0]) - x1[0];
         sqr_d_i = SQR( d_i );
 
         for ( j = -jmax; j <= jmax; ++j )
         {
-            d_j = x2[1] - x1[1] + j * box->box_norms[1];
+            d_j = (x2[1] + j * box->box_norms[1]) - x1[1];
             sqr_d_j = SQR( d_j );
 
             for ( k = -kmax; k <= kmax; ++k )
             {
-                d_k = x2[2] - x1[2] + k * box->box_norms[2];
+                d_k = (x2[2] + k * box->box_norms[2]) - x1[2];
                 sqr_d_k = SQR( d_k );
 
                 sqr_norm = sqr_d_i + sqr_d_j + sqr_d_k;

@@ -261,7 +261,8 @@ void Trim_Spaces( char * const element, const size_t size )
     /* buffer not NULL-terminated, abort */
     if ( n == size )
     {
-        return;
+        fprintf( stderr, "[ERROR] buffer not NULL-terminated (Trim_Spaces). Terminating...\n" );
+        exit( RUNTIME_ERROR );
     }
 
     /* skip initial space chars */
@@ -313,13 +314,14 @@ real Get_Timing_Info( real t_start )
 
 
 /*********** from io_tools.c **************/
-int Get_Atom_Type( reax_interaction *reax_param, char *s )
+int Get_Atom_Type( reax_interaction *reax_param, char *s, size_t n )
 {
     int i;
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
     {
-        if ( !strncmp( reax_param->sbp[i].name, s, 15 ) )
+        if ( strncmp( reax_param->sbp[i].name, s,
+                    MIN( sizeof(reax_param->sbp[i].name), n ) ) == 0 )
         {
             return i;
         }

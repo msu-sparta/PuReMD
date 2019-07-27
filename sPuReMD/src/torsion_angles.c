@@ -27,7 +27,7 @@
 #include "lookup.h"
 #include "vector.h"
 
-#define MIN_SINE 1e-10
+#define MIN_SINE (1.0e-10)
 
 
 static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
@@ -44,14 +44,19 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
     real arg, poem, tel;
     rvec cross_jk_kl;
 
+    assert( r_ij > 0.0 );
+    assert( r_jk > 0.0 );
+    assert( r_kl > 0.0 );
+    assert( r_li > 0.0 );
+
     sin_ijk = SIN( p_ijk->theta );
     cos_ijk = COS( p_ijk->theta );
     sin_jkl = SIN( p_jkl->theta );
     cos_jkl = COS( p_jkl->theta );
 
     /* omega */
-    unnorm_cos_omega = -rvec_Dot( dvec_ij, dvec_jk ) * rvec_Dot( dvec_jk, dvec_kl ) +
-        SQR( r_jk ) *  rvec_Dot( dvec_ij, dvec_kl );
+    unnorm_cos_omega = -rvec_Dot( dvec_ij, dvec_jk ) * rvec_Dot( dvec_jk, dvec_kl )
+        + SQR( r_jk ) * rvec_Dot( dvec_ij, dvec_kl );
     rvec_Cross( cross_jk_kl, dvec_jk, dvec_kl );
     unnorm_sin_omega = -r_jk * rvec_Dot( dvec_ij, cross_jk_kl );
     omega = atan2( unnorm_sin_omega, unnorm_cos_omega );
@@ -71,16 +76,15 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
     hnhd = r_ij * r_kl * cos_ijk * sin_jkl;
     hnhe = r_ij * r_kl * sin_ijk * cos_jkl;
 
-
     poem = 2.0 * r_ij * r_kl * sin_ijk * sin_jkl;
     if ( poem < 1e-20 )
     {
         poem = 1e-20;
     }
 
-    tel  = (SQR(r_ij) + SQR(r_jk) + SQR(r_kl) - SQR(r_li)) -
-        2.0 * ( r_ij * r_jk * cos_ijk - r_ij * r_kl * cos_ijk * cos_jkl +
-                r_jk * r_kl * cos_jkl );
+    tel  = (SQR(r_ij) + SQR(r_jk) + SQR(r_kl) - SQR(r_li))
+        - 2.0 * ( r_ij * r_jk * cos_ijk - r_ij * r_kl * cos_ijk * cos_jkl
+                + r_jk * r_kl * cos_jkl );
 
     arg  = tel / poem;
     if ( arg >  1.0 )
@@ -118,19 +122,19 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
        -p_jkl->dcos_dk[1]/sin_jkl,
        -p_jkl->dcos_dk[2]/sin_jkl );*/
 
-    if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE )
+    if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
     {
         sin_ijk = MIN_SINE;
     }
-    else if ( sin_ijk <= 0 && sin_ijk >= -MIN_SINE )
+    else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
     {
         sin_ijk = -MIN_SINE;
     }
-    if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE )
+    if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
     {
         sin_jkl = MIN_SINE;
     }
-    else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE )
+    else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
     {
         sin_jkl = -MIN_SINE;
     }
@@ -167,7 +171,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-#ifdef TEST_FORCES
+#if defined(DEBUG)
     int num_frb_intrs;
 #endif
     real p_tor2, p_tor3, p_tor4, p_cot2;
@@ -182,7 +186,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
     thb_intrs = lists[THREE_BODIES];
     e_tor_total = 0.0;
     e_con_total = 0.0;
-#ifdef TEST_FORCES
+#if defined(DEBUG)
     num_frb_intrs = 0;
 #endif
 
@@ -345,7 +349,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         f_l = &system->atoms[l].f;
 #endif
 
-#ifdef TEST_FORCES
+#if defined(DEBUG)
 #ifdef _OPENMP
                                         #pragma omp atomic
 #endif
@@ -723,7 +727,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                                  dcos_omega_dl[0], dcos_omega_dl[1], dcos_omega_dl[2] );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                                         /* Torsion Forces */
                                         Add_dBOpinpi2( system, lists, j, pk, CEtors2, 0.,
                                                 workspace->f_tor, workspace->f_tor );

@@ -143,6 +143,8 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
     data->therm.v_xi_old = 0.0;
     data->therm.G_xi = 0.0;
 
+    /* initialize for non-restarted run,
+     * code in restart.c (restart file parser) initializes otherwise */
     if ( !control->restart )
     {
         data->step = 0;

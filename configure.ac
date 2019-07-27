@@ -162,6 +162,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi
@@ -171,6 +172,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi
@@ -284,6 +286,7 @@ if test "x${pack_gpu_enabled}" = "xyes"; then
 	if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi
@@ -293,6 +296,7 @@ if test "x${pack_gpu_enabled}" = "xyes"; then
 	elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi
@@ -381,6 +385,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 	if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi
@@ -390,6 +395,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 	elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi
@@ -545,6 +551,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi
@@ -554,6 +561,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0"
+			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
 			DEFAULT_CFLAGS="-Wall -O3"
 		fi

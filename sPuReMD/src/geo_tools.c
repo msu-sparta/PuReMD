@@ -153,7 +153,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
 
         atom = &system->atoms[top];
         workspace->orig_id[i] = serial;
-        atom->type = Get_Atom_Type( &system->reax_param, element );
+        atom->type = Get_Atom_Type( &system->reax_param, element, sizeof(element) );
         strncpy( atom->name, name, sizeof(atom->name) - 1 );
         atom->name[sizeof(atom->name) - 1] = '\0';
         rvec_Copy( atom->x, x );
@@ -201,7 +201,7 @@ static void Count_PDB_Atoms( FILE *geo, reax_system *system )
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "count atoms:\n" );
+    fprintf( stderr, "[INFO] count atoms:\n" );
     fprintf( stderr, "N = %d\n\n", system->N );
 #endif
 }
@@ -259,9 +259,10 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
         c1 = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         /* process new line */
-        if ( strncmp(tmp[0], "ATOM", 4) == 0 || strncmp(tmp[0], "HETATM", 6) == 0 )
+        if ( strncmp( tmp[0], "ATOM", 4 ) == 0
+                || strncmp( tmp[0], "HETATM", 6 ) == 0 )
         {
-            if ( strncmp(tmp[0], "ATOM", 4) == 0 )
+            if ( strncmp( tmp[0], "ATOM", 4 ) == 0 )
             {
                 strncpy( descriptor, s1, sizeof(descriptor) - 1 );
                 descriptor[sizeof(descriptor) - 1] = '\0';
@@ -293,7 +294,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 strncpy( charge, s1 + 78, sizeof(charge) - 1 );
                 charge[sizeof(charge) - 1] = '\0';
             }
-            else if ( strncmp(tmp[0], "HETATM", 6) == 0 )
+            else if ( strncmp( tmp[0], "HETATM", 6 ) == 0 )
             {
                 strncpy( descriptor, s1, sizeof(descriptor) - 1 );
                 descriptor[sizeof(descriptor) - 1] = '\0';
@@ -337,8 +338,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 pdb_serial = (int) strtod( serial, &endptr );
                 workspace->orig_id[top] = pdb_serial;
 
-                Trim_Spaces( element, sizeof(atom_name) );
-                atom->type = Get_Atom_Type( &system->reax_param, element );
+                Trim_Spaces( element, sizeof(element) );
+                atom->type = Get_Atom_Type( &system->reax_param, element, sizeof(element) );
                 strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
                 atom->name[sizeof(atom->name) - 1] = '\0';
 
@@ -348,6 +349,12 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 atom->q = 0;
 
                 top++;
+
+#if defined(DEBUG)
+                fprintf( stderr, "[INFO] atom: id = %d, name = %s, serial = %d, type = %d, ", top, atom->name, pdb_serial, atom->type );
+                fprintf( stderr, "x = %7.3f, %7.3f, %7.3f\n", atom->x[0], atom->x[1], atom->x[2] );
+                fflush( stderr );
+#endif
             }
             c++;
         }
@@ -357,7 +364,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
          * on atom2, then atom1 has to be on atom2's restricted list, too.
          * However, we do not check if this is the case in the input file,
          * this is upto the user. */
-        else if ( !strncmp( tmp[0], "CONECT", 6 ) )
+        else if ( strncmp( tmp[0], "CONECT", 6 ) == 0 )
         {
             if ( control->restrict_bonds )
             {
@@ -514,8 +521,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         tokens[0][0] = 0;
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
-        if ( !strncmp( tokens[0], "ATOM", 4 )
-                || !strncmp( tokens[0], "HETATM", 6 ) )
+        if ( strncmp( tokens[0], "ATOM", 4 ) == 0
+                || strncmp( tokens[0], "HETATM", 6 ) == 0 )
         {
             ++system->N;
         }
@@ -563,10 +570,10 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
         /* process new line */
-        if ( !strncmp(tokens[0], "ATOM", 4)
-                || !strncmp(tokens[0], "HETATM", 6) )
+        if ( strncmp( tokens[0], "ATOM", 4 ) == 0
+                || strncmp( tokens[0], "HETATM", 6 ) == 0 )
         {
-            if ( !strncmp(tokens[0], "ATOM", 4) )
+            if ( strncmp( tokens[0], "ATOM", 4 ) == 0 )
             {
                 strncpy( descriptor, backup, sizeof(descriptor) - 1 );
                 descriptor[sizeof(descriptor) - 1] = '\0';
@@ -594,7 +601,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                 strncpy( charge, backup + 72, sizeof(charge) - 1 );
                 charge[sizeof(charge) - 1] = '\0';
             }
-            else if ( !strncmp(tokens[0], "HETATM", 6) )
+            else if ( strncmp( tokens[0], "HETATM", 6 ) == 0 )
             {
                 /* bgf hetatm:
                    (7x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5) */
@@ -643,7 +650,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->atoms[atom_cnt].name[sizeof(system->atoms[atom_cnt].name) - 1] = '\0';
             Trim_Spaces( element, sizeof(element) );
             system->atoms[atom_cnt].type =
-                Get_Atom_Type( &system->reax_param, element );
+                Get_Atom_Type( &system->reax_param, element, sizeof(element) );
 
             /* fprintf( stderr,
             "a:%3d(%1d) c:%10.5f%10.5f%10.5f q:%10.5f occ:%s temp:%s seg_id:%s element:%s\n",
@@ -655,7 +662,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
             atom_cnt++;
         }
-        else if ( !strncmp( tokens[0], "CRYSTX", 6 ) )
+        else if ( strncmp( tokens[0], "CRYSTX", 6 ) == 0 )
         {
             sscanf( backup, BGF_CRYSTX_FORMAT, descriptor,
                     s_a, s_b, s_c, s_alpha, s_beta, s_gamma );
@@ -667,7 +674,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
             crystx_found = TRUE;
         }
-        else if ( !strncmp( tokens[0], "CONECT", 6 ) )
+        else if ( strncmp( tokens[0], "CONECT", 6 ) == 0 )
         {
             /* check number of restrictions */
             Check_Input_Range( token_cnt - 2, 0, MAX_RESTRICT,

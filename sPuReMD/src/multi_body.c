@@ -91,8 +91,8 @@ void Atom_Energy( reax_system *system, control_params *control,
 
         /* correction for C2 */
         if ( system->reax_param.gp.l[5] > 0.001
-                && !strncmp( system->reax_param.sbp[type_i].name, "C",
-                    sizeof(system->reax_param.sbp[type_i].name) ) )
+                && strncmp( system->reax_param.sbp[type_i].name, "C",
+                    sizeof(system->reax_param.sbp[type_i].name) ) == 0 )
         {
             for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
             {
@@ -101,8 +101,8 @@ void Atom_Energy( reax_system *system, control_params *control,
                     j = bonds->bond_list[pj].nbr;
                     type_j = system->atoms[j].type;
 
-                    if ( !strncmp( system->reax_param.sbp[type_j].name, "C",
-                                sizeof(system->reax_param.sbp[type_j].name) ) )
+                    if ( strncmp( system->reax_param.sbp[type_j].name, "C",
+                                sizeof(system->reax_param.sbp[type_j].name) ) == 0 )
                     {
                         twbp = &system->reax_param.tbp[type_i][type_j];
                         bo_ij = &bonds->bond_list[pj].bo_data;

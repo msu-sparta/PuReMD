@@ -706,7 +706,6 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             H_sp->val[*H_sp_top] = 0.0;
             *H_sp_top = *H_sp_top + 1;
 
-
             sfree( X_diag, "Init_Charge_Matrix_Remaining_Entries::X_diag" );
             break;
 
@@ -725,7 +724,7 @@ static void Init_Forces( reax_system *system, control_params *control,
     int type_i, type_j;
     int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top, jhb_top;
-    int flag, flag_sp, val_flag;
+    int flag, flag_sp, val_flag, renbr;
     real r_ij, r2, val;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
@@ -750,6 +749,7 @@ static void Init_Forces( reax_system *system, control_params *control,
     num_hbonds = 0;
     btop_i = 0;
     btop_j = 0;
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -789,14 +789,16 @@ static void Init_Forces( reax_system *system, control_params *control,
             flag_sp = FALSE;
 
             /* check if reneighboring step */
-            if ( (data->step - data->prev_steps) % control->reneighbor == 0
-                    && nbr_pj->d <= control->nonb_cut )
+            if ( renbr == TRUE )
             {
-                flag = TRUE;
-
-                if ( nbr_pj->d <= control->nonb_sp_cut )
+                if ( nbr_pj->d <= control->nonb_cut )
                 {
-                    flag_sp = TRUE;
+                    flag = TRUE;
+
+                    if ( nbr_pj->d <= control->nonb_sp_cut )
+                    {
+                        flag_sp = TRUE;
+                    }
                 }
             }
             else
@@ -1069,7 +1071,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
     int type_i, type_j;
     int Htop, H_sp_top, btop_i, btop_j, num_bonds, num_hbonds;
     int ihb, jhb, ihb_top, jhb_top;
-    int flag, flag_sp, val_flag;
+    int flag, flag_sp, val_flag, renbr;
     real r_ij, r2, val;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
@@ -1094,6 +1096,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
     num_hbonds = 0;
     btop_i = 0;
     btop_j = 0;
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1133,14 +1136,16 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
             flag_sp = FALSE;
 
             /* check if reneighboring step */
-            if ( (data->step - data->prev_steps) % control->reneighbor == 0
-                    && nbr_pj->d <= control->nonb_cut )
+            if ( renbr == TRUE )
             {
-                flag = TRUE;
-
-                if ( nbr_pj->d <= control->nonb_sp_cut )
+                if ( nbr_pj->d <= control->nonb_cut )
                 {
-                    flag_sp = TRUE;
+                    flag = TRUE;
+
+                    if ( nbr_pj->d <= control->nonb_sp_cut )
+                    {
+                        flag_sp = TRUE;
+                    }
                 }
             }
             else
@@ -1436,7 +1441,8 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
                 ++(*Htop);
 
                 /* hydrogen bond lists */
-                if ( control->hbond_cut > 0.0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
+                if ( control->hbond_cut > 0.0
+                        && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
                         && nbr_pj->d <= control->hbond_cut )
                 {
                     jhb = sbp_j->p_hbond;
@@ -1456,7 +1462,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
                 {
                     r_ij = nbr_pj->d;
 
-                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
+                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
                     {
                         C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
                         BO_s = (1.0 + control->bo_cut) * EXP( C12 );
@@ -1478,7 +1484,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
                         BO_pi = 0.0;
                     }
 
-                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
+                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
                     {
                         C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
                         BO_pi2 = EXP( C56 );

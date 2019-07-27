@@ -1098,7 +1098,7 @@ void BO( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     Print_Bond_Orders( system, control, data, workspace, lists, out_control );
 #endif
 }

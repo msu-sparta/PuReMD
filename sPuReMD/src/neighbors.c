@@ -23,7 +23,7 @@
 
 #include "box.h"
 #include "grid.h"
-#if defined(TEST_ENERGY)
+#if defined(DEBUG_FOCUS)
   #include "io_tools.h"
 #endif
 #include "list.h"
@@ -53,7 +53,7 @@ static void Choose_Neighbor_Counter( reax_system *system, control_params *contro
 {
     if ( control->periodic_boundaries )
     {
-#ifdef SMALL_BOX_SUPPORT
+#if defined(SMALL_BOX_SUPPORT)
         if ( system->box.box_norms[0] >= 2.0 * control->vlist_cut
                 && system->box.box_norms[1] >= 2.0 * control->vlist_cut
                 && system->box.box_norms[2] >= 2.0 * control->vlist_cut )
@@ -80,7 +80,7 @@ static void Choose_Neighbor_Finder( reax_system *system, control_params *control
 {
     if ( control->periodic_boundaries )
     {
-#ifdef SMALL_BOX_SUPPORT
+#if defined(SMALL_BOX_SUPPORT)
         if ( system->box.box_norms[0] >= 2.0 * control->vlist_cut
                 && system->box.box_norms[1] >= 2.0 * control->vlist_cut
                 && system->box.box_norms[2] >= 2.0 * control->vlist_cut )
@@ -102,7 +102,7 @@ static void Choose_Neighbor_Finder( reax_system *system, control_params *control
 }
 
 
-#ifdef DEBUG
+#if defined(DEBUG_FOCUS)
 static int compare_far_nbrs(const void *v1, const void *v2)
 {
     return ((*(far_neighbor_data *)v1).nbr - (*(far_neighbor_data *)v2).nbr);
@@ -149,7 +149,8 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
 
     Bin_Atoms( system, workspace );
 
-    /* first pick up a cell in the grid */
+    /* for each cell in the grid along the 3
+     * Cartesian directions: (i, j, k) => (x, y, z) */
     for ( i = 0; i < g->ncell[0]; i++ )
     {
         for ( j = 0; j < g->ncell[1]; j++ )
@@ -159,21 +160,24 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
                 nbrs = g->nbrs[i][j][k];
                 nbrs_cp = g->nbrs_cp[i][j][k];
 
-                /* pick up an atom from the current cell */
+                /* for each atom in the current cell */
                 for ( l = 0; l < g->top[i][j][k]; ++l )
                 {
                     atom1 = g->atoms[i][j][k][l];
                     itr = 0;
 
+                    /* for each of the neighboring grid cells within
+                     * the Verlet list cutoff distance */
                     while ( nbrs[itr][0] >= 0 )
                     {
-                        x = nbrs[itr][0];
-                        y = nbrs[itr][1];
-                        z = nbrs[itr][2];
-
+                        /* if the Verlet list cutoff covers the closest point
+                         * in the neighboring grid cell, then search through the cell's atoms */
                         if ( DistSqr_to_CP(nbrs_cp[itr], system->atoms[atom1].x )
                                 <= SQR(control->vlist_cut) )
                         {
+                            x = nbrs[itr][0];
+                            y = nbrs[itr][1];
+                            z = nbrs[itr][2];
                             nbr_atoms = g->atoms[x][y][z];
                             max = g->top[x][y][z];
 
@@ -203,11 +207,12 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "estimate nbrs done, num_far: %d\n", num_far );
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] estimate nbrs: num_far: %d\n",
+            (int) CEIL( num_far * SAFE_ZONE ) );
 #endif
 
-    return num_far * SAFE_ZONE;
+    return (int) CEIL( num_far * SAFE_ZONE );
 }
 
 
@@ -233,13 +238,13 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     num_far = 0;
     far_nbrs = lists[FAR_NBRS];
 
+    Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
+
     Bin_Atoms( system, workspace );
 
-#ifdef REORDER_ATOMS
+#if defined(REORDER_ATOMS)
     //Cluster_Atoms( system, workspace, control );
 #endif
-
-    Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
 
     /* for each cell in the grid along the 3
      * Cartesian directions: (i, j, k) => (x, y, z) */
@@ -319,7 +324,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     for ( i = 0; i < system->N; ++i )
     {
         qsort( &far_nbrs->far_nbr_list[ Start_Index(i, far_nbrs) ],
@@ -328,7 +333,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     }
 #endif
 
-#if defined(TEST_ENERGY)
+#if defined(DEBUG_FOCUS)
     Print_Far_Neighbors( system, control, data, workspace, lists );
 #endif
 

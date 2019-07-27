@@ -191,7 +191,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
     {
         for ( i = 0; i < system->N; ++i )
         {
-            if ( system->reax_param.sbp[system->atoms[i].type].p_hbond == 1 )
+            if ( system->reax_param.sbp[system->atoms[i].type].p_hbond == H_ATOM )
             {
                 tmp = Start_Index( workspace->hbond_index[i], hbonds );
                 Set_End_Index( workspace->hbond_index[i], tmp, hbonds );

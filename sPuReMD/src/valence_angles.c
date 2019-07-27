@@ -33,6 +33,9 @@
 void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         real *theta, real *cos_theta )
 {
+    assert( d_ji > 0.0 );
+    assert( d_jk > 0.0 );
+
     *cos_theta = rvec_Dot( dvec_ji, dvec_jk ) / ( d_ji * d_jk );
 
     if ( *cos_theta > 1.0 )
@@ -54,6 +57,9 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 {
     int t;
     real sqr_d_ji, sqr_d_jk, inv_dists, inv_dists3, dot_dvecs, Cdot_inv3;
+
+    assert( d_ji > 0.0 );
+    assert( d_jk > 0.0 );
 
     sqr_d_ji = SQR( d_ji );
     sqr_d_jk = SQR( d_jk );
@@ -398,7 +404,7 @@ void Valence_Angles( reax_system *system, control_params *control,
 #if defined(DEBUG_FOCUS)
                                     if ( IS_NAN_REAL(e_ang) )
                                     {
-                                        fprintf( stderr, "[ERROR] NaN detected for e_ang (%d). Terminating...\n", j );
+                                        fprintf( stderr, "[ERROR] NaN detected for e_ang (j = %d). Terminating...\n", j );
                                         fprintf( stderr, "[INFO] f7_ij = %f\n", f7_ij );
                                         fprintf( stderr, "[INFO] f7_jk = %f\n", f7_jk );
                                         fprintf( stderr, "[INFO] f8_Dj = %f\n", f8_Dj );
@@ -426,7 +432,7 @@ void Valence_Angles( reax_system *system, control_params *control,
 #if defined(DEBUG_FOCUS)
                                     if ( IS_NAN_REAL(e_ang) )
                                     {
-                                        fprintf( stderr, "[ERROR] NaN detected for e_pen (%d). Terminating...\n", j );
+                                        fprintf( stderr, "[ERROR] NaN detected for e_pen (j = %d). Terminating...\n", j );
                                         fprintf( stderr, "[INFO] p_pen1 = %f\n", p_pen1 );
                                         fprintf( stderr, "[INFO] f9_Dj = %f\n", f9_Dj );
                                         fprintf( stderr, "[INFO] exp_pen2ij = %f\n", exp_pen2ij );

@@ -49,6 +49,13 @@
  * which means multiple periodic images must be searched for interactions */
 #define SMALL_BOX_SUPPORT
 
+/* disable assertions if NOT compiling with debug support --
+ * the definition (or lack thereof) controls how the assert macro is defined */
+#if !defined(DEBUG) && !defined(DEBUG_FOCUS)
+  #define NDEBUG
+#endif
+#include <assert.h>
+
 #define SUCCESS (1)
 #define FAILURE (0)
 #define TRUE (1)

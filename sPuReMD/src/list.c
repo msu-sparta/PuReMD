@@ -26,6 +26,10 @@
 
 void Make_List( int n, int total_intrs, int type, reax_list* l )
 {
+    assert( n > 0 );
+    assert( total_intrs > 0 );
+    assert( l != NULL );
+
     l->n = n;
     l->total_intrs = total_intrs;
 
