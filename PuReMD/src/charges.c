@@ -36,11 +36,11 @@ int is_refactoring_step( control_params * const control,
         if ( control->cm_solver_pre_comp_refactor > 0
                 && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
         {
-            return 1;
+            return TRUE;
         }
         else
         {
-            return 0;
+            return FALSE;
         }
     }
     else

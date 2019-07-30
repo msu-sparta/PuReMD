@@ -208,8 +208,10 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
 
     if ( !control->restart )
     {
-        data->step = data->prev_steps = data->last_pc_step = 0;
-        data->refactor = 1;
+        data->step = 0;
+        data->prev_steps = 0;
+        data->last_pc_step = 0;
+        data->refactor = TRUE;
     }
 
     Compute_Total_Mass( system, data, mpi_data->comm_mesh3D );
@@ -391,8 +393,10 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
     }
 
     //if( !control->restart )
-    data->step = data->prev_steps = data->last_pc_step = 0;
-    data->refactor = 1;
+    data->step = 0;
+    data->prev_steps = 0;
+    data->last_pc_step = 0;
+    data->refactor = TRUE;
 
     return SUCCESS;
 }

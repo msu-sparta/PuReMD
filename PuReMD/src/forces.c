@@ -342,10 +342,9 @@ static void Init_Distance( reax_system *system, control_params *control,
     reax_atom *atom_i, *atom_j;
 
     far_nbrs = lists[FAR_NBRS];
-    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
     renbr = is_refactoring_step( control, data );
 
-    if ( !renbr )
+    if ( renbr == FALSE )
     {
         for ( i = 0; i < system->N; ++i )
         {
@@ -399,11 +398,10 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
     H = workspace->H;
     H->n = system->n;
     Htop = 0;
-    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
-    is_refactoring_step( control, data );
-
+    renbr = is_refactoring_step( control, data );
     nt_flag = 1;
-    if( renbr )
+
+    if ( renbr == TRUE )
     {
         for ( i = 0; i < 6; ++i )
         {
@@ -618,11 +616,10 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
     H = workspace->H;
     H->n = system->n;
     Htop = 0;
-    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
     renbr = is_refactoring_step( control, data );
-
     nt_flag = 1;
-    if ( renbr )
+
+    if ( renbr == TRUE )
     {
         for ( i = 0; i < 6; ++i )
         {
@@ -1330,7 +1327,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
 }
 
 
-void Init_Force_Functions( control_params *control )
+static void Init_Force_Functions( control_params *control )
 {
     Interaction_Functions[0] = &BO;
     Interaction_Functions[1] = &Bonds; //Dummy_Interaction;
@@ -1352,7 +1349,7 @@ void Init_Force_Functions( control_params *control )
 }
 
 
-void Compute_Bonded_Forces( reax_system *system, control_params *control,
+static void Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, MPI_Comm comm )
 {
@@ -1382,7 +1379,7 @@ void Compute_Bonded_Forces( reax_system *system, control_params *control,
 }
 
 
-void Compute_NonBonded_Forces( reax_system *system, control_params *control,
+static void Compute_NonBonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, MPI_Comm comm )
 {
@@ -1413,7 +1410,7 @@ void Compute_NonBonded_Forces( reax_system *system, control_params *control,
 /* this version of Compute_Total_Force computes forces from
  * coefficients accumulated by all interaction functions.
  * Saves enormous time & space! */
-void Compute_Total_Force( reax_system *system, control_params *control,
+static void Compute_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, mpi_datatypes *mpi_data )
 {
@@ -1473,9 +1470,9 @@ void Compute_Total_Force( reax_system *system, control_params *control,
 }
 
 
-void Init_Forces( reax_system *system, control_params *control,
-                  simulation_data *data, storage *workspace, reax_list **lists,
-                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
+static void Init_Forces( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
 {
     double t_start, t_dist, t_cm, t_bond;
     double timings[3], t_total[3];
@@ -1535,438 +1532,7 @@ void Init_Forces( reax_system *system, control_params *control,
 }
 
 
-//void Init_Forces( reax_system *system, control_params *control,
-//                  simulation_data *data, storage *workspace, reax_list **lists,
-//                  output_controls *out_control, MPI_Comm comm, mpi_datatypes *mpi_data )
-//{
-//    int i, j, pj;
-//    int start_i, end_i;
-//    int type_i, type_j;
-//    int Htop, btop_i, num_bonds, num_hbonds;
-//    int ihb, jhb, ihb_top;
-//    int local, flag, renbr;
-//    real r_ij, cutoff;
-//    sparse_matrix *H;
-//    reax_list *far_nbrs, *bonds, *hbonds;
-//    single_body_parameters *sbp_i, *sbp_j;
-//    two_body_parameters *twbp;
-//    reax_atom *atom_i, *atom_j;
-//    int jhb_top;
-//    int start_j, end_j;
-//    int btop_j;
-//#if defined(NEUTRAL_TERRITORY)
-//    int mark[6];
-//    int total_cnt[6];
-//    int bin[6];
-//    int total_sum[6];
-//    int nt_flag;
-//#endif
-//
-//    far_nbrs = lists[FAR_NBRS];
-//    bonds = lists[BONDS];
-//    hbonds = lists[HBONDS];
-//
-//
-//    for ( i = 0; i < system->n; ++i )
-//        workspace->bond_mark[i] = 0;
-//    for ( i = system->n; i < system->N; ++i )
-//    {
-//        /* put ghost atoms to an infinite distance (i.e., 1000) */
-//        workspace->bond_mark[i] = 1000;
-//    }
-//
-//    H = workspace->H;
-//    H->n = system->n;
-//    Htop = 0;
-//    num_bonds = 0;
-//    num_hbonds = 0;
-//    btop_i = 0;
-//    renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
-//
-//#if defined(NEUTRAL_TERRITORY)
-//    nt_flag = 1;
-//    if( renbr )
-//    {
-//        for ( i = 0; i < 6; ++i )
-//        {
-//            total_cnt[i] = 0;
-//            bin[i] = 0;
-//            total_sum[i] = 0;
-//        }
-//
-//        for ( i = system->n; i < system->N; ++i )
-//        {
-//            atom_i = &system->my_atoms[i];
-//
-//            if( atom_i->nt_dir != -1 )
-//            {
-//                total_cnt[ atom_i->nt_dir ]++;
-//            }
-//        }
-//
-//        total_sum[0] = system->n;
-//        for ( i = 1; i < 6; ++i )
-//        {
-//            total_sum[i] = total_sum[i-1] + total_cnt[i-1];
-//        }
-//
-//        for ( i = system->n; i < system->N; ++i )
-//        {
-//            atom_i = &system->my_atoms[i];
-//
-//            if( atom_i->nt_dir != -1 )
-//            {
-//                atom_i->pos = total_sum[ atom_i->nt_dir ] + bin[ atom_i->nt_dir ];
-//                bin[ atom_i->nt_dir ]++;
-//            }
-//        }
-//        H->NT = total_sum[5] + total_cnt[5];
-//    }
-//
-//    mark[0] = mark[1] = 1;
-//    mark[2] = mark[3] = mark[4] = mark[5] = 2;
-//#endif
-//
-//    for ( i = 0; i < system->N; ++i )
-//    {
-//        atom_i = &system->my_atoms[i];
-//        type_i  = atom_i->type;
-//        start_i = Start_Index(i, far_nbrs);
-//        end_i = End_Index(i, far_nbrs);
-//
-//        if ( far_nbrs->format == HALF_LIST )
-//        {
-//            // start at end because other atoms
-//            // can add to this atom's list (half-list)
-//            btop_i = End_Index( i, bonds );
-//        }
-//        else if ( far_nbrs->format == FULL_LIST )
-//        {
-//            btop_i = Start_Index( i, bonds );
-//        }
-//        sbp_i = &system->reax_param.sbp[type_i];
-//
-//        if ( i < system->n )
-//        {
-//            local = 1;
-//            cutoff = control->nonb_cut;
-//        }
-//#if defined(NEUTRAL_TERRITORY)
-//        else if ( atom_i->nt_dir != -1 )
-//        {
-//            local = 2;
-//            cutoff = control->nonb_cut;
-//            nt_flag = 0;
-//        }
-//#endif
-//        else
-//        {
-//            local = 0;
-//            cutoff = control->bond_cut;
-//        }
-//
-//        ihb = -1;
-//        ihb_top = -1;
-//        if ( local == 1 )
-//        {
-//            H->start[i] = Htop;
-//            H->entries[Htop].j = i;
-//            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
-//                    workspace, i, j, r_ij, DIAGONAL );
-//            ++Htop;
-//
-//            if ( control->hbond_cut > 0 )
-//            {
-//                ihb = sbp_i->p_hbond;
-//                if ( ihb == 1 )
-//                {
-//                    if ( far_nbrs->format == HALF_LIST )
-//                    {
-//                        // start at end because other atoms
-//                        // can add to this atom's list (half-list)
-//                        ihb_top = End_Index( atom_i->Hindex, hbonds );
-//                    }
-//                    else if ( far_nbrs->format == FULL_LIST )
-//                    {
-//                        ihb_top = Start_Index( atom_i->Hindex, hbonds );
-//                    }
-//                }
-//                else
-//                {
-//                    ihb_top = -1;
-//                }
-//            }
-//        }
-//
-//        // update i-j distance - check if j is within cutoff
-//        for ( pj = start_i; pj < end_i; ++pj )
-//        {
-//            j = far_nbrs->far_nbr_list.nbr[pj];
-//            atom_j = &system->my_atoms[j];
-//
-//            if ( renbr )
-//            {
-//                if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
-//                    flag = 1;
-//                else
-//                    flag = 0;
-//            }
-//            else
-//            {
-//                far_nbrs->far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
-//                far_nbrs->far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
-//                far_nbrs->far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
-//                far_nbrs->far_nbr_list.d[pj] = rvec_Norm_Sqr( far_nbrs->far_nbr_list.dvec[pj] );
-//
-//                if ( far_nbrs->far_nbr_list.d[pj] <= SQR(cutoff) )
-//                {
-//                    far_nbrs->far_nbr_list.d[pj] = sqrt( far_nbrs->far_nbr_list.d[pj] );
-//                    flag = 1;
-//                }
-//                else
-//                {
-//                    flag = 0;
-//                }
-//            }
-//
-//            if ( flag )
-//            {
-//                type_j = atom_j->type;
-//                r_ij = far_nbrs->far_nbr_list.d[pj];
-//                sbp_j = &system->reax_param.sbp[type_j];
-//                twbp = &system->reax_param.tbp[type_i][type_j];
-//
-//                if ( local == 1 )
-//                {
-//                    // H matrix entry
-//#if defined(NEUTRAL_TERRITORY)
-//                    if ( atom_j->nt_dir > 0 || (j < system->n
-//                                && (H->format == SYM_FULL_MATRIX
-//                                    || (H->format == SYM_HALF_MATRIX && i < j))) )
-//                    {
-//                        if( j < system->n )
-//                        {
-//                            H->entries[Htop].j = j;
-//                        }
-//                        else
-//                        {
-//                            H->entries[Htop].j = atom_j->pos;
-//                        }
-//
-//                        if ( control->tabulate == 0 )
-//                        {
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
-//                                    workspace, i, j, r_ij, OFF_DIAGONAL );
-//                        }
-//                        else 
-//                        {
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-//                                    LR, i, j, r_ij, OFF_DIAGONAL );
-//                        }
-//
-//                        ++Htop;
-//                    }
-//#else
-//                    if ( (far_nbrs->format == HALF_LIST
-//                            && (j < system->n || atom_i->orig_id < atom_j->orig_id))
-//                      || far_nbrs->format == FULL_LIST )
-//                    {
-//                        H->entries[Htop].j = j;
-//
-//                        if ( control->tabulate == 0 )
-//                        {
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
-//                                    workspace, i, j, r_ij, OFF_DIAGONAL );
-//                        }
-//                        else
-//                        {
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-//                                    LR, i, j, r_ij, OFF_DIAGONAL );
-//                        }
-//
-//                        ++Htop;
-//                    }
-//#endif
-//
-//                    // hydrogen bond lists
-//                    if ( control->hbond_cut > 0.0
-//                            && (ihb == 1 || ihb == 2)
-//                            && far_nbrs->far_nbr_list.d[pj] <= control->hbond_cut )
-//                    {
-//                        // fprintf( stderr, "%d %d\n", atom1, atom2 );
-//                        jhb = sbp_j->p_hbond;
-//                        if ( ihb == 1 && jhb == 2 )
-//                        {
-//                            hbonds->hbond_list[ihb_top].nbr = j;
-//                            hbonds->hbond_list[ihb_top].scl = 1;
-//                            hbonds->hbond_list[ihb_top].ptr = pj;
-//                            ++ihb_top;
-//                            ++num_hbonds;
-//                        }
-//                        // only add to list for local j (far nbrs is half-list)
-//                        else if ( far_nbrs->format == HALF_LIST
-//                                && (j < system->n && ihb == 2 && jhb == 1) )
-//                        {
-//                            jhb_top = End_Index( atom_j->Hindex, hbonds );
-//                            hbonds->hbond_list[jhb_top].nbr = i;
-//                            hbonds->hbond_list[jhb_top].scl = -1;
-//                            hbonds->hbond_list[jhb_top].ptr = pj;
-//                            Set_End_Index( atom_j->Hindex, jhb_top + 1, hbonds );
-//                            ++num_hbonds;
-//                        }
-//                    }
-//                }
-//#if defined(NEUTRAL_TERRITORY)
-//                else if ( local == 2 )
-//                {
-//                    // H matrix entry 
-//                    if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] 
-//                                && ( H->format == SYM_FULL_MATRIX
-//                                    || (H->format == SYM_HALF_MATRIX && atom_i->pos < atom_j->pos))) 
-//                            || ( j < system->n && atom_i->nt_dir != 0 && H->format == SYM_FULL_MATRIX ))
-//                    {
-//                        if( !nt_flag )
-//                        {
-//                            nt_flag = 1;
-//                            H->start[atom_i->pos] = Htop;
-//                        }
-//
-//                        if( j < system->n )
-//                        {
-//                            H->entries[Htop].j = j;
-//                        }
-//                        else
-//                        {
-//                            H->entries[Htop].j = atom_j->pos;
-//                        }
-//
-//                        if ( control->tabulate == 0 )
-//                        {
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( system, control,
-//                                    workspace, i, j, r_ij, OFF_DIAGONAL );
-//                        }
-//                        else 
-//                        {
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-//                                    LR, i, j, r_ij, OFF_DIAGONAL );
-//                        }
-//
-//                        ++Htop;
-//                    }
-//                }
-//#endif
-//
-//                // uncorrected bond orders
-//                if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-//                    far_nbrs->far_nbr_list.d[pj] <= control->bond_cut
-//                    && BOp( workspace, bonds, control->bo_cut,
-//                         i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
-//                         &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
-//                         &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-//                         sbp_i, sbp_j, twbp ) )
-//                {
-//                    num_bonds += 2;
-//                    ++btop_i;
-//
-//                    if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
-//                        workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
-//                    else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
-//                    {
-//                        workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
-//                    }
-//                }
-//            }
-//        }
-//
-//        Set_End_Index( i, btop_i, bonds );
-//        if ( local == 1 )
-//        {
-//            H->end[i] = Htop;
-//            if ( ihb == 1 )
-//                Set_End_Index( atom_i->Hindex, ihb_top, hbonds );
-//        }
-//#if defined(NEUTRAL_TERRITORY)
-//        else if ( local == 2 )
-//        {
-//            if( nt_flag )
-//            {
-//                H->end[atom_i->pos] = Htop;
-//            }
-//            else
-//            {
-//                 H->start[atom_i->pos] = 0;
-//                 H->end[atom_i->pos] = 0;
-//            }
-//        }
-//#endif
-//    }
-//
-//    if ( far_nbrs->format == FULL_LIST )
-//    {
-//
-//        for( i = 0; i < system->N; ++i )
-//            qsort( &bonds->bond_list[Start_Index(i, bonds)],
-//                    Num_Entries(i, bonds), sizeof(bond_data), compare_bonds );
-//
-//        // set sym_index for bonds list (far_nbrs full list)
-//        for ( i = 0; i < system->N; ++i )
-//        {
-//            start_i = Start_Index( i, bonds );
-//            end_i = End_Index( i, bonds );
-//
-//            for ( btop_i = start_i; btop_i < end_i; ++btop_i )
-//            {
-//                j = bonds->bond_list[btop_i].nbr;
-//                start_j = Start_Index( j, bonds );
-//                end_j = End_Index( j, bonds );
-//
-//                for ( btop_j = start_j; btop_j < end_j; ++btop_j )
-//                {
-//                    if ( bonds->bond_list[btop_j].nbr == i )
-//                    {
-//                        bonds->bond_list[btop_i].sym_index = btop_j;
-//                        break;
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//#if defined(DEBUG)
-//    Print_Sparse_Matrix2( system, H, NULL );
-//#endif
-//
-//    workspace->realloc.Htop = Htop;
-//    workspace->realloc.num_bonds = num_bonds;
-//    workspace->realloc.num_hbonds = num_hbonds;
-//
-//#if defined(DEBUG_FOCUS)
-//    fprintf( stderr, "p%d @ step%d: Htop = %d num_bonds = %d num_hbonds = %d\n",
-//             system->my_rank, data->step, Htop, num_bonds, num_hbonds );
-//    MPI_Barrier( comm );
-//#endif
-//
-//#if defined( DEBUG )
-//    Print_Bonds( system, bonds, "debugbonds.out" );
-//    Print_Bond_List2( system, bonds, "pbonds.out" );
-//    Print_Sparse_Matrix( system, H );
-//    for ( i = 0; i < H->n; ++i )
-//        for ( j = H->start[i]; j < H->end[i]; ++j )
-//            fprintf( stderr, "%d %d %.15e\n",
-//                     MIN(system->my_atoms[i].orig_id,
-//                         system->my_atoms[H->entries[j].j].orig_id),
-//                     MAX(system->my_atoms[i].orig_id,
-//                         system->my_atoms[H->entries[j].j].orig_id),
-//                     H->entries[j].val );
-//#endif
-//
-//    Validate_Lists( system, workspace, lists, data->step,
-//                    system->n, system->N, system->numH, comm );
-//
-//}
-
-
-void Init_Forces_noQEq( reax_system *system, control_params *control,
+static void Init_Forces_No_Charges( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control, MPI_Comm comm )
 {
@@ -2002,15 +1568,15 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
     num_bonds = 0;
     num_hbonds = 0;
     btop_i = 0;
-    //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
     renbr = is_refactoring_step( control, data );
 
     for ( i = 0; i < system->N; ++i )
     {
-        atom_i = &(system->my_atoms[i]);
+        atom_i = &system->my_atoms[i];
         type_i  = atom_i->type;
         start_i = Start_Index(i, far_nbrs);
-        end_i   = End_Index(i, far_nbrs);
+        end_i = End_Index(i, far_nbrs);
+
         if ( far_nbrs->format == HALF_LIST )
         {
             /* start at end because other atoms
@@ -2064,7 +1630,7 @@ void Init_Forces_noQEq( reax_system *system, control_params *control,
             j = far_nbrs->far_nbr_list.nbr[pj];
             atom_j = &system->my_atoms[j];
 
-            if ( renbr )
+            if ( renbr == TRUE )
             {
                 if ( far_nbrs->far_nbr_list.d[pj] <= cutoff )
                 {
@@ -2428,7 +1994,7 @@ void Compute_Forces( reax_system *system, control_params *control,
         mpi_datatypes *mpi_data )
 {
     MPI_Comm comm;
-    int qeq_flag;
+    int charge_flag;
 #if defined(LOG_PERFORMANCE)
     real t_start = 0.0, t_end;
 
@@ -2442,25 +2008,27 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     /********* init forces ************/
 #if defined(PURE_REAX)
-    if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
+    if ( control->charge_freq > 0
+            && (data->step - data->prev_steps) % control->charge_freq == 0 )
     {
-        qeq_flag = 1;
+        charge_flag = TRUE;
     }
     else
     {
-        qeq_flag = 0;
+        charge_flag = FALSE;
     }
 #elif defined(LAMMPS_REAX)
-    qeq_flag = 0;
+    charge_flag = FALSE;
 #endif
 
-    if ( qeq_flag )
+    if ( charge_flag == TRUE )
     {
-        Init_Forces( system, control, data, workspace, lists, out_control, comm, mpi_data );
+        Init_Forces( system, control, data, workspace,
+                lists, out_control, comm, mpi_data );
     }
     else
     {
-        Init_Forces_noQEq( system, control, data, workspace,
+        Init_Forces_No_Charges( system, control, data, workspace,
                 lists, out_control, comm );
     }
 
@@ -2496,7 +2064,7 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     /**************** qeq ************************/
 #if defined(PURE_REAX)
-    if ( qeq_flag )
+    if ( charge_flag == TRUE )
     {
         QEq( system, control, data, workspace, out_control, mpi_data );
     }
@@ -2506,43 +2074,53 @@ void Compute_Forces( reax_system *system, control_params *control,
     {
         t_end = MPI_Wtime( );
         data->timing.cm += t_end - t_start;
+        /* dynamically determine preconditioner recomputation rate */
         if ( control->cm_solver_pre_comp_refactor == -1 )
         {
-            // fprintf( stdout, "step =  %d --- pc time = %.3lf --- loss time = %.3lf\n", data->step, data->timing.cm_last_pre_comp + data->timing.last_nbrs, data->timing.cm_total_loss);
-            // fflush( stdout );
-            if ( data->refactor )
+            /* preconditioner just recomputed, record timings */
+            if ( data->refactor == TRUE )
             {
-                data->refactor = 0;
-                
+                data->refactor = FALSE;
                 data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-
                 data->timing.last_nbrs = data->timing.nbrs;
-
                 data->last_pc_step = data->step;
-                
-                data->timing.cm_optimum = data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv 
-                    + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog 
+                data->timing.cm_optimum = data->timing.cm_solver_pre_app
+                    + data->timing.cm_solver_spmv 
+                    + data->timing.cm_solver_vector_ops
+                    + data->timing.cm_solver_orthog 
                     + data->timing.cm_solver_tri_solve;
-
                 data->timing.cm_total_loss = ZERO;
-
             }
+            /* not enough initial guesses for spline extrapolation of initial guesses,
+             *  so do not record metrics */
             else if ( data->step <= 4 )
             {
-                data->timing.cm_optimum = data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv
-                    + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog
+                data->timing.cm_optimum = data->timing.cm_solver_pre_app
+                    + data->timing.cm_solver_spmv
+                    + data->timing.cm_solver_vector_ops
+                    + data->timing.cm_solver_orthog
                     + data->timing.cm_solver_tri_solve;
             }
             else
             {
-                data->timing.cm_total_loss += data->timing.cm_solver_pre_app + data->timing.cm_solver_spmv 
-                    + data->timing.cm_solver_vector_ops + data->timing.cm_solver_orthog 
-                    + data->timing.cm_solver_tri_solve - data->timing.cm_optimum;
+                /* record time lost from preconditioner degradation */
+                data->timing.cm_total_loss += data->timing.cm_solver_pre_app
+                    + data->timing.cm_solver_spmv 
+                    + data->timing.cm_solver_vector_ops
+                    + data->timing.cm_solver_orthog 
+                    + data->timing.cm_solver_tri_solve
+                    - data->timing.cm_optimum;
 
-                if ( data->timing.cm_total_loss > data->timing.cm_last_pre_comp + data->timing.last_nbrs || 
-                        data->step - data->last_pc_step + 1 >= control->reneighbor )
+                /* cases:
+                 *  - check if cumulative loss exceeds recomputation time,
+                 *    and if so, schedule recomputation
+                 *  - since preconditioner recomputation is coupled with
+                 *    neighbor list regeneration, schedule precomputation
+                 *    recomputation if neighbor lists are recomputed */
+                if ( data->timing.cm_total_loss > data->timing.cm_last_pre_comp + data->timing.last_nbrs
+                        || data->step - data->last_pc_step + 1 >= control->reneighbor )
                 {
-                    data->refactor = 1;
+                    data->refactor = TRUE;
                 }
             }
         }
@@ -2550,7 +2128,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     }
     if ( control->cm_solver_pre_comp_refactor == -1 )
     {
-        MPI_Bcast( &(data->refactor), 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
+        MPI_Bcast( &data->refactor, 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
     }
 #endif
 
