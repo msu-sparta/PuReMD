@@ -27,46 +27,22 @@
 #include "vector.h"
 
 
-static void Count_Geo_Atoms( FILE *geo, reax_system *system )
-{
-    int i, serial;
-    rvec x;
-    char element[3], name[9], line[MAX_LINE];
-
-    /* total number of atoms */
-    fscanf( geo, " %d", &system->N );
-
-    /* count atoms */
-    for ( i = 0; i < system->N; ++i )
-    {
-        fscanf( geo, CUSTOM_ATOM_FORMAT,
-                &serial, element, name, &x[0], &x[1], &x[2] );
-        Fit_to_Periodic_Box( &system->box, x );
-    }
-
-    fseek( geo, 0, SEEK_SET );
-    fgets( line, MAX_LINE, geo );
-    fgets( line, MAX_LINE, geo );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "N = %d\n\n", system->N );
-#endif
-}
-
-
-static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
+/* Parse geometry file to determine simulation box parameters.
+ *
+ * system: struct containing simulation box struct to initialize
+ * fp: file pointer to open geometry file 
+ * geo_format: type of geometry file
+ * */
+static int Read_Box_Info( reax_system *system, FILE *fp, int geo_format )
 {
     int ret, cryst_len;
     char *cryst;
     char line[MAX_LINE];
     char descriptor[9];
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
+    real box_x, box_y, box_z, alpha, beta, gamma;
     char s_group[12], s_zValue[12];
 
-    /* set the pointer to the beginning of the file */
-    fseek( geo, 0, SEEK_SET );
-
-    /* initialize variables */
     ret = FAILURE;
 
     switch ( geo_format )
@@ -76,35 +52,56 @@ static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
             cryst_len = 6;
             break;
 
-        default:
-            cryst = "BOX";
-            cryst_len = 3;
+        case CUSTOM:
+            cryst = "BOXGEO";
+            cryst_len = 6;
             break;
     }
 
-    /* locate the cryst line in the geo file, read it and
-     * initialize the big box */
-    while ( fgets( line, MAX_LINE, geo ) )
+    switch ( geo_format )
     {
-        if ( strncmp( line, cryst, cryst_len ) == 0 )
-        {
-            if ( geo_format == PDB )
+        case PDB:
+            fseek( fp, 0, SEEK_SET );
+
+            /* locate the box info line in the file, read it, and
+             * initialize the simulation box */
+            while ( fgets( line, MAX_LINE, fp ) )
             {
-                sscanf( line, PDB_CRYST1_FORMAT,
-                        descriptor, s_a, s_b, s_c,
-                        s_alpha, s_beta, s_gamma, s_group, s_zValue );
+                if ( strncmp( line, cryst, cryst_len ) == 0 )
+                {
+                    sscanf( line, PDB_CRYST1_FORMAT,
+                            descriptor, s_a, s_b, s_c,
+                            s_alpha, s_beta, s_gamma, s_group, s_zValue );
 
-                /* compute full volume tensor from the angles */
-                Setup_Box( atof(s_a),  atof(s_b), atof(s_c),
-                        atof(s_alpha), atof(s_beta), atof(s_gamma),
-                        &system->box );
+                    /* compute full volume tensor from the angles */
+                    Setup_Box( atof(s_a),  atof(s_b), atof(s_c),
+                            atof(s_alpha), atof(s_beta), atof(s_gamma),
+                            &system->box );
 
-                ret = SUCCESS;
-                break;
+                    ret = SUCCESS;
+                    break;
+                }
             }
-        }
+            break;
+
+        case CUSTOM:
+            fscanf( fp, CUSTOM_BOXGEO_FORMAT,
+                    descriptor, &box_x, &box_y, &box_z,
+                    &alpha, &beta, &gamma );
+
+            Setup_Box( atof(s_a),  atof(s_b), atof(s_c),
+                    atof(s_alpha), atof(s_beta), atof(s_gamma),
+                    &system->box );
+
+            ret = SUCCESS;
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unknown geometry file file (%d). Terminating...\n",
+                  geo_format );
+            break;
     }
-    if ( ferror( geo ) )
+    if ( ferror( fp ) )
     {
         ret = FAILURE;
     }
@@ -113,32 +110,84 @@ static int Read_Box_Info( reax_system *system, FILE *geo, int geo_format )
 }
 
 
+/* Parse geometry file to determine the number of atoms.
+ *
+ * system: struct containing simulation box struct to initialize
+ * fp: file pointer to open geometry file 
+ * geo_format: type of geometry file
+ * */
+static void Count_Atoms( reax_system *system, FILE *fp, int geo_format )
+{
+    char line[MAX_LINE];
+
+    fseek( fp, 0, SEEK_SET );
+    system->N = 0;
+
+    /* increment number of atoms for each line denoting an atom desc */
+    switch ( geo_format )
+    {
+        case PDB:
+            /* scan the entire file, looking for lines which
+             * start with the strings "ATOM" or "HETATM" */
+            while ( fgets( line, MAX_LINE, fp ) )
+            {
+                if ( strncmp( line, "ATOM", 4 ) == 0
+                        || strncmp( line, "HETATM", 6 ) == 0 )
+                {
+                    system->N++;
+                }
+            }
+
+            break;
+
+        case CUSTOM:
+            /* skip box info */
+            fgets( line, MAX_LINE, fp );
+
+            /* second line contains integer count
+             * of the number of atoms */
+            fscanf( fp, " %d", &system->N );
+
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unknown geometry file file (%d). Terminating...\n",
+                  geo_format );
+            break;
+    }
+
+    assert( system->N > 0 );
+
+#if defined(DEBUG)
+    fprintf( stderr, "[INFO] count atoms:\n" );
+    fprintf( stderr, "N = %d\n\n", system->N );
+#endif
+}
+
+
 void Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
-
     FILE *geo;
-    char descriptor[9];
     int i, serial, top;
-    real box_x, box_y, box_z, alpha, beta, gamma;
     rvec x;
     char element[3], name[9];
     reax_atom *atom;
 
-    /* open the geometry file */
     geo = sfopen( geo_file, "r" );
 
-    /* read box information */
-    fscanf( geo, CUSTOM_BOXGEO_FORMAT,
-            descriptor, &box_x, &box_y, &box_z, &alpha, &beta, &gamma );
-    /* initialize the box */
-    Setup_Box( box_x, box_y, box_z, alpha, beta, gamma, &(system->box) );
+    if ( Read_Box_Info( system, geo, CUSTOM ) == FAILURE )
+    {
+        fprintf( stderr, "[ERROR] Read_Box_Info: no BOXGEO line found in the geo file!" );
+        fprintf( stderr, " Terminating...\n" );
+        exit( INVALID_GEO );
+    }
 
-    /* count my atoms & allocate storage */
-    Count_Geo_Atoms( geo, system );
+    /* count atoms and allocate storage */
+    Count_Atoms( system, geo, CUSTOM );
     PreAllocate_Space( system, control, workspace );
 
-    /* read in my atom info */
+    /* parse atom info lines (3rd line and beyond) */
     top = 0;
     for ( i = 0; i < system->N; ++i )
     {
@@ -147,7 +196,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         Fit_to_Periodic_Box( &system->box, x );
 
 #if defined(DEBUG)
-        fprintf( stderr, "atom%d: %s %s %f %f %f\n",
+        fprintf( stderr, "[INFO] atom: id = %d, element = %s, name = %s, x = (%f, %f, %f)\n",
                  serial, element, name, x[0], x[1], x[2] );
 #endif
 
@@ -159,51 +208,12 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         rvec_Copy( atom->x, x );
         rvec_MakeZero( atom->v );
         rvec_MakeZero( atom->f );
-        atom->q = 0.;
+        atom->q = 0.0;
 
         top++;
     }
 
     sfclose( geo, "Read_Geo::geo" );
-}
-
-
-static void Count_PDB_Atoms( FILE *geo, reax_system *system )
-{
-    char *endptr = NULL;
-    char line[MAX_LINE];
-    char s_x[9], s_y[9], s_z[9];
-    rvec x;
-
-    fseek( geo, 0, SEEK_SET );
-    system->N = 0;
-
-    /* increment number of atoms for each line denoting an atom desc */
-    while ( fgets( line, MAX_LINE, geo ) )
-    {
-        if ( strncmp( line, "ATOM", 4 ) == 0
-                || strncmp( line, "HETATM", 6 ) == 0 )
-        {
-            system->N++;
-
-            strncpy( s_x, line + 30, sizeof(s_x) - 1 );
-            s_x[sizeof(s_x) - 1] = '\0';
-            strncpy( s_y, line + 38, sizeof(s_y) - 1 );
-            s_y[sizeof(s_y) - 1] = '\0';
-            strncpy( s_z, line + 46, sizeof(s_z) - 1 );
-            s_z[sizeof(s_z) - 1] = '\0';
-
-            Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
-                    strtod( s_z, &endptr ), &x );
-
-            Fit_to_Periodic_Box( &(system->box), x );
-        }
-    }
-
-#if defined(DEBUG)
-    fprintf( stderr, "[INFO] count atoms:\n" );
-    fprintf( stderr, "N = %d\n\n", system->N );
-#endif
 }
 
 
@@ -226,25 +236,23 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 
     endptr = NULL;
 
-    /* open pdb file */
     pdb = sfopen( pdb_file, "r" );
 
-    /* allocate memory for tokenizing pdb lines */
     Allocate_Tokenizer_Space( &s, MAX_LINE, &s1, MAX_LINE,
             &tmp, MAX_TOKENS, MAX_TOKEN_LEN );
 
-    /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )
     {
-        fprintf( stderr, "[ERROR] Read_Box_Info: no CRYST line in the pdb file!" );
+        fprintf( stderr, "[ERROR] Read_Box_Info: no CRYST line found in the pdb file!" );
         fprintf( stderr, " Terminating...\n" );
         exit( INVALID_GEO );
     }
 
-    Count_PDB_Atoms( pdb, system );
+    Count_Atoms( system, pdb, PDB );
     PreAllocate_Space( system, control, workspace );
 
-    /* start reading and processing the pdb file */
+    /* reset file pointer to beginning of file
+     * and parse the PDB file */
     fseek( pdb, 0, SEEK_SET );
     c = 0;
     c1 = 0;
@@ -258,7 +266,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
         s1[MAX_LINE - 1] = '\0';
         c1 = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-        /* process new line */
+        /* parse new line */
         if ( strncmp( tmp[0], "ATOM", 4 ) == 0
                 || strncmp( tmp[0], "HETATM", 6 ) == 0 )
         {
@@ -351,11 +359,13 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 top++;
 
 #if defined(DEBUG)
-                fprintf( stderr, "[INFO] atom: id = %d, name = %s, serial = %d, type = %d, ", top, atom->name, pdb_serial, atom->type );
-                fprintf( stderr, "x = %7.3f, %7.3f, %7.3f\n", atom->x[0], atom->x[1], atom->x[2] );
-                fflush( stderr );
+                fprintf( stderr, "[INFO] atom: id = %d, name = %s, serial = %d, type = %d, ",
+                        top, atom->name, pdb_serial, atom->type );
+                fprintf( stderr, "x = (%7.3f, %7.3f, %7.3f)\n",
+                        atom->x[0], atom->x[1], atom->x[2] );
 #endif
             }
+
             c++;
         }
 
@@ -503,14 +513,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     bgf = sfopen( bgf_file, "r" );
 
-    line = smalloc( sizeof(char) * MAX_LINE, "Read_BGF::line" );
-    backup = smalloc( sizeof(char) * MAX_LINE, "Read_BGF::backup" );
-    tokens = smalloc( sizeof(char*) * MAX_TOKENS, "Read_BGF::tokens" );
-    for ( i = 0; i < MAX_TOKENS; i++ )
-    {
-        tokens[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN,
-               "Read_BGF::tokens[i]" );
-    }
+    Allocate_Tokenizer_Space( &line, MAX_LINE, &backup, MAX_LINE,
+            &tokens, MAX_TOKENS, MAX_TOKEN_LEN );
 
     /* count number of atoms in the BGF file */
     system->N = 0;
@@ -603,8 +607,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             }
             else if ( strncmp( tokens[0], "HETATM", 6 ) == 0 )
             {
-                /* bgf hetatm:
-                   (7x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5) */
+                /* HETATM line format in BGF file:
+                 * (7x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5) */
                 strncpy( descriptor, backup, sizeof(descriptor) - 1 );
                 descriptor[sizeof(descriptor) - 1] = '\0';
                 strncpy( serial, backup + 7, sizeof(serial) - 1 );
@@ -637,7 +641,6 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "[ERROR] Invalid bgf serial" );
             workspace->map_serials[ bgf_serial ] = atom_cnt;
             workspace->orig_id[ atom_cnt ] = bgf_serial;
-            // fprintf( stderr, "map %d --> %d\n", bgf_serial, atom_cnt );
 
             /* copy atomic positions */
             system->atoms[atom_cnt].x[0] = strtod( s_x, &endptr );
@@ -667,7 +670,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             sscanf( backup, BGF_CRYSTX_FORMAT, descriptor,
                     s_a, s_b, s_c, s_alpha, s_beta, s_gamma );
 
-            /* Compute full volume tensor from the angles */
+            /* compute full volume tensor from the angles */
             Setup_Box( atof(s_a), atof(s_b), atof(s_c),
                     atof(s_alpha), atof(s_beta), atof(s_gamma),
                     &system->box );
@@ -695,19 +698,14 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                         workspace->map_serials[bgf_serial];
                 }
             }
-
-            /* fprintf( stderr, "restriction on %d:", ratom );
-            for( i = 0; i < workspace->restricted[ ratom ]; ++i )
-             fprintf( stderr, "  %d", workspace->restricted_list[ratom][i] );
-             fprintf( stderr, "\n" ); */
         }
 
         /* clear previous input line */
-        line[0] = 0;
+        line[0] = '\0';
 
         for ( i = 0; i < token_cnt; ++i )
         {
-            tokens[i][0] = 0;
+            tokens[i][0] = '\0';
         }
     }
     if ( ferror( bgf ) )
