@@ -341,9 +341,14 @@ typedef struct output_controls output_controls;
 typedef struct spuremd_handle spuremd_handle;
 
 
-/* function pointer for calculating an interaction */
+/* function pointer for calculating a bonded interaction */
 typedef void (*interaction_function)( reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls* );
+#if defined(TEST_FORCES)
+/* function pointers for printed bonded interactions */
+typedef void (*print_interaction)(reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+#endif
 /* function pointer for evolving the atomic system (i.e., updating the positions)
  * given the pre-computed forces from the prescribed interactions */
 typedef void (*evolve_function)( reax_system*, control_params*,
@@ -809,6 +814,10 @@ struct control_params
     int num_threads;
     /* function pointers for bonded interactions */
     interaction_function intr_funcs[NO_OF_INTERACTIONS];
+#if defined(TEST_FORCES)
+    /* function pointers for printed bonded interactions */
+    print_interaction print_intr_funcs[NO_OF_INTERACTIONS];
+#endif
 };
 
 

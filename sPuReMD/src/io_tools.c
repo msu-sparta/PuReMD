@@ -28,19 +28,14 @@
 #include "vector.h"
 
 
-#ifdef TEST_FORCES
-void Dummy_Printer( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
-{
-}
+#if defined(TEST_FORCES)
 
 
 void Print_Bond_Orders( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int  i, pj, pk;
+    int i, pj, pk;
     bond_order_data *bo_ij;
     reax_list *bonds = lists[BONDS];
     reax_list *dBOs = lists[DBO];
@@ -381,18 +376,18 @@ void Compare_Total_Forces( reax_system *system, control_params *control,
 }
 
 
-void Init_Force_Test_Functions( )
+void Init_Force_Test_Functions( control_params *control )
 {
-    Print_Interactions[0] = &Print_Bond_Orders;
-    Print_Interactions[1] = &Print_Bond_Forces;
-    Print_Interactions[2] = &Print_LonePair_Forces;
-    Print_Interactions[3] = &Print_OverUnderCoor_Forces;
-    Print_Interactions[4] = &Print_Three_Body_Forces;
-    Print_Interactions[5] = &Print_Four_Body_Forces;
-    Print_Interactions[6] = &Print_Hydrogen_Bond_Forces;
-    Print_Interactions[7] = &Dummy_Printer;
-    Print_Interactions[8] = &Dummy_Printer;
-    Print_Interactions[9] = &Dummy_Printer;
+    control->print_intr_funcs[0] = &Print_Bond_Orders;
+    control->print_intr_funcs[1] = &Print_Bond_Forces;
+    control->print_intr_funcs[2] = &Print_LonePair_Forces;
+    control->print_intr_funcs[3] = &Print_OverUnderCoor_Forces;
+    control->print_intr_funcs[4] = &Print_Three_Body_Forces;
+    control->print_intr_funcs[5] = &Print_Four_Body_Forces;
+    control->print_intr_funcs[6] = &Print_Hydrogen_Bond_Forces;
+    control->print_intr_funcs[7] = NULL;
+    control->print_intr_funcs[8] = NULL;
+    control->print_intr_funcs[9] = NULL;
 }
 #endif
 
@@ -470,42 +465,44 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
 void Print_Far_Neighbors( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists )
 {
-    int i, j, id_i, id_j;
+    int i, pj, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
-    reax_list *far_nbrs = lists[FAR_NBRS];
+    reax_list *far_nbrs;
 
-    snprintf( fname, MAX_STR, "%.*s.%10d.far_nbrs", MAX_STR - 21, control->sim_name, data->step );
+    far_nbrs = lists[FAR_NBRS];
+
+    snprintf( fname, MAX_STR, "%.*s.%010d.far_nbrs", MAX_STR - 21, control->sim_name, data->step );
     fout = sfopen( fname, "w" );
 
     for ( i = 0; i < system->N; ++i )
     {
         id_i = workspace->orig_id[i];
 
-        for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
+        for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
         {
-            id_j = workspace->orig_id[far_nbrs->far_nbr_list[j].nbr];
+            id_j = workspace->orig_id[far_nbrs->far_nbr_list[pj].nbr];
 
             fprintf( fout, "%6d%6d%3d%3d%3d %12.7f\n",
-                     id_j, id_i,
-                     far_nbrs->far_nbr_list[j].rel_box[0],
-                     far_nbrs->far_nbr_list[j].rel_box[1],
-                     far_nbrs->far_nbr_list[j].rel_box[2],
-                     far_nbrs->far_nbr_list[j].d );
+                     id_i, id_j,
+                     far_nbrs->far_nbr_list[pj].rel_box[0],
+                     far_nbrs->far_nbr_list[pj].rel_box[1],
+                     far_nbrs->far_nbr_list[pj].rel_box[2],
+                     far_nbrs->far_nbr_list[pj].d );
 
 //            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
 //                     id_i, id_j,
-//                     far_nbrs->far_nbr_list[j].d,
-//                     far_nbrs->far_nbr_list[j].dvec[0],
-//                     far_nbrs->far_nbr_list[j].dvec[1],
-//                     far_nbrs->far_nbr_list[j].dvec[2] );
+//                     far_nbrs->far_nbr_list[pj].d,
+//                     far_nbrs->far_nbr_list[pj].dvec[0],
+//                     far_nbrs->far_nbr_list[pj].dvec[1],
+//                     far_nbrs->far_nbr_list[pj].dvec[2] );
 //
 //            fprintf( fout, "%6d%6d%23.15e%23.15e%23.15e%23.15e\n",
 //                     id_j, id_i,
-//                     far_nbrs->far_nbr_list[j].d,
-//                     -far_nbrs->far_nbr_list[j].dvec[0],
-//                     -far_nbrs->far_nbr_list[j].dvec[1],
-//                     -far_nbrs->far_nbr_list[j].dvec[2] );
+//                     far_nbrs->far_nbr_list[pj].d,
+//                     -far_nbrs->far_nbr_list[pj].dvec[0],
+//                     -far_nbrs->far_nbr_list[pj].dvec[1],
+//                     -far_nbrs->far_nbr_list[pj].dvec[2] );
         }
     }
 

@@ -1142,8 +1142,8 @@ void Initialize( reax_system *system, control_params *control,
     /* These are done in forces.c, only forces.c can see all those functions */
     Init_Bonded_Force_Functions( control );
 
-#ifdef TEST_FORCES
-    Init_Force_Test_Functions( );
+#if defined(TEST_FORCES)
+    Init_Force_Test_Functions( control );
 #endif
 
     if ( control->tabulate )

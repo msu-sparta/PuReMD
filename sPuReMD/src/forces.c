@@ -54,13 +54,6 @@ static int compare_bonds( const void *p1, const void *p2 )
 #endif
 
 
-static void Dummy_Interaction( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
-{
-}
-
-
 void Init_Bonded_Force_Functions( control_params *control )
 {
     control->intr_funcs[0] = &BO;
@@ -74,12 +67,12 @@ void Init_Bonded_Force_Functions( control_params *control )
     }
     else
     {
-        control->intr_funcs[5] = &Dummy_Interaction;
+        control->intr_funcs[5] = NULL;
     }
-    control->intr_funcs[6] = &Dummy_Interaction; //empty
-    control->intr_funcs[7] = &Dummy_Interaction; //empty
-    control->intr_funcs[8] = &Dummy_Interaction; //empty
-    control->intr_funcs[9] = &Dummy_Interaction; //empty
+    control->intr_funcs[6] = NULL;
+    control->intr_funcs[7] = NULL;
+    control->intr_funcs[8] = NULL;
+    control->intr_funcs[9] = NULL;
 }
 
 
@@ -122,15 +115,21 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
     /* Implement all the function calls as function pointers */
     for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
     {
-        (control->intr_funcs[i])( system, control, data, workspace,
-                lists, out_control );
+        if ( control->intr_funcs[i] != NULL )
+        {
+            (control->intr_funcs[i])( system, control, data, workspace,
+                    lists, out_control );
+        }
     }
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
     {
-        (Print_Interactions[i])( system, control, data, workspace,
-                lists, out_control );
+        if ( control->print_intr_funcs[i] != NULL )
+        {
+            (control->print_intr_funcs[i])( system, control, data, workspace,
+                    lists, out_control );
+        }
     }
 #endif
 }
