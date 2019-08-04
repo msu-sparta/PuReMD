@@ -218,7 +218,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         real e_tor, e_con;
         rvec dvec_li;
         rvec force, ext_press;
-        ivec rel_box_jl;
+        ivec rel_box_jl, rel_box_li;
         //rtensor total_rtensor, temp_rtensor;
         four_body_header *fbh;
         four_body_parameters *fbp;
@@ -376,8 +376,17 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             tan_jkl_i = cos_jkl / sin_jkl;
                                         }
 
-                                        Sq_Distance_on_T3( system->atoms[l].x, system->atoms[i].x,
-                                                &system->box, dvec_li );
+                                        /* compute relative integer coordinates
+                                         * for periodic image of simulation
+                                         * box for i-l bond using the transitive
+                                         * propertiy of the i-j, j-k, and k-l
+                                         * bond relative coordinates */
+                                        ivec_Sum( rel_box_li, pbond_ij->rel_box, pbond_jk->rel_box );
+                                        ivec_Sum( rel_box_li, rel_box_li, pbond_kl->rel_box );
+
+                                        Compute_Distance( &system->box,
+                                                system->atoms[l].x, system->atoms[i].x,
+                                                rel_box_li, dvec_li );
                                         r_li = rvec_Norm( dvec_li );
 
                                         /* omega and its derivative */

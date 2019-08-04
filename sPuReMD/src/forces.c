@@ -82,7 +82,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
 {
     int i;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     /* Mark beginning of a new timestep in each energy file */
     fprintf( out_control->ebond, "step: %d\n%6s%6s%12s%12s%12s\n",
              data->step, "atom1", "atom2", "bo", "ebond", "total" );
@@ -112,7 +112,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
              "phi", "bo(12)", "bo(23)", "bo(34)", "econ", "total" );
 #endif
 
-    /* Implement all the function calls as function pointers */
+    /* function calls for bonded interactions */
     for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
     {
         if ( control->intr_funcs[i] != NULL )
@@ -123,6 +123,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
     }
 
 #if defined(TEST_FORCES)
+    /* function calls for printing bonded interactions */
     for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
     {
         if ( control->print_intr_funcs[i] != NULL )
@@ -141,7 +142,7 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
 {
     real t_start, t_elapsed;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     fprintf( out_control->evdw, "step: %d\n%6s%6s%12s%12s%12s\n",
              data->step, "atom1", "atom2", "r12", "evdw", "total" );
     fprintf( out_control->ecou, "step: %d\n%6s%6s%12s%12s%12s%12s%12s\n",
@@ -190,7 +191,7 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
                 lists, out_control );
     }
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     Print_vdW_Coulomb_Forces( system, control, data, workspace,
             lists, out_control );
 #endif
@@ -764,6 +765,7 @@ static void Init_Forces( reax_system *system, control_params *control,
         if ( control->hbond_cut > 0.0 )
         {
             ihb = sbp_i->p_hbond;
+
             if ( ihb == H_ATOM )
             {
                 ihb_top = End_Index( workspace->hbond_index[i], hbonds );
@@ -779,7 +781,6 @@ static void Init_Forces( reax_system *system, control_params *control,
             ihb_top = -1;
         }
 
-        /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
             nbr_pj = &far_nbrs->far_nbr_list[pj];
@@ -787,7 +788,9 @@ static void Init_Forces( reax_system *system, control_params *control,
             flag = FALSE;
             flag_sp = FALSE;
 
-            /* check if reneighboring step */
+            /* check if reneighboring step --
+             * atomic distances just computed via
+             * Verlet list, so use current distances */
             if ( renbr == TRUE )
             {
                 if ( nbr_pj->d <= control->nonb_cut )
@@ -800,11 +803,13 @@ static void Init_Forces( reax_system *system, control_params *control,
                     }
                 }
             }
+            /* update atomic distances */
             else
             {
                 atom_j = &system->atoms[j];
-                nbr_pj->d = Sq_Distance_on_T3( atom_i->x, atom_j->x,
-                        &system->box, nbr_pj->dvec );
+                nbr_pj->d = Compute_Distance( &system->box,
+                        atom_i->x, atom_j->x, nbr_pj->rel_box,
+                        nbr_pj->dvec );
 
                 if ( nbr_pj->d <= SQR(control->nonb_cut) )
                 {
@@ -1134,7 +1139,9 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
             flag = FALSE;
             flag_sp = FALSE;
 
-            /* check if reneighboring step */
+            /* check if reneighboring step --
+             * atomic distances just computed via
+             * Verlet list, so use current distances */
             if ( renbr == TRUE )
             {
                 if ( nbr_pj->d <= control->nonb_cut )
@@ -1147,15 +1154,17 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                     }
                 }
             }
+            /* update atomic distances */
             else
             {
                 atom_j = &system->atoms[j];
-                nbr_pj->d = Sq_Distance_on_T3( atom_i->x, atom_j->x,
-                        &system->box, nbr_pj->dvec );
+                nbr_pj->d = Compute_Distance( &system->box,
+                        atom_i->x, atom_j->x, nbr_pj->rel_box,
+                        nbr_pj->dvec );
 
-                if ( nbr_pj->d  <= SQR(control->nonb_cut) )
+                if ( nbr_pj->d <= SQR(control->nonb_cut) )
                 {
-                    if ( nbr_pj->d <= SQR(control->nonb_sp_cut))
+                    if ( nbr_pj->d <= SQR(control->nonb_sp_cut) )
                     {
                         flag_sp = TRUE;
                     }

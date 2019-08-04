@@ -346,12 +346,13 @@ void Compute_Pressure( reax_system* system, simulation_data* data,
 
     for ( i = 0; i < system->N; ++i )
     {
-        p_atom = &( system->atoms[i] );
-        // Distance_on_T3_Gen( data->rcm, p_atom->x, &(system->box), &dx );
+        p_atom = &system->atoms[i];
+
+//        Distance_on_T3_Gen( data->rcm, p_atom->x, &system->box, &dx );
         rvec_OuterProduct( temp, p_atom->v, p_atom->v );
         rtensor_ScaledAdd( data->flex_bar.P,
-                           system->reax_param.sbp[ p_atom->type ].mass, temp );
-        // rvec_OuterProduct(temp, workspace->virial_forces[i], p_atom->x );
+                system->reax_param.sbp[ p_atom->type ].mass, temp );
+//        rvec_OuterProduct( temp, workspace->virial_forces[i], p_atom->x );
         rtensor_ScaledAdd( data->flex_bar.P, -F_CONV, temp );
     }
 

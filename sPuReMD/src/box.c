@@ -283,37 +283,33 @@ void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
 }
 
 
-real Sq_Distance_on_T3( rvec x1, rvec x2, simulation_box* box, rvec r )
+/* Compute the Euclidean distance between a pair of atoms (3D space).
+ * This function supports both non-peroidic boundary conditions 
+ * (for the simulation box) and periodic boundary conditions.
+ *
+ * Inputs:
+ * box: struct containing simulation box info
+ * x1: position of first atom
+ * x2: position of second atom
+ * x2_rel_box: relative position in terms of peroidic images of the
+ *  simulation box for the second atom
+ *
+ * Outputs:
+ * r: displacement vector betweeon the atoms
+ * return value: distance
+ */
+real Compute_Distance( simulation_box* box, rvec x1, rvec x2, ivec x2_rel_box, rvec r )
 {
     int i;
-    real norm, d, tmp;
+    real norm;
 
     norm = 0.0;
 
     for ( i = 0; i < 3; i++ )
     {
-        d = x2[i] - x1[i];
-        tmp = SQR(d);
+        r[i] = x2[i] + box->box_norms[i] * x2_rel_box[i] - x1[i];
 
-        if ( tmp >= SQR( box->box_norms[i] / 2.0 ) )
-        {
-            if ( x2[i] > x1[i] )
-            {
-                d -= box->box_norms[i];
-            }
-            else
-            {
-                d += box->box_norms[i];
-            }
-
-            r[i] = d;
-            norm += SQR(d);
-        }
-        else
-        {
-            r[i] = d;
-            norm += tmp;
-        }
+        norm += SQR( r[i] );
     }
 
     assert( norm > 0.0 );
@@ -324,6 +320,7 @@ real Sq_Distance_on_T3( rvec x1, rvec x2, simulation_box* box, rvec r )
 void Distance_on_T3_Gen( rvec x1, rvec x2, simulation_box* box, rvec r )
 {
     rvec xa, xb, ra;
+    ivec x2_rel_box;
 
     Transform( x1, box, -1, xa );
     Transform( x2, box, -1, xb );
@@ -331,7 +328,9 @@ void Distance_on_T3_Gen( rvec x1, rvec x2, simulation_box* box, rvec r )
     //printf(">xa: (%lf, %lf, %lf)\n",xa[0],xa[1],xa[2]);
     //printf(">xb: (%lf, %lf, %lf)\n",xb[0],xb[1],xb[2]);
 
-    Sq_Distance_on_T3( xa, xb, box, ra );
+    //TODO: compute rel_box for x2
+
+    Compute_Distance( box, xa, xb, x2_rel_box, ra );
 
     Transform( ra, box, 1, r );
 }

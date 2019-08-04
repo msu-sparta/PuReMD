@@ -37,26 +37,35 @@ void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
 
     //  printf(">x1: (%lf, %lf, %lf)\n",x1[0],x1[1],x1[2]);
 
-    if (flag > 0)
+    if ( flag > 0 )
     {
-        for (i = 0; i < 3; i++)
+        for ( i = 0; i < 3; i++ )
         {
             tmp = 0.0;
-            for (j = 0; j < 3; j++)
+
+            for ( j = 0; j < 3; j++ )
+            {
                 tmp += box->trans[i][j] * x1[j];
+            }
+
             x2[i] = tmp;
         }
     }
     else
     {
-        for (i = 0; i < 3; i++)
+        for ( i = 0; i < 3; i++ )
         {
             tmp = 0.0;
-            for (j = 0; j < 3; j++)
+
+            for ( j = 0; j < 3; j++ )
+            {
                 tmp += box->trans_inv[i][j] * x1[j];
+            }
+
             x2[i] = tmp;
         }
     }
+
     //  printf(">x2: (%lf, %lf, %lf)\n", x2[0], x2[1], x2[2]);
 }
 

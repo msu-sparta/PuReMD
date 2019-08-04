@@ -60,7 +60,7 @@ void Inc_on_T3_Gen( rvec, rvec, simulation_box* );
 
 /* These functions assume that the coordinates are in triclinic system */
 /* this function returns cartesian norm but triclinic distance vector */
-real Sq_Distance_on_T3( rvec, rvec, simulation_box*, rvec );
+real Compute_Distance( simulation_box*, rvec, rvec, ivec, rvec );
 
 void Inc_on_T3( rvec, rvec, simulation_box* );
 

@@ -115,10 +115,6 @@ static void Init_System( reax_system *system, control_params *control,
          * where the corners of the box are (0,0,0) and (d_x, d_y, d_z)
          * with d_i being the box length along dimension i */
         Inc_on_T3( system->atoms[i].x, dx, &system->box );
-
-        /*fprintf( stderr, "%6d%2d%8.3f%8.3f%8.3f\n",
-          i, system->atoms[i].type,
-          system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );*/
     }
 
     /* Initialize velocities so that desired init T can be attained */

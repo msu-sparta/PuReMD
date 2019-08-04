@@ -462,7 +462,7 @@ static inline int rvec_isZero( const rvec v )
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        ret = (FABS( v[i] ) <= ALMOST_ZERO) && ret;
+        ret = (FABS( v[i] ) <= ALMOST_ZERO ? TRUE : FALSE) && ret;
     }
 
     return ret;
@@ -741,7 +741,7 @@ static inline void ivec_Copy( ivec dest, const ivec src )
 }
 
 
-static inline void ivec_Scale( ivec dest, const real C, const ivec src )
+static inline void ivec_Scale( ivec dest, const int C, const ivec src )
 {
     int i;
 
@@ -780,7 +780,7 @@ static inline int ivec_isZero( const ivec v )
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        ret = (v[i] == 0) && ret;
+        ret = (v[i] == 0 ? TRUE : FALSE) && ret;
     }
 
     return ret;
@@ -798,7 +798,7 @@ static inline int ivec_isEqual( const ivec v1, const ivec v2 )
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        ret = (v1[i] == v2[i]) && ret;
+        ret = (v1[i] == v2[i] ? TRUE : FALSE) && ret;
     }
 
     return ret;
@@ -814,7 +814,7 @@ static inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        dest[i] = v1[i] * v2[i];
+        dest[i] = v1[i] + v2[i];
     }
 }
 
