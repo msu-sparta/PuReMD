@@ -584,36 +584,49 @@ struct reax_interaction
 
 struct reax_atom
 {
-    /* Type of this atom */
+    /* integer representation of element type of this atom */
     int type;
-    /**/
+    /* string representation of element type of this atom */
     char name[9];
-    /* position */
+    /* position of this atom (3D space) */
     rvec x;
-    /* velocity */
+    /* velocity of this atom */
     rvec v;
-    /* force */
+    /* force acting on this atom */
     rvec f;
-    /* Charge on the atom */
+    /* charge on this atom */
     real q;
 };
 
 
 struct simulation_box
 {
+    /* current volume of the simulation box */
     real volume;
-
+    /* smallest coordinates within the simulation box
+     * (typically (0.0, 0.0, 0.0) by convention) */
     rvec min;
+    /* largest coordinates within the simulation box
+     * (typically (l_x, l_y, l_z) by convention,
+     *  where l_* is the length of the simulation box
+     *  along that dimension) */
     rvec max;
+    /* lengths of the simulation box along each dimension */
     rvec box_norms;
+    /* box proportions, used for isotrophic NPT */
     rvec side_prop;
-    rvec nbr_box_press[27];
-
+    /**/
     rtensor box;
+    /**/
     rtensor box_inv;
+    /* copy of previous simulation box tensor,
+     * used for isotrphic NPT */
     rtensor old_box;
+    /**/
     rtensor trans;
+    /**/
     rtensor trans_inv;
+    /**/
     rtensor g;
 };
 
@@ -678,28 +691,42 @@ struct reax_system
 /* Simulation control parameters not related to the system */
 struct control_params
 {
+    /* string represention for this simulation */
     char sim_name[MAX_STR];
+    /* string printed in header block of trajectory files in CUSTOM format*/
     char restart_from[MAX_STR];
+    /* indicates whether this simulation is from a restart geometry file:
+     * 0 = non-restarted run, 1 = restarted run */
     int restart;
+    /* controls velocity initializtion for simulation with non-zero
+     * starting temperatures: 0 = zero vectors, 1 = random vectors */
     int random_vel;
-
+    /* controls additional atomic position translation during
+     * simulation initializtion: 0 = no further translation,
+     * 1 = translate positions such that the center of mass
+     * is at the center of the simulation box, 2 = translate
+     * positions such that the center of mass is at the origin
+     * (smallest point) in the simulation box */
     int reposition_atoms;
-
     /* ensemble values:
      * 0 : NVE
-     * 1 : NVT  (Berendsen)
-     * 2 : NVT  (Nose-Hoover)
-     * 3 : sNPT (Parrinello-Rehman-Nose-Hoover) semi-isotropic
-     * 4 : iNPT (Parrinello-Rehman-Nose-Hoover) isotropic
-     * 5 : aNPT  (Parrinello-Rehman-Nose-Hoover) anisotropic */
+     * 1 : Berendsen NVT (bNVT)
+     * 2 : Nose-Hoover NVT (nhNVT)
+     * 3 : Parrinello-Rehman-Nose-Hoover semi-isotropic NPT (sNPT)
+     * 4 : Parrinello-Rehman-Nose-Hoover isotropic (iNPT) 
+     * 5 : Parrinello-Rehman-Nose-Hoover anisotropic (aNPT) */
     int ensemble;
     /* number of simulation time steps */
     int nsteps;
-    /* */
+    /* controls whether the simulation box has perdioic boundary:
+     * 0 = no periodic boundaries, 1 = periodic boundaries */
     int periodic_boundaries;
     /* */
     int restrict_bonds;
-    /* */
+    /* controls whether force computations should be calculated
+     * exactly or estimated (tabulated): 0 = exact computation,
+     * >0 = use a lookup table (computed using splines), where
+     * the positive integer value controls number of entries in the table */
     int tabulate;
     /* simulation time step length (in fs) */
     real dt;
@@ -727,32 +754,44 @@ struct control_params
     real thb_cut;
     /* hydrogen bonding cutoff (in Angstroms) */
     real hbond_cut;
-
+    /**/
     real T_init;
+    /**/
     real T_final;
+    /**/
     real T;
+    /**/
     real Tau_T;
+    /**/
     int T_mode;
+    /**/
     real T_rate;
+    /**/
     real T_freq;
-
+    /**/
     real Tau_PT;
+    /**/
     rvec P;
+    /**/
     rvec Tau_P;
+    /**/
     int press_mode;
+    /**/
     real compressibility;
-
+    /**/
     int remove_CoM_vel;
-
+    /* format of the geometry input file */
     int geo_format;
-
+    /**/
     int dipole_anal;
+    /**/
     int freq_dipole_anal;
-
+    /**/
     int diffusion_coef;
+    /**/
     int freq_diffusion_coef;
+    /**/
     int restrict_type;
-
     /* method for computing atomic charges */
     unsigned int charge_method;
     /* frequency (in terms of simulation time steps) at which to
@@ -804,13 +843,15 @@ struct control_params
     int molec_anal;
     /**/
     int freq_molec_anal;
-    /**/
+    /* controls which bonds are printed to the trajectory file
+     * if bond printing is enabled; this value is used as a cut-off
+     * for comparing * against the bond order calculation value */
     real bg_cut;
     /**/
     int num_ignored;
     /**/
     int ignore[MAX_ATOM_TYPES];
-    /**/
+    /* number of OpenMP threads to use during the simulation */
     int num_threads;
     /* function pointers for bonded interactions */
     interaction_function intr_funcs[NO_OF_INTERACTIONS];
@@ -907,25 +948,34 @@ struct reax_timing
 
 struct simulation_data
 {
+    /* current simulation step number (0-based) */
     int step;
+    /* last simulation step number for restarted runs (0-based) */
     int prev_steps;
+    /* elapsed time of the simulation, in fs */
     real time;
-
-    /* Total Mass */
+    /* total mass of the atomic system */
     real M;
-    /* 1.0 / Total Mass */
+    /* multiplicative inverse of the total mass */
     real inv_M;
-
-    rvec xcm;                        /* Center of mass */
-    rvec vcm;                        /* Center of mass velocity */
-    rvec fcm;                        /* Center of mass force */
-    rvec amcm;                       /* Angular momentum of CoM */
-    rvec avcm;                       /* Angular velocity of CoM */
-    real etran_cm;                  /* Translational kinetic energy of CoM */
-    real erot_cm;                    /* Rotational kinetic energy of CoM */
-
-    rtensor kinetic;                 /* Kinetic energy tensor */
-    rtensor virial;                  /* Hydrodynamic virial */
+    /* Center of mass */
+    rvec xcm;
+    /* Center of mass velocity */
+    rvec vcm;
+    /* Center of mass force */
+    rvec fcm;
+    /* Angular momentum of CoM */
+    rvec amcm;
+    /* Angular velocity of CoM */
+    rvec avcm;
+    /* Translational kinetic energy of CoM */
+    real etran_cm;
+    /* Rotational kinetic energy of CoM */
+    real erot_cm;
+    /* Kinetic energy tensor */
+    rtensor kinetic;
+    /* Hydrodynamic virial */
+    rtensor virial;
 
     real E_Tot;
     real E_Kin;                      /* Total kinetic energy */
@@ -964,57 +1014,80 @@ struct simulation_data
 
 struct three_body_interaction_data
 {
+    /**/
     int thb;
     /* pointer to the third body on the central atom's nbrlist */
     int pthb;
+    /* valence angle, in degrees */
     real theta;
+    /* cosine of the valence angle, in degrees */
     real cos_theta;
+    /* derivative coefficient of the cosine valence angle term for atom i */
     rvec dcos_di;
+    /* derivative coefficient of the cosine valence angle term for atom j */
     rvec dcos_dj;
+    /* derivative coefficient of the cosine valence angle term for atom k */
     rvec dcos_dk;
 };
 
 
 struct near_neighbor_data
 {
+    /**/
     int nbr;
+    /**/
     ivec rel_box;
 //    rvec ext_factor;
+    /**/
     real d;
+    /**/
     rvec dvec;
 };
 
 
 struct far_neighbor_data
 {
+    /**/
     int nbr;
+    /**/
     ivec rel_box;
 //    rvec ext_factor;
+    /**/
     real d;
+    /**/
     rvec dvec;
 };
 
 
 struct hbond_data
 {
+    /**/
     int nbr;
+    /**/
     int scl;
+    /**/
     far_neighbor_data *ptr;
 };
 
 
 struct dDelta_data
 {
+    /**/
     int wrt;
+    /**/
     rvec dVal;
 };
 
 
 struct dbond_data
 {
+    /**/
     int wrt;
+    /**/
     rvec dBO;
+    /**/
     rvec dBOpi;
+    /**/
     rvec dBOpi2;
 };
 
@@ -1048,13 +1121,20 @@ struct bond_order_data
 
 struct bond_data
 {
+    /**/
     int nbr;
+    /**/
     int sym_index;
+    /**/
     int dbond_index;
+    /**/
     ivec rel_box;
 //    rvec ext_factor;
+    /**/
     real d;
+    /**/
     rvec dvec;
+    /**/
     bond_order_data bo_data;
 };
 
@@ -1062,18 +1142,18 @@ struct bond_data
 /* compressed row storage (crs) format
  * See, e.g.,
  *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
- *
- *   m: number of nonzeros (NNZ) ALLOCATED
- *   n: number of rows
- *   start: row pointer (last element contains ACTUAL NNZ)
- *   j: column index for corresponding matrix entry
- *   val: matrix entry */
+ */
 struct sparse_matrix
 {
+    /* number of rows */
     unsigned int n;
+    /* number of nonzeros (NNZ) ALLOCATED */
     unsigned int m;
+    /* row pointer (last element contains ACTUAL NNZ) */
     unsigned int *start;
+    /* column index for corresponding matrix entry */
     unsigned int *j;
+    /* matrix entry */
     real *val;
 };
 
@@ -1414,9 +1494,9 @@ struct spuremd_handle
 {
     /* System info. struct pointer */
     reax_system *system;
-    /* System struct pointer */
-    control_params *control;
     /* Control parameters struct pointer */
+    control_params *control;
+    /* Atomic simulation data struct pointer */
     simulation_data *data;
     /* Internal workspace struct pointer */
     static_storage *workspace;

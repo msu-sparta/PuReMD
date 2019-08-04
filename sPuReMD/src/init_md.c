@@ -78,7 +78,7 @@ static void Init_System( reax_system *system, control_params *control,
     int i;
     rvec dx;
 
-    if ( !control->restart )
+    if ( control->restart == FALSE )
     {
         Reset_Atoms( system );
     }
@@ -118,7 +118,8 @@ static void Init_System( reax_system *system, control_params *control,
     }
 
     /* Initialize velocities so that desired init T can be attained */
-    if ( !control->restart || (control->restart && control->random_vel) )
+    if ( control->restart == FALSE
+            || (control->restart == TRUE && control->random_vel) )
     {
         Generate_Initial_Velocities( system, control->T_init );
     }
@@ -141,7 +142,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
 
     /* initialize for non-restarted run,
      * code in restart.c (restart file parser) initializes otherwise */
-    if ( !control->restart )
+    if ( control->restart == FALSE )
     {
         data->step = 0;
         data->prev_steps = 0;
@@ -166,7 +167,8 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         *Evolve = &Velocity_Verlet_Nose_Hoover_NVT_Klein;
         //control->Tau_T = 100 * data->N_f * K_B * control->T_final;
 
-        if ( !control->restart || (control->restart && control->random_vel) )
+        if ( control->restart == FALSE
+                || (control->restart == TRUE && control->random_vel) )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin
                     - data->N_f * K_B * control->T );
@@ -190,7 +192,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         data->N_f = 3 * system->N + 9;
         *Evolve = &Velocity_Verlet_Berendsen_Isotropic_NPT;
 
-        if ( !control->restart )
+        if ( control->restart == FALSE )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin -
                     data->N_f * K_B * control->T);

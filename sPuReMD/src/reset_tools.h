@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-void Reset_Atoms( reax_system* );
+void Reset_Atomic_Forces( reax_system* );
 
 void Reset_Simulation_Data( simulation_data* );
 

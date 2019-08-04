@@ -113,12 +113,12 @@ static void Read_System( const char * const geo_file,
     else if ( control->geo_format == ASCII_RESTART )
     {
         Read_ASCII_Restart( geo_file, system, control, data, workspace );
-        control->restart = 1;
+        control->restart = TRUE;
     }
     else if ( control->geo_format == BINARY_RESTART )
     {
         Read_Binary_Restart( geo_file, system, control, data, workspace );
-        control->restart = 1;
+        control->restart = TRUE;
     }
     else
     {
@@ -216,7 +216,7 @@ int simulate( const void * const handle )
                 spmd_handle->output_enabled );
 
         /* compute f_0 */
-        //if( control.restart == 0 ) {
+        //if( control.restart == FALSE ) {
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists );
 

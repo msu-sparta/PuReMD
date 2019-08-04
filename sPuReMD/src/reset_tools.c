@@ -25,17 +25,6 @@
 #include "vector.h"
 
 
-void Reset_Atoms( reax_system* system )
-{
-    int i;
-
-    for ( i = 0; i < system->N; ++i )
-    {
-        rvec_MakeZero( system->atoms[i].f );
-    }
-}
-
-
 static void Reset_Pressures( simulation_data *data )
 {
     rtensor_MakeZero( data->flex_bar.P );
@@ -45,7 +34,7 @@ static void Reset_Pressures( simulation_data *data )
 }
 
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 {
     int i;
@@ -106,6 +95,17 @@ static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 #endif
 
 
+void Reset_Atomic_Forces( reax_system* system )
+{
+    int i;
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        rvec_MakeZero( system->atoms[i].f );
+    }
+}
+
+
 void Reset_Simulation_Data( simulation_data* data )
 {
     data->E_Tot = 0.0;
@@ -159,7 +159,7 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
     }
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     Reset_Test_Forces( system, workspace );
 #endif
 }
@@ -222,7 +222,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
 void Reset( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists  )
 {
-    Reset_Atoms( system );
+    Reset_Atomic_Forces( system );
 
     Reset_Simulation_Data( data );
 

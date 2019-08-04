@@ -39,7 +39,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     strncpy( control->sim_name, "default.sim", sizeof(control->sim_name) - 1 );
     control->sim_name[sizeof(control->sim_name) - 1] = '\0';
 
-    control->restart = 0;
+    control->restart = FALSE;
     out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;
     strncpy( control->restart_from, "default.res", sizeof(control->restart_from) - 1 );
