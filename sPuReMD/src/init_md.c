@@ -80,7 +80,7 @@ static void Init_System( reax_system *system, control_params *control,
 
     if ( control->restart == FALSE )
     {
-        Reset_Atoms( system );
+        Reset_Atomic_Forces( system );
     }
 
     Compute_Total_Mass( system, data );
