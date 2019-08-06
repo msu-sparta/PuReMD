@@ -113,7 +113,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
 #endif
 
     /* function calls for bonded interactions */
-    for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
+    for ( i = 0; i < NUM_INTRS; i++ )
     {
         if ( control->intr_funcs[i] != NULL )
         {
@@ -124,7 +124,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
 
 #if defined(TEST_FORCES)
     /* function calls for printing bonded interactions */
-    for ( i = 0; i < NO_OF_INTERACTIONS; i++ )
+    for ( i = 0; i < NUM_INTRS; i++ )
     {
         if ( control->print_intr_funcs[i] != NULL )
         {

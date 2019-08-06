@@ -30,7 +30,6 @@
 #include "reax_tool_box.h"
 #endif
 
-LR_lookup_table **LR;
 
 /* Fills solution into x. Warning: will modify c and d! */
 void Tridiagonal_Solve( const real *a, const real *b,
@@ -217,10 +216,10 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
-    LR = (LR_lookup_table**)
+    workspace->LR = (LR_lookup_table**)
          smalloc( num_atom_types * sizeof(LR_lookup_table*), "lookup:LR", comm );
     for ( i = 0; i < num_atom_types; ++i )
-        LR[i] = (LR_lookup_table*)
+        workspace->LR[i] = (LR_lookup_table*)
                 smalloc( num_atom_types * sizeof(LR_lookup_table), "lookup:LR[i]", comm );
 
     /* most atom types in ffield file will not exist in the current
@@ -241,66 +240,66 @@ int Init_Lookup_Tables( reax_system *system, control_params *control,
             for ( j = i; j < num_atom_types; ++j )
                 if ( aggregated[j] )
                 {
-                    LR[i][j].xmin = 0;
-                    LR[i][j].xmax = control->nonb_cut;
-                    LR[i][j].n = control->tabulate + 1;
-                    LR[i][j].dx = dr;
-                    LR[i][j].inv_dx = control->tabulate / control->nonb_cut;
-                    LR[i][j].y = (LR_data*)
-                                 smalloc( LR[i][j].n * sizeof(LR_data), "lookup:LR[i,j].y", comm );
-                    LR[i][j].H = (cubic_spline_coef*)
-                                 smalloc( LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].H" ,
+                    workspace->LR[i][j].xmin = 0;
+                    workspace->LR[i][j].xmax = control->nonb_cut;
+                    workspace->LR[i][j].n = control->tabulate + 1;
+                    workspace->LR[i][j].dx = dr;
+                    workspace->LR[i][j].inv_dx = control->tabulate / control->nonb_cut;
+                    workspace->LR[i][j].y = (LR_data*)
+                                 smalloc( workspace->LR[i][j].n * sizeof(LR_data), "lookup:LR[i,j].y", comm );
+                    workspace->LR[i][j].H = (cubic_spline_coef*)
+                                 smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].H" ,
                                           comm );
-                    LR[i][j].vdW = (cubic_spline_coef*)
-                                   smalloc( LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].vdW",
+                    workspace->LR[i][j].vdW = (cubic_spline_coef*)
+                                   smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].vdW",
                                             comm);
-                    LR[i][j].CEvd = (cubic_spline_coef*)
-                                    smalloc( LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].CEvd",
+                    workspace->LR[i][j].CEvd = (cubic_spline_coef*)
+                                    smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].CEvd",
                                              comm);
-                    LR[i][j].ele = (cubic_spline_coef*)
-                                   smalloc( LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].ele",
+                    workspace->LR[i][j].ele = (cubic_spline_coef*)
+                                   smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef), "lookup:LR[i,j].ele",
                                             comm );
-                    LR[i][j].CEclmb = (cubic_spline_coef*)
-                                      smalloc( LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[i][j].CEclmb = (cubic_spline_coef*)
+                                      smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                                                "lookup:LR[i,j].CEclmb", comm );
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {
-                        LR_vdW_Coulomb( system, workspace, i, j, r * dr, &(LR[i][j].y[r]) );
-                        h[r] = LR[i][j].dx;
-                        fh[r] = LR[i][j].y[r].H;
-                        fvdw[r] = LR[i][j].y[r].e_vdW;
-                        fCEvd[r] = LR[i][j].y[r].CEvd;
-                        fele[r] = LR[i][j].y[r].e_ele;
-                        fCEclmb[r] = LR[i][j].y[r].CEclmb;
+                        LR_vdW_Coulomb( system, workspace, i, j, r * dr, &(workspace->LR[i][j].y[r]) );
+                        h[r] = workspace->LR[i][j].dx;
+                        fh[r] = workspace->LR[i][j].y[r].H;
+                        fvdw[r] = workspace->LR[i][j].y[r].e_vdW;
+                        fCEvd[r] = workspace->LR[i][j].y[r].CEvd;
+                        fele[r] = workspace->LR[i][j].y[r].e_ele;
+                        fCEclmb[r] = workspace->LR[i][j].y[r].CEclmb;
 
                         if ( r == 1 )
                         {
-                            v0_vdw = LR[i][j].y[r].CEvd;
-                            v0_ele = LR[i][j].y[r].CEclmb;
+                            v0_vdw = workspace->LR[i][j].y[r].CEvd;
+                            v0_ele = workspace->LR[i][j].y[r].CEclmb;
                         }
                         else if ( r == control->tabulate )
                         {
-                            vlast_vdw = LR[i][j].y[r].CEvd;
-                            vlast_ele = LR[i][j].y[r].CEclmb;
+                            vlast_vdw = workspace->LR[i][j].y[r].CEvd;
+                            vlast_ele = workspace->LR[i][j].y[r].CEclmb;
                         }
                     }
 
                     Natural_Cubic_Spline( &h[1], &fh[1],
-                                          &(LR[i][j].H[1]), control->tabulate + 1, comm );
+                                          &(workspace->LR[i][j].H[1]), control->tabulate + 1, comm );
 
                     Complete_Cubic_Spline( &h[1], &fvdw[1], v0_vdw, vlast_vdw,
-                                           &(LR[i][j].vdW[1]), control->tabulate + 1,
+                                           &(workspace->LR[i][j].vdW[1]), control->tabulate + 1,
                                            comm );
                     Natural_Cubic_Spline( &h[1], &fCEvd[1],
-                                          &(LR[i][j].CEvd[1]), control->tabulate + 1,
+                                          &(workspace->LR[i][j].CEvd[1]), control->tabulate + 1,
                                           comm );
 
                     Complete_Cubic_Spline( &h[1], &fele[1], v0_ele, vlast_ele,
-                                           &(LR[i][j].ele[1]), control->tabulate + 1,
+                                           &(workspace->LR[i][j].ele[1]), control->tabulate + 1,
                                            comm );
                     Natural_Cubic_Spline( &h[1], &fCEclmb[1],
-                                          &(LR[i][j].CEclmb[1]), control->tabulate + 1,
+                                          &(workspace->LR[i][j].CEclmb[1]), control->tabulate + 1,
                                           comm );
                 }
 

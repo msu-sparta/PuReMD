@@ -26,10 +26,12 @@
 
 #if defined(PURE_REAX)
 void Initialize( reax_system*, control_params*, simulation_data*,
-                 storage*, reax_list**, output_controls*, mpi_datatypes* );
+        storage*, reax_list**, output_controls*,
+        mpi_datatypes*, evolve_function *Evolve );
 #elif defined(LAMMPS_REAX)
-void Initialize( reax_system*, control_params*, simulation_data*, storage*,
-                 reax_list**, output_controls*, mpi_datatypes*, MPI_Comm );
+void Initialize( reax_system*, control_params*, simulation_data*,
+        storage*, reax_list**, output_controls*,
+        mpi_datatypes*, evolve_function *Evolve MPI_Comm );
 #endif
 
 #endif

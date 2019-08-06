@@ -24,9 +24,9 @@
 
 #include "reax_types.h"
 
-//extern LR_lookup_table **LR;
 
 int Init_Lookup_Tables( reax_system*, control_params*, storage*,
-                        mpi_datatypes*, char* );
+        mpi_datatypes*, char* );
+
 
 #endif

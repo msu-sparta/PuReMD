@@ -435,7 +435,7 @@ char Read_PDB( char* pdb_file, reax_system* system, control_params *control,
            on atom2, then atom1 has to be on atom2's restricted list, too.
            However, we do not check if this is the case in the input file,
            this is upto the user. */
-        else if (!strncmp( tmp[0], "CONECT", 6 ))
+        else if ( strncmp( tmp[0], "CONECT", 6 ) == 0 )
         {
             if ( control->restrict_bonds )
             {

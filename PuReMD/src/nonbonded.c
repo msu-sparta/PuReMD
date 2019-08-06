@@ -295,7 +295,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                 r_ij = far_nbrs->far_nbr_list.d[pj];
                 tmin = MIN( type_i, type_j );
                 tmax = MAX( type_i, type_j );
-                t = &LR[tmin][tmax];
+                t = &workspace->LR[tmin][tmax];
 
                 /* Cubic Spline Interpolation */
                 r = (int)(r_ij * t->inv_dx);

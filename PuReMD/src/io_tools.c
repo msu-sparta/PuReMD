@@ -40,7 +40,6 @@
 #include "reax_vector.h"
 #endif
 
-print_interaction Print_Interactions[NUM_INTRS];
 
 /************************ initialize output controls ************************/
 int Init_Output_Files( reax_system *system, control_params *control,
@@ -1768,16 +1767,19 @@ void Compare_Total_Forces( reax_system *system, control_params *control,
                 workspace->f_vdw[i][2] + workspace->f_ele[i][2] );
 }*/
 
-/*void Init_Force_Test_Functions( )
-  {
-  Print_Interactions[0] = Print_Bond_Orders;
-  Print_Interactions[1] = Print_Bond_Forces;
-  Print_Interactions[2] = Print_LonePair_Forces;
-  Print_Interactions[3] = Print_OverUnderCoor_Forces;
-  Print_Interactions[4] = Print_Three_Body_Forces;
-  Print_Interactions[5] = Print_Four_Body_Forces;
-  Print_Interactions[6] = Print_Hydrogen_Bond_Forces;
-  Print_Interactions[7] = Print_vdW_Coulomb_Forces;
-  Print_Interactions[8] = Print_Total_Force;
-  Print_Interactions[9] = Compare_Total_Forces;
-  }*/
+
+#if defined(TEST_FORCES)
+void Init_Force_Test_Functions( control_params *control )
+{
+    control->print_intr_funcs[0] = &Print_Bond_Orders;
+    control->print_intr_funcs[1] = &Print_Bond_Forces;
+    control->print_intr_funcs[2] = &Print_LonePair_Forces;
+    control->print_intr_funcs[3] = &Print_OverUnderCoor_Forces;
+    control->print_intr_funcs[4] = &Print_Three_Body_Forces;
+    control->print_intr_funcs[5] = &Print_Four_Body_Forces;
+    control->print_intr_funcs[6] = &Print_Hydrogen_Bond_Forces;
+    control->print_intr_funcs[7] = &Print_vdW_Coulomb_Forces;
+    control->print_intr_funcs[8] = &Print_Total_Force;
+    control->print_intr_funcs[9] = &Compare_Total_Forces;
+}
+#endif

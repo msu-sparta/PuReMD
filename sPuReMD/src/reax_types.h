@@ -115,7 +115,7 @@
 #define MAX_GRID (50)
 #define MAX_3BODY_PARAM (5)
 #define MAX_4BODY_PARAM (5)
-#define NO_OF_INTERACTIONS (10)
+#define NUM_INTRS (10)
 
 #define MAX_dV (1.01)
 #define MIN_dV (0.99)
@@ -854,10 +854,10 @@ struct control_params
     /* number of OpenMP threads to use during the simulation */
     int num_threads;
     /* function pointers for bonded interactions */
-    interaction_function intr_funcs[NO_OF_INTERACTIONS];
+    interaction_function intr_funcs[NUM_INTRS];
 #if defined(TEST_FORCES)
     /* function pointers for printed bonded interactions */
-    print_interaction print_intr_funcs[NO_OF_INTERACTIONS];
+    print_interaction print_intr_funcs[NUM_INTRS];
 #endif
 };
 

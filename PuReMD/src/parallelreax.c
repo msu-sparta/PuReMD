@@ -115,6 +115,9 @@ static void usage(char* argv[])
 
 int main( int argc, char* argv[] )
 {
+    int i;
+    real t_start = 0, t_elapsed;
+    evolve_function Evolve;
     reax_system *system;
     control_params *control;
     simulation_data *data;
@@ -122,8 +125,6 @@ int main( int argc, char* argv[] )
     reax_list **lists;
     output_controls *out_control;
     mpi_datatypes *mpi_data;
-    int i;
-    real t_start = 0, t_elapsed;
 
     MPI_Init( &argc, &argv );
 
@@ -179,8 +180,8 @@ int main( int argc, char* argv[] )
         t_start = MPI_Wtime( );
     }
 
-    /* initialize datastructures */
-    Initialize( system, control, data, workspace, lists, out_control, mpi_data );
+    Initialize( system, control, data, workspace, lists,
+            out_control, mpi_data, &Evolve );
 
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );

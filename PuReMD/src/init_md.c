@@ -202,7 +202,7 @@ int Init_System( reax_system *system, control_params *control,
 /************************ initialize simulation data ************************/
 int Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, mpi_datatypes *mpi_data,
-        char *msg )
+        evolve_function *Evolve, char *msg )
 {
     Reset_Simulation_Data( data, control->virial );
 
@@ -222,19 +222,19 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
     {
         case NVE:
             data->N_f = 3 * system->bigN;
-            Evolve = Velocity_Verlet_NVE;
+            *Evolve = &Velocity_Verlet_NVE;
             break;
 
         case bNVT:
             data->N_f = 3 * system->bigN + 1;
-            Evolve = Velocity_Verlet_Berendsen_NVT;
+            *Evolve = &Velocity_Verlet_Berendsen_NVT;
             break;
 
         case nhNVT:
             fprintf( stderr, "WARNING: Nose-Hoover NVT is still under testing.\n" );
             //return FAILURE;
             data->N_f = 3 * system->bigN + 1;
-            Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
+            *Evolve = &Velocity_Verlet_Nose_Hoover_NVT_Klein;
             if ( !control->restart || (control->restart && control->random_vel) )
             {
                 data->therm.G_xi = control->Tau_T *
@@ -247,14 +247,14 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
 
         case sNPT: /* Semi-Isotropic NPT */
             data->N_f = 3 * system->bigN + 4;
-            Evolve = Velocity_Verlet_Berendsen_NPT;
+            *Evolve = &Velocity_Verlet_Berendsen_NPT;
             if ( !control->restart )
                 Reset_Pressures( data );
             break;
 
         case iNPT: /* Isotropic NPT */
             data->N_f = 3 * system->bigN + 2;
-            Evolve = Velocity_Verlet_Berendsen_NPT;
+            *Evolve = &Velocity_Verlet_Berendsen_NPT;
             if ( !control->restart )
                 Reset_Pressures( data );
             break;
@@ -264,7 +264,7 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
             return FAILURE;
 
             data->N_f = 3 * system->bigN + 9;
-            Evolve = Velocity_Verlet_Berendsen_NPT;
+            *Evolve = &Velocity_Verlet_Berendsen_NPT;
             /*if( !control->restart ) {
               data->therm.G_xi = control->Tau_T *
               (2.0 * data->my_en.e_Kin - data->N_f * K_B * control->T );
@@ -358,7 +358,7 @@ int Init_System( reax_system *system, control_params *control, char *msg )
 
 
 int Init_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data, char *msg )
+        simulation_data *data, evolve_function *Evolve, char *msg )
 {
     Reset_Simulation_Data( data, control->virial );
 
@@ -889,7 +889,7 @@ int  Init_Lists( reax_system *system, control_params *control,
 void Initialize( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+        mpi_datatypes *mpi_data, evolve_function *Evolve )
 {
     char msg[MAX_STR];
 
@@ -917,7 +917,7 @@ void Initialize( reax_system *system, control_params *control,
     fprintf( stderr, "p%d: system initialized\n", system->my_rank );
 #endif
 
-    if ( Init_Simulation_Data(system, control, data, mpi_data, msg) == FAILURE )
+    if ( Init_Simulation_Data(system, control, data, mpi_data, Evolve, msg) == FAILURE )
     {
         fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
         fprintf( stderr, "p%d: sim_data couldn't be initialized! terminating.\n",
@@ -978,21 +978,23 @@ void Initialize( reax_system *system, control_params *control,
 #endif
     }
 
-    Init_Force_Functions( control );
+    Init_Bonded_Force_Functions( control );
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized force functions\n", system->my_rank );
 #endif
-    /*#ifdef TEST_FORCES
-      Init_Force_Test_Functions();
-      fprintf(stderr,"p%d: initialized force test functions\n",system->my_rank);
-#endif */
+
+#if defined(TEST_FORCES)
+    Init_Force_Test_Functions( control );
+    fprintf( stderr, "p%d: initialized force test functions\n",
+            system->my_rank );
+#endif
 }
 
 #elif defined(LAMMPS_REAX)
 void Initialize( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data, MPI_Comm comm )
+        mpi_datatypes *mpi_data, evolve_function *Evolve, MPI_Comm comm )
 {
     char msg[MAX_STR];
 
@@ -1020,7 +1022,7 @@ void Initialize( reax_system *system, control_params *control,
     fprintf( stderr, "p%d: system initialized\n", system->my_rank );
 #endif
 
-    if ( Init_Simulation_Data( system, control, data, msg ) == FAILURE )
+    if ( Init_Simulation_Data( system, control, data, Evolve, msg ) == FAILURE )
     {
         fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
         fprintf( stderr, "p%d: sim_data couldn't be initialized! terminating.\n",
@@ -1081,14 +1083,15 @@ void Initialize( reax_system *system, control_params *control,
 #endif
     }
 
-
-    Init_Force_Functions( control );
+    Init_Bonded_Force_Functions( control );
 #if defined(DEBUG)
     fprintf( stderr, "p%d: initialized force functions\n", system->my_rank );
 #endif
-    /*#if defined(TEST_FORCES)
-      Init_Force_Test_Functions();
-      fprintf(stderr,"p%d: initialized force test functions\n",system->my_rank);
-#endif*/
+
+#if defined(TEST_FORCES)
+    Init_Force_Test_Functions( control );
+    fprintf( stderr, "p%d: initialized force test functions\n",
+            system->my_rank );
+#endif
 }
 #endif

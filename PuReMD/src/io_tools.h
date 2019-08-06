@@ -94,7 +94,10 @@ storage*, reax_list**, output_controls* );*/
 void Print_Force_Files( reax_system*, control_params*, simulation_data*,
                         storage*, reax_list**, output_controls*,
                         mpi_datatypes * );
-//void Init_Force_Test_Functions( );
+
+#if defined(TEST_FORCES)
+void Init_Force_Test_Functions( control_params* );
+#endif
 
 int fn_qsort_intcmp( const void *, const void * );
 

@@ -57,9 +57,6 @@
 #endif
 
 
-interaction_function Interaction_Functions[NUM_INTRS];
-
-
 typedef enum
 {
     DIAGONAL = 0,
@@ -70,14 +67,6 @@ typedef enum
 static int compare_bonds( const void *p1, const void *p2 )
 {
     return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
-}
-
-
-static void Dummy_Interaction( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control )
-{
-    ;
 }
 
 
@@ -505,7 +494,7 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
                         else 
                         {
                             H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-                                    LR, i, j, r_ij, OFF_DIAGONAL );
+                                    workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -543,7 +532,7 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
                         else 
                         {
                             H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-                                    LR, i, j, r_ij, OFF_DIAGONAL );
+                                    workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -723,7 +712,7 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
                         else 
                         {
                             H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-                                    LR, i, j, r_ij, OFF_DIAGONAL );
+                                    workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -760,7 +749,7 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
                         else 
                         {
                             H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-                                    LR, i, j, r_ij, OFF_DIAGONAL );
+                                    workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
                         ++Htop;
@@ -861,7 +850,7 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
                     else
                     {
                         H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-                                LR, i, j, r_ij, OFF_DIAGONAL );
+                                workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                     }
 
                     ++Htop;
@@ -937,7 +926,7 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
                 else
                 {
                     H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( system, control,
-                            LR, i, j, r_ij, OFF_DIAGONAL );
+                            workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                 }
 
                 ++Htop;
@@ -1327,28 +1316,6 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
 }
 
 
-static void Init_Force_Functions( control_params *control )
-{
-    Interaction_Functions[0] = &BO;
-    Interaction_Functions[1] = &Bonds; //Dummy_Interaction;
-    Interaction_Functions[2] = &Atom_Energy; //Dummy_Interaction;
-    Interaction_Functions[3] = &Valence_Angles; //Dummy_Interaction;
-    Interaction_Functions[4] = &Torsion_Angles; //Dummy_Interaction;
-    if ( control->hbond_cut > 0.0 )
-    {
-        Interaction_Functions[5] = &Hydrogen_Bonds;
-    }
-    else
-    {
-        Interaction_Functions[5] = &Dummy_Interaction;
-    }
-    Interaction_Functions[6] = &Dummy_Interaction; //empty
-    Interaction_Functions[7] = &Dummy_Interaction; //empty
-    Interaction_Functions[8] = &Dummy_Interaction; //empty
-    Interaction_Functions[9] = &Dummy_Interaction; //empty
-}
-
-
 static void Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, MPI_Comm comm )
@@ -1368,8 +1335,11 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
         MPI_Barrier( comm );
 #endif
 
-        (Interaction_Functions[i])( system, control, data, workspace,
-                lists, out_control );
+        if ( control->intr_funcs[i] != NULL )
+        {
+            (control->intr_funcs[i])( system, control, data, workspace,
+                    lists, out_control );
+        }
 
 #if defined(DEBUG)
         fprintf( stderr, "p%d: f%d done\n", system->my_rank, i );
@@ -1769,6 +1739,28 @@ static void Init_Forces_No_Charges( reax_system *system, control_params *control
 
     Validate_Lists( system, workspace, lists, data->step,
             system->n, system->N, system->numH, comm );
+}
+
+
+void Init_Bonded_Force_Functions( control_params *control )
+{
+    control->intr_funcs[0] = &BO;
+    control->intr_funcs[1] = &Bonds;
+    control->intr_funcs[2] = &Atom_Energy;
+    control->intr_funcs[3] = &Valence_Angles;
+    control->intr_funcs[4] = &Torsion_Angles;
+    if ( control->hbond_cut > 0.0 )
+    {
+        control->intr_funcs[5] = &Hydrogen_Bonds;
+    }
+    else
+    {
+        control->intr_funcs[5] = NULL;
+    }
+    control->intr_funcs[6] = NULL;
+    control->intr_funcs[7] = NULL;
+    control->intr_funcs[8] = NULL;
+    control->intr_funcs[9] = NULL;
 }
 
 
