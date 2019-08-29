@@ -438,8 +438,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                         + POW( system->reax_param.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
-                /* i == j: non-periodic self-interaction term
-                 * i != j: periodic self-interaction term */
+                /* i == j: periodic self-interaction term
+                 * i != j: general interaction term */
                 ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
             break;
 
@@ -472,8 +472,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
                         + POW( system->reax_param.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
-                /* i == j: non-periodic self-interaction term
-                 * i != j: periodic self-interaction term */
+                /* i == j: periodic self-interaction term
+                 * i != j: general interaction term */
                 ret = ((i == j) ? 0.0 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
             break;
 
@@ -749,7 +749,7 @@ static void Init_Forces( reax_system *system, control_params *control,
     num_hbonds = 0;
     btop_i = 0;
     btop_j = 0;
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
+    renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -807,19 +807,19 @@ static void Init_Forces( reax_system *system, control_params *control,
             else
             {
                 atom_j = &system->atoms[j];
-                nbr_pj->d = Compute_Distance( &system->box,
-                        atom_i->x, atom_j->x, nbr_pj->rel_box,
+                nbr_pj->d = Compute_Atom_Distance( &system->box,
+                        atom_i->x, atom_j->x, atom_i->rel_map,
+                        atom_j->rel_map, nbr_pj->rel_box,
                         nbr_pj->dvec );
 
-                if ( nbr_pj->d <= SQR(control->nonb_cut) )
+                if ( nbr_pj->d <= control->nonb_cut )
                 {
-                    if ( nbr_pj->d <= SQR(control->nonb_sp_cut) )
+                    flag = TRUE;
+
+                    if ( nbr_pj->d <= control->nonb_sp_cut )
                     {
                         flag_sp = TRUE;
                     }
-
-                    nbr_pj->d = SQRT( nbr_pj->d );
-                    flag = TRUE;
                 }
             }
 
@@ -1100,7 +1100,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
     num_hbonds = 0;
     btop_i = 0;
     btop_j = 0;
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
+    renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1158,19 +1158,19 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
             else
             {
                 atom_j = &system->atoms[j];
-                nbr_pj->d = Compute_Distance( &system->box,
-                        atom_i->x, atom_j->x, nbr_pj->rel_box,
+                nbr_pj->d = Compute_Atom_Distance( &system->box,
+                        atom_i->x, atom_j->x, atom_i->rel_map,
+                        atom_j->rel_map, nbr_pj->rel_box,
                         nbr_pj->dvec );
 
-                if ( nbr_pj->d <= SQR(control->nonb_cut) )
+                if ( nbr_pj->d <= control->nonb_cut )
                 {
-                    if ( nbr_pj->d <= SQR(control->nonb_sp_cut) )
+                    flag = TRUE;
+
+                    if ( nbr_pj->d <= control->nonb_sp_cut )
                     {
                         flag_sp = TRUE;
                     }
-
-                    nbr_pj->d = SQRT( nbr_pj->d );
-                    flag = TRUE;
                 }
             }
 
@@ -1481,7 +1481,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
                         BO_s = 0.0;
                     }
 
-                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
+                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
                     {
                         C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
                         BO_pi = EXP( C34 );

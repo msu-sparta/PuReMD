@@ -27,6 +27,97 @@
 #include "vector.h"
 
 
+// CUSTOM_BOXGEO: BOXGEO box_x box_y box_z  angle1 angle2 angle3
+#define CUSTOM_BOXGEO_FORMAT " %s %lf %lf %lf %lf %lf %lf"
+// CUSTOM ATOM: serial element name x y z
+#define CUSTOM_ATOM_FORMAT " %d %s %s %lf %lf %lf"
+
+/* PDB format :
+http://www.rcsb.org/pdb/file_formats/pdb/pdbguide2.2/guide2.2_frame.html
+
+#define PDB_ATOM_FORMAT   "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%4s%2s%2s\n"
+
+COLUMNS        DATA TYPE       FIELD         DEFINITION
+--------------------------------------------------------------------------------
+1 -  6        Record name     "ATOM  "
+7 - 11        Integer         serial        Atom serial number.
+13 - 16       Atom            name          Atom name.
+17            Character       altLoc        Alternate location indicator.
+18 - 20       Residue name    resName       Residue name.
+22            Character       chainID       Chain identifier.
+23 - 26       Integer         resSeq        Residue sequence number.
+27            AChar           iCode         Code for insertion of residues.
+31 - 38       Real(8.3)       x             Orthogonal coord for X in Angstroms
+39 - 46       Real(8.3)       y             Orthogonal coord for Y in Angstroms
+47 - 54       Real(8.3)       z             Orthogonal coord for Z in Angstroms
+55 - 60       Real(6.2)       occupancy     Occupancy.
+61 - 66       Real(6.2)       tempFactor    Temperature factor.
+73 - 76       LString(4)      segID         Segment identifier, left-justified.
+77 - 78       LString(2)      element       Element symbol, right-justified.
+79 - 80       LString(2)      charge        Charge on the atom.
+*/
+
+/*
+COLUMNS     DATA TYPE        FIELD         DEFINITION
+--------------------------------------------------------------
+ 1 - 6      Record name      "HETATM"
+ 7 - 11     Integer          serial        Atom serial number.
+13 - 16     Atom             name          Atom name.
+17          Character        altLoc        Alternate location indicator.
+18 - 20     Residue name     resName       Residue name.
+22          Character        chainID       Chain identifier.
+23 - 26     Integer          resSeq        Residue sequence number.
+27          AChar            iCode         Code for insertion of residues.
+31 - 38     Real(8.3)        x             Orthogonal coordinates for X.
+39 - 46     Real(8.3)        y             Orthogonal coordinates for Y.
+47 - 54     Real(8.3)        z             Orthogonal coordinates for Z.
+55 - 60     Real(6.2)        occupancy     Occupancy.
+61 - 66     Real(6.2)        tempFactor    Temperature factor.
+77 - 78     LString(2)       element       Element symbol; right-justified.
+79 - 80     LString(2)       charge        Charge on the atom.
+*/
+
+/*
+COLUMNS       DATA TYPE       FIELD         DEFINITION
+-------------------------------------------------------
+1 -  6       Record name     "CONECT"
+7 - 11       Integer         serial        Atom serial number
+12 - 16      Integer         serial        Serial number of bonded atom
+17 - 21      Integer         serial        Serial number of bonded atom
+22 - 26      Integer         serial        Serial number of bonded atom
+27 - 31      Integer         serial        Serial number of bonded atom
+*/
+
+/*
+COLUMNS       DATA TYPE       FIELD         DEFINITION
+----------------------------------------------------------
+1 - 6        Record name     "CRYST1"
+7 - 15       Real(9.3)       a             a (Angstroms)
+16 - 24      Real(9.3)       b             b (Angstroms)
+25 - 33      Real(9.3)       c             c (Angstroms)
+34 - 40      Real(7.2)       alpha         alpha (degrees)
+41 - 47      Real(7.2)       beta          beta (degrees)
+48 - 54      Real(7.2)       gamma         gamma (degrees)
+56 - 66      LString         sGroup        Space group
+67 - 70      Integer         z             Z value
+*/
+
+//#define PDB_ATOM_FORMAT
+//"ATOM  %4d%4s%c%3s%c%4d%c%8.3f%8.3f%8.3f%6.2f%6.2f%-4s%2s%2s\n"
+
+#define PDB_ATOM_FORMAT "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%4s%2s%2s\n"
+#define PDB_ATOM_FORMAT_LENGTH (71)
+#define PDB_HETATM_FORMAT "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%2s%2s\n"
+#define PDB_CONECT_FORMAT "%6s%5d%5d%5d%5d%5d\n"
+#define PDB_CRYST1_FORMAT "%6s%9s%9s%9s%7s%7s%7s%11s%4s\n"
+
+#define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n"
+#define PDB_ATOM_FORMAT_O_LENGTH (82)
+#define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
+
+#define BGF_CRYSTX_FORMAT "%8s%11s%11s%11s%11s%11s%11s"
+
+
 /* Parse geometry file to determine simulation box parameters.
  *
  * system: struct containing simulation box struct to initialize
@@ -159,8 +250,8 @@ static void Count_Atoms( reax_system *system, FILE *fp, int geo_format )
     assert( system->N > 0 );
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] count atoms:\n" );
-    fprintf( stderr, "N = %d\n\n", system->N );
+    fprintf( stderr, "[INFO] Count_Atoms: " );
+    fprintf( stderr, "N = %d\n", system->N );
 #endif
 }
 
@@ -195,7 +286,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
                 &serial, element, name, &x[0], &x[1], &x[2] );
         Fit_to_Periodic_Box( &system->box, x );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "[INFO] atom: id = %d, element = %s, name = %s, x = (%f, %f, %f)\n",
                  serial, element, name, x[0], x[1], x[2] );
 #endif
@@ -358,7 +449,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 
                 top++;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 fprintf( stderr, "[INFO] atom: id = %d, name = %s, serial = %d, type = %d, ",
                         top, atom->name, pdb_serial, atom->type );
                 fprintf( stderr, "x = (%7.3f, %7.3f, %7.3f)\n",
@@ -379,8 +470,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             if ( control->restrict_bonds )
             {
                 /* error check */
-                // Check_Input_Range( c1 - 2, 0, MAX_RESTRICT,
-                // "CONECT line exceeds max num restrictions allowed.\n" );
+//                Check_Input_Range( c1 - 2, 0, MAX_RESTRICT,
+//                        "CONECT line exceeds max num restrictions allowed.\n" );
 
                 /* read bond restrictions */
                 // if( is_Valid_Serial( workspace, pdb_serial = atoi(tmp[1]) ) )
@@ -434,7 +525,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
     rvec x;
     reax_atom *p_atom;
     char fname[MAX_STR];
-    char buffer[PDB_ATOM_FORMAT_O_LENGTH + 1];
+    char buffer[PDB_ATOM_FORMAT_O_LENGTH];
     FILE *pdb;
 
     /* Writing Box information */
@@ -473,10 +564,11 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         Fit_to_Periodic_Box( &system->box, x );
 
         snprintf( buffer, PDB_ATOM_FORMAT_O_LENGTH, PDB_ATOM_FORMAT_O,
-                "ATOM  ", workspace->orig_id[i], p_atom->name, ' ', "REX", ' ', 1, ' ',
-                x[0], x[1], x[2], 1.0, 0.0, "0", name, "  " );
-
-        buffer[PDB_ATOM_FORMAT_O_LENGTH] = '\n';
+                "ATOM  ", workspace->orig_id[i], p_atom->name,
+                ' ', "REX", ' ', 1, ' ', x[0], x[1], x[2],
+                1.0, 0.0, "0", name, "  " );
+        buffer[PDB_ATOM_FORMAT_O_LENGTH - 2] = '\n';
+        buffer[PDB_ATOM_FORMAT_O_LENGTH - 1] = '\0';
 
         fprintf( pdb, "%s\n", buffer );
     }
@@ -638,7 +730,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
             /* add to mapping */
             bgf_serial = strtod( serial, &endptr );
-            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "[ERROR] Invalid bgf serial" );
+            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "Invalid bgf serial" );
             workspace->map_serials[ bgf_serial ] = atom_cnt;
             workspace->orig_id[ atom_cnt ] = bgf_serial;
 

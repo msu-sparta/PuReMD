@@ -242,18 +242,18 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
                 {
                     if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 3 )
                         fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters!\n" \
-                                 "  Force field parameters for element %s\n"        \
-                                 "  indicate inner wall+shielding, but earlier\n"   \
-                                 "  atoms indicate different vdWaals-method.\n"     \
-                                 "  This may cause division-by-zero errors.\n"      \
-                                 "  Keeping vdWaals-setting for earlier atoms.\n",
+                                 "[INFO] Force field parameters for element %s\n"        \
+                                 "[INFO] indicate inner wall+shielding, but earlier\n"   \
+                                 "[INFO] atoms indicate different vdWaals-method.\n"     \
+                                 "[INFO] This may cause division-by-zero errors.\n"      \
+                                 "[INFO] Keeping vdWaals-setting for earlier atoms.\n",
                                  reax->sbp[i].name );
                     else
                     {
                         reax->gp.vdw_type = 3;
 
 #if defined(DEBUG)
-                        fprintf( stderr, "vdWaals type for element %s: Shielding+inner-wall",
+                        fprintf( stderr, "[INFO] vdWaals type for element %s: Shielding+inner-wall\n",
                                  reax->sbp[i].name );
 #endif
                     }
@@ -264,11 +264,11 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
                     if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 2 )
                     {
                         fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters!\n" \
-                                 "  Force field parameters for element %s\n"        \
-                                 "  indicate inner wall without shielding, but earlier\n" \
-                                 "  atoms indicate different vdWaals-method.\n"     \
-                                 "  This may cause division-by-zero errors.\n"      \
-                                 "  Keeping vdWaals-setting for earlier atoms.\n",
+                                 "[INFO] Force field parameters for element %s\n"        \
+                                 "[INFO] indicate inner wall without shielding, but earlier\n" \
+                                 "[INFO] atoms indicate different vdWaals-method.\n"     \
+                                 "[INFO] This may cause division-by-zero errors.\n"      \
+                                 "[INFO] Keeping vdWaals-setting for earlier atoms.\n",
                                  reax->sbp[i].name );
                     }
                     else
@@ -276,7 +276,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
                         reax->gp.vdw_type = 2;
 
 #if defined(DEBUG)
-                        fprintf( stderr, "vdWaals type for element%s: No Shielding,inner-wall",
+                        fprintf( stderr, "[INFO] vdWaals type for element%s: No Shielding,inner-wall\n",
                                  reax->sbp[i].name );
 #endif
                     }
@@ -290,18 +290,18 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
                 {
                     if ( reax->gp.vdw_type != 0 && reax->gp.vdw_type != 1 )
                         fprintf( stderr, "[WARNING] Inconsistent vdWaals-parameters!\n" \
-                                 "  Force field parameters for element %s\n"        \
-                                 "  indicate shielding without inner wall, but earlier\n" \
-                                 "  atoms indicate different vdWaals-method.\n"     \
-                                 "  This may cause division-by-zero errors.\n"      \
-                                 "  Keeping vdWaals-setting for earlier atoms.\n",
+                                 "[INFO] Force field parameters for element %s\n"        \
+                                 "[INFO] indicate shielding without inner wall, but earlier\n" \
+                                 "[INFO] atoms indicate different vdWaals-method.\n"     \
+                                 "[INFO] This may cause division-by-zero errors.\n"      \
+                                 "[INFO] Keeping vdWaals-setting for earlier atoms.\n",
                                  reax->sbp[i].name );
                     else
                     {
                         reax->gp.vdw_type = 1;
 
 #if defined(DEBUG)
-                        fprintf( stderr, "vdWaals type for element%s: Shielding,no inner-wall",
+                        fprintf( stderr, "[INFO] vdWaals type for element%s: Shielding,no inner-wall\n",
                                  reax->sbp[i].name );
 #endif
                     }
@@ -309,7 +309,7 @@ void Read_Force_Field( FILE* fp, reax_interaction* reax )
                 else
                 {
                     fprintf( stderr, "[ERROR] Inconsistent vdWaals-parameters\n" \
-                             "  No shielding or inner-wall set for element %s\n",
+                             "[INFO] No shielding or inner-wall set for element %s\n",
                              reax->sbp[i].name );
                     exit( INVALID_INPUT );
                 }

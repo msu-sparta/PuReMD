@@ -325,8 +325,10 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 #define SIZE (1000)
     char fname[SIZE];
 
-    if ( control->cm_solver_pre_comp_type != NONE_PC && 
-            control->cm_solver_pre_comp_type != JACOBI_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
@@ -567,9 +569,12 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //#define SIZE (1000)
 //    char fname[SIZE];
 //
-//    if ( control->cm_solver_pre_comp_type != JACOBI_PC )
+//    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+//            || control->cm_solver_pre_comp_type == ILUT_PC
+//            || control->cm_solver_pre_comp_type == ILUTP_PC
+//            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
 //    {
-//        fprintf( stderr, "condest = %f\n", condest(workspace->L) );
+//        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L) );
 //
 //#if defined(DEBUG_FOCUS)
 //        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
@@ -709,8 +714,10 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 #define SIZE (1000)
     char fname[SIZE];
 
-    if ( control->cm_solver_pre_comp_type != NONE_PC && 
-            control->cm_solver_pre_comp_type != JACOBI_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
@@ -849,8 +856,10 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 #define SIZE (1000)
     char fname[SIZE];
 
-    if ( control->cm_solver_pre_comp_type != NONE_PC || 
-            control->cm_solver_pre_comp_type != JACOBI_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 

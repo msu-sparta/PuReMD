@@ -114,7 +114,7 @@ static void Init_System( reax_system *system, control_params *control,
         /* re-map the atom positions to fall within the simulation box,
          * where the corners of the box are (0,0,0) and (d_x, d_y, d_z)
          * with d_i being the box length along dimension i */
-        Inc_on_T3( system->atoms[i].x, dx, &system->box );
+        Update_Atom_Position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
     }
 
     /* Initialize velocities so that desired init T can be attained */
@@ -1155,7 +1155,7 @@ void Initialize( reax_system *system, control_params *control,
 #if defined(DEBUG)
         end = Get_Timing_Info( start );
 
-        fprintf( stderr, "Time for LR Lookup Table calculation is %f \n", end );
+        fprintf( stderr, "[INFO] LR lookup table calculation time: %f\n", end );
 #endif
     }
 

@@ -412,7 +412,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     data->E_Ele = e_ele_total;
 
 #if defined(DEBUG)
-    fprintf( stderr, "nonbonded: ext_press (%24.15e %24.15e %24.15e)\n",
+    fprintf( stderr, "[INFO] vdW_Coulomb_Energy: ext_press = (%24.15e %24.15e %24.15e)\n",
             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
 #endif
 
@@ -484,8 +484,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     base = (real) (r + 1) * t->dx;
                     dif = r_ij - base;
 
-#if defined(DEBUG)
-                    fprintf( stderr, "r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif );
+#if defined(DEBUG_FOCUS)
+                    fprintf( stderr, "[INFO] r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif );
 #endif
 
                     if ( update_energies )

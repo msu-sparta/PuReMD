@@ -382,12 +382,12 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                          * propertiy of the i-j, j-k, and k-l
                                          * bond relative coordinates */
                                         ivec_Sum( rel_box_li, pbond_ij->rel_box, pbond_jk->rel_box );
-                                        ivec_Sum( rel_box_li, rel_box_li, pbond_kl->rel_box );
+                                        ivec_Add( rel_box_li, pbond_kl->rel_box );
 
-                                        Compute_Distance( &system->box,
+                                        r_li = Compute_Atom_Distance( &system->box,
                                                 system->atoms[l].x, system->atoms[i].x,
+                                                system->atoms[l].rel_map, system->atoms[i].rel_map,
                                                 rel_box_li, dvec_li );
-                                        r_li = rvec_Norm( dvec_li );
 
                                         /* omega and its derivative */
                                         //cos_omega=Calculate_Omega(pbond_ij->dvec,r_ij,pbond_jk->dvec,
@@ -790,12 +790,12 @@ void Torsion_Angles( reax_system *system, control_params *control,
      data->E_Tor += e_tor_total;
      data->E_Con += e_con_total;
 
-    /* fprintf( stderr, "4body: ext_press (%23.15e %23.15e %23.15e)\n",
-       data->ext_press[0], data->ext_press[1], data->ext_press[2] );*/
-
 #if defined(DEBUG)
-    fprintf( stderr, "Number of torsion angles: %d\n", num_frb_intrs );
-    fprintf( stderr, "Torsion Energy: %g\t Conjugation Energy: %g\n",
+    fprintf( stderr, "[INFO] Torsion_Angles: num_frb_intrs = %d\n", num_frb_intrs );
+    fprintf( stderr, "[INFO] Torsion_Angles: e_tor = %g, e_con = %g\n",
              data->E_Tor, data->E_Con );
+
+//    fprintf( stderr, "[INFO] Torsion_Angles: ext_press = (%23.15e %23.15e %23.15e)\n",
+//            data->ext_press[0], data->ext_press[1], data->ext_press[2] );
 #endif
 }

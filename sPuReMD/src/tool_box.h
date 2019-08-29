@@ -34,19 +34,6 @@ void Fit_to_Periodic_Box( simulation_box*, rvec );
 
 int is_Inside_Box( simulation_box*, rvec );
 
-//int iown_midpoint( simulation_box*, rvec, rvec );
-
-/* from grid.h */
-//void GridCell_Closest_Point( grid_cell*, grid_cell*, ivec, ivec, rvec );
-
-//void GridCell_to_Box_Points( grid_cell*, ivec, rvec, rvec );
-
-//real DistSqr_between_Special_Points( rvec, rvec );
-
-//real DistSqr_to_Special_Point( rvec, rvec );
-
-//int Relative_Coord_Encoding( ivec );
-
 /* from geo_tools.h */
 void Make_Point( real, real, real, rvec* );
 

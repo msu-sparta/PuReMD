@@ -543,11 +543,17 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
     Ltop = 0;
     tmptop = 0;
     for ( i = 0; i < A->n + 1; ++i )
+    {
         L->start[i] = 0;
+    }
     for ( i = 0; i < A->n + 1; ++i )
+    {
         U->start[i] = 0;
+    }
     for ( i = 0; i < A->n; ++i )
+    {
         Utop[i] = 0;
+    }
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -592,7 +598,7 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
         // sanity check
         if ( A->j[pj] != i )
         {
-            fprintf( stderr, "[ICHOLT] badly built A matrix!\n (i = %d) ", i );
+            fprintf( stderr, "[ERROR] ICHOLT: badly built A matrix!\n (i = %d) ", i );
             exit( NUMERIC_BREAKDOWN );
         }
 
@@ -606,7 +612,7 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 #if defined(DEBUG)
         if ( val < 0.0 )
         {
-            fprintf( stderr, "[ICHOLT] Numeric breakdown (SQRT of negative on diagonal i = %d). Terminating.\n", i );
+            fprintf( stderr, "[INFO] ICHOLT: numeric breakdown (SQRT of negative on diagonal i = %d). Terminating.\n", i );
             exit( NUMERIC_BREAKDOWN );
 
         }

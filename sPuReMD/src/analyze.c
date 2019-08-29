@@ -834,9 +834,13 @@ static void Calculate_Dipole_Moment( reax_system *system, control_params *contro
 
                 for ( i = 1; i < 2; ++i )
                 {
-                    Distance_on_T3_Gen( system->atoms[ m.atom_list[0] ].x,
-                                        system->atoms[ m.atom_list[i] ].x,
-                                        &system->box, tmpvec );
+                    Compute_Atom_Distance_Triclinic( &system->box,
+                            system->atoms[ m.atom_list[0] ].x,
+                            system->atoms[ m.atom_list[i] ].x,
+                            system->atoms[ m.atom_list[0] ].rel_map,
+                            system->atoms[ m.atom_list[i] ].rel_map,
+                            system->atoms[ m.atom_list[0] ].rel_map, //TODO: what to use for rel_box?
+                            tmpvec );
                     rvec_ScaledAdd( mu, -system->atoms[m.atom_list[0]].q / 2.0, tmpvec );
                 }
 
@@ -888,8 +892,10 @@ static void Calculate_Drift( reax_system *system, control_params *control,
             type = system->atoms[i].type;
             ++count[type];
 
-            Distance_on_T3_Gen( workspace->x_old[i], system->atoms[i].x,
-                    &system->box, driftvec );
+            Compute_Atom_Distance_Triclinic( &system->box,
+                    workspace->x_old[i], system->atoms[i].x,
+                    system->atoms[i].rel_map, system->atoms[i].rel_map,
+                    system->atoms[i].rel_map, driftvec ); //TODO: what to use for rel_box?
 
             if ( FABS( driftvec[0] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||
                     FABS( driftvec[1] ) >= system->box.box_norms[0] / 2.0 - 2.0 ||

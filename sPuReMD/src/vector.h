@@ -755,6 +755,34 @@ static inline void ivec_Scale( ivec dest, const int C, const ivec src )
 }
 
 
+static inline void ivec_Add( ivec dest, const ivec src )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] += src[i];
+    }
+}
+
+
+static inline void ivec_ScaledAdd( ivec dest, const int c, const ivec src )
+{
+    int i;
+
+#ifdef _OPENMP
+    #pragma omp simd
+#endif
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] += c * src[i];
+    }
+}
+
+
 static inline void ivec_rScale( ivec dest, const real C, const rvec src )
 {
     int i;

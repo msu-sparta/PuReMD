@@ -208,7 +208,7 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
     }
 
 #if defined(DEBUG)
-    fprintf( stderr, "[INFO] estimate nbrs: num_far: %d\n",
+    fprintf( stderr, "[INFO] Estimate_Num_Neighbors: num_far = %d\n",
             (int) CEIL( num_far * SAFE_ZONE ) );
 #endif
 
@@ -305,11 +305,19 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
                     Set_End_Index( atom1, num_far, far_nbrs );
 
-//                    fprintf( stderr, "i:%d, start: %d, end: %d - itr: %d\n",
-//                            atom1, Start_Index(atom1,far_nbrs), End_Index(atom1,far_nbrs), itr );
+#if defined(DEBUG_FOCUS)
+                    fprintf( stderr, "[INFO] Generate_Neighbor_Lists: i = %d, start = %d, end = %d, itr = %d\n",
+                            atom1, Start_Index(atom1,far_nbrs), End_Index(atom1,far_nbrs), itr );
+#endif
                 }
             }
         }
+    }
+
+    //TODO: conditionally perform these assignments if periodic boundary conditions are enabled
+    for ( i = 0; i < system->N; i++ )
+    {
+        ivec_MakeZero( system->atoms[i].rel_map );
     }
 
     if ( num_far > far_nbrs->total_intrs * DANGER_ZONE )
@@ -318,7 +326,7 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
         if ( num_far > far_nbrs->total_intrs )
         {
-            fprintf( stderr, "step%d-ran out of space on far_nbrs: top=%d, max=%d",
+            fprintf( stderr, "[ERROR] Generate_Neighbor_Lists: step%d-ran out of space on far_nbrs: top=%d, max=%d",
                      data->step, num_far, far_nbrs->total_intrs );
             exit( INSUFFICIENT_MEMORY );
         }

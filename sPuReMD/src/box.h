@@ -54,15 +54,16 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
 int Count_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
         simulation_box*, real );
 
-void Distance_on_T3_Gen( rvec, rvec, simulation_box*, rvec );
+void Compute_Atom_Distance_Triclinic( simulation_box*, rvec, rvec,
+        ivec, ivec, ivec, rvec );
 
-void Inc_on_T3_Gen( rvec, rvec, simulation_box* );
+void Update_Atom_Position_Triclinic( rvec, rvec, ivec, simulation_box* );
 
 /* These functions assume that the coordinates are in triclinic system */
 /* this function returns cartesian norm but triclinic distance vector */
-real Compute_Distance( simulation_box*, rvec, rvec, ivec, rvec );
+real Compute_Atom_Distance( simulation_box*, rvec, rvec, ivec, ivec, ivec, rvec );
 
-void Inc_on_T3( rvec, rvec, simulation_box* );
+void Update_Atom_Position( rvec, rvec, ivec, simulation_box* );
 
 real Metric_Product( rvec, rvec, simulation_box* );
 

@@ -24,7 +24,7 @@
 #include "tool_box.h"
 #include "vector.h"
 
-/* min. distance for neighboring atoms */
+/* min. distance between neighboring atoms */
 #define MIN_NBR_DIST (0.01)
 
 
@@ -109,20 +109,6 @@ void Make_Consistent( simulation_box* box )
     box->trans_inv[2][2] = (box->trans[0][0] * box->trans[1][1] -
                             box->trans[0][1] * box->trans[1][0]) * one_vol;
 
-//   for (i=0; i < 3; i++)
-//     {
-//       for (j=0; j < 3; j++)
-//  fprintf(stderr,"%lf\t",box->trans[i][j]);
-//       fprintf(stderr,"\n");
-//     }
-//   fprintf(stderr,"\n");
-//   for (i=0; i < 3; i++)
-//     {
-//       for (j=0; j < 3; j++)
-//  fprintf(stderr,"%lf\t",box->trans_inv[i][j]);
-//       fprintf(stderr,"\n");
-//     }
-
     box->g[0][0] = box->box[0][0] * box->box[0][0] +
                    box->box[0][1] * box->box[0][1] +
                    box->box[0][2] * box->box[0][2];
@@ -147,7 +133,7 @@ void Make_Consistent( simulation_box* box )
                    box->box[2][1] * box->box[2][1] +
                    box->box[2][2] * box->box[2][2];
 
-    // These proportions are only used for isotropic_NPT!
+    /* These proportions are only used for isotropic_NPT! */
     box->side_prop[0] = box->box[0][0] / box->box[0][0];
     box->side_prop[1] = box->box[1][1] / box->box[0][0];
     box->side_prop[2] = box->box[2][2] / box->box[0][0];
@@ -184,7 +170,7 @@ void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
     box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
 
 #if defined(DEBUG)
-    fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
+    fprintf( stderr, "[INFO] Setup_Box: box is %8.2f x %8.2f x %8.2f\n",
              box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
 
@@ -253,10 +239,14 @@ void Update_Box_Semi_Isotropic( simulation_box *box, rvec mu )
  *  box: struct of info. for the simulation box
  *
  * Outputs:
- *  x: updated atom position */
-void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
+ *  x: updated atom position
+ *  rel_map: relative coordinates for the peroidic image of
+ *      the simulation box that this atom was re-mapped into
+ *      during the position update where (0,0,0) represents no mapping
+ *  */
+void Update_Atom_Position( rvec x, rvec dx, ivec rel_map, simulation_box *box )
 {
-    int i;
+    int i, remapped;
     real tmp;
 
     for ( i = 0; i < 3; i++ )
@@ -264,18 +254,39 @@ void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
         /* new atomic position after update along dimension i */
         tmp = x[i] + dx[i];
 
-        /* re-map the position to be in the range [-d_i, d_i],
+        /* outside of simulation box boundary [0.0, d_i),
          * where d_i is the simulation box length along dimesion i */
-        if ( tmp <= -box->box_norms[i] || tmp >= box->box_norms[i] )
+        if ( tmp < 0.0 || tmp >= box->box_norms[i] )
         {
-            tmp = FMOD( tmp, box->box_norms[i] );
-        }
+            remapped = FALSE;
 
-        /* if the new position after re-mapping is negative,
-         * translate back to the range [0, d_i] (i.e., inside the box) */
-        if ( tmp < 0.0 )
-        {
-            tmp += box->box_norms[i];
+            /* re-map the position to be in the range [-d_i, d_i] */
+            if ( tmp <= -box->box_norms[i] || tmp >= box->box_norms[i] )
+            {
+                if ( tmp >= 0.0 )
+                {
+                    rel_map[i] += ((int) CEIL( tmp / box->box_norms[i] )) - 1;
+                }
+                else
+                {
+                    rel_map[i] += (int) FLOOR( tmp / box->box_norms[i] );
+                }
+
+                tmp = FMOD( tmp, box->box_norms[i] );
+                remapped = TRUE;
+            }
+
+            /* if the new position after re-mapping is negative,
+             * translate back to the range [0, d_i] (i.e., inside the box) */
+            if ( tmp < 0.0 )
+            {
+                tmp += box->box_norms[i];
+
+                if ( remapped == FALSE )
+                {
+                    --rel_map[i];
+                }
+            }
         }
 
         x[i] = tmp;
@@ -298,7 +309,8 @@ void Inc_on_T3( rvec x, rvec dx, simulation_box *box )
  * r: displacement vector betweeon the atoms
  * return value: distance
  */
-real Compute_Distance( simulation_box* box, rvec x1, rvec x2, ivec x2_rel_box, rvec r )
+real Compute_Atom_Distance( simulation_box* box, rvec x1, rvec x2,
+        ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
 {
     int i;
     real norm;
@@ -307,49 +319,50 @@ real Compute_Distance( simulation_box* box, rvec x1, rvec x2, ivec x2_rel_box, r
 
     for ( i = 0; i < 3; i++ )
     {
-        r[i] = x2[i] + box->box_norms[i] * x2_rel_box[i] - x1[i];
+        /* translate the position of atom 2 (which has been fitted to be within
+         * the simulation box boundaries) to the position of it's periodic image
+         * (if necessary -- defined by rel_box)
+         * and compute the component-wise difference with atom 1 */
+        r[i] = (x2[i] + box->box_norms[i]
+                * (x2_rel_box[i] + x2_rel_map[i] - x1_rel_map[i])) - x1[i];
 
         norm += SQR( r[i] );
     }
 
+    /* note: distance of exactly 0.0 is also an error condition */
     assert( norm > 0.0 );
-    return norm;
+
+    return SQRT( norm );
 }
 
 
-void Distance_on_T3_Gen( rvec x1, rvec x2, simulation_box* box, rvec r )
+void Compute_Atom_Distance_Triclinic( simulation_box* box, rvec x1, rvec x2,
+        ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
 {
     rvec xa, xb, ra;
-    ivec x2_rel_box;
 
+    /* translate positions from Cartesian to Triclinic coordinates */
     Transform( x1, box, -1, xa );
     Transform( x2, box, -1, xb );
 
-    //printf(">xa: (%lf, %lf, %lf)\n",xa[0],xa[1],xa[2]);
-    //printf(">xb: (%lf, %lf, %lf)\n",xb[0],xb[1],xb[2]);
+    Compute_Atom_Distance( box, xa, xb, x1_rel_map, x2_rel_map, x2_rel_box, ra );
 
-    //TODO: compute rel_box for x2
-
-    Compute_Distance( box, xa, xb, x2_rel_box, ra );
-
+    /* translate position from Triclinic to Cartesian coordinates */
     Transform( ra, box, 1, r );
 }
 
 
-void Inc_on_T3_Gen( rvec x, rvec dx, simulation_box* box )
+void Update_Atom_Position_Triclinic( rvec x, rvec dx, ivec rel_map, simulation_box* box )
 {
     rvec xa, dxa;
 
+    /* translate positions from Cartesian to Triclinic coordinates */
     Transform( x, box, -1, xa );
     Transform( dx, box, -1, dxa );
 
-    //printf(">xa: (%lf, %lf, %lf)\n",xa[0],xa[1],xa[2]);
-    //printf(">dxa: (%lf, %lf, %lf)\n",dxa[0],dxa[1],dxa[2]);
+    Update_Atom_Position( xa, dxa, rel_map, box );
 
-    Inc_on_T3( xa, dxa, box );
-
-    //printf(">new_xa: (%lf, %lf, %lf)\n",xa[0],xa[1],xa[2]);
-
+    /* translate position from Triclinic to Cartesian coordinates */
     Transform( xa, box, 1, x );
 }
 

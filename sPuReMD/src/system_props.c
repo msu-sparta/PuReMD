@@ -162,11 +162,11 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
 
 #if defined(DEBUG)
-    fprintf( stderr, "xcm:  %24.15e %24.15e %24.15e\n",
+    fprintf( stderr, "[INFO] xcm: %24.15e, %24.15e, %24.15e\n",
              data->xcm[0], data->xcm[1], data->xcm[2] );
-    fprintf( stderr, "vcm:  %24.15e %24.15e %24.15e\n",
+    fprintf( stderr, "[INFO] vcm: %24.15e, %24.15e, %24.15e\n",
              data->vcm[0], data->vcm[1], data->vcm[2] );
-    fprintf( stderr, "amcm: %24.15e %24.15e %24.15e\n",
+    fprintf( stderr, "[INFO] amcm: %24.15e, %24.15e, %24.15e\n",
              data->amcm[0], data->amcm[1], data->amcm[2] );
     /* fprintf( fout, "mat:  %f %f %f\n     %f %f %f\n     %f %f %f\n",
        mat[0][0], mat[0][1], mat[0][2],
@@ -177,7 +177,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
        inv[1][0], inv[1][1], inv[1][2],
        inv[2][0], inv[2][1], inv[2][2] );
        fflush( fout ); */
-    fprintf( stderr, "avcm:  %24.15e %24.15e %24.15e\n",
+    fprintf( stderr, "[INFO] avcm: %24.15e, %24.15e, %24.15e\n",
              data->avcm[0], data->avcm[1], data->avcm[2] );
 #endif
 }
@@ -348,7 +348,6 @@ void Compute_Pressure( reax_system* system, simulation_data* data,
     {
         p_atom = &system->atoms[i];
 
-//        Distance_on_T3_Gen( data->rcm, p_atom->x, &system->box, &dx );
         rvec_OuterProduct( temp, p_atom->v, p_atom->v );
         rtensor_ScaledAdd( data->flex_bar.P,
                 system->reax_param.sbp[ p_atom->type ].mass, temp );

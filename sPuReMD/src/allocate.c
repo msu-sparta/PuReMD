@@ -239,7 +239,7 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
     realloc = &workspace->realloc;
     g = &system->g;
 
-    if ( realloc->num_far > 0 && nbr_flag )
+    if ( realloc->num_far > 0 && nbr_flag == TRUE )
     {
         Reallocate_Neighbor_List( lists[FAR_NBRS],
                 system->N, realloc->num_far * SAFE_ZONE );

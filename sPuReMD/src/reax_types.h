@@ -586,6 +586,11 @@ struct reax_atom
 {
     /* integer representation of element type of this atom */
     int type;
+    /* relative coordinates in terms of periodic images of the
+     * simulation box which are used to track if this atom moves
+     * between images between simulation steps which regenerate
+     * the far neighbors list */
+    ivec rel_map;
     /* string representation of element type of this atom */
     char name[9];
     /* position of this atom (3D space) */

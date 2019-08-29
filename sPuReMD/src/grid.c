@@ -513,9 +513,11 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
         g->atoms[i][j][k][g->top[i][j][k]] = l;
         g->top[i][j][k]++;
 
-        // fprintf( stderr, "\tatom%-6d (%8.3f%8.3f%8.3f) --> (%3d%3d%3d)\n",
-        // l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
-        // i, j, k );
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "[INFO] Bin_Atoms: atom id = %-6d, x = (%8.3f, %8.3f, %8.3f) --> bin = (%3d, %3d, %3d)\n",
+                l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
+                i, j, k );
+#endif
     }
 
     max_atoms = 0;
