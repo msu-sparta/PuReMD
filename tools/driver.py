@@ -241,6 +241,7 @@ class SimulationData(Structure):
 class ReaxAtom(Structure):
     _fields_ = [
             ("type", c_int),
+            ("rel_map", c_int * 3),
             ("name", c_char * 9),
             ("x", c_double * 3),
             ("v", c_double * 3),

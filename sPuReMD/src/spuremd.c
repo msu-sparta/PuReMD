@@ -246,6 +246,8 @@ int simulate( const void * const handle )
 
         if ( spmd_handle->callback != NULL )
         {
+            Compute_Total_Energy( spmd_handle->data );
+
             spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
                     spmd_handle->lists );
         }
