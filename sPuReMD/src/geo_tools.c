@@ -115,7 +115,10 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 #define PDB_ATOM_FORMAT_O_LENGTH (82)
 #define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
 
+#define BGF_ATOM_FORMAT "%6s %5s %5s %3s %c %5s%10s%10s%10s %5s%3s%2s %8s"
 #define BGF_CRYSTX_FORMAT "%8s%11s%11s%11s%11s%11s%11s"
+
+#define BGF_ATOM_FORMAT_O "%6s %5d %-5s %3s %c %5s%10.5f%10.5f%10.5f %-5s%3d%2d %8.5f"
 
 
 /* Parse geometry file to determine simulation box parameters.
@@ -508,7 +511,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 
     sfclose( pdb, "Read_PDB::pdb" );
 
-    Deallocate_Tokenizer_Space( &s, &s1, &tmp );
+    Deallocate_Tokenizer_Space( &s, &s1, &tmp, MAX_TOKENS );
 } 
 
 
@@ -633,25 +636,13 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     sfclose( bgf, "Read_BGF::bgf" );
 
-    system->atoms = scalloc( system->N, sizeof(reax_atom),
-            "Read_BGF::system->atoms" );
+    PreAllocate_Space( system, control, workspace );
+
     workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
             "Read_BGF::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
         workspace->map_serials[i] = -1;
-    }
-
-    workspace->orig_id = scalloc( system->N, sizeof(int),
-            "Read_BGF::workspace->orig_id" );
-    workspace->restricted  = scalloc( system->N, sizeof(int),
-            "Read_BGF::workspace->restricted" );
-    workspace->restricted_list = scalloc( system->N, sizeof(int*),
-            "Read_BGF::workspace->restricted_list" );
-    for ( i = 0; i < system->N; ++i )
-    {
-        workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
-                "Read_BGF::workspace->restricted_list[i]" );
     }
 
     bgf = sfopen( bgf_file, "r" );
@@ -665,68 +656,45 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         backup[MAX_LINE - 1] = '\0';
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
-        /* process new line */
+        /* process lines with atom info (i.e., begin with keywords HETATM or ATOM),
+         * format: "%6s %5d %-5s %3s %c %5s%10.5f%10.5f%10.5f %-5s%3d%2d %8.5f"
+         *
+         * also, it's common to see the atom info format
+         * inlined in MSI BGF files as follows:
+         * FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5)
+         * */
         if ( strncmp( tokens[0], "ATOM", 4 ) == 0
                 || strncmp( tokens[0], "HETATM", 6 ) == 0 )
         {
-            if ( strncmp( tokens[0], "ATOM", 4 ) == 0 )
-            {
-                strncpy( descriptor, backup, sizeof(descriptor) - 1 );
-                descriptor[sizeof(descriptor) - 1] = '\0';
-                strncpy( serial, backup + 7, sizeof(serial) - 1 );
-                serial[sizeof(serial) - 1] = '\0';
-                strncpy( atom_name, backup + 13, sizeof(atom_name) - 1 );
-                atom_name[sizeof(atom_name) - 1] = '\0';
-                strncpy( res_name, backup + 19, sizeof(res_name) - 1 );
-                res_name[sizeof(res_name) - 1] = '\0';
-                chain_id = backup[23];
-                strncpy( res_seq, backup + 25, sizeof(res_seq) - 1 );
-                res_seq[sizeof(res_seq) - 1] = '\0';
-                strncpy( s_x, backup + 30, sizeof(s_x) - 1 );
-                s_x[sizeof(s_x) - 1] = '\0';
-                strncpy( s_y, backup + 40, sizeof(s_y) - 1 );
-                s_y[sizeof(s_y) - 1] = '\0';
-                strncpy( s_z, backup + 50, sizeof(s_x) - 1 );
-                s_z[sizeof(s_x) - 1] = '\0';
-                strncpy( element, backup + 61, sizeof(element) - 1 );
-                element[sizeof(element) - 1] = '\0';
-                strncpy( occupancy, backup + 66, sizeof(occupancy) - 1 );
-                occupancy[sizeof(occupancy) - 1] = '\0';
-                strncpy( temp_factor, backup + 69, sizeof(temp_factor) - 1 );
-                temp_factor[sizeof(temp_factor) - 1] = '\0';
-                strncpy( charge, backup + 72, sizeof(charge) - 1 );
-                charge[sizeof(charge) - 1] = '\0';
-            }
-            else if ( strncmp( tokens[0], "HETATM", 6 ) == 0 )
-            {
-                /* HETATM line format in BGF file:
-                 * (7x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5) */
-                strncpy( descriptor, backup, sizeof(descriptor) - 1 );
-                descriptor[sizeof(descriptor) - 1] = '\0';
-                strncpy( serial, backup + 7, sizeof(serial) - 1 );
-                serial[sizeof(serial) - 1] = '\0';
-                strncpy( atom_name, backup + 13, sizeof(atom_name) - 1 );
-                atom_name[sizeof(atom_name) - 1] = '\0';
-                strncpy( res_name, backup + 19, sizeof(res_name) - 1 );
-                res_name[sizeof(res_name) - 1] = '\0';
-                chain_id = backup[23];
-                strncpy( res_seq, backup + 25, sizeof(res_seq) - 1 );
-                res_seq[sizeof(res_seq) - 1] = '\0';
-                strncpy( s_x, backup + 30, sizeof(s_x) - 1 );
-                s_x[sizeof(s_x) - 1] = '\0';
-                strncpy( s_y, backup + 40, sizeof(s_y) - 1 );
-                s_y[sizeof(s_y) - 1] = '\0';
-                strncpy( s_z, backup + 50, sizeof(s_z) - 1 );
-                s_z[sizeof(s_z) - 1] = '\0';
-                strncpy( element, backup + 61, sizeof(element) - 1 );
-                element[sizeof(element) - 1] = '\0';
-                strncpy( occupancy, backup + 66, sizeof(occupancy) - 1 );
-                occupancy[sizeof(occupancy) - 1] = '\0';
-                strncpy( temp_factor, backup + 69, sizeof(temp_factor) - 1 );
-                temp_factor[sizeof(temp_factor) - 1] = '\0';
-                strncpy( charge, backup + 72, sizeof(charge) - 1 );
-                charge[sizeof(charge) - 1] = '\0';
-            }
+            strncpy( descriptor, backup, sizeof(descriptor) - 1 );
+            descriptor[sizeof(descriptor) - 1] = '\0';
+            strncpy( serial, backup + 7, sizeof(serial) - 1 );
+            serial[sizeof(serial) - 1] = '\0';
+            strncpy( atom_name, backup + 13, sizeof(atom_name) - 1 );
+            atom_name[sizeof(atom_name) - 1] = '\0';
+            strncpy( res_name, backup + 19, sizeof(res_name) - 1 );
+            res_name[sizeof(res_name) - 1] = '\0';
+            chain_id = backup[23];
+            strncpy( res_seq, backup + 25, sizeof(res_seq) - 1 );
+            res_seq[sizeof(res_seq) - 1] = '\0';
+            strncpy( s_x, backup + 30, sizeof(s_x) - 1 );
+            s_x[sizeof(s_x) - 1] = '\0';
+            strncpy( s_y, backup + 40, sizeof(s_y) - 1 );
+            s_y[sizeof(s_y) - 1] = '\0';
+            strncpy( s_z, backup + 50, sizeof(s_x) - 1 );
+            s_z[sizeof(s_x) - 1] = '\0';
+            strncpy( element, backup + 61, sizeof(element) - 1 );
+            element[sizeof(element) - 1] = '\0';
+            strncpy( occupancy, backup + 66, sizeof(occupancy) - 1 );
+            occupancy[sizeof(occupancy) - 1] = '\0';
+            strncpy( temp_factor, backup + 69, sizeof(temp_factor) - 1 );
+            temp_factor[sizeof(temp_factor) - 1] = '\0';
+            strncpy( charge, backup + 72, sizeof(charge) - 1 );
+            charge[sizeof(charge) - 1] = '\0';
+
+//            sscanf( backup, BGF_ATOM_FORMAT, descriptor, serial, atom_name,
+//                    res_name, &chain_id, res_seq, s_x, s_y, s_z, element,
+//                    occupancy, temp_factor, charge );
 
             /* add to mapping */
             bgf_serial = strtod( serial, &endptr );
@@ -812,13 +780,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         exit( INVALID_INPUT );
     }
 
-    sfree( line, "Read_BGF::line" );
-    sfree( backup, "Read_BGF::backup" );
-    for ( i = 0; i < MAX_TOKENS; i++ )
-    {
-        sfree( tokens[i], "Read_BGF::tokens[i]" );
-    }
-    sfree( tokens, "Read_BGF::tokens" );
+    Deallocate_Tokenizer_Space( &line, &backup, &tokens, MAX_TOKENS );
 
     sfclose( bgf, "Read_BGF::bgf" );
 }

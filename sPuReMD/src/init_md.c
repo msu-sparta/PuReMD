@@ -1236,6 +1236,13 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     sfree( workspace->CdDelta, "Finalize_Workspace::workspace->CdDelta" );
     sfree( workspace->vlpex, "Finalize_Workspace::workspace->vlpex" );
 
+    if ( control->geo_format == BGF
+            || control->geo_format == ASCII_RESTART
+            || control->geo_format == BINARY_RESTART )
+    {
+        sfree( workspace->map_serials, "Finalize_Workspace::workspace->map_serials" );
+    }
+
     Deallocate_Matrix( workspace->H );
     Deallocate_Matrix( workspace->H_sp );
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC

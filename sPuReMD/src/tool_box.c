@@ -274,11 +274,12 @@ void Allocate_Tokenizer_Space( char **line, size_t line_size,
 }
 
 
-void Deallocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+void Deallocate_Tokenizer_Space( char **line, char **backup,
+        char ***tokens, size_t num_tokens )
 {
     int i;
 
-    for ( i = 0; i < MAX_TOKENS; i++ )
+    for ( i = 0; i < num_tokens; i++ )
     {
         sfree( (*tokens)[i], "Deallocate_Tokenizer_Space::tokens[i]" );
     }
