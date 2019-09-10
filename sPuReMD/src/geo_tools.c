@@ -570,7 +570,6 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                 "ATOM  ", workspace->orig_id[i], p_atom->name,
                 ' ', "REX", ' ', 1, ' ', x[0], x[1], x[2],
                 1.0, 0.0, "0", name, "  " );
-        buffer[PDB_ATOM_FORMAT_O_LENGTH - 2] = '\n';
         buffer[PDB_ATOM_FORMAT_O_LENGTH - 1] = '\0';
 
         fprintf( pdb, "%s\n", buffer );
