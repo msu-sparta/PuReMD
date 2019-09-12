@@ -211,7 +211,7 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
         {
             if ( m->mtypes[j] )
             {
-                snprintf( s, size - 1, "%s%14s%3d", s, system->reax_param.sbp[j].name, m->mtypes[j] );
+                snprintf( s, size, "%s%14s%3d", s, system->reax_param.sbp[j].name, m->mtypes[j] );
                 s[size - 1] = '\0';
             }
         }

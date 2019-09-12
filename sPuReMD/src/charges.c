@@ -333,9 +333,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
-        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
-        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
@@ -577,13 +577,13 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L) );
 //
 //#if defined(DEBUG_FOCUS)
-//        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
+//        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->L, fname, NULL );
-//        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
+//        snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->U, fname, NULL );
 //
 //        fprintf( stderr, "icholt-" );
-//        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
+//        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->L, fname, NULL );
 //        Print_Sparse_Matrix( U );
 //#endif
@@ -722,9 +722,9 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
-        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
-        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
@@ -864,9 +864,9 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
-        snprintf( fname, SIZE + 10, "%s.L%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
-        snprintf( fname, SIZE + 10, "%s.U%d.out", control->sim_name, data->step );
+        snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
 #endif
     }
@@ -1483,7 +1483,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
     if ( data->step % 10 == 0 )
     {
-        snprintf( fname, SIZE + 11, "s_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE, "s_%d_%s.out", data->step, control->sim_name );
         fp = sfopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
         sfclose( fp, "ACKS2::fp" );
@@ -1542,16 +1542,16 @@ void Compute_Charges( reax_system * const system, control_params * const control
 
     if ( data->step % 10 == 0 )
     {
-        snprintf( fname, SIZE + 11, "H_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE, "H_%d_%s.out", data->step, control->sim_name );
         Print_Sparse_Matrix2( workspace->H, fname, NULL );
 //        Print_Sparse_Matrix_Binary( workspace->H, fname );
 
-        snprintf( fname, SIZE + 11, "b_s_%d_%s.out", data->step, control->sim_name );
+        snprintf( fname, SIZE, "b_s_%d_%s.out", data->step, control->sim_name );
         fp = sfopen( fname, "w" );
         Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
         sfclose( fp, "Compute_Charges::fp" );
 
-//        snprintf( fname, SIZE + 11, "b_t_%d_%s.out", data->step, control->sim_name );
+//        snprintf( fname, SIZE, "b_t_%d_%s.out", data->step, control->sim_name );
 //        fp = sfopen( fname, "w" );
 //        Vector_Print( fp, NULL, workspace->b_t, system->N_cm );
 //        sfclose( fp, "Compute_Charges::fp" );

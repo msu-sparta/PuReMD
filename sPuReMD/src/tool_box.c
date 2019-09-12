@@ -140,7 +140,7 @@ int is_Valid_Serial( static_storage *workspace, int serial )
 {
     if( workspace->map_serials[ serial ] < 0 )
     {
-        fprintf( stderr, "[ERROR] CONECT line includes invalid pdb serial number %d.\n", serial );
+        fprintf( stderr, "[ERROR] CONECT line includes invalid serial number %d.\n", serial );
         fprintf( stderr, "[ERROR] Please correct the input file. Terminating...\n" );
         exit( INVALID_INPUT );
     }

@@ -35,26 +35,49 @@
 /* PDB format :
 http://www.rcsb.org/pdb/file_formats/pdb/pdbguide2.2/guide2.2_frame.html
 
-#define PDB_ATOM_FORMAT   "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%4s%2s%2s\n"
+COLUMNS        DATA  TYPE    FIELD        DEFINITION
+-------------------------------------------------------------------------------------
+ 1 -  6        Record name   "ATOM  "
+ 7 - 11        Integer       serial       Atom  serial number.
+13 - 16        Atom          name         Atom name.
+17             Character     altLoc       Alternate location indicator.
+18 - 20        Residue name  resName      Residue name.
+22             Character     chainID      Chain identifier.
+23 - 26        Integer       resSeq       Residue sequence number.
+27             AChar         iCode        Code for insertion of residues.
+31 - 38        Real(8.3)     x            Orthogonal coordinates for X in Angstroms.
+39 - 46        Real(8.3)     y            Orthogonal coordinates for Y in Angstroms.
+47 - 54        Real(8.3)     z            Orthogonal coordinates for Z in Angstroms.
+55 - 60        Real(6.2)     occupancy    Occupancy.
+61 - 66        Real(6.2)     tempFactor   Temperature  factor.
+77 - 78        LString(2)    element      Element symbol, right-justified.
+79 - 80        LString(2)    charge       Charge  on the atom.
 
-COLUMNS        DATA TYPE       FIELD         DEFINITION
---------------------------------------------------------------------------------
-1 -  6        Record name     "ATOM  "
-7 - 11        Integer         serial        Atom serial number.
-13 - 16       Atom            name          Atom name.
-17            Character       altLoc        Alternate location indicator.
-18 - 20       Residue name    resName       Residue name.
-22            Character       chainID       Chain identifier.
-23 - 26       Integer         resSeq        Residue sequence number.
-27            AChar           iCode         Code for insertion of residues.
-31 - 38       Real(8.3)       x             Orthogonal coord for X in Angstroms
-39 - 46       Real(8.3)       y             Orthogonal coord for Y in Angstroms
-47 - 54       Real(8.3)       z             Orthogonal coord for Z in Angstroms
-55 - 60       Real(6.2)       occupancy     Occupancy.
-61 - 66       Real(6.2)       tempFactor    Temperature factor.
-73 - 76       LString(4)      segID         Segment identifier, left-justified.
-77 - 78       LString(2)      element       Element symbol, right-justified.
-79 - 80       LString(2)      charge        Charge on the atom.
+Example
+
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+ATOM     32  N  AARG A  -3      11.281  86.699  94.383  0.50 35.88           N
+ATOM     33  N  BARG A  -3      11.296  86.721  94.521  0.50 35.60           N
+ATOM     34  CA AARG A  -3      12.353  85.696  94.456  0.50 36.67           C
+ATOM     35  CA BARG A  -3      12.333  85.862  95.041  0.50 36.42           C
+ATOM     36  C  AARG A  -3      13.559  86.257  95.222  0.50 37.37           C
+ATOM     37  C  BARG A  -3      12.759  86.530  96.365  0.50 36.39           C
+ATOM     38  O  AARG A  -3      13.753  87.471  95.270  0.50 37.74           O
+ATOM     39  O  BARG A  -3      12.924  87.757  96.420  0.50 37.26           O
+ATOM     40  CB AARG A  -3      12.774  85.306  93.039  0.50 37.25           C
+ATOM     41  CB BARG A  -3      13.428  85.746  93.980  0.50 36.60           C
+ATOM     42  CG AARG A  -3      11.754  84.432  92.321  0.50 38.44           C
+ATOM     43  CG BARG A  -3      12.866  85.172  92.651  0.50 37.31           C
+ATOM     44  CD AARG A  -3      11.698  84.678  90.815  0.50 38.51           C
+ATOM     45  CD BARG A  -3      13.374  85.886  91.406  0.50 37.66           C
+ATOM     46  NE AARG A  -3      12.984  84.447  90.163  0.50 39.94           N
+ATOM     47  NE BARG A  -3      12.644  85.487  90.195  0.50 38.24           N
+ATOM     48  CZ AARG A  -3      13.202  84.534  88.850  0.50 40.03           C
+ATOM     49  CZ BARG A  -3      13.114  85.582  88.947  0.50 39.55           C
+ATOM     50  NH1AARG A  -3      12.218  84.840  88.007  0.50 40.76           N
+ATOM     51  NH1BARG A  -3      14.338  86.056  88.706  0.50 40.23           N
+ATOM     52  NH2AARG A  -3      14.421  84.308  88.373  0.50 40.45           N
 */
 
 /*
@@ -102,17 +125,13 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 67 - 70      Integer         z             Z value
 */
 
-//#define PDB_ATOM_FORMAT
-//"ATOM  %4d%4s%c%3s%c%4d%c%8.3f%8.3f%8.3f%6.2f%6.2f%-4s%2s%2s\n"
-
 #define PDB_ATOM_FORMAT "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%4s%2s%2s\n"
-#define PDB_ATOM_FORMAT_LENGTH (71)
+#define PDB_ATOM_FORMAT_LENGTH (72)
 #define PDB_HETATM_FORMAT "%6s%5d%4s%c%4s%c%4d%c%8s%8s%8s%6s%6s%2s%2s\n"
 #define PDB_CONECT_FORMAT "%6s%5d%5d%5d%5d%5d\n"
 #define PDB_CRYST1_FORMAT "%6s%9s%9s%9s%7s%7s%7s%11s%4s\n"
 
-#define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n"
-#define PDB_ATOM_FORMAT_O_LENGTH (82)
+#define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f          %-2s%2s\n"
 #define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
 
 #define BGF_ATOM_FORMAT "%6s %5s %5s %3s %c %5s%10s%10s%10s %5s%3s%2s %8s"
@@ -523,12 +542,11 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, static_storage *workspace, output_controls *out_control )
 {
     int i; 
-    char name[3];
+    char name[6];
     real alpha, beta, gamma;
     rvec x;
     reax_atom *p_atom;
     char fname[MAX_STR];
-    char buffer[PDB_ATOM_FORMAT_O_LENGTH];
     FILE *pdb;
 
     /* Writing Box information */
@@ -546,7 +564,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
             / (system->box.box_norms[2] * system->box.box_norms[1]) );
 
     /* write header */
-    snprintf( fname, MAX_STR + 9, "%s-%d.pdb", control->sim_name, data->step );
+    snprintf( fname, sizeof(fname), "%s-%d.pdb", control->sim_name, data->step );
     pdb = sfopen( fname, "w" );
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
              "CRYST1",
@@ -554,7 +572,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
              system->box.box_norms[2],
              RAD2DEG(alpha), RAD2DEG(beta), RAD2DEG(gamma), " ", 0 );
 
-    /* write atom lines to buffer */
+    /* write atom lines to file */
     for ( i = 0; i < system->N; i++ )
     {
         p_atom = &system->atoms[i];
@@ -566,13 +584,10 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         memcpy( x, p_atom->x, 3 * sizeof(real) );
         Fit_to_Periodic_Box( &system->box, x );
 
-        snprintf( buffer, PDB_ATOM_FORMAT_O_LENGTH, PDB_ATOM_FORMAT_O,
-                "ATOM  ", workspace->orig_id[i], p_atom->name,
-                ' ', "REX", ' ', 1, ' ', x[0], x[1], x[2],
-                1.0, 0.0, "0", name, "  " );
-        buffer[PDB_ATOM_FORMAT_O_LENGTH - 1] = '\0';
-
-        fprintf( pdb, "%s\n", buffer );
+        fprintf( pdb, PDB_ATOM_FORMAT_O,
+                "ATOM  ", workspace->orig_id[i], name,
+                ' ', "REX", ' ', 0, ' ', x[0], x[1], x[2],
+                0.0, 0.0, name, "  " );
     }
     
     if ( ferror( pdb ) )
@@ -616,7 +631,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     while ( fgets( line, MAX_LINE, bgf ) )
     {
-        tokens[0][0] = 0;
+        tokens[0][0] = '\0';
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
         if ( strncmp( tokens[0], "ATOM", 4 ) == 0
@@ -714,13 +729,15 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &system->reax_param, element, sizeof(element) );
 
-            /* fprintf( stderr,
-            "a:%3d(%1d) c:%10.5f%10.5f%10.5f q:%10.5f occ:%s temp:%s seg_id:%s element:%s\n",
-             atom_cnt, system->atoms[ atom_cnt ].type,
-             system->atoms[ atom_cnt ].x[0],
-             system->atoms[ atom_cnt ].x[1], system->atoms[ atom_cnt ].x[2],
-             system->atoms[ atom_cnt ].q, occupancy, temp_factor,
-             seg_id, element ); */
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr,
+                    "[INFO] atom_cnt = %5d, atom_type = %3d, x = (%10.5f,%10.5f,%10.5f), q = %10.5f, occ = %s, temp = %s, res_name = %4s, element = %s\n",
+                    atom_cnt, system->atoms[ atom_cnt ].type,
+                    system->atoms[ atom_cnt ].x[0],
+                    system->atoms[ atom_cnt ].x[1], system->atoms[ atom_cnt ].x[2],
+                    system->atoms[ atom_cnt ].q, occupancy, temp_factor,
+                    res_name, element );
+#endif
 
             atom_cnt++;
         }
@@ -738,23 +755,27 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         }
         else if ( strncmp( tokens[0], "CONECT", 6 ) == 0 )
         {
-            /* check number of restrictions */
-            Check_Input_Range( token_cnt - 2, 0, MAX_RESTRICT,
-                    "CONECT line exceeds max restrictions allowed.\n" );
-
-            /* read bond restrictions */
-            if ( is_Valid_Serial( workspace, bgf_serial = atoi(tokens[1]) ) )
+            if ( control->restrict_bonds )
             {
-                ratom = workspace->map_serials[ bgf_serial ];
-            }
+                /* check number of restrictions */
+                Check_Input_Range( token_cnt - 2, 0, MAX_RESTRICT,
+                        "CONECT line exceeds max restrictions allowed.\n" );
 
-            workspace->restricted[ ratom ] = token_cnt - 2;
-            for ( i = 2; i < token_cnt; ++i )
-            {
-                if ( is_Valid_Serial( workspace, bgf_serial = atoi(tokens[i]) ) )
+                /* read bond restrictions */
+                bgf_serial = atoi(tokens[1]);
+                if ( is_Valid_Serial( workspace, bgf_serial ) )
                 {
-                    workspace->restricted_list[ratom][i - 2] =
-                        workspace->map_serials[bgf_serial];
+                    ratom = workspace->map_serials[ bgf_serial ];
+                }
+
+                workspace->restricted[ ratom ] = token_cnt - 2;
+                for ( i = 2; i < token_cnt; ++i )
+                {
+                    if ( is_Valid_Serial( workspace, bgf_serial = atoi(tokens[i]) ) )
+                    {
+                        workspace->restricted_list[ratom][i - 2] =
+                            workspace->map_serials[bgf_serial];
+                    }
                 }
             }
         }

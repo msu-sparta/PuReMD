@@ -36,7 +36,7 @@ void PreAllocate_Space( reax_system *system, control_params *control,
     workspace->orig_id = scalloc( system->N, sizeof(int),
             "PreAllocate_Space::workspace->orid_id" );
 
-    /* space for keeping restriction info, if any */
+    /* bond restriction info */
     if ( control->restrict_bonds )
     {
         workspace->restricted = scalloc( system->N, sizeof(int),
