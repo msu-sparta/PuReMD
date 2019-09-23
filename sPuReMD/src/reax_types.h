@@ -1259,10 +1259,12 @@ struct static_storage
     real *Hdia_inv;
     /* row drop tolerences for incomplete Cholesky preconditioner */
     real *droptol;
+    /* right-hand side vectors for the linear systems */
     real *b_s;
     real *b_t;
     real *b_prc;
     real *b_prm;
+    /* initial guesses for solutions to the linear systems */
     real **s;
     real **t;
 
@@ -1281,6 +1283,7 @@ struct static_storage
     real *r_hat;
     real *d;
     real *q;
+    real *q_hat;
     real *p;
 
     /* SpMV related storage */

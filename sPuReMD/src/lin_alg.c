@@ -3561,13 +3561,16 @@ int CG( const static_storage * const workspace, const control_params * const con
  * tol: tolerence compared against the relative residual for determining convergence
  * x: inital guess
  * fresh_pre: flag for determining if preconditioners should be recomputed
+ *
+ * Reference: Netlib (in MATLAB)
+ *  http://www.netlib.org/templates/matlab/bicgstab.m
  * */
 int BiCGStab( const static_storage * const workspace, const control_params * const control,
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
         const real tol, real * const x, const int fresh_pre )
 {
     int i, g_itr, N;
-    real tmp, alpha, beta, omega, rho, rho_old, sigma, rnorm, g_rnorm, bnorm, g_bnorm;
+    real tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, g_rnorm, bnorm, g_bnorm, g_omega, g_rho;
     real t_start, t_pa, t_spmv, t_vops;
 
     N = H->n;
@@ -3577,9 +3580,9 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
 
 #ifdef _OPENMP
     #pragma omp parallel default(none) \
-    private(i, tmp, alpha, beta, omega, rho, rho_old, sigma, rnorm, bnorm, t_start) \
+    private(i, tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, bnorm, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, g_rnorm, g_bnorm, N)
+    shared(g_itr, g_rnorm, g_bnorm, g_omega, g_rho, N, stderr)
 #endif
     {
         t_pa = 0.0;
@@ -3592,47 +3595,97 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
 
         t_start = Get_Time( );
         bnorm = Norm( b, N );
+        if ( bnorm <= 0.0 )
+        {
+            bnorm = 1.0;
+        }
         Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->d, N );
         t_vops += Get_Timing_Info( t_start );
 
         t_start = Get_Time( );
         Vector_Copy( workspace->r_hat, workspace->r, N );
         rnorm = Norm( workspace->r, N );
-        Vector_Copy( workspace->p, workspace->r, N );
-        rho_old = Dot( workspace->r, workspace->r_hat, N );
+        omega = 1.0;
+        rho = 1.0;
         t_vops += Get_Timing_Info( t_start );
 
         for ( i = 0; i < control->cm_solver_max_iters && rnorm / bnorm > tol; ++i )
         {
-            t_start = Get_Time( );
-            sparse_matvec( workspace, H, workspace->p, workspace->d );
-            t_spmv += Get_Timing_Info( t_start );
+//            fprintf( stderr, "[tid = %d] i = %d\n", omp_get_thread_num( ), i ); fflush( stderr );
 
             t_start = Get_Time( );
-            tmp = Dot( workspace->d, workspace->r_hat, N );
-            alpha = rho_old / tmp;
-            Vector_Sum( workspace->q, 1.0, workspace->r, -1.0 * alpha, workspace->d, N );
+            rho = Dot( workspace->r_hat, workspace->r, N );
+            if ( rho <= 0.0 )
+            {
+//                fprintf( stderr, "[tid = %d] breakdown (rho = %f)\n", omp_get_thread_num( ), rho ); fflush( stderr );
+                break;
+            }
+            if ( i > 0 )
+            {
+                beta = (rho / rho_old) * (alpha / omega);
+                Vector_Sum( workspace->q, 1.0, workspace->p, -1.0 * omega, workspace->z, N );
+                Vector_Sum( workspace->p, 1.0, workspace->r, beta, workspace->q, N );
+            }
+            else
+            {
+                Vector_Copy( workspace->p, workspace->r, N );
+            }
             t_vops += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
-            sparse_matvec( workspace, H, workspace->q, workspace->y );
+            apply_preconditioner( workspace, control, workspace->p, workspace->y, fresh_pre, LEFT );
+            apply_preconditioner( workspace, control, workspace->y, workspace->d, fresh_pre, RIGHT );
+            t_pa += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            sparse_matvec( workspace, H, workspace->d, workspace->z );
+            t_spmv += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            tmp = Dot( workspace->r_hat, workspace->z, N );
+            alpha = rho / tmp;
+            Vector_Sum( workspace->q, 1.0, workspace->r, -1.0 * alpha, workspace->z, N );
+            tmp = Dot( workspace->q, workspace->q, N );
+            /* early convergence check */
+            if ( tmp < tol )
+            {
+                Vector_Add( x, alpha, workspace->d, N );
+//                fprintf( stderr, "[tid = %d] early conv\n", omp_get_thread_num( ) ); fflush( stderr );
+                break;
+            }
+            t_vops += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            apply_preconditioner( workspace, control, workspace->q, workspace->y, fresh_pre, LEFT );
+            apply_preconditioner( workspace, control, workspace->y, workspace->q_hat, fresh_pre, RIGHT );
+            t_pa += Get_Timing_Info( t_start );
+
+            t_start = Get_Time( );
+            sparse_matvec( workspace, H, workspace->q_hat, workspace->y );
             t_spmv += Get_Timing_Info( t_start );
 
             t_start = Get_Time( );
             sigma = Dot( workspace->y, workspace->q, N );
+
+            /* ensure each thread gets a local copy of
+             * the function return value before proceeding
+             * (Dot and Norm functions have persistent state in the form
+             * of a shared global variable for the OpenMP version) */
+#ifdef _OPENMP
+            #pragma omp barrier
+#endif
+
             tmp = Dot( workspace->y, workspace->y, N );
             omega = sigma / tmp;
-            Vector_Sum( workspace->z, alpha, workspace->p, omega, workspace->q, N );
-            Vector_Add( x, 1.0, workspace->z, N );
+            Vector_Sum( workspace->g, alpha, workspace->d, omega, workspace->q_hat, N );
+            Vector_Add( x, 1.0, workspace->g, N );
             Vector_Sum( workspace->r, 1.0, workspace->q, -1.0 * omega, workspace->y, N );
             rnorm = Norm( workspace->r, N );
-            t_vops += Get_Timing_Info( t_start );
-
-            t_start = Get_Time( );
-            rho = Dot( workspace->r, workspace->r_hat, N );
-            beta = (rho / rho_old) * (alpha / omega);
-            Vector_Sum( workspace->z, 1.0, workspace->p, -1.0 * omega, workspace->d, N );
-            Vector_Sum( workspace->p, 1.0, workspace->r, beta, workspace->z, N );
+            if ( omega <= 0.0 )
+            {
+//                fprintf( stderr, "[tid = %d] breakdown (omega = %f)\n", omp_get_thread_num( ), omega ); fflush( stderr );
+                break;
+            }
             rho_old = rho;
             t_vops += Get_Timing_Info( t_start );
         }
@@ -3644,6 +3697,8 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
             g_itr = i;
             g_rnorm = rnorm;
             g_bnorm = bnorm;
+            g_omega = omega;
+            g_rho = rho;
         }
     }
 
@@ -3651,11 +3706,20 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     data->timing.cm_solver_spmv += t_spmv / control->num_threads;
     data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
 
-    if ( g_itr >= control->cm_solver_max_iters )
+    if ( g_omega <= 0.0 )
+    {
+        fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", g_itr );
+        fprintf( stderr, "[INFO] omega = %f\n", g_omega );
+    }
+    else if ( g_rho <= 0.0 )
+    {
+        fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", g_itr );
+        fprintf( stderr, "[INFO] rho = %f\n", g_rho );
+    }
+    else if ( g_itr >= control->cm_solver_max_iters )
     {
         fprintf( stderr, "[WARNING] BiCGStab convergence failed (%d iters)\n", g_itr );
         fprintf( stderr, "  [INFO] Rel. residual error: %f\n", g_rnorm / g_bnorm );
-        return g_itr;
     }
 
     return g_itr;

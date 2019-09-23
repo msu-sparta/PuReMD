@@ -506,12 +506,16 @@ static void Init_Workspace( reax_system *system, control_params *control,
                     "Init_Workspace::workspace->d" );
             workspace->q = scalloc( system->N_cm, sizeof( real ),
                     "Init_Workspace::workspace->q" );
+            workspace->q_hat = scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->q_hat" );
             workspace->p = scalloc( system->N_cm, sizeof( real ),
                     "Init_Workspace::workspace->p" );
             workspace->y = scalloc( system->N_cm, sizeof( real ),
                     "Init_Workspace::workspace->y" );
             workspace->z = scalloc( system->N_cm, sizeof( real ),
                     "Init_Workspace::workspace->z" );
+            workspace->g = scalloc( system->N_cm, sizeof( real ),
+                    "Init_Workspace::workspace->g" );
             break;
 
         default:
@@ -1334,9 +1338,11 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
             sfree( workspace->r_hat, "Finalize_Workspace::workspace->r_hat" );
             sfree( workspace->d, "Finalize_Workspace::workspace->d" );
             sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->q_hat, "Finalize_Workspace::workspace->q_hat" );
             sfree( workspace->p, "Finalize_Workspace::workspace->p" );
             sfree( workspace->y, "Finalize_Workspace::workspace->y" );
             sfree( workspace->z, "Finalize_Workspace::workspace->z" );
+            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
             break;
 
         default:
