@@ -3582,7 +3582,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, bnorm, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, g_rnorm, g_bnorm, g_omega, g_rho, N, stderr)
+    shared(g_itr, g_rnorm, g_bnorm, g_omega, g_rho, N)
 #endif
     {
         t_pa = 0.0;
@@ -3609,15 +3609,20 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
         rho = 1.0;
         t_vops += Get_Timing_Info( t_start );
 
+        /* ensure each thread gets a local copy of
+         * the function return value before proceeding
+         * (Dot and Norm functions have persistent state in the form
+         * of a shared global variable for the OpenMP version) */
+#ifdef _OPENMP
+        #pragma omp barrier
+#endif
+
         for ( i = 0; i < control->cm_solver_max_iters && rnorm / bnorm > tol; ++i )
         {
-//            fprintf( stderr, "[tid = %d] i = %d\n", omp_get_thread_num( ), i ); fflush( stderr );
-
             t_start = Get_Time( );
             rho = Dot( workspace->r_hat, workspace->r, N );
             if ( rho <= 0.0 )
             {
-//                fprintf( stderr, "[tid = %d] breakdown (rho = %f)\n", omp_get_thread_num( ), rho ); fflush( stderr );
                 break;
             }
             if ( i > 0 )
@@ -3650,7 +3655,6 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
             if ( tmp < tol )
             {
                 Vector_Add( x, alpha, workspace->d, N );
-//                fprintf( stderr, "[tid = %d] early conv\n", omp_get_thread_num( ) ); fflush( stderr );
                 break;
             }
             t_vops += Get_Timing_Info( t_start );
@@ -3683,11 +3687,18 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
             rnorm = Norm( workspace->r, N );
             if ( omega <= 0.0 )
             {
-//                fprintf( stderr, "[tid = %d] breakdown (omega = %f)\n", omp_get_thread_num( ), omega ); fflush( stderr );
                 break;
             }
             rho_old = rho;
             t_vops += Get_Timing_Info( t_start );
+
+            /* ensure each thread gets a local copy of
+             * the function return value before proceeding
+             * (Dot and Norm functions have persistent state in the form
+             * of a shared global variable for the OpenMP version) */
+#ifdef _OPENMP
+            #pragma omp barrier
+#endif
         }
 
 #ifdef _OPENMP
