@@ -265,6 +265,17 @@ enum solver
     BiCGStab_S = 4,
 };
 
+/* initial guess type for the linear solver
+ * used for computing atomic charges */
+enum init_guess_type
+{
+    /* prediction using spline extraplotation */
+    SPLINE = 0,
+    /* prediction using Tensorflow frozen model trained with
+     * the long short-term memory model (LSTM) */
+    TF_FROZEN_MODEL_LSTM = 1,
+};
+
 /* preconditioner used with iterative linear solver */
 enum pre_comp
 {
@@ -818,12 +829,21 @@ struct control_params
     real cm_domain_sparsity;
     /* TRUE if enabled, FALSE otherwise */
     unsigned int cm_domain_sparsify_enabled;
+    /* type of method used for computing the initial guess
+     * for the iterative linear solver */
+    unsigned int cm_init_guess_type;
     /* order of spline extrapolation used for computing initial guess
      * to linear solver */
     unsigned int cm_init_guess_extrap1;
     /* order of spline extrapolation used for computing initial guess
      * to linear solver */
     unsigned int cm_init_guess_extrap2;
+    /* file name for the GraphDef (GD) model file 
+     * when predicting solver initial guesses using Tensorflow */
+    char cm_init_guess_gd_model[MAX_STR];
+    /* window size for the long short-term memory model (LSTM)
+     * when predicting solver initial guesses using Tensorflow */
+    unsigned int cm_init_guess_win_size;
     /* preconditioner type for linear solver */
     unsigned int cm_solver_pre_comp_type;
     /* frequency (in terms of simulation time steps) at which to recompute
