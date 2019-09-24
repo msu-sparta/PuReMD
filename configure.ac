@@ -239,6 +239,34 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	fi
 	AC_SUBST([L_LIBS], ["${LAPACKE_LIBS}"])
 
+	# Check for Tensorflow
+	TENSORFLOW_LIBS=
+	AC_CHECK_HEADERS([tensorflow/c/c_api.h], [TENSORFLOW_FOUND_HEADERS="yes"])
+	if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes"
+	then
+		AC_SEARCH_LIBS([TF_NewTensor], [tensorflow tensorflow_framework],
+			       [TENSORFLOW_FOUND_LIBS="yes"], [TENSORFLOW_FOUND_LIBS="no"],
+			       [])
+		AS_IF([test "x${TENSORFLOW_FOUND_LIBS}" != "xyes"],
+		      [AC_MSG_WARN([
+----------------------------------------------------
+ Unable to find Tensorflow libraries on this system.
+ Disabling support for dependent methods.
+----------------------------------------------------])])
+		if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes" && test "x${TENSORFLOW_FOUND_LIBS}" = "xyes"
+		then
+			TENSORFLOW_LIBS="-ltensorflow"
+		fi
+		AC_DEFINE([HAVE_TENSORFLOW], [1], [Define to 1 if you have TENSORFLOW support enabled.])
+	else
+		AC_MSG_WARN([
+--------------------------------------------------
+ Unable to find Tensorflow headers on this system.
+ Disabling support for dependent methods.
+--------------------------------------------------])
+	fi
+	AC_SUBST([L_LIBS], ["${TENSORFLOW_LIBS}"])
+
 	AC_LANG_POP([C])
 fi
 AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"])

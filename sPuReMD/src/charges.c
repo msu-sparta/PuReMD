@@ -111,6 +111,12 @@ static void TF_Tensor_Deallocator( void* data, size_t length, void* arg )
 }
 
 
+static void TF_free( void* data, size_t length )
+{
+        sfree( data, "TF_free::data" );
+}
+
+
 /* Read the entire content of a file and return it as a TF_Buffer.
  *
  * @param file: The file to be loaded.
@@ -125,7 +131,7 @@ static TF_Buffer* read_file_to_TF_Buffer( const char* file )
 
     f = fopen( file, "rb" );
     fseek( f, 0, SEEK_END );
-    long fsize = ftell( f );
+    fsize = ftell( f );
     fseek( f, 0, SEEK_SET );  //same as rewind(f);
 
     data = malloc( fsize );
@@ -135,7 +141,7 @@ static TF_Buffer* read_file_to_TF_Buffer( const char* file )
     buf = TF_NewBuffer();
     buf->data = data;
     buf->length = fsize;
-    buf->data_deallocator = free_buffer;
+    buf->data_deallocator = &TF_free;
 
     return buf;
 }
@@ -228,7 +234,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
      * note: the input/output tensors names must be provided */
     //TODO: either require standarding model names in GraphDef file
     //      or add control file parameters to all these to be changed
-    s = model_load( control->init_guess_gd_model,
+    s = model_load( control->cm_init_guess_gd_model,
             "lstm_1_input", "dense_1/BiasAdd" );
     if ( !s.session )
     {
@@ -303,7 +309,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
     /* shift previous solutions down by one time step */
 #ifdef _OPENMP
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp, t_tmp)
+        default(none) private(i)
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
