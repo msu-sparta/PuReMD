@@ -33,6 +33,9 @@
   #include "lapacke.h"
 #endif
 
+/* for DBL_EPSILON */
+//#include <float.h>
+
 
 typedef struct
 {
@@ -3595,7 +3598,8 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
 
         t_start = Get_Time( );
         bnorm = Norm( b, N );
-        if ( bnorm <= 0.0 )
+//        if ( FABS( bnorm ) < DBL_EPSILON )
+        if ( bnorm == 0.0 )
         {
             bnorm = 1.0;
         }
@@ -3621,7 +3625,8 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
         {
             t_start = Get_Time( );
             rho = Dot( workspace->r_hat, workspace->r, N );
-            if ( rho <= 0.0 )
+//            if ( FABS( rho ) < DBL_EPSILON )
+            if ( rho == 0.0 )
             {
                 break;
             }
@@ -3685,7 +3690,8 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
             Vector_Add( x, 1.0, workspace->g, N );
             Vector_Sum( workspace->r, 1.0, workspace->q, -1.0 * omega, workspace->y, N );
             rnorm = Norm( workspace->r, N );
-            if ( omega <= 0.0 )
+//            if ( FABS( omega ) < DBL_EPSILON )
+            if ( omega == 0.0 )
             {
                 break;
             }
@@ -3717,15 +3723,17 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     data->timing.cm_solver_spmv += t_spmv / control->num_threads;
     data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
 
-    if ( g_omega <= 0.0 )
+//    if ( FABS( g_omega ) < DBL_EPSILON )
+    if ( g_omega == 0.0 )
     {
         fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", g_itr );
-        fprintf( stderr, "[INFO] omega = %f\n", g_omega );
+        fprintf( stderr, "  [INFO] omega = %f\n", g_omega );
     }
-    else if ( g_rho <= 0.0 )
+//    else if ( FABS( g_rho ) < DBL_EPSILON )
+    else if ( g_rho == 0.0 )
     {
         fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", g_itr );
-        fprintf( stderr, "[INFO] rho = %f\n", g_rho );
+        fprintf( stderr, "  [INFO] rho = %f\n", g_rho );
     }
     else if ( g_itr >= control->cm_solver_max_iters )
     {
