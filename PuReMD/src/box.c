@@ -272,7 +272,9 @@ void Setup_Environment( reax_system *system, control_params *control,
                         mpi_datatypes *mpi_data )
 {
     ivec periodic = {1, 1, 1};
+#if defined(DEBUG_FOCUS)
     char temp[100] = "";
+#endif
 
     /* initialize communicator - 3D mesh with wrap-arounds = 3D torus */
     MPI_Cart_create( MPI_COMM_WORLD, 3, control->procs_by_dim, periodic, 1,

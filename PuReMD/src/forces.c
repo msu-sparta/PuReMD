@@ -44,6 +44,7 @@
   #include "reax_bond_orders.h"
   #include "reax_bonds.h"
   #include "reax_basic_comm.h"
+  #include "reax_charges.h"
   #include "reax_hydrogen_bonds.h"
   #include "reax_io_tools.h"
   #include "reax_list.h"

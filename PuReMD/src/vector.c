@@ -496,9 +496,20 @@ int ivec_isZero( ivec v )
 
 int ivec_isEqual( ivec v1, ivec v2 )
 {
-    if ( v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2] )
-        return 1;
-    return 0;
+    int ret;
+
+    if ( v1[0] == v2[0]
+            && v1[1] == v2[1]
+            && v1[2] == v2[2] )
+    {
+        ret = TRUE;
+    }
+    else
+    {
+        ret = FALSE;
+    }
+
+    return ret;
 }
 
 

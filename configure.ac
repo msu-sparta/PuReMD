@@ -265,7 +265,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
  Disabling support for dependent methods.
 --------------------------------------------------])
 	fi
-	AC_SUBST([L_LIBS], ["${TENSORFLOW_LIBS}"])
+	AC_SUBST([T_LIBS], ["${TENSORFLOW_LIBS}"])
 
 	AC_LANG_POP([C])
 fi

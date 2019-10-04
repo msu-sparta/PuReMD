@@ -22,6 +22,7 @@
 #include "integrate.h"
 #include "allocate.h"
 #include "box.h"
+#include "charges.h"
 #include "comm_tools.h"
 #include "forces.h"
 #include "grid.h"
