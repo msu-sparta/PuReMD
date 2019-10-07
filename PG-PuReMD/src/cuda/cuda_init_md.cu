@@ -10,7 +10,7 @@
 #include "cuda_reset_tools.h"
 #include "cuda_system_props.h"
 #include "cuda_utils.h"
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
   #include "cuda_validation.h"
 #endif
 
@@ -46,11 +46,13 @@ extern "C" {
 #endif
 
 
-void Cuda_Init_ScratchArea( )
+static void Cuda_Init_Scratch_Space( )
 {
-    cuda_malloc( (void **)&scratch, DEVICE_SCRATCH_SIZE, TRUE, "device:scratch" );
+    cuda_malloc( (void **)&scratch, DEVICE_SCRATCH_SIZE, TRUE,
+            "Cuda_Init_Scratch_Space::scratch" );
 
-    host_scratch = (void *) smalloc( HOST_SCRATCH_SIZE, "host:scratch" );
+    host_scratch = (void *) smalloc( HOST_SCRATCH_SIZE,
+            "Cuda_Init_Scratch_Space::host_scratch" );
 }
 
 
@@ -65,10 +67,10 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d GRID:\n", system->my_rank );
-    Print_Grid( &(system->my_grid), stderr );
+    Print_Grid( &system->my_grid, stderr );
 #endif
 
-    Bin_My_Atoms( system, &(workspace->realloc) );
+    Bin_My_Atoms( system, &workspace->realloc );
     Reorder_My_Atoms( system, workspace );
 
     /* estimate N and total capacity */
@@ -162,7 +164,8 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         }
         break;
 
-    case sNPT: /* Semi-Isotropic NPT */
+    /* Semi-Isotropic NPT */
+    case sNPT:
         data->N_f = 3 * system->bigN + 4;
         control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
@@ -172,7 +175,8 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         }
         break;
 
-    case iNPT: /* Isotropic NPT */
+    /* Isotropic NPT */
+    case iNPT:
         data->N_f = 3 * system->bigN + 2;
         control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
@@ -182,7 +186,8 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         }
         break;
 
-    case NPT: /* Anisotropic NPT */
+    /* Anisotropic NPT */
+    case NPT:
         data->N_f = 3 * system->bigN + 9;
         control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
@@ -198,7 +203,6 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
     }
 
-    /* initialize the timer(s) */
     MPI_Barrier( MPI_COMM_WORLD );
     if ( system->my_rank == MASTER_NODE )
     {
@@ -209,7 +213,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 #endif
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "data->N_f: %8.3f\n", data->N_f );
 #endif
 }
@@ -221,10 +225,9 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
     dev_alloc_workspace( system, control, dev_workspace,
             system->local_cap, system->total_cap );
 
-    memset( &(workspace->realloc), 0, sizeof(reallocate_data) );
+    memset( &workspace->realloc, 0, sizeof(reallocate_data) );
     Cuda_Reset_Workspace( system, workspace );
 
-    /* Initialize the Taper function */
     Init_Taper( control, dev_workspace );
 }
 
@@ -253,8 +256,8 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Estimate_Storages( system, control, dev_lists,
             TRUE, TRUE, TRUE, data->step );
 
-    dev_alloc_matrix( &(dev_workspace->H), system->total_cap, system->total_cm_entries );
-    Cuda_Init_Sparse_Matrix_Indices( system, &(dev_workspace->H) );
+    dev_alloc_matrix( &dev_workspace->H, system->total_cap, system->total_cm_entries );
+    Cuda_Init_Sparse_Matrix_Indices( system, &dev_workspace->H );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p:%d - allocated H matrix: max_entries: %d, space=%dMB\n",
@@ -262,7 +265,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
             (int)(system->total_cm_entries * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
 #endif
 
-    if ( control->hbond_cut > 0.0 &&  system->numH > 0 )
+    if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         Dev_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, dev_lists[HBONDS] );
         Cuda_Init_HBond_Indices( system );
@@ -297,7 +300,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 {
     char msg[MAX_STR];
 
-    Cuda_Init_ScratchArea( );
+    Cuda_Init_Scratch_Space( );
 
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
@@ -329,4 +332,10 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     {
         Init_Lookup_Tables( system, control, dev_workspace, mpi_data );
     }
+
+    Cuda_Init_Block_Sizes( system );
+
+#if defined(DEBUG_FOCUS)
+    print_device_mem_usage( );
+#endif
 }

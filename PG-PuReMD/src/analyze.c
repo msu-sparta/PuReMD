@@ -175,8 +175,4 @@ void Analysis( reax_system *system, control_params *control,
             Analyze_Fragments( system, control, data, workspace, lists,
                                out_control->ign, 1 );
     }
-
-#if defined(DEBUG)
-    fprintf( stderr, "analysis... done\n" );
-#endif
 }

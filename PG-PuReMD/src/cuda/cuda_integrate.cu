@@ -14,6 +14,9 @@
 
 #include "../comm_tools.h"
 #include "../grid.h"
+#if defined(DEBUG_FOCUS)
+  #include "../tool_box.h"
+#endif
 #include "../vector.h"
 
 
@@ -52,7 +55,7 @@ void update_velocity_part1( reax_system *system, real dt )
 
     k_update_velocity_1 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -88,7 +91,7 @@ void update_velocity_part2( reax_system *system, real dt )
 
     k_update_velocity_2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -126,7 +129,7 @@ void nhNVT_update_velocity_part1( reax_system *system, real dt )
 
     k_nhNVT_update_velocity_1 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -164,7 +167,7 @@ void nhNVT_update_velocity_part2( reax_system *system, storage *workspace, real 
 
     k_nhNVT_update_velocity_2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, workspace->v_const, system->reax_param.d_sbp, dt, v_xi, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -200,7 +203,7 @@ int nhNVT_update_velocity_part3( reax_system *system, storage *workspace,
 
     k_nhNVT_update_velocity_3 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, workspace->v_const, system->reax_param.d_sbp, dt, v_xi_old, d_my_ekin, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n );
@@ -237,7 +240,7 @@ void bNVT_scale_velocities( reax_system *system, real lambda )
 
     k_bNVT_scale_velocities <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, lambda, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -274,7 +277,7 @@ void bNVP_scale_velocities( reax_system *system, real lambda, rvec mu )
 
     k_bNVP_scale_velocities <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, lambda, mu[0], mu[1], mu[2], system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -286,7 +289,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
     int steps, renbr, ret;
     static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     real t_over_start, t_over_elapsed;
 #endif
 
@@ -323,7 +326,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        init_blocks( system );
+        Cuda_Init_Block_Sizes( system );
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
@@ -332,7 +335,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
 
     if ( renbr && far_nbrs_done == FALSE )
     {
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_start  = Get_Time( );
 #endif
 
@@ -347,7 +350,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
             far_nbrs_done = TRUE;
         }
     
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_elapsed = Get_Timing_Info( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );
@@ -399,6 +402,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     therm = &( data->therm );
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
+    ret = SUCCESS;
 
     if ( verlet_part1_done == FALSE )
     {
@@ -426,7 +430,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        init_blocks( system );
+        Cuda_Init_Block_Sizes( system );
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
@@ -435,7 +439,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
     if ( renbr && far_nbrs_done == FALSE )
     {
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_start  = Get_Time( );
 #endif
 
@@ -450,7 +454,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             far_nbrs_done = TRUE;
         }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_elapsed = Get_Timing_Info( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );
@@ -526,7 +530,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     int steps, renbr, ret;
     static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt, lambda;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     real t_over_start, t_over_elapsed;
 #endif
 
@@ -566,7 +570,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        init_blocks( system );
+        Cuda_Init_Block_Sizes( system );
     
         Cuda_Reset( system, control, data, workspace, lists );
     }
@@ -579,7 +583,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
     if ( renbr && far_nbrs_done == FALSE )
     {
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_start  = Get_Time( );
 #endif
 
@@ -594,7 +598,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
             far_nbrs_done = TRUE;
         }
         
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_elapsed  = Get_Timing_Info( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );
@@ -660,7 +664,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
     int steps, renbr, ret;
     static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     real t_over_start, t_over_elapsed;
 #endif
 
@@ -697,7 +701,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        init_blocks( system );
+        Cuda_Init_Block_Sizes( system );
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
@@ -706,7 +710,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
     if ( renbr && far_nbrs_done == FALSE )
     {
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_start  = Get_Time( );
 #endif
 
@@ -721,7 +725,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
             far_nbrs_done = TRUE;
         }
     
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         t_over_elapsed = Get_Timing_Info( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );

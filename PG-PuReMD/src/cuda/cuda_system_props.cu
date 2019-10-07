@@ -29,45 +29,45 @@ CUDA_GLOBAL void center_of_mass_blocks( single_body_parameters *sbp, reax_atom *
     rvec tmp;
     real m;
 
-    rvec_MakeZero(xcm[threadIdx.x]);
-    rvec_MakeZero(vcm[vcm_id + threadIdx.x]);
-    rvec_MakeZero(amcm[amcm_id + threadIdx.x]);
-    rvec_MakeZero(tmp);
+    rvec_MakeZero( xcm[threadIdx.x] );
+    rvec_MakeZero( vcm[vcm_id + threadIdx.x] );
+    rvec_MakeZero( amcm[amcm_id + threadIdx.x] );
+    rvec_MakeZero( tmp );
 
     if ( i < n )
     {
         m = sbp [ atoms[i].type ].mass;
-        rvec_ScaledAdd (xcm [threadIdx.x], m, atoms [i].x);
-        rvec_ScaledAdd (vcm [vcm_id + threadIdx.x], m, atoms [i].v);
-        rvec_Cross (tmp, atoms[i].x, atoms [i].v);
-        rvec_ScaledAdd (amcm[amcm_id + threadIdx.x], m, tmp);
+        rvec_ScaledAdd( xcm [threadIdx.x], m, atoms[i].x );
+        rvec_ScaledAdd( vcm [vcm_id + threadIdx.x], m, atoms[i].v );
+        rvec_Cross( tmp, atoms[i].x, atoms[i].v );
+        rvec_ScaledAdd( amcm[amcm_id + threadIdx.x], m, tmp );
     }
     __syncthreads( );
 
-    for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 )
+    for ( int offset = blockDim.x / 2; offset > 0; offset >>= 1 )
     { 
-        if ((threadIdx.x < offset))
+        if ( threadIdx.x < offset )
         {
             index = threadIdx.x + offset;
-            rvec_Add (xcm [threadIdx.x], xcm[index]);
-            rvec_Add (vcm [vcm_id  + threadIdx.x], vcm[vcm_id + index]);
-            rvec_Add (amcm[amcm_id + threadIdx.x], amcm[amcm_id + index]);
+            rvec_Add( xcm[threadIdx.x], xcm[index] );
+            rvec_Add( vcm[vcm_id  + threadIdx.x], vcm[vcm_id + index] );
+            rvec_Add( amcm[amcm_id + threadIdx.x], amcm[amcm_id + index] );
         } 
         __syncthreads( );
     }
 
-    if ((threadIdx.x == 0))
+    if ( threadIdx.x == 0 )
     {
-        rvec_Copy (res_xcm[blockIdx.x], xcm[0]);
-        rvec_Copy (res_vcm[blockIdx.x], vcm[vcm_id]);
-        rvec_Copy (res_amcm[blockIdx.x], amcm[amcm_id]);
+        rvec_Copy( res_xcm[blockIdx.x], xcm[0] );
+        rvec_Copy( res_vcm[blockIdx.x], vcm[vcm_id] );
+        rvec_Copy( res_amcm[blockIdx.x], amcm[amcm_id] );
     }
 }
 
 
 #if defined( __SM_35__)
-CUDA_GLOBAL void center_of_mass_blocks_xcm( single_body_parameters *sbp, reax_atom *atoms,
-        rvec *res_xcm, size_t n )
+CUDA_GLOBAL void center_of_mass_blocks_xcm( single_body_parameters *sbp,
+        reax_atom *atoms, rvec *res_xcm, size_t n )
 {
     extern __shared__ rvec my_xcm[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -76,41 +76,49 @@ CUDA_GLOBAL void center_of_mass_blocks_xcm( single_body_parameters *sbp, reax_at
     rvec xcm;
     real m;
 
-    rvec_MakeZero (xcm);
+    rvec_MakeZero( xcm );
 
-    if (i < n){
+    if ( i < n )
+    {
         m = sbp [ atoms[i].type ].mass;
-        rvec_ScaledAdd (xcm , m, atoms [i].x);
+        rvec_ScaledAdd( xcm, m, atoms[i].x );
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    for (int z = 16; z >= 1; z /= 2){
+    for ( int z = 16; z >= 1; z /= 2 )
+    {
         xcm[0] += shfl( xcm[0], z);
         xcm[1] += shfl( xcm[1], z);
         xcm[2] += shfl( xcm[2], z);
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    if (threadIdx.x % 32 == 0)
-        rvec_Copy( my_xcm[ threadIdx.x >> 5], xcm );
-    __syncthreads ();
+    if ( threadIdx.x % 32 == 0 )
+    {
+        rvec_Copy( my_xcm[ threadIdx.x >> 5 ], xcm );
+    }
+    __syncthreads( );
 
-    for( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 ) {
-
-        if ((threadIdx.x < offset)) {
+    for ( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    {
+        if ( threadIdx.x < offset )
+        {
             index = threadIdx.x + offset;
-            rvec_Add (my_xcm [threadIdx.x], my_xcm[index]);
+            rvec_Add( my_xcm[threadIdx.x], my_xcm[index] );
         }
-        __syncthreads ();
+
+        __syncthreads( );
     }
 
-    if ((threadIdx.x == 0))
-        rvec_Copy (res_xcm[blockIdx.x], my_xcm[0]);
+    if ( threadIdx.x == 0 )
+    {
+        rvec_Copy( res_xcm[blockIdx.x], my_xcm[0] );
+    }
 }
 
 
-CUDA_GLOBAL void center_of_mass_blocks_vcm( single_body_parameters *sbp, reax_atom *atoms,
-        rvec *res_vcm, size_t n )
+CUDA_GLOBAL void center_of_mass_blocks_vcm( single_body_parameters *sbp,
+        reax_atom *atoms, rvec *res_vcm, size_t n )
 {
     extern __shared__ rvec my_vcm[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -118,41 +126,48 @@ CUDA_GLOBAL void center_of_mass_blocks_vcm( single_body_parameters *sbp, reax_at
     rvec vcm;
     real m;
 
-    rvec_MakeZero (vcm);
+    rvec_MakeZero( vcm );
 
-    if (i < n){
-        m = sbp [ atoms[i].type ].mass;
-        rvec_ScaledAdd (vcm , m, atoms [i].v);
+    if ( i < n )
+    {
+        m = sbp[ atoms[i].type ].mass;
+        rvec_ScaledAdd( vcm, m, atoms[i].v );
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    for (int z = 16; z >= 1; z /= 2){
-        vcm[0] += shfl( vcm[0], z);
-        vcm[1] += shfl( vcm[1], z);
-        vcm[2] += shfl( vcm[2], z);
+    for ( int z = 16; z >= 1; z /= 2 )
+    {
+        vcm[0] += shfl( vcm[0], z );
+        vcm[1] += shfl( vcm[1], z );
+        vcm[2] += shfl( vcm[2], z );
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    if (threadIdx.x % 32 == 0)
-        rvec_Copy( my_vcm[ threadIdx.x >> 5], vcm );
-    __syncthreads ();
+    if ( threadIdx.x % 32 == 0 )
+    {
+        rvec_Copy( my_vcm[ threadIdx.x >> 5 ], vcm );
+    }
+    __syncthreads( );
 
-    for( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 ) {
-
-        if ((threadIdx.x < offset)) {
+    for ( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    {
+        if ( threadIdx.x < offset )
+        {
             index = threadIdx.x + offset;
-            rvec_Add (my_vcm [threadIdx.x], my_vcm[index]);
+            rvec_Add( my_vcm[threadIdx.x], my_vcm[index] );
         }
-        __syncthreads ();
+        __syncthreads( );
     }
 
-    if ((threadIdx.x == 0))
-        rvec_Copy (res_vcm[blockIdx.x], my_vcm[0]);
+    if ( threadIdx.x == 0 )
+    {
+        rvec_Copy( res_vcm[blockIdx.x], my_vcm[0] );
+    }
 }
 
 
-CUDA_GLOBAL void center_of_mass_blocks_amcm( single_body_parameters *sbp, reax_atom *atoms,
-        rvec *res_amcm, size_t n )
+CUDA_GLOBAL void center_of_mass_blocks_amcm( single_body_parameters *sbp,
+        reax_atom *atoms, rvec *res_amcm, size_t n )
 {
     extern __shared__ rvec my_amcm[];
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -161,39 +176,45 @@ CUDA_GLOBAL void center_of_mass_blocks_amcm( single_body_parameters *sbp, reax_a
     real m;
     rvec tmp;
 
-    rvec_MakeZero (amcm);
+    rvec_MakeZero( amcm );
     rvec_MakeZero( tmp );
 
-    if (i < n){
-        m = sbp [ atoms[i].type ].mass;
-        rvec_Cross (tmp, atoms[i].x, atoms [i].v);
-        rvec_ScaledAdd (amcm, m, tmp);
+    if ( i < n )
+    {
+        m = sbp[ atoms[i].type ].mass;
+        rvec_Cross( tmp, atoms[i].x, atoms [i].v );
+        rvec_ScaledAdd( amcm, m, tmp );
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    for (int z = 16; z >= 1; z /= 2){
-        amcm[0] += shfl( amcm[0], z);
-        amcm[1] += shfl( amcm[1], z);
-        amcm[2] += shfl( amcm[2], z);
+    for ( int z = 16; z >= 1; z /= 2 )
+    {
+        amcm[0] += shfl( amcm[0], z );
+        amcm[1] += shfl( amcm[1], z );
+        amcm[2] += shfl( amcm[2], z );
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    if (threadIdx.x % 32 == 0)
-        rvec_Copy( my_amcm[ threadIdx.x >> 5], amcm );
-    __syncthreads ();
+    if ( threadIdx.x % 32 == 0 )
+    {
+        rvec_Copy( my_amcm[ threadIdx.x >> 5 ], amcm );
+    }
+    __syncthreads( );
 
 
-    for( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 ) {
-
-        if ((threadIdx.x < offset)) {
+    for ( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    {
+        if ( threadIdx.x < offset )
+        {
             index = threadIdx.x + offset;
-            rvec_Add (my_amcm[threadIdx.x], my_amcm[index]);
+            rvec_Add( my_amcm[threadIdx.x], my_amcm[index] );
         }
-        __syncthreads ();
+        __syncthreads( );
     }
 
-    if ((threadIdx.x == 0)){
-        rvec_Copy (res_amcm[blockIdx.x], my_amcm[0]);
+    if ( threadIdx.x == 0 )
+    {
+        rvec_Copy( res_amcm[blockIdx.x], my_amcm[0] );
     }
 }
 #endif
@@ -210,42 +231,45 @@ CUDA_GLOBAL void center_of_mass( rvec *xcm, rvec *vcm, rvec *amcm,
 
     unsigned int xcm_id = threadIdx.x;
     unsigned int vcm_id = blockDim.x;
-    unsigned int amcm_id = 2 * (blockDim.x);
+    unsigned int amcm_id = 2 * blockDim.x;
 
     unsigned int index = 0;
     rvec t_xcm, t_vcm, t_amcm;
 
-    rvec_MakeZero (t_xcm);
-    rvec_MakeZero (t_vcm);
-    rvec_MakeZero (t_amcm);
+    rvec_MakeZero( t_xcm );
+    rvec_MakeZero( t_vcm );
+    rvec_MakeZero( t_amcm );
 
-    if (i < n){
-        rvec_Copy ( t_xcm, xcm[threadIdx.x]);
-        rvec_Copy ( t_vcm, vcm[threadIdx.x]);
-        rvec_Copy ( t_amcm, amcm[threadIdx.x]);
+    if ( i < n )
+    {
+        rvec_Copy( t_xcm, xcm[threadIdx.x] );
+        rvec_Copy( t_vcm, vcm[threadIdx.x] );
+        rvec_Copy( t_amcm, amcm[threadIdx.x] );
     }
 
-    rvec_Copy (sh_xcm[xcm_id], t_xcm);
-    rvec_Copy (sh_vcm[vcm_id + threadIdx.x], t_vcm);
-    rvec_Copy (sh_amcm[amcm_id + threadIdx.x], t_amcm);
+    rvec_Copy( sh_xcm[xcm_id], t_xcm );
+    rvec_Copy( sh_vcm[vcm_id + threadIdx.x], t_vcm );
+    rvec_Copy( sh_amcm[amcm_id + threadIdx.x], t_amcm );
 
-    __syncthreads ();
+    __syncthreads( );
 
-    for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 ) { 
-
-        if (threadIdx.x < offset) {
+    for ( int offset = blockDim.x / 2; offset > 0; offset >>= 1 )
+    {
+        if ( threadIdx.x < offset )
+        {
             index = threadIdx.x + offset;
-            rvec_Add (sh_xcm [threadIdx.x], sh_xcm[index]);
-            rvec_Add (sh_vcm [vcm_id + threadIdx.x], sh_vcm[vcm_id + index]);
-            rvec_Add (sh_amcm [amcm_id + threadIdx.x], sh_amcm[amcm_id + index]);
+            rvec_Add( sh_xcm[threadIdx.x], sh_xcm[index] );
+            rvec_Add( sh_vcm[vcm_id + threadIdx.x], sh_vcm[vcm_id + index] );
+            rvec_Add( sh_amcm[amcm_id + threadIdx.x], sh_amcm[amcm_id + index] );
         } 
-        __syncthreads ();
+        __syncthreads( );
     }
 
-    if (threadIdx.x == 0){
-        rvec_Copy (res_xcm[blockIdx.x], sh_xcm[0]);
-        rvec_Copy (res_vcm[blockIdx.x], sh_vcm[vcm_id]);
-        rvec_Copy (res_amcm[blockIdx.x], sh_amcm[amcm_id]);
+    if ( threadIdx.x == 0 )
+    {
+        rvec_Copy( res_xcm[blockIdx.x], sh_xcm[0] );
+        rvec_Copy( res_vcm[blockIdx.x], sh_vcm[vcm_id] );
+        rvec_Copy( res_amcm[blockIdx.x], sh_amcm[amcm_id] );
     }
 }
 
@@ -507,44 +531,49 @@ CUDA_GLOBAL void compute_center_mass_yz_zz( single_body_parameters *sbp,
 
     rvec diff, xcm;
     real m = 0;
-    rvec_MakeZero (diff);
+    rvec_MakeZero( diff );
     xcm[0] = xcm0;
     xcm[1] = xcm1;
     xcm[2] = xcm2;
 
-    if (i < n)
+    if ( i < n )
     {
         m = sbp[ atoms[i].type ].mass;
-        rvec_ScaledSum( diff, 1., atoms[i].x, -1., xcm );
+        rvec_ScaledSum( diff, 1.0, atoms[i].x, -1.0, xcm );
         yz = diff[1] * diff[2] * m;
         zz = diff[2] * diff[2] * m;
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    for (int z = 16; z <= 1; z++){
-        yz += shfl( yz, z);
-        zz += shfl( zz, z);
+    for ( int z = 16; z <= 1; z++ )
+    {
+        yz += shfl( yz, z );
+        zz += shfl( zz, z );
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    if (threadIdx.x % 32 == 0){
+    if ( threadIdx.x % 32 == 0 )
+    {
         my_results_yz[threadIdx.x >> 5] = yz;    
         my_results_zz[threadIdx.x >> 5] = zz;    
     }
-    __syncthreads ();
+    __syncthreads( );
 
-    for (int offset = blockDim.x >> 6; offset > 0; offset >>= 1){
-        if (threadIdx.x < offset){
+    for ( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    {
+        if ( threadIdx.x < offset )
+        {
             index = threadIdx.x + offset;
-            my_results_yz[ threadIdx.x ] += my_results_yz [ index ];
-            my_results_zz[ zz_i + threadIdx.x ] += my_results_zz [ zz_i + index ];
+            my_results_yz[ threadIdx.x ] += my_results_yz[ index ];
+            my_results_zz[ zz_i + threadIdx.x ] += my_results_zz[ zz_i + index ];
         }
-        __syncthreads ();
+        __syncthreads( );
     }
 
-    if (threadIdx.x == 0) {
-        results [ blockIdx.x*6 + 4 ] = my_results_yz [ 0 ];
-        results [ blockIdx.x*6 + 5 ] = my_results_zz [ zz_i + 0 ];
+    if ( threadIdx.x == 0 )
+    {
+        results [ blockIdx.x * 6 + 4 ] = my_results_yz[ 0 ];
+        results [ blockIdx.x * 6 + 5 ] = my_results_zz[ zz_i + 0 ];
     }
 }
 #endif
@@ -555,30 +584,37 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
 {
 #if defined(__SM_35__)
     extern __shared__ real my_sbp[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real sdata = 0;
+    unsigned int i;
+    int z, offset;
+    real sdata;
 
-    if (i < n)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
         sdata = sbp[ my_atoms[i].type ].mass;
     }
+    else
+    {
+        sdata = 0.0;
+    }
     __syncthreads( );
 
-    for(int z = 16; z >=1; z/=2)
+    for ( z = 16; z >= 1; z /= 2 )
     {
-        sdata += shfl( sdata, z);
+        sdata += shfl( sdata, z );
     }
 
-    if (threadIdx.x % 32 == 0)
+    if ( threadIdx.x % 32 == 0 )
     {
         my_sbp[threadIdx.x >> 5] = sdata;
     }
 
     __syncthreads( );
 
-    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
+    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
-        if(threadIdx.x < offset)
+        if ( threadIdx.x < offset )
         {
             my_sbp[threadIdx.x] += my_sbp[threadIdx.x + offset];
         }
@@ -586,27 +622,35 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
         __syncthreads( );
     }
 
-    if(threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
         block_results[blockIdx.x] = my_sbp[0];
     }
 
 #else
     extern __shared__ real sdata[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real x = 0;
+    unsigned int i;
+    int offset;
+    real x;
 
-    if (i < n)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
         x = sbp[ my_atoms[i].type ].mass;
     }
+    else
+    {
+        x = 0.0;
+    }
+    __syncthreads( );
 
     sdata[ threadIdx.x ] = x;
     __syncthreads( );
 
-    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1)
+    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
     {
-        if (threadIdx.x < offset)
+        if ( threadIdx.x < offset )
         {
             sdata[threadIdx.x] += sdata[threadIdx.x + offset];
         }
@@ -614,11 +658,10 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
         __syncthreads( );
     }
 
-    if (threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
-        block_results[ blockIdx.x] = sdata [0];
+        block_results[ blockIdx.x] = sdata[0];
     }
-
 #endif
 }
 
@@ -626,16 +669,17 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
 extern "C" void dev_compute_total_mass( reax_system *system, real *local_val )
 {
     real *block_mass = (real *) scratch;
+
     cuda_memset( block_mass, 0, sizeof(real) * (1 + BLOCKS_POW_2), "total_mass:tmp" );
 
     k_compute_total_mass <<< BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, block_mass, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_reduction <<< 1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
         ( block_mass, block_mass + BLOCKS_POW_2, BLOCKS_POW_2 );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( local_val, block_mass + BLOCKS_POW_2, sizeof(real), 
@@ -648,34 +692,40 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 {
 #if defined(__SM_35__)
     extern __shared__ real my_sbpdot[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real sdata = 0;
+    unsigned int i;
+    int offset, z;
+    real sdata;
     rvec p;
 
-    if (i < n)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
-        sdata = sbp[ my_atoms[i].type ].mass;
-        rvec_Scale( p, sdata, my_atoms[ i ].v );
+        rvec_Scale( p, sbp[ my_atoms[i].type ].mass, my_atoms[ i ].v );
         sdata = 0.5 * rvec_Dot( p, my_atoms[ i ].v );
+    }
+    else
+    {
+        sdata = 0;
     }
 
     __syncthreads( );
 
-    for(int z = 16; z >= 1; z /= 2)
+    for ( z = 16; z >= 1; z /= 2 )
     {
         sdata += shfl( sdata, z );
     }
 
-    if (threadIdx.x % 32 == 0)
+    if ( threadIdx.x % 32 == 0 )
     {
         my_sbpdot[threadIdx.x >> 5] = sdata;
     }
 
     __syncthreads( );
 
-    for (int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
+    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
-        if (threadIdx.x < offset)
+        if ( threadIdx.x < offset )
         {
             my_sbpdot[threadIdx.x] += my_sbpdot[threadIdx.x + offset];
         }
@@ -683,30 +733,36 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
         __syncthreads( );
     }
 
-    if (threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
         block_results[blockIdx.x] = my_sbpdot[0];
     }
 
 #else
-    extern __shared__ real sdata [];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real    m = 0;
+    extern __shared__ real sdata[];
+    unsigned int i;
+    int offset;
+    real m;
     rvec p;
 
-    if (i < n)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
-        m = sbp[ my_atoms[i].type ].mass;
-        rvec_Scale( p, m, my_atoms[ i ].v );
+        rvec_Scale( p, sbp[ my_atoms[i].type ].mass, my_atoms[ i ].v );
         m = 0.5 * rvec_Dot( p, my_atoms[ i ].v );
+    }
+    else
+    {
+        m = 0;
     }
 
     sdata[ threadIdx.x ] = m;
     __syncthreads( );
 
-    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1)
+    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
     {
-        if (threadIdx.x < offset)
+        if ( threadIdx.x < offset )
         {
             sdata[threadIdx.x] += sdata[threadIdx.x + offset];
         }
@@ -714,7 +770,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
         __syncthreads( );
     }
 
-    if (threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
         block_results[blockIdx.x] = sdata[0];
     }
@@ -726,16 +782,17 @@ extern "C" void dev_compute_kinetic_energy( reax_system *system,
         simulation_data *data, real *local_val )
 {
     real *block_energy = (real *) scratch;
+
     cuda_memset( block_energy, 0, sizeof(real) * (BLOCKS_POW_2 + 1), "kinetic_energy:tmp" );
 
     k_compute_kinetic_energy <<< BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, block_energy, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_reduction <<< 1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
         ( block_energy, block_energy + BLOCKS_POW_2, BLOCKS_POW_2 );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     //copy_host_device( local_val, &((simulation_data *)data->d_simulation_data)->my_en.e_kin, 
@@ -759,12 +816,12 @@ extern "C" void dev_compute_momentum( reax_system *system, rvec xcm,
     
     center_of_mass_blocks_xcm <<< BLOCKS_POW_2,BLOCK_SIZE,(sizeof(rvec) * BLOCK_SIZE) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, l_xcm, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
     
-    k_reduction_rvec <<<1, BLOCKS_POW_2, (sizeof(rvec) * BLOCKS_POW_2) >>>
-            (l_xcm, l_xcm + BLOCKS_POW_2, BLOCKS_POW_2);
-    cudaThreadSynchronize( );
+    k_reduction_rvec <<< 1, BLOCKS_POW_2, sizeof(rvec) * BLOCKS_POW_2 >>>
+            (l_xcm, l_xcm + BLOCKS_POW_2, BLOCKS_POW_2 );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
     copy_host_device( xcm, l_xcm + BLOCKS_POW_2,
             sizeof(rvec), cudaMemcpyDeviceToHost, "momentum:xcm" );
@@ -775,12 +832,12 @@ extern "C" void dev_compute_momentum( reax_system *system, rvec xcm,
     
     center_of_mass_blocks_vcm <<< BLOCKS_POW_2,BLOCK_SIZE,(sizeof(rvec) * BLOCK_SIZE) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, l_vcm, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
     
-    k_reduction_rvec <<<1, BLOCKS_POW_2, (sizeof(rvec) * BLOCKS_POW_2) >>>
-        (l_vcm, l_vcm + BLOCKS_POW_2, BLOCKS_POW_2);
-    cudaThreadSynchronize( );
+    k_reduction_rvec <<< 1, BLOCKS_POW_2, sizeof(rvec) * BLOCKS_POW_2 >>>
+        ( l_vcm, l_vcm + BLOCKS_POW_2, BLOCKS_POW_2 );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
     copy_host_device( vcm, l_vcm + BLOCKS_POW_2, sizeof(rvec),
         cudaMemcpyDeviceToHost, "momentum:vcm" );
@@ -791,12 +848,12 @@ extern "C" void dev_compute_momentum( reax_system *system, rvec xcm,
     
     center_of_mass_blocks_amcm <<< BLOCKS_POW_2,BLOCK_SIZE,(sizeof(rvec) * BLOCK_SIZE) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, l_amcm, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
     
-    k_reduction_rvec <<<1, BLOCKS_POW_2, (sizeof(rvec) * BLOCKS_POW_2) >>>
-        (l_amcm, l_amcm + BLOCKS_POW_2, BLOCKS_POW_2);
-    cudaThreadSynchronize( );
+    k_reduction_rvec <<< 1, BLOCKS_POW_2, sizeof(rvec) * BLOCKS_POW_2 >>>
+        ( l_amcm, l_amcm + BLOCKS_POW_2, BLOCKS_POW_2 );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
     copy_host_device( amcm, l_amcm + BLOCKS_POW_2, sizeof(rvec),
         cudaMemcpyDeviceToHost, "momemtum:amcm" );
@@ -810,18 +867,21 @@ extern "C" void dev_compute_momentum( reax_system *system, rvec xcm,
     
     center_of_mass_blocks <<< BLOCKS_POW_2, BLOCK_SIZE, 3 * (sizeof (rvec) * BLOCK_SIZE) >>> 
         ( system->reax_param.d_sbp, system->d_my_atoms, l_xcm, l_vcm, l_amcm, system->n );
-    cudaThreadSynchronize( ); 
+    cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
     
     center_of_mass <<< 1, BLOCKS_POW_2, 3 * (sizeof (rvec) * BLOCKS_POW_2) >>> 
         ( l_xcm, l_vcm, l_amcm, l_xcm + BLOCKS_POW_2, l_vcm + BLOCKS_POW_2,
           l_amcm + BLOCKS_POW_2, BLOCKS_POW_2 );
-    cudaThreadSynchronize( ); 
+    cudaDeviceSynchronize( ); 
     cudaCheckError( );
     
-    copy_host_device( xcm, l_xcm + BLOCKS_POW_2, sizeof (rvec), cudaMemcpyDeviceToHost, "momemtum:xcm" );
-    copy_host_device( vcm, l_vcm + BLOCKS_POW_2, sizeof (rvec), cudaMemcpyDeviceToHost, "momentum:vcm" );
-    copy_host_device( amcm, l_amcm + BLOCKS_POW_2, sizeof (rvec), cudaMemcpyDeviceToHost,"momentum:amcm" );
+    copy_host_device( xcm, l_xcm + BLOCKS_POW_2, sizeof(rvec),
+            cudaMemcpyDeviceToHost, "momemtum:xcm" );
+    copy_host_device( vcm, l_vcm + BLOCKS_POW_2, sizeof(rvec),
+            cudaMemcpyDeviceToHost, "momentum:vcm" );
+    copy_host_device( amcm, l_amcm + BLOCKS_POW_2, sizeof(rvec),
+            cudaMemcpyDeviceToHost,"momentum:amcm" );
 #endif
 }
 
@@ -832,27 +892,27 @@ extern "C" void dev_compute_inertial_tensor( reax_system *system, real *local_re
     real *partial_results = (real *) scratch;
     cuda_memset( partial_results, 0, sizeof (real) * 6 * (BLOCKS_POW_2 + 1), "tensor:tmp" );
 
-    compute_center_mass_xx_xy <<<BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
-        (system->reax_param.d_sbp, system->d_my_atoms, partial_results,
-         my_xcm[0], my_xcm[1], my_xcm[2], system->n);
-    cudaThreadSynchronize( );
+    compute_center_mass_xx_xy <<< BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
+         my_xcm[0], my_xcm[1], my_xcm[2], system->n );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    compute_center_mass_xz_yy <<<BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
-        (system->reax_param.d_sbp, system->d_my_atoms, partial_results,
-         my_xcm[0], my_xcm[1], my_xcm[2], system->n);
-    cudaThreadSynchronize( );
+    compute_center_mass_xz_yy <<< BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
+         my_xcm[0], my_xcm[1], my_xcm[2], system->n );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    compute_center_mass_yz_zz <<<BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
-        (system->reax_param.d_sbp, system->d_my_atoms, partial_results,
-         my_xcm[0], my_xcm[1], my_xcm[2], system->n);
-    cudaThreadSynchronize( );
+    compute_center_mass_yz_zz <<< BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
+          my_xcm[0], my_xcm[1], my_xcm[2], system->n );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    compute_center_mass <<<1, BLOCKS_POW_2, 6 * (sizeof (real) * BLOCKS_POW_2) >>>
-        (partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2);
-    cudaThreadSynchronize( );
+    compute_center_mass <<< 1, BLOCKS_POW_2, 6 * (sizeof (real) * BLOCKS_POW_2) >>>
+        ( partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2 );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( local_results, partial_results + 6 * BLOCKS_POW_2,
@@ -862,22 +922,22 @@ extern "C" void dev_compute_inertial_tensor( reax_system *system, real *local_re
     real *partial_results = (real *) scratch;
     //real *local_results;
 
-    cuda_memset (partial_results, 0, sizeof (real) * 6 * (BLOCKS_POW_2 + 1), "tensor:tmp");
-    //local_results = (real *) malloc (sizeof (real) * 6 *(BLOCKS_POW_2+ 1));
+    cuda_memset( partial_results, 0, sizeof (real) * 6 * (BLOCKS_POW_2 + 1), "tensor:tmp" );
+    //local_results = (real *) malloc( sizeof (real) * 6 * (BLOCKS_POW_2+ 1) );
 
-    compute_center_mass <<<BLOCKS_POW_2, BLOCK_SIZE, 6 * (sizeof (real) * BLOCK_SIZE) >>>
-        (system->reax_param.d_sbp, system->d_my_atoms, partial_results,
-         my_xcm[0], my_xcm[1], my_xcm[2], system->n);
-    cudaThreadSynchronize( );
+    compute_center_mass <<< BLOCKS_POW_2, BLOCK_SIZE, 6 * (sizeof (real) * BLOCK_SIZE) >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
+          my_xcm[0], my_xcm[1], my_xcm[2], system->n );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    compute_center_mass <<<1, BLOCKS_POW_2, 6 * (sizeof (real) * BLOCKS_POW_2) >>>
-        (partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2);
-    cudaThreadSynchronize( );
+    compute_center_mass <<< 1, BLOCKS_POW_2, 6 * (sizeof (real) * BLOCKS_POW_2) >>>
+        ( partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2 );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    copy_host_device (local_results, partial_results + 6 * BLOCKS_POW_2, 
-            sizeof(real) * 6, cudaMemcpyDeviceToHost, "tensor:local_results");
+    copy_host_device( local_results, partial_results + 6 * BLOCKS_POW_2, 
+            sizeof(real) * 6, cudaMemcpyDeviceToHost, "tensor:local_results" );
 #endif
 }
 
@@ -955,6 +1015,28 @@ void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 }
 
 
+void Check_Energy( simulation_data* data )
+{
+    if ( IS_NAN_REAL(data->my_en.e_kin) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for kinetic energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->my_en.e_pot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+
+    if ( IS_NAN_REAL(data->my_en.e_tot) )
+    {
+        fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
+        exit( NUMERIC_BREAKDOWN );
+    }
+}
+
+
 void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
         MPI_Comm comm  )
 {
@@ -965,7 +1047,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
 
     MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
 
-    data->inv_M = 1. / data->M;
+    data->inv_M = 1.0 / data->M;
 }
 
 
@@ -1052,7 +1134,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     /* Compute the rotational energy */
     data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "xcm:  %24.15e %24.15e %24.15e\n",
              data->xcm[0], data->xcm[1], data->xcm[2] );
     fprintf( stderr, "vcm:  %24.15e %24.15e %24.15e\n",
@@ -1132,19 +1214,19 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
 
         k_reduction_rvec <<< blocks_n, block_size, sizeof(rvec) * block_size >>>
             ( rvec_spad, rvec_spad + system->n,  system->n );
-        cudaThreadSynchronize( );
+        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, blocks_pow_2_n, sizeof(rvec) * blocks_pow_2_n >>>
             ( rvec_spad + system->n, rvec_spad + system->n + blocks_n, blocks_n );
-        cudaThreadSynchronize ();
+        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         copy_host_device( &int_press, rvec_spad + system->n + blocks_n, sizeof(rvec), 
                 cudaMemcpyDeviceToHost, "Cuda_Compute_Pressure::d_int_press" );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d:p_int(%10.5f %10.5f %10.5f)p_ext(%10.5f %10.5f %10.5f)\n",
             system->my_rank, int_press[0], int_press[1], int_press[2],
             data->my_ext_press[0], data->my_ext_press[1], data->my_ext_press[2] );
@@ -1156,7 +1238,7 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
     MPI_Allreduce( data->my_ext_press, data->ext_press,
             3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",
              system->my_rank,
              data->int_press[0], data->int_press[1], data->int_press[2] );

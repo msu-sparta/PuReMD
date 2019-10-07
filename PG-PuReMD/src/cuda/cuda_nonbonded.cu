@@ -545,7 +545,7 @@ void Cuda_Compute_Polarization_Energy( reax_system *system, simulation_data *dat
     k_pol_energy <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           system->n, spad );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( spad,
@@ -580,7 +580,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
               *(dev_workspace), *(dev_lists[FAR_NBRS]), 
               system->n, system->N, system->reax_param.num_atom_types, 
               spad, spad + 2 * system->N, (rvec *)(spad + 4 * system->N));
-        cudaThreadSynchronize( );
+        cudaDeviceSynchronize( );
         cudaCheckError( );
     }
     else
@@ -595,7 +595,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
               out_control->energy_update_freq,
               spad, spad + 2 * system->N, 
               (rvec *)(spad + 4 * system->N));
-        cudaThreadSynchronize( );
+        cudaDeviceSynchronize( );
         cudaCheckError( );
     }
 
@@ -619,12 +619,12 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     spad_rvec = (rvec *) (spad + 4 * system->N);
     k_reduction_rvec <<< rblocks, DEF_BLOCK_SIZE, sizeof(rvec) * DEF_BLOCK_SIZE >>>
         ( spad_rvec, spad_rvec + system->N, system->N);
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_reduction_rvec <<< 1, BLOCKS_POW_2_N, sizeof(rvec) * BLOCKS_POW_2_N>>>
         ( spad_rvec + system->N, &((simulation_data *)data->d_simulation_data)->my_ext_press, rblocks);
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     if ( update_energy == TRUE )

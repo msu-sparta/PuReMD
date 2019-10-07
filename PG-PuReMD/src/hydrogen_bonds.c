@@ -61,7 +61,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
     far_neighbor_data *nbr_jk;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     int num_hb_intrs = 0;
 #endif
     reax_list * const bond_list = lists[BONDS];
@@ -134,7 +134,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
 			hbp = &system->reax_param.hbp[
                                 index_hbp(type_i, type_j, type_k, system->reax_param.num_atom_types) ];
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                         ++num_hb_intrs;
 #endif
 
@@ -237,7 +237,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
         sfree( hblist, "Hydrogen_Bonds::hblist" );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "Number of hydrogen bonds: %d\n", num_hb_intrs );
     fprintf( stderr, "Hydrogen Bond Energy: %g\n", data->my_en.e_hb );
     fprintf( stderr, "hydbonds: ext_press (%24.15e %24.15e %24.15e)\n",

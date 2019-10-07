@@ -585,7 +585,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
         } // pk loop ends
     } // j loop
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "Number of torsion angles: %d\n", num_frb_intrs );
     fprintf( stderr, "Torsion Energy: %g\t Conjugation Energy: %g\n",
              data->my_en.e_tor, data->my_en.e_con );

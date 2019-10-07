@@ -86,7 +86,7 @@ void dev_alloc_grid( reax_system *system )
 //
 //    Init_Nbrs <<< blocks, block_size >>>
 //        ( nbrs_x, host->max_nbrs );
-//    cudaThreadSynchronize( );
+//    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 //
 //    cuda_malloc( (void **)& device->cells, sizeof(grid_cell) * total,

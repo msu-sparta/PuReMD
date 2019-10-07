@@ -6,6 +6,12 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
 
     cudaError_t retVal = cudaSuccess;
 
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting %zu bytes for %s\n",
+            size, "msg" );
+    fflush( stderr );
+#endif
+
     retVal = cudaMalloc( ptr, size );
 
     if ( retVal != cudaSuccess )
@@ -15,6 +21,11 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
                 retVal, size );
         exit( INSUFFICIENT_MEMORY );
     }  
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] granted memory at address: %p\n", *ptr );
+    fflush( stderr );
+#endif
 
     if ( mem_set == TRUE )
     {
@@ -151,7 +162,7 @@ extern "C" void print_device_mem_usage( )
 }
 
 
-extern "C" void init_blocks( reax_system *system )
+extern "C" void Cuda_Init_Block_Sizes( reax_system *system )
 {
     compute_blocks( &BLOCKS, &BLOCK_SIZE, system->n );
     compute_nearest_pow_2( BLOCKS, &BLOCKS_POW_2 );

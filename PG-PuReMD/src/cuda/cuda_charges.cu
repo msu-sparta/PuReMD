@@ -24,9 +24,6 @@
 #include "cuda_lin_alg.h"
 #include "cuda_reduction.h"
 #include "cuda_utils.h"
-#if defined(DEBUG)
-  #include "cuda_validation.h"
-#endif
 
 #include "../basic_comm.h"
 
@@ -74,7 +71,7 @@ void Cuda_Init_MatVec( reax_system *system, storage *workspace )
     k_init_matvec <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *dev_workspace, system->n );
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
     cudaCheckError();
 }
 
@@ -91,12 +88,12 @@ void cuda_charges_x( reax_system *system, rvec2 my_sum )
 
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         ( dev_workspace->x, output, system->n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>>
         ( output, output + system->n, blocks );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( my_sum, output + system->n,
@@ -162,7 +159,7 @@ extern "C" void cuda_charges_st( reax_system *system, storage *workspace,
 
     k_calculate_st <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *dev_workspace, u, tmp, system->n);
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( output, tmp, sizeof (real) * system->n, 
@@ -204,7 +201,7 @@ void cuda_charges_updateq( reax_system *system, real *q )
 
     k_update_q <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, dev_q, system->n, system->N );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 

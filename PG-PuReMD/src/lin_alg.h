@@ -33,6 +33,12 @@ extern "C" {
 //real diag_pre_comp( const sparse_matrix * const, real * const );
 real diag_pre_comp( const reax_system * const, real * const );
 
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+void sparse_approx_inverse( reax_system *, storage *, 
+        mpi_datatypes *, const sparse_matrix * const, 
+        const sparse_matrix * const, sparse_matrix ** );
+#endif
+
 int dual_CG( const reax_system * const, const control_params * const,
         const storage * const, const simulation_data * const,
         mpi_datatypes * const,

@@ -220,7 +220,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "nonbonded: ext_press (%12.6f %12.6f %12.6f)\n",
              data->ext_press[0], data->ext_press[1], data->ext_press[2] );
     MPI_Barrier( MPI_COMM_WORLD );

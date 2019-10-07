@@ -130,7 +130,7 @@ void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
 /* Copy interaction lists from device to host */
 void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
 {
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, " Trying to copy *%d* list from device to host \n", type );
 #endif
 

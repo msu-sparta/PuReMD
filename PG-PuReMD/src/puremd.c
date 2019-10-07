@@ -49,7 +49,7 @@
   #include "cuda/cuda_reset_tools.h"
   #include "cuda/cuda_system_props.h"
   #include "cuda/cuda_utils.h"
-  #if defined(DEBUG)
+  #if defined(DEBUG_FOCUS)
     #include "cuda/cuda_validation.h"
   #endif
 #endif
@@ -158,6 +158,8 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
 
     /* compute kinetic energy of the system */
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+
+    Compute_Total_Energy( system, data, MPI_COMM_WORLD );
 }
 #endif
 
@@ -222,12 +224,7 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     Setup_Cuda_Environment( pmd_handle->system->my_rank,
             pmd_handle->control->nprocs, pmd_handle->control->gpus_per_node );
 
-#if defined(DEBUG)
-    print_device_mem_usage( );
-#endif
-
-    /* init blocks sizes */
-    init_blocks( pmd_handle->system );
+    Cuda_Init_Block_Sizes( pmd_handle->system );
 #endif
 
     return (void*) pmd_handle;
@@ -265,7 +262,7 @@ int simulate( const void * const handle )
     mpi_datatypes *mpi_data;
     puremd_handle *pmd_handle;
     real t_start, t_elapsed;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     real t_begin, t_end;
 #endif
 
@@ -296,18 +293,11 @@ int simulate( const void * const handle )
         Pure_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 #endif
 
-#if defined(DEBUG)
-        print_device_mem_usage( );
-#endif
-
-        /* init the blocks sizes for cuda kernels */
-        init_blocks( system );
-
         /* compute f_0 */
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
         Sync_Atoms( system );
         Sync_Grid( &system->my_grid, &system->d_my_grid );
-        init_blocks( system );
+        Cuda_Init_Block_Sizes( system );
 
         Cuda_Reset( system, control, data, workspace, lists );
 
@@ -335,6 +325,8 @@ int simulate( const void * const handle )
 
         Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
+        Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+
 #if defined(__CUDA_DEBUG__)
         validate_device( system, data, workspace, lists );
 #endif
@@ -343,7 +335,7 @@ int simulate( const void * const handle )
         Output_Results( system, control, data, lists, out_control, mpi_data );
 #endif
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
         MPI_Barrier( MPI_COMM_WORLD );
 #endif
@@ -359,7 +351,7 @@ int simulate( const void * const handle )
                 Temperature_Control( control, data );
             }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
             t_begin = Get_Time();
 #endif
 
@@ -371,12 +363,12 @@ int simulate( const void * const handle )
             ret = control->Cuda_Evolve( system, control, data, workspace,
                     lists, out_control, mpi_data );
     
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
             t_end = Get_Timing_Info( t_begin );
             fprintf( stderr, " Evolve time: %f \n", t_end );
 #endif
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
             t_begin = Get_Time( );
 #endif
 
@@ -390,7 +382,7 @@ int simulate( const void * const handle )
 #endif
             }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
             t_end = Get_Timing_Info( t_begin );
             fprintf( stderr, " Post Evolve time: %f \n", t_end );
 #endif
@@ -419,7 +411,7 @@ int simulate( const void * const handle )
 //                }
 //            }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
                 MPI_Barrier( MPI_COMM_WORLD );
 #endif
@@ -431,7 +423,7 @@ int simulate( const void * const handle )
             {
                 ++retries;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
 #endif
             }
@@ -536,7 +528,7 @@ int simulate( const void * const handle )
             {
                 ++retries;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
 #endif
             }
@@ -564,7 +556,7 @@ int simulate( const void * const handle )
 //      Integrate_Results(control);
 #endif
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d has reached the END\n", system->my_rank );
 #endif
 
@@ -592,15 +584,21 @@ int cleanup( const void * const handle )
 
         sfree( pmd_handle->mpi_data, "cleanup::pmd_handle->mpi_data" );
         sfree( pmd_handle->out_control, "cleanup::pmd_handle->out_control" );
-        for ( i = 0; i < LIST_N; ++i )
-        {
-            sfree( pmd_handle->lists[i], "cleanup::pmd_handle->lists[i]" );
-        }
         sfree( pmd_handle->lists, "cleanup::pmd_handle->lists" );
         sfree( pmd_handle->workspace, "cleanup::pmd_handle->workspace" );
         sfree( pmd_handle->data, "cleanup::pmd_handle->data" );
         sfree( pmd_handle->control, "cleanup::pmd_handle->control" );
         sfree( pmd_handle->system, "cleanup::pmd_handle->system" );
+
+        //TODO: add Dev_Finalize( ... )
+#ifdef HAVE_CUDA
+        for ( i = 0; i < LIST_N; ++i )
+        {
+            sfree( dev_lists[i], "cleanup::dev_lists[i]" );
+        }
+        sfree( dev_lists, "cleanup::dev_lists" );
+        sfree( dev_workspace, "cleanup::dev_workspace" );
+#endif
 
         sfree( pmd_handle, "cleanup::pmd_handle" );
 

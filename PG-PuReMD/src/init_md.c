@@ -326,7 +326,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
 #endif
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "data->N_f: %8.3f\n", data->N_f );
 #endif
 }
@@ -352,7 +352,7 @@ void Init_System( reax_system * const system )
     system->cm_entries = NULL;
     system->max_cm_entries = NULL;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: local_cap=%d total_cap=%d\n",
              system->my_rank, system->local_cap, system->total_cap );
 #endif
@@ -921,18 +921,12 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
 
 static void Finalize_Lists( control_params * const control, reax_list ** const lists )
 {
-    Delete_List( lists[FAR_NBRS] );
-    Delete_List( lists[BONDS] );
-    Delete_List( lists[THREE_BODIES] );
-    if ( control->hbond_cut > 0.0 )
-    {
-        Delete_List( lists[HBONDS] );
-    }
+    int i;
 
-#ifdef TEST_FORCES
-    Delete_List( lists[DBOS] );
-    Delete_List( lists[DDELTAS] );
-#endif
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        sfree( lists[i], "Finalize_Lists::lists[i]" );
+    }
 }
 
 
@@ -975,7 +969,7 @@ void Finalize( reax_system * const system, control_params * const control,
 
     Finalize_Lists( control, lists );
 
-    Finalize_Workspace( system, control, workspace );
+//    Finalize_Workspace( system, control, workspace );
 
     Finalize_Simulation_Data( system, control, data, out_control );
 

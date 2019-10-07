@@ -194,7 +194,7 @@ static void Sort_Transfer_Atoms( reax_system * const system, int start, int end,
     simulation_box * const my_box = &system->my_box;
     mpi_atom *out_buf;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d starting...\n",
             system->my_rank, start, end, dim );
 #endif
@@ -698,7 +698,7 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data, MPI_Da
         unpack( system, end, mpi_data->in1_buffer, cnt, nbr1, d );
         end += cnt;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: nbr1: d = %d, end = %d\n", system->my_rank, d, end );
 #endif
 
@@ -710,7 +710,7 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data, MPI_Da
         unpack( system, end, mpi_data->in2_buffer, cnt, nbr2, d );
         end += cnt;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: nbr2: d = %d, end = %d\n", system->my_rank, d, end );
 #endif
     }

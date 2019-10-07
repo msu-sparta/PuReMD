@@ -169,7 +169,7 @@ void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
     box->box[2][1] = c * zi;
     box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
             box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
@@ -184,7 +184,7 @@ void Init_Box( rtensor box_tensor, simulation_box * const box )
     rtensor_Copy( box->box, box_tensor );
     Make_Consistent( box );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
              box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
@@ -379,10 +379,6 @@ void Scale_Box( reax_system * const system, control_params * const control,
     }
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
-#if defined(DEBUG)
-    fprintf( stderr, "damping - " );
-#endif
-
     /* update box & grid */
     system->big_box.box[0][0] *= mu[0];
     system->big_box.box[1][1] *= mu[1];
@@ -392,10 +388,6 @@ void Scale_Box( reax_system * const system, control_params * const control,
     Setup_My_Box( system, control );
     Setup_My_Ext_Box( system, control );
     Update_Comm( system );
-
-#if defined(DEBUG)
-    fprintf( stderr, "box & grid updated - " );
-#endif
 }
 
 

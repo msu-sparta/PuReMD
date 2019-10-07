@@ -297,7 +297,7 @@ void * smalloc( size_t n, const char *name )
         exit( INSUFFICIENT_MEMORY );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n, name );
     fflush( stderr );
 #endif
@@ -311,7 +311,7 @@ void * smalloc( size_t n, const char *name )
         exit( INSUFFICIENT_MEMORY );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] granted memory at address: %p\n", ptr );
     fflush( stderr );
 #endif
@@ -338,7 +338,7 @@ void * srealloc( void *ptr, size_t n, const char *name )
         exit( INSUFFICIENT_MEMORY );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     if ( ptr == NULL )
     {
         fprintf( stderr, "[INFO] trying to allocate %zu NEW bytes for array %s.\n",
@@ -360,7 +360,7 @@ void * srealloc( void *ptr, size_t n, const char *name )
         exit( INSUFFICIENT_MEMORY );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] granted memory at address: %p\n", new_ptr );
     fflush( stderr );
 #endif
@@ -388,7 +388,7 @@ void * scalloc( size_t n, size_t size, const char *name )
         exit( INSUFFICIENT_MEMORY );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n * size, name );
     fflush( stderr );
 #endif
@@ -402,7 +402,7 @@ void * scalloc( size_t n, size_t size, const char *name )
         exit( INSUFFICIENT_MEMORY );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] granted memory at address: %p\n", ptr );
     fflush( stderr );
 #endif
@@ -425,7 +425,7 @@ void sfree( void *ptr, const char *name )
         return;
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] trying to free pointer (%s), address: %p\n",
             name, (void *) ptr );
     fflush( stderr );

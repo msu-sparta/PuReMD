@@ -286,7 +286,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     /* Compute the rotational energy */
     data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "xcm:  %24.15e %24.15e %24.15e\n",
              data->xcm[0], data->xcm[1], data->xcm[2] );
     fprintf( stderr, "vcm:  %24.15e %24.15e %24.15e\n",
@@ -364,7 +364,7 @@ void Compute_Pressure( reax_system* system, control_params *control,
             rvec_Multiply( tmp, p_atom->f, tx );
             rvec_Add( int_press, tmp );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
             fprintf( stderr, "%8d%8.2f%8.2f%8.2f",
                      i + 1, p_atom->x[0], p_atom->x[1], p_atom->x[2] );
             fprintf( stderr, "%8.2f%8.2f%8.2f",
@@ -375,7 +375,7 @@ void Compute_Pressure( reax_system* system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d:p_int(%10.5f %10.5f %10.5f)p_ext(%10.5f %10.5f %10.5f)\n",
             system->my_rank, int_press[0], int_press[1], int_press[2],
             data->my_ext_press[0], data->my_ext_press[1], data->my_ext_press[2] );
@@ -387,7 +387,7 @@ void Compute_Pressure( reax_system* system, control_params *control,
     MPI_Allreduce( data->my_ext_press, data->ext_press,
             3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",
              system->my_rank,
              data->int_press[0], data->int_press[1], data->int_press[2] );

@@ -66,7 +66,7 @@ void PreAllocate_Space( reax_system * const system, control_params * const contr
     system->local_cap = MAX( (int)(system->n * SAFE_ZONE), MIN_CAP );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
 
-#if defined(DEBUG)||defined(__CUDA_DEBUG_LOG__)
+#if defined(DEBUG_FOCUS)||defined(__CUDA_DEBUG_LOG__)
     fprintf( stderr, "p%d: local_cap=%d total_cap=%d\n",
             system->my_rank, system->local_cap, system->total_cap );
 #endif
@@ -526,7 +526,7 @@ int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
             }
         }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d bin_my_atoms: l:%d - atom%d @ %.5f %.5f %.5f" \
                 "--> cell: %d %d %d\n",
                 system->my_rank, l, atoms[l].orig_id,
@@ -551,7 +551,7 @@ int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
                     max_atoms = gc->top;
                 }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 fprintf( stderr, "p%d gc[%d,%d,%d]->top=%d\n",
                         system->my_rank, i, j, k, gc->top );
 #endif
@@ -562,7 +562,7 @@ int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
     my_max = MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
     MPI_Allreduce( &my_max, &all_max, 1, MPI_INT, MPI_MAX, comm );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d max_atoms=%d, my_max=%d, all_max=%d\n",
             system->my_rank, max_atoms, my_max, all_max );
 #endif

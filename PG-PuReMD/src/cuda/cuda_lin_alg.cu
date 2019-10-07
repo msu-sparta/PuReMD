@@ -315,7 +315,7 @@ void Cuda_Vector_Sum( real *res, real a, real *x, real b, real *y, int count )
 
     k_vector_sum <<< blocks, DEF_BLOCK_SIZE >>>
         ( res, a, x, b, y, count );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -331,7 +331,7 @@ void Cuda_CG_Preconditioner( real *res, real *a, real *b, int count )
 
     k_vector_mul <<< blocks, DEF_BLOCK_SIZE >>>
         ( res, a, b, count );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -370,7 +370,7 @@ void Cuda_CG_Diagonal_Preconditioner( storage *workspace, rvec2 *b, int n )
     k_diagonal_preconditioner <<< blocks, DEF_BLOCK_SIZE >>>
         ( *workspace, b, n );
 
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -426,20 +426,20 @@ void Cuda_DualCG_Preconditioner( storage *workspace, rvec2 *x, rvec2 alpha,
     k_dual_cg_preconditioner <<< blocks, DEF_BLOCK_SIZE >>>
         (*workspace, x, alpha[0], alpha[1], n, tmp);
 
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* reduction to calculate my_dot */
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         ( tmp, tmp + n, n);
 
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>>
         ( tmp + n, tmp + 2*n, blocks);
 
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( result, (tmp + 2*n), sizeof(rvec2),
@@ -457,12 +457,12 @@ void Cuda_Norm( rvec2 *arr, int n, rvec2 result )
 
     k_norm_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         (arr, tmp, n, INITIAL);
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_norm_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>>
         (tmp, tmp + BLOCKS_POW_2, blocks, FINAL );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( result, tmp + BLOCKS_POW_2, sizeof(rvec2), 
@@ -480,13 +480,13 @@ void Cuda_Dot( rvec2 *a, rvec2 *b, rvec2 result, int n )
 
     k_dot_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         ( a, b, tmp, n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_norm_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>> 
     //k_norm_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * BLOCKS_POW_2 >>> 
         ( tmp, tmp + BLOCKS_POW_2, blocks, FINAL );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( result, tmp + BLOCKS_POW_2, sizeof(rvec2), 
@@ -504,7 +504,7 @@ void Cuda_Vector_Sum_Rvec2(rvec2 *x, rvec2 *a, rvec2 b, rvec2 *c, int n)
     k_rvec2_pbetad <<< blocks, DEF_BLOCK_SIZE >>> 
         ( x, a, b[0], b[1], c, n);
 
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -533,7 +533,7 @@ void Cuda_RvecCopy_From( real *dst, rvec2 *src, int index, int n )
 
     k_rvec2_to_real_copy <<< blocks, DEF_BLOCK_SIZE >>>
         ( dst, src, index, n);
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -563,7 +563,7 @@ void Cuda_RvecCopy_To(rvec2 *dst, real *src, int index, int n)
     k_real_to_rvec2_copy <<< blocks, DEF_BLOCK_SIZE >>>
         ( dst, src, index, n);
 
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -580,7 +580,7 @@ void Cuda_Dual_Matvec( sparse_matrix *H, rvec2 *a, rvec2 *b, int n, int size )
     /* one thread per row implementation */
 //    k_dual_matvec <<< blocks, DEF_BLOCK_SIZE >>>
 //        ( *H, a, b, n );
-//    cudaThreadSynchronize( );
+//    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 
     //One warp per row implementation
@@ -591,7 +591,7 @@ void Cuda_Dual_Matvec( sparse_matrix *H, rvec2 *a, rvec2 *b, int n, int size )
                       sizeof(rvec2) * MATVEC_BLOCK_SIZE >>>
 #endif
             ( *H, a, b, n );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -608,7 +608,7 @@ void Cuda_Matvec( sparse_matrix *H, real *a, real *b, int n, int size )
     /* one thread per row implementation */
 //    k_matvec <<< blocks, DEF_BLOCK_SIZE >>>
 //        ( *H, a, b, n );
-//    cudaThreadSynchronize( );
+//    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 
 #if defined(__SM_35__)
@@ -619,7 +619,7 @@ void Cuda_Matvec( sparse_matrix *H, real *a, real *b, int n, int size )
 #endif
          ( *H, a, b, n );
 
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -628,7 +628,8 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
         sparse_matrix *H, rvec2 *b, real tol, rvec2 *x, mpi_datatypes* mpi_data,
         FILE *fout, simulation_data *data )
 {
-    int i, n, matvecs;
+    unsigned int i;
+    int n, matvecs;
 //    int j, N;
     rvec2 tmp, alpha, beta;
     rvec2 my_sum, norm_sqr, b_norm, my_dot;
@@ -798,7 +799,7 @@ int Cuda_dual_CG( reax_system *system, control_params *control, storage *workspa
 int Cuda_CG( reax_system *system, control_params *control, storage *workspace,
         sparse_matrix *H, real *b, real tol, real *x, mpi_datatypes* mpi_data )
 {
-    int i;
+    unsigned int i;
 //    int j;
     real tmp, alpha, beta, b_norm;
     real sig_old, sig_new;

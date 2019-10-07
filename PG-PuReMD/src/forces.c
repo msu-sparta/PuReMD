@@ -139,11 +139,6 @@ void Compute_NonBonded_Forces( reax_system * const system, control_params * cons
     {
         Tabulated_vdW_Coulomb_Energy( system, control, data, workspace, lists, out_control );
     }
-
-#if defined(DEBUG)
-    fprintf( stderr, "p%d: nonbonded forces done\n", system->my_rank );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 }
 
 

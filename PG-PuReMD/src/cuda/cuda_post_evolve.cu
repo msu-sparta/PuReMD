@@ -37,6 +37,6 @@ void post_evolve_velocities( reax_system *system, simulation_data *data )
         ((system->n % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
     ker_post_evolve <<< blocks, DEF_BLOCK_SIZE >>>
         (system->d_my_atoms, (simulation_data *)data->d_simulation_data, system->n);
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 }

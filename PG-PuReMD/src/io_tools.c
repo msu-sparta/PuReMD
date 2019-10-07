@@ -1335,10 +1335,6 @@ void Output_Results( reax_system *system, control_params *control,
             Append_Frame( system, control, data, lists, out_control, mpi_data );
         }
     }
-
-#if defined(DEBUG)
-    fprintf( stderr, "output_results... done\n" );
-#endif
 }
 
 

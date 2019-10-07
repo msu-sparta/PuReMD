@@ -57,23 +57,21 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control )
     int *hindex;
 
     hindex = (int *) scratch;
-    cuda_memset( scratch, 0, system->N * sizeof(int),
-           "Cuda_Reset_Atoms::scratch" );
 
-    blocks = system->N / DEF_BLOCK_SIZE + 
-        ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+    blocks = system->N / DEF_BLOCK_SIZE
+        + ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
     k_reset_hindex <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->reax_param.d_sbp, hindex + 1, system->N );
-    cudaThreadSynchronize( );
+        ( system->d_my_atoms, system->reax_param.d_sbp, hindex, system->N );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( hindex, system->d_numH, system->N );
 
-    copy_host_device( &(system->numH), system->d_numH, sizeof(int), 
+    copy_host_device( &system->numH, system->d_numH, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Reset_Atoms::d_numH" );
 
-    system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
+    system->Hcap = MAX( (int)(system->numH * SAFER_ZONE), MIN_CAP );
 }
 
 

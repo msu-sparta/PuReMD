@@ -830,7 +830,7 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
           (control_params *) control->d_control_params, 
           (simulation_data *)data->d_simulation_data, 
           spad_rvec, system->N );
-    cudaThreadSynchronize( );
+    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     if ( control->virial != 0 )
@@ -838,19 +838,19 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
         //do the reduction here for ext press
         k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE, sizeof (rvec) * DEF_BLOCK_SIZE >>> 
             ( spad_rvec, spad_rvec + system->N, system->N );
-        cudaThreadSynchronize( ); 
+        cudaDeviceSynchronize( ); 
         cudaCheckError( ); 
 
         k_reduction_rvec <<< 1, BLOCKS_POW_2_N, sizeof (rvec) * BLOCKS_POW_2_N>>>
             ( spad_rvec + system->N, &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
-        cudaThreadSynchronize( ); 
+        cudaDeviceSynchronize( ); 
         cudaCheckError( ); 
     }
 
     //do the post processing for the atomic forces here
     k_total_forces_postprocess  <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(dev_lists[BONDS]), *dev_workspace, system->N );
-    cudaThreadSynchronize( ); 
+    cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
 }
 
@@ -883,6 +883,6 @@ void Cuda_Total_Forces_PURE( reax_system *system, storage *workspace )
 
     k_total_forces_pure <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->n, *dev_workspace);
-    cudaThreadSynchronize( ); 
+    cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
 }

@@ -36,8 +36,8 @@
   #include "lapacke.h"
 #endif
 
-#if defined(HAVE_CUDA) && defined(DEBUG)
-#include "cuda/cuda_validation.h"
+#if defined(HAVE_CUDA) && defined(DEBUG_FOCUS)
+  #include "cuda/cuda_validation.h"
 #endif
 
 #if defined(CG_PERFORMANCE)
@@ -446,6 +446,8 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace, mpi_d
     (*A_spar_patt)->end[A->n] = A->end[A->n];
 }
 
+
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 void sparse_approx_inverse(reax_system *system, storage *workspace, 
         mpi_datatypes* mpi_data, const sparse_matrix * const A, 
         const sparse_matrix * const A_spar_patt, sparse_matrix ** A_app_inv )
@@ -871,6 +873,7 @@ void sparse_approx_inverse(reax_system *system, storage *workspace,
     free( Y );
     free( X );
 }
+#endif
 
 static void diag_pre_app( const real * const Hdia_inv, const real * const y,
         real * const x, const int N )
@@ -1158,13 +1161,13 @@ int dual_CG( const reax_system * const system, const control_params * const cont
     }
 #endif
 
-#if defined(HAVE_CUDA) && defined(DEBUG)
+#if defined(HAVE_CUDA) && defined(DEBUG_FOCUS)
     check_zeros_host( x, N, "x" );
 #endif
 
     Dist( system, mpi_data, x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-#if defined(HAVE_CUDA) && defined(DEBUG)
+#if defined(HAVE_CUDA) && defined(DEBUG_FOCUS)
     check_zeros_host( x, N, "x" );
 #endif
 

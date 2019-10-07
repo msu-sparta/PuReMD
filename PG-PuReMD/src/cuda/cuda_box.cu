@@ -91,10 +91,6 @@ void Cuda_Scale_Box( reax_system *system, control_params *control,
 
     Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
-#if defined(DEBUG)
-    fprintf( stderr, "damping - " );
-#endif
-
     /* update box & grid */
     system->big_box.box[0][0] *= mu[0];
     system->big_box.box[1][1] *= mu[1];
@@ -111,8 +107,4 @@ void Cuda_Scale_Box( reax_system *system, control_params *control,
             sizeof(simulation_box), cudaMemcpyHostToDevice, "Cuda_Scale_Box::simulation_data->my_box" );
     copy_host_device( &system->my_ext_box, &system->d_my_ext_box,
             sizeof(simulation_box), cudaMemcpyHostToDevice, "Cuda_Scale_Box::simulation_data->my_ext_box" );
-
-#if defined(DEBUG)
-    fprintf( stderr, "box & grid updated - " );
-#endif
 }
