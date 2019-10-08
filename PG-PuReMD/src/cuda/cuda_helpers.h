@@ -4,14 +4,14 @@
 #include "../reax_types.h"
 
 
-CUDA_DEVICE static inline int cuda_strcmp( char * a,
-        char * b, int len )
+CUDA_DEVICE static inline int cuda_strcmp( const char * a,
+        const char * b, int len )
 {
     int i;
     char *src, *dst;
 
-    src = a;
-    dst = b;
+    src = (char *) a;
+    dst = (char *) b;
 
     for ( i = 0; i < len; i++ )
     {

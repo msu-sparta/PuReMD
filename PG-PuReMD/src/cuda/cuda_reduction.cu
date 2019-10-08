@@ -16,10 +16,11 @@
 //    __device__ __forceinline__
 //    T operator()(const T &a, const T &b) const
 //    {
-//        b[0] = a[0] + b[0];
-//        b[1] = a[1] + b[1];
-//        b[2] = a[2] + b[2];
-//        return b;
+//        T c;
+//        c[0] = a[0] + b[0];
+//        c[1] = a[1] + b[1];
+//        c[2] = a[2] + b[2];
+//        return c;
 //    }
 //};
 
@@ -182,18 +183,25 @@ CUDA_GLOBAL void k_reduction( const real *input, real *per_block_results,
 #if defined(__SM_35__)
     extern __shared__ real my_results[];
     real sdata;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real x = 0;
+    unsigned int i;
+    int z, offset;
+    real x;
 
-    if( i < n )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
         x = input[i];
     }
+    else
+    {
+        x = 0.0;
+    }
 
     sdata = x;
-    __syncthreads();
+    __syncthreads( );
 
-    for( int z = 16; z >=1; z/=2 )
+    for ( z = 16; z >= 1; z /= 2 )
     {
         sdata += shfl( sdata, z );
     }
@@ -202,47 +210,52 @@ CUDA_GLOBAL void k_reduction( const real *input, real *per_block_results,
     {
         my_results[threadIdx.x >> 5] = sdata;
     }
+    __syncthreads( );
 
-    __syncthreads();
-
-    for( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
-        if( threadIdx.x < offset )
+        if ( threadIdx.x < offset )
         {
             my_results[threadIdx.x] += my_results[threadIdx.x + offset];
         }
-
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if( threadIdx.x == 0 )
+    if ( threadIdx.x == 0 )
     {
         per_block_results[blockIdx.x] = my_results[0];
     }
 
 #else
     extern __shared__ real sdata[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real x = 0;
+    unsigned int i;
+    int offset;
+    real x;
 
-    if( i < n )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
         x = input[i];
     }
-    sdata[threadIdx.x] = x;
-    __syncthreads();
-
-    for( int offset = blockDim.x / 2; offset > 0; offset >>= 1 )
+    else
     {
-        if( threadIdx.x < offset )
+        x = 0.0;
+    }
+    sdata[threadIdx.x] = x;
+    __syncthreads( );
+
+    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
+    {
+        if ( threadIdx.x < offset )
         {
             sdata[threadIdx.x] += sdata[threadIdx.x + offset];
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if( threadIdx.x == 0 )
+    if ( threadIdx.x == 0 )
     {
         per_block_results[blockIdx.x] = sdata[0];
     }
@@ -255,34 +268,37 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 #if defined(__SM_35__)
     extern __shared__ rvec my_rvec[];
     rvec sdata;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x, z, offset;
+    unsigned int i;
+    int z, offset;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x, z, offset;
 
     rvec_MakeZero( sdata );
 
-    if( i < n )
+    if ( i < n )
     {
         rvec_Copy( sdata, input[i] );
     }
 
     __syncthreads( );
 
-    for( z = 16; z >=1; z/=2 )
+    for ( z = 16; z >= 1; z /= 2 )
     {
-        sdata[0] += shfl( sdata[0], z);
-        sdata[1] += shfl( sdata[1], z);
-        sdata[2] += shfl( sdata[2], z);
+        sdata[0] += shfl( sdata[0], z );
+        sdata[1] += shfl( sdata[1], z );
+        sdata[2] += shfl( sdata[2], z );
     }
 
     if ( threadIdx.x % 32 == 0 )
     {
-        rvec_Copy( my_rvec[threadIdx.x >> 5] , sdata );
+        rvec_Copy( my_rvec[threadIdx.x >> 5], sdata );
     }
 
     __syncthreads( );
 
-    for( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
-        if( threadIdx.x < offset )
+        if ( threadIdx.x < offset )
         {
             rvec_Add( my_rvec[threadIdx.x], my_rvec[threadIdx.x + offset] );
         }
@@ -290,15 +306,18 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
         __syncthreads( );
     }
 
-    if( threadIdx.x == 0 )
+    if ( threadIdx.x == 0 )
     {
         rvec_Add( results[blockIdx.x], my_rvec[0] );
     }
 
 #else
     extern __shared__ rvec svec_data[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x, offset;
+    unsigned int i;
+    int offset;
     rvec x;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
     rvec_MakeZero( x );
 
@@ -334,7 +353,10 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
 #if defined(__SM_35__)
     extern __shared__ rvec2 my_rvec2[];
     rvec2 sdata;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int i;
+    int z, offset;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
     sdata[0] = 0.0;
     sdata[1] = 0.0;
@@ -345,34 +367,34 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
         sdata[1] = input[i][1];
     }
 
-    __syncthreads();
+    __syncthreads( );
 
-    for(int z = 16; z >=1; z/=2)
+    for ( z = 16; z >= 1; z /= 2 )
     {
-        sdata[0] += shfl ( sdata[0], z);
-        sdata[1] += shfl ( sdata[1], z);
+        sdata[0] += shfl( sdata[0], z );
+        sdata[1] += shfl( sdata[1], z );
     }
 
-    if (threadIdx.x % 32 == 0)
+    if ( threadIdx.x % 32 == 0 )
     {
         my_rvec2[threadIdx.x >> 5][0] = sdata[0];
         my_rvec2[threadIdx.x >> 5][1] = sdata[1];
     }
 
-    __syncthreads ();
+    __syncthreads( );
 
-    for(int offset = blockDim.x >> 6; offset > 0; offset >>= 1)
+    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
-        if(threadIdx.x < offset)
+        if ( threadIdx.x < offset )
         {
             my_rvec2[threadIdx.x][0] += my_rvec2[threadIdx.x + offset][0];
             my_rvec2[threadIdx.x][1] += my_rvec2[threadIdx.x + offset][1];
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if(threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
         results[blockIdx.x][0] = my_rvec2[0][0];
         results[blockIdx.x][1] = my_rvec2[0][1];
@@ -380,38 +402,41 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
 
 #else
     extern __shared__ rvec2 svec2_data[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int i;
+    int offset;
     rvec2 x;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
 
     x[0] = 0.0;
     x[1] = 0.0;
 
-    if(i < n)
+    if ( i < n )
     {
         x[0] += input[i][0];
         x[1] += input[i][1];
     }
 
-    svec2_data [threadIdx.x][0] = x[0];
-    svec2_data [threadIdx.x][1] = x[1];
-    __syncthreads();
+    svec2_data[threadIdx.x][0] = x[0];
+    svec2_data[threadIdx.x][1] = x[1];
+    __syncthreads( );
 
-    for(int offset = blockDim.x / 2; offset > 0; offset >>= 1)
+    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
     {
-        if(threadIdx.x < offset)
+        if ( threadIdx.x < offset )
         {
-            svec2_data [threadIdx.x][0] += svec2_data [threadIdx.x + offset][0];
-            svec2_data [threadIdx.x][1] += svec2_data [threadIdx.x + offset][1];
+            svec2_data[threadIdx.x][0] += svec2_data[threadIdx.x + offset][0];
+            svec2_data[threadIdx.x][1] += svec2_data[threadIdx.x + offset][1];
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if(threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
-        //rvec_Copy (results[blockIdx.x], svec_data[0]);
-        results [blockIdx.x][0] += svec2_data [0][0];
-        results [blockIdx.x][1] += svec2_data [0][1];
+        //rvec_Copy( results[blockIdx.x], svec_data[0] );
+        results[blockIdx.x][0] += svec2_data[0][0];
+        results[blockIdx.x][1] += svec2_data[0][1];
     }
 #endif
 }
@@ -423,66 +448,79 @@ CUDA_GLOBAL void k_dot( const real *a, const real *b, real *per_block_results,
 #if defined(__SM_35__)
     extern __shared__ real my_dot[];
     real sdot;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int i;
+    int z, offset;
 
-    sdot = 0.0;
-    if( i < n )
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
         sdot = a[i] * b[i];
     }
-
-    __syncthreads();
-
-    for( int z = 16; z >=1; z/=2 )
+    else
     {
-        sdot += shfl ( sdot, z);
+        sdot = 0.0;
     }
 
-    if( threadIdx.x % 32 == 0 )
+    __syncthreads( );
+
+    for ( z = 16; z >= 1; z /= 2 )
+    {
+        sdot += shfl( sdot, z );
+    }
+
+    if ( threadIdx.x % 32 == 0 )
     {
         my_dot[threadIdx.x >> 5] = sdot;
     }
 
-    __syncthreads ();
+    __syncthreads( );
 
-    for( int offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
-        if( threadIdx.x < offset )
+        if ( threadIdx.x < offset )
         {
             my_dot[threadIdx.x] += my_dot[threadIdx.x + offset];
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if( threadIdx.x == 0 )
+    if ( threadIdx.x == 0 )
     {
         per_block_results[blockIdx.x] = my_dot[0];
     }
 
 #else
     extern __shared__ real sdot[];
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real x = 0;
+    unsigned int i;
+    int offset;
+    real x;
 
-    if(i < n)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i < n )
     {
         x = a[i] * b[i];
     }
-    sdot[threadIdx.x] = x;
-    __syncthreads();
-
-    for(int offset = blockDim.x / 2; offset > 0; offset >>= 1)
+    else
     {
-        if(threadIdx.x < offset)
+        x = 0.0;
+    }
+    sdot[threadIdx.x] = x;
+    __syncthreads( );
+
+    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
+    {
+        if ( threadIdx.x < offset )
         {
             sdot[threadIdx.x] += sdot[threadIdx.x + offset];
         }
 
-        __syncthreads();
+        __syncthreads( );
     }
 
-    if(threadIdx.x == 0)
+    if ( threadIdx.x == 0 )
     {
         per_block_results[blockIdx.x] = sdot[0];
     }

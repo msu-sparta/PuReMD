@@ -33,6 +33,9 @@ extern "C" {
 //real diag_pre_comp( const sparse_matrix * const, real * const );
 real diag_pre_comp( const reax_system * const, real * const );
 
+void setup_sparse_approx_inverse( reax_system *, storage *, mpi_datatypes *, 
+        sparse_matrix *, sparse_matrix *, const int, const double );
+
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 void sparse_approx_inverse( reax_system *, storage *, 
         mpi_datatypes *, const sparse_matrix * const, 

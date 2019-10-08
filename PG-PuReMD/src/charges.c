@@ -556,11 +556,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case SAI_PC:
-            //TODO: implement
-            /*setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-              &workspace->H_spar_patt_full, &workspace->H_app_inv,
-              control->cm_solver_pre_comp_sai_thres );*/
-            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr, &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( system, workspace, mpi_data, Hptr,
+                    &workspace->H_spar_patt, control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:

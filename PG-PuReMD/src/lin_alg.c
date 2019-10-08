@@ -23,6 +23,7 @@
 
 #include "lin_alg.h"
 
+#include "allocate.h"
 #include "basic_comm.h"
 #include "io_tools.h"
 #include "tool_box.h"
@@ -49,6 +50,106 @@ enum preconditioner_type
     LEFT = 0,
     RIGHT = 1,
 };
+
+
+static int compare_dbls( const void* arg1, const void* arg2 )
+{
+    int ret;
+    double a1, a2;
+
+    a1 = *(double *) arg1;
+    a2 = *(double *) arg2;
+
+    if ( a1 < a2 )
+    {
+        ret = -1;
+    }
+    else if (a1 == a2)
+    {
+        ret = 0;
+    }
+    else
+    {
+        ret = 1;
+    }
+
+    return ret;
+}
+
+
+static void qsort_dbls( double *array, int array_len )
+{
+    qsort( array, (size_t)array_len, sizeof(double),
+            compare_dbls );
+}
+
+
+static int find_bucket( double *list, int len, double a )
+{
+    int s, e, m;
+
+    if ( a > list[len - 1] )
+    {
+        return len;
+    }
+
+    s = 0;
+    e = len - 1;
+
+    while ( s < e )
+    {
+        m = (s + e) / 2;
+
+        if ( list[m] < a )
+        {
+            s = m + 1;
+        }
+        else
+        {
+            e = m;
+        }
+    }
+
+    return s;
+}
+
+
+static void Sparse_MatVec( const sparse_matrix * const A, const real * const x,
+        real * const b, const int N )
+{
+    int i, j, k, si;
+    real val;
+
+    for ( i = 0; i < N; ++i )
+    {
+        b[i] = 0.0;
+    }
+
+    for ( i = 0; i < A->n; ++i )
+    {
+        si = A->start[i];
+
+#if defined(HALF_LIST)
+        b[i] += A->entries[si].val * x[i];
+#endif
+
+#if defined(HALF_LIST)
+        for ( k = si + 1; k < A->end[i]; ++k )
+#else
+            for ( k = si; k < A->end[i]; ++k )
+#endif
+            {
+                j = A->entries[k].j;
+                val = A->entries[k].val;
+
+                b[i] += val * x[j];
+#if defined(HALF_LIST)
+                //if( j < A->n ) // comment out for tryQEq
+                b[j] += val * x[i];
+#endif
+            }
+    }
+}
 
 
 static void dual_Sparse_MatVec( const sparse_matrix * const A,
@@ -106,81 +207,24 @@ real diag_pre_comp( const reax_system * const system, real * const Hdia_inv )
 
     for ( i = 0; i < system->n; ++i )
     {
-        //        if ( H->entries[H->start[i + 1] - 1].val != 0.0 )
-        //        {
-        //            Hdia_inv[i] = 1.0 / H->entries[H->start[i + 1] - 1].val;
+//        if ( H->entries[H->start[i + 1] - 1].val != 0.0 )
+//        {
+//            Hdia_inv[i] = 1.0 / H->entries[H->start[i + 1] - 1].val;
         Hdia_inv[i] = 1.0 / system->reax_param.sbp[ system->my_atoms[i].type ].eta;
-        //        }
-        //        else
-        //        {
-        //            Hdia_inv[i] = 1.0;
-        //        }
+//        }
+//        else
+//        {
+//            Hdia_inv[i] = 1.0;
+//        }
     }
 
     return Get_Timing_Info( start );
 }
 
-int compare_dbls( const void* arg1, const void* arg2 )
-{
-    int ret;
-    double a1, a2;
 
-    a1 = *(double *) arg1;
-    a2 = *(double *) arg2;
-
-    if ( a1 < a2 )
-    {
-        ret = -1;
-    }
-    else if (a1 == a2)
-    {
-        ret = 0;
-    }
-    else
-    {
-        ret = 1;
-    }
-
-    return ret;
-}
-
-void qsort_dbls( double *array, int array_len )
-{
-    qsort( array, (size_t)array_len, sizeof(double),
-            compare_dbls );
-}
-
-int find_bucket( double *list, int len, double a )
-{
-    int s, e, m;
-
-    if ( a > list[len - 1] )
-    {
-        return len;
-    }
-
-    s = 0;
-    e = len - 1;
-
-    while ( s < e )
-    {
-        m = (s + e) / 2;
-
-        if ( list[m] < a )
-        {
-            s = m + 1;
-        }
-        else
-        {
-            e = m;
-        }
-    }
-
-    return s;
-}
-
-void setup_sparse_approx_inverse( reax_system *system, storage *workspace, mpi_datatypes* mpi_data, 
-        sparse_matrix *A, sparse_matrix **A_spar_patt, const int nprocs, const double filter )
+void setup_sparse_approx_inverse( reax_system *system, storage *workspace,
+        mpi_datatypes* mpi_data, sparse_matrix *A, sparse_matrix *A_spar_patt,
+        const int nprocs, const double filter )
 {
 
     int i, bin, total, pos;
@@ -206,13 +250,13 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace, mpi_d
     comm = mpi_data->world;
 
 
-    if ( *A_spar_patt == NULL )
+    if ( A_spar_patt == NULL )
     {
         Allocate_Matrix( A_spar_patt, A->n, A->n, A->m );
     }
-    else if ( ((*A_spar_patt)->m) < (A->m) )
+    else if ( A_spar_patt->m < A->m )
     {
-        Deallocate_Matrix( *A_spar_patt );
+        Deallocate_Matrix( A_spar_patt );
         Allocate_Matrix( A_spar_patt, A->n, A->n, A->m );
     }
 
@@ -427,23 +471,23 @@ void setup_sparse_approx_inverse( reax_system *system, storage *workspace, mpi_d
     /*build entries of that pattern*/
     for ( i = 0; i < A->n; ++i )
     {
-        (*A_spar_patt)->start[i] = A->start[i];
+        A_spar_patt->start[i] = A->start[i];
         size = A->start[i];
 
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
             if ( ( A->entries[pj].val >= threshold )  || ( A->entries[pj].j == i ) )
             {
-                (*A_spar_patt)->entries[size].val = A->entries[pj].val;
-                (*A_spar_patt)->entries[size].j = A->entries[pj].j;
+                A_spar_patt->entries[size].val = A->entries[pj].val;
+                A_spar_patt->entries[size].j = A->entries[pj].j;
                 size++;
             }
         }
-        (*A_spar_patt)->end[i] = size;
+        A_spar_patt->end[i] = size;
     }
-    (*A_spar_patt)->start[A->n] = A->start[A->n];
+    A_spar_patt->start[A->n] = A->start[A->n];
     /*TODO: check if end[N] is set equal to NNZ as start[N]*/
-    (*A_spar_patt)->end[A->n] = A->end[A->n];
+    A_spar_patt->end[A->n] = A->end[A->n];
 }
 
 
@@ -894,8 +938,7 @@ static void apply_preconditioner( const reax_system * const system, const storag
         const int fresh_pre, const int side )
 {
     int i, si;
-    fprintf(stdout,"apply_preconditioner working\n");
-    fflush(stdout);
+
     /* no preconditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
     {
@@ -923,7 +966,7 @@ static void apply_preconditioner( const reax_system * const system, const storag
                                   tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
                                   break;*/
                             case SAI_PC:
-                                Sparse_MatVec( workspace->H_app_inv, y, x );
+                                Sparse_MatVec( &workspace->H_app_inv, y, x, workspace->H_app_inv.n );
                                 break;
                             default:
                                 fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -944,7 +987,7 @@ static void apply_preconditioner( const reax_system * const system, const storag
                                   workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
                                   break;*/
                             case SAI_PC:
-                                Sparse_MatVec( workspace->H_app_inv, y, x );
+                                Sparse_MatVec( &workspace->H_app_inv, y, x, workspace->H_app_inv.n );
                                 break;
                             default:
                                 fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
@@ -1129,9 +1172,6 @@ int dual_CG( const reax_system * const system, const control_params * const cont
         const sparse_matrix * const H, const rvec2 * const b,
         const real tol, rvec2 * const x, const int fresh_pre )
 {
-
-    fprintf(stdout,"dual_cg working\n");
-    fflush(stdout);
     int i, j, k, n, N, iters;
     rvec2 tmp, alpha, beta;
     rvec2 my_sum, norm_sqr, b_norm, my_dot;
@@ -1401,44 +1441,6 @@ int dual_CG( const reax_system * const system, const control_params * const cont
     }
 
     return (i + 1) + iters;
-}
-
-
-const void Sparse_MatVec( const sparse_matrix * const A, const real * const x,
-        real * const b, const int N )
-{
-    int i, j, k, si;
-    real val;
-
-    for ( i = 0; i < N; ++i )
-    {
-        b[i] = 0.0;
-    }
-
-    for ( i = 0; i < A->n; ++i )
-    {
-        si = A->start[i];
-
-#if defined(HALF_LIST)
-        b[i] += A->entries[si].val * x[i];
-#endif
-
-#if defined(HALF_LIST)
-        for ( k = si + 1; k < A->end[i]; ++k )
-#else
-            for ( k = si; k < A->end[i]; ++k )
-#endif
-            {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
-
-                b[i] += val * x[j];
-#if defined(HALF_LIST)
-                //if( j < A->n ) // comment out for tryQEq
-                b[j] += val * x[i];
-#endif
-            }
-    }
 }
 
 
