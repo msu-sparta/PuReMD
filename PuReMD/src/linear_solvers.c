@@ -1711,7 +1711,7 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
 #endif
          t_pa += MPI_Wtime( ) - t_start;
     }
-    else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
         t_start = MPI_Wtime( );
         for ( j = 0; j < system->n; ++j )
@@ -2904,7 +2904,7 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
     int i, j;
     real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real timings[5], redux[4];
+    real timings[5], redux[3];
     MPI_Request req;
 
     t_pa = 0.0;
@@ -2912,6 +2912,12 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
     t_vops = 0.0;
     t_comm = 0.0;
     t_allreduce = 0.0;
+
+    t_start = MPI_Wtime( );
+    redux[0] = Dot_local( b, b, system->n );
+    t_vops += MPI_Wtime( ) - t_start;
+
+    MPI_Iallreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
 
     t_start = MPI_Wtime( );
     Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -3000,10 +3006,15 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
     }
 #endif
 
-    //TODO: better loop unrolling and termination condition check
-    norm = tol + 1.0;
+    t_start = MPI_Wtime( );
+    MPI_Wait( &req, MPI_STATUS_IGNORE );
+    t_allreduce += MPI_Wtime( ) - t_start;
+    b_norm = sqrt( redux[0] );
 
-    // TODO: warning: b_norm might be uninitialized
+    t_start =  MPI_Wtime( );
+    norm = Parallel_Norm( workspace->u, system->n, mpi_data->world );
+    t_allreduce += MPI_Wtime( ) - t_start;
+
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
         /* pre-conditioning */
@@ -3039,10 +3050,9 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
         redux[0] = Dot_local( workspace->w, workspace->u, system->n );
         redux[1] = Dot_local( workspace->m, workspace->w, system->n );
         redux[2] = Dot_local( workspace->u, workspace->u, system->n );
-        redux[3] = Dot_local( b, b, system->n );
         t_vops += MPI_Wtime( ) - t_start;
 
-        MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+        MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
 
         t_start = MPI_Wtime( );
         Dist( system, mpi_data, workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -3076,7 +3086,6 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
         gamma_new = redux[0];
         delta = redux[1];
         norm = sqrt( redux[2] );
-        b_norm = sqrt( redux[3] );
 
         if ( i > 0 )
         {

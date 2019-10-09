@@ -300,39 +300,27 @@ void Init_MatVec( reax_system *system, simulation_data *data,
 #endif
     }*/
 
-    //TODO: fill in code for setting up and computing SAI, see sPuReMD code,
-    //  and remove diagonal preconditioner computation below (workspace->Hdia_inv)
-    //    setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-    //            &workspace->H_spar_patt_full, &workspace->H_app_inv,
-    //            control->cm_solver_pre_comp_sai_thres );
-
+    /* init solution vectors */
     for ( i = 0; i < system->n; ++i )
     {
-        atom = &( system->my_atoms[i] );
+        atom = &system->my_atoms[i];
 
-        /* init pre-conditioner for H and init solution vectors */
-        workspace->Hdia_inv[i] = 1. / system->reax_param.sbp[ atom->type ].eta;
         workspace->b_s[i] = -system->reax_param.sbp[ atom->type ].chi;
         workspace->b_t[i] = -1.0;
         workspace->b[i][0] = -system->reax_param.sbp[ atom->type ].chi;
         workspace->b[i][1] = -1.0;
 
         /* linear extrapolation for s and for t */
-        // newQEq: no extrapolation!
-        //workspace->s[i] = 2 * atom->s[0] - atom->s[1]; //0;
-        //workspace->t[i] = 2 * atom->t[0] - atom->t[1]; //0;
-        //workspace->x[i][0] = 2 * atom->s[0] - atom->s[1]; //0;
-        //workspace->x[i][1] = 2 * atom->t[0] - atom->t[1]; //0;
+        //workspace->x[i][0] = 2.0 * atom->s[0] - atom->s[1]; //0;
+        //workspace->x[i][1] = 2.0 * atom->t[0] - atom->t[1]; //0;
 
         /* quadratic extrapolation for s and t */
-        // workspace->s[i] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
-        // workspace->t[i] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
-        //workspace->x[i][0] = atom->s[2] + 3 * ( atom->s[0] - atom->s[1] );
-        workspace->x[i][1] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
+        //workspace->x[i][0] = atom->s[2] + 3.0 * (tom->s[0] - atom->s[1];
+        workspace->x[i][1] = atom->t[2] + 3.0 * (atom->t[0] - atom->t[1]);
 
         /* cubic extrapolation for s and t */
-        workspace->x[i][0] = 4 * (atom->s[0] + atom->s[2]) - (6 * atom->s[1] + atom->s[3]);
-        //workspace->x[i][1] = 4*(atom->t[0]+atom->t[2])-(6*atom->t[1]+atom->t[3]);
+        workspace->x[i][0] = 4.0 * (atom->s[0] + atom->s[2]) - (6.0 * atom->s[1] + atom->s[3]);
+        //workspace->x[i][1] = 4.0 * (atom->t[0] + atom->t[2]) - (6.0 * atom->t[1] + atom->t[3]);
 
         // fprintf(stderr, "i=%d s=%f t=%f\n", i, workspace->s[i], workspace->t[i]);
     }
@@ -399,43 +387,58 @@ static void Setup_Preconditioner_QEq( reax_system *system, control_params *contr
 {
     real time, t_sort, t_pc, total_sort, total_pc;
 
-    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-    time = MPI_Wtime();
-    Sort_Matrix_Rows( workspace->H );
-    t_sort = MPI_Wtime() - time;
-
-    t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
-            control->nprocs, control->cm_solver_pre_comp_sai_thres );
-
-
-    MPI_Reduce(&t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
-    MPI_Reduce(&t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
-
-    if( system->my_rank == MASTER_NODE )
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        data->timing.cm_sort += total_sort / control->nprocs;
-        data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+        /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+        time = MPI_Wtime();
+        Sort_Matrix_Rows( workspace->H );
+        t_sort = MPI_Wtime() - time;
+
+        t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data, workspace->H, &workspace->H_spar_patt, 
+                control->nprocs, control->cm_solver_pre_comp_sai_thres );
+
+
+        MPI_Reduce(&t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+        MPI_Reduce(&t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+
+        if( system->my_rank == MASTER_NODE )
+        {
+            data->timing.cm_sort += total_sort / control->nprocs;
+            data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+        }
     }
 }
 
 static void Compute_Preconditioner_QEq( reax_system *system, control_params *control, 
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
+    int i;
     real t_pc, total_pc;
-#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-    t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
-            workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
 
-    MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
-
-    if( system->my_rank == MASTER_NODE )
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+        for ( i = 0; i < system->n; ++i )
+        {
+            workspace->Hdia_inv[i] = 1.0 / system->reax_param.sbp[ system->my_atoms[i].type ].eta;
+        }
     }
+    else if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+        t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
+                workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
+
+        MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+
+        if( system->my_rank == MASTER_NODE )
+        {
+            data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+        }
 #else
-    fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
-    exit( INVALID_INPUT );
+        fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+        exit( INVALID_INPUT );
 #endif
+    }
 }
 
 
@@ -444,10 +447,8 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         mpi_datatypes *mpi_data )
 {
     int j, iters;
-    int refactor;
 
     iters = 0;
-    refactor = is_refactoring_step( control, data );
 
     Init_MatVec( system, data, control, workspace, mpi_data );
 
@@ -456,14 +457,11 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     //Print_Linear_System( system, control, workspace, data->step );
 #endif
 
-    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    if ( is_refactoring_step( control, data ) == TRUE )
     {
-        if ( refactor )
-        {
-            Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+        Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
-            Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
-        }
+        Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
     }
     
     //TODO: used for timing to sync processors going into the linear solve, but remove for production code
@@ -538,6 +536,12 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         break;
 
     case PIPECR_S:
+#if defined(DUAL_SOLVER)
+        fprintf( stderr, "[ERROR] Dual PIPECR solver for QEq not yet implemented. Terminating...\n" );
+        exit( INVALID_INPUT );
+//        iters = dual_PIPECR( system, control, data, workspace, workspace->H, workspace->b,
+//                control->cm_solver_q_err, workspace->x, mpi_data );
+#else
         for ( j = 0; j < system->n; ++j )
         {
             workspace->s[j] = workspace->x[j][0];
@@ -563,6 +567,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         {
             workspace->x[j][1] = workspace->t[j];
         }
+#endif
         break;
 
     case GMRES_S:
@@ -570,6 +575,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     case SDM_S:
     case BiCGStab_S:
         fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
         break;
 
     default:
