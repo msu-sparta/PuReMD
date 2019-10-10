@@ -759,7 +759,7 @@ static void Finalize_System( reax_system * const system, control_params * const 
     sfree( system->hbonds, "Finalize_System::system->hbonds" );
     sfree( system->max_hbonds, "Finalize_System::system->max_hbonds" );
     sfree( system->cm_entries, "Finalize_System::system->cm_entries" );
-    sfree( system->max_cm_entries, "Finalize_System::max_cm_entries->max_hbonds" );
+    sfree( system->max_cm_entries, "Finalize_System::system->max_cm_entries" );
 
     sfree( system->my_atoms, "Finalize_System::system->atoms" );
 }

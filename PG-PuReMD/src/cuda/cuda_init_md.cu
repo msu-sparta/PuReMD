@@ -87,7 +87,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     Bin_Boundary_Atoms( system );
 
     /* Sync atoms here to continue the computation */
-    dev_alloc_system( system );
+    Cuda_Allocate_System( system );
     Sync_System( system );
 
     /* estimate numH and Hcap */
@@ -126,7 +126,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data )
 {
-    dev_alloc_simulation_data( data );
+    Cuda_Allocate_Simulation_Data( data );
 
     Reset_Simulation_Data( data );
 
@@ -222,7 +222,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 void Cuda_Init_Workspace( reax_system *system, control_params *control,
         storage *workspace )
 {
-    dev_alloc_workspace( system, control, dev_workspace,
+    Cuda_Allocate_Workspace( system, control, dev_workspace,
             system->local_cap, system->total_cap );
 
     memset( &workspace->realloc, 0, sizeof(reallocate_data) );
@@ -256,7 +256,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Estimate_Storages( system, control, lists,
             TRUE, TRUE, TRUE, data->step );
 
-    dev_alloc_matrix( &dev_workspace->H, system->total_cap, system->total_cm_entries );
+    Cuda_Allocate_Matrix( &dev_workspace->H, system->total_cap, system->total_cm_entries );
     Cuda_Init_Sparse_Matrix_Indices( system, &dev_workspace->H );
 
 #if defined(DEBUG_FOCUS)
@@ -312,7 +312,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
 
-    dev_alloc_grid( system );
+    Cuda_Allocate_Grid( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
 
     //validate_grid( system );
@@ -321,7 +321,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 
     Cuda_Init_Workspace( system, control, workspace );
 
-    dev_alloc_control( control );
+    Cuda_Allocate_Control( control );
 
     Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data );
 

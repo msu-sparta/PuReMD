@@ -16,7 +16,7 @@ extern "C"
 {
 
 
-void dev_alloc_control( control_params *control )
+void Cuda_Allocate_Control( control_params *control )
 {
     cuda_malloc( (void **)&control->d_control_params,
             sizeof(control_params), TRUE, "control_params" );
@@ -40,7 +40,7 @@ CUDA_GLOBAL void Init_Nbrs( ivec *nbrs, int N )
 }
 
 
-void dev_alloc_grid( reax_system *system )
+void Cuda_Allocate_Grid( reax_system *system )
 {
     int total;
 //    grid_cell local_cell;
@@ -68,18 +68,18 @@ void dev_alloc_grid( reax_system *system )
     ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
     cuda_malloc( (void **) &device->str, sizeof(int) * total, TRUE,
-            "dev_alloc_grid::grid->str" );
+            "Cuda_Allocate_Grid::grid->str" );
     cuda_malloc( (void **) &device->end, sizeof(int) * total, TRUE,
-            "dev_alloc_grid::grid->end" );
+            "Cuda_Allocate_Grid::grid->end" );
     cuda_malloc( (void **) &device->cutoff, sizeof(real) * total, TRUE,
-            "dev_alloc_grid::grid->cutoff" );
+            "Cuda_Allocate_Grid::grid->cutoff" );
 
     cuda_malloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs,
-            TRUE, "dev_alloc_grid::grid->nbrs_x" );
+            TRUE, "Cuda_Allocate_Grid::grid->nbrs_x" );
     cuda_malloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs,
-            TRUE, "dev_alloc_grid::grid->nbrs_cp" );
+            TRUE, "Cuda_Allocate_Grid::grid->nbrs_cp" );
     cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total,
-            TRUE, "dev_alloc_grid::grid->rel_box" );
+            TRUE, "Cuda_Allocate_Grid::grid->rel_box" );
 
 //    int block_size = 512;
 //    int blocks = (host->max_nbrs) / block_size + ((host->max_nbrs) % block_size == 0 ? 0 : 1); 
@@ -124,7 +124,7 @@ void dev_alloc_grid( reax_system *system )
 }
 
 
-void dev_dealloc_grid_cell_atoms( reax_system *system )
+void Cuda_Deallocate_Grid_Cell_Atoms( reax_system *system )
 {
     int total;
     grid_cell local_cell;
@@ -137,14 +137,14 @@ void dev_dealloc_grid_cell_atoms( reax_system *system )
     {
         copy_host_device( &local_cell, &device->cells[i], 
                 sizeof(grid_cell), cudaMemcpyDeviceToHost,
-                "dev_dealloc_grid_cell_atoms::grid" );
+                "Cuda_Deallocate_Grid_Cell_Atoms::grid" );
         cuda_free( local_cell.atoms,
-                "dev_dealloc_grid_cell_atoms::grid_cell.atoms" );
+                "Cuda_Deallocate_Grid_Cell_Atoms::grid_cell.atoms" );
     }
 }
 
 
-void dev_alloc_grid_cell_atoms( reax_system *system, int cap )
+void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, int cap )
 {
     int i, total;
     grid_cell local_cell;
@@ -165,7 +165,7 @@ void dev_alloc_grid_cell_atoms( reax_system *system, int cap )
 }
 
 
-void dev_alloc_system( reax_system *system )
+void Cuda_Allocate_System( reax_system *system )
 {
     /* atoms */
     cuda_malloc( (void **) &system->d_my_atoms,
@@ -250,7 +250,7 @@ void dev_alloc_system( reax_system *system )
 }
 
 
-void dev_realloc_system( reax_system *system, int old_total_cap, int total_cap, char *msg )
+void Cuda_Reallocate_System( reax_system *system, int old_total_cap, int total_cap, char *msg )
 {
     int *temp;
     reax_atom *temp_atom;
@@ -260,87 +260,87 @@ void dev_realloc_system( reax_system *system, int old_total_cap, int total_cap, 
 
     /* free the existing storage for atoms, leave other info allocated */
     copy_device( temp_atom, system->d_my_atoms, old_total_cap * sizeof(reax_atom),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_my_atoms, "system::d_my_atoms" );
     cuda_malloc( (void **) &system->d_my_atoms, sizeof(reax_atom) * total_cap, 
             TRUE, "system::d_my_atoms" );
     copy_device( system->d_my_atoms, temp, old_total_cap * sizeof(reax_atom),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_far_nbrs, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_far_nbrs, "system::d_far_nbrs" );
     cuda_malloc( (void **) &system->d_far_nbrs,
             system->total_cap * sizeof(int), TRUE, "system::d_far_nbrs" );
     copy_device( system->d_far_nbrs, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_max_far_nbrs, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_max_far_nbrs, "system::d_max_far_nbrs" );
     cuda_malloc( (void **) &system->d_max_far_nbrs,
             system->total_cap * sizeof(int), TRUE, "system::d_max_far_nbrs" );
     copy_device( system->d_max_far_nbrs, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_bonds, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_bonds, "system::d_bonds" );
     cuda_malloc( (void **) &system->d_bonds,
             system->total_cap * sizeof(int), TRUE, "system::d_bonds" );
     copy_device( system->d_bonds, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_max_bonds, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_max_bonds, "system::d_max_bonds" );
     cuda_malloc( (void **) &system->d_max_bonds,
             system->total_cap * sizeof(int), TRUE, "system::d_max_bonds" );
     copy_device( system->d_max_bonds, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_hbonds, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_hbonds, "system::d_hbonds" );
     cuda_malloc( (void **) &system->d_hbonds,
             system->total_cap * sizeof(int), TRUE, "system::d_hbonds" );
     copy_device( system->d_hbonds, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_max_hbonds, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_max_hbonds, "system::d_max_hbonds" );
     cuda_malloc( (void **) &system->d_max_hbonds,
             system->total_cap * sizeof(int), TRUE, "system::d_max_hbonds" );
     copy_device( system->d_max_hbonds, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_cm_entries, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_cm_entries, "system::d_cm_entries" );
     cuda_malloc( (void **) &system->d_cm_entries,
             system->total_cap * sizeof(int), TRUE, "system::d_cm_entries" );
     copy_device( system->d_cm_entries, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 
     copy_device( temp, system->d_max_cm_entries, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_max_cm_entries, "system::d_max_cm_entries" );
     cuda_malloc( (void **) &system->d_max_cm_entries,
             system->total_cap * sizeof(int), TRUE, "system::d_max_cm_entries" );
     copy_device( system->d_max_cm_entries, temp, old_total_cap * sizeof(int),
-            "dev_realloc_system::temp" );
+            "Cuda_Reallocate_System::temp" );
 }
 
 
-void dev_alloc_simulation_data( simulation_data *data )
+void Cuda_Allocate_Simulation_Data( simulation_data *data )
 {
     cuda_malloc( (void **) &data->d_simulation_data,
             sizeof(simulation_data), TRUE, "simulation_data" );
 }
 
 
-void dev_alloc_workspace( reax_system *system, control_params *control, 
+void Cuda_Allocate_Workspace( reax_system *system, control_params *control, 
         storage *workspace, int local_cap, int total_cap )
 {
     int total_real, total_rvec, local_rvec;
@@ -460,7 +460,7 @@ void dev_alloc_workspace( reax_system *system, control_params *control,
 }
 
 
-void dev_dealloc_workspace( control_params *control, storage *workspace )
+void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
 {
     if ( workspace->allocated == FALSE )
     {
@@ -578,25 +578,25 @@ void dev_dealloc_workspace( control_params *control, storage *workspace )
 }
 
 
-void dev_alloc_matrix( sparse_matrix *H, int n, int m )
+void Cuda_Allocate_Matrix( sparse_matrix *H, int n, int m )
 {
     H->m = m;
     H->n = n;
 
     cuda_malloc( (void **) &H->start, sizeof(int) * n, TRUE,
-            "dev_alloc_matrix::start" );
+            "Cuda_Allocate_Matrix::start" );
     cuda_malloc( (void **) &H->end, sizeof(int) * n, TRUE,
-            "dev_alloc_matrix::end" );
+            "Cuda_Allocate_Matrix::end" );
     cuda_malloc( (void **) &H->entries, sizeof(sparse_matrix_entry) * m, TRUE,
-            "dev_alloc_matrix::entries" );
+            "Cuda_Allocate_Matrix::entries" );
 }
 
 
-void dev_dealloc_matrix( sparse_matrix *H )
+void Cuda_Deallocate_Matrix( sparse_matrix *H )
 {
-    cuda_free( H->start, "dev_dealloc_matrix::start" );
-    cuda_free( H->end, "dev_dealloc_matrix::end" );
-    cuda_free( H->entries, "dev_dealloc_matrix::entries" );
+    cuda_free( H->start, "Cuda_Deallocate_Matrix::start" );
+    cuda_free( H->end, "Cuda_Deallocate_Matrix::end" );
+    cuda_free( H->entries, "Cuda_Deallocate_Matrix::entries" );
 }
 
 
@@ -644,7 +644,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     mpi_out_data *nbr_data;
     char msg[200];
 
-    realloc = &(dev_workspace->realloc);
+    realloc = &dev_workspace->realloc;
     g = &system->my_grid;
     H = &dev_workspace->H;
 
@@ -677,11 +677,11 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 #endif
 
         /* system */
-        dev_realloc_system( system, old_total_cap, system->total_cap, msg );
+        Cuda_Reallocate_System( system, old_total_cap, system->total_cap, msg );
 
         /* workspace */
-        dev_dealloc_workspace( control, workspace );
-        dev_alloc_workspace( system, control, workspace, system->local_cap,
+        Cuda_Deallocate_Workspace( control, workspace );
+        Cuda_Allocate_Workspace( system, control, workspace, system->local_cap,
                 system->total_cap );
     }
 
@@ -715,8 +715,8 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                 (int)(system->total_cm_entries * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
 #endif
 
-        dev_dealloc_matrix( H );
-        dev_alloc_matrix( H, system->total_cap, system->total_cm_entries );
+        Cuda_Deallocate_Matrix( H );
+        Cuda_Allocate_Matrix( H, system->total_cap, system->total_cm_entries );
 
         Cuda_Init_Sparse_Matrix_Indices( system, H );
 
@@ -807,8 +807,8 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //MPI_Abort( MPI_COMM_WORLD, INSUFFICIENT_MEMORY );
 
         //FIX - 1 - Tested the reallocation logic
-        //dev_dealloc_grid_cell_atoms( system );
-        //dev_alloc_grid_cell_atoms( system, realloc->gcell_atoms );
+        //Cuda_Deallocate_Grid_Cell_Atoms( system );
+        //Cuda_Allocate_Grid_Cell_Atoms( system, realloc->gcell_atoms );
         realloc->gcell_atoms = -1;
     }
 

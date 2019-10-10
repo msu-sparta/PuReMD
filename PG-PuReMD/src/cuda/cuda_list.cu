@@ -58,7 +58,7 @@ void Cuda_Make_List( int n, int max_intrs, int type, reax_list *l )
     cuda_malloc( (void **) &l->end_index, n * sizeof(int), TRUE, "Cuda_Make_List::end_index" );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "dev_list: n=%d max_intrs=%d type=%d\n", n, max_intrs, type );
+    fprintf( stderr, "list: n=%d max_intrs=%d type=%d\n", n, max_intrs, type );
 #endif
 
     switch ( l->type )

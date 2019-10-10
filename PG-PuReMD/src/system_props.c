@@ -107,7 +107,7 @@ void Compute_Total_Energy( reax_system *system, simulation_data *data,
     my_en[13] = data->my_en.e_kin;
 
 #ifdef HAVE_CUDA
-    dev_sync_simulation_data( data );
+    Cuda_Sync_Simulation_Data( data );
 #endif
 
     my_en[0] = data->my_en.e_bond;
