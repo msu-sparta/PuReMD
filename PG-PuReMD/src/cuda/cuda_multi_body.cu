@@ -55,8 +55,8 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
         return;
     }
 
-    reax_list *bonds = &( p_bonds );
-    storage *workspace = &( p_workspace );
+    reax_list *bonds = &p_bonds;
+    storage *workspace = &p_workspace;
 
     /* Initialize parameters */
     p_lp3 = gp.l[5];
@@ -69,7 +69,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     //for( i = 0; i < system->n; ++i ) {
     /* set the parameter pointer */
     type_i = my_atoms[i].type;
-    sbp_i = &(sbp[ type_i ]);
+    sbp_i = &sbp[ type_i ];
 
     /* lone-pair Energy */
     p_lp2 = sbp_i->p_lp2;      
@@ -100,10 +100,10 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
 #endif
 
     /* correction for C2 */
-    if ( gp.l[5] > 0.001 &&
-            !cuda_strcmp( sbp[type_i].name, "C", 1 ) )
+    if ( gp.l[5] > 0.001
+            && !cuda_strcmp( sbp[type_i].name, "C", 1 ) )
     {
-        for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+        for ( pj = Cuda_Start_Index(i, bonds); pj < Cuda_End_Index(i, bonds); ++pj )
         {
             if ( my_atoms[i].orig_id < 
                     my_atoms[bonds->bond_list[pj].nbr].orig_id )
@@ -113,8 +113,8 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
 
                 if ( !cuda_strcmp( sbp[type_j].name, "C", 1 ) )
                 {
-                    twbp = &( tbp[index_tbp (type_i,type_j, num_atom_types) ]);
-                    bo_ij = &( bonds->bond_list[pj].bo_data );
+                    twbp = &tbp[index_tbp (type_i,type_j, num_atom_types) ];
+                    bo_ij = &bonds->bond_list[pj].bo_data;
                     Di = workspace->Delta[i];
                     vov3 = bo_ij->BO - Di - 0.040 * POW(Di, 4.);
 
@@ -149,7 +149,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
 
     //for( i = 0; i < system->n; ++i ) {
     type_i = my_atoms[i].type;
-    sbp_i = &(sbp[ type_i ]);
+    sbp_i = &sbp[ type_i ];
 
     /* over-coordination energy */
     if( sbp_i->mass > 21.0 ) 
@@ -163,12 +163,12 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
 
     p_ovun2 = sbp_i->p_ovun2;
     sum_ovun1 = sum_ovun2 = 0;
-    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    for( pj = Cuda_Start_Index(i, bonds); pj < Cuda_End_Index(i, bonds); ++pj )
     {
         j = bonds->bond_list[pj].nbr;
         type_j = my_atoms[j].type;
-        bo_ij = &(bonds->bond_list[pj].bo_data);
-        twbp = &(tbp[ index_tbp(type_i, type_j, num_atom_types )]);
+        bo_ij = &bonds->bond_list[pj].bo_data;
+        twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types )];
 
         sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
         sum_ovun2 += (workspace->Delta[j] - dfvl*workspace->Delta_lp_temp[j])*
@@ -227,13 +227,13 @@ CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *my_atoms, global_parameters gp,
     Add_dDelta( system, lists, i, CEunder3, workspace->f_un ); // UnCoor 1st
 #endif
 
-    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    for( pj = Cuda_Start_Index(i, bonds); pj < Cuda_End_Index(i, bonds); ++pj )
     {
-        pbond = &(bonds->bond_list[pj]);
+        pbond = &bonds->bond_list[pj];
         j = pbond->nbr;
-        bo_ij = &(pbond->bo_data);
-        twbp  = &(tbp[ index_tbp(my_atoms[i].type, my_atoms[pbond->nbr].type, 
-                    num_atom_types) ]);
+        bo_ij = &pbond->bo_data;
+        twbp  = &tbp[ index_tbp(my_atoms[i].type, my_atoms[pbond->nbr].type, 
+                    num_atom_types) ];
 
         bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st 
         //workspace->CdDelta[j] += CEover4 * (1.0 - dfvl*workspace->dDelta_lp[j]) * 
@@ -342,14 +342,14 @@ CUDA_GLOBAL void Cuda_Atom_Energy_PostProcess( reax_list p_bonds,
     bonds = &p_bonds;
     workspace = &p_workspace;
 
-    for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    for ( pj = Cuda_Start_Index(i, bonds); pj < Cuda_End_Index(i, bonds); ++pj )
     {
-//        pbond = &(bonds->bond_list[pj]);
-//        dbond_index_bond = &( bonds->bond_list[ pbond->dbond_index ] );
+//        pbond = &bonds->bond_list[pj];
+//        dbond_index_bond = &bonds->bond_list[ pbond->dbond_index ];
 //        workspace->CdDelta[i] += dbond_index_bond->ae_CdDelta;
 
-        sbond = &(bonds->bond_list[pj]);
-        sym_index_bond = &( bonds->bond_list[ sbond->sym_index ]); 
+        sbond = &bonds->bond_list[pj];
+        sym_index_bond = &bonds->bond_list[ sbond->sym_index ];
         workspace->CdDelta[i] += sym_index_bond->ae_CdDelta;
     }
 }

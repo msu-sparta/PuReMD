@@ -33,7 +33,7 @@
   #include "reax_tool_box.h"
 #endif
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
   #include "cuda/cuda_copy.h"
 #endif
 
@@ -1040,14 +1040,19 @@ int Append_Frame( reax_system *system, control_params *control,
         simulation_data *data, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
+#if defined(HAVE_CUDA)
+    reax_list *l_bond = NULL, *l_three_body = NULL;
+#endif
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: appending frame %d\n", system->my_rank, data->step );
 #endif
+
     Write_Frame_Header( system, control, data, out_control, mpi_data );
 
     if ( out_control->write_atoms )
     {
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
         Output_Sync_Atoms( system );
 #endif
         Write_Atoms( system, control, out_control, mpi_data );
@@ -1055,20 +1060,30 @@ int Append_Frame( reax_system *system, control_params *control,
 
     if ( out_control->write_bonds )
     {
-#ifdef HAVE_CUDA
-        Output_Sync_Lists( lists[BONDS], dev_lists[BONDS], TYP_BOND );
-#endif
+#if defined(HAVE_CUDA)
+        Output_Sync_Lists( l_bond, lists[BONDS], TYP_BOND );
+        Write_Bonds( system, control, l_bond, out_control, mpi_data );
+#else
         Write_Bonds( system, control, lists[BONDS], out_control, mpi_data );
+#endif
     }
 
     if ( out_control->write_angles )
     {
-#ifdef HAVE_CUDA
-        Output_Sync_Lists( lists[THREE_BODIES], dev_lists[THREE_BODIES], TYP_THREE_BODY );
-#endif
+#if defined(HAVE_CUDA)
+        Output_Sync_Lists( l_three_body, lists[THREE_BODIES], TYP_THREE_BODY );
+        Write_Angles( system, control, l_bond, l_three_body,
+                      out_control, mpi_data );
+#else
         Write_Angles( system, control, lists[BONDS], lists[THREE_BODIES],
                       out_control, mpi_data );
+#endif
     }
+
+#if defined(HAVE_CUDA)
+    Delete_List( l_bond );
+    Delete_List( l_three_body );
+#endif
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: appended frame %d\n", system->my_rank, data->step );

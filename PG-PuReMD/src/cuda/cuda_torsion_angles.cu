@@ -200,9 +200,9 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
     bond_order_data *bo_ij, *bo_jk, *bo_kl;
     three_body_interaction_data *p_ijk, *p_jkl;
 
-    reax_list *bonds = &( p_bonds );
-    reax_list *thb_intrs = &( p_thb_intrs );
-    storage *workspace = &( p_workspace );
+    reax_list *bonds = &p_bonds;
+    reax_list *thb_intrs = &p_thb_intrs;
+    storage *workspace = &p_workspace;
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= n) return;
@@ -219,37 +219,38 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
 
     type_j = my_atoms[j].type;
     Delta_j = workspace->Delta_boc[j];
-    start_j = Dev_Start_Index(j, bonds);
-    end_j = Dev_End_Index(j, bonds);
+    start_j = Cuda_Start_Index(j, bonds);
+    end_j = Cuda_End_Index(j, bonds);
 
     for ( pk = start_j; pk < end_j; ++pk )
     {
-        pbond_jk = &( bonds->bond_list[pk] );
+        pbond_jk = &bonds->bond_list[pk];
         k = pbond_jk->nbr;
-        bo_jk = &( pbond_jk->bo_data );
+        bo_jk = &pbond_jk->bo_data;
         BOA_jk = bo_jk->BO - control->thb_cut;
 
         /* see if there are any 3-body interactions involving j&k
            where j is the central atom. Otherwise there is no point in
            trying to form a 4-body interaction out of this neighborhood */
-        if ( my_atoms[j].orig_id < my_atoms[k].orig_id && 
-                bo_jk->BO > control->thb_cut && Dev_Num_Entries(pk, thb_intrs) )
+        if ( my_atoms[j].orig_id < my_atoms[k].orig_id
+                && bo_jk->BO > control->thb_cut
+                && Cuda_Num_Entries(pk, thb_intrs) )
         {
             pj = pbond_jk->sym_index; // pj points to j on k's list
 
             /* do the same check as above: 
                are there any 3-body interactions involving k&j 
                where k is the central atom */
-            if ( Dev_Num_Entries(pj, thb_intrs) )
+            if ( Cuda_Num_Entries(pj, thb_intrs) )
             {
                 type_k = my_atoms[k].type;
                 Delta_k = workspace->Delta_boc[k];
                 r_jk = pbond_jk->d;
 
-                start_pk = Dev_Start_Index(pk, thb_intrs );
-                end_pk = Dev_End_Index(pk, thb_intrs );
-                start_pj = Dev_Start_Index(pj, thb_intrs );
-                end_pj = Dev_End_Index(pj, thb_intrs );        
+                start_pk = Cuda_Start_Index(pk, thb_intrs );
+                end_pk = Cuda_End_Index(pk, thb_intrs );
+                start_pj = Cuda_Start_Index(pj, thb_intrs );
+                end_pj = Cuda_End_Index(pj, thb_intrs );        
 
                 exp_tor2_jk = EXP( -p_tor2 * BOA_jk );
                 exp_cot2_jk = EXP( -p_cot2 * SQR(BOA_jk - 1.5) );
@@ -261,10 +262,10 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
                 /* pick i up from j-k interaction where j is the central atom */
                 for ( pi = start_pk; pi < end_pk; ++pi )
                 {
-                    p_ijk = &( thb_intrs->three_body_list[pi] );
+                    p_ijk = &thb_intrs->three_body_list[pi];
                     pij = p_ijk->pthb; // pij is pointer to i on j's bond_list
-                    pbond_ij = &( bonds->bond_list[pij] );
-                    bo_ij = &( pbond_ij->bo_data );
+                    pbond_ij = &bonds->bond_list[pij];
+                    bo_ij = &pbond_ij->bo_data;
 
 
                     if ( bo_ij->BO > control->thb_cut )
@@ -297,18 +298,18 @@ CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *my_atoms, global_parameters gp,
 
                         /* pick l up from j-k interaction where k is the central atom */
                         for ( pl = start_pj; pl < end_pj; ++pl ) {
-                            p_jkl = &( thb_intrs->three_body_list[pl] );
+                            p_jkl = &thb_intrs->three_body_list[pl];
                             l = p_jkl->thb;
                             plk = p_jkl->pthb; //pointer to l on k's bond_list!
-                            pbond_kl = &( bonds->bond_list[plk] );
-                            bo_kl = &( pbond_kl->bo_data );
+                            pbond_kl = &bonds->bond_list[plk];
+                            bo_kl = &pbond_kl->bo_data;
                             type_l = my_atoms[l].type;
-                            fbh = &(d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)]);
-                            fbp = &(d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)].prm[0]);
+                            fbh = &d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)];
+                            fbp = &d_fbp[index_fbp (type_i,type_j,type_k,type_l,num_atom_types)].prm[0];
 
-                            if ( i != l && fbh->cnt && 
-                                    bo_kl->BO > control->thb_cut &&
-                                    bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
+                            if ( i != l && fbh->cnt
+                                    && bo_kl->BO > control->thb_cut
+                                    && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
                             {
                                 ++num_frb_intrs;
                                 r_kl = pbond_kl->d;
@@ -650,11 +651,11 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_PostProcess ( reax_atom *my_atoms,
     bonds = &p_bonds;
     workspace = &p_workspace;
 
-    for ( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    for ( pj = Cuda_Start_Index(i, bonds); pj < Cuda_End_Index(i, bonds); ++pj )
     {
-        pbond = &(bonds->bond_list[pj]);
+        pbond = &bonds->bond_list[pj];
         bo_data = &pbond->bo_data;
-        sym_index_bond = &( bonds->bond_list[ pbond->sym_index ] ); 
+        sym_index_bond = &bonds->bond_list[ pbond->sym_index ];
 
         workspace->CdDelta[i] += sym_index_bond->ta_CdDelta;
 

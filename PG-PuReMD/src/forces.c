@@ -1138,33 +1138,3 @@ int Compute_Forces( reax_system * const system, control_params * const control,
 
     return ret;
 }
-
-
-#if defined(HAVE_CUDA)
-int validate_device( reax_system * const system, simulation_data * const data,
-        storage * const workspace, reax_list ** const lists )
-{
-    int retval = FAILURE;
-
-#if defined(__CUDA_DEBUG__)
-    //retval |= validate_neighbors( system, lists );
-    //retval |= validate_sym_dbond_indices( system, workspace, lists );
-    //retval |= validate_hbonds( system, workspace, lists );
-    //retval |= validate_workspace( system, workspace );
-    //retval |= validate_bonds( system, workspace, lists );
-    //retval |= validate_three_bodies( system, workspace, lists );
-    retval |= validate_sparse_matrix( system, workspace );
-    //retval |= validate_data( system, data );
-    //retval |= validate_atoms( system, lists );
-    //analyze_hbonds( system, workspace, lists );
-
-    if ( !retval )
-    {
-        fprintf( stderr, "Result *DOES NOT* match between device and host\n" );
-    }
-#endif
-
-    return retval;
-
-}
-#endif

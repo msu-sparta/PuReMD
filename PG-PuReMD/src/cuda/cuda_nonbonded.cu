@@ -60,7 +60,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
     two_body_parameters *twbp;
     far_neighbor_data *nbr_pj;
     reax_list *far_nbrs;
-    storage *workspace = &( p_workspace );
+    storage *workspace = &p_workspace;
     int thread_id;
     int warpid;
     int laneid; 
@@ -88,7 +88,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
     if ( i < N )
     {
         natoms = n;
-        far_nbrs = &( p_far_nbrs );
+        far_nbrs = &p_far_nbrs;
         p_vdW1 = gp.l[28];
         p_vdW1i = 1.0 / p_vdW1;
         e_core = 0;
@@ -98,8 +98,8 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
         data_e_ele[i] = 0;
 
         //for( i = 0; i < natoms; ++i ) {
-        start_i = Dev_Start_Index(i, far_nbrs);
-        end_i = Dev_End_Index(i, far_nbrs);
+        start_i = Cuda_Start_Index(i, far_nbrs);
+        end_i = Cuda_End_Index(i, far_nbrs);
         orig_i = my_atoms[i].orig_id;
         //fprintf( stderr, "i:%d, start_i: %d, end_i: %d\n", i, start_i, end_i );
 
@@ -108,7 +108,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
         while ( pj < end_i )
         {
 
-            nbr_pj = &(far_nbrs->far_nbr_list[pj]);
+            nbr_pj = &far_nbrs->far_nbr_list[pj];
             j = nbr_pj->nbr;
             orig_j  = my_atoms[j].orig_id;
 
@@ -118,7 +118,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
                      || (i > j && i >= natoms && j < natoms && orig_j < orig_i)))
             { // ji with j >= n
                 r_ij = nbr_pj->d;
-                twbp = &(tbp[ index_tbp (my_atoms[i].type, my_atoms[j].type, num_atom_types) ]);
+                twbp = &tbp[ index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types) ];
 
                 /* Calculate Taper and its derivative */
                 // Tap = nbr_pj->Tap;   -- precomputed during compte_H
@@ -389,9 +389,9 @@ CUDA_GLOBAL void k_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
         return;
     }
 
-    workspace = &( p_workspace );
+    workspace = &p_workspace;
     natoms = n;
-    far_nbrs = &( p_far_nbrs );
+    far_nbrs = &p_far_nbrs;
     steps = step - prev_steps;
     update_freq = energy_update_freq;
     update_energies = update_freq > 0 && steps % update_freq == 0;
@@ -401,18 +401,18 @@ CUDA_GLOBAL void k_tabulated_vdW_coulomb_energy( reax_atom *my_atoms,
 
     //for( i = 0; i < natoms; ++i ) {
     type_i = my_atoms[i].type;
-    start_i = Dev_Start_Index(i,far_nbrs);
-    end_i = Dev_End_Index(i,far_nbrs);
+    start_i = Cuda_Start_Index(i,far_nbrs);
+    end_i = Cuda_End_Index(i,far_nbrs);
     orig_i = my_atoms[i].orig_id;
 
-    for( pj = start_i; pj < end_i; ++pj )
+    for ( pj = start_i; pj < end_i; ++pj )
     {
-        nbr_pj = &(far_nbrs->far_nbr_list[pj]);
+        nbr_pj = &far_nbrs->far_nbr_list[pj];
         j = nbr_pj->nbr;
         orig_j  = my_atoms[j].orig_id;
 
-        //if( nbr_pj->d <= control->nonb_cut && (j < natoms || orig_i < orig_j) ) {
-        if( nbr_pj->d <= control->nonb_cut && 
+        //if ( nbr_pj->d <= control->nonb_cut && (j < natoms || orig_i < orig_j) ) {
+        if ( nbr_pj->d <= control->nonb_cut && 
                 (((i < j) && (i < natoms) && (j < natoms || orig_i < orig_j))
                  || ((i > j) && (i < natoms) && (j < natoms)) 
                  || (i > j && i >= natoms && j < natoms && orig_j < orig_i)))
@@ -577,7 +577,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         k_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE, DEF_BLOCK_SIZE * (2 * sizeof(real) + sizeof(rvec)) >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *)control->d_control_params, 
-              *(dev_workspace), *(dev_lists[FAR_NBRS]), 
+              *(dev_workspace), *(lists[FAR_NBRS]), 
               system->n, system->N, system->reax_param.num_atom_types, 
               spad, spad + 2 * system->N, (rvec *)(spad + 4 * system->N));
         cudaDeviceSynchronize( );
@@ -588,7 +588,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         k_tabulated_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *)control->d_control_params, 
-              *(dev_workspace), *(dev_lists[FAR_NBRS]), 
+              *(dev_workspace), *(lists[FAR_NBRS]), 
               workspace->d_LR, system->n, system->N,
               system->reax_param.num_atom_types, 
               data->step, data->prev_steps, 

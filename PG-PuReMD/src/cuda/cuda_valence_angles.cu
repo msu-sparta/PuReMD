@@ -74,9 +74,9 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
         return;
     }
 
-    bonds = &( p_bonds );
-    thb_intrs =  &( p_thb_intrs );
-    workspace = &( p_workspace );
+    bonds = &p_bonds;
+    thb_intrs =  &p_thb_intrs;
+    workspace = &p_workspace;
     /* global parameters used in these calculations */
     p_val6 = gp.l[14];
     p_val8 = gp.l[33];
@@ -84,8 +84,8 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
     p_val10 = gp.l[17];
     //num_thb_intrs = j * THREE_BODY_OFFSET;
     type_j = my_atoms[j].type;
-    start_j = Dev_Start_Index( j, bonds );
-    end_j = Dev_End_Index( j, bonds );
+    start_j = Cuda_Start_Index( j, bonds );
+    end_j = Cuda_End_Index( j, bonds );
     p_val3 = sbp[ type_j ].p_val3;
     p_val5 = sbp[ type_j ].p_val5;
     SBOp = 0.0;
@@ -93,7 +93,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
     for( t = start_j; t < end_j; ++t )
     {
-        bo_jt = &(bonds->bond_list[t].bo_data);
+        bo_jt = &bonds->bond_list[t].bo_data;
         SBOp += (bo_jt->BO_pi + bo_jt->BO_pi2);
         temp = SQR( bo_jt->BO );
         temp *= temp;
@@ -141,14 +141,14 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
     for( pi = start_j; pi < end_j; ++pi )
     {
-        num_thb_intrs = Dev_Start_Index( pi, thb_intrs );
+        num_thb_intrs = Cuda_Start_Index( pi, thb_intrs );
 
-        pbond_ij = &(bonds->bond_list[pi]);
-        bo_ij = &(pbond_ij->bo_data);
+        pbond_ij = &bonds->bond_list[pi];
+        bo_ij = &pbond_ij->bo_data;
         BOA_ij = bo_ij->BO - control->thb_cut;
 
-        if ( BOA_ij > 0.0 &&
-                ( j < n || pbond_ij->nbr < n ) )
+        if ( BOA_ij > 0.0
+                && ( j < n || pbond_ij->nbr < n ) )
         {
             i = pbond_ij->nbr;
             type_i = my_atoms[i].type;
@@ -160,15 +160,15 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
             // Each kernel now manually generates everything
 //            for( pk = start_j; pk < pi; ++pk )
 //            {
-//                start_pk = Dev_Start_Index( pk, thb_intrs );
-//                end_pk = Dev_End_Index( pk, thb_intrs );
+//                start_pk = Cuda_Start_Index( pk, thb_intrs );
+//                end_pk = Cuda_End_Index( pk, thb_intrs );
 //
 //                for( t = start_pk; t < end_pk; ++t )
 //                {
 //                    if( thb_intrs->three_body_list[t].thb == i )
 //                    {
-//                        p_ijk = &(thb_intrs->three_body_list[num_thb_intrs] );
-//                        p_kji = &(thb_intrs->three_body_list[t]);
+//                        p_ijk = &thb_intrs->three_body_list[num_thb_intrs];
+//                        p_kji = &thb_intrs->three_body_list[t];
 //
 //                        p_ijk->thb = bonds->bond_list[pk].nbr;
 //                        p_ijk->pthb  = pk;
@@ -193,12 +193,12 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
                     continue;
                 }
 
-                pbond_jk = &(bonds->bond_list[pk]);
-                bo_jk = &(pbond_jk->bo_data);
+                pbond_jk = &bonds->bond_list[pk];
+                bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
                 k = pbond_jk->nbr;
                 type_k = my_atoms[k].type;
-                p_ijk = &( thb_intrs->three_body_list[num_thb_intrs] );
+                p_ijk = &thb_intrs->three_body_list[num_thb_intrs];
 
                 //CHANGE ORIGINAL
                 //if ((BOA_jk <= 0) || ((j >= n) && (k >= n))) continue;
@@ -214,8 +214,8 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
                 Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d,
                         pbond_jk->dvec, pbond_jk->d,
-                        &(p_ijk->dcos_di), &(p_ijk->dcos_dj),
-                        &(p_ijk->dcos_dk) );
+                        &p_ijk->dcos_di, &p_ijk->dcos_dj,
+                        &p_ijk->dcos_dk );
 
                 p_ijk->thb = k;
                 p_ijk->pthb = pk;
@@ -229,16 +229,16 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
                 ++num_thb_intrs;
 
-                if ( j < n && BOA_jk > 0.0 &&
-                        bo_ij->BO * bo_jk->BO > SQR(control->thb_cut) )
+                if ( j < n && BOA_jk > 0.0
+                        && bo_ij->BO * bo_jk->BO > SQR(control->thb_cut) )
                 {
-                    thbh = &( d_thbh[ index_thbp(type_i, type_j, type_k, num_atom_types) ] );
+                    thbh = &d_thbh[ index_thbp(type_i, type_j, type_k, num_atom_types) ];
 
                     for ( cnt = 0; cnt < thbh->cnt; ++cnt )
                     {
                         if ( FABS(thbh->prm[cnt].p_val1) > 0.001 )
                         {
-                            thbp = &( thbh->prm[cnt] );
+                            thbp = &thbh->prm[cnt];
 
                             /* ANGLE ENERGY */
                             p_val1 = thbp->p_val1;
@@ -372,8 +372,8 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
                                 for ( t = start_j; t < end_j; ++t )
                                 {
-                                    pbond_jt = &( bonds->bond_list[t] );
-                                    bo_jt = &(pbond_jt->bo_data);
+                                    pbond_jt = &bonds->bond_list[t];
+                                    bo_jt = &pbond_jt->bo_data;
                                     temp_bo_jt = bo_jt->BO;
                                     temp = CUBE( temp_bo_jt );
                                     pBOjt7 = temp * temp * temp_bo_jt;
@@ -478,8 +478,8 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
 
                             for( t = start_j; t < end_j; ++t )
                             {
-                                pbond_jt = &( bonds->bond_list[t] );
-                                bo_jt = &(pbond_jt->bo_data);
+                                pbond_jt = &bonds->bond_list[t];
+                                bo_jt = &pbond_jt->bo_data;
                                 temp_bo_jt = bo_jt->BO;
                                 temp = CUBE( temp_bo_jt );
                                 pBOjt7 = temp * temp * temp_bo_jt;
@@ -517,7 +517,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles( reax_atom *my_atoms,
             }
         }
 
-        Dev_Set_End_Index( pi, num_thb_intrs, thb_intrs );
+        Cuda_Set_End_Index( pi, num_thb_intrs, thb_intrs );
     }
 }
 
@@ -542,10 +542,10 @@ CUDA_GLOBAL void Cuda_Valence_Angles_PostProcess( reax_atom *atoms,
     bonds = &p_bonds;
     workspace = &p_workspace;
 
-    for( pj = Dev_Start_Index(i, bonds); pj < Dev_End_Index(i, bonds); ++pj )
+    for( pj = Cuda_Start_Index(i, bonds); pj < Cuda_End_Index(i, bonds); ++pj )
     {
-        pbond = &(bonds->bond_list[pj]);
-        sym_index_bond = &( bonds->bond_list[ pbond->sym_index ] );
+        pbond = &bonds->bond_list[pj];
+        sym_index_bond = &bonds->bond_list[ pbond->sym_index ];
 
         workspace->CdDelta[i] += sym_index_bond->va_CdDelta;
 
@@ -574,21 +574,20 @@ CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *my_atoms,
         return;
     }
 
-    bonds = &( p_bonds );
-    start_j = Dev_Start_Index( j, bonds );
-    end_j = Dev_End_Index( j, bonds );
+    bonds = &p_bonds;
+    start_j = Cuda_Start_Index( j, bonds );
+    end_j = Cuda_End_Index( j, bonds );
 
     for ( pi = start_j; pi < end_j; ++pi )
     {
         num_thb_intrs = 0;
         count[ pi ] = 0;
 
-        pbond_ij = &(bonds->bond_list[pi]);
-        bo_ij = &(pbond_ij->bo_data);
+        pbond_ij = &bonds->bond_list[pi];
+        bo_ij = &pbond_ij->bo_data;
         BOA_ij = bo_ij->BO - control->thb_cut;
 
-        if ( BOA_ij > 0.0 &&
-                ( j < n || pbond_ij->nbr < n ) )
+        if ( BOA_ij > 0.0 && ( j < n || pbond_ij->nbr < n ) )
         {
             for ( pk = start_j; pk < end_j; ++pk )
             {
@@ -597,8 +596,8 @@ CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *my_atoms,
                     continue;
                 }
 
-                pbond_jk = &(bonds->bond_list[pk]);
-                bo_jk = &(pbond_jk->bo_data);
+                pbond_jk = &bonds->bond_list[pk];
+                bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
 
                 //CHANGE ORIGINAL

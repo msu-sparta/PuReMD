@@ -25,7 +25,7 @@ CUDA_GLOBAL void Cuda_Update_Uncorrected_BO( storage , reax_list , int );
 CUDA_GLOBAL void Cuda_Update_Workspace_After_BO( reax_atom *, global_parameters ,
         single_body_parameters *, storage , int );
 
-CUDA_DEVICE static inline int Dev_BOp( reax_list bonds, real bo_cut,
+CUDA_DEVICE static inline int Cuda_BOp( reax_list bonds, real bo_cut,
         int i, int btop_i, far_neighbor_data *nbr_pj,
         single_body_parameters *sbp_i, single_body_parameters *sbp_j,
         two_body_parameters *twbp, rvec *dDeltap_self, real *total_bond_order )

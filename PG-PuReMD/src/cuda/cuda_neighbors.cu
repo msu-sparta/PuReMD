@@ -30,7 +30,7 @@
 #include "../vector.h"
 
 
-CUDA_DEVICE real Dev_DistSqr_to_Special_Point( rvec cp, rvec x ) 
+CUDA_DEVICE real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x ) 
 {
     int  i;  
     real d_sqr = 0.0;
@@ -67,7 +67,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
     }
 
     atom1 = &my_atoms[l];
-    num_far = Dev_Start_Index( l, &far_nbrs_list );
+    num_far = Cuda_Start_Index( l, &far_nbrs_list );
 
     /* get the coordinates of the atom and compute the grid cell */
     if ( l < n )
@@ -114,8 +114,8 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
         /* if neighboring grid cell is further in the "positive" direction AND within cutoff */
-        if ( g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
+        if ( g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]
+                && Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
         {
             /* pick up another atom from the neighbor cell */
             for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
@@ -124,7 +124,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
                 /* prevent recounting same pairs within a gcell */
                 if ( l < m )
                 {
-                    atom2 = &(my_atoms[m]);
+                    atom2 = &my_atoms[m];
                     dvec[0] = atom2->x[0] - atom1->x[0];
                     dvec[1] = atom2->x[1] - atom1->x[1];
                     dvec[2] = atom2->x[2] - atom1->x[2];
@@ -133,7 +133,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
                     if ( d <= cutoff )
                     { 
                         /* commit far neighbor to list */
-                        nbr_data = &(far_nbrs_list.far_nbr_list[num_far]);
+                        nbr_data = &far_nbrs_list.far_nbr_list[num_far];
                         nbr_data->nbr = m;
                         nbr_data->d = SQRT( d );
                         rvec_Copy( nbr_data->dvec, dvec );
@@ -159,7 +159,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
 
         /* if neighboring grid cell is further in the "negative" direction AND within cutoff */
         if ( g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
+                Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
         {
             /* pick up another atom from the neighbor cell */
             for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
@@ -168,7 +168,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
                 /* prevent recounting same pairs within a gcell */
                 if ( l > m )
                 {
-                    atom2 = &(my_atoms[m]);
+                    atom2 = &my_atoms[m];
                     dvec[0] = atom1->x[0] - atom2->x[0];
                     dvec[1] = atom1->x[1] - atom2->x[1];
                     dvec[2] = atom1->x[2] - atom2->x[2];
@@ -177,7 +177,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
                     if ( d <= cutoff )
                     {
                         /* commit far neighbor to list */
-                        nbr_data = &(far_nbrs_list.far_nbr_list[num_far]);
+                        nbr_data = &far_nbrs_list.far_nbr_list[num_far];
                         nbr_data->nbr = m;
                         nbr_data->d = SQRT( d );
                         rvec_Copy( nbr_data->dvec, dvec );
@@ -194,10 +194,10 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
         ++itr;
     }   
 
-    Dev_Set_End_Index( l, num_far, &far_nbrs_list );
+    Cuda_Set_End_Index( l, num_far, &far_nbrs_list );
 
     /* reallocation check */
-    my_num_far = num_far - Dev_Start_Index( l, &far_nbrs_list );
+    my_num_far = num_far - Cuda_Start_Index( l, &far_nbrs_list );
     if ( my_num_far > max_far_nbrs[l] )
     {
         *realloc_far_nbrs = TRUE;
@@ -235,9 +235,9 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
     tnbr = __nbr;
     nbrssofar = __nbr + blockDim.x;
     l = group_id;
-    atom1 = &(my_atoms[l]);
-    num_far = Dev_Start_Index( l, &far_nbrs );
-    my_start = &( far_nbrs.far_nbr_list[num_far] );
+    atom1 = &my_atoms[l];
+    num_far = Cuda_Start_Index( l, &far_nbrs );
+    my_start = &far_nbrs.far_nbr_list[num_far];
 
     //get the coordinates of the atom and 
     //compute the grid cell
@@ -295,9 +295,9 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
         cutoff_ji = SQR( g.cutoff[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
 
         if ( (g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] 
-                && Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff) 
+                && Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff) 
                 || (g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] 
-                && Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff_ji) )
+                && Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff_ji) )
         {
             max = g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]
                     - g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)];
@@ -314,9 +314,9 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
                 nbrgen = false;
 
                 // prevent recounting same pairs within a gcell 
-                if ( l < m  && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
+                if ( l < m && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
                 {
-                    atom2 = &(my_atoms[m]);
+                    atom2 = &my_atoms[m];
                     dvec[0] = atom2->x[0] - atom1->x[0];
                     dvec[1] = atom2->x[1] - atom1->x[1];
                     dvec[2] = atom2->x[2] - atom1->x[2];
@@ -329,9 +329,9 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
                     }
                 }
 
-                if ( l > m  && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
+                if ( l > m && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
                 {
-                    atom2 = &(my_atoms[m]);
+                    atom2 = &my_atoms[m];
                     dvec[0] = atom1->x[0] - atom2->x[0];
                     dvec[1] = atom1->x[1] - atom2->x[1];
                     dvec[2] = atom1->x[2] - atom2->x[2];
@@ -384,7 +384,8 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
                         d = rvec_Norm_Sqr( dvec );
                         nbr_data->d = SQRT( d );
                         rvec_Copy( nbr_data->dvec, dvec );
-                        ivec_ScaledSum( nbr_data->rel_box, 1, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
+                        ivec_ScaledSum( nbr_data->rel_box, 1,
+                                g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)], 
                                 -1, g.rel_box[index_grid_3d(i, j, k, &g)] );
                     } 
                     else
@@ -424,7 +425,7 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
 
     if ( lane_id == 0 )
     {
-        Dev_Set_End_Index( l, num_far + nbrssofar[my_bucket], &far_nbrs );
+        Cuda_Set_End_Index( l, num_far + nbrssofar[my_bucket], &far_nbrs );
     }
 }
 
@@ -454,7 +455,7 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
     k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-          *(dev_lists[FAR_NBRS]), system->n, system->N,
+          *(lists[FAR_NBRS]), system->n, system->N,
           system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
     cudaDeviceSynchronize( );
     cudaCheckError( );
@@ -466,7 +467,7 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 //        //sizeof(int) * (NBRS_BLOCK_SIZE + NBRS_BLOCK_SIZE / NB_KER_THREADS_PER_ATOM) >>>
 //        sizeof(int) * 2 * NBRS_BLOCK_SIZE >>>
 //            ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-//              *(dev_lists[FAR_NBRS]), system->n, system->N );
+//              *(lists[FAR_NBRS]), system->n, system->N );
 //    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 
@@ -564,7 +565,7 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
             ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
             if ( //(g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]) &&  
-                    Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff ) 
+                    Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff ) 
             {
                 /* pick up another atom from the neighbor cell */
                 for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
@@ -597,7 +598,7 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
             cutoff = SQR( g.cutoff[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
 
             if ( g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                    Dev_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x) <= cutoff ) 
+                    Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x) <= cutoff ) 
             {
                 /* pick up another atom from the neighbor cell */
                 for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
@@ -606,7 +607,7 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
                     /* prevent recounting same pairs within a gcell */
                     if ( l > m )
                     {
-                        atom2 = &(my_atoms[m]);
+                        atom2 = &my_atoms[m];
                         dvec[0] = atom2->x[0] - atom1->x[0];
                         dvec[1] = atom2->x[1] - atom1->x[1];
                         dvec[2] = atom2->x[2] - atom1->x[2];

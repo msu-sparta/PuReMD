@@ -57,7 +57,6 @@
 
 /* CUDA-specific globals */
 #if defined(HAVE_CUDA)
-reax_list **dev_lists;
 storage *dev_workspace;
 void *scratch;
 void *host_scratch;
@@ -199,12 +198,6 @@ void* setup( const char * const geo_file, const char * const ffield_file,
 #ifdef HAVE_CUDA
     /* allocate auxiliary data structures (GPU) */
     dev_workspace = smalloc( sizeof(storage), "Setup::dev_workspace" );
-    dev_lists = smalloc ( sizeof(reax_list *) * LIST_N, "Setup::dev_lists" );
-    for ( i = 0; i < LIST_N; ++i )
-    {
-        dev_lists[i] = smalloc( sizeof(reax_list), "Setup::dev_lists[i]" );
-        dev_lists[i]->allocated = FALSE;
-    }
 #endif
 
     pmd_handle->output_enabled = TRUE;
@@ -262,9 +255,6 @@ int simulate( const void * const handle )
     mpi_datatypes *mpi_data;
     puremd_handle *pmd_handle;
     real t_start, t_elapsed;
-#if defined(DEBUG_FOCUS)
-    real t_begin, t_end;
-#endif
 
     t_start = 0;
     ret = PUREMD_FAILURE;
@@ -289,10 +279,6 @@ int simulate( const void * const handle )
 
         Cuda_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 
-#if defined(__CUDA_DEBUG__)
-        Pure_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
-#endif
-
         /* compute f_0 */
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
         Sync_Atoms( system );
@@ -301,44 +287,16 @@ int simulate( const void * const handle )
 
         Cuda_Reset( system, control, data, workspace, lists );
 
-#if defined(__CUDA_DEBUG__)
-        Reset( system, control, data, workspace, lists );
-#endif
-
         Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
-
-#if defined(__CUDA_DEBUG__)
-        Generate_Neighbor_Lists( system, data, workspace, lists );
-#endif
-
-#if defined(__CUDA_DEBUG__)
-        Compute_Forces( system, control, data, workspace,
-                lists, out_control, mpi_data );
-#endif
 
         Cuda_Compute_Forces( system, control, data, workspace, lists,
                 out_control, mpi_data );
-
-#if defined (__CUDA_DEBUG__)
-        Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-#endif
 
         Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
         Compute_Total_Energy( system, data, MPI_COMM_WORLD );
 
-#if defined(__CUDA_DEBUG__)
-        validate_device( system, data, workspace, lists );
-#endif
-
-#if !defined(__CUDA_DEBUG__)
         Output_Results( system, control, data, lists, out_control, mpi_data );
-#endif
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
         ++data->step;
         retries = 0;
@@ -350,71 +308,39 @@ int simulate( const void * const handle )
             {
                 Temperature_Control( control, data );
             }
-
-#if defined(DEBUG_FOCUS)
-            t_begin = Get_Time();
-#endif
-
-#if defined(__CUDA_DEBUG__)
-            ret = control->Evolve( system, control, data, workspace,
-                    lists, out_control, mpi_data );
-#endif
     
             ret = control->Cuda_Evolve( system, control, data, workspace,
                     lists, out_control, mpi_data );
-    
-#if defined(DEBUG_FOCUS)
-            t_end = Get_Timing_Info( t_begin );
-            fprintf( stderr, " Evolve time: %f \n", t_end );
-#endif
-
-#if defined(DEBUG_FOCUS)
-            t_begin = Get_Time( );
-#endif
 
             if ( ret == SUCCESS )
             {
                 Cuda_Post_Evolve( system, control, data, workspace, lists,
                         out_control, mpi_data );
-
-#if defined(__CUDA_DEBUG__)
-                Post_Evolve( system, control, data, workspace, lists, out_control, mpi_data );
-#endif
             }
-
-#if defined(DEBUG_FOCUS)
-            t_end = Get_Timing_Info( t_begin );
-            fprintf( stderr, " Post Evolve time: %f \n", t_end );
-#endif
 
             if ( ret == SUCCESS )
             {
                 data->timing.num_retries = retries;
 
-#if !defined(__CUDA_DEBUG__)
                 Output_Results( system, control, data, lists, out_control, mpi_data );
-#endif
 
-//          Analysis( system, control, data, workspace, lists, out_control, mpi_data );
+//              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
 
-            /* dump restart info */
-//            if ( out_control->restart_freq &&
-//                    (data->step-data->prev_steps) % out_control->restart_freq == 0 )
-//            {
-//                if( out_control->restart_format == WRITE_ASCII )
+
+                //TODO: fix this in GPU code
+                /* dump restart info */
+//                if ( out_control->restart_freq &&
+//                        (data->step-data->prev_steps) % out_control->restart_freq == 0 )
 //                {
-//                    Write_Restart_File( system, control, data, out_control, mpi_data );
+//                    if( out_control->restart_format == WRITE_ASCII )
+//                    {
+//                        Write_Restart_File( system, control, data, out_control, mpi_data );
+//                    }
+//                    else if( out_control->restart_format == WRITE_BINARY )
+//                    {
+//                        Write_Binary_Restart_File( system, control, data, out_control, mpi_data );
+//                    }
 //                }
-//                else if( out_control->restart_format == WRITE_BINARY )
-//                {
-//                    Write_Binary_Restart_File( system, control, data, out_control, mpi_data );
-//                }
-//            }
-
-#if defined(DEBUG_FOCUS)
-                fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
-                MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
                 ++data->step;
                 retries = 0;
@@ -435,11 +361,6 @@ int simulate( const void * const handle )
                   retries );
             MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
         }
-
-#if defined(__CUDA_DEBUG__)
-        /* vaildate the results in debug mode */
-        validate_device( system, data, workspace, lists );
-#endif
 
 #else 
         if ( system->my_rank == MASTER_NODE )
@@ -590,13 +511,8 @@ int cleanup( const void * const handle )
         sfree( pmd_handle->control, "cleanup::pmd_handle->control" );
         sfree( pmd_handle->system, "cleanup::pmd_handle->system" );
 
-        //TODO: add Dev_Finalize( ... )
+        //TODO: add Cuda_Finalize( ... )
 #ifdef HAVE_CUDA
-        for ( i = 0; i < LIST_N; ++i )
-        {
-            sfree( dev_lists[i], "cleanup::dev_lists[i]" );
-        }
-        sfree( dev_lists, "cleanup::dev_lists" );
         sfree( dev_workspace, "cleanup::dev_workspace" );
 #endif
 

@@ -51,16 +51,16 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
         return;
     }
 
-    bonds = &( p_bonds);
-    workspace = &( p_workspace );
+    bonds = &p_bonds;
+    workspace = &p_workspace;
     gp3 = gp.l[3];
     gp4 = gp.l[4];
     gp7 = gp.l[7];
     gp10 = gp.l[10];
     gp37 = (int) gp.l[37];
 
-    start_i = Dev_Start_Index(i, bonds);
-    end_i = Dev_End_Index(i, bonds);
+    start_i = Cuda_Start_Index( i, bonds );
+    end_i = Cuda_End_Index( i, bonds );
 
     for ( pj = start_i; pj < end_i; ++pj )
     {
@@ -71,11 +71,11 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
             /* set the pointers */
             type_i = my_atoms[i].type;
             type_j = my_atoms[j].type;
-            sbp_i = &( sbp[type_i] );
-            sbp_j = &( sbp[type_j] );
+            sbp_i = &sbp[type_i];
+            sbp_j = &sbp[type_j];
 
-            twbp = &( tbp[ index_tbp (type_i,type_j, num_atom_types) ] );
-            bo_ij = &( bonds->bond_list[pj].bo_data );
+            twbp = &tbp[ index_tbp(type_i,type_j, num_atom_types) ];
+            bo_ij = &bonds->bond_list[pj].bo_data;
 
             /* calculate the constants */
             pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );

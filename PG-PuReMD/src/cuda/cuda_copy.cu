@@ -108,8 +108,9 @@ void Sync_System( reax_system *sys )
 /* Copy atom info from device to host */
 void Output_Sync_Atoms( reax_system *sys )
 {
-    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) *
-            sys->total_cap, cudaMemcpyDeviceToHost, "system:my_atoms" );
+    copy_host_device( sys->my_atoms, sys->d_my_atoms,
+            sizeof(reax_atom) * sys->total_cap, cudaMemcpyDeviceToHost,
+            "Output_Sync_Atoms::my_atoms" );
 }
 
 
@@ -127,53 +128,57 @@ void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
 }
 
 
-/* Copy interaction lists from device to host */
-void Output_Sync_Lists( reax_list *host, reax_list *device, int type )
+/* Copy interaction lists from device to host,
+ * with allocation for the host list */
+void Output_Sync_Lists( reax_list *host_list, reax_list *device_list, int type )
 {
+//    assert( device_list != NULL );
+//    assert( device_list->allocated == TRUE );
+
+    if ( host_list != NULL && host_list->allocated == TRUE )
+    {
+        Delete_List( host_list );
+    }
+    Make_List( device_list->n, device_list->max_intrs, type, host_list );
+
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, " Trying to copy *%d* list from device to host \n", type );
+    fprintf( stderr, " [INFO] trying to copy %d list from device to host\n", type );
 #endif
 
-    if ( host->allocated == TRUE )
-    {
-        Delete_List( host );
-    }
-    Make_List( device->n, device->max_intrs, type, host );
-
-    copy_host_device( host->index, device->index, sizeof(int) * device->n,
+    copy_host_device( host_list->index, device_list->index, sizeof(int) * device_list->n,
             cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->index" );
-    copy_host_device( host->end_index, device->end_index, sizeof(int) *
-            device->n, cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->end_index" );
+    copy_host_device( host_list->end_index, device_list->end_index, sizeof(int) *
+            device_list->n, cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->end_index" );
 
     switch ( type )
     {   
         case TYP_FAR_NEIGHBOR:
-            copy_host_device( host->far_nbr_list, device->far_nbr_list,
-                    sizeof(far_neighbor_data) * device->max_intrs,
+            copy_host_device( host_list->far_nbr_list, device_list->far_nbr_list,
+                    sizeof(far_neighbor_data) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list" );
             break;
 
         case TYP_BOND:
-            copy_host_device( host->bond_list, device->bond_list,
-                    sizeof(bond_data) * device->max_intrs,
+            copy_host_device( host_list->bond_list, device_list->bond_list,
+                    sizeof(bond_data) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::bond_list" );
             break;
 
         case TYP_HBOND:
-            copy_host_device( host->hbond_list, device->hbond_list,
-                    sizeof(hbond_data) * device->max_intrs,
+            copy_host_device( host_list->hbond_list, device_list->hbond_list,
+                    sizeof(hbond_data) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::hbond_list" );
             break;
 
         case TYP_THREE_BODY:
-            copy_host_device( host->three_body_list,
-                    device->three_body_list,
-                    sizeof(three_body_interaction_data )* device->max_intrs,
+            copy_host_device( host_list->three_body_list,
+                    device_list->three_body_list,
+                    sizeof(three_body_interaction_data ) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, "Output_Sync_Lists::three_body_list" );
             break;
 
         default:
-            fprintf( stderr, "Unknown list synching from device to host ---- > %d \n",
+            fprintf( stderr, "[ERROR] Unknown list synching from device to host (%d)\n",
                     type );
             exit( INVALID_INPUT );
             break;

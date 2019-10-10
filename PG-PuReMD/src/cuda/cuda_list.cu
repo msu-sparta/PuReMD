@@ -40,7 +40,7 @@ extern "C" {
  * type: list interaction type
  * l: pointer to list to be allocated
  * */
-void Dev_Make_List( int n, int max_intrs, int type, reax_list *l )
+void Cuda_Make_List( int n, int max_intrs, int type, reax_list *l )
 {
     if ( l->allocated == TRUE )
     {
@@ -54,8 +54,8 @@ void Dev_Make_List( int n, int max_intrs, int type, reax_list *l )
     l->max_intrs = max_intrs;
     l->type = type;
 
-    cuda_malloc( (void **) &l->index, n * sizeof(int), TRUE, "Dev_Make_List::index" );
-    cuda_malloc( (void **) &l->end_index, n * sizeof(int), TRUE, "Dev_Make_List::end_index" );
+    cuda_malloc( (void **) &l->index, n * sizeof(int), TRUE, "Cuda_Make_List::index" );
+    cuda_malloc( (void **) &l->end_index, n * sizeof(int), TRUE, "Cuda_Make_List::end_index" );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "dev_list: n=%d max_intrs=%d type=%d\n", n, max_intrs, type );
@@ -65,23 +65,23 @@ void Dev_Make_List( int n, int max_intrs, int type, reax_list *l )
     {
         case TYP_FAR_NEIGHBOR:
             cuda_malloc( (void **) &l->far_nbr_list, 
-                    l->max_intrs * sizeof(far_neighbor_data), TRUE, "Dev_Make_List::far_nbrs" );
+                    l->max_intrs * sizeof(far_neighbor_data), TRUE, "Cuda_Make_List::far_nbrs" );
             break;
 
         case TYP_THREE_BODY:
             cuda_malloc( (void **) &l->three_body_list,
                     l->max_intrs * sizeof(three_body_interaction_data), TRUE,
-                    "Dev_Make_List::three_bodies" );
+                    "Cuda_Make_List::three_bodies" );
             break;
 
         case TYP_HBOND:
             cuda_malloc( (void **) &l->hbond_list, 
-                    l->max_intrs * sizeof(hbond_data), TRUE, "Dev_Make_List::hbonds" );
+                    l->max_intrs * sizeof(hbond_data), TRUE, "Cuda_Make_List::hbonds" );
             break;            
 
         case TYP_BOND:
             cuda_malloc( (void **) &l->bond_list,
-                    l->max_intrs * sizeof(bond_data), TRUE, "Dev_Make_List::bonds" );
+                    l->max_intrs * sizeof(bond_data), TRUE, "Cuda_Make_List::bonds" );
             break;
 
         default:
@@ -92,7 +92,7 @@ void Dev_Make_List( int n, int max_intrs, int type, reax_list *l )
 }
 
 
-void Dev_Delete_List( reax_list *l )
+void Cuda_Delete_List( reax_list *l )
 {
     if ( l->allocated == FALSE )
     {
@@ -103,22 +103,22 @@ void Dev_Delete_List( reax_list *l )
 
     l->allocated = FALSE;
 
-    cuda_free( l->index, "Dev_Delete_List::index" );
-    cuda_free( l->end_index, "Dev_Delete_List::end_index" );
+    cuda_free( l->index, "Cuda_Delete_List::index" );
+    cuda_free( l->end_index, "Cuda_Delete_List::end_index" );
 
     switch ( l->type )
     {
         case TYP_HBOND:
-            cuda_free( l->hbond_list, "Dev_Delete_List::hbonds" );
+            cuda_free( l->hbond_list, "Cuda_Delete_List::hbonds" );
             break;
         case TYP_FAR_NEIGHBOR:
-            cuda_free( l->far_nbr_list, "Dev_Delete_List::far_nbrs" );
+            cuda_free( l->far_nbr_list, "Cuda_Delete_List::far_nbrs" );
             break;
         case TYP_BOND:
-            cuda_free( l->bond_list, "Dev_Delete_List::bonds" );
+            cuda_free( l->bond_list, "Cuda_Delete_List::bonds" );
             break;
         case TYP_THREE_BODY:
-            cuda_free( l->three_body_list, "Dev_Delete_List::three_bodies" );
+            cuda_free( l->three_body_list, "Cuda_Delete_List::three_bodies" );
             break;
         default:
             fprintf( stderr, "[ERROR] unknown devive list type (%d)\n", l->type );

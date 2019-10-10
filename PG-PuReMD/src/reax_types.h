@@ -226,7 +226,7 @@
 /* ??? */
 #define RESTART (30)
 /* ??? */
-#define MAX_RETRIES (20)
+#define MAX_RETRIES (5)
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
@@ -2493,7 +2493,6 @@ struct puremd_handle
 
 
 /* CUDA-specific globals */
-extern reax_list **dev_lists;
 extern storage *dev_workspace;
 extern void *scratch;
 extern void *host_scratch;
