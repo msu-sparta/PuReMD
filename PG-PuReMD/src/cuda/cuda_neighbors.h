@@ -13,8 +13,6 @@ int Cuda_Generate_Neighbor_Lists( reax_system *, simulation_data *, storage *, r
 
 void Cuda_Estimate_Neighbors( reax_system * );
 
-void Cuda_Init_Neighbor_Indices( reax_system * );
-
 #ifdef __cplusplus
 }
 #endif

@@ -103,7 +103,7 @@ CUDA_GLOBAL void k_init_hbond_indices( reax_atom * atoms, single_body_parameters
 /* Initialize indices for far neighbors list post reallocation
  *
  * system: atomic system info. */
-void Cuda_Init_Neighbor_Indices( reax_system *system )
+void Cuda_Init_Neighbor_Indices( reax_system *system, reax_list **lists )
 {
     int blocks;
     reax_list *far_nbrs = lists[FAR_NBRS];
@@ -124,7 +124,7 @@ void Cuda_Init_Neighbor_Indices( reax_system *system )
 /* Initialize indices for far hydrogen bonds list post reallocation
  *
  * system: atomic system info. */
-void Cuda_Init_HBond_Indices( reax_system *system )
+void Cuda_Init_HBond_Indices( reax_system *system, reax_list **lists )
 {
     int blocks;
     int *temp;
@@ -155,7 +155,7 @@ void Cuda_Init_HBond_Indices( reax_system *system )
 /* Initialize indices for far bonds list post reallocation
  *
  * system: atomic system info. */
-void Cuda_Init_Bond_Indices( reax_system *system )
+void Cuda_Init_Bond_Indices( reax_system *system, reax_list **lists )
 {
     int blocks;
     reax_list *bonds = lists[BONDS];
@@ -198,7 +198,7 @@ void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
  *
  * indices: list indices
  * entries: num. of entries in list */
-void Cuda_Init_Three_Body_Indices( int *indices, int entries )
+void Cuda_Init_Three_Body_Indices( int *indices, int entries, reax_list **lists )
 {
     reax_list *thbody = lists[THREE_BODIES];
 
@@ -1725,7 +1725,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        Cuda_Init_Three_Body_Indices( thbody, system->total_thbodies_indices );
+        Cuda_Init_Three_Body_Indices( thbody, system->total_thbodies_indices, lists );
 
         cuda_memset( spad, 0, 6 * sizeof(real) * system->N + sizeof(rvec) * system->N * 2, "scratch" );
 
@@ -1962,7 +1962,7 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
     f = (rvec *) host_scratch;
     memset( f, 0, sizeof(rvec) * system->N );
 
-    Cuda_Total_Forces( system, control, data, workspace );
+    Cuda_Total_Forces( system, control, data, workspace, lists );
 
 #if defined(PURE_REAX)
     /* now all forces are computed to their partially-final values

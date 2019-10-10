@@ -701,7 +701,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
         Cuda_Reallocate_Neighbor_List( far_nbrs, system->total_cap, system->total_far_nbrs );
 
-        Cuda_Init_Neighbor_Indices( system );
+        Cuda_Init_Neighbor_Indices( system, lists );
 
         realloc->far_nbrs = FALSE;
     }
@@ -742,7 +742,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
             Cuda_Reallocate_HBonds_List( lists[HBONDS], system->total_cap, system->total_hbonds );
 
-            Cuda_Init_HBond_Indices( system );
+            Cuda_Init_HBond_Indices( system, lists );
 
             realloc->hbonds = FALSE;
         }
@@ -759,7 +759,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
         Cuda_Reallocate_Bonds_List( lists[BONDS], system->total_cap, system->total_bonds );
 
-        Cuda_Init_Bond_Indices( system );
+        Cuda_Init_Bond_Indices( system, lists );
 
         realloc->bonds = FALSE;
     }

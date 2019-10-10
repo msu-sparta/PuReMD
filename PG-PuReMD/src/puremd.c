@@ -490,7 +490,7 @@ int simulate( const void * const handle )
 
 int cleanup( const void * const handle )
 {
-    int i, ret;
+    int ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;

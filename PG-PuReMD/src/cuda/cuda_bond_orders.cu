@@ -806,7 +806,7 @@ CUDA_GLOBAL void k_total_forces( storage p_workspace, reax_list p_bonds,
 
 
 void Cuda_Total_Forces( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace )
+        simulation_data *data, storage *workspace, reax_list **lists )
 {
     int blocks;
     rvec *spad_rvec = (rvec *) scratch;
@@ -874,7 +874,7 @@ void Cuda_Total_Forces_PURE( reax_system *system, storage *workspace )
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_total_forces_pure <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->n, *dev_workspace);
+        ( system->d_my_atoms, system->n, *dev_workspace );
     cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
 }

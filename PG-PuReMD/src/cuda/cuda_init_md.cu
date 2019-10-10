@@ -248,7 +248,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     fprintf( stderr, "N: %d and total_cap: %d \n", system->N, system->total_cap );
 #endif
 
-    Cuda_Init_Neighbor_Indices( system );
+    Cuda_Init_Neighbor_Indices( system, lists );
 
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
@@ -268,7 +268,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         Cuda_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, lists[HBONDS] );
-        Cuda_Init_HBond_Indices( system );
+        Cuda_Init_HBond_Indices( system, lists );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: allocated hbonds: total_hbonds=%d, space=%dMB\n",
@@ -279,7 +279,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     /* bonds list */
     Cuda_Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
-    Cuda_Init_Bond_Indices( system );
+    Cuda_Init_Bond_Indices( system, lists );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: allocated bonds: total_bonds=%d, space=%dMB\n",
