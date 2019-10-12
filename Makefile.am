@@ -464,10 +464,6 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 				   PG-PuReMD/src/cuda/cuda_valence_angles.cu \
 				   PG-PuReMD/src/cuda/cuda_valence_angles.h \
 				   PG-PuReMD/src/cuda/cuda_vector.h
-if CUDA_DEBUG
-PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_validation.cu \
-				   PG-PuReMD/src/cuda/cuda_validation.h
-endif
 # dummy source to trigger C linking
 nodist_EXTRA_PG_PuReMD_bin_pg_puremd_SOURCES = src/dummy.c
 endif
