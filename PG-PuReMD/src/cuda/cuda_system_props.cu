@@ -815,140 +815,141 @@ CUDA_GLOBAL void k_compute_pressure( reax_atom *my_atoms, simulation_box *big_bo
 }
 
 
-static void Cuda_Compute_Momentum( reax_system *system, rvec xcm, 
-        rvec vcm, rvec amcm )
+static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
+        storage *workspace, rvec xcm, rvec vcm, rvec amcm )
 {
     rvec *l_xcm, *l_vcm, *l_amcm;
-    rvec *r_scratch = (rvec *)scratch;
+    rvec *r_scratch = (rvec *) workspace->scratch;
 
 #if defined( __SM_35__)
     // xcm
-    cuda_memset( scratch, 0, sizeof(rvec) * (BLOCKS_POW_2 + 1), "momentum:tmp" );
+    cuda_memset( workspace->scratch, 0, sizeof(rvec) * (control->blocks_pow_2 + 1), "momentum:tmp" );
     l_xcm = r_scratch;
     
-    k_center_of_mass_blocks_xcm <<< BLOCKS_POW_2,BLOCK_SIZE,(sizeof(rvec) * BLOCK_SIZE) >>>
+    k_center_of_mass_blocks_xcm <<< control->blocks_pow_2, control->block_size, sizeof(rvec) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, l_xcm, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
     
-    k_reduction_rvec <<< 1, BLOCKS_POW_2, sizeof(rvec) * BLOCKS_POW_2 >>>
-            (l_xcm, l_xcm + BLOCKS_POW_2, BLOCKS_POW_2 );
+    k_reduction_rvec <<< 1, control->blocks_pow_2, sizeof(rvec) * control->blocks_pow_2 >>>
+            (l_xcm, l_xcm + control->blocks_pow_2, control->blocks_pow_2 );
     cudaDeviceSynchronize( );
     cudaCheckError( );
-    copy_host_device( xcm, l_xcm + BLOCKS_POW_2,
+    copy_host_device( xcm, l_xcm + control->blocks_pow_2,
             sizeof(rvec), cudaMemcpyDeviceToHost, "momentum:xcm" );
     
     // vcm
-    cuda_memset( scratch, 0, sizeof(rvec) * (BLOCKS_POW_2 + 1), "momentum:tmp" );
+    cuda_memset( workspace->scratch, 0, sizeof(rvec) * (control->blocks_pow_2 + 1), "momentum:tmp" );
     l_vcm = r_scratch;
     
-    k_center_of_mass_blocks_vcm <<< BLOCKS_POW_2,BLOCK_SIZE,(sizeof(rvec) * BLOCK_SIZE) >>>
+    k_center_of_mass_blocks_vcm <<< control->blocks_pow_2, control->block_size, sizeof(rvec) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, l_vcm, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
     
-    k_reduction_rvec <<< 1, BLOCKS_POW_2, sizeof(rvec) * BLOCKS_POW_2 >>>
-        ( l_vcm, l_vcm + BLOCKS_POW_2, BLOCKS_POW_2 );
+    k_reduction_rvec <<< 1, control->blocks_pow_2, sizeof(rvec) * control->blocks_pow_2 >>>
+        ( l_vcm, l_vcm + control->blocks_pow_2, control->blocks_pow_2 );
     cudaDeviceSynchronize( );
     cudaCheckError( );
-    copy_host_device( vcm, l_vcm + BLOCKS_POW_2, sizeof(rvec),
+    copy_host_device( vcm, l_vcm + control->blocks_pow_2, sizeof(rvec),
         cudaMemcpyDeviceToHost, "momentum:vcm" );
     
     // amcm
-    cuda_memset( scratch, 0,  sizeof (rvec) * (BLOCKS_POW_2 + 1), "momentum:tmp");
+    cuda_memset( workspace->scratch, 0,  sizeof (rvec) * (control->blocks_pow_2 + 1), "momentum:tmp");
     l_amcm = r_scratch;
     
-    k_center_of_mass_blocks_amcm <<< BLOCKS_POW_2,BLOCK_SIZE,(sizeof(rvec) * BLOCK_SIZE) >>>
+    k_center_of_mass_blocks_amcm <<< control->blocks_pow_2, control->block_size, sizeof(rvec) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, l_amcm, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
     
-    k_reduction_rvec <<< 1, BLOCKS_POW_2, sizeof(rvec) * BLOCKS_POW_2 >>>
-        ( l_amcm, l_amcm + BLOCKS_POW_2, BLOCKS_POW_2 );
+    k_reduction_rvec <<< 1, control->blocks_pow_2, sizeof(rvec) * control->blocks_pow_2 >>>
+        ( l_amcm, l_amcm + control->blocks_pow_2, control->blocks_pow_2 );
     cudaDeviceSynchronize( );
     cudaCheckError( );
-    copy_host_device( amcm, l_amcm + BLOCKS_POW_2, sizeof(rvec),
+    copy_host_device( amcm, l_amcm + control->blocks_pow_2, sizeof(rvec),
         cudaMemcpyDeviceToHost, "momemtum:amcm" );
 
 #else
-    cuda_memset( scratch, 0, 3 * sizeof (rvec) * (BLOCKS_POW_2 + 1), "momentum:tmp" );
+    cuda_memset( workspace->scratch, 0, 3 * sizeof(rvec) * (control->blocks_pow_2 + 1), "momentum:tmp" );
     
     l_xcm = r_scratch;
-    l_vcm = r_scratch + (BLOCKS_POW_2 + 1); 
-    l_amcm = r_scratch + 2 * (BLOCKS_POW_2 + 1); 
+    l_vcm = r_scratch + (control->blocks_pow_2 + 1); 
+    l_amcm = r_scratch + 2 * (control->blocks_pow_2 + 1); 
     
-    k_center_of_mass_blocks <<< BLOCKS_POW_2, BLOCK_SIZE, 3 * (sizeof (rvec) * BLOCK_SIZE) >>> 
+    k_center_of_mass_blocks <<< control->blocks_pow_2, control->block_size, 3 * sizeof(rvec) * control->block_size >>> 
         ( system->reax_param.d_sbp, system->d_my_atoms, l_xcm, l_vcm, l_amcm, system->n );
     cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
     
-    k_center_of_mass <<< 1, BLOCKS_POW_2, 3 * (sizeof (rvec) * BLOCKS_POW_2) >>> 
-        ( l_xcm, l_vcm, l_amcm, l_xcm + BLOCKS_POW_2, l_vcm + BLOCKS_POW_2,
-          l_amcm + BLOCKS_POW_2, BLOCKS_POW_2 );
+    k_center_of_mass <<< 1, control->blocks_pow_2, sizeof(rvec) * 3 * control->blocks_pow_2 >>> 
+        ( l_xcm, l_vcm, l_amcm, l_xcm + control->blocks_pow_2, l_vcm + control->blocks_pow_2,
+          l_amcm + control->blocks_pow_2, control->blocks_pow_2 );
     cudaDeviceSynchronize( ); 
     cudaCheckError( );
     
-    copy_host_device( xcm, l_xcm + BLOCKS_POW_2, sizeof(rvec),
+    copy_host_device( xcm, l_xcm + control->blocks_pow_2, sizeof(rvec),
             cudaMemcpyDeviceToHost, "momemtum:xcm" );
-    copy_host_device( vcm, l_vcm + BLOCKS_POW_2, sizeof(rvec),
+    copy_host_device( vcm, l_vcm + control->blocks_pow_2, sizeof(rvec),
             cudaMemcpyDeviceToHost, "momentum:vcm" );
-    copy_host_device( amcm, l_amcm + BLOCKS_POW_2, sizeof(rvec),
+    copy_host_device( amcm, l_amcm + control->blocks_pow_2, sizeof(rvec),
             cudaMemcpyDeviceToHost,"momentum:amcm" );
 #endif
 }
 
 
-static void Cuda_Compute_Inertial_Tensor( reax_system *system, real *local_results, rvec my_xcm )
+static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *control,
+        storage *workspace, real *local_results, rvec my_xcm )
 {
 #if defined(__SM_35__)
-    real *partial_results = (real *) scratch;
-    cuda_memset( partial_results, 0, sizeof (real) * 6 * (BLOCKS_POW_2 + 1), "tensor:tmp" );
+    real *partial_results = (real *) workspace->scratch;
+    cuda_memset( partial_results, 0, sizeof(real) * 6 * (control->blocks_pow_2 + 1), "tensor:tmp" );
 
-    k_compute_center_mass_xx_xy <<< BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
+    k_compute_center_mass_xx_xy <<< control->blocks_pow_2, control->block_size, sizeof(real) * 2 * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
          my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_compute_center_mass_xz_yy <<< BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
+    k_compute_center_mass_xz_yy <<< control->blocks_pow_2, control->block_size, sizeof(real) * 2 * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
          my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_compute_center_mass_yz_zz <<< BLOCKS_POW_2, BLOCK_SIZE, 2 * (sizeof (real) * BLOCK_SIZE) >>>
+    k_compute_center_mass_yz_zz <<< control->blocks_pow_2, control->block_size, sizeof(real) * 2 * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_compute_center_mass_opt <<< 1, BLOCKS_POW_2, 6 * (sizeof (real) * BLOCKS_POW_2) >>>
-        ( partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2 );
+    k_compute_center_mass_opt <<< 1, control->blocks_pow_2, sizeof(real) * 6 * control->blocks_pow_2 >>>
+        ( partial_results, partial_results + (control->blocks_pow_2 * 6), control->blocks_pow_2 );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    copy_host_device( local_results, partial_results + 6 * BLOCKS_POW_2,
+    copy_host_device( local_results, partial_results + 6 * control->blocks_pow_2,
         sizeof(real) * 6, cudaMemcpyDeviceToHost, "tensor:local_results" );
 
 #else
-    real *partial_results = (real *) scratch;
+    real *partial_results = (real *) workspace->scratch;
     //real *local_results;
 
-    cuda_memset( partial_results, 0, sizeof (real) * 6 * (BLOCKS_POW_2 + 1), "tensor:tmp" );
-    //local_results = (real *) malloc( sizeof (real) * 6 * (BLOCKS_POW_2+ 1) );
+    cuda_memset( partial_results, 0, sizeof(real) * 6 * (control->blocks_pow_2 + 1), "tensor:tmp" );
+    //local_results = (real *) malloc( sizeof(real) * 6 * (control->blocks_pow_2 + 1) );
 
-    k_compute_center_mass <<< BLOCKS_POW_2, BLOCK_SIZE, 6 * (sizeof (real) * BLOCK_SIZE) >>>
+    k_compute_center_mass <<< control->blocks_pow_2, control->block_size, sizeof(real) * 6 * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, partial_results,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_compute_center_mass_opt <<< 1, BLOCKS_POW_2, 6 * (sizeof (real) * BLOCKS_POW_2) >>>
-        ( partial_results, partial_results + (BLOCKS_POW_2 * 6), BLOCKS_POW_2 );
+    k_compute_center_mass_opt <<< 1, control->blocks_pow_2, sizeof(real) * 6 * control->blocks_pow_2 >>>
+        ( partial_results, partial_results + (control->blocks_pow_2 * 6), control->blocks_pow_2 );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    copy_host_device( local_results, partial_results + 6 * BLOCKS_POW_2, 
+    copy_host_device( local_results, partial_results + 6 * control->blocks_pow_2, 
             sizeof(real) * 6, cudaMemcpyDeviceToHost, "tensor:local_results" );
 #endif
 }
@@ -977,28 +978,28 @@ void Cuda_Generate_Initial_Velocities( reax_system *system, real T )
 }
 
 
-void Cuda_Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
-        MPI_Comm comm )
+void Cuda_Compute_Kinetic_Energy( reax_system* system, control_params *control,
+        storage *workspace, simulation_data* data, MPI_Comm comm )
 {
-    real *block_energy = (real *) scratch;
+    real *block_energy = (real *) workspace->scratch;
     data->my_en.e_kin = 0.0;
 
-    cuda_memset( block_energy, 0, sizeof(real) * (BLOCKS_POW_2 + 1), "kinetic_energy:tmp" );
+    cuda_memset( block_energy, 0, sizeof(real) * (control->blocks_pow_2 + 1), "kinetic_energy:tmp" );
 
-    k_compute_kinetic_energy <<< BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
+    k_compute_kinetic_energy <<< control->blocks, control->block_size, sizeof(real) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, block_energy, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_reduction <<< 1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
-        ( block_energy, block_energy + BLOCKS_POW_2, BLOCKS_POW_2 );
+    k_reduction <<< 1, control->blocks_pow_2, sizeof(real) * control->blocks_pow_2 >>>
+        ( block_energy, block_energy + control->blocks_pow_2, control->blocks_pow_2 );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
     //copy_host_device( &data->my_en.e_kin, &((simulation_data *)data->d_simulation_data)->my_en.e_kin, 
-    copy_host_device( &data->my_en.e_kin, block_energy + BLOCKS_POW_2,
+    copy_host_device( &data->my_en.e_kin, block_energy + control->blocks_pow_2,
             sizeof(real), cudaMemcpyDeviceToHost, "kinetic_energy:tmp" );
-    //copy_device( block_energy + BLOCKS_POW_2, &((simulation_data *)data->d_simulation_data)->my_en.e_kin,
+    //copy_device( block_energy + control->blocks_pow_2, &((simulation_data *)data->d_simulation_data)->my_en.e_kin,
     //        sizeof(real), "kinetic_energy" );
 
     MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin,
@@ -1036,25 +1037,25 @@ void Check_Energy( simulation_data* data )
 }
 
 
-void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
-        MPI_Comm comm  )
+void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
+        storage *workspace, simulation_data *data, MPI_Comm comm  )
 {
     real tmp;
-    real *block_mass = (real *) scratch;
+    real *block_mass = (real *) workspace->scratch;
 
-    cuda_memset( block_mass, 0, sizeof(real) * (1 + BLOCKS_POW_2), "total_mass:tmp" );
+    cuda_memset( block_mass, 0, sizeof(real) * (1 + control->blocks_pow_2), "total_mass:tmp" );
 
-    k_compute_total_mass <<< BLOCKS, BLOCK_SIZE, sizeof(real) * BLOCK_SIZE >>>
+    k_compute_total_mass <<< control->blocks, control->block_size, sizeof(real) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, block_mass, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_reduction <<< 1, BLOCKS_POW_2, sizeof(real) * BLOCKS_POW_2 >>>
-        ( block_mass, block_mass + BLOCKS_POW_2, BLOCKS_POW_2 );
+    k_reduction <<< 1, control->blocks_pow_2, sizeof(real) * control->blocks_pow_2 >>>
+        ( block_mass, block_mass + control->blocks_pow_2, control->blocks_pow_2 );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    copy_host_device( &tmp, block_mass + BLOCKS_POW_2, sizeof(real), 
+    copy_host_device( &tmp, block_mass + control->blocks_pow_2, sizeof(real), 
             cudaMemcpyDeviceToHost, "total_mass:tmp" );
 
     MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
@@ -1063,8 +1064,8 @@ void Cuda_Compute_Total_Mass( reax_system *system, simulation_data *data,
 }
 
 
-void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
-        mpi_datatypes *mpi_data, MPI_Comm comm )
+void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
+        storage *workspace, simulation_data *data, mpi_datatypes *mpi_data, MPI_Comm comm )
 {
     int i;
     real det; //xx, xy, xz, yy, yz, zz;
@@ -1079,7 +1080,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     rvec_MakeZero( my_avcm ); // angular velocity of CoM
 
     /* Compute the position, vel. and ang. momentum about the centre of mass */
-    Cuda_Compute_Momentum( system, my_xcm, my_vcm, my_amcm );
+    Cuda_Compute_Momentum( system, control, workspace, my_xcm, my_vcm, my_amcm );
 
     MPI_Allreduce( my_xcm, data->xcm, 3, MPI_DOUBLE, MPI_SUM, comm );
     MPI_Allreduce( my_vcm, data->vcm, 3, MPI_DOUBLE, MPI_SUM, comm );
@@ -1097,7 +1098,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         tmp_mat[i] = 0;
     }
 
-    Cuda_Compute_Inertial_Tensor( system, tmp_mat, my_xcm );
+    Cuda_Compute_Inertial_Tensor( system, control, workspace, tmp_mat, my_xcm );
 
     MPI_Reduce( tmp_mat, tot_mat, 6, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
 
@@ -1176,14 +1177,14 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, simulation_data *data,
  *  We may want to add that for more accuracy.
  */
 void Cuda_Compute_Pressure( reax_system* system, control_params *control,
-        simulation_data* data, mpi_datatypes *mpi_data )
+        storage *workspace, simulation_data* data, mpi_datatypes *mpi_data )
 {
     int blocks, block_size, blocks_n, blocks_pow_2_n;
     rvec *rvec_spad;
     rvec int_press;
     simulation_box *big_box;
     
-    rvec_spad = (rvec *) scratch;
+    rvec_spad = (rvec *) workspace->scratch;
     big_box = &system->big_box;
 
     /* 0: both int and ext, 1: ext only, 2: int only */

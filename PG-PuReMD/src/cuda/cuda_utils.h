@@ -24,9 +24,9 @@ void compute_matvec_blocks( int *, int );
 
 void compute_nearest_pow_2( int, int * );
 
-void Cuda_Init_Block_Sizes( reax_system * );
+void Cuda_Init_Block_Sizes( reax_system *, control_params * );
 
-void print_device_mem_usage( );
+void Cuda_Print_Mem_Usage( );
 
 
 #ifdef __cplusplus

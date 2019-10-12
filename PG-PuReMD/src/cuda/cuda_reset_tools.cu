@@ -13,13 +13,13 @@ extern "C"
 
 void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 {
-    cuda_memset( dev_workspace->total_bond_order, 0,
+    cuda_memset( workspace->d_workspace->total_bond_order, 0,
             system->total_cap * sizeof(real), "total_bond_order" );
-    cuda_memset( dev_workspace->dDeltap_self, 0,
+    cuda_memset( workspace->d_workspace->dDeltap_self, 0,
             system->total_cap * sizeof(rvec), "dDeltap_self" );
-    cuda_memset( dev_workspace->CdDelta, 0,
+    cuda_memset( workspace->d_workspace->CdDelta, 0,
             system->total_cap * sizeof(real), "CdDelta" );
-    cuda_memset( dev_workspace->f, 0,
+    cuda_memset( workspace->d_workspace->f, 0,
             system->total_cap * sizeof(rvec), "f" );
 }
 
@@ -51,12 +51,13 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
 }
 
 
-void Cuda_Reset_Atoms( reax_system* system, control_params *control )
+void Cuda_Reset_Atoms( reax_system* system, control_params *control,
+        storage *workspace )
 {
     int blocks;
     int *hindex;
 
-    hindex = (int *) scratch;
+    hindex = (int *) workspace->scratch;
 
     blocks = system->N / DEF_BLOCK_SIZE
         + ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
@@ -78,7 +79,7 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control )
 void Cuda_Reset( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists )
 {
-    Cuda_Reset_Atoms( system, control );
+    Cuda_Reset_Atoms( system, control, workspace );
 
     Reset_Simulation_Data( data );
 

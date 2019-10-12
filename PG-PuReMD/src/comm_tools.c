@@ -750,7 +750,7 @@ void Comm_Atoms( reax_system * const system, control_params * const control,
         }
         system->n = SendRecv( system, mpi_data, mpi_data->mpi_atom_type, nrecv,
                 Sort_Transfer_Atoms, Unpack_Transfer_Message, TRUE );
-        Bin_My_Atoms( system, &workspace->realloc );
+        Bin_My_Atoms( system, workspace );
         Reorder_My_Atoms( system, workspace );
 
 #if defined(DEBUG_FOCUS)

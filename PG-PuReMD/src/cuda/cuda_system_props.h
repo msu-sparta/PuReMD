@@ -9,19 +9,21 @@
 extern "C"  {
 #endif
 
-void Cuda_Compute_Total_Mass( reax_system*, simulation_data*, MPI_Comm );
+void Cuda_Compute_Total_Mass( reax_system *, control_params *,
+        storage *, simulation_data *, MPI_Comm );
 
 void Cuda_Sync_Simulation_Data( simulation_data * );
 
 void Cuda_Generate_Initial_Velocities( reax_system *, real );
 
-void Cuda_Compute_Kinetic_Energy( reax_system*, simulation_data*, MPI_Comm );
+void Cuda_Compute_Kinetic_Energy( reax_system *, control_params *,
+        storage *, simulation_data *, MPI_Comm );
 
-void Cuda_Compute_Center_of_Mass( reax_system*, simulation_data*,
-        mpi_datatypes*, MPI_Comm );
+void Cuda_Compute_Center_of_Mass( reax_system *, control_params *,
+        storage *, simulation_data *, mpi_datatypes *, MPI_Comm );
 
 void Cuda_Compute_Pressure( reax_system *, control_params *,
-        simulation_data *, mpi_datatypes * );
+        storage *, simulation_data *, mpi_datatypes * );
 
 #ifdef __cplusplus
 }

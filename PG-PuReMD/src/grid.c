@@ -493,7 +493,7 @@ void Update_Grid( reax_system * const system, control_params * const control,
 
 
 /* Bin my (native) atoms into grid cells */
-void Bin_My_Atoms( reax_system * const system, reallocate_data * const realloc )
+void Bin_My_Atoms( reax_system * const system, storage * const workspace )
 {
     int i, j, k, l, d, max_atoms;
     ivec c;
@@ -588,16 +588,16 @@ void Bin_My_Atoms( reax_system * const system, reallocate_data * const realloc )
     /* check if current gcell->max_atoms is safe */
     if ( max_atoms >= g->max_atoms * DANGER_ZONE )
     {
-        realloc->gcell_atoms = MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
-#ifdef HAVE_CUDA
-        dev_workspace->realloc.gcell_atoms = MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
+        workspace->realloc.gcell_atoms = MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
+#if defined(HAVE_CUDA)
+        workspace->d_workspace->realloc.gcell_atoms = MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
 #endif
     }
     else
     {
-        realloc->gcell_atoms = -1;
-#ifdef HAVE_CUDA
-        dev_workspace->realloc.gcell_atoms = -1;
+        workspace->realloc.gcell_atoms = -1;
+#if defined(HAVE_CUDA)
+        workspace->d_workspace->realloc.gcell_atoms = -1;
 #endif
     }
 }

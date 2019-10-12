@@ -326,7 +326,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        Cuda_Init_Block_Sizes( system );
+        Cuda_Init_Block_Sizes( system, control );
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
@@ -430,7 +430,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        Cuda_Init_Block_Sizes( system );
+        Cuda_Init_Block_Sizes( system, control );
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
@@ -470,7 +470,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     if ( ret == SUCCESS )
     {
         /* Compute iteration constants for each atom's velocity */
-        nhNVT_update_velocity_part2( system, dev_workspace, dt, therm->v_xi );
+        nhNVT_update_velocity_part2( system, workspace->d_workspace, dt, therm->v_xi );
     
         v_xi_new = therm->v_xi_old + 2.0 * dt * therm->G_xi;
         my_ekin = G_xi_new = v_xi_old = 0;
@@ -488,7 +488,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             /* new values become old in this iteration */
             v_xi_old = v_xi_new;
     
-            my_ekin = nhNVT_update_velocity_part3( system, dev_workspace, dt, v_xi_old,
+            my_ekin = nhNVT_update_velocity_part3( system, workspace->d_workspace, dt, v_xi_old,
                     d_my_ekin, d_total_my_ekin );
     
             MPI_Allreduce( &my_ekin, &new_ekin, 1, MPI_DOUBLE, MPI_SUM,
@@ -570,7 +570,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        Cuda_Init_Block_Sizes( system );
+        Cuda_Init_Block_Sizes( system, control );
     
         Cuda_Reset( system, control, data, workspace, lists );
     }
@@ -622,7 +622,8 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 #endif
 
         /* temperature scaler */
-        Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+        Cuda_Compute_Kinetic_Energy( system, control, workspace,
+                data, mpi_data->comm_mesh3D );
 
         lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
         if ( lambda < MIN_dT )
@@ -638,7 +639,8 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         /* Scale velocities and positions at t+dt */
         bNVT_scale_velocities( system, lambda );
 
-        Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+        Cuda_Compute_Kinetic_Energy( system, control, workspace,
+                data, mpi_data->comm_mesh3D );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d @ step%d: scaled velocities\n",
@@ -701,7 +703,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-        Cuda_Init_Block_Sizes( system );
+        Cuda_Init_Block_Sizes( system, control );
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
@@ -742,9 +744,12 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
     {
         update_velocity_part2( system, dt );
 
-        Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-        Cuda_Compute_Pressure( system, control, data, mpi_data );
-        Cuda_Scale_Box( system, control, data, mpi_data );
+        Cuda_Compute_Kinetic_Energy( system, control,
+                workspace, data, mpi_data->comm_mesh3D );
+        Cuda_Compute_Pressure( system, control,
+                workspace, data, mpi_data );
+        Cuda_Scale_Box( system, control,
+                workspace, data, mpi_data );
 
         verlet_part1_done = FALSE;
         far_nbrs_done = FALSE;

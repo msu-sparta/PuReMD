@@ -31,7 +31,7 @@
   #include "reax_vector.h"
 #endif
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
   #include "cuda/cuda_system_props.h"
 #endif
 
@@ -106,7 +106,7 @@ void Compute_Total_Energy( reax_system *system, simulation_data *data,
     //TODO: remove this is an UGLY fix
     my_en[13] = data->my_en.e_kin;
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
     Cuda_Sync_Simulation_Data( data );
 #endif
 

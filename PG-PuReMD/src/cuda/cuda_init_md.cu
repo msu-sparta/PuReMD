@@ -10,9 +10,6 @@
 #include "cuda_reset_tools.h"
 #include "cuda_system_props.h"
 #include "cuda_utils.h"
-#if defined(DEBUG_FOCUS)
-  #include "cuda_validation.h"
-#endif
 
 #if defined(PURE_REAX)
   #include "../box.h"
@@ -46,13 +43,13 @@ extern "C" {
 #endif
 
 
-static void Cuda_Init_Scratch_Space( )
+static void Cuda_Init_Scratch_Space( storage *workspace )
 {
-    cuda_malloc( (void **)&scratch, DEVICE_SCRATCH_SIZE, TRUE,
-            "Cuda_Init_Scratch_Space::scratch" );
+    cuda_malloc( (void **)&workspace->scratch, DEVICE_SCRATCH_SIZE, TRUE,
+            "Cuda_Init_Scratch_Space::workspace->scratch" );
 
-    host_scratch = (void *) smalloc( HOST_SCRATCH_SIZE,
-            "Cuda_Init_Scratch_Space::host_scratch" );
+    workspace->host_scratch = (void *) smalloc( HOST_SCRATCH_SIZE,
+            "Cuda_Init_Scratch_Space::workspace->host_scratch" );
 }
 
 
@@ -70,7 +67,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     Print_Grid( &system->my_grid, stderr );
 #endif
 
-    Bin_My_Atoms( system, &workspace->realloc );
+    Bin_My_Atoms( system, workspace );
     Reorder_My_Atoms( system, workspace );
 
     /* estimate N and total capacity */
@@ -91,7 +88,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     Sync_System( system );
 
     /* estimate numH and Hcap */
-    Cuda_Reset_Atoms( system, control );
+    Cuda_Reset_Atoms( system, control, workspace );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: n=%d local_cap=%d\n",
@@ -102,9 +99,11 @@ int Cuda_Init_System( reax_system *system, control_params *control,
              system->my_rank, system->numH, system->Hcap );
 #endif
 
-    Cuda_Compute_Total_Mass( system, data, mpi_data->comm_mesh3D );
+    Cuda_Compute_Total_Mass( system, control, workspace,
+            data, mpi_data->comm_mesh3D );
 
-    Cuda_Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
+    Cuda_Compute_Center_of_Mass( system, control, workspace,
+            data, mpi_data, mpi_data->comm_mesh3D );
 
 //    if( Reposition_Atoms( system, control, data, mpi_data, msg ) == FAILURE )
 //    {
@@ -117,7 +116,8 @@ int Cuda_Init_System( reax_system *system, control_params *control,
         Cuda_Generate_Initial_Velocities( system, control->T_init );
     }
 
-    Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+    Cuda_Compute_Kinetic_Energy( system, control, workspace,
+            data, mpi_data->comm_mesh3D );
 
     return SUCCESS;
 }
@@ -222,13 +222,13 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 void Cuda_Init_Workspace( reax_system *system, control_params *control,
         storage *workspace )
 {
-    Cuda_Allocate_Workspace( system, control, dev_workspace,
+    Cuda_Allocate_Workspace( system, control, workspace->d_workspace,
             system->local_cap, system->total_cap );
 
     memset( &workspace->realloc, 0, sizeof(reallocate_data) );
     Cuda_Reset_Workspace( system, workspace );
 
-    Init_Taper( control, dev_workspace );
+    Init_Taper( control, workspace->d_workspace );
 }
 
 
@@ -256,8 +256,8 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Estimate_Storages( system, control, lists,
             TRUE, TRUE, TRUE, data->step );
 
-    Cuda_Allocate_Matrix( &dev_workspace->H, system->total_cap, system->total_cm_entries );
-    Cuda_Init_Sparse_Matrix_Indices( system, &dev_workspace->H );
+    Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->total_cap, system->total_cm_entries );
+    Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p:%d - allocated H matrix: max_entries: %d, space=%dMB\n",
@@ -268,7 +268,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         Cuda_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, lists[HBONDS] );
-        Cuda_Init_HBond_Indices( system, lists );
+        Cuda_Init_HBond_Indices( system, workspace, lists );
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: allocated hbonds: total_hbonds=%d, space=%dMB\n",
@@ -300,7 +300,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 {
     char msg[MAX_STR];
 
-    Cuda_Init_Scratch_Space( );
+    Cuda_Init_Scratch_Space( workspace );
 
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
@@ -330,12 +330,12 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     /* Lookup Tables */
     if ( control->tabulate )
     {
-        Init_Lookup_Tables( system, control, dev_workspace, mpi_data );
+        Init_Lookup_Tables( system, control, workspace->d_workspace, mpi_data );
     }
 
-    Cuda_Init_Block_Sizes( system );
+    Cuda_Init_Block_Sizes( system, control );
 
 #if defined(DEBUG_FOCUS)
-    print_device_mem_usage( );
+    Cuda_Print_Mem_Usage( );
 #endif
 }

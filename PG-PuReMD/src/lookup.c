@@ -33,7 +33,7 @@
 
 #include "index_utils.h"
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
   #include "cuda/cuda_lookup.h"
 #endif
 
@@ -220,7 +220,7 @@ void Init_Lookup_Tables( reax_system * const system, control_params * const cont
     real dr;
     real *h, *fh, *fvdw, *fele, *fCEvd, *fCEclmb;
     real v0_vdw, v0_ele, vlast_vdw, vlast_ele;
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
     real t_start, t_end;
 #endif
 
@@ -342,13 +342,12 @@ void Init_Lookup_Tables( reax_system * const system, control_params * const cont
     sfree( fele, "Init_Lookup_Tables::fele" );
     sfree( fCEclmb, "Init_Lookup_Tables::fCEclmb" );
 
-#ifdef HAVE_CUDA
-    //copy the LR_Table to the device here.
+#if defined(HAVE_CUDA)
     t_start = Get_Time( );
     copy_LR_table_to_device( system, control, workspace, aggregated );
     t_end = Get_Timing_Info( t_start );
 
-    fprintf( stderr, "Device copy of LR Lookup table: %f \n", t_end );
+    fprintf( stderr, "[INFO] time to copy LR Lookup table from device to host: %f \n", t_end );
 #endif
 }
 

@@ -141,7 +141,7 @@ extern "C" void compute_nearest_pow_2( int blocks, int *result )
 }
 
 
-extern "C" void print_device_mem_usage( )
+extern "C" void Cuda_Print_Mem_Usage( )
 {
     size_t total, free;
     cudaError_t retVal;
@@ -162,18 +162,18 @@ extern "C" void print_device_mem_usage( )
 }
 
 
-extern "C" void Cuda_Init_Block_Sizes( reax_system *system )
+extern "C" void Cuda_Init_Block_Sizes( reax_system *system, control_params *control )
 {
-    compute_blocks( &BLOCKS, &BLOCK_SIZE, system->n );
-    compute_nearest_pow_2( BLOCKS, &BLOCKS_POW_2 );
+    compute_blocks( &control->blocks, &control->block_size, system->n );
+    compute_nearest_pow_2( control->blocks, &control->blocks_pow_2 );
 
-    compute_blocks( &BLOCKS_N, &BLOCK_SIZE, system->N );
-    compute_nearest_pow_2( BLOCKS_N, &BLOCKS_POW_2_N );
+    compute_blocks( &control->blocks_n, &control->block_size, system->N );
+    compute_nearest_pow_2( control->blocks_n, &control->blocks_pow_2_n );
 
-    compute_matvec_blocks( &MATVEC_BLOCKS, system->N );
+    compute_matvec_blocks( &control->matvec_blocks, system->N );
 
 #if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, " MATVEC_BLOCKS: %d BLOCKSIZE: %d  - N:%d \n",
-            MATVEC_BLOCKS, MATVEC_BLOCK_SIZE, system->N );
+    fprintf( stderr, "[INFO] control->matvec_blocks = %d, control->matvec_blocksize = %d, system->N = %d\n",
+            control->matvec_blocks, MATVEC_BLOCK_SIZE, system->N );
 #endif
 }

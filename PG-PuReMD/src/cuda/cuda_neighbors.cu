@@ -476,7 +476,7 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
             cudaMemcpyDeviceToHost, "Cuda_Generate_Neighbor_Lists::d_realloc_far_nbrs" );
 
     ret = (ret_far_nbr == FALSE) ? SUCCESS : FAILURE;
-    dev_workspace->realloc.far_nbrs = ret_far_nbr;
+    workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )

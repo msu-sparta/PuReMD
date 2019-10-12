@@ -68,16 +68,16 @@ void Cuda_Init_MatVec( reax_system *system, storage *workspace )
 
     k_init_matvec <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
-          *dev_workspace, system->n );
+          *(workspace->d_workspace), system->n );
     cudaDeviceSynchronize();
     cudaCheckError();
 }
 
 
-void cuda_charges_x( reax_system *system, rvec2 my_sum )
+void cuda_charges_x( reax_system *system, control_params *control, storage *workspace, rvec2 my_sum )
 {
     int blocks;
-    rvec2 *output = (rvec2 *) scratch;
+    rvec2 *output = (rvec2 *) workspace->scratch;
 
     cuda_memset( output, 0, sizeof(rvec2) * 2 * system->n, "cuda_charges_x:q" );
 
@@ -85,11 +85,11 @@ void cuda_charges_x( reax_system *system, rvec2 my_sum )
         + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
-        ( dev_workspace->x, output, system->n );
+        ( workspace->d_workspace->x, output, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_reduction_rvec2 <<< 1, BLOCKS_POW_2, sizeof(rvec2) * BLOCKS_POW_2 >>>
+    k_reduction_rvec2 <<< 1, control->blocks_pow_2, sizeof(rvec2) * control->blocks_pow_2 >>>
         ( output, output + system->n, blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );
@@ -137,8 +137,8 @@ extern "C" void cuda_charges_st( reax_system *system, storage *workspace,
         real *output, real u )
 {
     int blocks;
-    real *tmp = (real *) scratch;
-    real *tmp_output = (real *) host_scratch;
+    real *tmp = (real *) workspace->scratch;
+    real *tmp_output = (real *) workspace->host_scratch;
 
     cuda_memset( tmp, 0, sizeof(real) * system->n, "charges:q" );
     memset( tmp_output, 0, sizeof(real) * system->n );
@@ -147,7 +147,7 @@ extern "C" void cuda_charges_st( reax_system *system, storage *workspace,
         + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
     k_calculate_st <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, *dev_workspace, u, tmp, system->n);
+        ( system->d_my_atoms, *(workspace->d_workspace), u, tmp, system->n);
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
@@ -171,10 +171,11 @@ CUDA_GLOBAL void k_update_q( reax_atom *my_atoms, real *q, int n, int N )
 }
 
 
-void cuda_charges_updateq( reax_system *system, real *q )
+void cuda_charges_updateq( reax_system *system, storage *workspace,
+        real *q )
 {
     int blocks;
-    real *dev_q = (real *) scratch;
+    real *dev_q = (real *) workspace->scratch;
 
     copy_host_device( q, dev_q, system->N * sizeof(real),
             cudaMemcpyHostToDevice, "charges:q" );
@@ -189,8 +190,8 @@ void cuda_charges_updateq( reax_system *system, real *q )
 }
 
 
-void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
-        mpi_datatypes *mpi_data )
+static void Cuda_Calculate_Charges( reax_system *system, control_params *control,
+        storage *workspace, mpi_datatypes *mpi_data )
 {
     real u;//, s_sum, t_sum;
     rvec2 my_sum, all_sum;
@@ -198,10 +199,10 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
 
     my_sum[0] = 0.0;
     my_sum[1] = 0.0;
-    q = (real *) host_scratch;
+    q = (real *) workspace->host_scratch;
     memset( q, 0, system->N * sizeof(real) );
 
-    cuda_charges_x( system, my_sum );
+    cuda_charges_x( system, control, workspace, my_sum );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "Device: my_sum[0]: %f, my_sum[1]: %f\n",
@@ -220,7 +221,7 @@ void Cuda_Calculate_Charges( reax_system *system, storage *workspace,
 
     Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    cuda_charges_updateq( system, q );
+    cuda_charges_updateq( system, workspace, q );
 }
 
 
@@ -233,10 +234,10 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
     Cuda_Init_MatVec( system, workspace );
 
     //if (data->step > 0) {
-    //    compare_rvec2 (workspace->b, dev_workspace->b, system->n, "b");
-    //    compare_rvec2 (workspace->x, dev_workspace->x, system->n, "x");
-    // compare_array (workspace->b_s, dev_workspace->b_s, system->n, "b_s");
-    // compare_array (workspace->b_t, dev_workspace->b_t, system->n, "b_t");
+    //    compare_rvec2 (workspace->b, workspace->d_workspace->b, system->n, "b");
+    //    compare_rvec2 (workspace->x, workspace->d_workspace->x, system->n, "x");
+    // compare_array (workspace->b_s, workspace->d_workspace->b_s, system->n, "b_s");
+    // compare_array (workspace->b_t, workspace->d_workspace->b_t, system->n, "b_t");
     //}
 
     switch ( control->cm_solver_type )
@@ -249,8 +250,8 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
         break;
 
     case CG_S:
-        iters = Cuda_dual_CG( system, control, workspace, &dev_workspace->H,
-                dev_workspace->b, control->cm_solver_q_err, dev_workspace->x, mpi_data,
+        iters = Cuda_dual_CG( system, control, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b, control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
                 out_control->log, data );
         break;
 
@@ -261,7 +262,7 @@ void Cuda_QEq( reax_system *system, control_params *control, simulation_data
         break;
     }
 
-    Cuda_Calculate_Charges( system, workspace, mpi_data );
+    Cuda_Calculate_Charges( system, control, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -290,8 +291,8 @@ void Cuda_EE( reax_system *system, control_params *control, simulation_data
         break;
 
     case CG_S:
-        iters = Cuda_CG( system, control, workspace, &dev_workspace->H,
-                dev_workspace->b_s, control->cm_solver_q_err, dev_workspace->s, mpi_data );
+        iters = Cuda_CG( system, control, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
         break;
 
 
@@ -301,7 +302,7 @@ void Cuda_EE( reax_system *system, control_params *control, simulation_data
         break;
     }
 
-    Cuda_Calculate_Charges( system, workspace, mpi_data );
+    Cuda_Calculate_Charges( system, control, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -330,8 +331,8 @@ void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
         break;
 
     case CG_S:
-        iters = Cuda_CG( system, control, workspace, &dev_workspace->H,
-                dev_workspace->b_s, control->cm_solver_q_err, dev_workspace->s, mpi_data );
+        iters = Cuda_CG( system, control, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
         break;
 
 
@@ -341,7 +342,7 @@ void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
         break;
     }
 
-    Cuda_Calculate_Charges( system, workspace, mpi_data );
+    Cuda_Calculate_Charges( system, control, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )

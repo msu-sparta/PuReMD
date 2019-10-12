@@ -141,7 +141,7 @@ void Init_System( reax_system * const system, control_params * const control,
     Print_Grid( &system->my_grid, stderr );
 #endif
 
-    Bin_My_Atoms( system, &workspace->realloc );
+    Bin_My_Atoms( system, workspace );
     Reorder_My_Atoms( system, workspace );
 
     /* estimate N and total capacity */

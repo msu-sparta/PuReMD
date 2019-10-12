@@ -24,8 +24,6 @@ void Cuda_Deallocate_Grid_Cell_Atoms( reax_system * );
 
 void Cuda_Allocate_Grid_Cell_Atoms( reax_system *, int );
 
-void Cuda_Reallocate_System( reax_system *, int , int , char * );
-
 void Cuda_Deallocate_Workspace( control_params *, storage * );
 
 void Cuda_Deallocate_Matrix( sparse_matrix * );

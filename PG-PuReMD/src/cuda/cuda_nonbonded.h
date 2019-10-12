@@ -25,8 +25,6 @@
 #include "../reax_types.h"
 
 
-void Cuda_Compute_Polarization_Energy( reax_system *, simulation_data *);
-
 void Cuda_NonBonded_Energy( reax_system *, control_params *,
         storage *, simulation_data *, reax_list **,
         output_controls *, bool );

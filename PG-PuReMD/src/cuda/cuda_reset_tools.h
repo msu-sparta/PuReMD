@@ -11,7 +11,7 @@ extern "C"  {
 
 void Cuda_Reset_Workspace( reax_system *, storage * );
 
-void Cuda_Reset_Atoms( reax_system *, control_params * );
+void Cuda_Reset_Atoms( reax_system *, control_params *, storage * );
 
 int  Cuda_Reset_Neighbor_Lists( reax_system *, control_params *,
         storage *, reax_list ** );

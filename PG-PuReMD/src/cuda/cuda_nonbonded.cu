@@ -532,10 +532,11 @@ CUDA_GLOBAL void k_pol_energy( reax_atom *my_atoms,
 }
 
 
-void Cuda_Compute_Polarization_Energy( reax_system *system, simulation_data *data )
+static void Cuda_Compute_Polarization_Energy( reax_system *system, storage *workspace,
+        simulation_data *data )
 {
     int blocks;
-    real *spad = (real *) scratch;
+    real *spad = (real *) workspace->scratch;
 
     cuda_memset( spad, 0, sizeof(real) * 2 * system->n, "pol_energy" );
 
@@ -562,7 +563,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     int size = (2 * system->N + 2 * system->N ) * sizeof(real) +
         2 * system->N * sizeof(rvec);
     rvec *spad_rvec;
-    real *spad = (real *) scratch;
+    real *spad = (real *) workspace->scratch;
 
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
@@ -577,7 +578,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         k_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE, DEF_BLOCK_SIZE * (2 * sizeof(real) + sizeof(rvec)) >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *)control->d_control_params, 
-              *(dev_workspace), *(lists[FAR_NBRS]), 
+              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
               system->n, system->N, system->reax_param.num_atom_types, 
               spad, spad + 2 * system->N, (rvec *)(spad + 4 * system->N));
         cudaDeviceSynchronize( );
@@ -588,7 +589,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         k_tabulated_vdW_coulomb_energy <<< blocks, DEF_BLOCK_SIZE >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *)control->d_control_params, 
-              *(dev_workspace), *(lists[FAR_NBRS]), 
+              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
               workspace->d_LR, system->n, system->N,
               system->reax_param.num_atom_types, 
               data->step, data->prev_steps, 
@@ -622,13 +623,13 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_reduction_rvec <<< 1, BLOCKS_POW_2_N, sizeof(rvec) * BLOCKS_POW_2_N>>>
+    k_reduction_rvec <<< 1, control->blocks_pow_2_n, sizeof(rvec) * control->blocks_pow_2_n>>>
         ( spad_rvec + system->N, &((simulation_data *)data->d_simulation_data)->my_ext_press, rblocks);
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
     if ( update_energy == TRUE )
     {
-        Cuda_Compute_Polarization_Energy( system, data );
+        Cuda_Compute_Polarization_Energy( system, workspace, data );
     }
 }

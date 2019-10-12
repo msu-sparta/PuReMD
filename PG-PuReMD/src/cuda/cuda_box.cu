@@ -30,7 +30,7 @@
 
 
 void Cuda_Scale_Box( reax_system *system, control_params *control,
-        simulation_data *data, mpi_datatypes *mpi_data )
+        storage *workspace, simulation_data *data, mpi_datatypes *mpi_data )
 {
     int d;
     real dt, lambda;
@@ -89,7 +89,7 @@ void Cuda_Scale_Box( reax_system *system, control_params *control,
     /* Scale velocities and positions at t+dt */
     bNVP_scale_velocities( system, lambda, mu );
 
-    Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+    Cuda_Compute_Kinetic_Energy( system, control, workspace, data, mpi_data->comm_mesh3D );
 
     /* update box & grid */
     system->big_box.box[0][0] *= mu[0];

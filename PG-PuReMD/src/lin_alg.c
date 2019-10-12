@@ -37,10 +37,6 @@
   #include "lapacke.h"
 #endif
 
-#if defined(HAVE_CUDA) && defined(DEBUG_FOCUS)
-  #include "cuda/cuda_validation.h"
-#endif
-
 #if defined(CG_PERFORMANCE)
 real t_start, t_elapsed, matvec_time, dot_time;
 #endif
@@ -1201,15 +1197,7 @@ int dual_CG( const reax_system * const system, const control_params * const cont
     }
 #endif
 
-#if defined(HAVE_CUDA) && defined(DEBUG_FOCUS)
-    check_zeros_host( x, N, "x" );
-#endif
-
     Dist( system, mpi_data, x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-
-#if defined(HAVE_CUDA) && defined(DEBUG_FOCUS)
-    check_zeros_host( x, N, "x" );
-#endif
 
     dual_Sparse_MatVec( H, x, workspace->q2, N );
 

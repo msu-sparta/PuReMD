@@ -1550,6 +1550,18 @@ struct control_params
     evolve_function Cuda_Evolve;
     /* control parameters (GPU) */
     void *d_control_params;
+    /**/
+    int blocks;
+    /**/
+    int blocks_pow_2;
+    /**/
+    int block_size;
+    /**/
+    int blocks_n;
+    /**/
+    int blocks_pow_2_n;
+    /**/
+    int matvec_blocks;
 #endif
 };
 
@@ -2183,8 +2195,14 @@ struct storage
     /* lookup table for force tabulation */
     LR_lookup_table *LR;
 #if defined(HAVE_CUDA)
+    /* temporary workspace */
+    void *host_scratch;
+    /* temporary workspace (GPU) */
+    void *scratch;
     /* lookup table for force tabulation (GPU) */
     LR_lookup_table *d_LR;
+    /* storage (GPU) */
+    storage *d_workspace;
 #endif
 };
 
@@ -2490,14 +2508,5 @@ struct puremd_handle
     /* Callback for getting simulation state at the end of each time step */
     callback_function callback;
 };
-
-
-/* CUDA-specific globals */
-extern storage *dev_workspace;
-extern void *scratch;
-extern void *host_scratch;
-extern int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
-extern int BLOCKS_N, BLOCKS_POW_2_N;
-extern int MATVEC_BLOCKS;
 
 #endif

@@ -39,7 +39,7 @@
 #include "traj.h"
 #include "vector.h"
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
   #include "cuda/cuda_copy.h"
   #include "cuda/cuda_environment.h"
   #include "cuda/cuda_forces.h"
@@ -49,20 +49,6 @@
   #include "cuda/cuda_reset_tools.h"
   #include "cuda/cuda_system_props.h"
   #include "cuda/cuda_utils.h"
-  #if defined(DEBUG_FOCUS)
-    #include "cuda/cuda_validation.h"
-  #endif
-#endif
-
-
-/* CUDA-specific globals */
-#if defined(HAVE_CUDA)
-storage *dev_workspace;
-void *scratch;
-void *host_scratch;
-int BLOCKS, BLOCKS_POW_2, BLOCK_SIZE;
-int BLOCKS_N, BLOCKS_POW_2_N;
-int MATVEC_BLOCKS;
 #endif
 
 
@@ -140,7 +126,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
 }
 
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
 static void Cuda_Post_Evolve( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         output_controls * const out_control, mpi_datatypes * const mpi_data )
@@ -150,13 +136,15 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
             data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
-        Cuda_Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
+        Cuda_Compute_Center_of_Mass( system, control, workspace,
+                data, mpi_data, mpi_data->comm_mesh3D );
 
         post_evolve_velocities( system, data );
     }
 
     /* compute kinetic energy of the system */
-    Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+    Cuda_Compute_Kinetic_Energy( system, control, workspace,
+            data, mpi_data->comm_mesh3D );
 
     Compute_Total_Energy( system, data, MPI_COMM_WORLD );
 }
@@ -182,6 +170,10 @@ void* setup( const char * const geo_file, const char * const ffield_file,
            "Setup::pmd_handle->data" );
     pmd_handle->workspace = smalloc( sizeof(storage),
            "Setup::pmd_handle->workspace" );
+#if defined(HAVE_CUDA)
+    pmd_handle->workspace->d_workspace = smalloc( sizeof(storage),
+            "Setup::pmd_handle->workspace->d_workspace" );
+#endif
     pmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
            "Setup::pmd_handle->lists" );
     for ( i = 0; i < LIST_N; ++i )
@@ -195,10 +187,6 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     pmd_handle->mpi_data = smalloc( sizeof(mpi_datatypes),
            "Setup::pmd_handle->mpi_data" );
 
-#ifdef HAVE_CUDA
-    /* allocate auxiliary data structures (GPU) */
-    dev_workspace = smalloc( sizeof(storage), "Setup::dev_workspace" );
-#endif
 
     pmd_handle->output_enabled = TRUE;
     pmd_handle->callback = NULL;
@@ -212,12 +200,12 @@ void* setup( const char * const geo_file, const char * const ffield_file,
             pmd_handle->system, pmd_handle->control, pmd_handle->data,
             pmd_handle->workspace, pmd_handle->out_control, pmd_handle->mpi_data );
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
     /* setup the CUDA Device for this process */
     Setup_Cuda_Environment( pmd_handle->system->my_rank,
             pmd_handle->control->nprocs, pmd_handle->control->gpus_per_node );
 
-    Cuda_Init_Block_Sizes( pmd_handle->system );
+    Cuda_Init_Block_Sizes( pmd_handle->system, pmd_handle->control );
 #endif
 
     return (void*) pmd_handle;
@@ -271,7 +259,7 @@ int simulate( const void * const handle )
         out_control = pmd_handle->out_control;
         mpi_data = pmd_handle->mpi_data;
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
         if ( system->my_rank == MASTER_NODE )
         {
             t_start = Get_Time( );
@@ -283,7 +271,7 @@ int simulate( const void * const handle )
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
         Sync_Atoms( system );
         Sync_Grid( &system->my_grid, &system->d_my_grid );
-        Cuda_Init_Block_Sizes( system );
+        Cuda_Init_Block_Sizes( system, control );
 
         Cuda_Reset( system, control, data, workspace, lists );
 
@@ -292,7 +280,8 @@ int simulate( const void * const handle )
         Cuda_Compute_Forces( system, control, data, workspace, lists,
                 out_control, mpi_data );
 
-        Cuda_Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+        Cuda_Compute_Kinetic_Energy( system, control, workspace,
+                data, mpi_data->comm_mesh3D );
 
         Compute_Total_Energy( system, data, MPI_COMM_WORLD );
 
@@ -477,10 +466,6 @@ int simulate( const void * const handle )
 //      Integrate_Results(control);
 #endif
 
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d has reached the END\n", system->my_rank );
-#endif
-
         ret = PUREMD_SUCCESS;
     }
 
@@ -512,8 +497,8 @@ int cleanup( const void * const handle )
         sfree( pmd_handle->system, "cleanup::pmd_handle->system" );
 
         //TODO: add Cuda_Finalize( ... )
-#ifdef HAVE_CUDA
-        sfree( dev_workspace, "cleanup::dev_workspace" );
+#if defined(HAVE_CUDA)
+        sfree( pmd_handle->workspace->d_workspace, "cleanup::workspace->d_workspace" );
 #endif
 
         sfree( pmd_handle, "cleanup::pmd_handle" );

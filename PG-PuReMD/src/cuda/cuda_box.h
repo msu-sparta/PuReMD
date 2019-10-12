@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 void Cuda_Scale_Box( reax_system *, control_params *,
-        simulation_data *, mpi_datatypes *);
+        storage *, simulation_data *, mpi_datatypes *);
 
 #ifdef __cplusplus
 }

@@ -46,7 +46,7 @@ void Cuda_Allocate_Grid( reax_system *system )
 //    grid_cell local_cell;
     grid *host = &system->my_grid;
     grid *device = &system->d_my_grid;
-//    ivec *nbrs_x = (ivec *) scratch;
+//    ivec *nbrs_x = (ivec *) workspace->scratch;
 
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
     ivec_Copy( device->ncells, host->ncells );
@@ -250,13 +250,14 @@ void Cuda_Allocate_System( reax_system *system )
 }
 
 
-void Cuda_Reallocate_System( reax_system *system, int old_total_cap, int total_cap, char *msg )
+static void Cuda_Reallocate_System( reax_system *system, storage *workspace,
+        int old_total_cap, int total_cap, char *msg )
 {
     int *temp;
     reax_atom *temp_atom;
 
-    temp = (int *) scratch;
-    temp_atom = (reax_atom*) scratch;
+    temp = (int *) workspace->scratch;
+    temp_atom = (reax_atom*) workspace->scratch;
 
     /* free the existing storage for atoms, leave other info allocated */
     copy_device( temp_atom, system->d_my_atoms, old_total_cap * sizeof(reax_atom),
@@ -644,9 +645,9 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     mpi_out_data *nbr_data;
     char msg[200];
 
-    realloc = &dev_workspace->realloc;
+    realloc = &workspace->d_workspace->realloc;
     g = &system->my_grid;
-    H = &dev_workspace->H;
+    H = &workspace->d_workspace->H;
 
     // IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with 0!!!
     nflag = FALSE;
@@ -677,7 +678,8 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 #endif
 
         /* system */
-        Cuda_Reallocate_System( system, old_total_cap, system->total_cap, msg );
+        Cuda_Reallocate_System( system, workspace,
+                old_total_cap, system->total_cap, msg );
 
         /* workspace */
         Cuda_Deallocate_Workspace( control, workspace );
@@ -742,7 +744,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
             Cuda_Reallocate_HBonds_List( lists[HBONDS], system->total_cap, system->total_hbonds );
 
-            Cuda_Init_HBond_Indices( system, lists );
+            Cuda_Init_HBond_Indices( system, workspace, lists );
 
             realloc->hbonds = FALSE;
         }
