@@ -202,8 +202,8 @@ static int Read_Box_Info( reax_system *system, FILE *fp, int geo_format )
                     descriptor, &box_x, &box_y, &box_z,
                     &alpha, &beta, &gamma );
 
-            Setup_Box( atof(s_a),  atof(s_b), atof(s_c),
-                    atof(s_alpha), atof(s_beta), atof(s_gamma),
+            Setup_Box( box_x, box_y, box_z,
+                    alpha, beta, gamma,
                     &system->box );
 
             ret = SUCCESS;
