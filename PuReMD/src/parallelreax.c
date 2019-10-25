@@ -169,7 +169,7 @@ int main( int argc, char* argv[] )
     Read_System( argv[1], argv[2], argv[3], system, control,
             data, workspace, out_control, mpi_data );
     
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: read simulation info\n", system->my_rank );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
@@ -183,7 +183,7 @@ int main( int argc, char* argv[] )
     Initialize( system, control, data, workspace, lists,
             out_control, mpi_data, &Evolve );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initializated data structures\n", system->my_rank );
     MPI_Barrier( mpi_data->world );
 #endif
@@ -197,7 +197,7 @@ int main( int argc, char* argv[] )
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
     Output_Results( system, control, data, lists, out_control, mpi_data );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: computed forces at t0\n", system->my_rank );
     MPI_Barrier( mpi_data->world );
 #endif
@@ -243,7 +243,7 @@ int main( int argc, char* argv[] )
 //            Write_PDB( system, lists, data, control, mpi_data, out_control );
 //        }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: step%d completed\n", system->my_rank, data->step );
         MPI_Barrier( mpi_data->world );
 #endif
@@ -275,7 +275,7 @@ int main( int argc, char* argv[] )
 //  Integrate_Results(control);
 #endif
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d has reached the END\n", system->my_rank );
 #endif
 

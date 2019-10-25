@@ -37,7 +37,7 @@ int SumScan( int n, int me, int root, MPI_Comm comm )
     if ( me == root )
     {
         MPI_Comm_size( comm, &wsize );
-        nbuf = (int *) calloc( wsize, sizeof(int) );
+        nbuf = scalloc( wsize, sizeof(int), "SumScan::nbuf", comm );
 
         MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
 
@@ -379,18 +379,20 @@ int Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 {
     int i;
 
-    if ( (*line = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-        return FAILURE;
+    *line = smalloc( sizeof(char) * MAX_LINE,
+            "Allocate_Tokenizer_Space::line", MPI_COMM_WORLD );
 
-    if ( (*backup = (char*) malloc( sizeof(char) * MAX_LINE )) == NULL )
-        return FAILURE;
+    *backup = smalloc( sizeof(char) * MAX_LINE,
+            "Allocate_Tokenizer_Space::backup", MPI_COMM_WORLD );
 
-    if ( (*tokens = (char**) malloc( sizeof(char*) * MAX_TOKENS )) == NULL )
-        return FAILURE;
+    *tokens = smalloc( sizeof(char*) * MAX_TOKENS,
+            "Allocate_Tokenizer_Space::tokens", MPI_COMM_WORLD );
 
     for ( i = 0; i < MAX_TOKENS; i++ )
-        if ( ((*tokens)[i] = (char*) malloc(sizeof(char) * MAX_TOKEN_LEN)) == NULL )
-            return FAILURE;
+    {
+        (*tokens)[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN,
+                "Allocate_Tokenizer_Space::tokens[i]", MPI_COMM_WORLD );
+    }
 
     return SUCCESS;
 }
@@ -418,23 +420,27 @@ int Tokenize( char* s, char*** tok )
 
 /***************** taken from lammps ************************/
 /* safe malloc */
-void *smalloc( long n, char *name, MPI_Comm comm )
+void *smalloc( size_t n, const char *name, MPI_Comm comm )
 {
     void *ptr;
 
-    if ( n <= 0 )
+    if ( n == 0 )
     {
-        fprintf( stderr, "WARNING: trying to allocate %ld bytes for array %s. ",
-                 n, name );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for %s.\n",
+                n, name );
+        MPI_Abort( comm, INSUFFICIENT_MEMORY );
     }
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting memory for %s (%zu bytes)\n", name, n );
+    fflush( stderr );
+#endif
 
     ptr = malloc( n );
     if ( ptr == NULL )
     {
-        fprintf( stderr, "ERROR: failed to allocate %ld bytes for array %s",
-                 n, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for %s.\n",
+                n, name );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
     }
 
@@ -443,31 +449,28 @@ void *smalloc( long n, char *name, MPI_Comm comm )
 
 
 /* safe calloc */
-void *scalloc( int n, int size, char *name, MPI_Comm comm )
+void *scalloc( size_t n, size_t size, const char *name, MPI_Comm comm )
 {
     void *ptr;
 
-    if ( n <= 0 )
+    if ( n == 0 )
     {
-        fprintf( stderr, "WARNING: trying to allocate %d elements for array %s. ",
-                 n, name );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for %s.\n",
+                n * size, name );
+        MPI_Abort( comm, INSUFFICIENT_MEMORY );
     }
 
-    if ( size <= 0 )
-    {
-        fprintf( stderr, "WARNING: elements size for array %s is %d. ",
-                 name, size );
-        fprintf( stderr, "returning NULL.\n" );
-        return NULL;
-    }
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting memory for %s (%zu bytes)\n", name, n );
+    fflush( stderr );
+#endif
 
     ptr = calloc( n, size );
+
     if ( ptr == NULL )
     {
-        fprintf( stderr, "ERROR: failed to allocate %d bytes for array %s",
-                 n * size, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for %s.\n",
+                n * size, name );
         MPI_Abort( comm, INSUFFICIENT_MEMORY );
     }
 
@@ -476,14 +479,21 @@ void *scalloc( int n, int size, char *name, MPI_Comm comm )
 
 
 /* safe free */
-void sfree( void *ptr, char *name )
+void sfree( void *ptr, const char *name )
 {
     if ( ptr == NULL )
     {
-        fprintf( stderr, "WARNING: trying to free the already NULL pointer %s!\n",
+        fprintf( stderr, "[WARNING] trying to free the already NULL pointer %s!\n",
                  name );
         return;
     }
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] trying to free pointer %s\n", name );
+    fflush( stderr );
+    fprintf( stderr, "[INFO] address: %p [SFREE]\n", (void *) ptr );
+    fflush( stderr );
+#endif
 
     free( ptr );
     ptr = NULL;

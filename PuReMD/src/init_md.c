@@ -138,7 +138,7 @@ int Init_System( reax_system *system, control_params *control,
     int nrecv[MAX_NBRS];
 
     Setup_New_Grid( system, control, mpi_data->world );
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d GRID:\n", system->my_rank );
     Print_Grid( &(system->my_grid), stderr );
 #endif
@@ -316,7 +316,7 @@ int Init_Simulation_Data( reax_system *system, control_params *control,
     }
 
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "data->N_f: %8.3f\n", data->N_f );
 #endif
     return SUCCESS;
@@ -662,10 +662,14 @@ int  Init_Lists( reax_system *system, control_params *control,
             system->my_rank, system->local_cap, system->total_cap );
 #endif
 
-    bond_top = (int*) calloc( system->total_cap, sizeof(int) );
-    hb_top = (int*) calloc( system->local_cap, sizeof(int) );
-    //bond_top = (int*) malloc( system->total_cap * sizeof(int) );
-    //hb_top = (int*) malloc( system->local_cap * sizeof(int) );
+    bond_top = scalloc( system->total_cap, sizeof(int),
+            "Init_Lists::bond_top", comm );
+    hb_top = scalloc( system->local_cap, sizeof(int),
+            "Init_Lists::hb_top", comm );
+//    bond_top = smalloc( system->total_cap * sizeof(int),
+//            "Init_Lists::bond_top", comm );
+//    hb_top = smalloc( system->local_cap * sizeof(int),
+//            "Init_Lists::hb_top", comm );
     
     Estimate_Storages( system, control, lists, &Htop, hb_top, 
             bond_top, &num_3body, comm, &matrix_dim, cm_format );
@@ -768,8 +772,8 @@ int  Init_Lists( reax_system *system, control_params *control,
             bond_cap * MAX_BONDS * 3 * sizeof(dbond_data) / (1024 * 1024) );
 #endif
 
-    sfree( hb_top, "hb_top" );
-    sfree( bond_top, "bond_top" );
+    sfree( hb_top, "Init_Lists::hb_top" );
+    sfree( bond_top, "Init_Lists::bond_top" );
 
     return SUCCESS;
 }
@@ -788,8 +792,11 @@ int  Init_Lists( reax_system *system, control_params *control,
 
     comm = mpi_data->world;
 
-    bond_top = (int*) calloc( system->total_cap, sizeof(int) );
-    hb_top = (int*) calloc( system->local_cap, sizeof(int) );
+    bond_top = scalloc( system->total_cap, sizeof(int),
+            "Init_Lists::bond_top", comm );
+    hb_top = scalloc( system->local_cap, sizeof(int),
+            "Init_Lists::hb_top", comm );
+
     //TODO: add one paramater at the end for charge matrix format - half or full
     Estimate_Storages( system, control, lists, &Htop, hb_top, 
             bond_top, &num_3body, comm, &matrix_dim );
@@ -876,8 +883,8 @@ int  Init_Lists( reax_system *system, control_params *control,
             bond_cap * MAX_BONDS * 3 * sizeof(dbond_data) / (1024 * 1024) );
 #endif
 
-    sfree( hb_top, "hb_top" );
-    sfree( bond_top, "bond_top" );
+    sfree( hb_top, "Init_Lists::hb_top" );
+    sfree( bond_top, "Init_Lists::bond_top" );
 
     return SUCCESS;
 }
@@ -902,7 +909,8 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized mpi datatypes\n", system->my_rank );
 #endif
 
@@ -913,7 +921,8 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: system initialized\n", system->my_rank );
 #endif
 
@@ -924,7 +933,8 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized simulation data\n", system->my_rank );
 #endif
 
@@ -937,7 +947,8 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized workspace\n", system->my_rank );
 #endif
 
@@ -949,18 +960,20 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized lists\n", system->my_rank );
 #endif
 
-    if (Init_Output_Files(system, control, out_control, mpi_data, msg) == FAILURE)
+    if ( Init_Output_Files(system, control, out_control, mpi_data, msg) == FAILURE )
     {
         fprintf( stderr, "p%d: %s\n", system->my_rank, msg );
         fprintf( stderr, "p%d: could not open output files! terminating...\n",
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: output files opened\n", system->my_rank );
 #endif
 
@@ -973,13 +986,15 @@ void Initialize( reax_system *system, control_params *control,
                     system->my_rank );
             MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
         }
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: initialized lookup tables\n", system->my_rank );
 #endif
     }
 
     Init_Bonded_Force_Functions( control );
-#if defined(DEBUG)
+
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized force functions\n", system->my_rank );
 #endif
 
@@ -1007,7 +1022,7 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized mpi datatypes\n", system->my_rank );
 #endif
 
@@ -1018,7 +1033,7 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: system initialized\n", system->my_rank );
 #endif
 
@@ -1029,7 +1044,7 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized simulation data\n", system->my_rank );
 #endif
 
@@ -1042,7 +1057,7 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized workspace\n", system->my_rank );
 #endif
 
@@ -1054,7 +1069,7 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized lists\n", system->my_rank );
 #endif
 
@@ -1065,7 +1080,7 @@ void Initialize( reax_system *system, control_params *control,
                 system->my_rank );
         MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: output files opened\n", system->my_rank );
 #endif
 
@@ -1078,13 +1093,13 @@ void Initialize( reax_system *system, control_params *control,
                     system->my_rank );
             MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
         }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: initialized lookup tables\n", system->my_rank );
 #endif
     }
 
     Init_Bonded_Force_Functions( control );
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized force functions\n", system->my_rank );
 #endif
 

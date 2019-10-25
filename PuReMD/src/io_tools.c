@@ -53,7 +53,9 @@ int Init_Output_Files( reax_system *system, control_params *control,
     {
         ret = Init_Traj( system, control, out_control, mpi_data, msg );
         if ( ret == FAILURE )
+        {
             return ret;
+        }
     }
 
     if ( system->my_rank == MASTER_NODE )
@@ -1043,12 +1045,8 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
         fprintf( fout, "\n" );
     }
 
-    if ( intrs != NULL )
-    {
-        free( intrs );
-    }
-
-    sfclose( fout, "Print_Far_Neighbors_List_Adj_Format" );
+    sfree( intrs, "Print_Far_Neighbors_List_Adj_Format::intrs" );
+    sfclose( fout, "Print_Far_Neighbors_List_Adj_Format::fout" );
 }
 
 void Output_Results( reax_system *system, control_params *control,
@@ -1195,7 +1193,7 @@ void Output_Results( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "output_results... done\n" );
 #endif
 }

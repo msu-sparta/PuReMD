@@ -52,7 +52,7 @@ int PreAllocate_Space( reax_system *system, control_params *control,
     /* determine the local and total capacity */
     system->local_cap = MAX( (int)(system->n * SAFE_ZONE), MIN_CAP );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: local_cap=%d total_cap=%d\n",
              system->my_rank, system->local_cap, system->total_cap );
 #endif
@@ -681,7 +681,7 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
             else if ( c[d] < g->native_str[d] )
                 c[d] = g->native_str[d];
         }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d bin_my_atoms: l:%d - atom%d @ %.5f %.5f %.5f" \
                  "--> cell: %d %d %d\n",
                  system->my_rank, l, atoms[l].orig_id,
@@ -700,7 +700,7 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
                 gc = &(g->cells[i][j][k]);
                 if ( max_atoms < gc->top )
                     max_atoms = gc->top;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 fprintf( stderr, "p%d gc[%d,%d,%d]->top=%d\n",
                          system->my_rank, i, j, k, gc->top );
 #endif
@@ -708,7 +708,7 @@ int Estimate_GCell_Population( reax_system* system, MPI_Comm comm )
 
     my_max = (int)(MAX(max_atoms * SAFE_ZONE, MIN_GCELL_POPL));
     MPI_Allreduce( &my_max, &all_max, 1, MPI_INT, MPI_MAX, comm );
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d max_atoms=%d, my_max=%d, all_max=%d\n",
              system->my_rank, max_atoms, my_max, all_max );
 #endif
@@ -924,7 +924,7 @@ void ReAllocate( reax_system *system, control_params *control,
     g = &(system->my_grid);
     comm = mpi_data->world;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d@reallocate: n: %d, N: %d, numH: %d\n",
              system->my_rank, system->n, system->N, system->numH );
     fprintf( stderr, "p%d@reallocate: local_cap: %d, total_cap: %d, Hcap: %d\n",

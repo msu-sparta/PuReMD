@@ -567,7 +567,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "Number of angle interactions: %d\n", num_thb_intrs );
     fprintf( stderr,
              "Angle Energy: %g\t Penalty Energy: %g\t Coalition Energy: %g\t\n",

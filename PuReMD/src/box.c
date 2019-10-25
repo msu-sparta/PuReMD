@@ -165,7 +165,7 @@ void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
     box->box[2][0] = c * c_beta;
     box->box[2][1] = c * zi;
     box->box[2][2] = c * sqrt(1.0 - SQR(c_beta) - SQR(zi));
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
              box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
@@ -180,7 +180,7 @@ void Init_Box( rtensor box_tensor, simulation_box *box )
     rtensor_Copy( box->box, box_tensor );
     Make_Consistent( box );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
              box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
@@ -264,7 +264,7 @@ void Setup_Boundary_Cutoffs( reax_system *system, control_params *control )
     fprintf( stderr, "ghost_hbond: %8.3f\n", bc->ghost_hbond );
     fprintf( stderr, "ghost_bond: %8.3f\n", bc->ghost_bond );
     fprintf( stderr, "ghost_cutoff: %8.3f\n", bc->ghost_cutoff );
-#endif //DEBUG
+#endif //DEBUG_FOCUS
 }
 
 
@@ -378,7 +378,7 @@ void Scale_Box( reax_system *system, control_params *control,
     Setup_My_Ext_Box( system, control );
     Update_Comm( system );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "box & grid updated - " );
 #endif
 }

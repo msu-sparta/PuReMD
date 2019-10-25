@@ -264,7 +264,7 @@ void Read_Force_Field( char *ffield_file, reax_interaction *reax,
                 else
                 {
                     reax->gp.vdw_type = 3;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                     fprintf( stderr, "vdWaals type for element %s: Shielding+inner-wall",
                              reax->sbp[i].name );
 #endif
@@ -283,7 +283,7 @@ void Read_Force_Field( char *ffield_file, reax_interaction *reax,
                 else
                 {
                     reax->gp.vdw_type = 2;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                     fprintf( stderr, "vdWaals type for element%s: No Shielding,inner-wall",
                              reax->sbp[i].name );
 #endif
@@ -305,7 +305,7 @@ void Read_Force_Field( char *ffield_file, reax_interaction *reax,
                 else
                 {
                     reax->gp.vdw_type = 1;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                     fprintf( stderr, "vdWaals type for element%s: Shielding,no inner-wall",
                              reax->sbp[i].name );
 #endif
@@ -321,7 +321,7 @@ void Read_Force_Field( char *ffield_file, reax_interaction *reax,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] vdWaals type: %d\n", reax->gp.vdw_type );
 #endif
 

@@ -641,7 +641,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
     t_comm += MPI_Wtime() - t_start;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     int nnz = 0;
 #endif
 
@@ -659,7 +659,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
                 (*A_spar_patt)->entries[size].j = A->entries[pj].j;
                 size++;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 nnz++;
 #endif
             }
@@ -667,7 +667,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
         (*A_spar_patt)->end[i] = size;
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
     if ( system->my_rank == MASTER_NODE )
     {

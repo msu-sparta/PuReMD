@@ -44,7 +44,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     int start_j, end_j, hb_start_j, hb_end_j;
     int hblist[MAX_BONDS];
     int itr, top;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     int num_hb_intrs;
 #endif
     int nbr_jk;
@@ -65,7 +65,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     bond_list = bonds->bond_list;
     hbonds = lists[HBONDS];
     hbond_list = hbonds->hbond_list;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     num_hb_intrs = 0;
 #endif
 
@@ -123,7 +123,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         r_ij = pbond_ij->d;
                         hbp = &system->reax_param.hbp[ type_i ][ type_j ][ type_k ];
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                         ++num_hb_intrs;
 #endif
 
@@ -228,7 +228,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "Number of hydrogen bonds: %d\n", num_hb_intrs );
     fprintf( stderr, "Hydrogen Bond Energy: %g\n", data->my_en.e_hb );
     fprintf( stderr, "hydbonds: ext_press (%24.15e %24.15e %24.15e)\n",

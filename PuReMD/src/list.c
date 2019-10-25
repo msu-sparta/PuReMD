@@ -33,7 +33,7 @@
 int Make_List( int n, int num_intrs, int type, int format,
         reax_list *l, MPI_Comm comm )
 {
-    l->allocated = 1;
+    l->allocated = TRUE;
 
     l->n = n;
     l->num_intrs = num_intrs;
@@ -102,14 +102,16 @@ int Make_List( int n, int num_intrs, int type, int format,
 
 void Delete_List( reax_list *l, MPI_Comm comm )
 {
-    if ( l->allocated == 0 )
+    if ( l->allocated == FALSE )
+    {
         return;
-    l->allocated = 0;
+    }
+    l->allocated = FALSE;
 
     sfree( l->index, "Delete_List:index" );
     sfree( l->end_index, "Delete_List:end_index" );
 
-    switch (l->type)
+    switch ( l->type )
     {
     case TYP_VOID:
         sfree( l->v, "Delete_List:v" );

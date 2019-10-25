@@ -563,7 +563,7 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
 
     workspace->realloc.Htop = Htop;
 
-#if defined( DEBUG )
+#if defined( DEBUG_FOCUS )
     Print_Sparse_Matrix( system, H );
     for ( i = 0; i < H->n; ++i )
         for ( j = H->start[i]; j < H->end[i]; ++j )
@@ -780,7 +780,7 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
 
     workspace->realloc.Htop = Htop;
 
-#if defined( DEBUG )
+#if defined( DEBUG_FOCUS )
     Print_Sparse_Matrix( system, H );
     for ( i = 0; i < H->n; ++i )
         for ( j = H->start[i]; j < H->end[i]; ++j )
@@ -864,7 +864,7 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
 
     workspace->realloc.Htop = Htop;
 
-#if defined( DEBUG )
+#if defined( DEBUG_FOCUS )
     Print_Sparse_Matrix( system, H );
     for ( i = 0; i < H->n; ++i )
         for ( j = H->start[i]; j < H->end[i]; ++j )
@@ -939,7 +939,7 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
 
     workspace->realloc.Htop = Htop;
 
-#if defined( DEBUG )
+#if defined( DEBUG_FOCUS )
     Print_Sparse_Matrix( system, H );
     for ( i = 0; i < H->n; ++i )
         for ( j = H->start[i]; j < H->end[i]; ++j )
@@ -1122,7 +1122,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
     MPI_Barrier( comm );
 #endif
 
-#if defined( DEBUG )
+#if defined( DEBUG_FOCUS )
     Print_Bonds( system, bonds, "debugbonds.out" );
     Print_Bond_List2( system, bonds, "pbonds.out" );
 #endif
@@ -1306,7 +1306,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     MPI_Barrier( comm );
 #endif
 
-#if defined( DEBUG )
+#if defined( DEBUG_FOCUS )
     Print_Bonds( system, bonds, "debugbonds.out" );
     Print_Bond_List2( system, bonds, "pbonds.out" );
 #endif
@@ -1331,7 +1331,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
     /* Implement all force calls as function pointers */
     for ( i = 0; i < NUM_INTRS; i++ )
     {
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: starting f%d\n", system->my_rank, i );
         MPI_Barrier( comm );
 #endif
@@ -1342,7 +1342,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
                     lists, out_control );
         }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: f%d done\n", system->my_rank, i );
         MPI_Barrier( comm );
 #endif
@@ -1371,7 +1371,7 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
                 lists, out_control );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: nonbonded forces done\n", system->my_rank );
     MPI_Barrier( comm );
 #endif
@@ -1733,7 +1733,7 @@ static void Init_Forces_No_Charges( reax_system *system, control_params *control
              system->my_rank, data->step, num_bonds, num_hbonds );
     MPI_Barrier( comm );
 #endif
-#if defined( DEBUG )
+#if defined(DEBUG_FOCUS)
     Print_Bonds( system, bonds, "debugbonds.out" );
     Print_Bond_List2( system, bonds, "pbonds.out" );
 #endif

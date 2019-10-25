@@ -136,7 +136,7 @@ static void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_bu
     {
         rvec_Add( buf[ out_buf->index[i] ], in[i] );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "rvec_unpacker: cnt=%d  i =%d  index[i]=%d\n",
                 out_buf->cnt, i, out_buf->index[i] );
 #endif
@@ -301,7 +301,7 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
         MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
     }
     
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
 #endif
 
@@ -314,7 +314,7 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d dist: entered\n", system->my_rank );
 #endif
 
@@ -365,7 +365,7 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
     }
 
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
 #endif
 #endif
@@ -383,7 +383,7 @@ void Dist_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d dist: entered\n", system->my_rank );
 #endif
 
@@ -434,7 +434,7 @@ void Dist_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
     }
 
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d dist: done\n", system->my_rank );
 #endif
 }
@@ -452,7 +452,7 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat[6];
     coll_unpacker unpack;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
 #endif
 
@@ -490,7 +490,7 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
         unpack( in[index], buf, &out_bufs[index] );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coll: done\n", system->my_rank );
 #endif
 
@@ -503,7 +503,7 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
 #endif
 
@@ -544,7 +544,7 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
         }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d coll[%d] nbr1: str=%d cnt=%d recv=%d\n",
                 system->my_rank, d, nbr1->atoms_str, nbr1->atoms_cnt,
                 out_bufs[2 * d].cnt );
@@ -566,7 +566,7 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coll: done\n", system->my_rank );
 #endif
 #endif
@@ -584,7 +584,7 @@ void Coll_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coll: entered\n", system->my_rank );
 #endif
 
@@ -625,7 +625,7 @@ void Coll_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
         }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d coll[%d] nbr1: str=%d cnt=%d recv=%d\n",
                 system->my_rank, d, nbr1->atoms_str, nbr1->atoms_cnt,
                 out_bufs[2 * d].cnt );
@@ -647,7 +647,7 @@ void Coll_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d coll: done\n", system->my_rank );
 #endif
 }
@@ -723,7 +723,8 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
             workspace->displs[i] = workspace->displs[i - 1] + workspace->rcounts[i - 1];
     }
 
-    id_list = (int*) malloc( system->n * sizeof(int) );
+    id_list = smalloc( system->n * sizeof(int),
+            "Coll_ids_at_Master", mpi_data->world );
     for ( i = 0; i < system->n; ++i )
         id_list[i] = system->my_atoms[i].orig_id;
 
@@ -733,7 +734,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
 
     sfree( id_list, "id_list" );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     if ( system->my_rank == MASTER_NODE )
     {
         for ( i = 0 ; i < system->bigN; ++i )

@@ -107,7 +107,7 @@ char Read_Geo( char* geo_file, reax_system* system, control_params *control,
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
         Fit_to_Periodic_Box( &(system->big_box), &x );
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
         fprintf( stderr, "atom%d: %s %s %f %f %f\n",
                  serial, element, name, x[0], x[1], x[2] );
 #endif
@@ -235,7 +235,7 @@ void Count_PDB_Atoms( FILE *geo, reax_system *system )
 
     system->N = system->n;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d@count atoms:\n", system->my_rank );
     fprintf( stderr, "p%d: bigN = %d\n", system->my_rank, system->bigN );
     fprintf( stderr, "p%d: n = %d\n", system->my_rank, system->n );

@@ -167,7 +167,7 @@ void Analysis( reax_system *system, control_params *control,
                                out_control->ign, 1 );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "analysis... done\n" );
 #endif
 }

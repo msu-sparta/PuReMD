@@ -177,7 +177,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
     int type_i, type_j, type_k, type_l;
     int start_j, end_j;
     int start_pj, end_pj, start_pk, end_pk;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     int num_frb_intrs;
 #endif
     real Delta_j, Delta_k;
@@ -217,7 +217,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
     p_cot2 = system->reax_param.gp.l[27];
     bonds = lists[BONDS];
     thb_intrs = lists[THREE_BODIES];
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     num_frb_intrs = 0;
 #endif
 
@@ -320,7 +320,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         && bo_kl->BO > control->thb_cut
                                         && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
                                 {
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                                     ++num_frb_intrs;
 #endif
 
@@ -629,7 +629,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         } // pk loop ends
     } // j loop
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "Number of torsion angles: %d\n", num_frb_intrs );
     fprintf( stderr, "Torsion Energy: %g\t Conjugation Energy: %g\n",
              data->my_en.e_tor, data->my_en.e_con );

@@ -357,7 +357,7 @@ void Sort_Transfer_Atoms( reax_system *system, int start, int end,
     simulation_box *my_box;
     mpi_atom *out_buf;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d sort_transfers: start=%d end=%d dim=%d starting...\n",
              system->my_rank, start, end, dim );
 #endif
@@ -540,10 +540,11 @@ void Estimate_Boundary_Atoms( reax_system *system, int start, int end,
     /* allocate the estimated space */
     for ( p = 2 * d; p < 2 * d + 2; ++p )
     {
-        nbr_pr = &( system->my_nbrs[p] );
-        out_bufs[p].index = (int*) calloc( nbr_pr->est_send, sizeof(int) );
-        out_bufs[p].out_atoms = (void*)
-                                calloc( nbr_pr->est_send, sizeof(boundary_atom) );
+        nbr_pr = &system->my_nbrs[p];
+        out_bufs[p].index = scalloc( nbr_pr->est_send, sizeof(int),
+                "Estimate_Boundary_Atoms::out_bufs[p].index", MPI_COMM_WORLD );
+        out_bufs[p].out_atoms = scalloc( nbr_pr->est_send, sizeof(boundary_atom),
+                "Estimate_Boundary_Atoms::out_bufs[p].out_atoms", MPI_COMM_WORLD );
     }
 
     /* sort the atoms to their outgoing buffers */

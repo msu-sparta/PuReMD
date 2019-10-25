@@ -358,11 +358,12 @@ void Read_Restart( char *res_file, reax_system *system,
 
     fres = sfopen( res_file, "r", "Read_Binary_Restart" );
 
-    s = (char*) malloc(sizeof(char) * MAX_LINE);
-    tmp = (char**) malloc(sizeof(char*)*MAX_TOKENS);
-    for (i = 0; i < MAX_TOKENS; i++)
-        tmp[i] = (char*) malloc(sizeof(char) * MAX_LINE);
-
+    s = smalloc( sizeof(char) * MAX_LINE, "Read_Restart::s", comm );
+    tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Restart::tmp", comm );
+    for ( i = 0; i < MAX_TOKENS; i++ )
+    {
+        tmp[i] = smalloc( sizeof(char) * MAX_LINE, "Read_Restart::tmp[i]", comm );
+    }
 
     //read first header lines
     fgets( s, MAX_LINE, fres );

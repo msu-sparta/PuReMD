@@ -212,7 +212,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         //fprintf( stderr, "i = %d - Utop = %d\n", i, Utop );
     }
     // print matrix U
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "nnz(U): %d\n", Utop );
     for ( i = 0; i < U->n; ++i )
     {
@@ -241,7 +241,7 @@ void ICHOLT( sparse_matrix *A, real *droptol,
         }
 
     // print matrix L
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "nnz(L): %d\n", L->end[L->n - 1] );
     for ( i = 0; i < L->n; ++i )
     {
@@ -457,7 +457,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     Init_MatVec( system, data, control, workspace, mpi_data );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: initialized qEq\n", system->my_rank );
     //Print_Linear_System( system, control, workspace, data->step );
 #endif
@@ -659,7 +659,7 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     Calculate_Charges( system, workspace, mpi_data );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: computed charges\n", system->my_rank );
 //    Print_Charges( system );
 #endif

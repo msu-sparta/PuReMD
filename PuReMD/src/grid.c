@@ -244,7 +244,7 @@ void Reorder_GridCells( grid *g )
                             ++top;
                         }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "reorder_gcells: total_gcells=%d top=%d\n", g->total, top );
     fprintf( stderr, "dblock: %d %d %d\n", dblock[0], dblock[1], dblock[2] );
     fprintf( stderr, "nblocks: %d %d %d\n", nblocks[0], nblocks[1], nblocks[2] );
@@ -450,7 +450,7 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
     g          = &(system->my_grid);
     atoms      = system->my_atoms;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d bin_my_atoms: entered\n", system->my_rank );
 #endif
     Reset_Grid( g );
@@ -485,7 +485,7 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
                 else if ( c[d] < g->native_str[d] )
                     c[d] = g->native_str[d];
             }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
             fprintf( stderr, "p%d bin_my_atoms: l:%d - atom%d @ %.5f %.5f %.5f"\
                     "--> cell: %d %d %d\n",
                     system->my_rank, l, atoms[l].orig_id,
@@ -496,7 +496,7 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
             gc->atoms[ gc->top++ ] = l;
         }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d bin_my_atoms: sorted atoms\n", system->my_rank );
 #endif
 
@@ -508,13 +508,13 @@ void Bin_My_Atoms( reax_system *system, reallocate_data *realloc )
                 gc = &(g->cells[i][j][k]);
                 if ( max_atoms < gc->top )
                     max_atoms = gc->top;
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
                 fprintf( stderr, "p%d gc[%d,%d,%d]->top=%d\n",
                         system->my_rank, i, j, k, gc->top );
 #endif
             }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d max_atoms=%d, g->max_atoms=%d\n",
             system->my_rank, max_atoms, g->max_atoms );
 #endif
@@ -588,7 +588,7 @@ void Get_Boundary_GCell( grid *g, rvec base, rvec x, grid_cell **gc,
         //else if( c[d] == g->native_end[d] - 1 ) ++c[d];
         else if ( c[d] >= g->ncells[d] ) c[d] = g->ncells[d] - 1;
     }
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "get_bndry_gc: base=[%f %f %f] x=[%f %f %f] c=[%d %d %d]\n",
             base[0], base[1], base[2], x[0], x[1], x[2], c[0], c[1], c[2] );
 #endif
@@ -596,7 +596,7 @@ void Get_Boundary_GCell( grid *g, rvec base, rvec x, grid_cell **gc,
     *gc = &( g->cells[c[0]][c[1]][c[2]] );
     rvec_ScaledSum( *cur_min, 1, (*gc)->min, -1, loosen );
     rvec_Sum( *cur_max, (*gc)->max, loosen );
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "get_bndry_gc: gcmin=[%f %f %f] gcmax=[%f %f %f]\n",
             (*gc)->min[0], (*gc)->min[1], (*gc)->min[2],
             (*gc)->max[0], (*gc)->max[1], (*gc)->max[2] );
@@ -629,7 +629,7 @@ void Bin_Boundary_Atoms( reax_system *system )
     reax_atom *atoms;
     simulation_box *ext_box;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d bin_boundary_atoms: entered\n", system->my_rank );
 #endif
     g = &(system->my_grid);
@@ -693,7 +693,7 @@ void Bin_Boundary_Atoms( reax_system *system )
     /* mark last gcell's end position */
     gc->end = i;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d bin_boundary_atoms: done\n", system->my_rank );
 #endif
     }
