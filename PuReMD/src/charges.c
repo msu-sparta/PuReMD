@@ -474,6 +474,12 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
 
     switch ( control->cm_solver_type )
     {
+    case GMRES_S:
+    case GMRES_H_S:
+        fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
+        exit( INVALID_INPUT );
+        break;
+
     case CG_S:
 #if defined(DUAL_SOLVER)
         iters = dual_CG( system, control, data, workspace, workspace->H, workspace->b,
@@ -498,6 +504,41 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         }
 
         iters += CG( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+#endif
+        break;
+
+    case SDM_S:
+#if defined(DUAL_SOLVER)
+        fprintf( stderr, "[ERROR] Dual SDM solver for QEq not yet implemented. Terminating...\n" );
+        exit( INVALID_INPUT );
+//        iters = dual_SDM( system, control, data, workspace, workspace->H, workspace->b,
+//                control->cm_solver_q_err, workspace->x, mpi_data );
+#else
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        iters = SDM( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += SDM( system, control, data, workspace, workspace->H, workspace->b_t,
                 control->cm_solver_q_err, workspace->t, mpi_data );
 
         for ( j = 0; j < system->n; ++j )
@@ -608,13 +649,6 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
             workspace->x[j][1] = workspace->t[j];
         }
 #endif
-        break;
-
-    case GMRES_S:
-    case GMRES_H_S:
-    case SDM_S:
-        fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
         break;
 
     default:

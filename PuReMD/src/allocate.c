@@ -194,7 +194,8 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
         sfree( workspace->z, "z" );
     }
 
-    if ( control->cm_solver_type == CG_S
+    if ( control->cm_solver_type == SDM_S
+            || control->cm_solver_type == CG_S
             || control->cm_solver_type == BiCGStab_S
             || control->cm_solver_type == PIPECG_S
             || control->cm_solver_type == PIPECR_S )
@@ -202,6 +203,13 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
         sfree( workspace->r, "r" );
         sfree( workspace->d, "d" );
         sfree( workspace->q, "q" );
+    }
+
+    if ( control->cm_solver_type == CG_S
+            || control->cm_solver_type == BiCGStab_S
+            || control->cm_solver_type == PIPECG_S
+            || control->cm_solver_type == PIPECR_S )
+    {
         sfree( workspace->p, "p" );
     }
 
@@ -378,7 +386,8 @@ int Allocate_Workspace( reax_system *system, control_params *control,
         workspace->z = scalloc( total_cap, sizeof(real), "z", comm );
     }
 
-    if ( control->cm_solver_type == CG_S
+    if ( control->cm_solver_type == SDM_S
+            || control->cm_solver_type == CG_S
             || control->cm_solver_type == BiCGStab_S
             || control->cm_solver_type == PIPECG_S
             || control->cm_solver_type == PIPECR_S )
@@ -386,6 +395,13 @@ int Allocate_Workspace( reax_system *system, control_params *control,
         workspace->r = scalloc( total_cap, sizeof(real), "r", comm );
         workspace->d = scalloc( total_cap, sizeof(real), "d", comm );
         workspace->q = scalloc( total_cap, sizeof(real), "q", comm );
+    }
+
+    if ( control->cm_solver_type == CG_S
+            || control->cm_solver_type == BiCGStab_S
+            || control->cm_solver_type == PIPECG_S
+            || control->cm_solver_type == PIPECR_S )
+    {
         workspace->p = scalloc( total_cap, sizeof(real), "p", comm );
     }
 
