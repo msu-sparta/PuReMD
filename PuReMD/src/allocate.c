@@ -20,18 +20,23 @@
   ----------------------------------------------------------------------*/
 
 #include "reax_types.h"
+
 #if defined(PURE_REAX)
-#include "allocate.h"
-#include "list.h"
-#include "reset_tools.h"
-#include "tool_box.h"
-#include "vector.h"
+  #include "allocate.h"
+  
+  #include "charges.h"
+  #include "list.h"
+  #include "reset_tools.h"
+  #include "tool_box.h"
+  #include "vector.h"
 #elif defined(LAMMPS_REAX)
-#include "reax_allocate.h"
-#include "reax_list.h"
-#include "reax_reset_tools.h"
-#include "reax_tool_box.h"
-#include "reax_vector.h"
+  #include "reax_allocate.h"
+  
+  #include "reax_charges.h"
+  #include "reax_list.h"
+  #include "reax_reset_tools.h"
+  #include "reax_tool_box.h"
+  #include "reax_vector.h"
 #endif
 
 
@@ -174,9 +179,15 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
         sfree( workspace->h, "h" );
         sfree( workspace->v, "v" );
     }
+    else if ( control->cm_solver_type == BiCGStab_S )
+    {
+        sfree( workspace->y, "y" );
+        sfree( workspace->g, "g" );
+    }
 
     if ( control->cm_solver_type == GMRES_S
             || control->cm_solver_type == GMRES_H_S
+            || control->cm_solver_type == BiCGStab_S
             || control->cm_solver_type == PIPECG_S
             || control->cm_solver_type == PIPECR_S )
     {
@@ -184,13 +195,20 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     }
 
     if ( control->cm_solver_type == CG_S
+            || control->cm_solver_type == BiCGStab_S
             || control->cm_solver_type == PIPECG_S
             || control->cm_solver_type == PIPECR_S )
     {
-        sfree( workspace->d, "d" );
-        sfree( workspace->p, "p" );
-        sfree( workspace->q, "q" );
         sfree( workspace->r, "r" );
+        sfree( workspace->d, "d" );
+        sfree( workspace->q, "q" );
+        sfree( workspace->p, "p" );
+    }
+
+    if ( control->cm_solver_type == BiCGStab_S )
+    {
+        sfree( workspace->r_hat, "r_hat" );
+        sfree( workspace->q_hat, "q_hat" );
     }
 
     if ( control->cm_solver_type == PIPECG_S
@@ -342,26 +360,39 @@ int Allocate_Workspace( reax_system *system, control_params *control,
             workspace->v[i] = scalloc( total_cap, sizeof(real), "v[i]", comm );
         }
     }
+    else if ( control->cm_solver_type == BiCGStab_S )
+    {
+        workspace->y = scalloc( total_cap, sizeof(real), "y", comm );
+        workspace->g = scalloc( total_cap, sizeof(real), "g", comm );
+    }
 
     if ( control->cm_solver_type == GMRES_S
             || control->cm_solver_type == GMRES_H_S )
     {
         workspace->z = scalloc( control->cm_solver_restart + 1, sizeof(real), "z", comm );
     }
-    else if ( control->cm_solver_type == PIPECG_S
+    else if ( control->cm_solver_type == BiCGStab_S
+            || control->cm_solver_type == PIPECG_S
             || control->cm_solver_type == PIPECR_S )
     {
         workspace->z = scalloc( total_cap, sizeof(real), "z", comm );
     }
 
     if ( control->cm_solver_type == CG_S
+            || control->cm_solver_type == BiCGStab_S
             || control->cm_solver_type == PIPECG_S
             || control->cm_solver_type == PIPECR_S )
     {
-        workspace->d = scalloc( total_cap, sizeof(real), "d", comm );
-        workspace->p = scalloc( total_cap, sizeof(real), "p", comm );
-        workspace->q = scalloc( total_cap, sizeof(real), "q", comm );
         workspace->r = scalloc( total_cap, sizeof(real), "r", comm );
+        workspace->d = scalloc( total_cap, sizeof(real), "d", comm );
+        workspace->q = scalloc( total_cap, sizeof(real), "q", comm );
+        workspace->p = scalloc( total_cap, sizeof(real), "p", comm );
+    }
+
+    if ( control->cm_solver_type == BiCGStab_S )
+    {
+        workspace->r_hat = scalloc( total_cap, sizeof(real), "r_hat", comm );
+        workspace->q_hat = scalloc( total_cap, sizeof(real), "q_hat", comm );
     }
 
     if ( control->cm_solver_type == PIPECG_S

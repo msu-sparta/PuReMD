@@ -413,7 +413,9 @@ static void Compute_Preconditioner_QEq( reax_system *system, control_params *con
         simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     int i;
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
     real t_pc, total_pc;
+#endif
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
@@ -446,7 +448,10 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         storage *workspace, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    int j, iters;
+    int iters;
+#if !defined(DUAL_SOLVER)
+    int j;
+#endif
 
     iters = 0;
 
@@ -493,6 +498,41 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
         }
 
         iters += CG( system, control, data, workspace, workspace->H, workspace->b_t,
+                control->cm_solver_q_err, workspace->t, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][1] = workspace->t[j];
+        }
+#endif
+        break;
+
+    case BiCGStab_S:
+#if defined(DUAL_SOLVER)
+        fprintf( stderr, "[ERROR] Dual BiCGStab solver for QEq not yet implemented. Terminating...\n" );
+        exit( INVALID_INPUT );
+//        iters = dual_BiCGStab( system, control, data, workspace, workspace->H, workspace->b,
+//                control->cm_solver_q_err, workspace->x, mpi_data );
+#else
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->s[j] = workspace->x[j][0];
+        }
+
+        iters = BiCGStab( system, control, data, workspace, workspace->H, workspace->b_s,
+                control->cm_solver_q_err, workspace->s, mpi_data );
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->x[j][0] = workspace->s[j];
+        }
+
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->t[j] = workspace->x[j][1];
+        }
+
+        iters += BiCGStab( system, control, data, workspace, workspace->H, workspace->b_t,
                 control->cm_solver_q_err, workspace->t, mpi_data );
 
         for ( j = 0; j < system->n; ++j )
@@ -573,7 +613,6 @@ void QEq( reax_system *system, control_params *control, simulation_data *data,
     case GMRES_S:
     case GMRES_H_S:
     case SDM_S:
-    case BiCGStab_S:
         fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;

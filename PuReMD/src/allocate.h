@@ -23,6 +23,8 @@
 #define __ALLOCATE_H_
 
 #include "reax_types.h"
+
+
 int PreAllocate_Space( reax_system*, control_params*, storage*, MPI_Comm );
 
 void reax_atom_Copy( reax_atom*, reax_atom* );

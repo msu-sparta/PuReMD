@@ -40,7 +40,7 @@
 /************* SOME DEFS - crucial for reax_types.h *********/
 
 #define PURE_REAX
-#define DUAL_SOLVER
+//#define DUAL_SOLVER
 //#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG
@@ -1409,24 +1409,59 @@ struct storage
     sparse_matrix *H_spar_patt;
     sparse_matrix *H_spar_patt_full;
     sparse_matrix *H_app_inv;
-    real *Hdia_inv, *b_s, *b_t, *b_prc, *b_prm, *s, *t;
+    real *Hdia_inv;
+    real *b_s;
+    real *b_t;
+    real *b_prc;
+    real *b_prm;
+    real *s;
+    real *t;
     real *droptol;
-    rvec2 *b, *x;
+    rvec2 *b;
+    rvec2 *x;
 
     /* GMRES storage */
-    real *y, *g;
-    real *hc, *hs;
-    real **h, **v;
-    /* GMRES, PIPECG, PIPECR storage */
+    real *hc;
+    real *hs;
+    real **h;
+    real **v;
+
+    /* GMRES, BiCGStab storage */
+    real *g;
+    real *y;
+
+    /* GMRES, BiCGStab, PIPECG, PIPECR storage */
     real *z;
-    /* CG, PIPECG, PIPECR storage */
-    real *d, *p, *q, *r;
+
+    /* CG, BiCGStab, PIPECG, PIPECR storage */
+    real *r;
+    real *d;
+    real *q;
+    real *p;
+
+    /* BiCGStab storage */
+    real *r_hat;
+    real *q_hat;
+
     /* PIPECG, PIPECR storage */
-    real *m, *n, *u, *w;
+    real *m;
+    real *n;
+    real *u;
+    real *w;
+
     /* dual-CG storage */
-    rvec2 *d2, *p2, *q2, *r2;
+    rvec2 *d2;
+    rvec2 *p2;
+    rvec2 *q2;
+    rvec2 *r2;
+
     /* dual-PIPECG storage */
-    rvec2 *m2, *n2, *u2, *w2, *z2;
+    rvec2 *m2;
+    rvec2 *n2;
+    rvec2 *u2;
+    rvec2 *w2;
+    rvec2 *z2;
+
     /* Taper */
     real Tap[8];
 

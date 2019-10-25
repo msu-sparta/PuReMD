@@ -37,6 +37,10 @@ int dual_CG( reax_system*, control_params*, simulation_data*, storage*, sparse_m
 int CG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
         real*, real, real*, mpi_datatypes* );
 
+int BiCGStab( reax_system *, control_params *, simulation_data *,
+        storage *, sparse_matrix *, real *,
+        real, real *, mpi_datatypes * );
+
 int dual_PIPECG( reax_system*, control_params*, simulation_data*, storage*, sparse_matrix*,
         rvec2*, real, rvec2*, mpi_datatypes* );
 
