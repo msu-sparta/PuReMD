@@ -228,7 +228,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 control_file,
             ]
         # add MPI execution command and arguments to subprocess argument list
-        elif run_type == 'mpi' or run_type == 'mpi+gpu':
+        elif run_type == 'mpi' or run_type == 'mpi-gpu':
             if mpi_cmd[0] == 'mpirun':
                 cmd_args = [
                     'mpirun',
@@ -281,7 +281,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 + '_pa' + param_dict['cm_solver_pre_app_type'] \
                 + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
 		+ '_t' + param_dict['threads']
-        elif run_type == 'mpi' or run_type == 'mpi+gpu':
+        elif run_type == 'mpi' or run_type == 'mpi-gpu':
             name = path.basename(self.__geo_file).split('.')[0] \
                 + '_cm' + param_dict['charge_method'] \
                 + '_s' + param_dict['nsteps'] \
@@ -451,7 +451,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
 
-        if run_type == 'mpi' or run_type == 'mpi+gpu':
+        if run_type == 'mpi' or run_type == 'mpi-gpu':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
 
         job_script += "\n    {0} {1}".format(run_type, self.__data_set)
@@ -481,7 +481,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
 
-        if run_type == 'mpi' or run_type == 'mpi+gpu':
+        if run_type == 'mpi' or run_type == 'mpi-gpu':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
 
         job_script += "\n    {0} {1}".format(run_type, self.__data_set)
@@ -529,7 +529,7 @@ if __name__ == '__main__':
                 'zno_6912', \
                 ]
         JOB_TYPES = ['pbs', 'slurm']
-        RUN_TYPES = ['serial', 'openmp', 'mpi', 'mpi+gpu']
+        RUN_TYPES = ['serial', 'openmp', 'mpi', 'mpi-gpu']
         LOG_TYPES = ['out', 'pot', 'log']
 
         parser = argparse.ArgumentParser(description='Molecular dynamics simulation tools used with specified data sets.')
@@ -784,7 +784,7 @@ if __name__ == '__main__':
                 binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
             elif args.run_type[0] == 'mpi':
                 binary = path.join(base_dir, 'PuReMD/bin/puremd')
-            elif args.run_type[0] == 'mpi+gpu':
+            elif args.run_type[0] == 'mpi-gpu':
                 binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
 
         data_dir, control_params_dict = setup_defaults(base_dir)
@@ -814,7 +814,7 @@ if __name__ == '__main__':
                 binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
             elif args.run_type[0] == 'mpi':
                 binary = path.join(base_dir, 'PuReMD/bin/puremd')
-            elif args.run_type[0] == 'mpi+gpu':
+            elif args.run_type[0] == 'mpi-gpu':
                 binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
 
         _, control_params_dict = setup_defaults(base_dir)
@@ -898,7 +898,7 @@ if __name__ == '__main__':
                 binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
             elif args.run_type[0] == 'mpi':
                 binary = path.join(base_dir, 'PuReMD/bin/puremd')
-            elif args.run_type[0] == 'mpi+gpu':
+            elif args.run_type[0] == 'mpi-gpu':
                 binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
 
         data_dir, control_params_dict = setup_defaults(base_dir)
@@ -974,7 +974,7 @@ if __name__ == '__main__':
                 else:
                     print("[ERROR] Invalid log file type {0}. Terminating...".format(file_type))
                     exit(-1)
-            elif run_type == 'mpi' or run_type == 'mpi+gpu':
+            elif run_type == 'mpi' or run_type == 'mpi-gpu':
                 if file_type == 'out':
                      names=['Step', 'Total_Energy', 'Potential_Energy',
                             'Kinetic_Energy', 'Temperature',

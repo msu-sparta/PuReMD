@@ -238,41 +238,33 @@ void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 {
     int i;
 
-    *line = (char*) smalloc( sizeof(char) * MAX_LINE, "Tokenizer:line" );
-
-    *backup = (char*) smalloc( sizeof(char) * MAX_LINE, "Tokenizer:backup" );
-
-    *tokens = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Tokenizer:tokens" );
+    *line = smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::line" );
+    *backup =  smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::backup" );
+    *tokens = smalloc( sizeof(char*) * MAX_TOKENS, "Allocate_Tokenizer_Space::tokens" );
 
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        (*tokens)[i] = (char*) smalloc(sizeof(char) * MAX_TOKEN_LEN, "Tokenizer:tokens[i]" );
+        (*tokens)[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN, "Allocate_Tokenizer_Space::tokens[i]" );
     }
 }
 
 
-int Tokenize( const char* s, char*** tok )
+int Tokenize( char* s, char*** tok, size_t token_len )
 {
+    int count = 0;
     char test[MAX_LINE];
     char *sep = "\t \n!=";
-    char *word;
-    char *saveptr = NULL;
-    int count = 0;
+    char *word, *saveptr;
 
-    if ( s == NULL )
+    strncpy( test, s, sizeof(test) - 1 );
+    test[sizeof(test) - 1] = '\0';
+
+    for ( word = strtok_r(test, sep, &saveptr); word != NULL;
+            word = strtok_r(NULL, sep, &saveptr) )
     {
-        fprintf( stderr, "[WARNING] passed null string to tokenizer. Returning...\n" );
-        return count;
-    }
-
-    strncpy( test, s, MAX_LINE );
-
-    for ( word = strtok_r( test, sep, &saveptr );
-            word != NULL;
-            word = strtok_r( NULL, sep, &saveptr ) )
-    {
-        strncpy( (*tok)[count], word, MAX_LINE );
-        ++count;
+        strncpy( (*tok)[count], word, token_len - 1 );
+        (*tok)[count][token_len - 1] = '\0';
+        count++;
     }
 
     return count;

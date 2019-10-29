@@ -1244,9 +1244,9 @@ void Output_Results( reax_system *system, control_params *control,
                 && data->step % out_control->write_steps == 0) )
     {
         /* output energies */
-        if ( system->my_rank == MASTER_NODE &&
-                out_control->energy_update_freq > 0 &&
-                data->step % out_control->energy_update_freq == 0 )
+        if ( system->my_rank == MASTER_NODE
+                && out_control->energy_update_freq > 0
+                && data->step % out_control->energy_update_freq == 0 )
         {
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
             fprintf( out_control->out,

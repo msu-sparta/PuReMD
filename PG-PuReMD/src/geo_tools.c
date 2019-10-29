@@ -300,7 +300,7 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
     {
         /* read new line and tokenize it */
         strncpy( s1, s, MAX_LINE - 1 );
-        c1 = Tokenize( s, &tmp );
+        c1 = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         /* process new line */
         if ( strncmp(tmp[0], "ATOM", 4) == 0 || strncmp(tmp[0], "HETATM", 6) == 0 )

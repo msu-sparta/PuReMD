@@ -373,7 +373,7 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
 
     //read first header lines
     fgets( s, MAX_LINE, fres );
-    c = Tokenize( s, &tmp );
+    c = Tokenize( s, &tmp, MAX_LINE );
 
     if ( c != 7 )
     {
@@ -391,7 +391,7 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
 
     //read box lines
     fgets( s, MAX_LINE, fres );
-    c = Tokenize( s, &tmp );
+    c = Tokenize( s, &tmp, MAX_LINE );
 
     if ( c != 3 )
     {
@@ -403,7 +403,7 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
     box[0][1] = atof(tmp[1]);
     box[0][2] = atof(tmp[2]);
     fgets( s, MAX_LINE, fres );
-    c = Tokenize( s, &tmp );
+    c = Tokenize( s, &tmp, MAX_LINE );
     if ( c != 3 )
     {
         fprintf( stderr, "[ERROR] invalid format in restart file! terminating...\n" );
@@ -413,7 +413,7 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
     box[1][1] = atof(tmp[1]);
     box[1][2] = atof(tmp[2]);
     fgets( s, MAX_LINE, fres );
-    c = Tokenize( s, &tmp );
+    c = Tokenize( s, &tmp, MAX_LINE );
 
     if ( c != 3 )
     {
@@ -455,7 +455,7 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
     for ( i = 0; i < system->bigN; ++i )
     {
         fgets( s, MAX_LINE, fres );
-        c = Tokenize( s, &tmp );
+        c = Tokenize( s, &tmp, MAX_LINE );
 
         if ( c != 9 )
         {

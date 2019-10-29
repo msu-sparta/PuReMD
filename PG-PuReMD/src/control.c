@@ -40,7 +40,10 @@ void Read_Control_File( const char * const control_file, control_params * const 
 
     fp = sfopen( control_file, "r", "Read_Control_File::fp" );
 
-    strcpy( control->sim_name, "default.sim" );
+    /* assign default values */
+    strncpy( control->sim_name, "default.sim", sizeof(control->sim_name) - 1 );
+    control->sim_name[sizeof(control->sim_name) - 1] = '\0';
+
     control->ensemble = NVE;
     control->nsteps = 0;
     control->dt = 0.25;
@@ -73,9 +76,9 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->charge_method = QEQ_CM;
     control->charge_freq = 1;
     control->cm_q_net = 0.0;
-    control->cm_solver_type = GMRES_S;
-    control->cm_solver_max_iters = 100;
-    control->cm_solver_restart = 50;
+    control->cm_solver_type = CG_S;
+    control->cm_solver_max_iters = 1000;
+    control->cm_solver_restart = 100;
     control->cm_solver_q_err = 0.000001;
     control->cm_domain_sparsify_enabled = FALSE;
     control->cm_init_guess_extrap1 = 3;
@@ -88,23 +91,30 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
     control->cm_solver_pre_app_jacobi_iters = 50;
 
-    control->T_init = 0.;
+    control->T_init = 0.0;
     control->T_final = 300.;
     control->Tau_T = 500.0;
     control->T_mode = 0;
-    control->T_rate = 1.;
-    control->T_freq = 1.;
+    control->T_rate = 1.0;
+    control->T_freq = 1.0;
 
-    control->P[0] = control->P[1] = control->P[2] = 0.000101325;
-    control->Tau_P[0] = control->Tau_P[1] = control->Tau_P[2] = 500.0;
-    control->Tau_PT[0] = control->Tau_PT[1] = control->Tau_PT[2] = 500.0;
+    control->P[0] = 0.000101325;
+    control->P[1] = 0.000101325;
+    control->P[2] = 0.000101325;
+    control->Tau_P[0] = 500.0;
+    control->Tau_P[1] = 500.0;
+    control->Tau_P[2] = 500.0;
+    control->Tau_PT[0] = 500.0;
+    control->Tau_PT[1] = 500.0;
+    control->Tau_PT[2] = 500.0;
     control->compressibility = 1.0;
     control->press_mode = 0;
 
     out_control->write_steps = 0;
     out_control->traj_compress = 0;
     out_control->traj_method = REG_TRAJ;
-    strcpy( out_control->traj_title, "default_title" );
+    strncpy( out_control->traj_title, "default_title", sizeof(out_control->traj_title) - 1 );
+    out_control->traj_title[sizeof(out_control->traj_title) - 1] = '\0';
     out_control->atom_info = 0;
     out_control->bond_info = 0;
     out_control->angle_info = 0;
@@ -127,35 +137,36 @@ void Read_Control_File( const char * const control_file, control_params * const 
     /* read control parameters file */
     while( fgets( s, MAX_LINE, fp ) )
     {
-        c = Tokenize( s, &tmp );
+        c = Tokenize( s, &tmp, MAX_LINE );
 
         if ( c > 0 )
         {
-            if ( strcmp(tmp[0], "simulation_name") == 0 )
+            if ( strncmp(tmp[0], "simulation_name", MAX_LINE) == 0 )
             {
-                strcpy( control->sim_name, tmp[1] );
+                strncpy( control->sim_name, tmp[1], sizeof(control->sim_name) - 1 );
+                control->sim_name[sizeof(control->sim_name) - 1] = '\0';
             }
-            else if ( strcmp(tmp[0], "ensemble_type") == 0 )
+            else if ( strncmp(tmp[0], "ensemble_type", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->ensemble = ival;
             }
-            else if ( strcmp(tmp[0], "nsteps") == 0 )
+            else if ( strncmp(tmp[0], "nsteps", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->nsteps = ival;
             }
-            else if ( strcmp(tmp[0], "dt") == 0)
+            else if ( strncmp(tmp[0], "dt", MAX_LINE) == 0)
             {
                 val = atof(tmp[1]);
                 control->dt = val * 1.e-3;  // convert dt from fs to ps!
             }
-            else if ( strcmp(tmp[0], "gpus_per_node") == 0 )
+            else if ( strncmp(tmp[0], "gpus_per_node", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->gpus_per_node = ival;
             }
-            else if ( strcmp(tmp[0], "proc_by_dim") == 0 )
+            else if ( strncmp(tmp[0], "proc_by_dim", MAX_LINE) == 0 )
             {
                 if ( c < 4 )
                 {
@@ -173,129 +184,137 @@ void Read_Control_File( const char * const control_file, control_params * const 
                 control->nprocs = control->procs_by_dim[0] * control->procs_by_dim[1] *
                         control->procs_by_dim[2];
             }
-            //else if( strcmp(tmp[0], "restart") == 0 ) {
-            //  ival = atoi(tmp[1]);
-            //  control->restart = ival;
-            //}
-            //else if( strcmp(tmp[0], "restart_from") == 0 ) {
-            //  strcpy( control->restart_from, tmp[1] );
-            //}
-            else if ( strcmp(tmp[0], "random_vel") == 0 )
+            else if ( strncmp(tmp[0], "periodic_boundaries", MAX_LINE) == 0 )
+            {
+                // skip since not supported in distributed memory code
+                ;
+            }
+//            else if( strncmp(tmp[0], "restart", MAX_LINE) == 0 )
+//            {
+//                ival = atoi(tmp[1]);
+//                control->restart = ival;
+//            }
+//            else if( strncmp(tmp[0], "restart_from", MAX_LINE) == 0 )
+//            {
+//                strncpy( control->restart_from, tmp[1], sizeof(control->restart_from) - 1 );
+//                control->restart_from[sizeof(control->restart_from) - 1] = '\0';
+//            }
+            else if ( strncmp(tmp[0], "random_vel", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->random_vel = ival;
             }
-            else if ( strcmp(tmp[0], "restart_format") == 0 )
+            else if ( strncmp(tmp[0], "restart_format", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->restart_format = ival;
             }
-            else if ( strcmp(tmp[0], "restart_freq") == 0 )
+            else if ( strncmp(tmp[0], "restart_freq", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->restart_freq = ival;
             }
-            else if ( strcmp(tmp[0], "reposition_atoms") == 0 )
+            else if ( strncmp(tmp[0], "reposition_atoms", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->reposition_atoms = ival;
             }
-            else if ( strcmp(tmp[0], "restrict_bonds") == 0 )
+            else if ( strncmp(tmp[0], "restrict_bonds", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->restrict_bonds = ival;
             }
-            else if ( strcmp(tmp[0], "remove_CoM_vel") == 0 )
+            else if ( strncmp(tmp[0], "remove_CoM_vel", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->remove_CoM_vel = ival;
             }
-            else if ( strcmp(tmp[0], "debug_level") == 0 )
+            else if ( strncmp(tmp[0], "debug_level", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->debug_level = ival;
             }
-            else if ( strcmp(tmp[0], "energy_update_freq") == 0 )
+            else if ( strncmp(tmp[0], "energy_update_freq", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->energy_update_freq = ival;
             }
-            else if ( strcmp(tmp[0], "reneighbor") == 0 )
+            else if ( strncmp(tmp[0], "reneighbor", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->reneighbor = ival;
             }
-            else if ( strcmp(tmp[0], "vlist_buffer") == 0 )
+            else if ( strncmp(tmp[0], "vlist_buffer", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->vlist_cut = val + control->nonb_cut;
             }
-            else if ( strcmp(tmp[0], "nbrhood_cutoff") == 0 )
+            else if ( strncmp(tmp[0], "nbrhood_cutoff", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->bond_cut = val;
             }
-            else if ( strcmp(tmp[0], "bond_graph_cutoff") == 0 )
+            else if ( strncmp(tmp[0], "bond_graph_cutoff", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->bg_cut = val;
             }
-            else if ( strcmp(tmp[0], "thb_cutoff") == 0 )
+            else if ( strncmp(tmp[0], "thb_cutoff", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->thb_cut = val;
             }
-            else if ( strcmp(tmp[0], "hbond_cutoff") == 0 )
+            else if ( strncmp(tmp[0], "hbond_cutoff", MAX_LINE) == 0 )
             {
                 val = atof( tmp[1] );
                 control->hbond_cut = val;
             }
-            else if ( strcmp(tmp[0], "ghost_cutoff") == 0 )
+            else if ( strncmp(tmp[0], "ghost_cutoff", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->user_ghost_cut = val;
             }
-            else if ( strcmp(tmp[0], "tabulate_long_range") == 0 )
+            else if ( strncmp(tmp[0], "tabulate_long_range", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->tabulate = ival;
             }
-            else if ( strcmp(tmp[0], "charge_method") == 0 )
+            else if ( strncmp(tmp[0], "charge_method", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->charge_method = ival;
             }
-            else if ( strcmp(tmp[0], "charge_freq") == 0 )
+            else if ( strncmp(tmp[0], "charge_freq", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->charge_freq = ival;
             }
-            else if ( strcmp(tmp[0], "cm_q_net") == 0 )
+            else if ( strncmp(tmp[0], "cm_q_net", MAX_LINE) == 0 )
             {
                 val = atof( tmp[1] );
                 control->cm_q_net = val;
             }
-            else if ( strcmp(tmp[0], "cm_solver_type") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_type", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_type = ival;
             }
-            else if ( strcmp(tmp[0], "cm_solver_max_iters") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_max_iters", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_max_iters = ival;
             }
-            else if ( strcmp(tmp[0], "cm_solver_restart") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_restart", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_restart = ival;
             }
-            else if ( strcmp(tmp[0], "cm_solver_q_err") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_q_err", MAX_LINE) == 0 )
             {
                 val = atof( tmp[1] );
                 control->cm_solver_q_err = val;
             }
-            else if ( strcmp(tmp[0], "cm_domain_sparsity") == 0 )
+            else if ( strncmp(tmp[0], "cm_domain_sparsity", MAX_LINE) == 0 )
             {
                 val = atof( tmp[1] );
                 control->cm_domain_sparsity = val;
@@ -314,22 +333,22 @@ void Read_Control_File( const char * const control_file, control_params * const 
                 ival = atoi( tmp[1] );
                 control->cm_init_guess_extrap2 = ival;
             }
-            else if ( strcmp(tmp[0], "cm_solver_pre_comp_type") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_pre_comp_type", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_comp_type = ival;
             }
-            else if ( strcmp(tmp[0], "cm_solver_pre_comp_refactor") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_pre_comp_refactor", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_comp_refactor = ival;
             }
-            else if ( strcmp(tmp[0], "cm_solver_pre_comp_droptol") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_pre_comp_droptol", MAX_LINE) == 0 )
             {
                 val = atof( tmp[1] );
                 control->cm_solver_pre_comp_droptol = val;
             }
-            else if ( strcmp(tmp[0], "cm_solver_pre_comp_sweeps") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_pre_comp_sweeps", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_comp_sweeps = ival;
@@ -339,17 +358,17 @@ void Read_Control_File( const char * const control_file, control_params * const 
                 val = atof( tmp[1] );
                 control->cm_solver_pre_comp_sai_thres = val;
             }
-            else if ( strcmp(tmp[0], "cm_solver_pre_app_type") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_pre_app_type", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_app_type = ival;
             }
-            else if ( strcmp(tmp[0], "cm_solver_pre_app_jacobi_iters") == 0 )
+            else if ( strncmp(tmp[0], "cm_solver_pre_app_jacobi_iters", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_app_jacobi_iters = ival;
             }
-            else if ( strcmp(tmp[0], "temp_init") == 0 )
+            else if ( strncmp(tmp[0], "temp_init", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->T_init = val;
@@ -359,7 +378,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
                     control->T_init = 0.1;
                 }
             }
-            else if ( strcmp(tmp[0], "temp_final") == 0 )
+            else if ( strncmp(tmp[0], "temp_final", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->T_final = val;
@@ -369,27 +388,27 @@ void Read_Control_File( const char * const control_file, control_params * const 
                     control->T_final = 0.1;
                 }
             }
-            else if ( strcmp(tmp[0], "t_mass") == 0 )
+            else if ( strncmp(tmp[0], "t_mass", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->Tau_T = val * 1.e-3;    // convert t_mass from fs to ps
             }
-            else if ( strcmp(tmp[0], "t_mode") == 0 )
+            else if ( strncmp(tmp[0], "t_mode", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->T_mode = ival;
             }
-            else if ( strcmp(tmp[0], "t_rate") == 0 )
+            else if ( strncmp(tmp[0], "t_rate", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->T_rate = val;
             }
-            else if ( strcmp(tmp[0], "t_freq") == 0 )
+            else if ( strncmp(tmp[0], "t_freq", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->T_freq = val;
             }
-            else if ( strcmp(tmp[0], "pressure") == 0 )
+            else if ( strncmp(tmp[0], "pressure", MAX_LINE) == 0 )
             {
                 if ( control->ensemble == iNPT )
                 {
@@ -402,7 +421,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
                     control->P[2] = atof(tmp[3]);
                 }
             }
-            else if ( strcmp(tmp[0], "p_mass") == 0 )
+            else if ( strncmp(tmp[0], "p_mass", MAX_LINE) == 0 )
             {
                 // convert p_mass from fs to ps
                 if ( control->ensemble == iNPT )
@@ -417,77 +436,89 @@ void Read_Control_File( const char * const control_file, control_params * const 
                     control->Tau_P[2] = atof(tmp[3]) * 1.e-3;
                 }
             }
-            else if ( strcmp(tmp[0], "pt_mass") == 0 )
+            else if ( strncmp(tmp[0], "pt_mass", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->Tau_PT[0] = control->Tau_PT[1] = control->Tau_PT[2] =
                                          val * 1.e-3;  // convert pt_mass from fs to ps
             }
-            else if ( strcmp(tmp[0], "compress") == 0 )
+            else if ( strncmp(tmp[0], "compress", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
                 control->compressibility = val;
             }
-            else if ( strcmp(tmp[0], "press_mode") == 0 )
+            else if ( strncmp(tmp[0], "press_mode", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->press_mode = ival;
             }
-            else if ( strcmp(tmp[0], "geo_format") == 0 )
+            else if ( strncmp(tmp[0], "geo_format", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->geo_format = ival;
             }
-            else if ( strcmp(tmp[0], "write_freq") == 0 )
+            else if ( strncmp(tmp[0], "write_freq", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->write_steps = ival;
             }
-            else if ( strcmp(tmp[0], "traj_compress") == 0 )
+            else if ( strncmp(tmp[0], "traj_compress", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->traj_compress = ival;
             }
-            else if ( strcmp(tmp[0], "traj_method") == 0 )
+            else if ( strncmp(tmp[0], "traj_format", MAX_LINE) == 0 )
+            {
+                // skip since not applicable to distributed memory code
+                ;
+            }
+            else if ( strncmp(tmp[0], "traj_method", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->traj_method = ival;
             }
-            else if ( strcmp(tmp[0], "traj_title") == 0 )
+            else if ( strncmp(tmp[0], "traj_title", MAX_LINE) == 0 )
             {
-                strcpy( out_control->traj_title, tmp[1] );
+                strncpy( out_control->traj_title, tmp[1], sizeof(out_control->traj_title) - 1 );
+                out_control->traj_title[sizeof(out_control->traj_title) - 1] = '\0';
             }
-            else if ( strcmp(tmp[0], "atom_info") == 0 )
+            else if ( strncmp(tmp[0], "atom_info", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->atom_info += ival * 4;
             }
-            else if ( strcmp(tmp[0], "atom_velocities") == 0 )
+            else if ( strncmp(tmp[0], "atom_velocities", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->atom_info += ival * 2;
             }
-            else if ( strcmp(tmp[0], "atom_forces") == 0 )
+            else if ( strncmp(tmp[0], "atom_forces", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->atom_info += ival * 1;
             }
-            else if ( strcmp(tmp[0], "bond_info") == 0 )
+            else if ( strncmp(tmp[0], "bond_info", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->bond_info = ival;
             }
-            else if ( strcmp(tmp[0], "angle_info") == 0 )
+            else if ( strncmp(tmp[0], "angle_info", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 out_control->angle_info = ival;
             }
-            else if ( strcmp(tmp[0], "molecular_analysis") == 0 )
+            else if ( strncmp(tmp[0], "test_forces", MAX_LINE) == 0 )
+            {
+                // skip since not supported in distributed memory code
+                ;
+            }
+            else if ( strncmp(tmp[0], "molecular_analysis", MAX_LINE) == 0 
+                    || strncmp(tmp[0], "molec_anal", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->molecular_analysis = ival;
             }
-            else if ( strcmp(tmp[0], "ignore") == 0 )
+            else if ( strncmp(tmp[0], "ignore", MAX_LINE) == 0 )
             {
                 control->num_ignored = atoi(tmp[1]);
                 for ( i = 0; i < control->num_ignored; ++i )
@@ -495,27 +526,32 @@ void Read_Control_File( const char * const control_file, control_params * const 
                     control->ignore[atoi(tmp[i + 2])] = 1;
                 }
             }
-            else if ( strcmp(tmp[0], "dipole_anal") == 0 )
+            else if ( strncmp(tmp[0], "freq_molec_anal", MAX_LINE) == 0 )
+            {
+                // skip since not supported in distributed memory code
+                ;
+            }
+            else if ( strncmp(tmp[0], "dipole_anal", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->dipole_anal = ival;
             }
-            else if ( strcmp(tmp[0], "freq_dipole_anal") == 0 )
+            else if ( strncmp(tmp[0], "freq_dipole_anal", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->freq_dipole_anal = ival;
             }
-            else if ( strcmp(tmp[0], "diffusion_coef") == 0 )
+            else if ( strncmp(tmp[0], "diffusion_coef", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->diffusion_coef = ival;
             }
-            else if ( strcmp(tmp[0], "freq_diffusion_coef") == 0 )
+            else if ( strncmp(tmp[0], "freq_diffusion_coef", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->freq_diffusion_coef = ival;
             }
-            else if ( strcmp(tmp[0], "restrict_type") == 0 )
+            else if ( strncmp(tmp[0], "restrict_type", MAX_LINE) == 0 )
             {
                 ival = atoi(tmp[1]);
                 control->restrict_type = ival;
