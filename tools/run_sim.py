@@ -600,14 +600,12 @@ if __name__ == '__main__':
 
         compare_logs_parser.add_argument('-t', '--tol', metavar='tolerance', default=1.0e-6, nargs=1,
                 help='Tolerance used for comparing the log files.')
-        compare_logs_parser.add_argument('run_type', nargs=1,
-                choices=RUN_TYPES, help='Run type for the MD simulation(s).')
         compare_logs_parser.add_argument('log_file_type', nargs=1,
                 choices=LOG_TYPES, help='Log file type for the MD simulation(s).')
         compare_logs_parser.add_argument('ref_log_file', nargs=1,
-                help='Reference log file to compare against.')
+                help='Reference log run type and file to compare against (colon-separated).')
         compare_logs_parser.add_argument('log_file', nargs='+',
-                help='Log file to compare.')
+                help='Log run type and file to compare (colon-separated).')
         compare_logs_parser.set_defaults(func=compare_logs)
 
         return parser
@@ -1034,7 +1032,8 @@ if __name__ == '__main__':
             return df
 
         # read reference log
-        df_ref = _read_file_by_type(args.ref_log_file[0], args.log_file_type[0], args.run_type[0])
+        run_type, ref_log_file = args.ref_log_file[0].split(':')
+        df_ref = _read_file_by_type(ref_log_file, args.log_file_type[0], run_type)
 
         if df_ref.empty:
             print("[ERROR] detected empty log file {0}. Terminating...".format(args.ref_log_file[0]))
@@ -1042,7 +1041,8 @@ if __name__ == '__main__':
 
         # compare other logs against reference
         for log in args.log_file:
-            df = _read_file_by_type(log, args.log_file_type[0], args.run_type[0])
+            run_type, log_file = log.split(':')
+            df = _read_file_by_type(log_file, args.log_file_type[0], run_type)
 
             if df.empty:
                 print("[ERROR] detected empty log file {0}. Terminating...".format(log))
@@ -1061,6 +1061,7 @@ if __name__ == '__main__':
                     print('{0}:'.format(term))
                     print('    Max. Diff.: {0:E}'.format(max_diff))
                     print('          Step: {0:d}'.format(df_ref['Step'].iat[argmax_diff]))
+                print()
             elif args.log_file_type[0] == 'pot':
                 for term in df_ref.columns.values.tolist()[1:]:
                     abs_diff = np.absolute(df_ref[term].values - df[term].values)
@@ -1069,12 +1070,14 @@ if __name__ == '__main__':
                     print('{0}:'.format(term))
                     print('    Max. Diff.: {0:E}'.format(max_diff))
                     print('          Step: {0:d}'.format(df_ref['Step'].iat[argmax_diff]))
+                print()
             elif args.log_file_type[0] == 'log':
                 abs_diff = np.absolute(df_ref['T_Total'].values - df['T_Total'].values)
                 max_diff = abs_diff.max()
                 argmax_diff = abs_diff.argmax()
                 print('Max. Diff.: {0:E}'.format(max_diff))
                 print('      Step: {0:d}'.format(df_ref['Step'].iat[argmax_diff]))
+                print()
 
 
     parser = setup_parser()
