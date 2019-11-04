@@ -161,7 +161,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     rtensor_MatVec( data->avcm, inv, data->amcm );
     data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] xcm: %24.15e, %24.15e, %24.15e\n",
              data->xcm[0], data->xcm[1], data->xcm[2] );
     fprintf( stderr, "[INFO] vcm: %24.15e, %24.15e, %24.15e\n",
@@ -321,12 +321,12 @@ void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* dat
 
     for ( i = 0; i < system->N; ++i )
     {
-        p_atom = &( system->atoms[i] );
-        rvec_ScaledSum(dx, 1.0, p_atom->x, -1.0, data->xcm);
-        data->iso_bar.P += ( -F_CONV * rvec_Dot(p_atom->f, dx) );
+        p_atom = &system->atoms[i];
+        rvec_ScaledSum( dx, 1.0, p_atom->x, -1.0, data->xcm );
+        data->iso_bar.P += -F_CONV * rvec_Dot( p_atom->f, dx );
     }
 
-    data->iso_bar.P /= (3.0 * system->box.volume);
+    data->iso_bar.P /= 3.0 * system->box.volume;
 
     // IMPORTANT: In Klein's paper, it is stated that a dU/dV term needs
     // to be added when there are long-range interactions or long-range

@@ -169,7 +169,7 @@ void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
     box->box[2][1] = c * zi;
     box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] Setup_Box: box is %8.2f x %8.2f x %8.2f\n",
              box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
@@ -304,6 +304,9 @@ void Update_Atom_Position( rvec x, rvec dx, ivec rel_map, simulation_box *box )
  * x2: position of second atom
  * x2_rel_box: relative position in terms of peroidic images of the
  *  simulation box for the second atom
+ * x1_rel_map / x2_rel_map: relative coordinates for the peroidic image of
+ *  the simulation box that this atom was re-mapped into
+ *  during the position update where (0,0,0) represents no mapping
  *
  * Outputs:
  * r: displacement vector betweeon the atoms

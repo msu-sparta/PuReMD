@@ -207,7 +207,7 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
         }
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] Estimate_Num_Neighbors: num_far = %d\n",
             (int) CEIL( num_far * SAFE_ZONE ) );
 #endif

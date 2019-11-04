@@ -161,8 +161,6 @@ void Valence_Angles( reax_system *system, control_params *control,
 
         for ( j = 0; j < system->N; ++j )
         {
-            // fprintf( out_control->eval, "j: %d\n", j );
-
             type_j = system->atoms[j].type;
             start_j = Start_Index(j, bonds);
             end_j = End_Index(j, bonds);
@@ -240,427 +238,429 @@ void Valence_Angles( reax_system *system, control_params *control,
                 bo_ij = &pbond_ij->bo_data;
                 BOA_ij = bo_ij->BO - control->thb_cut;
 
-                if ( BOA_ij >= 0.0 )
+                if ( BOA_ij < 0.0 )
                 {
-                    i = pbond_ij->nbr;
-                    type_i = system->atoms[i].type;
+                    continue;
+                }
+
+                i = pbond_ij->nbr;
+                type_i = system->atoms[i].type;
 //#ifdef _OPENMP
 //                    f_i = &workspace->f_local[tid * system->N + i];
 //#else
-                    f_i = &system->atoms[i].f;
+                f_i = &system->atoms[i].f;
 //#endif
 
-                    /* first copy 3-body intrs from previously computed ones where i>k.
-                     * IMPORTANT: if it is less costly to compute theta and its
-                     * derivative, we should definitely re-compute them,
-                     * instead of copying!
-                     * in the second for-loop below, we compute only new 3-body intrs
-                     * where i < k */
-                    for ( pk = start_j; pk < pi; ++pk )
+                /* first copy 3-body intrs from previously computed ones where i>k.
+                 * IMPORTANT: if it is less costly to compute theta and its
+                 * derivative, we should definitely re-compute them,
+                 * instead of copying!
+                 * in the second for-loop below, we compute only new 3-body intrs
+                 * where i < k */
+                for ( pk = start_j; pk < pi; ++pk )
+                {
+                    start_pk = Start_Index( pk, thb_intrs );
+                    end_pk = End_Index( pk, thb_intrs );
+
+                    for ( t = start_pk; t < end_pk; ++t )
                     {
-                        // fprintf( out_control->eval, "pk: %d\n", pk );
-
-                        start_pk = Start_Index( pk, thb_intrs );
-                        end_pk = End_Index( pk, thb_intrs );
-
-                        for ( t = start_pk; t < end_pk; ++t )
+                        if ( thb_list[t].thb == i )
                         {
-                            if ( thb_list[t].thb == i )
-                            {
-                                p_ijk = &thb_list[num_thb_intrs];
-                                p_kji = &thb_list[t];
+                            p_ijk = &thb_list[num_thb_intrs];
+                            p_kji = &thb_list[t];
 
-                                p_ijk->thb = bond_list[pk].nbr;
-                                p_ijk->pthb = pk;
-                                p_ijk->theta = p_kji->theta;
-                                rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
-                                rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
-                                rvec_Copy( p_ijk->dcos_dk, p_kji->dcos_di );
+                            p_ijk->thb = bond_list[pk].nbr;
+                            p_ijk->pthb = pk;
+                            p_ijk->theta = p_kji->theta;
+                            rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
+                            rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
+                            rvec_Copy( p_ijk->dcos_dk, p_kji->dcos_di );
 
-                                ++num_thb_intrs;
-                                break;
-                            }
+                            ++num_thb_intrs;
+                            break;
                         }
                     }
+                }
 
-                    /* and this is the second for loop mentioned above */
-                    for ( pk = pi + 1; pk < end_j; ++pk )
+                /* and this is the second for loop mentioned above */
+                for ( pk = pi + 1; pk < end_j; ++pk )
+                {
+                    pbond_jk = &bond_list[pk];
+                    bo_jk = &pbond_jk->bo_data;
+                    BOA_jk = bo_jk->BO - control->thb_cut;
+
+                    if ( BOA_jk < 0.0 )
                     {
-                        pbond_jk = &bond_list[pk];
-                        bo_jk = &pbond_jk->bo_data;
-                        BOA_jk = bo_jk->BO - control->thb_cut;
-                        k = pbond_jk->nbr;
-                        type_k = system->atoms[k].type;
-                        p_ijk = &thb_list[num_thb_intrs];
+                        continue;
+                    }
+
+                    k = pbond_jk->nbr;
+                    type_k = system->atoms[k].type;
+                    p_ijk = &thb_list[num_thb_intrs];
 //#ifdef _OPENMP
-//                        f_k = &workspace->f_local[tid * system->N + k];
+//                    f_k = &workspace->f_local[tid * system->N + k];
 //#else
-                        f_k = &system->atoms[k].f;
+                    f_k = &system->atoms[k].f;
 //#endif
 
-                        if ( BOA_jk < 0.0 )
+                    Calculate_Theta( pbond_ij->dvec, pbond_ij->d,
+                            pbond_jk->dvec, pbond_jk->d,
+                            &theta, &cos_theta );
+
+                    Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d,
+                            pbond_jk->dvec, pbond_jk->d,
+                            &p_ijk->dcos_di, &p_ijk->dcos_dj,
+                            &p_ijk->dcos_dk );
+
+                    p_ijk->thb = k;
+                    p_ijk->pthb = pk;
+                    p_ijk->theta = theta;
+
+                    sin_theta = SIN( theta );
+                    if ( sin_theta < 1.0e-5 )
+                    {
+                        sin_theta = 1.0e-5;
+                    }
+
+                    ++num_thb_intrs;
+
+                    /* Fortran ReaxFF code hard-codes the constant below
+                     * as of 2019-02-27, so use that for now */
+                    if ( bo_ij->BO * bo_jk->BO < 0.00001 )
+//                    if ( bo_ij->BO * bo_jk->BO < SQR(control->thb_cut) )
+                    {
+                        continue;
+                    }
+
+                    thbh = &system->reax_param.thbp[type_i][type_j][type_k];
+
+//                    if ( workspace->orig_id[i] < workspace->orig_id[k] )
+//                        fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
+//                                workspace->orig_id[i], workspace->orig_id[j],
+//                                workspace->orig_id[k], bo_ij->BO, bo_jk->BO, p_ijk->theta );
+//                    else
+//                        fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
+//                                workspace->orig_id[k], workspace->orig_id[j],
+//                                workspace->orig_id[i], bo_jk->BO, bo_ij->BO, p_ijk->theta );
+
+                    for ( cnt = 0; cnt < thbh->cnt; ++cnt )
+                    {
+                        /* valence angle does not exist in the force field */
+                        if ( FABS(thbh->prm[cnt].p_val1) < 0.001 )
                         {
                             continue;
                         }
 
-                        Calculate_Theta( pbond_ij->dvec, pbond_ij->d,
-                                pbond_jk->dvec, pbond_jk->d,
-                                &theta, &cos_theta );
+                        thbp = &thbh->prm[cnt];
 
-                        Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d,
-                                pbond_jk->dvec, pbond_jk->d,
-                                &p_ijk->dcos_di, &p_ijk->dcos_dj,
-                                &p_ijk->dcos_dk );
+                        /* calculate valence angle energy */
+                        p_val1 = thbp->p_val1;
+                        p_val2 = thbp->p_val2;
+                        p_val4 = thbp->p_val4;
+                        p_val7 = thbp->p_val7;
+                        theta_00 = thbp->theta_00;
 
-                        p_ijk->thb = k;
-                        p_ijk->pthb = pk;
-                        p_ijk->theta = theta;
+                        exp3ij = EXP( -p_val3 * POW( BOA_ij, p_val4 ) );
+                        f7_ij = 1.0 - exp3ij;
+                        Cf7ij = p_val3 * p_val4
+                            * POW( BOA_ij, p_val4 - 1.0 ) * exp3ij;
 
-                        sin_theta = SIN( theta );
-                        if ( sin_theta < 1.0e-5 )
+                        exp3jk = EXP( -p_val3 * POW( BOA_jk, p_val4 ) );
+                        f7_jk = 1.0 - exp3jk;
+                        Cf7jk = p_val3 * p_val4 *
+                            POW( BOA_jk, p_val4 - 1.0 ) * exp3jk;
+
+                        expval7 = EXP( -p_val7 * workspace->Delta_boc[j] );
+                        trm8 = 1.0 + expval6 + expval7;
+                        f8_Dj = p_val5 - (p_val5 - 1.0) * (2.0 + expval6) / trm8;
+                        Cf8j = ( (1.0 - p_val5) / SQR(trm8) )
+                            * (p_val6 * expval6 * trm8
+                            - (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ));
+
+                        theta_0 = 180.0 - theta_00 * (1.0 - EXP(-p_val10 * (2.0 - SBO2)));
+                        theta_0 = DEG2RAD( theta_0 );
+
+                        expval2theta = p_val1 * EXP(-p_val2 * SQR(theta_0 - theta));
+                        if ( p_val1 >= 0 )
                         {
-                            sin_theta = 1.0e-5;
+                            expval12theta = p_val1 - expval2theta;
+                        }
+                        /* To avoid linear Me-H-Me angles (6/6/06) */
+                        else
+                        {
+                            expval12theta = -expval2theta;
                         }
 
-                        ++num_thb_intrs;
+                        CEval1 = Cf7ij * f7_jk * f8_Dj * expval12theta;
+                        CEval2 = Cf7jk * f7_ij * f8_Dj * expval12theta;
+                        CEval3 = Cf8j * f7_ij * f7_jk * expval12theta;
+                        CEval4 = 2.0 * p_val2 * f7_ij * f7_jk * f8_Dj
+                            * expval2theta * (theta_0 - theta);
 
-                        /* Fortran ReaxFF code hard-codes the constant below
-                         * as of 2019-02-27, so use that for now */
-                        if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) >= 0.00001 )
-//                        if ( BOA_jk >= 0.0 && (bo_ij->BO * bo_jk->BO) > SQR(control->thb_cut) )
+                        Ctheta_0 = p_val10 * DEG2RAD(theta_00)
+                            * EXP( -p_val10 * (2.0 - SBO2) );
+
+                        CEval5 = CEval4 * Ctheta_0 * CSBO2;
+                        CEval6 = CEval5 * dSBO1;
+                        CEval7 = CEval5 * dSBO2;
+                        CEval8 = CEval4 / sin_theta;
+
+                        e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
+                        e_ang_total += e_ang;
+
+#if defined(DEBUG_FOCUS)
+                        if ( IS_NAN_REAL(e_ang) )
                         {
-                            thbh = &system->reax_param.thbp[type_i][type_j][type_k];
+                            fprintf( stderr, "[ERROR] NaN detected for e_ang (j = %d). Terminating...\n", j );
+                            fprintf( stderr, "[INFO] f7_ij = %f\n", f7_ij );
+                            fprintf( stderr, "[INFO] f7_jk = %f\n", f7_jk );
+                            fprintf( stderr, "[INFO] f8_Dj = %f\n", f8_Dj );
+                            fprintf( stderr, "[INFO] expval12theta = %f\n", expval12theta );
+                            exit( NUMERIC_BREAKDOWN );
+                        }
+#endif
 
-//                            if( workspace->orig_id[i] < workspace->orig_id[k] )
-//                                fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-//                                        workspace->orig_id[i], workspace->orig_id[j],
-//                                        workspace->orig_id[k], bo_ij->BO, bo_jk->BO, p_ijk->theta );
-//                            else
-//                                fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-//                                        workspace->orig_id[k], workspace->orig_id[j],
-//                                        workspace->orig_id[i], bo_jk->BO, bo_ij->BO, p_ijk->theta );
+                        /* calculate penalty for double bonds in valency angles */
+                        p_pen1 = thbp->p_pen1;
 
-                            for ( cnt = 0; cnt < thbh->cnt; ++cnt )
+                        exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
+                        exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
+                        exp_pen3 = EXP( -p_pen3 * workspace->Delta[j] );
+                        exp_pen4 = EXP(  p_pen4 * workspace->Delta[j] );
+                        trm_pen34 = 1.0 + exp_pen3 + exp_pen4;
+                        f9_Dj = ( 2.0 + exp_pen3 ) / trm_pen34;
+                        Cf9j = (-p_pen3 * exp_pen3 * trm_pen34
+                                - (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3
+                                    + p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
+
+                        e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
+                        e_pen_total += e_pen;
+
+#if defined(DEBUG_FOCUS)
+                        if ( IS_NAN_REAL(e_ang) )
+                        {
+                            fprintf( stderr, "[ERROR] NaN detected for e_pen (j = %d). Terminating...\n", j );
+                            fprintf( stderr, "[INFO] p_pen1 = %f\n", p_pen1 );
+                            fprintf( stderr, "[INFO] f9_Dj = %f\n", f9_Dj );
+                            fprintf( stderr, "[INFO] exp_pen2ij = %f\n", exp_pen2ij );
+                            fprintf( stderr, "[INFO] exp_pen2jk = %f\n", exp_pen2jk );
+                            exit( NUMERIC_BREAKDOWN );
+                        }
+#endif
+
+                        CEpen1 = e_pen * Cf9j / f9_Dj;
+                        temp = -2.0 * p_pen2 * e_pen;
+                        CEpen2 = temp * (BOA_ij - 2.0);
+                        CEpen3 = temp * (BOA_jk - 2.0);
+
+                        /* calculate valency angle conjugation energy */
+                        p_coa1 = thbp->p_coa1;
+
+                        exp_coa2 = EXP( p_coa2 * workspace->Delta_boc[j] );
+                        e_coa = p_coa1
+                            * EXP( -p_coa4 * SQR(BOA_ij - 1.5) )
+                            * EXP( -p_coa4 * SQR(BOA_jk - 1.5) )
+                            * EXP( -p_coa3 * SQR(total_bo[i] - BOA_ij) )
+                            * EXP( -p_coa3 * SQR(total_bo[k] - BOA_jk) )
+                            / (1.0 + exp_coa2);
+                        e_coa_total += e_coa;
+
+                        CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
+                        CEcoa2 = -2.0 * p_coa4 * (BOA_jk - 1.5) * e_coa;
+                        CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1.0 + exp_coa2);
+                        CEcoa4 = -2.0 * p_coa3 * (total_bo[i] - BOA_ij) * e_coa;
+                        CEcoa5 = -2.0 * p_coa3 * (total_bo[k] - BOA_jk) * e_coa;
+
+                        /* calculate force contributions */
+#ifdef _OPENMP
+//                        #pragma omp atomic
+#endif
+                        bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
+#ifdef _OPENMP
+//                        #pragma omp atomic
+#endif
+                        bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
+#ifdef _OPENMP
+//                        #pragma omp atomic
+#endif
+                        workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
+#ifdef _OPENMP
+//                        #pragma omp atomic
+#endif
+                        workspace->CdDelta[i] += CEcoa4;
+#ifdef _OPENMP
+//                        #pragma omp atomic
+#endif
+                        workspace->CdDelta[k] += CEcoa5;
+
+                        for ( t = start_j; t < end_j; ++t )
+                        {
+                            pbond_jt = &bond_list[t];
+                            bo_jt = &pbond_jt->bo_data;
+                            temp_bo_jt = bo_jt->BO;
+                            temp = CUBE( temp_bo_jt );
+                            pBOjt7 = temp * temp * temp_bo_jt;
+
+#ifdef _OPENMP
+//                            #pragma omp atomic
+#endif
+                            bo_jt->Cdbo += CEval6 * pBOjt7;
+#ifdef _OPENMP
+//                            #pragma omp atomic
+#endif
+                            bo_jt->Cdbopi += CEval5;
+#ifdef _OPENMP
+//                            #pragma omp atomic
+#endif
+                            bo_jt->Cdbopi2 += CEval5;
+                        }
+
+                        if ( control->ensemble == NVE || control->ensemble == nhNVT
+                                || control->ensemble == bNVT )
+                        {
+                            rvec_ScaledAdd( *f_i, CEval8, p_ijk->dcos_di );
+                            rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
+                            rvec_ScaledAdd( *f_k, CEval8, p_ijk->dcos_dk );
+                        }
+                        else
+                        {
+                            /* terms not related to bond order derivatives
+                             * are added directly into
+                             * forces and pressure vector/tensor */
+                            rvec_Scale( force, CEval8, p_ijk->dcos_di );
+                            rvec_Add( *f_i, force );
+                            rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
+#ifdef _OPENMP
+//                            #pragma omp critical (Three_Body_Interactions_ext_press)
+#endif
                             {
-                                if ( FABS(thbh->prm[cnt].p_val1) > 0.001 )
-                                {
-                                    thbp = &thbh->prm[cnt];
+                                rvec_Add( data->ext_press, ext_press );
+                            }
 
-                                    /* calculate valence angle energy */
-                                    p_val1 = thbp->p_val1;
-                                    p_val2 = thbp->p_val2;
-                                    p_val4 = thbp->p_val4;
-                                    p_val7 = thbp->p_val7;
-                                    theta_00 = thbp->theta_00;
+                            rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
 
-                                    exp3ij = EXP( -p_val3 * POW( BOA_ij, p_val4 ) );
-                                    f7_ij = 1.0 - exp3ij;
-                                    Cf7ij = p_val3 * p_val4
-                                        * POW( BOA_ij, p_val4 - 1.0 ) * exp3ij;
-
-                                    exp3jk = EXP( -p_val3 * POW( BOA_jk, p_val4 ) );
-                                    f7_jk = 1.0 - exp3jk;
-                                    Cf7jk = p_val3 * p_val4 *
-                                        POW( BOA_jk, p_val4 - 1.0 ) * exp3jk;
-
-                                    expval7 = EXP( -p_val7 * workspace->Delta_boc[j] );
-                                    trm8 = 1.0 + expval6 + expval7;
-                                    f8_Dj = p_val5 - (p_val5 - 1.0) * (2.0 + expval6) / trm8;
-                                    Cf8j = ( (1.0 - p_val5) / SQR(trm8) )
-                                        * (p_val6 * expval6 * trm8
-                                        - (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ));
-
-                                    theta_0 = 180.0 - theta_00 * (1.0 - EXP(-p_val10 * (2.0 - SBO2)));
-                                    theta_0 = DEG2RAD( theta_0 );
-
-                                    expval2theta = p_val1 * EXP(-p_val2 * SQR(theta_0 - theta));
-                                    if ( p_val1 >= 0 )
-                                    {
-                                        expval12theta = p_val1 - expval2theta;
-                                    }
-                                    /* To avoid linear Me-H-Me angles (6/6/06) */
-                                    else
-                                    {
-                                        expval12theta = -expval2theta;
-                                    }
-
-                                    CEval1 = Cf7ij * f7_jk * f8_Dj * expval12theta;
-                                    CEval2 = Cf7jk * f7_ij * f8_Dj * expval12theta;
-                                    CEval3 = Cf8j * f7_ij * f7_jk * expval12theta;
-                                    CEval4 = 2.0 * p_val2 * f7_ij * f7_jk * f8_Dj
-                                        * expval2theta * (theta_0 - theta);
-
-                                    Ctheta_0 = p_val10 * DEG2RAD(theta_00)
-                                        * EXP( -p_val10 * (2.0 - SBO2) );
-
-                                    CEval5 = CEval4 * Ctheta_0 * CSBO2;
-                                    CEval6 = CEval5 * dSBO1;
-                                    CEval7 = CEval5 * dSBO2;
-                                    CEval8 = CEval4 / sin_theta;
-
-                                    e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
-                                    e_ang_total += e_ang;
-
-#if defined(DEBUG_FOCUS)
-                                    if ( IS_NAN_REAL(e_ang) )
-                                    {
-                                        fprintf( stderr, "[ERROR] NaN detected for e_ang (j = %d). Terminating...\n", j );
-                                        fprintf( stderr, "[INFO] f7_ij = %f\n", f7_ij );
-                                        fprintf( stderr, "[INFO] f7_jk = %f\n", f7_jk );
-                                        fprintf( stderr, "[INFO] f8_Dj = %f\n", f8_Dj );
-                                        fprintf( stderr, "[INFO] expval12theta = %f\n", expval12theta );
-                                        exit( NUMERIC_BREAKDOWN );
-                                    }
-#endif
-
-                                    /* calculate penalty for double bonds in valency angles */
-                                    p_pen1 = thbp->p_pen1;
-
-                                    exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
-                                    exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
-                                    exp_pen3 = EXP( -p_pen3 * workspace->Delta[j] );
-                                    exp_pen4 = EXP(  p_pen4 * workspace->Delta[j] );
-                                    trm_pen34 = 1.0 + exp_pen3 + exp_pen4;
-                                    f9_Dj = ( 2.0 + exp_pen3 ) / trm_pen34;
-                                    Cf9j = (-p_pen3 * exp_pen3 * trm_pen34
-                                            - (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3
-                                                + p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
-
-                                    e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
-                                    e_pen_total += e_pen;
-
-#if defined(DEBUG_FOCUS)
-                                    if ( IS_NAN_REAL(e_ang) )
-                                    {
-                                        fprintf( stderr, "[ERROR] NaN detected for e_pen (j = %d). Terminating...\n", j );
-                                        fprintf( stderr, "[INFO] p_pen1 = %f\n", p_pen1 );
-                                        fprintf( stderr, "[INFO] f9_Dj = %f\n", f9_Dj );
-                                        fprintf( stderr, "[INFO] exp_pen2ij = %f\n", exp_pen2ij );
-                                        fprintf( stderr, "[INFO] exp_pen2jk = %f\n", exp_pen2jk );
-                                        exit( NUMERIC_BREAKDOWN );
-                                    }
-#endif
-
-                                    CEpen1 = e_pen * Cf9j / f9_Dj;
-                                    temp = -2.0 * p_pen2 * e_pen;
-                                    CEpen2 = temp * (BOA_ij - 2.0);
-                                    CEpen3 = temp * (BOA_jk - 2.0);
-
-                                    /* calculate valency angle conjugation energy */
-                                    p_coa1 = thbp->p_coa1;
-
-                                    exp_coa2 = EXP( p_coa2 * workspace->Delta_boc[j] );
-                                    e_coa = p_coa1
-                                        * EXP( -p_coa4 * SQR(BOA_ij - 1.5) )
-                                        * EXP( -p_coa4 * SQR(BOA_jk - 1.5) )
-                                        * EXP( -p_coa3 * SQR(total_bo[i] - BOA_ij) )
-                                        * EXP( -p_coa3 * SQR(total_bo[k] - BOA_jk) )
-                                        / (1.0 + exp_coa2);
-                                    e_coa_total += e_coa;
-
-                                    CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
-                                    CEcoa2 = -2.0 * p_coa4 * (BOA_jk - 1.5) * e_coa;
-                                    CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1.0 + exp_coa2);
-                                    CEcoa4 = -2.0 * p_coa3 * (total_bo[i] - BOA_ij) * e_coa;
-                                    CEcoa5 = -2.0 * p_coa3 * (total_bo[k] - BOA_jk) * e_coa;
-
-                                    /* calculate force contributions */
+                            rvec_Scale( force, CEval8, p_ijk->dcos_dk );
+                            rvec_Add( *f_k, force );
+                            rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
 #ifdef _OPENMP
-//                                    #pragma omp atomic
+//                            #pragma omp critical (Three_Body_Interactions_ext_press)
 #endif
-                                    bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
-#ifdef _OPENMP
-//                                    #pragma omp atomic
-#endif
-                                    bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
-#ifdef _OPENMP
-//                                    #pragma omp atomic
-#endif
-                                    workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
-#ifdef _OPENMP
-//                                    #pragma omp atomic
-#endif
-                                    workspace->CdDelta[i] += CEcoa4;
-#ifdef _OPENMP
-//                                    #pragma omp atomic
-#endif
-                                    workspace->CdDelta[k] += CEcoa5;
+                            {
+                                rvec_Add( data->ext_press, ext_press );
+                            }
 
-                                    for ( t = start_j; t < end_j; ++t )
-                                    {
-                                        pbond_jt = &bond_list[t];
-                                        bo_jt = &pbond_jt->bo_data;
-                                        temp_bo_jt = bo_jt->BO;
-                                        temp = CUBE( temp_bo_jt );
-                                        pBOjt7 = temp * temp * temp_bo_jt;
+                            /* This part is for a fully-flexible box */
+                            /* rvec_OuterProduct( temp_rtensor,
+                               p_ijk->dcos_di, system->atoms[i].x );
+                               rtensor_Scale( total_rtensor, +CEval8, temp_rtensor );
 
-                                        // fprintf( out_control->eval, "%6d%12.8f\n",
-                                        // workspace->orig_id[ bond_list[t].nbr ],
-                                        //    (CEval6 * pBOjt7) );
+                               rvec_OuterProduct( temp_rtensor,
+                               p_ijk->dcos_dj, system->atoms[j].x );
+                               rtensor_ScaledAdd(total_rtensor, CEval8, temp_rtensor);
 
-#ifdef _OPENMP
-//                                        #pragma omp atomic
-#endif
-                                        bo_jt->Cdbo += CEval6 * pBOjt7;
-#ifdef _OPENMP
-//                                        #pragma omp atomic
-#endif
-                                        bo_jt->Cdbopi += CEval5;
-#ifdef _OPENMP
-//                                        #pragma omp atomic
-#endif
-                                        bo_jt->Cdbopi2 += CEval5;
-                                    }
+                               rvec_OuterProduct( temp_rtensor,
+                               p_ijk->dcos_dk, system->atoms[k].x );
+                               rtensor_ScaledAdd(total_rtensor, CEval8, temp_rtensor);
 
-                                    if ( control->ensemble == NVE || control->ensemble == nhNVT
-                                            || control->ensemble == bNVT )
-                                    {
-                                        rvec_ScaledAdd( *f_i, CEval8, p_ijk->dcos_di );
-                                        rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
-                                        rvec_ScaledAdd( *f_k, CEval8, p_ijk->dcos_dk );
-                                    }
-                                    else
-                                    {
-                                        /* terms not related to bond order derivatives
-                                         * are added directly into
-                                         * forces and pressure vector/tensor */
-                                        rvec_Scale( force, CEval8, p_ijk->dcos_di );
-                                        rvec_Add( *f_i, force );
-                                        rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-#ifdef _OPENMP
-//                                        #pragma omp critical (Three_Body_Interactions_ext_press)
-#endif
-                                        {
-                                            rvec_Add( data->ext_press, ext_press );
-                                        }
-
-                                        rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
-
-                                        rvec_Scale( force, CEval8, p_ijk->dcos_dk );
-                                        rvec_Add( *f_k, force );
-                                        rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
-#ifdef _OPENMP
-//                                        #pragma omp critical (Three_Body_Interactions_ext_press)
-#endif
-                                        {
-                                            rvec_Add( data->ext_press, ext_press );
-                                        }
-
-                                        /* This part is for a fully-flexible box */
-                                        /* rvec_OuterProduct( temp_rtensor,
-                                           p_ijk->dcos_di, system->atoms[i].x );
-                                           rtensor_Scale( total_rtensor, +CEval8, temp_rtensor );
-
-                                           rvec_OuterProduct( temp_rtensor,
-                                           p_ijk->dcos_dj, system->atoms[j].x );
-                                           rtensor_ScaledAdd(total_rtensor, CEval8, temp_rtensor);
-
-                                           rvec_OuterProduct( temp_rtensor,
-                                           p_ijk->dcos_dk, system->atoms[k].x );
-                                           rtensor_ScaledAdd(total_rtensor, CEval8, temp_rtensor);
-
-                                           if( pbond_ij->imaginary || pbond_jk->imaginary )
-                                           rtensor_ScaledAdd( data->flex_bar.P,
-                                           -1.0, total_rtensor );
-                                           else
-                                           rtensor_Add( data->flex_bar.P, total_rtensor ); */
-                                    }
+                               if( pbond_ij->imaginary || pbond_jk->imaginary )
+                               rtensor_ScaledAdd( data->flex_bar.P,
+                               -1.0, total_rtensor );
+                               else
+                               rtensor_Add( data->flex_bar.P, total_rtensor ); */
+                        }
 
 #ifdef TEST_ENERGY
-                                    fprintf( out_control->eval,
-                                             //"%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e",
-                                             "%6d%6d%6d%23.15e%23.15e%23.15e\n",
-                                             i + 1, j + 1, k + 1,
-                                             //workspace->orig_id[i]+1,
-                                             //workspace->orig_id[j]+1,
-                                             //workspace->orig_id[k]+1,
-                                             //workspace->Delta_boc[j],
-                                             RAD2DEG(theta), /*BOA_ij, BOA_jk, */
-                                             e_ang, data->E_Ang );
+                        fprintf( out_control->eval,
+                                 //"%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e",
+                                 "%6d%6d%6d%23.15e%23.15e%23.15e\n",
+                                 i + 1, j + 1, k + 1,
+                                 //workspace->orig_id[i]+1,
+                                 //workspace->orig_id[j]+1,
+                                 //workspace->orig_id[k]+1,
+                                 //workspace->Delta_boc[j],
+                                 RAD2DEG(theta), /*BOA_ij, BOA_jk, */
+                                 e_ang, data->E_Ang );
 
-                                    /*fprintf( out_control->eval,
-                                      "%23.15e%23.15e%23.15e%23.15e",
-                                      p_val3, p_val4, BOA_ij, BOA_jk );
-                                      fprintf( out_control->eval,
-                                      "%23.15e%23.15e%23.15e%23.15e",
-                                      f7_ij, f7_jk, f8_Dj, expval12theta );
-                                      fprintf( out_control->eval,
-                                      "%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-                                      CEval1, CEval2, CEval3, CEval4, CEval5
-                                      //CEval6, CEval7, CEval8  );*/
+                        /*fprintf( out_control->eval,
+                          "%23.15e%23.15e%23.15e%23.15e",
+                          p_val3, p_val4, BOA_ij, BOA_jk );
+                          fprintf( out_control->eval,
+                          "%23.15e%23.15e%23.15e%23.15e",
+                          f7_ij, f7_jk, f8_Dj, expval12theta );
+                          fprintf( out_control->eval,
+                          "%23.15e%23.15e%23.15e%23.15e%23.15e\n",
+                          CEval1, CEval2, CEval3, CEval4, CEval5
+                          //CEval6, CEval7, CEval8  );*/
 
-                                    /*fprintf( out_control->eval,
-                                      "%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-                                      -p_ijk->dcos_di[0]/sin_theta,
-                                      -p_ijk->dcos_di[1]/sin_theta,
-                                      -p_ijk->dcos_di[2]/sin_theta,
-                                      -p_ijk->dcos_dj[0]/sin_theta,
-                                      -p_ijk->dcos_dj[1]/sin_theta,
-                                      -p_ijk->dcos_dj[2]/sin_theta,
-                                      -p_ijk->dcos_dk[0]/sin_theta,
-                                      -p_ijk->dcos_dk[1]/sin_theta,
-                                      -p_ijk->dcos_dk[2]/sin_theta );*/
+                        /*fprintf( out_control->eval,
+                          "%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e\n",
+                          -p_ijk->dcos_di[0]/sin_theta,
+                          -p_ijk->dcos_di[1]/sin_theta,
+                          -p_ijk->dcos_di[2]/sin_theta,
+                          -p_ijk->dcos_dj[0]/sin_theta,
+                          -p_ijk->dcos_dj[1]/sin_theta,
+                          -p_ijk->dcos_dj[2]/sin_theta,
+                          -p_ijk->dcos_dk[0]/sin_theta,
+                          -p_ijk->dcos_dk[1]/sin_theta,
+                          -p_ijk->dcos_dk[2]/sin_theta );*/
 
-                                    /* fprintf( out_control->epen,
-                                       "%23.15e%23.15e%23.15e\n",
-                                       CEpen1, CEpen2, CEpen3 );
-                                       fprintf( out_control->epen,
-                                       "%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-                                       workspace->orig_id[i],  workspace->orig_id[j],
-                                       workspace->orig_id[k], RAD2DEG(theta),
-                                       BOA_ij, BOA_jk, e_pen, data->E_Pen ); */
+                        /* fprintf( out_control->epen,
+                           "%23.15e%23.15e%23.15e\n",
+                           CEpen1, CEpen2, CEpen3 );
+                           fprintf( out_control->epen,
+                           "%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
+                           workspace->orig_id[i],  workspace->orig_id[j],
+                           workspace->orig_id[k], RAD2DEG(theta),
+                           BOA_ij, BOA_jk, e_pen, data->E_Pen ); */
 
-                                    fprintf( out_control->ecoa,
-                                             "%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-                                             workspace->orig_id[i],
-                                             workspace->orig_id[j],
-                                             workspace->orig_id[k],
-                                             RAD2DEG(theta), BOA_ij, BOA_jk,
-                                             e_coa, data->E_Coa );
+                        fprintf( out_control->ecoa,
+                                 "%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
+                                 workspace->orig_id[i],
+                                 workspace->orig_id[j],
+                                 workspace->orig_id[k],
+                                 RAD2DEG(theta), BOA_ij, BOA_jk,
+                                 e_coa, data->E_Coa );
 #endif
 
 #ifdef TEST_FORCES
-                                    /* angle forces */
-                                    Add_dBO( system, lists, j, pi, CEval1, workspace->f_ang );
-                                    Add_dBO( system, lists, j, pk, CEval2, workspace->f_ang );
-                                    Add_dDelta( system, lists, j, CEval3 + CEval7, workspace->f_ang );
+                        /* angle forces */
+                        Add_dBO( system, lists, j, pi, CEval1, workspace->f_ang );
+                        Add_dBO( system, lists, j, pk, CEval2, workspace->f_ang );
+                        Add_dDelta( system, lists, j, CEval3 + CEval7, workspace->f_ang );
 
-                                    for ( t = start_j; t < end_j; ++t )
-                                    {
-                                        pbond_jt = &bond_list[t];
-                                        bo_jt = &pbond_jt->bo_data;
-                                        temp_bo_jt = bo_jt->BO;
-                                        temp = CUBE( temp_bo_jt );
-                                        pBOjt7 = temp * temp * temp_bo_jt;
+                        for ( t = start_j; t < end_j; ++t )
+                        {
+                            pbond_jt = &bond_list[t];
+                            bo_jt = &pbond_jt->bo_data;
+                            temp_bo_jt = bo_jt->BO;
+                            temp = CUBE( temp_bo_jt );
+                            pBOjt7 = temp * temp * temp_bo_jt;
 
-                                        Add_dBO( system, lists, j, t, CEval6 * pBOjt7,
-                                                 workspace->f_ang );
-                                        Add_dBOpinpi2( system, lists, j, t, CEval5, CEval5,
-                                                workspace->f_ang, workspace->f_ang );
-                                    }
-
-                                    rvec_ScaledAdd( workspace->f_ang[i], CEval8, p_ijk->dcos_di );
-                                    rvec_ScaledAdd( workspace->f_ang[j], CEval8, p_ijk->dcos_dj );
-                                    rvec_ScaledAdd( workspace->f_ang[k], CEval8, p_ijk->dcos_dk );
-                                    /* end angle forces */
-
-                                    /* penalty forces */
-                                    Add_dDelta( system, lists, j, CEpen1, workspace->f_pen );
-                                    Add_dBO( system, lists, j, pi, CEpen2, workspace->f_pen );
-                                    Add_dBO( system, lists, j, pk, CEpen3, workspace->f_pen );
-                                    /* end penalty forces */
-
-                                    /* coalition forces */
-                                    Add_dBO( system, lists, j, pi, CEcoa1 - CEcoa4, workspace->f_coa );
-                                    Add_dBO( system, lists, j, pk, CEcoa2 - CEcoa5, workspace->f_coa );
-                                    Add_dDelta( system, lists, j, CEcoa3, workspace->f_coa );
-                                    Add_dDelta( system, lists, i, CEcoa4, workspace->f_coa );
-                                    Add_dDelta( system, lists, k, CEcoa5, workspace->f_coa );
-                                    /* end coalition forces */
-#endif
-                                }
-                            }
+                            Add_dBO( system, lists, j, t, CEval6 * pBOjt7,
+                                     workspace->f_ang );
+                            Add_dBOpinpi2( system, lists, j, t, CEval5, CEval5,
+                                    workspace->f_ang, workspace->f_ang );
                         }
+
+                        rvec_ScaledAdd( workspace->f_ang[i], CEval8, p_ijk->dcos_di );
+                        rvec_ScaledAdd( workspace->f_ang[j], CEval8, p_ijk->dcos_dj );
+                        rvec_ScaledAdd( workspace->f_ang[k], CEval8, p_ijk->dcos_dk );
+                        /* end angle forces */
+
+                        /* penalty forces */
+                        Add_dDelta( system, lists, j, CEpen1, workspace->f_pen );
+                        Add_dBO( system, lists, j, pi, CEpen2, workspace->f_pen );
+                        Add_dBO( system, lists, j, pk, CEpen3, workspace->f_pen );
+                        /* end penalty forces */
+
+                        /* coalition forces */
+                        Add_dBO( system, lists, j, pi, CEcoa1 - CEcoa4, workspace->f_coa );
+                        Add_dBO( system, lists, j, pk, CEcoa2 - CEcoa5, workspace->f_coa );
+                        Add_dDelta( system, lists, j, CEcoa3, workspace->f_coa );
+                        Add_dDelta( system, lists, i, CEcoa4, workspace->f_coa );
+                        Add_dDelta( system, lists, k, CEcoa5, workspace->f_coa );
+                        /* end coalition forces */
+#endif
                     }
                 }
 

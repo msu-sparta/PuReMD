@@ -411,7 +411,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     data->E_vdW = e_vdW_total;
     data->E_Ele = e_ele_total;
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] vdW_Coulomb_Energy: ext_press = (%24.15e %24.15e %24.15e)\n",
             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
 #endif
