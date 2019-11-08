@@ -211,9 +211,12 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	AC_CHECK_HEADERS([mkl.h], [MKL_FOUND_HEADERS="yes"])
 	if test "x${MKL_FOUND_HEADERS}" = "xyes"
 	then
+		# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
+		save_LIBS="${LIBS}"
 		AC_SEARCH_LIBS([LAPACKE_dgels], [mkl_intel_ilp64],
 			       [MKL_FOUND_LIBS="yes"], [MKL_FOUND_LIBS="no"],
 			       [-lmkl_sequential -lmkl_core -lpthread -lm -ldl])
+		LIBS="${save_LIBS}"
 		AS_IF([test "x${MKL_FOUND_LIBS}" != "xyes"],
 		      [AC_MSG_ERROR([Unable to find MKL LAPACKE library.])])
 		LAPACKE_LIBS="-lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl"
@@ -222,9 +225,12 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 		AC_CHECK_HEADERS([lapacke.h], [LAPACKE_FOUND_HEADERS="yes"])
 		if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"
 		then
+			# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
+			save_LIBS="${LIBS}"
 			AC_SEARCH_LIBS([LAPACKE_dgels], [lapacke],
 				       [LAPACKE_FOUND_LIBS="yes"], [LAPACKE_FOUND_LIBS="no"],
 				       [-llapack])
+			LIBS="${save_LIBS}"
 			AS_IF([test "x${LAPACKE_FOUND_LIBS}" != "xyes"],
 			      [AC_MSG_ERROR([Unable to find LAPACKE library.])])
 			LAPACKE_LIBS="-llapack"
@@ -244,9 +250,12 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	AC_CHECK_HEADERS([tensorflow/c/c_api.h], [TENSORFLOW_FOUND_HEADERS="yes"])
 	if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes"
 	then
-		AC_SEARCH_LIBS([TF_NewTensor], [tensorflow tensorflow_framework],
+		# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
+		save_LIBS="${LIBS}"
+		AC_SEARCH_LIBS([TF_NewStatus], [tensorflow],
 			       [TENSORFLOW_FOUND_LIBS="yes"], [TENSORFLOW_FOUND_LIBS="no"],
-			       [])
+			       [-ltensorflow_framework])
+		LIBS="${save_LIBS}"
 		AS_IF([test "x${TENSORFLOW_FOUND_LIBS}" != "xyes"],
 		      [AC_MSG_WARN([
 ----------------------------------------------------
