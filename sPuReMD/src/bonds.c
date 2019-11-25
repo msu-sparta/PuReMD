@@ -67,7 +67,6 @@ void Bonds( reax_system *system, control_params *control,
             {
                 if ( i < bonds->bond_list[pj].nbr )
                 {
-                    /* set the pointers */
                     j = bonds->bond_list[pj].nbr;
                     type_i = system->atoms[i].type;
                     type_j = system->atoms[j].type;
@@ -76,22 +75,21 @@ void Bonds( reax_system *system, control_params *control,
                     twbp = &system->reax_param.tbp[type_i][type_j];
                     bo_ij = &bonds->bond_list[pj].bo_data;
 
-                    /* calculate the constants */
                     pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
                     exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
                     CEbo = -twbp->De_s * exp_be12
                         * ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
 
-                    /* calculate the Bond Energy */
+                    /* calculate bond energy */
                     ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
                         - twbp->De_p * bo_ij->BO_pi
                         - twbp->De_pp * bo_ij->BO_pi2;
                     ebond_total += ebond;
 
-                    /* calculate derivatives of Bond Orders */
+                    /* calculate derivatives of bond orders */
                     bo_ij->Cdbo += CEbo;
-                    bo_ij->Cdbopi -= (CEbo + twbp->De_p);
-                    bo_ij->Cdbopi2 -= (CEbo + twbp->De_pp);
+                    bo_ij->Cdbopi -= CEbo + twbp->De_p;
+                    bo_ij->Cdbopi2 -= CEbo + twbp->De_pp;
 
 #ifdef TEST_ENERGY
                     fprintf( out_control->ebond, "%6d%6d%24.15e%24.15e\n",
@@ -100,19 +98,21 @@ void Bonds( reax_system *system, control_params *control,
                              bo_ij->BO, ebond );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                     Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
                     Add_dBOpinpi2( system, lists, i, pj,
                             -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
                             workspace->f_be, workspace->f_be );
 #endif
 
-                    /* Stabilisation terminal triple bond */
+                    /* Stabilisation terminal triple bond in C-O */
                     if ( bo_ij->BO >= 1.00 )
                     {
-                        if ( gp37 == 2
-                                || (FABS(sbp_i->mass - 12.0) < 0.0001 && FABS(sbp_j->mass - 15.9990) < 0.0001)
-                                || (FABS(sbp_j->mass - 12.0) < 0.0001 && FABS(sbp_i->mass - 15.9990) < 0.0001) )
+                        if ( gp37 == 2 &&
+                                ( (strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
+                                    && strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
+                                || (strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
+                                    && strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) ) )
                         {
                             //ba = SQR( bo_ij->BO - 2.5 );
                             exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );
@@ -129,12 +129,12 @@ void Bonds( reax_system *system, control_params *control,
                             //estrain(j2) = estrain(j2) + 0.5 * estriph;
                             ebond_total += estriph;
 
-                            decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1) *
-                                ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
-                            decobdboua = -gp10 * exphu * hulpov *
-                                (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
-                            decobdboub = -gp10 * exphu * hulpov *
-                                (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                            decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
+                                * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
+                            decobdboua = -gp10 * exphu * hulpov
+                                * (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
+                            decobdboub = -gp10 * exphu * hulpov
+                                * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
                             bo_ij->Cdbo += decobdbo;
                             workspace->CdDelta[i] += decobdboua;

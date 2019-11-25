@@ -29,8 +29,6 @@
 
 
 #if defined(TEST_FORCES)
-
-
 void Print_Bond_Orders( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -594,13 +592,13 @@ void Output_Results( reax_system *system, control_params *control,
     {
 #if defined(TEST_ENERGY) || defined(DEBUG) || defined(DEBUG_FOCUS)
         fprintf( out_control->out,
-                 "%-6d%24.15e%24.15e%24.15e%13.5f%13.5f%16.5f%13.5f%13.5f\n",
+                 "%-6d%24.15f%24.15f%24.15f%13.5f%13.5f%16.5f%13.5f%13.5f\n",
                  data->step, data->E_Tot, data->E_Pot, E_CONV * data->E_Kin,
                  data->therm.T, control->T, system->box.volume, data->iso_bar.P,
                  (control->P[0] + control->P[1] + control->P[2]) / 3.0 );
 
         fprintf( out_control->pot,
-                 "%-6d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
+                 "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
                  data->step,
                  data->E_BE,
                  data->E_Ov + data->E_Un,  data->E_Lp,

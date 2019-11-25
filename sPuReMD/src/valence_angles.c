@@ -79,10 +79,6 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         (*dcos_theta_dk)[t] = dvec_ji[t] * inv_dists
             - Cdot_inv3 * sqr_d_ji * dvec_jk[t];
     }
-
-    /*fprintf( stderr,
-      "%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-      dvec_jk[t] * inv_dists*/
 }
 
 
@@ -622,7 +618,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                                  e_coa, data->E_Coa );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                         /* angle forces */
                         Add_dBO( system, lists, j, pi, CEval1, workspace->f_ang );
                         Add_dBO( system, lists, j, pk, CEval2, workspace->f_ang );
@@ -684,8 +680,6 @@ void Valence_Angles( reax_system *system, control_params *control,
         }
     }
 
-    //fprintf( stderr,"%d: Number of angle interactions: %d\n",
-    // data->step, num_thb_intrs );
 #ifdef TEST_ENERGY
     fprintf( stderr, "Number of angle interactions: %d\n", num_thb_intrs );
 

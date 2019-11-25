@@ -85,7 +85,7 @@ void Atom_Energy( reax_system *system, control_params *control,
                  workspace->orig_id[i] + 1, workspace->nlp[i], e_lp, data->E_Lp );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
         Add_dDelta( system, lists, i, CElp, workspace->f_lp );  // lp - 1st term
 #endif
 
@@ -123,13 +123,13 @@ void Atom_Energy( reax_system *system, control_params *control,
                             workspace->CdDelta[i] += deahu2dsbo;
 
 #ifdef TEST_ENERGY
-                            fprintf(out_control->elp, "C2cor%6d%6d%23.15e%23.15e%23.15e\n",
+                            fprintf( out_control->elp, "C2cor%6d%6d%23.15e%23.15e%23.15e\n",
                                     // workspace->orig_id[i], workspace->orig_id[j],
                                     i + 1, j + 1, e_lph, deahu2dbo, deahu2dsbo );
 #endif
-#ifdef TEST_FORCES
-                            Add_dBO(system, lists, i, pj, deahu2dbo, workspace->f_lp);
-                            Add_dDelta(system, lists, i, deahu2dsbo, workspace->f_lp);
+#if defined(TEST_FORCES)
+                            Add_dBO( system, lists, i, pj, deahu2dbo, workspace->f_lp );
+                            Add_dDelta( system, lists, i, deahu2dsbo, workspace->f_lp );
 #endif
                         }
                     }
@@ -219,7 +219,7 @@ void Atom_Energy( reax_system *system, control_params *control,
         workspace->CdDelta[i] += CEover3;   // OvCoor - 2nd term
         workspace->CdDelta[i] += CEunder3;  // UnCoor - 1st term
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
         Add_dDelta( system, lists, i, CEover3, workspace->f_ov );  // OvCoor - 2nd
         Add_dDelta( system, lists, i, CEunder3, workspace->f_un ); // UnCoor - 1st
 #endif
@@ -276,7 +276,7 @@ void Atom_Energy( reax_system *system, control_params *control,
             (bo_ij->BO_pi + bo_ij->BO_pi2) );*/
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
             Add_dBO( system, lists, i, pj, CEover1 * twbp->p_ovun1 * twbp->De_s,
                      workspace->f_ov ); // OvCoor - 1st term
 

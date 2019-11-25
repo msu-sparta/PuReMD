@@ -584,7 +584,7 @@ static void Copy_Storage( reax_system *system, static_storage *workspace,
     workspace->b_s[top] = -system->reax_param.sbp[ old_type ].chi;
     workspace->b_t[top] = -1.0;
 
-    if ( system->reax_param.sbp[ old_type ].p_hbond == 1 ) // H atom
+    if ( system->reax_param.sbp[ old_type ].p_hbond == H_ATOM )
     {
         workspace->hbond_index[top] = (*num_H)++;
     }

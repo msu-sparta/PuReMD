@@ -834,7 +834,8 @@ static void Calculate_Dipole_Moment( reax_system *system, control_params *contro
 
                 for ( i = 1; i < 2; ++i )
                 {
-                    Compute_Atom_Distance_Triclinic( &system->box,
+                    Compute_Atom_Distance_Triclinic( control,
+                            &system->box,
                             system->atoms[ m.atom_list[0] ].x,
                             system->atoms[ m.atom_list[i] ].x,
                             system->atoms[ m.atom_list[0] ].rel_map,
@@ -892,7 +893,7 @@ static void Calculate_Drift( reax_system *system, control_params *control,
             type = system->atoms[i].type;
             ++count[type];
 
-            Compute_Atom_Distance_Triclinic( &system->box,
+            Compute_Atom_Distance_Triclinic( control, &system->box,
                     workspace->x_old[i], system->atoms[i].x,
                     system->atoms[i].rel_map, system->atoms[i].rel_map,
                     system->atoms[i].rel_map, driftvec ); //TODO: what to use for rel_box?

@@ -77,7 +77,7 @@
 //#define K_B (0.831687)
 #define K_B (0.8314510) // Fortran ReaxFF code
 /* --> amu A / ps^2 */
-#define F_CONV (1e6 / 48.88821291 / 48.88821291)
+#define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
 /* amu A^2 / ps^2 --> kcal/mol */
 #define E_CONV (0.002391)
 /* conversion constant from electron volts to kilo-calories per mole */
@@ -355,6 +355,11 @@ typedef struct spuremd_handle spuremd_handle;
 /* function pointer for calculating a bonded interaction */
 typedef void (*interaction_function)( reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls* );
+/* function pointer for calculating pairwise atom distance */
+typedef real (*atom_distance_function)( simulation_box*,
+        rvec, rvec, ivec, ivec, ivec, rvec );
+/* function pointer for updating atom positions */
+typedef void (*update_atom_position_function)( rvec, rvec, ivec, simulation_box* );
 #if defined(TEST_FORCES)
 /* function pointers for printed bonded interactions */
 typedef void (*print_interaction)(reax_system*, control_params*, simulation_data*,
@@ -880,6 +885,10 @@ struct control_params
     int num_threads;
     /* function pointers for bonded interactions */
     interaction_function intr_funcs[NUM_INTRS];
+    /* function pointer for computing pairwise atom distance */
+    atom_distance_function compute_atom_distance;
+    /* function pointer for updating atom position */
+    update_atom_position_function update_atom_position;
 #if defined(TEST_FORCES)
     /* function pointers for printed bonded interactions */
     print_interaction print_intr_funcs[NUM_INTRS];
@@ -1478,7 +1487,6 @@ struct output_controls
 
     int restart_format;
     int restart_freq;
-    int debug_level;
     int energy_update_freq;
 
     /* trajectory file pointer pointers */

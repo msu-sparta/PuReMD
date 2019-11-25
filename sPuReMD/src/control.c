@@ -24,6 +24,7 @@
 #include <ctype.h>
 #include <zlib.h>
 
+#include "box.h"
 #include "traj.h"
 #include "tool_box.h"
 
@@ -56,9 +57,9 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->dt = 0.25;
 
     control->geo_format = PDB;
-    control->restrict_bonds = 0;
+    control->restrict_bonds = FALSE;
 
-    control->periodic_boundaries = 1;
+    control->periodic_boundaries = TRUE;
 
     control->reneighbor = 1;
 
@@ -99,12 +100,12 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
     control->cm_solver_pre_app_jacobi_iters = 50;
 
-    control->T_init = 0.;
-    control->T_final = 300.;
+    control->T_init = 0.0;
+    control->T_final = 300.0;
     control->Tau_T = 1.0;
-    control->T_mode = 0.;
-    control->T_rate = 1.;
-    control->T_freq = 1.;
+    control->T_mode = 0.0;
+    control->T_rate = 1.0;
+    control->T_freq = 1.0;
 
     control->P[0] = 0.000101325;
     control->P[1] = 0.000101325;
@@ -118,7 +119,6 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     control->remove_CoM_vel = 25;
 
-    out_control->debug_level = 0;
     out_control->energy_update_freq = 0;
 
     out_control->write_steps = 0;
@@ -462,11 +462,6 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                     val = atoi(tmp[1]);
                     control->remove_CoM_vel = val;
                 }
-                else if ( strncmp(tmp[0], "debug_level", MAX_LINE) == 0 )
-                {
-                    ival = atoi(tmp[1]);
-                    out_control->debug_level = ival;
-                }
                 else if ( strncmp(tmp[0], "energy_update_freq", MAX_LINE) == 0 )
                 {
                     ival = atoi(tmp[1]);
@@ -617,6 +612,19 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     else
     {
         control->T = control->T_init;
+    }
+
+    /* periodic boundary conditions */
+    if ( control->periodic_boundaries == TRUE )
+    {
+        control->compute_atom_distance = &Compute_Atom_Distance_Periodic;
+        control->update_atom_position = &Update_Atom_Position_Periodic;
+    }
+    /* non-periodic boundary conditions */
+    else
+    {
+        control->compute_atom_distance = &Compute_Atom_Distance_Non_Periodic;
+        control->update_atom_position = &Update_Atom_Position_Non_Periodic;
     }
 
     /* derived cutoffs */

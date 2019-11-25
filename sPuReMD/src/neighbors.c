@@ -51,7 +51,7 @@ typedef int (*find_far_neighbors_function)( rvec, rvec, int, int,
 static void Choose_Neighbor_Counter( reax_system *system, control_params *control,
         count_far_neighbors_function *Count_Far_Neighbors )
 {
-    if ( control->periodic_boundaries )
+    if ( control->periodic_boundaries == TRUE )
     {
 #if defined(SMALL_BOX_SUPPORT)
         if ( system->box.box_norms[0] >= 2.0 * control->vlist_cut
@@ -78,7 +78,7 @@ static void Choose_Neighbor_Counter( reax_system *system, control_params *contro
 static void Choose_Neighbor_Finder( reax_system *system, control_params *control,
         find_far_neighbors_function *Find_Far_Neighbors )
 {
-    if ( control->periodic_boundaries )
+    if ( control->periodic_boundaries == TRUE )
     {
 #if defined(SMALL_BOX_SUPPORT)
         if ( system->box.box_norms[0] >= 2.0 * control->vlist_cut

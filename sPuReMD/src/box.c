@@ -244,7 +244,7 @@ void Update_Box_Semi_Isotropic( simulation_box *box, rvec mu )
  *      the simulation box that this atom was re-mapped into
  *      during the position update where (0,0,0) represents no mapping
  *  */
-void Update_Atom_Position( rvec x, rvec dx, ivec rel_map, simulation_box *box )
+void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box *box )
 {
     int i, remapped;
     real tmp;
@@ -289,14 +289,55 @@ void Update_Atom_Position( rvec x, rvec dx, ivec rel_map, simulation_box *box )
             }
         }
 
+        assert( tmp >= 0.0 && tmp < box->box_norms[i] );
+
+        x[i] = tmp;
+    }
+}
+
+
+/* Update the atomic position such that the new position
+ * is within the simulation box
+ *
+ * Assumption: (0, 0, 0) is the minimum box coordinate,
+ * the the maximum coordinate is strictly positive in each dimension
+ *
+ * Inputs:
+ *  x: current atom position 
+ *  dx: displacement vector from the current position
+ *  box: struct of info. for the simulation box
+ *
+ * Outputs:
+ *  x: updated atom position
+ *  rel_map: unused
+ *  */
+void Update_Atom_Position_Non_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box *box )
+{
+    int i;
+    real tmp;
+
+    for ( i = 0; i < 3; i++ )
+    {
+        /* new atomic position after update along dimension i */
+        tmp = x[i] + dx[i];
+
+        /* implement as hard boundary via thresholding */
+        if ( tmp < 0.0 )
+        {
+            tmp = 0.0;
+        }
+        else if ( tmp >= box->box_norms[i] )
+        {
+            tmp = box->box_norms[i] - 0.0001;
+        }
+
         x[i] = tmp;
     }
 }
 
 
 /* Compute the Euclidean distance between a pair of atoms (3D space).
- * This function supports both non-peroidic boundary conditions 
- * (for the simulation box) and periodic boundary conditions.
+ * This function supports peroidic boundary conditions.
  *
  * Inputs:
  * box: struct containing simulation box info
@@ -312,7 +353,7 @@ void Update_Atom_Position( rvec x, rvec dx, ivec rel_map, simulation_box *box )
  * r: displacement vector betweeon the atoms
  * return value: distance
  */
-real Compute_Atom_Distance( simulation_box* box, rvec x1, rvec x2,
+real Compute_Atom_Distance_Periodic( simulation_box* box, rvec x1, rvec x2,
         ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
 {
     int i;
@@ -339,7 +380,44 @@ real Compute_Atom_Distance( simulation_box* box, rvec x1, rvec x2,
 }
 
 
-void Compute_Atom_Distance_Triclinic( simulation_box* box, rvec x1, rvec x2,
+/* Compute the Euclidean distance between a pair of atoms (3D space).
+ * This function supports non-peroidic boundary conditions.
+ *
+ * Inputs:
+ * box: struct containing simulation box info
+ * x1: position of first atom
+ * x2: position of second atom
+ * x2_rel_box: unused
+ * x1_rel_map / x2_rel_map: unused
+ *
+ * Outputs:
+ * r: displacement vector betweeon the atoms
+ * return value: distance
+ */
+real Compute_Atom_Distance_Non_Periodic( simulation_box* box, rvec x1, rvec x2,
+        ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
+{
+    int i;
+    real norm;
+
+    norm = 0.0;
+
+    for ( i = 0; i < 3; i++ )
+    {
+        r[i] = x2[i] - x1[i];
+
+        norm += SQR( r[i] );
+    }
+
+    /* note: distance of exactly 0.0 is also an error condition */
+    assert( norm > 0.0 );
+
+    return SQRT( norm );
+}
+
+
+void Compute_Atom_Distance_Triclinic( control_params *control,
+        simulation_box* box, rvec x1, rvec x2,
         ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
 {
     rvec xa, xb, ra;
@@ -348,14 +426,16 @@ void Compute_Atom_Distance_Triclinic( simulation_box* box, rvec x1, rvec x2,
     Transform( x1, box, -1, xa );
     Transform( x2, box, -1, xb );
 
-    Compute_Atom_Distance( box, xa, xb, x1_rel_map, x2_rel_map, x2_rel_box, ra );
+    control->compute_atom_distance( box, xa, xb,
+            x1_rel_map, x2_rel_map, x2_rel_box, ra );
 
     /* translate position from Triclinic to Cartesian coordinates */
     Transform( ra, box, 1, r );
 }
 
 
-void Update_Atom_Position_Triclinic( rvec x, rvec dx, ivec rel_map, simulation_box* box )
+void Update_Atom_Position_Triclinic( control_params *control, simulation_box *box,
+        rvec x, rvec dx, ivec rel_map )
 {
     rvec xa, dxa;
 
@@ -363,7 +443,7 @@ void Update_Atom_Position_Triclinic( rvec x, rvec dx, ivec rel_map, simulation_b
     Transform( x, box, -1, xa );
     Transform( dx, box, -1, dxa );
 
-    Update_Atom_Position( xa, dxa, rel_map, box );
+    control->update_atom_position( xa, dxa, rel_map, box );
 
     /* translate position from Triclinic to Cartesian coordinates */
     Transform( xa, box, 1, x );

@@ -48,9 +48,8 @@ static void Compute_Polarization_Energy( reax_system* system,
             q = system->atoms[i].q;
             type_i = system->atoms[i].type;
 
-            e_pol += ( system->reax_param.sbp[ type_i ].chi * q
-                    + (system->reax_param.sbp[ type_i ].eta / 2.0) * SQR( q ) )
-                * KCALpMOL_to_EV;
+            e_pol += KCALpMOL_to_EV * (system->reax_param.sbp[ type_i ].chi * q
+                    + (system->reax_param.sbp[ type_i ].eta / 2.0) * SQR( q ));
         }
     }
     else if ( control->charge_method == ACKS2_CM )
@@ -65,8 +64,8 @@ static void Compute_Polarization_Energy( reax_system* system,
             type_i = system->atoms[i].type;
 
             /* energy due to first and second order EE parameters */
-            e_pol += KCALpMOL_to_EV * ( system->reax_param.sbp[ type_i ].chi
-                    + system->reax_param.sbp[ type_i ].eta / 2.0 * q) *  q;
+            e_pol += KCALpMOL_to_EV * (system->reax_param.sbp[ type_i ].chi * q
+                    + (system->reax_param.sbp[ type_i ].eta / 2.0) * SQR( q ));
 
             /* energy due to coupling with kinetic energy potential */
             e_pol += KCALpMOL_to_EV * system->atoms[i].q * workspace->s[0][ system->N + i ];
@@ -324,7 +323,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                              e_ele/*, e_ele_total*/ );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                     rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
@@ -558,7 +557,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             e_ele, data->E_Ele );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                     rvec_ScaledAdd( workspace->f_vdw[i], -CEvd, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
@@ -636,7 +635,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                     d_bond_softness, nbr_pj->dvec );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                             rvec_ScaledAdd( workspace->f_ele[i],
                                     -d_bond_softness, nbr_pj->dvec );
                             rvec_ScaledAdd( workspace->f_ele[j],

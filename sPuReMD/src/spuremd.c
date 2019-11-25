@@ -47,7 +47,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     rvec diff, cross;
 
     /* remove rotational and translational velocity of the center of mass */
-    if ( control->ensemble != NVE && control->remove_CoM_vel
+    if ( control->ensemble != NVE && control->remove_CoM_vel > 0
             && data->step > 0 && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
@@ -252,7 +252,7 @@ int simulate( const void * const handle )
                     spmd_handle->lists );
         }
         //}
-        
+
         for ( ++spmd_handle->data->step; spmd_handle->data->step <= spmd_handle->control->nsteps; spmd_handle->data->step++ )
         {
             if ( spmd_handle->control->T_mode )

@@ -38,12 +38,13 @@
 #include "vector.h"
 
 
-static void Generate_Initial_Velocities( reax_system *system, real T )
+static void Generate_Initial_Velocities( reax_system *system,
+        control_params *control, real T )
 {
     int i;
     real scale, norm;
 
-    if ( T <= 0.1 )
+    if ( T <= 0.1 || control->random_vel == FALSE )
     {
         for ( i = 0; i < system->N; i++ )
         {
@@ -114,14 +115,18 @@ static void Init_System( reax_system *system, control_params *control,
         /* re-map the atom positions to fall within the simulation box,
          * where the corners of the box are (0,0,0) and (d_x, d_y, d_z)
          * with d_i being the box length along dimension i */
-        Update_Atom_Position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
+        Update_Atom_Position_Periodic( system->atoms[i].x, dx,
+                system->atoms[i].rel_map, &system->box );
+
+        /* zero out rel_map (which was set by the above function) */
+        ivec_MakeZero( system->atoms[i].rel_map );
     }
 
     /* Initialize velocities so that desired init T can be attained */
     if ( control->restart == FALSE
-            || (control->restart == TRUE && control->random_vel) )
+            || (control->restart == TRUE && control->random_vel == FALSE) )
     {
-        Generate_Initial_Velocities( system, control->T_init );
+        Generate_Initial_Velocities( system, control, control->T_init );
     }
 
     Setup_Grid( system );
@@ -678,7 +683,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         workspace->x_old = NULL;
     }
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     workspace->dDelta = smalloc( system->N * sizeof( rvec ),
            "Init_Workspace::workspace->dDelta" );
     workspace->f_ele = smalloc( system->N * sizeof( rvec ),
@@ -777,11 +782,10 @@ static void Init_Lists( reax_system *system, control_params *control,
     workspace->num_H = 0;
     if ( control->hbond_cut > 0.0 )
     {
-        /* init H indexes */
+        /* init hydrogen atom indexes */
         for ( i = 0; i < system->N; ++i )
         {
-            /* H atom */
-            if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == 1 )
+            if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == H_ATOM )
             {
                 workspace->hbond_index[i] = workspace->num_H++;
             }
@@ -828,7 +832,7 @@ static void Init_Lists( reax_system *system, control_params *control,
              num_3body * sizeof(three_body_interaction_data) / (1024 * 1024) );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     //TODO: increased num. of DDELTA list elements, find a better count later
     Make_List( system->N, num_bonds * 20, TYP_DDELTA, lists[DDELTA] );
 
@@ -1035,7 +1039,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 #endif
 
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     /* open bond orders file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
     temp[TEMP_SIZE - 5] = '\0';
@@ -1442,7 +1446,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
     }
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     sfree( workspace->dDelta, "Finalize_Workspace::workspace->dDelta" );
     sfree( workspace->f_ele, "Finalize_Workspace::workspace->f_ele" );
     sfree( workspace->f_vdw, "Finalize_Workspace::workspace->f_vdw" );
@@ -1470,7 +1474,7 @@ static void Finalize_Lists( control_params *control, reax_list **lists )
     Delete_List( TYP_BOND, lists[BONDS] );
     Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     Delete_List( TYP_DDELTA, lists[DDELTA] );
     Delete_List( TYP_DBO, lists[DBO] );
 #endif
@@ -1534,7 +1538,7 @@ static void Finalize_Out_Controls( reax_system *system, control_params *control,
     sfclose( out_control->ecou, "Finalize_Out_Controls::out_control->ecou" );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     sfclose( out_control->fbo, "Finalize_Out_Controls::out_control->fbo" );
     sfclose( out_control->fdbo, "Finalize_Out_Controls::out_control->fdbo" );
     sfclose( out_control->fbond, "Finalize_Out_Controls::out_control->fbond" );

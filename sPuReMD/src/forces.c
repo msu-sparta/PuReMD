@@ -217,21 +217,33 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
         int j;
 #endif
 
-#ifdef _OPENMP
-        #pragma omp for schedule(static)
-#endif
-        for ( i = 0; i < system->N; ++i )
+        if ( control->ensemble == NVE || control->ensemble == nhNVT
+                || control->ensemble == bNVT )
         {
-            for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
+#ifdef _OPENMP
+            #pragma omp for schedule(static)
+#endif
+            for ( i = 0; i < system->N; ++i )
             {
-                if ( i < bonds->bond_list[pj].nbr )
+                for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
                 {
-                    if ( control->ensemble == NVE || control->ensemble == nhNVT
-                            || control->ensemble == bNVT )
+                    if ( i < bonds->bond_list[pj].nbr )
                     {
                         Add_dBond_to_Forces( i, pj, system, data, workspace, lists );
                     }
-                    else
+                }
+            }
+        }
+        else
+        {
+#ifdef _OPENMP
+            #pragma omp for schedule(static)
+#endif
+            for ( i = 0; i < system->N; ++i )
+            {
+                for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
+                {
+                    if ( i < bonds->bond_list[pj].nbr )
                     {
                         Add_dBond_to_Forces_NPT( i, pj, system, data, workspace, lists );
                     }
@@ -807,7 +819,7 @@ static void Init_Forces( reax_system *system, control_params *control,
             else
             {
                 atom_j = &system->atoms[j];
-                nbr_pj->d = Compute_Atom_Distance( &system->box,
+                nbr_pj->d = control->compute_atom_distance( &system->box,
                         atom_i->x, atom_j->x, atom_i->rel_map,
                         atom_j->rel_map, nbr_pj->rel_box,
                         nbr_pj->dvec );
@@ -1158,7 +1170,7 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
             else
             {
                 atom_j = &system->atoms[j];
-                nbr_pj->d = Compute_Atom_Distance( &system->box,
+                nbr_pj->d = control->compute_atom_distance( &system->box,
                         atom_i->x, atom_j->x, atom_i->rel_map,
                         atom_j->rel_map, nbr_pj->rel_box,
                         nbr_pj->dvec );
@@ -1563,7 +1575,7 @@ void Compute_Forces( reax_system *system, control_params *control,
     //Print_Total_Force( system, control, data, workspace, lists, out_control );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     Print_Total_Force( system, control, data, workspace, lists, out_control );
     Compare_Total_Forces( system, control, data, workspace, lists, out_control );
 #endif

@@ -33,7 +33,7 @@ static inline real Cf45( real p1, real p2 )
 }
 
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 void Add_dBO( reax_system *system, reax_list **lists,
         int i, int pj, real C, rvec *v )
 {
@@ -752,7 +752,7 @@ void BO( reax_system *system, control_params *control,
                 {
                     twbp = &system->reax_param.tbp[type_i][type_j];
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                     Set_Start_Index( pj, top_dbo, dBOs );
 #endif
 
@@ -776,7 +776,7 @@ void BO( reax_system *system, control_params *control,
                         bo_ij->C3dbopi2 = 0.0;
                         bo_ij->C4dbopi2 = 0.0;
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                         pdbo = &dBOs->dbo_list[ top_dbo ];
 
                         /* compute dBO_ij/dr_i */
@@ -846,10 +846,10 @@ void BO( reax_system *system, control_params *control,
                         if ( twbp->v13cor >= 0.001 )
                         {
                             /* Correction for 1-3 bond orders */
-                            exp_f4 = EXP( -(twbp->p_boc4 * SQR( bo_ij->BO )
-                                        - Deltap_boc_i) * twbp->p_boc3 + twbp->p_boc5 );
-                            exp_f5 = EXP( -(twbp->p_boc4 * SQR( bo_ij->BO )
-                                        - Deltap_boc_j) * twbp->p_boc3 + twbp->p_boc5 );
+                            exp_f4 = EXP( -twbp->p_boc3 * (twbp->p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_i)
+                                    + twbp->p_boc5 );
+                            exp_f5 = EXP( -twbp->p_boc3 * (twbp->p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_j)
+                                    + twbp->p_boc5 );
 
                             f4 = 1.0 / (1.0 + exp_f4);
                             f5 = 1.0 / (1.0 + exp_f5);
@@ -903,20 +903,7 @@ void BO( reax_system *system, control_params *control,
                         bo_ij->C3dbopi2 = bo_ij->BO_pi2 * A3_ij;
                         bo_ij->C4dbopi2 = bo_ij->BO_pi2 * A3_ji;
 
-#ifdef TEST_FORCES
-                        /*fprintf( stderr, "%6d%6d%13.6f%13.6f%13.6f%13.6f\n",
-                          i+1, j+1, bo_ij->BO, bo_ij->C1dbo, Cf45_ij, Cf45_ji );*/
-
-                        /* fprintf( stderr, "%6d%6d%13.6f%13.6f%13.6f%13.6f\n",
-                        //"%6d%6d%10.6f%10.6f%10.6f%10.6f\n%10.6f%10.6f%10.6f\n%10.6f%10.6f%10.6f%10.6f\n%10.6f%10.6f%10.6f%10.6f\n\n",
-                        workspace->orig_id[i], workspace->orig_id[j]
-                        A0_ij, A1_ij, A2_ij, A2_ji, A3_ij, A3_ji
-                        bo_ij->BO, bo_ij->BO_pi, bo_ij->BO_pi2, bo_ij->BO_s,
-                        bo_ij->C1dbo, bo_ij->C2dbo, bo_ij->C3dbo,
-                        bo_ij->C1dbopi,bo_ij->C2dbopi,bo_ij->C3dbopi,bo_ij->C4dbopi,
-                        bo_ij->C1dbopi2,bo_ij->C2dbopi2,bo_ij->C3dbopi2,bo_ij->C4dbopi2
-                        ); */
-
+#if defined(TEST_FORCES)
                         Calculate_dBO( i, pj, workspace, lists, &top_dbo );
 #endif
                     }
@@ -942,14 +929,14 @@ void BO( reax_system *system, control_params *control,
                     /* now keeps total_BO */
                     workspace->total_bond_order[i] += bo_ij->BO;
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                     Set_End_Index( pj, top_dbo, dBOs );
                     Add_dBO( system, lists, i, pj, 1.0, workspace->dDelta );
 #endif
                 }
             }
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
             Set_Start_Index( i, top_dDelta, dDeltas );
             ptop_dDelta = &dDeltas->dDelta_list[top_dDelta];
 
@@ -983,13 +970,6 @@ void BO( reax_system *system, control_params *control,
             }
 
             Set_End_Index( i, top_dDelta, dDeltas );
-
-            /*for( pj=Start_Index(i,dDeltas); pj<End_Index(i,dDeltas); ++pj )
-              fprintf( stdout, "dDel: %d %d [%g %g %g]\n",
-              i+1, dDeltas->dDelta_list[pj].wrt+1,
-              dDeltas->dDelta_list[pj].dVal[0],
-              dDeltas->dDelta_list[pj].dVal[1],
-              dDeltas->dDelta_list[pj].dVal[2] );*/
 #endif
         }
 
@@ -1044,7 +1024,7 @@ void BO( reax_system *system, control_params *control,
                     /* now keeps total_BO */
                     workspace->total_bond_order[i] += bo_ij->BO;
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                     Add_dBO( system, lists, j, sym_index, 1.0, workspace->dDelta );
 #endif
                 }

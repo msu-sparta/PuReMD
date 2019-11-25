@@ -34,13 +34,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     int num_hb_intrs;
 #endif
     real e_hb_total;
 
     e_hb_total = 0.0;
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     num_hb_intrs = 0;
 #endif
 
@@ -85,10 +85,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #endif
         for ( j = 0; j < system->N; ++j )
         {
-            /* j must be H */
-            if ( system->reax_param.sbp[system->atoms[j].type].p_hbond == 1 )
+            /* j must be a hydrogen atom */
+            if ( system->reax_param.sbp[system->atoms[j].type].p_hbond == H_ATOM )
             {
-                /* set j's variables */
                 type_j = system->atoms[j].type;
                 start_j = Start_Index( j, bonds );
                 end_j = End_Index( j, bonds );
@@ -108,7 +107,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                     bo_ij = &pbond_ij->bo_data;
                     type_i = system->atoms[i].type;
 
-                    if ( system->reax_param.sbp[type_i].p_hbond == 2
+                    if ( system->reax_param.sbp[type_i].p_hbond == H_BONDING_ATOM
                             && bo_ij->BO >= HB_THRESHOLD )
                     {
                         hblist[top++] = pi;
@@ -117,7 +116,6 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                 for ( pk = hb_start_j; pk < hb_end_j; ++pk )
                 {
-                    /* set k's varibles */
                     k = hbond_list[pk].nbr;
                     type_k = system->atoms[k].type;
                     nbr_jk = hbond_list[pk].ptr;
@@ -147,7 +145,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                             f_i = &system->atoms[i].f;
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 #ifdef _OPENMP
                             #pragma omp atomic
 #endif
@@ -281,7 +279,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                      r_jk, theta, bo_ij->BO, e_hb, data->E_HB );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                             /* dbo term */
                             Add_dBO( system, lists, j, pi, +CEhb1, workspace->f_hb );
                             /* dcos terms */
@@ -301,7 +299,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
     data->E_HB += e_hb_total;
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     fprintf( stderr, "Number of hydrogen bonds: %d\n", num_hb_intrs );
     fprintf( stderr, "Hydrogen Bond Energy: %g\n", data->E_HB );
 #endif

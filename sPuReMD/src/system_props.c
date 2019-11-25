@@ -257,7 +257,9 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
     reax_atom *p_atom;
     rvec tx;
     rvec tmp;
-    simulation_box *box = &(system->box);
+    simulation_box *box;
+
+    box = &system->box;
 
     /* Calculate internal pressure */
     rvec_MakeZero( data->int_press );
@@ -267,7 +269,7 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
     {
         for ( i = 0; i < system->N; ++i )
         {
-            p_atom = &( system->atoms[i] );
+            p_atom = &system->atoms[i];
 
             /* transform x into unitbox coordinates */
             Transform_to_UnitBox( p_atom->x, box, 1, tx );
@@ -276,20 +278,19 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
             rvec_Multiply( tmp, p_atom->f, tx );
             rvec_Add( data->int_press, tmp );
 
-            if ( out_control->debug_level > 0 )
-            {
-                fprintf( out_control->prs, "%-8d%8.2f%8.2f%8.2f",
-                         i + 1, p_atom->x[0], p_atom->x[1], p_atom->x[2] );
-                fprintf( out_control->prs, "%8.2f%8.2f%8.2f",
-                         p_atom->f[0], p_atom->f[1], p_atom->f[2] );
-                fprintf( out_control->prs, "%8.2f%8.2f%8.2f\n",
-                         data->int_press[0], data->int_press[1], data->int_press[2]);
-            }
+#if defined(DEBUG_FOCUS)
+            fprintf( out_control->prs, "%-8d%8.2f%8.2f%8.2f",
+                    i + 1, p_atom->x[0], p_atom->x[1], p_atom->x[2] );
+            fprintf( out_control->prs, "%8.2f%8.2f%8.2f",
+                    p_atom->f[0], p_atom->f[1], p_atom->f[2] );
+            fprintf( out_control->prs, "%8.2f%8.2f%8.2f\n",
+                    data->int_press[0], data->int_press[1], data->int_press[2] );
+#endif
         }
     }
 
     /* kinetic contribution */
-    data->kin_press = 2. * (E_CONV * data->E_Kin) / ( 3. * box->volume * P_CONV );
+    data->kin_press = 2.0 * (E_CONV * data->E_Kin) / (3.0 * box->volume * P_CONV);
 
     /* Calculate total pressure in each direction */
     data->tot_press[0] = data->kin_press -
@@ -305,7 +306,7 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
                           (box->box_norms[0] * box->box_norms[1] * P_CONV));
 
     /* Average pressure for the whole box */
-    data->iso_bar.P = (data->tot_press[0] + data->tot_press[1] + data->tot_press[2]) / 3;
+    data->iso_bar.P = (data->tot_press[0] + data->tot_press[1] + data->tot_press[2])/ 3.0;
 }
 
 
