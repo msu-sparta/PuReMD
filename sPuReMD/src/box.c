@@ -693,7 +693,7 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 
 //                    if ( i )
 //                    {
-//                        data[count].ext_factor[0] = (real)i / -abs(i);
+//                        data[count].ext_factor[0] = (real)i / -ABS(i);
 //                    }
 //                    else
 //                    {
@@ -702,7 +702,7 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 //
 //                    if ( j )
 //                    {
-//                        data[count].ext_factor[1] = (real)j / -abs(j);
+//                        data[count].ext_factor[1] = (real)j / -ABS(j);
 //                    }
 //                    else
 //                    {
@@ -711,7 +711,7 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 //
 //                    if ( k )
 //                    {
-//                        data[count].ext_factor[2] = (real)k / -abs(k);
+//                        data[count].ext_factor[2] = (real)k / -ABS(k);
 //                    }
 //                    else
 //                    {

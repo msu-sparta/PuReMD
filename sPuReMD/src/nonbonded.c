@@ -105,6 +105,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         real e_ele, e_vdW, e_core, de_core, e_clb, de_clb;
         real d, xcut, bond_softness, d_bond_softness, effpot_diff;
         rvec temp, ext_press;
+        ivec rel_box;
         //rtensor temp_rtensor, total_rtensor;
         two_body_parameters *twbp;
         far_neighbor_data *nbr_pj;
@@ -261,8 +262,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
-                        rvec_Scale( temp,
-                                (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
+                        rvec_Scale( temp, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 
 #ifndef _OPENMP
                         rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
@@ -272,7 +272,9 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         rvec_Add( workspace->f_local[tid * system->N + j], temp );
 #endif
 
-                        rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
+                        ivec_Sum( rel_box, nbr_pj->rel_box, system->atoms[j].rel_map );
+                        ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
+                        rvec_iMultiply( ext_press, rel_box, temp );
 #ifdef _OPENMP
                         #pragma omp critical (vdW_Coulomb_Energy_ext_press)
 #endif
@@ -292,16 +294,16 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                 data->ext_press[2] );
 #endif
 
-//                        /* This part is intended for a fully-flexible box */
+                        /* This part is intended for a fully-flexible box */
 //                        rvec_OuterProduct( temp_rtensor, nbr_pj->dvec, system->atoms[i].x );
 //                        rtensor_Scale( total_rtensor, F_C * -(CEvd + CEclmb), temp_rtensor );
 //                        rvec_OuterProduct( temp_rtensor, nbr_pj->dvec, system->atoms[j].x );
 //                        rtensor_ScaledAdd( total_rtensor, F_C * +(CEvd + CEclmb), temp_rtensor );
-//
-//                        /* This is an external force due to an imaginary nbr */
+
+                        /* This is an external force due to an imaginary nbr */
 //                        if ( nbr_pj->imaginary )
 //                            rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
-//                        /* This interaction is completely internal */
+                        /* This interaction is completely internal */
 //                        else
 //                            rtensor_Add( data->flex_bar.P, total_rtensor );
                     }
@@ -446,6 +448,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         real d, xcut, bond_softness, d_bond_softness, effpot_diff;
         real CEvd, CEclmb;
         rvec temp, ext_press;
+        ivec rel_box;
         far_neighbor_data *nbr_pj;
         LR_lookup_table *t;
 #ifdef _OPENMP
@@ -529,8 +532,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
-                        rvec_Scale( temp,
-                                (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
+                        rvec_Scale( temp, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 #ifndef _OPENMP
                         rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
                         rvec_Add( system->atoms[j].f, temp );
@@ -538,7 +540,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1.0, temp );
                         rvec_Add( workspace->f_local[tid * system->N + j], temp );
 #endif
-                        rvec_iMultiply( ext_press, nbr_pj->rel_box, temp );
+                        ivec_Sum( rel_box, nbr_pj->rel_box, system->atoms[j].rel_map );
+                        ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
+                        rvec_iMultiply( ext_press, rel_box, temp );
 #ifdef _OPENMP
                         #pragma omp critical (Tabulated_vdW_Coulomb_Energy_ext_press)
 #endif

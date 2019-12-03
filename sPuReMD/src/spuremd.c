@@ -48,7 +48,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
 
     /* remove rotational and translational velocity of the center of mass */
     if ( control->ensemble != NVE && control->remove_CoM_vel > 0
-            && data->step > 0 && data->step % control->remove_CoM_vel == 0 )
+            && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
         Compute_Center_of_Mass( system, data, out_control->prs );
@@ -228,12 +228,13 @@ int simulate( const void * const handle )
 
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
 
-        if ( spmd_handle->output_enabled == TRUE )
+        if ( spmd_handle->output_enabled == TRUE || spmd_handle->callback != NULL )
         {
-            if ( (spmd_handle->out_control->energy_update_freq > 0
+            if ( ((spmd_handle->out_control->energy_update_freq > 0
                         && spmd_handle->data->step % spmd_handle->out_control->energy_update_freq == 0)
                     || (spmd_handle->out_control->write_steps > 0
-                        && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0) )
+                        && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0))
+                || spmd_handle->callback != NULL )
             {
                 Compute_Total_Energy( spmd_handle->data );
             }
@@ -246,8 +247,6 @@ int simulate( const void * const handle )
 
         if ( spmd_handle->callback != NULL )
         {
-            Compute_Total_Energy( spmd_handle->data );
-
             spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
                     spmd_handle->lists );
         }

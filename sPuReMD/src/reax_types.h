@@ -154,6 +154,7 @@
 #define TAN (tan)
 #define CEIL (ceil)
 #define FLOOR (floor)
+#define ABS (abs)
 #define FABS (fabs)
 #define FMOD (fmod)
 #define SQR(x) ((x)*(x))

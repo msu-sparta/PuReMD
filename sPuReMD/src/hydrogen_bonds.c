@@ -56,8 +56,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
         rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
         rvec dvec_jk, force, ext_press;
-        ivec rel_jk;
-        //rtensor temp_rtensor, total_rtensor;
+        ivec rel_jk, rel_box;
+//        rtensor temp_rtensor, total_rtensor;
         hbond_parameters *hbp;
         bond_order_data *bo_ij;
         bond_data *pbond_ij;
@@ -200,13 +200,15 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                             else
                             {
                                 /* for pressure coupling, terms that are not related
-                                   to bond order derivatives are added directly into
-                                   pressure vector/tensor */
+                                 * to bond order derivatives are added directly into
+                                 * pressure vector/tensor */
 
                                 /* dcos terms */
                                 rvec_Scale( force, +CEhb2, dcos_theta_di );
                                 rvec_Add( *f_i, force );
-                                rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
+                                ivec_Sum( rel_box, pbond_ij->rel_box, system->atoms[i].rel_map );
+                                ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
+                                rvec_iMultiply( ext_press, rel_box, force );
 #ifdef _OPENMP
                                 #pragma omp critical (Hydrogen_Bonds_ext_press)
 #endif
@@ -216,9 +218,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                                 rvec_ScaledAdd( *f_j, +CEhb2, dcos_theta_dj );
 
-                                ivec_Scale( rel_jk, hbond_list[pk].scl, nbr_jk->rel_box );
                                 rvec_Scale( force, +CEhb2, dcos_theta_dk );
                                 rvec_Add( *f_k, force );
+                                ivec_Sum( rel_jk, nbr_jk->rel_box, system->atoms[k].rel_map );
+                                ivec_ScaledAdd( rel_jk, -1, system->atoms[j].rel_map );
+                                ivec_Scale( rel_jk, hbond_list[pk].scl, rel_jk );
                                 rvec_iMultiply( ext_press, rel_jk, force );
 #ifdef _OPENMP
                                 #pragma omp critical (Hydrogen_Bonds_ext_press)
@@ -241,26 +245,30 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 }
 
                                 /* This part is intended for a fully-flexible box */
-                                /* rvec_OuterProduct( temp_rtensor,
-                                   dcos_theta_di, system->atoms[i].x );
-                                   rtensor_Scale( total_rtensor, -CEhb2, temp_rtensor );
-
-                                   rvec_ScaledSum( temp_rvec, -CEhb2, dcos_theta_dj,
-                                   -CEhb3/r_jk, pbond_jk->dvec );
-                                   rvec_OuterProduct( temp_rtensor,
-                                   temp_rvec, system->atoms[j].x );
-                                   rtensor_Add( total_rtensor, temp_rtensor );
-
-                                   rvec_ScaledSum( temp_rvec, -CEhb2, dcos_theta_dk,
-                                   +CEhb3/r_jk, pbond_jk->dvec );
-                                   rvec_OuterProduct( temp_rtensor,
-                                   temp_rvec, system->atoms[k].x );
-                                   rtensor_Add( total_rtensor, temp_rtensor );
-
-                                   if( pbond_ij->imaginary || pbond_jk->imaginary )
-                                   rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
-                                   else
-                                   rtensor_Add( data->flex_bar.P, total_rtensor ); */
+//                                rvec_OuterProduct( temp_rtensor,
+//                                        dcos_theta_di, system->atoms[i].x );
+//                                rtensor_Scale( total_rtensor, -CEhb2, temp_rtensor );
+//
+//                                rvec_ScaledSum( temp_rvec, -CEhb2, dcos_theta_dj,
+//                                        -CEhb3 / r_jk, pbond_jk->dvec );
+//                                rvec_OuterProduct( temp_rtensor,
+//                                        temp_rvec, system->atoms[j].x );
+//                                rtensor_Add( total_rtensor, temp_rtensor );
+//
+//                                rvec_ScaledSum( temp_rvec, -CEhb2, dcos_theta_dk,
+//                                        +CEhb3 / r_jk, pbond_jk->dvec );
+//                                rvec_OuterProduct( temp_rtensor,
+//                                        temp_rvec, system->atoms[k].x );
+//                                rtensor_Add( total_rtensor, temp_rtensor );
+//
+//                                if ( pbond_ij->imaginary || pbond_jk->imaginary )
+//                                {
+//                                    rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
+//                                }
+//                                else
+//                                {
+//                                    rtensor_Add( data->flex_bar.P, total_rtensor );
+//                                }
                             }
 
 #ifdef TEST_ENERGY

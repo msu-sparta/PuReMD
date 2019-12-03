@@ -237,7 +237,7 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
 
         if ( l < end_j && bonds->bond_list[l].nbr == nbr_k->nbr )
         {
-            /* This is a common neighbor of i and j. */
+            /* common neighbor of i and j */
             nbr_l = &bonds->bond_list[l];
             rvec_Copy( dBOp, nbr_l->bo_data.dBOp );
 
@@ -248,21 +248,27 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
         }
         else if ( k == pj )
         {
-            /* This negihbor is j. */
+            /* j is negihbor */
             rvec_Copy( dDeltap_self, workspace->dDeltap_self[j] );
 
-            rvec_ScaledAdd( top_dbo->dBO, -bo_ij->C1dbo, bo_ij->dBOp );// 1st, dBO
-            rvec_ScaledAdd( top_dbo->dBO, bo_ij->C3dbo, dDeltap_self );// 3rd, dBO
+            /* 1st, dBO */
+            rvec_ScaledAdd( top_dbo->dBO, -bo_ij->C1dbo, bo_ij->dBOp );
+            /* 3rd, dBO */
+            rvec_ScaledAdd( top_dbo->dBO, bo_ij->C3dbo, dDeltap_self );
 
             /* dBOpi, 1st */
             rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C1dbopi, bo_ij->dln_BOp_pi );
-            rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C2dbopi, bo_ij->dBOp );    //2nd
-            rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C4dbopi, dDeltap_self );  //4th
+            /* 2nd */
+            rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C2dbopi, bo_ij->dBOp );
+            /* 4th */
+            rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C4dbopi, dDeltap_self );
 
             /* dBOpi2, 1st */
             rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2 );
-            rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C2dbopi2, bo_ij->dBOp ); //2nd
-            rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C4dbopi2, dDeltap_self ); //4th
+            /* 2nd */
+            rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C2dbopi2, bo_ij->dBOp );
+            /* 4th */
+            rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C4dbopi2, dDeltap_self );
         }
 
         ++(*top);
@@ -368,48 +374,53 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         f_k = &system->atoms[k].f;
 #endif
 
-        rvec_Scale( temp, -coef.C2dbo, nbr_k->bo_data.dBOp );       /*2nd,dBO*/
-        rvec_ScaledAdd( temp, -coef.C2dDelta, nbr_k->bo_data.dBOp );/*dDelta*/
-        rvec_ScaledAdd( temp, -coef.C3dbopi, nbr_k->bo_data.dBOp ); /*3rd,dBOpi*/
-        rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );/*3rd,dBOpi2*/
+        /* 2nd, dBO */
+        rvec_Scale( temp, -coef.C2dbo, nbr_k->bo_data.dBOp );
+        /* dDelta */
+        rvec_ScaledAdd( temp, -coef.C2dDelta, nbr_k->bo_data.dBOp );
+        /* 3rd, dBOpi */
+        rvec_ScaledAdd( temp, -coef.C3dbopi, nbr_k->bo_data.dBOp );
+        /* 3rd, dBOpi2 */
+        rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
         /* force */
         rvec_Add( *f_k, temp );
         /* pressure */
-        rvec_iMultiply( ext_press, nbr_k->rel_box, temp );
+        ivec_Sum( rel_box, nbr_k->rel_box, system->atoms[k].rel_map );
+        ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
+        rvec_iMultiply( ext_press, rel_box, temp );
 #ifdef _OPENMP
         #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
 #endif
         {
             rvec_Add( data->ext_press, ext_press );
         }
-
-        /* if( !ivec_isZero( nbr_k->rel_box ) )
-           fprintf( stderr, "%3d %3d %3d: dvec[%10.6f %10.6f %10.6f]
-           ext[%3d %3d %3d] f[%10.6f %10.6f %10.6f]\n",
-           i+1,
-           system->atoms[i].x[0],system->atoms[i].x[1],system->atoms[i].x[2],
-           j+1, k+1,
-           system->atoms[k].x[0], system->atoms[k].x[1], system->atoms[k].x[2],
-           nbr_k->dvec[0], nbr_k->dvec[1], nbr_k->dvec[2],
-           nbr_k->rel_box[0], nbr_k->rel_box[1], nbr_k->rel_box[2],
-           temp[0], temp[1], temp[2] ); */
     }
 
-    /* then atom i itself  */
-    rvec_Scale( temp, coef.C1dbo, bo_ij->dBOp );                      /*1st, dBO*/
-    rvec_ScaledAdd( temp, coef.C2dbo, workspace->dDeltap_self[i] );   /*2nd, dBO*/
+    /* then atom i itself */
+    /* 1st, dBO */
+    rvec_Scale( temp, coef.C1dbo, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C2dbo, workspace->dDeltap_self[i] );
 
-    rvec_ScaledAdd( temp, coef.C1dDelta, bo_ij->dBOp );               /*1st, dBO*/
-    rvec_ScaledAdd( temp, coef.C2dDelta, workspace->dDeltap_self[i] );/*2nd, dBO*/
+    /* 1st, dBO */
+    rvec_ScaledAdd( temp, coef.C1dDelta, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C2dDelta, workspace->dDeltap_self[i] );
 
-    rvec_ScaledAdd( temp, coef.C1dbopi, bo_ij->dln_BOp_pi );         /*1st,dBOpi*/
-    rvec_ScaledAdd( temp, coef.C2dbopi, bo_ij->dBOp );               /*2nd,dBOpi*/
-    rvec_ScaledAdd( temp, coef.C3dbopi, workspace->dDeltap_self[i] );/*3rd,dBOpi*/
+    /* 1st, dBOpi */
+    rvec_ScaledAdd( temp, coef.C1dbopi, bo_ij->dln_BOp_pi );
+    /* 2nd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C2dbopi, bo_ij->dBOp );
+    /* 3rd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C3dbopi, workspace->dDeltap_self[i] );
 
-    rvec_ScaledAdd( temp, coef.C1dbopi2, bo_ij->dln_BOp_pi2 ) ;      /*1st,dBO_pi2*/
-    rvec_ScaledAdd( temp, coef.C2dbopi2, bo_ij->dBOp );              /*2nd,dBO_pi2*/
-    rvec_ScaledAdd( temp, coef.C3dbopi2, workspace->dDeltap_self[i] );/*3rd,dBO_pi2*/
+    /* 1st, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
+    /* 2nd, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C2dbopi2, bo_ij->dBOp );
+    /* 3rd, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C3dbopi2, workspace->dDeltap_self[i] );
 
     /* force */
     rvec_Add( *f_i, temp );
@@ -429,17 +440,28 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         f_k = &system->atoms[k].f;
 #endif
 
-        rvec_Scale( temp, -coef.C3dbo, nbr_k->bo_data.dBOp );       /*3rd,dBO*/
-        rvec_ScaledAdd( temp, -coef.C3dDelta, nbr_k->bo_data.dBOp );/*dDelta*/
-        rvec_ScaledAdd( temp, -coef.C4dbopi, nbr_k->bo_data.dBOp ); /*4th,dBOpi*/
-        rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );/*4th,dBOpi2*/
+        /* 3rd, dBO */
+        rvec_Scale( temp, -coef.C3dbo, nbr_k->bo_data.dBOp );
+        /* dDelta */
+        rvec_ScaledAdd( temp, -coef.C3dDelta, nbr_k->bo_data.dBOp );
+        /* 4th, dBOpi */
+        rvec_ScaledAdd( temp, -coef.C4dbopi, nbr_k->bo_data.dBOp );
+        /* 4th, dBOpi2 */
+        rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
 
         /* force */
         rvec_Add( *f_k, temp );
         /* pressure */
         if ( k != i )
         {
-            ivec_Sum( rel_box, nbr_k->rel_box, nbr_j->rel_box );//k's rel_box  wrt i
+            /* k's rel_box w.r.t. i */
+//            ivec_Sum( rel_box, nbr_j->rel_box, nbr_j->rel_map );
+//            ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
+//            ivec_Sum( rel_box, nbr_k->rel_box, nbr_k->rel_map );
+//            ivec_ScaledAdd( rel_box, -1, nbr_j->rel_map );
+            ivec_Copy( rel_box, nbr_j->rel_box );
+            ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
+            ivec_Sum( rel_box, nbr_k->rel_box, system->atoms[k].rel_map );
             rvec_iMultiply( ext_press, rel_box, temp );
 #ifdef _OPENMP
             #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
@@ -447,54 +469,46 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
             {
                 rvec_Add( data->ext_press, ext_press );
             }
-
-            /* if( !ivec_isZero( rel_box ) )
-            fprintf( stderr, "%3d %3d %3d: dvec[%10.6f %10.6f %10.6f]
-             ext[%3d %3d %3d] f[%10.6f %10.6f %10.6f]\n",
-             i+1, j+1,
-             system->atoms[j].x[0],system->atoms[j].x[1],system->atoms[j].x[2],
-             k+1,
-             system->atoms[k].x[0], system->atoms[k].x[1], system->atoms[k].x[2],
-             nbr_k->dvec[0], nbr_k->dvec[1], nbr_k->dvec[2],
-             rel_box[0], rel_box[1], rel_box[2],
-             temp[0], temp[1], temp[2] ); */
         }
     }
 
     /* then atom j itself */
-    rvec_Scale( temp, -coef.C1dbo, bo_ij->dBOp );                     /*1st, dBO*/
-    rvec_ScaledAdd( temp, coef.C3dbo, workspace->dDeltap_self[j] );   /*2nd, dBO*/
+    /* 1st, dBO */
+    rvec_Scale( temp, -coef.C1dbo, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C3dbo, workspace->dDeltap_self[j] );
 
-    rvec_ScaledAdd( temp, -coef.C1dDelta, bo_ij->dBOp );              /*1st, dBO*/
-    rvec_ScaledAdd( temp, coef.C3dDelta, workspace->dDeltap_self[j] );/*2nd, dBO*/
+    /* 1st, dBO */
+    rvec_ScaledAdd( temp, -coef.C1dDelta, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C3dDelta, workspace->dDeltap_self[j] );
 
-    rvec_ScaledAdd( temp, -coef.C1dbopi, bo_ij->dln_BOp_pi );        /*1st,dBOpi*/
-    rvec_ScaledAdd( temp, -coef.C2dbopi, bo_ij->dBOp );              /*2nd,dBOpi*/
-    rvec_ScaledAdd( temp, coef.C4dbopi, workspace->dDeltap_self[j] );/*3rd,dBOpi*/
+    /* 1st, dBOpi */
+    rvec_ScaledAdd( temp, -coef.C1dbopi, bo_ij->dln_BOp_pi );
+    /* 2nd, dBOpi */
+    rvec_ScaledAdd( temp, -coef.C2dbopi, bo_ij->dBOp );
+    /* 3rd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C4dbopi, workspace->dDeltap_self[j] );
 
-    rvec_ScaledAdd( temp, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );       /*1st,dBOpi2*/
-    rvec_ScaledAdd( temp, -coef.C2dbopi2, bo_ij->dBOp );              /*2nd,dBOpi2*/
-    rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[j] );/*3rd,dBOpi2*/
+    /* 1st, dBOpi2 */
+    rvec_ScaledAdd( temp, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
+    /* 2nd, dBOpi2 */
+    rvec_ScaledAdd( temp, -coef.C2dbopi2, bo_ij->dBOp );
+    /* 3rd, dBOpi2 */
+    rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[j] );
 
     /* force */
     rvec_Add( *f_j, temp );
     /* pressure */
-    rvec_iMultiply( ext_press, nbr_j->rel_box, temp );
+    ivec_Sum( rel_box, nbr_j->rel_box, system->atoms[j].rel_map );
+    ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
+    rvec_iMultiply( ext_press, rel_box, temp );
 #ifdef _OPENMP
     #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
 #endif
     {
         rvec_Add( data->ext_press, ext_press );
     }
-
-    /* if( !ivec_isZero( nbr_j->rel_box ) )
-       fprintf( stderr, "%3d %3d %3d: dvec[%10.6f %10.6f %10.6f]
-       ext[%3d %3d %3d] f[%10.6f %10.6f %10.6f]\n",
-       i+1, system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2],
-       j+1, system->atoms[j].x[0], system->atoms[j].x[1], system->atoms[j].x[2],
-       j+1, nbr_j->dvec[0], nbr_j->dvec[1], nbr_j->dvec[2],
-       nbr_j->rel_box[0], nbr_j->rel_box[1], nbr_j->rel_box[2],
-       temp[0], temp[1], temp[2] ); */
 }
 
 
@@ -511,7 +525,6 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
     int tid = omp_get_thread_num( );
 #endif
 
-    /* Initializations */
     bonds = lists[BONDS];
     nbr_j = &bonds->bond_list[pj];
     j = nbr_j->nbr;
@@ -554,38 +567,38 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
 #endif
 
         rvec_ScaledAdd( *f_k, -coef.C2dbo, nbr_k->bo_data.dBOp );
-        /*2nd, dBO*/
+        /* 2nd, dBO */
         rvec_ScaledAdd( *f_k, -coef.C2dDelta, nbr_k->bo_data.dBOp );
-        /*dDelta*/
+        /* dDelta */
         rvec_ScaledAdd( *f_k, -coef.C3dbopi, nbr_k->bo_data.dBOp );
-        /*3rd, dBOpi*/
+        /* 3rd, dBOpi */
         rvec_ScaledAdd( *f_k, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
-        /*3rd, dBOpi2*/
+        /* 3rd, dBOpi2 */
     }
 
     rvec_ScaledAdd( *f_i, coef.C1dbo, bo_ij->dBOp );
-    /*1st, dBO*/
+    /* 1st, dBO */
     rvec_ScaledAdd( *f_i, coef.C2dbo, workspace->dDeltap_self[i] );
-    /*2nd, dBO*/
+    /* 2nd, dBO */
 
     rvec_ScaledAdd( *f_i, coef.C1dDelta, bo_ij->dBOp );
-    /*1st, dBO*/
+    /* 1st, dBO */
     rvec_ScaledAdd( *f_i, coef.C2dDelta, workspace->dDeltap_self[i] );
-    /*2nd, dBO*/
+    /* 2nd, dBO */
 
     rvec_ScaledAdd( *f_i, coef.C1dbopi, bo_ij->dln_BOp_pi );
-    /*1st, dBOpi*/
+    /* 1st, dBOpi */
     rvec_ScaledAdd( *f_i, coef.C2dbopi, bo_ij->dBOp );
-    /*2nd, dBOpi*/
+    /* 2nd, dBOpi */
     rvec_ScaledAdd( *f_i, coef.C3dbopi, workspace->dDeltap_self[i] );
-    /*3rd, dBOpi*/
+    /* 3rd, dBOpi */
 
     rvec_ScaledAdd( *f_i, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-    /*1st, dBO_pi2*/
+    /* 1st, dBO_pi2 */
     rvec_ScaledAdd( *f_i, coef.C2dbopi2, bo_ij->dBOp );
-    /*2nd, dBO_pi2*/
+    /* 2nd, dBO_pi2 */
     rvec_ScaledAdd( *f_i, coef.C3dbopi2, workspace->dDeltap_self[i] );
-    /*3rd, dBO_pi2*/
+    /* 3rd, dBO_pi2 */
 
     for ( pk = Start_Index(j, bonds); pk < End_Index(j, bonds); ++pk )
     {
@@ -598,38 +611,38 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
 #endif
 
         rvec_ScaledAdd( *f_k, -coef.C3dbo, nbr_k->bo_data.dBOp );
-        /*3rd, dBO*/
+        /* 3rd, dBO */
         rvec_ScaledAdd( *f_k, -coef.C3dDelta, nbr_k->bo_data.dBOp );
-        /*dDelta*/
+        /* dDelta */
         rvec_ScaledAdd( *f_k, -coef.C4dbopi, nbr_k->bo_data.dBOp );
-        /*4th, dBOpi*/
+        /* 4th, dBOpi */
         rvec_ScaledAdd( *f_k, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
-        /*4th, dBOpi2*/
+        /* 4th, dBOpi2 */
     }
 
     rvec_ScaledAdd( *f_j, -coef.C1dbo, bo_ij->dBOp );
-    /*1st, dBO*/
+    /* 1st, dBO */
     rvec_ScaledAdd( *f_j, coef.C3dbo, workspace->dDeltap_self[j] );
-    /*2nd, dBO*/
+    /* 2nd, dBO */
 
     rvec_ScaledAdd( *f_j, -coef.C1dDelta, bo_ij->dBOp );
-    /*1st, dBO*/
+    /* 1st, dBO */
     rvec_ScaledAdd( *f_j, coef.C3dDelta, workspace->dDeltap_self[j] );
-    /*2nd, dBO*/
+    /* 2nd, dBO */
 
     rvec_ScaledAdd( *f_j, -coef.C1dbopi, bo_ij->dln_BOp_pi );
-    /*1st, dBOpi*/
+    /* 1st, dBOpi */
     rvec_ScaledAdd( *f_j, -coef.C2dbopi, bo_ij->dBOp );
-    /*2nd, dBOpi*/
+    /* 2nd, dBOpi */
     rvec_ScaledAdd( *f_j, coef.C4dbopi, workspace->dDeltap_self[j] );
-    /*3rd, dBOpi*/
+    /* 3rd, dBOpi */
 
     rvec_ScaledAdd( *f_j, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-    /*1st, dBOpi2*/
+    /* 1st, dBOpi2 */
     rvec_ScaledAdd( *f_j, -coef.C2dbopi2, bo_ij->dBOp );
-    /*2nd, dBOpi2*/
+    /* 2nd, dBOpi2 */
     rvec_ScaledAdd( *f_j, coef.C4dbopi2, workspace->dDeltap_self[j] );
-    /*3rd, dBOpi2*/
+    /* 3rd, dBOpi2 */
 }
 
 
@@ -856,12 +869,12 @@ void BO( reax_system *system, control_params *control,
                             f4f5 = f4 * f5;
 
                             /* Bond Order pages 8-9, derivative of f4 and f5 */
-                            /*temp = twbp->p_boc5 -
-                              twbp->p_boc3 * twbp->p_boc4 * SQR( bo_ij->BO );
-                              u_ij = temp + twbp->p_boc3 * Deltap_boc_i;
-                              u_ji = temp + twbp->p_boc3 * Deltap_boc_j;
-                              Cf45_ij = Cf45( u_ij, u_ji ) / f4f5;
-                              Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;*/
+//                            temp = twbp->p_boc5
+//                                - twbp->p_boc3 * twbp->p_boc4 * SQR( bo_ij->BO );
+//                            u_ij = temp + twbp->p_boc3 * Deltap_boc_i;
+//                            u_ji = temp + twbp->p_boc3 * Deltap_boc_j;
+//                            Cf45_ij = Cf45( u_ij, u_ji ) / f4f5;
+//                            Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;
                             Cf45_ij = -f4 * exp_f4;
                             Cf45_ji = -f5 * exp_f5;
                         }
@@ -908,20 +921,20 @@ void BO( reax_system *system, control_params *control,
 #endif
                     }
 
-                    /* neglect bonds that are < 1e-10 */
-                    if ( bo_ij->BO < 1e-10 )
+                    /* neglect weak bonds */
+                    if ( bo_ij->BO < 1.0e-10 )
                     {
                         bo_ij->BO = 0.0;
                     }
-                    if ( bo_ij->BO_s < 1e-10 )
+                    if ( bo_ij->BO_s < 1.0e-10 )
                     {
                         bo_ij->BO_s = 0.0;
                     }
-                    if ( bo_ij->BO_pi < 1e-10 )
+                    if ( bo_ij->BO_pi < 1.0e-10 )
                     {
                         bo_ij->BO_pi = 0.0;
                     }
-                    if ( bo_ij->BO_pi2 < 1e-10 )
+                    if ( bo_ij->BO_pi2 < 1.0e-10 )
                     {
                         bo_ij->BO_pi2 = 0.0;
                     }

@@ -191,7 +191,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         real e_tor, e_con;
         rvec dvec_li;
         rvec force, ext_press;
-        ivec rel_box_jl, rel_box_li;
+        ivec rel_box_ij, rel_box_jk, rel_box_jl, rel_box_li;
         //rtensor total_rtensor, temp_rtensor;
         four_body_header *fbh;
         four_body_parameters *fbp;
@@ -525,12 +525,12 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         }
                                         else
                                         {
-                                            ivec_Sum( rel_box_jl, pbond_jk->rel_box, pbond_kl->rel_box );
-
                                             /* dcos_theta_ijk */
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_dk );
                                             rvec_Add( *f_i, force );
-                                            rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
+                                            ivec_Sum( rel_box_ij, pbond_ij->rel_box, system->atoms[i].rel_map );
+                                            ivec_ScaledAdd( rel_box_ij, -1, system->atoms[j].rel_map );
+                                            rvec_iMultiply( ext_press, rel_box_ij, force );
 #ifdef _OPENMP
                                             #pragma omp critical (Four_Body_Interactions_ext_press)
 #endif
@@ -542,7 +542,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_di );
                                             rvec_Add( *f_k, force );
-                                            rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
+                                            ivec_Sum( rel_box_jk, pbond_jk->rel_box, system->atoms[k].rel_map );
+                                            ivec_ScaledAdd( rel_box_jk, -1, system->atoms[j].rel_map );
+                                            rvec_iMultiply( ext_press, rel_box_jk, force );
 #ifdef _OPENMP
                                             #pragma omp critical (Four_Body_Interactions_ext_press)
 #endif
@@ -555,7 +557,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                             rvec_Add( *f_k, force );
-                                            rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
+                                            rvec_iMultiply( ext_press, rel_box_jk, force );
 #ifdef _OPENMP
                                             #pragma omp critical (Four_Body_Interactions_ext_press)
 #endif
@@ -565,6 +567,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dk );
                                             rvec_Add( *f_l, force );
+                                            ivec_Copy( rel_box_jl, pbond_jk->rel_box );
+                                            ivec_ScaledAdd( rel_box_jl, -1, system->atoms[j].rel_map );
+                                            ivec_Sum( rel_box_jl, pbond_kl->rel_box, system->atoms[l].rel_map );
                                             rvec_iMultiply( ext_press, rel_box_jl, force );
 #ifdef _OPENMP
                                             #pragma omp critical (Four_Body_Interactions_ext_press)
@@ -576,7 +581,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             /* dcos_omega */
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_di );
                                             rvec_Add( *f_i, force );
-                                            rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
+                                            rvec_iMultiply( ext_press, rel_box_ij, force );
 #ifdef _OPENMP
                                             #pragma omp critical (Four_Body_Interactions_ext_press)
 #endif
@@ -588,7 +593,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dk );
                                             rvec_Add( *f_k, force );
-                                            rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
+                                            rvec_iMultiply( ext_press, rel_box_jk, force );
 #ifdef _OPENMP
                                             #pragma omp critical (Four_Body_Interactions_ext_press)
 #endif

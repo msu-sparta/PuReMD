@@ -78,7 +78,7 @@ void Bonds( reax_system *system, control_params *control,
                     pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
                     exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
                     CEbo = -twbp->De_s * exp_be12
-                        * ( 1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2 );
+                        * (1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2);
 
                     /* calculate bond energy */
                     ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
@@ -101,7 +101,8 @@ void Bonds( reax_system *system, control_params *control,
 #if defined(TEST_FORCES)
                     Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
                     Add_dBOpinpi2( system, lists, i, pj,
-                            -(CEbo + twbp->De_p), -(CEbo + twbp->De_pp),
+                            -(CEbo + twbp->De_p),
+                            -(CEbo + twbp->De_pp),
                             workspace->f_be, workspace->f_be );
 #endif
 

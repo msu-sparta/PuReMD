@@ -48,7 +48,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     strncpy( control->restart_from, "default.res", sizeof(control->restart_from) - 1 );
     control->restart_from[sizeof(control->restart_from) - 1] = '\0';
     out_control->restart_freq = 0;
-    control->random_vel = 0;
+    control->random_vel = FALSE;
 
     control->reposition_atoms = 0;
 
@@ -207,7 +207,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 else if ( strncmp(tmp[0], "dt", MAX_LINE) == 0 )
                 {
                     val = atof(tmp[1]);
-                    control->dt = val * 1.e-3;  // convert dt from fs to ps!
+                    control->dt = val * 1.0e-3;  // convert dt from fs to ps!
                 }
                 else if ( strncmp(tmp[0], "gpus_per_node", MAX_LINE) == 0 )
                 {
@@ -409,7 +409,9 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                     if ( control->ensemble == iNPT )
                     {
                         val = atof(tmp[1]);
-                        control->P[0] = control->P[1] = control->P[2] = val;
+                        control->P[0] = val;
+                        control->P[1] = val;
+                        control->P[2] = val;
                     }
                     else if ( control->ensemble == sNPT )
                     {
@@ -428,24 +430,24 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                     if ( control->ensemble == iNPT )
                     {
                         val = atof(tmp[1]);
-                        control->Tau_P[0] = val * 1.e-3;   // convert p_mass from fs to ps
+                        control->Tau_P[0] = val * 1.0e-3;   // convert p_mass from fs to ps
                     }
                     else if ( control->ensemble == sNPT )
                     {
                         val = atof(tmp[1]);
-                        control->Tau_P[0] = val * 1.e-3;   // convert p_mass from fs to ps
+                        control->Tau_P[0] = val * 1.0e-3;   // convert p_mass from fs to ps
 
                         val = atof(tmp[2]);
-                        control->Tau_P[1] = val * 1.e-3;   // convert p_mass from fs to ps
+                        control->Tau_P[1] = val * 1.0e-3;   // convert p_mass from fs to ps
 
                         val = atof(tmp[3]);
-                        control->Tau_P[2] = val * 1.e-3;   // convert p_mass from fs to ps
+                        control->Tau_P[2] = val * 1.0e-3;   // convert p_mass from fs to ps
                     }
                 }
                 else if ( strncmp(tmp[0], "pt_mass", MAX_LINE) == 0 )
                 {
                     val = atof(tmp[1]);
-                    control->Tau_PT = val * 1.e-3;  // convert pt_mass from fs to ps
+                    control->Tau_PT = val * 1.0e-3;  // convert pt_mass from fs to ps
                 }
                 else if ( strncmp(tmp[0], "compress", MAX_LINE) == 0 )
                 {

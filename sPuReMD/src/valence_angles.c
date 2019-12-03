@@ -144,6 +144,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         real BOA_ij, BOA_jk;
         real vlpadj;
         rvec force, ext_press;
+        ivec rel_box;
         //rtensor temp_rtensor, total_rtensor;
         three_body_header *thbh;
         three_body_parameters *thbp;
@@ -525,7 +526,9 @@ void Valence_Angles( reax_system *system, control_params *control,
                              * forces and pressure vector/tensor */
                             rvec_Scale( force, CEval8, p_ijk->dcos_di );
                             rvec_Add( *f_i, force );
-                            rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
+                            ivec_Sum( rel_box, pbond_ij->rel_box, system->atoms[i].rel_map );
+                            ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
+                            rvec_iMultiply( ext_press, rel_box, force );
 #ifdef _OPENMP
 //                            #pragma omp critical (Three_Body_Interactions_ext_press)
 #endif
@@ -537,7 +540,9 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                             rvec_Scale( force, CEval8, p_ijk->dcos_dk );
                             rvec_Add( *f_k, force );
-                            rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
+                            ivec_Sum( rel_box, pbond_jk->rel_box, system->atoms[k].rel_map );
+                            ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
+                            rvec_iMultiply( ext_press, rel_box, force );
 #ifdef _OPENMP
 //                            #pragma omp critical (Three_Body_Interactions_ext_press)
 #endif

@@ -63,11 +63,13 @@ static void Generate_Initial_Velocities( reax_system *system,
 
             rvec_Scale( system->atoms[i].v, 1.0 / scale, system->atoms[i].v );
 
-            /*fprintf( stderr, "v = %f %f %f\n",
-            system->atoms[i].v[0],system->atoms[i].v[1],system->atoms[i].v[2]);
-            fprintf( stderr, "scale = %f\n", scale );
-            fprintf( stderr, "v = %f %f %f\n",
-            system->atoms[i].v[0],system->atoms[i].v[1],system->atoms[i].v[2]);*/
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr, "[INFO] atom %d, scale = %f, v = (%f, %f, %f)\n",
+                    i, scale,
+                    system->atoms[i].v[0],
+                    system->atoms[i].v[1],
+                    system->atoms[i].v[2] );
+#endif
         }
     }
 }
@@ -173,7 +175,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         //control->Tau_T = 100 * data->N_f * K_B * control->T_final;
 
         if ( control->restart == FALSE
-                || (control->restart == TRUE && control->random_vel) )
+                || (control->restart == TRUE && control->random_vel == TRUE) )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin
                     - data->N_f * K_B * control->T );

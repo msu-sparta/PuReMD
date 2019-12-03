@@ -257,5 +257,7 @@ void Reset_Marks( grid *g, ivec *grid_stack, int grid_top )
     int i;
 
     for ( i = 0; i < grid_top; ++i )
+    {
         g->mark[grid_stack[i][0]][grid_stack[i][1]][grid_stack[i][2]] = 0;
+    }
 }
