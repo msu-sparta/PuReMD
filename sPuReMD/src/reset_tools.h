@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __RESET_UTILS_H_
-#define __RESET_UTILS_H_
+#ifndef __RESET_TOOLS_H_
+#define __RESET_TOOLS_H_
 
 #include "reax_types.h"
 

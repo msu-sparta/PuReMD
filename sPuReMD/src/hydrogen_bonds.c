@@ -44,7 +44,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     num_hb_intrs = 0;
 #endif
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(shared) reduction(+: e_hb_total)
 #endif
     {
@@ -66,7 +66,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         bond_data *bond_list;
         hbond_data *hbond_list;
         rvec *f_i, *f_j, *f_k;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         int tid = omp_get_thread_num( );
 #endif
 
@@ -80,7 +80,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
          * Hydrogen bond is between j and k.
          * so in this function i->X, j->H, k->Z when we map
          * variables onto the ones in the handout. */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif
         for ( j = 0; j < system->N; ++j )
@@ -93,7 +93,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 end_j = End_Index( j, bonds );
                 hb_start_j = Start_Index( workspace->hbond_index[j], hbonds );
                 hb_end_j = End_Index( workspace->hbond_index[j], hbonds );
-#ifdef _OPENMP
+#if defined(_OPENMP)
                 f_j = &workspace->f_local[tid * system->N + j];
 #else
                 f_j = &system->atoms[j].f;
@@ -121,7 +121,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                     nbr_jk = hbond_list[pk].ptr;
                     r_jk = nbr_jk->d;
                     rvec_Scale( dvec_jk, hbond_list[pk].scl, nbr_jk->dvec );
-#ifdef _OPENMP
+#if defined(_OPENMP)
                     f_k = &workspace->f_local[tid * system->N + k];
 #else
                     f_k = &system->atoms[k].f;
@@ -139,14 +139,14 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                             type_i = system->atoms[i].type;
                             r_ij = pbond_ij->d;
                             hbp = &system->reax_param.hbp[ type_i ][ type_j ][ type_k ];
-#ifdef _OPENMP
+#if defined(_OPENMP)
                             f_i = &workspace->f_local[tid * system->N + i];
 #else
                             f_i = &system->atoms[i].f;
 #endif
 
 #if defined(TEST_FORCES)
-#ifdef _OPENMP
+#if defined(_OPENMP)
                             #pragma omp atomic
 #endif
                             ++num_hb_intrs;
@@ -180,7 +180,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                              * note: safe to update across threads as this points
                              * to the bond_order_data struct inside atom j's list,
                              * and threads are partitioned across all j's */
-#ifdef _OPENMP
+#if defined(_OPENMP)
                             #pragma omp atomic
 #endif
                             bo_ij->Cdbo += CEhb1;
@@ -197,7 +197,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
                                 rvec_ScaledAdd( *f_k, +CEhb3 / r_jk, dvec_jk );
                             }
-                            else
+                            else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                                    || control->ensemble == aNPT )
                             {
                                 /* for pressure coupling, terms that are not related
                                  * to bond order derivatives are added directly into
@@ -209,12 +210,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 ivec_Sum( rel_box, pbond_ij->rel_box, system->atoms[i].rel_map );
                                 ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
                                 rvec_iMultiply( ext_press, rel_box, force );
-#ifdef _OPENMP
-                                #pragma omp critical (Hydrogen_Bonds_ext_press)
+#if !defined(_OPENMP)
+                                rvec_Add( data->ext_press, ext_press );
+#else
+                                rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                {
-                                    rvec_ScaledAdd( data->ext_press, 1.0, ext_press );
-                                }
 
                                 rvec_ScaledAdd( *f_j, +CEhb2, dcos_theta_dj );
 
@@ -224,12 +224,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 ivec_ScaledAdd( rel_jk, -1, system->atoms[j].rel_map );
                                 ivec_Scale( rel_jk, hbond_list[pk].scl, rel_jk );
                                 rvec_iMultiply( ext_press, rel_jk, force );
-#ifdef _OPENMP
-                                #pragma omp critical (Hydrogen_Bonds_ext_press)
+#if !defined(_OPENMP)
+                                rvec_Add( data->ext_press, ext_press );
+#else
+                                rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                {
-                                    rvec_ScaledAdd( data->ext_press, 1.0, ext_press );
-                                }
 
                                 /* dr terms */
                                 rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
@@ -237,12 +236,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
                                 rvec_Add( *f_k, force );
                                 rvec_iMultiply( ext_press, rel_jk, force );
-#ifdef _OPENMP
-                                #pragma omp critical (Hydrogen_Bonds_ext_press)
+#if !defined(_OPENMP)
+                                rvec_Add( data->ext_press, ext_press );
+#else
+                                rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                {
-                                    rvec_ScaledAdd( data->ext_press, 1.0, ext_press );
-                                }
 
                                 /* This part is intended for a fully-flexible box */
 //                                rvec_OuterProduct( temp_rtensor,
@@ -271,7 +269,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 //                                }
                             }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                             /*fprintf( out_control->ehb,
                               "%23.15e%23.15e%23.15e\n%23.15e%23.15e%23.15e\n%23.15e%23.15e%23.15e\n",
                               dcos_theta_di[0], dcos_theta_di[1], dcos_theta_di[2],

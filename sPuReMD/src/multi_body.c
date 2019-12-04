@@ -78,7 +78,7 @@ void Atom_Energy( reax_system *system, control_params *control,
 
         workspace->CdDelta[i] += CElp;      // lp - 1st term
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
         fprintf( out_control->elp, "%23.15e%23.15e%23.15e%23.15e\n",
                  p_lp2, workspace->Delta_lp_temp[i], expvd2, dElp );
         fprintf( out_control->elp, "%6d%23.15e%23.15e%23.15e\n",
@@ -122,7 +122,7 @@ void Atom_Energy( reax_system *system, control_params *control,
                             bo_ij->Cdbo += deahu2dbo;
                             workspace->CdDelta[i] += deahu2dsbo;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                             fprintf( out_control->elp, "C2cor%6d%6d%23.15e%23.15e%23.15e\n",
                                     // workspace->orig_id[i], workspace->orig_id[j],
                                     i + 1, j + 1, e_lph, deahu2dbo, deahu2dsbo );
@@ -247,7 +247,7 @@ void Atom_Energy( reax_system *system, control_params *control,
             bo_ij->Cdbopi2 += CEunder4
                 * (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j]); //UnCoor-2b
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
             /* fprintf( out_control->eov, "%6d%23.15e%23.15e"
             workspace->orig_id[j]+1,
              //twbp->p_ovun1,twbp->De_s,Delta_lpcorr*DlpVi*inv_exp_ovun2,
@@ -305,7 +305,7 @@ void Atom_Energy( reax_system *system, control_params *control,
 #endif
         }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
 
         fprintf( out_control->eov, "%6d%15.8f%15.8f%15.8f\n",
                  i + 1, DlpVi, Delta_lpcorr, sbp_i->valency );

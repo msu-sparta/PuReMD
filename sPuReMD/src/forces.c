@@ -208,19 +208,19 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
 
     bonds = lists[BONDS];
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(shared)
 #endif
     {
         int pj;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         int j;
 #endif
 
         if ( control->ensemble == NVE || control->ensemble == nhNVT
                 || control->ensemble == bNVT )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < system->N; ++i )
@@ -234,9 +234,10 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
                 }
             }
         }
-        else
+        else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                || control->ensemble == aNPT )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < system->N; ++i )
@@ -251,7 +252,7 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
             }
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         /* reduction (sum) on thread-local force vectors */
         #pragma omp for schedule(static)
         for ( i = 0; i < system->N; ++i )

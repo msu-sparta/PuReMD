@@ -444,9 +444,6 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
 
 /************************************************/
 /* BELOW FUNCTIONS ARE NOT BEING USED ANYMORE!  */
-/*                                              */
-/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /************************************************/
 #if defined(ANISOTROPIC)
 void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
@@ -535,9 +532,9 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     real coef_v, coef_v_eps;
     real dt = control->dt;
     real dt_sqr = SQR( dt );
-    thermostat *therm = &( data->therm );
-    isotropic_barostat *iso_bar = &( data->iso_bar );
-    simulation_box *box = &( system->box );
+    thermostat *therm = &data->therm;
+    isotropic_barostat *iso_bar = &data->iso_bar;
+    simulation_box *box = &system->box;
     rvec dx, dv;
 
     // Here we just calculate how much to increment eps, xi, v_eps, v_xi.
@@ -584,8 +581,8 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     // Commit updates
     therm->xi += dxi;
     iso_bar->eps += deps;
-    //Update_Box_Isotropic( EXP( 3.0 * iso_bar->eps ), &(system->box) );
-    Update_Box_Isotropic( &(system->box), EXP( 3.0 * iso_bar->eps ) );
+    //Update_Box_Isotropic( EXP( 3.0 * iso_bar->eps ), &system->box );
+    Update_Box_Isotropic( &system->box, EXP( 3.0 * iso_bar->eps ) );
 
     // Calculate new forces, f(t + dt)
     Reset( system, control, data, workspace );

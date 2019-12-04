@@ -325,7 +325,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     ivec rel_box;
     int pk, k, j;
     rvec *f_i, *f_j, *f_k;
-#ifdef _OPENMP
+#if defined(_OPENMP)
     int tid = omp_get_thread_num( );
 #endif
 
@@ -334,7 +334,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     j = nbr_j->nbr;
     bo_ij = &nbr_j->bo_data;
     bo_ji = &bonds->bond_list[ nbr_j->sym_index ].bo_data;
-#ifdef _OPENMP
+#if defined(_OPENMP)
     f_i = &workspace->f_local[tid * system->N + i];
     f_j = &workspace->f_local[tid * system->N + j];
 #else
@@ -368,7 +368,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     {
         nbr_k = &bonds->bond_list[pk];
         k = nbr_k->nbr;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         f_k = &workspace->f_local[tid * system->N + k];
 #else
         f_k = &system->atoms[k].f;
@@ -389,12 +389,11 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         ivec_Sum( rel_box, nbr_k->rel_box, system->atoms[k].rel_map );
         ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
         rvec_iMultiply( ext_press, rel_box, temp );
-#ifdef _OPENMP
-        #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
+#if !defined(_OPENMP)
+        rvec_Add( data->ext_press, ext_press );
+#else
+        rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-        {
-            rvec_Add( data->ext_press, ext_press );
-        }
     }
 
     /* then atom i itself */
@@ -434,7 +433,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     {
         nbr_k = &bonds->bond_list[pk];
         k = nbr_k->nbr;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         f_k = &workspace->f_local[tid * system->N + k];
 #else
         f_k = &system->atoms[k].f;
@@ -463,12 +462,11 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
             ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
             ivec_Sum( rel_box, nbr_k->rel_box, system->atoms[k].rel_map );
             rvec_iMultiply( ext_press, rel_box, temp );
-#ifdef _OPENMP
-            #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
+#if !defined(_OPENMP)
+        rvec_Add( data->ext_press, ext_press );
+#else
+        rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-            {
-                rvec_Add( data->ext_press, ext_press );
-            }
         }
     }
 
@@ -503,12 +501,11 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     ivec_Sum( rel_box, nbr_j->rel_box, system->atoms[j].rel_map );
     ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
     rvec_iMultiply( ext_press, rel_box, temp );
-#ifdef _OPENMP
-    #pragma omp critical (Add_dBond_to_Forces_NPT_ext_press)
+#if !defined(_OPENMP)
+    rvec_Add( data->ext_press, ext_press );
+#else
+    rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-    {
-        rvec_Add( data->ext_press, ext_press );
-    }
 }
 
 
@@ -521,7 +518,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
     dbond_coefficients coef;
     int pk, k, j;
     rvec *f_i, *f_j, *f_k;
-#ifdef _OPENMP
+#if defined(_OPENMP)
     int tid = omp_get_thread_num( );
 #endif
 
@@ -530,7 +527,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
     j = nbr_j->nbr;
     bo_ij = &nbr_j->bo_data;
     bo_ji = &bonds->bond_list[ nbr_j->sym_index ].bo_data;
-#ifdef _OPENMP
+#if defined(_OPENMP)
     f_i = &workspace->f_local[tid * system->N + i];
     f_j = &workspace->f_local[tid * system->N + j];
 #else
@@ -560,7 +557,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
     {
         nbr_k = &bonds->bond_list[pk];
         k = nbr_k->nbr;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         f_k = &workspace->f_local[tid * system->N + k];
 #else
         f_k = &system->atoms[k].f;
@@ -604,7 +601,7 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
     {
         nbr_k = &bonds->bond_list[pk];
         k = nbr_k->nbr;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         f_k = &workspace->f_local[tid * system->N + k];
 #else
         f_k = &system->atoms[k].f;
@@ -694,7 +691,7 @@ void BO( reax_system *system, control_params *control,
     dBOs = lists[DBO];
 #endif
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(shared)
 #endif
     {
@@ -723,7 +720,7 @@ void BO( reax_system *system, control_params *control,
 #endif
 
         /* Calculate Deltaprime, Deltaprime_boc values */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < system->N; ++i )
@@ -737,12 +734,12 @@ void BO( reax_system *system, control_params *control,
         }
 
         /* wait until initialization complete */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 #endif
 
         /* Corrected Bond Order calculations */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < system->N; ++i )
@@ -987,11 +984,11 @@ void BO( reax_system *system, control_params *control,
         }
 
         /* wait for bo_ij to be updated */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 #endif
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < system->N; ++i )
@@ -1045,13 +1042,13 @@ void BO( reax_system *system, control_params *control,
         }
 
         /* need to wait for total_bond_order to be accumulated */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 #endif
 
         /* Calculate some helper variables that are  used at many places
            throughout force calculations */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif
         for ( j = 0; j < system->N; ++j )

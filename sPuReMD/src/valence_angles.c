@@ -118,8 +118,8 @@ void Valence_Angles( reax_system *system, control_params *control,
     e_pen_total = 0.0;
     e_coa_total = 0.0;
 
-    //TODO: change interaction lists for parallelization
-#ifdef _OPENMP
+    //TODO: change interaction lists for parallelization (parallel creation of thb_list)
+#if defined(_OPENMP)
 //    #pragma omp parallel default(shared) reduction(+:total_Eang, total_Epen, total_Ecoa, num_thb_intrs) 
 #endif
     {
@@ -152,16 +152,16 @@ void Valence_Angles( reax_system *system, control_params *control,
         bond_data *pbond_ij, *pbond_jk, *pbond_jt;
         bond_order_data *bo_ij, *bo_jk, *bo_jt;
         rvec *f_i, *f_j, *f_k;
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //        int tid = omp_get_thread_num( );
 #endif
 
         for ( j = 0; j < system->N; ++j )
         {
             type_j = system->atoms[j].type;
-            start_j = Start_Index(j, bonds);
-            end_j = End_Index(j, bonds);
-//#ifdef _OPENMP
+            start_j = Start_Index( j, bonds );
+            end_j = End_Index( j, bonds );
+//#if defined(_OPENMP)
 //            f_j = &workspace->f_local[tid * system->N + j];
 //#else
             f_j = &system->atoms[j].f;
@@ -242,13 +242,13 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                 i = pbond_ij->nbr;
                 type_i = system->atoms[i].type;
-//#ifdef _OPENMP
+//#if defined(_OPENMP)
 //                    f_i = &workspace->f_local[tid * system->N + i];
 //#else
                 f_i = &system->atoms[i].f;
 //#endif
 
-                /* first copy 3-body intrs from previously computed ones where i>k.
+                /* first copy 3-body intrs from previously computed ones where i > k.
                  * IMPORTANT: if it is less costly to compute theta and its
                  * derivative, we should definitely re-compute them,
                  * instead of copying!
@@ -294,7 +294,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                     k = pbond_jk->nbr;
                     type_k = system->atoms[k].type;
                     p_ijk = &thb_list[num_thb_intrs];
-//#ifdef _OPENMP
+//#if defined(_OPENMP)
 //                    f_k = &workspace->f_local[tid * system->N + k];
 //#else
                     f_k = &system->atoms[k].f;
@@ -330,15 +330,6 @@ void Valence_Angles( reax_system *system, control_params *control,
                     }
 
                     thbh = &system->reax_param.thbp[type_i][type_j][type_k];
-
-//                    if ( workspace->orig_id[i] < workspace->orig_id[k] )
-//                        fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-//                                workspace->orig_id[i], workspace->orig_id[j],
-//                                workspace->orig_id[k], bo_ij->BO, bo_jk->BO, p_ijk->theta );
-//                    else
-//                        fprintf( stdout, "%6d %6d %6d %7.3f %7.3f %7.3f\n",
-//                                workspace->orig_id[k], workspace->orig_id[j],
-//                                workspace->orig_id[i], bo_jk->BO, bo_ij->BO, p_ijk->theta );
 
                     for ( cnt = 0; cnt < thbh->cnt; ++cnt )
                     {
@@ -469,23 +460,23 @@ void Valence_Angles( reax_system *system, control_params *control,
                         CEcoa5 = -2.0 * p_coa3 * (total_bo[k] - BOA_jk) * e_coa;
 
                         /* calculate force contributions */
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                        #pragma omp atomic
 #endif
                         bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                        #pragma omp atomic
 #endif
                         bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                        #pragma omp atomic
 #endif
                         workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                        #pragma omp atomic
 #endif
                         workspace->CdDelta[i] += CEcoa4;
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                        #pragma omp atomic
 #endif
                         workspace->CdDelta[k] += CEcoa5;
@@ -498,15 +489,15 @@ void Valence_Angles( reax_system *system, control_params *control,
                             temp = CUBE( temp_bo_jt );
                             pBOjt7 = temp * temp * temp_bo_jt;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
                             bo_jt->Cdbo += CEval6 * pBOjt7;
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
                             bo_jt->Cdbopi += CEval5;
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
                             bo_jt->Cdbopi2 += CEval5;
@@ -519,7 +510,8 @@ void Valence_Angles( reax_system *system, control_params *control,
                             rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
                             rvec_ScaledAdd( *f_k, CEval8, p_ijk->dcos_dk );
                         }
-                        else
+                        else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                                || control->ensemble == aNPT )
                         {
                             /* terms not related to bond order derivatives
                              * are added directly into
@@ -529,12 +521,11 @@ void Valence_Angles( reax_system *system, control_params *control,
                             ivec_Sum( rel_box, pbond_ij->rel_box, system->atoms[i].rel_map );
                             ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
                             rvec_iMultiply( ext_press, rel_box, force );
-#ifdef _OPENMP
-//                            #pragma omp critical (Three_Body_Interactions_ext_press)
-#endif
-                            {
-                                rvec_Add( data->ext_press, ext_press );
-                            }
+//#if !defined(_OPENMP)
+                            rvec_Add( data->ext_press, ext_press );
+//#else
+//                            rvec_Add( data->ext_press_local[tid], ext_press );
+//#endif
 
                             rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
 
@@ -543,34 +534,36 @@ void Valence_Angles( reax_system *system, control_params *control,
                             ivec_Sum( rel_box, pbond_jk->rel_box, system->atoms[k].rel_map );
                             ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
                             rvec_iMultiply( ext_press, rel_box, force );
-#ifdef _OPENMP
-//                            #pragma omp critical (Three_Body_Interactions_ext_press)
-#endif
-                            {
-                                rvec_Add( data->ext_press, ext_press );
-                            }
+//#if !defined(_OPENMP)
+                            rvec_Add( data->ext_press, ext_press );
+//#else
+//                            rvec_Add( data->ext_press_local[tid], ext_press );
+//#endif
 
                             /* This part is for a fully-flexible box */
-                            /* rvec_OuterProduct( temp_rtensor,
-                               p_ijk->dcos_di, system->atoms[i].x );
-                               rtensor_Scale( total_rtensor, +CEval8, temp_rtensor );
-
-                               rvec_OuterProduct( temp_rtensor,
-                               p_ijk->dcos_dj, system->atoms[j].x );
-                               rtensor_ScaledAdd(total_rtensor, CEval8, temp_rtensor);
-
-                               rvec_OuterProduct( temp_rtensor,
-                               p_ijk->dcos_dk, system->atoms[k].x );
-                               rtensor_ScaledAdd(total_rtensor, CEval8, temp_rtensor);
-
-                               if( pbond_ij->imaginary || pbond_jk->imaginary )
-                               rtensor_ScaledAdd( data->flex_bar.P,
-                               -1.0, total_rtensor );
-                               else
-                               rtensor_Add( data->flex_bar.P, total_rtensor ); */
+//                            rvec_OuterProduct( temp_rtensor,
+//                                    p_ijk->dcos_di, system->atoms[i].x );
+//                            rtensor_Scale( total_rtensor, +CEval8, temp_rtensor );
+//
+//                            rvec_OuterProduct( temp_rtensor,
+//                                    p_ijk->dcos_dj, system->atoms[j].x );
+//                            rtensor_ScaledAdd( total_rtensor, CEval8, temp_rtensor );
+//
+//                            rvec_OuterProduct( temp_rtensor,
+//                                    p_ijk->dcos_dk, system->atoms[k].x );
+//                            rtensor_ScaledAdd( total_rtensor, CEval8, temp_rtensor );
+//
+//                            if ( pbond_ij->imaginary || pbond_jk->imaginary )
+//                            {
+//                                rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
+//                            }
+//                            else
+//                            {
+//                                rtensor_Add( data->flex_bar.P, total_rtensor );
+//                            }
                         }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                         fprintf( out_control->eval,
                                  //"%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e%23.15e",
                                  "%6d%6d%6d%23.15e%23.15e%23.15e\n",
@@ -685,7 +678,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         }
     }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     fprintf( stderr, "Number of angle interactions: %d\n", num_thb_intrs );
 
     fprintf( stderr, "Angle Energy:%g\t Penalty Energy:%g\t Coalition Energy:%g\n",

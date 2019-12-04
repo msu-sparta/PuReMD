@@ -115,14 +115,14 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
     unsigned int i, j, si, ei;
     sparse_matrix_entry *temp;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
 #endif
     {
         temp = smalloc( sizeof(sparse_matrix_entry) * (A->n + 1), "Sort_Matrix_Rows::temp" );
 
         /* sort each row of A using column indices */
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //        #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < A->n; ++i )
@@ -376,16 +376,16 @@ void Calculate_Droptol( const sparse_matrix * const A,
 {
     int i, j, k;
     real val;
-#ifdef _OPENMP
+#if defined(_OPENMP)
     static real *droptol_local;
     unsigned int tid;
 #endif
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local, stderr)
 #endif
     {
-#ifdef _OPENMP
+#if defined(_OPENMP)
         tid = omp_get_thread_num();
 
         #pragma omp master
@@ -402,19 +402,19 @@ void Calculate_Droptol( const sparse_matrix * const A,
 
         for ( i = 0; i < A->n; ++i )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             droptol_local[tid * A->n + i] = 0.0;
 #else
             droptol[i] = 0.0;
 #endif
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 #endif
 
         /* calculate sqaure of the norm of each row */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < A->n; ++i )
@@ -424,7 +424,7 @@ void Calculate_Droptol( const sparse_matrix * const A,
                 j = A->j[k];
                 val = A->val[k];
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
                 droptol_local[tid * A->n + i] += val * val;
                 droptol_local[tid * A->n + j] += val * val;
 #else
@@ -435,14 +435,14 @@ void Calculate_Droptol( const sparse_matrix * const A,
 
             // diagonal entry
             val = A->val[k];
-#ifdef _OPENMP
+#if defined(_OPENMP)
             droptol_local[tid * A->n + i] += val * val;
 #else
             droptol[i] += val * val;
 #endif
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 
         #pragma omp for schedule(static)
@@ -459,7 +459,7 @@ void Calculate_Droptol( const sparse_matrix * const A,
 #endif
 
         /* calculate local droptol for each row */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < A->n; ++i )
@@ -478,7 +478,7 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
 
     fillin = 0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
     default(none) private(i, pj, val) reduction(+: fillin)
 #endif
@@ -507,7 +507,7 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
 
     start = Get_Time( );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,256) \
     default(none) private(i)
 #endif
@@ -1135,7 +1135,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
     D_inv = smalloc( sizeof(real) * A->n, "FG_ICHOLT::D_inv" );
     gamma = smalloc( sizeof(real) * A->n, "FG_ICHOLT::gamma" );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
         default(none) shared(D, D_inv, gamma) private(i)
 #endif
@@ -1153,7 +1153,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
         D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
         default(none) shared(D, D_inv, stderr) private(i)
 #endif
@@ -1166,7 +1166,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
      * transformation DAD, where D = D(1./SQRT(D(A))) */
     memcpy( DAD->start, A->start, sizeof(unsigned int) * (A->n + 1) );
     memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, D, gamma) private(i, pj)
 #endif
@@ -1190,7 +1190,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
     for ( s = 0; s < sweeps; ++s )
     {
         /* for each nonzero in U^{T} */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp parallel for schedule(dynamic,4096) \
             default(none) shared(DAD, U_T_temp, stderr) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
@@ -1263,7 +1263,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
     /* apply inverse transformation D^{-1}\gamma^{-1}U^{T},
      * since \gamma DAD \approx U^{T}U, so
      * D^{-1}\gamma^{-1}\gamma DADD^{-1} = A \approx D^{-1}\gamma^{-1}U^{T}UD^{-1} */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(U_T_temp, D_inv, gamma) private(i, pj)
 #endif
@@ -1344,7 +1344,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     D_inv = smalloc( sizeof(real) * A->n, "FG_ILUT::D_inv" );
     gamma = smalloc( sizeof(real) * A->n, "FG_ILUT::gamma" );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
         default(none) shared(D_inv, gamma) private(i)
 #endif
@@ -1362,7 +1362,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         D_inv[i] = SQRT( FABS( A->val[A->start[i + 1] - 1] ) );
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
         default(none) shared(D, D_inv) private(i)
 #endif
@@ -1376,7 +1376,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
      * and \gamma = {-1 if a_{ii} < 0, 1 otherwise} */
     memcpy( DAD->start, A->start, sizeof(unsigned int) * (A->n + 1) );
     memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, D, gamma) private(i, pj)
 #endif
@@ -1402,7 +1402,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     memcpy( U_T_temp->val, DAD->val, sizeof(real) * DAD->start[DAD->n] );
 
     /* L has unit diagonal, by convention */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
         default(none) private(i) shared(L_temp)
 #endif
@@ -1414,7 +1414,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     for ( s = 0; s < sweeps; ++s )
     {
         /* for each nonzero in L */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp parallel for schedule(dynamic,4096) \
             default(none) shared(DAD, L_temp, U_T_temp) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
@@ -1470,7 +1470,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         }
 
         /* for each nonzero in U^T */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp parallel for schedule(dynamic,4096) \
             default(none) shared(DAD, L_temp, U_T_temp) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
@@ -1525,7 +1525,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     /* apply inverse transformations:
      * since \gamma DAD \approx LU, then
      * D^{-1}DADD^{-1} = A \approx D^{-1}\gamma^{-1}LUD^{-1} */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, L_temp, D_inv, gamma) private(i, pj)
 #endif
@@ -1537,7 +1537,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         }
     }
     /* note: since we're storing U^T, apply the transform from the left side */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, U_T_temp, D_inv) private(i, pj)
 #endif
@@ -1655,7 +1655,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 
     (*A_app_inv)->start[(*A_app_inv)->n] = A_spar_patt->start[A_spar_patt->n];
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, k, pj, j_temp, identity_pos, N, M, d_i, d_j, m, n, \
             nrhs, lda, ldb, info, X, Y, pos_x, pos_y, e_j, dense_matrix) \
@@ -1675,7 +1675,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             pos_y[i] = 0;
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < A_spar_patt->n; ++i )
@@ -1816,14 +1816,14 @@ static void sparse_matvec( const static_storage * const workspace,
 {
     int i, j, k, n, si, ei;
     real H;
-#ifdef _OPENMP
+#if defined(_OPENMP)
     unsigned int tid;
 #endif
 
     n = A->n;
     Vector_MakeZero( b, n );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     tid = omp_get_thread_num( );
 
     Vector_MakeZero( workspace->b_local, omp_get_num_threads() * n );
@@ -1839,7 +1839,7 @@ static void sparse_matvec( const static_storage * const workspace,
         {
             j = A->j[k];
             H = A->val[k];
-#ifdef _OPENMP
+#if defined(_OPENMP)
             workspace->b_local[tid * n + j] += H * x[i];
             workspace->b_local[tid * n + i] += H * x[j];
 #else
@@ -1849,14 +1849,14 @@ static void sparse_matvec( const static_storage * const workspace,
         }
 
         // the diagonal entry is the last one in
-#ifdef _OPENMP
+#if defined(_OPENMP)
         workspace->b_local[tid * n + i] += A->val[k] * x[i];
 #else
         b[i] += A->val[k] * x[i];
 #endif
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for schedule(dynamic,256)
     for ( i = 0; i < n; ++i )
     {
@@ -1881,7 +1881,7 @@ static void sparse_matvec_full( const sparse_matrix * const A,
 
     Vector_MakeZero( b, A->n );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for schedule(guided)
 #endif
     for ( i = 0; i < A->n; ++i )
@@ -1974,7 +1974,7 @@ static void jacobi_app( const real * const Hdia_inv, const real * const y,
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for schedule(dynamic,256)
 #endif
     for ( i = 0; i < N; ++i )
@@ -2001,7 +2001,7 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
     int i, pj, j, si, ei;
     real val;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp single
 #endif
     {
@@ -2075,7 +2075,7 @@ void tri_solve_level_sched( static_storage * workspace,
         level_rows_cnt = workspace->level_rows_cnt_U;
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp single
 #endif
     {
@@ -2163,7 +2163,7 @@ void tri_solve_level_sched( static_storage * workspace,
     {
         for ( i = 0; i < levels; ++i )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
@@ -2182,7 +2182,7 @@ void tri_solve_level_sched( static_storage * workspace,
     {
         for ( i = 0; i < levels; ++i )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( j = level_rows_cnt[i]; j < level_rows_cnt[i + 1]; ++j )
@@ -2220,7 +2220,7 @@ void graph_coloring( const control_params * const control,
         static_storage * workspace,
         const sparse_matrix * const A, const TRIANGULARITY tri )
 {
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel
 #endif
     {
@@ -2229,7 +2229,7 @@ void graph_coloring( const control_params * const control,
         int tid, *fb_color;
         unsigned int *p_to_color, *p_conflict, *p_temp;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         tid = omp_get_thread_num( );
 #else
         tid = 0;
@@ -2237,7 +2237,7 @@ void graph_coloring( const control_params * const control,
         p_to_color = workspace->to_color;
         p_conflict = workspace->conflict;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(static)
 #endif
         for ( i = 0; i < A->n; ++i )
@@ -2245,7 +2245,7 @@ void graph_coloring( const control_params * const control,
             workspace->color[i] = 0;
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp single
 #endif
         {
@@ -2256,7 +2256,7 @@ void graph_coloring( const control_params * const control,
          * for which coloring is to be used for */
         if ( tri == LOWER )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < A->n; ++i )
@@ -2266,7 +2266,7 @@ void graph_coloring( const control_params * const control,
         }
         else
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < A->n; ++i )
@@ -2284,7 +2284,7 @@ void graph_coloring( const control_params * const control,
                 fb_color[i] = -1;
 
             /* color vertices */
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < workspace->recolor_cnt; ++i )
@@ -2313,7 +2313,7 @@ void graph_coloring( const control_params * const control,
             temp = workspace->recolor_cnt;
             recolor_cnt_local = 0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp barrier
 
             #pragma omp single
@@ -2322,7 +2322,7 @@ void graph_coloring( const control_params * const control,
                 workspace->recolor_cnt = 0;
             }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(static)
 #endif
             for ( i = 0; i < temp; ++i )
@@ -2344,7 +2344,7 @@ void graph_coloring( const control_params * const control,
             /* count thread-local conflicts and compute offsets for copying into shared buffer */
             workspace->conflict_cnt[tid + 1] = recolor_cnt_local;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp barrier
 
             #pragma omp single
@@ -2365,7 +2365,7 @@ void graph_coloring( const control_params * const control,
                 workspace->color[conflict_local[i]] = 0;
             }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp barrier
 #endif
             p_temp = p_to_color;
@@ -2434,7 +2434,7 @@ static void permute_vector( real * const x_p, const real * const x,
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for schedule(static)
 #endif
     for ( i = 0; i < n; ++i )
@@ -2650,7 +2650,7 @@ void jacobi_iter( const static_storage * const workspace,
     Vector_MakeZero( p1, R->n );
 
     /* precompute and cache, as invariant in loop below */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for schedule(static)
 #endif
     for ( i = 0; i < R->n; ++i )
@@ -2661,7 +2661,7 @@ void jacobi_iter( const static_storage * const workspace,
     do
     {
         /* x_{k+1} = G*x_{k} + Dinv*b */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < R->n; ++i )
@@ -2827,7 +2827,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                     /* construct D^{-1}_L */
                     if ( fresh_pre == TRUE )
                     {
-#ifdef _OPENMP
+#if defined(_OPENMP)
                         #pragma omp for schedule(static)
 #endif
                         for ( i = 0; i < workspace->L->n; ++i )
@@ -2846,7 +2846,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                     /* construct D^{-1}_L */
                     if ( fresh_pre == TRUE )
                     {
-#ifdef _OPENMP
+#if defined(_OPENMP)
                         #pragma omp for schedule(static)
 #endif
                         for ( i = 0; i < workspace->L->n; ++i )
@@ -2959,7 +2959,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                     /* construct D^{-1}_U */
                     if ( fresh_pre == TRUE )
                     {
-#ifdef _OPENMP
+#if defined(_OPENMP)
                         #pragma omp for schedule(static)
 #endif
                         for ( i = 0; i < workspace->U->n; ++i )
@@ -3014,7 +3014,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     t_ts = 0.0;
     t_vops = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, j, k, itr, bnorm, temp, t_start) \
     shared(N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
@@ -3055,7 +3055,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             t_start = Get_Time( );
             temp = Norm( workspace->v[0], N );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp single
 #endif
             workspace->g[0] = temp;
@@ -3084,7 +3084,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 {
                     temp = Dot( workspace->v[i], workspace->v[j + 1], N );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
                     #pragma omp single
 #endif
                     workspace->h[i][j] = temp;
@@ -3097,7 +3097,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
                 t_start = Get_Time( );
                 temp = Norm( workspace->v[j + 1], N );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
                 #pragma omp single
 #endif
                 workspace->h[j + 1][j] = temp;
@@ -3107,7 +3107,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
                 t_start = Get_Time( );
                 /* Givens rotations on the upper-Hessenberg matrix to make it U */
-#ifdef _OPENMP
+#if defined(_OPENMP)
                 #pragma omp single
 #endif
                 {
@@ -3141,7 +3141,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
             /* solve Hy = g: H is now upper-triangular, do back-substitution */
             t_start = Get_Time( );
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp single
 #endif
             {
@@ -3177,7 +3177,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             }
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp single
 #endif
         {
@@ -3223,7 +3223,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
     t_ts = 0.0;
     t_vops = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, j, k, itr, bnorm, temp, t_start) \
     shared(v, z, w, u, tol, N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
@@ -3313,12 +3313,12 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                     Vector_MakeZero( u[j + 1], j + 1 );
                     Vector_Copy( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) );
                     temp = Norm( v + (j + 1), N - (j + 1) );
-#ifdef _OPENMP
+#if defined(_OPENMP)
                     #pragma omp single
 #endif
                     u[j + 1][j + 1] += ( v[j + 1] < 0.0 ? -1.0 : 1.0 ) * temp;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
                     #pragma omp barrier
 #endif
 
@@ -3327,12 +3327,12 @@ int GMRES_HouseHolder( const static_storage * const workspace,
                     /* overwrite v with P_m+1 * v */
                     temp = 2.0 * Dot( u[j + 1] + (j + 1), v + (j + 1), N - (j + 1) )
                            * u[j + 1][j + 1];
-#ifdef _OPENMP
+#if defined(_OPENMP)
                     #pragma omp single
 #endif
                     v[j + 1] -= temp;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
                     #pragma omp barrier
 #endif
 
@@ -3343,7 +3343,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 
                 /* prev Givens rots on the upper-Hessenberg matrix to make it U */
                 t_start = Get_Time( );
-#ifdef _OPENMP
+#if defined(_OPENMP)
                 #pragma omp single
 #endif
                 {
@@ -3389,7 +3389,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
             /* solve Hy = w.
                H is now upper-triangular, do back-substitution */
             t_start = Get_Time( );
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp single
 #endif
             {
@@ -3420,7 +3420,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
             }
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp single
 #endif
         {
@@ -3467,7 +3467,7 @@ int CG( const static_storage * const workspace, const control_params * const con
     t_spmv = 0.0;
     t_vops = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, beta, bnorm, rnorm, sig_old, sig_new, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
@@ -3528,7 +3528,7 @@ int CG( const static_storage * const workspace, const control_params * const con
             t_vops += Get_Timing_Info( t_start );
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp single
 #endif
         {
@@ -3581,7 +3581,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     t_spmv = 0.0;
     t_vops = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, bnorm, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
@@ -3617,7 +3617,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
          * the function return value before proceeding
          * (Dot and Norm functions have persistent state in the form
          * of a shared global variable for the OpenMP version) */
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 #endif
 
@@ -3680,7 +3680,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
              * the function return value before proceeding
              * (Dot and Norm functions have persistent state in the form
              * of a shared global variable for the OpenMP version) */
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp barrier
 #endif
 
@@ -3702,12 +3702,12 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
              * the function return value before proceeding
              * (Dot and Norm functions have persistent state in the form
              * of a shared global variable for the OpenMP version) */
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp barrier
 #endif
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp single
 #endif
         {
@@ -3760,7 +3760,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
     t_spmv = 0.0;
     t_vops = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, bnorm, sig, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
@@ -3805,7 +3805,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
              * the function return value before proceeding
              * (Dot function has persistent state in the form
              * of a shared global variable for the OpenMP version) */
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp barrier
 #endif
 
@@ -3822,7 +3822,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
             t_pa += Get_Timing_Info( t_start );
         }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp single
 #endif
         {

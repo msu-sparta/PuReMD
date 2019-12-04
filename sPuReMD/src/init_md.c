@@ -139,6 +139,15 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
         evolve_function *Evolve )
 {
+#if defined(_OPENMP)
+    if ( control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT )
+    {
+        data->ext_press_local = smalloc( control->num_threads * sizeof( rvec ),
+               "Init_Simulation_Data::data->ext_press_local" );
+    }
+#endif
+
     Reset_Simulation_Data( data );
 
     data->therm.T = 0.0;
@@ -532,7 +541,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     }
 
     /* SpMV related */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     workspace->b_local = smalloc( control->num_threads * system->N_cm * sizeof(real),
             "Init_Workspace::b_local" );
 #endif
@@ -657,7 +666,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     workspace->v_const = smalloc( system->N * sizeof( rvec ),
            "Init_Workspace::workspace->v_const" );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     workspace->f_local = smalloc( control->num_threads * system->N * sizeof( rvec ),
            "Init_Workspace::workspace->f_local" );
 #endif
@@ -978,7 +987,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     }
 
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ebond" );
@@ -1122,7 +1131,7 @@ void Initialize( reax_system *system, control_params *control,
     real start, end;
 #endif
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(none) shared(control)
     {
         #pragma omp single
@@ -1220,6 +1229,13 @@ static void Finalize_System( reax_system *system, control_params *control,
 static void Finalize_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control )
 {
+#if defined(_OPENMP)
+    if ( control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT )
+    {
+        sfree( data->ext_press_local, "Finalize_Workspace::workspace->ext_press_local" );
+    }
+#endif
 }
 
 
@@ -1358,7 +1374,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     }
 
     /* SpMV related */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     sfree( workspace->b_local, "Finalize_Workspace::b_local" );
 #endif
 
@@ -1417,7 +1433,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     sfree( workspace->f_old, "Finalize_Workspace::workspace->f_old" );
     sfree( workspace->v_const, "Finalize_Workspace::workspace->v_const" );
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     sfree( workspace->f_local, "Finalize_Workspace::workspace->f_local" );
 #endif
 
@@ -1525,7 +1541,7 @@ static void Finalize_Out_Controls( reax_system *system, control_params *control,
     }
 
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     sfclose( out_control->ebond, "Finalize_Out_Controls::out_control->ebond" );
     sfclose( out_control->elp, "Finalize_Out_Controls::out_control->elp" );
     sfclose( out_control->eov, "Finalize_Out_Controls::out_control->eov" );

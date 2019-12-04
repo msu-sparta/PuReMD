@@ -41,7 +41,7 @@ void Bonds( reax_system *system, control_params *control,
     gp37 = (int) system->reax_param.gp.l[37];
     ebond_total = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //    #pragma omp parallel default(shared) reduction(+: ebond_total)
 #endif
     { 
@@ -55,7 +55,7 @@ void Bonds( reax_system *system, control_params *control,
         two_body_parameters *twbp;
         bond_order_data *bo_ij;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
 //        #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < system->N; ++i )
@@ -91,7 +91,7 @@ void Bonds( reax_system *system, control_params *control,
                     bo_ij->Cdbopi -= CEbo + twbp->De_p;
                     bo_ij->Cdbopi2 -= CEbo + twbp->De_pp;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                     fprintf( out_control->ebond, "%6d%6d%24.15e%24.15e\n",
                              workspace->orig_id[i], workspace->orig_id[j],
                              // i+1, j+1,
@@ -141,7 +141,7 @@ void Bonds( reax_system *system, control_params *control,
                             workspace->CdDelta[i] += decobdboua;
                             workspace->CdDelta[j] += decobdboub;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                             fprintf( out_control->ebond,
                                      "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
                                      workspace->orig_id[i], workspace->orig_id[j],
@@ -149,7 +149,7 @@ void Bonds( reax_system *system, control_params *control,
                                      estriph, decobdbo, decobdboua, decobdboub );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                             Add_dBO( system, lists, i, pj, decobdbo, workspace->f_be );
                             Add_dDelta( system, lists, i, decobdboua, workspace->f_be );
                             Add_dDelta( system, lists, j, decobdboub, workspace->f_be );

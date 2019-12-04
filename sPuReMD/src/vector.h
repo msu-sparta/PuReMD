@@ -42,14 +42,14 @@ static inline int Vector_isZero( const real * const v, const unsigned int k )
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp single
 #endif
     {
         ret_omp = TRUE;
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd reduction(&&: ret_omp) schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -68,7 +68,7 @@ static inline void Vector_MakeZero( real * const v, const unsigned int k )
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -82,7 +82,7 @@ static inline void Vector_Copy( real * const dest, const real * const v, const u
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -97,7 +97,7 @@ static inline void Vector_Scale( real * const dest, const real c, const real * c
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -112,7 +112,7 @@ static inline void Vector_Sum( real * const dest, const real c, const real * con
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -127,7 +127,7 @@ static inline void Vector_Add( real * const dest, const real c, const real * con
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -142,14 +142,14 @@ static inline real Dot( const real * const v1, const real * const v2,
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp single
 #endif
     {
         ret2_omp = ZERO;
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd reduction(+: ret2_omp) schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -165,14 +165,14 @@ static inline real Norm( const real * const v1, const unsigned int k )
 {
     unsigned int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp single
 #endif
     {
         ret2_omp = ZERO;
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp for simd reduction(+: ret2_omp) schedule(simd:static)
 #endif
     for ( i = 0; i < k; ++i )
@@ -180,7 +180,7 @@ static inline real Norm( const real * const v1, const unsigned int k )
         ret2_omp += SQR( v1[i] );
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp single
 #endif
     {
@@ -195,7 +195,7 @@ static inline void rvec_Copy( rvec dest, const rvec src )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -208,7 +208,7 @@ static inline void rvec_Scale( rvec ret, const real c, const rvec v )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -222,7 +222,7 @@ static inline void rvec_Add( rvec ret, const rvec v )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -236,7 +236,7 @@ static inline void rvec_ScaledAdd( rvec ret, const real c, const rvec v )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -250,7 +250,7 @@ static inline void rvec_Sum( rvec ret, const rvec v1 , const rvec v2 )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -265,7 +265,7 @@ static inline void rvec_ScaledSum( rvec ret, const real c1, const rvec v1,
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -282,7 +282,7 @@ static inline real rvec_Dot( const rvec v1, const rvec v2 )
 
     ret = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd reduction(+: ret)
 #endif
     for ( i = 0; i < 3; ++i )
@@ -302,7 +302,7 @@ static inline real rvec_ScaledDot( const real c1, const rvec v1,
 
     ret = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd reduction(+: ret)
 #endif
     for ( i = 0; i < 3; ++i )
@@ -318,7 +318,7 @@ static inline void rvec_Multiply( rvec r, const rvec v1, const rvec v2 )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -332,7 +332,7 @@ static inline void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -346,7 +346,7 @@ static inline void rvec_Divide( rvec r, const rvec v1, const rvec v2 )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -360,7 +360,7 @@ static inline void rvec_iDivide( rvec r, const rvec v1, const ivec v2 )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -374,7 +374,7 @@ static inline void rvec_Invert( rvec r, const rvec v )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -388,7 +388,7 @@ static inline void rvec_Cross( rvec ret, const rvec v1, const rvec v2 )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -420,7 +420,7 @@ static inline real rvec_Norm_Sqr( const rvec v )
 
     ret = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd reduction(+: ret)
 #endif
     for ( i = 0; i < 3; ++i )
@@ -439,7 +439,7 @@ static inline real rvec_Norm( const rvec v )
 
     ret = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd reduction(+: ret)
 #endif
     for ( i = 0; i < 3; ++i )
@@ -457,7 +457,7 @@ static inline int rvec_isZero( const rvec v )
 
     ret = TRUE;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd reduction(&&: ret)
 #endif
     for ( i = 0; i < 3; ++i )
@@ -473,7 +473,7 @@ static inline void rvec_MakeZero( rvec v )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -717,7 +717,7 @@ static inline void ivec_MakeZero( ivec v )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -731,7 +731,7 @@ static inline void ivec_Copy( ivec dest, const ivec src )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -745,7 +745,7 @@ static inline void ivec_Scale( ivec dest, const int C, const ivec src )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -759,7 +759,7 @@ static inline void ivec_Add( ivec dest, const ivec src )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -773,7 +773,7 @@ static inline void ivec_ScaledAdd( ivec dest, const int c, const ivec src )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -787,7 +787,7 @@ static inline void ivec_rScale( ivec dest, const real C, const rvec src )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )
@@ -803,7 +803,7 @@ static inline int ivec_isZero( const ivec v )
 
     ret = TRUE;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd reduction(&&: ret)
 #endif
     for ( i = 0; i < 3; ++i )
@@ -821,7 +821,7 @@ static inline int ivec_isEqual( const ivec v1, const ivec v2 )
 
     ret = TRUE;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd reduction(&&: ret)
 #endif
     for ( i = 0; i < 3; ++i )
@@ -837,7 +837,7 @@ static inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
 {
     int i;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp simd
 #endif
     for ( i = 0; i < 3; ++i )

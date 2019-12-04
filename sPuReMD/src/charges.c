@@ -307,7 +307,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
     predictions = (float*) TF_TensorData( output_tensor[0] );
 
     /* shift previous solutions down by one time step */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
         default(none) private(i)
 #endif
@@ -347,7 +347,7 @@ static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
 
     /* spline extrapolation for s & t */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
         default(none) private(i, s_tmp, t_tmp)
 #endif
@@ -441,7 +441,7 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
 
     /* spline extrapolation for s */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
         default(none) private(i, s_tmp)
 #endif

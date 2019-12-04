@@ -39,7 +39,7 @@ static void Compute_Polarization_Energy( reax_system* system,
     if ( control->charge_method == QEQ_CM
             || control->charge_method == EE_CM )
     {
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp parallel for default(none) private(q, type_i) shared(system) \
             reduction(+: e_pol) schedule(static)
 #endif
@@ -54,7 +54,7 @@ static void Compute_Polarization_Energy( reax_system* system,
     }
     else if ( control->charge_method == ACKS2_CM )
     {
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp parallel for default(none) private(q, type_i) shared(system, workspace) \
             reduction(+: e_pol) schedule(static)
 #endif
@@ -91,7 +91,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     e_vdW_total = 0.0;
     e_ele_total = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
 #endif
     {
@@ -109,7 +109,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         //rtensor temp_rtensor, total_rtensor;
         two_body_parameters *twbp;
         far_neighbor_data *nbr_pj;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         int tid;
 
         tid = omp_get_thread_num( );
@@ -118,7 +118,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         e_ele = 0.0;
         e_vdW = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif
         for ( i = 0; i < system->N; ++i )
@@ -234,7 +234,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     if ( control->ensemble == NVE || control->ensemble == nhNVT
                             || control->ensemble == bNVT )
                     {
-#ifndef _OPENMP
+#if !defined(_OPENMP)
                         rvec_ScaledAdd( system->atoms[i].f,
                                 -1.0 * (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
                         rvec_ScaledAdd( system->atoms[j].f,
@@ -257,14 +257,14 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                 (CEvd + CEclmb) / r_ij * nbr_pj->dvec[2] ); fflush( stderr );
 #endif
                     }
-                    /* aNPT, iNPT or sNPT */
-                    else
+                    else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                            || control->ensemble == aNPT )
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
                         rvec_Scale( temp, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 
-#ifndef _OPENMP
+#if !defined(_OPENMP)
                         rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
                         rvec_Add( system->atoms[j].f, temp );
 #else
@@ -275,12 +275,11 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         ivec_Sum( rel_box, nbr_pj->rel_box, system->atoms[j].rel_map );
                         ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
                         rvec_iMultiply( ext_press, rel_box, temp );
-#ifdef _OPENMP
-                        #pragma omp critical (vdW_Coulomb_Energy_ext_press)
+#if !defined(_OPENMP)
+                        rvec_Add( data->ext_press, ext_press );
+#else
+                        rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                        {
-                            rvec_Add( data->ext_press, ext_press );
-                        }
 
 #if defined(DEBUG_FOCUS)
                         fprintf( stderr, "nonbonded(%d,%d): rel_box (%d %d %d)",
@@ -308,7 +307,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 //                            rtensor_Add( data->flex_bar.P, total_rtensor );
                     }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                     rvec_MakeZero( temp );
                     rvec_ScaledAdd( temp, +CEvd, nbr_pj->dvec );
                     fprintf( out_control->evdw,
@@ -336,7 +335,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         }
 
         //TODO: better integration of ACKS2 code below with above code for performance
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 #endif
 
@@ -345,7 +344,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
          * kinetic energy */
         if ( control->charge_method == ACKS2_CM )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(guided)
 #endif
             for ( i = 0; i < system->N; ++i )
@@ -391,7 +390,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                     d_bond_softness * nbr_pj->dvec[2] ); fflush( stderr );
 #endif
 
-#ifndef _OPENMP
+#if !defined(_OPENMP)
                             rvec_ScaledAdd( system->atoms[i].f,
                                     -d_bond_softness, nbr_pj->dvec );
                             rvec_ScaledAdd( system->atoms[j].f,
@@ -436,7 +435,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     e_vdW_total = 0.0;
     e_ele_total = 0.0;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
 #endif
     {
@@ -451,7 +450,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         ivec rel_box;
         far_neighbor_data *nbr_pj;
         LR_lookup_table *t;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         int tid;
 
         tid = omp_get_thread_num( );
@@ -515,7 +514,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     if ( control->ensemble == NVE || control->ensemble == nhNVT
                             || control->ensemble == bNVT )
                     {
-#ifndef _OPENMP
+#if !defined(_OPENMP)
                         rvec_ScaledAdd( system->atoms[i].f,
                                 -(CEvd + CEclmb) / r_ij, nbr_pj->dvec );
                         rvec_ScaledAdd( system->atoms[j].f,
@@ -527,13 +526,13 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                 (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 #endif
                     }
-                    /* aNPT, iNPT or sNPT */
-                    else
+                    else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                            || control->ensemble == aNPT )
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
                         rvec_Scale( temp, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
-#ifndef _OPENMP
+#if !defined(_OPENMP)
                         rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
                         rvec_Add( system->atoms[j].f, temp );
 #else
@@ -543,15 +542,14 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         ivec_Sum( rel_box, nbr_pj->rel_box, system->atoms[j].rel_map );
                         ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
                         rvec_iMultiply( ext_press, rel_box, temp );
-#ifdef _OPENMP
-                        #pragma omp critical (Tabulated_vdW_Coulomb_Energy_ext_press)
+#if !defined(_OPENMP)
+                        rvec_Add( data->ext_press, ext_press );
+#else
+                        rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                        {
-                            rvec_Add( data->ext_press, ext_press );
-                        }
                     }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                     fprintf( out_control->evdw, "%6d%6d%24.15e%24.15e%24.15e\n",
                             workspace->orig_id[i], workspace->orig_id[j],
                             r_ij, e_vdW, data->E_vdW );
@@ -572,7 +570,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         }
 
         //TODO: better integration AND tabulation of ACKS2 code below with above code for performance
-#ifdef _OPENMP
+#if defined(_OPENMP)
         #pragma omp barrier
 #endif
 
@@ -581,7 +579,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
          * kinetic energy */
         if ( control->charge_method == ACKS2_CM )
         {
-#ifdef _OPENMP
+#if defined(_OPENMP)
             #pragma omp for schedule(guided)
 #endif
             for ( i = 0; i < system->N; ++i )
@@ -627,7 +625,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                     d_bond_softness * nbr_pj->dvec[2] ); fflush( stderr );
 #endif
 
-#ifndef _OPENMP
+#if !defined(_OPENMP)
                             rvec_ScaledAdd( system->atoms[i].f,
                                     -d_bond_softness, nbr_pj->dvec );
                             rvec_ScaledAdd( system->atoms[j].f,

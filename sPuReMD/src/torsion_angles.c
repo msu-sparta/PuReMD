@@ -163,7 +163,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
     num_frb_intrs = 0;
 #endif
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel default(shared) reduction(+: e_tor_total, e_con_total)
 #endif
     {
@@ -199,7 +199,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         bond_order_data *bo_ij, *bo_jk, *bo_kl;
         three_body_interaction_data *p_ijk, *p_jkl;
         rvec *f_i, *f_j, *f_k, *f_l;
-#ifdef _OPENMP
+#if defined(_OPENMP)
         int tid = omp_get_thread_num( );
 
         #pragma omp for schedule(static)
@@ -210,7 +210,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
             Delta_j = workspace->Delta_boc[j];
             start_j = Start_Index(j, bonds);
             end_j = End_Index(j, bonds);
-#ifdef _OPENMP
+#if defined(_OPENMP)
             f_j = &workspace->f_local[tid * system->N + j];
 #else
             f_j = &system->atoms[j].f;
@@ -222,7 +222,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                 k = pbond_jk->nbr;
                 bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
-#ifdef _OPENMP
+#if defined(_OPENMP)
                 f_k = &workspace->f_local[tid * system->N + k];
 #else
                 f_k = &system->atoms[k].f;
@@ -273,7 +273,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                 r_ij = pbond_ij->d;
                                 BOA_ij = bo_ij->BO - control->thb_cut;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                 f_i = &workspace->f_local[tid * system->N + i];
 #else
                                 f_i = &system->atoms[i].f;
@@ -316,14 +316,14 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             && bo_kl->BO > control->thb_cut
                                             && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
                                     {
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         f_l = &workspace->f_local[tid * system->N + l];
 #else
                                         f_l = &system->atoms[l].f;
 #endif
 
 #if defined(DEBUG_FOCUS)
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
                                         ++num_frb_intrs;
@@ -469,27 +469,27 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         //    sin_jkl, cos_jkl, tan_jkl_i );
 
                                         /* forces */
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
                                         bo_jk->Cdbopi += CEtors2;
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
                                         workspace->CdDelta[j] += CEtors3;
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
                                         workspace->CdDelta[k] += CEtors3;
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
                                         bo_ij->Cdbo += (CEtors4 + CEconj1);
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
                                         bo_jk->Cdbo += (CEtors5 + CEconj2);
-#ifdef _OPENMP
+#if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
                                         bo_kl->Cdbo += (CEtors6 + CEconj3);
@@ -523,7 +523,8 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             rvec_ScaledAdd( *f_l,
                                                     CEtors9 + CEconj6, dcos_omega_dl );
                                         }
-                                        else
+                                        else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                                                || control->ensemble == aNPT )
                                         {
                                             /* dcos_theta_ijk */
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_dk );
@@ -531,12 +532,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             ivec_Sum( rel_box_ij, pbond_ij->rel_box, system->atoms[i].rel_map );
                                             ivec_ScaledAdd( rel_box_ij, -1, system->atoms[j].rel_map );
                                             rvec_iMultiply( ext_press, rel_box_ij, force );
-#ifdef _OPENMP
-                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#if !defined(_OPENMP)
+                                            rvec_Add( data->ext_press, ext_press );
+#else
+                                            rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                            {
-                                                rvec_Add( data->ext_press, ext_press );
-                                            }
 
                                             rvec_ScaledAdd( *f_j, CEtors7 + CEconj4, p_ijk->dcos_dj );
 
@@ -545,12 +545,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             ivec_Sum( rel_box_jk, pbond_jk->rel_box, system->atoms[k].rel_map );
                                             ivec_ScaledAdd( rel_box_jk, -1, system->atoms[j].rel_map );
                                             rvec_iMultiply( ext_press, rel_box_jk, force );
-#ifdef _OPENMP
-                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#if !defined(_OPENMP)
+                                            rvec_Add( data->ext_press, ext_press );
+#else
+                                            rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                            {
-                                                rvec_Add( data->ext_press, ext_press );
-                                            }
 
                                             /* dcos_theta_jkl */
                                             rvec_ScaledAdd( *f_j, CEtors8 + CEconj5, p_jkl->dcos_di );
@@ -558,12 +557,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                             rvec_Add( *f_k, force );
                                             rvec_iMultiply( ext_press, rel_box_jk, force );
-#ifdef _OPENMP
-                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#if !defined(_OPENMP)
+                                            rvec_Add( data->ext_press, ext_press );
+#else
+                                            rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                            {
-                                                rvec_Add( data->ext_press, ext_press );
-                                            }
 
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dk );
                                             rvec_Add( *f_l, force );
@@ -571,45 +569,41 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             ivec_ScaledAdd( rel_box_jl, -1, system->atoms[j].rel_map );
                                             ivec_Sum( rel_box_jl, pbond_kl->rel_box, system->atoms[l].rel_map );
                                             rvec_iMultiply( ext_press, rel_box_jl, force );
-#ifdef _OPENMP
-                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#if !defined(_OPENMP)
+                                            rvec_Add( data->ext_press, ext_press );
+#else
+                                            rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                            {
-                                                rvec_Add( data->ext_press, ext_press );
-                                            }
 
                                             /* dcos_omega */
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_di );
                                             rvec_Add( *f_i, force );
                                             rvec_iMultiply( ext_press, rel_box_ij, force );
-#ifdef _OPENMP
-                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#if !defined(_OPENMP)
+                                            rvec_Add( data->ext_press, ext_press );
+#else
+                                            rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                            {
-                                                rvec_Add( data->ext_press, ext_press );
-                                            }
 
                                             rvec_ScaledAdd( *f_j, CEtors9 + CEconj6, dcos_omega_dj );
 
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dk );
                                             rvec_Add( *f_k, force );
                                             rvec_iMultiply( ext_press, rel_box_jk, force );
-#ifdef _OPENMP
-                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#if !defined(_OPENMP)
+                                            rvec_Add( data->ext_press, ext_press );
+#else
+                                            rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                            {
-                                                rvec_Add( data->ext_press, ext_press );
-                                            }
 
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dl );
                                             rvec_Add( *f_l, force );
                                             rvec_iMultiply( ext_press, rel_box_jl, force );
-#ifdef _OPENMP
-                                            #pragma omp critical (Four_Body_Interactions_ext_press)
+#if !defined(_OPENMP)
+                                            rvec_Add( data->ext_press, ext_press );
+#else
+                                            rvec_Add( data->ext_press_local[tid], ext_press );
 #endif
-                                            {
-                                                rvec_Add( data->ext_press, ext_press );
-                                            }
 
                                             /* This part is intended for a fully-flexible box */
                                             /* rvec_ScaledSum( temp_rvec,
@@ -651,7 +645,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                                rtensor_Add( data->flex_bar.P, total_rtensor ); */
                                         }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                                         /*fprintf( out_control->etor,
                                            //"%12.8f%12.8f%12.8f%12.8f%12.8f%12.8f%12.8f\n",
                                            //r_ij, r_jk, r_kl,

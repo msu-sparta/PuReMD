@@ -34,7 +34,7 @@ typedef struct
 } dbond_coefficients;
 
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 void Add_dBO( reax_system*, reax_list**, int, int, real, rvec* );
 
 void Add_dBOpinpi2( reax_system*, reax_list**, int, int, real, real, rvec*, rvec* );

@@ -64,7 +64,7 @@ void Print_Bonds( reax_system*, reax_list*, char* );
 
 void Print_Bond_List2( reax_system*, reax_list*, char* );
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 void Dummy_Printer( reax_system*, control_params*, simulation_data*,
                     static_storage*, reax_list**, output_controls* );
 

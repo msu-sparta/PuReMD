@@ -29,7 +29,7 @@
 #define SPUREMD_FAILURE (-1)
 
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C"  {
 #endif
 
@@ -46,7 +46,7 @@ reax_atom* get_atoms( const void * const );
 
 int set_output_enabled( const void * const, const int );
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

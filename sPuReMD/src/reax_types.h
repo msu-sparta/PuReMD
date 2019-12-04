@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
   #include <omp.h>
 #endif
 
@@ -138,7 +138,7 @@
 
 /* NaN IEEE 754 representation for C99 in math.h
  * Note: function choice must match REAL typedef below */
-#ifdef NAN
+#if defined(NAN)
   #define IS_NAN_REAL(a) (isnan(a))
 #else
   #warn "No support for NaN"
@@ -1039,6 +1039,10 @@ struct simulation_data
     real inv_W;
 
     rvec int_press;
+#if defined(_OPENMP)
+    /* local ext_press per thread */
+    rvec *ext_press_local;
+#endif
     rvec ext_press;
     real kin_press;
     rvec tot_press;
@@ -1317,7 +1321,7 @@ struct static_storage
     real *p;
 
     /* SpMV related storage */
-#ifdef _OPENMP
+#if defined(_OPENMP)
     real *b_local;
 #endif
 
@@ -1383,7 +1387,7 @@ struct static_storage
     int *restricted;
     int **restricted_list;
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     /* local forces per thread */
     rvec *f_local;
 #endif
@@ -1394,7 +1398,7 @@ struct static_storage
 
     LR_lookup_table **LR;
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     /* Calculated on the fly in bond_orders.c */
     rvec *dDelta;
     rvec *f_ele;
@@ -1495,7 +1499,7 @@ struct output_controls
     append_traj_frame_function append_traj_frame;
     write_function write;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     FILE *ebond;
     FILE *elp;
     FILE *eov;
@@ -1510,7 +1514,7 @@ struct output_controls
     FILE *ecou;
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     FILE *fbo;
     FILE *fdbo;
     FILE *fbond;

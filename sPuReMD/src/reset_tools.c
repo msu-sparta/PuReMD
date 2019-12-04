@@ -25,12 +25,20 @@
 #include "vector.h"
 
 
-static void Reset_Pressures( simulation_data *data )
+static void Reset_Pressures( control_params *control, simulation_data *data )
 {
+    int i;
+
     rtensor_MakeZero( data->flex_bar.P );
     data->iso_bar.P = 0.0;
     rvec_MakeZero( data->int_press );
     rvec_MakeZero( data->ext_press );
+#if defined(_OPENMP)
+    for ( i = 0; i < control->num_threads; ++i )
+    {
+        rvec_MakeZero( data->ext_press_local[i] );
+    }
+#endif
 }
 
 
@@ -130,7 +138,7 @@ void Reset_Simulation_Data( simulation_data* data )
 void Reset_Workspace( reax_system *system, static_storage *workspace )
 {
     int i;
-#ifdef _OPENMP
+#if defined(_OPENMP)
     int tid;
 #endif
 
@@ -147,7 +155,7 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
         workspace->CdDelta[i] = 0.0;
     }
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     #pragma omp parallel private(i, tid)
     {
         tid = omp_get_thread_num( );
@@ -226,7 +234,11 @@ void Reset( reax_system *system, control_params *control,
 
     Reset_Simulation_Data( data );
 
-    Reset_Pressures( data );
+    if ( control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT )
+    {
+        Reset_Pressures( control, data );
+    }
 
     Reset_Workspace( system, workspace );
 
