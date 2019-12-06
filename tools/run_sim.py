@@ -424,7 +424,7 @@ restart_freq            0                       ! 0: do not output any restart f
 
                 self._process_result(fout, param_dict, self.__min_step, self.__max_step)
 
-    def _build_slurm_script(self, binary, run_type, mpi_cmd, param_values):
+    def _build_slurm_script(self, binary, run_type, mpi_cmd, modules, param_values):
         from os import path
 
         # remove executable and back up two directory levels
@@ -440,7 +440,9 @@ restart_freq            0                       ! 0: do not output any restart f
 #SBATCH --constraint=lac
 
 module purge
-module load GCC/8.2.0-2.31.1 OpenMPI/3.1.3 imkl/2019.1.144
+module load {0}
+""".format(' '.join(modules))
+        job_script += """\
 
 cd ${{SLURM_SUBMIT_DIR}}
 
@@ -458,7 +460,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
 
         return job_script
 
-    def _build_pbs_script(self, binary, run_type, mpi_cmd, param_values):
+    def _build_pbs_script(self, binary, run_type, mpi_cmd, modules, param_values):
         from os import path
 
         # remove executable and back up two directory levels
@@ -470,7 +472,9 @@ python3 {0}/tools/run_sim.py run_md {1} \\
 #PBS -l walltime=03:59:00,nodes=1:ppn=28,mem=120gb,feature=lac
 
 module purge
-module load GCC/8.2.0-2.31.1 OpenMPI/3.1.3 imkl/2019.1.144
+module load {0}
+""".format(' '.join(modules))
+        job_script += """\
 
 cd ${{PBS_O_WORKDIR}}
 
@@ -488,18 +492,18 @@ python3 {0}/tools/run_sim.py run_md {1} \\
 
         return job_script
 
-    def submit_jobs(self, binary, run_type, job_script_type, mpi_cmd):
+    def submit_jobs(self, binary, run_type, job_script_type, mpi_cmd, modules):
         from itertools import product
         from subprocess import Popen, PIPE
 
         for p in product(*[self.__params[k] for k in self.__param_names]):
             if job_script_type == 'slurm':
-                job_script = self._build_slurm_script(binary, run_type, mpi_cmd, p)
+                job_script = self._build_slurm_script(binary, run_type, mpi_cmd, modules, p)
 
                 cmd_args = ['sbatch']
 
             if job_script_type == 'pbs':
-                job_script = self._build_pbs_script(binary, run_type, mpi_cmd, p)
+                job_script = self._build_pbs_script(binary, run_type, mpi_cmd, modules, p)
                 
                 cmd_args = ['qsub']
 
@@ -590,6 +594,9 @@ if __name__ == '__main__':
                 help='Paramater name and value pairs for the simulation, with multiple values comma delimited.')
         submit_jobs_parser.add_argument('-m', '--mpi_cmd', metavar='mpi_cmd', default=['mpirun'], nargs=1,
                 help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:1\'.')
+        submit_jobs_parser.add_argument('-l', '--modules', metavar='modules', default=['GCC/8.2.0-2.31.1'], nargs=1,
+                help='Modules to load. Multiple values are separated by the \':\' character.'
+                + ' Examples: \'GCC/8.2.0-2.31.1\', \'GCC/8.2.0-2.31.1:OpenMPI/3.1.3:imkl/2019.1.144\'.')
         submit_jobs_parser.add_argument('job_script_type', nargs=1,
                 choices=JOB_TYPES, help='Type of job script.')
         submit_jobs_parser.add_argument('run_type', nargs=1,
@@ -914,7 +921,7 @@ if __name__ == '__main__':
 
         for test in test_cases:
             test.submit_jobs(binary, args.run_type[0], args.job_script_type[0],
-                    args.mpi_cmd[0].split(':'))
+                    args.mpi_cmd[0].split(':'), args.modules[0].split(':'))
 
     def compare_logs(args):
         import numpy as np
