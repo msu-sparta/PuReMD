@@ -454,7 +454,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
         if run_type == 'mpi' or run_type == 'mpi-gpu':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
 
-        job_script += "\n    {0} {1}".format(run_type, self.__data_set)
+        job_script += "\n    {0}".format(self.__data_set)
 
         return job_script
 
@@ -484,7 +484,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
         if run_type == 'mpi' or run_type == 'mpi-gpu':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
 
-        job_script += "\n    {0} {1}".format(run_type, self.__data_set)
+        job_script += "\n    {0}".format(self.__data_set)
 
         return job_script
 
