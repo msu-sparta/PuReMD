@@ -524,7 +524,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                                     CEtors9 + CEconj6, dcos_omega_dl );
                                         }
                                         else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                                || control->ensemble == aNPT )
+                                                || control->ensemble == aNPT || control->compute_pressure == TRUE )
                                         {
                                             /* dcos_theta_ijk */
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_dk );

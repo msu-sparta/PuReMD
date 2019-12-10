@@ -32,36 +32,35 @@ void Make_Consistent( simulation_box* box )
 {
     real one_vol;
 
-    box->volume =
-        box->box[0][0] * (box->box[1][1] * box->box[2][2] -
-                          box->box[2][1] * box->box[2][1]) +
-        box->box[0][1] * (box->box[2][0] * box->box[1][2] -
-                          box->box[1][0] * box->box[2][2]) +
-        box->box[0][2] * (box->box[1][0] * box->box[2][1] -
-                          box->box[2][0] * box->box[1][1]);
+    box->volume = box->box[0][0] * (box->box[1][1] * box->box[2][2]
+            - box->box[2][1] * box->box[2][1])
+        + box->box[0][1] * (box->box[2][0] * box->box[1][2]
+                - box->box[1][0] * box->box[2][2])
+        + box->box[0][2] * (box->box[1][0] * box->box[2][1]
+                - box->box[2][0] * box->box[1][1]);
 
     one_vol = 1.0 / box->volume;
 
-    box->box_inv[0][0] = (box->box[1][1] * box->box[2][2] -
-                          box->box[1][2] * box->box[2][1]) * one_vol;
-    box->box_inv[0][1] = (box->box[0][2] * box->box[2][1] -
-                          box->box[0][1] * box->box[2][2]) * one_vol;
-    box->box_inv[0][2] = (box->box[0][1] * box->box[1][2] -
-                          box->box[0][2] * box->box[1][1]) * one_vol;
+    box->box_inv[0][0] = (box->box[1][1] * box->box[2][2]
+            - box->box[1][2] * box->box[2][1]) * one_vol;
+    box->box_inv[0][1] = (box->box[0][2] * box->box[2][1]
+            - box->box[0][1] * box->box[2][2]) * one_vol;
+    box->box_inv[0][2] = (box->box[0][1] * box->box[1][2]
+            - box->box[0][2] * box->box[1][1]) * one_vol;
 
-    box->box_inv[1][0] = (box->box[1][2] * box->box[2][0] -
-                          box->box[1][0] * box->box[2][2]) * one_vol;
-    box->box_inv[1][1] = (box->box[0][0] * box->box[2][2] -
-                          box->box[0][2] * box->box[2][0]) * one_vol;
-    box->box_inv[1][2] = (box->box[0][2] * box->box[1][0] -
-                          box->box[0][0] * box->box[1][2]) * one_vol;
+    box->box_inv[1][0] = (box->box[1][2] * box->box[2][0]
+            - box->box[1][0] * box->box[2][2]) * one_vol;
+    box->box_inv[1][1] = (box->box[0][0] * box->box[2][2]
+            - box->box[0][2] * box->box[2][0]) * one_vol;
+    box->box_inv[1][2] = (box->box[0][2] * box->box[1][0]
+            - box->box[0][0] * box->box[1][2]) * one_vol;
 
-    box->box_inv[2][0] = (box->box[1][0] * box->box[2][1] -
-                          box->box[1][1] * box->box[2][0]) * one_vol;
-    box->box_inv[2][1] = (box->box[0][1] * box->box[2][0] -
-                          box->box[0][0] * box->box[2][1]) * one_vol;
-    box->box_inv[2][2] = (box->box[0][0] * box->box[1][1] -
-                          box->box[0][1] * box->box[1][0]) * one_vol;
+    box->box_inv[2][0] = (box->box[1][0] * box->box[2][1]
+            - box->box[1][1] * box->box[2][0]) * one_vol;
+    box->box_inv[2][1] = (box->box[0][1] * box->box[2][0]
+            - box->box[0][0] * box->box[2][1]) * one_vol;
+    box->box_inv[2][2] = (box->box[0][0] * box->box[1][1]
+            - box->box[0][1] * box->box[1][0]) * one_vol;
 
     box->box_norms[0] = SQRT( SQR(box->box[0][0]) + SQR(box->box[0][1])
             + SQR(box->box[0][2]) );
@@ -88,30 +87,30 @@ void Make_Consistent( simulation_box* box )
 
     one_vol = box->box_norms[0] * box->box_norms[1] * box->box_norms[2] * one_vol;
 
-    box->trans_inv[0][0] = (box->trans[1][1] * box->trans[2][2] -
-                            box->trans[1][2] * box->trans[2][1]) * one_vol;
-    box->trans_inv[0][1] = (box->trans[0][2] * box->trans[2][1] -
-                            box->trans[0][1] * box->trans[2][2]) * one_vol;
-    box->trans_inv[0][2] = (box->trans[0][1] * box->trans[1][2] -
-                            box->trans[0][2] * box->trans[1][1]) * one_vol;
+    box->trans_inv[0][0] = (box->trans[1][1] * box->trans[2][2]
+            - box->trans[1][2] * box->trans[2][1]) * one_vol;
+    box->trans_inv[0][1] = (box->trans[0][2] * box->trans[2][1]
+            - box->trans[0][1] * box->trans[2][2]) * one_vol;
+    box->trans_inv[0][2] = (box->trans[0][1] * box->trans[1][2]
+            - box->trans[0][2] * box->trans[1][1]) * one_vol;
 
-    box->trans_inv[1][0] = (box->trans[1][2] * box->trans[2][0] -
-                            box->trans[1][0] * box->trans[2][2]) * one_vol;
-    box->trans_inv[1][1] = (box->trans[0][0] * box->trans[2][2] -
-                            box->trans[0][2] * box->trans[2][0]) * one_vol;
-    box->trans_inv[1][2] = (box->trans[0][2] * box->trans[1][0] -
-                            box->trans[0][0] * box->trans[1][2]) * one_vol;
+    box->trans_inv[1][0] = (box->trans[1][2] * box->trans[2][0]
+            - box->trans[1][0] * box->trans[2][2]) * one_vol;
+    box->trans_inv[1][1] = (box->trans[0][0] * box->trans[2][2]
+            - box->trans[0][2] * box->trans[2][0]) * one_vol;
+    box->trans_inv[1][2] = (box->trans[0][2] * box->trans[1][0]
+            - box->trans[0][0] * box->trans[1][2]) * one_vol;
 
-    box->trans_inv[2][0] = (box->trans[1][0] * box->trans[2][1] -
-                            box->trans[1][1] * box->trans[2][0]) * one_vol;
-    box->trans_inv[2][1] = (box->trans[0][1] * box->trans[2][0] -
-                            box->trans[0][0] * box->trans[2][1]) * one_vol;
-    box->trans_inv[2][2] = (box->trans[0][0] * box->trans[1][1] -
-                            box->trans[0][1] * box->trans[1][0]) * one_vol;
+    box->trans_inv[2][0] = (box->trans[1][0] * box->trans[2][1]
+            - box->trans[1][1] * box->trans[2][0]) * one_vol;
+    box->trans_inv[2][1] = (box->trans[0][1] * box->trans[2][0]
+            - box->trans[0][0] * box->trans[2][1]) * one_vol;
+    box->trans_inv[2][2] = (box->trans[0][0] * box->trans[1][1]
+            - box->trans[0][1] * box->trans[1][0]) * one_vol;
 
-    box->g[0][0] = box->box[0][0] * box->box[0][0] +
-                   box->box[0][1] * box->box[0][1] +
-                   box->box[0][2] * box->box[0][2];
+    box->g[0][0] = box->box[0][0] * box->box[0][0]
+        + box->box[0][1] * box->box[0][1]
+        + box->box[0][2] * box->box[0][2];
     box->g[1][0] =
         box->g[0][1] = box->box[0][0] * box->box[1][0] +
                        box->box[0][1] * box->box[1][1] +
@@ -254,9 +253,9 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
         /* new atomic position after update along dimension i */
         tmp = x[i] + dx[i];
 
-        /* outside of simulation box boundary [0.0, d_i),
+        /* outside of simulation box boundary [0.0, d_i],
          * where d_i is the simulation box length along dimesion i */
-        if ( tmp < 0.0 || tmp >= box->box_norms[i] )
+        if ( tmp < 0.0 || tmp > box->box_norms[i] )
         {
             remapped = FALSE;
 
@@ -289,7 +288,7 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
             }
         }
 
-        assert( tmp >= 0.0 && tmp < box->box_norms[i] );
+        assert( tmp >= 0.0 && tmp <= box->box_norms[i] );
 
         x[i] = tmp;
     }
@@ -326,9 +325,9 @@ void Update_Atom_Position_Non_Periodic( rvec x, rvec dx, ivec rel_map, simulatio
         {
             tmp = 0.0;
         }
-        else if ( tmp >= box->box_norms[i] )
+        else if ( tmp > box->box_norms[i] )
         {
-            tmp = box->box_norms[i] - 0.0001;
+            tmp = box->box_norms[i];
         }
 
         x[i] = tmp;

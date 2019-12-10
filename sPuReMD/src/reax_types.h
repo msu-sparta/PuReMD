@@ -42,6 +42,12 @@
 //#define TEST_FORCES
 /* enables test energy code */
 //#define TEST_ENERGY
+/* constants defined in reference Fortran ReaxFF code (useful for comparisons) */
+//#define USE_REF_FORTRAN_REAXFF_CONSTANTS
+/* constants defined in reference Fortran eReaxFF code (useful for comparisons) */
+//#define USE_REF_FORTRAN_EREAXFF_CONSTANTS
+/* constants defined in LAMMPS ReaxFF code (useful for comparisons) */
+//#define USE_LAMMPS_REAXFF_CONSTANTS
 /* enables reordering atoms after neighbor list generation (optimization) */
 #define REORDER_ATOMS
 /* enables support for small simulation boxes (i.e. a simulation box with any
@@ -61,46 +67,98 @@
 #define TRUE (1)
 #define FALSE (0)
 
+#if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
+  /* transcendental constant pi */
+  #define PI (3.14159265)
+  /* Coulomb energy conversion */
+  #define C_ELE (332.0638)
+  /* kcal/mol/K */
+  #define K_B (0.8314510)
+  /* --> amu A / ps^2 */
+  #define F_CONV (4.184e2)
+  /* energy conversion constant from kilo-calories per mole to electron volts */
+  #define KCALpMOL_to_EV (23.0408)
+  /* electric dipole moment conversion constant from elementary charge * angstrom to debye */
+  #define ECxA_to_DEBYE (4.80320679913)
+#elif defined(USE_REF_FORTRAN_EREAXFF_CONSTANTS)
+  //TODO
+  /* energy conversion constant from kilo-calories per mole to electron volts */
+  #define KCALpMOL_to_EV (23.02)
+  /* electric dipole moment conversion constant from elementary charge * angstrom to debye */
+  #define ECxA_to_DEBYE (4.80320679913)
+#elif defined(USE_LAMMPS_REAXFF_CONSTANTS)
+  //TODO
+  /* conversion constant from kilo-calories per mole to electron volts */
+  #define KCALpMOL_to_EV (23.060549)
+#endif
+
 /* transcendental constant pi */
-#if defined(M_PI)
-  /* GNU C library (libc), defined in math.h */
-  #define PI (M_PI)
-#else
-  #define PI (3.14159265) // Fortran ReaxFF code
+#if !defined(PI)
+  #if defined(M_PI)
+    /* GNU C library (libc), defined in math.h */
+    #define PI (M_PI)
+  #else
+    #define PI (3.14159265)
+  #endif
 #endif
 /* Coulomb energy conversion */
-#define C_ELE (332.0638) // Fortran ReaxFF code
-//#define C_ELE (332.06371)
-/* kcal/mol/K */
-//#define K_B (503.398008)
-/* amu A^2 / ps^2 / K */
-//#define K_B (0.831687)
-#define K_B (0.8314510) // Fortran ReaxFF code
-/* --> amu A / ps^2 */
-#define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
-/* amu A^2 / ps^2 --> kcal/mol */
-#define E_CONV (0.002391)
-/* conversion constant from electron volts to kilo-calories per mole */
-#define EV_to_KCALpMOL (14.40)
-/* conversion constant from kilo-calories per mole to electron volts */
-//#define KCALpMOL_to_EV (23.060549) // value used in LAMMPS
-//#define KCALpMOL_to_EV (23.0408) // value used in ReaxFF Fortran code
-#define KCALpMOL_to_EV (23.02) // value used in ReaxFF Fortran code (ACKS2)
-/* elem. charge * angstrom -> debye conv */
-//#define ECxA_to_DEBYE (4.803204)
-#define ECxA_to_DEBYE (4.80320679913) // ReaxFF Fortran code
-/* CALories --> JOULES */
-#define CAL_to_JOULES (4.1840)
-/* JOULES --> CALories */
-#define JOULES_to_CAL (1.0 / 4.1840)
-/* */
-#define AMU_to_GRAM (1.6605e-24)
-/* */
-#define ANG_to_CM (1.0e-8)
-/* */
-#define AVOGNR (6.0221367e23)
-/* */
-#define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
+#if !defined(C_ELE)
+  #define C_ELE (332.06371)
+#endif
+/**/
+#if !defined(K_B)
+  /* kcal/mol/K */
+//  #define K_B (503.398008)
+  /* amu A^2 / ps^2 / K */
+//  #define K_B (0.831687)
+  #define K_B (0.8314510)
+#endif
+/* unit conversion for atomic force */
+#if !defined(F_CONV)
+  /* --> amu A / ps^2 */
+  #define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
+#endif
+/* unit conversion for atomic energy */
+#if !defined(E_CONV)
+  /* amu A^2 / ps^2 to kcal/mol */
+  #define E_CONV (0.002391)
+#endif
+/* energy conversion constant from electron volts to kilo-calories per mole */
+#if !defined(EV_to_KCALpMOL)
+  #define EV_to_KCALpMOL (14.40)
+#endif
+/* energy conversion constant from kilo-calories per mole to electron volts */
+#if !defined(KCALpMOL_to_EV)
+  #define KCALpMOL_to_EV (23.0408)
+#endif
+/* electric dipole moment conversion constant from elementary charge * angstrom to debye */
+#if !defined(ECxA_to_DEBYE)
+  #define ECxA_to_DEBYE (4.803204)
+#endif
+/* energy conversion constant from (gram) calories to Joules (SI) */
+#if !defined(CAL_to_JOULES)
+  #define CAL_to_JOULES (4.1840)
+#endif
+/* energy conversion constant from Joules (SI) to (gram) calories */
+#if !defined(JOULES_to_CAL)
+  #define JOULES_to_CAL (1.0 / 4.1840)
+#endif
+/* mass conversion constant from unified atomic mass units (daltons) to grams */
+#if !defined(AMU_to_GRAM)
+  #define AMU_to_GRAM (1.6605e-24)
+#endif
+/* distance conversion constant from angstroms to centimeters */
+#if !defined(ANG_to_CM)
+  #define ANG_to_CM (1.0e-8)
+#endif
+/* Avogradro's constant */
+#if !defined(AVOGNR)
+  #define AVOGNR (6.0221367e23)
+#endif
+/* unit conversion for pressure */
+#if !defined(P_CONV)
+  #define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
+#endif
 
 #define MAX_STR (1024)
 #define MAX_LINE (1024)
@@ -118,15 +176,15 @@
 #define NUM_INTRS (10)
 
 #define MAX_dV (1.01)
-#define MIN_dV (0.99)
+#define MIN_dV (1.0 / MAX_dV)
 #define MAX_dT (4.00)
 #define MIN_dT (0.00)
 
 #define ZERO (0.000000000000000e+00)
-#define ALMOST_ZERO (1e-10)
-#define NEG_INF (-1e10)
-#define NO_BOND (1e-3)
-#define HB_THRESHOLD (1e-2)
+#define ALMOST_ZERO (1.0e-10)
+#define NEG_INF (-1.0e10)
+#define NO_BOND (1.0e-3)
+#define HB_THRESHOLD (1.0e-2)
 #define MAX_BONDS (40)
 #define MIN_BONDS (15)
 #define MIN_HBONDS (50)
@@ -159,8 +217,8 @@
 #define FMOD (fmod)
 #define SQR(x) ((x)*(x))
 #define CUBE(x) ((x)*(x)*(x))
-#define DEG2RAD(a) ((a)*PI/180.0)
-#define RAD2DEG(a) ((a)*180.0/PI)
+#define DEG2RAD(a) ((a)/180.0*PI)
+#define RAD2DEG(a) ((a)/PI*180.0)
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 
@@ -784,7 +842,8 @@ struct control_params
     real T;
     /**/
     real Tau_T;
-    /**/
+    /* control mode for thermostat,
+     * 0: none, 1: step-wise, 2: constant slope */
     int T_mode;
     /**/
     real T_rate;
@@ -796,11 +855,15 @@ struct control_params
     rvec P;
     /**/
     rvec Tau_P;
-    /**/
+    /* mode for pressures calculations,
+     * 0: both int and ext, 1: ext only, 2: int only */
     int press_mode;
     /**/
     real compressibility;
-    /**/
+    /* 0: do not compute pressure, 1: compute pressure;
+     * NOTE: not applicable to NPT-type ensembles (always compute) */
+    int compute_pressure;
+    /* frequency in simulation time steps to remove center of mass velocity */
     int remove_CoM_vel;
     /* format of the geometry input file */
     int geo_format;
@@ -1038,13 +1101,17 @@ struct simulation_data
     flexible_barostat flex_bar;
     real inv_W;
 
+    /* internal pressure */
     rvec int_press;
 #if defined(_OPENMP)
-    /* local ext_press per thread */
+    /* local per thread contribution to external pressure */
     rvec *ext_press_local;
 #endif
+    /* external pressure */
     rvec ext_press;
+    /* kinetic energy contribution to pressure */
     real kin_press;
+    /* total pressure */
     rvec tot_press;
 
     reax_timing timing;

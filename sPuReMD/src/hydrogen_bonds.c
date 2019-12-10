@@ -152,10 +152,10 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                             ++num_hb_intrs;
 #endif
 
-                            Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
+                            Calculate_Theta( pbond_ij->dvec, r_ij, dvec_jk, r_jk,
                                     &theta, &cos_theta );
                             /* the derivative of cos(theta) */
-                            Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
+                            Calculate_dCos_Theta( pbond_ij->dvec, r_ij, dvec_jk, r_jk,
                                     &dcos_theta_di, &dcos_theta_dj, &dcos_theta_dk );
 
                             /* hydrogen bond energy */
@@ -198,7 +198,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 rvec_ScaledAdd( *f_k, +CEhb3 / r_jk, dvec_jk );
                             }
                             else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                    || control->ensemble == aNPT )
+                                    || control->ensemble == aNPT || control->compute_pressure == TRUE )
                             {
                                 /* for pressure coupling, terms that are not related
                                  * to bond order derivatives are added directly into

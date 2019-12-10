@@ -26,7 +26,7 @@
 
 
 /************** taken from box.c **************/
-/* Applies transformation between Cartesian and
+/* Applies transformation on atomic position between Cartesian and
  * Triclinic coordinates based on the value of flag
  * 
  * Inputs:
@@ -37,12 +37,12 @@
  * Outputs:
  *  x2: transformed position
  * */
-void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
+void Transform( rvec x1, simulation_box *box, int flag, rvec x2 )
 {
     int i, j;
     real tmp;
 
-    if ( flag > 0 )
+    if ( flag == 1 )
     {
         for ( i = 0; i < 3; i++ )
         {
@@ -56,7 +56,7 @@ void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
             x2[i] = tmp;
         }
     }
-    else
+    else if ( flag == -1 )
     {
         for ( i = 0; i < 3; i++ )
         {
@@ -73,7 +73,19 @@ void Transform( rvec x1, simulation_box *box, char flag, rvec x2 )
 }
 
 
-void Transform_to_UnitBox( rvec x1, simulation_box *box, char flag, rvec x2 )
+/* Applies transformation on atomic position between Cartesian and
+ * Triclinic coordinates based on the value of flag, and scales
+ * the result to be within a simulation box with unit lengths
+ * 
+ * Inputs:
+ *  x1: position to be transformed
+ *  box: struct containing simulation box parameters
+ *  flag: -1 for Cartesian -> Triclinic, +1 for reverse transformation
+ *
+ * Outputs:
+ *  x2: transformed position
+ * */
+void Transform_to_UnitBox( rvec x1, simulation_box *box, int flag, rvec x2 )
 {
     Transform( x1, box, flag, x2 );
 
@@ -98,10 +110,10 @@ void Fit_to_Periodic_Box( simulation_box *box, rvec p )
                 p[i] += box->box_norms[i];
             }
         }
-        else if ( p[i] >= box->max[i] )
+        else if ( p[i] > box->max[i] )
         {
             /* handle higher coords */
-            while ( p[i] >= box->max[i] )
+            while ( p[i] > box->max[i] )
             {
                 p[i] -= box->box_norms[i];
             }

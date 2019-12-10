@@ -219,21 +219,21 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
         /* new values become old in this iteration */
         v_xi_old = v_xi_new;
         coef_v = 1.0 / (1.0 + 0.5 * dt * v_xi_old);
-        E_kin_new = 0;
+        E_kin_new = 0.0;
 
         for ( i = 0; i < system->N; ++i )
         {
             rvec_Scale( system->atoms[i].v, coef_v, workspace->v_const[i] );
 
-            E_kin_new += ( 0.5 * system->reax_param.sbp[system->atoms[i].type].mass
-                    * rvec_Dot( system->atoms[i].v, system->atoms[i].v ) );
+            E_kin_new += 0.5 * system->reax_param.sbp[system->atoms[i].type].mass
+                    * rvec_Dot( system->atoms[i].v, system->atoms[i].v );
         }
 
         G_xi_new = control->Tau_T * ( 2.0 * E_kin_new
                 - data->N_f * K_B * control->T );
         v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
     }
-    while ( FABS(v_xi_new - v_xi_old ) > 1e-5 );
+    while ( FABS( v_xi_new - v_xi_old ) > 1.0e-5 );
 
     therm->v_xi_old = therm->v_xi;
     therm->v_xi = v_xi_new;
@@ -241,7 +241,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
 }
 
 
-/* uses Berendsen-type coupling for both T and P.
+/* Uses Berendsen-type coupling for both T and P.
  * All box dimensions are scaled by the same amount,
  * there is no change in the angles between axes. */
 void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
@@ -250,7 +250,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
 {
     int i, renbr;
     real inv_m, dt, lambda, mu;
-    rvec dx;
+    rvec dx, mu_3;
 
     dt = control->dt;
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
@@ -262,13 +262,13 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
 
         /* Compute x(t + dt) */
         rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                -0.5 * F_CONV * inv_m * SQR(dt), system->atoms[i].f );
+                F_CONV * inv_m * -0.5 * SQR(dt), system->atoms[i].f );
 
         control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
 
         /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
-                -0.5 * F_CONV * inv_m * dt, system->atoms[i].f );
+                F_CONV * inv_m * -0.5 * dt, system->atoms[i].f );
     }
 
     Reallocate( system, control, workspace, lists, renbr );
@@ -294,22 +294,28 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     }
 
     Compute_Kinetic_Energy( system, data );
+
     Compute_Pressure_Isotropic( system, control, data, out_control );
 
     /* pressure scaler */
-    mu = POW( 1.0 + (dt / control->Tau_P[0])
-            * (data->iso_bar.P - control->P[0]), 1.0 / 3.0 );
-    if ( mu < MIN_dV )
+    for ( i = 0; i < 3; ++i )
     {
-        mu = MIN_dV;
+        mu_3[i] = POW( 1.0 + (dt / control->Tau_P[i])
+                * (data->tot_press[i] - control->P[i]), 1.0 / 3.0 );
+
+        if ( mu_3[i] < MIN_dV )
+        {
+            mu_3[i] = MIN_dV;
+        }
+        else if ( mu_3[i] > MAX_dV )
+        {
+            mu_3[i] = MAX_dV;
+        }
     }
-    else if ( mu > MAX_dV )
-    {
-        mu = MAX_dV;
-    }
+    mu = (mu_3[0] + mu_3[1] + mu_3[2]) / 3.0;
 
     /* temperature scaler */
-    lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-10) / (control->Tau_T * 1.0e-12)) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
@@ -324,17 +330,18 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     for ( i = 0; i < system->N; ++i )
     {
         rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
+
         /* IMPORTANT: What Adri does with scaling positions first to
-           unit coordinates and then back to cartesian coordinates essentially
-           is scaling the coordinates with mu^2. However, this causes unphysical
-           modifications on the system because box dimensions
-           are being scaled with mu! We need to discuss this with Adri! */
+         * unit coordinates and then back to cartesian coordinates essentially
+         * is scaling the coordinates with mu^2. However, this causes unphysical
+         * modifications on the system because box dimensions
+         * are being scaled with mu! We need to discuss this with Adri! */
         rvec_Scale( system->atoms[i].x, mu, system->atoms[i].x );
     }
 
     Compute_Kinetic_Energy( system, data );
 
-    Update_Box_Isotropic( &(system->box), mu );
+    Update_Box_Isotropic( &system->box, mu );
 }
 
 
@@ -345,7 +352,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
         control_params* control, simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i, d, renbr;
+    int i, renbr;
     real dt, inv_m, lambda;
     rvec dx, mu;
 
@@ -378,6 +385,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
         Generate_Neighbor_Lists( system, control, data, workspace,
                 lists, out_control );
     }
+
     Compute_Forces( system, control, data, workspace, lists, out_control );
 
     /* velocity verlet, 2nd part */
@@ -394,17 +402,17 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
     Compute_Pressure_Isotropic( system, control, data, out_control );
 
     /* pressure scaler */
-    for ( d = 0; d < 3; ++d )
+    for ( i = 0; i < 3; ++i )
     {
-        mu[d] = POW( 1.0 + (dt / control->Tau_P[d])
-                * (data->tot_press[d] - control->P[d]), 1.0 / 3.0 );
-        if ( mu[d] < MIN_dV )
+        mu[i] = POW( 1.0 + (dt / control->Tau_P[i])
+                * (data->tot_press[i] - control->P[i]), 1.0 / 3.0 );
+        if ( mu[i] < MIN_dV )
         {
-            mu[d] = MIN_dV;
+            mu[i] = MIN_dV;
         }
-        else if ( mu[d] > MAX_dV )
+        else if ( mu[i] > MAX_dV )
         {
-            mu[d] = MAX_dV;
+            mu[i] = MAX_dV;
         }
     }
 
@@ -430,10 +438,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
          * is scaling the coordinates with mu^2. However, this causes unphysical
          * modifications on the system because box dimensions
          * are being scaled with mu! We need to discuss this with Adri! */
-        for ( d = 0; d < 3; ++d )
-        {
-            system->atoms[i].x[d] = system->atoms[i].x[d] * mu[d];
-        }
+        rvec_Multiply( system->atoms[i].x, mu, system->atoms[i].x );
     }
 
     Compute_Kinetic_Energy( system, data );
@@ -475,8 +480,8 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
                 -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );
     }
 
-    // Compute zeta(t + dt/2), E_Kininetic(t + dt/2)
-    // IMPORTANT: What will be the initial value of zeta? and what is g?
+    /* Compute zeta(t + dt/2), E_Kininetic(t + dt/2)
+     * IMPORTANT: What will be the initial value of zeta? and what is g? */
     data->therm.xi += 0.5 * dt * control->Tau_T  *
         ( 2.0 * data->E_Kin - data->N_f * K_B * control->T );
 
@@ -489,8 +494,9 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
-    /* Compute_Charges( system, control, workspace, out_control );
-       fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
+//    Compute_Charges( system, control, workspace, out_control );
+//    fprintf( out_control->log, "qeq-" );
+//    fflush( out_control->log );
 
     Compute_Forces( system, control, data, workspace, lists, out_control );
     fprintf(out_control->log, "forces\n");
@@ -581,21 +587,21 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     // Commit updates
     therm->xi += dxi;
     iso_bar->eps += deps;
-    //Update_Box_Isotropic( EXP( 3.0 * iso_bar->eps ), &system->box );
     Update_Box_Isotropic( &system->box, EXP( 3.0 * iso_bar->eps ) );
 
-    // Calculate new forces, f(t + dt)
+    /* Calculate new forces, f(t + dt) */
     Reset( system, control, data, workspace );
     fprintf(out_control->log, "reset-");
     fflush( out_control->log );
 
     Generate_Neighbor_Lists( system, control, data, workspace,
                              lists, out_control );
-    fprintf(out_control->log, "nbrs-");
+    fprintf( out_control->log, "nbrs-" );
     fflush( out_control->log );
 
-    /* Compute_Charges( system, control, workspace, out_control );
-       fprintf(out_control->log,"qeq-"); fflush( out_control->log ); */
+//    Compute_Charges( system, control, workspace, out_control );
+//    fprintf( out_control->log, "qeq-" );
+//    fflush( out_control->log );
 
     Compute_Forces( system, control, data, workspace, lists,
             out_control );

@@ -258,7 +258,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 #endif
                     }
                     else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                            || control->ensemble == aNPT )
+                            || control->ensemble == aNPT || control->compute_pressure == TRUE )
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
@@ -527,7 +527,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 #endif
                     }
                     else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                            || control->ensemble == aNPT )
+                            || control->ensemble == aNPT || control->compute_pressure == TRUE )
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */

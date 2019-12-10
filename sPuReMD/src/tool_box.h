@@ -26,9 +26,9 @@
 
 
 /* from box.h */
-void Transform( rvec, simulation_box*, char, rvec );
+void Transform( rvec, simulation_box*, int, rvec );
 
-void Transform_to_UnitBox( rvec, simulation_box*, char, rvec );
+void Transform_to_UnitBox( rvec, simulation_box*, int, rvec );
 
 void Fit_to_Periodic_Box( simulation_box*, rvec );
 

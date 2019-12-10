@@ -671,23 +671,22 @@ void Output_Results( reax_system *system, control_params *control,
         if ( control->ensemble == aNPT || control->ensemble == iNPT ||
                 control->ensemble == sNPT )
         {
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
             fprintf( out_control->prs, "%-8d%13.6f%13.6f%13.6f",
                      data->step,
                      data->int_press[0], data->int_press[1], data->int_press[2] );
-
-            /* external pressure is calculated together with forces */
             fprintf( out_control->prs, "%13.6f%13.6f%13.6f",
                      data->ext_press[0], data->ext_press[1], data->ext_press[2] );
-
             fprintf( out_control->prs, "%13.6f\n", data->kin_press );
+#endif
 
             fprintf( out_control->prs,
-                     "%-8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
+                     "%-8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
                      data->step,
                      system->box.box_norms[0], system->box.box_norms[1],
                      system->box.box_norms[2],
                      data->tot_press[0], data->tot_press[1], data->tot_press[2],
-                     control->P[0], control->P[1], control->P[2], system->box.volume );
+                     (control->P[0] + control->P[1] + control->P[2]) / 3.0, system->box.volume );
             fflush( out_control->prs );
         }
     }

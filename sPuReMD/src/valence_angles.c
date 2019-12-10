@@ -511,7 +511,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                             rvec_ScaledAdd( *f_k, CEval8, p_ijk->dcos_dk );
                         }
                         else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                || control->ensemble == aNPT )
+                                || control->ensemble == aNPT || control->compute_pressure == TRUE )
                         {
                             /* terms not related to bond order derivatives
                              * are added directly into

@@ -25,7 +25,7 @@
 #include "vector.h"
 
 
-static void Reset_Pressures( control_params *control, simulation_data *data )
+void Reset_Pressures( control_params *control, simulation_data *data )
 {
     int i;
 
@@ -114,7 +114,7 @@ void Reset_Atomic_Forces( reax_system* system )
 }
 
 
-void Reset_Simulation_Data( simulation_data* data )
+void Reset_Energies( simulation_data* data )
 {
     data->E_Tot = 0.0;
     data->E_Kin = 0.0;
@@ -232,10 +232,10 @@ void Reset( reax_system *system, control_params *control,
 {
     Reset_Atomic_Forces( system );
 
-    Reset_Simulation_Data( data );
+    Reset_Energies( data );
 
     if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT )
+            || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
         Reset_Pressures( control, data );
     }

@@ -25,9 +25,11 @@
 #include "reax_types.h"
 
 
+void Reset_Pressures( control_params *, simulation_data * );
+
 void Reset_Atomic_Forces( reax_system* );
 
-void Reset_Simulation_Data( simulation_data* );
+void Reset_Energies( simulation_data* );
 
 void Reset_Workspace( reax_system*, static_storage* );
 

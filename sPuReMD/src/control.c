@@ -116,6 +116,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     control->Tau_PT = 500.0;
     control->compressibility = 1.0;
     control->press_mode = 0;
+    control->compute_pressure = FALSE;
 
     control->remove_CoM_vel = 25;
 
@@ -247,7 +248,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 else if ( strncmp(tmp[0], "vlist_buffer", MAX_LINE) == 0 )
                 {
                     val = atof(tmp[1]);
-                    control->vlist_cut = val + control->nonb_cut;
+                    control->vlist_cut = control->nonb_cut + val;
                 }
                 else if ( strncmp(tmp[0], "nbrhood_cutoff", MAX_LINE) == 0 )
                 {
@@ -387,7 +388,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 {
                     val = atof(tmp[1]);
                     /* convert t_mass from fs to ps */
-                    control->Tau_T = val * 1.e-3;
+                    control->Tau_T = val * 1.0e-3;
                 }
                 else if ( strncmp(tmp[0], "t_mode", MAX_LINE) == 0 )
                 {
@@ -458,6 +459,11 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 {
                     val = atoi(tmp[1]);
                     control->press_mode = val;
+                }
+                else if ( strncmp(tmp[0], "compute_pressure", MAX_LINE) == 0 )
+                {
+                    val = atoi(tmp[1]);
+                    control->compute_pressure = val;
                 }
                 else if ( strncmp(tmp[0], "remove_CoM_vel", MAX_LINE) == 0 )
                 {

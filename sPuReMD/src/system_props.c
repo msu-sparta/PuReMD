@@ -185,8 +185,8 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 {
     int i;
-    rvec p;
     real m;
+    rvec p;
 
     data->E_Kin = 0.0;
 
@@ -195,9 +195,10 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
         m = system->reax_param.sbp[system->atoms[i].type].mass;
 
         rvec_Scale( p, m, system->atoms[i].v );
-        data->E_Kin += 0.5 * rvec_Dot( p, system->atoms[i].v );
+        data->E_Kin += rvec_Dot( p, system->atoms[i].v );
     }
 
+    data->E_Kin *= 0.5;
     data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B);
 
     /* avoid T being an absolute zero! */

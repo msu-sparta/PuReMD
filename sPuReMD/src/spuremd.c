@@ -74,6 +74,12 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     {
         Compute_Total_Energy( data );
     }
+
+    if ( control->compute_pressure == TRUE && control->ensemble != sNPT
+            && control->ensemble != iNPT && control->ensemble != aNPT )
+    {
+        Compute_Pressure_Isotropic( system, control, data, out_control );
+    }
 }
 
 
@@ -254,7 +260,7 @@ int simulate( const void * const handle )
 
         for ( ++spmd_handle->data->step; spmd_handle->data->step <= spmd_handle->control->nsteps; spmd_handle->data->step++ )
         {
-            if ( spmd_handle->control->T_mode )
+            if ( spmd_handle->control->T_mode != 0 )
             {
                 Temperature_Control( spmd_handle->control, spmd_handle->data,
                         spmd_handle->out_control );

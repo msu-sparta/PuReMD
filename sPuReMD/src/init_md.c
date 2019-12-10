@@ -141,14 +141,15 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
 {
 #if defined(_OPENMP)
     if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT )
+            || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
         data->ext_press_local = smalloc( control->num_threads * sizeof( rvec ),
                "Init_Simulation_Data::data->ext_press_local" );
     }
 #endif
 
-    Reset_Simulation_Data( data );
+    Reset_Pressures( control, data );
+    Reset_Energies( data );
 
     data->therm.T = 0.0;
     data->therm.xi = 0.0;
@@ -930,9 +931,14 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".prs" );
         out_control->prs = sfopen( temp, "w" );
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
+        fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s\n",
+                 "step", "p_int_x", "p_int_y", "p_int_z",
+                 "p_ext_x", "p_ext_y", "p_ext_z", "p_kin" );
+#endif
         fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s%13s\n",
-                 "step", "norm_x", "norm_y", "norm_z",
-                 "press_x", "press_y", "press_z", "target_p", "volume" );
+                 "step", "box_x", "box_y", "box_z",
+                 "p_x", "p_y", "p_z", "p_target", "volume" );
         fflush( out_control->prs );
     }
     else
@@ -1231,7 +1237,7 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
 {
 #if defined(_OPENMP)
     if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT )
+            || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
         sfree( data->ext_press_local, "Finalize_Workspace::workspace->ext_press_local" );
     }
