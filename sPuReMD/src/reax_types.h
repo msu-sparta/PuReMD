@@ -43,7 +43,7 @@
 /* enables test energy code */
 //#define TEST_ENERGY
 /* constants defined in reference Fortran ReaxFF code (useful for comparisons) */
-//#define USE_REF_FORTRAN_REAXFF_CONSTANTS
+#define USE_REF_FORTRAN_REAXFF_CONSTANTS
 /* constants defined in reference Fortran eReaxFF code (useful for comparisons) */
 //#define USE_REF_FORTRAN_EREAXFF_CONSTANTS
 /* constants defined in LAMMPS ReaxFF code (useful for comparisons) */
@@ -809,7 +809,7 @@ struct control_params
      * >0 = use a lookup table (computed using splines), where
      * the positive integer value controls number of entries in the table */
     int tabulate;
-    /* simulation time step length (in fs) */
+    /* simulation time step length (in ps) */
     real dt;
     /* number of simulation steps to elapse before
      * recomputing the verlet lists */
@@ -835,20 +835,22 @@ struct control_params
     real thb_cut;
     /* hydrogen bonding cutoff (in Angstroms) */
     real hbond_cut;
-    /**/
+    /* initial temperature of atomic system (in K) */
     real T_init;
-    /**/
+    /* target (final) temperature of atomic system (in K) */
     real T_final;
-    /**/
+    /* current temperature (in K) */
     real T;
-    /**/
+    /* thermostat inertia (in K / s) */
     real Tau_T;
     /* control mode for thermostat,
      * 0: none, 1: step-wise, 2: constant slope */
     int T_mode;
-    /**/
+    /* step-wise control mode: limit in change of temperature in thermostat per simulation step (in K)
+     * constant slope control mode: scaler for change of temperature in thermostat per simulation step (in K) */
     real T_rate;
-    /**/
+    /* step-wise thermostat control mode: simulation time to hold thermostat temperature constant (in ps),
+     * constant slope control mode: used to scale rate of temperature change (inversely) */
     real T_freq;
     /**/
     real Tau_PT;

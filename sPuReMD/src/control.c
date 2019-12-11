@@ -208,7 +208,8 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 else if ( strncmp(tmp[0], "dt", MAX_LINE) == 0 )
                 {
                     val = atof(tmp[1]);
-                    control->dt = val * 1.0e-3;  // convert dt from fs to ps!
+                    /* convert from fs to ps */
+                    control->dt = val * 1.0e-3;
                 }
                 else if ( strncmp(tmp[0], "gpus_per_node", MAX_LINE) == 0 )
                 {
@@ -387,8 +388,8 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 else if ( strncmp(tmp[0], "t_mass", MAX_LINE) == 0 )
                 {
                     val = atof(tmp[1]);
-                    /* convert t_mass from fs to ps */
-                    control->Tau_T = val * 1.0e-3;
+                    /* convert from fs to s */
+                    control->Tau_T = val * 1.0e-15;
                 }
                 else if ( strncmp(tmp[0], "t_mode", MAX_LINE) == 0 )
                 {

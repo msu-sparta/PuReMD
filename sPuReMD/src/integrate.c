@@ -32,6 +32,7 @@
 #include "vector.h"
 
 
+/* Velocity Verlet integrator for microcanonical ensemble. */
 void Velocity_Verlet_NVE(reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -78,9 +79,11 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
 }
 
 
-/* Uses Berendsen-type coupling for both T and P.
- * All box dimensions are scaled by the same amount,
- * there is no change in the angles between axes. */
+/* Velocity Verlet integrator for constant volume and constant temperature
+ *  with Berendsen thermostat.
+ *
+ * NOTE: All box dimensions are scaled by the same amount, and
+ * there is no change in the angles between axes during scaling. */
 void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         control_params* control, simulation_data *data,
         static_storage *workspace, reax_list **lists,
@@ -132,7 +135,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 
     /* temperature scaler */
     Compute_Kinetic_Energy( system, data );
-    lambda = 1.0 + ((dt * 1.0e-10) / (control->Tau_T * 1.0e-12)) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-10) / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
@@ -152,7 +155,11 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     Compute_Kinetic_Energy( system, data );
 }
 
-
+/* Velocity Verlet integrator for constant volume and constant temperature
+ *  with Nose-Hoover thermostat.
+ *
+ * Reference: Understanding Molecular Simulation, Frenkel and Smit
+ *  Academic Press Inc. San Diego, 1996 p. 388-391 */
 void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
@@ -203,7 +210,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
         rvec_Scale( workspace->v_const[i],
-                    1.0 - 0.5 * dt * therm->v_xi, system->atoms[i].v );
+                1.0 - 0.5 * dt * therm->v_xi, system->atoms[i].v );
         rvec_ScaledAdd( workspace->v_const[i],
                 -0.5 * dt * inv_m * F_CONV, workspace->f_old[i] );
         rvec_ScaledAdd( workspace->v_const[i],
@@ -211,7 +218,9 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
     }
 
     v_xi_new = therm->v_xi_old + 2.0 * dt * therm->G_xi;
-    E_kin_new = G_xi_new = v_xi_old = 0;
+    E_kin_new = 0.0;
+    G_xi_new = 0.0;
+    v_xi_old = 0.0;
     itr = 0;
     do
     {
@@ -314,7 +323,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     mu = (mu_3[0] + mu_3[1] + mu_3[2]) / 3.0;
 
     /* temperature scaler */
-    lambda = 1.0 + ((dt * 1.0e-10) / (control->Tau_T * 1.0e-12)) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-10) / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;

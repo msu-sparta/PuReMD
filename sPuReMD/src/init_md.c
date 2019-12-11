@@ -182,22 +182,15 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
     case nhNVT:
         data->N_f = 3 * system->N + 1;
         *Evolve = &Velocity_Verlet_Nose_Hoover_NVT_Klein;
-        //control->Tau_T = 100 * data->N_f * K_B * control->T_final;
 
         if ( control->restart == FALSE
                 || (control->restart == TRUE && control->random_vel == TRUE) )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin
-                    - data->N_f * K_B * control->T );
+                    - data->N_f * K_B * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
-            data->therm.v_xi_old = 0;
-            data->therm.xi = 0;
-
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "init_md: G_xi=%f Tau_T=%f E_kin=%f N_f=%f v_xi=%f\n",
-                     data->therm.G_xi, control->Tau_T, data->E_Kin,
-                     data->N_f, data->therm.v_xi );
-#endif
+            data->therm.v_xi_old = 0.0;
+            data->therm.xi = 0.0;
         }
         break;
 
