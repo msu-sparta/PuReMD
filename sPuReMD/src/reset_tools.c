@@ -34,9 +34,13 @@ void Reset_Pressures( control_params *control, simulation_data *data )
     rvec_MakeZero( data->int_press );
     rvec_MakeZero( data->ext_press );
 #if defined(_OPENMP)
-    for ( i = 0; i < control->num_threads; ++i )
+    if ( control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
-        rvec_MakeZero( data->ext_press_local[i] );
+        for ( i = 0; i < control->num_threads; ++i )
+        {
+            rvec_MakeZero( data->ext_press_local[i] );
+        }
     }
 #endif
 }
