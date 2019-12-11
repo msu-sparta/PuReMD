@@ -80,10 +80,7 @@ void Velocity_Verlet_NVE(reax_system *system, control_params *control,
 
 
 /* Velocity Verlet integrator for constant volume and constant temperature
- *  with Berendsen thermostat.
- *
- * NOTE: All box dimensions are scaled by the same amount, and
- * there is no change in the angles between axes during scaling. */
+ *  with Berendsen thermostat. */
 void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         control_params* control, simulation_data *data,
         static_storage *workspace, reax_list **lists,
@@ -249,8 +246,9 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
 }
 
 
-/* Uses Berendsen-type coupling for both T and P.
- * All box dimensions are scaled by the same amount,
+/* Velocity Verlet integrator for constant pressure and constant temperature.
+ *
+ * NOTE: All box dimensions are scaled by the same amount, and
  * there is no change in the angles between axes. */
 void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
         control_params* control, simulation_data *data, static_storage *workspace,
@@ -353,9 +351,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
 }
 
 
-/* uses Berendsen-type coupling for both T and P.
- * All box dimensions are scaled by the same amount,
- * there is no change in the angles between axes. */
+/* Velocity Verlet integrator for constant pressure and constant temperature. */
 void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
         control_params* control, simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -414,6 +410,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
     {
         mu[i] = POW( 1.0 + (dt / control->Tau_P[i])
                 * (data->tot_press[i] - control->P[i]), 1.0 / 3.0 );
+
         if ( mu[i] < MIN_dV )
         {
             mu[i] = MIN_dV;
@@ -425,7 +422,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
     }
 
     /* temperature scaler */
-    lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-10) / control->Tau_T) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
