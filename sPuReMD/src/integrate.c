@@ -132,12 +132,12 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 
     /* temperature scaler */
     Compute_Kinetic_Energy( system, data );
-    lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-10) / (control->Tau_T * 1.0e-12)) * (control->T / data->therm.T - 1.0);
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
     }
-    else if (lambda > MAX_dT )
+    else if ( lambda > MAX_dT )
     {
         lambda = MAX_dT;
     }
@@ -182,7 +182,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
     }
 
     /* Compute xi(t + dt) */
-    therm->xi += ( therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi );
+    therm->xi += therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi;
 
     Reallocate( system, control, workspace, lists, renbr );
 
@@ -216,7 +216,6 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
     do
     {
         itr++;
-        /* new values become old in this iteration */
         v_xi_old = v_xi_new;
         coef_v = 1.0 / (1.0 + 0.5 * dt * v_xi_old);
         E_kin_new = 0.0;
@@ -229,9 +228,9 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* 
                     * rvec_Dot( system->atoms[i].v, system->atoms[i].v );
         }
 
-        G_xi_new = control->Tau_T * ( 2.0 * E_kin_new
-                - data->N_f * K_B * control->T );
-        v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
+        G_xi_new = control->Tau_T * (2.0 * E_kin_new
+                - data->N_f * K_B * control->T);
+        v_xi_new = therm->v_xi + 0.5 * dt * (therm->G_xi + G_xi_new);
     }
     while ( FABS( v_xi_new - v_xi_old ) > 1.0e-5 );
 
@@ -482,8 +481,8 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
 
     /* Compute zeta(t + dt/2), E_Kininetic(t + dt/2)
      * IMPORTANT: What will be the initial value of zeta? and what is g? */
-    data->therm.xi += 0.5 * dt * control->Tau_T  *
-        ( 2.0 * data->E_Kin - data->N_f * K_B * control->T );
+    data->therm.xi += 0.5 * dt * control->Tau_T
+        * (2.0 * data->E_Kin - data->N_f * K_B * control->T);
 
     Reset( system, control, data, workspace );
     fprintf(out_control->log, "reset-");
@@ -516,8 +515,8 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
     }
 
     /* Compute zeta(t + dt) */
-    data->therm.xi += 0.5 * dt * control->Tau_T  * ( 2.0 * data->E_Kin -
-                      data->N_f * K_B * control->T );
+    data->therm.xi += 0.5 * dt * control->Tau_T
+        * (2.0 * data->E_Kin - data->N_f * K_B * control->T);
 
     fprintf( out_control->log, "Xi: %8.3f %8.3f %8.3f\n",
              data->therm.xi, data->E_Kin, data->N_f * K_B * control->T );

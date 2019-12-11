@@ -175,7 +175,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         break;
 
     case bNVT:
-        data->N_f = 3 * system->N + 1;
+        data->N_f = 3 * system->N;
         *Evolve = &Velocity_Verlet_Berendsen_NVT;
         break;
 

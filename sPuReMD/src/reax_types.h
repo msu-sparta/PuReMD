@@ -73,11 +73,12 @@
   /* Coulomb energy conversion */
   #define C_ELE (332.0638)
   /* kcal/mol/K */
-  #define K_B (0.8314510)
+  #define K_B (0.831687)
+//  #define K_B (0.8314510)
   /* --> amu A / ps^2 */
   #define F_CONV (4.184e2)
   /* energy conversion constant from kilo-calories per mole to electron volts */
-  #define KCALpMOL_to_EV (23.0408)
+  #define KCALpMOL_to_EV (23.02)
   /* electric dipole moment conversion constant from elementary charge * angstrom to debye */
   #define ECxA_to_DEBYE (4.80320679913)
 #elif defined(USE_REF_FORTRAN_EREAXFF_CONSTANTS)
@@ -88,7 +89,7 @@
   #define ECxA_to_DEBYE (4.80320679913)
 #elif defined(USE_LAMMPS_REAXFF_CONSTANTS)
   //TODO
-  /* conversion constant from kilo-calories per mole to electron volts */
+  /* energy conversion constant from kilo-calories per mole to electron volts */
   #define KCALpMOL_to_EV (23.060549)
 #endif
 
