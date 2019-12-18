@@ -46,6 +46,17 @@ static void Generate_Initial_Velocities( reax_system *system,
 
     if ( T <= 0.1 || control->random_vel == FALSE )
     {
+        /* warnings if conflicts between initial temperature and control file parameter */
+        if ( control->random_vel == TRUE )
+        {
+            fprintf( stderr, "[WARNING] setting atom initial velocities to zero due to small initial temperature (%f).\n",
+                  T );
+        }
+        else if ( T > 0.1 )
+        {
+            fprintf( stderr, "[WARNING] setting atom initial velocities to zero due to control file paramter (random_vel = 0).\n" );
+        }
+
         for ( i = 0; i < system->N; i++ )
         {
             rvec_MakeZero( system->atoms[i].v );
@@ -53,13 +64,20 @@ static void Generate_Initial_Velocities( reax_system *system,
     }
     else
     {
+        if ( T <= 0.0 )
+        {
+            fprintf( stderr, "[ERROR] random atom initial velocities specified with invalid temperature (%f). Terminating...\n",
+                  T );
+            exit( INVALID_INPUT );
+        }
+
         for ( i = 0; i < system->N; i++ )
         {
             rvec_Random( system->atoms[i].v );
 
             norm = rvec_Norm_Sqr( system->atoms[i].v );
-            scale = SQRT( system->reax_param.sbp[ system->atoms[i].type ].mass *
-                          norm / (3.0 * K_B * T) );
+            scale = SQRT( system->reax_param.sbp[ system->atoms[i].type ].mass
+                    * norm / (3.0 * K_B * T) );
 
             rvec_Scale( system->atoms[i].v, 1.0 / scale, system->atoms[i].v );
 
@@ -126,7 +144,7 @@ static void Init_System( reax_system *system, control_params *control,
 
     /* Initialize velocities so that desired init T can be attained */
     if ( control->restart == FALSE
-            || (control->restart == TRUE && control->random_vel == FALSE) )
+            || (control->restart == TRUE && control->random_vel == TRUE) )
     {
         Generate_Initial_Velocities( system, control, control->T_init );
     }
@@ -918,20 +936,16 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     }
 
     if ( control->ensemble == aNPT || control->ensemble == iNPT
-            || control->ensemble == sNPT )
+            || control->ensemble == sNPT || control->compute_pressure == TRUE )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".prs" );
         out_control->prs = sfopen( temp, "w" );
-#if defined(DEBUG) || defined(DEBUG_FOCUS)
-        fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s\n",
-                 "step", "p_int_x", "p_int_y", "p_int_z",
-                 "p_ext_x", "p_ext_y", "p_ext_z", "p_kin" );
-#endif
         fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s%13s\n",
-                 "step", "box_x", "box_y", "box_z",
-                 "p_x", "p_y", "p_z", "p_target", "volume" );
+                "step", "norm_x", "norm_y", "norm_z",
+                "press_x", "press_y", "press_z", "target_p", "volume" );
+
         fflush( out_control->prs );
     }
     else
@@ -1514,7 +1528,7 @@ static void Finalize_Out_Controls( reax_system *system, control_params *control,
     }
 
     if ( control->ensemble == aNPT || control->ensemble == iNPT
-            || control->ensemble == sNPT )
+            || control->ensemble == sNPT || control->compute_pressure == TRUE )
     {
         sfclose( out_control->prs, "Finalize_Out_Controls::out_control->prs" );
     }

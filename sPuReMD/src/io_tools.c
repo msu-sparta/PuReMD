@@ -47,7 +47,7 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
     {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
-            bo_ij = &(bonds->bond_list[pj].bo_data);
+            bo_ij = &bonds->bond_list[pj].bo_data;
             fprintf( out_control->fbo, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
                      //workspace->orig_id[i],
                      //workspace->orig_id[bonds->bond_list[pj].nbr],
@@ -669,24 +669,25 @@ void Output_Results( reax_system *system, control_params *control,
 
         /* output pressure */
         if ( control->ensemble == aNPT || control->ensemble == iNPT ||
-                control->ensemble == sNPT )
+                control->ensemble == sNPT || control->compute_pressure == TRUE )
         {
-#if defined(DEBUG) || defined(DEBUG_FOCUS)
             fprintf( out_control->prs, "%-8d%13.6f%13.6f%13.6f",
                      data->step,
                      data->int_press[0], data->int_press[1], data->int_press[2] );
+
+            /* external pressure is calculated together with forces */
             fprintf( out_control->prs, "%13.6f%13.6f%13.6f",
                      data->ext_press[0], data->ext_press[1], data->ext_press[2] );
+
             fprintf( out_control->prs, "%13.6f\n", data->kin_press );
-#endif
 
             fprintf( out_control->prs,
-                     "%-8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
+                     "%-8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
                      data->step,
                      system->box.box_norms[0], system->box.box_norms[1],
                      system->box.box_norms[2],
                      data->tot_press[0], data->tot_press[1], data->tot_press[2],
-                     (control->P[0] + control->P[1] + control->P[2]) / 3.0, system->box.volume );
+                     control->P[0], control->P[1], control->P[2], system->box.volume );
             fflush( out_control->prs );
         }
     }
