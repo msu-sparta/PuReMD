@@ -131,7 +131,7 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 #define PDB_CONECT_FORMAT "%6s%5d%5d%5d%5d%5d\n"
 #define PDB_CRYST1_FORMAT "%6s%9s%9s%9s%7s%7s%7s%11s%4s\n"
 
-#define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f          %-2s%2s\n"
+#define PDB_ATOM_FORMAT_O "%6s%5d %4s%c%3s %c%4d%c   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n"
 #define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
 
 #define BGF_ATOM_FORMAT "%6s %5s %5s %3s %c %5s%10s%10s%10s %5s%3s%2s %8s"

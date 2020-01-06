@@ -583,8 +583,9 @@ void Output_Results( reax_system *system, control_params *control,
     simulation_data *data, static_storage *workspace,
     reax_list **lists, output_controls *out_control )
 {
-    real f_update;
-    real t_elapsed = 0;
+    real f_update, t_elapsed;
+
+    t_elapsed = 0.0;
 
     /* output energies if it is the time */
     if ( out_control->energy_update_freq > 0 &&

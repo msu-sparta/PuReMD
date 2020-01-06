@@ -97,13 +97,10 @@ static void Read_System( const char * const geo_file,
     ffield = sfopen( ffield_file, "r" );
     ctrl = sfopen( control_file, "r" );
 
-    /* ffield file */
     Read_Force_Field( ffield, &system->reax_param );
 
-    /* control file */
     Read_Control_File( ctrl, system, control, out_control );
 
-    /* geo file */
     if ( control->geo_format == CUSTOM )
     {
         Read_Geo( geo_file, system, control, data, workspace );
@@ -251,6 +248,16 @@ int simulate( const void * const handle )
 
         Check_Energy( spmd_handle->data );
 
+        if ( spmd_handle->output_enabled == TRUE )
+        {
+            if ( spmd_handle->out_control->write_steps > 0
+                    && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0 )
+            {
+                Write_PDB( spmd_handle->system, spmd_handle->lists[BONDS], spmd_handle->data,
+                        spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
+            }
+        }
+
         if ( spmd_handle->callback != NULL )
         {
             spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
@@ -282,18 +289,24 @@ int simulate( const void * const handle )
 
             if ( spmd_handle->output_enabled == TRUE )
             {
+                steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
+
                 Analysis( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
-            }
 
-            steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
+                if ( spmd_handle->out_control->restart_freq > 0
+                        && steps % spmd_handle->out_control->restart_freq == 0 )
+                {
+                    Write_Restart( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                            spmd_handle->workspace, spmd_handle->out_control );
+                }
 
-            if ( steps > 0 && spmd_handle->out_control->restart_freq
-                    && steps % spmd_handle->out_control->restart_freq == 0
-                    && spmd_handle->output_enabled == TRUE )
-            {
-                Write_Restart( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                        spmd_handle->workspace, spmd_handle->out_control );
+                if ( spmd_handle->out_control->write_steps > 0
+                        && steps % spmd_handle->out_control->write_steps == 0 )
+                {
+                    Write_PDB( spmd_handle->system, spmd_handle->lists[BONDS], spmd_handle->data,
+                            spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
+                }
             }
 
             if ( spmd_handle->callback != NULL )
@@ -301,13 +314,6 @@ int simulate( const void * const handle )
                 spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
                         spmd_handle->lists );
             }
-        }
-
-        if ( spmd_handle->out_control->write_steps > 0
-                && spmd_handle->output_enabled == TRUE )
-        {
-            Write_PDB( spmd_handle->system, spmd_handle->lists[BONDS], spmd_handle->data,
-                    spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
         }
 
         spmd_handle->data->timing.end = Get_Time( );
