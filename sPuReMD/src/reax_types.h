@@ -67,6 +67,13 @@
 #define TRUE (1)
 #define FALSE (0)
 
+#if defined(HAVE_TENSORFLOW)
+  #define WINDOW_SIZE 401
+  #define TRAINING_STEP 401
+#else
+  #define WINDOW_SIZE 5
+#endif
+
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
   #define PI (3.14159265)
@@ -1044,6 +1051,9 @@ struct reax_timing
     real cm_optimum;
     /* num. of retries in main sim. loop */
     int num_retries;
+
+    real cm_prediction_overall;
+    real cm_tensorflow_just_prediction;
 };
 
 

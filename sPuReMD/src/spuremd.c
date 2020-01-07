@@ -382,6 +382,38 @@ reax_atom* get_atoms( const void * const handle )
     return atoms;
 }
 
+reax_system* get_reax_system( const void * const handle )
+{
+    spuremd_handle *spmd_handle;
+    reax_system *system;
+
+    system = NULL;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+        system = spmd_handle->system;
+    }
+
+    return system;    
+}
+
+static_storage* get_workspace( const void * const handle )
+{
+    spuremd_handle *spmd_handle;
+    static_storage *workspace;
+
+    workspace = NULL;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+        workspace = spmd_handle->workspace;
+    }
+
+    return workspace;    
+}
+
 
 int set_output_enabled( const void * const handle, const int enabled )
 {

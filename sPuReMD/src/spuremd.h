@@ -44,6 +44,8 @@ int cleanup( const void * const );
 
 reax_atom* get_atoms( const void * const );
 
+reax_system* get_reax_system( const void * const );
+
 int set_output_enabled( const void * const, const int );
 
 #if defined(__cplusplus)
