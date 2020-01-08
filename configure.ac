@@ -233,7 +233,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 			LIBS="${save_LIBS}"
 			AS_IF([test "x${LAPACKE_FOUND_LIBS}" != "xyes"],
 			      [AC_MSG_ERROR([Unable to find LAPACKE library.])])
-			LAPACKE_LIBS="-llapack"
+			LAPACKE_LIBS="-llapacke -llapack"
 			AC_DEFINE([HAVE_LAPACKE], [1], [Define to 1 if you have LAPACKE support enabled.])
 		else
 			AC_MSG_WARN([
@@ -532,7 +532,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 				       [-llapack])
 			AS_IF([test "x${LAPACKE_FOUND_LIBS}" != "xyes"],
 			      [AC_MSG_ERROR([Unable to find LAPACKE library.])])
-			LAPACKE_LIBS="-llapack"
+			LAPACKE_LIBS="-llapacke -llapack"
 			AC_DEFINE([HAVE_LAPACKE], [1], [Define to 1 if you have LAPACKE support enabled.])
 		else
 			AC_MSG_WARN([
@@ -693,7 +693,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 				       [-llapack])
 			AS_IF([test "x${LAPACKE_FOUND_LIBS}" != "xyes"],
 			      [AC_MSG_ERROR([Unable to find LAPACKE library.])])
-			LAPACKE_LIBS="-llapack"
+			LAPACKE_LIBS="-llapacke -llapack"
 			AC_DEFINE([HAVE_LAPACKE], [1], [Define to 1 if you have LAPACKE support enabled.])
 		else
 			AC_MSG_WARN([
