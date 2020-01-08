@@ -1,48 +1,46 @@
 #!/usr/bin/env python3
 
-import argparse
-import contextlib
-from os import linesep
-from re import match, sub
-import sys
-
-
-FORMATS=["BGF", "PDB", "PUREMD"]
-
-
-@contextlib.contextmanager
-def smart_open(filename=None):
-    if filename and filename != '-':
-        fh = open(filename, 'w')
-    else:
-        fh = sys.stdout
-
-    try:
-        yield fh
-    finally:
-        if fh is not sys.stdout:
-            fh.close()
-
-
-def count_atoms(input_file, input_format):
-    count = 0
-    regex = lambda x: False
-    if input_format == "BGF":
-        regex = lambda l: match(r'HETATM', l) != None
-    elif input_format == "PDB":
-        regex = lambda l: match(r'ATOM  ', l) != None
-    elif input_format == "PUREMD":
-        regex = lambda l: match(r'BOXGEO', l) == None
-
-    with open(input_file, 'r') as infile:
-        for line in infile:
-            if regex(line):
-                count = count + 1
-
-    return count
-
-
 def convert(args):
+    import contextlib
+    from re import match, sub
+    from os import linesep
+
+    @contextlib.contextmanager
+    def smart_open(filename=None):
+        import sys
+
+        if filename and filename != '-':
+            fh = open(filename, 'w')
+        else:
+            fh = sys.stdout
+
+        try:
+            yield fh
+        finally:
+            if fh is not sys.stdout:
+                fh.close()
+
+
+    def count_atoms(input_file, input_format):
+        from re import match
+
+        count = 0
+        regex = lambda x: False
+        if input_format == "BGF":
+            regex = lambda l: match(r'HETATM', l) != None
+        elif input_format == "PDB":
+            regex = lambda l: match(r'ATOM  ', l) != None
+        elif input_format == "PUREMD":
+            regex = lambda l: match(r'BOXGEO', l) == None
+
+        with open(input_file, 'r') as infile:
+            for line in infile:
+                if regex(line):
+                    count = count + 1
+
+        return count
+
+
     patterns = { \
             ("BGF", "PDB"): [ \
             lambda l, **kwargs: ('{:6}{:5d} {:>4}{:1}{:3} {:1}{:4d}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:4}{:>2}{:2}'.format(
@@ -99,6 +97,9 @@ def convert(args):
 
 
 def replicate(args):
+    from re import match
+    from os import linesep
+
     if args.input_format == 'BGF':
         #TODO
         pass
@@ -129,10 +130,10 @@ def replicate(args):
 
         with open(out_file, 'w') as outfile:
             # box dimensions
-            outfile.write('{:6}{:9.3f}{:9.3f}{:9.3f}{:7}{:7}{:7}{:11}{:4}\n'.format(
+            outfile.write('{:6}{:9.3f}{:9.3f}{:9.3f}{:7}{:7}{:7}{:11}{:4}'.format(
                 'CRYST1', x_dim * args.X_repl, y_dim * args.Y_repl, z_dim * args.Z_repl,
                 cryst_line[33:40], cryst_line[40:47], cryst_line[47:54],
-                cryst_line[54:65], cryst_line[65:69]))
+                cryst_line[54:65], cryst_line[65:69]) + linesep)
 
             # atoms
             count = 1
@@ -140,13 +141,13 @@ def replicate(args):
                 for y in range(args.Y_repl):
                     for z in range(args.Z_repl):
                         for l in atom_lines:
-                            outfile.write('{:6}{:5d} {:>4}{:1}{:3} {:1}{:4d}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:4}{:>2}{:2}\n'.format(
+                            outfile.write('{:6}{:5d} {:>4}{:1}{:3} {:1}{:4d}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:4}{:>2}{:2}'.format(
                                 'ATOM  ', count, l[12:16].strip(),
                                 ' ', '   ', ' ', 0, ' ',
                                 float(l[30:38].strip()) + x * x_dim,
                                 float(l[38:46].strip()) + y * y_dim,
                                 float(l[46:54].strip()) + z * z_dim,
-                                1.0, 0.0, l[72:76], l[76:78].strip(), '  '))
+                                1.0, 0.0, l[72:76], l[76:78].strip(), '  ') + linesep)
 
                             count = count + 1
 
@@ -155,7 +156,47 @@ def replicate(args):
         pass
 
 
+def noise(args):
+    from numpy.random import normal
+    from re import match
+    from os import linesep
+
+    mu, sigma = 0.0, args.sigma
+
+    if args.input_format == 'BGF':
+        #TODO
+        pass
+
+    elif args.input_format == 'PDB':
+        atom_regex = lambda l: match(r'ATOM  ', l) != None
+
+        out_file = 'output.pdb'
+        if args.output_file:
+            out_file = args.output_file
+
+        with open(args.input_file, 'r') as infile, open(out_file, 'w') as outfile:
+            for line in infile:
+                if atom_regex(line):
+                    outfile.write('{:6}{:5d} {:>4}{:1}{:3} {:1}{:4d}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:4}{:>2}{:2}'.format(
+                        'ATOM  ', int(line[6:12].strip()), line[12:16].strip(),
+                        ' ', '   ', ' ', 0, ' ',
+                        float(line[30:38].strip()) + normal(mu, sigma),
+                        float(line[38:46].strip()) + normal(mu, sigma),
+                        float(line[46:54].strip()) + normal(mu, sigma),
+                        1.0, 0.0, line[72:76], line[76:78].strip(), '  ') + linesep)
+                else:
+                    outfile.write(line)
+
+    elif args.input_format == 'PUREMD':
+        #TODO
+        pass
+
+
 if __name__ == "__main__":
+    import argparse
+
+    FORMATS=["BGF", "PDB", "PUREMD"]
+
     parser = argparse.ArgumentParser(description='Munge geometry file(s) for molecular dynamics simulations.')
     subparsers = parser.add_subparsers(dest='cmd')
     subparsers.required = True
@@ -189,6 +230,19 @@ if __name__ == "__main__":
     parser_replicate.add_argument('output_file', metavar='out_file', nargs='?',
             help='output geometry file')
     parser_replicate.set_defaults(func=replicate)
+
+    # noise subcommand
+    parser_noise = subparsers.add_parser('noise', aliases=['n', 'no'],
+            help='Create new geometry from existing by adding prescribed noise to atomic positions.')
+    parser_noise.add_argument('input_format', metavar='in_format',
+            choices=FORMATS, help='input format')
+    parser_noise.add_argument('input_file', metavar='in_file',
+            help='input geometry file')
+    parser_noise.add_argument('sigma', metavar='sigma', type=float,
+            help='standard deviation of the normal distribution used to modeling the added noise to atomic position')
+    parser_noise.add_argument('output_file', metavar='out_file', nargs='?',
+            help='output geometry file')
+    parser_noise.set_defaults(func=noise)
 
     # parse args and take action
     args = parser.parse_args()
