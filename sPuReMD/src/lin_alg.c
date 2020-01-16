@@ -212,15 +212,18 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
 /* Setup routines for sparse approximate inverse preconditioner
  *
  * A: symmetric sparse matrix, lower half stored in CSR
- * filter:
+ * A_full:
  * A_spar_patt:
+ * A_spar_patt_full:
+ * A_app_inv:
+ * filter:
  *
  * Assumptions:
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
 void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix ** A_full,
-              sparse_matrix ** A_spar_patt, sparse_matrix **A_spar_patt_full,
-                    sparse_matrix ** A_app_inv, const real filter )
+        sparse_matrix ** A_spar_patt, sparse_matrix **A_spar_patt_full,
+        sparse_matrix ** A_app_inv, const real filter )
 {
     int i, pj, size;
     int left, right, k, p, turn;
@@ -244,13 +247,12 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     /* quick-select algorithm for finding the k-th greatest element in the matrix, where
      *  list: values from the matrix
      *  left, right: search space of the quick-select */
-
     left = 0;
     right = A->start[A->n] - 1;
     k = (int)( A->start[A->n] * filter );
     threshold = 0.0;
 
-    for ( i = left; i <= right ; ++i )
+    for ( i = left; i <= right; ++i )
     {
         list[i] = A->val[i];
 
@@ -349,7 +351,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     if ( *A_app_inv == NULL )
     {
         /* A_app_inv has the same sparsity pattern
-         * * as A_spar_patt_full (omit non-zero values) */
+         * as A_spar_patt_full (omit non-zero values) */
         Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
     }
     else if ( (*A_app_inv)->m < A->m )
@@ -357,7 +359,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
         Deallocate_Matrix( *A_app_inv );
 
         /* A_app_inv has the same sparsity pattern
-         * * as A_spar_patt_full (omit non-zero values) */
+         * as A_spar_patt_full (omit non-zero values) */
         Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
     }
 
@@ -1640,8 +1642,8 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
  * Applied Numerical Mathematics 30, 1999
  * */
 real sparse_approx_inverse( const sparse_matrix * const A,
-                            const sparse_matrix * const A_spar_patt,
-                            sparse_matrix ** A_app_inv )
+        const sparse_matrix * const A_spar_patt,
+        sparse_matrix ** A_app_inv )
 {
     int i, k, pj, j_temp, identity_pos;
     int N, M, d_i, d_j;
@@ -1649,6 +1651,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
     int *pos_x, *pos_y;
     real start;
     real *e_j, *dense_matrix;
+    size_t e_j_size, dense_matrix_size;
     char *X, *Y;
 
     start = Get_Time( );
@@ -1658,7 +1661,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, k, pj, j_temp, identity_pos, N, M, d_i, d_j, m, n, \
-            nrhs, lda, ldb, info, X, Y, pos_x, pos_y, e_j, dense_matrix) \
+            nrhs, lda, ldb, info, X, Y, pos_x, pos_y, e_j, dense_matrix, e_j_size, dense_matrix_size) \
     shared(A_app_inv, stderr)
 #endif
     {
@@ -1667,42 +1670,57 @@ real sparse_approx_inverse( const sparse_matrix * const A,
         pos_x = smalloc( sizeof(int) * A->n, "sparse_approx_inverse::pos_x" );
         pos_y = smalloc( sizeof(int) * A->n, "sparse_approx_inverse::pos_y" );
 
-        for ( i = 0; i < A->n; ++i )
-        {
-            X[i] = 0;
-            Y[i] = 0;
-            pos_x[i] = 0;
-            pos_y[i] = 0;
-        }
+        e_j = NULL;
+        dense_matrix = NULL;
+        e_j_size = 0;
+        dense_matrix_size = 0;
 
 #if defined(_OPENMP)
-        #pragma omp for schedule(static)
+        #pragma omp for schedule(dynamic,64)
 #endif
         for ( i = 0; i < A_spar_patt->n; ++i )
         {
             N = 0;
             M = 0;
 
-            // find column indices of nonzeros (which will be the columns indices of the dense matrix)
+            for ( k = 0; k < A->n; ++k )
+            {
+                X[k] = 0;
+            }
+            for ( k = 0; k < A->n; ++k )
+            {
+                Y[k] = 0;
+            }
+            for ( k = 0; k < A->n; ++k )
+            {
+                pos_x[k] = 0;
+            }
+            for ( k = 0; k < A->n; ++k )
+            {
+                pos_y[k] = 0;
+            }
+
+            /* find column indices of nonzeros
+             * (which will be the columns indices of the dense matrix) */
             for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->start[i + 1]; ++pj )
             {
-
                 j_temp = A_spar_patt->j[pj];
 
                 Y[j_temp] = 1;
                 pos_y[j_temp] = N;
                 ++N;
 
-                // for each of those indices
-                // search through the row of full A of that index
+                /* for each of those indices:
+                 * search through the row of full A of that index */
                 for ( k = A->start[j_temp]; k < A->start[j_temp + 1]; ++k )
                 {
-                    // and accumulate the nonzero column indices to serve as the row indices of the dense matrix
+                    /* and accumulate the nonzero column indices
+                     * to serve as the row indices of the dense matrix */
                     X[A->j[k]] = 1;
                 }
             }
 
-            // enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix
+            /* enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix */
             identity_pos = M;
             for ( k = 0; k < A->n; k++)
             {
@@ -1717,19 +1735,30 @@ real sparse_approx_inverse( const sparse_matrix * const A,
                 }
             }
 
-            // allocate memory for NxM dense matrix
-            dense_matrix = smalloc( sizeof(real) * N * M,
-                    "sparse_approx_inverse::dense_matrix" );
+            /* N x M dense matrix */
+            if ( dense_matrix == NULL )
+            {
+                dense_matrix = smalloc( sizeof(real) * N * M,
+                        "sparse_approx_inverse::dense_matrix" );
+                dense_matrix_size = sizeof(real) * N * M;
+            }
+            else if ( dense_matrix_size < sizeof(real) * N * M )
+            {
+                sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
+                dense_matrix = smalloc( sizeof(real) * N * M,
+                        "sparse_approx_inverse::dense_matrix" );
+                dense_matrix_size = sizeof(real) * N * M;
+            }
 
-            // fill in the entries of dense matrix
+            /* fill in the entries of dense matrix */
             for ( d_i = 0; d_i < M; ++d_i)
             {
-                // all rows are initialized to zero
                 for ( d_j = 0; d_j < N; ++d_j )
                 {
                     dense_matrix[d_i * N + d_j] = 0.0;
                 }
-                // change the value if any of the column indices is seen
+
+                /* change the value if any of the column indices is seen */
                 for ( d_j = A->start[pos_x[d_i]];
                         d_j < A->start[pos_x[d_i] + 1]; ++d_j )
                 {
@@ -1742,8 +1771,18 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             }
 
             /* create the right hand side of the linear equation
-               that is the full column of the identity matrix*/
-            e_j = smalloc( sizeof(real) * M, "sparse_approx_inverse::e_j" );
+             * that is the full column of the identity matrix */
+            if ( e_j == NULL )
+            {
+                e_j = smalloc( sizeof(real) * M, "sparse_approx_inverse::e_j" );
+                e_j_size = sizeof(real) * M;
+            }
+            else if ( e_j_size < sizeof(real) * M )
+            {
+                sfree( e_j, "sparse_approx_inverse::e_j"  );
+                e_j = smalloc( sizeof(real) * M, "sparse_approx_inverse::e_j" );
+                e_j_size = sizeof(real) * M;
+            }
 
             for ( k = 0; k < M; ++k )
             {
@@ -1759,40 +1798,31 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             lda = N;
             ldb = nrhs;
             info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, dense_matrix, lda,
-                                  e_j, ldb );
+                    e_j, ldb );
 
             /* Check for the full rank */
             if ( info > 0 )
             {
-                fprintf( stderr, "The diagonal element %i of the triangular factor ", info );
+                fprintf( stderr, "[ERROR] The diagonal element %i of the triangular factor ", info );
                 fprintf( stderr, "of A is zero, so that A does not have full rank;\n" );
                 fprintf( stderr, "the least squares solution could not be computed.\n" );
                 exit( INVALID_INPUT );
             }
 
             /* Print least squares solution */
-            // print_matrix( "Least squares solution", n, nrhs, b, ldb );
+//            print_matrix( "Least squares solution", n, nrhs, b, ldb );
 
-            // accumulate the resulting vector to build A_app_inv
+            /* accumulate the resulting vector to build A_app_inv */
             (*A_app_inv)->start[i] = A_spar_patt->start[i];
             for ( k = A_spar_patt->start[i]; k < A_spar_patt->start[i + 1]; ++k)
             {
                 (*A_app_inv)->j[k] = A_spar_patt->j[k];
                 (*A_app_inv)->val[k] = e_j[k - A_spar_patt->start[i]];
             }
-
-            //empty variables that will be used next iteration
-            sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
-            sfree( e_j, "sparse_approx_inverse::e_j"  );
-            for ( k = 0; k < A->n; ++k )
-            {
-                X[k] = 0;
-                Y[k] = 0;
-                pos_x[k] = 0;
-                pos_y[k] = 0;
-            }
         }
 
+        sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
+        sfree( e_j, "sparse_approx_inverse::e_j"  );
         sfree( pos_y, "sparse_approx_inverse::pos_y" );
         sfree( pos_x, "sparse_approx_inverse::pos_x" );
         sfree( Y, "sparse_approx_inverse::Y" );
