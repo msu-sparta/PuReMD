@@ -51,12 +51,17 @@ static void Generate_Initial_Velocities( reax_system *system,
         /* warnings if conflicts between initial temperature and control file parameter */
         if ( control->random_vel == TRUE )
         {
-            fprintf( stderr, "[WARNING] setting atom initial velocities to zero due to small initial temperature (%f).\n",
-                  T );
+            fprintf( stderr, "[ERROR] conflicting control file parameters\n" );
+            fprintf( stderr, "[INFO] random_vel = 1 and small initial temperature (t_init = %f)\n", T );
+            fprintf( stderr, "[INFO] set random_vel = 0 to resolve this (atom initial velocites set to zero)\n" );
+            exit( INVALID_INPUT );
         }
         else if ( T > 0.1 )
         {
-            fprintf( stderr, "[WARNING] setting atom initial velocities to zero due to control file paramter (random_vel = 0).\n" );
+            fprintf( stderr, "[ERROR] conflicting control file paramters\n" );
+            fprintf( stderr, "[INFO] random_vel = 0 and large initial temperature (t_init = %f)\n", T );
+            fprintf( stderr, "[INFO] set random_vel = 1 to resolve this (random atom initial velocites according to t_init)\n" );
+            exit( INVALID_INPUT );
         }
 
         for ( i = 0; i < system->N; i++ )

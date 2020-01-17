@@ -95,7 +95,7 @@ void Valence_Angles( reax_system *system, control_params *control,
     real p_pen2, p_pen3, p_pen4;
     real p_coa2, p_coa3, p_coa4;
     real p_val6, p_val8, p_val9, p_val10;
-    int num_thb_intrs;
+    int x, num_thb_intrs;
     real e_ang_total, e_pen_total, e_coa_total;
 
     total_bo = workspace->total_bond_order;
@@ -117,6 +117,15 @@ void Valence_Angles( reax_system *system, control_params *control,
     e_ang_total = 0.0;
     e_pen_total = 0.0;
     e_coa_total = 0.0;
+
+    for ( x = 0; x < thb_intrs->n; ++x )
+    {
+        Set_Start_Index( x, 0, thb_intrs );
+    }
+    for ( x = 0; x < thb_intrs->n; ++x )
+    {
+        Set_End_Index( x, 0, thb_intrs );
+    }
 
     //TODO: change interaction lists for parallelization (parallel creation of thb_list)
 #if defined(_OPENMP)
