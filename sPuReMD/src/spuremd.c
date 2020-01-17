@@ -38,7 +38,7 @@
 #include "tool_box.h"
 #include "vector.h"
 
-
+static FILE *fp;
 static void Post_Evolve( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control )
@@ -177,6 +177,11 @@ void* setup( const char * const geo_file, const char * const ffield_file,
             spmd_handle->system, spmd_handle->control,
             spmd_handle->data, spmd_handle->workspace,
             spmd_handle->out_control );
+    char ch[3] = ".tf";
+    char tf_out[MAX_STR];
+    strcpy(tf_out, spmd_handle->control->sim_name);
+    strncat(tf_out, ch, 3); 
+    fp = freopen(tf_out, "w", stdout);
 
     return (void*) spmd_handle;
 }
@@ -333,6 +338,8 @@ int simulate( const void * const handle )
 
 int cleanup( const void * const handle )
 {
+    fclose(fp);
+    
     int i, ret;
     spuremd_handle *spmd_handle;
 

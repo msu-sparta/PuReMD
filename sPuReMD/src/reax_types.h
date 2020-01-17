@@ -923,6 +923,13 @@ struct control_params
     /* window size for the long short-term memory model (LSTM)
      * when predicting solver initial guesses using Tensorflow */
     unsigned int cm_init_guess_win_size;
+    /* controls the training procedure of the LSTM
+    1-> apply training, 0->no training */  
+    unsigned int cm_init_guess_training;
+    /* controls which step to train the LSTM */
+    unsigned int cm_init_guess_training_step;
+    /* how many epoch to train the LSTM */
+    unsigned int cm_init_guess_training_epoch;
     /* preconditioner type for linear solver */
     unsigned int cm_solver_pre_comp_type;
     /* frequency (in terms of simulation time steps) at which to recompute
@@ -1381,6 +1388,7 @@ struct static_storage
     /* initial guesses for solutions to the linear systems */
     real **s;
     real **t;
+    real **s_14;
 
     /* GMRES related storage */
     real *y;

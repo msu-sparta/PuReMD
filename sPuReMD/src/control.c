@@ -330,6 +330,24 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                     ival = atoi( tmp[1] );
                     control->cm_init_guess_win_size = ival;
                 }
+
+                else if ( strncmp(tmp[0], "cm_init_guess_training", MAX_LINE) == 0 )
+                {
+                    ival = atoi( tmp[1] );
+                    control->cm_init_guess_training = ival;
+                }
+
+                else if ( strncmp(tmp[0], "cm_init_guess_training_step", MAX_LINE) == 0 )
+                {
+                    ival = atoi( tmp[1] );
+                    control->cm_init_guess_training_step = ival;
+                }
+                else if ( strncmp(tmp[0], "cm_init_guess_training_epoch", MAX_LINE) == 0 )
+                {
+                    ival = atoi( tmp[1] );
+                    control->cm_init_guess_training_epoch = ival;
+                }
+
                 else if ( strncmp(tmp[0], "cm_solver_pre_comp_type", MAX_LINE) == 0 )
                 {
                     ival = atoi( tmp[1] );

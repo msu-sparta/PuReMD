@@ -415,12 +415,16 @@ static void Init_Workspace( reax_system *system, control_params *control,
             "Init_Workspace::workspace->s" );
     workspace->t = scalloc( WINDOW_SIZE, sizeof( real* ),
             "Init_Workspace::workspace->t" );
+    workspace->s_14 = scalloc( WINDOW_SIZE, sizeof( real* ),
+            "Init_Workspace::workspace->s" );
     for ( i = 0; i < WINDOW_SIZE; ++i )
     {
         workspace->s[i] = scalloc( system->N_cm, sizeof( real ),
                 "Init_Workspace::workspace->s[i]" );
         workspace->t[i] = scalloc( system->N_cm, sizeof( real ),
                 "Init_Workspace::workspace->t[i]" );
+        workspace->s_14[i] = scalloc( system->N_cm, sizeof( real ),
+                "Init_Workspace::workspace->s[i]" );
     }
 
     switch ( control->charge_method )
@@ -1313,6 +1317,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     {
         sfree( workspace->s[i], "Finalize_Workspace::workspace->s[i]" );
         sfree( workspace->t[i], "Finalize_Workspace::workspace->t[i]" );
+        sfree( workspace->s_14[i], "Finalize_Workspace::workspace->s[i]" );
     }
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
@@ -1332,6 +1337,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     sfree( workspace->b_prm, "Finalize_Workspace::workspace->b_prm" );
     sfree( workspace->s, "Finalize_Workspace::workspace->s" );
     sfree( workspace->t, "Finalize_Workspace::workspace->t" );
+    sfree( workspace->s_14, "Finalize_Workspace::workspace->s_14" );
 
     switch ( control->cm_solver_type )
     {

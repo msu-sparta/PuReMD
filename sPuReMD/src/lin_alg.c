@@ -3013,6 +3013,8 @@ int GMRES( const static_storage * const workspace, const control_params * const 
     t_spmv = 0.0;
     t_ts = 0.0;
     t_vops = 0.0;
+    double initial_guess[N];
+    Vector_Copy(initial_guess, x, N );
 
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
@@ -3186,6 +3188,20 @@ int GMRES( const static_storage * const workspace, const control_params * const 
             g_bnorm = bnorm;
         }
     }
+
+    Vector_Sum( initial_guess, 1.0,  initial_guess, -1.0, x, N );
+    double error_full = Norm( initial_guess, N );
+    double error_1 = Norm( initial_guess, (N-2)/2 );
+    double error_2 = Norm( &(initial_guess[(N-2)/2]), (N-2)/2 );
+    fprintf( stdout, "------------------------------------------------------------------\n");
+    fprintf( stdout, "[INFO] Num. Iters  = %d\n", g_itr * (control->cm_solver_restart + 1) + g_j + 1);
+    fprintf( stdout, "[INFO] Avg. l2(error) error_full (x_guess - x_real)= %.12f\n", error_full/N);
+    fprintf( stdout, "[INFO] Avg. l2(error) error_1    (x_guess - x_real)= %.12f\n", error_1/((N-2)/2));
+    fprintf( stdout, "[INFO] Avg. l2(error) error_2    (x_guess - x_real)= %.12f\n", error_2/((N-2)/2));
+    fprintf( stdout, "[INFO] Avg. l2(error) err[N-1]2  (x_guess - x_real)= %.12f\n", initial_guess[N-1]*initial_guess[N-1]);
+    fprintf( stdout, "[INFO] Avg. l2(error) err[N-2]2  (x_guess - x_real)= %.12f\n", initial_guess[N-2]*initial_guess[N-2]);
+    fprintf( stdout, "------------------------------------------------------------------\n");
+
 
     data->timing.cm_solver_orthog += t_ortho / control->num_threads;
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
@@ -3581,6 +3597,9 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     t_spmv = 0.0;
     t_vops = 0.0;
 
+    double initial_guess[N];
+    Vector_Copy(initial_guess, x, N );
+
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, bnorm, t_start) \
@@ -3722,6 +3741,20 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     data->timing.cm_solver_pre_app += t_pa / control->num_threads;
     data->timing.cm_solver_spmv += t_spmv / control->num_threads;
     data->timing.cm_solver_vector_ops += t_vops / control->num_threads;
+
+    Vector_Sum( initial_guess, 1.0,  initial_guess, -1.0, x, N );
+    double error_full = Norm( initial_guess, N );
+    double error_1 = Norm( initial_guess, (N-2)/2 );
+    double error_2 = Norm( &(initial_guess[(N-2)/2]), (N-2)/2 );
+    fprintf( stdout, "------------------------------------------------------------------\n");
+    fprintf( stdout, "[INFO] Num. Iters  = %d\n", g_itr);
+    fprintf( stdout, "[INFO] Avg. l2(error) error_full (x_guess - x_real)= %.12f\n", error_full/N);
+    fprintf( stdout, "[INFO] Avg. l2(error) error_1    (x_guess - x_real)= %.12f\n", error_1/((N-2)/2));
+    fprintf( stdout, "[INFO] Avg. l2(error) error_2    (x_guess - x_real)= %.12f\n", error_2/((N-2)/2));
+    fprintf( stdout, "[INFO] Avg. l2(error) err[N-1]2  (x_guess - x_real)= %.12f\n", initial_guess[N-1]*initial_guess[N-1]);
+    fprintf( stdout, "[INFO] Avg. l2(error) err[N-2]2  (x_guess - x_real)= %.12f\n", initial_guess[N-2]*initial_guess[N-2]);
+    fprintf( stdout, "------------------------------------------------------------------\n");
+
 
 //    if ( FABS( g_omega ) < DBL_EPSILON )
     if ( g_omega == 0.0 )

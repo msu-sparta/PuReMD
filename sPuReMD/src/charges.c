@@ -38,7 +38,7 @@
 // it is also defined in "init_md.c" and 
 // "tensorflow_regressor.c" file 
 //defined in reax_types
-//#define WINDOW_LENGTH 401 
+//#define WINDOW_SIZE 401 
 //#define TRAINING_STEP 401  
 
 int is_refactoring_step( control_params * const control,
@@ -222,8 +222,10 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
         int j = 0;
         for (j = WINDOW_SIZE-1;j > 0 ; j--) {
             workspace->s[j][i] = workspace->s[j-1][i];
+            workspace->s_14[j][i] = workspace->s_14[j-1][i];
         }
         workspace->s[0][i] = s_tmp;
+        workspace->s_14[0][i] = s_tmp;
     }
 }
 
@@ -1321,9 +1323,11 @@ static void QEq( reax_system * const system, control_params * const control,
     int iters, refactor;
 
     #if defined(HAVE_TENSORFLOW)
-    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM && data->step == TRAINING_STEP) {
+    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+        && control->cm_init_guess_training == 1 && 
+        data->step == control->cm_init_guess_training_step) {
        // #pragma omp single{
-        train_and_save(workspace, system, control, TRAINING_STEP);
+        train_and_save(workspace, system, control, control->cm_init_guess_training_step);
        // }
     }
     #endif
@@ -1444,9 +1448,11 @@ static void EE( reax_system * const system, control_params * const control,
     int iters, refactor;
 
     #if defined(HAVE_TENSORFLOW)
-    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM && data->step == TRAINING_STEP) {
+    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+        && control->cm_init_guess_training == 1 && 
+        data->step == control->cm_init_guess_training_step) {
        // #pragma omp single{
-        train_and_save(workspace, system, control, TRAINING_STEP);
+        train_and_save(workspace, system, control, control->cm_init_guess_training_step);
        // }
     }
     #endif
@@ -1547,9 +1553,11 @@ static void ACKS2( reax_system * const system, control_params * const control,
     int iters, refactor;
 
     #if defined(HAVE_TENSORFLOW)
-    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM && data->step == TRAINING_STEP) {
+    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+        && control->cm_init_guess_training == 1 && 
+        data->step == control->cm_init_guess_training_step) {
        // #pragma omp single{
-        train_and_save(workspace, system, control, TRAINING_STEP);
+        train_and_save(workspace, system, control, control->cm_init_guess_training_step);
        // }
     }
     #endif
@@ -1595,7 +1603,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
         exit( INVALID_INPUT );
         break;
     }
-    data->timing.cm_prediction_overall += Get_Timing_Info( time );
+    data->timing.cm_prediction_overall = Get_Timing_Info( time );
 
 
 #if defined(DEBUG_FOCUS)
@@ -1618,6 +1626,17 @@ static void ACKS2( reax_system * const system, control_params * const control,
     case GMRES_S:
         iters = GMRES( workspace, control, data, workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
+        #if defined(HAVE_TENSORFLOW)
+        if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+            && control->cm_init_guess_training == 1 && 
+            data->step <= control->cm_init_guess_training_step) {
+            //printf("1e-14\n");
+            //Vector_Copy(workspace->s_14[0], workspace->s[0], system->N_cm );
+            //GMRES( workspace, control, data, workspace->H,
+            //           workspace->b_s, 1e-14, workspace->s_14[0], refactor );
+        }
+        #endif
+             
         break;
 
     case GMRES_H_S:
@@ -1638,6 +1657,16 @@ static void ACKS2( reax_system * const system, control_params * const control,
     case BiCGStab_S:
         iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
+        #if defined(HAVE_TENSORFLOW)
+        if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+            && control->cm_init_guess_training == 1 && 
+            data->step <= control->cm_init_guess_training_step) {
+            //Vector_Copy(workspace->s_14[0], workspace->s[0], system->N_cm );
+            //printf("1e-14\n");
+            //BiCGStab( workspace, control, data, workspace->H, workspace->b_s, 1e-14,
+            //    workspace->s_14[0], refactor );
+        }
+        #endif       
         break;
 
     default:
