@@ -1088,13 +1088,13 @@ void Output_Results( reax_system *system, control_params *control,
                     data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
 #else
             fprintf( out_control->out,
-                    "%-6d%24.15e%24.15e%24.15e%13.5f%16.5f%13.5f\n",
+                    "%-6d%24.15f%24.15f%24.15f%13.5f%16.5f%13.5f\n",
                     data->step, data->sys_en.e_tot, data->sys_en.e_pot,
                     E_CONV * data->sys_en.e_kin, data->therm.T,
                     system->big_box.V, data->iso_bar.P );
 
             fprintf( out_control->pot,
-                    "%-6d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
+                    "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
                     data->step,
                     data->sys_en.e_bond,
                     data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,

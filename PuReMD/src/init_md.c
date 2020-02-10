@@ -459,7 +459,17 @@ int Init_Workspace( reax_system *system, control_params *control,
     if ( ret != SUCCESS )
         return ret;
 
-    memset( &(workspace->realloc), 0, sizeof(reallocate_data) );
+    workspace->H = NULL;
+    workspace->H_full = NULL;
+    workspace->H_sp = NULL;
+    workspace->H_p = NULL;
+    workspace->H_spar_patt = NULL;
+    workspace->H_spar_patt_full = NULL;
+    workspace->H_app_inv = NULL;
+    workspace->L = NULL;
+    workspace->U = NULL;
+
+    memset( &workspace->realloc, 0, sizeof(reallocate_data) );
     Reset_Workspace( system, workspace );
 
     /* Initialize the Taper function */

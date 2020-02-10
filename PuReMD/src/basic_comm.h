@@ -35,7 +35,7 @@ enum pointer_type
 
 
 void Dist( const reax_system * const, mpi_datatypes * const,
-        void*, int, MPI_Datatype );
+        void * const, int, MPI_Datatype );
 
 void Dist_FS( const reax_system * const, mpi_datatypes * const,
         void*, int, MPI_Datatype );

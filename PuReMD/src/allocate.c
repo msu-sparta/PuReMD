@@ -45,33 +45,32 @@
    process's box throughout the whole simulation. therefore
    we need to make upper bound estimates for various data structures */
 int PreAllocate_Space( reax_system *system, control_params *control,
-                       storage *workspace, MPI_Comm comm )
+        storage *workspace, MPI_Comm comm )
 {
     int  i;
 
     /* determine the local and total capacity */
     system->local_cap = MAX( (int)(system->n * SAFE_ZONE), MIN_CAP );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
+
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: local_cap=%d total_cap=%d\n",
              system->my_rank, system->local_cap, system->total_cap );
 #endif
 
-    system->my_atoms = (reax_atom*)
-                       scalloc( system->total_cap, sizeof(reax_atom), "my_atoms", comm );
+    system->my_atoms = scalloc( system->total_cap, sizeof(reax_atom), "my_atoms", comm );
 
     /* space for keeping restriction info, if any */
     if ( control->restrict_bonds )
     {
-        workspace->restricted  = (int*)
-                                 scalloc( system->local_cap, sizeof(int), "restricted_atoms", comm );
+        workspace->restricted = scalloc( system->local_cap, sizeof(int), "restricted_atoms", comm );
 
-        workspace->restricted_list = (int**)
-                                     scalloc( system->local_cap, sizeof(int*), "restricted_list", comm );
+        workspace->restricted_list = scalloc( system->local_cap, sizeof(int*), "restricted_list", comm );
 
         for ( i = 0; i < system->local_cap; ++i )
-            workspace->restricted_list[i] = (int*)
-                                            scalloc( MAX_RESTRICT, sizeof(int), "restricted_list[i]", comm );
+        {
+            workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int), "restricted_list[i]", comm );
+        }
     }
 
     return SUCCESS;
@@ -100,29 +99,31 @@ void Copy_Atom_List( reax_atom *dest, reax_atom *src, int n )
     int i;
 
     for ( i = 0; i < n; ++i )
-        memcpy( dest + i, src + i, sizeof(reax_atom) );
+    {
+        memcpy( &dest[i], &src[i], sizeof(reax_atom) );
+    }
 }
 
 
 int Allocate_System( reax_system *system, int local_cap, int total_cap,
-                     char *msg )
+        char *msg )
 {
-    system->my_atoms = (reax_atom*)
-                       realloc( system->my_atoms, total_cap * sizeof(reax_atom) );
+    system->my_atoms = realloc( system->my_atoms, sizeof(reax_atom) * total_cap );
 
     return SUCCESS;
 }
 
 
-/*************       workspace        *************/
 void DeAllocate_Workspace( control_params *control, storage *workspace )
 {
     int i;
 
-    if ( !workspace->allocated )
+    if ( workspace->allocated == FALSE )
+    {
         return;
+    }
 
-    workspace->allocated = 0;
+    workspace->allocated = FALSE;
 
     /* communication storage */
     for ( i = 0; i < MAX_NBRS; ++i )
@@ -133,7 +134,6 @@ void DeAllocate_Workspace( control_params *control, storage *workspace )
     }
 
     /* bond order storage */
-    sfree( workspace->within_bond_box, "skin" );
     sfree( workspace->total_bond_order, "total_bo" );
     sfree( workspace->Deltap, "Deltap" );
     sfree( workspace->Deltap_boc, "Deltap_boc" );
@@ -306,12 +306,13 @@ int Allocate_Workspace( reax_system *system, control_params *control,
         storage *workspace, int local_cap, int total_cap,
         MPI_Comm comm, char *msg )
 {
-    int i, total_real, total_rvec, local_rvec;
+    int i;
+    size_t total_real, total_rvec, local_rvec;
 
-    workspace->allocated = 1;
-    total_real = total_cap * sizeof(real);
-    total_rvec = total_cap * sizeof(rvec);
-    local_rvec = local_cap * sizeof(rvec);
+    workspace->allocated = TRUE;
+    total_real = sizeof(real) * total_cap;
+    total_rvec = sizeof(rvec) * total_cap;
+    local_rvec = sizeof(rvec) * local_cap;
 
     /* communication storage */
     for ( i = 0; i < MAX_NBRS; ++i )
@@ -322,7 +323,6 @@ int Allocate_Workspace( reax_system *system, control_params *control,
     }
 
     /* bond order related storage  */
-    workspace->within_bond_box = scalloc( total_cap, sizeof(int), "skin", comm );
     workspace->total_bond_order = smalloc( total_real, "total_bo", comm );
     workspace->Deltap = smalloc( total_real, "Deltap", comm );
     workspace->Deltap_boc = smalloc( total_real, "Deltap_boc", comm );
@@ -340,7 +340,25 @@ int Allocate_Workspace( reax_system *system, control_params *control,
     workspace->vlpex = smalloc( total_real, "vlpex", comm );
     workspace->bond_mark = scalloc( total_cap, sizeof(int), "bond_mark", comm );
 
-    /* CM storage */
+    /* charge method storage */
+    switch ( control->charge_method )
+    {
+        case QEQ_CM:
+            system->N_cm = system->N;
+            break;
+        case EE_CM:
+            system->N_cm = system->N + 1;
+            break;
+        case ACKS2_CM:
+            system->N_cm = 2 * system->N + 2;
+            break;
+        default:
+            fprintf( stderr, "[ERROR] Unknown charge method type. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+    }
+
+    /* sparse matrices */
     workspace->Hdia_inv = scalloc( total_cap, sizeof(real), "Hdia_inv", comm );
     workspace->b_s = scalloc( total_cap, sizeof(real), "b_s", comm );
     workspace->b_t = scalloc( total_cap, sizeof(real), "b_t", comm );
@@ -537,6 +555,8 @@ int Allocate_Matrix( sparse_matrix **pH, int cap, int m,
 
     return SUCCESS;
 }
+
+
 int Allocate_Matrix2( sparse_matrix **pH, int n, int cap, int m,
         int format, MPI_Comm comm )
 {
@@ -905,8 +925,8 @@ void Deallocate_MPI_Buffers( mpi_datatypes *mpi_data )
 
 
 void ReAllocate( reax_system *system, control_params *control,
-                 simulation_data *data, storage *workspace, reax_list **lists,
-                 mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, reax_list **lists,
+        mpi_datatypes *mpi_data )
 {
     int i, j, k, p;
     int num_bonds, est_3body, nflag, Nflag, Hflag, mpi_flag, ret, total_send;
@@ -920,8 +940,8 @@ void ReAllocate( reax_system *system, control_params *control,
     MPI_Comm comm;
     char msg[200];
 
-    realloc = &(workspace->realloc);
-    g = &(system->my_grid);
+    realloc = &workspace->realloc;
+    g = &system->my_grid;
     comm = mpi_data->world;
 
 #if defined(DEBUG_FOCUS)
@@ -944,8 +964,8 @@ void ReAllocate( reax_system *system, control_params *control,
 
     // IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with 0!!!
     nflag = 0;
-    if ( system->n >= DANGER_ZONE * system->local_cap ||
-            (0 && system->n <= LOOSE_ZONE * system->local_cap) )
+    if ( system->n >= DANGER_ZONE * system->local_cap
+            || (0 && system->n <= LOOSE_ZONE * system->local_cap) )
     {
 #if !defined(NEUTRAL_TERRITORY)
         nflag = 1;
@@ -978,6 +998,7 @@ void ReAllocate( reax_system *system, control_params *control,
                  system->my_rank, system->n, system->N,
                  system->local_cap, system->total_cap );
 #endif
+
         ret = Allocate_System( system, system->local_cap, system->total_cap, msg );
         if ( ret != SUCCESS )
         {
@@ -999,7 +1020,6 @@ void ReAllocate( reax_system *system, control_params *control,
             MPI_Abort( comm, INSUFFICIENT_MEMORY );
         }
     }
-
 
     //renbr = (data->step - data->prev_steps) % control->reneighbor == 0;
     renbr = is_refactoring_step( control, data );
@@ -1042,23 +1062,23 @@ void ReAllocate( reax_system *system, control_params *control,
                      data->step, realloc->Htop, H->m );
             MPI_Abort( comm, INSUFFICIENT_MEMORY );
         }
+
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
                  system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
                  (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
                        (1024 * 1024)) );
 #endif
+
 #if defined(NEUTRAL_TERRITORY)
-        Reallocate_Matrix( &(workspace->H), H->cap,
+        Reallocate_Matrix( &workspace->H, H->cap,
                            realloc->Htop * SAFE_ZONE_NT, "H", comm );
 #else
-        Reallocate_Matrix( &(workspace->H), system->local_cap,
+        Reallocate_Matrix( &workspace->H, system->local_cap,
                            realloc->Htop * SAFE_ZONE, "H", comm );
 #endif
         //Deallocate_Matrix( workspace->L );
         //Deallocate_Matrix( workspace->U );
-        workspace->L = NULL;
-        workspace->U = NULL;
         realloc->Htop = 0;
     }
 #endif /*PURE_REAX*/
@@ -1086,7 +1106,8 @@ void ReAllocate( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    num_bonds = est_3body = -1;
+    num_bonds = -1;
+    est_3body = -1;
     if ( Nflag || realloc->bonds )
     {
         Reallocate_Bonds_List( system, lists[BONDS], &num_bonds,
@@ -1115,7 +1136,9 @@ void ReAllocate( reax_system *system, control_params *control,
         Delete_List( lists[THREE_BODIES], comm );
 
         if ( num_bonds == -1 )
+        {
             num_bonds = lists[BONDS]->num_intrs;
+        }
 
         realloc->num_3body = (int)(MAX(realloc->num_3body * SAFE_ZONE, MIN_3BODIES));
 
@@ -1151,18 +1174,23 @@ void ReAllocate( reax_system *system, control_params *control,
     // we have to be at a renbring step -
     // to ensure correct values at mpi_buffers for update_boundary_positions
     if ( !renbr )
+    {
         mpi_flag = 0;
+    }
     // check whether in_buffer capacity is enough
     else if ( system->max_recved >= system->est_recv * 0.90 )
+    {
         mpi_flag = 1;
+    }
     else
     {
         // otherwise check individual outgoing buffers
         mpi_flag = 0;
         for ( p = 0; p < MAX_NBRS; ++p )
         {
-            nbr_pr   = &( system->my_nbrs[p] );
-            nbr_data = &( mpi_data->out_buffers[p] );
+            nbr_pr = &system->my_nbrs[p];
+            nbr_data = &mpi_data->out_buffers[p];
+
             if ( nbr_data->cnt >= nbr_pr->est_send * 0.90 )
             {
                 mpi_flag = 1;
@@ -1195,6 +1223,7 @@ void ReAllocate( reax_system *system, control_params *control,
             fprintf( stderr, "p%d: nbr%d old_send=%d\n",
                      system->my_rank, p, system->my_nbrs[p].est_send );
 #endif
+
         /* update mpi buffer estimates based on last comm */
         system->est_recv = MAX( system->max_recved * SAFER_ZONE, MIN_SEND );
         system->est_trans =
@@ -1203,8 +1232,8 @@ void ReAllocate( reax_system *system, control_params *control,
 
         for ( p = 0; p < MAX_NBRS; ++p )
         {
-            nbr_pr   = &( system->my_nbrs[p] );
-            nbr_data = &( mpi_data->out_buffers[p] );
+            nbr_pr = &system->my_nbrs[p];
+            nbr_data = &mpi_data->out_buffers[p];
             nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
             total_send += nbr_pr->est_send;
         }
@@ -1231,8 +1260,7 @@ void ReAllocate( reax_system *system, control_params *control,
         /* reallocate mpi buffers */
         Deallocate_MPI_Buffers( mpi_data );
         ret = Allocate_MPI_Buffers( mpi_data, system->est_recv,
-                                    system->my_nbrs, system->my_nt_nbrs, 
-                                    msg );
+                system->my_nbrs, system->my_nt_nbrs, msg );
         if ( ret != SUCCESS )
         {
             fprintf( stderr, "%s", msg );

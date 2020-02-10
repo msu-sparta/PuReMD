@@ -558,48 +558,49 @@ struct mpi_datatypes
 };
 
 
-/* Global params mapping */
-/*
-l[0]  = p_boc1
-l[1]  = p_boc2
-l[2]  = p_coa2
-l[3]  = N/A
-l[4]  = N/A
-l[5]  = N/A
-l[6]  = p_ovun6
-l[7]  = N/A
-l[8]  = p_ovun7
-l[9]  = p_ovun8
-l[10] = N/A
-l[11] = swa
-l[12] = swb
-l[13] = N/A
-l[14] = p_val6
-l[15] = p_lp1
-l[16] = p_val9
-l[17] = p_val10
-l[18] = N/A
-l[19] = p_pen2
-l[20] = p_pen3
-l[21] = p_pen4
-l[22] = N/A
-l[23] = p_tor2
-l[24] = p_tor3
-l[25] = p_tor4
-l[26] = N/A
-l[27] = p_cot2
-l[28] = p_vdW1
-l[29] = v_par30
-l[30] = p_coa4
-l[31] = p_ovun4
-l[32] = p_ovun3
-l[33] = p_val8
-l[34] = N/A
-l[35] = N/A
-l[36] = N/A
-l[37] = version number
-l[38] = p_coa3
-*/
+/* struct definitions */
+/* Force field global parameters mapping
+ * (contained in section 1 of file):
+ *
+ * l[0]  = p_boc1
+ * l[1]  = p_boc2
+ * l[2]  = p_coa2
+ * l[3]  = N/A
+ * l[4]  = N/A
+ * l[5]  = N/A
+ * l[6]  = p_ovun6
+ * l[7]  = N/A
+ * l[8]  = p_ovun7
+ * l[9]  = p_ovun8
+ * l[10] = N/A
+ * l[11] = swa
+ * l[12] = swb
+ * l[13] = N/A
+ * l[14] = p_val6
+ * l[15] = p_lp1
+ * l[16] = p_val9
+ * l[17] = p_val10
+ * l[18] = N/A
+ * l[19] = p_pen2
+ * l[20] = p_pen3
+ * l[21] = p_pen4
+ * l[22] = N/A
+ * l[23] = p_tor2
+ * l[24] = p_tor3
+ * l[25] = p_tor4
+ * l[26] = N/A
+ * l[27] = p_cot2
+ * l[28] = p_vdW1
+ * l[29] = v_par30
+ * l[30] = p_coa4
+ * l[31] = p_ovun4
+ * l[32] = p_ovun3
+ * l[33] = p_val8
+ * l[34] = b_s_acks2 (ACKS2 bond softness)
+ * l[35] = N/A
+ * l[36] = N/A
+ * l[37] = version number
+ * l[38] = p_coa3 */
 struct global_parameters
 {
     int n_global;
@@ -638,6 +639,8 @@ struct single_body_parameters
     real b_o_131;
     real b_o_132;
     real b_o_133;
+    /* bond softness for ACKS2 */
+    real b_s_acks2;
 
     /* Line four in the field file */
     real p_ovun2;
@@ -865,6 +868,8 @@ struct reax_system
     int n;
     /* number of locally owned and ghost atoms by this processor */
     int N;
+    /* dimension of local portion of the N x N sparse charge method matrix H */
+    int N_cm;
     /* total number of atoms across all processors (sum of locally owned atoms) */
     int bigN;
     /* number of locally owned Hydrogen atoms by this processor */
@@ -1352,7 +1357,9 @@ struct bond_data
 
 struct sparse_matrix_entry
 {
+    /* column index */
     int j;
+    /* non-zero value */
     real val;
 };
 
@@ -1361,11 +1368,21 @@ struct sparse_matrix
 {
     /* matrix storage format */
     int format;
-    int cap, n, m;
+    /* max. number of local rows */
+    int cap;
+    /* actual (active) number of local rows */
+    int n;
+    /* max. number of entries */
+    int m;
 #if defined(NEUTRAL_TERRITORY)
+    /* max. number of entries (neural territory) */
     int NT;
 #endif
-    int *start, *end;
+    /* index mapping the row number to the first entry in that row */
+    int *start;
+    /* index mapping the row number to the last entry in that row */
+    int *end;
+    /* non-zero entries (column index and values) */
     sparse_matrix_entry *entries;
 };
 
@@ -1389,7 +1406,6 @@ struct storage
     real *tmp_dbl[MAX_NBRS];
     rvec *tmp_rvec[MAX_NBRS];
     rvec2 *tmp_rvec2[MAX_NBRS];
-    int  *within_bond_box;
 
     /* bond order related storage */
     real *total_bond_order;
@@ -1401,23 +1417,40 @@ struct storage
     int *bond_mark;
 
     /* charge matrix storage */
+    /* charge matrix */
     sparse_matrix *H;
-    sparse_matrix *L;
-    sparse_matrix *U;
+    /* charge matrix (full) */
     sparse_matrix *H_full;
+    /* sparser charge matrix */
+    sparse_matrix *H_sp;
+    /* permuted charge matrix (graph coloring) */
+    sparse_matrix *H_p;
+    /* sparsity pattern of charge matrix, used in
+     * computing a sparse approximate inverse preconditioner */
     sparse_matrix *H_spar_patt;
+    /* sparsity pattern of charge matrix (full), used in
+     * computing a sparse approximate inverse preconditioner */
     sparse_matrix *H_spar_patt_full;
+    /* sparse approximate inverse preconditioner */
     sparse_matrix *H_app_inv;
+    /* incomplete Cholesky or LU preconditioner */
+    sparse_matrix *L;
+    /* incomplete Cholesky or LU preconditioner */
+    sparse_matrix *U;
+    /* Jacobi preconditioner */
     real *Hdia_inv;
+    /* row drop tolerences for incomplete Cholesky preconditioner */
+    real *droptol;
+    /* right-hand side vectors for the linear systems */
     real *b_s;
     real *b_t;
     real *b_prc;
     real *b_prm;
-    real *s;
-    real *t;
-    real *droptol;
     rvec2 *b;
     rvec2 *x;
+    /* initial guesses for solutions to the linear systems */
+    real *s;
+    real *t;
 
     /* GMRES storage */
     real *hc;
@@ -1461,23 +1494,25 @@ struct storage
     rvec2 *w2;
     rvec2 *z2;
 
-    /* Taper */
-    real Tap[8];
-
-    /* storage for analysis */
-    int *mark, *old_mark;
-    rvec *x_old;
-
-    /* storage space for bond restrictions */
-    int *restricted;
-    int **restricted_list;
-
     /* integrator */
     rvec *v_const;
 
     /* force calculations */
     real *CdDelta;  // coefficient of dDelta
     rvec *f;
+
+    /* Taper */
+    real Tap[8];
+
+    /* analysis storage */
+    int *mark;
+    int *old_mark;
+    rvec *x_old;
+
+    /* storage space for bond restrictions */
+    int *restricted;
+    int **restricted_list;
+
 #ifdef TEST_FORCES
     rvec *f_ele;
     rvec *f_vdw;

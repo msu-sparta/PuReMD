@@ -258,7 +258,7 @@ static coll_unpacker Get_Unpacker( const int type )
 
 
 void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
-        void *buf, int buf_type, MPI_Datatype type )
+        void * const buf, int buf_type, MPI_Datatype type )
 {
 #if defined(NEUTRAL_TERRITORY)
     int d, count, index;
@@ -300,10 +300,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
     {
         MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
     }
-    
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d dist: done\n", system->my_rank );
-#endif
 
 #else
     int d;
@@ -313,10 +309,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d dist: entered\n", system->my_rank );
-#endif
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -363,11 +355,6 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
             MPI_Wait( &req2, &stat2 );
         }
     }
-
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d dist: done\n", system->my_rank );
-#endif
 #endif
 }
 
@@ -383,10 +370,6 @@ void Dist_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d dist: entered\n", system->my_rank );
-#endif
-
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
     pack = Get_Packer( buf_type );
@@ -423,20 +406,15 @@ void Dist_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
                     type, nbr2->rank, 2 * d + 1, comm );
         }
 
-        if( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt )
         {
             MPI_Wait( &req1, &stat1 );
         }
-        if( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt )
         {
             MPI_Wait( &req2, &stat2 );
         }
     }
-
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d dist: done\n", system->my_rank );
-#endif
 }
 
 
@@ -451,10 +429,6 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
     MPI_Request req[6];
     MPI_Status stat[6];
     coll_unpacker unpack;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d coll: entered\n", system->my_rank );
-#endif
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
@@ -490,10 +464,6 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
         unpack( in[index], buf, &out_bufs[index] );
     }
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d coll: done\n", system->my_rank );
-#endif
-
 #else
     int d;
     mpi_out_data *out_bufs;
@@ -502,10 +472,6 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d coll: entered\n", system->my_rank );
-#endif
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -565,10 +531,6 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
             unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
         }
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d coll: done\n", system->my_rank );
-#endif
 #endif
 }
 
@@ -584,10 +546,6 @@ void Coll_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d coll: entered\n", system->my_rank );
-#endif
-
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
     unpack = Get_Unpacker( buf_type );
@@ -646,10 +604,6 @@ void Coll_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
             unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
         }
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d coll: done\n", system->my_rank );
-#endif
 }
 
 
