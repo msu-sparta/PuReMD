@@ -34,7 +34,7 @@ typedef struct
 } dbond_coefficients;
 
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 void Add_dBO( reax_system*, reax_list**, int, int, real, rvec* );
 
 void Add_dBOpinpi2( reax_system*, reax_list**,
@@ -50,9 +50,10 @@ void Add_dDelta( reax_system*, reax_list**, int, real, rvec* );
 void Add_dDelta_to_Forces( reax_system *, reax_list**, int, real );
 #endif
 
-void Add_dBond_to_Forces( int, int, storage*, reax_list** );
+void Add_dBond_to_Forces( int, int, reax_system*, simulation_data*,
+        storage*, reax_list** );
 
-void Add_dBond_to_Forces_NPT( int, int, simulation_data*,
+void Add_dBond_to_Forces_NPT( int, int, reax_system*, simulation_data*,
         storage*, reax_list** );
 
 int BOp( storage*, reax_list*, real, int, int, int, ivec*, real, rvec*,

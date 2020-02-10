@@ -88,7 +88,6 @@ void Valence_Angles( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    real *total_bo;
     reax_list *bonds, *thb_intrs;
     bond_data *bond_list;
     three_body_interaction_data *thb_list;
@@ -98,7 +97,6 @@ void Valence_Angles( reax_system *system, control_params *control,
     int x, num_thb_intrs;
     real e_ang_total, e_pen_total, e_coa_total;
 
-    total_bo = workspace->total_bond_order;
     bonds = lists[BONDS];
     bond_list = bonds->bond_list;
     thb_intrs = lists[THREE_BODIES];
@@ -457,16 +455,16 @@ void Valence_Angles( reax_system *system, control_params *control,
                         e_coa = p_coa1
                             * EXP( -p_coa4 * SQR(BOA_ij - 1.5) )
                             * EXP( -p_coa4 * SQR(BOA_jk - 1.5) )
-                            * EXP( -p_coa3 * SQR(total_bo[i] - BOA_ij) )
-                            * EXP( -p_coa3 * SQR(total_bo[k] - BOA_jk) )
+                            * EXP( -p_coa3 * SQR(workspace->total_bond_order[i] - BOA_ij) )
+                            * EXP( -p_coa3 * SQR(workspace->total_bond_order[k] - BOA_jk) )
                             / (1.0 + exp_coa2);
                         e_coa_total += e_coa;
 
                         CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
                         CEcoa2 = -2.0 * p_coa4 * (BOA_jk - 1.5) * e_coa;
                         CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1.0 + exp_coa2);
-                        CEcoa4 = -2.0 * p_coa3 * (total_bo[i] - BOA_ij) * e_coa;
-                        CEcoa5 = -2.0 * p_coa3 * (total_bo[k] - BOA_jk) * e_coa;
+                        CEcoa4 = -2.0 * p_coa3 * (workspace->total_bond_order[i] - BOA_ij) * e_coa;
+                        CEcoa5 = -2.0 * p_coa3 * (workspace->total_bond_order[k] - BOA_jk) * e_coa;
 
                         /* calculate force contributions */
 #if defined(_OPENMP)
@@ -690,7 +688,7 @@ void Valence_Angles( reax_system *system, control_params *control,
 #if defined(TEST_ENERGY)
     fprintf( stderr, "Number of angle interactions: %d\n", num_thb_intrs );
 
-    fprintf( stderr, "Angle Energy:%g\t Penalty Energy:%g\t Coalition Energy:%g\n",
+    fprintf( stderr, "Angle Energy: %g\t Penalty Energy: %g\t Coalition Energy: %g\n",
              data->E_Ang, data->E_Pen, data->E_Coa );
 
     fprintf( stderr, "3body: ext_press (%23.15e %23.15e %23.15e)\n",

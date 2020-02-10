@@ -270,19 +270,19 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                             }
 
 #if defined(TEST_ENERGY)
-                            /*fprintf( out_control->ehb,
-                              "%23.15e%23.15e%23.15e\n%23.15e%23.15e%23.15e\n%23.15e%23.15e%23.15e\n",
-                              dcos_theta_di[0], dcos_theta_di[1], dcos_theta_di[2],
-                              dcos_theta_dj[0], dcos_theta_dj[1], dcos_theta_dj[2],
-                              dcos_theta_dk[0], dcos_theta_dk[1], dcos_theta_dk[2]);
-                              fprintf( out_control->ehb, "%23.15e%23.15e%23.15e\n",
-                              CEhb1, CEhb2, CEhb3 ); */
-                            fprintf( stderr, //out_control->ehb,
-                                     "%6d%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
-                                     workspace->orig_id[i],
-                                     workspace->orig_id[j],
-                                     workspace->orig_id[k],
-                                     r_jk, theta, bo_ij->BO, e_hb, data->E_HB );
+                        /* fprintf( out_control->ehb,
+                           "%24.15e%24.15e%24.15e\n%24.15e%24.15e%24.15e\n%24.15e%24.15e%24.15e\n",
+                           dcos_theta_di[0], dcos_theta_di[1], dcos_theta_di[2],
+                           dcos_theta_dj[0], dcos_theta_dj[1], dcos_theta_dj[2],
+                           dcos_theta_dk[0], dcos_theta_dk[1], dcos_theta_dk[2]);
+                           fprintf( out_control->ehb, "%24.15e%24.15e%24.15e\n",
+                           CEhb1, CEhb2, CEhb3 ); */
+                        fprintf( out_control->ehb,
+                                 //"%6d%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
+                                 "%6d%6d%6d%12.4f%12.4f%12.4f%12.4f%12.4f\n",
+                                 system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
+                                 system->my_atoms[k].orig_id,
+                                 r_jk, theta, bo_ij->BO, e_hb, data->my_en.e_hb );
 #endif
 
 #if defined(TEST_FORCES)

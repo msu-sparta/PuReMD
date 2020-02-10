@@ -52,6 +52,13 @@
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
 
+/* disable assertions if NOT compiling with debug support --
+ * the definition (or lack thereof) controls how the assert macro is defined */
+#if !defined(DEBUG) && !defined(DEBUG_FOCUS)
+  #define NDEBUG
+#endif
+#include <assert.h>
+
 #define SUCCESS (1)
 #define FAILURE (0)
 #define TRUE (1)
@@ -286,12 +293,12 @@ enum pre_app
 };
 
 /* atom types as pertains to hydrogen bonding */
-//enum hydrogen_bonding_atom_types
-//{
-//    NON_H_BONDING_ATOM = 0,
-//    H_ATOM = 1,
-//    H_BONDING_ATOM = 2,
-//};
+enum hydrogen_bonding_atom_types
+{
+    NON_H_BONDING_ATOM = 0,
+    H_ATOM = 1,
+    H_BONDING_ATOM = 2,
+};
 
 /* interaction list (reax_list) storage format */
 enum reax_list_format
@@ -352,18 +359,6 @@ enum gcell_types
     FULL_NBRS = 7,
     NATIVE = 8,
     NT_NBRS = 9, // 9 through 14
-};
-
-enum atoms
-{
-    C_ATOM = 0,
-    H_ATOM = 1,
-    O_ATOM = 2,
-    N_ATOM = 3,
-    S_ATOM = 4,
-    SI_ATOM = 5,
-    GE_ATOM = 6,
-    X_ATOM = 7,
 };
 
 enum traj_methods

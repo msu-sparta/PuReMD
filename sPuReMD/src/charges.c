@@ -86,7 +86,7 @@ int is_refactoring_step( control_params * const control,
     else
     {
         /* cases:
-         *  - first overall MD step for non-restartedr OR restarted MD run
+         *  - first overall MD step for non-restarted OR restarted MD run
          *  - total losses from degradation of prec. outweight costs of recomputing prec.
          *  */
         if ( data->step - data->prev_steps == 0
@@ -366,19 +366,19 @@ static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
         /* quadratic */
         else if ( control->cm_init_guess_extrap1 == 2 )
         {
-            s_tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i]-workspace->s[1][i]);
+            s_tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i] - workspace->s[1][i]);
         }
         /* cubic */
         else if ( control->cm_init_guess_extrap1 == 3 )
         {
-            s_tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i]) -
-                    (6.0 * workspace->s[1][i] + workspace->s[3][i]);
+            s_tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i])
+                - (6.0 * workspace->s[1][i] + workspace->s[3][i]);
         }
         /* 4th order */
         else if ( control->cm_init_guess_extrap1 == 4 )
         {
-            s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i]) +
-                10.0 * (-1.0 * workspace->s[1][i] + workspace->s[2][i]) + workspace->s[4][i];
+            s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i])
+                + 10.0 * (-1.0 * workspace->s[1][i] + workspace->s[2][i]) + workspace->s[4][i];
         }
         else
         {
@@ -1179,7 +1179,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             if ( workspace->Hdia_inv == NULL )
             {
                 workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
-                        "Setup_Preconditioner_QEq::workspace->Hdiv_inv" );
+                        "Setup_Preconditioner_QEq::workspace->Hdia_inv" );
             }
             break;
 

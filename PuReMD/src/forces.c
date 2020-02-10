@@ -1615,11 +1615,11 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
             {
                 if ( control->virial == 0 )
                 {
-                    Add_dBond_to_Forces( i, pj, workspace, lists );
+                    Add_dBond_to_Forces( i, pj, system, data, workspace, lists );
                 }
                 else
                 {
-                    Add_dBond_to_Forces_NPT( i, pj, data, workspace, lists );
+                    Add_dBond_to_Forces_NPT( i, pj, system, data, workspace, lists );
                 }
             }
         }
