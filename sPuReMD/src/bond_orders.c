@@ -304,7 +304,7 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
 
 
 void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
-        simulation_data *data, storage *workspace, reax_list **lists )
+        simulation_data *data, static_storage *workspace, reax_list **lists )
 {
     reax_list *bonds;
     bond_data *nbr_j, *nbr_k;
