@@ -53,7 +53,7 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
     {
         si = A->start[i];
         ei = A->end[i];
-        qsort( &(A->entries[si]), ei - si,
+        qsort( &A->entries[si], ei - si,
                 sizeof(sparse_matrix_entry), compare_matrix_entry );
     }
 }

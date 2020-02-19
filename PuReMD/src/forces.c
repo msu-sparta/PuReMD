@@ -568,7 +568,7 @@ static void Init_Distance( reax_system *system, control_params *control,
                 far_nbrs->far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
                 far_nbrs->far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
                 far_nbrs->far_nbr_list.d[pj] = rvec_Norm_Sqr( far_nbrs->far_nbr_list.dvec[pj] );
-                far_nbrs->far_nbr_list.d[pj] = sqrt( far_nbrs->far_nbr_list.d[pj] );
+                far_nbrs->far_nbr_list.d[pj] = SQRT( far_nbrs->far_nbr_list.d[pj] );
             }
         }
     }
@@ -1838,7 +1838,7 @@ static void Init_Forces_No_Charges( reax_system *system, control_params *control
 
                 if ( far_nbrs->far_nbr_list.d[pj] <= SQR(cutoff) )
                 {
-                    far_nbrs->far_nbr_list.d[pj] = sqrt( far_nbrs->far_nbr_list.d[pj] );
+                    far_nbrs->far_nbr_list.d[pj] = SQRT( far_nbrs->far_nbr_list.d[pj] );
                     flag = 1;
                 }
                 else
@@ -1892,7 +1892,7 @@ static void Init_Forces_No_Charges( reax_system *system, control_params *control
                          i, btop_i, far_nbrs->far_nbr_list.nbr[pj],
                          &far_nbrs->far_nbr_list.rel_box[pj], far_nbrs->far_nbr_list.d[pj],
                          &far_nbrs->far_nbr_list.dvec[pj], far_nbrs->format,
-                         sbp_i, sbp_j, twbp ) )
+                         sbp_i, sbp_j, twbp ) == TRUE )
                 {
                     num_bonds += 2;
                     ++btop_i;
@@ -2000,6 +2000,9 @@ void Estimate_Storages( reax_system *system, control_params *control,
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
+#if defined(NEUTRAL_TERRITORY)
+    int mark[6] = {1, 1, 2, 2, 2, 2};
+#endif
 
     far_nbrs = lists[FAR_NBRS];
     *Htop = 0;
@@ -2007,10 +2010,6 @@ void Estimate_Storages( reax_system *system, control_params *control,
     memset( hb_top, 0, sizeof(int) * system->local_cap );
     memset( bond_top, 0, sizeof(int) * system->total_cap );
     *num_3body = 0;
-
-#if defined(NEUTRAL_TERRITORY)
-    int mark[6] = {1, 1, 2, 2, 2, 2};
-#endif
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -2114,7 +2113,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
                 {
                     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0)
                     {
-                        C12 = twbp->p_bo1 * pow( r_ij / twbp->r_s, twbp->p_bo2 );
+                        C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
                         BO_s = (1.0 + control->bo_cut) * exp( C12 );
                     }
                     else
@@ -2125,7 +2124,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
                     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0)
                     {
-                        C34 = twbp->p_bo3 * pow( r_ij / twbp->r_p, twbp->p_bo4 );
+                        C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
                         BO_pi = exp( C34 );
                     }
                     else
@@ -2136,7 +2135,7 @@ void Estimate_Storages( reax_system *system, control_params *control,
 
                     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
                     {
-                        C56 = twbp->p_bo5 * pow( r_ij / twbp->r_pp, twbp->p_bo6 );
+                        C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
                         BO_pi2 = exp( C56 );
                     }
                     else

@@ -221,12 +221,7 @@ void Valence_Angles( reax_system *system, control_params *control,
             bo_ij = &pbond_ij->bo_data;
             BOA_ij = bo_ij->BO - control->thb_cut;
 
-            if ( BOA_ij < 0.0 )
-            {
-                continue;
-            }
-
-            if ( j < system->n || pbond_ij->nbr < system->n )
+            if ( BOA_ij >= 0.0 && (j < system->n || pbond_ij->nbr < system->n) )
             {
                 i = pbond_ij->nbr;
                 r_ij = pbond_ij->d;
@@ -414,8 +409,8 @@ void Valence_Angles( reax_system *system, control_params *control,
                             CEcoa5 = -2.0 * p_coa3 * (workspace->total_bond_order[k] - BOA_jk) * e_coa;
 
                             /* calculate force contributions */
-                            bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
-                            bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
+                            bo_ij->Cdbo += CEval1 + CEpen2 + (CEcoa1 - CEcoa4);
+                            bo_jk->Cdbo += CEval2 + CEpen3 + (CEcoa2 - CEcoa5);
                             workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
                             workspace->CdDelta[i] += CEcoa4;
                             workspace->CdDelta[k] += CEcoa5;
@@ -427,10 +422,6 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 temp_bo_jt = bo_jt->BO;
                                 temp = CUBE( temp_bo_jt );
                                 pBOjt7 = temp * temp * temp_bo_jt;
-
-                                // fprintf( out_control->eval, "%6d%12.8f\n",
-                                // workspace->reverse_map[bonds->bond_list[t].nbr],
-                                // (CEval6 * pBOjt7) );
 
                                 bo_jt->Cdbo += CEval6 * pBOjt7;
                                 bo_jt->Cdbopi += CEval5;
@@ -526,8 +517,8 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                             for ( t = start_j; t < end_j; ++t )
                             {
-                                pbond_jt = &( bonds->bond_list[t] );
-                                bo_jt = &(pbond_jt->bo_data);
+                                pbond_jt = &bonds->bond_list[t];
+                                bo_jt = &pbond_jt->bo_data;
                                 temp_bo_jt = bo_jt->BO;
                                 temp = CUBE( temp_bo_jt );
                                 pBOjt7 = temp * temp * temp_bo_jt;

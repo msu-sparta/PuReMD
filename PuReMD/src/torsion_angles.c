@@ -384,11 +384,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     CEtors9 = fn10 * sin_ijk * sin_jkl
                                         * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
                                                 + 1.5 * fbp->V3 * (cos2omega + 2.0 * SQR(cos_omega)));
-//                                        CEtors7 = cmn * sin_jkl * cos_ijk;
-//                                        CEtors8 = cmn * sin_ijk * cos_jkl;
-//                                        CEtors9 = fn10 * sin_ijk * sin_jkl
-//                                            * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
-//                                                    + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
+//                                    CEtors7 = cmn * sin_jkl * cos_ijk;
+//                                    CEtors8 = cmn * sin_ijk * cos_jkl;
+//                                    CEtors9 = fn10 * sin_ijk * sin_jkl
+//                                        * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
+//                                                + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
                                     /* end  of torsion energy */
 
 
@@ -401,9 +401,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2 *
                                             (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
 
-                                    CEconj1 = Cconj * (BOA_ij - 1.5e0);
-                                    CEconj2 = Cconj * (BOA_jk - 1.5e0);
-                                    CEconj3 = Cconj * (BOA_kl - 1.5e0);
+                                    CEconj1 = Cconj * (BOA_ij - 1.5);
+                                    CEconj2 = Cconj * (BOA_jk - 1.5);
+                                    CEconj3 = Cconj * (BOA_kl - 1.5);
 
                                     CEconj4 = -fbp->p_cot1 * fn12
                                         * (SQR(cos_omega) - 1.0) * sin_jkl * tan_ijk_i;

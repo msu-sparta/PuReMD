@@ -33,107 +33,143 @@ extern "C"  {
 #endif
 
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
-CUDA_HOST_DEVICE static inline int Vector_isZero( const real * const v, int k )
+CUDA_HOST_DEVICE static inline int Vector_isZero( real const * const v, int k )
 {
+    int i, ret;
+
     assert( k >= 0 );
 
-    for ( --k; k >= 0; --k )
+    ret = TRUE;
+
+    for ( i = 0; i < k; ++i )
     {
         if ( FABS( v[k] ) > ALMOST_ZERO )
         {
-            return FALSE;
+            ret = FALSE;
+            break;
         }
-    }
-
-    return TRUE;
-}
-
-
-CUDA_HOST_DEVICE static inline void Vector_MakeZero( real * const v, int k )
-{
-    assert( k >= 0 );
-
-    for ( --k; k >= 0; --k )
-    {
-        v[k] = 0;
-    }
-}
-
-
-CUDA_HOST_DEVICE static inline void Vector_Copy( real * const dest, const real * const v, int k )
-{
-    assert( k >= 0 );
-
-    for ( --k; k >= 0; --k )
-    {
-        dest[k] = v[k];
-    }
-}
-
-
-CUDA_HOST_DEVICE static inline void Vector_Scale( real * const dest, real c,
-        const real * const v, int k )
-{
-    assert( k >= 0 );
-
-    for ( --k; k >= 0; --k )
-    {
-        dest[k] = c * v[k];
-    }
-}
-
-
-CUDA_HOST_DEVICE static inline void Vector_Sum( real * const dest, real c,
-        const real * const v, real d, const real * const y, int k )
-{
-    assert( k >= 0 );
-
-    for ( --k; k >= 0; --k )
-    {
-        dest[k] = c * v[k] + d * y[k];
-    }
-}
-
-
-CUDA_HOST_DEVICE static inline void Vector_Add( real * const dest, real c,
-        const real * const v, int k )
-{
-    assert( k >= 0 );
-
-    for ( --k; k >= 0; --k )
-    {
-        dest[k] += c * v[k];
-    }
-}
-
-
-CUDA_HOST_DEVICE static inline real Dot( const real * const v1,
-        const real * const v2, int k )
-{
-    real ret;
-
-    assert( k >= 0 );
-    ret = 0.0;
-
-    for ( --k; k >= 0; --k )
-    {
-        ret +=  v1[k] * v2[k];
     }
 
     return ret;
 }
 
 
-CUDA_HOST_DEVICE static inline real Norm( const real * const v1, int k )
+CUDA_HOST_DEVICE static inline void Vector_MakeZero( real * const v, int k )
 {
+    int i;
+
+    assert( k >= 0 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        v[i] = 0;
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline void Vector_Copy( real * const dest, real const * const v, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = v[i];
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline void Vector_Scale( real * const dest, real c,
+        real const * const v, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = c * v[i];
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline void Vector_Sum( real * const dest, real c,
+        real const * const v, real d, real const * const y, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] = c * v[i] + d * y[i];
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline void Vector_Add( real * const dest, real c,
+        real const * const v, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i] += c * v[i];
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline real Dot( real const * const v1,
+        real const * const v2, int k )
+{
+    int i;
     real ret;
 
     assert( k >= 0 );
+
     ret = 0.0;
 
-    for ( --k; k >= 0; --k )
+    for ( i = 0; i < k; ++i )
     {
-        ret +=  SQR( v1[k] );
+        ret += v1[i] * v2[i];
+    }
+
+    return ret;
+}
+
+
+CUDA_HOST_DEVICE static inline real Dot_local( real const * const v1,
+        real const * const v2, int k )
+{
+    int i;
+    real sum;
+
+    sum = 0.0;
+
+    for ( i = 0; i < k; ++i )
+    {
+        sum += v1[i] * v2[i];
+    }
+
+    return sum;
+}
+
+
+CUDA_HOST_DEVICE static inline real Norm( real const * const v, int k )
+{
+    int i;
+    real ret;
+
+    assert( k >= 0 );
+
+    ret = 0.0;
+
+    for ( i = 0; i < k; ++i )
+    {
+        ret +=  SQR( v[i] );
     }
 
     return SQRT( ret );
@@ -141,7 +177,7 @@ CUDA_HOST_DEVICE static inline real Norm( const real * const v1, int k )
 
 
 CUDA_HOST_DEVICE static inline void Vector_Print( FILE * const fout,
-        const char * const vname, const real * const v, int k )
+        char const * const vname, real const * const v, int k )
 {
     int i;
 
@@ -158,50 +194,68 @@ CUDA_HOST_DEVICE static inline void Vector_Print( FILE * const fout,
 
 CUDA_HOST_DEVICE static inline void rvec_Copy( rvec dest, const rvec src )
 {
-    dest[0] = src[0];
-    dest[1] = src[1];
-    dest[2] = src[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = src[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_Scale( rvec ret, real c, const rvec v )
 {
-    ret[0] = c * v[0];
-    ret[1] = c * v[1];
-    ret[2] = c * v[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = c * v[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_Add( rvec ret, const rvec v )
 {
-    ret[0] += v[0];
-    ret[1] += v[1];
-    ret[2] += v[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] += v[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_ScaledAdd( rvec ret, real c, const rvec v )
 {
-    ret[0] += c * v[0];
-    ret[1] += c * v[1];
-    ret[2] += c * v[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] += c * v[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_Sum( rvec ret, const rvec v1, const rvec v2 )
 {
-    ret[0] = v1[0] + v2[0];
-    ret[1] = v1[1] + v2[1];
-    ret[2] = v1[2] + v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = v1[i] + v2[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_ScaledSum( rvec ret, real c1, const rvec v1,
         real c2, const rvec v2 )
 {
-    ret[0] = c1 * v1[0] + c2 * v2[0];
-    ret[1] = c1 * v1[1] + c2 * v2[1];
-    ret[2] = c1 * v1[2] + c2 * v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = c1 * v1[i] + c2 * v2[i];
+    }
 }
 
 
@@ -220,50 +274,69 @@ CUDA_HOST_DEVICE static inline real rvec_ScaledDot( real c1, const rvec v1,
 
 CUDA_HOST_DEVICE static inline void rvec_Multiply( rvec r, const rvec v1, const rvec v2 )
 {
-    r[0] = v1[0] * v2[0];
-    r[1] = v1[1] * v2[1];
-    r[2] = v1[2] * v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] * v2[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
 {
-    r[0] = v1[0] * v2[0];
-    r[1] = v1[1] * v2[1];
-    r[2] = v1[2] * v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] * v2[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_Divide( rvec r, const rvec v1, const rvec v2 )
 {
-    r[0] = v1[0] / v2[0];
-    r[1] = v1[1] / v2[1];
-    r[2] = v1[2] / v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] / v2[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_iDivide( rvec r, const rvec v1, const ivec v2 )
 {
-    r[0] = v1[0] / v2[0];
-    r[1] = v1[1] / v2[1];
-    r[2] = v1[2] / v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = v1[i] / v2[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_Invert( rvec r, const rvec v )
 {
-    r[0] = 1.0 / v[0];
-    r[1] = 1.0 / v[1];
-    r[2] = 1.0 / v[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        r[i] = 1.0 / v[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rvec_Cross( rvec ret,
         const rvec v1, const rvec v2 )
 {
-    ret[0] = v1[1] * v2[2] - v1[2] * v2[1];
-    ret[1] = v1[2] * v2[0] - v1[0] * v2[2];
-    ret[2] = v1[0] * v2[1] - v1[1] * v2[0];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        ret[i] = v1[(i + 1) % 3] * v2[(i + 2) % 3]
+            - v1[(i + 2) % 3] * v2[(i + 1) % 3];
+    }
 }
 
 
@@ -309,18 +382,24 @@ CUDA_HOST_DEVICE static inline int rvec_isZero( rvec v )
 
 CUDA_HOST_DEVICE static inline void rvec_MakeZero( rvec v )
 {
-    v[0] = 0.0;
-    v[1] = 0.0;
-    v[2] = 0.0;
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        v[i] = 0.0;
+    }
 }
 
 
 #if defined(PURE_REAX)
 static inline void rvec_Random( rvec v )
 {
-    v[0] = Random( 2.0 ) - 1.0;
-    v[1] = Random( 2.0 ) - 1.0;
-    v[2] = Random( 2.0 ) - 1.0;
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        v[i] = Random( 2.0 ) - 1.0;
+    }
 }
 #endif
 
@@ -498,57 +577,57 @@ CUDA_HOST_DEVICE static inline void rtensor_Copy( rtensor ret,
 CUDA_HOST_DEVICE static inline void rtensor_Identity( rtensor t )
 {
     t[0][0] = 1.0;
-    t[1][1] = 1.0;
-    t[2][2] = 1.0;
     t[0][1] = 0.0;
     t[0][2] = 0.0;
     t[1][0] = 0.0;
+    t[1][1] = 1.0;
     t[1][2] = 0.0;
     t[2][0] = 0.0;
     t[2][1] = 0.0;
+    t[2][2] = 1.0;
 }
 
 
 CUDA_HOST_DEVICE static inline void rtensor_MakeZero( rtensor t )
 {
-    t[0][0] = 0.0;
-    t[0][1] = 0.0;
-    t[0][2] = 0.0;
-    t[1][0] = 0.0;
-    t[1][1] = 0.0;
-    t[1][2] = 0.0;
-    t[2][0] = 0.0;
-    t[2][1] = 0.0;
-    t[2][2] = 0.0;
+    int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            t[i][j] = 0.0;
+        }
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void rtensor_Transpose( rtensor ret,
         const rtensor t )
 {
-    ret[0][0] = t[0][0];
-    ret[1][1] = t[1][1];
-    ret[2][2] = t[2][2];
-    ret[0][1] = t[1][0];
-    ret[0][2] = t[2][0];
-    ret[1][0] = t[0][1];
-    ret[1][2] = t[2][1];
-    ret[2][0] = t[0][2];
-    ret[2][1] = t[1][2];
+    int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] = t[j][i];
+        }
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline real rtensor_Det( const rtensor t )
 {
-    return ( t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1] ) +
-            t[0][1] * (t[1][2] * t[2][0] - t[1][0] * t[2][2] ) +
-            t[0][2] * (t[1][0] * t[2][1] - t[1][1] * t[2][0] ) );
+    return t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1] )
+            + t[0][1] * (t[1][2] * t[2][0] - t[1][0] * t[2][2] )
+            + t[0][2] * (t[1][0] * t[2][1] - t[1][1] * t[2][0] );
 }
 
 
 CUDA_HOST_DEVICE static inline real rtensor_Trace( rtensor t )
 {
-    return (t[0][0] + t[1][1] + t[2][2]);
+    return t[0][0] + t[1][1] + t[2][2];
 }
 
 
@@ -573,89 +652,129 @@ CUDA_HOST_DEVICE static inline void Print_rTensor( FILE * const fp,
 
 CUDA_HOST_DEVICE static inline void ivec_MakeZero( ivec v )
 {
-    v[0] = 0;
-    v[1] = 0;
-    v[2] = 0;
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        v[i] = 0;
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_Copy( ivec dest, const ivec src )
 {
-    dest[0] = src[0];
-    dest[1] = src[1];
-    dest[2] = src[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = src[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_Scale( ivec dest, real C, const ivec src )
 {
-    dest[0] = (int)(C * src[0]);
-    dest[1] = (int)(C * src[1]);
-    dest[2] = (int)(C * src[2]);
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = (int)(C * src[i]);
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_rScale( ivec dest, real C, const rvec src )
 {
-    dest[0] = (int)(C * src[0]);
-    dest[1] = (int)(C * src[1]);
-    dest[2] = (int)(C * src[2]);
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = (int)(C * src[i]);
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline int ivec_isZero( const ivec v )
 {
-    if ( v[0] == 0 && v[1] == 0 && v[2] == 0 )
+    int i, ret;
+
+    ret = TRUE;
+    
+    for ( i = 0; i < 3; ++i )
     {
-        return TRUE;
+        if ( v[i] != 0 )
+        {
+            ret = FALSE;
+            break;
+        }
     }
 
-    return FALSE;
+    return ret;
 }
 
 
 CUDA_HOST_DEVICE static inline int ivec_isEqual( const ivec v1, const ivec v2 )
 {
-    if ( v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2] )
+    int i, ret;
+
+    ret = TRUE;
+    
+    for ( i = 0; i < 3; ++i )
     {
-        return TRUE;
+        if ( v1[i] != v2[i] )
+        {
+            ret = FALSE;
+            break;
+        }
     }
 
-    return FALSE;
+    return ret;
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
 {
-    dest[0] = v1[0] + v2[0];
-    dest[1] = v1[1] + v2[1];
-    dest[2] = v1[2] + v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = v1[i] + v2[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_ScaledSum( ivec dest,
         int k1, const ivec v1, int k2, const ivec v2 )
 {
-    dest[0] = k1 * v1[0] + k2 * v2[0];
-    dest[1] = k1 * v1[1] + k2 * v2[1];
-    dest[2] = k1 * v1[2] + k2 * v2[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] = k1 * v1[i] + k2 * v2[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_Add( ivec dest, const ivec v )
 {
-    dest[0] += v[0];
-    dest[1] += v[1];
-    dest[2] += v[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] += v[i];
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_ScaledAdd( ivec dest,
         int k, const ivec v )
 {
-    dest[0] += k * v[0];
-    dest[1] += k * v[1];
-    dest[2] += k * v[2];
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        dest[i] += k * v[i];
+    }
 }
 
 
@@ -663,18 +782,24 @@ CUDA_HOST_DEVICE static inline void ivec_ScaledAdd( ivec dest,
 CUDA_HOST_DEVICE static inline void ivec_Max( ivec res,
         const ivec v1, const ivec v2 )
 {
-    res[0] = MAX( v1[0], v2[0] );
-    res[1] = MAX( v1[1], v2[1] );
-    res[2] = MAX( v1[2], v2[2] );
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        res[i] = MAX( v1[i], v2[i] );
+    }
 }
 
 
 CUDA_HOST_DEVICE static inline void ivec_Max3( ivec res,
         const ivec v1, const ivec v2, const ivec v3 )
 {
-    res[0] = MAX3( v1[0], v2[0], v3[0] );
-    res[1] = MAX3( v1[1], v2[1], v3[1] );
-    res[2] = MAX3( v1[2], v2[2], v3[2] );
+    int i;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        res[i] = MAX3( v1[i], v2[i], v3[i] );
+    }
 }
 #endif
 

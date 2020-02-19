@@ -52,10 +52,12 @@
 #endif
 
 
-static void Read_Config_Files( const char * const geo_file, const char * const ffield_file,
+static void Read_Config_Files( const char * const geo_file,
+        const char * const ffield_file,
         const char * const control_file,
-        reax_system * const system, control_params * const control, simulation_data * const data,
-        storage * const workspace, output_controls * const out_control, mpi_datatypes * const mpi_data )
+        reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     Read_Force_Field_File( ffield_file, &system->reax_param, system, control );
 
@@ -187,7 +189,6 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     pmd_handle->mpi_data = smalloc( sizeof(mpi_datatypes),
            "Setup::pmd_handle->mpi_data" );
 
-
     pmd_handle->output_enabled = TRUE;
     pmd_handle->callback = NULL;
 
@@ -314,7 +315,6 @@ int simulate( const void * const handle )
                 Output_Results( system, control, data, lists, out_control, mpi_data );
 
 //              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
-
 
                 //TODO: fix this in GPU code
                 /* dump restart info */

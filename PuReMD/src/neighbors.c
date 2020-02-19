@@ -97,7 +97,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                  *  make half-list
                                  * FULL_LIST: prevent recounting same pairs within a gcell */
                                 if ( (far_nbrs->format == HALF_LIST && l < m)
-                                  || (far_nbrs->format == FULL_LIST && l != m) )
+                                        || (far_nbrs->format == FULL_LIST && l != m) )
                                 {
                                     atom2 = &(system->my_atoms[m]);
                                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -107,7 +107,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                     if ( d <= cutoff )
                                     {
                                         far_nbrs->far_nbr_list.nbr[num_far] = m;
-                                        far_nbrs->far_nbr_list.d[num_far] = sqrt(d);
+                                        far_nbrs->far_nbr_list.d[num_far] = SQRT( d );
                                         rvec_Copy( far_nbrs->far_nbr_list.dvec[num_far], dvec );
                                         ivec_ScaledSum( far_nbrs->far_nbr_list.rel_box[num_far],
                                                 1, gcj->rel_box, -1, gci->rel_box );

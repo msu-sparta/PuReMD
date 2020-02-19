@@ -50,9 +50,10 @@ void Print_List( reax_list * const list )
  * n: num. of elements to be allocated for list
  * max_intrs: max. num. of interactions for which to allocate space
  * type: list interaction type
+ * format: list format type
  * l: pointer to list to be allocated
  * */
-void Make_List( int n, int max_intrs, int type, reax_list * const l )
+void Make_List( int n, int max_intrs, int type, int format, reax_list * const l )
 {
     if ( l->allocated == TRUE )
     {
@@ -65,6 +66,7 @@ void Make_List( int n, int max_intrs, int type, reax_list * const l )
     l->n = n;
     l->max_intrs = max_intrs;
     l->type = type;
+    l->format = format;
 
     l->index = smalloc( sizeof(int) * n, "Make_List::index" );
     l->end_index = smalloc( sizeof(int) * n, "Make_List::end_index" );
@@ -89,8 +91,14 @@ void Make_List( int n, int max_intrs, int type, reax_list * const l )
         break;
 
     case TYP_FAR_NEIGHBOR:
-        l->far_nbr_list = smalloc( sizeof(far_neighbor_data) * l->max_intrs,
-                "Make_List::far_nbrs" );
+        l->far_nbr_list.nbr = smalloc( sizeof(int) * l->max_intrs,
+                "Make_List::far_nbr_list.nbr" );
+        l->far_nbr_list.rel_box = smalloc( sizeof(ivec) * l->max_intrs,
+                "Make_List::far_nbr_list.rel_box" );
+        l->far_nbr_list.d = smalloc( sizeof(real) * l->max_intrs,
+                "Make_List::far_nbr_list.d" );
+        l->far_nbr_list.dvec = smalloc( sizeof(rvec) * l->max_intrs,
+                "Make_List::far_nbr_list.dvec" );
         break;
 
     case TYP_DBO:
@@ -144,7 +152,10 @@ void Delete_List( reax_list * const l )
         break;
 
     case TYP_FAR_NEIGHBOR:
-        sfree( l->far_nbr_list, "Delete_List::far_nbrs" );
+        sfree( l->far_nbr_list.nbr, "Delete_List::far_nbr_list.nbr" );
+        sfree( l->far_nbr_list.rel_box, "Delete_List::far_nbr_list.rel_box" );
+        sfree( l->far_nbr_list.d, "Delete_List::far_nbr_list.d" );
+        sfree( l->far_nbr_list.dvec, "Delete_List::far_nbr_list.dvec" );
         break;
 
     case TYP_DBO:

@@ -475,12 +475,12 @@ void Init_Traj( reax_system *system, control_params *control,
     out_control->buffer_len = 0;
     out_control->buffer = NULL;
 
-    /* fprintf( stderr, "p%d: init_traj: atom_line_len = %d "     \
-       "bond_line_len = %d, angle_line_len = %d\n"            \
-       "max_line = %d, max_buffer_size = %d\n",
-       system->my_rank, out_control->atom_line_len,
-       out_control->bond_line_len, out_control->angle_line_len,
-       MAX_TRJ_LINE_LEN, MAX_TRJ_BUFFER_SIZE ); */
+//    fprintf( stderr, "p%d: init_traj: atom_line_len = %d "
+//            "bond_line_len = %d, angle_line_len = %d\n"
+//            "max_line = %d, max_buffer_size = %d\n",
+//            system->my_rank, out_control->atom_line_len,
+//            out_control->bond_line_len, out_control->angle_line_len,
+//            MAX_TRJ_LINE_LEN, MAX_TRJ_BUFFER_SIZE );
 
     /* write trajectory header and atom info, if applicable */
     if ( out_control->traj_method == MPI_TRAJ )
@@ -517,7 +517,7 @@ void Init_Traj( reax_system *system, control_params *control,
                 &mpi_data->angle_line );
         MPI_Type_commit( &mpi_data->angle_line );
     }
-    else if ( out_control->traj_method == REG_TRAJ)
+    else if ( out_control->traj_method == REG_TRAJ )
     {
         if ( system->my_rank == MASTER_NODE )
         {

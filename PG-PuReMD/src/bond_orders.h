@@ -48,14 +48,16 @@ typedef struct
 extern "C" {
 #endif
 
-void Add_dBond_to_Forces( int, int, storage * const, reax_list ** const );
+void Add_dBond_to_Forces( int, int, reax_system*, simulation_data*,
+        storage*, reax_list** );
 
-void Add_dBond_to_Forces_NPT( int, int, simulation_data * const, storage * const,
-        reax_list ** const );
+void Add_dBond_to_Forces_NPT( int, int, reax_system*, simulation_data*,
+        storage*, reax_list** );
 
-int BOp( storage * const, reax_list * const, real, int, int, const far_neighbor_data * const,
-        const single_body_parameters * const, const single_body_parameters * const,
-        const two_body_parameters * const );
+int BOp( storage * const, reax_list * const, real, int, int, int,
+        ivec * const, real, rvec * const, int,
+        single_body_parameters const * const, single_body_parameters const * const,
+        two_body_parameters const * const );
 
 void BO( reax_system * const, control_params * const, simulation_data * const,
         storage * const, reax_list ** const, output_controls * const );

@@ -36,8 +36,8 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
         return;
     }
 
-    if ( sbp[ my_atoms[i].type ].p_hbond == H_ATOM ||
-      sbp[ my_atoms[i].type ].p_hbond == H_BONDING_ATOM )
+    if ( sbp[ my_atoms[i].type ].p_hbond == H_ATOM
+            || sbp[ my_atoms[i].type ].p_hbond == H_BONDING_ATOM )
     {
         hindex[i] = 1;
     }
@@ -54,8 +54,7 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
 void Cuda_Reset_Atoms( reax_system* system, control_params *control,
         storage *workspace )
 {
-    int blocks;
-    int *hindex;
+    int blocks, *hindex;
 
     hindex = (int *) workspace->scratch;
 

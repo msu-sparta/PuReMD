@@ -132,14 +132,18 @@ void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
  * with allocation for the host list */
 void Output_Sync_Lists( reax_list *host_list, reax_list *device_list, int type )
 {
+    int format;
+
 //    assert( device_list != NULL );
 //    assert( device_list->allocated == TRUE );
+
+    format = host_list->format;
 
     if ( host_list != NULL && host_list->allocated == TRUE )
     {
         Delete_List( host_list );
     }
-    Make_List( device_list->n, device_list->max_intrs, type, host_list );
+    Make_List( device_list->n, device_list->max_intrs, type, format, host_list );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, " [INFO] trying to copy %d list from device to host\n", type );
@@ -153,9 +157,18 @@ void Output_Sync_Lists( reax_list *host_list, reax_list *device_list, int type )
     switch ( type )
     {   
         case TYP_FAR_NEIGHBOR:
-            copy_host_device( host_list->far_nbr_list, device_list->far_nbr_list,
-                    sizeof(far_neighbor_data) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list" );
+            copy_host_device( host_list->far_nbr_list.nbr, device_list->far_nbr_list.nbr,
+                    sizeof(int) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.nbr" );
+            copy_host_device( host_list->far_nbr_list.rel_box, device_list->far_nbr_list.rel_box,
+                    sizeof(ivec) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.rel_box" );
+            copy_host_device( host_list->far_nbr_list.d, device_list->far_nbr_list.d,
+                    sizeof(real) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.d" );
+            copy_host_device( host_list->far_nbr_list.dvec, device_list->far_nbr_list.dvec,
+                    sizeof(rvec) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.dvec" );
             break;
 
         case TYP_BOND:

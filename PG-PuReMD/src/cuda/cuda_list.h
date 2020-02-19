@@ -24,6 +24,8 @@
 
 #include "../reax_types.h"
 
+#include "../list.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,32 +38,6 @@ void Cuda_Delete_List( reax_list* );
 #ifdef __cplusplus
 }
 #endif
-
-
-static inline CUDA_HOST_DEVICE int Cuda_Num_Entries( int i, reax_list *l )
-{
-    return l->end_index[i] - l->index[i];
-}
-
-static inline CUDA_HOST_DEVICE int Cuda_Start_Index( int i, reax_list *l )
-{
-    return l->index[i];
-}
-
-static inline CUDA_HOST_DEVICE int Cuda_End_Index( int i, reax_list *l )
-{
-    return l->end_index[i];
-}
-
-static inline CUDA_HOST_DEVICE void Cuda_Set_Start_Index( int i, int val, reax_list *l )
-{
-    l->index[i] = val;
-}
-
-static inline CUDA_HOST_DEVICE void Cuda_Set_End_Index( int i, int val, reax_list *l )
-{
-    l->end_index[i] = val;
-}
 
 
 #endif

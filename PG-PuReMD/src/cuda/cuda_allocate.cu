@@ -378,7 +378,7 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
     cuda_malloc( (void **) &workspace->bond_mark, total_real, TRUE, "bond_mark" );
 
     /* charge matrix storage */
-    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
         cuda_malloc( (void **) &workspace->Hdia_inv, total_cap * sizeof(real), TRUE, "Hdia_inv" );
     }
@@ -388,8 +388,10 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
     cuda_malloc( (void **) &workspace->b_prm, total_cap * sizeof(real), TRUE, "b_prm" );
     cuda_malloc( (void **) &workspace->s, total_cap * sizeof(real), TRUE, "s" );
     cuda_malloc( (void **) &workspace->t, total_cap * sizeof(real), TRUE, "t" );
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
-            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         cuda_malloc( (void **) &workspace->droptol, total_cap * sizeof(real), TRUE, "droptol" );
     }
@@ -496,7 +498,7 @@ void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
     cuda_free( workspace->bond_mark, "bond_mark" );
 
     /* charge matrix storage */
-    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
         cuda_free( workspace->Hdia_inv, "Hdia_inv" );
     }
@@ -506,8 +508,10 @@ void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
     cuda_free( workspace->b_prm, "b_prm" );
     cuda_free( workspace->s, "s" );
     cuda_free( workspace->t, "t" );
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
-            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         cuda_free( workspace->droptol, "droptol" );
     }

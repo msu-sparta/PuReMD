@@ -42,7 +42,6 @@ static void int_packer( void *dummy, mpi_out_data *out_buf )
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        //if( buf[ out_buf->index[i] ] !=-1 )
         out[i] = buf[ out_buf->index[i] ];
     }
 }
@@ -101,7 +100,8 @@ static void int_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf
 
         for ( i = 0; i < out_buf->cnt; ++i )
         {
-            if( buf[ out_buf->index[i] ] == -1 && in[i] != -1 )
+            //TODO: used in SAI, purpose?
+            if ( buf[ out_buf->index[i] ] == -1 && in[i] != -1 )
             {
                 buf[ out_buf->index[i] ] = in[i];
             }
@@ -257,7 +257,7 @@ static coll_unpacker Get_Unpacker( const int type )
 }
 
 
-void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
+void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         void * const buf, int buf_type, MPI_Datatype type )
 {
 #if defined(NEUTRAL_TERRITORY)
@@ -359,7 +359,7 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
 }
 
 
-void Dist_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
+void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {
     int d;
@@ -418,7 +418,7 @@ void Dist_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
 }
 
 
-void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
+void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {   
 #if defined(NEUTRAL_TERRITORY)
@@ -535,7 +535,7 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
 }
 
 
-void Coll_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
+void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         void *buf, int buf_type, MPI_Datatype type )
 {   
     int d;
@@ -607,14 +607,14 @@ void Coll_FS( const reax_system * const system, mpi_datatypes * const mpi_data,
 }
 
 
-/*****************************************************************************/
-real Parallel_Norm( real *v, int n, MPI_Comm comm )
+real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
 {
     int i;
     real my_sum, norm_sqr;
 
     my_sum = 0.0;
 
+    /* compute local part of vector 2-norm */
     for ( i = 0; i < n; ++i )
     {
         my_sum += SQR( v[i] );
@@ -622,17 +622,19 @@ real Parallel_Norm( real *v, int n, MPI_Comm comm )
 
     MPI_Allreduce( &my_sum, &norm_sqr, 1, MPI_DOUBLE, MPI_SUM, comm );
 
-    return sqrt( norm_sqr );
+    return SQRT( norm_sqr );
 }
 
 
-real Parallel_Dot( real *v1, real *v2, int n, MPI_Comm comm )
+real Parallel_Dot( real const * const v1, real const * const v2,
+        const int n, MPI_Comm comm )
 {
     int  i;
     real my_dot, res;
 
     my_dot = 0.0;
 
+    /* compute local part of inner product */
     for ( i = 0; i < n; ++i )
     {
         my_dot += v1[i] * v2[i];
@@ -644,14 +646,18 @@ real Parallel_Dot( real *v1, real *v2, int n, MPI_Comm comm )
 }
 
 
-real Parallel_Vector_Acc( real *v, int n, MPI_Comm comm )
+real Parallel_Vector_Acc( real const * const v, const int n,
+        MPI_Comm comm )
 {
     int  i;
     real my_acc, res;
 
-    my_acc = 0;
+    /* compute local part of vector element-wise sum */
+    my_acc = 0.0;
     for ( i = 0; i < n; ++i )
+    {
         my_acc += v[i];
+    }
 
     MPI_Allreduce( &my_acc, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
 
@@ -701,8 +707,8 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
 void Coll_rvecs_at_Master( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data, rvec* v )
 {
-    MPI_Gatherv( v, system->n, mpi_data->mpi_rvec,
-            workspace->f_all, workspace->rcounts, workspace->displs,
-            mpi_data->mpi_rvec, MASTER_NODE, mpi_data->world );
+    MPI_Gatherv( v, system->n, mpi_data->mpi_rvec, workspace->f_all,
+            workspace->rcounts, workspace->displs, mpi_data->mpi_rvec,
+            MASTER_NODE, mpi_data->world );
 }
 #endif

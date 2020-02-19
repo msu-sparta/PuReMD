@@ -197,8 +197,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             reax->sbp[i].chi = val;
             val = atof(tmp[6]);
             reax->sbp[i].eta = 2.0 * val;
+            /* this is the parameter that is used to determine
+             * which type of atoms participate in h-bonds.
+             * 1 is for H - 2 for O, N, S - 0 for all others.*/
             val = atof(tmp[7]);
-            reax->sbp[i].p_hbond = (int)val;
+            /* 0.1 is to avoid from truncating down! */
+            reax->sbp[i].p_hbond = (int)(val + 0.1);
         }
 
         /* line 3 */
@@ -219,6 +223,7 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             val = atof(tmp[5]);
             reax->sbp[i].b_o_133 = val;
             val = atof(tmp[6]);
+            reax->sbp[i].b_s_acks2 = val;
             val = atof(tmp[7]);
         }
 
@@ -426,76 +431,48 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             index1 = i * __N + j;
             index2 = j * __N + i;
 
-            reax->tbp[index1].r_s =
-                0.5 * (reax->sbp[i].r_s + reax->sbp[j].r_s);
-            reax->tbp[index2].r_s =
-                0.5 * (reax->sbp[j].r_s + reax->sbp[i].r_s);
+            reax->tbp[index1].r_s = 0.5 * (reax->sbp[i].r_s + reax->sbp[j].r_s);
+            reax->tbp[index2].r_s = 0.5 * (reax->sbp[j].r_s + reax->sbp[i].r_s);
 
-            reax->tbp[index1].r_p =
-                0.5 * (reax->sbp[i].r_pi + reax->sbp[j].r_pi);
-            reax->tbp[index2].r_p =
-                0.5 * (reax->sbp[j].r_pi + reax->sbp[i].r_pi);
+            reax->tbp[index1].r_p = 0.5 * (reax->sbp[i].r_pi + reax->sbp[j].r_pi);
+            reax->tbp[index2].r_p = 0.5 * (reax->sbp[j].r_pi + reax->sbp[i].r_pi);
 
-            reax->tbp[index1].r_pp =
-                0.5 * (reax->sbp[i].r_pi_pi + reax->sbp[j].r_pi_pi);
-            reax->tbp[index2].r_pp =
-                0.5 * (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
+            reax->tbp[index1].r_pp = 0.5 * (reax->sbp[i].r_pi_pi + reax->sbp[j].r_pi_pi);
+            reax->tbp[index2].r_pp = 0.5 * (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
 
-            reax->tbp[index1].p_boc3 =
-                SQRT(reax->sbp[i].b_o_132 * reax->sbp[j].b_o_132);
-            reax->tbp[index2].p_boc3 =
-                SQRT(reax->sbp[j].b_o_132 * reax->sbp[i].b_o_132);
+            reax->tbp[index1].p_boc3 = SQRT( reax->sbp[i].b_o_132 * reax->sbp[j].b_o_132 );
+            reax->tbp[index2].p_boc3 = SQRT( reax->sbp[j].b_o_132 * reax->sbp[i].b_o_132 );
 
-            reax->tbp[index1].p_boc4 =
-                SQRT(reax->sbp[i].b_o_131 * reax->sbp[j].b_o_131);
-            reax->tbp[index2].p_boc4 =
-                SQRT(reax->sbp[j].b_o_131 * reax->sbp[i].b_o_131);
+            reax->tbp[index1].p_boc4 = SQRT( reax->sbp[i].b_o_131 * reax->sbp[j].b_o_131 );
+            reax->tbp[index2].p_boc4 = SQRT( reax->sbp[j].b_o_131 * reax->sbp[i].b_o_131 );
 
-            reax->tbp[index1].p_boc5 =
-                SQRT(reax->sbp[i].b_o_133 * reax->sbp[j].b_o_133);
-            reax->tbp[index2].p_boc5 =
-                SQRT(reax->sbp[j].b_o_133 * reax->sbp[i].b_o_133);
+            reax->tbp[index1].p_boc5 = SQRT( reax->sbp[i].b_o_133 * reax->sbp[j].b_o_133 );
+            reax->tbp[index2].p_boc5 = SQRT( reax->sbp[j].b_o_133 * reax->sbp[i].b_o_133 );
 
-            reax->tbp[index1].D =
-                SQRT(reax->sbp[i].epsilon * reax->sbp[j].epsilon);
-            reax->tbp[index2].D =
-                SQRT(reax->sbp[j].epsilon * reax->sbp[i].epsilon);
+            reax->tbp[index1].D = SQRT( reax->sbp[i].epsilon * reax->sbp[j].epsilon );
+            reax->tbp[index2].D = SQRT( reax->sbp[j].epsilon * reax->sbp[i].epsilon );
 
-            reax->tbp[index1].alpha =
-                SQRT(reax->sbp[i].alpha * reax->sbp[j].alpha);
-            reax->tbp[index2].alpha =
-                SQRT(reax->sbp[j].alpha * reax->sbp[i].alpha);
+            reax->tbp[index1].alpha = SQRT( reax->sbp[i].alpha * reax->sbp[j].alpha);
+            reax->tbp[index2].alpha = SQRT( reax->sbp[j].alpha * reax->sbp[i].alpha);
 
-            reax->tbp[index1].r_vdW =
-                2.0 * SQRT(reax->sbp[i].r_vdw * reax->sbp[j].r_vdw);
-            reax->tbp[index2].r_vdW =
-                2.0 * SQRT(reax->sbp[j].r_vdw * reax->sbp[i].r_vdw);
+            reax->tbp[index1].r_vdW = 2.0 * SQRT( reax->sbp[i].r_vdw * reax->sbp[j].r_vdw );
+            reax->tbp[index2].r_vdW = 2.0 * SQRT( reax->sbp[j].r_vdw * reax->sbp[i].r_vdw );
 
-            reax->tbp[index1].gamma_w =
-                SQRT(reax->sbp[i].gamma_w * reax->sbp[j].gamma_w);
-            reax->tbp[index2].gamma_w =
-                SQRT(reax->sbp[j].gamma_w * reax->sbp[i].gamma_w);
+            reax->tbp[index1].gamma_w = SQRT( reax->sbp[i].gamma_w * reax->sbp[j].gamma_w );
+            reax->tbp[index2].gamma_w = SQRT( reax->sbp[j].gamma_w * reax->sbp[i].gamma_w );
 
-            reax->tbp[index1].gamma =
-                POW(reax->sbp[i].gamma * reax->sbp[j].gamma, -1.5);
-            reax->tbp[index2].gamma =
-                POW(reax->sbp[j].gamma * reax->sbp[i].gamma, -1.5);
+            reax->tbp[index1].gamma = SQRT( reax->sbp[i].gamma * reax->sbp[j].gamma );
+            reax->tbp[index2].gamma = SQRT( reax->sbp[j].gamma * reax->sbp[i].gamma );
 
             /* additions for additional vdWaals interaction types - inner core */
-            reax->tbp[index1].rcore = 
-                SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
-            reax->tbp[index2].rcore =
-                SQRT( reax->sbp[j].rcore2 * reax->sbp[i].rcore2 );
+            reax->tbp[index1].rcore = SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
+            reax->tbp[index2].rcore = SQRT( reax->sbp[j].rcore2 * reax->sbp[i].rcore2 );
 
-            reax->tbp[index1].ecore =
-                SQRT( reax->sbp[i].ecore2 * reax->sbp[j].ecore2 );
-            reax->tbp[index2].ecore =
-                SQRT( reax->sbp[j].ecore2 * reax->sbp[i].ecore2 );
+            reax->tbp[index1].ecore = SQRT( reax->sbp[i].ecore2 * reax->sbp[j].ecore2 );
+            reax->tbp[index2].ecore = SQRT( reax->sbp[j].ecore2 * reax->sbp[i].ecore2 );
 
-            reax->tbp[index1].acore =
-                SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
-            reax->tbp[index2].acore =
-                SQRT( reax->sbp[j].acore2 * reax->sbp[i].acore2 );
+            reax->tbp[index1].acore = SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
+            reax->tbp[index2].acore = SQRT( reax->sbp[j].acore2 * reax->sbp[i].acore2 );
         }
     }
 

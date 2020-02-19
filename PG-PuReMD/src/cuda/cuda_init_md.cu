@@ -48,14 +48,14 @@ static void Cuda_Init_Scratch_Space( storage *workspace )
     cuda_malloc( (void **)&workspace->scratch, DEVICE_SCRATCH_SIZE, TRUE,
             "Cuda_Init_Scratch_Space::workspace->scratch" );
 
-    workspace->host_scratch = (void *) smalloc( HOST_SCRATCH_SIZE,
+    workspace->host_scratch = smalloc( HOST_SCRATCH_SIZE,
             "Cuda_Init_Scratch_Space::workspace->host_scratch" );
 }
 
 
-int Cuda_Init_System( reax_system *system, control_params *control,
+static void Cuda_Init_System( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
-        mpi_datatypes *mpi_data, char *msg )
+        mpi_datatypes *mpi_data )
 {
     int i;
     int nrecv[MAX_NBRS];
@@ -105,10 +105,7 @@ int Cuda_Init_System( reax_system *system, control_params *control,
     Cuda_Compute_Center_of_Mass( system, control, workspace,
             data, mpi_data, mpi_data->comm_mesh3D );
 
-//    if( Reposition_Atoms( system, control, data, mpi_data, msg ) == FAILURE )
-//    {
-//        return FAILURE;
-//    }
+//    Reposition_Atoms( system, control, data, mpi_data );
 
     /* initialize velocities so that desired init T can be attained */
     if ( !control->restart || (control->restart && control->random_vel) )
@@ -118,8 +115,6 @@ int Cuda_Init_System( reax_system *system, control_params *control,
 
     Cuda_Compute_Kinetic_Energy( system, control, workspace,
             data, mpi_data->comm_mesh3D );
-
-    return SUCCESS;
 }
 
 
@@ -220,7 +215,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
 
 void Cuda_Init_Workspace( reax_system *system, control_params *control,
-        storage *workspace )
+        storage *workspace, mpi_datatypes *mpi_data )
 {
     Cuda_Allocate_Workspace( system, control, workspace->d_workspace,
             system->local_cap, system->total_cap );
@@ -228,7 +223,7 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
     memset( &workspace->realloc, 0, sizeof(reallocate_data) );
     Cuda_Reset_Workspace( system, workspace );
 
-    Init_Taper( control, workspace->d_workspace );
+    Init_Taper( control, workspace->d_workspace, mpi_data );
 }
 
 
@@ -241,13 +236,6 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Make_List( system->total_cap, system->total_far_nbrs,
             TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: allocated far_nbrs: num_far=%d, space=%dMB\n",
-            system->my_rank, system->total_far_nbrs,
-            (int)(system->total_far_nbrs * sizeof(far_neighbor_data) / (1024 * 1024)) );
-    fprintf( stderr, "N: %d and total_cap: %d \n", system->N, system->total_cap );
-#endif
-
     Cuda_Init_Neighbor_Indices( system, lists );
 
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
@@ -259,33 +247,15 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->total_cap, system->total_cm_entries );
     Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p:%d - allocated H matrix: max_entries: %d, space=%dMB\n",
-            system->my_rank, system->total_cm_entries,
-            (int)(system->total_cm_entries * sizeof(sparse_matrix_entry) / (1024 * 1024)) );
-#endif
-
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         Cuda_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, lists[HBONDS] );
         Cuda_Init_HBond_Indices( system, workspace, lists );
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: allocated hbonds: total_hbonds=%d, space=%dMB\n",
-                system->my_rank, system->total_hbonds,
-                (int)(system->total_hbonds * sizeof(hbond_data) / (1024 * 1024)) );
-#endif
     }
 
     /* bonds list */
     Cuda_Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
     Cuda_Init_Bond_Indices( system, lists );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: allocated bonds: total_bonds=%d, space=%dMB\n",
-            system->my_rank, total_bonds,
-            (int)(total_bonds * sizeof(bond_data) / (1024 * 1024)) );
-#endif
 
     /* 3bodies list: since a more accurate estimate of the num.
      * three body interactions requires that bond orders have
@@ -298,28 +268,18 @@ void Cuda_Initialize( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    char msg[MAX_STR];
-
     Cuda_Init_Scratch_Space( workspace );
 
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
-    if ( Cuda_Init_System( system, control, data, workspace, mpi_data, msg ) == FAILURE )
-    {
-        fprintf( stderr, "[ERROR] p%d: %s\n", system->my_rank, msg );
-        fprintf( stderr, "[ERROR] p%d: system could not be initialized! terminating.\n",
-                 system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
-    }
+    Cuda_Init_System( system, control, data, workspace, mpi_data );
 
     Cuda_Allocate_Grid( system );
     Sync_Grid( &system->my_grid, &system->d_my_grid );
 
-    //validate_grid( system );
-
     Cuda_Init_Simulation_Data( system, control, data );
 
-    Cuda_Init_Workspace( system, control, workspace );
+    Cuda_Init_Workspace( system, control, workspace, mpi_data );
 
     Cuda_Allocate_Control( control );
 

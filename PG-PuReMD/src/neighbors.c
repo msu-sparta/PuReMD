@@ -38,45 +38,6 @@ int compare_far_nbrs( const void *p1, const void *p2 )
 #endif
 
 
-void Draw_Near_Neighbor_Box( reax_system *system, control_params *control,
-        storage *workspace )
-{
-    int i;
-    reax_atom *atom;
-    simulation_box *my_box;
-    boundary_cutoff *bc;
-
-    my_box = &system->my_box;
-    bc = &system->bndry_cuts;
-
-    /* all native atoms are within near neighbor skin */
-    for ( i = 0; i < system->n; ++i )
-    {
-        workspace->within_bond_box[i] = 1;
-    }
-
-    /* loop over imported atoms */
-    for ( i = system->n; i < system->N; ++i )
-    {
-        atom = &system->my_atoms[i];
-
-        if ( my_box->min[0] - bc->ghost_bond <= atom->x[0] &&
-                atom->x[0] <= my_box->max[0] + bc->ghost_bond &&
-                my_box->min[1] - bc->ghost_bond <= atom->x[1] &&
-                atom->x[1] <= my_box->max[1] + bc->ghost_bond &&
-                my_box->min[2] - bc->ghost_bond <= atom->x[2] &&
-                atom->x[2] <= my_box->max[2] + bc->ghost_bond )
-        {
-            workspace->within_bond_box[i] = 1;
-        }
-        else
-        {
-            workspace->within_bond_box[i] = 0;
-        }
-    }
-}
-
-
 int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
         storage *workspace, reax_list **lists )
 {
@@ -85,7 +46,6 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     rvec dvec;
     grid *g;
     reax_list *far_nbr_list;
-    far_neighbor_data *nbr_data;
     reax_atom *atom1, *atom2;
 #if defined(LOG_PERFORMANCE)
     real t_start;
@@ -117,31 +77,38 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                         l < g->end[ index_grid_3d(i, j, k, g) ]; ++l )
                 {
                     atom1 = &system->my_atoms[l];
+#if defined(NEUTRAL_TERRITORY)
+                    if( g->type[ index_grid_3d(i, j, k, g) ] >= NT_NBRS
+                            && g->type[ index_grid_3d(i, j, k, g) ] < NT_NBRS + 6 )
+                    {
+                        atom1->nt_dir = g->type[ index_grid_3d(i, j, k, g) ] - NT_NBRS;
+                    }
+                    else
+                    {
+                        atom1->nt_dir = -1;
+                    }
+#endif
                     num_far = Start_Index( l, far_nbr_list );
                     itr = 0;
 
                     /* search through neighbor grid cell candidates of current cell */
                     while ( g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ][0] >= 0 )
                     {
-                        if ( 
-#if defined(HALF_LIST)
-                                g->str[ index_grid_3d(i, j, k, g) ] <=
-                                g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ] &&
-#endif
-                                DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
+                        if ( ((far_nbr_list->format == HALF_LIST
+                                        && g->str[ index_grid_3d(i, j, k, g) ] <=
+                                        g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ])
+                                    || far_nbr_list->format == FULL_LIST)
+                                && DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
                         {
                             /* pick up another atom from the neighbor grid cell */
                             for ( m = g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ];
                                     m < g->end[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ]; ++m )
                             {
-#if defined(HALF_LIST)
-                                /* prevent recounting same pairs within a gcell and
-                                 * make half-list */
-                                if ( l < m )
-#else
-                                /* prevent recounting same pairs within a gcell */
-                                if ( l != m )
-#endif
+                                /* HALF_LIST: prevent recounting same pairs within a gcell and
+                                 *  make half-list
+                                 * FULL_LIST: prevent recounting same pairs within a gcell */
+                                if ( (far_nbr_list->format == HALF_LIST && l < m)
+                                        || (far_nbr_list->format == FULL_LIST && l != m) )
                                 {
                                     atom2 = &system->my_atoms[m];
                                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -151,12 +118,11 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
                                     if ( d <= cutoff )
                                     {
-                                        nbr_data = &far_nbr_list->far_nbr_list[num_far];
-                                        nbr_data->nbr = m;
-                                        nbr_data->d = SQRT( d );
-                                        rvec_Copy( nbr_data->dvec, dvec );
-                                        ivec_ScaledSum( nbr_data->rel_box, 1,
-                                                g->rel_box[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ],
+                                        far_nbr_list->far_nbr_list.nbr[num_far] = m;
+                                        far_nbr_list->far_nbr_list.d[num_far] = SQRT( d );
+                                        rvec_Copy( far_nbr_list->far_nbr_list.dvec[num_far], dvec );
+                                        ivec_ScaledSum( far_nbr_list->far_nbr_list.rel_box[num_far],
+                                                1, g->rel_box[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ],
                                                 -1, g->rel_box[ index_grid_3d(i, j, k, g) ] );
                                         ++num_far;
                                     }
@@ -209,7 +175,7 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 }
 
 
-void Estimate_Num_Neighbors( reax_system *system )
+void Estimate_Num_Neighbors( reax_system *system, int far_nbr_list_format )
 {
     int i, j, k, l, m, itr;
     real d, cutoff;
@@ -238,30 +204,36 @@ void Estimate_Num_Neighbors( reax_system *system )
                         l < g->end[ index_grid_3d( i, j, k, g) ]; ++l )
                 {
                     atom1 = &system->my_atoms[l];
+#if defined(NEUTRAL_TERRITORY)
+                    if( g->type[ index_grid_3d(i, j, k, g) ] >= NT_NBRS
+                            && g->type[ index_grid_3d(i, j, k, g) ] < NT_NBRS + 6 )
+                    {
+                        atom1->nt_dir = g->type[ index_grid_3d(i, j, k, g) ] - NT_NBRS;
+                    }
+                    else
+                    {
+                        atom1->nt_dir = -1;
+                    }
+#endif
                     itr = 0;
 
                     while ( g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ][0] >= 0 )
                     {
                         /* only search half of grid cells according to stencil used (upper-right) */
-                        if ( 
-#if defined(HALF_LIST)
-                                g->str[ index_grid_3d(i, j, k, g) ] <=
-                                g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ] &&
-#endif
-                                DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
+                        if ( (far_nbr_list_format == HALF_LIST
+                                    && g->str[ index_grid_3d(i, j, k, g) ] <=
+                                        g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ])
+                                && DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
                         {
                             /* pick up another atom from the neighbor cell */
                             for ( m = g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ];
                                     m < g->end[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ]; ++m )
                             {
-#if defined(HALF_LIST)
-                                /* prevent recounting same pairs within a gcell and
-                                 * make half-list */
-                                if ( l < m )
-#else
-                                /* prevent recounting same pairs within a gcell */
-                                if ( l != m )
-#endif
+                                /* HALF_LIST: prevent recounting same pairs within a gcell and
+                                 *  make half-list
+                                 * FULL_LIST: prevent recounting same pairs within a gcell */
+                                if ( (far_nbr_list_format == HALF_LIST && l < m)
+                                        || (far_nbr_list_format == FULL_LIST && l != m) )
                                 {
                                     atom2 = &system->my_atoms[m];
                                     dvec[0] = atom2->x[0] - atom1->x[0];

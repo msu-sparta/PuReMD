@@ -608,11 +608,11 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
     bond_data *jbond;
     bond_order_data *bo_ji;
 
-    r2 = SQR(d);
+    r2 = SQR( d );
 
     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
     {
-        C12 = twbp->p_bo1 * pow( d / twbp->r_s, twbp->p_bo2 );
+        C12 = twbp->p_bo1 * POW( d / twbp->r_s, twbp->p_bo2 );
         BO_s = (1.0 + bo_cut) * exp( C12 );
     }
     else
@@ -623,7 +623,7 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
 
     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
     {
-        C34 = twbp->p_bo3 * pow( d / twbp->r_p, twbp->p_bo4 );
+        C34 = twbp->p_bo3 * POW( d / twbp->r_p, twbp->p_bo4 );
         BO_pi = exp( C34 );
     }
     else
@@ -634,7 +634,7 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
 
     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
     {
-        C56 = twbp->p_bo5 * pow( d / twbp->r_pp, twbp->p_bo6 );
+        C56 = twbp->p_bo5 * POW( d / twbp->r_pp, twbp->p_bo6 );
         BO_pi2 = exp( C56 );
     }
     else
@@ -716,10 +716,10 @@ int BOp( storage *workspace, reax_list *bonds, real bo_cut,
         bo_ji->Cdbopi = 0.0;
         bo_ji->Cdbopi2 = 0.0;
 
-        return 1;
+        return TRUE;
     }
 
-    return 0;
+    return FALSE;
 }
 
 
@@ -744,11 +744,11 @@ int BOp_redundant( storage *workspace, reax_list *bonds, real bo_cut,
     bond_data *jbond;
     bond_order_data *bo_ji;
 
-    r2 = SQR(d);
+    r2 = SQR( d );
 
     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
     {
-        C12 = twbp->p_bo1 * pow( d / twbp->r_s, twbp->p_bo2 );
+        C12 = twbp->p_bo1 * POW( d / twbp->r_s, twbp->p_bo2 );
         BO_s = (1.0 + bo_cut) * exp( C12 );
     }
     else
@@ -759,7 +759,7 @@ int BOp_redundant( storage *workspace, reax_list *bonds, real bo_cut,
 
     if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
     {
-        C34 = twbp->p_bo3 * pow( d / twbp->r_p, twbp->p_bo4 );
+        C34 = twbp->p_bo3 * POW( d / twbp->r_p, twbp->p_bo4 );
         BO_pi = exp( C34 );
     }
     else
@@ -770,7 +770,7 @@ int BOp_redundant( storage *workspace, reax_list *bonds, real bo_cut,
 
     if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
     {
-        C56 = twbp->p_bo5 * pow( d / twbp->r_pp, twbp->p_bo6 );
+        C56 = twbp->p_bo5 * POW( d / twbp->r_pp, twbp->p_bo6 );
         BO_pi2 = exp( C56 );
     }
     else
@@ -786,6 +786,7 @@ int BOp_redundant( storage *workspace, reax_list *bonds, real bo_cut,
     {
         /****** bonds i-j and j-i ******/
         ibond = &bonds->bond_list[btop_i];
+
         if ( far_nbr_list_format == HALF_LIST )
         {
             btop_j = End_Index( j, bonds );
@@ -873,16 +874,10 @@ int BOp_redundant( storage *workspace, reax_list *bonds, real bo_cut,
             bo_ji->Cdbopi2 = 0.0;
         }
 
-        return 1;
+        return TRUE;
     }
 
-    return 0;
-}
-
-
-static int compare_bonds( const void *p1, const void *p2 )
-{
-    return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
+    return FALSE;
 }
 
 
@@ -1202,39 +1197,39 @@ void BO( reax_system *system, control_params *control,
 
     /* Calculate some helper variables that are  used at many places
      * throughout force calculations */
-    for ( j = 0; j < system->N; ++j )
+    for ( i = 0; i < system->N; ++i )
     {
-        type_j = system->my_atoms[j].type;
+        type_j = system->my_atoms[i].type;
         sbp_j = &system->reax_param.sbp[ type_j ];
 
-        workspace->Delta[j] = workspace->total_bond_order[j] - sbp_j->valency;
-        workspace->Delta_e[j] = workspace->total_bond_order[j] - sbp_j->valency_e;
-        workspace->Delta_boc[j] = workspace->total_bond_order[j]
+        workspace->Delta[i] = workspace->total_bond_order[i] - sbp_j->valency;
+        workspace->Delta_e[i] = workspace->total_bond_order[i] - sbp_j->valency_e;
+        workspace->Delta_boc[i] = workspace->total_bond_order[i]
             - sbp_j->valency_boc;
 
-        workspace->vlpex[j] = workspace->Delta_e[j]
-            - 2.0 * (int)(workspace->Delta_e[j] / 2.0);
-        explp1 = EXP(-p_lp1 * SQR(2.0 + workspace->vlpex[j]));
-        workspace->nlp[j] = explp1 - (int)(workspace->Delta_e[j] / 2.0);
-        workspace->Delta_lp[j] = sbp_j->nlp_opt - workspace->nlp[j];
-        workspace->Clp[j] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[j]);
+        workspace->vlpex[i] = workspace->Delta_e[i]
+            - 2.0 * (int)(workspace->Delta_e[i] / 2.0);
+        explp1 = EXP(-p_lp1 * SQR(2.0 + workspace->vlpex[i]));
+        workspace->nlp[i] = explp1 - (int)(workspace->Delta_e[i] / 2.0);
+        workspace->Delta_lp[i] = sbp_j->nlp_opt - workspace->nlp[i];
+        workspace->Clp[i] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[i]);
         /* Adri uses different dDelta_lp values than the ones in notes... */
-        workspace->dDelta_lp[j] = workspace->Clp[j];
-//        workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5 - workspace->Clp[j])
-//            * ((FABS(workspace->Delta_e[j] / 2.0
-//                            - (int)(workspace->Delta_e[j] / 2.0)) < 0.1) ? 1 : 0 );
+        workspace->dDelta_lp[i] = workspace->Clp[i];
+//        workspace->dDelta_lp[i] = workspace->Clp[i] + (0.5 - workspace->Clp[i])
+//            * ((FABS(workspace->Delta_e[i] / 2.0
+//                            - (int)(workspace->Delta_e[i] / 2.0)) < 0.1) ? 1 : 0 );
 
         if ( sbp_j->mass > 21.0 )
         {
-            workspace->nlp_temp[j] = 0.5 * (sbp_j->valency_e - sbp_j->valency);
-            workspace->Delta_lp_temp[j] = sbp_j->nlp_opt - workspace->nlp_temp[j];
-            workspace->dDelta_lp_temp[j] = 0.0;
+            workspace->nlp_temp[i] = 0.5 * (sbp_j->valency_e - sbp_j->valency);
+            workspace->Delta_lp_temp[i] = sbp_j->nlp_opt - workspace->nlp_temp[i];
+            workspace->dDelta_lp_temp[i] = 0.0;
         }
         else
         {
-            workspace->nlp_temp[j] = workspace->nlp[j];
-            workspace->Delta_lp_temp[j] = sbp_j->nlp_opt - workspace->nlp_temp[j];
-            workspace->dDelta_lp_temp[j] = workspace->Clp[j];
+            workspace->nlp_temp[i] = workspace->nlp[i];
+            workspace->Delta_lp_temp[i] = sbp_j->nlp_opt - workspace->nlp_temp[i];
+            workspace->dDelta_lp_temp[i] = workspace->Clp[i];
         }
     }
 

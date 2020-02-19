@@ -33,7 +33,8 @@
 #endif
 
 
-static void Compute_Polarization_Energy( reax_system *system, simulation_data *data )
+static void Compute_Polarization_Energy( reax_system const * const system,
+        simulation_data * const data )
 {
     int i, type_i;
     real q;
@@ -51,9 +52,10 @@ static void Compute_Polarization_Energy( reax_system *system, simulation_data *d
 }
 
 
-void vdW_Coulomb_Energy( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control )
+void vdW_Coulomb_Energy( reax_system const * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, pj;
     int start_i, end_i, orig_i, orig_j;
@@ -218,7 +220,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     //   data->ext_press[0], data->ext_press[1], data->ext_press[2] );
                 }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                 // fprintf( out_control->evdw,
                 // "%12.9f%12.9f%12.9f%12.9f%12.9f%12.9f%12.9f%12.9f\n",
                 // workspace->Tap[7],workspace->Tap[6],workspace->Tap[5],
@@ -234,7 +236,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                          r_ij, system->my_atoms[i].q, system->my_atoms[j].q,
                          e_ele, data->my_en.e_ele );
 #endif
-#ifdef TEST_FORCES
+
+#if defined(TEST_FORCES)
                 rvec_ScaledAdd( workspace->f_vdw[i], -CEvd,
                         far_nbrs->far_nbr_list.dvec[pj] );
                 rvec_ScaledAdd( workspace->f_vdw[j], +CEvd,
@@ -259,9 +262,10 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
 
 
-void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control )
+void Tabulated_vdW_Coulomb_Energy( reax_system const * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control )
 {
     int i, j, pj, r, steps, update_freq, update_energies;
     int type_i, type_j, tmin, tmax;
@@ -356,7 +360,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     rvec_Add( data->my_ext_press, ext_press );
                 }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                 //fprintf( out_control->evdw, "%6d%6d%24.15e%24.15e%24.15e\n",
                 fprintf( out_control->evdw, "%6d%6d%12.4f%12.4f%12.4f\n",
                          system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
@@ -368,7 +372,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                          e_ele, data->my_en.e_ele );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                 rvec_ScaledAdd( workspace->f_vdw[i], -CEvd,
                         far_nbrs->far_nbr_list.dvec[pj] );
                 rvec_ScaledAdd( workspace->f_vdw[j], +CEvd,
@@ -478,18 +482,5 @@ void LR_vdW_Coulomb( reax_system *system, storage *workspace,
     lr->H = EV_to_KCALpMOL * tmp;
     lr->e_ele = C_ELE * tmp;
 
-    // fprintf( stderr,
-    //    "i:%d(%d), j:%d(%d), gamma:%f, Tap:%f, dr3gamij_3:%f, qi: %f, qj: %f\n",
-    //    i, system->my_atoms[i].type, j, system->my_atoms[j].type,
-    //    twbp->gamma, Tap, dr3gamij_3,
-    //    system->my_atoms[i].q, system->my_atoms[j].q );
-
     lr->CEclmb = C_ELE * ( dTap - Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
-
-    // fprintf( stdout, "%d %d\t%g\t%g  %g\t%g  %g\t%g  %g\n",
-    //    i+1, j+1, r_ij, e_vdW, CEvd * r_ij,
-    //    system->my_atoms[i].q, system->my_atoms[j].q, e_ele, CEclmb * r_ij );
-
-    // fprintf(stderr,"LR_Lookup: %3d %3d %5.3f-%8.5f %8.5f %8.5f %8.5f %8.5f\n",
-    //   i, j, r_ij, lr->H, lr->e_vdW, lr->CEvd, lr->e_ele, lr->CEclmb ); */
 }

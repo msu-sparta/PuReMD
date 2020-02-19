@@ -55,15 +55,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     bond_order_data *bo_ij;
     bond_data *pbond_ij;
     int nbr_jk;
-    reax_list *far_nbrs, *bonds, *hbonds;
-    bond_data *bond_list;
-    hbond_data *hbond_list;
+    reax_list *far_nbr_list, *bond_list, *hbond_list;
 
-    far_nbrs = lists[FAR_NBRS];
-    bonds = lists[BONDS];
-    bond_list = bonds->bond_list;
-    hbonds = lists[HBONDS];
-    hbond_list = hbonds->hbond_list;
+    far_nbr_list = lists[FAR_NBRS];
+    bond_list = lists[BONDS];
+    hbond_list = lists[HBONDS];
 #if defined(DEBUG_FOCUS)
     num_hb_intrs = 0;
 #endif
@@ -79,15 +75,15 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         if ( system->reax_param.sbp[system->my_atoms[j].type].p_hbond == H_ATOM )
         {
             type_j = system->my_atoms[j].type;
-            start_j = Start_Index( j, bonds );
-            end_j = End_Index( j, bonds );
-            hb_start_j = Start_Index( system->my_atoms[j].Hindex, hbonds );
-            hb_end_j = End_Index( system->my_atoms[j].Hindex, hbonds );
+            start_j = Start_Index( j, bond_list );
+            end_j = End_Index( j, bond_list );
+            hb_start_j = Start_Index( system->my_atoms[j].Hindex, hbond_list );
+            hb_end_j = End_Index( system->my_atoms[j].Hindex, hbond_list );
 
             top = 0;
             for ( pi = start_j; pi < end_j; ++pi )
             {
-                pbond_ij = &bond_list[pi];
+                pbond_ij = &bond_list->bond_list[pi];
                 i = pbond_ij->nbr;
                 bo_ij = &pbond_ij->bo_data;
                 type_i = system->my_atoms[i].type;
@@ -101,16 +97,18 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
             for ( pk = hb_start_j; pk < hb_end_j; ++pk )
             {
-                k = hbond_list[pk].nbr;
+                k = hbond_list->hbond_list[pk].nbr;
                 type_k = system->my_atoms[k].type;
-                nbr_jk = hbond_list[pk].ptr;
-                r_jk = far_nbrs->far_nbr_list.d[nbr_jk];
-                rvec_Scale( dvec_jk, hbond_list[pk].scl, far_nbrs->far_nbr_list.dvec[nbr_jk] );
+                nbr_jk = hbond_list->hbond_list[pk].ptr;
+                r_jk = far_nbr_list->far_nbr_list.d[nbr_jk];
+
+                rvec_Scale( dvec_jk, hbond_list->hbond_list[pk].scl,
+                        far_nbr_list->far_nbr_list.dvec[nbr_jk] );
 
                 for ( itr = 0; itr < top; ++itr )
                 {
                     pi = hblist[itr];
-                    pbond_ij = &bonds->bond_list[pi];
+                    pbond_ij = &bond_list->bond_list[pi];
                     i = pbond_ij->nbr;
 
                     if ( system->my_atoms[i].orig_id != system->my_atoms[k].orig_id )
@@ -175,8 +173,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                             rvec_ScaledAdd( workspace->f[j], +CEhb2, dcos_theta_dj );
 
-                            ivec_Scale( rel_jk, hbond_list[pk].scl,
-                                    far_nbrs->far_nbr_list.rel_box[nbr_jk] );
+                            ivec_Scale( rel_jk, hbond_list->hbond_list[pk].scl,
+                                    far_nbr_list->far_nbr_list.rel_box[nbr_jk] );
                             rvec_Scale( force, +CEhb2, dcos_theta_dk );
                             rvec_Add( workspace->f[k], force );
                             rvec_iMultiply( ext_press, rel_jk, force );

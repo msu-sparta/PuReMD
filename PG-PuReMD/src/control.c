@@ -84,7 +84,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->cm_init_guess_extrap1 = 3;
     control->cm_init_guess_extrap2 = 2;
     control->cm_domain_sparsity = 1.0;
-    control->cm_solver_pre_comp_type = DIAG_PC;
+    control->cm_solver_pre_comp_type = JACOBI_PC;
     control->cm_solver_pre_comp_sweeps = 3;
     control->cm_solver_pre_comp_refactor = 100;
     control->cm_solver_pre_comp_droptol = 0.01;

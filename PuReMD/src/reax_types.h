@@ -415,9 +415,6 @@ typedef struct energy_data energy_data;
 typedef struct simulation_data simulation_data;
 typedef struct three_body_interaction_data three_body_interaction_data;
 typedef struct far_neighbor_data far_neighbor_data;
-#if defined(NEUTRAL_TERRITORY)
-typedef struct nt_neighbor_data nt_neighbor_data;
-#endif
 typedef struct hbond_data hbond_data;
 typedef struct dDelta_data dDelta_data;
 typedef struct dbond_data dbond_data;
@@ -1275,17 +1272,6 @@ struct far_neighbor_data
 };
 
 
-#if defined(NEUTRAL_TERRITORY)
-struct nt_neighbor_data
-{
-    int nbr;
-    ivec rel_box;
-    real d;
-    rvec dvec;
-};
-#endif
-
-
 struct hbond_data
 {
     /* neighbor atom ID */
@@ -1375,9 +1361,10 @@ struct sparse_matrix
 #endif
     /* index mapping the row number to the first entry in that row */
     int *start;
-    /* index mapping the row number to the last entry in that row */
+    /* index mapping the row number to the last entry in that row
+     * (last element contains ACTUAL NNZ) */
     int *end;
-    /* non-zero entries (column index and values) */
+    /* secondary struct containing non-zero entries (column index and values) */
     sparse_matrix_entry *entries;
 };
 
@@ -1579,9 +1566,6 @@ struct reax_list
     dbond_data *dbo_list;
     dDelta_data *dDelta_list;
     far_neighbor_data far_nbr_list;
-#if defined(NEUTRAL_TERRITORY)
-    nt_neighbor_data *nt_nbr_list;
-#endif
     hbond_data *hbond_list;
 };
 

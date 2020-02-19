@@ -21,7 +21,7 @@
 
 #if !(defined(__REAX_TYPES_H_) || defined(__CUDA_REAX_TYPES_H_))
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__)
   #ifndef __CUDA_REAX_TYPES_H_
     #define __CUDA_REAX_TYPES_H_
     #define CUDA_HOST __host__
@@ -53,7 +53,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <zlib.h>
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
   #include <cuda.h>
   #include <cuda_runtime.h>
 #endif
@@ -64,9 +64,9 @@
 #endif
 
 #define PURE_REAX
+#define DUAL_SOLVER
+//#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
-
-//#define DEBUG
 //#define DEBUG_FOCUS
 //#define TEST_ENERGY
 //#define TEST_FORCES
@@ -75,8 +75,13 @@
 #define STANDARD_BOUNDARIES
 //#define OLD_BOUNDARIES
 //#define MIDPOINT_BOUNDARIES
-/* build far neighbors list as a half-list */
-//#define HALF_LIST
+
+/* disable assertions if NOT compiling with debug support --
+ * the definition (or lack thereof) controls how the assert macro is defined */
+#if !defined(DEBUG) && !defined(DEBUG_FOCUS)
+  #define NDEBUG
+#endif
+#include <assert.h>
 
 #define SUCCESS (1)
 #define FAILURE (0)
@@ -116,7 +121,7 @@
 #define MAX3(x,y,z) MAX( MAX((x),(y)), (z))
 
 /* ??? */
-#define C_ele (332.06371)
+#define C_ELE (332.06371)
 /* kcal/mol/K */
 //#define K_B (503.398008)
 /* amu A^2 / ps^2 / K */
@@ -166,6 +171,8 @@
 /* max. num. of interaction functions */
 #define NUM_INTRS (10)
 /* ??? */
+#define ZERO (0.000000000000000e+00)
+/* ??? */
 #define ALMOST_ZERO (1e-10)
 /* ??? */
 #define NEG_INF (-1.0e10)
@@ -197,6 +204,10 @@
 /* ??? */
 #define SAFER_ZONE (1.4)
 /* ??? */
+#define SAFE_ZONE_NT (2.0)
+/* ??? */
+#define SAFER_ZONE_NT (2.5)
+/* ??? */
 #define DANGER_ZONE (0.90)
 /* ??? */
 #define LOOSE_ZONE (0.75)
@@ -216,8 +227,10 @@
 
 /* ??? */
 #define MASTER_NODE (0)
-/* ??? */
+/* max neighbors in 3D Cartesian processor grid */
 #define MAX_NBRS (6) // (27)
+/* max neighbors in 3D Cartesian processor grid for neutral territory */
+#define MAX_NT_NBRS (6)
 /* encoding of relative coordinate (0,0,0) */
 #define MYSELF (13)
 
@@ -238,13 +251,11 @@
 #endif
 
 /**************** RESOURCE CONSTANTS **********************/
-/* 500 MB */
-#define HOST_SCRATCH_SIZE (1024 * 1024 * 500)
-#ifdef HAVE_CUDA
-  /* 500 MB */
-  #define DEVICE_SCRATCH_SIZE (1024 * 1024 * 500)
-  /* 500 MB */
-  #define RES_SCRATCH (0x90)
+/* 1024 MB */
+#define HOST_SCRATCH_SIZE (1024 * 1024 * 1024)
+#if defined(HAVE_CUDA)
+  /* 1024 MB */
+  #define DEVICE_SCRATCH_SIZE (1024 * 1024 * 1024)
   
   /* BLOCK SIZES for kernels */
   #define HB_SYM_BLOCK_SIZE (64)
@@ -430,17 +441,19 @@ enum solver
     CG_S = 2,
     SDM_S = 3,
     BiCGStab_S = 4,
+    PIPECG_S = 5,
+    PIPECR_S = 6,
 };
 
 /* preconditioner computation type for charge method linear solver */
 enum pre_comp
 {
     NONE_PC = 0,
-    DIAG_PC = 1,
+    JACOBI_PC = 1,
     ICHOLT_PC = 2,
-    ILU_PAR_PC = 3,
-    ILUT_PAR_PC = 4,
-    ILU_SUPERLU_MT_PC = 5,
+    ILUT_PC = 3,
+    ILUTP_PC = 4,
+    FG_ILUT_PC = 5,
     SAI_PC = 6,
 };
 
@@ -466,6 +479,7 @@ enum gcell_types
     HBOND_FAR = 6,
     FULL_NBRS = 7,
     NATIVE = 8,
+    NT_NBRS = 9, // 9 through 14
 };
 
 /* atom types as pertains to hydrogen bonding */
@@ -474,6 +488,26 @@ enum hydrogen_bonding_atom_types
     NON_H_BONDING_ATOM = 0,
     H_ATOM = 1,
     H_BONDING_ATOM = 2,
+};
+
+/* interaction list (reax_list) storage format */
+enum reax_list_format
+{
+    /* store half of interactions, when i < j (atoms i and j) */
+    HALF_LIST = 0,
+    /* store all interactions */
+    FULL_LIST = 1,
+};
+
+/* sparse matrix (sparse_matrix) storage format */
+enum sparse_matrix_format
+{
+    /* store upper half of nonzeros in a symmetric matrix (a_{ij}, i >= j) */
+    SYM_HALF_MATRIX = 0,
+    /* store all nonzeros in a symmetric matrix */
+    SYM_FULL_MATRIX = 1,
+    /* store all nonzeros in a matrix */
+    FULL_MATRIX = 2,
 };
 
 /* trajectory file formats */
@@ -716,6 +750,12 @@ struct mpi_datatypes
     /* ingoing buffer for communications with neighbor 2 along
      * one dimension of the 3D Cartesian topology */
     void *in2_buffer;
+#if defined(NEUTRAL_TERRITORY)
+    /**/
+    mpi_out_data out_nt_buffers[MAX_NT_NBRS];
+    /**/
+    void *in_nt_buffer[MAX_NT_NBRS];
+#endif
 };
 
 
@@ -755,7 +795,7 @@ struct mpi_datatypes
  * l[31] = p_ovun4
  * l[32] = p_ovun3
  * l[33] = p_val8
- * l[34] = N/A
+ * l[34] = b_s_acks2 (ACKS2 bond softness)
  * l[35] = N/A
  * l[36] = N/A
  * l[37] = version number
@@ -833,6 +873,8 @@ struct single_body_parameters
     real b_o_132;
     /**/
     real b_o_133;
+    /* bond softness for ACKS2 */
+    real b_s_acks2;
 
     /* Line four in the field file */
     /**/
@@ -1013,7 +1055,7 @@ struct reax_interaction
     /* simulation parameters for four body interactions */
     four_body_header *fbp; 
 
-#ifdef HAVE_CUDA
+#if defined(HAVE_CUDA)
     /* global simulation parameters (GPU), from force field parameters file */
     global_parameters d_gp;
     /* simulation parameters for single body interactions (GPU) */
@@ -1071,6 +1113,12 @@ struct reax_atom
     int num_hbonds;
     /* ??? */
     int renumber;
+#if defined(NEUTRAL_TERRITORY)
+    /**/
+    int nt_dir;
+    /**/
+    int pos;
+#endif
 };
 
 
@@ -1646,10 +1694,22 @@ struct reax_timing
     real bonded;
     /* non-bonded force calculation time */
     real nonb;
+    /* distance between pairs calculation time */
+    real init_dist;
+    /* charge matrix calculation time */
+    real init_cm;
+    /* bonded interactions calculation time */
+    real init_bond;
     /* atomic charge distribution calculation time */
     real cm;
     /**/
+    real cm_sort;
+    /**/
     real cm_sort_mat_rows;
+    /**/
+    real cm_solver_comm;
+    /**/
+    real cm_solver_allreduce;
     /**/
     real cm_solver_pre_comp;
     /**/
@@ -1664,6 +1724,14 @@ struct reax_timing
     real cm_solver_orthog;
     /**/
     real cm_solver_tri_solve;
+    /* time spent on last preconditioner computation */
+    real cm_last_pre_comp;
+    /* time lost for not refactoring */
+    real cm_total_loss;
+    /* solver time on last refactoring step */
+    real cm_optimum;
+    /* neighbor list generation time on last refactoring step */
+    real last_nbrs;
     /* num. of retries in main sim. loop */
     int num_retries;
 };
@@ -1713,6 +1781,10 @@ struct simulation_data
     int step;
     /**/
     int prev_steps;
+    /* to decide when to compute preconditioner for dynamic refactoring */
+    int refactor;
+    /* last refactoring step for dynamic refactoring */
+    int last_pc_step;
     /**/
     real time;
     /* total mass */
@@ -1800,26 +1872,27 @@ struct three_body_interaction_data
 struct far_neighbor_data
 {
     /* atom ID of neighbor */
-    int nbr;
-    /**/
-    ivec rel_box;
-    /* distance to neighbor */
-    real d;
-    /* component-wise difference of coordinates of this atom
-     * and its neighboring atom */
-    rvec dvec;
+    int *nbr;
+    /* sets of three integers which deterimine if a neighbor
+     * atom is a non-periodic neighbor (all zeros) or a periodic
+     * neighbor and which perioidic image this neighbor comes from */
+    ivec *rel_box;
+    /* distances to the neighboring atom */
+    real *d;
+    /* differences between positions of atom and its neighboring atom */
+    rvec *dvec;
 };
 
 
 /**/
 struct hbond_data
 {
-    /**/
+    /* neighbor atom ID */
     int nbr;
     /**/
     int scl;
-    /**/
-    far_neighbor_data *ptr;
+    /* position of neighbor in far neighbor list */
+    int ptr;
 #if defined(HAVE_CUDA)
     /**/
     int sym_index;
@@ -1960,17 +2033,25 @@ struct sparse_matrix_entry
  */
 struct sparse_matrix
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int allocated;
+    /* matrix storage format */
+    int format;
     /* number of rows active for this processor */
     int n;
     /* max. number of rows active for this processor */
     int n_max;
     /* number of nonzeros (NNZ) ALLOCATED */
     int m;
+#if defined(NEUTRAL_TERRITORY)
+    /* max. number of entries (neural territory) */
+    int NT;
+#endif
     /* row start pointer (last element contains ACTUAL NNZ) */
     int *start;
     /* row end pointer */
     int *end;
-    /* secondary structure for matrix entry info */
+    /* non-zero entries (column index and values) */
     sparse_matrix_entry *entries;
 };
 
@@ -2090,38 +2171,46 @@ struct storage
     rvec2 *x;
 
     /* GMRES storage */
-    /**/
-    real *y;
-    /**/
-    real *z;
-    /**/
-    real *g;
-    /**/
     real *hc;
-    /**/
     real *hs;
-    /**/
-    real *h;
-    /**/
-    real *v;
+    real **h;
+    real **v;
 
-    /* CG, SDM storage */
-    /**/
+    /* GMRES, BiCGStab storage */
+    real *g;
+    real *y;
+
+    /* GMRES, BiCGStab, PIPECG, PIPECR storage */
+    real *z;
+
+    /* CG, BiCGStab, PIPECG, PIPECR storage */
     real *r;
-    /**/
     real *d;
-    /**/
     real *q;
-    /**/
     real *p;
-    /**/
-    rvec2 *r2;
-    /**/
+
+    /* BiCGStab storage */
+    real *r_hat;
+    real *q_hat;
+
+    /* PIPECG, PIPECR storage */
+    real *m;
+    real *n;
+    real *u;
+    real *w;
+
+    /* dual-CG storage */
     rvec2 *d2;
-    /**/
-    rvec2 *q2;
-    /**/
     rvec2 *p2;
+    rvec2 *q2;
+    rvec2 *r2;
+
+    /* dual-PIPECG storage */
+    rvec2 *m2;
+    rvec2 *n2;
+    rvec2 *u2;
+    rvec2 *w2;
+    rvec2 *z2;
 
     /* Taper */
     real Tap[8];
@@ -2149,7 +2238,7 @@ struct storage
     real *CdDelta;  // coefficient of dDelta
     /**/
     rvec *f;
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     /**/
     rvec *f_ele;
     /**/
@@ -2246,6 +2335,8 @@ struct reax_list
     int type;
     /* interaction list, made purposely non-opaque via above union to avoid typecasts */
 //    list_type select;
+    /* list storage format (half or full) */
+    int format;
     /* void type */
     void *v;
     /* three body type */
@@ -2257,7 +2348,7 @@ struct reax_list
     /* derivative delta type */
     dDelta_data *dDelta_list;
     /* far neighbor type */
-    far_neighbor_data *far_nbr_list;
+    far_neighbor_data far_nbr_list;
     /* hydrogen bond type */
     hbond_data *hbond_list;
 };
@@ -2336,7 +2427,7 @@ struct output_controls
     /**/
     int energy_update_freq;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     /**/
     FILE *ebond;
     /**/
@@ -2363,7 +2454,7 @@ struct output_controls
     FILE *ecou;
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     /**/
     FILE *fbo;
     /**/

@@ -1115,7 +1115,8 @@ void Output_Results( reax_system *system, control_params *control,
                 denom = 1.0;
             }
 
-            fprintf( out_control->log, "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
+            fprintf( out_control->log,
+                    "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                     data->step,
                     t_elapsed * denom,
                     data->timing.comm * denom,

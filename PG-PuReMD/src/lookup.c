@@ -207,7 +207,7 @@ void LR_Lookup( LR_lookup_table * const t, real r, LR_data * const y )
     y->CEclmb = ((t->CEclmb[i].d * dif + t->CEclmb[i].c) * dif + t->CEclmb[i].b) * dif +
                 t->CEclmb[i].a;
 
-    y->H = y->e_ele * EV_to_KCALpMOL / C_ele;
+    y->H = y->e_ele * EV_to_KCALpMOL / C_ELE;
 }
 
 
@@ -297,7 +297,7 @@ void Init_Lookup_Tables( reax_system * const system, control_params * const cont
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {
-                        LR_vdW_Coulomb( system, workspace->Tap, i, j, r * dr,
+                        LR_vdW_Coulomb( system, workspace, i, j, r * dr,
                                 &workspace->LR[ index_lr(i, j, num_atom_types) ].y[r] );
                         h[r] = workspace->LR[ index_lr(i, j, num_atom_types) ].dx;
                         fh[r] = workspace->LR[ index_lr(i, j, num_atom_types) ].y[r].H;

@@ -29,13 +29,19 @@
 extern "C" {
 #endif
 
-void vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls* );
+void vdW_Coulomb_Energy( reax_system const * const,
+        control_params const * const,
+        simulation_data * const, storage * const,
+        reax_list ** const, output_controls * const );
 
-void Tabulated_vdW_Coulomb_Energy( reax_system*, control_params*,
-        simulation_data*, storage*, reax_list**, output_controls* );
+void Tabulated_vdW_Coulomb_Energy( reax_system const * const,
+        control_params const * const,
+        simulation_data * const, storage * const,
+        reax_list ** const, output_controls * const );
 
-void LR_vdW_Coulomb( reax_system*, real *, int, int, real, LR_data* );
+void LR_vdW_Coulomb( reax_system const * const,
+        storage * const,
+        int, int, real, LR_data * const );
 
 #ifdef _cplusplus
 }

@@ -30,11 +30,12 @@
 #endif
 
 
-typedef void (*dist_packer)( void*, mpi_out_data* );
-typedef void (*coll_unpacker)( void*, void*, mpi_out_data* );
+typedef void (*dist_packer)( void const * const, mpi_out_data * const );
+typedef void (*coll_unpacker)( void const * const, void * const,
+        mpi_out_data * const );
 
 
-static void int_packer( void *dummy, mpi_out_data *out_buf )
+static void int_packer( void const * const dummy, mpi_out_data * const out_buf )
 {
     int i;
     int *buf = (int*) dummy;
@@ -47,7 +48,7 @@ static void int_packer( void *dummy, mpi_out_data *out_buf )
 }
 
 
-static void real_packer( void *dummy, mpi_out_data *out_buf )
+static void real_packer( void const * const dummy, mpi_out_data * const out_buf )
 {
     int i;
     real *buf = (real*) dummy;
@@ -60,7 +61,7 @@ static void real_packer( void *dummy, mpi_out_data *out_buf )
 }
 
 
-static void rvec_packer( void *dummy, mpi_out_data *out_buf )
+static void rvec_packer( void const * const dummy, mpi_out_data * const out_buf )
 {
     int i;
     rvec *buf, *out;
@@ -75,7 +76,7 @@ static void rvec_packer( void *dummy, mpi_out_data *out_buf )
 }
 
 
-static void rvec2_packer( void *dummy, mpi_out_data *out_buf )
+static void rvec2_packer( void const * const dummy, mpi_out_data * const out_buf )
 {
     int i;
     rvec2 *buf, *out;
@@ -90,7 +91,8 @@ static void rvec2_packer( void *dummy, mpi_out_data *out_buf )
 }
 
 
-static void int_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+static void int_unpacker( void const * const dummy_in, void * const dummy_buf,
+        mpi_out_data * const out_buf )
 {
         int i;
         int *in, *buf;
@@ -100,12 +102,17 @@ static void int_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf
 
         for ( i = 0; i < out_buf->cnt; ++i )
         {
-            buf[ out_buf->index[i] ] += in[i];
+            //TODO: used in SAI, purpose?
+            if ( buf[ out_buf->index[i] ] == -1 && in[i] != -1 )
+            {
+                buf[ out_buf->index[i] ] = in[i];
+            }
         }
 }
 
 
-static void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+static void real_unpacker( void const * const dummy_in, void * const dummy_buf,
+        mpi_out_data * const out_buf )
 {
     int i;
     real *in, *buf;
@@ -120,7 +127,8 @@ static void real_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_bu
 }
 
 
-static void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+static void rvec_unpacker( void const * const dummy_in, void * const dummy_buf,
+        mpi_out_data * const out_buf )
 {
     int i;
     rvec *in, *buf;
@@ -140,7 +148,8 @@ static void rvec_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_bu
 }
 
 
-static void rvec2_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_buf )
+static void rvec2_unpacker( void const * const dummy_in, void * const dummy_buf,
+        mpi_out_data * const out_buf )
 {
     int i;
     rvec2 *in, *buf;
@@ -156,8 +165,8 @@ static void rvec2_unpacker( void *dummy_in, void *dummy_buf, mpi_out_data *out_b
 }
 
 
-static void * Get_Buffer_Offset( const void * const buffer,
-        const int offset, const int type )
+static void * Get_Buffer_Offset( void const * const buffer,
+        int offset, int type )
 {
     void * ptr;
 
@@ -189,22 +198,26 @@ static void * Get_Buffer_Offset( const void * const buffer,
 }
 
 
-static dist_packer Get_Packer( const int type )
+static dist_packer Get_Packer( int type )
 {
     dist_packer ptr;
 
     switch ( type )
     {
+        case INT_PTR_TYPE:
+            ptr = &int_packer;
+            break;
+
         case REAL_PTR_TYPE:
-            ptr = real_packer;
+            ptr = &real_packer;
             break;
 
         case RVEC_PTR_TYPE:
-            ptr = rvec_packer;
+            ptr = &rvec_packer;
             break;
 
         case RVEC2_PTR_TYPE:
-            ptr = rvec2_packer;
+            ptr = &rvec2_packer;
             break;
 
         default:
@@ -217,22 +230,26 @@ static dist_packer Get_Packer( const int type )
 }
 
 
-static coll_unpacker Get_Unpacker( const int type )
+static coll_unpacker Get_Unpacker( int type )
 {
     coll_unpacker ptr;
 
     switch ( type )
     {
+        case INT_PTR_TYPE:
+            ptr = &int_unpacker;
+            break;
+
         case REAL_PTR_TYPE:
-            ptr = real_unpacker;
+            ptr = &real_unpacker;
             break;
 
         case RVEC_PTR_TYPE:
-            ptr = rvec_unpacker;
+            ptr = &rvec_unpacker;
             break;
 
         case RVEC2_PTR_TYPE:
-            ptr = rvec2_unpacker;
+            ptr = &rvec2_unpacker;
             break;
 
         default:
@@ -245,8 +262,110 @@ static coll_unpacker Get_Unpacker( const int type )
 }
 
 
-void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
-        void *buf, int buf_type, MPI_Datatype type )
+void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
+        void const * const buf, int buf_type, MPI_Datatype type )
+{
+#if defined(NEUTRAL_TERRITORY)
+    int d, count, index;
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req[6];
+    MPI_Status stat[6];
+    dist_packer pack;
+
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_nt_buffers;
+    pack = Get_Packer( buf_type );
+    count = 0;
+
+    /* initiate recvs */
+    for ( d = 0; d < 6; ++d )
+    {
+        if ( system->my_nt_nbrs[d].atoms_cnt )
+        {
+            count++;
+            MPI_Irecv( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+                    system->my_nt_nbrs[d].atoms_cnt, type,
+                    system->my_nt_nbrs[d].receive_rank, d, comm, &req[d] );
+        }
+    }
+
+    for ( d = 0; d < 6; ++d)
+    {
+        /* send both messages in dimension d */
+        if ( out_bufs[d].cnt )
+        {
+            pack( buf, &out_bufs[d] );
+            MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
+                    system->my_nt_nbrs[d].rank, d, comm );
+        }
+    }
+
+    for ( d = 0; d < count; ++d )
+    {
+        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+    }
+
+#else
+    int d;
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req1, req2;
+    MPI_Status stat1, stat2;
+    const neighbor_proc *nbr1, *nbr2;
+    dist_packer pack;
+
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_buffers;
+    pack = Get_Packer( buf_type );
+
+    for ( d = 0; d < 3; ++d )
+    {
+        /* initiate recvs */
+        nbr1 = &system->my_nbrs[2 * d];
+        if ( nbr1->atoms_cnt )
+        {
+            MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
+        }
+
+        nbr2 = &system->my_nbrs[2 * d + 1];
+        if ( nbr2->atoms_cnt )
+        {
+            MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
+        }
+
+        /* send both messages in dimension d */
+        if ( out_bufs[2 * d].cnt )
+        {
+            pack( buf, &out_bufs[2 * d] );
+            MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
+                    type, nbr1->rank, 2 * d, comm );
+        }
+
+        if ( out_bufs[2 * d + 1].cnt )
+        {
+            pack( buf, &out_bufs[2 * d + 1] );
+            MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
+                    type, nbr2->rank, 2 * d + 1, comm );
+        }
+
+        if( nbr1->atoms_cnt )
+        {
+            MPI_Wait( &req1, &stat1 );
+        }
+        if( nbr2->atoms_cnt )
+        {
+            MPI_Wait( &req2, &stat2 );
+        }
+    }
+#endif
+}
+
+
+void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
+        void const * const buf, int buf_type, MPI_Datatype type )
 {
     int d;
     mpi_out_data *out_bufs;
@@ -280,23 +399,23 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
         /* send both messages in dimension d */
         if ( out_bufs[2 * d].cnt )
         {
-            pack( buf, out_bufs + (2 * d) );
+            pack( buf, &out_bufs[2 * d] );
             MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d, comm );
         }
 
         if ( out_bufs[2 * d + 1].cnt )
         {
-            pack( buf, out_bufs + (2 * d + 1) );
+            pack( buf, &out_bufs[2 * d + 1] );
             MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d + 1, comm );
         }
 
-        if( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt )
         {
             MPI_Wait( &req1, &stat1 );
         }
-        if( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt )
         {
             MPI_Wait( &req2, &stat2 );
         }
@@ -304,9 +423,53 @@ void Dist( const reax_system * const system, mpi_datatypes * const mpi_data,
 }
 
 
-void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
-        void *buf, int buf_type, MPI_Datatype type )
-{
+void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
+        void * const buf, int buf_type, MPI_Datatype type )
+{   
+#if defined(NEUTRAL_TERRITORY)
+    int d, count, index;
+    void *in[6];
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req[6];
+    MPI_Status stat[6];
+    coll_unpacker unpack;
+
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_nt_buffers;
+    unpack = Get_Unpacker( buf_type );
+    count = 0;
+
+    for ( d = 0; d < 6; ++d )
+    {
+        in[d] = mpi_data->in_nt_buffer[d];
+
+        if ( out_bufs[d].cnt )
+        {
+            count++;
+            MPI_Irecv( in[d], out_bufs[d].cnt, type,
+                    system->my_nt_nbrs[d].rank, d, comm, &req[d] );
+        }
+    }
+
+    for ( d = 0; d < 6; ++d )
+    {
+        /* send both messages in direction d */
+        if ( system->my_nt_nbrs[d].atoms_cnt )
+        {
+            MPI_Send( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+                    system->my_nt_nbrs[d].atoms_cnt, type,
+                    system->my_nt_nbrs[d].receive_rank, d, comm );
+        }
+    }
+    
+    for ( d = 0; d < count; ++d )
+    {
+        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        unpack( in[index], buf, &out_bufs[index] );
+    }
+
+#else
     int d;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -334,17 +497,91 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
 
         if ( out_bufs[2 * d + 1].cnt )
         {
+
             MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d, comm, &req2 );
         }
-
+        
         /* send both messages in dimension d */
         if ( nbr1->atoms_cnt )
         {
             MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
         }
+        
+        if ( nbr2->atoms_cnt )
+        {
+            MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
+        }
 
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "p%d coll[%d] nbr1: str=%d cnt=%d recv=%d\n",
+                system->my_rank, d, nbr1->atoms_str, nbr1->atoms_cnt,
+                out_bufs[2 * d].cnt );
+        fprintf( stderr, "p%d coll[%d] nbr2: str=%d cnt=%d recv=%d\n",
+                system->my_rank, d, nbr2->atoms_str, nbr2->atoms_cnt,
+                out_bufs[2 * d + 1].cnt );
+#endif
+
+        if ( out_bufs[2 * d].cnt )
+        {
+            MPI_Wait( &req1, &stat1 );
+            unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
+        }
+
+        if ( out_bufs[2 * d + 1].cnt )
+        {
+            MPI_Wait( &req2, &stat2 );
+            unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
+        }
+    }
+#endif
+}
+
+
+void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
+        void * const buf, int buf_type, MPI_Datatype type )
+{   
+    int d;
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req1, req2;
+    MPI_Status stat1, stat2;
+    const neighbor_proc *nbr1, *nbr2;
+    coll_unpacker unpack;
+
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_buffers;
+    unpack = Get_Unpacker( buf_type );
+
+    for ( d = 2; d >= 0; --d )
+    {
+        /* initiate recvs */
+        nbr1 = &system->my_nbrs[2 * d];
+
+        if ( out_bufs[2 * d].cnt )
+        {
+            MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
+                    type, nbr1->rank, 2 * d + 1, comm, &req1 );
+        }
+
+        nbr2 = &system->my_nbrs[2 * d + 1];
+
+        if ( out_bufs[2 * d + 1].cnt )
+        {
+
+            MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
+                    type, nbr2->rank, 2 * d, comm, &req2 );
+        }
+        
+        /* send both messages in dimension d */
+        if ( nbr1->atoms_cnt )
+        {
+            MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
+        }
+        
         if ( nbr2->atoms_cnt )
         {
             MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
@@ -375,13 +612,14 @@ void Coll( const reax_system * const system, mpi_datatypes * const mpi_data,
 }
 
 
-real Parallel_Norm( const real * const v, const int n, MPI_Comm comm )
+real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
 {
-    int  i;
+    int i;
     real my_sum, norm_sqr;
 
+    my_sum = 0.0;
+
     /* compute local part of vector 2-norm */
-    my_sum = 0;
     for ( i = 0; i < n; ++i )
     {
         my_sum += SQR( v[i] );
@@ -393,15 +631,15 @@ real Parallel_Norm( const real * const v, const int n, MPI_Comm comm )
 }
 
 
-
-real Parallel_Dot( const real * const v1, const real * const v2,
+real Parallel_Dot( real const * const v1, real const * const v2,
         const int n, MPI_Comm comm )
 {
     int  i;
     real my_dot, res;
 
+    my_dot = 0.0;
+
     /* compute local part of inner product */
-    my_dot = 0;
     for ( i = 0; i < n; ++i )
     {
         my_dot += v1[i] * v2[i];
@@ -413,15 +651,14 @@ real Parallel_Dot( const real * const v1, const real * const v2,
 }
 
 
-
-real Parallel_Vector_Acc( const real * const v, const int n,
+real Parallel_Vector_Acc( real const * const v, const int n,
         MPI_Comm comm )
 {
     int  i;
     real my_acc, res;
 
     /* compute local part of vector element-wise sum */
-    my_acc = 0;
+    my_acc = 0.0;
     for ( i = 0; i < n; ++i )
     {
         my_acc += v[i];
@@ -435,14 +672,14 @@ real Parallel_Vector_Acc( const real * const v, const int n,
 
 /*****************************************************************************/
 #if defined(TEST_FORCES)
-void Coll_ids_at_Master( reax_system *system, storage *workspace, mpi_datatypes
-        *mpi_data )
+void Coll_ids_at_Master( reax_system *system, storage *workspace,
+        mpi_datatypes *mpi_data )
 {
     int i;
     int *id_list;
 
     MPI_Gather( &system->n, 1, MPI_INT, workspace->rcounts, 1, MPI_INT,
-            MASTER_NODE, MPI_COMM_WORLD );
+            MASTER_NODE, mpi_data->world );
 
     if ( system->my_rank == MASTER_NODE )
     {
@@ -461,7 +698,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace, mpi_datatypes
 
     MPI_Gatherv( id_list, system->n, MPI_INT, workspace->id_all,
             workspace->rcounts, workspace->displs, MPI_INT, MASTER_NODE,
-            MPI_COMM_WORLD );
+            mpi_data->world );
 
     sfree( id_list, "Coll_ids_at_Master::id_list" );
 
@@ -482,7 +719,7 @@ void Coll_rvecs_at_Master( reax_system *system, storage *workspace,
 {
     MPI_Gatherv( v, system->n, mpi_data->mpi_rvec, workspace->f_all,
             workspace->rcounts, workspace->displs, mpi_data->mpi_rvec,
-            MASTER_NODE, MPI_COMM_WORLD );
+            MASTER_NODE, mpi_data->world );
 }
 
 #endif

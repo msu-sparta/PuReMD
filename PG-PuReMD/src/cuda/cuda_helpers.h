@@ -4,32 +4,33 @@
 #include "../reax_types.h"
 
 
-CUDA_DEVICE static inline int cuda_strcmp( const char * a,
+CUDA_DEVICE static inline int Cuda_strncmp( const char * a,
         const char * b, int len )
 {
-    int i;
+    int i, ret;
     char *src, *dst;
 
+    ret = 0;
     src = (char *) a;
     dst = (char *) b;
 
     for ( i = 0; i < len; i++ )
     {
-        if ( *dst == '\0' )
-        {
-            return FALSE;
-        }
-
         if ( *src != *dst )
         {
-            return TRUE;
+            ret = *src > *dst ? 1 : -1;
+            break;
+        }
+        else if ( *dst == '\0' )
+        {
+            break;
         }
 
         src++;
         dst++;
     }
 
-    return FALSE;
+    return ret;
 }
 
 

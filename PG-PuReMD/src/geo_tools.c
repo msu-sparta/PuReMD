@@ -156,6 +156,9 @@ static int Read_Box_Info( reax_system * const system, FILE *geo, int geo_format 
     char descriptor[9];
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     char s_group[12], s_zValue[12];
+    int ret;
+
+    ret = SUCCESS;
 
     fseek( geo, 0, SEEK_SET );
 
@@ -188,11 +191,15 @@ static int Read_Box_Info( reax_system * const system, FILE *geo, int geo_format 
                     atof(s_alpha), atof(s_beta), atof(s_gamma),
                     &system->big_box );
 
-            return SUCCESS;
+            break;
         }
     }
+    if ( ferror( geo ) )
+    {
+        ret = FAILURE;
+    }
 
-    return FAILURE;
+    return ret;
 }
 
 
@@ -450,6 +457,12 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
             tmp[i][0] = 0;
         }
     }
+    if ( ferror( pdb ) )
+    {
+        fprintf( stderr, "[ERROR] Read_PDB_FILE: error while reading PDB file!" );
+        fprintf( stderr, " Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_GEO );
+    }
 
     sfclose( pdb, "Read_PDB_File::pdb" );
 }
@@ -523,7 +536,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
         fflush( out_control->log );
     }
 
-    /*write atom lines to buffer*/
+    /* write atom lines to buffer */
     for ( i = 0; i < system->n; i++)
     {
         p_atom = &system->my_atoms[i];
@@ -561,7 +574,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
         buffer[buffer_len] = 0;
     }
 
-    if ( me == MASTER_NODE)
+    if ( me == MASTER_NODE )
     {
         fprintf( pdb, "%s", buffer );
         sfclose( pdb, "Write_PDB_File::pdb" );
