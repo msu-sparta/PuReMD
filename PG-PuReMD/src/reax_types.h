@@ -64,7 +64,7 @@
 #endif
 
 #define PURE_REAX
-#define DUAL_SOLVER
+//#define DUAL_SOLVER
 //#define NEUTRAL_TERRITORY
 //#define LAMMPS_REAX
 //#define DEBUG_FOCUS
@@ -574,7 +574,6 @@ typedef struct dDelta_data dDelta_data;
 typedef struct dbond_data dbond_data;
 typedef struct bond_order_data bond_order_data;
 typedef struct bond_data bond_data;
-typedef struct sparse_matrix_entry sparse_matrix_entry;
 typedef struct sparse_matrix sparse_matrix;
 typedef struct reallocate_data reallocate_data;
 typedef struct storage storage;
@@ -2016,16 +2015,6 @@ struct bond_data
 };
 
 
-/* Secondary structure for matrix in CRS format */
-struct sparse_matrix_entry
-{
-    /* column index for corresponding matrix entry */
-    int j;
-    /* matrix entry */
-    real val;
-};
-
-
 /* Matrix in compressed row storage (CRS) format,
  * with modifications for row end pointer and max entries per row (CUDA optimizations).
  * See, e.g.,
@@ -2051,8 +2040,10 @@ struct sparse_matrix
     int *start;
     /* row end pointer */
     int *end;
-    /* non-zero entries (column index and values) */
-    sparse_matrix_entry *entries;
+    /* column indices for corresponding matrix entries */
+    int *j;
+    /* matrix entries */
+    real *val;
 };
 
 

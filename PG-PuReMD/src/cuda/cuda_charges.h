@@ -29,16 +29,12 @@ extern "C" {
 #endif
 
 
-void Cuda_Init_MatVec( reax_system *, storage * );
-
-void cuda_charges_x( reax_system *, rvec2 );
-
-void cuda_charges_st( reax_system *, storage *, real *, real );
-
-void cuda_charges_updateq( reax_system *, real * );
-
-void Cuda_Compute_Charges( reax_system*, control_params*, simulation_data*,
-        storage*, output_controls*, mpi_datatypes* );
+void Cuda_Compute_Charges( reax_system const * const,
+        control_params const * const,
+        simulation_data * const,
+        storage * const,
+        output_controls const * const,
+        mpi_datatypes * const );
 
 
 #ifdef __cplusplus

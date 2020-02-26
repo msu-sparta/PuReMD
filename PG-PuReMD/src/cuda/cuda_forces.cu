@@ -6,12 +6,12 @@
 #include "cuda_charges.h"
 #include "cuda_helpers.h"
 #include "cuda_hydrogen_bonds.h"
-#include "cuda_lin_alg.h"
 #include "cuda_list.h"
 #include "cuda_multi_body.h"
 #include "cuda_neighbors.h"
 #include "cuda_nonbonded.h"
 #include "cuda_reduction.h"
+#include "cuda_spar_lin_alg.h"
 #include "cuda_torsion_angles.h"
 #include "cuda_utils.h"
 #include "cuda_valence_angles.h"
@@ -30,10 +30,10 @@ typedef enum
 } MATRIX_ENTRY_POSITION;
 
 
-CUDA_DEVICE real Init_Charge_Matrix_Entry( single_body_parameters *sbp_i, real *ctap,
+CUDA_DEVICE real Init_Charge_Matrix_Entry( single_body_parameters *sbp_i, real *workspace_Tap,
         control_params *control, int i, int j, real r_ij, real gamma, MATRIX_ENTRY_POSITION pos )
 {
-    real taper, dr3gamij_1, dr3gamij_3, ret;
+    real Tap, dr3gamij_1, dr3gamij_3, ret;
 
     ret = 0.0;
 
@@ -45,21 +45,22 @@ CUDA_DEVICE real Init_Charge_Matrix_Entry( single_body_parameters *sbp_i, real *
         switch ( pos )
         {
             case OFF_DIAGONAL:
-                taper = ctap[7] * r_ij + ctap[6];
-                taper = taper * r_ij + ctap[5];
-                taper = taper * r_ij + ctap[4];
-                taper = taper * r_ij + ctap[3];
-                taper = taper * r_ij + ctap[2];
-                taper = taper * r_ij + ctap[1];
-                taper = taper * r_ij + ctap[0];    
+                Tap = workspace_Tap[7] * r_ij + workspace_Tap[6];
+                Tap = Tap * r_ij + workspace_Tap[5];
+                Tap = Tap * r_ij + workspace_Tap[4];
+                Tap = Tap * r_ij + workspace_Tap[3];
+                Tap = Tap * r_ij + workspace_Tap[2];
+                Tap = Tap * r_ij + workspace_Tap[1];
+                Tap = Tap * r_ij + workspace_Tap[0];    
 
                 /* shielding */
-                dr3gamij_1 = r_ij * r_ij * r_ij + gamma;
+                dr3gamij_1 = r_ij * r_ij * r_ij
+                    + POW( gamma, -3.0 );
                 dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
 
-                //TODO: investigate why conditional is excluded (OpenMP code below)
-//                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
-                ret = taper * EV_to_KCALpMOL / dr3gamij_3;
+                /* i == j: periodic self-interaction term
+                 * i != j: general interaction term */
+                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
                 break;
 
             case DIAGONAL:
@@ -216,22 +217,64 @@ CUDA_GLOBAL void k_print_hbond_info( reax_atom *my_atoms, single_body_parameters
 }
 
 
-CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp, 
+/* Compute the distances and displacement vectors for entries
+ * in the far neighbors list if it's a NOT re-neighboring step */
+CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, int N )
+{
+    int i, j, pj;
+    int start_i, end_i;
+    reax_atom *atom_i, *atom_j;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    atom_i = &my_atoms[i];
+    start_i = Start_Index( i, &far_nbr_list );
+    end_i = End_Index( i, &far_nbr_list );
+
+    /* update distance and displacement vector between atoms i and j (i-j) */
+    for ( pj = start_i; pj < end_i; ++pj )
+    {
+        j = far_nbr_list.far_nbr_list.nbr[pj];
+        atom_j = &my_atoms[j];
+
+        if ( i < j )
+        {
+            far_nbr_list.far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
+        }
+        else
+        {
+            far_nbr_list.far_nbr_list.dvec[pj][0] = atom_i->x[0] - atom_j->x[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = atom_i->x[1] - atom_j->x[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = atom_i->x[2] - atom_j->x[2];
+        }
+        far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( far_nbr_list.far_nbr_list.dvec[pj] );
+    }
+}
+
+
+/* Compute the charge matrix entries and store the matrix in full format
+ * using the far neighbors list (stored in full format) and according to
+ * the full shell communication method */
+CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters *sbp, 
         two_body_parameters *tbp, storage workspace, control_params *control, 
-        reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, 
-        LR_lookup_table *t_LR, int n, int N, int num_atom_types, int renbr,
-        int *max_cm_entries, int *realloc_cm_entries,
-        int *max_bonds, int *realloc_bonds,
-        int *max_hbonds, int *realloc_hbonds )
+        reax_list far_nbr_list, LR_lookup_table *t_LR, int n, int N, int num_atom_types,
+        int *max_cm_entries, int *realloc_cm_entries )
 {
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
-    int Htop, btop_i, ihb, jhb, ihb_top;
-    int num_bonds, num_hbonds, num_cm_entries;
-    int local, flag, flag2, flag3;
-    real r_ij, cutoff;
-    single_body_parameters *sbp_i, *sbp_j;
+    int cm_top;
+    int num_cm_entries;
+    int flag3;
+    real r_ij;
+    single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     reax_atom *atom_i, *atom_j;
     sparse_matrix *H;
@@ -244,7 +287,102 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
     }
 
     H = &workspace.H;
-    Htop = H->start[i];
+    cm_top = H->start[i];
+
+    atom_i = &my_atoms[i];
+    type_i = atom_i->type;
+    start_i = Start_Index( i, &far_nbr_list );
+    end_i = End_Index( i, &far_nbr_list );
+    sbp_i = &sbp[type_i];
+
+    if ( i < n )
+    {
+        /* diagonal entry in the matrix */
+        H->j[cm_top] = i;
+        H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+                i, i, 0.0, 0.0, DIAGONAL );
+        ++cm_top;
+    }
+
+    /* update i-j distance - check if j is within cutoff */
+    for ( pj = start_i; pj < end_i; ++pj )
+    {
+        j = far_nbr_list.far_nbr_list.nbr[pj];
+
+        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+        {
+            atom_j = &my_atoms[j];
+            type_j = atom_j->type;
+
+            flag3 = FALSE;
+            if ( i < j && i < n && (j < n || atom_i->orig_id < atom_j->orig_id) )
+            {
+                flag3 = TRUE;
+            }
+            else if ( i > j && i >= n && j < n && atom_j->orig_id < atom_i->orig_id )
+            {
+                flag3 = TRUE;
+            }
+            else if ( i > j && i < n && (j < n || atom_j->orig_id < atom_i->orig_id ) )
+            {
+                flag3 = TRUE;
+            }
+
+            if ( flag3 == TRUE )
+            {
+                twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+                r_ij = far_nbr_list.far_nbr_list.d[pj];
+
+                H->j[cm_top] = j;
+
+                if ( control->tabulate == 0 )
+                {
+                    H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
+                            control, i, H->j[cm_top], r_ij, twbp->gamma, OFF_DIAGONAL );
+                }
+                else
+                {
+                    H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij, type_i, type_j,num_atom_types );
+                }
+                ++cm_top;
+            }
+        }
+    }
+
+    H->end[i] = cm_top;
+    num_cm_entries = cm_top - H->start[i];
+
+    /* reallocation checks */
+    if ( num_cm_entries > max_cm_entries[i] )
+    {
+        *realloc_cm_entries = TRUE;
+    }
+}
+
+
+CUDA_GLOBAL void k_init_bond( reax_atom *my_atoms, single_body_parameters *sbp, 
+        two_body_parameters *tbp, storage workspace, control_params *control, 
+        reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, 
+        LR_lookup_table *t_LR, int n, int N, int num_atom_types,
+        int *max_bonds, int *realloc_bonds,
+        int *max_hbonds, int *realloc_hbonds )
+{
+    int i, j, pj;
+    int start_i, end_i;
+    int type_i, type_j;
+    int btop_i, ihb, jhb, ihb_top;
+    int num_bonds, num_hbonds;
+    real cutoff;
+    single_body_parameters *sbp_i, *sbp_j;
+    two_body_parameters *twbp;
+    reax_atom *atom_i, *atom_j;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
 
     atom_i = &my_atoms[i];
     type_i = atom_i->type;
@@ -252,33 +390,19 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
     end_i = End_Index( i, &far_nbr_list );
     btop_i = Start_Index( i, &bond_list );
     sbp_i = &sbp[type_i];
+    ihb = NON_H_BONDING_ATOM;
+    ihb_top = -1;
 
     if ( i < n )
     {
-        local = TRUE;
         cutoff = control->nonb_cut;
-
-        //update bond mark here
         workspace.bond_mark[i] = 0;
     }
     else
     {
-        local = FALSE;
         cutoff = control->bond_cut;
-
-        //update bond mark here
+        /* put ghost atoms to an infinite distance (i.e., 1000) */
         workspace.bond_mark[i] = 1000;
-    }
-
-    ihb = NON_H_BONDING_ATOM;
-    ihb_top = -1;
-
-    if ( local == TRUE )
-    {
-        H->entries[Htop].j = i;
-        H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
-                i, H->entries[Htop].j, 0.0, 0.0, DIAGONAL );
-        ++Htop;
     }
 
     if ( control->hbond_cut > 0.0 )
@@ -301,63 +425,7 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
         j = far_nbr_list.far_nbr_list.nbr[pj];
         atom_j = &my_atoms[j];
 
-        if ( renbr )
-        {
-            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
-            {
-                flag = TRUE;
-            }
-            else
-            {
-                flag = FALSE;
-            }
-
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
-            {
-                flag2 = TRUE;
-            }
-            else
-            {
-                flag2 = FALSE;
-            }
-
-        }
-        else
-        {
-            if ( i < j )
-            {
-                far_nbr_list.far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
-                far_nbr_list.far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
-                far_nbr_list.far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
-            }
-            else
-            {
-                far_nbr_list.far_nbr_list.dvec[pj][0] = atom_i->x[0] - atom_j->x[0];
-                far_nbr_list.far_nbr_list.dvec[pj][1] = atom_i->x[1] - atom_j->x[1];
-                far_nbr_list.far_nbr_list.dvec[pj][2] = atom_i->x[2] - atom_j->x[2];
-            }
-            far_nbr_list.far_nbr_list.d[pj] = rvec_Norm_Sqr( far_nbr_list.far_nbr_list.dvec[pj] );
-
-            if ( far_nbr_list.far_nbr_list.d[pj] <= SQR( control->nonb_cut ) )
-            {
-                flag2 = TRUE;
-            }
-            else
-            {
-                flag2 = FALSE;
-            }
-
-            if ( far_nbr_list.far_nbr_list.d[pj] <= SQR( control->nonb_cut ) )
-            {
-                far_nbr_list.far_nbr_list.d[pj] = SQRT( far_nbr_list.far_nbr_list.d[pj] );
-                flag = TRUE;
-            }
-            else
-            {
-                flag = FALSE;
-            }
-        }
-        if ( flag2 == TRUE )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
         {
             type_j = atom_j->type;
             sbp_j = &sbp[type_j];
@@ -366,9 +434,9 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
 
             /* atom i: H bonding, ghost
              * atom j: H atom, native */
-            if ( control->hbond_cut > 0.0
-                    && far_nbr_list.far_nbr_list.d[pj] <= control->hbond_cut
-                    && ihb == H_BONDING_ATOM && jhb == H_ATOM && i >= n && j < n ) 
+            if ( control->hbond_cut > 0.0 && i >= n && j < n
+                    && ihb == H_BONDING_ATOM && jhb == H_ATOM
+                    && far_nbr_list.far_nbr_list.d[pj] <= control->hbond_cut )
             {
                 hbond_list.hbond_list[ihb_top].nbr = j;
                 hbond_list.hbond_list[ihb_top].scl = -1;
@@ -380,74 +448,16 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
 
                 ++ihb_top;
             }
-
-            //if ((i < n) || (j < n))
-            //if (local == TRUE || ((i >= n) &&(j < n)))
-
-            flag3 = FALSE;
-            if ( i < j && i < n && (j < n || atom_i->orig_id < atom_j->orig_id) )
-            {
-                flag3 = TRUE;
-            }
-            else if ( i > j && i >= n && j < n && atom_j->orig_id < atom_i->orig_id )
-            {
-                flag3 = TRUE;
-            }
-            else if ( i > j && i < n && (j < n || atom_j->orig_id < atom_i->orig_id ) )
-            {
-                flag3 = TRUE;
-            }
-
-            if ( flag3 == TRUE )
-            {
-                twbp = &tbp[ index_tbp(type_i,type_j,num_atom_types) ];
-                r_ij = far_nbr_list.far_nbr_list.d[pj];
-
-                //if (renbr) {
-                H->entries[Htop].j = j;
-                if ( control->tabulate == 0 )
-                {
-                    H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-                            control, i, H->entries[Htop].j, r_ij, twbp->gamma, OFF_DIAGONAL );
-                }
-                else
-                {
-                    H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij, type_i, type_j,num_atom_types );
-                }
-                //}
-                ++Htop;
-            }
         }
 
-        if ( flag == TRUE )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
         {
             type_j = atom_j->type;
-            r_ij = far_nbr_list.far_nbr_list.d[pj];
             sbp_j = &sbp[type_j];
             twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
 
-            if ( local == TRUE )
+            if ( i < n )
             {
-                /* H matrix entry */
-//                if( j < n || atom_i->orig_id < atom_j->orig_id ) {//tryQEq||1
-//                    H->entries[Htop].j = j;
-//                    if( control->tabulate == 0 )
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-//                                    control, i, H->entries[Htop].j, r_ij, twbp->gamma, OFF_DIAGONAL );
-//                    else
-//                        H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab(t_LR, r_ij, type_i, type_j,num_atom_types);
-//                    ++Htop;
-//                } 
-//                else if( j < n || atom_i->orig_id > atom_j->orig_id ) {//tryQEq||1
-//                    H->entries[Htop].j = j;
-//                    if( control->tabulate == 0 )
-//                            H->entries[Htop].val = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-//                                    control, i, H->entries[Htop].j, r_ij, twbp->gamma, OFF_DIAGONAL );
-//                    else
-//                        H->entries[Htop].val = Init_Charge_Matrix_Entry_Tab(t_LR, r_ij, type_i, type_j,num_atom_types);
-//                    ++Htop;
-//                } 
-
                 /* hydrogen bond lists */
                 if ( control->hbond_cut > 0.0
                         && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
@@ -486,7 +496,7 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
                         hbond_list.hbond_list[ihb_top].scl = -1;
                         hbond_list.hbond_list[ihb_top].ptr = pj;
 
-                        //CUDA SPECIFIC
+                        /* CUDA-specific */
                         hbond_list.hbond_list[ihb_top].sym_index = -1;
                         rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
 
@@ -520,18 +530,14 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
     }
 
     Set_End_Index( i, btop_i, &bond_list );
-    H->end[i] = Htop;
-//    if( local == TRUE )
-//    {
-        if ( control->hbond_cut > 0.0 && ihb_top > 0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM) )
-        {
-            Set_End_Index( atom_i->Hindex, ihb_top, &hbond_list );
-        }
-//    }
+    if ( control->hbond_cut > 0.0 && ihb_top > 0
+            && (ihb == H_ATOM || ihb == H_BONDING_ATOM) )
+    {
+        Set_End_Index( atom_i->Hindex, ihb_top, &hbond_list );
+    }
 
     num_bonds = btop_i - Start_Index( i, &bond_list );
     num_hbonds = ihb_top - Start_Index( atom_i->Hindex, &hbond_list );
-    num_cm_entries = Htop - H->start[i];
 
     /* copy (h)bond info to atom structure
      * (needed for atom ownership transfer via MPI) */
@@ -547,11 +553,6 @@ CUDA_GLOBAL void k_init_forces( reax_atom *my_atoms, single_body_parameters *sbp
     if ( num_hbonds > max_hbonds[i] )
     {
         *realloc_hbonds = TRUE;
-    }
-
-    if ( num_cm_entries > max_cm_entries[i] )
-    {
-        *realloc_cm_entries = TRUE;
     }
 }
 
@@ -1240,13 +1241,40 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     cuda_memset( system->d_realloc_cm_entries, FALSE, sizeof(int), 
             "Cuda_Init_Forces::d_realloc_cm_entries" );
 
-    k_init_forces <<< blocks, DEF_BLOCK_SIZE >>>
+    if ( (data->step - data->prev_steps) % control->reneighbor != 0 )
+    {
+        k_init_distance <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
+        cudaDeviceSynchronize( );
+        cudaCheckError( );
+    }
+
+//    if ( workspace->H.format == SYM_HALF_MATRIX )
+//    {
+//        k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE >>>
+//            ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+//              *(workspace->d_workspace), (control_params *)control->d_control_params,
+//              *(lists[FAR_NBRS]), workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
+//              system->d_max_cm_entries, system->d_realloc_cm_entries );
+//        cudaDeviceSynchronize( );
+//        cudaCheckError( );
+//    }
+//    else
+//    {
+        k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+              *(workspace->d_workspace), (control_params *)control->d_control_params,
+              *(lists[FAR_NBRS]), workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
+              system->d_max_cm_entries, system->d_realloc_cm_entries );
+        cudaDeviceSynchronize( );
+        cudaCheckError( );
+//    }
+
+    k_init_bond <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp,
           system->reax_param.d_tbp, *(workspace->d_workspace), (control_params *)control->d_control_params,
           *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
           workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
-          (((data->step-data->prev_steps) % control->reneighbor) == 0),
-          system->d_max_cm_entries, system->d_realloc_cm_entries,
           system->d_max_bonds, system->d_realloc_bonds,
           system->d_max_hbonds, system->d_realloc_hbonds );
     cudaDeviceSynchronize( );

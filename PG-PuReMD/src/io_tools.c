@@ -837,8 +837,8 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
         {
             fprintf( stderr, "%d %d %.15e\n",
                     system->my_atoms[i].orig_id,
-                    system->my_atoms[A->entries[pj].j].orig_id,
-                    A->entries[pj].val );
+                    system->my_atoms[A->j[pj]].orig_id,
+                    A->val[pj] );
         }
     }
 }
@@ -858,8 +858,8 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
         {
             fprintf( f, "%d %d %.15e\n",
                     system->my_atoms[i].orig_id,
-                    system->my_atoms[A->entries[pj].j].orig_id,
-                    A->entries[pj].val );
+                    system->my_atoms[A->j[pj]].orig_id,
+                    A->val[pj] );
         }
     }
 
@@ -881,15 +881,15 @@ void Print_Symmetric_Sparse( reax_system *system, sparse_matrix *A, char *fname 
 
         for ( j = A->start[i]; j < A->end[i]; ++j )
         {
-            aj = &system->my_atoms[A->entries[j].j];
+            aj = &system->my_atoms[A->j[j]];
 
             fprintf( f, "%d %d %.15e\n",
-                    ai->renumber, aj->renumber, A->entries[j].val );
+                    ai->renumber, aj->renumber, A->val[j] );
 
-            if ( A->entries[j].j < system->n && ai->renumber != aj->renumber )
+            if ( A->j[j] < system->n && ai->renumber != aj->renumber )
             {
                 fprintf( f, "%d %d %.15e\n",
-                         aj->renumber, ai->renumber, A->entries[j].val );
+                         aj->renumber, ai->renumber, A->val[j] );
             }
         }
     }
@@ -936,14 +936,14 @@ void Print_Linear_System( reax_system *system, control_params *control,
 //        ai = &(system->my_atoms[i]);
 //        for( j = H->start[i]; j < H->end[i]; ++j )
 //        {
-//            if( H->entries[j].j < system->n )
+//            if( H->j[j] < system->n )
 //            {
-//                aj = &(system->my_atoms[H->entries[j].j]);
+//                aj = &(system->my_atoms[H->j[j]]);
 //                fprintf( out, "%d %d %.15e\n",
-//                ai->orig_id, aj->orig_id, H->entries[j].val );
+//                ai->orig_id, aj->orig_id, H->val[j] );
 //                if( ai->orig_id != aj->orig_id )
 //                    fprintf( out, "%d %d %.15e\n",
-//                aj->orig_id, ai->orig_id, H->entries[j].val );
+//                aj->orig_id, ai->orig_id, H->val[j] );
 //            }
 //        }
 //    }

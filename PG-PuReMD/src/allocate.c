@@ -575,7 +575,8 @@ void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m,
 
     H->start = smalloc( sizeof(int) * n_max, "Allocate_Matrix::start" );
     H->end = smalloc( sizeof(int) * n_max, "Allocate_Matrix::end" );
-    H->entries = smalloc( sizeof(sparse_matrix_entry) * m, "Allocate_Matrix::entries" );
+    H->j = smalloc( sizeof(int) * m, "Allocate_Matrix::j" );
+    H->val = smalloc( sizeof(real) * m, "Allocate_Matrix::val" );
 }
 
 
@@ -588,7 +589,8 @@ void Deallocate_Matrix( sparse_matrix * const H )
 
     sfree( H->start, "Deallocate_Matrix::start" );
     sfree( H->end, "Deallocate_Matrix::end" );
-    sfree( H->entries, "Deallocate_Matrix::entries" );
+    sfree( H->j, "Deallocate_Matrix::j" );
+    sfree( H->val, "Deallocate_Matrix::val" );
 }
 
 
@@ -816,10 +818,10 @@ void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
 
     /* buffers for incoming messages,
      * see SendRecv for MPI datatypes sent */
-    mpi_data->in1_buffer = scalloc( est_recv,
+    mpi_data->in1_buffer = scalloc( 2 * est_recv,
             MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
             "Allocate_MPI_Buffers::in1_buffer" );
-    mpi_data->in2_buffer = scalloc( est_recv,
+    mpi_data->in2_buffer = scalloc( 2 * est_recv,
             MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
             "Allocate_MPI_Buffers::in2_buffer" );
 
@@ -830,9 +832,9 @@ void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
         mpi_buf = &mpi_data->out_buffers[i];
 
         /* allocate storage for the neighbor processor i */
-        mpi_buf->index = scalloc( my_nbrs[i].est_send, sizeof(int),
+        mpi_buf->index = scalloc( 2 * my_nbrs[i].est_send, sizeof(int),
                 "Allocate_MPI_Buffers::mpi_buf->index" );
-        mpi_buf->out_atoms = scalloc( my_nbrs[i].est_send,
+        mpi_buf->out_atoms = scalloc( 2 * my_nbrs[i].est_send,
                 MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
                 "Allocate_MPI_Buffers::mpi_buf->out_atoms" );
     }

@@ -41,6 +41,14 @@
 real t_start, t_elapsed, matvec_time, dot_time;
 #endif
 
+
+typedef struct
+{
+    unsigned int j;
+    real val;
+} sparse_matrix_entry;
+
+
 enum preconditioner_type
 {
     LEFT = 0,
@@ -54,17 +62,54 @@ static int compare_matrix_entry( const void * const v1, const void * const v2 )
 }
 
 
+/* Routine used for sorting nonzeros within a sparse matrix row;
+ *  internally, a combination of qsort and manual sorting is utilized
+ *
+ * A: sparse matrix for which to sort nonzeros within a row, stored in CSR format
+ */
 void Sort_Matrix_Rows( sparse_matrix * const A )
 {
-    int i, si, ei;
+    unsigned int i, pj, si, ei, temp_size;
+    sparse_matrix_entry *temp;
 
+    temp = NULL;
+    temp_size = 0;
+
+    /* sort each row of A using column indices */
     for ( i = 0; i < A->n; ++i )
     {
         si = A->start[i];
         ei = A->end[i];
-        qsort( &A->entries[si], ei - si,
-                sizeof(sparse_matrix_entry), compare_matrix_entry );
+
+        if ( temp == NULL )
+        {
+            temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), "Sort_Matrix_Rows::temp" );
+            temp_size = ei - si;
+        }
+        else if ( temp_size < ei - si )
+        {
+            sfree( temp, "Sort_Matrix_Rows::temp" );
+            temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), "Sort_Matrix_Rows::temp" );
+            temp_size = ei - si;
+        }
+
+        for ( pj = 0; pj < (ei - si); ++pj )
+        {
+            temp[pj].j = A->j[si + pj];
+            temp[pj].val = A->val[si + pj];
+        }
+
+        /* polymorphic sort in standard C library using column indices */
+        qsort( temp, ei - si, sizeof(sparse_matrix_entry), compare_matrix_entry );
+
+        for ( pj = 0; pj < (ei - si); ++pj )
+        {
+            A->j[si + pj] = temp[pj].j;
+            A->val[si + pj] = temp[pj].val;
+        }
     }
+
+    sfree( temp, "Sort_Matrix_Rows::temp" );
 }
 
 
@@ -210,8 +255,8 @@ static void dual_Sparse_MatVec_local( sparse_matrix const * const A,
             /* diagonal only contributes once */
             if( i < A->n )
             {
-                b[i][0] += A->entries[si].val * x[i][0];
-                b[i][1] += A->entries[si].val * x[i][1];
+                b[i][0] += A->val[si] * x[i][0];
+                b[i][1] += A->val[si] * x[i][1];
                 k = si + 1;
             }
             /* zeros on the diagonal for i >= A->n,
@@ -226,8 +271,8 @@ static void dual_Sparse_MatVec_local( sparse_matrix const * const A,
 
             for ( ; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i][0] += val * x[j][0];
                 b[i][1] += val * x[j][1];
@@ -245,8 +290,8 @@ static void dual_Sparse_MatVec_local( sparse_matrix const * const A,
 
             for ( k = si; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i][0] += val * x[j][0];
                 b[i][1] += val * x[j][1];
@@ -263,13 +308,13 @@ static void dual_Sparse_MatVec_local( sparse_matrix const * const A,
             si = A->start[i];
 
             /* diagonal only contributes once */
-            b[i][0] += A->entries[si].val * x[i][0];
-            b[i][1] += A->entries[si].val * x[i][1];
+            b[i][0] += A->val[si] * x[i][0];
+            b[i][1] += A->val[si] * x[i][1];
 
             for ( k = si + 1; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i][0] += val * x[j][0];
                 b[i][1] += val * x[j][1];
@@ -287,8 +332,8 @@ static void dual_Sparse_MatVec_local( sparse_matrix const * const A,
 
             for ( k = si; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i][0] += val * x[j][0];
                 b[i][1] += val * x[j][1];
@@ -329,7 +374,7 @@ static void Sparse_MatVec_local( sparse_matrix const * const A,
             /* diagonal only contributes once */
             if ( i < A->n )
             {
-                b[i] += A->entries[si].val * x[i];
+                b[i] += A->val[si] * x[i];
                 k = si + 1;
             }
             /* zeros on the diagonal for i >= A->n,
@@ -344,8 +389,8 @@ static void Sparse_MatVec_local( sparse_matrix const * const A,
 
             for ( ; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i] += val * x[j];
                 b[j] += val * x[i];
@@ -360,8 +405,8 @@ static void Sparse_MatVec_local( sparse_matrix const * const A,
 
             for ( k = si; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i] += val * x[j];
             }
@@ -378,12 +423,12 @@ static void Sparse_MatVec_local( sparse_matrix const * const A,
 
             /* A symmetric, upper triangular portion stored
              * => diagonal only contributes once */
-            b[i] += A->entries[si].val * x[i];
+            b[i] += A->val[si] * x[i];
 
             for ( k = si + 1; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i] += val * x[j];
                 b[j] += val * x[i];
@@ -398,8 +443,8 @@ static void Sparse_MatVec_local( sparse_matrix const * const A,
 
             for ( k = si; k < A->end[i]; ++k )
             {
-                j = A->entries[k].j;
-                val = A->entries[k].val;
+                j = A->j[k];
+                val = A->val[k];
 
                 b[i] += val * x[j];
             }
@@ -420,7 +465,7 @@ static void Sparse_MatVec_local( sparse_matrix const * const A,
  *
  * returns: communication time
  */
-static int Sparse_MatVec_Comm_Part1( const reax_system * const system,
+static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
         const control_params * const control, mpi_datatypes * const mpi_data,
         void const * const x, int buf_type, MPI_Datatype mpi_type )
 {
@@ -449,7 +494,7 @@ static int Sparse_MatVec_Comm_Part1( const reax_system * const system,
  *
  * returns: communication time
  */
-static int Sparse_MatVec_Comm_Part2( const reax_system * const system,
+static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
         const control_params * const control, mpi_datatypes * const mpi_data,
         int mat_format, void * const b, int buf_type, MPI_Datatype mpi_type )
 {
@@ -600,7 +645,7 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     {
         for ( pj = A->start[i]; pj < A->end[i]; pj += 10 )
         {
-            input_array[n_local++] = A->entries[pj].val;
+            input_array[n_local++] = A->val[pj];
         }
     }
 
@@ -808,10 +853,10 @@ real setup_sparse_approx_inverse( reax_system const * const system,
 
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
-            if ( ( A->entries[pj].val >= threshold )  || ( A->entries[pj].j == i ) )
+            if ( ( A->val[pj] >= threshold )  || ( A->j[pj] == i ) )
             {
-                A_spar_patt->entries[size].val = A->entries[pj].val;
-                A_spar_patt->entries[size].j = A->entries[pj].j;
+                A_spar_patt->val[size] = A->val[pj];
+                A_spar_patt->j[size] = A->j[pj];
                 size++;
 
 #if defined(DEBUG_FOCUS)
@@ -1023,9 +1068,9 @@ real sparse_approx_inverse( reax_system const * const system,
                 {
                     for ( pj = A->start[ out_bufs[d].index[i] ]; pj < A->end[ out_bufs[d].index[i] ]; ++pj )
                     {
-                        atom = &system->my_atoms[ A->entries[pj].j ];
+                        atom = &system->my_atoms[ A->j[pj] ];
                         j_send[cnt] = atom->orig_id;
-                        val_send[cnt] = A->entries[pj].val;
+                        val_send[cnt] = A->val[pj];
                         cnt++;
                     }
                 }
@@ -1098,7 +1143,7 @@ real sparse_approx_inverse( reax_system const * const system,
         /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
         for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
         {
-            j_temp = A_spar_patt->entries[pj].j;
+            j_temp = A_spar_patt->j[pj];
             atom = &system->my_atoms[j_temp];
             ++N;
 
@@ -1111,7 +1156,7 @@ real sparse_approx_inverse( reax_system const * const system,
                 for ( k = A->start[ j_temp ]; k < A->end[ j_temp ]; ++k )
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    atom = &system->my_atoms[ A->entries[k].j ];
+                    atom = &system->my_atoms[ A->j[k] ];
                     X[atom->orig_id] = 1;
                 }
             }
@@ -1159,7 +1204,7 @@ real sparse_approx_inverse( reax_system const * const system,
             /* change the value if any of the column indices is seen */
 
             /* it is in the original list */
-            local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
+            local_pos = A_spar_patt->j[ A_spar_patt->start[i] + d_j ];
             if ( local_pos < 0 || local_pos >= system->N )
             {
                 fprintf( stderr, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
@@ -1171,7 +1216,7 @@ real sparse_approx_inverse( reax_system const * const system,
             {
                 for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
                 {
-                    atom = &system->my_atoms[ A->entries[d_i].j ];
+                    atom = &system->my_atoms[ A->j[d_i] ];
                     if ( pos_x[ atom->orig_id ] >= M || d_j >=  N )
                     {
                         fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
@@ -1179,7 +1224,7 @@ real sparse_approx_inverse( reax_system const * const system,
                     }
                     if ( X[ atom->orig_id ] == 1 )
                     {
-                        dense_matrix[ pos_x[ atom->orig_id ] * N + d_j ] = A->entries[d_i].val;
+                        dense_matrix[ pos_x[ atom->orig_id ] * N + d_j ] = A->val[d_i];
                     }
                 }
             }
@@ -1235,8 +1280,8 @@ real sparse_approx_inverse( reax_system const * const system,
         (*A_app_inv)->end[i] = A_spar_patt->end[i];
         for ( k = (*A_app_inv)->start[i]; k < (*A_app_inv)->end[i]; ++k)
         {
-            (*A_app_inv)->entries[k].j = A_spar_patt->entries[k].j;
-            (*A_app_inv)->entries[k].val = e_j[k - A_spar_patt->start[i]];
+            (*A_app_inv)->j[k] = A_spar_patt->j[k];
+            (*A_app_inv)->val[k] = e_j[k - A_spar_patt->start[i]];
         }
         free( dense_matrix );
         free( e_j );
@@ -1467,9 +1512,9 @@ real sparse_approx_inverse( reax_system const * const system,
                     {
                         for ( pj = A->start[ out_bufs[2 * d].index[i] ]; pj < A->end[ out_bufs[2 * d].index[i] ]; ++pj )
                         {
-                            atom = &system->my_atoms[ A->entries[pj].j ];
+                            atom = &system->my_atoms[ A->j[pj] ];
                             j_send[cnt] = atom->orig_id;
-                            val_send[cnt] = A->entries[pj].val;
+                            val_send[cnt] = A->val[pj];
                             cnt++;
                         }
                     }
@@ -1525,9 +1570,9 @@ real sparse_approx_inverse( reax_system const * const system,
                     {
                         for ( pj = A->start[ out_bufs[2 * d + 1].index[i] ]; pj < A->end[ out_bufs[2 * d + 1].index[i] ]; ++pj )
                         {
-                            atom = &system->my_atoms[ A->entries[pj].j ];
+                            atom = &system->my_atoms[ A->j[pj] ];
                             j_send[cnt] = atom->orig_id;
-                            val_send[cnt] = A->entries[pj].val;
+                            val_send[cnt] = A->val[pj];
                             cnt++;
                         }
                     }
@@ -1631,7 +1676,7 @@ real sparse_approx_inverse( reax_system const * const system,
         /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
         for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
         {
-            j_temp = A_spar_patt->entries[pj].j;
+            j_temp = A_spar_patt->j[pj];
             atom = &system->my_atoms[j_temp];
             ++N;
 
@@ -1644,7 +1689,7 @@ real sparse_approx_inverse( reax_system const * const system,
                 for ( k = A->start[ j_temp ]; k < A->end[ j_temp ]; ++k )
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    atom = &system->my_atoms[ A->entries[k].j ];
+                    atom = &system->my_atoms[ A->j[k] ];
                     X[atom->orig_id] = mark;
                     q[push++] = atom->orig_id;
                 }
@@ -1702,14 +1747,14 @@ real sparse_approx_inverse( reax_system const * const system,
             /* change the value if any of the column indices is seen */
 
             /* it is in the original list */
-            local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
+            local_pos = A_spar_patt->j[ A_spar_patt->start[i] + d_j ];
 
             if ( local_pos < A->n )
             {
                 for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
                 {
-                    atom = &system->my_atoms[ A->entries[d_i].j ];
-                    dense_matrix[ X[ atom->orig_id ] * N + d_j ] = A->entries[d_i].val;
+                    atom = &system->my_atoms[ A->j[d_i] ];
+                    dense_matrix[ X[ atom->orig_id ] * N + d_j ] = A->val[d_i];
                 }
             }
             else
@@ -1766,8 +1811,8 @@ real sparse_approx_inverse( reax_system const * const system,
         (*A_app_inv)->end[i] = A_spar_patt->end[i];
         for ( k = (*A_app_inv)->start[i]; k < (*A_app_inv)->end[i]; ++k)
         {
-            (*A_app_inv)->entries[k].j = A_spar_patt->entries[k].j;
-            (*A_app_inv)->entries[k].val = e_j[k - A_spar_patt->start[i]];
+            (*A_app_inv)->j[k] = A_spar_patt->j[k];
+            (*A_app_inv)->val[k] = e_j[k - A_spar_patt->start[i]];
         }
     }
 
@@ -2128,7 +2173,7 @@ int SDM( reax_system const * const system, control_params const * const control,
     t_allreduce += MPI_Wtime( ) - t_start;
 
     t_start = MPI_Wtime( );
-    bnorm = sqrt( redux[0] );
+    bnorm = SQRT( redux[0] );
     sig = redux[1];
     t_vops += MPI_Wtime( ) - t_start;
 
@@ -2317,10 +2362,10 @@ int dual_CG( reax_system const * const system, control_params const * const cont
 
     sig_new[0] = redux[0];
     sig_new[1] = redux[1];
-    norm[0] = sqrt( redux[2] );
-    norm[1] = sqrt( redux[3] );
-    b_norm[0] = sqrt( redux[4] );
-    b_norm[1] = sqrt( redux[5] );
+    norm[0] = SQRT( redux[2] );
+    norm[1] = SQRT( redux[3] );
+    b_norm[0] = SQRT( redux[4] );
+    b_norm[1] = SQRT( redux[5] );
 
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
@@ -2343,7 +2388,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-        // dot product: d.q
+        /* dot product: d.q */
         t_start =  MPI_Wtime( );
         redux[0] = redux[1] = 0;
         for ( j = 0; j < system->n; ++j )
@@ -2424,8 +2469,8 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         sig_old[1] = sig_new[1];
         sig_new[0] = redux[0];
         sig_new[1] = redux[1];
-        norm[0] = sqrt( redux[2] );
-        norm[1] = sqrt( redux[3] );
+        norm[0] = SQRT( redux[2] );
+        norm[1] = SQRT( redux[3] );
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
         /* d = p + beta * d */
@@ -2571,10 +2616,10 @@ int CG( reax_system const * const system, control_params const * const control,
 
     t_start = MPI_Wtime( );
     MPI_Allreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-    t_allreduce += MPI_Wtime( ) - t_start;
     sig_new = redux[0];
-    norm = sqrt( redux[1] );
-    b_norm = sqrt( redux[2] );
+    norm = SQRT( redux[1] );
+    b_norm = SQRT( redux[2] );
+    t_allreduce += MPI_Wtime( ) - t_start;
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
@@ -2640,7 +2685,7 @@ int CG( reax_system const * const system, control_params const * const control,
         t_start = MPI_Wtime( );
         sig_old = sig_new;
         sig_new = redux[0];
-        norm = sqrt( redux[1] );
+        norm = SQRT( redux[1] );
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d, 1.0, workspace->p, beta, workspace->d, system->n );
         t_vops += MPI_Wtime( ) - t_start;
@@ -2734,8 +2779,8 @@ int BiCGStab( reax_system const * const system, control_params const * const con
     t_allreduce += MPI_Wtime( ) - t_start;
 
     t_start = MPI_Wtime( );
-    bnorm = sqrt( redux[0] );
-    rnorm = sqrt( redux[1] );
+    bnorm = SQRT( redux[0] );
+    rnorm = SQRT( redux[1] );
     if ( bnorm == 0.0 )
     {
         bnorm = 1.0;
@@ -2906,7 +2951,7 @@ int BiCGStab( reax_system const * const system, control_params const * const con
         t_allreduce += MPI_Wtime( ) - t_start;
 
         t_start = MPI_Wtime( );
-        rnorm = sqrt( redux[0] );
+        rnorm = SQRT( redux[0] );
         if ( omega == 0.0 )
         {
             break;
@@ -3141,10 +3186,10 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     delta[1] = redux[1];
     gamma_new[0] = redux[2];
     gamma_new[1] = redux[3];
-    norm[0] = sqrt( redux[4] );
-    norm[1] = sqrt( redux[5] );
-    b_norm[0] = sqrt( redux[6] );
-    b_norm[1] = sqrt( redux[7] );
+    norm[0] = SQRT( redux[4] );
+    norm[1] = SQRT( redux[5] );
+    b_norm[0] = SQRT( redux[6] );
+    b_norm[1] = SQRT( redux[7] );
 
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
@@ -3283,8 +3328,8 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         delta[1] = redux[1];
         gamma_new[0] = redux[2];
         gamma_new[1] = redux[3];
-        norm[0] = sqrt( redux[4] );
-        norm[1] = sqrt( redux[5] );
+        norm[0] = SQRT( redux[4] );
+        norm[1] = SQRT( redux[5] );
     }
 
     timings[0] = t_pa;
@@ -3496,8 +3541,8 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     t_allreduce += MPI_Wtime( ) - t_start;
     delta = redux[0];
     gamma_new = redux[1];
-    norm = sqrt( redux[2] );
-    b_norm = sqrt( redux[3] );
+    norm = SQRT( redux[2] );
+    b_norm = SQRT( redux[3] );
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
@@ -3579,7 +3624,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         t_allreduce += MPI_Wtime( ) - t_start;
         delta = redux[0];
         gamma_new = redux[1];
-        norm = sqrt( redux[2] );
+        norm = SQRT( redux[2] );
     }
 
     timings[0] = t_pa;
@@ -3707,7 +3752,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     t_start = MPI_Wtime( );
     MPI_Wait( &req, MPI_STATUS_IGNORE );
     t_allreduce += MPI_Wtime( ) - t_start;
-    b_norm = sqrt( redux[0] );
+    b_norm = SQRT( redux[0] );
 
     t_start =  MPI_Wtime( );
     norm = Parallel_Norm( workspace->u, system->n, mpi_data->world );
@@ -3772,7 +3817,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         t_allreduce += MPI_Wtime( ) - t_start;
         gamma_new = redux[0];
         delta = redux[1];
-        norm = sqrt( redux[2] );
+        norm = SQRT( redux[2] );
 
         if ( i > 0 )
         {

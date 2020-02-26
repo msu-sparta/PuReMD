@@ -200,9 +200,9 @@ void Estimate_NT_Atoms( reax_system * const system, mpi_datatypes * const mpi_da
         nbr->est_send = MAX( MIN_SEND, nbr->est_send * SAFER_ZONE_NT );
 
         /* allocate the estimated space */
-        out_bufs[d].index = scalloc( nbr->est_send, sizeof(int),
+        out_bufs[d].index = scalloc( 2 * nbr->est_send, sizeof(int),
                 "Estimate_NT_Atoms::out_bufs[d].index", MPI_COMM_WORLD );
-        out_bufs[d].out_atoms = scalloc( nbr->est_send, sizeof(real),
+        out_bufs[d].out_atoms = scalloc( 2 * nbr->est_send, sizeof(real),
                 "Estimate_NT_Atoms::out_bufs[d].out_atoms", MPI_COMM_WORLD );
 
         /* sort the atoms to their outgoing buffers */
@@ -576,9 +576,9 @@ void Estimate_Boundary_Atoms( reax_system * const system, int start, int end,
     for ( p = 2 * d; p < 2 * d + 2; ++p )
     {
         nbr_pr = &system->my_nbrs[p];
-        out_bufs[p].index = scalloc( nbr_pr->est_send, sizeof(int),
+        out_bufs[p].index = scalloc( 2 * nbr_pr->est_send, sizeof(int),
                 "Estimate_Boundary_Atoms::mpibuf:index" );
-        out_bufs[p].out_atoms = scalloc( nbr_pr->est_send, sizeof(boundary_atom),
+        out_bufs[p].out_atoms = scalloc( 2 * nbr_pr->est_send, sizeof(boundary_atom),
                 "Estimate_Boundary_Atoms::mpibuf:out_atoms" );
     }
 
@@ -669,9 +669,9 @@ static void Estimate_Init_Storage( int me, neighbor_proc * const nbr1, neighbor_
             sfree( mpi_data->in2_buffer, "Estimate_Init_Storage::mpi_data->in2_buffer" );
         }
 
-        mpi_data->in1_buffer = smalloc( sizeof(boundary_atom) * new_max,
+        mpi_data->in1_buffer = smalloc( 2 * new_max * MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
                 "Estimate_Init_Storage::mpi_data->in1_buffer" );
-        mpi_data->in2_buffer = smalloc( sizeof(boundary_atom) * new_max,
+        mpi_data->in2_buffer = smalloc( 2 * new_max * MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
                 "Estimate_Init_Storage::mpi_data->in2_buffer" );
     }
 }

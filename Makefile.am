@@ -423,6 +423,8 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 				   PG-PuReMD/src/cuda/cuda_charges.h \
 				   PG-PuReMD/src/cuda/cuda_copy.cu \
 				   PG-PuReMD/src/cuda/cuda_copy.h \
+				   PG-PuReMD/src/cuda/cuda_dense_lin_alg.cu \
+				   PG-PuReMD/src/cuda/cuda_dense_lin_alg.h \
 				   PG-PuReMD/src/cuda/cuda_environment.cu \
 				   PG-PuReMD/src/cuda/cuda_environment.h \
 				   PG-PuReMD/src/cuda/cuda_forces.cu \
@@ -434,8 +436,6 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 				   PG-PuReMD/src/cuda/cuda_init_md.h \
 				   PG-PuReMD/src/cuda/cuda_integrate.cu \
 				   PG-PuReMD/src/cuda/cuda_integrate.h \
-				   PG-PuReMD/src/cuda/cuda_lin_alg.cu \
-				   PG-PuReMD/src/cuda/cuda_lin_alg.h \
 				   PG-PuReMD/src/cuda/cuda_list.cu \
 				   PG-PuReMD/src/cuda/cuda_list.h \
 				   PG-PuReMD/src/cuda/cuda_lookup.cu \
@@ -455,6 +455,8 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 				   PG-PuReMD/src/cuda/cuda_reset_tools.cu \
 				   PG-PuReMD/src/cuda/cuda_reset_tools.h \
 				   PG-PuReMD/src/cuda/cuda_shuffle.h \
+				   PG-PuReMD/src/cuda/cuda_spar_lin_alg.cu \
+				   PG-PuReMD/src/cuda/cuda_spar_lin_alg.h \
 				   PG-PuReMD/src/cuda/cuda_system_props.cu \
 				   PG-PuReMD/src/cuda/cuda_system_props.h \
 				   PG-PuReMD/src/cuda/cuda_torsion_angles.cu \

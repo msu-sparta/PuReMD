@@ -233,21 +233,21 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
             for ( i = 0; i < system->n_cm - 1; ++i )
             {
-                H->entries[*Htop].j = i;
-                H->entries[*Htop].val = 1.0;
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
 
-//                H_sp->entries[*H_sp_top].j = i;
-//                H_sp->entries[*H_sp_top].val = 1.0;
+//                H_sp->j[*H_sp_top] = i;
+//                H_sp->val[*H_sp_top] = 1.0;
 //                *H_sp_top = *H_sp_top + 1;
             }
 
-            H->entries[*Htop].j = system->n_cm - 1;
-            H->entries[*Htop].val = 0.0;
+            H->j[*Htop] = system->n_cm - 1;
+            H->val[*Htop] = 0.0;
             *Htop = *Htop + 1;
 
-//            H_sp->entries[*H_sp_top].j = system->n_cm - 1;
-//            H_sp->entries[*H_sp_top].val = 0.0;
+//            H_sp->j[*H_sp_top] = system->n_cm - 1;
+//            H_sp->val[*H_sp_top] = 0.0;
 //            *H_sp_top = *H_sp_top + 1;
             break;
 
@@ -266,12 +266,12 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 //                H_sp->start[system->N + i] = *H_sp_top;
 
                 /* constraint on ref. value for kinetic energy potential */
-                H->entries[*Htop].j = i;
-                H->entries[*Htop].val = 1.0;
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
 
-//                H_sp->entries[*H_sp_top].j = i;
-//                H_sp->entries[*H_sp_top].val = 1.0;
+//                H_sp->j[*H_sp_top] = i;
+//                H_sp->val[*H_sp_top] = 1.0;
 //                *H_sp_top = *H_sp_top + 1;
 
                 /* kinetic energy terms */
@@ -299,9 +299,9 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
                                 for ( target = H->start[system->N + i]; target < *Htop; ++target )
                                 {
-                                    if ( H->entries[target].j == system->N + j )
+                                    if ( H->j[target] == system->N + j )
                                     {
-                                        H->entries[target].val += bond_softness;
+                                        H->val[target] += bond_softness;
                                         val_flag = TRUE;
                                         break;
                                     }
@@ -309,8 +309,8 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
                                 if ( val_flag == FALSE )
                                 {
-                                    H->entries[*Htop].j = system->N + j;
-                                    H->entries[*Htop].val = bond_softness;
+                                    H->j[*Htop] = system->N + j;
+                                    H->val[*Htop] = bond_softness;
                                     ++(*Htop);
                                 }
 
@@ -318,9 +318,9 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
 //                                for ( target = H_sp->start[system->N + i]; target < *H_sp_top; ++target )
 //                                {
-//                                    if ( H_sp->entries[target].j == system->N + j )
+//                                    if ( H_sp->j[target] == system->N + j )
 //                                    {
-//                                        H_sp->entries[target].val += bond_softness;
+//                                        H_sp->val[target] += bond_softness;
 //                                        val_flag = TRUE;
 //                                        break;
 //                                    }
@@ -328,8 +328,8 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
 //                                if ( val_flag == FALSE )
 //                                {
-//                                    H_sp->entries[*H_sp_top].j = system->N + j;
-//                                    H_sp->entries[*H_sp_top].val = bond_softness;
+//                                    H_sp->j[*H_sp_top] = system->N + j;
+//                                    H_sp->val[*H_sp_top] = bond_softness;
 //                                    ++(*H_sp_top);
 //                                }
 
@@ -341,12 +341,12 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 }
 
                 /* placeholders for diagonal entries, to be replaced below */
-                H->entries[*Htop].j = system->N + i;
-                H->entries[*Htop].val = 0.0;
+                H->j[*Htop] = system->N + i;
+                H->val[*Htop] = 0.0;
                 *Htop = *Htop + 1;
 
-//                H_sp->entries[*H_sp_top].j = system->N + i;
-//                H_sp->entries[*H_sp_top].val = 0.0;
+//                H_sp->j[*H_sp_top] = system->N + i;
+//                H_sp->val[*H_sp_top] = 0.0;
 //                *H_sp_top = *H_sp_top + 1;
             }
 
@@ -359,18 +359,18 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             {
                 for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj )
                 {
-                    if ( H->entries[pj].j == i )
+                    if ( H->j[pj] == i )
                     {
-                        H->entries[pj].val = X_diag[i - system->N];
+                        H->val[pj] = X_diag[i - system->N];
                         break;
                     }
                 }
 
 //                for ( pj = H_sp->start[i]; pj < H_sp->start[i + 1]; ++pj )
 //                {
-//                    if ( H_sp->entries[pj].j == i )
+//                    if ( H_sp->j[pj] == i )
 //                    {
-//                        H_sp->entries[pj].val = X_diag[i - system->N];
+//                        H_sp->val[pj] = X_diag[i - system->N];
 //                        break;
 //                    }
 //                }
@@ -379,22 +379,22 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             /* coupling with the kinetic energy potential */
             for ( i = 0; i < system->N; ++i )
             {
-                H->entries[*Htop].j = system->N + i;
-                H->entries[*Htop].val = 1.0;
+                H->j[*Htop] = system->N + i;
+                H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
 
-//                H_sp->entries[*H_sp_top].j = system->N + i;
-//                H_sp->entries[*H_sp_top].val = 1.0;
+//                H_sp->j[*H_sp_top] = system->N + i;
+//                H_sp->val[*H_sp_top] = 1.0;
 //                *H_sp_top = *H_sp_top + 1;
             }
 
             /* explicitly store zero on diagonal */
-            H->entries[*Htop].j = system->n_cm - 2;
-            H->entries[*Htop].val = 0.0;
+            H->j[*Htop] = system->n_cm - 2;
+            H->val[*Htop] = 0.0;
             *Htop = *Htop + 1;
 
-//            H_sp->entries[*H_sp_top].j = system->n_cm - 2;
-//            H_sp->entries[*H_sp_top].val = 0.0;
+//            H_sp->j[*H_sp_top] = system->n_cm - 2;
+//            H_sp->val[*H_sp_top] = 0.0;
 //            *H_sp_top = *H_sp_top + 1;
 
             /* last row */
@@ -403,22 +403,22 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
             for ( i = 0; i < system->N; ++i )
             {
-                H->entries[*Htop].j = i;
-                H->entries[*Htop].val = 1.0;
+                H->j[*Htop] = i;
+                H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
 
-//                H_sp->entries[*H_sp_top].j = i;
-//                H_sp->entries[*H_sp_top].val = 1.0;
+//                H_sp->j[*H_sp_top] = i;
+//                H_sp->val[*H_sp_top] = 1.0;
 //                *H_sp_top = *H_sp_top + 1;
             }
 
             /* explicitly store zero on diagonal */
-            H->entries[*Htop].j = system->n_cm - 1;
-            H->entries[*Htop].val = 0.0;
+            H->j[*Htop] = system->n_cm - 1;
+            H->val[*Htop] = 0.0;
             *Htop = *Htop + 1;
 
-//            H_sp->entries[*H_sp_top].j = system->n_cm - 1;
-//            H_sp->entries[*H_sp_top].val = 0.0;
+//            H_sp->j[*H_sp_top] = system->n_cm - 1;
+//            H_sp->val[*H_sp_top] = 0.0;
 //            *H_sp_top = *H_sp_top + 1;
 
             sfree( X_diag, "Init_Charge_Matrix_Remaining_Entries::X_diag" );
@@ -434,7 +434,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
  * in the far neighbors list if it's a NOT re-neighboring step */
 static void Init_Distance( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -462,8 +462,7 @@ static void Init_Distance( reax_system *system, control_params *control,
                 far_nbr_list->far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
                 far_nbr_list->far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
                 far_nbr_list->far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
-                far_nbr_list->far_nbr_list.d[pj] = rvec_Norm_Sqr( far_nbr_list->far_nbr_list.dvec[pj] );
-                far_nbr_list->far_nbr_list.d[pj] = SQRT( far_nbr_list->far_nbr_list.d[pj] );
+                far_nbr_list->far_nbr_list.d[pj] = rvec_Norm( far_nbr_list->far_nbr_list.dvec[pj] );
             }
         }
     }
@@ -476,7 +475,7 @@ static void Init_Distance( reax_system *system, control_params *control,
  * the neutral territory communication method */
 static void Init_CM_Half_NT( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -570,8 +569,8 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
         if ( local == 1 )
         {
             H->start[i] = cm_top;
-            H->entries[cm_top].j = i;
-            H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+            H->j[cm_top] = i;
+            H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                     workspace, i, i, 0.0, DIAGONAL );
             ++cm_top;
         }
@@ -595,21 +594,21 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
                     {
                         if ( j < system->n )
                         {
-                            H->entries[cm_top].j = j;
+                            H->j[cm_top] = j;
                         }
                         else
                         {
-                            H->entries[cm_top].j = atom_j->pos;
+                            H->j[cm_top] = atom_j->pos;
                         }
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                                     workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( system, control,
                                     workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
@@ -633,21 +632,21 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
                         //TODO: necessary?
                         if ( j < system->n )
                         {
-                            H->entries[cm_top].j = j;
+                            H->j[cm_top] = j;
                         }
                         else
                         {
-                            H->entries[cm_top].j = atom_j->pos;
+                            H->j[cm_top] = atom_j->pos;
                         }
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                                     workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( system, control,
                                     workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
@@ -692,7 +691,7 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
  * the neutral territory communication method */
 static void Init_CM_Full_NT( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -786,9 +785,9 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
         if ( local == 1 )
         {
             H->start[i] = cm_top;
-            H->entries[cm_top].j = i;
-            H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
-                    workspace, i, i, r_ij, DIAGONAL );
+            H->j[cm_top] = i;
+            H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
+                    workspace, i, i, 0.0, DIAGONAL );
             ++cm_top;
         }
 
@@ -811,21 +810,21 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
                     {
                         if ( j < system->n )
                         {
-                            H->entries[cm_top].j = j;
+                            H->j[cm_top] = j;
                         }
                         else
                         {
-                            H->entries[cm_top].j = atom_j->pos;
+                            H->j[cm_top] = atom_j->pos;
                         }
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                                     workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( system, control,
                                     workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
@@ -848,21 +847,21 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
 
                         if ( j < system->n )
                         {
-                            H->entries[cm_top].j = j;
+                            H->j[cm_top] = j;
                         }
                         else
                         {
-                            H->entries[cm_top].j = atom_j->pos;
+                            H->j[cm_top] = atom_j->pos;
                         }
 
                         if ( control->tabulate == 0 )
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                                     workspace, i, j, r_ij, OFF_DIAGONAL );
                         }
                         else 
                         {
-                            H->entries[cm_top].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                            H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( system, control,
                                     workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                         }
 
@@ -908,7 +907,7 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
  * the full shell communication method */
 static void Init_CM_Half_FS( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -932,8 +931,8 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
 
         /* diagonal entry in the matrix */
         H->start[i] = cm_top;
-        H->entries[cm_top].j = i;
-        H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+        H->j[cm_top] = i;
+        H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                 workspace, i, i, r_ij, DIAGONAL );
         ++cm_top;
 
@@ -950,16 +949,16 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
                 {
                     r_ij = far_nbr_list->far_nbr_list.d[pj];
 
-                    H->entries[cm_top].j = j;
+                    H->j[cm_top] = j;
 
                     if ( control->tabulate == 0 )
                     {
-                        H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+                        H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                                 workspace, i, j, r_ij, OFF_DIAGONAL );
                     }
                     else
                     {
-                        H->entries[cm_top].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                        H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( system, control,
                                 workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                     }
 
@@ -987,7 +986,7 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
  * the full shell communication method */
 static void Init_CM_Full_FS( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1009,8 +1008,8 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
 
         /* diagonal entry in the matrix */
         H->start[i] = cm_top;
-        H->entries[cm_top].j = i;
-        H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+        H->j[cm_top] = i;
+        H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                 workspace, i, i, r_ij, DIAGONAL );
         ++cm_top;
 
@@ -1022,16 +1021,16 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
                 j = far_nbr_list->far_nbr_list.nbr[pj];
                 r_ij = far_nbr_list->far_nbr_list.d[pj];
 
-                H->entries[cm_top].j = j;
+                H->j[cm_top] = j;
 
                 if ( control->tabulate == 0 )
                 {
-                    H->entries[cm_top].val = Init_Charge_Matrix_Entry( system, control,
+                    H->val[cm_top] = Init_Charge_Matrix_Entry( system, control,
                             workspace, i, j, r_ij, OFF_DIAGONAL );
                 }
                 else
                 {
-                    H->entries[cm_top].val = Init_Charge_Matrix_Entry_Tab( system, control,
+                    H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( system, control,
                             workspace->LR, i, j, r_ij, OFF_DIAGONAL );
                 }
 
@@ -1061,7 +1060,7 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
  *  array to at most the 3-hop neighborhood */
 static void Init_Bond_Half( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1231,7 +1230,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
  * using the far neighbors list (stored in full format) */
 static void Init_Bond_Full( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+        output_controls *out_control )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -1521,27 +1520,27 @@ static int Init_Forces( reax_system *system, control_params *control,
     
     t_start = MPI_Wtime( );
 
-    Init_Distance( system, control, data, workspace, lists, out_control, mpi_data );
+    Init_Distance( system, control, data, workspace, lists, out_control );
 
     t_dist = MPI_Wtime( );
 
 #if defined(NEUTRAL_TERRITORY)
     if ( workspace->H.format == SYM_HALF_MATRIX )
     {
-        Init_CM_Half_NT( system, control, data, workspace, lists, out_control, mpi_data );
+        Init_CM_Half_NT( system, control, data, workspace, lists, out_control );
     }
     else
     {
-        Init_CM_Full_NT( system, control, data, workspace, lists, out_control, mpi_data );
+        Init_CM_Full_NT( system, control, data, workspace, lists, out_control );
     }
 #else
     if ( workspace->H.format == SYM_HALF_MATRIX )
     {
-        Init_CM_Half_FS( system, control, data, workspace, lists, out_control, mpi_data );
+        Init_CM_Half_FS( system, control, data, workspace, lists, out_control );
     }
     else
     {
-        Init_CM_Full_FS( system, control, data, workspace, lists, out_control, mpi_data );
+        Init_CM_Full_FS( system, control, data, workspace, lists, out_control );
     }
 #endif
 
@@ -1549,11 +1548,11 @@ static int Init_Forces( reax_system *system, control_params *control,
 
     if ( lists[FAR_NBRS]->format == HALF_LIST )
     {
-        Init_Bond_Half( system, control, data, workspace, lists, out_control, mpi_data );
+        Init_Bond_Half( system, control, data, workspace, lists, out_control );
     }
     else
     {
-        Init_Bond_Full( system, control, data, workspace, lists, out_control, mpi_data );
+        Init_Bond_Full( system, control, data, workspace, lists, out_control );
     }
 
     t_bond = MPI_Wtime();

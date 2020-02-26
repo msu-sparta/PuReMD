@@ -484,10 +484,17 @@ int cleanup( const void * const handle )
     {
         pmd_handle = (puremd_handle*) handle;
 
+#if defined(HAVE_CUDA)
+        //TODO: add Cuda_Finalize( ... )
+#else
         Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                 pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                 pmd_handle->mpi_data, pmd_handle->output_enabled );
+#endif
 
+#if defined(HAVE_CUDA)
+        sfree( pmd_handle->workspace->d_workspace, "cleanup::workspace->d_workspace" );
+#endif
         sfree( pmd_handle->mpi_data, "cleanup::pmd_handle->mpi_data" );
         sfree( pmd_handle->out_control, "cleanup::pmd_handle->out_control" );
         sfree( pmd_handle->lists, "cleanup::pmd_handle->lists" );
@@ -495,11 +502,6 @@ int cleanup( const void * const handle )
         sfree( pmd_handle->data, "cleanup::pmd_handle->data" );
         sfree( pmd_handle->control, "cleanup::pmd_handle->control" );
         sfree( pmd_handle->system, "cleanup::pmd_handle->system" );
-
-        //TODO: add Cuda_Finalize( ... )
-#if defined(HAVE_CUDA)
-        sfree( pmd_handle->workspace->d_workspace, "cleanup::workspace->d_workspace" );
-#endif
 
         sfree( pmd_handle, "cleanup::pmd_handle" );
 
