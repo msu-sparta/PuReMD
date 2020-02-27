@@ -146,7 +146,7 @@ int Write_Custom_Header( reax_system *system, control_params *control,
              out_control->atom_format,
              out_control->bond_info,
              out_control->angle_info,
-             out_control->energy_update_freq,
+             out_control->log_update_freq,
              control->molec_anal,
              control->freq_molec_anal );
 

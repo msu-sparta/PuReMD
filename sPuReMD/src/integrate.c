@@ -559,9 +559,9 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
     deps = dt * iso_bar->v_eps + 0.5 * dt_sqr * iso_bar->a_eps;
     exp_deps = EXP( deps );
 
-    therm->G_xi = control->Tau_T * ( 2.0 * data->E_Kin +
-                                     SQR( iso_bar->v_eps ) / control->Tau_P -
-                                     (data->N_f + 1) * K_B * control->T );
+    therm->G_xi = control->Tau_T * ( 2.0 * data->E_Kin
+            + SQR( iso_bar->v_eps ) / control->Tau_P
+            - (data->N_f + 1) * K_B * control->T );
     dxi = therm->v_xi * dt + 0.5 * therm->G_xi * dt_sqr;
 
     fprintf(out_control->log, "a: %12.6f   eps: %12.6f   deps: %12.6f\n",
@@ -660,9 +660,9 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
         v_eps_new = coef_v_eps * ( iso_bar->v_eps +
                                    0.5 * dt * ( iso_bar->a_eps + a_eps_new ) );
 
-        G_xi_new = control->Tau_T * ( 2.0 * E_kin +
-                                      SQR( v_eps_old ) / control->Tau_P -
-                                      (data->N_f + 1) * K_B * control->T );
+        G_xi_new = control->Tau_T * ( 2.0 * E_kin
+                + SQR( v_eps_old ) / control->Tau_P
+                - (data->N_f + 1) * K_B * control->T );
         v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
 
         E_kin = 0;

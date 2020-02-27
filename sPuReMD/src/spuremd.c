@@ -67,8 +67,8 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
 
     Compute_Kinetic_Energy( system, data );
 
-    if ( (out_control->energy_update_freq > 0
-                && data->step % out_control->energy_update_freq == 0)
+    if ( (out_control->log_update_freq > 0
+                && data->step % out_control->log_update_freq == 0)
             || (out_control->write_steps > 0
                 && data->step % out_control->write_steps == 0) )
     {
@@ -231,10 +231,17 @@ int simulate( const void * const handle )
 
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
 
+        if ( spmd_handle->control->compute_pressure == TRUE && spmd_handle->control->ensemble != sNPT
+                && spmd_handle->control->ensemble != iNPT && spmd_handle->control->ensemble != aNPT )
+        {
+            Compute_Pressure_Isotropic( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->data, spmd_handle->out_control );
+        }
+
         if ( spmd_handle->output_enabled == TRUE || spmd_handle->callback != NULL )
         {
-            if ( ((spmd_handle->out_control->energy_update_freq > 0
-                        && spmd_handle->data->step % spmd_handle->out_control->energy_update_freq == 0)
+            if ( ((spmd_handle->out_control->log_update_freq > 0
+                        && spmd_handle->data->step % spmd_handle->out_control->log_update_freq == 0)
                     || (spmd_handle->out_control->write_steps > 0
                         && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0))
                 || spmd_handle->callback != NULL )

@@ -216,7 +216,7 @@ void Compute_Total_Energy( simulation_data* data )
         data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
 
 
-    data->E_Tot = data->E_Pot + E_CONV * data->E_Kin;
+    data->E_Tot = data->E_Pot + data->E_Kin * E_CONV;
 }
 
 
@@ -254,79 +254,54 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
         simulation_data* data, output_controls *out_control )
 {
     int i;
-    reax_atom *p_atom;
-    rvec tx;
-    rvec tmp;
     simulation_box *box;
 
     box = &system->box;
 
-    /* Calculate internal pressure */
-    rvec_MakeZero( data->int_press );
-
-    /* 0: both int and ext, 1: ext only, 2: int only */
-    if ( control->press_mode == 0 || control->press_mode == 2 )
-    {
-        for ( i = 0; i < system->N; ++i )
-        {
-            p_atom = &system->atoms[i];
-
-            /* transform x into unitbox coordinates */
-            Transform_to_UnitBox( p_atom->x, box, 1, tx );
-
-            /* this atom's contribution to internal pressure */
-            rvec_Multiply( tmp, p_atom->f, tx );
-            rvec_Add( data->int_press, tmp );
-
-#if defined(DEBUG_FOCUS)
-            fprintf( out_control->prs, "%-8d%8.2f%8.2f%8.2f",
-                    i + 1, p_atom->x[0], p_atom->x[1], p_atom->x[2] );
-            fprintf( out_control->prs, "%8.2f%8.2f%8.2f",
-                    p_atom->f[0], p_atom->f[1], p_atom->f[2] );
-            fprintf( out_control->prs, "%8.2f%8.2f%8.2f\n",
-                    data->int_press[0], data->int_press[1], data->int_press[2] );
-#endif
-        }
-    }
-
     /* kinetic contribution */
-    data->kin_press = 2.0 * (E_CONV * data->E_Kin)
-        / (3.0 * box->volume * P_CONV);
+    data->kin_press = 2.0 * (data->E_Kin * E_CONV) / (3.0 * box->volume * P_CONV);
+//    data->kin_press = (data->N_f * K_B * 2.0 * data->E_Kin * E_CONV) / (3.0 * box->volume * P_CONV);
 
+    /* virial contribution */
 #if defined(_OPENMP)
+    rtensor_MakeZero( data->press );
+
     for ( i = 0; i < control->num_threads; ++i )
     {
-        rvec_Add( data->ext_press, data->ext_press_local[i] );
+        rtensor_Add( data->press, data->press_local[i] );
     }
 #endif
 
-    /* Calculate total pressure in each direction */
-    data->tot_press[0] = data->kin_press
-        - ((data->int_press[0] + data->ext_press[0])
+    /* total pressure in each direction, in GPa */
+    data->tot_press[0] = data->kin_press + (data->press[0][0]
                 / (box->box_norms[1] * box->box_norms[2] * P_CONV));
 
-    data->tot_press[1] = data->kin_press
-        - ((data->int_press[1] + data->ext_press[1])
+    data->tot_press[1] = data->kin_press + (data->press[1][1]
                 / (box->box_norms[0] * box->box_norms[2] * P_CONV));
 
-    data->tot_press[2] = data->kin_press
-        - ((data->int_press[2] + data->ext_press[2])
+    data->tot_press[2] = data->kin_press + (data->press[2][2]
                 / (box->box_norms[0] * box->box_norms[1] * P_CONV));
 
-    /* Average pressure for the whole box */
+    /* average pressure for the whole box */
     data->iso_bar.P = (data->tot_press[0] + data->tot_press[1]
             + data->tot_press[2]) / 3.0;
 }
 
 
+/* IMPORTANT: This function assumes that current kinetic energy and
+ *  the center of mass of the system is already computed before.
+ *
+ * IMPORTANT: In Klein's paper, it is stated that a dU/dV term needs
+ *  to be added when there are long-range interactions or long-range
+ *  corrections to short-range interactions present.
+ *  We may want to add that for more accuracy.
+ */
 void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* data )
 {
     int i;
     reax_atom *p_atom;
     rvec dx;
 
-    /* IMPORTANT: This function assumes that current kinetic energy and
-     * the center of mass of the system is already computed before */
     data->iso_bar.P = 2.0 * data->E_Kin;
 
     for ( i = 0; i < system->N; ++i )
@@ -337,11 +312,6 @@ void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* dat
     }
 
     data->iso_bar.P /= 3.0 * system->box.volume;
-
-    /* IMPORTANT: In Klein's paper, it is stated that a dU/dV term needs
-     * to be added when there are long-range interactions or long-range
-     * corrections to short-range interactions present.
-     * We may want to add that for more accuracy. */
 }
 
 

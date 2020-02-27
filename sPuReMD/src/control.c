@@ -120,7 +120,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
 
     control->remove_CoM_vel = 25;
 
-    out_control->energy_update_freq = 0;
+    out_control->log_update_freq = 0;
 
     out_control->write_steps = 0;
     out_control->traj_compress = 0;
@@ -474,7 +474,7 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
                 else if ( strncmp(tmp[0], "energy_update_freq", MAX_LINE) == 0 )
                 {
                     ival = atoi(tmp[1]);
-                    out_control->energy_update_freq = ival;
+                    out_control->log_update_freq = ival;
                 }
                 else if ( strncmp(tmp[0], "write_freq", MAX_LINE) == 0 )
                 {

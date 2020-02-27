@@ -152,8 +152,8 @@ void Valence_Angles( reax_system *system, control_params *control,
         real Ctheta_0, theta_0, theta_00, theta, cos_theta, sin_theta;
         real BOA_ij, BOA_jk;
         real vlpadj;
-        rvec force, ext_press;
-        ivec rel_box;
+        rvec force;
+        rtensor press;
         //rtensor temp_rtensor, total_rtensor;
         three_body_header *thbh;
         three_body_parameters *thbp;
@@ -512,8 +512,9 @@ void Valence_Angles( reax_system *system, control_params *control,
                             bo_jt->Cdbopi2 += CEval5;
                         }
 
-                        if ( control->ensemble == NVE || control->ensemble == nhNVT
-                                || control->ensemble == bNVT )
+                        if ( control->compute_pressure == FALSE &&
+                                (control->ensemble == NVE || control->ensemble == nhNVT
+                                 || control->ensemble == bNVT) )
                         {
                             rvec_ScaledAdd( *f_i, CEval8, p_ijk->dcos_di );
                             rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
@@ -527,26 +528,24 @@ void Valence_Angles( reax_system *system, control_params *control,
                              * forces and pressure vector/tensor */
                             rvec_Scale( force, CEval8, p_ijk->dcos_di );
                             rvec_Add( *f_i, force );
-                            ivec_Sum( rel_box, pbond_ij->rel_box, system->atoms[i].rel_map );
-                            ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
-                            rvec_iMultiply( ext_press, rel_box, force );
+
+                            rvec_OuterProduct( press, pbond_ij->dvec, force );
 //#if !defined(_OPENMP)
-                            rvec_Add( data->ext_press, ext_press );
+                            rtensor_Add( data->press, press );
 //#else
-//                            rvec_Add( data->ext_press_local[tid], ext_press );
+//                            rtensor_Add( data->press_local[tid], press );
 //#endif
 
                             rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
 
                             rvec_Scale( force, CEval8, p_ijk->dcos_dk );
                             rvec_Add( *f_k, force );
-                            ivec_Sum( rel_box, pbond_jk->rel_box, system->atoms[k].rel_map );
-                            ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
-                            rvec_iMultiply( ext_press, rel_box, force );
+
+                            rvec_OuterProduct( press, pbond_jk->dvec, force );
 //#if !defined(_OPENMP)
-                            rvec_Add( data->ext_press, ext_press );
+                            rtensor_Add( data->press, press );
 //#else
-//                            rvec_Add( data->ext_press_local[tid], ext_press );
+//                            rtensor_Add( data->press_local[tid], press );
 //#endif
 
                             /* This part is for a fully-flexible box */
@@ -693,7 +692,7 @@ void Valence_Angles( reax_system *system, control_params *control,
     fprintf( stderr, "Angle Energy:%g\t Penalty Energy:%g\t Coalition Energy:%g\n",
              data->E_Ang, data->E_Pen, data->E_Coa );
 
-    fprintf( stderr, "3body: ext_press (%23.15e %23.15e %23.15e)\n",
-             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
+    fprintf( stderr, "3body: press (%23.15e %23.15e %23.15e)\n",
+             data->press[0][0], data->press[1][1], data->press[2][2] );
 #endif
 }

@@ -104,8 +104,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         real dr3gamij_1, dr3gamij_3;
         real e_ele, e_vdW, e_core, de_core, e_clb, de_clb;
         real d, xcut, bond_softness, d_bond_softness, effpot_diff;
-        rvec temp, ext_press;
-        ivec rel_box;
+        rvec force;
+        rtensor press;
         //rtensor temp_rtensor, total_rtensor;
         two_body_parameters *twbp;
         far_neighbor_data *nbr_pj;
@@ -231,8 +231,9 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             i + 1, j + 1, e_clb, de_clb ); fflush( stderr );
 #endif
 
-                    if ( control->ensemble == NVE || control->ensemble == nhNVT
-                            || control->ensemble == bNVT )
+                    if ( control->compute_pressure == FALSE &&
+                            (control->ensemble == NVE || control->ensemble == nhNVT
+                             || control->ensemble == bNVT) )
                     {
 #if !defined(_OPENMP)
                         rvec_ScaledAdd( system->atoms[i].f,
@@ -262,23 +263,23 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
-                        rvec_Scale( temp, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
+                        rvec_Scale( force, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 
 #if !defined(_OPENMP)
-                        rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
-                        rvec_Add( system->atoms[j].f, temp );
+                        rvec_ScaledAdd( system->atoms[i].f, -1.0, force );
+                        rvec_Add( system->atoms[j].f, force );
 #else
-                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1.0, temp );
-                        rvec_Add( workspace->f_local[tid * system->N + j], temp );
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1.0, force );
+                        rvec_Add( workspace->f_local[tid * system->N + j], force );
 #endif
 
-                        ivec_Sum( rel_box, nbr_pj->rel_box, system->atoms[j].rel_map );
-                        ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
-                        rvec_iMultiply( ext_press, rel_box, temp );
+                        /* pressure */
+                        rvec_Scale( force, -1.0, force );
+                        rvec_OuterProduct( press, nbr_pj->dvec, force );
 #if !defined(_OPENMP)
-                        rvec_Add( data->ext_press, ext_press );
+                        rtensor_Add( data->press, press );
 #else
-                        rvec_Add( data->ext_press_local[tid], ext_press );
+                        rtensor_Add( data->press_local[tid], press );
 #endif
 
 #if defined(DEBUG_FOCUS)
@@ -286,11 +287,11 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                                 i, j, nbr_pj->rel_box[0],
                                 nbr_pj->rel_box[1], nbr_pj->rel_box[2] );
 
-                        fprintf( stderr, "force(%f %f %f)", temp[0], temp[1], temp[2] );
+                        fprintf( stderr, "force(%f %f %f)", force[0], force[1], force[2] );
 
-                        fprintf( stderr, "ext_press (%12.6f %12.6f %12.6f)\n",
-                                data->ext_press[0], data->ext_press[1],
-                                data->ext_press[2] );
+                        fprintf( stderr, "press (%12.6f %12.6f %12.6f)\n",
+                                data->press[0][0], data->press[1][1],
+                                data->press[2][2] );
 #endif
 
                         /* This part is intended for a fully-flexible box */
@@ -308,14 +309,14 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     }
 
 #if defined(TEST_ENERGY)
-                    rvec_MakeZero( temp );
-                    rvec_ScaledAdd( temp, +CEvd, nbr_pj->dvec );
+                    rvec_MakeZero( force );
+                    rvec_ScaledAdd( force, CEvd, nbr_pj->dvec );
                     fprintf( out_control->evdw,
                              "%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                              //i+1, j+1,
                              MIN( workspace->orig_id[i], workspace->orig_id[j] ),
                              MAX( workspace->orig_id[i], workspace->orig_id[j] ),
-                             r_ij, e_vdW, temp[0], temp[1], temp[2]/*, e_vdW_total*/ );
+                             r_ij, e_vdW, force[0], force[1], force[2]/*, e_vdW_total*/ );
 
                     fprintf( out_control->ecou, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
                              MIN( workspace->orig_id[i], workspace->orig_id[j] ),
@@ -412,8 +413,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     data->E_Ele = e_ele_total;
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] vdW_Coulomb_Energy: ext_press = (%24.15e %24.15e %24.15e)\n",
-            data->ext_press[0], data->ext_press[1], data->ext_press[2] );
+    fprintf( stderr, "[INFO] vdW_Coulomb_Energy: press = (%24.15e %24.15e %24.15e)\n",
+            data->press[0][0], data->press[1][1], data->press[2][2] );
 #endif
 
     Compute_Polarization_Energy( system, control, data, workspace );
@@ -430,7 +431,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
     far_nbrs = lists[FAR_NBRS];
     steps = data->step - data->prev_steps;
-    update_freq = out_control->energy_update_freq;
+    update_freq = out_control->log_update_freq;
     update_energies = update_freq > 0 && steps % update_freq == 0;
     e_vdW_total = 0.0;
     e_ele_total = 0.0;
@@ -446,8 +447,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         real e_vdW, e_ele;
         real d, xcut, bond_softness, d_bond_softness, effpot_diff;
         real CEvd, CEclmb;
-        rvec temp, ext_press;
-        ivec rel_box;
+        rvec force;
+        rtensor press;
         far_neighbor_data *nbr_pj;
         LR_lookup_table *t;
 #if defined(_OPENMP)
@@ -511,8 +512,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                         * dif + t->CEclmb[r].a;
                     CEclmb *= self_coef * system->atoms[i].q * system->atoms[j].q;
 
-                    if ( control->ensemble == NVE || control->ensemble == nhNVT
-                            || control->ensemble == bNVT )
+                    if ( control->compute_pressure == FALSE &&
+                            (control->ensemble == NVE || control->ensemble == nhNVT
+                             || control->ensemble == bNVT) )
                     {
 #if !defined(_OPENMP)
                         rvec_ScaledAdd( system->atoms[i].f,
@@ -531,21 +533,22 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     {
                         /* for pressure coupling, terms not related to bond order
                            derivatives are added directly into pressure vector/tensor */
-                        rvec_Scale( temp, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
+                        rvec_Scale( force, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
 #if !defined(_OPENMP)
-                        rvec_ScaledAdd( system->atoms[i].f, -1.0, temp );
-                        rvec_Add( system->atoms[j].f, temp );
+                        rvec_ScaledAdd( system->atoms[i].f, -1.0, force );
+                        rvec_Add( system->atoms[j].f, force );
 #else
-                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1.0, temp );
-                        rvec_Add( workspace->f_local[tid * system->N + j], temp );
+                        rvec_ScaledAdd( workspace->f_local[tid * system->N + i], -1.0, force );
+                        rvec_Add( workspace->f_local[tid * system->N + j], force );
 #endif
-                        ivec_Sum( rel_box, nbr_pj->rel_box, system->atoms[j].rel_map );
-                        ivec_ScaledAdd( rel_box, -1, system->atoms[i].rel_map );
-                        rvec_iMultiply( ext_press, rel_box, temp );
+
+                        /* pressure */
+                        rvec_Scale( force, -1.0, force );
+                        rvec_OuterProduct( press, nbr_pj->dvec, force );
 #if !defined(_OPENMP)
-                        rvec_Add( data->ext_press, ext_press );
+                        rtensor_Add( data->press, press );
 #else
-                        rvec_Add( data->ext_press_local[tid], ext_press );
+                        rtensor_Add( data->press_local[tid], press );
 #endif
                     }
 

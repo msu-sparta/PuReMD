@@ -166,8 +166,8 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
     if ( control->ensemble == sNPT || control->ensemble == iNPT
             || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
-        data->ext_press_local = smalloc( control->num_threads * sizeof( rvec ),
-               "Init_Simulation_Data::data->ext_press_local" );
+        data->press_local = smalloc( sizeof( rtensor ) * control->num_threads,
+               "Init_Simulation_Data::data->press_local" );
     }
 #endif
 
@@ -903,7 +903,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->trj = NULL;
     }
 
-    if ( out_control->energy_update_freq > 0 )
+    if ( out_control->log_update_freq > 0 )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
@@ -940,16 +940,16 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->log = NULL;
     }
 
-    if ( control->ensemble == aNPT || control->ensemble == iNPT
-            || control->ensemble == sNPT || control->compute_pressure == TRUE )
+    if ( control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".prs" );
         out_control->prs = sfopen( temp, "w" );
         fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s%13s\n",
-                "step", "norm_x", "norm_y", "norm_z",
-                "press_x", "press_y", "press_z", "target_p", "volume" );
+                "step", "Lx", "Ly", "Lz",
+                "Pxx", "Pyy", "Pzz", "Pavg", "Volume" );
 
         fflush( out_control->prs );
     }
@@ -1251,7 +1251,7 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
     if ( control->ensemble == sNPT || control->ensemble == iNPT
             || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
-        sfree( data->ext_press_local, "Finalize_Workspace::workspace->ext_press_local" );
+        sfree( data->press_local, "Finalize_Workspace::workspace->press_local" );
     }
 #endif
 }
@@ -1525,15 +1525,15 @@ static void Finalize_Out_Controls( reax_system *system, control_params *control,
         sfclose( out_control->trj, "Finalize_Out_Controls::out_control->trj" );
     }
 
-    if ( out_control->energy_update_freq > 0 )
+    if ( out_control->log_update_freq > 0 )
     {
         sfclose( out_control->out, "Finalize_Out_Controls::out_control->out" );
         sfclose( out_control->pot, "Finalize_Out_Controls::out_control->pot" );
         sfclose( out_control->log, "Finalize_Out_Controls::out_control->log" );
     }
 
-    if ( control->ensemble == aNPT || control->ensemble == iNPT
-            || control->ensemble == sNPT || control->compute_pressure == TRUE )
+    if ( control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
         sfclose( out_control->prs, "Finalize_Out_Controls::out_control->prs" );
     }

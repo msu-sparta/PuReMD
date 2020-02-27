@@ -579,6 +579,7 @@ void Print_Total_Force( reax_system *system, control_params *control,
 }
 
 
+/* Write simulation results to various log files */
 void Output_Results( reax_system *system, control_params *control,
     simulation_data *data, static_storage *workspace,
     reax_list **lists, output_controls *out_control )
@@ -587,9 +588,9 @@ void Output_Results( reax_system *system, control_params *control,
 
     t_elapsed = 0.0;
 
-    /* output energies if it is the time */
-    if ( out_control->energy_update_freq > 0 &&
-            data->step % out_control->energy_update_freq == 0 )
+    /* write log files if it is the correct simulation step */
+    if ( out_control->log_update_freq > 0 &&
+            data->step % out_control->log_update_freq == 0 )
     {
 #if defined(TEST_ENERGY) || defined(DEBUG) || defined(DEBUG_FOCUS)
         fprintf( out_control->out,
@@ -630,7 +631,7 @@ void Output_Results( reax_system *system, control_params *control,
         }
         else
         {
-            f_update = 1.0 / out_control->energy_update_freq;
+            f_update = 1.0 / out_control->log_update_freq;
         }
 
         fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
@@ -669,26 +670,20 @@ void Output_Results( reax_system *system, control_params *control,
         fflush( out_control->log );
 
         /* output pressure */
-        if ( control->ensemble == aNPT || control->ensemble == iNPT ||
-                control->ensemble == sNPT || control->compute_pressure == TRUE )
+        if ( control->ensemble == sNPT || control->ensemble == iNPT ||
+                control->ensemble == aNPT || control->compute_pressure == TRUE )
         {
-            fprintf( out_control->prs, "%-8d%13.6f%13.6f%13.6f",
-                     data->step,
-                     data->int_press[0], data->int_press[1], data->int_press[2] );
-
-            /* external pressure is calculated together with forces */
-            fprintf( out_control->prs, "%13.6f%13.6f%13.6f",
-                     data->ext_press[0], data->ext_press[1], data->ext_press[2] );
-
-            fprintf( out_control->prs, "%13.6f\n", data->kin_press );
+            fprintf( out_control->prs, "%-8d%13.6f%13.6f%13.6f%13.6f\n",
+                     data->step, data->kin_press,
+                     data->press[0][0], data->press[1][1], data->press[2][2] );
 
             fprintf( out_control->prs,
-                     "%-8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
+                     "%-8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
                      data->step,
                      system->box.box_norms[0], system->box.box_norms[1],
                      system->box.box_norms[2],
                      data->tot_press[0], data->tot_press[1], data->tot_press[2],
-                     control->P[0], control->P[1], control->P[2], system->box.volume );
+                     (data->tot_press[0] + data->tot_press[1] + data->tot_press[2]) / 3.0, system->box.volume );
             fflush( out_control->prs );
         }
     }
@@ -696,13 +691,8 @@ void Output_Results( reax_system *system, control_params *control,
     if ( out_control->write_steps > 0 &&
             data->step % out_control->write_steps == 0 )
     {
-        //t_start = Get_Time( );
         out_control->append_traj_frame( system, control, data,
                 workspace, lists, out_control );
-
-        //Write_PDB( system, lists[BONDS], data, control, workspace, out_control );
-        //t_elapsed = Get_Timing_Info( t_start );
-        //fprintf(stdout, "append_frame took %.6f seconds\n", t_elapsed );
     }
 }
 

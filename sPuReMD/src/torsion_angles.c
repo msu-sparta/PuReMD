@@ -189,9 +189,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
         real Cconj, CEconj1, CEconj2, CEconj3;
         real CEconj4, CEconj5, CEconj6;
         real e_tor, e_con;
-        rvec dvec_li;
-        rvec force, ext_press;
-        ivec rel_box_ij, rel_box_jk, rel_box_jl, rel_box_li;
+        rvec dvec_jl, dvec_lk, dvec_li, force;
+        rtensor press;
+        ivec rel_box_li;
         //rtensor total_rtensor, temp_rtensor;
         four_body_header *fbh;
         four_body_parameters *fbp;
@@ -494,8 +494,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
 #endif
                                         bo_kl->Cdbo += (CEtors6 + CEconj3);
 
-                                        if ( control->ensemble == NVE || control->ensemble == nhNVT
-                                                || control->ensemble == bNVT )
+                                        if ( control->compute_pressure == FALSE &&
+                                                (control->ensemble == NVE || control->ensemble == nhNVT
+                                                 || control->ensemble == bNVT) )
                                         {
                                             /* dcos_theta_ijk */
                                             rvec_ScaledAdd( *f_i,
@@ -529,81 +530,101 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             /* dcos_theta_ijk */
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_dk );
                                             rvec_Add( *f_i, force );
-                                            ivec_Sum( rel_box_ij, pbond_ij->rel_box, system->atoms[i].rel_map );
-                                            ivec_ScaledAdd( rel_box_ij, -1, system->atoms[j].rel_map );
-                                            rvec_iMultiply( ext_press, rel_box_ij, force );
+
+                                            /* pressure */
+                                            rvec_OuterProduct( press, dvec_li, force );
 #if !defined(_OPENMP)
-                                            rvec_Add( data->ext_press, ext_press );
+                                            rtensor_Add( data->press, press );
 #else
-                                            rvec_Add( data->ext_press_local[tid], ext_press );
+                                            rtensor_Add( data->press_local[tid], press );
 #endif
 
-                                            rvec_ScaledAdd( *f_j, CEtors7 + CEconj4, p_ijk->dcos_dj );
+                                            rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_dj );
+                                            rvec_Add( *f_j, force );
+
+                                            /* pressure */
+                                            rvec_Sum( dvec_jl, pbond_jk->dvec, pbond_kl->dvec );
+                                            rvec_OuterProduct( press, dvec_jl, force );
+#if !defined(_OPENMP)
+                                            rtensor_Add( data->press, press );
+#else
+                                            rtensor_Add( data->press_local[tid], press );
+#endif
 
                                             rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_di );
                                             rvec_Add( *f_k, force );
-                                            ivec_Sum( rel_box_jk, pbond_jk->rel_box, system->atoms[k].rel_map );
-                                            ivec_ScaledAdd( rel_box_jk, -1, system->atoms[j].rel_map );
-                                            rvec_iMultiply( ext_press, rel_box_jk, force );
+
+                                            /* pressure */
+                                            rvec_Scale( dvec_lk, -1.0, pbond_kl->dvec );
+                                            rvec_OuterProduct( press, dvec_lk, force );
 #if !defined(_OPENMP)
-                                            rvec_Add( data->ext_press, ext_press );
+                                            rtensor_Add( data->press, press );
 #else
-                                            rvec_Add( data->ext_press_local[tid], ext_press );
+                                            rtensor_Add( data->press_local[tid], press );
 #endif
 
                                             /* dcos_theta_jkl */
-                                            rvec_ScaledAdd( *f_j, CEtors8 + CEconj5, p_jkl->dcos_di );
+                                            rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_di );
+                                            rvec_Add( *f_j, force );
+
+                                            /* pressure */
+                                            rvec_OuterProduct( press, dvec_jl, force );
+#if !defined(_OPENMP)
+                                            rtensor_Add( data->press, press );
+#else
+                                            rtensor_Add( data->press_local[tid], press );
+#endif
 
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                             rvec_Add( *f_k, force );
-                                            rvec_iMultiply( ext_press, rel_box_jk, force );
+
+                                            /* pressure */
+                                            rvec_OuterProduct( press, dvec_lk, force );
 #if !defined(_OPENMP)
-                                            rvec_Add( data->ext_press, ext_press );
+                                            rtensor_Add( data->press, press );
 #else
-                                            rvec_Add( data->ext_press_local[tid], ext_press );
+                                            rtensor_Add( data->press_local[tid], press );
 #endif
 
                                             rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dk );
                                             rvec_Add( *f_l, force );
-                                            ivec_Copy( rel_box_jl, pbond_jk->rel_box );
-                                            ivec_ScaledAdd( rel_box_jl, -1, system->atoms[j].rel_map );
-                                            ivec_Sum( rel_box_jl, pbond_kl->rel_box, system->atoms[l].rel_map );
-                                            rvec_iMultiply( ext_press, rel_box_jl, force );
-#if !defined(_OPENMP)
-                                            rvec_Add( data->ext_press, ext_press );
-#else
-                                            rvec_Add( data->ext_press_local[tid], ext_press );
-#endif
 
                                             /* dcos_omega */
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_di );
                                             rvec_Add( *f_i, force );
-                                            rvec_iMultiply( ext_press, rel_box_ij, force );
+
+                                            /* pressure */
+                                            rvec_OuterProduct( press, dvec_li, force );
 #if !defined(_OPENMP)
-                                            rvec_Add( data->ext_press, ext_press );
+                                            rtensor_Add( data->press, press );
 #else
-                                            rvec_Add( data->ext_press_local[tid], ext_press );
+                                            rtensor_Add( data->press_local[tid], press );
 #endif
 
-                                            rvec_ScaledAdd( *f_j, CEtors9 + CEconj6, dcos_omega_dj );
+                                            rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dj );
+                                            rvec_Add( *f_j, force );
+
+                                            /* pressure */
+                                            rvec_OuterProduct( press, dvec_jl, force );
+#if !defined(_OPENMP)
+                                            rtensor_Add( data->press, press );
+#else
+                                            rtensor_Add( data->press_local[tid], press );
+#endif
 
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dk );
                                             rvec_Add( *f_k, force );
-                                            rvec_iMultiply( ext_press, rel_box_jk, force );
+
+                                            /* pressure */
+                                            rvec_OuterProduct( press, dvec_lk, force );
 #if !defined(_OPENMP)
-                                            rvec_Add( data->ext_press, ext_press );
+                                            rtensor_Add( data->press, press );
 #else
-                                            rvec_Add( data->ext_press_local[tid], ext_press );
+                                            rtensor_Add( data->press_local[tid], press );
 #endif
 
                                             rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dl );
                                             rvec_Add( *f_l, force );
-                                            rvec_iMultiply( ext_press, rel_box_jl, force );
-#if !defined(_OPENMP)
-                                            rvec_Add( data->ext_press, ext_press );
-#else
-                                            rvec_Add( data->ext_press_local[tid], ext_press );
-#endif
 
                                             /* This part is intended for a fully-flexible box */
                                             /* rvec_ScaledSum( temp_rvec,
@@ -777,7 +798,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
     fprintf( stderr, "[INFO] Torsion_Angles: e_tor = %g, e_con = %g\n",
              data->E_Tor, data->E_Con );
 
-//    fprintf( stderr, "[INFO] Torsion_Angles: ext_press = (%23.15e %23.15e %23.15e)\n",
-//            data->ext_press[0], data->ext_press[1], data->ext_press[2] );
+//    fprintf( stderr, "[INFO] Torsion_Angles: press = (%23.15e %23.15e %23.15e)\n",
+//            data->press[0][0], data->press[1][1], data->press[2][2] );
 #endif
 }

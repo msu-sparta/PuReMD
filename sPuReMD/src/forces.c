@@ -217,8 +217,9 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
         int j;
 #endif
 
-        if ( control->ensemble == NVE || control->ensemble == nhNVT
-                || control->ensemble == bNVT )
+        if ( control->compute_pressure == FALSE
+                && (control->ensemble == NVE || control->ensemble == nhNVT
+                    || control->ensemble == bNVT) )
         {
 #if defined(_OPENMP)
             #pragma omp for schedule(static)
@@ -235,7 +236,7 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
             }
         }
         else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                || control->ensemble == aNPT )
+                || control->ensemble == aNPT || control->compute_pressure == TRUE )
         {
 #if defined(_OPENMP)
             #pragma omp for schedule(static)

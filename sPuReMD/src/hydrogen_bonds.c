@@ -55,8 +55,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
         real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
         rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
-        rvec dvec_jk, force, ext_press;
-        ivec rel_jk, rel_box;
+        rvec dvec_jk, force;
+        rtensor press;
 //        rtensor temp_rtensor, total_rtensor;
         hbond_parameters *hbp;
         bond_order_data *bo_ij;
@@ -185,17 +185,18 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #endif
                             bo_ij->Cdbo += CEhb1;
 
-                            if ( control->ensemble == NVE || control->ensemble == nhNVT
-                                    || control->ensemble == bNVT )
+                            if ( control->compute_pressure == FALSE &&
+                                    (control->ensemble == NVE || control->ensemble == nhNVT
+                                     || control->ensemble == bNVT) )
                             {
                                 /* dcos terms */
-                                rvec_ScaledAdd( *f_i, +CEhb2, dcos_theta_di );
-                                rvec_ScaledAdd( *f_j, +CEhb2, dcos_theta_dj );
-                                rvec_ScaledAdd( *f_k, +CEhb2, dcos_theta_dk );
+                                rvec_ScaledAdd( *f_i, CEhb2, dcos_theta_di );
+                                rvec_ScaledAdd( *f_j, CEhb2, dcos_theta_dj );
+                                rvec_ScaledAdd( *f_k, CEhb2, dcos_theta_dk );
 
                                 /* dr terms */
                                 rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
-                                rvec_ScaledAdd( *f_k, +CEhb3 / r_jk, dvec_jk );
+                                rvec_ScaledAdd( *f_k, CEhb3 / r_jk, dvec_jk );
                             }
                             else if ( control->ensemble == sNPT || control->ensemble == iNPT
                                     || control->ensemble == aNPT || control->compute_pressure == TRUE )
@@ -205,29 +206,28 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                  * pressure vector/tensor */
 
                                 /* dcos terms */
-                                rvec_Scale( force, +CEhb2, dcos_theta_di );
+                                rvec_Scale( force, CEhb2, dcos_theta_di );
                                 rvec_Add( *f_i, force );
-                                ivec_Sum( rel_box, pbond_ij->rel_box, system->atoms[i].rel_map );
-                                ivec_ScaledAdd( rel_box, -1, system->atoms[j].rel_map );
-                                rvec_iMultiply( ext_press, rel_box, force );
+
+                                /* pressure */
+                                rvec_OuterProduct( press, pbond_ij->dvec, force );
 #if !defined(_OPENMP)
-                                rvec_Add( data->ext_press, ext_press );
+                                rtensor_Add( data->press, press );
 #else
-                                rvec_Add( data->ext_press_local[tid], ext_press );
+                                rtensor_Add( data->press_local[tid], press );
 #endif
 
-                                rvec_ScaledAdd( *f_j, +CEhb2, dcos_theta_dj );
+                                rvec_ScaledAdd( *f_j, CEhb2, dcos_theta_dj );
 
-                                rvec_Scale( force, +CEhb2, dcos_theta_dk );
+                                rvec_Scale( force, CEhb2, dcos_theta_dk );
                                 rvec_Add( *f_k, force );
-                                ivec_Sum( rel_jk, nbr_jk->rel_box, system->atoms[k].rel_map );
-                                ivec_ScaledAdd( rel_jk, -1, system->atoms[j].rel_map );
-                                ivec_Scale( rel_jk, hbond_list[pk].scl, rel_jk );
-                                rvec_iMultiply( ext_press, rel_jk, force );
+
+                                /* pressure */
+                                rvec_OuterProduct( press, nbr_jk->dvec, force );
 #if !defined(_OPENMP)
-                                rvec_Add( data->ext_press, ext_press );
+                                rtensor_Add( data->press, press );
 #else
-                                rvec_Add( data->ext_press_local[tid], ext_press );
+                                rtensor_Add( data->press_local[tid], press );
 #endif
 
                                 /* dr terms */
@@ -235,11 +235,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                                 rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
                                 rvec_Add( *f_k, force );
-                                rvec_iMultiply( ext_press, rel_jk, force );
+
+                                /* pressure */
+                                rvec_OuterProduct( press, nbr_jk->dvec, force );
 #if !defined(_OPENMP)
-                                rvec_Add( data->ext_press, ext_press );
+                                rtensor_Add( data->press, press );
 #else
-                                rvec_Add( data->ext_press_local[tid], ext_press );
+                                rtensor_Add( data->press_local[tid], press );
 #endif
 
                                 /* This part is intended for a fully-flexible box */

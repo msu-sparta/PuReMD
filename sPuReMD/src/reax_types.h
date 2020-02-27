@@ -72,10 +72,10 @@
   #define PI (3.14159265)
   /* Coulomb energy conversion */
   #define C_ELE (332.0638)
-  /* kcal/mol/K */
+  /* Boltzmann constant in J / (mol * K) */
   #define K_B (0.831687)
 //  #define K_B (0.8314510)
-  /* --> amu A / ps^2 */
+  /* unit conversion for atomic force to AMU * A / ps^2 */
   #define F_CONV (4.184e2)
   /* energy conversion constant from kilo-calories per mole to electron volts */
   #define KCALpMOL_to_EV (23.02)
@@ -106,22 +106,22 @@
 #if !defined(C_ELE)
   #define C_ELE (332.06371)
 #endif
-/**/
+/* Boltzmann constant */
 #if !defined(K_B)
-  /* kcal/mol/K */
+  /* in ??? */
 //  #define K_B (503.398008)
-  /* amu A^2 / ps^2 / K */
+  /* in J / (mol * K) */
 //  #define K_B (0.831687)
   #define K_B (0.8314510)
 #endif
 /* unit conversion for atomic force */
 #if !defined(F_CONV)
-  /* --> amu A / ps^2 */
+  /* to AMU * A / ps^2 */
   #define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
 #endif
 /* unit conversion for atomic energy */
 #if !defined(E_CONV)
-  /* amu A^2 / ps^2 to kcal/mol */
+  /* AMU * Angstroms^2 / ps^2 --> kcal / mol */
   #define E_CONV (0.002391)
 #endif
 /* energy conversion constant from electron volts to kilo-calories per mole */
@@ -156,7 +156,9 @@
 #if !defined(AVOGNR)
   #define AVOGNR (6.0221367e23)
 #endif
-/* unit conversion for pressure */
+/* unit conversion for pressure:
+ * (1 s / 10^12 ps) * (1 m / 10^10 Angstroms) * (6.0221367^23 atoms / mole) * (0.2390057 J / cal)
+ * ps * Angstroms * moles * cals => s * m * atoms * J */
 #if !defined(P_CONV)
   #define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
 #endif
@@ -497,48 +499,72 @@ struct global_parameters
 struct single_body_parameters
 {
     /* Line one in field file */
-    /* Two character atom name */
+    /* two character atom name */
     char name[15];
-
+    /**/
     real r_s;
-    /* Valency of the atom */
+    /* valency of the atom */
     real valency;
-    /* Mass of atom */
+    /* mass of atom, in unified atomic mass units (daltons) */
     real mass;
+    /**/
     real r_vdw;
+    /**/
     real epsilon;
+    /**/
     real gamma;
+    /**/
     real r_pi;
+    /**/
     real valency_e;
+    /**/
     real nlp_opt;
 
     /* Line two in field file */
+    /**/
     real alpha;
+    /**/
     real gamma_w;
+    /**/
     real valency_boc;
+    /**/
     real p_ovun5;
+    /**/
     real chi;
+    /**/
     real eta;
     /* Determines whether this type of atom participates in H_bonds:
      * 1 for H donor, 2 for acceptors (O,S,N), 0 for others */
     int p_hbond;
 
     /* Line three in field file */
+    /**/
     real r_pi_pi;
+    /**/
     real p_lp2;
+    /**/
     real b_o_131;
+    /**/
     real b_o_132;
+    /**/
     real b_o_133;
     /* bond softness for ACKS2 */
     real b_s_acks2;
 
     /* Line four in the field file */
+    /**/
     real p_ovun2;
+    /**/
     real p_val3;
+    /**/
     real valency_val;
+    /**/
     real p_val5;
+    /**/
     real rcore2;
+    /**/
     real ecore2;
+    /**/
     real acore2;
 };
 
@@ -547,44 +573,70 @@ struct single_body_parameters
 struct two_body_parameters
 {
     /* Bond Order parameters */
+    /**/
     real p_bo1;
+    /**/
     real p_bo2;
+    /**/
     real p_bo3;
+    /**/
     real p_bo4;
+    /**/
     real p_bo5;
+    /**/
     real p_bo6;
+    /**/
     real r_s;
+    /**/
     real r_p;
     /* r_o distances in BO formula */
     real r_pp;
+    /**/
     real p_boc3;
+    /**/
     real p_boc4;
+    /**/
     real p_boc5;
 
     /* Bond Energy parameters */
+    /**/
     real p_be1;
+    /**/
     real p_be2;
+    /**/
     real De_s;
+    /**/
     real De_p;
+    /**/
     real De_pp;
 
     /* Over/Under coordination parameters */
+    /**/
     real p_ovun1;
 
-    /* Van der Waal interaction parameters */
+    /* van der Waals interaction parameters */
+    /**/
     real D;
+    /**/
     real alpha;
+    /**/
     real r_vdW;
+    /**/
     real gamma_w;
+    /**/
     real rcore;
+    /**/
     real ecore;
+    /**/
     real acore;
 
     /* electrostatic parameters */
     /* note: this parameter is gamma^-3 and not gamma */
     real gamma;
 
+    /**/
     real v13cor;
+    /**/
     real ovc;
 };
 
@@ -594,14 +646,16 @@ struct three_body_parameters
 {
     /* valence angle */
     real theta_00;
+    /**/
     real p_val1;
+    /**/
     real p_val2;
+    /**/
     real p_val4;
+    /**/
     real p_val7;
-
     /* penalty */
     real p_pen1;
-
     /* 3-body conjugation */
     real p_coa1;
 };
@@ -609,7 +663,9 @@ struct three_body_parameters
 
 struct three_body_header
 {
+    /**/
     int cnt;
+    /**/
     three_body_parameters prm[MAX_3BODY_PARAM];
 };
 
@@ -617,9 +673,13 @@ struct three_body_header
 /* hydrogen-bond parameters */
 struct hbond_parameters
 {
+    /**/
     real r0_hb;
+    /**/
     real p_hb1;
+    /**/
     real p_hb2;
+    /**/
     real p_hb3;
 };
 
@@ -627,8 +687,11 @@ struct hbond_parameters
 /* 4-body parameters */
 struct four_body_parameters
 {
+    /**/
     real V1;
+    /**/
     real V2;
+    /**/
     real V3;
 
     /* torsion angle */
@@ -641,7 +704,9 @@ struct four_body_parameters
 
 struct four_body_header
 {
+    /**/
     int cnt;
+    /**/
     four_body_parameters prm[MAX_4BODY_PARAM];
 };
 
@@ -669,20 +734,20 @@ struct reax_atom
     ivec rel_map;
     /* string representation of element type of this atom */
     char name[9];
-    /* position of this atom (3D space) */
+    /* position of this atom (3D space), in Angstroms (1E-10 m) */
     rvec x;
-    /* velocity of this atom */
+    /* velocity of this atom, in Angstroms / ps */
     rvec v;
-    /* force acting on this atom */
+    /* force acting on this atom, in Da * Angstroms / ps^2 */
     rvec f;
-    /* charge on this atom */
+    /* charge on this atom, in Coulombs */
     real q;
 };
 
 
 struct simulation_box
 {
-    /* current volume of the simulation box */
+    /* current volume of the simulation box, in Angstroms^3 */
     real volume;
     /* smallest coordinates within the simulation box
      * (typically (0.0, 0.0, 0.0) by convention) */
@@ -696,16 +761,17 @@ struct simulation_box
     rvec box_norms;
     /* box proportions, used for isotrophic NPT */
     rvec side_prop;
-    /**/
+    /* 3D coordinate vectors defining the box dimensions */
     rtensor box;
-    /**/
+    /* inverse of tensor containing box coordinate vectors */
     rtensor box_inv;
     /* copy of previous simulation box tensor,
      * used for isotrphic NPT */
     rtensor old_box;
-    /**/
+    /* tensor containing translation vectors
+     * used in calculations for non-orthogonal simulation boxes */
     rtensor trans;
-    /**/
+    /* inverse of tensor containing translation vectors */
     rtensor trans_inv;
     /**/
     rtensor g;
@@ -1078,45 +1144,67 @@ struct simulation_data
     /* Hydrodynamic virial */
     rtensor virial;
 
+    /* total energy */
     real E_Tot;
-    real E_Kin;                      /* Total kinetic energy */
+    /* total kinetic energy */
+    real E_Kin;
+    /* total potential energy */
     real E_Pot;
 
-    real E_BE;                       /* Total bond energy */
-    real E_Ov;                       /* Total over coordination */
-    real E_Un;                       /* Total under coordination energy */
-    real E_Lp;                       /* Total under coordination energy */
-    real E_Ang;                      /* Total valance angle energy */
-    real E_Pen;                      /* Total penalty energy */
-    real E_Coa;                      /* Total three body conjgation energy */
-    real E_HB;                       /* Total Hydrogen bond energy */
-    real E_Tor;                      /* Total torsional energy */
-    real E_Con;                      /* Total four body conjugation energy */
-    real E_vdW;                      /* Total van der Waals energy */
-    real E_Ele;                      /* Total electrostatics energy */
-    real E_Pol;                      /* Polarization energy */
+    /* total bond energy */
+    real E_BE;
+    /* total over coordination energy */
+    real E_Ov;
+    /* total under coordination energy */
+    real E_Un;
+    /* total under coordination energy */
+    real E_Lp;
+    /* total valance angle energy */
+    real E_Ang;
+    /* total penalty energy */
+    real E_Pen;
+    /* total three body conjgation energy */
+    real E_Coa;
+    /* total Hydrogen bond energy */
+    real E_HB;
+    /* total torsional energy */
+    real E_Tor;
+    /* total four body conjugation energy */
+    real E_Con;
+    /* total van der Waals energy */
+    real E_vdW;
+    /* total electrostatics energy */
+    real E_Ele;
+    /* polarization energy */
+    real E_Pol;
 
-    real N_f;                        /* Number of degrees of freedom */
+    /* number of degrees of freedom */
+    real N_f;
+    /**/
     rvec t_scale;
+    /**/
     rtensor p_scale;
-    thermostat therm;                /* Used in Nose_Hoover method */
+    /* used in Nose-Hoover method */
+    thermostat therm;
+    /**/
     isotropic_barostat iso_bar;
+    /**/
     flexible_barostat flex_bar;
+    /**/
     real inv_W;
 
-    /* internal pressure */
-    rvec int_press;
 #if defined(_OPENMP)
-    /* local per thread contribution to external pressure */
-    rvec *ext_press_local;
+    /* local per thread virial contribution to pressure */
+    rtensor *press_local;
 #endif
-    /* external pressure */
-    rvec ext_press;
+    /* virial contribution to pressure */
+    rtensor press;
     /* kinetic energy contribution to pressure */
     real kin_press;
     /* total pressure */
     rvec tot_press;
 
+    /* struct containing timing of various simulation functions */
     reax_timing timing;
 };
 
@@ -1125,7 +1213,7 @@ struct three_body_interaction_data
 {
     /**/
     int thb;
-    /* pointer to the third body on the central atom's nbrlist */
+    /* index for the third body on the central atom's bond list */
     int pthb;
     /* valence angle, in degrees */
     real theta;
@@ -1248,7 +1336,7 @@ struct bond_data
 };
 
 
-/* compressed row storage (crs) format
+/* sparse matrix struct in compressed row storage (crs) format
  * See, e.g.,
  *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
  */
@@ -1442,9 +1530,10 @@ struct static_storage
     rvec *f_old;
     rvec *a; // used in integrators
 
-    real *CdDelta;  // coefficient of dDelta for force calculations
+    /* coefficient of dDelta for force calculations */
+    real *CdDelta;
 
-    /* Taper */
+    /* coefficients of Taper function applied to Coulomb interactions */
     real Tap[8];
 
     int *mark;
@@ -1562,7 +1651,9 @@ struct output_controls
 
     int restart_format;
     int restart_freq;
-    int energy_update_freq;
+    /* simulation step freqency at which log files are written
+     * (excluding trajectory and restart files) */
+    int log_update_freq;
 
     /* trajectory file pointer pointers */
     write_header_function write_header;

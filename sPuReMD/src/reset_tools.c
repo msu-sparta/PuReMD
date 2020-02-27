@@ -31,15 +31,14 @@ void Reset_Pressures( control_params *control, simulation_data *data )
 
     rtensor_MakeZero( data->flex_bar.P );
     data->iso_bar.P = 0.0;
-    rvec_MakeZero( data->int_press );
-    rvec_MakeZero( data->ext_press );
+    rtensor_MakeZero( data->press );
 #if defined(_OPENMP)
     if ( control->ensemble == sNPT || control->ensemble == iNPT
             || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
         for ( i = 0; i < control->num_threads; ++i )
         {
-            rvec_MakeZero( data->ext_press_local[i] );
+            rtensor_MakeZero( data->press_local[i] );
         }
     }
 #endif
