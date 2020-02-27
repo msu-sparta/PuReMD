@@ -52,23 +52,25 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
     int *hblist, hblist_size;
     int itr, top;
     ivec rel_jk;
-    real theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
+    real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
     rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
     rvec dvec_jk, force, ext_press;
     hbond_parameters *hbp;
     bond_order_data *bo_ij;
+    int nbr_jk;
+    reax_list *far_nbr_list, *bond_list, *hbond_list;
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
-    far_neighbor_data *nbr_jk;
 #if defined(DEBUG_FOCUS)
     int num_hb_intrs = 0;
 #endif
-    reax_list * const bond_list = lists[BONDS];
-    reax_list * const hbond_list = lists[HBONDS];
 
     hblist = NULL;
     hblist_size = 0;
+    far_nbr_list = lists[FAR_NBRS];
+    bond_list = lists[BONDS];
+    hbond_list = lists[HBONDS];
 
     /* loops below discover the Hydrogen bonds between i-j-k triplets.
      * here j is H atom and there has to be some bond between i and j.
@@ -77,7 +79,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
      * variables onto the ones in the handout.*/
     for ( j = 0; j < system->n; ++j )
     {
-        /* j has to be a hydrogen H */
+        /* j must be a hydrogen atom */
         if ( system->reax_param.sbp[system->my_atoms[j].type].p_hbond == H_ATOM )
         {
             type_j = system->my_atoms[j].type;
@@ -103,8 +105,8 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                 bo_ij = &pbond_ij->bo_data;
                 type_i = system->my_atoms[i].type;
 
-                if ( system->reax_param.sbp[type_i].p_hbond == H_BONDING_ATOM &&
-                        bo_ij->BO >= HB_THRESHOLD )
+                if ( system->reax_param.sbp[type_i].p_hbond == H_BONDING_ATOM
+                        && bo_ij->BO >= HB_THRESHOLD )
                 {
                     hblist[top++] = pi;
                 }
@@ -117,8 +119,10 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                 k = phbond_jk->nbr;
                 type_k = system->my_atoms[k].type;
                 nbr_jk = phbond_jk->ptr;
+                r_jk = far_nbr_list->far_nbr_list.d[nbr_jk];
 
-                rvec_Scale( dvec_jk, phbond_jk->scl, nbr_jk->dvec );
+                rvec_Scale( dvec_jk, phbond_jk->scl,
+                        far_nbr_list->far_nbr_list.dvec[nbr_jk] );
 
                 /* find matching hbond to atoms j and k */
                 for ( itr = 0; itr < top; ++itr )
@@ -131,6 +135,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                     {
                         bo_ij = &pbond_ij->bo_data;
                         type_i = system->my_atoms[i].type;
+                        r_ij = pbond_ij->d;
 			hbp = &system->reax_param.hbp[
                                 index_hbp(type_i, type_j, type_k, system->reax_param.num_atom_types) ];
 
@@ -138,29 +143,29 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                         ++num_hb_intrs;
 #endif
 
-                        Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, nbr_jk->d,
+                        Calculate_Theta( pbond_ij->dvec, r_ij, dvec_jk, r_jk,
                                 &theta, &cos_theta );
 
                         /* the derivative of cos(theta) */
-                        Calculate_dCos_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, nbr_jk->d,
+                        Calculate_dCos_Theta( pbond_ij->dvec, r_ij, dvec_jk, r_jk,
                                 &dcos_theta_di, &dcos_theta_dj, &dcos_theta_dk );
 
-                        /* hyrogen bond energy */
+                        /* hydrogen bond energy */
                         sin_theta2 = SIN( theta / 2.0 );
                         sin_xhz4 = SQR( sin_theta2 );
                         sin_xhz4 *= sin_xhz4;
                         cos_xhz1 = ( 1.0 - cos_theta );
                         exp_hb2 = EXP( -1.0 * hbp->p_hb2 * bo_ij->BO );
-                        exp_hb3 = EXP( -1.0 * hbp->p_hb3 * ( hbp->r0_hb / nbr_jk->d +
-                                    nbr_jk->d / hbp->r0_hb - 2.0 ) );
+                        exp_hb3 = EXP( -1.0 * hbp->p_hb3 * ( hbp->r0_hb / r_jk
+                                    + r_jk / hbp->r0_hb - 2.0 ) );
 
                         e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
                         data->my_en.e_hb += e_hb;
 
                         CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
                         CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
-                        CEhb3 = hbp->p_hb3 * (hbp->r0_hb / SQR(nbr_jk->d)
-                                + -1.0 / hbp->r0_hb) * e_hb;
+                        CEhb3 = hbp->p_hb3 * e_hb * (hbp->r0_hb / SQR( r_jk )
+                                + -1.0 / hbp->r0_hb);
 
                         /* hydrogen bond forces */
                         /* dbo term */
@@ -174,8 +179,8 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                             rvec_ScaledAdd( workspace->f[k], CEhb2, dcos_theta_dk );
 
                             /* dr terms */
-                            rvec_ScaledAdd( workspace->f[j], -1.0 * CEhb3 / nbr_jk->d, dvec_jk );
-                            rvec_ScaledAdd( workspace->f[k], CEhb3 / nbr_jk->d, dvec_jk );
+                            rvec_ScaledAdd( workspace->f[j], -1.0 * CEhb3 / r_jk, dvec_jk );
+                            rvec_ScaledAdd( workspace->f[k], CEhb3 / r_jk, dvec_jk );
                         }
                         else
                         {
@@ -189,31 +194,32 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
 
                             rvec_ScaledAdd( workspace->f[j], CEhb2, dcos_theta_dj );
 
-                            ivec_Scale( rel_jk, phbond_jk->scl, nbr_jk->rel_box );
+                            ivec_Scale( rel_jk, phbond_jk->scl,
+                                    far_nbr_list->far_nbr_list.rel_box[nbr_jk] );
                             rvec_Scale( force, CEhb2, dcos_theta_dk );
                             rvec_Add( workspace->f[k], force );
                             rvec_iMultiply( ext_press, rel_jk, force );
                             rvec_ScaledAdd( data->my_ext_press, 1.0, ext_press );
 
                             /* dr terms */
-                            rvec_ScaledAdd( workspace->f[j], -1.0 * CEhb3 / nbr_jk->d, dvec_jk );
+                            rvec_ScaledAdd( workspace->f[j], -1.0 * CEhb3 / r_jk, dvec_jk );
 
-                            rvec_Scale( force, CEhb3 / nbr_jk->d, dvec_jk );
+                            rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
                             rvec_Add( workspace->f[k], force );
                             rvec_iMultiply( ext_press, rel_jk, force );
                             rvec_ScaledAdd( data->my_ext_press, 1.0, ext_press );
                         }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                         fprintf( out_control->ehb,
                                  //"%6d%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                                  "%6d%6d%6d%12.4f%12.4f%12.4f%12.4f%12.4f\n",
                                  system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                  system->my_atoms[k].orig_id,
-                                 nbr_jk->d, theta, bo_ij->BO, e_hb, data->my_en.e_hb );
+                                 r_jk, theta, bo_ij->BO, e_hb, data->my_en.e_hb );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                         /* dbo term */
                         Add_dBO( system, lists, j, pi, CEhb1, workspace->f_hb );
 
@@ -223,8 +229,8 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                         rvec_ScaledAdd( workspace->f_hb[k], CEhb2, dcos_theta_dk );
 
                         /* dr terms */
-                        rvec_ScaledAdd( workspace->f_hb[j], -1.0 * CEhb3 / nbr_jk->d, dvec_jk );
-                        rvec_ScaledAdd( workspace->f_hb[k], CEhb3 / nbr_jk->d, dvec_jk );
+                        rvec_ScaledAdd( workspace->f_hb[j], -1.0 * CEhb3 / r_jk, dvec_jk );
+                        rvec_ScaledAdd( workspace->f_hb[k], CEhb3 / r_jk, dvec_jk );
 #endif
                     }
                 }

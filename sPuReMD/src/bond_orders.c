@@ -170,7 +170,6 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
         int *top )
 {
     int j, k, l, start_i, end_i, end_j;
-    rvec dDeltap_self, dBOp;
     reax_list *bond_list, *dBOs;
     bond_data *nbr_l, *nbr_k;
     bond_order_data *bo_ij;
@@ -198,29 +197,26 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
              * Note that they might also include i! */
             nbr_l = &bond_list->bond_list[l];
             top_dbo->wrt = nbr_l->nbr;
-            rvec_Copy( dBOp, nbr_l->bo_data.dBOp );
 
-            rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, dBOp );
-            rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );
-            rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );
+            rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, nbr_l->bo_data.dBOp );
+            rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, nbr_l->bo_data.dBOp );
+            rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, nbr_l->bo_data.dBOp );
 
             if ( nbr_l->nbr == i )
             {
-                rvec_Copy( dDeltap_self, workspace->dDeltap_self[i] );
-
                 /* dBO */
                 rvec_ScaledAdd( top_dbo->dBO, bo_ij->C1dbo, bo_ij->dBOp );
-                rvec_ScaledAdd( top_dbo->dBO, bo_ij->C2dbo, dDeltap_self );
+                rvec_ScaledAdd( top_dbo->dBO, bo_ij->C2dbo, workspace->dDeltap_self[i] );
 
                 /* dBOpi */
                 rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C1dbopi, bo_ij->dln_BOp_pi );
                 rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C2dbopi, bo_ij->dBOp );
-                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C3dbopi, dDeltap_self );
+                rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C3dbopi, workspace->dDeltap_self[i] );
 
                 /* dBOpp */
                 rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2 );
                 rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C2dbopi2, bo_ij->dBOp );
-                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, dDeltap_self );
+                rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, workspace->dDeltap_self[i] );
             }
 
             ++(*top);
@@ -229,11 +225,10 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
 
         /* Now we are processing neighbor k of i. */
         top_dbo->wrt = nbr_k->nbr;
-        rvec_Copy( dBOp, nbr_k->bo_data.dBOp );
 
-        rvec_Scale( top_dbo->dBO, -bo_ij->C2dbo, dBOp );      //dBO-2
-        rvec_Scale( top_dbo->dBOpi, -bo_ij->C3dbopi, dBOp );  //dBOpi-3
-        rvec_Scale( top_dbo->dBOpi2, -bo_ij->C3dbopi2, dBOp );//dBOpp-3
+        rvec_Scale( top_dbo->dBO, -bo_ij->C2dbo, nbr_k->bo_data.dBOp );      //dBO-2
+        rvec_Scale( top_dbo->dBOpi, -bo_ij->C3dbopi, nbr_k->bo_data.dBOp );  //dBOpi-3
+        rvec_Scale( top_dbo->dBOpi2, -bo_ij->C3dbopi2, nbr_k->bo_data.dBOp );//dBOpp-3
 
         if ( l < end_j && bond_list->bond_list[l].nbr == nbr_k->nbr )
         {
@@ -241,34 +236,31 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
             nbr_l = &bond_list->bond_list[l];
             rvec_Copy( dBOp, nbr_l->bo_data.dBOp );
 
-            rvec_ScaledAdd( top_dbo->dBO, -bo_ij->C3dbo, dBOp );      //dBO,3rd
-            rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );  //dBOpi,4th
-            rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );//dBOpp.4th
+            rvec_ScaledAdd( top_dbo->dBO, -bo_ij->C3dbo, nbr_l->bo_data.dBOp );      //dBO,3rd
+            rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C4dbopi, nbr_l->bo_data.dBOp );  //dBOpi,4th
+            rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C4dbopi2, nbr_l->bo_data.dBOp );//dBOpp.4th
             ++l;
         }
         else if ( k == pj )
         {
-            /* j is negihbor */
-            rvec_Copy( dDeltap_self, workspace->dDeltap_self[j] );
-
             /* 1st, dBO */
             rvec_ScaledAdd( top_dbo->dBO, -bo_ij->C1dbo, bo_ij->dBOp );
             /* 3rd, dBO */
-            rvec_ScaledAdd( top_dbo->dBO, bo_ij->C3dbo, dDeltap_self );
+            rvec_ScaledAdd( top_dbo->dBO, bo_ij->C3dbo, workspace->dDeltap_self[j] );
 
             /* dBOpi, 1st */
             rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C1dbopi, bo_ij->dln_BOp_pi );
             /* 2nd */
             rvec_ScaledAdd( top_dbo->dBOpi, -bo_ij->C2dbopi, bo_ij->dBOp );
             /* 4th */
-            rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C4dbopi, dDeltap_self );
+            rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C4dbopi, workspace->dDeltap_self[j] );
 
             /* dBOpi2, 1st */
             rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2 );
             /* 2nd */
             rvec_ScaledAdd( top_dbo->dBOpi2, -bo_ij->C2dbopi2, bo_ij->dBOp );
             /* 4th */
-            rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C4dbopi2, dDeltap_self );
+            rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C4dbopi2, workspace->dDeltap_self[j] );
         }
 
         ++(*top);
@@ -283,28 +275,25 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
         top_dbo->wrt = nbr_l->nbr;
         rvec_Copy( dBOp, nbr_l->bo_data.dBOp );
 
-        rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, dBOp );      //3rd, dBO
-        rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, dBOp );  //4th, dBOpi
-        rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, dBOp );//4th, dBOpp
+        rvec_Scale( top_dbo->dBO, -bo_ij->C3dbo, nbr_l->bo_data.dBOp );      //3rd, dBO
+        rvec_Scale( top_dbo->dBOpi, -bo_ij->C4dbopi, nbr_l->bo_data.dBOp );  //4th, dBOpi
+        rvec_Scale( top_dbo->dBOpi2, -bo_ij->C4dbopi2, nbr_l->bo_data.dBOp );//4th, dBOpp
 
         if ( nbr_l->nbr == i )
         {
-            /* do the adjustments on i */
-            rvec_Copy( dDeltap_self, workspace->dDeltap_self[i] );
-
             /* dBO, 1st */
             rvec_ScaledAdd( top_dbo->dBO, bo_ij->C1dbo, bo_ij->dBOp );
-            rvec_ScaledAdd( top_dbo->dBO, bo_ij->C2dbo, dDeltap_self ); //2nd, dBO
+            rvec_ScaledAdd( top_dbo->dBO, bo_ij->C2dbo, workspace->dDeltap_self[i] ); //2nd, dBO
 
             /* dBOpi, 1st */
             rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C1dbopi, bo_ij->dln_BOp_pi );
             rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C2dbopi, bo_ij->dBOp );  //2nd
-            rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C3dbopi, dDeltap_self ); //3rd
+            rvec_ScaledAdd( top_dbo->dBOpi, bo_ij->C3dbopi, workspace->dDeltap_self[i] ); //3rd
 
             /* dBOpipi, 1st */
             rvec_ScaledAdd(top_dbo->dBOpi2, bo_ij->C1dbopi2, bo_ij->dln_BOp_pi2);
             rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C2dbopi2, bo_ij->dBOp ); //2nd
-            rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, dDeltap_self );//3rd
+            rvec_ScaledAdd( top_dbo->dBOpi2, bo_ij->C3dbopi2, workspace->dDeltap_self[i] );//3rd
         }
 
         ++(*top);
@@ -573,39 +562,39 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
         f_k = &system->atoms[k].f;
 #endif
 
-        rvec_ScaledAdd( *f_k, -coef.C2dbo, nbr_k->bo_data.dBOp );
         /* 2nd, dBO */
-        rvec_ScaledAdd( *f_k, -coef.C2dDelta, nbr_k->bo_data.dBOp );
+        rvec_ScaledAdd( *f_k, -coef.C2dbo, nbr_k->bo_data.dBOp );
         /* dDelta */
-        rvec_ScaledAdd( *f_k, -coef.C3dbopi, nbr_k->bo_data.dBOp );
+        rvec_ScaledAdd( *f_k, -coef.C2dDelta, nbr_k->bo_data.dBOp );
         /* 3rd, dBOpi */
-        rvec_ScaledAdd( *f_k, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
+        rvec_ScaledAdd( *f_k, -coef.C3dbopi, nbr_k->bo_data.dBOp );
         /* 3rd, dBOpi2 */
+        rvec_ScaledAdd( *f_k, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
     }
 
+    /* 1st, dBO */
     rvec_ScaledAdd( *f_i, coef.C1dbo, bo_ij->dBOp );
-    /* 1st, dBO */
+    /* 2nd, dBO */
     rvec_ScaledAdd( *f_i, coef.C2dbo, workspace->dDeltap_self[i] );
-    /* 2nd, dBO */
 
-    rvec_ScaledAdd( *f_i, coef.C1dDelta, bo_ij->dBOp );
     /* 1st, dBO */
-    rvec_ScaledAdd( *f_i, coef.C2dDelta, workspace->dDeltap_self[i] );
+    rvec_ScaledAdd( *f_i, coef.C1dDelta, bo_ij->dBOp );
     /* 2nd, dBO */
+    rvec_ScaledAdd( *f_i, coef.C2dDelta, workspace->dDeltap_self[i] );
 
-    rvec_ScaledAdd( *f_i, coef.C1dbopi, bo_ij->dln_BOp_pi );
     /* 1st, dBOpi */
-    rvec_ScaledAdd( *f_i, coef.C2dbopi, bo_ij->dBOp );
+    rvec_ScaledAdd( *f_i, coef.C1dbopi, bo_ij->dln_BOp_pi );
     /* 2nd, dBOpi */
-    rvec_ScaledAdd( *f_i, coef.C3dbopi, workspace->dDeltap_self[i] );
+    rvec_ScaledAdd( *f_i, coef.C2dbopi, bo_ij->dBOp );
     /* 3rd, dBOpi */
+    rvec_ScaledAdd( *f_i, coef.C3dbopi, workspace->dDeltap_self[i] );
 
-    rvec_ScaledAdd( *f_i, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
     /* 1st, dBO_pi2 */
-    rvec_ScaledAdd( *f_i, coef.C2dbopi2, bo_ij->dBOp );
+    rvec_ScaledAdd( *f_i, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
     /* 2nd, dBO_pi2 */
-    rvec_ScaledAdd( *f_i, coef.C3dbopi2, workspace->dDeltap_self[i] );
+    rvec_ScaledAdd( *f_i, coef.C2dbopi2, bo_ij->dBOp );
     /* 3rd, dBO_pi2 */
+    rvec_ScaledAdd( *f_i, coef.C3dbopi2, workspace->dDeltap_self[i] );
 
     for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk )
     {
@@ -617,39 +606,39 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
         f_k = &system->atoms[k].f;
 #endif
 
-        rvec_ScaledAdd( *f_k, -coef.C3dbo, nbr_k->bo_data.dBOp );
         /* 3rd, dBO */
-        rvec_ScaledAdd( *f_k, -coef.C3dDelta, nbr_k->bo_data.dBOp );
+        rvec_ScaledAdd( *f_k, -coef.C3dbo, nbr_k->bo_data.dBOp );
         /* dDelta */
-        rvec_ScaledAdd( *f_k, -coef.C4dbopi, nbr_k->bo_data.dBOp );
+        rvec_ScaledAdd( *f_k, -coef.C3dDelta, nbr_k->bo_data.dBOp );
         /* 4th, dBOpi */
-        rvec_ScaledAdd( *f_k, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
+        rvec_ScaledAdd( *f_k, -coef.C4dbopi, nbr_k->bo_data.dBOp );
         /* 4th, dBOpi2 */
+        rvec_ScaledAdd( *f_k, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
     }
 
+    /* 1st, dBO */
     rvec_ScaledAdd( *f_j, -coef.C1dbo, bo_ij->dBOp );
-    /* 1st, dBO */
+    /* 2nd, dBO */
     rvec_ScaledAdd( *f_j, coef.C3dbo, workspace->dDeltap_self[j] );
-    /* 2nd, dBO */
 
-    rvec_ScaledAdd( *f_j, -coef.C1dDelta, bo_ij->dBOp );
     /* 1st, dBO */
-    rvec_ScaledAdd( *f_j, coef.C3dDelta, workspace->dDeltap_self[j] );
+    rvec_ScaledAdd( *f_j, -coef.C1dDelta, bo_ij->dBOp );
     /* 2nd, dBO */
+    rvec_ScaledAdd( *f_j, coef.C3dDelta, workspace->dDeltap_self[j] );
 
-    rvec_ScaledAdd( *f_j, -coef.C1dbopi, bo_ij->dln_BOp_pi );
     /* 1st, dBOpi */
-    rvec_ScaledAdd( *f_j, -coef.C2dbopi, bo_ij->dBOp );
+    rvec_ScaledAdd( *f_j, -coef.C1dbopi, bo_ij->dln_BOp_pi );
     /* 2nd, dBOpi */
-    rvec_ScaledAdd( *f_j, coef.C4dbopi, workspace->dDeltap_self[j] );
+    rvec_ScaledAdd( *f_j, -coef.C2dbopi, bo_ij->dBOp );
     /* 3rd, dBOpi */
+    rvec_ScaledAdd( *f_j, coef.C4dbopi, workspace->dDeltap_self[j] );
 
-    rvec_ScaledAdd( *f_j, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
     /* 1st, dBOpi2 */
-    rvec_ScaledAdd( *f_j, -coef.C2dbopi2, bo_ij->dBOp );
+    rvec_ScaledAdd( *f_j, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
     /* 2nd, dBOpi2 */
-    rvec_ScaledAdd( *f_j, coef.C4dbopi2, workspace->dDeltap_self[j] );
+    rvec_ScaledAdd( *f_j, -coef.C2dbopi2, bo_ij->dBOp );
     /* 3rd, dBOpi2 */
+    rvec_ScaledAdd( *f_j, coef.C4dbopi2, workspace->dDeltap_self[j] );
 }
 
 
@@ -1031,7 +1020,7 @@ void BO( reax_system *system, control_params *control,
                 else
                 {
                     /* We only need to update bond orders from bo_ji
-                       everything else is set in uncorrected_bo calculations */
+                     * everything else is set in uncorrected_bo calculations */
                     sym_index = bond_list->bond_list[pj].sym_index;
 
                     bo_ij = &bond_list->bond_list[ pj ].bo_data;
@@ -1057,7 +1046,7 @@ void BO( reax_system *system, control_params *control,
 #endif
 
         /* Calculate some helper variables that are  used at many places
-           throughout force calculations */
+         * throughout force calculations */
 #if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif

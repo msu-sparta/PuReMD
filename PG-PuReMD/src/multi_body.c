@@ -49,24 +49,25 @@ void Atom_Energy( reax_system * const system, control_params * const control,
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
-    real p_lp2;
-    const real p_lp3 = system->reax_param.gp.l[5];
-    real p_ovun2;
-    const real p_ovun3 = system->reax_param.gp.l[32];
-    const real p_ovun4 = system->reax_param.gp.l[31];
-    real p_ovun5;
-    const real p_ovun6 = system->reax_param.gp.l[6];
-    const real p_ovun7 = system->reax_param.gp.l[8];
-    const real p_ovun8 = system->reax_param.gp.l[9];
+    real p_lp1, p_lp2, p_lp3;
+    real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
     single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     bond_data *pbond;
     bond_order_data *bo_ij;
-    reax_list * const bond_list = lists[BONDS];
+    reax_list *bond_list;
+
+    bond_list = lists[BONDS];
+    p_lp1 = system->reax_param.gp.l[15];
+    p_lp3 = system->reax_param.gp.l[5];
+    p_ovun3 = system->reax_param.gp.l[32];
+    p_ovun4 = system->reax_param.gp.l[31];
+    p_ovun6 = system->reax_param.gp.l[6];
+    p_ovun7 = system->reax_param.gp.l[8];
+    p_ovun8 = system->reax_param.gp.l[9];
 
     for ( i = 0; i < system->n; ++i )
     {
-        /* set the parameter pointer */
         type_i = system->my_atoms[i].type;
         sbp_i = &system->reax_param.sbp[ type_i ];
 
@@ -85,22 +86,21 @@ void Atom_Energy( reax_system * const system, control_params * const control,
 
         workspace->CdDelta[i] += CElp;  // lp - 1st term
 
-#ifdef TEST_ENERGY
-//  fprintf( out_control->elp, "%24.15e%24.15e%24.15e%24.15e\n",
-//       p_lp2, workspace->Delta_lp_temp[i], expvd2, dElp );
-//  fprintf( out_control->elp, "%6d%24.15e%24.15e%24.15e\n",
-        fprintf( out_control->elp, "%6d%12.4f%12.4f%12.4f\n",
-                 system->my_atoms[i].orig_id, workspace->nlp[i],
-                 e_lp, data->my_en.e_lp );
+#if defined(TEST_ENERGY)
+        fprintf( out_control->elp, "%23.15e%23.15e%23.15e%23.15e\n",
+                 p_lp2, workspace->Delta_lp_temp[i], expvd2, dElp );
+        fprintf( out_control->elp, "%6d%23.15e%23.15e%23.15e\n",
+                 workspace->orig_id[i] + 1, workspace->nlp[i], e_lp, data->my_en.e_lp );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
         Add_dDelta( system, lists, i, CElp, workspace->f_lp );  // lp - 1st term
 #endif
 
         /* correction for C2 */
-        if ( system->reax_param.gp.l[5] > 0.001 &&
-                strncmp( system->reax_param.sbp[type_i].name, "C", 15 ) != 0 )
+        if ( system->reax_param.gp.l[5] > 0.001
+                && strncmp( system->reax_param.sbp[type_i].name, "C",
+                    sizeof(system->reax_param.sbp[type_i].name) ) == 0 )
         {
             for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
             {
@@ -110,7 +110,8 @@ void Atom_Energy( reax_system * const system, control_params * const control,
                     j = bond_list->bond_list[pj].nbr;
                     type_j = system->my_atoms[j].type;
 
-                    if ( strncmp( system->reax_param.sbp[type_j].name, "C", 15 ) != 0 )
+                    if ( strncmp( system->reax_param.sbp[type_j].name, "C",
+                                sizeof(system->reax_param.sbp[type_j].name) ) == 0 )
                     {
                         twbp = &system->reax_param.tbp[
                             index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
@@ -125,18 +126,18 @@ void Atom_Energy( reax_system * const system, control_params * const control,
 
                             deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                             deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
-                                * (-1.0 - 0.16 * POW(Di, 3.));
+                                * (-1.0 - 0.16 * POW(Di, 3.0));
 
                             bo_ij->Cdbo += deahu2dbo;
                             workspace->CdDelta[i] += deahu2dsbo;
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                             fprintf( out_control->elp, "C2cor%6d%6d%12.6f%12.6f%12.6f\n",
                                     system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                     e_lph, deahu2dbo, deahu2dsbo );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                             Add_dBO(system, lists, i, pj, deahu2dbo, workspace->f_lp);
                             Add_dDelta(system, lists, i, deahu2dsbo, workspace->f_lp);
 #endif
@@ -181,14 +182,14 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         }
 
         exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );
-        inv_exp_ovun1 = 1.0 / (1 + exp_ovun1);
+        inv_exp_ovun1 = 1.0 / (1.0 + exp_ovun1);
         Delta_lpcorr = workspace->Delta[i]
             - (dfvl * workspace->Delta_lp_temp[i]) * inv_exp_ovun1;
 
         exp_ovun2 = EXP( p_ovun2 * Delta_lpcorr );
         inv_exp_ovun2 = 1.0 / (1.0 + exp_ovun2);
 
-        DlpVi = 1.0 / (Delta_lpcorr + sbp_i->valency + 1e-8);
+        DlpVi = 1.0 / (Delta_lpcorr + sbp_i->valency + 1.0e-8);
         CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
         e_ov = sum_ovun1 * CEover1;
@@ -226,7 +227,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         workspace->CdDelta[i] += CEover3;   // OvCoor - 2nd term
         workspace->CdDelta[i] += CEunder3;  // UnCoor - 1st term
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
         Add_dDelta( system, lists, i, CEover3, workspace->f_ov ); // OvCoor 2nd
         Add_dDelta( system, lists, i, CEunder3, workspace->f_un ); // UnCoor 1st
 #endif
@@ -237,7 +238,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
             j = pbond->nbr;
             bo_ij = &pbond->bo_data;
             twbp  = &system->reax_param.tbp[
-                index_tbp(system->my_atoms[i].type, system->my_atoms[pbond->nbr].type,
+                index_tbp(system->my_atoms[i].type, system->my_atoms[j].type,
                         system->reax_param.num_atom_types) ];
 
             bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st
@@ -248,7 +249,6 @@ void Atom_Energy( reax_system * const system, control_params * const control,
             bo_ij->Cdbopi2 += CEover4 * (workspace->Delta[j] - dfvl
                     * workspace->Delta_lp_temp[j]); // OvCoor-3b
 
-
             workspace->CdDelta[j] += CEunder4 * (1.0 - dfvl * workspace->dDelta_lp[j])
                 * (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
             bo_ij->Cdbopi += CEunder4 * (workspace->Delta[j] - dfvl
@@ -256,7 +256,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
             bo_ij->Cdbopi2 += CEunder4 * (workspace->Delta[j] - dfvl
                     * workspace->Delta_lp_temp[j]); // UnCoor-2b
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
             /*    fprintf( out_control->eov, "%6d%12.6f\n",
                        workspace->reverse_map[j],
                        // CEover1 * twbp->p_ovun1 * twbp->De_s, CEover3,
@@ -276,7 +276,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
             // CEunder4 * (workspace->Delta[j] - workspace->Delta_lp[j]) );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
             Add_dBO( system, lists, i, pj, CEover1 * twbp->p_ovun1 * twbp->De_s,
                      workspace->f_ov ); // OvCoor - 1st term
 
@@ -306,7 +306,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
 #endif
         }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
         //fprintf( out_control->elp, "%6d%24.15e%24.15e%24.15e\n",
         //fprintf( out_control->elp, "%6d%12.4f%12.4f%12.4f\n",
         //     system->my_atoms[i].orig_id, workspace->nlp[i],

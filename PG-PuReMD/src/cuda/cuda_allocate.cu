@@ -126,18 +126,20 @@ void Cuda_Allocate_Grid( reax_system *system )
 
 void Cuda_Deallocate_Grid_Cell_Atoms( reax_system *system )
 {
-    int total;
+    int i, total;
     grid_cell local_cell;
-    grid *host = &system->my_grid;
-    grid *device = &system->d_my_grid;
+    grid *host, *device;
 
+    host = &system->my_grid;
+    device = &system->d_my_grid;
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
 
-    for (int i = 0; i < total; i++)
+    for ( i = 0; i < total; ++i )
     {
         copy_host_device( &local_cell, &device->cells[i], 
                 sizeof(grid_cell), cudaMemcpyDeviceToHost,
                 "Cuda_Deallocate_Grid_Cell_Atoms::grid" );
+
         cuda_free( local_cell.atoms,
                 "Cuda_Deallocate_Grid_Cell_Atoms::grid_cell.atoms" );
     }
@@ -148,12 +150,13 @@ void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, int cap )
 {
     int i, total;
     grid_cell local_cell;
-    grid *host = &system->my_grid;
-    grid *device = &system->d_my_grid;
+    grid *host, *device;
 
+    host = &system->my_grid;
+    device = &system->d_my_grid;
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
 
-    for (i = 0; i < total; i++)
+    for ( i = 0; i < total; i++ )
     {
         copy_host_device( &local_cell, &device->cells[i], 
                 sizeof(grid_cell), cudaMemcpyDeviceToHost, "grid:cell-dealloc" );
@@ -378,35 +381,48 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
     cuda_malloc( (void **) &workspace->bond_mark, total_real, TRUE, "bond_mark" );
 
     /* charge matrix storage */
-    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
         cuda_malloc( (void **) &workspace->Hdia_inv, total_cap * sizeof(real), TRUE, "Hdia_inv" );
     }
     cuda_malloc( (void **) &workspace->b_s, total_cap * sizeof(real), TRUE, "b_s" );
     cuda_malloc( (void **) &workspace->b_t, total_cap * sizeof(real), TRUE, "b_t" );
-    cuda_malloc( (void **) &workspace->b_prc, total_cap * sizeof(real), TRUE, "b_prc" );
-    cuda_malloc( (void **) &workspace->b_prm, total_cap * sizeof(real), TRUE, "b_prm" );
     cuda_malloc( (void **) &workspace->s, total_cap * sizeof(real), TRUE, "s" );
     cuda_malloc( (void **) &workspace->t, total_cap * sizeof(real), TRUE, "t" );
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
-            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         cuda_malloc( (void **) &workspace->droptol, total_cap * sizeof(real), TRUE, "droptol" );
     }
+#if defined(DUAL_SOLVER)
     cuda_malloc( (void **) &workspace->b, total_cap * sizeof(rvec2), TRUE, "b" );
     cuda_malloc( (void **) &workspace->x, total_cap * sizeof(rvec2), TRUE, "x" );
+#endif
 
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
     case GMRES_H_S:
-        cuda_malloc( (void **) &workspace->y, (RESTART+1)*sizeof(real), TRUE, "y" );
-        cuda_malloc( (void **) &workspace->z, (RESTART+1)*sizeof(real), TRUE, "z" );
-        cuda_malloc( (void **) &workspace->g, (RESTART+1)*sizeof(real), TRUE, "g" );
-        cuda_malloc( (void **) &workspace->h, (RESTART+1)*(RESTART+1)*sizeof(real), TRUE, "h" );
-        cuda_malloc( (void **) &workspace->hs, (RESTART+1)*sizeof(real), TRUE, "hs" );
-        cuda_malloc( (void **) &workspace->hc, (RESTART+1)*sizeof(real), TRUE, "hc" );
-        cuda_malloc( (void **) &workspace->v, (RESTART+1)*(RESTART+1)*sizeof(real), TRUE, "v" );
+        cuda_malloc( (void **) &workspace->b_prc,
+                total_cap * sizeof(real), TRUE, "b_prc" );
+        cuda_malloc( (void **) &workspace->b_prm,
+                total_cap * sizeof(real), TRUE, "b_prm" );
+        cuda_malloc( (void **) &workspace->y,
+                (RESTART + 1) * sizeof(real), TRUE, "y" );
+        cuda_malloc( (void **) &workspace->z,
+                (RESTART + 1) * sizeof(real), TRUE, "z" );
+        cuda_malloc( (void **) &workspace->g,
+                (RESTART + 1) * sizeof(real), TRUE, "g" );
+        cuda_malloc( (void **) &workspace->h,
+                (RESTART + 1) * (RESTART + 1) * sizeof(real), TRUE, "h" );
+        cuda_malloc( (void **) &workspace->hs,
+                (RESTART + 1) * sizeof(real), TRUE, "hs" );
+        cuda_malloc( (void **) &workspace->hc,
+                (RESTART + 1) * sizeof(real), TRUE, "hc" );
+        cuda_malloc( (void **) &workspace->v,
+                (RESTART + 1) * (RESTART + 1) * sizeof(real), TRUE, "v" );
         break;
 
     case SDM_S:
@@ -417,10 +433,12 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
         cuda_malloc( (void **) &workspace->d, total_cap * sizeof(real), TRUE, "d" );
         cuda_malloc( (void **) &workspace->q, total_cap * sizeof(real), TRUE, "q" );
         cuda_malloc( (void **) &workspace->p, total_cap * sizeof(real), TRUE, "p" );
+#if defined(DUAL_SOLVER)
         cuda_malloc( (void **) &workspace->r2, total_cap * sizeof(rvec2), TRUE, "r2" );
         cuda_malloc( (void **) &workspace->d2, total_cap * sizeof(rvec2), TRUE, "d2" );
         cuda_malloc( (void **) &workspace->q2, total_cap * sizeof(rvec2), TRUE, "q2" );
         cuda_malloc( (void **) &workspace->p2, total_cap * sizeof(rvec2), TRUE, "p2" );
+#endif
         break;
 
     default:
@@ -496,28 +514,32 @@ void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
     cuda_free( workspace->bond_mark, "bond_mark" );
 
     /* charge matrix storage */
-    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
         cuda_free( workspace->Hdia_inv, "Hdia_inv" );
     }
     cuda_free( workspace->b_s, "b_s" );
     cuda_free( workspace->b_t, "b_t" );
-    cuda_free( workspace->b_prc, "b_prc" );
-    cuda_free( workspace->b_prm, "b_prm" );
     cuda_free( workspace->s, "s" );
     cuda_free( workspace->t, "t" );
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
-            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         cuda_free( workspace->droptol, "droptol" );
     }
+#if defined(DUAL_SOLVER)
     cuda_free( workspace->b, "b" );
     cuda_free( workspace->x, "x" );
+#endif
 
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
     case GMRES_H_S:
+        cuda_free( workspace->b_prc, "b_prc" );
+        cuda_free( workspace->b_prm, "b_prm" );
         cuda_free( workspace->y, "y" );
         cuda_free( workspace->z, "z" );
         cuda_free( workspace->g, "g" );
@@ -535,10 +557,12 @@ void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
         cuda_free( workspace->d, "d" );
         cuda_free( workspace->q, "q" );
         cuda_free( workspace->p, "p" );
+#if defined(DUAL_SOLVER)
         cuda_free( workspace->r2, "r2" );
         cuda_free( workspace->d2, "d2" );
         cuda_free( workspace->q2, "q2" );
         cuda_free( workspace->p2, "p2" );
+#endif
         break;
 
     default:
@@ -585,11 +609,13 @@ void Cuda_Allocate_Matrix( sparse_matrix *H, int n, int m )
     H->n = n;
 
     cuda_malloc( (void **) &H->start, sizeof(int) * n, TRUE,
-            "Cuda_Allocate_Matrix::start" );
+            "Cuda_Allocate_Matrix::H->start" );
     cuda_malloc( (void **) &H->end, sizeof(int) * n, TRUE,
-            "Cuda_Allocate_Matrix::end" );
-    cuda_malloc( (void **) &H->entries, sizeof(sparse_matrix_entry) * m, TRUE,
-            "Cuda_Allocate_Matrix::entries" );
+            "Cuda_Allocate_Matrix::H->end" );
+    cuda_malloc( (void **) &H->j, sizeof(int) * m, TRUE,
+            "Cuda_Allocate_Matrix::H->j" );
+    cuda_malloc( (void **) &H->val, sizeof(real) * m, TRUE,
+            "Cuda_Allocate_Matrix::H->val" );
 }
 
 
@@ -597,7 +623,8 @@ void Cuda_Deallocate_Matrix( sparse_matrix *H )
 {
     cuda_free( H->start, "Cuda_Deallocate_Matrix::start" );
     cuda_free( H->end, "Cuda_Deallocate_Matrix::end" );
-    cuda_free( H->entries, "Cuda_Deallocate_Matrix::entries" );
+    cuda_free( H->j, "Cuda_Deallocate_Matrix::j" );
+    cuda_free( H->val, "Cuda_Deallocate_Matrix::val" );
 }
 
 

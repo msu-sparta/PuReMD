@@ -309,11 +309,6 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
 
         verlet_part1_done = TRUE;
 
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
         if ( renbr )
         {
             Update_Grid( system, control, mpi_data->world );
@@ -323,7 +318,6 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
         Sync_Atoms( system );
 
-        /* sync grid to device */
         Sync_Grid( &system->my_grid, &system->d_my_grid );
 
         Cuda_Init_Block_Sizes( system, control );

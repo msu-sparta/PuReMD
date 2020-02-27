@@ -25,11 +25,11 @@
 #include "../reax_types.h"
 
 
-CUDA_GLOBAL void Cuda_Atom_Energy( reax_atom *, global_parameters,
+CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *, global_parameters,
         single_body_parameters *, two_body_parameters *, storage,
         reax_list, int, int, real *, real *, real *);
 
-CUDA_GLOBAL void Cuda_Atom_Energy_PostProcess( reax_list, storage, int );
+CUDA_GLOBAL void Cuda_Atom_Energy_Part2( reax_list, storage, int );
 
 
 #endif

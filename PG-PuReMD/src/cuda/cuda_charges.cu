@@ -21,19 +21,20 @@
 
 #include "cuda_charges.h"
 
-#include "cuda_lin_alg.h"
 #include "cuda_reduction.h"
+#include "cuda_spar_lin_alg.h"
 #include "cuda_utils.h"
 
 #include "../basic_comm.h"
+#include "../charges.h"
 
 
-CUDA_GLOBAL void k_init_matvec( reax_atom *my_atoms, single_body_parameters
-        *sbp, storage p_workspace, int n  )
+//TODO: move k_jacob and jacboi to cuda_lin_alg.cu
+CUDA_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp,
+        storage workspace, int n  )
 {
     int i;
-    storage *workspace;
-    reax_atom *atom;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -42,31 +43,20 @@ CUDA_GLOBAL void k_init_matvec( reax_atom *my_atoms, single_body_parameters
         return;
     }
 
-    workspace = &p_workspace;
-    atom = &my_atoms[i];
-
-    /* init pre-conditioner for H and init solution vectors */
-    workspace->Hdia_inv[i] = 1. / sbp[ atom->type ].eta;
-    workspace->b_s[i] = -sbp[ atom->type ].chi;
-    workspace->b_t[i] = -1.0;
-    workspace->b[i][0] = -sbp[ atom->type ].chi;
-    workspace->b[i][1] = -1.0;
-
-    workspace->x[i][1] = atom->t[2] + 3 * ( atom->t[0] - atom->t[1] );
-
-    /* cubic extrapolation for s and t */
-    workspace->x[i][0] = 4*(atom->s[0]+atom->s[2])-(6*atom->s[1]+atom->s[3]);
+    workspace.Hdia_inv[i] = 1.0 / sbp[ my_atoms[i].type ].eta;
 }
 
 
-void Cuda_Init_MatVec( reax_system *system, storage *workspace )
+
+static void jacobi( reax_system const * const system,
+        storage const * const workspace )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    k_init_matvec <<< blocks, DEF_BLOCK_SIZE >>>
+    k_jacobi <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->n );
     cudaDeviceSynchronize();
@@ -74,36 +64,222 @@ void Cuda_Init_MatVec( reax_system *system, storage *workspace )
 }
 
 
-void cuda_charges_x( reax_system *system, control_params *control, storage *workspace, rvec2 my_sum )
+CUDA_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp, control_params const * const control,
+        storage workspace, int n  )
+{
+    int i;
+    real s_tmp, t_tmp;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
+    {
+        return;
+    }
+
+    /* RHS vectors for linear system */
+    workspace.b_s[i] = -sbp[ my_atoms[i].type ].chi;
+    workspace.b_t[i] = -1.0;
+#if defined(DUAL_SOLVER)
+    workspace.b[i][0] = -sbp[ my_atoms[i].type ].chi;
+    workspace.b[i][1] = -1.0;
+#endif
+
+    /* no extrapolation, previous solution as initial guess */
+    if ( control->cm_init_guess_extrap1 == 0 )
+    {
+        s_tmp = my_atoms[i].s[0];
+    }
+    /* linear */
+    else if ( control->cm_init_guess_extrap1 == 1 )
+    {
+        s_tmp = 2.0 * my_atoms[i].s[0] - my_atoms[i].s[1];
+    }
+    /* quadratic */
+    else if ( control->cm_init_guess_extrap1 == 2 )
+    {
+        s_tmp = my_atoms[i].s[2] + 3.0 * (my_atoms[i].s[0] - my_atoms[i].s[1]);
+    }
+    /* cubic */
+    else if ( control->cm_init_guess_extrap1 == 3 )
+    {
+        s_tmp = 4.0 * (my_atoms[i].s[0] + my_atoms[i].s[2])
+            - (6.0 * my_atoms[i].s[1] + my_atoms[i].s[3]);
+    }
+    else
+    {
+        s_tmp = 0.0;
+    }
+
+    /* no extrapolation, previous solution as initial guess */
+    if ( control->cm_init_guess_extrap1 == 0 )
+    {
+        t_tmp = my_atoms[i].t[0];
+    }
+    /* linear */
+    else if ( control->cm_init_guess_extrap1 == 1 )
+    {
+        t_tmp = 2.0 * my_atoms[i].t[0] - my_atoms[i].t[1];
+    }
+    /* quadratic */
+    else if ( control->cm_init_guess_extrap1 == 2 )
+    {
+        t_tmp = my_atoms[i].t[2] + 3.0 * (my_atoms[i].t[0] - my_atoms[i].t[1]);
+    }
+    /* cubic */
+    else if ( control->cm_init_guess_extrap1 == 3 )
+    {
+        t_tmp = 4.0 * (my_atoms[i].t[0] + my_atoms[i].t[2])
+            - (6.0 * my_atoms[i].t[1] + my_atoms[i].t[3]);
+    }
+    else
+    {
+        t_tmp = 0.0;
+    }
+
+#if defined(DUAL_SOLVER)
+    workspace.x[i][0] = s_tmp;
+    workspace.x[i][1] = t_tmp;
+#else
+    workspace.s[i] = s_tmp;
+    workspace.t[i] = t_tmp;
+#endif
+}
+
+
+static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
+        control_params const * const control,
+        simulation_data const * const data,
+        storage const * const workspace,
+        mpi_datatypes const * const mpi_data )
 {
     int blocks;
-    rvec2 *output = (rvec2 *) workspace->scratch;
-
-    cuda_memset( output, 0, sizeof(rvec2) * 2 * system->n, "cuda_charges_x:q" );
 
     blocks = system->n / DEF_BLOCK_SIZE
         + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
-        ( workspace->d_workspace->x, output, system->n );
-    cudaDeviceSynchronize( );
-    cudaCheckError( );
-
-    k_reduction_rvec2 <<< 1, control->blocks_pow_2, sizeof(rvec2) * control->blocks_pow_2 >>>
-        ( output, output + system->n, blocks );
-    cudaDeviceSynchronize( );
-    cudaCheckError( );
-
-    copy_host_device( my_sum, output + system->n,
-            sizeof(rvec2), cudaMemcpyDeviceToHost, "charges:x" );
+    k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, system->reax_param.d_sbp, 
+          (control_params *)control->d_control_params,
+          *(workspace->d_workspace), system->n );
+    cudaDeviceSynchronize();
+    cudaCheckError();
 }
 
 
-CUDA_GLOBAL void k_calculate_st( reax_atom *my_atoms, storage p_workspace, 
-        real u, real *q, int n )
+static void Spline_Extrapolate_Charges_EE( reax_system const * const system,
+        control_params const * const control,
+        simulation_data const * const data,
+        storage const * const workspace,
+        mpi_datatypes const * const mpi_data )
 {
-    storage *workspace;
-    reax_atom *atom;
+}
+
+
+static void Setup_Preconditioner_QEq( reax_system const * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        mpi_datatypes * const mpi_data )
+{
+    real time, t_sort, t_pc, total_sort, total_pc;
+
+    switch ( control->cm_solver_pre_comp_type )
+    {
+        case NONE_PC:
+            break;
+
+        case JACOBI_PC:
+            break;
+
+        case ICHOLT_PC:
+        case ILUT_PC:
+        case ILUTP_PC:
+        case FG_ILUT_PC:
+            fprintf( stderr, "[ERROR] Unsupported preconditioner computation method (%d). Terminating...\n",
+                   control->cm_solver_pre_comp_type );
+            exit( INVALID_INPUT );
+            break;
+
+        case SAI_PC:
+//            t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data,
+//                    &workspace->H, &workspace->H_spar_patt, 
+//                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
+//
+//            MPI_Reduce( &t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM,
+//                    MASTER_NODE, mpi_data->world );
+//            MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM,
+//                    MASTER_NODE, mpi_data->world );
+//
+//            if ( system->my_rank == MASTER_NODE )
+//            {
+//                data->timing.cm_sort += total_sort / control->nprocs;
+//                data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+//            }
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
+                   control->cm_solver_pre_comp_type );
+            exit( INVALID_INPUT );
+            break;
+    }
+}
+
+
+static void Setup_Preconditioner_EE( reax_system const * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        mpi_datatypes const * const mpi_data )
+{
+}
+
+
+static void Setup_Preconditioner_ACKS2( reax_system const * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        mpi_datatypes const * const mpi_data )
+{
+}
+
+
+static void Compute_Preconditioner_QEq( reax_system const * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        mpi_datatypes const * const mpi_data )
+{
+    int i;
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+    real t_pc, total_pc;
+#endif
+
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+    {
+        jacobi( system, workspace );
+    }
+    else if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+//        t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
+//                &workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
+//
+//        MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+//
+//        if( system->my_rank == MASTER_NODE )
+//        {
+//            data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+//        }
+#else
+        fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
+        exit( INVALID_INPUT );
+#endif
+    }
+}
+
+
+CUDA_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
+        storage workspace, real u, real *q, int n )
+{
     int i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -113,50 +289,56 @@ CUDA_GLOBAL void k_calculate_st( reax_atom *my_atoms, storage p_workspace,
         return;
     }
 
-    workspace = &p_workspace;
-    atom = &my_atoms[i];
+#if defined(DUAL_SOLVER)
+    my_atoms[i].q = workspace.x[i][0] - u * workspace.x[i][1];
+#else
+    my_atoms[i].q = workspace.s[i] - u * workspace.t[i];
+#endif
+    q[i] = my_atoms[i].q;
 
-    //atom->q = workspace->s[i] - u * workspace->t[i];
-    q[i] = atom->q = workspace->x[i][0] - u * workspace->x[i][1];
+    my_atoms[i].s[3] = my_atoms[i].s[2];
+    my_atoms[i].s[2] = my_atoms[i].s[1];
+    my_atoms[i].s[1] = my_atoms[i].s[0];
+#if defined(DUAL_SOLVER)
+    my_atoms[i].s[0] = workspace.x[i][0];
+#else
+    my_atoms[i].s[0] = workspace.s[i];
+#endif
 
-    atom->s[3] = atom->s[2];
-    atom->s[2] = atom->s[1];
-    atom->s[1] = atom->s[0];
-    //atom->s[0] = workspace->s[i];
-    atom->s[0] = workspace->x[i][0];
-
-    atom->t[3] = atom->t[2];
-    atom->t[2] = atom->t[1];
-    atom->t[1] = atom->t[0];
-    //atom->t[0] = workspace->t[i];
-    atom->t[0] = workspace->x[i][1];
+    my_atoms[i].t[3] = my_atoms[i].t[2];
+    my_atoms[i].t[2] = my_atoms[i].t[1];
+    my_atoms[i].t[1] = my_atoms[i].t[0];
+#if defined(DUAL_SOLVER)
+    my_atoms[i].t[0] = workspace.x[i][1];
+#else
+    my_atoms[i].t[0] = workspace.t[i];
+#endif
 }
 
 
-extern "C" void cuda_charges_st( reax_system *system, storage *workspace,
-        real *output, real u )
+static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
+        storage * const workspace, real * const q, real u )
 {
     int blocks;
-    real *tmp = (real *) workspace->scratch;
-    real *tmp_output = (real *) workspace->host_scratch;
-
-    cuda_memset( tmp, 0, sizeof(real) * system->n, "charges:q" );
-    memset( tmp_output, 0, sizeof(real) * system->n );
+    real *spad;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+    spad = (real *) workspace->scratch;
+    cuda_memset( spad, 0, sizeof(real) * system->n, "Extrapolate_Charges_QEq_Part2::q" );
 
-    k_calculate_st <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, *(workspace->d_workspace), u, tmp, system->n);
+    k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n);
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    copy_host_device( output, tmp, sizeof(real) * system->n, 
-            cudaMemcpyDeviceToHost, "charges:q" );
+    copy_host_device( q, spad, sizeof(real) * system->n, 
+            cudaMemcpyDeviceToHost, "Extrapolate_Charges_QEq_Part2::q" );
 }
 
 
-CUDA_GLOBAL void k_update_q( reax_atom *my_atoms, real *q, int n, int N )
+CUDA_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
+        int n, int N )
 {
     int i;
 
@@ -171,178 +353,208 @@ CUDA_GLOBAL void k_update_q( reax_atom *my_atoms, real *q, int n, int N )
 }
 
 
-void cuda_charges_updateq( reax_system *system, storage *workspace,
-        real *q )
+static void Update_Ghost_Atom_Charges( reax_system const * const system,
+        storage * const workspace, real * const q )
 {
     int blocks;
-    real *dev_q = (real *) workspace->scratch;
+    real *spad;
 
-    copy_host_device( q, dev_q, system->N * sizeof(real),
-            cudaMemcpyHostToDevice, "charges:q" );
+    spad = (real *) workspace->scratch;
+    copy_host_device( q, spad, system->N * sizeof(real),
+            cudaMemcpyHostToDevice, "Update_Ghost_Atom_Charges::q" );
 
     blocks = (system->N - system->n) / DEF_BLOCK_SIZE
         + (( (system->N - system->n) % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    k_update_q <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, dev_q, system->n, system->N );
+    k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE >>>
+        ( system->d_my_atoms, spad, system->n, system->N );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
 
-static void Cuda_Calculate_Charges( reax_system *system, control_params *control,
-        storage *workspace, mpi_datatypes *mpi_data )
+static void Calculate_Charges_QEq( reax_system const * const system,
+        control_params const * const control,
+        storage * const workspace,
+        mpi_datatypes * const mpi_data )
 {
-    real u;//, s_sum, t_sum;
+    int blocks;
+    real u, *q;
     rvec2 my_sum, all_sum;
-    real *q;
+#if defined(DUAL_SOLVER)
+    rvec2 *spad_rvec2;
+#else
+    real *spad;
+#endif
 
-    my_sum[0] = 0.0;
-    my_sum[1] = 0.0;
+    blocks = system->n / DEF_BLOCK_SIZE
+        + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
     q = (real *) workspace->host_scratch;
-    memset( q, 0, system->N * sizeof(real) );
+#if defined(DUAL_SOLVER)
+    spad_rvec2 = (rvec2 *) workspace->scratch;
+    cuda_memset( spad_rvec2, 0, sizeof(rvec2) * 2 * system->n,
+            "Calculate_Charges_QEq::spad_rvec2," );
 
-    cuda_charges_x( system, control, workspace, my_sum );
+    /* compute local sums of pseudo-charges in s and t on device */
+    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
+        ( workspace->d_workspace->x, spad_rvec2, system->n );
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
+
+    k_reduction_rvec2 <<< 1, control->blocks_pow_2, sizeof(rvec2) * control->blocks_pow_2 >>>
+        ( spad_rvec2, &spad_rvec2[system->n], blocks );
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
+
+    copy_host_device( &my_sum, &spad_rvec2[system->n],
+            sizeof(rvec2), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
+#else
+    spad = (real *) workspace->scratch;
+    cuda_memset( spad, 0, sizeof(real) * system->n,
+            "Calculate_Charges_QEq::spad" );
+
+    /* local reductions (sums) on device */
+    Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n );
+    Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n );
+
+    copy_host_device( &my_sum[0], &spad[0],
+            sizeof(real), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
+    copy_host_device( &my_sum[1], &spad[1],
+            sizeof(real), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
+#endif
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "Device: my_sum[0]: %f, my_sum[1]: %f\n",
+    fprintf( stderr, "[INFO] my_sum = (%f, %f)\n",
             my_sum[0], my_sum[1] );
 #endif
 
+    /* global reduction on pseudo-charges for s and t */
     MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
 
     u = all_sum[0] / all_sum[1];
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "Device: u: %f \n", u );
+    fprintf( stderr, "[INFO] u = %f\n", u );
 #endif
 
-    cuda_charges_st( system, workspace, q, u );
+    /* derive atomic charges from pseudo-charges
+     * and set up extrapolation for next time step */
+    Extrapolate_Charges_QEq_Part2( system, workspace, q, u );
 
-    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
+    Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    cuda_charges_updateq( system, workspace, q );
+    /* copy atomic charges to ghost atoms in case of ownership transfer */
+    Update_Ghost_Atom_Charges( system, workspace, q );
 }
 
 
-void Cuda_QEq( reax_system *system, control_params *control, simulation_data
-        *data, storage *workspace, output_controls *out_control, mpi_datatypes
-        *mpi_data )
+static void Calculate_Charges_EE( reax_system const * const system,
+        control_params const * const control,
+        storage const * const workspace,
+        mpi_datatypes * const mpi_data )
+{
+}
+
+
+static void Calculate_Charges_ACKS2( reax_system const * const system,
+        control_params const * const control,
+        storage const * const workspace,
+        mpi_datatypes * const mpi_data )
+{
+}
+
+
+/* Main driver method for QEq kernel
+ *  1) init / setup routines for preconditioning of linear solver
+ *  2) compute preconditioner
+ *  3) extrapolate charges
+ *  4) perform 2 linear solves
+ *  5) compute atomic charges based on output of (4)
+ */
+void QEq( reax_system const * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        output_controls const * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     int iters;
 
-    Cuda_Init_MatVec( system, workspace );
+//    if ( is_refactoring_step( control, data ) == TRUE )
+    {
+        Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
-    //if (data->step > 0) {
-    //    compare_rvec2 (workspace->b, workspace->d_workspace->b, system->n, "b");
-    //    compare_rvec2 (workspace->x, workspace->d_workspace->x, system->n, "x");
-    // compare_array (workspace->b_s, workspace->d_workspace->b_s, system->n, "b_s");
-    // compare_array (workspace->b_t, workspace->d_workspace->b_t, system->n, "b_t");
-    //}
+        Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+    }
+
+//    switch ( control->cm_init_guess_type )
+//    {
+//    case SPLINE:
+        Spline_Extrapolate_Charges_QEq( system, control, data, workspace, mpi_data );
+//        break;
+//
+//    case TF_FROZEN_MODEL_LSTM:
+//#if defined(HAVE_TENSORFLOW)
+//        if ( data->step < control->cm_init_guess_win_size )
+//        {
+//            Spline_Extrapolate_Charges_QEq( system, control, data, workspace, mpi_data );
+//        }
+//        else
+//        {
+//            Predict_Charges_TF_LSTM( system, control, data, workspace );
+//        }
+//#else
+//        fprintf( stderr, "[ERROR] Tensorflow support disabled. Re-compile to enable. Terminating...\n" );
+//        exit( INVALID_INPUT );
+//#endif
+//        break;
+//
+//    default:
+//        fprintf( stderr, "[ERROR] Unrecognized solver initial guess type (%d). Terminating...\n",
+//              control->cm_init_guess_type );
+//        exit( INVALID_INPUT );
+//        break;
+//    }
 
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
     case GMRES_H_S:
-    case SDM_S:
-        fprintf( stderr, "Unsupported QEq solver selection. Terminating...\n" );
+        fprintf( stderr, "[ERROR] Unsupported solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
 
     case CG_S:
-        iters = Cuda_dual_CG( system, control, workspace, &workspace->d_workspace->H,
+        workspace->d_workspace->H.format = SYM_FULL_MATRIX;
+#if defined(DUAL_SOLVER)
+        iters = Cuda_dual_CG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b, control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
-                out_control->log, data );
-        break;
-
-
-    default:
-        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
-    }
-
-    Cuda_Calculate_Charges( system, control, workspace, mpi_data );
-
-#if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.cm_solver_iters += iters;
-    }
-#endif
-}
-
-
-void Cuda_EE( reax_system *system, control_params *control, simulation_data
-        *data, storage *workspace, output_controls *out_control, mpi_datatypes
-        *mpi_data )
-{
-    int iters;
-
-    Cuda_Init_MatVec( system, workspace );
-
-    switch ( control->cm_solver_type )
-    {
-    case GMRES_S:
-    case GMRES_H_S:
-    case SDM_S:
-        fprintf( stderr, "Unsupported QEq solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
-
-    case CG_S:
-        iters = Cuda_CG( system, control, workspace, &workspace->d_workspace->H,
+                out_control->log );
+#else
+        iters = Cuda_CG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
-        break;
-
-
-    default:
-        fprintf( stderr, "Unrecognized QEq solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
-        break;
-    }
-
-    Cuda_Calculate_Charges( system, control, workspace, mpi_data );
-
-#if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.cm_solver_iters += iters;
-    }
+        iters += Cuda_CG( system, control, data, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
 #endif
-}
+        break;
 
-
-void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
-        *data, storage *workspace, output_controls *out_control, mpi_datatypes
-        *mpi_data )
-{
-    int iters;
-
-    Cuda_Init_MatVec( system, workspace );
-
-    switch ( control->cm_solver_type )
-    {
-    case GMRES_S:
-    case GMRES_H_S:
     case SDM_S:
-        fprintf( stderr, "Unsupported QEq solver selection. Terminating...\n" );
-        exit( INVALID_INPUT );
         break;
 
-    case CG_S:
-        iters = Cuda_CG( system, control, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+    case BiCGStab_S:
         break;
 
+    case PIPECG_S:
+        break;
+
+    case PIPECR_S:
+        break;
 
     default:
-        fprintf( stderr, "[ERROR] Unrecognized QEq solver selection. Terminating...\n" );
+        fprintf( stderr, "[ERROR] Unrecognized solver selection. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }
 
-    Cuda_Calculate_Charges( system, control, workspace, mpi_data );
+    Calculate_Charges_QEq( system, control, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
@@ -353,26 +565,45 @@ void Cuda_ACKS2( reax_system *system, control_params *control, simulation_data
 }
 
 
-void Cuda_Compute_Charges( reax_system *system, control_params *control, simulation_data
-        *data, storage *workspace, output_controls *out_control, mpi_datatypes
-        *mpi_data )
+void EE( reax_system const * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        output_controls const * const out_control,
+        mpi_datatypes * const mpi_data )
+{
+}
+
+
+void ACKS2( reax_system const * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        output_controls const * const out_control,
+        mpi_datatypes * const mpi_data )
+{
+}
+
+
+void Cuda_Compute_Charges( reax_system const * const system,
+        control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace,
+        output_controls const * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     switch ( control->charge_method )
     {
     case QEQ_CM:
-        Cuda_QEq( system, control, data, workspace, out_control, mpi_data );
+        QEq( system, control, data, workspace, out_control, mpi_data );
         break;
 
     case EE_CM:
-        Cuda_EE( system, control, data, workspace, out_control, mpi_data );
+        EE( system, control, data, workspace, out_control, mpi_data );
         break;
 
     case ACKS2_CM:
-        Cuda_ACKS2( system, control, data, workspace, out_control, mpi_data );
+        ACKS2( system, control, data, workspace, out_control, mpi_data );
         break;
 
     default:
-        fprintf( stderr, "Invalid charge method. Terminating...\n" );
+        fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
     }

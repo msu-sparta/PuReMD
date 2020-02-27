@@ -1258,11 +1258,11 @@ struct far_neighbor_data
 
 struct hbond_data
 {
-    /**/
+    /* neighbor atom ID */
     int nbr;
-    /**/
+    /* ??? */
     int scl;
-    /**/
+    /* neighbor in far neighbor list */
     far_neighbor_data *ptr;
 };
 

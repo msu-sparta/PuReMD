@@ -465,7 +465,8 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
 
         orig_id_temp = atoi(tmp[0]);
         type_temp = atoi(tmp[1]);
-        strncpy(name_temp, tmp[2], 8);
+        strncpy( name_temp, tmp[2], sizeof(name_temp) - 1 );
+        name_temp[sizeof(name_temp) - 1] = '\0';
         x_temp[0] = atof(tmp[3]);
         x_temp[1] = atof(tmp[4]);
         x_temp[2] = atof(tmp[5]);

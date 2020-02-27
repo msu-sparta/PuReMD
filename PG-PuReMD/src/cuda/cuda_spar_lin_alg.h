@@ -29,33 +29,15 @@
 extern "C" {
 #endif
 
-void Cuda_Vector_Sum( real *, real, real *, real, real *, int );
+int Cuda_dual_CG( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, rvec2 const * const, real,
+        rvec2 * const, mpi_datatypes * const, FILE * );
 
-void Cuda_CG_Preconditioner( real *, real *, real *, int );
-
-void Cuda_CG_Diagonal_Preconditioner( storage *, rvec2 *, int );
-
-void Cuda_DualCG_Preconditioner( storage *, rvec2 *, rvec2, int, rvec2 );
-
-void Cuda_Norm( rvec2 *, int, rvec2 );
-
-void Cuda_Dot( rvec2 *, rvec2 *, rvec2, int );
-
-void Cuda_Vector_Sum_Rvec2( rvec2 *, rvec2 *, rvec2, rvec2 *, int );
-
-void Cuda_RvecCopy_From( real *, rvec2 *, int, int );
-
-void Cuda_RvecCopy_To( rvec2 *, real *, int, int );
-
-void Cuda_Dual_Matvec( sparse_matrix *, rvec2 *, rvec2 *, int , int );
-
-void Cuda_Matvec( sparse_matrix *, real *, real *, int , int );
-
-int Cuda_dual_CG( reax_system*, control_params*, storage*, sparse_matrix*,
-        rvec2*, real, rvec2*, mpi_datatypes*, FILE* , simulation_data * );
-
-int Cuda_CG( reax_system*, control_params*, storage*, sparse_matrix*,
-        real*, real, real*, mpi_datatypes* );
+int Cuda_CG( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, real const * const, real,
+        real * const, mpi_datatypes * const );
 
 #ifdef __cplusplus
 }

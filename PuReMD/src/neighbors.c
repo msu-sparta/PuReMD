@@ -32,39 +32,6 @@ int compare_far_nbrs( const void *p1, const void *p2 )
 }
 
 
-void Draw_Near_Neighbor_Box( reax_system *system, control_params *control,
-                             storage *workspace )
-{
-    int  i;
-    reax_atom       *atom;
-    simulation_box  *my_box;
-    boundary_cutoff *bc;
-
-    my_box = &( system->my_box );
-    bc = &( system->bndry_cuts );
-
-    /* all native atoms are within near neighbor skin */
-    for ( i = 0; i < system->n; ++i )
-        workspace->within_bond_box[i] = 1;
-
-    /* loop over imported atoms */
-    for ( i = system->n; i < system->N; ++i )
-    {
-        atom = &(system->my_atoms[i]);
-
-        if ( my_box->min[0] - bc->ghost_bond <= atom->x[0] &&
-                atom->x[0] <= my_box->max[0] + bc->ghost_bond &&
-                my_box->min[1] - bc->ghost_bond <= atom->x[1] &&
-                atom->x[1] <= my_box->max[1] + bc->ghost_bond &&
-                my_box->min[2] - bc->ghost_bond <= atom->x[2] &&
-                atom->x[2] <= my_box->max[2] + bc->ghost_bond )
-            workspace->within_bond_box[i] = 1;
-        else
-            workspace->within_bond_box[i] = 0;
-    }
-}
-
-
 void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                               storage *workspace, reax_list **lists )
 {
@@ -130,7 +97,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                  *  make half-list
                                  * FULL_LIST: prevent recounting same pairs within a gcell */
                                 if ( (far_nbrs->format == HALF_LIST && l < m)
-                                  || (far_nbrs->format == FULL_LIST && l != m) )
+                                        || (far_nbrs->format == FULL_LIST && l != m) )
                                 {
                                     atom2 = &(system->my_atoms[m]);
                                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -140,7 +107,7 @@ void Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
                                     if ( d <= cutoff )
                                     {
                                         far_nbrs->far_nbr_list.nbr[num_far] = m;
-                                        far_nbrs->far_nbr_list.d[num_far] = sqrt(d);
+                                        far_nbrs->far_nbr_list.d[num_far] = SQRT( d );
                                         rvec_Copy( far_nbrs->far_nbr_list.dvec[num_far], dvec );
                                         ivec_ScaledSum( far_nbrs->far_nbr_list.rel_box[num_far],
                                                 1, gcj->rel_box, -1, gci->rel_box );

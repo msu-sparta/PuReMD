@@ -167,7 +167,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
         MPI_Bcast( &out_control->mol, 1, MPI_LONG, 0, MPI_COMM_WORLD );
     }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     /* bond energy file */
     sprintf( temp, "%s.ebond.%d", control->sim_name, system->my_rank );
     out_control->ebond = sfopen( temp, "w",
@@ -229,7 +229,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
             "Init_Output_Controls::output_control->ecou" );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     /* bond orders file */
     sprintf( temp, "%s.fbo.%d", control->sim_name, system->my_rank );
     out_control->fbo = sfopen( temp, "w",
@@ -397,7 +397,7 @@ void Finalize_Output_Files( reax_system *system, control_params *control,
         }
     }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
     sfclose( out_control->ebond,
             "Close_Output_Files::out_control->ebond" );
     sfclose( out_control->elp,
@@ -424,7 +424,7 @@ void Finalize_Output_Files( reax_system *system, control_params *control,
             "Close_Output_Files::out_control->ecou" );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     sfclose( out_control->fbo,
             "Close_Output_Files::out_control->fbo" );
     sfclose( out_control->fdbo,
@@ -806,20 +806,20 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
 
         for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
         {
-            nbr = far_nbrs->far_nbr_list[j].nbr;
+            nbr = far_nbrs->far_nbr_list.nbr[j];
             id_j = system->my_atoms[nbr].orig_id;
 
             fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                     id_i, id_j, far_nbrs->far_nbr_list[j].d,
-                     far_nbrs->far_nbr_list[j].dvec[0],
-                     far_nbrs->far_nbr_list[j].dvec[1],
-                     far_nbrs->far_nbr_list[j].dvec[2] );
+                     id_i, id_j, far_nbrs->far_nbr_list.d[j],
+                     far_nbrs->far_nbr_list.dvec[j][0],
+                     far_nbrs->far_nbr_list.dvec[j][1],
+                     far_nbrs->far_nbr_list.dvec[j][2] );
 
             fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                     id_j, id_i, far_nbrs->far_nbr_list[j].d,
-                     -far_nbrs->far_nbr_list[j].dvec[0],
-                     -far_nbrs->far_nbr_list[j].dvec[1],
-                     -far_nbrs->far_nbr_list[j].dvec[2] );
+                     id_j, id_i, far_nbrs->far_nbr_list.d[j],
+                     -far_nbrs->far_nbr_list.dvec[j][0],
+                     -far_nbrs->far_nbr_list.dvec[j][1],
+                     -far_nbrs->far_nbr_list.dvec[j][2] );
         }
     }
 
@@ -837,8 +837,8 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
         {
             fprintf( stderr, "%d %d %.15e\n",
                     system->my_atoms[i].orig_id,
-                    system->my_atoms[A->entries[pj].j].orig_id,
-                    A->entries[pj].val );
+                    system->my_atoms[A->j[pj]].orig_id,
+                    A->val[pj] );
         }
     }
 }
@@ -858,8 +858,8 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
         {
             fprintf( f, "%d %d %.15e\n",
                     system->my_atoms[i].orig_id,
-                    system->my_atoms[A->entries[pj].j].orig_id,
-                    A->entries[pj].val );
+                    system->my_atoms[A->j[pj]].orig_id,
+                    A->val[pj] );
         }
     }
 
@@ -881,15 +881,15 @@ void Print_Symmetric_Sparse( reax_system *system, sparse_matrix *A, char *fname 
 
         for ( j = A->start[i]; j < A->end[i]; ++j )
         {
-            aj = &system->my_atoms[A->entries[j].j];
+            aj = &system->my_atoms[A->j[j]];
 
             fprintf( f, "%d %d %.15e\n",
-                    ai->renumber, aj->renumber, A->entries[j].val );
+                    ai->renumber, aj->renumber, A->val[j] );
 
-            if ( A->entries[j].j < system->n && ai->renumber != aj->renumber )
+            if ( A->j[j] < system->n && ai->renumber != aj->renumber )
             {
                 fprintf( f, "%d %d %.15e\n",
-                         aj->renumber, ai->renumber, A->entries[j].val );
+                         aj->renumber, ai->renumber, A->val[j] );
             }
         }
     }
@@ -936,14 +936,14 @@ void Print_Linear_System( reax_system *system, control_params *control,
 //        ai = &(system->my_atoms[i]);
 //        for( j = H->start[i]; j < H->end[i]; ++j )
 //        {
-//            if( H->entries[j].j < system->n )
+//            if( H->j[j] < system->n )
 //            {
-//                aj = &(system->my_atoms[H->entries[j].j]);
+//                aj = &(system->my_atoms[H->j[j]]);
 //                fprintf( out, "%d %d %.15e\n",
-//                ai->orig_id, aj->orig_id, H->entries[j].val );
+//                ai->orig_id, aj->orig_id, H->val[j] );
 //                if( ai->orig_id != aj->orig_id )
 //                    fprintf( out, "%d %d %.15e\n",
-//                aj->orig_id, ai->orig_id, H->entries[j].val );
+//                aj->orig_id, ai->orig_id, H->val[j] );
 //            }
 //        }
 //    }
@@ -1003,19 +1003,24 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     char fname[MAX_STR]; 
     hbond_data *phbond;
     FILE *fout;
-    reax_list *hbonds = lists[HBONDS];
+    reax_list *far_nbr_list, *hbond_list;
+
+    far_nbr_list = lists[FAR_NBRS];
+    hbond_list = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
     fout = sfopen( fname, "w", "Print_HBonds::fout" );
 
     for ( i = 0; i < system->numH; ++i )
     {
-        for ( pj = Start_Index(i, hbonds); pj < End_Index(i, hbonds); ++pj )
+        for ( pj = Start_Index(i, hbond_list); pj < End_Index(i, hbond_list); ++pj )
         {
-            phbond = &hbonds->hbond_list[pj];
+            phbond = &hbond_list->hbond_list[pj];
 
             fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, phbond->nbr,
-                    phbond->ptr->dvec[0], phbond->ptr->dvec[1], phbond->ptr->dvec[2] );
+                    far_nbr_list->far_nbr_list.dvec[phbond->ptr][0],
+                    far_nbr_list->far_nbr_list.dvec[phbond->ptr][1],
+                    far_nbr_list->far_nbr_list.dvec[phbond->ptr][2] );
 //            fprintf( fout, "%8d%8d %8d %8d\n", i, phbond->nbr,
 //                  phbond->scl, phbond->sym_index );
         }
@@ -1204,7 +1209,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
 
         for ( pj = Start_Index(i, list); pj < End_Index(i, list); ++pj )
         {
-            nbr = list->far_nbr_list[pj].nbr;
+            nbr = list->far_nbr_list.nbr[pj];
             id_j = system->my_atoms[nbr].orig_id;
             intrs[cnt++] = id_j;
         }
@@ -1266,20 +1271,20 @@ void Output_Results( reax_system *system, control_params *control,
                      data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
 #else
             fprintf( out_control->out,
-                     "%-6d%24.15e%24.15e%24.15e%13.5f%16.5f%13.5f\n",
-                     data->step, data->sys_en.e_tot, data->sys_en.e_pot,
-                     E_CONV * data->sys_en.e_kin, data->therm.T,
-                     system->big_box.V, data->iso_bar.P );
+                    "%-6d%24.15f%24.15f%24.15f%13.5f%16.5f%13.5f\n",
+                    data->step, data->sys_en.e_tot, data->sys_en.e_pot,
+                    E_CONV * data->sys_en.e_kin, data->therm.T,
+                    system->big_box.V, data->iso_bar.P );
 
             fprintf( out_control->pot,
-                     "%-6d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
-                     data->step,
-                     data->sys_en.e_bond,
-                     data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
-                     data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
-                     data->sys_en.e_hb,
-                     data->sys_en.e_tor, data->sys_en.e_con,
-                     data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
+                    "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
+                    data->step,
+                    data->sys_en.e_bond,
+                    data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
+                    data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
+                    data->sys_en.e_hb,
+                    data->sys_en.e_tor, data->sys_en.e_con,
+                    data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
 #endif //DEBUG
 
 #if defined(LOG_PERFORMANCE)
@@ -1293,7 +1298,8 @@ void Output_Results( reax_system *system, control_params *control,
                 denom = 1;
             }
 
-            fprintf( out_control->log, "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8d%8d\n",
+            fprintf( out_control->log,
+                    "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8d%8d\n",
                     data->step, t_elapsed * denom, data->timing.comm * denom,
                     data->timing.nbrs * denom, data->timing.init_forces * denom,
                     data->timing.bonded * denom, data->timing.nonb * denom,
@@ -1301,7 +1307,31 @@ void Output_Results( reax_system *system, control_params *control,
                     (int)(data->timing.cm_solver_iters * denom),
                     data->timing.num_retries );
 
-            Reset_Timing( &(data->timing) );
+//            fprintf( out_control->log,
+//                    "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
+//                    data->step,
+//                    t_elapsed * denom,
+//                    data->timing.comm * denom,
+//                    data->timing.nbrs * denom,
+//                    data->timing.init_forces * denom,
+//                    data->timing.init_dist * denom,
+//                    data->timing.init_cm * denom,
+//                    data->timing.init_bond * denom,
+//                    data->timing.bonded * denom,
+//                    (data->timing.nonb + data->timing.cm) * denom,
+//                    data->timing.cm * denom,
+//                    data->timing.cm_sort * denom,
+//                    (double)(data->timing.cm_solver_iters * denom),
+//                    data->timing.cm_solver_pre_comp * denom,
+//                    data->timing.cm_solver_pre_app * denom,
+//                    data->timing.cm_solver_comm * denom,
+//                    data->timing.cm_solver_allreduce * denom,
+//                    data->timing.cm_solver_spmv * denom,
+//                    data->timing.cm_solver_vector_ops * denom,
+//                    data->timing.cm_solver_orthog * denom,
+//                    data->timing.cm_solver_tri_solve * denom );
+
+            Reset_Timing( &data->timing );
             fflush( out_control->log );
 #endif //LOG_PERFORMANCE
 
@@ -1329,8 +1359,8 @@ void Output_Results( reax_system *system, control_params *control,
         }
 
         /* write current frame */
-        if ( out_control->write_steps > 0 &&
-                (data->step - data->prev_steps) % out_control->write_steps == 0 )
+        if ( out_control->write_steps > 0
+                && (data->step - data->prev_steps) % out_control->write_steps == 0 )
         {
             Append_Frame( system, control, data, lists, out_control, mpi_data );
         }
@@ -1338,7 +1368,7 @@ void Output_Results( reax_system *system, control_params *control,
 }
 
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
 void Debug_Marker_Bonded( output_controls *out_control, int step )
 {
     fprintf( out_control->ebond, "step: %d\n%6s%6s%12s%12s%12s\n",
@@ -1381,10 +1411,10 @@ void Debug_Marker_Nonbonded( output_controls *out_control, int step )
 #endif
 
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 void Dummy_Printer( reax_system *system, control_params *control,
-                    simulation_data *data, storage *workspace,
-                    reax_list **lists, output_controls *out_control )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control )
 {
 }
 
@@ -1580,7 +1610,7 @@ void Print_Far_Neighbors_List( reax_system *system, reax_list **lists,
 
         for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
         {
-            nbr = far_nbrs->far_nbr_list[j].nbr;
+            nbr = far_nbrs->far_nbr_list.nbr[j];
             id_j = system->my_atoms[nbr].orig_id;
             temp[num++] = id_j;
         }
@@ -1638,7 +1668,7 @@ void Print_Bond_List( reax_system *system, control_params *control,
 #endif
 
 
-#ifdef OLD_VERSION
+#if defined(OLD_VERSION)
 void Print_Init_Atoms( reax_system *system, storage *workspace )
 {
     int i;

@@ -134,7 +134,7 @@ void Init_System( reax_system * const system, control_params * const control,
     reax_atom *atom;
     int nrecv[MAX_NBRS];
 
-    Setup_New_Grid( system, control, MPI_COMM_WORLD );
+    Setup_New_Grid( system, control, mpi_data->world );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d GRID:\n", system->my_rank );
@@ -149,12 +149,15 @@ void Init_System( reax_system * const system, control_params * const control,
     {
         nrecv[i] = 0;
     }
-    MPI_Barrier( MPI_COMM_WORLD );
+    MPI_Barrier( mpi_data->world );
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
             Estimate_Boundary_Atoms, Unpack_Estimate_Message, TRUE );
 
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
+#if defined(NEUTRAL_TERRITORY)
+    Estimate_NT_Atoms( system, mpi_data );
+#endif
 
     /* estimate numH and Hcap */
     system->numH = 0;
@@ -229,7 +232,7 @@ void Init_System( reax_system * const system, control_params * const control,
 
 /************************ initialize simulation data ************************/
 void Init_Simulation_Data( reax_system * const system, control_params * const control,
-        simulation_data * const data )
+        simulation_data * const data, mpi_datatypes * const mpi_data )
 {
     Reset_Simulation_Data( data );
 
@@ -293,7 +296,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     case NPT:
         fprintf( stderr, "[ERROR] p%d: init_simulation_data: option not yet implemented\n",
               system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        MPI_Abort( mpi_data->world,  INVALID_INPUT );
 
         data->N_f = 3 * system->bigN + 9;
         control->Evolve = Velocity_Verlet_Berendsen_NPT;
@@ -312,11 +315,11 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     default:
         fprintf( stderr, "[ERROR] p%d: init_simulation_data: ensemble not recognized\n",
               system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        MPI_Abort( mpi_data->world,  INVALID_INPUT );
     }
 
     /* initialize the timer(s) */
-    MPI_Barrier( MPI_COMM_WORLD );
+    MPI_Barrier( mpi_data->world );
     if ( system->my_rank == MASTER_NODE )
     {
         data->timing.start = Get_Time( );
@@ -378,7 +381,8 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
 
 /************************ initialize workspace ************************/
 /* Initialize Taper params */
-void Init_Taper( control_params * const control,  storage * const workspace )
+void Init_Taper( control_params * const control,  storage * const workspace,
+        mpi_datatypes * const mpi_data )
 {
     real d1, d7;
     const real swa = control->nonb_low;
@@ -394,7 +398,7 @@ void Init_Taper( control_params * const control,  storage * const workspace )
     if ( swb < 0.0 )
     {
         fprintf( stderr, "[ERROR] negative upper Taper-radius cutoff in force field parameters\n" );
-        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        MPI_Abort( mpi_data->world,  INVALID_INPUT );
     }
     else if ( swb < 5.0 )
     {
@@ -421,7 +425,7 @@ void Init_Taper( control_params * const control,  storage * const workspace )
 
 
 void Init_Workspace( reax_system * const system, control_params * const control,
-        storage * const workspace )
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
     Allocate_Workspace( system, control, workspace, system->local_cap,
             system->total_cap );
@@ -435,7 +439,7 @@ void Init_Workspace( reax_system * const system, control_params * const control,
 
     Reset_Workspace( system, workspace );
 
-    Init_Taper( control, workspace );
+    Init_Taper( control, workspace, mpi_data );
 }
 
 
@@ -616,6 +620,12 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
 
     mpi_data->in1_buffer = NULL;
     mpi_data->in2_buffer = NULL;
+#if defined(NEUTRAL_TERRITORY)
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
+    {
+        mpi_data->in_nt_buffer[i] = NULL;
+    }
+#endif
 }
 
 
@@ -625,39 +635,65 @@ void Init_Lists( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         mpi_datatypes * const mpi_data )
 {
-    int ret;
+    int ret, far_nbr_list_format, cm_format, matrix_dim;
 
-    Estimate_Num_Neighbors( system );
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        far_nbr_list_format = FULL_LIST;
+        cm_format = SYM_FULL_MATRIX;
+    }
+    else
+    {
+#if defined(NEUTRAL_TERRITORY)
+        far_nbr_list_format = FULL_LIST;
+        cm_format = SYM_HALF_MATRIX;
+#else
+        far_nbr_list_format = HALF_LIST;
+        cm_format = SYM_HALF_MATRIX;
+#endif
+    }
 
-    Make_List( system->total_cap, system->total_far_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+    Estimate_Num_Neighbors( system, far_nbr_list_format );
+
+    Make_List( system->total_cap, system->total_far_nbrs, TYP_FAR_NEIGHBOR,
+            far_nbr_list_format, lists[FAR_NBRS] );
     Init_List_Indices( lists[FAR_NBRS], system->max_far_nbrs );
 
     ret = Generate_Neighbor_Lists( system, data, workspace, lists );
     if ( ret != SUCCESS )
     {
         fprintf( stderr, "[ERROR] p%d: failed to generate neighbor lists. Terminating...\n", system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
+        MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
     }
     
-    Estimate_Storages( system, control, lists );
+    Estimate_Storages( system, control, lists, &matrix_dim, cm_format );
     
-    Allocate_Matrix( &workspace->H, system->n, system->local_cap, system->total_cm_entries );
+#if defined(NEUTRAL_TERRITORY)
+    Allocate_Matrix( &workspace->H, matrix_dim, system->local_cap, system->total_cm_entries, cm_format );
+#else
+    Allocate_Matrix( &workspace->H, system->n, system->local_cap, system->total_cm_entries, cm_format );
+#endif
     Init_Matrix_Row_Indices( &workspace->H, system->max_cm_entries );
 
     if ( control->hbond_cut > 0.0 )
     {
-        Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, lists[HBONDS] );
+        Make_List( system->total_cap, system->total_hbonds, TYP_HBOND,
+                HALF_LIST, lists[HBONDS] );
         Init_List_Indices( lists[HBONDS], system->max_hbonds );
     }
 
-    Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
+    Make_List( system->total_cap, system->total_bonds, TYP_BOND,
+            HALF_LIST, lists[BONDS] );
     Init_List_Indices( lists[BONDS], system->max_bonds );
 
-    Make_List( system->total_bonds, system->total_thbodies, TYP_THREE_BODY, lists[THREE_BODIES] );
+    Make_List( system->total_bonds, system->total_thbodies, TYP_THREE_BODY,
+            HALF_LIST, lists[THREE_BODIES] );
 
 #if defined(TEST_FORCES)
-    Make_List( system->total_cap, system->total_bonds * 8, TYP_DDELTA, lists[DDELTAS] );
-    Make_List( system->total_bonds, system->total_bonds * 50, TYP_DBO, lists[DBOS] );
+    Make_List( system->total_cap, system->total_bonds * 8, TYP_DDELTA,
+            HALF_LIST, lists[DDELTAS] );
+    Make_List( system->total_bonds, system->total_bonds * 50, TYP_DBO,
+            HALF_LIST, lists[DBOS] );
 #endif
 }
 
@@ -672,9 +708,9 @@ void Initialize( reax_system * const system, control_params * const control,
 
     Init_System( system, control, data, workspace, mpi_data );
 
-    Init_Simulation_Data( system, control, data );
+    Init_Simulation_Data( system, control, data, mpi_data );
 
-    Init_Workspace( system, control, workspace );
+    Init_Workspace( system, control, workspace, mpi_data );
 
     Init_Lists( system, control, data, workspace, lists, mpi_data );
 
@@ -687,7 +723,7 @@ void Initialize( reax_system * const system, control_params * const control,
 
     Init_Force_Functions( control );
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
 //    Init_Force_Test_Functions( );
 //    fprintf( stderr, "p%d: initialized force test functions\n", system->my_rank );
 #endif
@@ -699,9 +735,9 @@ void Pure_Initialize( reax_system * const system, control_params * const control
         reax_list ** const lists, output_controls * const out_control,
         mpi_datatypes * const mpi_data )
 {
-    Init_Simulation_Data( system, control, data );
+    Init_Simulation_Data( system, control, data, mpi_data );
 
-    Init_Workspace( system, control, workspace );
+    Init_Workspace( system, control, workspace, mpi_data );
 
     Init_Lists( system, control, data, workspace, lists, mpi_data );
 
@@ -811,12 +847,14 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
 //        Deallocate_Matrix( &workspace->H_app_inv );
     }
 
-    if ( control->cm_solver_pre_comp_type == DIAG_PC )
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
         sfree( workspace->Hdia_inv, "Finalize_Workspace::workspace->Hdia_inv" );
     }
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC ||
-            control->cm_solver_pre_comp_type == ILUT_PAR_PC )
+    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+            || control->cm_solver_pre_comp_type == ILUT_PC
+            || control->cm_solver_pre_comp_type == ILUTP_PC
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
         sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
     }
@@ -863,6 +901,50 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             break;
 
         case BiCGStab_S:
+            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
+            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
+            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->r_hat, "Finalize_Workspace::workspace->r_hat" );
+            sfree( workspace->q_hat, "Finalize_Workspace::workspace->q_hat" );
+            break;
+
+        case PIPECG_S:
+            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->m, "Finalize_Workspace::workspace->m" );
+            sfree( workspace->n, "Finalize_Workspace::workspace->n" );
+            sfree( workspace->u, "Finalize_Workspace::workspace->u" );
+            sfree( workspace->w, "Finalize_Workspace::workspace->w" );
+            sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
+            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
+            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
+            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
+            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            sfree( workspace->m2, "Finalize_Workspace::workspace->m2" );
+            sfree( workspace->n2, "Finalize_Workspace::workspace->n2" );
+            sfree( workspace->u2, "Finalize_Workspace::workspace->u2" );
+            sfree( workspace->w2, "Finalize_Workspace::workspace->w2" );
+            break;
+
+        case PIPECR_S:
+            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
+            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
+            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
+            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->m, "Finalize_Workspace::workspace->m" );
+            sfree( workspace->n, "Finalize_Workspace::workspace->n" );
+            sfree( workspace->u, "Finalize_Workspace::workspace->u" );
+            sfree( workspace->w, "Finalize_Workspace::workspace->w" );
+            break;
+
         default:
             fprintf( stderr, "[ERROR] Unknown charge method linear solver type. Terminating...\n" );
             exit( UNKNOWN_OPTION );
@@ -894,7 +976,7 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
         sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
     }
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
     sfree( workspace->dDelta, "Finalize_Workspace::workspace->dDelta" );
     sfree( workspace->f_ele, "Finalize_Workspace::workspace->f_ele" );
     sfree( workspace->f_vdw, "Finalize_Workspace::workspace->f_vdw" );

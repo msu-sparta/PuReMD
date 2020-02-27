@@ -29,9 +29,12 @@
 extern "C" {
 #endif
 
-void Compute_Charges( reax_system * const, control_params * const,
-        simulation_data * const, storage * const,
-        const output_controls * const, mpi_datatypes * const );
+int is_refactoring_step ( control_params const * const, simulation_data * const );
+
+void Compute_Charges( reax_system const * const, control_params const * const,
+        simulation_data * const,
+        storage * const, const output_controls * const,
+        mpi_datatypes * const );
 
 #ifdef __cplusplus
 }

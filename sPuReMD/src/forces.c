@@ -436,6 +436,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
     {
     case QEQ_CM:
     case EE_CM:
+    case ACKS2_CM:
         switch ( pos )
         {
             case OFF_DIAGONAL:
@@ -458,41 +459,6 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
             break;
 
             case DIAGONAL:
-                ret = system->reax_param.sbp[system->atoms[i].type].eta;
-            break;
-
-            default:
-                fprintf( stderr, "[ERROR] Invalid matrix position. Terminating...\n" );
-                exit( INVALID_INPUT );
-            break;
-        }
-        break;
-
-    case ACKS2_CM:
-        switch ( pos )
-        {
-            case OFF_DIAGONAL:
-                Tap = workspace->Tap[7] * r_ij
-                    + workspace->Tap[6];
-                Tap = Tap * r_ij + workspace->Tap[5];
-                Tap = Tap * r_ij + workspace->Tap[4];
-                Tap = Tap * r_ij + workspace->Tap[3];
-                Tap = Tap * r_ij + workspace->Tap[2];
-                Tap = Tap * r_ij + workspace->Tap[1];
-                Tap = Tap * r_ij + workspace->Tap[0];
-
-                /* shielding */
-                dr3gamij_1 = r_ij * r_ij * r_ij
-                        + POW( system->reax_param.tbp[system->atoms[i].type][system->atoms[j].type].gamma, -3.0 );
-                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
-
-                /* i == j: periodic self-interaction term
-                 * i != j: general interaction term */
-                ret = ((i == j) ? 0.0 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
-            break;
-
-            case DIAGONAL:
-                /* parameters in electron-volts */
                 ret = system->reax_param.sbp[system->atoms[i].type].eta;
             break;
 

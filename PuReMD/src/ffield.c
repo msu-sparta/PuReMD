@@ -205,11 +205,11 @@ void Read_Force_Field( char *ffield_file, reax_interaction *reax,
         val = atof(tmp[6]);
         reax->sbp[i].eta        = 2.0 * val;
         /* this is the parameter that is used to determine
-           which type of atoms participate in h-bonds.
-           1 is for H - 2 for O, N, S - 0 for all others.*/
+         * which type of atoms participate in h-bonds.
+         * 1 is for H - 2 for O, N, S - 0 for all others.*/
         val = atof(tmp[7]);
+        /* 0.1 is to avoid from truncating down! */
         reax->sbp[i].p_hbond = (int)(val + 0.1);
-        //0.1 is to avoid from truncating down!
 
         /* line 3 */
         fgets( s, MAX_LINE, fp );
@@ -227,6 +227,7 @@ void Read_Force_Field( char *ffield_file, reax_interaction *reax,
         val = atof(tmp[5]);
         reax->sbp[i].b_o_133    = val;
         val = atof(tmp[6]);
+        reax->sbp[i].b_s_acks2 = val;
         val = atof(tmp[7]);
 
         /* line 4  */

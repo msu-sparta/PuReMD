@@ -24,30 +24,46 @@
 
 #include "reax_types.h"
 
+
+void Make_Consistent( simulation_box * const );
+
 /* initializes simulation boxes */
-void Setup_Big_Box( real, real, real, real, real, real, simulation_box* );
-void Init_Box( rtensor, simulation_box* );
-//void Setup_My_Box( reax_system*, control_params* );
-//void Setup_My_Ext_Box( reax_system*, control_params* );
-void Setup_Environment( reax_system*, control_params*, mpi_datatypes* );
+void Setup_Big_Box( real, real, real, real, real, real, simulation_box * const );
+
+void Init_Box( rtensor, simulation_box * const );
+
+void Setup_My_Box( reax_system * const, control_params * const );
+
+void Setup_My_Ext_Box( reax_system * const, control_params * const );
+
+void Setup_Environment( reax_system * const, control_params * const,
+        mpi_datatypes * const );
 
 /* scales simulation box for NPT ensembles */
-void Scale_Box( reax_system*, control_params*,
-                simulation_data*, mpi_datatypes* );
+void Scale_Box( reax_system * const, control_params * const,
+        simulation_data * const, mpi_datatypes * const );
 
 /* applies transformation to/from Cartesian/ Triclinic coordinates */
 /* use -1 flag for Cartesian -> Triclinic and +1 for otherway */
-// void Transform( rvec, simulation_box*, char, rvec );
-// void Distance_on_T3_Gen( rvec, rvec, simulation_box*, rvec );
-// void Inc_on_T3_Gen( rvec, rvec, simulation_box* );
-// int Get_Nbr_Box( simulation_box*, int, int, int );
-// rvec Get_Nbr_Box_Press( simulation_box*, int, int, int );
-// void Inc_Nbr_Box_Press( simulation_box*, int, int, int, rvec );
+//void Transform( rvec, simulation_box * const, char, rvec );
+
+//void Distance_on_T3_Gen( rvec, rvec, simulation_box * const, rvec );
+
+//void Inc_on_T3_Gen( rvec, rvec, simulation_box * const );
+
+//int Get_Nbr_Box( simulation_box * const, int, int, int );
+
+//rvec Get_Nbr_Box_Press( simulation_box * const, int, int, int );
+
+//void Inc_Nbr_Box_Press( simulation_box * const, int, int, int, rvec );
 
 /* these functions assume that the coordinates are in triclinic system
    this function returns cartesian norm but triclinic distance vector */
-//real Sq_Distance_on_T3( rvec, rvec, simulation_box*, rvec );
-//void Inc_on_T3( rvec, rvec, simulation_box* );
-//real Metric_Product( rvec, rvec, simulation_box* );
+//real Sq_Distance_on_T3( rvec, rvec, simulation_box * const, rvec );
+
+//void Inc_on_T3( rvec, rvec, simulation_box * const );
+
+//real Metric_Product( rvec, rvec, simulation_box * const );
+
 
 #endif

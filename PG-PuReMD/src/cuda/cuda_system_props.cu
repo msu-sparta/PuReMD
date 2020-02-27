@@ -818,8 +818,9 @@ CUDA_GLOBAL void k_compute_pressure( reax_atom *my_atoms, simulation_box *big_bo
 static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
         storage *workspace, rvec xcm, rvec vcm, rvec amcm )
 {
-    rvec *l_xcm, *l_vcm, *l_amcm;
-    rvec *r_scratch = (rvec *) workspace->scratch;
+    rvec *l_xcm, *l_vcm, *l_amcm, *r_scratch;
+
+    r_scratch = (rvec *) workspace->scratch;
 
 #if defined( __SM_35__)
     // xcm
@@ -981,7 +982,9 @@ void Cuda_Generate_Initial_Velocities( reax_system *system, real T )
 void Cuda_Compute_Kinetic_Energy( reax_system* system, control_params *control,
         storage *workspace, simulation_data* data, MPI_Comm comm )
 {
-    real *block_energy = (real *) workspace->scratch;
+    real *block_energy;
+
+    block_energy = (real *) workspace->scratch;
     data->my_en.e_kin = 0.0;
 
     cuda_memset( block_energy, 0, sizeof(real) * (control->blocks_pow_2 + 1), "kinetic_energy:tmp" );
@@ -1041,9 +1044,12 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data, MPI_Comm comm  )
 {
     real tmp;
-    real *block_mass = (real *) workspace->scratch;
+    real *block_mass;
 
-    cuda_memset( block_mass, 0, sizeof(real) * (1 + control->blocks_pow_2), "total_mass:tmp" );
+    block_mass = (real * ) workspace->scratch;
+
+    cuda_memset( block_mass, 0, sizeof(real) * (1 + control->blocks_pow_2),
+            "Cuda_Compute_Total_Mass::block_mass" );
 
     k_compute_total_mass <<< control->blocks, control->block_size, sizeof(real) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, block_mass, system->n );

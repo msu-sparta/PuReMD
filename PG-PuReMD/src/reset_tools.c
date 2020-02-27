@@ -75,6 +75,7 @@ static void Reset_Energies( energy_data * const en )
     en->e_con = 0.0;
     en->e_vdW = 0.0;
     en->e_ele = 0.0;
+    en->e_pol = 0.0;
 
     en->e_pot = 0.0;
     en->e_kin = 0.0;
@@ -85,6 +86,10 @@ static void Reset_Energies( energy_data * const en )
 static void Reset_Temperatures( simulation_data * const data )
 {
     data->therm.T = 0.0;
+    data->therm.xi = 0.0;
+    data->therm.v_xi = 0.0;
+    data->therm.v_xi_old = 0.0;
+    data->therm.G_xi = 0.0;
 }
 
 
@@ -112,13 +117,22 @@ void Reset_Simulation_Data( simulation_data * const data )
 void Reset_Timing( reax_timing * const rt )
 {
     rt->total = Get_Time( );
-    rt->comm = 0.0;
-    rt->nbrs = 0.0;
-    rt->init_forces = 0.0;
-    rt->bonded = 0.0;
-    rt->nonb = 0.0;
-    rt->cm = 0.0;
+    rt->comm = ZERO;
+    rt->nbrs = ZERO;
+    rt->init_forces = ZERO;
+    rt->bonded = ZERO;
+    rt->nonb = ZERO;
+    rt->cm = ZERO;
+    rt->cm_sort = ZERO;
+    rt->cm_solver_pre_comp = ZERO;
+    rt->cm_solver_pre_app = ZERO;
+    rt->cm_solver_comm = ZERO;
+    rt->cm_solver_allreduce = ZERO;
     rt->cm_solver_iters = 0;
+    rt->cm_solver_spmv = ZERO;
+    rt->cm_solver_vector_ops = ZERO;
+    rt->cm_solver_orthog = ZERO;
+    rt->cm_solver_tri_solve = ZERO;
     rt->num_retries = 0;
 }
 

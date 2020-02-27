@@ -25,10 +25,12 @@
 #include "reax_types.h"
 
 
-int is_refactoring_step ( control_params* const, simulation_data* const );
+int is_refactoring_step ( control_params const * const, simulation_data * const );
 
-void QEq( reax_system*, control_params*, simulation_data*,
-          storage*, output_controls*, mpi_datatypes* );
+void Compute_Charges( reax_system const * const, control_params const * const,
+        simulation_data * const,
+        storage * const, const output_controls * const,
+        mpi_datatypes * const );
 
 
 #endif

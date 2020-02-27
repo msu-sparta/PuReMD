@@ -34,17 +34,15 @@
 #include "reax_vector.h"
 #endif
 
-#define MIN_SINE 1e-10
+#define MIN_SINE (1.0e-10)
 
-real Calculate_Omega( rvec dvec_ij, real r_ij,
-                      rvec dvec_jk, real r_jk,
-                      rvec dvec_kl, real r_kl,
-                      rvec dvec_li, real r_li,
-                      three_body_interaction_data *p_ijk,
-                      three_body_interaction_data *p_jkl,
-                      rvec dcos_omega_di, rvec dcos_omega_dj,
-                      rvec dcos_omega_dk, rvec dcos_omega_dl,
-                      output_controls *out_control )
+static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
+        rvec dvec_kl, real r_kl, rvec dvec_li, real r_li,
+        three_body_interaction_data *p_ijk,
+        three_body_interaction_data *p_jkl,
+        rvec dcos_omega_di, rvec dcos_omega_dj,
+        rvec dcos_omega_dk, rvec dcos_omega_dl,
+        output_controls *out_control )
 {
     real unnorm_cos_omega, unnorm_sin_omega, omega;
     real sin_ijk, cos_ijk, sin_jkl, cos_jkl;
@@ -52,10 +50,15 @@ real Calculate_Omega( rvec dvec_ij, real r_ij,
     real arg, poem, tel;
     rvec cross_jk_kl;
 
-    sin_ijk = sin( p_ijk->theta );
-    cos_ijk = cos( p_ijk->theta );
-    sin_jkl = sin( p_jkl->theta );
-    cos_jkl = cos( p_jkl->theta );
+    assert( r_ij > 0.0 );
+    assert( r_jk > 0.0 );
+    assert( r_kl > 0.0 );
+    assert( r_li > 0.0 );
+
+    sin_ijk = SIN( p_ijk->theta );
+    cos_ijk = COS( p_ijk->theta );
+    sin_jkl = SIN( p_jkl->theta );
+    cos_jkl = COS( p_jkl->theta );
 
     /* omega */
     unnorm_cos_omega = -rvec_Dot(dvec_ij, dvec_jk) * rvec_Dot(dvec_jk, dvec_kl) +
@@ -70,8 +73,8 @@ real Calculate_Omega( rvec dvec_ij, real r_ij,
     /* derivatives */
     /* coef for adjusments to cos_theta's */
     /* rla = r_ij, rlb = r_jk, rlc = r_kl, r4 = r_li;
-       coshd = cos_ijk, coshe = cos_jkl;
-       sinhd = sin_ijk, sinhe = sin_jkl; */
+     * coshd = cos_ijk, coshe = cos_jkl;
+     * sinhd = sin_ijk, sinhe = sin_jkl; */
     htra = r_ij + cos_ijk * ( r_kl * cos_jkl - r_jk );
     htrb = r_jk - r_ij * cos_ijk - r_kl * cos_jkl;
     htrc = r_kl + cos_jkl * ( r_ij * cos_ijk - r_jk );
@@ -82,16 +85,15 @@ real Calculate_Omega( rvec dvec_ij, real r_ij,
     hnhd = r_ij * r_kl * cos_ijk * sin_jkl;
     hnhe = r_ij * r_kl * sin_ijk * cos_jkl;
 
-
     poem = 2.0 * r_ij * r_kl * sin_ijk * sin_jkl;
-    if ( poem < 1e-20 )
+    if ( poem < 1.0e-20 )
     {
-        poem = 1e-20;
+        poem = 1.0e-20;
     }
 
-    tel = SQR( r_ij ) + SQR( r_jk ) + SQR( r_kl ) - SQR( r_li ) -
-        2.0 * ( r_ij * r_jk * cos_ijk - r_ij * r_kl * cos_ijk * cos_jkl +
-                r_jk * r_kl * cos_jkl );
+    tel = (SQR(r_ij) + SQR(r_jk) + SQR(r_kl) - SQR(r_li))
+        - 2.0 * ( r_ij * r_jk * cos_ijk - r_ij * r_kl * cos_ijk * cos_jkl
+                + r_jk * r_kl * cos_jkl );
 
     arg  = tel / poem;
     if ( arg >  1.0 )
@@ -103,39 +105,19 @@ real Calculate_Omega( rvec dvec_ij, real r_ij,
         arg = -1.0;
     }
 
-    /* fprintf( out_control->etor,
-       "%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f%12.6f\n",
-       htra, htrb, htrc, hthd, hthe, hnra, hnrc, hnhd, hnhe );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       dvec_ij[0]/r_ij, dvec_ij[1]/r_ij, dvec_ij[2]/r_ij );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -dvec_jk[0]/r_jk, -dvec_jk[1]/r_jk, -dvec_jk[2]/r_jk );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -dvec_kl[0]/r_kl, -dvec_kl[1]/r_kl, -dvec_kl[2]/r_kl );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f%12.6f\n",
-       r_li, dvec_li[0], dvec_li[1], dvec_li[2] );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       poem, tel, arg ); */
-    /* fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -p_ijk->dcos_dk[0]/sin_ijk, -p_ijk->dcos_dk[1]/sin_ijk,
-       -p_ijk->dcos_dk[2]/sin_ijk );
-       fprintf( out_control->etor, "%12.6f%12.6f%12.6f\n",
-       -p_jkl->dcos_dk[0]/sin_jkl, -p_jkl->dcos_dk[1]/sin_jkl,
-       -p_jkl->dcos_dk[2]/sin_jkl );*/
-
-    if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE )
+    if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
     {
         sin_ijk = MIN_SINE;
     }
-    else if ( sin_ijk <= 0 && sin_ijk >= -MIN_SINE )
+    else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
     {
         sin_ijk = -MIN_SINE;
     }
-    if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE )
+    if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
     {
         sin_jkl = MIN_SINE;
     }
-    else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE )
+    else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
     {
         sin_jkl = -MIN_SINE;
     }
@@ -170,8 +152,8 @@ real Calculate_Omega( rvec dvec_ij, real r_ij,
 
 
 void Torsion_Angles( reax_system *system, control_params *control,
-                     simulation_data *data, storage *workspace,
-                     reax_list **lists, output_controls *out_control )
+        simulation_data *data, storage *workspace,
+        reax_list **lists, output_controls *out_control )
 {
     int i, j, k, l, pi, pj, pk, pl, pij, plk, natoms;
     int type_i, type_j, type_k, type_l;
@@ -245,8 +227,8 @@ void Torsion_Angles( reax_system *system, control_params *control,
                 pj = pbond_jk->sym_index; // pj points to j on k's list
 
                 /* do the same check as above:
-                 * are there any 3-body interactions involving k&j
-                 * where k is the central atom */
+                 * are there any 3-body interactions
+                 * involving k&j where k is the central atom */
                 if ( Num_Entries(pj, thb_intrs) > 0 )
                 {
                     type_k = system->my_atoms[k].type;
@@ -258,10 +240,10 @@ void Torsion_Angles( reax_system *system, control_params *control,
                     start_pj = Start_Index(pj, thb_intrs );
                     end_pj = End_Index(pj, thb_intrs );
 
-                    exp_tor2_jk = exp( -p_tor2 * BOA_jk );
-                    exp_cot2_jk = exp( -p_cot2 * SQR(BOA_jk - 1.5) );
-                    exp_tor3_DjDk = exp( -p_tor3 * (Delta_j + Delta_k) );
-                    exp_tor4_DjDk = exp( p_tor4  * (Delta_j + Delta_k) );
+                    exp_tor2_jk = EXP( -p_tor2 * BOA_jk );
+                    exp_cot2_jk = EXP( -p_cot2 * SQR(BOA_jk - 1.5) );
+                    exp_tor3_DjDk = EXP( -p_tor3 * (Delta_j + Delta_k) );
+                    exp_tor4_DjDk = EXP( p_tor4  * (Delta_j + Delta_k) );
                     exp_tor34_inv = 1.0 / (1.0 + exp_tor3_DjDk + exp_tor4_DjDk);
                     f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
 
@@ -283,14 +265,14 @@ void Torsion_Angles( reax_system *system, control_params *control,
                             BOA_ij = bo_ij->BO - control->thb_cut;
 
                             theta_ijk = p_ijk->theta;
-                            sin_ijk = sin( theta_ijk );
-                            cos_ijk = cos( theta_ijk );
-                            //tan_ijk_i = 1. / tan( theta_ijk );
-                            if ( sin_ijk >= 0 && sin_ijk <= MIN_SINE )
+                            sin_ijk = SIN( theta_ijk );
+                            cos_ijk = COS( theta_ijk );
+                            //tan_ijk_i = 1.0 / TAN( theta_ijk );
+                            if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
                             {
                                 tan_ijk_i = cos_ijk / MIN_SINE;
                             }
-                            else if ( sin_ijk <= 0 && sin_ijk >= -MIN_SINE )
+                            else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
                             {
                                 tan_ijk_i = cos_ijk / -MIN_SINE;
                             }
@@ -299,8 +281,8 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                 tan_ijk_i = cos_ijk / sin_ijk;
                             }
 
-                            exp_tor2_ij = exp( -p_tor2 * BOA_ij );
-                            exp_cot2_ij = exp( -p_cot2 * SQR(BOA_ij - 1.5) );
+                            exp_tor2_ij = EXP( -p_tor2 * BOA_ij );
+                            exp_cot2_ij = EXP( -p_cot2 * SQR(BOA_ij - 1.5) );
 
 
                             /* pick l up from j-k interaction where k is the central atom */
@@ -316,7 +298,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                 fbp = &system->reax_param.fbp[type_i][type_j]
                                     [type_k][type_l].prm[0];
 
-                                if ( i != l && fbh->cnt
+                                if ( i != l && fbh->cnt > 0
                                         && bo_kl->BO > control->thb_cut
                                         && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
                                 {
@@ -328,14 +310,14 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     BOA_kl = bo_kl->BO - control->thb_cut;
 
                                     theta_jkl = p_jkl->theta;
-                                    sin_jkl = sin( theta_jkl );
-                                    cos_jkl = cos( theta_jkl );
-                                    //tan_jkl_i = 1. / tan( theta_jkl );
-                                    if ( sin_jkl >= 0 && sin_jkl <= MIN_SINE )
+                                    sin_jkl = SIN( theta_jkl );
+                                    cos_jkl = COS( theta_jkl );
+                                    //tan_jkl_i = 1.0 / TAN( theta_jkl );
+                                    if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
                                     {
                                         tan_jkl_i = cos_jkl / MIN_SINE;
                                     }
-                                    else if ( sin_jkl <= 0 && sin_jkl >= -MIN_SINE )
+                                    else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
                                     {
                                         tan_jkl_i = cos_jkl / -MIN_SINE;
                                     }
@@ -350,22 +332,23 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
 
                                     /* omega and its derivative */
+                                    //cos_omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec,
                                     omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec,
                                             r_jk, pbond_kl->dvec, r_kl, dvec_li, r_li, p_ijk, p_jkl,
                                             dcos_omega_di, dcos_omega_dj, dcos_omega_dk, dcos_omega_dl,
                                             out_control );
 
-                                    cos_omega = cos( omega );
-                                    cos2omega = cos( 2.0 * omega );
-                                    cos3omega = cos( 3.0 * omega );
+                                    cos_omega = COS( omega );
+                                    cos2omega = COS( 2.0 * omega );
+                                    cos3omega = COS( 3.0 * omega );
                                     /* end omega calculations */
 
                                     /* torsion energy */
-                                    exp_tor1 = exp( fbp->p_tor1 * SQR(2.0 - bo_jk->BO_pi - f11_DjDk) );
-                                    exp_tor2_kl = exp( -p_tor2 * BOA_kl );
-                                    exp_cot2_kl = exp( -p_cot2 * SQR(BOA_kl - 1.5) );
-                                    fn10 = (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk) *
-                                           (1.0 - exp_tor2_kl);
+                                    exp_tor1 = EXP( fbp->p_tor1 * SQR(2.0 - bo_jk->BO_pi - f11_DjDk) );
+                                    exp_tor2_kl = EXP( -p_tor2 * BOA_kl );
+                                    exp_cot2_kl = EXP( -p_cot2 * SQR(BOA_kl - 1.5) );
+                                    fn10 = (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk)
+                                        * (1.0 - exp_tor2_kl);
 
                                     CV = 0.5 * ( fbp->V1 * (1.0 + cos_omega)
                                             + fbp->V2 * exp_tor1 * (1.0 - cos2omega)
@@ -401,11 +384,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     CEtors9 = fn10 * sin_ijk * sin_jkl
                                         * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
                                                 + 1.5 * fbp->V3 * (cos2omega + 2.0 * SQR(cos_omega)));
-//                                        CEtors7 = cmn * sin_jkl * cos_ijk;
-//                                        CEtors8 = cmn * sin_ijk * cos_jkl;
-//                                        CEtors9 = fn10 * sin_ijk * sin_jkl
-//                                            * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
-//                                                    + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
+//                                    CEtors7 = cmn * sin_jkl * cos_ijk;
+//                                    CEtors8 = cmn * sin_ijk * cos_jkl;
+//                                    CEtors9 = fn10 * sin_ijk * sin_jkl
+//                                        * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
+//                                                + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
                                     /* end  of torsion energy */
 
 
@@ -418,20 +401,20 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2 *
                                             (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
 
-                                    CEconj1 = Cconj * (BOA_ij - 1.5e0);
-                                    CEconj2 = Cconj * (BOA_jk - 1.5e0);
-                                    CEconj3 = Cconj * (BOA_kl - 1.5e0);
+                                    CEconj1 = Cconj * (BOA_ij - 1.5);
+                                    CEconj2 = Cconj * (BOA_jk - 1.5);
+                                    CEconj3 = Cconj * (BOA_kl - 1.5);
 
-                                    CEconj4 = -fbp->p_cot1 * fn12 *
-                                              (SQR(cos_omega) - 1.0) * sin_jkl * tan_ijk_i;
-                                    CEconj5 = -fbp->p_cot1 * fn12 *
-                                              (SQR(cos_omega) - 1.0) * sin_ijk * tan_jkl_i;
+                                    CEconj4 = -fbp->p_cot1 * fn12
+                                        * (SQR(cos_omega) - 1.0) * sin_jkl * tan_ijk_i;
+                                    CEconj5 = -fbp->p_cot1 * fn12
+                                        * (SQR(cos_omega) - 1.0) * sin_ijk * tan_jkl_i;
 //                                    CEconj4 = -fbp->p_cot1 * fn12
 //                                        * (SQR(cos_omega) - 1.0) * sin_jkl * cos_ijk;
 //                                    CEconj5 = -fbp->p_cot1 * fn12
 //                                        * (SQR(cos_omega) - 1.0) * sin_ijk * cos_jkl;
-                                    CEconj6 = 2.0 * fbp->p_cot1 * fn12 *
-                                              cos_omega * sin_ijk * sin_jkl;
+                                    CEconj6 = 2.0 * fbp->p_cot1 * fn12
+                                        * cos_omega * sin_ijk * sin_jkl;
                                     /* end 4-body conjugation energy */
 
                                     /* forces */
@@ -524,7 +507,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         rvec_Add( data->my_ext_press, ext_press );
                                     }
 
-#ifdef TEST_ENERGY
+#if defined(TEST_ENERGY)
                                     /* fprintf( out_control->etor,
                                        "%12.8f%12.8f%12.8f%12.8f%12.8f%12.8f%12.8f\n",
                                        r_ij, r_jk, r_kl, cos_ijk, cos_jkl, sin_ijk, sin_jkl );
@@ -559,7 +542,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             e_con, data->my_en.e_con );
 #endif
 
-#ifdef TEST_FORCES
+#if defined(TEST_FORCES)
                                     /* Torsion Forces */
                                     Add_dBOpinpi2( system, lists, j, pk, CEtors2, 0.0,
                                                    workspace->f_tor, workspace->f_tor );
@@ -630,11 +613,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
     } // j loop
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "Number of torsion angles: %d\n", num_frb_intrs );
-    fprintf( stderr, "Torsion Energy: %g\t Conjugation Energy: %g\n",
+    fprintf( stderr, "[INFO] Torsion_Angles: num_frb_intrs = %d\n", num_frb_intrs );
+    fprintf( stderr, "[INFO] Torsion_Angles: e_tor = %g, e_con = %g\n",
              data->my_en.e_tor, data->my_en.e_con );
 
-    fprintf( stderr, "4body: ext_press (%12.6f %12.6f %12.6f)\n",
-             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
+//    fprintf( stderr, "[INFO] Torsion_Angles: ext_press = (%23.15e %23.15e %23.15e)\n",
+//             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
 #endif
 }

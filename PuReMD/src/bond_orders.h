@@ -27,14 +27,41 @@
 
 typedef struct
 {
-    real C1dbo, C2dbo, C3dbo;
-    real C1dbopi, C2dbopi, C3dbopi, C4dbopi;
-    real C1dbopi2, C2dbopi2, C3dbopi2, C4dbopi2;
-    real C1dDelta, C2dDelta, C3dDelta;
+    real C1dbo;
+    real C2dbo;
+    real C3dbo;
+    real C1dbopi;
+    real C2dbopi;
+    real C3dbopi;
+    real C4dbopi;
+    real C1dbopi2;
+    real C2dbopi2;
+    real C3dbopi2;
+    real C4dbopi2;
+    real C1dDelta;
+    real C2dDelta;
+    real C3dDelta;
 } dbond_coefficients;
 
 
-#ifdef TEST_FORCES
+void Add_dBond_to_Forces( int, int, reax_system*, simulation_data*,
+        storage*, reax_list** );
+
+void Add_dBond_to_Forces_NPT( int, int, reax_system*, simulation_data*,
+        storage*, reax_list** );
+
+int BOp( storage*, reax_list*, real, int, int, int, ivec*, real, rvec*,
+        int, single_body_parameters*, single_body_parameters*,
+        two_body_parameters* );
+
+int BOp_redundant( storage*, reax_list*, real, int, int, int, ivec*, real, rvec*,
+        int, single_body_parameters*, single_body_parameters*,
+        two_body_parameters* );
+
+void BO( reax_system*, control_params*, simulation_data*,
+         storage*, reax_list**, output_controls* );
+
+#if defined(TEST_FORCES)
 void Add_dBO( reax_system*, reax_list**, int, int, real, rvec* );
 
 void Add_dBOpinpi2( reax_system*, reax_list**,
@@ -50,20 +77,5 @@ void Add_dDelta( reax_system*, reax_list**, int, real, rvec* );
 void Add_dDelta_to_Forces( reax_system *, reax_list**, int, real );
 #endif
 
-void Add_dBond_to_Forces( int, int, storage*, reax_list** );
-
-void Add_dBond_to_Forces_NPT( int, int, simulation_data*,
-        storage*, reax_list** );
-
-int BOp( storage*, reax_list*, real, int, int, int, ivec*, real, rvec*,
-        int, single_body_parameters*, single_body_parameters*,
-        two_body_parameters* );
-
-int BOp_redundant( storage*, reax_list*, real, int, int, int, ivec*, real, rvec*,
-        int, single_body_parameters*, single_body_parameters*,
-        two_body_parameters* );
-
-void BO( reax_system*, control_params*, simulation_data*,
-         storage*, reax_list**, output_controls* );
 
 #endif

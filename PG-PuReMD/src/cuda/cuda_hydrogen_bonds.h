@@ -25,15 +25,16 @@
 #include "../reax_types.h"
 
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *,
-        single_body_parameters *, hbond_parameters *,
-        global_parameters, control_params *, storage ,
-        reax_list, reax_list, int, int, real *, rvec *, int, int );
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *, single_body_parameters *,
+        hbond_parameters *, global_parameters,
+        control_params *, storage ,
+        reax_list, reax_list, reax_list, int,
+        int, real *, rvec *, int, int );
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *,
-        single_body_parameters *, hbond_parameters *,
-        global_parameters , control_params *, storage,
-        reax_list, reax_list, int, int, real *, rvec * );
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *, single_body_parameters *,
+        hbond_parameters *, global_parameters, control_params *, storage,
+        reax_list, reax_list, reax_list, int,
+        int, real *, rvec * );
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_PostProcess( reax_atom *,
         storage, reax_list, int );

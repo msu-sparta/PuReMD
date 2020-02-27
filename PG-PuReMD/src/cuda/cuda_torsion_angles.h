@@ -25,11 +25,11 @@
 #include "../reax_types.h"
 
 
-CUDA_GLOBAL void Cuda_Torsion_Angles( reax_atom *, global_parameters,
+CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *, global_parameters,
         four_body_header *, control_params *, reax_list, reax_list,
         storage, int, int, real *, real *, rvec * );
 
-CUDA_GLOBAL void Cuda_Torsion_Angles_PostProcess( reax_atom *,
+CUDA_GLOBAL void Cuda_Torsion_Angles_Part2( reax_atom *,
         storage, reax_list, int );
 
 

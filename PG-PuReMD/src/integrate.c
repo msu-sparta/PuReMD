@@ -89,7 +89,7 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
 
         if ( ret == FAILURE )
         {
-            Estimate_Num_Neighbors( system );
+            Estimate_Num_Neighbors( system, lists[FAR_NBRS]->format );
         }
     }
 
@@ -180,7 +180,7 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 
         if ( ret == FAILURE )
         {
-            Estimate_Num_Neighbors( system );
+            Estimate_Num_Neighbors( system, lists[FAR_NBRS]->format );
         }
     }
 
@@ -306,7 +306,7 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
 
         if ( ret == FAILURE )
         {
-            Estimate_Num_Neighbors( system );
+            Estimate_Num_Neighbors( system, lists[FAR_NBRS]->format );
         }
     }
 
@@ -432,7 +432,7 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
 
         if ( ret == FAILURE )
         {
-            Estimate_Num_Neighbors( system );
+            Estimate_Num_Neighbors( system, lists[FAR_NBRS]->format );
         }
     }
 

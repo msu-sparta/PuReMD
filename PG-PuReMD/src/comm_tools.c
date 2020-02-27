@@ -29,6 +29,190 @@
 #include "vector.h"
 
 
+#if defined(NEUTRAL_TERRITORY)
+void Setup_NT_Comm( reax_system * const system, control_params * const control,
+                 mpi_datatypes * const mpi_data )
+{
+    int i, d;
+    real bndry_cut;
+    neighbor_proc *nbr_pr;
+    simulation_box *my_box;
+    ivec nbr_coords, nbr_recv_coords;
+    ivec r[12] = {
+        {0, 0, -1}, // -z
+        {0, 0, +1}, // +z
+        {0, -1, 0}, // -y
+        {-1, -1, 0}, // -x-y
+        {-1, 0, 0}, // -x
+        {-1, +1, 0},  // -x+y
+
+        {0, 0, +1}, // +z
+        {0, 0, -1}, // -z
+        {0, +1, 0}, // +y
+        {+1, +1, 0}, // +x+y
+        {+1, 0, 0}, // +x
+        {+1, -1, 0}  // +x-y
+    };
+    my_box = &system->my_box;
+    bndry_cut = system->bndry_cuts.ghost_cutoff;
+    system->num_nt_nbrs = MAX_NT_NBRS;
+
+    /* identify my neighbors */
+    for ( i = 0; i < system->num_nt_nbrs; ++i )
+    {
+        nbr_pr = &system->my_nt_nbrs[i];
+        ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &nbr_pr->rank );
+        
+        /* set the rank of the neighbor processor in the receiving direction */
+        ivec_Sum( nbr_recv_coords, system->my_coords, r[i + 6] ); /* actual nbr coords */
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_recv_coords, &nbr_pr->receive_rank );
+
+        for ( d = 0; d < 3; ++d )
+        {
+            /* determine the boundary area with this nbr */
+            if ( r[i][d] < 0 )
+            {
+                nbr_pr->bndry_min[d] = my_box->min[d];
+                nbr_pr->bndry_max[d] = my_box->min[d] + bndry_cut;
+            }
+            else if ( r[i][d] > 0 )
+            {
+                nbr_pr->bndry_min[d] = my_box->max[d] - bndry_cut;
+                nbr_pr->bndry_max[d] = my_box->max[d];
+            }
+            else
+            {
+                nbr_pr->bndry_min[d] = my_box->min[d];
+                nbr_pr->bndry_max[d] = my_box->max[d];
+            }
+
+            /* determine if it is a periodic neighbor */
+            if ( nbr_coords[d] < 0 )
+            {
+                nbr_pr->prdc[d] = -1;
+            }
+            else if ( nbr_coords[d] >= control->procs_by_dim[d] )
+            {
+                nbr_pr->prdc[d] = 1;
+            }
+            else
+            {
+                nbr_pr->prdc[d] = 0;
+            }
+        }
+
+    }
+}
+
+
+static int Sort_Neutral_Territory( reax_system *system, int dir, mpi_out_data *out_bufs, int write )
+{
+    int i, cnt;
+    reax_atom *atoms;
+    neighbor_proc *nbr_pr;
+
+    cnt = 0;
+    atoms = system->my_atoms;
+    /* place each atom into the appropriate outgoing list */
+    nbr_pr = &( system->my_nt_nbrs[dir] );
+
+    for ( i = 0; i < system->n; ++i )
+    {
+        if ( nbr_pr->bndry_min[0] <= atoms[i].x[0]
+                && atoms[i].x[0] < nbr_pr->bndry_max[0]
+                && nbr_pr->bndry_min[1] <= atoms[i].x[1]
+                && atoms[i].x[1] < nbr_pr->bndry_max[1]
+                && nbr_pr->bndry_min[2] <= atoms[i].x[2]
+                && atoms[i].x[2] < nbr_pr->bndry_max[2] )
+        {
+            if ( write )
+            {
+                out_bufs[dir].index[out_bufs[dir].cnt] = i;
+                out_bufs[dir].cnt++;
+            }
+            else
+            {
+                cnt++;
+            }
+        }
+    }
+
+    return cnt;
+}
+
+
+static void Init_Neutral_Territory( reax_system* system, mpi_datatypes *mpi_data )
+{
+    int d, end, cnt;
+    mpi_out_data *out_bufs;
+    MPI_Comm comm;
+    MPI_Request req;
+    MPI_Status stat;
+    neighbor_proc *nbr;
+
+    Reset_Out_Buffers( mpi_data->out_nt_buffers, system->num_nt_nbrs );
+    comm = mpi_data->comm_mesh3D;
+    out_bufs = mpi_data->out_nt_buffers;
+    cnt = 0;
+    end = system->n;
+
+    for ( d = 0; d < 6; ++d )
+    {
+        nbr = &system->my_nt_nbrs[d];
+        
+        Sort_Neutral_Territory( system, d, out_bufs, 1 );
+        
+        MPI_Irecv( &cnt, 1, MPI_INT, nbr->receive_rank, d, comm, &req );
+        MPI_Send( &out_bufs[d].cnt, 1, MPI_INT, nbr->rank, d, comm );
+        MPI_Wait( &req, &stat );
+        
+        if ( mpi_data->in_nt_buffer[d] == NULL )
+        {
+            nbr->est_recv = MAX( SAFER_ZONE_NT * cnt, MIN_SEND );
+            mpi_data->in_nt_buffer[d] = smalloc( nbr->est_recv * sizeof(real),
+                    "Init_Neural_Territory::mpi_data->in_nt_buffer[d]", comm );
+        }
+
+        nbr = &system->my_nt_nbrs[d];
+        nbr->atoms_str = end;
+        nbr->atoms_cnt = cnt;
+        end += cnt;
+    }
+}
+
+
+void Estimate_NT_Atoms( reax_system * const system, mpi_datatypes * const mpi_data )
+{
+    int d;
+    mpi_out_data *out_bufs;
+    neighbor_proc *nbr;
+
+    out_bufs = mpi_data->out_nt_buffers;
+
+    for ( d = 0; d < 6; ++d )
+    {
+        /* count the number of atoms in each processor's outgoing list */
+        nbr = &system->my_nt_nbrs[d];
+        nbr->est_send = Sort_Neutral_Territory( system, d, out_bufs, 0 );
+
+        /* estimate the space needed based on the count above */
+        nbr->est_send = MAX( MIN_SEND, nbr->est_send * SAFER_ZONE_NT );
+
+        /* allocate the estimated space */
+        out_bufs[d].index = scalloc( 2 * nbr->est_send, sizeof(int),
+                "Estimate_NT_Atoms::out_bufs[d].index", MPI_COMM_WORLD );
+        out_bufs[d].out_atoms = scalloc( 2 * nbr->est_send, sizeof(real),
+                "Estimate_NT_Atoms::out_bufs[d].out_atoms", MPI_COMM_WORLD );
+
+        /* sort the atoms to their outgoing buffers */
+        // TODO: to call or not to call?
+        //Sort_Neutral_Territory( system, d, out_bufs, 1 );
+    }
+}
+#endif
+
+
 void Check_MPI_Error( int code, const char * const msg )
 {
     char err_msg[MPI_MAX_ERROR_STRING];
@@ -67,7 +251,7 @@ void Setup_Comm( reax_system * const system, control_params * const control,
         ivec_Sum( nbr_coords, system->my_coords, r[i] ); /* actual nbr coords */
         nbr_pr = &system->my_nbrs[i];
         ivec_Copy( nbr_pr->rltv, r[i] );
-        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &(nbr_pr->rank) );
+        MPI_Cart_rank( mpi_data->comm_mesh3D, nbr_coords, &nbr_pr->rank );
 
         for ( d = 0; d < 3; ++d )
         {
@@ -207,7 +391,7 @@ static void Sort_Transfer_Atoms( reax_system * const system, int start, int end,
             if ( atoms[i].x[d] < my_box->min[d] )
             {
                 out_cnt = out_bufs[2 * d].cnt++;
-                out_buf = (mpi_atom *) out_bufs[2 * d].out_atoms;
+                out_buf = out_bufs[2 * d].out_atoms;
                 Pack_MPI_Atom( out_buf + out_cnt, atoms + i, i );
                 atoms[i].orig_id = -1;
                 break;
@@ -215,7 +399,7 @@ static void Sort_Transfer_Atoms( reax_system * const system, int start, int end,
             else if ( atoms[i].x[d] >= my_box->max[d] )
             {
                 out_cnt = out_bufs[2 * d + 1].cnt++;
-                out_buf = (mpi_atom *) out_bufs[2 * d + 1].out_atoms;
+                out_buf = out_bufs[2 * d + 1].out_atoms;
                 Pack_MPI_Atom( out_buf + out_cnt, atoms + i, i );
                 atoms[i].orig_id = -1;
                 break;
@@ -254,7 +438,7 @@ static void Unpack_Transfer_Message( reax_system * const system, int end, void *
     int i;
     real dx;
     reax_atom * const dest = system->my_atoms + end;
-    mpi_atom * const src = (mpi_atom*) dummy;
+    mpi_atom * const src = dummy;
 
     for ( i = 0; i < cnt; ++i )
     {
@@ -328,7 +512,7 @@ static void Sort_Boundary_Atoms( reax_system * const system, int start, int end,
                 {
                     out_cnt = out_bufs[p].cnt++;
                     out_bufs[p].index[out_cnt] = i;
-                    out_buf = (boundary_atom *) out_bufs[p].out_atoms;
+                    out_buf = out_bufs[p].out_atoms;
                     Pack_Boundary_Atom( out_buf + out_cnt, atoms + i, i );
                 }
             }
@@ -392,9 +576,9 @@ void Estimate_Boundary_Atoms( reax_system * const system, int start, int end,
     for ( p = 2 * d; p < 2 * d + 2; ++p )
     {
         nbr_pr = &system->my_nbrs[p];
-        out_bufs[p].index = scalloc( nbr_pr->est_send, sizeof(int),
+        out_bufs[p].index = scalloc( 2 * nbr_pr->est_send, sizeof(int),
                 "Estimate_Boundary_Atoms::mpibuf:index" );
-        out_bufs[p].out_atoms = scalloc( nbr_pr->est_send, sizeof(boundary_atom),
+        out_bufs[p].out_atoms = scalloc( 2 * nbr_pr->est_send, sizeof(boundary_atom),
                 "Estimate_Boundary_Atoms::mpibuf:out_atoms" );
     }
 
@@ -411,7 +595,7 @@ void Estimate_Boundary_Atoms( reax_system * const system, int start, int end,
             {
                 out_cnt = out_bufs[p].cnt;
                 out_bufs[p].index[out_cnt] = i;
-                out_buf = (boundary_atom *) out_bufs[p].out_atoms;
+                out_buf = out_bufs[p].out_atoms;
                 Pack_Boundary_Atom( out_buf + out_cnt, atoms + i, i );
                 ++out_bufs[p].cnt;
             }
@@ -485,9 +669,9 @@ static void Estimate_Init_Storage( int me, neighbor_proc * const nbr1, neighbor_
             sfree( mpi_data->in2_buffer, "Estimate_Init_Storage::mpi_data->in2_buffer" );
         }
 
-        mpi_data->in1_buffer = smalloc( sizeof(boundary_atom) * new_max,
+        mpi_data->in1_buffer = smalloc( 2 * new_max * MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
                 "Estimate_Init_Storage::mpi_data->in1_buffer" );
-        mpi_data->in2_buffer = smalloc( sizeof(boundary_atom) * new_max,
+        mpi_data->in2_buffer = smalloc( 2 * new_max * MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
                 "Estimate_Init_Storage::mpi_data->in2_buffer" );
     }
 }
@@ -499,7 +683,7 @@ static void Unpack_Exchange_Message( reax_system * const system, int end, void *
 {
     int i;
     real dx;
-    const boundary_atom * const src = (boundary_atom *) dummy;
+    const boundary_atom * const src = dummy;
     reax_atom * const dest = system->my_atoms + end;
 
     for ( i = 0; i < cnt; ++i )

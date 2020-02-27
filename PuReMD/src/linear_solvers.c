@@ -39,6 +39,26 @@ real t_start, t_elapsed, matvec_time, dot_time;
 #endif*/
 
 
+static int compare_matrix_entry( const void * const v1, const void * const v2 )
+{
+    return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
+}
+
+
+void Sort_Matrix_Rows( sparse_matrix * const A )
+{
+    int i, si, ei;
+
+    for ( i = 0; i < A->n; ++i )
+    {
+        si = A->start[i];
+        ei = A->end[i];
+        qsort( &A->entries[si], ei - si,
+                sizeof(sparse_matrix_entry), compare_matrix_entry );
+    }
+}
+
+
 static int compare_dbls( const void* arg1, const void* arg2 )
 {   
     int ret;
@@ -106,7 +126,14 @@ static int find_bucket( double *list, int len, double a )
 }
 
 
-static void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
+/* Local arithmetic portion of dual sparse matrix-dense vector multiplication Ax = b
+ *
+ * A: sparse matrix, 1D partitioned row-wise
+ * x: two dense vectors
+ * b (output): two dense vectors
+ * N: number of entries in both vectors in b (must be equal)
+ */
+static void dual_Sparse_MatVec_local( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 {
     int i, j, k, si, num_rows;
     real val;
@@ -218,7 +245,14 @@ static void dual_Sparse_MatVec( sparse_matrix *A, rvec2 *x, rvec2 *b, int N )
 }
 
 
-static void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
+/* Local arithmetic portion of sparse matrix-dense vector multiplication Ax = b
+ *
+ * A: sparse matrix, 1D partitioned row-wise
+ * x: dense vector
+ * b (output): dense vector
+ * N: number of entries in b
+ */
+static void Sparse_MatVec_local( sparse_matrix *A, real *x, real *b, int N )
 {
     int i, j, k, si, num_rows;
     real val;
@@ -238,7 +272,7 @@ static void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
             si = A->start[i];
 
             /* diagonal only contributes once */
-            if( i < A->n )
+            if ( i < A->n )
             {
                 b[i] += A->entries[si].val * x[i];
                 k = si + 1;
@@ -287,7 +321,8 @@ static void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
         {
             si = A->start[i];
 
-            /* diagonal only contributes once */
+            /* A symmetric, upper triangular portion stored
+             * => diagonal only contributes once */
             b[i] += A->entries[si].val * x[i];
 
             for ( k = si + 1; k < A->end[i]; ++k )
@@ -319,8 +354,77 @@ static void Sparse_MatVec( sparse_matrix *A, real *x, real *b, int N )
 }
 
 
-real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, storage *workspace,
-        mpi_datatypes *mpi_data, sparse_matrix *A, sparse_matrix **A_spar_patt,
+/* Communications for sparse matrix-dense vector multiplication Ax = b
+ *
+ * system:
+ * control: 
+ * mpi_data:
+ * x: dense vector
+ * buf_type: data structure type for x
+ * mpi_type: MPI_Datatype struct for communications
+ *
+ * returns: communication time
+ */
+static int Sparse_MatVec_Comm_Part1( const reax_system * const system,
+        const control_params * const control, mpi_datatypes * const mpi_data,
+        void * const x, int buf_type, MPI_Datatype mpi_type )
+{
+    int t_start, t_comm;
+
+    t_comm = 0.0;
+
+    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
+    t_start = MPI_Wtime( );
+    Dist( system, mpi_data, x, buf_type, mpi_type );
+    t_comm += MPI_Wtime( ) - t_start;
+
+    return t_comm;
+}
+
+
+/* Communications for sparse matrix-dense vector multiplication Ax = b
+ *
+ * system:
+ * control:
+ * mpi_data:
+ * mat_format: storage type of sparse matrix A
+ * b: dense vector
+ * buf_type: data structure type for b
+ * mpi_type: MPI_Datatype struct for communications
+ *
+ * returns: communication time
+ */
+static int Sparse_MatVec_Comm_Part2( const reax_system * const system,
+        const control_params * const control, mpi_datatypes * const mpi_data,
+        int mat_format, void * const b, int buf_type, MPI_Datatype mpi_type )
+{
+    int t_start, t_comm;
+
+    t_comm = 0.0;
+
+    if ( mat_format == SYM_HALF_MATRIX )
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, b, buf_type, mpi_type );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#if defined(NEUTRAL_TERRITORY)
+    else
+    {
+        t_start = MPI_Wtime( );
+        Coll( system, mpi_data, b, buf_type, mpi_type );
+        t_comm += MPI_Wtime( ) - t_start;
+    }
+#endif
+
+    return t_comm;
+}
+
+
+real setup_sparse_approx_inverse( reax_system const * const system,
+        simulation_data * const data,
+        storage * const workspace, mpi_datatypes * const mpi_data,
+        sparse_matrix * const A, sparse_matrix **A_spar_patt,
         int nprocs, real filter )
 {
     int i, bin, total, pos;
@@ -399,7 +503,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     n_local = 0;
     for( i = 0; i < num_rows; ++i )
     {
-        n_local += (A->end[i] - A->start[i] + 9)/10;
+        n_local += (A->end[i] - A->start[i] + 9) / 10;
     }
     s_local = (int) (12.0 * (log2(n_local) + log2(nprocs)));
     
@@ -524,15 +628,15 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     /* determine counts for elements per process */
-    t_start = MPI_Wtime();
+    t_start = MPI_Wtime( );
     MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM, comm );
-    t_comm += MPI_Wtime() - t_start;
+    t_comm += MPI_Wtime( ) - t_start;
 
     /* find the target process */
     target_proc = 0;
     total = 0;
     k = n * filter;
-    for (i = nprocs - 1; i >= 0; --i )
+    for ( i = nprocs - 1; i >= 0; --i )
     {
         if ( total + scounts[i] >= k )
         {
@@ -552,10 +656,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
     }
 
     /* send local buckets to target processor for quickselect */
-    t_start = MPI_Wtime();
+    t_start = MPI_Wtime( );
     MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts,
             1, MPI_INT, target_proc, comm );
-    t_comm += MPI_Wtime() - t_start;
+    t_comm += MPI_Wtime( ) - t_start;
 
     if ( system->my_rank == target_proc )
     {
@@ -566,10 +670,10 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
         }
     }
 
-    t_start = MPI_Wtime();
+    t_start = MPI_Wtime( );
     MPI_Gatherv( bucketlist_local + dspls_local[target_proc], scounts_local[target_proc], MPI_DOUBLE,
             bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, comm);
-    t_comm += MPI_Wtime() - t_start;
+    t_comm += MPI_Wtime( ) - t_start;
 
     /* apply quick select algorithm at the target process */
     if ( system->my_rank == target_proc )
@@ -578,7 +682,7 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
         right = n_gather-1;
 
         turn = 0;
-        while( k )
+        while ( k )
         {
             p  = left;
             turn = 1 - turn;
@@ -615,12 +719,12 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
                 bucketlist[left] = tmp;
             }
 
-            if( p == k - 1)
+            if ( p == k - 1)
             {
                 threshold = bucketlist[p];
                 break;
             }
-            else if( p > k - 1 )
+            else if ( p > k - 1 )
             {
                 right = p - 1;
             }
@@ -629,17 +733,17 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
                 left = p + 1;
             }
         }
-        /* comment out if ACKS2 and/or EE is not an option
-           if(threshold < 1.000000)
-           {
-           threshold = 1.000001;
-           } */
+        /* comment out if ACKS2 and/or EE is not an option */
+//        if ( threshold < 1.000000 )
+//        {
+//            threshold = 1.000001;
+//        }
     }
 
     /* broadcast the filtering value */
-    t_start = MPI_Wtime();
+    t_start = MPI_Wtime( );
     MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
-    t_comm += MPI_Wtime() - t_start;
+    t_comm += MPI_Wtime( ) - t_start;
 
 #if defined(DEBUG_FOCUS)
     int nnz = 0;
@@ -709,18 +813,18 @@ real setup_sparse_approx_inverse( reax_system *system, simulation_data *data, st
         sfree( bucketlist, "setup_sparse_approx_inverse::bucketlist" );
     }
 
-    return MPI_Wtime() - start;
+    return MPI_Wtime( ) - start;
 }
 
 
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 #if defined(NEUTRAL_TERRITORY)
-real sparse_approx_inverse( reax_system *system, simulation_data *data,
-        storage *workspace, mpi_datatypes *mpi_data, 
-        sparse_matrix *A, sparse_matrix *A_spar_patt,
+real sparse_approx_inverse( reax_system const * const system,
+        simulation_data * const data,
+        storage * const workspace, mpi_datatypes * const mpi_data, 
+        sparse_matrix * const A, sparse_matrix * const A_spar_patt,
         sparse_matrix **A_app_inv, int nprocs )
 {
-    ///////////////
     int N, M, d_i, d_j;
     int i, k, pj, j_temp;
     int local_pos, atom_pos, identity_pos;
@@ -745,8 +849,8 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     
     real start, t_start, t_comm;
     real total_comm;
-    ///////////////////
-    start = MPI_Wtime();
+
+    start = MPI_Wtime( );
     t_comm = 0.0;
 
     comm = mpi_data->world;
@@ -774,7 +878,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
     j_send = NULL;
     val_send = NULL;
-    for( d = 0; d < 6; ++d )
+    for ( d = 0; d < 6; ++d )
     {
         j_recv[d] = NULL;
         val_recv[d] = NULL;
@@ -798,9 +902,9 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     }
 
     /* Announce the nnz's in each row that will be communicated later */
-    t_start = MPI_Wtime();
+    t_start = MPI_Wtime( );
     Dist( system, mpi_data, row_nnz, REAL_PTR_TYPE, MPI_INT );
-    t_comm += MPI_Wtime() - t_start;
+    t_comm += MPI_Wtime( ) - t_start;
     fprintf( stdout,"SAI after Dist call\n");
     fflush( stdout );
 
@@ -812,18 +916,18 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     for ( d = 0; d < 6; ++d)
     {
         /* initiate recvs */
-        nbr = &(system->my_nt_nbrs[d]);
+        nbr = &system->my_nt_nbrs[d];
         if ( nbr->atoms_cnt )
         {
             /* calculate the total data that will be received */
             cnt = 0;
-            for( i = nbr->atoms_str; i < (nbr->atoms_str + nbr->atoms_cnt); ++i )
+            for ( i = nbr->atoms_str; i < (nbr->atoms_str + nbr->atoms_cnt); ++i )
             {
                 cnt += row_nnz[i];
             }
 
             /* initiate Irecv */
-            if( cnt )
+            if ( cnt )
             {
                 count += 2;
 
@@ -832,25 +936,25 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
                 fprintf( stdout,"Dist communication receive phase direction %d will receive %d\n", d, cnt);
                 fflush( stdout );
-                t_start = MPI_Wtime();
+                t_start = MPI_Wtime( );
                 MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank, d, comm, &req[2 * d] );
                 MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank, d, comm, &req[2 * d + 1] );
-                t_comm += MPI_Wtime() - t_start;
+                t_comm += MPI_Wtime( ) - t_start;
             }
         }
     }
     /////////////////////
     for( d = 0; d < 6; ++d)
     {
-        nbr = &(system->my_nt_nbrs[d]);
+        nbr = &system->my_nt_nbrs[d];
         /* send both messages in dimension d */
-        if( out_bufs[d].cnt )
+        if ( out_bufs[d].cnt )
         {
             cnt = 0;
-            for( i = 0; i < out_bufs[d].cnt; ++i )
+            for ( i = 0; i < out_bufs[d].cnt; ++i )
             {
                 cnt += A->end[ out_bufs[d].index[i] ] - A->start[ out_bufs[d].index[i] ];
-                if(out_bufs[d].index[i] < 0 || out_bufs[d].index[i] >= A->n)
+                if ( out_bufs[d].index[i] < 0 || out_bufs[d].index[i] >= A->n )
                 {
                     fprintf( stdout, "INDEXING ERROR %d > %d\n", out_bufs[d].index[i], A->n );
                     fflush( stdout );
@@ -860,15 +964,15 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             fprintf( stdout,"Dist communication    send phase direction %d should  send %d\n", d, cnt);
             fflush( stdout );
 
-            if( cnt )
+            if ( cnt )
             {
                 j_send = (int *) malloc( sizeof(int) * cnt );
                 val_send = (real *) malloc( sizeof(real) * cnt );
 
                 cnt = 0;
-                for( i = 0; i < out_bufs[d].cnt; ++i )
+                for ( i = 0; i < out_bufs[d].cnt; ++i )
                 {
-                    for( pj = A->start[ out_bufs[d].index[i] ]; pj < A->end[ out_bufs[d].index[i] ]; ++pj )
+                    for ( pj = A->start[ out_bufs[d].index[i] ]; pj < A->end[ out_bufs[d].index[i] ]; ++pj )
                     {
                         atom = &system->my_atoms[ A->entries[pj].j ];
                         j_send[cnt] = atom->orig_id;
@@ -880,14 +984,14 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
                 fprintf( stdout,"Dist communication    send phase direction %d will    send %d\n", d, cnt );
                 fflush( stdout );
 
-                t_start = MPI_Wtime();
+                t_start = MPI_Wtime( );
                 MPI_Send( j_send, cnt, MPI_INT, nbr->rank, d, comm );
                 fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
                 MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank, d, comm );
                 fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
-                t_comm += MPI_Wtime() - t_start;
+                t_comm += MPI_Wtime( ) - t_start;
             }
         }
     }
@@ -900,25 +1004,25 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
         MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
         t_comm += MPI_Wtime() - t_start;
 
-        nbr = &(system->my_nt_nbrs[index/2]);
+        nbr = &system->my_nt_nbrs[index / 2];
         cnt = 0;
-        for( i = nbr->atoms_str; i < (nbr->atoms_str + nbr->atoms_cnt); ++i )
+        for ( i = nbr->atoms_str; i < (nbr->atoms_str + nbr->atoms_cnt); ++i )
         {
-            if( (index%2) == 0 )
+            if ( index % 2 == 0 )
             {
                 j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
-                for( pj = 0; pj < row_nnz[i]; ++pj )
+                for ( pj = 0; pj < row_nnz[i]; ++pj )
                 {
-                    j_list[i][pj] = j_recv[index/2][cnt];
+                    j_list[i][pj] = j_recv[index / 2][cnt];
                     cnt++;
                 }
             }
             else
             {
                 val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
-                for( pj = 0; pj < row_nnz[i]; ++pj )
+                for ( pj = 0; pj < row_nnz[i]; ++pj )
                 {
-                    val_list[i][pj] = val_recv[index/2][cnt];
+                    val_list[i][pj] = val_recv[index / 2][cnt];
                     cnt++;
                 }
             }
@@ -953,7 +1057,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
              * search through the row of full A of that index */
 
             /* the case where the local matrix has that index's row */
-            if( j_temp < A->NT )
+            if ( j_temp < A->NT )
             {
                 for ( k = A->start[ j_temp ]; k < A->end[ j_temp ]; ++k )
                 {
@@ -1007,19 +1111,19 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
             /* it is in the original list */
             local_pos = A_spar_patt->entries[ A_spar_patt->start[i] + d_j ].j;
-            if( local_pos < 0 || local_pos >= system->N )
+            if ( local_pos < 0 || local_pos >= system->N )
             {
                 fprintf( stderr, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
                 fflush( stderr );
 
             }
             /////////////////////////////
-            if( local_pos < A->NT )
+            if ( local_pos < A->NT )
             {
                 for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
                 {
                     atom = &system->my_atoms[ A->entries[d_i].j ];
-                    if (pos_x[ atom->orig_id ] >= M || d_j >=  N )
+                    if ( pos_x[ atom->orig_id ] >= M || d_j >=  N )
                     {
                         fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, orig_id = %d, i =  %d, j = %d, M = %d N = %d\n", atom->orig_id, pos_x[ atom->orig_id ], d_j, M, N );
                         fflush( stderr );
@@ -1034,7 +1138,7 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
             {
                 for ( d_i = 0; d_i < row_nnz[ local_pos ]; ++d_i )
                 {
-                    if (pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N )
+                    if ( pos_x[ j_list[local_pos][d_i] ] >= M || d_j  >= N )
                     {
                         fprintf( stderr, "CANNOT MAP IT TO THE DENSE MATRIX, STOP THE EXECUTION, %d %d\n", pos_x[ j_list[local_pos][d_i] ], d_j);
                         fflush( stderr );
@@ -1092,21 +1196,22 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
     free( pos_x);
     free( X );
     /////////////////////
-    MPI_Reduce(&t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world);
+    MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
 
-    if( system->my_rank == MASTER_NODE )
+    if ( system->my_rank == MASTER_NODE )
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
 
-    return MPI_Wtime() - start;
+    return MPI_Wtime( ) - start;
 }
 
 
 #else
-real sparse_approx_inverse( reax_system *system, simulation_data *data,
-        storage *workspace, mpi_datatypes *mpi_data, 
-        sparse_matrix *A, sparse_matrix *A_spar_patt,
+real sparse_approx_inverse( reax_system const * const system,
+        simulation_data * const data,
+        storage * const workspace, mpi_datatypes * const mpi_data, 
+        sparse_matrix * const A, sparse_matrix * const A_spar_patt,
         sparse_matrix **A_app_inv, int nprocs )
 {
     int N, M, d_i, d_j, mark;
@@ -1644,9 +1749,10 @@ real sparse_approx_inverse( reax_system *system, simulation_data *data,
 
 
 /* Steepest Descent */
-int SDM( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data )
+int SDM( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, real * const b,
+        real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j;
     real tmp, alpha, bnorm, sig;
@@ -1659,32 +1765,19 @@ int SDM( reax_system *system, control_params *control, simulation_data *data,
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            x, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, x, workspace->q, H->NT );
+    Sparse_MatVec_local( H, x, workspace->q, H->NT );
 #else
-    Sparse_MatVec( H, x, workspace->q, system->N );
+    Sparse_MatVec_local( H, x, workspace->q, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
     Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->q, system->n );
@@ -1693,17 +1786,18 @@ int SDM( reax_system *system, control_params *control, simulation_data *data,
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
         t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because d is only local portion */
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
     {
@@ -1731,32 +1825,19 @@ int SDM( reax_system *system, control_params *control, simulation_data *data,
 
     for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / bnorm > tol; ++i )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( H, workspace->d, workspace->q, H->NT );
+        Sparse_MatVec_local( H, workspace->d, workspace->q, H->NT );
 #else
-        Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+        Sparse_MatVec_local( H, workspace->d, workspace->q, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
         redux[0] = Dot_local( workspace->r, workspace->d, system->n );
@@ -1778,17 +1859,18 @@ int SDM( reax_system *system, control_params *control, simulation_data *data,
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = MPI_Wtime( );
-            Dist( system, mpi_data, workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
             
             t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
-            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
             t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because d is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
         {
@@ -1833,9 +1915,12 @@ int SDM( reax_system *system, control_params *control, simulation_data *data,
 }
 
 
-int dual_CG( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, sparse_matrix *H, rvec2 *b,
-        real tol, rvec2 *x, mpi_datatypes* mpi_data )
+/* Dual iteration of the Preconditioned Conjugate Gradient Method
+ * for QEq (2 simaltaneous solves) */
+int dual_CG( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, rvec2 * const b,
+        real tol, rvec2 * const x, mpi_datatypes * const  mpi_data )
 {
     int  i, j;
     rvec2 tmp, alpha, beta;
@@ -1850,38 +1935,24 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    dual_Sparse_MatVec( H, x, workspace->q2, H->NT );
+    dual_Sparse_MatVec_local( H, x, workspace->q2, H->NT );
 #else
-    dual_Sparse_MatVec( H, x, workspace->q2, system->N );
+    dual_Sparse_MatVec_local( H, x, workspace->q2, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
+    /* residual */
     for ( j = 0; j < system->n; ++j )
     {
-        // residual
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->q2[j][1];
     }
@@ -1889,17 +1960,18 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-         t_start = MPI_Wtime( );
-         Dist( system, mpi_data, workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-         t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-         t_start = MPI_Wtime( );
+        t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-         dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->d2, H->NT );
+        dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->r2, workspace->d2, H->NT );
 #else
-         dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->d2, system->n );
+        dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->r2, workspace->d2, system->n );
 #endif
-         t_pa += MPI_Wtime( ) - t_start;
+        t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because d2 is only local portion */
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
@@ -1948,32 +2020,19 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
             break;
         }
 
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->d2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->d2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        dual_Sparse_MatVec( H, workspace->d2, workspace->q2, H->NT );
+        dual_Sparse_MatVec_local( H, workspace->d2, workspace->q2, H->NT );
 #else
-        dual_Sparse_MatVec( H, workspace->d2, workspace->q2, system->N );
+        dual_Sparse_MatVec_local( H, workspace->d2, workspace->q2, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
         // dot product: d.q
         t_start =  MPI_Wtime( );
@@ -1992,12 +2051,15 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
         t_start = MPI_Wtime( );
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
+        /* update x */
         for ( j = 0; j < system->n; ++j )
         {
-            // update x
             x[j][0] += alpha[0] * workspace->d2[j][0];
             x[j][1] += alpha[1] * workspace->d2[j][1];
-            // update residual
+        }
+        /* update residual */
+        for ( j = 0; j < system->n; ++j )
+        {
             workspace->r2[j][0] -= alpha[0] * workspace->q2[j][0];
             workspace->r2[j][1] -= alpha[1] * workspace->q2[j][1];
         }
@@ -2005,17 +2067,18 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
 
         if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-             t_start = MPI_Wtime( );
-             Dist( system, mpi_data, workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-             t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-             t_start = MPI_Wtime( );
+            t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-             dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->p2, H->NT );
+            dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->r2, workspace->p2, H->NT );
 #else
-             dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->p2, system->n );
+            dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->r2, workspace->p2, system->n );
 #endif
-             t_pa += MPI_Wtime( ) - t_start;
+            t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because p2 is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
         {
@@ -2033,13 +2096,11 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
         redux[1] = 0.0;
         redux[2] = 0.0;
         redux[3] = 0.0;
+        /* dot products: r.p and p.p */
         for ( j = 0; j < system->n; ++j )
         {
-            // dot product: r.p
             redux[0] += workspace->r2[j][0] * workspace->p2[j][0];
             redux[1] += workspace->r2[j][1] * workspace->p2[j][1];
-
-            // dot product: p.p
             redux[2] += workspace->p2[j][0] * workspace->p2[j][0];
             redux[3] += workspace->p2[j][1] * workspace->p2[j][1];
         }
@@ -2058,9 +2119,9 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
         norm[1] = sqrt( redux[3] );
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
+        /* d = p + beta * d */
         for ( j = 0; j < system->n; ++j )
         {
-            // d = p + beta * d
             workspace->d2[j][0] = workspace->p2[j][0] + beta[0] * workspace->d2[j][0];
             workspace->d2[j][1] = workspace->p2[j][1] + beta[1] * workspace->d2[j][1];
         }
@@ -2088,7 +2149,7 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
         MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
-    // continue to solve the system that has not converged yet
+    /* continue to solve the system that has not converged yet */
     if ( norm[0] / b_norm[0] > tol )
     {
         for ( j = 0; j < system->n; ++j )
@@ -2132,9 +2193,10 @@ int dual_CG( reax_system *system, control_params *control, simulation_data *data
 
 
 /* Preconditioned Conjugate Gradient Method */
-int CG( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data )
+int CG( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, real * const b,
+        real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j;
     real tmp, alpha, beta, norm, b_norm;
@@ -2148,53 +2210,41 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            x, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, x, workspace->q, H->NT );
+    Sparse_MatVec_local( H, x, workspace->q, H->NT );
 #else
-    Sparse_MatVec( H, x, workspace->q, system->N );
+    Sparse_MatVec_local( H, x, workspace->q, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
-    Vector_Sum( workspace->r , 1.,  b, -1., workspace->q, system->n );
+    Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->q, system->n );
     t_vops += MPI_Wtime( ) - t_start;
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->d, system->n );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
         t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because d is only local portion */
     }
-    else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
         t_start = MPI_Wtime( );
         for ( j = 0; j < system->n; ++j )
@@ -2219,32 +2269,19 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( H, workspace->d, workspace->q, H->NT );
+        Sparse_MatVec_local( H, workspace->d, workspace->q, H->NT );
 #else
-        Sparse_MatVec( H, workspace->d, workspace->q, system->N );
+        Sparse_MatVec_local( H, workspace->d, workspace->q, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start =  MPI_Wtime( );
         tmp = Parallel_Dot( workspace->d, workspace->q, system->n, mpi_data->world );
@@ -2259,17 +2296,18 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = MPI_Wtime( );
-            Dist( system, mpi_data, workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
 
             t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, H->NT );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->p, H->NT );
 #else
-            Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->p, system->n );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->p, system->n );
 #endif
             t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because p is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
@@ -2295,7 +2333,7 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
         sig_new = redux[0];
         norm = sqrt( redux[1] );
         beta = sig_new / sig_old;
-        Vector_Sum( workspace->d, 1., workspace->p, beta, workspace->d, system->n );
+        Vector_Sum( workspace->d, 1.0, workspace->p, beta, workspace->d, system->n );
         t_vops += MPI_Wtime( ) - t_start;
     }
 
@@ -2346,9 +2384,10 @@ int CG( reax_system *system, control_params *control, simulation_data *data,
  * Reference: Netlib (in MATLAB)
  *  http://www.netlib.org/templates/matlab/bicgstab.m
  * */
-int BiCGStab( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data )
+int BiCGStab( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, real * const b,
+        real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j;
     real tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, bnorm;
@@ -2361,32 +2400,19 @@ int BiCGStab( reax_system *system, control_params *control, simulation_data *dat
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            x, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, x, workspace->d, H->NT );
+    Sparse_MatVec_local( H, x, workspace->d, H->NT );
 #else
-    Sparse_MatVec( H, x, workspace->d, system->N );
+    Sparse_MatVec_local( H, x, workspace->d, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
     Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->d, system->n );
@@ -2441,17 +2467,18 @@ int BiCGStab( reax_system *system, control_params *control, simulation_data *dat
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = MPI_Wtime( );
-            Dist( system, mpi_data, workspace->p, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->p, REAL_PTR_TYPE, MPI_DOUBLE );
 
             t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-            Sparse_MatVec( workspace->H_app_inv, workspace->p, workspace->d, H->NT );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->p, workspace->d, H->NT );
 #else
-            Sparse_MatVec( workspace->H_app_inv, workspace->p, workspace->d, system->n );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->p, workspace->d, system->n );
 #endif
             t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because d is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
@@ -2463,32 +2490,19 @@ int BiCGStab( reax_system *system, control_params *control, simulation_data *dat
             t_pa += MPI_Wtime( ) - t_start;
         }
 
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( H, workspace->d, workspace->z, H->NT );
+        Sparse_MatVec_local( H, workspace->d, workspace->z, H->NT );
 #else
-        Sparse_MatVec( H, workspace->d, workspace->z, system->N );
+        Sparse_MatVec_local( H, workspace->d, workspace->z, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->z, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->z, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->z, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
         redux[0] = Dot_local( workspace->r_hat, workspace->z, system->n );
@@ -2522,17 +2536,18 @@ int BiCGStab( reax_system *system, control_params *control, simulation_data *dat
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = MPI_Wtime( );
-            Dist( system, mpi_data, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
             t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-            Sparse_MatVec( workspace->H_app_inv, workspace->q, workspace->q_hat, H->NT );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->q, workspace->q_hat, H->NT );
 #else
-            Sparse_MatVec( workspace->H_app_inv, workspace->q, workspace->q_hat, system->n );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->q, workspace->q_hat, system->n );
 #endif
             t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because q_hat is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
@@ -2544,32 +2559,19 @@ int BiCGStab( reax_system *system, control_params *control, simulation_data *dat
             t_pa += MPI_Wtime( ) - t_start;
         }
 
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->q_hat, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->q_hat, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( H, workspace->q_hat, workspace->y, H->NT );
+        Sparse_MatVec_local( H, workspace->q_hat, workspace->y, H->NT );
 #else
-        Sparse_MatVec( H, workspace->q_hat, workspace->y, system->N );
+        Sparse_MatVec_local( H, workspace->q_hat, workspace->y, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->y, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->y, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->y, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
         redux[0] = Dot_local( workspace->y, workspace->q, system->n );
@@ -2646,7 +2648,8 @@ int BiCGStab( reax_system *system, control_params *control, simulation_data *dat
 }
 
 
-/* Pipelined Preconditioned Conjugate Gradient Method
+/* Dual iteration for the Pipelined Preconditioned Conjugate Gradient Method
+ * for QEq (2 simaltaneous solves)
  *
  * References:
  * 1) Hiding global synchronization latency in the preconditioned Conjugate Gradient algorithm,
@@ -2655,9 +2658,10 @@ int BiCGStab( reax_system *system, control_params *control, simulation_data *dat
  *  Paul R. Eller and William Gropp, SC '16 Proceedings of the International Conference
  *  for High Performance Computing, Networking, Storage and Analysis, 2016.
  *  */
-int dual_PIPECG( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, sparse_matrix *H, rvec2 *b,
-        real tol, rvec2 *x, mpi_datatypes* mpi_data )
+int dual_PIPECG( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, rvec2 * const b,
+        real tol, rvec2 * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j;
     rvec2 alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
@@ -2671,32 +2675,19 @@ int dual_PIPECG( reax_system *system, control_params *control, simulation_data *
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    dual_Sparse_MatVec( H, x, workspace->u2, H->NT );
+    dual_Sparse_MatVec_local( H, x, workspace->u2, H->NT );
 #else
-    dual_Sparse_MatVec( H, x, workspace->u2, system->N );
+    dual_Sparse_MatVec_local( H, x, workspace->u2, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
     //Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
@@ -2729,45 +2720,33 @@ int dual_PIPECG( reax_system *system, control_params *control, simulation_data *
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
         
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->u2, H->NT );
+        dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->r2, workspace->u2, H->NT );
 #else
-        dual_Sparse_MatVec( workspace->H_app_inv, workspace->r2, workspace->u2, system->n );
+        dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->r2, workspace->u2, system->n );
 #endif
         t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because u2 is only local portion */
     }
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    dual_Sparse_MatVec( H, workspace->u2, workspace->w2, H->NT );
+    dual_Sparse_MatVec_local( H, workspace->u2, workspace->w2, H->NT );
 #else
-    dual_Sparse_MatVec( H, workspace->u2, workspace->w2, system->N );
+    dual_Sparse_MatVec_local( H, workspace->u2, workspace->w2, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
     //redux[0] = Dot_local( workspace->w, workspace->u, system->n );
@@ -2818,45 +2797,33 @@ int dual_PIPECG( reax_system *system, control_params *control, simulation_data *
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
         
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
+        dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
 #else
-        dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
+        dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
 #endif
         t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because m2 is only local portion */
     }
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    dual_Sparse_MatVec( H, workspace->m2, workspace->n2, H->NT );
+    dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, H->NT );
 #else
-    dual_Sparse_MatVec( H, workspace->m2, workspace->n2, system->N );
+    dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
     t_start = MPI_Wtime( );
     MPI_Wait( &req, MPI_STATUS_IGNORE );
@@ -2969,45 +2936,33 @@ int dual_PIPECG( reax_system *system, control_params *control, simulation_data *
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = MPI_Wtime( );
-            Dist( system, mpi_data, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-            t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
             
             t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-            dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
+            dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
 #else
-            dual_Sparse_MatVec( workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
+            dual_Sparse_MatVec_local( workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
 #endif
             t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because m2 is only local portion */
         }
 
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2);
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        dual_Sparse_MatVec( H, workspace->m2, workspace->n2, H->NT );
+        dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, H->NT );
 #else
-        dual_Sparse_MatVec( H, workspace->m2, workspace->n2, system->N );
+        dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2);
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
         gamma_old[0] = gamma_new[0];
         gamma_old[1] = gamma_new[1];
@@ -3044,7 +2999,7 @@ int dual_PIPECG( reax_system *system, control_params *control, simulation_data *
         MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
-    // continue to solve the system that has not converged yet
+    /* continue to solve the system that has not converged yet */
     if ( norm[0] / b_norm[0] > tol )
     {
         for ( j = 0; j < system->n; ++j )
@@ -3095,9 +3050,10 @@ int dual_PIPECG( reax_system *system, control_params *control, simulation_data *
  *  Paul R. Eller and William Gropp, SC '16 Proceedings of the International Conference
  *  for High Performance Computing, Networking, Storage and Analysis, 2016.
  *  */
-int PIPECG( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data )
+int PIPECG( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, real * const b,
+        real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j;
     real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
@@ -3111,32 +3067,19 @@ int PIPECG( reax_system *system, control_params *control, simulation_data *data,
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            x, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, x, workspace->u, H->NT );
+    Sparse_MatVec_local( H, x, workspace->u, H->NT );
 #else
-    Sparse_MatVec( H, x, workspace->u, system->N );
+    Sparse_MatVec_local( H, x, workspace->u, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
@@ -3158,45 +3101,33 @@ int PIPECG( reax_system *system, control_params *control, simulation_data *data,
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->u, H->NT );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->u, H->NT );
 #else
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->u, system->n );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->u, system->n );
 #endif
         t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because u is only local portion */
     }
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, workspace->u, workspace->w, H->NT );
+    Sparse_MatVec_local( H, workspace->u, workspace->w, H->NT );
 #else
-    Sparse_MatVec( H, workspace->u, workspace->w, system->N );
+    Sparse_MatVec_local( H, workspace->u, workspace->w, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
     redux[0] = Dot_local( workspace->w, workspace->u, system->n );
@@ -3223,45 +3154,33 @@ int PIPECG( reax_system *system, control_params *control, simulation_data *data,
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
         
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( workspace->H_app_inv, workspace->w, workspace->m, H->NT );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
-        Sparse_MatVec( workspace->H_app_inv, workspace->w, workspace->m, system->n );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
         t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because m is only local portion */
     }
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, workspace->m, workspace->n, H->NT );
+    Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
-    Sparse_MatVec( H, workspace->m, workspace->n, system->N );
+    Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
     MPI_Wait( &req, MPI_STATUS_IGNORE );
@@ -3316,45 +3235,33 @@ int PIPECG( reax_system *system, control_params *control, simulation_data *data,
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = MPI_Wtime( );
-            Dist( system, mpi_data, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
             
             t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-            Sparse_MatVec( workspace->H_app_inv, workspace->w, workspace->m, H->NT );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
-            Sparse_MatVec( workspace->H_app_inv, workspace->w, workspace->m, system->n );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
             t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because m is only local portion */
         }
 
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( H, workspace->m, workspace->n, H->NT );
+        Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
-        Sparse_MatVec( H, workspace->m, workspace->n, system->N );
+        Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
 
         gamma_old = gamma_new;
 
@@ -3403,9 +3310,10 @@ int PIPECG( reax_system *system, control_params *control, simulation_data *data,
  * 1) Hiding global synchronization latency in the preconditioned Conjugate Gradient algorithm,
  *  P. Ghysels and W. Vanroose, Parallel Computing, 2014.
  *  */
-int PIPECR( reax_system *system, control_params *control, simulation_data *data,
-        storage *workspace, sparse_matrix *H, real *b,
-        real tol, real *x, mpi_datatypes* mpi_data )
+int PIPECR( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, real * const b,
+        real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j;
     real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
@@ -3425,32 +3333,19 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
 
     MPI_Iallreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, x, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            x, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, x, workspace->u, H->NT );
+    Sparse_MatVec_local( H, x, workspace->u, H->NT );
 #else
-    Sparse_MatVec( H, x, workspace->u, system->N );
+    Sparse_MatVec_local( H, x, workspace->u, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
@@ -3472,45 +3367,33 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->u, H->NT );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->u, H->NT );
 #else
-        Sparse_MatVec( workspace->H_app_inv, workspace->r, workspace->u, system->n );
+        Sparse_MatVec_local( workspace->H_app_inv, workspace->r, workspace->u, system->n );
 #endif
         t_pa += MPI_Wtime( ) - t_start;
+
+        /* no comm part2 because u is only local portion */
     }
 
-    t_start = MPI_Wtime( );
-    Dist( system, mpi_data, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-    Sparse_MatVec( H, workspace->u, workspace->w, H->NT );
+    Sparse_MatVec_local( H, workspace->u, workspace->w, H->NT );
 #else
-    Sparse_MatVec( H, workspace->u, workspace->w, system->N );
+    Sparse_MatVec_local( H, workspace->u, workspace->w, system->N );
 #endif
     t_spmv += MPI_Wtime( ) - t_start;
 
-    if ( H->format == SYM_HALF_MATRIX )
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#if defined(NEUTRAL_TERRITORY)
-    else
-    {
-        t_start = MPI_Wtime( );
-        Coll( system, mpi_data, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
-    }
-#endif
+    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+            H->format, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
 
     t_start = MPI_Wtime( );
     MPI_Wait( &req, MPI_STATUS_IGNORE );
@@ -3539,17 +3422,18 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_start = MPI_Wtime( );
-            Dist( system, mpi_data, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
+            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
             
             t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-            Sparse_MatVec( workspace->H_app_inv, workspace->w, workspace->m, H->NT );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
-            Sparse_MatVec( workspace->H_app_inv, workspace->w, workspace->m, system->n );
+            Sparse_MatVec_local( workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
             t_pa += MPI_Wtime( ) - t_start;
+
+            /* no comm part2 because m is only local portion */
         }
 
         t_start = MPI_Wtime( );
@@ -3560,32 +3444,20 @@ int PIPECR( reax_system *system, control_params *control, simulation_data *data,
 
         MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
 
-        t_start = MPI_Wtime( );
-        Dist( system, mpi_data, workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
         t_start = MPI_Wtime( );
 #if defined(NEUTRAL_TERRITORY)
-        Sparse_MatVec( H, workspace->m, workspace->n, H->NT );
+        Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
-        Sparse_MatVec( H, workspace->m, workspace->n, system->N );
+        Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
         t_spmv += MPI_Wtime( ) - t_start;
 
-        if ( H->format == SYM_HALF_MATRIX )
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else
-        {
-            t_start = MPI_Wtime( );
-            Coll( system, mpi_data, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
-            t_comm += MPI_Wtime( ) - t_start;
-        }
-#endif
+        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+                H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
+
         t_start = MPI_Wtime( );
         MPI_Wait( &req, MPI_STATUS_IGNORE );
         t_allreduce += MPI_Wtime( ) - t_start;

@@ -40,6 +40,17 @@ static void Mark_Grid_Cells( reax_system * const system, grid * const g,
     ivec send_span, recv_span;
     ivec str_send, end_send;
     ivec str_recv, end_recv;
+#if defined(NEUTRAL_TERRITORY)
+    ivec nt_str, nt_end;
+    ivec dir[6] = {
+        {0, 0, +1}, // +z
+        {0, 0, -1}, // -z
+        {0, +1, 0}, // +y
+        {+1, +1, 0}, // +x+y
+        {+1, 0, 0}, // +x
+        {+1, -1, 0}  // +x-y
+    };
+#endif
 
     /* clear all gcell type info */
     for ( x = 0; x < g->ncells[0]; x++ )
@@ -65,6 +76,42 @@ static void Mark_Grid_Cells( reax_system * const system, grid * const g,
             }
         }
     }
+    
+#if defined(NEUTRAL_TERRITORY)
+    /* mark NT cells */
+    for ( i = 0; i < 6; ++i )
+    {
+        for ( d = 0; d < 3; ++d )
+        {
+            if ( dir[i][d] > 0 )
+            {
+                nt_str[d] = MIN( g->native_end[d], g->ncells[d] );
+                nt_end[d] = MIN( g->native_end[d] + g->vlist_span[d],
+                        g->ncells[d] );
+            }
+            else if ( dir[i][d] < 0 )
+            {
+                nt_str[d] = MAX( 0, g->native_str[d] - g->vlist_span[d] );
+                nt_end[d] = g->native_str[d];
+            }
+            else
+            {
+                nt_str[d] = g->native_str[d];
+                nt_end[d] = g->native_end[d];
+            }
+        }
+        for ( x = nt_str[0]; x < nt_end[0]; x++ )
+        {
+            for ( y = nt_str[1]; y < nt_end[1]; y++ )
+            {
+                for ( z = nt_str[2]; z < nt_end[2]; z++ )
+                {
+                    g->cells[x][y][z].type = NT_NBRS + i;
+                }
+            }
+        }
+    }
+#endif
 
     /* loop over neighbors */
     for ( r[0] = -1; r[0] <= 1; ++r[0])
@@ -169,14 +216,6 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
     ivec ci, cj, cmin, cmax, span;
     grid_cell *gc;
 
-    //TODO
-    //fprintf( stderr, " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" );
-    //fprintf( stderr, " CHANGED TO WORK NEIGHBOR LISTS \n" );
-    //fprintf( stderr, " DEBUG THIS ISSUE \n" );
-    //fprintf( stderr, " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" );
-    //fprintf( stderr, " vlist_cut: %f \n", control->vlist_cut );
-    //fprintf( stderr, " bond_cut: %f \n", control->bond_cut );
-
     /* pick up a cell in the grid */
     for ( ci[0] = 0; ci[0] < g->ncells[0]; ci[0]++ )
     {
@@ -188,7 +227,11 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
                 top = 0;
                 //fprintf( stderr, "grid1: %d %d %d:\n", ci[0], ci[1], ci[2] );
 
+#if defined(NEUTRAL_TERRITORY)
+                if ( gc->type == NATIVE || ( gc->type >= NT_NBRS && gc->type < NT_NBRS + 6 ) )
+#else
                 if ( gc->type == NATIVE )
+#endif
                 {
                     g->cutoff[ index_grid_3d_v(ci, g) ] = control->vlist_cut;
                 }
@@ -199,7 +242,7 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
 
                 for ( d = 0; d < 3; ++d )
                 {
-                    //TODO: investigate if correct
+                    //TODO: investigate which is correct
                     span[d] = (int)CEIL( g->cutoff[ index_grid_3d_v(ci, g) ] / g->cell_len[d] );
 //                    span[d] = (int)CEIL( control->vlist_cut / g->cell_len[d] );
                     cmin[d] = MAX( ci[d] - span[d], 0 );
@@ -214,21 +257,26 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
                         for ( cj[2] = cmin[2]; cj[2] < cmax[2]; ++cj[2] )
                         {
                             //fprintf( stderr, "\tgrid2: %d %d %d (%d - %d) - ", cj[0], cj[1], cj[2], top, g->max_nbrs );
-                            //SUDHIR
-                            //gc->nbrs[top] = &(g->cells[cj[0]][cj[1]][cj[2]]);
-                            //gc->nbrs[top] = &(g->cells[ index_grid_3d_v(cj,g) ]);
+                            
+                            //TODO: below commented out, is this correct? (SUDHIR)
+                            //gc->nbrs[top] = &g->cells[ index_grid_3d_v(cj,g) ];
                             ivec_Copy( g->nbrs_x[index_grid_nbrs(ci[0], ci[1], ci[2], top, g)], cj );
+
                             //fprintf( stderr, " index: %d - %d \n", index_grid_nbrs (ci[0], ci[1], ci[2], top, g), g->total * g->max_nbrs );
                             Find_Closest_Point( g, ci, cj,
                                     g->nbrs_cp[ index_grid_nbrs(ci[0], ci[1], ci[2], top, g) ] );
+
                             //fprintf( stderr, "cp: %f %f %f\n",
                             //       gc->nbrs_cp[top][0], gc->nbrs_cp[top][1],
                             //       gc->nbrs_cp[top][2] );
+
                             ++top;
                         }
                     }
                 }
+                //TODO: below commented out, is this correct?
                 //gc->nbrs[top] = NULL;
+                
                 //fprintf( stderr, "top=%d\n", top );
             }
         }
@@ -513,11 +561,11 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
         {
             for ( d = 0; d < 3; ++d )
             {
-//                if( atoms[l].x[d] < big_box->min[d] )
+//                if ( atoms[l].x[d] < big_box->min[d] )
 //                {
 //                    atoms[l].x[d] += big_box->box_norms[d];
 //                }
-//                else if( atoms[l].x[d] >= big_box->max[d] )
+//                else if ( atoms[l].x[d] >= big_box->max[d] )
 //                {
 //                    atoms[l].x[d] -= big_box->box_norms[d];
 //                }

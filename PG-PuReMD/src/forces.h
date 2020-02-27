@@ -34,7 +34,8 @@ void Init_Force_Functions( control_params * const );
 int Compute_Forces( reax_system * const, control_params * const, simulation_data * const,
         storage * const, reax_list ** const, output_controls * const, mpi_datatypes * const );
 
-void Estimate_Storages( reax_system * const, control_params * const, reax_list ** const );
+void Estimate_Storages( reax_system * const, control_params * const,
+        reax_list ** const, int * const, int );
 
 #ifdef __cplusplus
 }
