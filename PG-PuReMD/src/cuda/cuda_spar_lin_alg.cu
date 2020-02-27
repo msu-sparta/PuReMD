@@ -32,8 +32,8 @@
 
 
 /* Jacobi preconditioner computation */
-CUDA_GLOBAL void k_jacobi_cm_half( int *row_ptr,
-        int *col_ind, real *vals,
+CUDA_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
         real * const Hdia_inv, int N )
 {
     int i;
@@ -46,9 +46,9 @@ CUDA_GLOBAL void k_jacobi_cm_half( int *row_ptr,
         return;
     }
 
-    if ( FABS( vals[row_ptr[i + 1] - 1] ) >= 1.0e-12 )
+    if ( FABS( vals[row_ptr_end[i]] ) >= 1.0e-12 )
     {
-        diag = 1.0 / vals[row_ptr[i + 1] - 1];
+        diag = 1.0 / vals[row_ptr_end[i]];
     }
     else
     {
@@ -60,8 +60,8 @@ CUDA_GLOBAL void k_jacobi_cm_half( int *row_ptr,
 
 
 /* Jacobi preconditioner computation */
-CUDA_GLOBAL void k_jacobi_cm_full( int *row_ptr,
-        int *col_ind, real *vals,
+CUDA_GLOBAL void k_jacobi_cm_full( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
         real * const Hdia_inv, int N )
 {
     int i, pj;
@@ -74,7 +74,7 @@ CUDA_GLOBAL void k_jacobi_cm_full( int *row_ptr,
         return;
     }
 
-    for ( pj = row_ptr[i]; pj < row_ptr[i + 1]; ++pj )
+    for ( pj = row_ptr_start[i]; pj < row_ptr_end[i]; ++pj )
     {
         if ( col_ind[pj] == i )
         {
@@ -138,8 +138,8 @@ CUDA_GLOBAL void k_jacobi_apply( real const * const Hdia_inv, real const * const
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr,
-        int *col_ind, real *vals,
+CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int N )
 {
     int i, k, si, ei;
@@ -151,8 +151,8 @@ CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr,
         return;
     }
 
-    si = row_ptr[i];
-    ei = row_ptr[i + 1] - 1;
+    si = row_ptr_start[i];
+    ei = row_ptr_end[i];
 
     for ( k = si; k < ei; ++k )
     {
@@ -174,8 +174,8 @@ CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr,
-        int *col_ind, real *vals,
+CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int N )
 {
     int i, k, si, ei;
@@ -189,8 +189,8 @@ CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr,
     }
 
     sum = 0.0;
-    si = row_ptr[i];
-    ei = row_ptr[i + 1];
+    si = row_ptr_start[i];
+    ei = row_ptr_end[i];
 
     for ( k = si; k < ei; ++k )
     {
@@ -212,8 +212,8 @@ CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr,
-        int *col_ind, real *vals,
+CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int N )
 {
 #if defined(__SM_35__)
@@ -232,8 +232,8 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr,
     if ( i < N )
     {
         /* compute running sum per thread */
-        si = row_ptr[i];
-        ei = row_ptr[i + 1];
+        si = row_ptr_start[i];
+        ei = row_ptr_end[i];
 
         for ( pj = si + lane; pj < ei; pj += MATVEC_KER_THREADS_PER_ROW )
         {
@@ -272,8 +272,8 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr,
          * indices and nonzero values together within a warp,
          * and write the warp-local running results to
          * shared memory */
-        si = row_ptr[i];
-        ei = row_ptr[i + 1];
+        si = row_ptr_start[i];
+        ei = row_ptr_end[i];
 
         for ( pj = si + lane; pj < ei; pj += MATVEC_KER_THREADS_PER_ROW )
         {
@@ -560,7 +560,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
 
         /* 1 thread per row implementation */
 //        k_dual_sparse_matvec_half_csr <<< blocks, DEF_BLOCK_SIZE >>>
-//            ( A->start, A->j, A->val, x, b, n );
+//            ( A->start, A->end, A->j, A->val, x, b, n );
 
         /* multiple threads per row implementation,
          * with shared memory to accumulate partial row sums */
@@ -570,7 +570,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
 //        k_dual_sparse_matvec_half_opt_csr <<< blocks, MATVEC_BLOCK_SIZE,
 //                     sizeof(real) * MATVEC_BLOCK_SIZE >>>
 //#endif
-//             ( A->start, A->j, A->val, x, b, n );
+//             ( A->start, A->end, A->j, A->val, x, b, n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
@@ -729,7 +729,7 @@ static void Sparse_MatVec_local( control_params const * const control,
     {
         /* 1 thread per row implementation */
         k_sparse_matvec_half_csr <<< blocks, DEF_BLOCK_SIZE >>>
-            ( A->start, A->j, A->val, x, b, n );
+            ( A->start, A->end, A->j, A->val, x, b, n );
 
         /* multiple threads per row implementation,
          * with shared memory to accumulate partial row sums */
@@ -739,13 +739,13 @@ static void Sparse_MatVec_local( control_params const * const control,
 //        k_sparse_matvec_half_opt_csr <<< blocks, MATVEC_BLOCK_SIZE,
 //                     sizeof(real) * MATVEC_BLOCK_SIZE >>>
 //#endif
-//             ( A->start, A->j, A->val, x, b, n );
+//             ( A->start, A->end, A->j, A->val, x, b, n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
         /* 1 thread per row implementation */
 //        k_sparse_matvec_full_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE >>>
-//             ( A->start, A->j, A->val, x, b, n );
+//             ( A->start, A->end, A->j, A->val, x, b, n );
 
         /* multiple threads per row implementation,
          * with shared memory to accumulate partial row sums */
@@ -755,7 +755,7 @@ static void Sparse_MatVec_local( control_params const * const control,
         k_sparse_matvec_full_opt_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE,
                                  sizeof(real) * MATVEC_BLOCK_SIZE >>>
 #endif
-             ( A->start, A->j, A->val, x, b, n );
+             ( A->start, A->end, A->j, A->val, x, b, n );
     }
 
     cudaDeviceSynchronize( );

@@ -478,6 +478,8 @@ void QEq( reax_system const * const system, control_params const * const control
 {
     int iters;
 
+    iters = 0;
+
 //    if ( is_refactoring_step( control, data ) == TRUE )
     {
         Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
