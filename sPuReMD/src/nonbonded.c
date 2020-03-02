@@ -262,9 +262,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             || control->ensemble == aNPT || control->compute_pressure == TRUE )
                     {
                         /* for pressure coupling, terms not related to bond order
-                           derivatives are added directly into pressure vector/tensor */
+                         * derivatives are added directly into pressure vector/tensor */
                         rvec_Scale( force, (CEvd + CEclmb) / r_ij, nbr_pj->dvec );
-
 #if !defined(_OPENMP)
                         rvec_ScaledAdd( system->atoms[i].f, -1.0, force );
                         rvec_Add( system->atoms[j].f, force );
@@ -281,6 +280,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 #else
                         rtensor_Add( data->press_local[tid], press );
 #endif
+//                        fprintf( stderr, "[NB1, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", i, j, force[0], force[1], force[2], nbr_pj->dvec[0], nbr_pj->dvec[1], nbr_pj->dvec[2] ); fflush( stderr ); 
 
 #if defined(DEBUG_FOCUS)
                         fprintf( stderr, "nonbonded(%d,%d): rel_box (%d %d %d)",

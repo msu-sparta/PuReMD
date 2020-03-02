@@ -258,11 +258,10 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
 
     box = &system->box;
 
-    /* kinetic contribution */
-    data->kin_press = 2.0 * (data->E_Kin * E_CONV) / (3.0 * box->volume * P_CONV);
-//    data->kin_press = (data->N_f * K_B * 2.0 * data->E_Kin * E_CONV) / (3.0 * box->volume * P_CONV);
+    /* kinetic contribution, in GPa */
+    data->kin_press = (system->N * K_B * data->therm.T) / box->volume * 0.0166053907;
 
-    /* virial contribution */
+    /* virial contribution, in GPa */
 #if defined(_OPENMP)
     rtensor_MakeZero( data->press );
 
@@ -271,16 +270,14 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
         rtensor_Add( data->press, data->press_local[i] );
     }
 #endif
+    rtensor_Scale( data->press, 0.0166053907 / box->volume, data->press );
 
     /* total pressure in each direction, in GPa */
-    data->tot_press[0] = data->kin_press + (data->press[0][0]
-                / (box->box_norms[1] * box->box_norms[2] * P_CONV));
+    data->tot_press[0] = data->kin_press + data->press[0][0];
 
-    data->tot_press[1] = data->kin_press + (data->press[1][1]
-                / (box->box_norms[0] * box->box_norms[2] * P_CONV));
+    data->tot_press[1] = data->kin_press + data->press[1][1];
 
-    data->tot_press[2] = data->kin_press + (data->press[2][2]
-                / (box->box_norms[0] * box->box_norms[1] * P_CONV));
+    data->tot_press[2] = data->kin_press + data->press[2][2];
 
     /* average pressure for the whole box */
     data->iso_bar.P = (data->tot_press[0] + data->tot_press[1]

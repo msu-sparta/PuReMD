@@ -376,19 +376,23 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         rvec_Add( *f_k, force );
 
         /* pressure */
+        rvec_Scale( force, -1.0, force );
         rvec_OuterProduct( press, nbr_k->dvec, force );
 #if !defined(_OPENMP)
         rtensor_Add( data->press, press );
 #else
         rtensor_Add( data->press_local[tid], press );
 #endif
-        rvec_ScaledSum( dvec_jk, 1.0, nbr_j->dvec, -1.0, nbr_k->dvec );
+//        fprintf( stderr, "[BO3, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", i, k, force[0], force[1], force[2], nbr_k->dvec[0], nbr_k->dvec[1], nbr_k->dvec[2] ); fflush( stderr ); 
+
+        rvec_ScaledSum( dvec_jk, 1.0, nbr_k->dvec, -1.0, nbr_j->dvec );
         rvec_OuterProduct( press, dvec_jk, force );
 #if !defined(_OPENMP)
         rtensor_Add( data->press, press );
 #else
         rtensor_Add( data->press_local[tid], press );
 #endif
+//        fprintf( stderr, "[BO4, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, k, force[0], force[1], force[2], dvec_jk[0], dvec_jk[1], dvec_jk[2] ); fflush( stderr ); 
     }
 
     /* then atom i itself */
@@ -420,13 +424,13 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     rvec_Add( *f_i, force );
 
     /* pressure */
-    rvec_Scale( force, -1.0, force );
     rvec_OuterProduct( press, nbr_j->dvec, force );
 #if !defined(_OPENMP)
     rtensor_Add( data->press, press );
 #else
     rtensor_Add( data->press_local[tid], press );
 #endif
+//    fprintf( stderr, "[BO1, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", i, j, force[0], force[1], force[2], nbr_j->dvec[0], nbr_j->dvec[1], nbr_j->dvec[2] ); fflush( stderr ); 
 
     /****************************************************************************
      * forces and pressure related to atom j                                    *
@@ -455,19 +459,23 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         rvec_Add( *f_k, force );
 
         /* pressure */
-        rvec_OuterProduct( press, nbr_k->dvec, force );
-#if !defined(_OPENMP)
-        rtensor_Add( data->press, press );
-#else
-        rtensor_Add( data->press_local[tid], press );
-#endif
-        rvec_ScaledSum( dvec_jk, 1.0, nbr_j->dvec, -1.0, nbr_k->dvec );
+        rvec_Scale( force, -1.0, force );
+        rvec_Sum( dvec_jk, nbr_k->dvec, nbr_j->dvec );
         rvec_OuterProduct( press, dvec_jk, force );
 #if !defined(_OPENMP)
         rtensor_Add( data->press, press );
 #else
         rtensor_Add( data->press_local[tid], press );
 #endif
+//        fprintf( stderr, "[BO5, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", i, k, force[0], force[1], force[2], dvec_jk[0], dvec_jk[1], dvec_jk[2] ); fflush( stderr ); 
+
+        rvec_OuterProduct( press, nbr_k->dvec, force );
+#if !defined(_OPENMP)
+        rtensor_Add( data->press, press );
+#else
+        rtensor_Add( data->press_local[tid], press );
+#endif
+//        fprintf( stderr, "[BO6, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, k, force[0], force[1], force[2], nbr_k->dvec[0], nbr_k->dvec[1], nbr_k->dvec[2] ); fflush( stderr ); 
     }
 
     /* then atom j itself */
@@ -499,12 +507,14 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     rvec_Add( *f_j, force );
 
     /* pressure */
+    rvec_Scale( force, -1.0, force );
     rvec_OuterProduct( press, nbr_j->dvec, force );
 #if !defined(_OPENMP)
     rtensor_Add( data->press, press );
 #else
     rtensor_Add( data->press_local[tid], press );
 #endif
+//    fprintf( stderr, "[BO2, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", i, j, force[0], force[1], force[2], nbr_j->dvec[0], nbr_j->dvec[1], nbr_j->dvec[2] ); fflush( stderr ); 
 }
 
 

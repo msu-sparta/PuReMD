@@ -33,7 +33,7 @@
 
 
 /* Velocity Verlet integrator for microcanonical ensemble. */
-void Velocity_Verlet_NVE(reax_system *system, control_params *control,
+void Velocity_Verlet_NVE( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
@@ -157,7 +157,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
  *
  * Reference: Understanding Molecular Simulation, Frenkel and Smit
  *  Academic Press Inc. San Diego, 1996 p. 388-391 */
-void Velocity_Verlet_Nose_Hoover_NVT_Klein(reax_system* system, control_params* control,
+void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params* control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {

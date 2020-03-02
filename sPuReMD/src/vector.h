@@ -656,46 +656,43 @@ static inline void rtensor_Copy( rtensor ret, rtensor t )
 
 static inline void rtensor_Identity( rtensor t )
 {
-    t[0][0] = 1.0;
-    t[1][1] = 1.0;
-    t[2][2] = 1.0;
-    t[0][1] = ZERO;
-    t[0][2] = ZERO;
-    t[1][0] = ZERO;
-    t[1][2] = ZERO;
-    t[2][0] = ZERO;
-    t[2][1] = ZERO;
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            t[i][j] = (i == j ? 1.0 : ZERO);
+        }
+    }
 }
 
 
 static inline void rtensor_MakeZero( rtensor t )
 {
-    t[0][0] = ZERO;
-    t[0][1] = ZERO;
-    t[0][2] = ZERO;
-    t[1][0] = ZERO;
-    t[1][1] = ZERO;
-    t[1][2] = ZERO;
-    t[2][0] = ZERO;
-    t[2][1] = ZERO;
-    t[2][2] = ZERO;
+    unsigned int i, j;
+
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            t[i][j] = ZERO;
+        }
+    }
 }
 
 
 static inline void rtensor_Transpose( rtensor ret, rtensor t )
 {
-    ret[0][0] = t[0][0];
-    ret[1][1] = t[1][1];
-    ret[2][2] = t[2][2];
+    unsigned int i, j;
 
-    ret[0][1] = t[1][0];
-    ret[0][2] = t[2][0];
-
-    ret[1][0] = t[0][1];
-    ret[1][2] = t[2][1];
-
-    ret[2][0] = t[0][2];
-    ret[2][1] = t[1][2];
+    for ( i = 0; i < 3; ++i )
+    {
+        for ( j = 0; j < 3; ++j )
+        {
+            ret[i][j] = t[j][i];
+        }
+    }
 }
 
 

@@ -524,24 +524,28 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 rvec_Scale( force, CEval8, p_ijk->dcos_di );
                                 rvec_Add( *f_i, force );
 
+                                rvec_Scale( force, -1.0, force );
                                 rvec_OuterProduct( press, pbond_ij->dvec, force );
 //#if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 //#else
 //                                rtensor_Add( data->press_local[tid], press );
 //#endif
+//                                fprintf( stderr, "[VA1, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, i, force[0], force[1], force[2], pbond_ij->dvec[0], pbond_ij->dvec[1], pbond_ij->dvec[2] ); fflush( stderr ); 
 
                                 rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
 
                                 rvec_Scale( force, CEval8, p_ijk->dcos_dk );
                                 rvec_Add( *f_k, force );
 
+                                rvec_Scale( force, -1.0, force );
                                 rvec_OuterProduct( press, pbond_jk->dvec, force );
 //#if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 //#else
 //                                rtensor_Add( data->press_local[tid], press );
 //#endif
+//                                fprintf( stderr, "[VA2, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, k, force[0], force[1], force[2], pbond_jk->dvec[0], pbond_jk->dvec[1], pbond_jk->dvec[2] ); fflush( stderr ); 
 
                                 /* This part is for a fully-flexible box */
 //                                rvec_OuterProduct( temp_rtensor,

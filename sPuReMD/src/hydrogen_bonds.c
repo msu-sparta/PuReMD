@@ -210,30 +210,24 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 rvec_Add( *f_i, force );
 
                                 /* pressure */
+                                rvec_Scale( force, -1.0, force );
                                 rvec_OuterProduct( press, pbond_ij->dvec, force );
 #if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 #else
                                 rtensor_Add( data->press_local[tid], press );
 #endif
+//                                fprintf( stderr, "[HB1, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, i, force[0], force[1], force[2], pbond_ij->dvec[0], pbond_ij->dvec[1], pbond_ij->dvec[2] ); fflush( stderr ); 
 
                                 rvec_ScaledAdd( *f_j, CEhb2, dcos_theta_dj );
 
                                 rvec_Scale( force, CEhb2, dcos_theta_dk );
-                                rvec_Add( *f_k, force );
-
-                                /* pressure */
-                                rvec_OuterProduct( press, nbr_jk->dvec, force );
-#if !defined(_OPENMP)
-                                rtensor_Add( data->press, press );
-#else
-                                rtensor_Add( data->press_local[tid], press );
-#endif
+                                /* delay adding force until dr term below */
 
                                 /* dr terms */
                                 rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
 
-                                rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
+                                rvec_ScaledAdd( force, CEhb3 / r_jk, dvec_jk );
                                 rvec_Add( *f_k, force );
 
                                 /* pressure */
@@ -243,6 +237,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #else
                                 rtensor_Add( data->press_local[tid], press );
 #endif
+//                                fprintf( stderr, "[HB2, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, k, force[0], force[1], force[2], nbr_jk->dvec[0], nbr_jk->dvec[1], nbr_jk->dvec[2] ); fflush( stderr ); 
 
                                 /* This part is intended for a fully-flexible box */
 //                                rvec_OuterProduct( temp_rtensor,
