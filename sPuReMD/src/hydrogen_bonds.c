@@ -211,7 +211,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                                 /* pressure */
                                 rvec_Scale( force, -1.0, force );
-                                rvec_OuterProduct( press, pbond_ij->dvec, force );
+                                rvec_OuterProduct( press, force, pbond_ij->dvec );
 #if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 #else
@@ -231,7 +231,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 rvec_Add( *f_k, force );
 
                                 /* pressure */
-                                rvec_OuterProduct( press, nbr_jk->dvec, force );
+                                rvec_OuterProduct( press, force, nbr_jk->dvec );
 #if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 #else

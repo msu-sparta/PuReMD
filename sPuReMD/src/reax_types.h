@@ -70,26 +70,26 @@
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
   #define PI (3.14159265)
-  /* Coulomb energy conversion */
+  /* uni conversion from ??? to kcal / mol */
   #define C_ELE (332.0638)
-  /* Boltzmann constant in J / (mol * K) */
+  /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
   #define K_B (0.831687)
 //  #define K_B (0.8314510)
   /* unit conversion for atomic force to AMU * A / ps^2 */
   #define F_CONV (4.184e2)
-  /* energy conversion constant from kilo-calories per mole to electron volts */
+  /* energy conversion constant from electron volts to kilo-calories per mole */
   #define KCALpMOL_to_EV (23.02)
   /* electric dipole moment conversion constant from elementary charge * angstrom to debye */
   #define ECxA_to_DEBYE (4.80320679913)
 #elif defined(USE_REF_FORTRAN_EREAXFF_CONSTANTS)
   //TODO
-  /* energy conversion constant from kilo-calories per mole to electron volts */
+  /* energy conversion constant from electron volts to kilo-calories per mole */
   #define KCALpMOL_to_EV (23.02)
   /* electric dipole moment conversion constant from elementary charge * angstrom to debye */
   #define ECxA_to_DEBYE (4.80320679913)
 #elif defined(USE_LAMMPS_REAXFF_CONSTANTS)
   //TODO
-  /* energy conversion constant from kilo-calories per mole to electron volts */
+  /* energy conversion constant from electron volts to kilo-calories per mole */
   #define KCALpMOL_to_EV (23.060549)
 #endif
 
@@ -110,7 +110,7 @@
 #if !defined(K_B)
   /* in ??? */
 //  #define K_B (503.398008)
-  /* in J / (mol * K) */
+  /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
 //  #define K_B (0.831687)
   #define K_B (0.8314510)
 #endif
@@ -128,7 +128,7 @@
 #if !defined(EV_to_KCALpMOL)
   #define EV_to_KCALpMOL (14.40)
 #endif
-/* energy conversion constant from kilo-calories per mole to electron volts */
+/* energy conversion constant from electron volts to kilo-calories per mole */
 #if !defined(KCALpMOL_to_EV)
   #define KCALpMOL_to_EV (23.0408)
 #endif
@@ -738,7 +738,7 @@ struct reax_atom
     rvec x;
     /* velocity of this atom, in Angstroms / ps */
     rvec v;
-    /* force acting on this atom, in Da * Angstroms / ps^2 */
+    /* force acting on this atom, in AMU * Angstroms / ps^2 */
     rvec f;
     /* charge on this atom, in Coulombs */
     real q;
@@ -1121,9 +1121,9 @@ struct simulation_data
     int prev_steps;
     /* elapsed time of the simulation, in fs */
     real time;
-    /* total mass of the atomic system */
+    /* total mass of the atomic system, in AMU */
     real M;
-    /* multiplicative inverse of the total mass */
+    /* multiplicative inverse of the total mass, in AMU^{-1} */
     real inv_M;
     /* Center of mass */
     rvec xcm;
@@ -1144,38 +1144,38 @@ struct simulation_data
     /* Hydrodynamic virial */
     rtensor virial;
 
-    /* total energy */
+    /* total energy, in kcal / mol */
     real E_Tot;
-    /* total kinetic energy */
+    /* total kinetic energy, in kcal / mol */
     real E_Kin;
-    /* total potential energy */
+    /* total potential energy, in kcal / mol */
     real E_Pot;
 
-    /* total bond energy */
+    /* total bond energy, in kcal / mol */
     real E_BE;
-    /* total over coordination energy */
+    /* total over coordination energy, in kcal / mol */
     real E_Ov;
-    /* total under coordination energy */
+    /* total under coordination energy, in kcal / mol */
     real E_Un;
-    /* total under coordination energy */
+    /* total under coordination energy, in kcal / mol */
     real E_Lp;
-    /* total valance angle energy */
+    /* total valance angle energy, in kcal / mol */
     real E_Ang;
-    /* total penalty energy */
+    /* total penalty energy, in kcal / mol */
     real E_Pen;
-    /* total three body conjgation energy */
+    /* total three body conjgation energy, in kcal / mol */
     real E_Coa;
-    /* total Hydrogen bond energy */
+    /* total Hydrogen bond energy, in kcal / mol */
     real E_HB;
-    /* total torsional energy */
+    /* total torsional energy, in kcal / mol */
     real E_Tor;
-    /* total four body conjugation energy */
+    /* total four body conjugation energy, in kcal / mol */
     real E_Con;
-    /* total van der Waals energy */
+    /* total van der Waals energy, in kcal / mol */
     real E_vdW;
-    /* total electrostatics energy */
+    /* total electrostatics energy, in kcal / mol */
     real E_Ele;
-    /* polarization energy */
+    /* polarization energy, in kcal / mol */
     real E_Pol;
 
     /* number of degrees of freedom */
@@ -1184,7 +1184,7 @@ struct simulation_data
     rvec t_scale;
     /**/
     rtensor p_scale;
-    /* used in Nose-Hoover method */
+    /* thermostat for Nose-Hoover ensemble */
     thermostat therm;
     /**/
     isotropic_barostat iso_bar;
@@ -1456,7 +1456,7 @@ struct static_storage
     real *b_t;
     real *b_prc;
     real *b_prm;
-    /* initial guesses for solutions to the linear systems */
+    /* initial guesses for solutions to the linear systems, in Coulombs */
     real **s;
     real **t;
 

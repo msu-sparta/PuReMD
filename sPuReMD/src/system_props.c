@@ -197,8 +197,8 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
         rvec_Scale( p, m, system->atoms[i].v );
         data->E_Kin += rvec_Dot( p, system->atoms[i].v );
     }
-
     data->E_Kin *= 0.5;
+
     data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B);
 
     /* avoid T being an absolute zero! */
@@ -263,8 +263,6 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
 
     /* virial contribution, in GPa */
 #if defined(_OPENMP)
-    rtensor_MakeZero( data->press );
-
     for ( i = 0; i < control->num_threads; ++i )
     {
         rtensor_Add( data->press, data->press_local[i] );

@@ -535,7 +535,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                             /* dcos_theta_jkl */
                                             rvec_ScaledAdd( force_j, CEtors8 + CEconj5, p_jkl->dcos_di );
                                             rvec_ScaledAdd( force_k, CEtors8 + CEconj5, p_jkl->dcos_dj );
-                                            rvec_ScaledAdd( force_l, CEtors8 + CEconj5, p_jkl->dcos_dk );
+                                            rvec_Scale( force_l, CEtors8 + CEconj5, p_jkl->dcos_dk );
 
                                             /* dcos_omega */
                                             rvec_ScaledAdd( force_i, CEtors9 + CEconj6, dcos_omega_di );
@@ -550,7 +550,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                             /* pressure */
                                             rvec_Scale( force_i, -1.0, force_i );
-                                            rvec_OuterProduct( press, dvec_li, force_i );
+                                            rvec_OuterProduct( press, force_i, dvec_li );
 #if !defined(_OPENMP)
                                             rtensor_Add( data->press, press );
 #else
@@ -559,7 +559,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
 //                                            fprintf( stderr, "[TO1, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", l, i, force_i[0], force_i[1], force_i[2], dvec_li[0], dvec_li[1], dvec_li[2] ); fflush( stderr ); 
 
                                             rvec_Sum( dvec_jl, pbond_jk->dvec, pbond_kl->dvec );
-                                            rvec_OuterProduct( press, dvec_jl, force_j );
+                                            rvec_OuterProduct( press, force_j, dvec_jl );
 #if !defined(_OPENMP)
                                             rtensor_Add( data->press, press );
 #else
@@ -567,7 +567,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
 #endif
 //                                            fprintf( stderr, "[TO2, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", l, j, force_j[0], force_j[1], force_j[2], dvec_jl[0], dvec_jl[1], dvec_jl[2] ); fflush( stderr ); 
 
-                                            rvec_OuterProduct( press, pbond_kl->dvec, force_k );
+                                            rvec_OuterProduct( press, force_k, pbond_kl->dvec );
 #if !defined(_OPENMP)
                                             rtensor_Add( data->press, press );
 #else

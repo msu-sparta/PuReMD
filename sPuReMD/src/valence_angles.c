@@ -525,7 +525,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 rvec_Add( *f_i, force );
 
                                 rvec_Scale( force, -1.0, force );
-                                rvec_OuterProduct( press, pbond_ij->dvec, force );
+                                rvec_OuterProduct( press, force, pbond_ij->dvec );
 //#if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 //#else
@@ -539,7 +539,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 rvec_Add( *f_k, force );
 
                                 rvec_Scale( force, -1.0, force );
-                                rvec_OuterProduct( press, pbond_jk->dvec, force );
+                                rvec_OuterProduct( press, force, pbond_jk->dvec );
 //#if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 //#else

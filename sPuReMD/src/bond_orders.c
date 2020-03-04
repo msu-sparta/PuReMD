@@ -377,7 +377,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
 
         /* pressure */
         rvec_Scale( force, -1.0, force );
-        rvec_OuterProduct( press, nbr_k->dvec, force );
+        rvec_OuterProduct( press, force, nbr_k->dvec  );
 #if !defined(_OPENMP)
         rtensor_Add( data->press, press );
 #else
@@ -424,7 +424,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     rvec_Add( *f_i, force );
 
     /* pressure */
-    rvec_OuterProduct( press, nbr_j->dvec, force );
+    rvec_OuterProduct( press, force, nbr_j->dvec );
 #if !defined(_OPENMP)
     rtensor_Add( data->press, press );
 #else
@@ -461,7 +461,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
         /* pressure */
         rvec_Scale( force, -1.0, force );
         rvec_Sum( dvec_jk, nbr_k->dvec, nbr_j->dvec );
-        rvec_OuterProduct( press, dvec_jk, force );
+        rvec_OuterProduct( press, force, dvec_jk );
 #if !defined(_OPENMP)
         rtensor_Add( data->press, press );
 #else
@@ -469,7 +469,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
 #endif
 //        fprintf( stderr, "[BO5, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", i, k, force[0], force[1], force[2], dvec_jk[0], dvec_jk[1], dvec_jk[2] ); fflush( stderr ); 
 
-        rvec_OuterProduct( press, nbr_k->dvec, force );
+        rvec_OuterProduct( press, force, nbr_k->dvec );
 #if !defined(_OPENMP)
         rtensor_Add( data->press, press );
 #else
@@ -508,7 +508,7 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
 
     /* pressure */
     rvec_Scale( force, -1.0, force );
-    rvec_OuterProduct( press, nbr_j->dvec, force );
+    rvec_OuterProduct( press, force, nbr_j->dvec );
 #if !defined(_OPENMP)
     rtensor_Add( data->press, press );
 #else

@@ -274,7 +274,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                         /* pressure */
                         rvec_Scale( force, -1.0, force );
-                        rvec_OuterProduct( press, nbr_pj->dvec, force );
+                        rvec_OuterProduct( press, force, nbr_pj->dvec );
 #if !defined(_OPENMP)
                         rtensor_Add( data->press, press );
 #else
@@ -544,7 +544,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                         /* pressure */
                         rvec_Scale( force, -1.0, force );
-                        rvec_OuterProduct( press, nbr_pj->dvec, force );
+                        rvec_OuterProduct( press, force, nbr_pj->dvec );
 #if !defined(_OPENMP)
                         rtensor_Add( data->press, press );
 #else
