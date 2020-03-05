@@ -97,7 +97,7 @@ extern "C" void copy_host_device( void *host, void *dev, size_t size,
     if( retVal != cudaSuccess )
     {
         fprintf( stderr,
-                "[ERROR] could not copy resource %s from host to device\n    [INFO] CUDA API error code: %d n",
+                "[ERROR] could not copy resource %s from host to device\n    [INFO] CUDA API error code: %d\n",
                 msg, retVal );
         exit( INSUFFICIENT_MEMORY );
     }

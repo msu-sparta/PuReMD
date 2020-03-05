@@ -27,6 +27,9 @@
 
 #include "../basic_comm.h"
 #include "../charges.h"
+#include "../tool_box.h"
+
+#include "../cub/cub/device/device_radix_sort.cuh"
 
 
 //TODO: move k_jacob and jacboi to cuda_lin_alg.cu
@@ -61,6 +64,84 @@ static void jacobi( reax_system const * const system,
           *(workspace->d_workspace), system->n );
     cudaDeviceSynchronize();
     cudaCheckError();
+}
+
+
+/* Routine used for sorting nonzeros within a sparse matrix row;
+ *  internally, a combination of qsort and manual sorting is utilized
+ *
+ * A: sparse matrix for which to sort nonzeros within a row, stored in CSR format
+ */
+void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system )
+{
+    int i, num_entries, *start, *end, *d_j_temp;
+    real *d_val_temp;
+    void *d_temp_storage;
+    size_t temp_storage_bytes, max_temp_storage_bytes;
+
+    d_temp_storage = NULL;
+    temp_storage_bytes = 0;
+    max_temp_storage_bytes = 0;
+
+    /* copy row indices from device */
+    start = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::start" );
+    end = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::end" );
+    copy_host_device( start, A->start, sizeof(int) * system->total_cap, 
+            cudaMemcpyDeviceToHost, "Sort_Matrix_Rows::start" );
+    copy_host_device( end, A->end, sizeof(int) * system->total_cap, 
+            cudaMemcpyDeviceToHost, "Sort_Matrix_Rows::end" );
+
+    /* make copies of column indices and non-zero values */
+    cuda_malloc( (void **)&d_j_temp, sizeof(int) * system->total_cm_entries,
+            FALSE, "Sort_Matrix_Rows::d_j_temp" );
+    cuda_malloc( (void **)&d_val_temp, sizeof(real) * system->total_cm_entries,
+            FALSE, "Sort_Matrix_Rows::d_val_temp" );
+    copy_device( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
+            "Sort_Matrix_Rows::d_j_temp" );
+    copy_device( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
+            "Sort_Matrix_Rows::d_val_temp" );
+
+    for ( i = 0; i < system->n; ++i )
+    {
+        num_entries = end[i] - start[i];
+
+        /* determine temporary device storage requirements */
+        cub::DeviceRadixSort::SortPairs( d_temp_storage, temp_storage_bytes,
+                &d_j_temp[start[i]], &A->j[start[i]],
+                &d_val_temp[start[i]], &A->val[start[i]], num_entries );
+
+        if ( d_temp_storage == NULL )
+        {
+            /* allocate temporary storage */
+            cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+                    "Sort_Matrix_Rows::d_temp_storage" );
+        }
+        else if ( max_temp_storage_bytes < temp_storage_bytes )
+        {
+            /* deallocate temporary storage */
+            cuda_free( d_temp_storage, "Sort_Matrix_Rows::d_temp_storage" );
+
+            /* allocate temporary storage */
+            cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
+                    "Sort_Matrix_Rows::d_temp_storage" );
+
+            max_temp_storage_bytes = temp_storage_bytes;
+        }
+
+        /* run sorting operation */
+        cub::DeviceRadixSort::SortPairs( d_temp_storage, temp_storage_bytes,
+                &d_j_temp[start[i]], &A->j[start[i]],
+                &d_val_temp[start[i]], &A->val[start[i]], num_entries );
+        cudaDeviceSynchronize( );
+        cudaCheckError( );
+    }
+
+    /* deallocate temporary storage */
+    cuda_free( d_temp_storage, "Sort_Matrix_Rows::d_temp_storage" );
+    cuda_free( d_j_temp, "Sort_Matrix_Rows::d_j_temp" );
+    cuda_free( d_val_temp, "Sort_Matrix_Rows::d_val_temp" );
+    sfree( start, "Sort_Matrix_Rows::start" );
+    sfree( end, "Sort_Matrix_Rows::end" );
 }
 
 
@@ -182,7 +263,14 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    real time, t_sort, t_pc, total_sort, total_pc;
+    real time, t_sort, t_pc, redux[2];
+
+    t_pc = 0.0;
+
+    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
+    time = MPI_Wtime( );
+    Sort_Matrix_Rows( &workspace->d_workspace->H, system );
+    t_sort = MPI_Wtime( ) - time;
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -205,17 +293,6 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 //            t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data,
 //                    &workspace->H, &workspace->H_spar_patt, 
 //                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
-//
-//            MPI_Reduce( &t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM,
-//                    MASTER_NODE, mpi_data->world );
-//            MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM,
-//                    MASTER_NODE, mpi_data->world );
-//
-//            if ( system->my_rank == MASTER_NODE )
-//            {
-//                data->timing.cm_sort += total_sort / control->nprocs;
-//                data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
-//            }
             break;
 
         default:
@@ -223,6 +300,18 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
                    control->cm_solver_pre_comp_type );
             exit( INVALID_INPUT );
             break;
+    }
+
+
+    redux[0] = t_sort;
+    redux[1] = t_pc;
+    MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
+            MASTER_NODE, mpi_data->world );
+
+    if ( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_sort += redux[0] / control->nprocs;
+        data->timing.cm_solver_pre_comp += redux[1] / control->nprocs;
     }
 }
 
@@ -248,7 +337,6 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes const * const mpi_data )
 {
-    int i;
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
     real t_pc, total_pc;
 #endif

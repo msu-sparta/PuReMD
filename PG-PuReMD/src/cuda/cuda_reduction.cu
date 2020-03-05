@@ -42,7 +42,7 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
 
     /* allocate temporary storage */
     cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "Cuda_Reduction_Sum::temp_storage" );
+            "Cuda_Reduction_Sum::d_temp_storage" );
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
@@ -51,7 +51,7 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::temp_storage" );
+    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::d_temp_storage" );
 }
 
 

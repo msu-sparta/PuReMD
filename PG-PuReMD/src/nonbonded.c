@@ -188,7 +188,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 data->my_en.e_ele += e_ele;
 
                 de_clb = -C_ELE * (system->my_atoms[i].q * system->my_atoms[j].q)
-                        * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0);
+                        * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
                 CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
 
 #if defined(DEBUG_FOCUS)

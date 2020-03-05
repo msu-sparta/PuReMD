@@ -149,8 +149,10 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    real time, t_sort, t_pc, total_sort, total_pc;
+    real time, t_sort, t_pc, redux[2];
     sparse_matrix *Hptr;
+
+    t_pc = 0.0;
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
@@ -191,17 +193,6 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data,
                     &workspace->H, &workspace->H_spar_patt, 
                     control->nprocs, control->cm_solver_pre_comp_sai_thres );
-
-            MPI_Reduce( &t_sort, &total_sort, 1, MPI_DOUBLE, MPI_SUM,
-                    MASTER_NODE, mpi_data->world );
-            MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM,
-                    MASTER_NODE, mpi_data->world );
-
-            if ( system->my_rank == MASTER_NODE )
-            {
-                data->timing.cm_sort += total_sort / control->nprocs;
-                data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
-            }
             break;
 
         default:
@@ -209,6 +200,17 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
                    control->cm_solver_pre_comp_type );
             exit( INVALID_INPUT );
             break;
+    }
+
+    redux[0] = t_sort;
+    redux[1] = t_pc;
+    MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
+            MASTER_NODE, mpi_data->world );
+
+    if ( system->my_rank == MASTER_NODE )
+    {
+        data->timing.cm_sort += redux[0] / control->nprocs;
+        data->timing.cm_solver_pre_comp += redux[1] / control->nprocs;
     }
 }
 

@@ -272,7 +272,6 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
     int type_i, type_j;
     int cm_top;
     int num_cm_entries;
-    int flag3;
     real r_ij;
     single_body_parameters *sbp_i;
     two_body_parameters *twbp;
@@ -302,7 +301,6 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
         H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
                 i, i, 0.0, 0.0, DIAGONAL );
         ++cm_top;
-    }
 
     /* update i-j distance - check if j is within cutoff */
     for ( pj = start_i; pj < end_i; ++pj )
@@ -314,39 +312,23 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
             atom_j = &my_atoms[j];
             type_j = atom_j->type;
 
-            flag3 = FALSE;
-            if ( i < j && i < n && (j < n || atom_i->orig_id < atom_j->orig_id) )
-            {
-                flag3 = TRUE;
-            }
-            else if ( i > j && i >= n && j < n && atom_j->orig_id < atom_i->orig_id )
-            {
-                flag3 = TRUE;
-            }
-            else if ( i > j && i < n && (j < n || atom_j->orig_id < atom_i->orig_id ) )
-            {
-                flag3 = TRUE;
-            }
+            twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+            r_ij = far_nbr_list.far_nbr_list.d[pj];
 
-            if ( flag3 == TRUE )
+            H->j[cm_top] = j;
+
+            if ( control->tabulate == 0 )
             {
-                twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
-                r_ij = far_nbr_list.far_nbr_list.d[pj];
-
-                H->j[cm_top] = j;
-
-                if ( control->tabulate == 0 )
-                {
-                    H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-                            control, i, H->j[cm_top], r_ij, twbp->gamma, OFF_DIAGONAL );
-                }
-                else
-                {
-                    H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij, type_i, type_j,num_atom_types );
-                }
-                ++cm_top;
+                H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
+                        control, i, H->j[cm_top], r_ij, twbp->gamma, OFF_DIAGONAL );
             }
+            else
+            {
+                H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij, type_i, type_j,num_atom_types );
+            }
+            ++cm_top;
         }
+    }
     }
 
     H->end[i] = cm_top;
@@ -604,6 +586,7 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
         { 
             local = TRUE;
             cutoff = control->nonb_cut;
+            /* diagonal entry */
             ++num_cm_entries;
 //            ihb = sbp_i->p_hbond;
         }   
@@ -628,23 +611,10 @@ CUDA_GLOBAL void k_estimate_storages( reax_atom *my_atoms,
                 ihb = sbp_i->p_hbond;
                 jhb = sbp_j->p_hbond;
 
+                //TODO: assuming far_nbr_list in FULL_LIST, add conditions for HALF_LIST
                 if ( local == TRUE )
                 {
-                    if ( i < j && (j < n || atom_i->orig_id < atom_j->orig_id) )
-                    {
-                        ++num_cm_entries;
-                    }
-                    else if ( i > j && (j < n || atom_j->orig_id > atom_i->orig_id) )
-                    {
-                        ++num_cm_entries;
-                    }
-                }
-                else
-                {
-                    if ( i > j && j < n && atom_j->orig_id < atom_i->orig_id )
-                    {
-                        ++num_cm_entries;
-                    }
+                    ++num_cm_entries;
                 }
 
                 /* atom i: H bonding, ghost

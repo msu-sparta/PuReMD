@@ -240,7 +240,6 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
 }
 
 
-//CUDA_GLOBAL void __launch_bounds__ (256, 4) Cuda_Hydrogen_Bonds_MT ( reax_atom *my_atoms, 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parameters *sbp, 
         hbond_parameters *d_hbp, global_parameters gp, control_params *control, storage p_workspace,
         reax_list p_far_nbr_list, reax_list p_bond_list, reax_list p_hbond_list, int n, 
@@ -252,14 +251,11 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
     rvec sh_atomf;
     rvec sh_hf;
 #else
-    extern __shared__ real t_hb[];
-    extern __shared__ rvec t__f[];
-    extern __shared__ rvec t_cdbo[];
-    extern __shared__ rvec t_hf [];
-    real *sh_hb = t_hb;
-    real *sh_cdbo = t_hb + blockDim.x;
-    rvec *sh_atomf = (rvec *)(sh_cdbo + blockDim.x);
-    rvec *sh_hf = (rvec *)(sh_atomf + blockDim.x);
+    extern __shared__ real _s[];
+    real *sh_hb = _s;
+    real *sh_cdbo = &_s[blockDim.x];
+    rvec *sh_atomf = (rvec *)(&sh_cdbo[blockDim.x]);
+    rvec *sh_hf = (rvec *)(&sh_atomf[blockDim.x]);
 #endif
     int __THREADS_PER_ATOM__, thread_id, group_id, lane_id; 
     int i, j, k, pi, pk;
