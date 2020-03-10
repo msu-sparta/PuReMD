@@ -605,7 +605,7 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *my_atoms, global_paramete
 }
 
 
-CUDA_GLOBAL void Cuda_Torsion_Angles_Part2 ( reax_atom *my_atoms, 
+CUDA_GLOBAL void Cuda_Torsion_Angles_Part2( reax_atom *my_atoms, 
         storage workspace, reax_list bond_list, int N )
 {
     int i, pj;

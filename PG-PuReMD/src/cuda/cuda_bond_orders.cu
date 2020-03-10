@@ -225,40 +225,40 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
             nbr_k = &bond_list->bond_list[pk];
             rvec_MakeZero( tf_f );
 
-            /*2nd,dBO*/
+            /* 2nd, dBO */
             rvec_ScaledAdd( tf_f, -coef.C2dbo, nbr_k->bo_data.dBOp );
-            /*dDelta*/
+            /* dDelta */
             rvec_ScaledAdd( tf_f, -coef.C2dDelta, nbr_k->bo_data.dBOp );
-            /*3rd, dBOpi*/
+            /* 3rd, dBOpi */
             rvec_ScaledAdd( tf_f, -coef.C3dbopi, nbr_k->bo_data.dBOp );
-            /*3rd, dBOpi2*/
+            /* 3rd, dBOpi2 */
             rvec_ScaledAdd( tf_f, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
-            //Temp storage
+            /* temp storage */
             rvec_Add( nbr_k->tf_f, tf_f );
         }
-        /*1st, dBO*/
+        /* 1st, dBO */
         rvec_ScaledAdd( workspace->f[i], coef.C1dbo, bo_ij->dBOp );
-        /*2nd, dBO*/
+        /* 2nd, dBO */
         rvec_ScaledAdd( workspace->f[i], coef.C2dbo, workspace->dDeltap_self[i] );
 
-        /*1st, dBO*/
+        /* 1st, dBO */
         rvec_ScaledAdd( workspace->f[i], coef.C1dDelta, bo_ij->dBOp );
-        /*2nd, dBO*/
+        /* 2nd, dBO */
         rvec_ScaledAdd( workspace->f[i], coef.C2dDelta, workspace->dDeltap_self[i] );
 
-        /*1st, dBOpi*/
+        /* 1st, dBOpi */
         rvec_ScaledAdd( workspace->f[i], coef.C1dbopi, bo_ij->dln_BOp_pi );
-        /*2nd, dBOpi*/
+        /* 2nd, dBOpi */
         rvec_ScaledAdd( workspace->f[i], coef.C2dbopi, bo_ij->dBOp );
-        /*3rd, dBOpi*/
+        /* 3rd, dBOpi */
         rvec_ScaledAdd( workspace->f[i], coef.C3dbopi, workspace->dDeltap_self[i] );
 
-        /*1st, dBO_pi2*/
+        /* 1st, dBO_pi2 */
         rvec_ScaledAdd( workspace->f[i], coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-        /*2nd, dBO_pi2*/
+        /* 2nd, dBO_pi2 */
         rvec_ScaledAdd( workspace->f[i], coef.C2dbopi2, bo_ij->dBOp );
-        /*3rd, dBO_pi2*/
+        /* 3rd, dBO_pi2 */
         rvec_ScaledAdd( workspace->f[i], coef.C3dbopi2, workspace->dDeltap_self[i] );
 
     }
@@ -269,41 +269,41 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
             nbr_k = &bond_list->bond_list[pk];
             rvec_MakeZero( tf_f );
 
-            /*3rd, dBO*/
+            /* 3rd, dBO */
             rvec_ScaledAdd( tf_f, -coef.C3dbo, nbr_k->bo_data.dBOp );
-            /*dDelta*/
+            /* dDelta */
             rvec_ScaledAdd( tf_f, -coef.C3dDelta, nbr_k->bo_data.dBOp );
-            /*4th, dBOpi*/
+            /* 4th, dBOpi */
             rvec_ScaledAdd( tf_f, -coef.C4dbopi, nbr_k->bo_data.dBOp );
-            /*4th, dBOpi2*/
+            /* 4th, dBOpi2 */
             rvec_ScaledAdd( tf_f, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
 
-            //Temp Storage
+            /* temp Storage */
             rvec_Add( nbr_k->tf_f, tf_f );
         }
 
-        /*1st,dBO*/
+        /* 1st, dBO */
         rvec_ScaledAdd( workspace->f[i], -coef.C1dbo, bo_ij->dBOp );
-        /*2nd,dBO*/
+        /* 2nd, dBO */
         rvec_ScaledAdd( workspace->f[i], coef.C3dbo, workspace->dDeltap_self[i] );
 
-        /*1st, dBO*/
+        /* 1st, dBO */
         rvec_ScaledAdd( workspace->f[i], -coef.C1dDelta, bo_ij->dBOp );
-        /*2nd, dBO*/
+        /* 2nd, dBO */
         rvec_ScaledAdd( workspace->f[i], coef.C3dDelta, workspace->dDeltap_self[i] );
 
-        /*1st, dBOpi*/
+        /* 1st, dBOpi */
         rvec_ScaledAdd( workspace->f[i], -coef.C1dbopi, bo_ij->dln_BOp_pi );
-        /*2nd, dBOpi*/
+        /* 2nd, dBOpi */
         rvec_ScaledAdd( workspace->f[i], -coef.C2dbopi, bo_ij->dBOp );
-        /*3rd, dBOpi*/
+        /* 3rd, dBOpi */
         rvec_ScaledAdd( workspace->f[i], coef.C4dbopi, workspace->dDeltap_self[i] );
 
-        /*1st, dBOpi2*/
+        /* 1st, dBOpi2 */
         rvec_ScaledAdd( workspace->f[i], -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-        /*2nd, dBOpi2*/
+        /* 2nd, dBOpi2 */
         rvec_ScaledAdd( workspace->f[i], -coef.C2dbopi2, bo_ij->dBOp );
-        /*3rd, dBOpi2*/
+        /* 3rd, dBOpi2 */
         rvec_ScaledAdd( workspace->f[i], coef.C4dbopi2, workspace->dDeltap_self[i] );
     }
 }
@@ -311,11 +311,10 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
 
 /* Initialize arrays */
 CUDA_GLOBAL void Cuda_BO_Part1( reax_atom *my_atoms, 
-        single_body_parameters *sbp, storage p_workspace, int N )
+        single_body_parameters *sbp, storage workspace, int N )
 {
     int i, type_i;
     single_body_parameters *sbp_i;
-    storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -324,23 +323,20 @@ CUDA_GLOBAL void Cuda_BO_Part1( reax_atom *my_atoms,
         return;
     }
 
-    workspace = &p_workspace;
-
     /* Calculate Deltaprime, Deltaprime_boc values */
     type_i = my_atoms[i].type;
     sbp_i = &sbp[type_i];
-    workspace->Deltap[i] = workspace->total_bond_order[i] - sbp_i->valency;
-    workspace->Deltap_boc[i] = workspace->total_bond_order[i]
+    workspace.Deltap[i] = workspace.total_bond_order[i] - sbp_i->valency;
+    workspace.Deltap_boc[i] = workspace.total_bond_order[i]
         - sbp_i->valency_val;
-    workspace->total_bond_order[i] = 0.0; 
+    workspace.total_bond_order[i] = 0.0; 
 }
 
 
 /* Main BO calculations */
 CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
-        storage p_workspace, reax_list p_bonds, 
-        int num_atom_types, int N )
+        storage workspace, reax_list bond_list, int num_atom_types, int N )
 {
     int i, j, pj, type_i, type_j;
     int start_i, end_i;
@@ -355,8 +351,6 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
     single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     bond_order_data *bo_ij;
-    storage *workspace;
-    reax_list *bond_list;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -365,8 +359,6 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
         return;
     }
 
-    workspace = &p_workspace;
-    bond_list = &p_bonds;
     p_boc1 = gp.l[0];
     p_boc2 = gp.l[1];
 
@@ -374,19 +366,19 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
     type_i = my_atoms[i].type;
     sbp_i = &sbp[type_i];
     val_i = sbp_i->valency;
-    Deltap_i = workspace->Deltap[i];
-    Deltap_boc_i = workspace->Deltap_boc[i];
-    start_i = Start_Index( i, bond_list );
-    end_i = End_Index( i, bond_list );
+    Deltap_i = workspace.Deltap[i];
+    Deltap_boc_i = workspace.Deltap_boc[i];
+    start_i = Start_Index( i, &bond_list );
+    end_i = End_Index( i, &bond_list );
 
     for ( pj = start_i; pj < end_i; ++pj )
     {
-        j = bond_list->bond_list[pj].nbr;
+        j = bond_list.bond_list[pj].nbr;
         type_j = my_atoms[j].type;
-        bo_ij = &bond_list->bond_list[pj].bo_data;
+        bo_ij = &bond_list.bond_list[pj].bo_data;
 
         //TODO
-        //if ( i < j || workspace->bond_mark[j] > 3 )
+        //if ( i < j || workspace.bond_mark[j] > 3 )
         if ( i < j )
         {
             twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
@@ -437,8 +429,8 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
             else
             {
                 val_j = sbp[type_j].valency;
-                Deltap_j = workspace->Deltap[j];
-                Deltap_boc_j = workspace->Deltap_boc[j];
+                Deltap_j = workspace.Deltap[j];
+                Deltap_boc_j = workspace.Deltap_boc[j];
 
                 /* on page 1 */
                 if ( twbp->ovc >= 0.001 )
@@ -566,11 +558,11 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
             }
 
             /* now keeps total_BO */
-            workspace->total_bond_order[i] += bo_ij->BO;
+            workspace.total_bond_order[i] += bo_ij->BO;
 
 #if defined(TEST_FORCES)
             Set_End_Index( pj, top_dbo, dBOs );
-            Add_dBO( system, lists, i, pj, 1.0, workspace->dDelta );
+            Add_dBO( system, lists, i, pj, 1.0, workspace.dDelta );
 #endif
 
             /* NOTE: handle sym_index later in Cuda_Calculate_BO_Part3 */
@@ -580,14 +572,11 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
 
 
 /* Compute sym_index */
-CUDA_GLOBAL void Cuda_BO_Part3( storage p_workspace,
-        reax_list p_bonds, int N )
+CUDA_GLOBAL void Cuda_BO_Part3( storage workspace, reax_list bond_list, int N )
 {
     int i, j, pj;
     int start_i, end_i;
     int sym_index;
-    storage *workspace;
-    reax_list *bonds;
     bond_order_data *bo_ij, *bo_ji;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -597,35 +586,33 @@ CUDA_GLOBAL void Cuda_BO_Part3( storage p_workspace,
         return;
     }
 
-    workspace = &p_workspace;
-    bonds = &p_bonds;
-    start_i = Start_Index( i, bonds );
-    end_i = End_Index( i, bonds );
+    start_i = Start_Index( i, &bond_list );
+    end_i = End_Index( i, &bond_list );
 
     for ( pj = start_i; pj < end_i; ++pj )
     {
 
-        j = bonds->bond_list[pj].nbr;
-        bo_ij = &bonds->bond_list[pj].bo_data;
+        j = bond_list.bond_list[pj].nbr;
+        bo_ij = &bond_list.bond_list[pj].bo_data;
 
-        //if ( i >= j || workspace->bond_mark [i] <= 3 )
+        //if ( i >= j || workspace.bond_mark [i] <= 3 )
         if ( i >= j )
         {
             /* We only need to update bond orders from bo_ji
              * everything else is set in uncorrected_bo calculations */
-            sym_index = bonds->bond_list[pj].sym_index;
+            sym_index = bond_list.bond_list[pj].sym_index;
 
-            bo_ji = &bonds->bond_list[ sym_index ].bo_data;
+            bo_ji = &bond_list.bond_list[ sym_index ].bo_data;
             bo_ij->BO = bo_ji->BO;
             bo_ij->BO_s = bo_ji->BO_s;
             bo_ij->BO_pi = bo_ji->BO_pi;
             bo_ij->BO_pi2 = bo_ji->BO_pi2;
 
             /* now keeps total_BO */
-            workspace->total_bond_order[i] += bo_ij->BO;
+            workspace.total_bond_order[i] += bo_ij->BO;
 
 #if defined(TEST_FORCES)
-            Add_dBO( system, lists, j, sym_index, 1.0, workspace->dDelta );
+            Add_dBO( system, lists, j, sym_index, 1.0, workspace.dDelta );
 #endif
         }
     }
@@ -635,12 +622,11 @@ CUDA_GLOBAL void Cuda_BO_Part3( storage p_workspace,
 /* Calculate helper variables */
 CUDA_GLOBAL void Cuda_BO_Part4( reax_atom *my_atoms,
         global_parameters gp, single_body_parameters *sbp,
-        storage p_workspace, int N )
+        storage workspace, int N )
 {
     int i, type_i;
     real explp1, p_lp1;
     single_body_parameters *sbp_i;
-    storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -649,7 +635,6 @@ CUDA_GLOBAL void Cuda_BO_Part4( reax_atom *my_atoms,
         return;
     }
 
-    workspace = &p_workspace;
     p_lp1 = gp.l[15];
 
     /* Calculate some helper variables that are  used at many places
@@ -657,45 +642,43 @@ CUDA_GLOBAL void Cuda_BO_Part4( reax_atom *my_atoms,
     type_i = my_atoms[i].type;
     sbp_i = &sbp[ type_i ];
 
-    workspace->Delta[i] = workspace->total_bond_order[i] - sbp_i->valency;
-    workspace->Delta_e[i] = workspace->total_bond_order[i] - sbp_i->valency_e;
-    workspace->Delta_boc[i] = workspace->total_bond_order[i]
+    workspace.Delta[i] = workspace.total_bond_order[i] - sbp_i->valency;
+    workspace.Delta_e[i] = workspace.total_bond_order[i] - sbp_i->valency_e;
+    workspace.Delta_boc[i] = workspace.total_bond_order[i]
         - sbp_i->valency_boc;
 
-    workspace->vlpex[i] = workspace->Delta_e[i]
-        - 2.0 * (int)(workspace->Delta_e[i] / 2.0);
-    explp1 = EXP(-p_lp1 * SQR(2.0 + workspace->vlpex[i]));
-    workspace->nlp[i] = explp1 - (int)(workspace->Delta_e[i] / 2.0);
-    workspace->Delta_lp[i] = sbp_i->nlp_opt - workspace->nlp[i];
-    workspace->Clp[i] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[i]);
+    workspace.vlpex[i] = workspace.Delta_e[i]
+        - 2.0 * (int)(workspace.Delta_e[i] / 2.0);
+    explp1 = EXP(-p_lp1 * SQR(2.0 + workspace.vlpex[i]));
+    workspace.nlp[i] = explp1 - (int)(workspace.Delta_e[i] / 2.0);
+    workspace.Delta_lp[i] = sbp_i->nlp_opt - workspace.nlp[i];
+    workspace.Clp[i] = 2.0 * p_lp1 * explp1 * (2.0 + workspace.vlpex[i]);
     /* Adri uses different dDelta_lp values than the ones in notes... */
-    workspace->dDelta_lp[i] = workspace->Clp[i];
-//    workspace->dDelta_lp[i] = workspace->Clp[i] + (0.5 - workspace->Clp[i])
-//        * ((FABS(workspace->Delta_e[i] / 2.0
-//                        - (int)(workspace->Delta_e[i] / 2.0)) < 0.1) ? 1 : 0 );
+    workspace.dDelta_lp[i] = workspace.Clp[i];
+//    workspace.dDelta_lp[i] = workspace.Clp[i] + (0.5 - workspace.Clp[i])
+//        * ((FABS(workspace.Delta_e[i] / 2.0
+//                        - (int)(workspace.Delta_e[i] / 2.0)) < 0.1) ? 1 : 0 );
 
     if ( sbp_i->mass > 21.0 )
     {
-        workspace->nlp_temp[i] = 0.5 * (sbp_i->valency_e - sbp_i->valency);
-        workspace->Delta_lp_temp[i] = sbp_i->nlp_opt - workspace->nlp_temp[i];
-        workspace->dDelta_lp_temp[i] = 0.0;
+        workspace.nlp_temp[i] = 0.5 * (sbp_i->valency_e - sbp_i->valency);
+        workspace.Delta_lp_temp[i] = sbp_i->nlp_opt - workspace.nlp_temp[i];
+        workspace.dDelta_lp_temp[i] = 0.0;
     }
     else
     {
-        workspace->nlp_temp[i] = workspace->nlp[i];
-        workspace->Delta_lp_temp[i] = sbp_i->nlp_opt - workspace->nlp_temp[i];
-        workspace->dDelta_lp_temp[i] = workspace->Clp[i];
+        workspace.nlp_temp[i] = workspace.nlp[i];
+        workspace.Delta_lp_temp[i] = sbp_i->nlp_opt - workspace.nlp_temp[i];
+        workspace.dDelta_lp_temp[i] = workspace.Clp[i];
     }
 }
 
 
-CUDA_GLOBAL void k_total_forces( storage p_workspace, reax_list p_bond_list, 
+CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list, 
         control_params *control, simulation_data *data, rvec *data_ext_press,
         int N )
 {
     int i, pj;
-    reax_list *bond_list;
-    storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -704,35 +687,30 @@ CUDA_GLOBAL void k_total_forces( storage p_workspace, reax_list p_bond_list,
         return;
     }
 
-    bond_list = &p_bond_list;
-    workspace = &p_workspace;
-
-    //if ( i < bond_list->bond_list[pj].nbr ) {
+    //if ( i < bond_list.bond_list[pj].nbr ) {
     if ( control->virial == 0 )
     {
-        for ( pj = Start_Index( i, bond_list ); pj < End_Index( i, bond_list ); ++pj )
+        for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
         {
-            Cuda_Add_dBond_to_Forces( i, pj, workspace, bond_list );
+            Cuda_Add_dBond_to_Forces( i, pj, &workspace, &bond_list );
         }
     }
     else 
     {
-        for ( pj = Start_Index( i, bond_list ); pj < End_Index( i, bond_list ); ++pj )
+        for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
         {
-            Cuda_Add_dBond_to_Forces_NPT( i, pj, data, workspace, bond_list,
+            Cuda_Add_dBond_to_Forces_NPT( i, pj, data, &workspace, &bond_list,
                     data_ext_press[i] );
         }
     }
 }
 
 
-CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms,
-        reax_list p_bond_list, storage p_workspace, int N )
+CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, reax_list bond_list,
+        storage workspace, int N )
 {
     int i, pk;
     bond_data *nbr_k, *nbr_k_sym;
-    reax_list *bond_list;
-    storage *workspace;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -741,17 +719,30 @@ CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms,
         return;
     }
 
-    bond_list = &p_bond_list;
-    workspace = &p_workspace;
-
-    for ( pk = Start_Index( i, bond_list ); pk < End_Index( i, bond_list ); ++pk )
+    for ( pk = Start_Index( i, &bond_list ); pk < End_Index( i, &bond_list ); ++pk )
     {
-        nbr_k = &bond_list->bond_list[pk];
-        nbr_k_sym = &bond_list->bond_list [nbr_k->sym_index];
+        nbr_k = &bond_list.bond_list[pk];
+        nbr_k_sym = &bond_list.bond_list[nbr_k->sym_index];
 
         //rvec_Add( atoms[i].f, nbr_k_sym->tf_f );
-        rvec_Add( workspace->f[i], nbr_k_sym->tf_f );
+        rvec_Add( workspace.f[i], nbr_k_sym->tf_f );
     }
+}
+
+
+CUDA_GLOBAL void k_total_forces_pure( reax_atom *my_atoms, int n, 
+        storage workspace )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
+    {
+        return;
+    }
+
+    rvec_Copy( my_atoms[i].f, workspace.f[i] );
 }
 
 
@@ -759,15 +750,16 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists )
 {
     int blocks;
-    rvec *spad_rvec = (rvec *) workspace->scratch;
+    rvec *spad_rvec;
 
+    spad_rvec = (rvec *) workspace->scratch;
     cuda_memset( spad_rvec, 0, system->N * 2 * sizeof(rvec),
             "total_forces:ext_press" );
 
     blocks = system->N / DEF_BLOCK_SIZE
         + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_total_forces <<< blocks, DEF_BLOCK_SIZE >>>
+    k_total_forces_part1 <<< blocks, DEF_BLOCK_SIZE >>>
         ( *(workspace->d_workspace), *(lists[BONDS]), 
           (control_params *) control->d_control_params, 
           (simulation_data *)data->d_simulation_data, 
@@ -794,25 +786,6 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
         ( system->d_my_atoms, *(lists[BONDS]), *(workspace->d_workspace), system->N );
     cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
-}
-
-
-CUDA_GLOBAL void k_total_forces_pure( reax_atom *my_atoms, int n, 
-        storage p_workspace )
-{
-    int i;
-    storage *workspace;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= n )
-    {
-        return;
-    }
-
-    workspace = &p_workspace;
-
-    rvec_Copy( my_atoms[i].f, workspace->f[i] );
 }
 
 

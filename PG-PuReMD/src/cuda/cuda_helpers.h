@@ -36,18 +36,20 @@ CUDA_DEVICE static inline int Cuda_strncmp( const char * a,
 
 CUDA_DEVICE static inline real myatomicAdd( real* address, real val )
 {
-    unsigned long long int* address_as_ull =
-        (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
+    unsigned long long int *address_as_ull, old, assumed;
+
+    address_as_ull = (unsigned long long int*)address;
+    old = *address_as_ull;
+
     do
     {
         assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(val + __longlong_as_double(assumed)));
+        old = atomicCAS( address_as_ull, assumed,
+                __double_as_longlong(val + __longlong_as_double(assumed)) );
     }
-    while (assumed != old);
+    while ( assumed != old );
 
-    return __longlong_as_double(old);
+    return __longlong_as_double( old );
 }
 
 

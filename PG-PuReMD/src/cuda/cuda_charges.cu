@@ -269,7 +269,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = MPI_Wtime( );
-    Sort_Matrix_Rows( &workspace->d_workspace->H, system );
+//    Sort_Matrix_Rows( &workspace->d_workspace->H, system );
     t_sort = MPI_Wtime( ) - time;
 
     switch ( control->cm_solver_pre_comp_type )

@@ -1707,8 +1707,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    Cuda_NonBonded_Energy( system, control, workspace, data,
-            lists, out_control, (control->tabulate == 0) ? false: true );
+    Cuda_NonBonded_Energy( system, control, workspace, data, lists, out_control );
 }
 
 

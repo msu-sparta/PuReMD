@@ -26,14 +26,14 @@ CUDA_DEVICE static inline int Cuda_BOp( reax_list bond_list, real bo_cut,
         single_body_parameters *sbp_j, two_body_parameters *twbp,
         rvec *dDeltap_self, real *total_bond_order )
 {
-
+    int btop_j, ret;
     real r2, C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
     real BO, BO_s, BO_pi, BO_pi2;
     bond_data *ibond, *jbond;
     bond_order_data *bo_ij, *bo_ji;
-    int btop_j;
 
+    ret = FALSE;
     r2 = SQR( d );
 
     if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
@@ -187,10 +187,10 @@ CUDA_DEVICE static inline int Cuda_BOp( reax_list bond_list, real bo_cut,
             rvec_MakeZero( jbond->tf_f );
         }
 
-        return TRUE;
+        ret = TRUE;
     }
 
-    return FALSE;
+    return ret;
 }
 
 
@@ -199,11 +199,11 @@ CUDA_GLOBAL void Cuda_BO_Part1( reax_atom *,
 
 CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *, global_parameters,
         single_body_parameters *, two_body_parameters *,
-        storage , reax_list , int , int );
+        storage, reax_list, int, int );
 
-CUDA_GLOBAL void Cuda_BO_Part3( storage , reax_list , int );
+CUDA_GLOBAL void Cuda_BO_Part3( storage, reax_list, int );
 
-CUDA_GLOBAL void Cuda_BO_Part4( reax_atom *, global_parameters ,
-        single_body_parameters *, storage , int );
+CUDA_GLOBAL void Cuda_BO_Part4( reax_atom *, global_parameters,
+        single_body_parameters *, storage, int );
 
 #endif

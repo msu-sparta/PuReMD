@@ -32,8 +32,8 @@
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameters *sbp, 
         hbond_parameters *d_hbp, global_parameters gp,
-        control_params *control, storage p_workspace,
-        reax_list p_far_nbr_list, reax_list p_bond_list, reax_list p_hbond_list, int n, 
+        control_params *control, storage workspace,
+        reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
         int num_atom_types, real *data_e_hb, rvec *data_ext_press, int rank, int step )
 {
     int i, j, k, pi, pk;
@@ -49,10 +49,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
     hbond_parameters *hbp;
     bond_order_data *bo_ij;
     int nbr_jk;
-    reax_list *far_nbr_list, *bond_list, *hbond_list;
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
-    storage *workspace;
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -60,11 +58,6 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
     {
         return;
     }
-
-    far_nbr_list = &p_far_nbr_list;
-    bond_list = &p_bond_list;
-    hbond_list = &p_hbond_list;
-    workspace = &p_workspace;
 
     /* discover the Hydrogen bonds between i-j-k triplets.
      * here j is H atom and there has to be some bond between i and j.
@@ -76,16 +69,16 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
     if ( sbp[ my_atoms[j].type ].p_hbond == H_ATOM )
     {
         type_j = my_atoms[j].type;
-        start_j = Start_Index( j, bond_list );
-        end_j = End_Index( j, bond_list );
-        hb_start_j = Start_Index( my_atoms[j].Hindex, hbond_list );
-        hb_end_j = End_Index( my_atoms[j].Hindex, hbond_list );
+        start_j = Start_Index( j, &bond_list );
+        end_j = End_Index( j, &bond_list );
+        hb_start_j = Start_Index( my_atoms[j].Hindex, &hbond_list );
+        hb_end_j = End_Index( my_atoms[j].Hindex, &hbond_list );
         top = 0;
 
         /* search bonded atoms i to atom j (hydrogen atom) for potential hydrogen bonding */
         for ( pi = start_j; pi < end_j; ++pi )
         {
-            pbond_ij = &bond_list->bond_list[pi];
+            pbond_ij = &bond_list.bond_list[pi];
             i = pbond_ij->nbr;
             bo_ij = &pbond_ij->bo_data;
             type_i = my_atoms[i].type;
@@ -100,14 +93,14 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
         /* for each hbond of atom j */
         for ( pk = hb_start_j; pk < hb_end_j; ++pk )
         {
-            phbond_jk = &hbond_list->hbond_list[pk];
+            phbond_jk = &hbond_list.hbond_list[pk];
             k = phbond_jk->nbr;
             type_k = my_atoms[k].type;
             nbr_jk = phbond_jk->ptr;
-            r_jk = far_nbr_list->far_nbr_list.d[nbr_jk];
+            r_jk = far_nbr_list.far_nbr_list.d[nbr_jk];
 
-            rvec_Scale( dvec_jk, hbond_list->hbond_list[pk].scl,
-                    far_nbr_list->far_nbr_list.dvec[nbr_jk] );
+            rvec_Scale( dvec_jk, hbond_list.hbond_list[pk].scl,
+                    far_nbr_list.far_nbr_list.dvec[nbr_jk] );
 
             rvec_MakeZero( phbond_jk->hb_f );
 
@@ -115,7 +108,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
             for ( itr = 0; itr < top; ++itr )
             {
                 pi = hblist[itr];
-                pbond_ij = &bond_list->bond_list[pi];
+                pbond_ij = &bond_list.bond_list[pi];
                 i = pbond_ij->nbr;
 
                 if ( my_atoms[i].orig_id != my_atoms[k].orig_id )
@@ -156,21 +149,21 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
                     if ( control->virial == 0 )
                     {
                         /* dcos terms */
-                        //rvec_ScaledAdd( workspace->f[i], CEhb2, dcos_theta_di ); 
-                        //atomic_rvecScaledAdd( workspace->f[i], CEhb2, dcos_theta_di );
+                        //rvec_ScaledAdd( workspace.f[i], CEhb2, dcos_theta_di ); 
+                        //atomic_rvecScaledAdd( workspace.f[i], CEhb2, dcos_theta_di );
                         rvec_ScaledAdd( pbond_ij->hb_f, CEhb2, dcos_theta_di ); 
 
-                        rvec_ScaledAdd( workspace->f[j], CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
 
-                        //rvec_ScaledAdd( workspace->f[k], CEhb2, dcos_theta_dk );
-                        //atomic_rvecScaledAdd( workspace->f[k], CEhb2, dcos_theta_dk );
+                        //rvec_ScaledAdd( workspace.f[k], CEhb2, dcos_theta_dk );
+                        //atomic_rvecScaledAdd( workspace.f[k], CEhb2, dcos_theta_dk );
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb2, dcos_theta_dk );
 
                         /* dr terms */
-                        rvec_ScaledAdd( workspace->f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
-                        //rvec_ScaledAdd( workspace->f[k], CEhb3 / r_jk, dvec_jk );
-                        //atomic_rvecScaledAdd( workspace->f[k], CEhb3 / r_jk, dvec_jk );
+                        //rvec_ScaledAdd( workspace.f[k], CEhb3 / r_jk, dvec_jk );
+                        //atomic_rvecScaledAdd( workspace.f[k], CEhb3 / r_jk, dvec_jk );
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb3 / r_jk, dvec_jk );
                     }
                     else
@@ -179,26 +172,26 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
                          * derivatives are added directly into pressure vector/tensor */
                         /* dcos terms */
                         rvec_Scale( force, CEhb2, dcos_theta_di );
-                        //rvec_Add( workspace->f[i], force );
+                        //rvec_Add( workspace.f[i], force );
                         rvec_Add( pbond_ij->hb_f, force );
                         rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
                         rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
 
-                        rvec_ScaledAdd( workspace->f[j], CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
 
-                        ivec_Scale( rel_jk, hbond_list->hbond_list[pk].scl,
-                                far_nbr_list->far_nbr_list.rel_box[nbr_jk] );
+                        ivec_Scale( rel_jk, hbond_list.hbond_list[pk].scl,
+                                far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
                         rvec_Scale( force, CEhb2, dcos_theta_dk );
-                        //rvec_Add( workspace->f[k], force );
+                        //rvec_Add( workspace.f[k], force );
                         rvec_Add( phbond_jk->hb_f, force );
                         rvec_iMultiply( ext_press, rel_jk, force );
                         rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
 
                         /* dr terms */
-                        rvec_ScaledAdd( workspace->f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
                         rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
-                        //rvec_Add( workspace->f[k], force );
+                        //rvec_Add( workspace.f[k], force );
                         rvec_Add( phbond_jk->hb_f, force );
                         rvec_iMultiply( ext_press, rel_jk, force );
                         rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
@@ -222,16 +215,16 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
 
 #if defined(TEST_FORCES)
                     /* dbo term */
-                    Add_dBO( system, lists, j, pi, CEhb1, workspace->f_hb );
+                    Add_dBO( system, lists, j, pi, CEhb1, workspace.f_hb );
 
                     /* dcos terms */
-                    rvec_ScaledAdd( workspace->f_hb[i], CEhb2, dcos_theta_di );
-                    rvec_ScaledAdd( workspace->f_hb[j], CEhb2, dcos_theta_dj );
-                    rvec_ScaledAdd( workspace->f_hb[k], CEhb2, dcos_theta_dk );
+                    rvec_ScaledAdd( workspace.f_hb[i], CEhb2, dcos_theta_di );
+                    rvec_ScaledAdd( workspace.f_hb[j], CEhb2, dcos_theta_dj );
+                    rvec_ScaledAdd( workspace.f_hb[k], CEhb2, dcos_theta_dk );
 
                     /* dr terms */
-                    rvec_ScaledAdd( workspace->f_hb[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
-                    rvec_ScaledAdd( workspace->f_hb[k], CEhb3 / r_jk, dvec_jk );
+                    rvec_ScaledAdd( workspace.f_hb[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
+                    rvec_ScaledAdd( workspace.f_hb[k], CEhb3 / r_jk, dvec_jk );
 #endif
                 }
             }
@@ -241,8 +234,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
 
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parameters *sbp, 
-        hbond_parameters *d_hbp, global_parameters gp, control_params *control, storage p_workspace,
-        reax_list p_far_nbr_list, reax_list p_bond_list, reax_list p_hbond_list, int n, 
+        hbond_parameters *d_hbp, global_parameters gp, control_params *control, storage workspace,
+        reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
         int num_atom_types, real *data_e_hb, rvec *data_ext_press )
 {
 #if defined( __SM_35__)
@@ -273,10 +266,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
     hbond_parameters *hbp;
     bond_order_data *bo_ij;
     int nbr_jk;
-    reax_list *far_nbr_list, *bond_list, *hbond_list;
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
-    storage *workspace;
 
     __THREADS_PER_ATOM__ = HB_KER_THREADS_PER_ATOM;
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -288,10 +279,6 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
         return;
     }
 
-    workspace = &p_workspace;
-    far_nbr_list = &p_far_nbr_list;
-    bond_list = &p_bond_list;
-    hbond_list = &p_hbond_list;
     j = group_id;
 
     /* loops below discover the Hydrogen bonds between i-j-k triplets.
@@ -313,16 +300,16 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
     if ( sbp[ my_atoms[j].type ].p_hbond == H_ATOM )
     {
         type_j = my_atoms[j].type;
-        start_j = Start_Index( j, bond_list );
-        end_j = End_Index( j, bond_list );
-        hb_start_j = Start_Index( my_atoms[j].Hindex, hbond_list );
-        hb_end_j = End_Index( my_atoms[j].Hindex, hbond_list );
+        start_j = Start_Index( j, &bond_list );
+        end_j = End_Index( j, &bond_list );
+        hb_start_j = Start_Index( my_atoms[j].Hindex, &hbond_list );
+        hb_end_j = End_Index( my_atoms[j].Hindex, &hbond_list );
         top = 0;
 
         /* search bonded atoms i to atom j (hydrogen atom) for potential hydrogen bonding */
         for ( pi = start_j; pi < end_j; ++pi ) 
         {
-            pbond_ij = &bond_list->bond_list[pi];
+            pbond_ij = &bond_list.bond_list[pi];
             i = pbond_ij->nbr;
             bo_ij = &pbond_ij->bo_data;
             type_i = my_atoms[i].type;
@@ -338,7 +325,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
         for ( itr = 0; itr < top; ++itr )
         {
             pi = hblist[itr];
-            pbond_ij = &bond_list->bond_list[pi];
+            pbond_ij = &bond_list.bond_list[pi];
             i = pbond_ij->nbr;
 
 #if defined( __SM_35__)
@@ -360,16 +347,16 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
                 /* only allow threads with an actual hbond */
                 if ( pk < hb_end_j )
                 {
-                    phbond_jk = &hbond_list->hbond_list[pk];
+                    phbond_jk = &hbond_list.hbond_list[pk];
 
                     /* set k's varibles */
-                    k = hbond_list->hbond_list[pk].nbr;
+                    k = hbond_list.hbond_list[pk].nbr;
                     type_k = my_atoms[k].type;
-                    nbr_jk = hbond_list->hbond_list[pk].ptr;
-                    r_jk = far_nbr_list->far_nbr_list.d[nbr_jk];
+                    nbr_jk = hbond_list.hbond_list[pk].ptr;
+                    r_jk = far_nbr_list.far_nbr_list.d[nbr_jk];
 
                     rvec_Scale( dvec_jk, phbond_jk->scl,
-                            far_nbr_list->far_nbr_list.dvec[nbr_jk] );
+                            far_nbr_list.far_nbr_list.dvec[nbr_jk] );
                 }
                 else
                 {
@@ -455,17 +442,17 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
                         rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
                         rvec_ScaledAdd( data_ext_press [j], 1.0, ext_press );
 
-                        rvec_ScaledAdd( workspace->f[j], CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
 
-                        ivec_Scale( rel_jk, hbond_list->hbond_list[pk].scl,
-                                far_nbr_list->far_nbr_list.rel_box[nbr_jk] );
+                        ivec_Scale( rel_jk, hbond_list.hbond_list[pk].scl,
+                                far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
                         rvec_Scale( force, CEhb2, dcos_theta_dk );
                         rvec_Add( phbond_jk->hb_f, force );
                         rvec_iMultiply( ext_press, rel_jk, force );
                         rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
 
                         /* dr terms */
-                        rvec_ScaledAdd( workspace->f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
                         rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
                         rvec_Add( phbond_jk->hb_f, force );
@@ -539,7 +526,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
     if ( lane_id == 0 )
     {
         data_e_hb[j] += sh_hb;
-        rvec_Add( workspace->f[j], sh_atomf );
+        rvec_Add( workspace.f[j], sh_atomf );
     }
 #else
     if ( lane_id < 16 )
@@ -568,20 +555,18 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
         rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 1] );
 
         data_e_hb[j] += sh_hb[threadIdx.x];
-        rvec_Add( workspace->f[j], sh_atomf[threadIdx.x] );
+        rvec_Add( workspace.f[j], sh_atomf[threadIdx.x] );
     }
 #endif
 }
 
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_PostProcess( reax_atom *atoms,
-        storage p_workspace, reax_list p_bond_list, int N )
+        storage workspace, reax_list bond_list, int N )
 {
     int i, pj;
-    storage *workspace;
     bond_data *pbond;
     bond_data *sym_index_bond;
-    reax_list *bond_list;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -590,22 +575,19 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_PostProcess( reax_atom *atoms,
         return;
     }
 
-    workspace = &p_workspace;
-    bond_list = &p_bond_list;
-
-    for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
+    for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
     {
-        pbond = &bond_list->bond_list[pj];
-        sym_index_bond = &bond_list->bond_list[pbond->sym_index];
+        pbond = &bond_list.bond_list[pj];
+        sym_index_bond = &bond_list.bond_list[pbond->sym_index];
 
         //rvec_Add( atoms[i].f, sym_index_bond->hb_f );
-        rvec_Add( workspace->f[i], sym_index_bond->hb_f );
+        rvec_Add( workspace.f[i], sym_index_bond->hb_f );
     }
 }
 
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
-        storage p_workspace, reax_list p_hbond_list )
+        storage workspace, reax_list hbond_list )
 {
 #if defined(__SM_35__)
     rvec __f;
@@ -614,16 +596,12 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
 #endif
     int i, pj;
     int start, end;
-    storage *workspace;
     hbond_data *nbr_pj, *sym_index_nbr;
-    reax_list *hbond_list;
 
     i = blockIdx.x;
-    workspace = &p_workspace;
-    hbond_list = &p_hbond_list;
 
-    start = Start_Index( atoms[i].Hindex, hbond_list );
-    end = End_Index( atoms[i].Hindex, hbond_list );
+    start = Start_Index( atoms[i].Hindex, &hbond_list );
+    end = End_Index( atoms[i].Hindex, &hbond_list );
     pj = start + threadIdx.x;
 #if defined(__SM_35__)
     rvec_MakeZero( __f );
@@ -633,9 +611,9 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
 
     while ( pj < end )
     {
-        nbr_pj = &hbond_list->hbond_list[pj];
+        nbr_pj = &hbond_list.hbond_list[pj];
 
-        sym_index_nbr = &hbond_list->hbond_list[ nbr_pj->sym_index ];
+        sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
 
 #if defined(__SM_35__)
         rvec_Add( __f, sym_index_nbr->hb_f );
@@ -658,7 +636,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
 
     if ( threadIdx.x == 0 )
     {
-        rvec_Add( workspace->f[i], __f );
+        rvec_Add( workspace.f[i], __f );
     }
 #else
     if ( threadIdx.x < 16 )
@@ -694,14 +672,14 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
     if ( threadIdx.x == 0 )
     {
         //rvec_Add( atoms[i].f, __f[0] );
-        rvec_Add( workspace->f[i], __f[0] );
+        rvec_Add( workspace.f[i], __f[0] );
     }
 #endif
 }
 
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
-        storage p_workspace, reax_list p_hbond_list, int N )
+        storage workspace, reax_list hbond_list, int N )
 {
 #if defined(__SM_35__)
     rvec __f;
@@ -711,9 +689,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
 #endif
     int i, pj;
     int start, end;
-    storage *workspace;
     hbond_data *nbr_pj, *sym_index_nbr;
-    reax_list *hbond_list;
     int __THREADS_PER_ATOM__;
     int thread_id;
     int group_id;
@@ -729,11 +705,9 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
         return;
     }
 
-    workspace = &p_workspace;
-    hbond_list = &p_hbond_list;
     i = group_id;
-    start = Start_Index( atoms[i].Hindex, hbond_list );
-    end = End_Index( atoms[i].Hindex, hbond_list );
+    start = Start_Index( atoms[i].Hindex, &hbond_list );
+    end = End_Index( atoms[i].Hindex, &hbond_list );
     pj = start + lane_id;
 #if defined(__SM_35__)
     rvec_MakeZero( __f );
@@ -743,9 +717,9 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
 
     while ( pj < end )
     {
-        nbr_pj = &hbond_list->hbond_list[pj];
+        nbr_pj = &hbond_list.hbond_list[pj];
 
-        sym_index_nbr = &hbond_list->hbond_list[ nbr_pj->sym_index ];
+        sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
 #if defined(__SM_35__)
         rvec_Add( __f, sym_index_nbr->hb_f );
 #else
@@ -767,7 +741,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
 
     if ( lane_id == 0 )
     {
-        rvec_Add( workspace->f[i], __f );
+        rvec_Add( workspace.f[i], __f );
     }
 #else
     if ( lane_id < 16 )
@@ -802,7 +776,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
 
     if ( lane_id == 0 )
     {
-        rvec_Add( workspace->f[i], __f[threadIdx.x] );
+        rvec_Add( workspace.f[i], __f[threadIdx.x] );
     }
 #endif
 }
