@@ -392,6 +392,7 @@ PG_PuReMD_bin_pg_puremd_SOURCES = PG-PuReMD/src/allocate.c \
 				  PG-PuReMD/src/nonbonded.c \
 				  PG-PuReMD/src/nonbonded.h \
 				  PG-PuReMD/src/puremd.c \
+				  PG-PuReMD/src/puremd.h \
 				  PG-PuReMD/src/random.c \
 				  PG-PuReMD/src/random.h \
 				  PG-PuReMD/src/reax_types.h \
