@@ -1,13 +1,16 @@
 
 #include "cuda_reduction.h"
 
-#include "cuda_shuffle.h"
 #include "cuda_utils.h"
 
 #include "../vector.h"
 
 #include "../cub/cub/device/device_reduce.cuh"
 #include "../cub/cub/device/device_scan.cuh"
+
+
+/* mask used to determine which threads within a warp participate in operations */
+#define FULL_MASK (0xFFFFFFFF)
 
 
 //struct RvecSum
@@ -17,10 +20,7 @@
 //    T operator()(const T &a, const T &b) const
 //    {
 //        T c;
-//        c[0] = a[0] + b[0];
-//        c[1] = a[1] + b[1];
-//        c[2] = a[2] + b[2];
-//        return c;
+//        return c {a[0] + b[0], a[1] + b[1], a[2] + b[2]};
 //    }
 //};
 
@@ -177,266 +177,110 @@ void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n )
 }
 
 
-CUDA_GLOBAL void k_reduction( const real *input, real *per_block_results,
-        const size_t n )
-{
-#if defined(__SM_35__)
-    extern __shared__ real my_results[];
-    real sdata;
-    unsigned int i;
-    int z, offset;
-    real x;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i < n )
-    {
-        x = input[i];
-    }
-    else
-    {
-        x = 0.0;
-    }
-
-    sdata = x;
-    __syncthreads( );
-
-    for ( z = 16; z >= 1; z /= 2 )
-    {
-        sdata += shfl( sdata, z );
-    }
-
-    if ( threadIdx.x % 32 == 0 )
-    {
-        my_results[threadIdx.x >> 5] = sdata;
-    }
-    __syncthreads( );
-
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
-    {
-        if ( threadIdx.x < offset )
-        {
-            my_results[threadIdx.x] += my_results[threadIdx.x + offset];
-        }
-        __syncthreads( );
-    }
-
-    if ( threadIdx.x == 0 )
-    {
-        per_block_results[blockIdx.x] = my_results[0];
-    }
-
-#else
-    extern __shared__ real sdata[];
-    unsigned int i;
-    int offset;
-    real x;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i < n )
-    {
-        x = input[i];
-    }
-    else
-    {
-        x = 0.0;
-    }
-    sdata[threadIdx.x] = x;
-    __syncthreads( );
-
-    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
-    {
-        if ( threadIdx.x < offset )
-        {
-            sdata[threadIdx.x] += sdata[threadIdx.x + offset];
-        }
-
-        __syncthreads( );
-    }
-
-    if ( threadIdx.x == 0 )
-    {
-        per_block_results[blockIdx.x] = sdata[0];
-    }
-#endif
-}
-
-
+/* Performs a device-wide partial reduction (sum) on input in 2 stages:
+ *  1) Perform a warp-level sum of parts of input assigned to warps
+ *  2) Perform an block-level sum of the warp-local partial sums
+ * The block-level sums are written to global memory pointed to by results
+ *  in accordance to their block IDs.
+ */
 CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 {
-#if defined(__SM_35__)
-    extern __shared__ rvec my_rvec[];
-    rvec sdata;
-    unsigned int i;
-    int z, offset;
+    extern __shared__ rvec data_s[];
+    rvec data;
+    unsigned int i, mask;
+    int offset;
 
-    i = blockIdx.x * blockDim.x + threadIdx.x, z, offset;
-
-    rvec_MakeZero( sdata );
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+    mask = __ballot_sync( FULL_MASK, i < n );
 
     if ( i < n )
     {
-        rvec_Copy( sdata, input[i] );
-    }
+        rvec_Copy( data, input[i] );
 
+        /* warp-level sum using registers within a warp */
+        for ( offset = 16; offset > 0; offset /= 2 )
+        {
+            data[0] += __shfl_down_sync( mask, data[0], offset );
+            data[1] += __shfl_down_sync( mask, data[1], offset );
+            data[2] += __shfl_down_sync( mask, data[2], offset );
+        }
+
+        /* first thread within a warp writes warp-level sum to shared memory */
+        if ( threadIdx.x % 32 == 0 )
+        {
+            rvec_Copy( data_s[threadIdx.x >> 5], data );
+        }
+    }
     __syncthreads( );
 
-    for ( z = 16; z >= 1; z /= 2 )
-    {
-        sdata[0] += shfl( sdata[0], z );
-        sdata[1] += shfl( sdata[1], z );
-        sdata[2] += shfl( sdata[2], z );
-    }
-
-    if ( threadIdx.x % 32 == 0 )
-    {
-        rvec_Copy( my_rvec[threadIdx.x >> 5], sdata );
-    }
-
-    __syncthreads( );
-
+    /* block-level sum using shared memory */
     for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
         if ( threadIdx.x < offset )
         {
-            rvec_Add( my_rvec[threadIdx.x], my_rvec[threadIdx.x + offset] );
+            rvec_Add( data_s[threadIdx.x], data_s[threadIdx.x + offset] );
         }
 
         __syncthreads( );
     }
 
+    /* one thread writes the block-level partial sum
+     * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-        rvec_Add( results[blockIdx.x], my_rvec[0] );
+        rvec_Copy( results[blockIdx.x], data_s[0] );
     }
-
-#else
-    extern __shared__ rvec svec_data[];
-    unsigned int i;
-    int offset;
-    rvec x;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    rvec_MakeZero( x );
-
-    if ( i < n )
-    {
-        rvec_Copy( x, input[i] );
-    }
-
-    rvec_Copy( svec_data[threadIdx.x], x );
-    __syncthreads( );
-
-    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
-    {
-        if ( threadIdx.x < offset )
-        {
-            rvec_Add( svec_data[threadIdx.x], svec_data[threadIdx.x + offset] );
-        }
-
-        __syncthreads( );
-    }
-
-    if ( threadIdx.x == 0 )
-    {
-        //rvec_Copy( results[blockIdx.x], svec_data[0] );
-        rvec_Add( results[blockIdx.x], svec_data[0] );
-    }
-#endif
 }
 
 
 CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
 {
-#if defined(__SM_35__)
-    extern __shared__ rvec2 my_rvec2[];
-    rvec2 sdata;
-    unsigned int i;
-    int z, offset;
+    extern __shared__ rvec2 data_rvec2_s[];
+    rvec2 data;
+    unsigned int i, mask;
+    int offset;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    sdata[0] = 0.0;
-    sdata[1] = 0.0;
+    mask = __ballot_sync( FULL_MASK, i < n );
 
     if ( i < n )
     {
-        sdata[0] = input[i][0];
-        sdata[1] = input[i][1];
-    }
+        data[0] = input[i][0];
+        data[1] = input[i][1];
 
+        /* warp-level sum using registers within a warp */
+        for ( offset = 16; offset > 0; offset /= 2 )
+        {
+            data[0] += __shfl_down_sync( mask, data[0], offset );
+            data[1] += __shfl_down_sync( mask, data[1], offset );
+        }
+
+        /* first thread within a warp writes warp-level sum to shared memory */
+        if ( threadIdx.x % 32 == 0 )
+        {
+            data_rvec2_s[threadIdx.x >> 5][0] = data[0];
+            data_rvec2_s[threadIdx.x >> 5][1] = data[1];
+        }
+    }
     __syncthreads( );
 
-    for ( z = 16; z >= 1; z /= 2 )
-    {
-        sdata[0] += shfl( sdata[0], z );
-        sdata[1] += shfl( sdata[1], z );
-    }
-
-    if ( threadIdx.x % 32 == 0 )
-    {
-        my_rvec2[threadIdx.x >> 5][0] = sdata[0];
-        my_rvec2[threadIdx.x >> 5][1] = sdata[1];
-    }
-
-    __syncthreads( );
-
+    /* block-level sum using shared memory */
     for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
     {
         if ( threadIdx.x < offset )
         {
-            my_rvec2[threadIdx.x][0] += my_rvec2[threadIdx.x + offset][0];
-            my_rvec2[threadIdx.x][1] += my_rvec2[threadIdx.x + offset][1];
+            data_rvec2_s[threadIdx.x][0] += data_rvec2_s[threadIdx.x + offset][0];
+            data_rvec2_s[threadIdx.x][1] += data_rvec2_s[threadIdx.x + offset][1];
         }
 
         __syncthreads( );
     }
 
+    /* one thread writes the block-level partial sum
+     * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-        results[blockIdx.x][0] = my_rvec2[0][0];
-        results[blockIdx.x][1] = my_rvec2[0][1];
+        results[blockIdx.x][0] = data_rvec2_s[0][0];
+        results[blockIdx.x][1] = data_rvec2_s[0][1];
     }
-
-#else
-    extern __shared__ rvec2 svec2_data[];
-    unsigned int i;
-    int offset;
-    rvec2 x;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    x[0] = 0.0;
-    x[1] = 0.0;
-
-    if ( i < n )
-    {
-        x[0] += input[i][0];
-        x[1] += input[i][1];
-    }
-
-    svec2_data[threadIdx.x][0] = x[0];
-    svec2_data[threadIdx.x][1] = x[1];
-    __syncthreads( );
-
-    for ( offset = blockDim.x / 2; offset > 0; offset >>= 1 )
-    {
-        if ( threadIdx.x < offset )
-        {
-            svec2_data[threadIdx.x][0] += svec2_data[threadIdx.x + offset][0];
-            svec2_data[threadIdx.x][1] += svec2_data[threadIdx.x + offset][1];
-        }
-
-        __syncthreads( );
-    }
-
-    if ( threadIdx.x == 0 )
-    {
-        //rvec_Copy( results[blockIdx.x], svec_data[0] );
-        results[blockIdx.x][0] += svec2_data[0][0];
-        results[blockIdx.x][1] += svec2_data[0][1];
-    }
-#endif
 }

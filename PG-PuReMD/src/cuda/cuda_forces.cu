@@ -1616,15 +1616,14 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             t_start = Get_Time( );
 #endif
 
-            cuda_memset( spad, 0,
-                    2 * sizeof(real) * system->n + sizeof(rvec) * system->n * 2,
+            cuda_memset( spad, 0, (sizeof(real) + sizeof(rvec)) * 2 * system->n,
                     "Cuda_Compute_Bonded_Forces::spad" );
 
 //            hbs = (system->n * HB_KER_THREADS_PER_ATOM / HB_BLOCK_SIZE) + 
 //                (((system->n * HB_KER_THREADS_PER_ATOM) % HB_BLOCK_SIZE) == 0 ? 0 : 1);
 
-            Cuda_Hydrogen_Bonds <<< control->blocks, control->block_size >>>
-//            Cuda_Hydrogen_Bonds_MT <<< hbs, HB_BLOCK_SIZE, 
+            Cuda_Hydrogen_Bonds_Part1 <<< control->blocks, control->block_size >>>
+//            Cuda_Hydrogen_Bonds_Part1_opt <<< hbs, HB_BLOCK_SIZE, 
 //                    HB_BLOCK_SIZE * (2 * sizeof(real) + 2 * sizeof(rvec)) >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp,
                       system->reax_param.d_hbp, system->reax_param.d_gp,
@@ -1635,11 +1634,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                       spad, (rvec *) (&spad[2 * system->n]), system->my_rank, data->step );
             cudaDeviceSynchronize( );
             cudaCheckError( );
-
-//            if ( data->step == 10 )
-//            {
-//                Print_HBonds( system, data->step );
-//            }
 
             /* reduction for E_HB */
             if ( update_energy == TRUE )
@@ -1666,22 +1660,20 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
 //                    system->n );
 
-            /* post process step1 */
-            Cuda_Hydrogen_Bonds_PostProcess <<< control->blocks_n, control->block_size, control->block_size * sizeof(rvec) >>>
+            Cuda_Hydrogen_Bonds_Part2 <<< control->blocks_n, control->block_size >>>
                 ( system->d_my_atoms, *(workspace->d_workspace),
-                  *(lists[BONDS]), system->N );
+                  *(lists[BONDS]), system->n );
             cudaDeviceSynchronize( );
             cudaCheckError( );
 
-            /* post process step2 */
-//            hnbrs_blocks = (system->N * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
-//                (((system->N * HB_POST_PROC_KER_THREADS_PER_ATOM) % HB_POST_PROC_BLOCK_SIZE) == 0 ? 0 : 1);
+//            hnbrs_blocks = (system->n * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
+//                (((system->n * HB_POST_PROC_KER_THREADS_PER_ATOM) % HB_POST_PROC_BLOCK_SIZE) == 0 ? 0 : 1);
 
-            Cuda_Hydrogen_Bonds_HNbrs <<< system->N, 32, 32 * sizeof(rvec) >>>
-                ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]) );
-//            Cuda_Hydrogen_Bonds_HNbrs_BL <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
+            Cuda_Hydrogen_Bonds_Part3 <<< control->blocks_n, control->block_size >>>
+                ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
+//            Cuda_Hydrogen_Bonds_Part3_opt <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
 //                    HB_POST_PROC_BLOCK_SIZE * sizeof(rvec) >>>
-//                ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->N );
+//                ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
             cudaDeviceSynchronize( );
             cudaCheckError( );
 

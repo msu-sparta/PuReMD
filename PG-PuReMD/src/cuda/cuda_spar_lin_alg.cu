@@ -23,12 +23,15 @@
 
 #include "cuda_dense_lin_alg.h"
 #include "cuda_helpers.h"
-#include "cuda_shuffle.h"
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
 
 #include "../basic_comm.h"
 #include "../tool_box.h"
+
+
+/* mask used to determine which threads within a warp participate in operations */
+#define FULL_MASK (0xFFFFFFFF)
 
 
 /* Jacobi preconditioner computation */
@@ -176,14 +179,14 @@ CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
  * N: number of rows in A */
 CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
-        const real * const x, real * const b, int N )
+        const real * const x, real * const b, int n )
 {
     int i, k, si, ei;
     real sum;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
+    if ( i >= n )
     {
         return;
     }
@@ -214,110 +217,44 @@ CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
  * N: number of rows in A */
 CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
-        const real * const x, real * const b, int N )
+        const real * const x, real * const b, int n )
 {
-#if defined(__SM_35__)
-    int c, i, pj, thread_id, warp_id, lane;
+    int i, pj, thread_id, warp_id, lane_id, offset;
     int si, ei;
+    unsigned int mask;
     real vals_local;
 
     thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    warp_id = thread_id / MATVEC_KER_THREADS_PER_ROW;
-    /* one warp per row */
-    i = warp_id;
-    lane = thread_id & ( MATVEC_KER_THREADS_PER_ROW - 1);
+    warp_id = thread_id >> 5;
+    lane_id = thread_id & 0x0000001F; 
+    mask = __ballot_sync( FULL_MASK, warp_id < n );
 
-    vals_local = 0.0;
-
-    if ( i < N )
+    if ( warp_id < n )
     {
+        i = warp_id;
+        vals_local = 0.0;
+
         /* compute running sum per thread */
         si = row_ptr_start[i];
         ei = row_ptr_end[i];
 
-        for ( pj = si + lane; pj < ei; pj += MATVEC_KER_THREADS_PER_ROW )
+        for ( pj = si + lane_id; pj < ei; pj += 32 )
         {
             vals_local += vals[pj] * x[ col_ind[pj] ];
         }
-    }
 
-    /* parallel reduction in shared memory:
-     * SIMD instructions within a warp are synchronous,
-     * so we do not need to sync here */
-    for ( c = MATVEC_KER_THREADS_PER_ROW >> 1; c >= 1; c /= 2 )
-    {
-        vals_local += shfl( vals_local, c );
-    }
-
-    if ( lane == 0 && i < N )
-    {
-        b[i] = vals_local;
-    }
-#else
-    int i, pj, thread_id, warp_id, lane;
-    int si, ei;
-    extern __shared__ real vals_local[];
-
-    thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    warp_id = thread_id / MATVEC_KER_THREADS_PER_ROW;
-    /* one warp per row */
-    i = warp_id;
-    lane = thread_id & (MATVEC_KER_THREADS_PER_ROW - 1);
-
-    vals_local[threadIdx.x] = 0.0;
-
-    if ( i < N )
-    {
-        /* coalesce memory by loading sparse matrix column
-         * indices and nonzero values together within a warp,
-         * and write the warp-local running results to
-         * shared memory */
-        si = row_ptr_start[i];
-        ei = row_ptr_end[i];
-
-        for ( pj = si + lane; pj < ei; pj += MATVEC_KER_THREADS_PER_ROW )
+        /* warp-level sums using registers within a warp */
+        for ( offset = 16; offset > 0; offset /= 2 )
         {
-            vals_local[threadIdx.x] += vals[pj] * x[ col_ind[pj] ];
+            vals_local += __shfl_down_sync( mask, vals_local, offset );
+        }
+
+        /* first thread within a warp writes warp-level sums to global memory */
+        if ( lane_id == 0 )
+        {
+            b[i] = vals_local;
         }
     }
-
-    __syncthreads( );
-
-    /* local tree reduction (sum) on local results in shared memory:
-     * SIMD instructions within a warp are synchronous,
-     * so we do not need to sync here */
-    if ( lane < 16 )
-    {
-        vals_local[threadIdx.x] += vals_local[threadIdx.x + 16];
-    }
-    __syncthreads( );
-    if ( lane < 8 )
-    {
-        vals_local[threadIdx.x] += vals_local[threadIdx.x + 8];
-    }
-    __syncthreads( );
-    if ( lane < 4 )
-    {
-        vals_local[threadIdx.x] += vals_local[threadIdx.x + 4];
-    }
-    __syncthreads( );
-    if ( lane < 2 )
-    {
-        vals_local[threadIdx.x] += vals_local[threadIdx.x + 2];
-    }
-    __syncthreads( );
-    if ( lane < 1 )
-    {
-        vals_local[threadIdx.x] += vals_local[threadIdx.x + 1];
-    }
-    __syncthreads( );
-
-    /* first thread writes the result back to global memory */
-    if ( lane == 0 && i < N )
-    {
-        b[i] = vals_local[threadIdx.x];
-    }
-#endif
 }
 
 
@@ -353,115 +290,45 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A, rvec2 const * c
 }
 
 
-CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( sparse_matrix A, rvec2 const * const vec,
-        rvec2 * const results, int num_rows )
+CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( sparse_matrix A, rvec2 const * const x,
+        rvec2 * const b, int n )
 {
-#if defined(__SM_35__)
-    rvec2 rvals;
-    int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    int warp_id = thread_id / MATVEC_KER_THREADS_PER_ROW;
-    int lane = thread_id & (MATVEC_KER_THREADS_PER_ROW - 1);
-    int row_start;
-    int row_end;
-    // one warp per row
-    int row = warp_id;
+    int i, pj, thread_id, warp_id, lane_id, offset;
+    int si, ei;
+    unsigned int mask;
+    rvec2 vals_local;
 
-    rvals[0] = 0;
-    rvals[1] = 0;
+    thread_id = blockDim.x * blockIdx.x + threadIdx.x;
+    warp_id = thread_id >> 5;
+    lane_id = thread_id & 0x0000001F; 
+    mask = __ballot_sync( FULL_MASK, warp_id < n );
 
-    if ( row < num_rows )
+    if ( warp_id < n )
     {
-        row_start = A.start[row];
-        row_end = A.end[row];
+        i = warp_id;
+        vals_local[0] = 0.0;
+        vals_local[1] = 0.0;
+        si = A.start[i];
+        ei = A.end[i];
 
-        for( int jj = row_start + lane; jj < row_end; jj += MATVEC_KER_THREADS_PER_ROW )
+        for ( pj = si + lane_id; pj < ei; pj += 32 )
         {
-            rvals[0] += A.val[jj] * vec [ A.j[jj] ][0];
-            rvals[1] += A.val[jj] * vec [ A.j[jj] ][1];
+            vals_local[0] += A.val[pj] * x[ A.j[pj] ][0];
+            vals_local[1] += A.val[pj] * x[ A.j[pj] ][1];
+        }
+
+        for ( offset = 16; offset > 0; offset /= 2 )
+        {
+            vals_local[0] += __shfl_down_sync( mask, vals_local[0], offset );
+            vals_local[1] += __shfl_down_sync( mask, vals_local[1], offset );
+        }
+
+        if ( lane_id == 0 )
+        {
+            b[i][0] = vals_local[0];
+            b[i][1] = vals_local[1];
         }
     }
-
-    for ( int s = MATVEC_KER_THREADS_PER_ROW >> 1; s >= 1; s /= 2 )
-    {
-        rvals[0] += shfl( rvals[0], s);
-        rvals[1] += shfl( rvals[1], s);
-    }
-
-    if ( lane == 0 && row < num_rows )
-    {
-        results[row][0] = rvals[0];
-        results[row][1] = rvals[1];
-    }
-
-#else
-    extern __shared__ rvec2 rvals[];
-    int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    int warp_id = thread_id / 32;
-    int lane = thread_id & (32 - 1);
-    int row_start;
-    int row_end;
-    // one warp per row
-    //int row = warp_id;
-    int row = warp_id;
-
-    rvals[threadIdx.x][0] = 0;
-    rvals[threadIdx.x][1] = 0;
-
-    if ( row < num_rows )
-    {
-        row_start = A.start[row];
-        row_end = A.end[row];
-
-        // compute running sum per thread
-        for ( int jj = row_start + lane; jj < row_end; jj += 32 )
-        {
-            rvals[threadIdx.x][0] += A.val[jj] * vec [ A.j[jj] ][0];
-            rvals[threadIdx.x][1] += A.val[jj] * vec [ A.j[jj] ][1];
-        }
-    }
-
-    __syncthreads( );
-
-    // parallel reduction in shared memory
-    //SIMD instructions with a WARP are synchronous -- so we do not need to synch here
-    if ( lane < 16 )
-    {
-        rvals[threadIdx.x][0] += rvals[threadIdx.x + 16][0]; 
-        rvals[threadIdx.x][1] += rvals[threadIdx.x + 16][1]; 
-    }
-    __syncthreads( );
-    if ( lane < 8 )
-    {
-        rvals[threadIdx.x][0] += rvals[threadIdx.x + 8][0]; 
-        rvals[threadIdx.x][1] += rvals[threadIdx.x + 8][1]; 
-    }
-    __syncthreads( );
-    if ( lane < 4 )
-    {
-        rvals[threadIdx.x][0] += rvals[threadIdx.x + 4][0]; 
-        rvals[threadIdx.x][1] += rvals[threadIdx.x + 4][1]; 
-    }
-    __syncthreads( );
-    if ( lane < 2 )
-    {
-        rvals[threadIdx.x][0] += rvals[threadIdx.x + 2][0]; 
-        rvals[threadIdx.x][1] += rvals[threadIdx.x + 2][1]; 
-    }
-    __syncthreads( );
-    if ( lane < 1 )
-    {
-        rvals[threadIdx.x][0] += rvals[threadIdx.x + 1][0]; 
-        rvals[threadIdx.x][1] += rvals[threadIdx.x + 1][1]; 
-    }
-    __syncthreads( );
-
-    // first thread writes the result
-    if ( lane == 0 && row < num_rows )
-    {
-        results[row][0] = rvals[threadIdx.x][0];
-        results[row][1] = rvals[threadIdx.x][1];
-    }
-#endif
 }
 
 
@@ -564,12 +431,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
 
         /* multiple threads per row implementation,
          * with shared memory to accumulate partial row sums */
-//#if defined(__SM_35__)
 //        k_dual_sparse_matvec_half_opt_csr <<< blocks, MATVEC_BLOCK_SIZE >>>
-//#else
-//        k_dual_sparse_matvec_half_opt_csr <<< blocks, MATVEC_BLOCK_SIZE,
-//                     sizeof(real) * MATVEC_BLOCK_SIZE >>>
-//#endif
 //             ( A->start, A->end, A->j, A->val, x, b, n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
@@ -580,12 +442,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         
         /* one warp per row implementation,
          * with shared memory to accumulate partial row sums */
-#if defined(__SM_35__)
         k_dual_sparse_matvec_full_opt_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE >>>
-#else
-        k_dual_sparse_matvec_full_opt_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE,
-                          sizeof(rvec2) * MATVEC_BLOCK_SIZE >>>
-#endif
                 ( *A, x, b, n );
     }
 
@@ -733,12 +590,7 @@ static void Sparse_MatVec_local( control_params const * const control,
 
         /* multiple threads per row implementation,
          * with shared memory to accumulate partial row sums */
-//#if defined(__SM_35__)
 //        k_sparse_matvec_half_opt_csr <<< blocks, MATVEC_BLOCK_SIZE >>>
-//#else
-//        k_sparse_matvec_half_opt_csr <<< blocks, MATVEC_BLOCK_SIZE,
-//                     sizeof(real) * MATVEC_BLOCK_SIZE >>>
-//#endif
 //             ( A->start, A->end, A->j, A->val, x, b, n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
@@ -749,12 +601,7 @@ static void Sparse_MatVec_local( control_params const * const control,
 
         /* multiple threads per row implementation,
          * with shared memory to accumulate partial row sums */
-#if defined(__SM_35__)
         k_sparse_matvec_full_opt_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE >>>
-#else
-        k_sparse_matvec_full_opt_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE,
-                                 sizeof(real) * MATVEC_BLOCK_SIZE >>>
-#endif
              ( A->start, A->end, A->j, A->val, x, b, n );
     }
 

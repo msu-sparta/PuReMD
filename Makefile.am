@@ -455,7 +455,6 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 				   PG-PuReMD/src/cuda/cuda_reduction.h \
 				   PG-PuReMD/src/cuda/cuda_reset_tools.cu \
 				   PG-PuReMD/src/cuda/cuda_reset_tools.h \
-				   PG-PuReMD/src/cuda/cuda_shuffle.h \
 				   PG-PuReMD/src/cuda/cuda_spar_lin_alg.cu \
 				   PG-PuReMD/src/cuda/cuda_spar_lin_alg.h \
 				   PG-PuReMD/src/cuda/cuda_system_props.cu \

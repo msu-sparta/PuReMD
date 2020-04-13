@@ -222,7 +222,7 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
     /* Calculate and then invert the inertial tensor */
     for ( i = 0; i < 6; ++i )
     {
-        tmp_mat[i] = 0;
+        tmp_mat[i] = 0.0;
     }
     //my_xx = my_xy = my_xz = my_yy = my_yz = my_zz = 0;
 

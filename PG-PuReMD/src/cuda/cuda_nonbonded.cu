@@ -25,10 +25,13 @@
 #include "cuda_list.h"
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
-#include "cuda_shuffle.h"
 
 #include "../index_utils.h"
 #include "../vector.h"
+
+
+/* mask used to determine which threads within a warp participate in operations */
+#define FULL_MASK (0xFFFFFFFF)
 
 
 CUDA_GLOBAL void k_compute_polarization_energy( reax_atom *my_atoms, 
@@ -278,15 +281,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
         storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
         real *data_e_vdW, real *data_e_ele, rvec *data_ext_press )
 {
-#if defined(__SM_35__)
-    int x;
-    real sh_vdw, sh_ele;
-    rvec sh_force;
-#else
-    extern __shared__ real _s[];
-    real *sh_vdw, *sh_ele;
-    rvec *sh_force;
-#endif
     int i, j, pj;
     int start_i, end_i, orig_i, orig_j;
     real self_coef;
@@ -298,31 +292,25 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
     real e_ele, e_vdW, e_core, de_core, e_clb, de_clb;
     rvec temp, ext_press;
     two_body_parameters *twbp;
-    int thread_id, warpid, laneid; 
+    int thread_id, warp_id, lane_id, offset;
+    unsigned int mask;
+    real e_vdW_s, e_ele_s;
+    rvec f_s;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    warpid = thread_id / VDW_KER_THREADS_PER_ATOM;
-    i = warpid;
-    laneid = thread_id & (VDW_KER_THREADS_PER_ATOM - 1); 
+    warp_id = thread_id >> 5;
+    lane_id = thread_id & 0x0000001F; 
+    mask = __ballot_sync( FULL_MASK, i < n );
 
-    if ( i >= n )
+    if ( warp_id >= n )
     {
         return;
     }
 
-#if defined(__SM_35__)
-    sh_vdw = 0.0;
-    sh_ele = 0.0;
-    rvec_MakeZero( sh_force );
-#else
-    sh_vdw = _s;
-    sh_ele = &_s[blockDim.x];
-    sh_force = (rvec *)(&_s[2 * blockDim.x]);
-
-    sh_vdw[threadIdx.x] = 0.0;
-    sh_ele[threadIdx.x] = 0.0;
-    rvec_MakeZero( sh_force[threadIdx.x] );
-#endif
+    i = warp_id;
+    e_vdW_s = 0.0;
+    e_ele_s = 0.0;
+    rvec_MakeZero( f_s );
 
     p_vdW1 = gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
@@ -331,7 +319,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    pj = start_i + laneid;
+    pj = start_i + lane_id;
     while ( pj < end_i )
     {
         j = far_nbr_list.far_nbr_list.nbr[pj];
@@ -380,11 +368,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
                 e_base = twbp->D * (exp1 - 2.0 * exp2);
 
                 e_vdW = self_coef * (e_base * Tap);
-#if defined(__SM_35__)
-                sh_vdw += e_vdW;
-#else
-                sh_vdw[threadIdx.x] += e_vdW;
-#endif
+                e_vdW_s += e_vdW;
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -398,11 +382,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
                 e_base = twbp->D * (exp1 - 2.0 * exp2);
 
                 e_vdW = self_coef * (e_base * Tap);
-#if defined(__SM_35__)
-                sh_vdw += e_vdW;
-#else
-                sh_vdw[threadIdx.x] += e_vdW;
-#endif
+                e_vdW_s += e_vdW;
 
                 de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
             }
@@ -412,11 +392,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
             {
                 e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
                 e_vdW += self_coef * (e_core * Tap);
-#if defined(__SM_35__)
-                sh_vdw += (self_coef * (e_core * Tap));
-#else
-                sh_vdw[ threadIdx.x ] += (self_coef * (e_core * Tap));
-#endif
+                e_vdW_s += (self_coef * (e_core * Tap));
 
                 de_core = -(twbp->acore / twbp->rcore) * e_core;
             }
@@ -450,11 +426,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
             dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele = self_coef * (e_clb * Tap);
-#if defined(__SM_35__)
-            sh_ele += e_ele;
-#else
-            sh_ele[ threadIdx.x ] += e_ele;
-#endif
+            e_ele_s += e_ele;
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
@@ -469,23 +441,13 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
             {
                 if ( i < j ) 
                 {
-#if defined (__SM_35__)
-                    rvec_ScaledAdd( sh_force,
+                    rvec_ScaledAdd( f_s,
                             -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-#else
-                    rvec_ScaledAdd( sh_force[ threadIdx.x ],
-                            -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-#endif
                 }
                 else 
                 {
-#if defined (__SM_35__)
-                    rvec_ScaledAdd( sh_force,
+                    rvec_ScaledAdd( f_s,
                             (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-#else
-                    rvec_ScaledAdd( sh_force[ threadIdx.x ],
-                            (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-#endif
                 }
             }
             /* NPT, iNPT or sNPT */
@@ -498,19 +460,11 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
 
                 if ( i < j ) 
                 {
-#if defined (__SM_35__)
-                    rvec_ScaledAdd( sh_force, -1.0, temp );
-#else
-                    rvec_ScaledAdd( sh_force[ threadIdx.x ], -1.0, temp );
-#endif
+                    rvec_ScaledAdd( f_s, -1.0, temp );
                 }
                 else 
                 {
-#if defined (__SM_35__)
-                    rvec_Add( sh_force, temp );
-#else
-                    rvec_Add( sh_force[ threadIdx.x ], temp );
-#endif
+                    rvec_Add( f_s, temp );
                 }
 
                 rvec_iMultiply( ext_press,
@@ -547,70 +501,26 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
 #endif
         }
 
-        pj += VDW_KER_THREADS_PER_ATOM;
+        pj += 32;
     }
 
-#if defined( __SM_35__)
-    for ( x = VDW_KER_THREADS_PER_ATOM >> 1; x >= 1; x /= 2 )
+    /* warp-level sum using registers within a warp */
+    for ( offset = 16; offset > 0; offset /= 2 )
     {
-        sh_vdw += shfl( sh_vdw, x );
-        sh_ele += shfl( sh_ele, x );
-        sh_force[0] += shfl( sh_force[0], x );
-        sh_force[1] += shfl( sh_force[1], x );
-        sh_force[2] += shfl( sh_force[2], x );
+        e_vdW_s += __shfl_down_sync( mask, e_vdW_s, offset );
+        e_ele_s += __shfl_down_sync( mask, e_ele_s, offset );
+        f_s[0] += __shfl_down_sync( mask, f_s[0], offset );
+        f_s[1] += __shfl_down_sync( mask, f_s[1], offset );
+        f_s[2] += __shfl_down_sync( mask, f_s[2], offset );
     }
 
-    if ( laneid == 0 )
+    /* first thread within a warp writes warp-level sum to global memory */
+    if ( lane_id == 0 )
     {
-        data_e_vdW[i] = sh_vdw;
-        data_e_ele[i] = sh_ele;
-        rvec_Add( workspace.f[i], sh_force );
+        data_e_vdW[i] = e_vdW_s;
+        data_e_ele[i] = e_ele_s;
+        rvec_Add( workspace.f[i], f_s );
     }
-
-#else
-    __syncthreads( );
-    if ( laneid < 16 )
-    {
-        sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 16];
-        sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 16];
-        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 16] );
-    }
-    __syncthreads( );
-    if ( laneid < 8 )
-    {
-        sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 8];
-        sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 8];
-        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 8] );
-    }
-    __syncthreads( );
-    if ( laneid < 4 )
-    {
-        sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 4];
-        sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 4];
-        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 4] );
-    }
-    __syncthreads( );
-    if ( laneid < 2 )
-    {
-        sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 2];
-        sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 2];
-        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 2] );
-    }
-    __syncthreads( );
-    if ( laneid < 1 )
-    {
-        sh_vdw[threadIdx.x] += sh_vdw[threadIdx.x + 1];
-        sh_ele[threadIdx.x] += sh_ele[threadIdx.x + 1];
-        rvec_Add( sh_force[threadIdx.x], sh_force[threadIdx.x + 1] );
-    }
-    __syncthreads( );
-    if ( laneid == 0 )
-    {
-        data_e_vdW[i] = sh_vdw[threadIdx.x];
-        data_e_ele[i] = sh_ele[threadIdx.x];
-        rvec_Add( workspace.f[i], sh_force[ threadIdx.x ] );
-    }
-#endif
 }
 
 

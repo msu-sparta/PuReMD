@@ -24,13 +24,17 @@
 #include "cuda_valence_angles.h"
 #include "cuda_helpers.h"
 #include "cuda_list.h"
-#include "cuda_shuffle.h"
 
 #include "../index_utils.h"
 #include "../vector.h"
 
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameters *sbp, 
+/* mask used to determine which threads within a warp participate in operations */
+#define FULL_MASK (0xFFFFFFFF)
+
+
+/* one thread per atom implementation */
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_parameters *sbp, 
         hbond_parameters *d_hbp, global_parameters gp,
         control_params *control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
@@ -233,24 +237,12 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds( reax_atom *my_atoms, single_body_parameter
 }
 
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parameters *sbp, 
+/* one warp of threads (32) per atom implementation */
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
         hbond_parameters *d_hbp, global_parameters gp, control_params *control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
         int num_atom_types, real *data_e_hb, rvec *data_ext_press )
 {
-#if defined( __SM_35__)
-    real sh_hb;
-    real sh_cdbo;
-    rvec sh_atomf;
-    rvec sh_hf;
-#else
-    extern __shared__ real _s[];
-    real *sh_hb = _s;
-    real *sh_cdbo = &_s[blockDim.x];
-    rvec *sh_atomf = (rvec *)(&sh_cdbo[blockDim.x]);
-    rvec *sh_hf = (rvec *)(&sh_atomf[blockDim.x]);
-#endif
-    int __THREADS_PER_ATOM__, thread_id, group_id, lane_id; 
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;
     int start_j, end_j, hb_start_j, hb_end_j;
@@ -268,33 +260,31 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
     int nbr_jk;
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
+    /* thread-local variables */
+    int thread_id, warp_id, lane_id, offset;
+    unsigned int mask;
+    real e_hb_s, CEhb1_s;
+    rvec f_s, hb_f_s;
 
-    __THREADS_PER_ATOM__ = HB_KER_THREADS_PER_ATOM;
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    group_id = thread_id / __THREADS_PER_ATOM__;
-    lane_id = thread_id & (__THREADS_PER_ATOM__ - 1); 
+    warp_id = thread_id >> 5;
+    lane_id = thread_id & 0x0000001F; 
+    mask = __ballot_sync( FULL_MASK, warp_id < n );
 
-    if ( group_id >= n )
+    if ( warp_id >= n )
     {
         return;
     }
 
-    j = group_id;
+    j = warp_id; // group of threads assigned to atom j
 
-    /* loops below discover the Hydrogen bonds between i-j-k triplets.
-       here j is H atom and there has to be some bond between i and j.
-       Hydrogen bond is between j and k.
-       so in this function i->X, j->H, k->Z when we map 
-       variables onto the ones in the handout.*/
-    //for( j = 0; j < system->n; ++j )
-
-#if defined( __SM_35__)
-    sh_hb = 0;
-    rvec_MakeZero( sh_atomf );
-#else
-    sh_hb[threadIdx.x] = 0;
-    rvec_MakeZero( sh_atomf[threadIdx.x] );
-#endif
+    /* discover the Hydrogen bonds between i-j-k triplets.
+     * here j is H atom and there has to be some bond between i and j.
+     * Hydrogen bond is between j and k.
+     * so in this function i->X, j->H, k->Z when we map 
+     * variables onto the ones in the handout.*/
+    e_hb_s = 0.0;
+    rvec_MakeZero( f_s );
 
     /* j has to be of type H */
     if ( sbp[ my_atoms[j].type ].p_hbond == H_ATOM )
@@ -327,18 +317,12 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
             pi = hblist[itr];
             pbond_ij = &bond_list.bond_list[pi];
             i = pbond_ij->nbr;
-
-#if defined( __SM_35__)
-            rvec_MakeZero( sh_hf );
-            sh_cdbo = 0;
-#else
-            rvec_MakeZero( sh_hf[threadIdx.x] );
-            sh_cdbo[threadIdx.x] = 0;
-#endif
+            rvec_MakeZero( hb_f_s );
+            CEhb1_s = 0.0;
 
             //for( pk = hb_start_j; pk < hb_end_j; ++pk ) {
-            loopcount = (hb_end_j - hb_start_j) / HB_KER_THREADS_PER_ATOM + 
-                (((hb_end_j - hb_start_j) % HB_KER_THREADS_PER_ATOM == 0) ? 0 : 1);
+            loopcount = (hb_end_j - hb_start_j) / 32 + 
+                (((hb_end_j - hb_start_j) % 32 == 0) ? 0 : 1);
 
             count = 0;
             pk = hb_start_j + lane_id;
@@ -387,11 +371,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
                                 + r_jk / hbp->r0_hb - 2.0 ) );
 
                     e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-#if defined( __SM_35__)
-                    sh_hb += e_hb;
-#else
-                    sh_hb[threadIdx.x] += e_hb;
-#endif
+                    e_hb_s += e_hb;
 
                     CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
                     CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
@@ -400,35 +380,19 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
 
                     /* hydrogen bond forces */
                     /* dbo term */
-#if defined( __SM_35__)
-                    sh_cdbo += CEhb1;
-#else
-                    sh_cdbo[threadIdx.x] += CEhb1;
-#endif
+                    CEhb1_s += CEhb1;
 
                     if ( control->virial == 0 )
                     {
                         /* dcos terms */
-#if defined( __SM_35__)
-                        rvec_ScaledAdd( sh_hf, CEhb2, dcos_theta_di ); 
-#else
-                        rvec_ScaledAdd( sh_hf[threadIdx.x], CEhb2, dcos_theta_di ); 
-#endif
+                        rvec_ScaledAdd( hb_f_s, CEhb2, dcos_theta_di ); 
 
-#if defined( __SM_35__)
-                        rvec_ScaledAdd( sh_atomf, CEhb2, dcos_theta_dj );
-#else
-                        rvec_ScaledAdd( sh_atomf[threadIdx.x], CEhb2, dcos_theta_dj );
-#endif
+                        rvec_ScaledAdd( f_s, CEhb2, dcos_theta_dj );
 
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb2, dcos_theta_dk );
 
                         /* dr terms */
-#if defined( __SM_35__)
-                        rvec_ScaledAdd( sh_atomf, -1.0 * CEhb3 / r_jk, dvec_jk ); 
-#else
-                        rvec_ScaledAdd( sh_atomf[threadIdx.x], -1.0 * CEhb3 / r_jk, dvec_jk ); 
-#endif
+                        rvec_ScaledAdd( f_s, -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb3 / r_jk, dvec_jk );
                     }
@@ -462,321 +426,212 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_MT( reax_atom *my_atoms, single_body_parame
 
                 } //orid id end
 
-                pk += __THREADS_PER_ATOM__;
+                pk += 32;
                 count++;
 
             } //for itr loop end
 
-            /* reduction */
-#if defined( __SM_35__)
-            for ( int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2 )
+            /* warp-level sums using registers within a warp */
+            for ( offset = 16; offset > 0; offset /= 2 )
             {
-                sh_cdbo += shfl( sh_cdbo, s);
-                sh_hf[0] += shfl( sh_hf[0], s);
-                sh_hf[1] += shfl( sh_hf[1], s);
-                sh_hf[2] += shfl( sh_hf[2], s);
+                CEhb1_s += __shfl_down_sync( mask, CEhb1_s, offset );
+                hb_f_s[0] += __shfl_down_sync( mask, hb_f_s[0], offset );
+                hb_f_s[1] += __shfl_down_sync( mask, hb_f_s[1], offset );
+                hb_f_s[2] += __shfl_down_sync( mask, hb_f_s[2], offset );
             }
-            //end of the shuffle
+
+            /* first thread within a warp writes warp-level sum to shared memory */
             if ( lane_id == 0 )
             {
-                bo_ij->Cdbo += sh_cdbo ;
-                rvec_Add( pbond_ij->hb_f, sh_hf );
+                bo_ij->Cdbo += CEhb1_s ;
+                rvec_Add( pbond_ij->hb_f, hb_f_s );
             }
-#else
-            if ( lane_id < 16 )
-            {
-                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 16];
-                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 16] );
-            }
-            if ( lane_id < 8 )
-            {
-                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 8];
-                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 8] );
-            }
-            if ( lane_id < 4 )
-            {
-                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 4];
-                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 4] );
-            }
-            if ( lane_id < 2 )
-            {
-                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 2];
-                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 2] );
-            }
-            if ( lane_id < 1 )
-            {
-                sh_cdbo[threadIdx.x] += sh_cdbo[threadIdx.x + 1];
-                rvec_Add( sh_hf [threadIdx.x], sh_hf[threadIdx.x + 1] );
-
-                bo_ij->Cdbo += sh_cdbo[threadIdx.x];
-                rvec_Add( pbond_ij->hb_f, sh_hf[threadIdx.x] );
-            }
-#endif
         } // for loop hbonds end
     } //if Hbond check end
 
-#if defined( __SM_35__)
-    for ( int s = __THREADS_PER_ATOM__ >> 1; s >= 1; s/=2 )
+    /* warp-level sums using registers within a warp */
+    for ( offset = 16; offset > 0; offset /= 2 )
     {
-        sh_hb += shfl( sh_hb, s);
-        sh_atomf[0] += shfl( sh_atomf[0], s);
-        sh_atomf[1] += shfl( sh_atomf[1], s);
-        sh_atomf[2] += shfl( sh_atomf[2], s);
+        e_hb_s += __shfl_down_sync( mask, e_hb_s, offset );
+        f_s[0] += __shfl_down_sync( mask, f_s[0], offset );
+        f_s[1] += __shfl_down_sync( mask, f_s[1], offset );
+        f_s[2] += __shfl_down_sync( mask, f_s[2], offset );
     }
+
+    /* first thread within a warp writes warp-level sums to global memory */
     if ( lane_id == 0 )
     {
-        data_e_hb[j] += sh_hb;
-        rvec_Add( workspace.f[j], sh_atomf );
+        data_e_hb[j] += e_hb_s;
+        rvec_Add( workspace.f[j], f_s );
     }
-#else
-    if ( lane_id < 16 )
-    {
-        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 16];
-        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 16] );
-    }
-    if ( lane_id < 8 )
-    {
-        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 8];
-        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 8] );
-    }
-    if ( lane_id < 4 )
-    {
-        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 4];
-        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 4] );
-    }
-    if ( lane_id < 2 )
-    {
-        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 2];
-        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 2] );
-    }
-    if ( lane_id < 1 )
-    {
-        sh_hb[threadIdx.x] += sh_hb[threadIdx.x + 1];
-        rvec_Add ( sh_atomf [threadIdx.x], sh_atomf[threadIdx.x + 1] );
-
-        data_e_hb[j] += sh_hb[threadIdx.x];
-        rvec_Add( workspace.f[j], sh_atomf[threadIdx.x] );
-    }
-#endif
 }
 
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_PostProcess( reax_atom *atoms,
-        storage workspace, reax_list bond_list, int N )
+/* Accumulate forces stored in the bond list
+ * using a one thread per atom implementation */
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2( reax_atom *atoms,
+        storage workspace, reax_list bond_list, int n )
 {
-    int i, pj;
-    bond_data *pbond;
-    bond_data *sym_index_bond;
+    int j, pj;
+    bond_data *pbond, *sym_index_bond;
+    rvec hb_f;
 
-    i = blockIdx.x * blockDim.x + threadIdx.x;
+    j = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
+    if ( j >= n )
     {
         return;
     }
 
-    for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
+    rvec_MakeZero( hb_f );
+
+    for ( pj = Start_Index(j, &bond_list); pj < End_Index(j, &bond_list); ++pj )
     {
         pbond = &bond_list.bond_list[pj];
         sym_index_bond = &bond_list.bond_list[pbond->sym_index];
 
-        //rvec_Add( atoms[i].f, sym_index_bond->hb_f );
-        rvec_Add( workspace.f[i], sym_index_bond->hb_f );
+        rvec_Add( hb_f, sym_index_bond->hb_f );
     }
+
+    rvec_Add( workspace.f[j], hb_f );
 }
 
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs( reax_atom *atoms,
-        storage workspace, reax_list hbond_list )
+/* Accumulate forces stored in the bond list
+ * using a one warp threads (32) per atom implementation */
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2_opt( reax_atom *atoms,
+        storage workspace, reax_list bond_list, int n )
 {
-#if defined(__SM_35__)
-    rvec __f;
-#else
-    extern __shared__ rvec __f[];
-#endif
-    int i, pj;
-    int start, end;
-    hbond_data *nbr_pj, *sym_index_nbr;
+    int j, pj, start, end;
+    bond_data *pbond, *sym_index_bond;
+    /* thread-local variables */
+    int thread_id, warp_id, lane_id, offset;
+    unsigned int mask;
+    rvec hb_f;
 
-    i = blockIdx.x;
-
-    start = Start_Index( atoms[i].Hindex, &hbond_list );
-    end = End_Index( atoms[i].Hindex, &hbond_list );
-    pj = start + threadIdx.x;
-#if defined(__SM_35__)
-    rvec_MakeZero( __f );
-#else
-    rvec_MakeZero( __f[threadIdx.x] );
-#endif
-
-    while ( pj < end )
-    {
-        nbr_pj = &hbond_list.hbond_list[pj];
-
-        sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
-
-#if defined(__SM_35__)
-        rvec_Add( __f, sym_index_nbr->hb_f );
-#else
-        rvec_Add( __f[threadIdx.x], sym_index_nbr->hb_f );
-#endif
-
-        pj += blockDim.x;
-    }
-
-    __syncthreads( );
-
-#if defined(__SM_35__)
-    for ( int s = 16; s >= 1; s /= 2 )
-    {
-        __f[0] += shfl( __f[0], s );
-        __f[1] += shfl( __f[1], s );
-        __f[2] += shfl( __f[2], s );
-    }
-
-    if ( threadIdx.x == 0 )
-    {
-        rvec_Add( workspace.f[i], __f );
-    }
-#else
-    if ( threadIdx.x < 16 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 16] );
-    }
-    __syncthreads( );
-
-    if ( threadIdx.x < 8 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 8] );
-    }
-    __syncthreads( );
-
-    if ( threadIdx.x < 4 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 4] );
-    }
-    __syncthreads( );
-
-    if ( threadIdx.x < 2 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 2] );
-    }
-    __syncthreads( );
-
-    if ( threadIdx.x < 1 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 1] );
-    }
-    __syncthreads( );
-
-    if ( threadIdx.x == 0 )
-    {
-        //rvec_Add( atoms[i].f, __f[0] );
-        rvec_Add( workspace.f[i], __f[0] );
-    }
-#endif
-}
-
-
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_HNbrs_BL( reax_atom *atoms,
-        storage workspace, reax_list hbond_list, int N )
-{
-#if defined(__SM_35__)
-    rvec __f;
-    int s;
-#else
-    extern __shared__ rvec __f[];
-#endif
-    int i, pj;
-    int start, end;
-    hbond_data *nbr_pj, *sym_index_nbr;
-    int __THREADS_PER_ATOM__;
-    int thread_id;
-    int group_id;
-    int lane_id; 
-
-    __THREADS_PER_ATOM__ = HB_POST_PROC_KER_THREADS_PER_ATOM;
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    group_id = thread_id / __THREADS_PER_ATOM__;
-    lane_id = thread_id & (__THREADS_PER_ATOM__ - 1);
+    warp_id = thread_id >> 5;
+    lane_id = thread_id & 0x0000001F; 
+    mask = __ballot_sync( FULL_MASK, warp_id < n );
 
-    if ( group_id >= N )
+    if ( warp_id >= n )
     {
         return;
     }
 
-    i = group_id;
-    start = Start_Index( atoms[i].Hindex, &hbond_list );
-    end = End_Index( atoms[i].Hindex, &hbond_list );
+    j = warp_id;
+    start = Start_Index( j, &bond_list );
+    end = End_Index( j, &bond_list );
     pj = start + lane_id;
-#if defined(__SM_35__)
-    rvec_MakeZero( __f );
-#else
-    rvec_MakeZero( __f[threadIdx.x] );
-#endif
+    rvec_MakeZero( hb_f );
+
+    while ( pj < end )
+    {
+        pbond = &bond_list.bond_list[pj];
+        sym_index_bond = &bond_list.bond_list[pbond->sym_index];
+
+        rvec_Add( hb_f, sym_index_bond->hb_f );
+
+        pj += 32;
+    }
+    __syncthreads( );
+
+    /* warp-level sums using registers within a warp */
+    for ( offset = 16; offset > 0; offset /= 2 )
+    {
+        hb_f[0] += __shfl_down_sync( mask, hb_f[0], offset );
+        hb_f[1] += __shfl_down_sync( mask, hb_f[1], offset );
+        hb_f[2] += __shfl_down_sync( mask, hb_f[2], offset );
+    }
+
+    /* first thread within a warp writes warp-level sums to global memory */
+    if ( lane_id == 0 )
+    {
+        rvec_Add( workspace.f[j], hb_f );
+    }
+}
+
+
+/* Accumulate forces stored in the hbond list
+ * using a one thread per atom implementation */
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3( reax_atom *atoms,
+        storage workspace, reax_list hbond_list, int n )
+{
+    int j, pj;
+    hbond_data *nbr_pj, *sym_index_nbr;
+    rvec hb_f;
+
+    j = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( j >= n )
+    {
+        return;
+    }
+
+    rvec_MakeZero( hb_f );
+
+    for ( pj = Start_Index(atoms[j].Hindex, &hbond_list); pj < End_Index(atoms[j].Hindex, &hbond_list); ++pj )
+    {
+        nbr_pj = &hbond_list.hbond_list[pj];
+        sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
+
+        rvec_Add( hb_f, sym_index_nbr->hb_f );
+    }
+
+    rvec_Add( workspace.f[j], hb_f );
+}
+
+
+/* Accumulate forces stored in the hbond list
+ * using a one warp of threads (32) per atom implementation */
+CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3_opt( reax_atom *atoms,
+        storage workspace, reax_list hbond_list, int n )
+{
+    int j, pj, start, end;
+    hbond_data *nbr_pj, *sym_index_nbr;
+    /* thread-local variables */
+    int thread_id, warp_id, lane_id, offset;
+    unsigned int mask;
+    rvec hb_f_s;
+
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    warp_id = thread_id >> 5;
+    lane_id = thread_id & 0x0000001F; 
+    mask = __ballot_sync( FULL_MASK, warp_id < n );
+
+    if ( warp_id >= n )
+    {
+        return;
+    }
+
+    j = warp_id;
+    start = Start_Index( atoms[j].Hindex, &hbond_list );
+    end = End_Index( atoms[j].Hindex, &hbond_list );
+    pj = start + lane_id;
+    rvec_MakeZero( hb_f_s );
 
     while ( pj < end )
     {
         nbr_pj = &hbond_list.hbond_list[pj];
-
         sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
-#if defined(__SM_35__)
-        rvec_Add( __f, sym_index_nbr->hb_f );
-#else
-        rvec_Add( __f[threadIdx.x], sym_index_nbr->hb_f );
-#endif
 
-        pj += __THREADS_PER_ATOM__;
+        rvec_Add( hb_f_s, sym_index_nbr->hb_f );
+
+        pj += 32;
     }
-
     __syncthreads( );
 
-#if defined(__SM_35__)
-    for ( s = __THREADS_PER_ATOM__ >> 1; s >= 1; s /= 2 )
+    /* warp-level sums using registers within a warp */
+    for ( offset = 16; offset > 0; offset /= 2 )
     {
-        __f[0] += shfl( __f[0], s );
-        __f[1] += shfl( __f[1], s );
-        __f[2] += shfl( __f[2], s );
+        hb_f_s[0] += __shfl_down_sync( mask, hb_f_s[0], offset );
+        hb_f_s[1] += __shfl_down_sync( mask, hb_f_s[1], offset );
+        hb_f_s[2] += __shfl_down_sync( mask, hb_f_s[2], offset );
     }
 
+    /* first thread within a warp writes warp-level sums to global memory */
     if ( lane_id == 0 )
     {
-        rvec_Add( workspace.f[i], __f );
+        rvec_Add( workspace.f[j], hb_f_s );
     }
-#else
-    if ( lane_id < 16 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 16] );
-    }
-    __syncthreads( );
-
-    if ( lane_id < 8 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 8] );
-    }
-    __syncthreads( );
-
-    if ( lane_id < 4 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 4] );
-    }
-    __syncthreads( );
-
-    if ( lane_id < 2 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 2] );
-    }
-    __syncthreads( );
-
-    if ( lane_id < 1 )
-    {
-        rvec_Add( __f[threadIdx.x], __f[threadIdx.x + 1] );
-    }
-    __syncthreads( );
-
-    if ( lane_id == 0 )
-    {
-        rvec_Add( workspace.f[i], __f[threadIdx.x] );
-    }
-#endif
 }
