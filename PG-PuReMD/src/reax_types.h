@@ -246,17 +246,12 @@
 #if defined(NAN)
   #define IS_NAN_REAL(a) (isnan(a))
 #else
-  #warn "No support for NaN"
+  #warning "No support for NaN"
   #define IS_NAN_REAL(a) (0)
 #endif
 
 /**************** RESOURCE CONSTANTS **********************/
-/* 1024 MB */
-#define HOST_SCRATCH_SIZE (1024 * 1024 * 1024)
 #if defined(HAVE_CUDA)
-  /* 1024 MB */
-  #define DEVICE_SCRATCH_SIZE (1024 * 1024 * 1024)
-  
   /* BLOCK SIZES for kernels */
   #define HB_SYM_BLOCK_SIZE (64)
   #define HB_KER_SYM_THREADS_PER_ATOM (16)
@@ -2275,10 +2270,14 @@ struct storage
     /* lookup table for force tabulation */
     LR_lookup_table *LR;
 #if defined(HAVE_CUDA)
-    /* temporary workspace */
+    /* temporary host workspace */
     void *host_scratch;
+    /* size of temporary host workspace, in bytes */
+    size_t host_scratch_size;
     /* temporary workspace (GPU) */
     void *scratch;
+    /* size of temporary workspace (GPU), in bytes */
+    size_t scratch_size;
     /* lookup table for force tabulation (GPU) */
     LR_lookup_table *d_LR;
     /* storage (GPU) */

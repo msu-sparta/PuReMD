@@ -237,7 +237,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
 }
 
 
-/* one warp of threads (32) per atom implementation */
+/* one warp of threads per atom implementation */
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
         hbond_parameters *d_hbp, global_parameters gp, control_params *control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
@@ -321,8 +321,8 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
             CEhb1_s = 0.0;
 
             //for( pk = hb_start_j; pk < hb_end_j; ++pk ) {
-            loopcount = (hb_end_j - hb_start_j) / 32 + 
-                (((hb_end_j - hb_start_j) % 32 == 0) ? 0 : 1);
+            loopcount = (hb_end_j - hb_start_j) / warpSize + 
+                (((hb_end_j - hb_start_j) % warpSize == 0) ? 0 : 1);
 
             count = 0;
             pk = hb_start_j + lane_id;
@@ -426,13 +426,13 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
 
                 } //orid id end
 
-                pk += 32;
+                pk += warpSize;
                 count++;
 
             } //for itr loop end
 
             /* warp-level sums using registers within a warp */
-            for ( offset = 16; offset > 0; offset /= 2 )
+            for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
             {
                 CEhb1_s += __shfl_down_sync( mask, CEhb1_s, offset );
                 hb_f_s[0] += __shfl_down_sync( mask, hb_f_s[0], offset );
@@ -450,7 +450,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
     } //if Hbond check end
 
     /* warp-level sums using registers within a warp */
-    for ( offset = 16; offset > 0; offset /= 2 )
+    for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
     {
         e_hb_s += __shfl_down_sync( mask, e_hb_s, offset );
         f_s[0] += __shfl_down_sync( mask, f_s[0], offset );
@@ -498,7 +498,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2( reax_atom *atoms,
 
 
 /* Accumulate forces stored in the bond list
- * using a one warp threads (32) per atom implementation */
+ * using a one warp threads per atom implementation */
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2_opt( reax_atom *atoms,
         storage workspace, reax_list bond_list, int n )
 {
@@ -532,12 +532,12 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2_opt( reax_atom *atoms,
 
         rvec_Add( hb_f, sym_index_bond->hb_f );
 
-        pj += 32;
+        pj += warpSize;
     }
     __syncthreads( );
 
     /* warp-level sums using registers within a warp */
-    for ( offset = 16; offset > 0; offset /= 2 )
+    for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
     {
         hb_f[0] += __shfl_down_sync( mask, hb_f[0], offset );
         hb_f[1] += __shfl_down_sync( mask, hb_f[1], offset );
@@ -583,7 +583,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3( reax_atom *atoms,
 
 
 /* Accumulate forces stored in the hbond list
- * using a one warp of threads (32) per atom implementation */
+ * using a one warp of threads per atom implementation */
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3_opt( reax_atom *atoms,
         storage workspace, reax_list hbond_list, int n )
 {
@@ -617,12 +617,12 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3_opt( reax_atom *atoms,
 
         rvec_Add( hb_f_s, sym_index_nbr->hb_f );
 
-        pj += 32;
+        pj += warpSize;
     }
     __syncthreads( );
 
     /* warp-level sums using registers within a warp */
-    for ( offset = 16; offset > 0; offset /= 2 )
+    for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
     {
         hb_f_s[0] += __shfl_down_sync( mask, hb_f_s[0], offset );
         hb_f_s[1] += __shfl_down_sync( mask, hb_f_s[1], offset );

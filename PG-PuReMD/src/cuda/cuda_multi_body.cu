@@ -229,7 +229,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
                     num_atom_types) ];
 
         bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st 
-//        myatomicAdd( &workspace.CdDelta[j], CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+//        atomicAdd( &workspace.CdDelta[j], CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
 //            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
         pbond_ij->ae_CdDelta += CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
             * (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor-3a
@@ -238,7 +238,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
         bo_ij->Cdbopi2 += CEover4 * (workspace.Delta[j] - dfvl
                 * workspace.Delta_lp_temp[j]);  // OvCoor-3b
 
-//        myatomicAdd( &workspace.CdDelta[j], CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+//        atomicAdd( &workspace.CdDelta[j], CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
 //            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
         pbond_ij->ae_CdDelta += CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
             * (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a

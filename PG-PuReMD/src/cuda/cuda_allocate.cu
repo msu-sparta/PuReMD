@@ -259,80 +259,83 @@ static void Cuda_Reallocate_System( reax_system *system, storage *workspace,
     int *temp;
     reax_atom *temp_atom;
 
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            MAX( sizeof(reax_atom), sizeof(int) ) * old_total_cap,
+            "Cuda_Reallocate_System::workspace->scratch" );
     temp = (int *) workspace->scratch;
     temp_atom = (reax_atom*) workspace->scratch;
 
     /* free the existing storage for atoms, leave other info allocated */
-    copy_device( temp_atom, system->d_my_atoms, old_total_cap * sizeof(reax_atom),
+    copy_device( temp_atom, system->d_my_atoms, sizeof(reax_atom) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_my_atoms, "system::d_my_atoms" );
     cuda_malloc( (void **) &system->d_my_atoms, sizeof(reax_atom) * total_cap, 
-            TRUE, "system::d_my_atoms" );
-    copy_device( system->d_my_atoms, temp, old_total_cap * sizeof(reax_atom),
+            TRUE, "Cuda_Reallocate_System::d_my_atoms" );
+    copy_device( system->d_my_atoms, temp, sizeof(reax_atom) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_far_nbrs, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_far_nbrs, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
-    cuda_free( system->d_far_nbrs, "system::d_far_nbrs" );
+    cuda_free( system->d_far_nbrs, "Cuda_Reallocate_System::d_far_nbrs" );
     cuda_malloc( (void **) &system->d_far_nbrs,
-            system->total_cap * sizeof(int), TRUE, "system::d_far_nbrs" );
-    copy_device( system->d_far_nbrs, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_far_nbrs" );
+    copy_device( system->d_far_nbrs, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_max_far_nbrs, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_max_far_nbrs, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
-    cuda_free( system->d_max_far_nbrs, "system::d_max_far_nbrs" );
+    cuda_free( system->d_max_far_nbrs, "Cuda_Reallocate_System::d_max_far_nbrs" );
     cuda_malloc( (void **) &system->d_max_far_nbrs,
-            system->total_cap * sizeof(int), TRUE, "system::d_max_far_nbrs" );
-    copy_device( system->d_max_far_nbrs, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_max_far_nbrs" );
+    copy_device( system->d_max_far_nbrs, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_bonds, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_bonds, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
-    cuda_free( system->d_bonds, "system::d_bonds" );
+    cuda_free( system->d_bonds, "Cuda_Reallocate_System::d_bonds" );
     cuda_malloc( (void **) &system->d_bonds,
-            system->total_cap * sizeof(int), TRUE, "system::d_bonds" );
-    copy_device( system->d_bonds, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_bonds" );
+    copy_device( system->d_bonds, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_max_bonds, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_max_bonds, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
-    cuda_free( system->d_max_bonds, "system::d_max_bonds" );
+    cuda_free( system->d_max_bonds, "Cuda_Reallocate_System::d_max_bonds" );
     cuda_malloc( (void **) &system->d_max_bonds,
-            system->total_cap * sizeof(int), TRUE, "system::d_max_bonds" );
-    copy_device( system->d_max_bonds, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_max_bonds" );
+    copy_device( system->d_max_bonds, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_hbonds, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_hbonds, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_hbonds, "system::d_hbonds" );
     cuda_malloc( (void **) &system->d_hbonds,
-            system->total_cap * sizeof(int), TRUE, "system::d_hbonds" );
-    copy_device( system->d_hbonds, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_hbonds" );
+    copy_device( system->d_hbonds, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_max_hbonds, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_max_hbonds, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
     cuda_free( system->d_max_hbonds, "system::d_max_hbonds" );
     cuda_malloc( (void **) &system->d_max_hbonds,
-            system->total_cap * sizeof(int), TRUE, "system::d_max_hbonds" );
-    copy_device( system->d_max_hbonds, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_max_hbonds" );
+    copy_device( system->d_max_hbonds, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_cm_entries, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_cm_entries, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
-    cuda_free( system->d_cm_entries, "system::d_cm_entries" );
+    cuda_free( system->d_cm_entries, "Cuda_Reallocate_System::d_cm_entries" );
     cuda_malloc( (void **) &system->d_cm_entries,
-            system->total_cap * sizeof(int), TRUE, "system::d_cm_entries" );
-    copy_device( system->d_cm_entries, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_cm_entries" );
+    copy_device( system->d_cm_entries, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 
-    copy_device( temp, system->d_max_cm_entries, old_total_cap * sizeof(int),
+    copy_device( temp, system->d_max_cm_entries, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
-    cuda_free( system->d_max_cm_entries, "system::d_max_cm_entries" );
+    cuda_free( system->d_max_cm_entries, "Cuda_Reallocate_System::d_max_cm_entries" );
     cuda_malloc( (void **) &system->d_max_cm_entries,
-            system->total_cap * sizeof(int), TRUE, "system::d_max_cm_entries" );
-    copy_device( system->d_max_cm_entries, temp, old_total_cap * sizeof(int),
+            system->total_cap * sizeof(int), TRUE, "Cuda_Reallocate_System::d_max_cm_entries" );
+    copy_device( system->d_max_cm_entries, temp, sizeof(int) * old_total_cap,
             "Cuda_Reallocate_System::temp" );
 }
 
@@ -356,11 +359,15 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
     local_rvec = local_cap * sizeof(rvec);
 
     /* communication storage */  
-    /*
-       workspace->tmp_dbl = NULL;
-       workspace->tmp_rvec = NULL;
-       workspace->tmp_rvec2 = NULL;
-     */
+//    workspace->tmp_dbl = NULL;
+//    workspace->tmp_rvec = NULL;
+//    workspace->tmp_rvec2 = NULL;
+
+    /* scratch space */
+    workspace->scratch = NULL;
+    workspace->scratch_size = 0;
+    workspace->host_scratch = NULL;
+    workspace->host_scratch_size = 0;
 
     /* bond order related storage  */
     cuda_malloc( (void **) &workspace->total_bond_order, total_real, TRUE, "total_bo" );

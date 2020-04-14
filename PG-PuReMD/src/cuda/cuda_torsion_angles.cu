@@ -412,11 +412,11 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *my_atoms, global_paramete
                                 /* forces */
                                 bo_jk->Cdbopi += CEtors2;
                                 workspace.CdDelta[j] += CEtors3;
-//                                myatomicAdd( &workspace->CdDelta[k], CEtors3 );
+//                                atomicAdd( &workspace->CdDelta[k], CEtors3 );
                                 pbond_jk->ta_CdDelta += CEtors3;
                                 bo_ij->Cdbo += (CEtors4 + CEconj1);
                                 bo_jk->Cdbo += (CEtors5 + CEconj2);
-                                myatomicAdd( &pbond_kl->ta_Cdbo, CEtors6 + CEconj3 );
+                                atomicAdd( &pbond_kl->ta_Cdbo, CEtors6 + CEconj3 );
 
                                 if ( control->virial == 0 )
                                 {

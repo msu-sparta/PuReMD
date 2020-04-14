@@ -56,10 +56,13 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control,
 {
     int blocks, *hindex;
 
-    hindex = (int *) workspace->scratch;
-
     blocks = system->N / DEF_BLOCK_SIZE
         + ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(int) * system->N,
+            "Cuda_Reset_Atoms::workspace->scratch" );
+    hindex = (int *) workspace->scratch;
 
     k_reset_hindex <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, hindex, system->N );

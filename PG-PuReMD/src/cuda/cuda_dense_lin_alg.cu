@@ -521,7 +521,7 @@ void Vector_Mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
  * output:
  *  norm: 2-norm
  */
-real Norm( storage const * const workspace,
+real Norm( storage * const workspace,
         real const * const v1, unsigned int k, MPI_Comm comm )
 {
     return SQRT( Dot( workspace, v1, v1, k, comm ) );
@@ -538,7 +538,7 @@ real Norm( storage const * const workspace,
  * output:
  *  dot: inner product of the two vector
  */
-real Dot( storage const * const workspace,
+real Dot( storage * const workspace,
         real const * const v1, real const * const v2,
         unsigned int k, MPI_Comm comm )
 {
@@ -547,6 +547,8 @@ real Dot( storage const * const workspace,
     real temp;
 #endif
 
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * (k + 1), "Dot::workspace->scratch" );
     spad = (real *) workspace->scratch;
 
     Vector_Mult( spad, v1, v2, k );
@@ -577,12 +579,14 @@ real Dot( storage const * const workspace,
  * output:
  *  dot: inner product of the two vector
  */
-real Dot_local( storage const * const workspace,
+real Dot_local( storage * const workspace,
         real const * const v1, real const * const v2,
         unsigned int k )
 {
     real sum, *spad;
 
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * (k + 1), "Dot_local::workspace->scratch" );
     spad = (real *) workspace->scratch;
 
     Vector_Mult( spad, v1, v2, k );
@@ -608,7 +612,7 @@ real Dot_local( storage const * const workspace,
  *  dot: inner product of the two vector
  */
 void Dot_local_rvec2( control_params const * const control,
-        storage const * const workspace,
+        storage * const workspace,
         rvec2 const * const v1, rvec2 const * const v2,
         unsigned int k, real * sum1, real * sum2 )
 {
@@ -617,6 +621,9 @@ void Dot_local_rvec2( control_params const * const control,
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(rvec2) * (k + blocks + 1), "Dot_local_rvec2::workspace->scratch" );
     spad = (rvec2 *) workspace->scratch;
 
     Vector_Mult_rvec2( &spad[0], v1, v2, k );
@@ -630,12 +637,12 @@ void Dot_local_rvec2( control_params const * const control,
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, control->blocks_pow_2, sizeof(rvec2) * control->blocks_pow_2 >>>
-        ( &spad[k], &spad[2 * k], blocks );
+        ( &spad[k], &spad[k + blocks], blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
-    copy_host_device( &sum, &spad[2 * k], sizeof(rvec2),
+    copy_host_device( &sum, &spad[k + blocks], sizeof(rvec2),
             cudaMemcpyDeviceToHost, "Dot_local_rvec2::sum" );
 
     *sum1 = sum[0];

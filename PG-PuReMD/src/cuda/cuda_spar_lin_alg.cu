@@ -159,13 +159,13 @@ CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
 
     for ( k = si; k < ei; ++k )
     {
-        myatomicAdd( (double*) &b[i], (double) (vals[k] * x[col_ind[k]]) );
+        atomicAdd( (double*) &b[i], (double) (vals[k] * x[col_ind[k]]) );
         /* symmetric contribution (A is symmetric, lower half stored) */
-        myatomicAdd( (double*) &b[col_ind[k]], (double) (vals[k] * x[i]) );
+        atomicAdd( (double*) &b[col_ind[k]], (double) (vals[k] * x[i]) );
     }
 
     /* diagonal entry */
-    myatomicAdd( (double*) &b[i], (double) (vals[ei] * x[i]) );
+    atomicAdd( (double*) &b[i], (double) (vals[ei] * x[i]) );
 }
 
 
@@ -238,13 +238,13 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
         si = row_ptr_start[i];
         ei = row_ptr_end[i];
 
-        for ( pj = si + lane_id; pj < ei; pj += 32 )
+        for ( pj = si + lane_id; pj < ei; pj += warpSize )
         {
             vals_local += vals[pj] * x[ col_ind[pj] ];
         }
 
         /* warp-level sums using registers within a warp */
-        for ( offset = 16; offset > 0; offset /= 2 )
+        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
             vals_local += __shfl_down_sync( mask, vals_local, offset );
         }
@@ -311,13 +311,13 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( sparse_matrix A, rvec2 const
         si = A.start[i];
         ei = A.end[i];
 
-        for ( pj = si + lane_id; pj < ei; pj += 32 )
+        for ( pj = si + lane_id; pj < ei; pj += warpSize )
         {
             vals_local[0] += A.val[pj] * x[ A.j[pj] ][0];
             vals_local[1] += A.val[pj] * x[ A.j[pj] ][1];
         }
 
-        for ( offset = 16; offset > 0; offset /= 2 )
+        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
             vals_local[0] += __shfl_down_sync( mask, vals_local[0], offset );
             vals_local[1] += __shfl_down_sync( mask, vals_local[1], offset );
@@ -386,8 +386,11 @@ static real Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, x, buf_type, mpi_type );
 #else
-    spad = (rvec2 *) workspace->host_scratch;
 
+    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(rvec2) * system->total_cap,
+            "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
+    spad = (rvec2 *) workspace->host_scratch;
     copy_host_device( spad, (void *)x, sizeof(rvec2) * system->total_cap,
             cudaMemcpyDeviceToHost, "Dual_Sparse_MatVec_Comm_Part1::x" );
 
@@ -478,8 +481,11 @@ static real Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
         Coll( system, mpi_data, b, buf_type, mpi_type );
 #else
-        spad = (rvec2 *) workspace->host_scratch;
 
+        check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(rvec2) * system->total_cap,
+                "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
+        spad = (rvec2 *) workspace->host_scratch;
         copy_host_device( spad, b, sizeof(rvec2) * system->total_cap,
                 cudaMemcpyDeviceToHost, "Dual_Sparse_MatVec_Comm_Part2::b" );
 
@@ -546,8 +552,11 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, x, buf_type, mpi_type );
 #else
-    spad = (real *) workspace->host_scratch;
 
+    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * system->total_cap,
+            "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
+    spad = (real *) workspace->host_scratch;
     copy_host_device( spad, (void *)x, sizeof(real) * system->total_cap,
             cudaMemcpyDeviceToHost, "Sparse_MatVec_Comm_Part1::x" );
 
@@ -637,15 +646,18 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
         Coll( system, mpi_data, b, buf_type, mpi_type );
 #else
-        spad = (real *) workspace->host_scratch;
 
+        check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(real) * system->total_cap,
+                "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
+        spad = (real *) workspace->host_scratch;
         copy_host_device( spad, b, sizeof(real) * system->total_cap,
-                cudaMemcpyDeviceToHost, "Cuda_CG::q" );
+                cudaMemcpyDeviceToHost, "Sparse_MatVec_Comm_Part2::q" );
 
         Coll( system, mpi_data, spad, buf_type, mpi_type );
 
         copy_host_device( spad, b, sizeof(real) * system->total_cap,
-                cudaMemcpyHostToDevice, "Cuda_CG::q" );
+                cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part2::q" );
 #endif
     }
     t_comm = MPI_Wtime( ) - t_start;

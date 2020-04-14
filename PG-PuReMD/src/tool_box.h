@@ -69,6 +69,8 @@ void* srealloc( void *, size_t, const char * );
 
 void *scalloc( size_t, size_t, const char* );
 
+void check_smalloc( void **, size_t *, size_t, const char * );
+
 void sfree( void*, const char* );
 
 FILE * sfopen( const char *, const char *, const char * );

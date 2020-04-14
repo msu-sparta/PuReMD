@@ -8,7 +8,7 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] requesting %zu bytes for %s\n",
-            size, "msg" );
+            size, msg );
     fflush( stderr );
 #endif
 
@@ -76,6 +76,35 @@ extern "C" void cuda_memset( void *ptr, int data, size_t count, const char *msg 
         fprintf( stderr, "[ERROR] failed to memset memory on device for resource %s\n", msg );
         fprintf( stderr, "    [INFO] CUDA API error code: %d\n", retVal );
         exit( RUNTIME_ERROR );
+    }
+}
+
+
+/* Checks if the amount of space currently allocated to ptr is sufficient,
+ * and, if not, frees any space allocated to ptr before allocating the
+ * requested amount of space */
+void cuda_check_malloc( void **ptr, size_t *cur_size, size_t new_size, const char *msg )
+{
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting %zu bytes for %s (%zu currently allocated)\n",
+            new_size, msg, *cur_size );
+    fflush( stderr );
+#endif
+
+    assert( new_size > 0 );
+
+    if ( new_size > *cur_size )
+    {
+        if ( *cur_size > 0 || *ptr != NULL )
+        {
+            cuda_free( *ptr, msg );
+        }
+
+        //TODO: look into using aligned alloc's
+        /* intentionally over-allocate to reduce the number of allocation operations,
+         * and record the new allocation size */
+        *cur_size = (size_t) CEIL( new_size * SAFE_ZONE );
+        cuda_malloc( ptr, *cur_size, 0, msg );
     }
 }
 

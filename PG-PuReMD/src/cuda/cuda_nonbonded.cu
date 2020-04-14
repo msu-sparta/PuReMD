@@ -275,7 +275,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
 
 
 //TODO: fix issue with atomic forces not being correctly accumulated
-/* one warp of threads (32) per atom implementation */
+/* one warp of threads per atom implementation */
 CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms, 
         two_body_parameters *tbp, global_parameters gp, control_params *control, 
         storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
@@ -300,7 +300,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     warp_id = thread_id >> 5;
     lane_id = thread_id & 0x0000001F; 
-    mask = __ballot_sync( FULL_MASK, i < n );
+    mask = __ballot_sync( FULL_MASK, warp_id < n );
 
     if ( warp_id >= n )
     {
@@ -501,11 +501,11 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
 #endif
         }
 
-        pj += 32;
+        pj += warpSize;
     }
 
     /* warp-level sum using registers within a warp */
-    for ( offset = 16; offset > 0; offset /= 2 )
+    for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
     {
         e_vdW_s += __shfl_down_sync( mask, e_vdW_s, offset );
         e_ele_s += __shfl_down_sync( mask, e_ele_s, offset );
@@ -671,6 +671,10 @@ static void Cuda_Compute_Polarization_Energy( reax_system *system, storage *work
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->n,
+            "Cuda_Compute_Polarization_Energy::workspace->scratch" );
     spad = (real *) workspace->scratch;
 
     k_compute_polarization_energy <<< blocks, DEF_BLOCK_SIZE >>>
@@ -693,13 +697,17 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     rvec *spad_rvec;
     real *spad;
 
-    spad = (real *) workspace->scratch;
-    update_energy = (out_control->energy_update_freq > 0
-            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
     rblocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     blocks = (system->n * VDW_KER_THREADS_PER_ATOM / DEF_BLOCK_SIZE) 
         + ((system->n * VDW_KER_THREADS_PER_ATOM % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    update_energy = (out_control->energy_update_freq > 0
+            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * blocks,
+            "Cuda_NonBonded_Energy::workspace->scratch" );
+    spad = (real *) workspace->scratch;
 
     if ( control->tabulate == 0 )
     {

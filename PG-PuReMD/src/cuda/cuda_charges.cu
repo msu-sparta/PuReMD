@@ -412,8 +412,12 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 
     blocks = system->n / DEF_BLOCK_SIZE
         + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->n,
+            "Extrapolate_Charges_QEq_Part2::workspace->scratch" );
     spad = (real *) workspace->scratch;
-    cuda_memset( spad, 0, sizeof(real) * system->n, "Extrapolate_Charges_QEq_Part2::q" );
+    cuda_memset( spad, 0, sizeof(real) * system->n, "Extrapolate_Charges_QEq_Part2::spad" );
 
     k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n);
@@ -421,7 +425,7 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
     cudaCheckError( );
 
     copy_host_device( q, spad, sizeof(real) * system->n, 
-            cudaMemcpyDeviceToHost, "Extrapolate_Charges_QEq_Part2::q" );
+            cudaMemcpyDeviceToHost, "Extrapolate_Charges_QEq_Part2::spad" );
 }
 
 
@@ -447,12 +451,15 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
     int blocks;
     real *spad;
 
+    blocks = (system->N - system->n) / DEF_BLOCK_SIZE
+        + (( (system->N - system->n) % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->N,
+            "Update_Ghost_Atom_Charges::workspace->scratch" );
     spad = (real *) workspace->scratch;
     copy_host_device( q, spad, system->N * sizeof(real),
             cudaMemcpyHostToDevice, "Update_Ghost_Atom_Charges::q" );
-
-    blocks = (system->N - system->n) / DEF_BLOCK_SIZE
-        + (( (system->N - system->n) % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
     k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, spad, system->n, system->N );
@@ -477,8 +484,15 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 
     blocks = system->n / DEF_BLOCK_SIZE
         + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+
+    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * system->n,
+            "Calculate_Charges_QEq::workspace->host_scratch" );
     q = (real *) workspace->host_scratch;
 #if defined(DUAL_SOLVER)
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(rvec2) * 2 * system->n,
+            "Calculate_Charges_QEq::workspace->scratch" );
     spad_rvec2 = (rvec2 *) workspace->scratch;
     cuda_memset( spad_rvec2, 0, sizeof(rvec2) * 2 * system->n,
             "Calculate_Charges_QEq::spad_rvec2," );
@@ -497,6 +511,9 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     copy_host_device( &my_sum, &spad_rvec2[system->n],
             sizeof(rvec2), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
 #else
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->n,
+            "Calculate_Charges_QEq::workspace->scratch" );
     spad = (real *) workspace->scratch;
     cuda_memset( spad, 0, sizeof(real) * system->n,
             "Calculate_Charges_QEq::spad" );

@@ -752,8 +752,11 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
     int blocks;
     rvec *spad_rvec;
 
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(rvec) * 2 * system->N,
+            "Cuda_Total_Forces::workspace->scratch" );
     spad_rvec = (rvec *) workspace->scratch;
-    cuda_memset( spad_rvec, 0, system->N * 2 * sizeof(rvec),
+    cuda_memset( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
             "total_forces:ext_press" );
 
     blocks = system->N / DEF_BLOCK_SIZE
@@ -771,12 +774,12 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
     {
         /* reduction for ext_press */
         k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec) * DEF_BLOCK_SIZE >>> 
-            ( spad_rvec, spad_rvec + system->N, system->N );
+            ( spad_rvec, &spad_rvec[system->N], system->N );
         cudaDeviceSynchronize( ); 
         cudaCheckError( ); 
 
         k_reduction_rvec <<< 1, control->blocks_pow_2_n, sizeof(rvec) * control->blocks_pow_2_n>>>
-            ( spad_rvec + system->N, &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
+            ( &spad_rvec[system->N], &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
         cudaDeviceSynchronize( ); 
         cudaCheckError( ); 
     }

@@ -34,7 +34,8 @@ CUDA_DEVICE static inline int Cuda_strncmp( const char * a,
 }
 
 
-CUDA_DEVICE static inline real myatomicAdd( real* address, real val )
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
+CUDA_DEVICE static inline double atomicAdd( double* address, double val )
 {
     unsigned long long int *address_as_ull, old, assumed;
 
@@ -51,21 +52,22 @@ CUDA_DEVICE static inline real myatomicAdd( real* address, real val )
 
     return __longlong_as_double( old );
 }
+#endif
 
 
 CUDA_DEVICE static inline void atomic_rvecAdd( rvec ret, rvec v )
 {
-    myatomicAdd( &ret[0], v[0] );
-    myatomicAdd( &ret[1], v[1] );
-    myatomicAdd( &ret[2], v[2] );
+    atomicAdd( &ret[0], v[0] );
+    atomicAdd( &ret[1], v[1] );
+    atomicAdd( &ret[2], v[2] );
 }
 
 
 CUDA_DEVICE static inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
-    myatomicAdd( &ret[0], c * v[0] );
-    myatomicAdd( &ret[1], c * v[1] );
-    myatomicAdd( &ret[2], c * v[2] );
+    atomicAdd( &ret[0], c * v[0] );
+    atomicAdd( &ret[1], c * v[1] );
+    atomicAdd( &ret[2], c * v[2] );
 }
 
 #endif

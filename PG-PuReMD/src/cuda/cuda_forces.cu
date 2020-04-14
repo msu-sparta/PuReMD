@@ -1025,13 +1025,16 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
     int blocks, *temp;
     reax_list *hbond_list;
 
-    hbond_list = lists[HBONDS];
-    temp = (int *) workspace->scratch;
-
-    /* init Hindices */
     blocks = system->N / DEF_BLOCK_SIZE + 
         ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
+    hbond_list = lists[HBONDS];
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(int) * system->total_cap,
+            "Cuda_Init_HBond_Indices::workspace->scratch" );
+    temp = (int *) workspace->scratch;
+
+    /* init Hindices */
     k_setup_hindex <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->N );
     cudaDeviceSynchronize( );
@@ -1328,6 +1331,13 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     real t_start, t_elapsed;
 #endif
 
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            MAX( sizeof(real) * 2 * system->N,
+                MAX( sizeof(real) * 3 * system->n,
+                    MAX( (sizeof(real) * 6 + sizeof(rvec) * 2) * system->N,
+                        MAX( (sizeof(real) * 4 + sizeof(rvec) * 2) * system->n,
+                            (sizeof(real) + sizeof(rvec)) * 2 * system->n )))),
+            "Cuda_Compute_Bonded_Forces::workspace->scratch" );
     spad = (real *) workspace->scratch;
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
@@ -1466,6 +1476,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     t_start = Get_Time( );
 #endif
 
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(int) * system->total_bonds,
+            "Cuda_Compute_Bonded_Forces::workspace->scratch" );
     thbody = (int *) workspace->scratch;
     ret = Cuda_Estimate_Storage_Three_Body( system, control, workspace,
             data->step, lists, thbody );
@@ -1482,7 +1495,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     {
         Cuda_Init_Three_Body_Indices( thbody, system->total_thbodies_indices, lists );
 
-        cuda_memset( spad, 0, 6 * sizeof(real) * system->N + sizeof(rvec) * system->N * 2,
+        cuda_memset( spad, 0, (sizeof(real) * 6 + sizeof(rvec) * 2) * system->N,
                 "Cuda_Compute_Bonded_Forces::spad" );
 
         Cuda_Valence_Angles_Part1 <<< control->blocks_n, control->block_size >>>
@@ -1552,7 +1565,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         t_start = Get_Time( );
 #endif
 
-        cuda_memset( spad, 0, 4 * sizeof(real) * system->n + sizeof(rvec) * system->n * 2,
+        cuda_memset( spad, 0, (sizeof(real) * 4 + sizeof(rvec) * 2) * system->n,
                 "Cuda_Compute_Bonded_Forces::spad" );
 
         Cuda_Torsion_Angles_Part1 <<< control->blocks, control->block_size >>>
@@ -1709,6 +1722,9 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
 {
     rvec *f;
 
+    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(rvec) * system->N,
+            "Cuda_Compute_Total_Force::workspace->host_scratch" );
     f = (rvec *) workspace->host_scratch;
     memset( f, 0, sizeof(rvec) * system->N );
 

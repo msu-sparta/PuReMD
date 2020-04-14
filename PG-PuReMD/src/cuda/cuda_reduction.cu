@@ -198,7 +198,7 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
         rvec_Copy( data, input[i] );
 
         /* warp-level sum using registers within a warp */
-        for ( offset = 16; offset > 0; offset /= 2 )
+        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
             data[0] += __shfl_down_sync( mask, data[0], offset );
             data[1] += __shfl_down_sync( mask, data[1], offset );
@@ -206,7 +206,7 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
         }
 
         /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % 32 == 0 )
+        if ( threadIdx.x % warpSize == 0 )
         {
             rvec_Copy( data_s[threadIdx.x >> 5], data );
         }
@@ -249,14 +249,14 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
         data[1] = input[i][1];
 
         /* warp-level sum using registers within a warp */
-        for ( offset = 16; offset > 0; offset /= 2 )
+        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
             data[0] += __shfl_down_sync( mask, data[0], offset );
             data[1] += __shfl_down_sync( mask, data[1], offset );
         }
 
         /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % 32 == 0 )
+        if ( threadIdx.x % warpSize == 0 )
         {
             data_rvec2_s[threadIdx.x >> 5][0] = data[0];
             data_rvec2_s[threadIdx.x >> 5][1] = data[1];

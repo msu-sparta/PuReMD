@@ -403,6 +403,42 @@ void * scalloc( size_t n, size_t size, const char *name )
 }
 
 
+/* Safe wrapper around check first and reallocate-if-needed routine:
+ * checks if the amount of space currently allocated to ptr is sufficient,
+ * and, if not, frees any space allocated to ptr before allocating the
+ * requested amount of space
+ *
+ * ptr: pointer to memory allocation
+ * cur_size: num. of bytes to currently allocated
+ * new_size: num. of bytes to be newly allocated, if needed
+ * msg: message with details about pointer, used for warnings/errors
+ * */
+void check_smalloc( void **ptr, size_t *cur_size, size_t new_size, const char *msg )
+{
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting %zu bytes for %s (%zu currently allocated)\n",
+            new_size, msg, *cur_size );
+    fflush( stderr );
+#endif
+
+    assert( new_size > 0 );
+
+    if ( new_size > *cur_size )
+    {
+        if ( *cur_size > 0 && *ptr == NULL )
+        {
+            sfree( *ptr, msg );
+        }
+
+        //TODO: look into using aligned alloc's
+        /* intentionally over-allocate to reduce the number of allocation operations,
+         * and record the new allocation size */
+        *cur_size = (size_t) CEIL( new_size * SAFE_ZONE );
+        *ptr = smalloc( *cur_size, msg );
+    }
+}
+
+
 /* Safe wrapper around libc free
  *
  * ptr: pointer to dynamically allocated memory which will be deallocated

@@ -43,16 +43,6 @@ extern "C" {
 #endif
 
 
-static void Cuda_Init_Scratch_Space( storage *workspace )
-{
-    cuda_malloc( (void **)&workspace->scratch, DEVICE_SCRATCH_SIZE, TRUE,
-            "Cuda_Init_Scratch_Space::workspace->scratch" );
-
-    workspace->host_scratch = smalloc( HOST_SCRATCH_SIZE,
-            "Cuda_Init_Scratch_Space::workspace->host_scratch" );
-}
-
-
 static void Cuda_Init_System( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         mpi_datatypes *mpi_data )
@@ -268,8 +258,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    Cuda_Init_Scratch_Space( workspace );
-
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
     Cuda_Init_System( system, control, data, workspace, mpi_data );

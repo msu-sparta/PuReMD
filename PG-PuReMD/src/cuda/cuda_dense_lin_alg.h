@@ -42,19 +42,19 @@ void Vector_Mult( real * const, real const * const,
 void Vector_Mult_rvec2( rvec2 * const, rvec2 const * const,
         rvec2 const * const, unsigned int );
 
-real Norm( storage const * const,
+real Norm( storage * const,
         real const * const, unsigned int, MPI_Comm );
 
-real Dot( storage const * const,
+real Dot( storage * const,
         real const * const, real const * const,
         unsigned int, MPI_Comm );
 
-real Dot_local( storage const * const,
+real Dot_local( storage * const,
         real const * const, real const * const,
         unsigned int );
 
 void Dot_local_rvec2( control_params const * const,
-        storage const * const,
+        storage * const,
         rvec2 const * const, rvec2 const * const,
         unsigned int, real *, real * );
 
