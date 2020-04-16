@@ -305,13 +305,19 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 
     redux[0] = t_sort;
     redux[1] = t_pc;
-    MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
-            MASTER_NODE, mpi_data->world );
 
     if ( system->my_rank == MASTER_NODE )
     {
+        MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, mpi_data->world );
+
         data->timing.cm_sort += redux[0] / control->nprocs;
         data->timing.cm_solver_pre_comp += redux[1] / control->nprocs;
+    }
+    else
+    {
+        MPI_Reduce( redux, redux, 2, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, mpi_data->world );
     }
 }
 

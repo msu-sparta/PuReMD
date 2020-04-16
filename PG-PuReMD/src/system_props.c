@@ -101,7 +101,7 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 void Compute_Total_Energy( reax_system *system, simulation_data *data,
         MPI_Comm comm )
 {
-    real my_en[15], sys_en[15];
+    real my_en[14], sys_en[14];
 
     //TODO: remove this is an UGLY fix
     my_en[13] = data->my_en.e_kin;

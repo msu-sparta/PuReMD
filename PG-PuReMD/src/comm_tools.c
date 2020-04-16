@@ -684,11 +684,11 @@ static void Unpack_Exchange_Message( reax_system * const system, int end, void *
     int i;
     real dx;
     const boundary_atom * const src = dummy;
-    reax_atom * const dest = system->my_atoms + end;
+    reax_atom * const dest = &system->my_atoms[end];
 
     for ( i = 0; i < cnt; ++i )
     {
-        Unpack_Boundary_Atom( dest + i, src + i );
+        Unpack_Boundary_Atom( &dest[i], &src[i] );
     }
 
 #if defined(DEBUG_FOCUS)

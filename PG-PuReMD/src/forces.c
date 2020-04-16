@@ -1516,7 +1516,7 @@ static int Init_Forces( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     double t_start, t_dist, t_cm, t_bond;
-    double timings[3], t_total[3];
+    double timings[3];
     
     t_start = MPI_Wtime( );
 
@@ -1561,13 +1561,17 @@ static int Init_Forces( reax_system *system, control_params *control,
     timings[1] = t_cm - t_dist;
     timings[2] = t_bond - t_cm;
 
-    MPI_Reduce( timings, t_total, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
-
     if ( system->my_rank == MASTER_NODE ) 
     {
-        data->timing.init_dist += t_total[0] / control->nprocs;
-        data->timing.init_cm += t_total[1] / control->nprocs;
-        data->timing.init_bond += t_total[2] / control->nprocs;
+        MPI_Reduce( MPI_IN_PLACE, timings, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+
+        data->timing.init_dist += timings[0] / control->nprocs;
+        data->timing.init_cm += timings[1] / control->nprocs;
+        data->timing.init_bond += timings[2] / control->nprocs;
+    }
+    else
+    {
+        MPI_Reduce( timings, timings, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     return (workspace->realloc.bonds == FALSE 

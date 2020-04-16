@@ -281,7 +281,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
     /* initiate recvs */
     for ( d = 0; d < 6; ++d )
     {
-        if ( system->my_nt_nbrs[d].atoms_cnt )
+        if ( system->my_nt_nbrs[d].atoms_cnt > 0 )
         {
             count++;
             MPI_Irecv( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
@@ -290,10 +290,10 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         }
     }
 
-    for ( d = 0; d < 6; ++d)
+    for ( d = 0; d < 6; ++d )
     {
         /* send both messages in dimension d */
-        if ( out_bufs[d].cnt )
+        if ( out_bufs[d].cnt > 0 )
         {
             pack( buf, &out_bufs[d] );
             MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
@@ -323,39 +323,39 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
     {
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-        if ( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt > 0 )
         {
             MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
-        if ( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt > 0 )
         {
             MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
         }
 
         /* send both messages in dimension d */
-        if ( out_bufs[2 * d].cnt )
+        if ( out_bufs[2 * d].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d] );
             MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d, comm );
         }
 
-        if ( out_bufs[2 * d + 1].cnt )
+        if ( out_bufs[2 * d + 1].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d + 1] );
             MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d + 1, comm );
         }
 
-        if( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt > 0 )
         {
             MPI_Wait( &req1, &stat1 );
         }
-        if( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt > 0 )
         {
             MPI_Wait( &req2, &stat2 );
         }
@@ -383,39 +383,39 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
     {
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-        if ( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt > 0 )
         {
             MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
-        if ( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt > 0 )
         {
             MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
         }
 
         /* send both messages in dimension d */
-        if ( out_bufs[2 * d].cnt )
+        if ( out_bufs[2 * d].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d] );
             MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d, comm );
         }
 
-        if ( out_bufs[2 * d + 1].cnt )
+        if ( out_bufs[2 * d + 1].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d + 1] );
             MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d + 1, comm );
         }
 
-        if ( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt > 0 )
         {
             MPI_Wait( &req1, &stat1 );
         }
-        if ( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt > 0 )
         {
             MPI_Wait( &req2, &stat2 );
         }
@@ -444,7 +444,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
     {
         in[d] = mpi_data->in_nt_buffer[d];
 
-        if ( out_bufs[d].cnt )
+        if ( out_bufs[d].cnt > 0 )
         {
             count++;
             MPI_Irecv( in[d], out_bufs[d].cnt, type,
@@ -455,7 +455,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
     for ( d = 0; d < 6; ++d )
     {
         /* send both messages in direction d */
-        if ( system->my_nt_nbrs[d].atoms_cnt )
+        if ( system->my_nt_nbrs[d].atoms_cnt > 0 )
         {
             MPI_Send( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
                     system->my_nt_nbrs[d].atoms_cnt, type,
@@ -487,7 +487,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
 
-        if ( out_bufs[2 * d].cnt )
+        if ( out_bufs[2 * d].cnt > 0 )
         {
             MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d + 1, comm, &req1 );
@@ -495,7 +495,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
 
         nbr2 = &system->my_nbrs[2 * d + 1];
 
-        if ( out_bufs[2 * d + 1].cnt )
+        if ( out_bufs[2 * d + 1].cnt > 0 )
         {
 
             MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
@@ -503,13 +503,13 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         }
         
         /* send both messages in dimension d */
-        if ( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt > 0 )
         {
             MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
         }
         
-        if ( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt > 0 )
         {
             MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
@@ -524,13 +524,13 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
                 out_bufs[2 * d + 1].cnt );
 #endif
 
-        if ( out_bufs[2 * d].cnt )
+        if ( out_bufs[2 * d].cnt > 0 )
         {
             MPI_Wait( &req1, &stat1 );
             unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
         }
 
-        if ( out_bufs[2 * d + 1].cnt )
+        if ( out_bufs[2 * d + 1].cnt > 0 )
         {
             MPI_Wait( &req2, &stat2 );
             unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
