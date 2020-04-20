@@ -947,7 +947,12 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".prs" );
         out_control->prs = sfopen( temp, "w" );
-        fprintf( out_control->prs, "%-6s%13s%13s%13s%13s%13s%13s%13s%13s\n",
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
+        fprintf( out_control->prs, "%-8s %13s %13s %13s %13s %13s %13s\n",
+                "step", "KExx", "KEyy", "KEzz",
+                "Virialxx", "Virialyy", "Virialzz" );
+#endif
+        fprintf( out_control->prs, "%-8s %13s %13s %13s %13s %13s %13s %13s %13s\n",
                 "step", "Lx", "Ly", "Lz",
                 "Pxx", "Pyy", "Pzz", "Pavg", "Volume" );
 

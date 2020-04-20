@@ -55,7 +55,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
         real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
         rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
-        rvec dvec_jk, force;
+        rvec dvec_jk, force_i, force_j, force_k, x_i, x_j, x_k;
         rtensor press;
 //        rtensor temp_rtensor, total_rtensor;
         hbond_parameters *hbp;
@@ -98,6 +98,12 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #else
                 f_j = &system->atoms[j].f;
 #endif
+                if ( control->ensemble == sNPT || control->ensemble == iNPT
+                        || control->ensemble == aNPT || control->compute_pressure == TRUE )
+                {
+                    rvec_iMultiply( x_j, system->atoms[j].rel_map, system->box.box_norms );
+                    rvec_Add( x_j, system->atoms[j].x );
+                }
 
                 top = 0;
                 for ( pi = start_j; pi < end_j; ++pi )
@@ -206,38 +212,41 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                  * pressure vector/tensor */
 
                                 /* dcos terms */
-                                rvec_Scale( force, CEhb2, dcos_theta_di );
-                                rvec_Add( *f_i, force );
-
-                                /* pressure */
-                                rvec_Scale( force, -1.0, force );
-                                rvec_OuterProduct( press, force, pbond_ij->dvec );
-#if !defined(_OPENMP)
-                                rtensor_Add( data->press, press );
-#else
-                                rtensor_Add( data->press_local[tid], press );
-#endif
-//                                fprintf( stderr, "[HB1, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, i, force[0], force[1], force[2], pbond_ij->dvec[0], pbond_ij->dvec[1], pbond_ij->dvec[2] ); fflush( stderr ); 
-
-                                rvec_ScaledAdd( *f_j, CEhb2, dcos_theta_dj );
-
-                                rvec_Scale( force, CEhb2, dcos_theta_dk );
-                                /* delay adding force until dr term below */
+                                rvec_Scale( force_i, CEhb2, dcos_theta_di );
+                                rvec_Scale( force_j, CEhb2, dcos_theta_dj );
+                                rvec_Scale( force_k, CEhb2, dcos_theta_dk );
 
                                 /* dr terms */
-                                rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
+                                rvec_ScaledAdd( force_j, -CEhb3 / r_jk, dvec_jk );
+                                rvec_ScaledAdd( force_k, CEhb3 / r_jk, dvec_jk );
 
-                                rvec_ScaledAdd( force, CEhb3 / r_jk, dvec_jk );
-                                rvec_Add( *f_k, force );
+                                rvec_Add( *f_i, force_i );
+                                rvec_Add( *f_j, force_j );
+                                rvec_Add( *f_k, force_k );
 
                                 /* pressure */
-                                rvec_OuterProduct( press, force, nbr_jk->dvec );
+                                rvec_Sum( x_i, x_j, pbond_ij->dvec );
+                                rvec_OuterProduct( press, force_i, x_i );
 #if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 #else
                                 rtensor_Add( data->press_local[tid], press );
 #endif
-//                                fprintf( stderr, "[HB2, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, k, force[0], force[1], force[2], nbr_jk->dvec[0], nbr_jk->dvec[1], nbr_jk->dvec[2] ); fflush( stderr ); 
+
+                                rvec_OuterProduct( press, force_j, x_j );
+#if !defined(_OPENMP)
+                                rtensor_Add( data->press, press );
+#else
+                                rtensor_Add( data->press_local[tid], press );
+#endif
+
+                                rvec_Sum( x_k, x_j, nbr_jk->dvec );
+                                rvec_OuterProduct( press, force_k, x_k );
+#if !defined(_OPENMP)
+                                rtensor_Add( data->press, press );
+#else
+                                rtensor_Add( data->press_local[tid], press );
+#endif
 
                                 /* This part is intended for a fully-flexible box */
 //                                rvec_OuterProduct( temp_rtensor,

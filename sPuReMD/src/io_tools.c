@@ -673,12 +673,15 @@ void Output_Results( reax_system *system, control_params *control,
         if ( control->ensemble == sNPT || control->ensemble == iNPT ||
                 control->ensemble == aNPT || control->compute_pressure == TRUE )
         {
-            fprintf( out_control->prs, "%-8d%13.6f%13.6f%13.6f%13.6f\n",
-                     data->step, data->kin_press,
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
+            fprintf( out_control->prs, "%-8d %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f\n",
+                     data->step,
+                     data->kin_press[0][0], data->kin_press[1][1],+ data->kin_press[2][2],
                      data->press[0][0], data->press[1][1], data->press[2][2] );
+#endif
 
             fprintf( out_control->prs,
-                     "%-8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
+                     "%-8d %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f\n",
                      data->step,
                      system->box.box_norms[0], system->box.box_norms[1],
                      system->box.box_norms[2],

@@ -591,9 +591,6 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     //}
 
 #if defined(DEBUG)
-#define SIZE (1000)
-    char fname[SIZE];
-
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
@@ -602,13 +599,15 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
+#define SIZE (1000)
+        char fname[SIZE];
         snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
         snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
+#undef SIZE
 #endif
     }
-#undef SIZE
 #endif
 }
 
@@ -835,9 +834,6 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //    }
 //
 //#if defined(DEBUG)
-//#define SIZE (1000)
-//    char fname[SIZE];
-//
 //    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
 //            || control->cm_solver_pre_comp_type == ILUT_PC
 //            || control->cm_solver_pre_comp_type == ILUTP_PC
@@ -846,6 +842,8 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L) );
 //
 //#if defined(DEBUG_FOCUS)
+//#define SIZE (1000)
+//        char fname[SIZE];
 //        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->L, fname, NULL );
 //        snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
@@ -855,9 +853,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 //        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
 //        Print_Sparse_Matrix2( workspace->L, fname, NULL );
 //        Print_Sparse_Matrix( U );
+//#undef SIZE
 //#endif
 //    }
-//#undef SIZE
 //#endif
 //}
 
@@ -980,9 +978,6 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     }
 
 #if defined(DEBUG)
-#define SIZE (1000)
-    char fname[SIZE];
-
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
@@ -991,13 +986,15 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
+#define SIZE (1000)
+        char fname[SIZE];
         snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
         snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
+#undef SIZE
 #endif
     }
-#undef SIZE
 #endif
 }
 
@@ -1122,9 +1119,6 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     }
 
 #if defined(DEBUG)
-#define SIZE (1000)
-    char fname[SIZE];
-
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
@@ -1133,13 +1127,15 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
 
 #if defined(DEBUG_FOCUS)
+#define SIZE (1000)
+        char fname[SIZE];
         snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->L, fname, NULL );
         snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
         Print_Sparse_Matrix2( workspace->U, fname, NULL );
+#undef SIZE
 #endif
     }
-#undef SIZE
 #endif
 }
 

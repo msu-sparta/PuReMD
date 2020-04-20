@@ -150,7 +150,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         real Ctheta_0, theta_0, theta_00, theta, cos_theta, sin_theta;
         real BOA_ij, BOA_jk;
         real vlpadj;
-        rvec force;
+        rvec *f_i, *f_j, *f_k, force, x_i, x_j, x_k;
         rtensor press;
         //rtensor temp_rtensor, total_rtensor;
         three_body_header *thbh;
@@ -158,7 +158,6 @@ void Valence_Angles( reax_system *system, control_params *control,
         three_body_interaction_data *p_ijk, *p_kji;
         bond_data *pbond_ij, *pbond_jk, *pbond_jt;
         bond_order_data *bo_ij, *bo_jk, *bo_jt;
-        rvec *f_i, *f_j, *f_k;
 #if defined(_OPENMP)
 //        int tid = omp_get_thread_num( );
 #endif
@@ -173,6 +172,12 @@ void Valence_Angles( reax_system *system, control_params *control,
 //#else
             f_j = &system->atoms[j].f;
 //#endif
+            if ( control->ensemble == sNPT || control->ensemble == iNPT
+                    || control->ensemble == aNPT || control->compute_pressure == TRUE )
+            {
+                rvec_iMultiply( x_j, system->atoms[j].rel_map, system->box.box_norms );
+                rvec_Add( x_j, system->atoms[j].x );
+            }
 
             p_val3 = system->reax_param.sbp[ type_j ].p_val3;
             p_val5 = system->reax_param.sbp[ type_j ].p_val5;
@@ -251,6 +256,11 @@ void Valence_Angles( reax_system *system, control_params *control,
 //#else
                     f_i = &system->atoms[i].f;
 //#endif
+                    if ( control->ensemble == sNPT || control->ensemble == iNPT
+                            || control->ensemble == aNPT || control->compute_pressure == TRUE )
+                    {
+                        rvec_Sum( x_i, x_j, pbond_ij->dvec );
+                    }
 
                     /* first copy 3-body intrs from previously computed ones where i > k.
                      * IMPORTANT: if it is less costly to compute theta and its
@@ -524,28 +534,33 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 rvec_Scale( force, CEval8, p_ijk->dcos_di );
                                 rvec_Add( *f_i, force );
 
-                                rvec_Scale( force, -1.0, force );
-                                rvec_OuterProduct( press, force, pbond_ij->dvec );
+                                rvec_OuterProduct( press, force, x_i );
 //#if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 //#else
 //                                rtensor_Add( data->press_local[tid], press );
 //#endif
-//                                fprintf( stderr, "[VA1, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, i, force[0], force[1], force[2], pbond_ij->dvec[0], pbond_ij->dvec[1], pbond_ij->dvec[2] ); fflush( stderr ); 
 
-                                rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
+                                rvec_Scale( force, CEval8, p_ijk->dcos_dj );
+                                rvec_Add( *f_j, force );
+
+                                rvec_OuterProduct( press, force, x_j );
+//#if !defined(_OPENMP)
+                                rtensor_Add( data->press, press );
+//#else
+//                                rtensor_Add( data->press_local[tid], press );
+//#endif
 
                                 rvec_Scale( force, CEval8, p_ijk->dcos_dk );
                                 rvec_Add( *f_k, force );
 
-                                rvec_Scale( force, -1.0, force );
-                                rvec_OuterProduct( press, force, pbond_jk->dvec );
+                                rvec_Sum( x_k, x_j, pbond_jk->dvec );
+                                rvec_OuterProduct( press, force, x_k );
 //#if !defined(_OPENMP)
                                 rtensor_Add( data->press, press );
 //#else
 //                                rtensor_Add( data->press_local[tid], press );
 //#endif
-//                                fprintf( stderr, "[VA2, i = %5d, j = %5d], %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", j, k, force[0], force[1], force[2], pbond_jk->dvec[0], pbond_jk->dvec[1], pbond_jk->dvec[2] ); fflush( stderr ); 
 
                                 /* This part is for a fully-flexible box */
 //                                rvec_OuterProduct( temp_rtensor,

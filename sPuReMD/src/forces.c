@@ -228,7 +228,7 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
             {
                 for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
                 {
-                    if ( i < bonds->bond_list[pj].nbr )
+                    if ( i <= bonds->bond_list[pj].nbr )
                     {
                         Add_dBond_to_Forces( i, pj, system, data, workspace, lists );
                     }
@@ -245,7 +245,7 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
             {
                 for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
                 {
-                    if ( i < bonds->bond_list[pj].nbr )
+                    if ( i <= bonds->bond_list[pj].nbr )
                     {
                         Add_dBond_to_Forces_NPT( i, pj, system, data, workspace, lists );
                     }
@@ -480,7 +480,7 @@ static inline real Init_Charge_Matrix_Entry( reax_system *system,
 
 
 static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
-        control_params *control, reax_list *far_nbrs,
+        control_params *control, reax_list *far_nbr_list,
         sparse_matrix * H, sparse_matrix * H_sp,
         int * Htop, int * H_sp_top )
 {
@@ -540,21 +540,21 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 *H_sp_top = *H_sp_top + 1;
 
                 /* kinetic energy terms */
-                for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
+                for ( pj = Start_Index(i, far_nbr_list); pj < End_Index(i, far_nbr_list); ++pj )
                 {
                     /* exclude self-periodic images of atoms for
                      * kinetic energy term because the effective
                      * potential is the same on an atom and its periodic image */
-                    if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
+                    if ( far_nbr_list->far_nbr_list[pj].d <= control->nonb_cut )
                     {
-                        j = far_nbrs->far_nbr_list[pj].nbr;
+                        j = far_nbr_list->far_nbr_list[pj].nbr;
 
                         xcut = 0.5 * ( system->reax_param.sbp[ system->atoms[i].type ].b_s_acks2
                                 + system->reax_param.sbp[ system->atoms[j].type ].b_s_acks2 );
 
-                        if ( far_nbrs->far_nbr_list[pj].d < xcut )
+                        if ( far_nbr_list->far_nbr_list[pj].d < xcut )
                         {
-                            d = far_nbrs->far_nbr_list[pj].d / xcut;
+                            d = far_nbr_list->far_nbr_list[pj].d / xcut;
                             bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
                                 * POW( 1.0 - d, 6.0 );
 
@@ -695,6 +695,9 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 }
 
 
+/* Generate bond list (full format), hydrogen bond list (full format),
+ * and charge matrix (half symmetric format)
+ * from the far neighbors list (with distance updates, if necessary)  */
 static void Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -855,10 +858,10 @@ static void Init_Forces( reax_system *system, control_params *control,
                 }
 
                 /* hydrogen bond lists */
-                if ( control->hbond_cut > 0.0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
+                if ( control->hbond_cut > 0.0
+                        && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
                         && nbr_pj->d <= control->hbond_cut )
                 {
-                    // fprintf( stderr, "%d %d\n", atom1, atom2 );
                     jhb = sbp_j->p_hbond;
 
                     if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
@@ -1206,10 +1209,10 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                 }
 
                 /* hydrogen bond lists */
-                if ( control->hbond_cut > 0 && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
+                if ( control->hbond_cut > 0
+                        &&(ihb == H_ATOM || ihb == H_BONDING_ATOM)
                         && nbr_pj->d <= control->hbond_cut )
                 {
-                    // fprintf( stderr, "%d %d\n", atom1, atom2 );
                     jhb = sbp_j->p_hbond;
 
                     if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )

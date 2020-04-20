@@ -199,6 +199,7 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
     }
     data->E_Kin *= 0.5;
 
+    /* temperature scalar */
     data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B);
 
     /* avoid T being an absolute zero! */
@@ -255,27 +256,50 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
 {
     int i;
     simulation_box *box;
+    rtensor temp;
 
     box = &system->box;
 
-    /* kinetic contribution, in GPa */
-    data->kin_press = (system->N * K_B * data->therm.T) / box->volume * 0.0166053907;
+    /* kinetic contribution */
+    rtensor_MakeZero( data->kin_press );
+    for ( i = 0; i < system->N; i++ )
+    {
+        rvec_OuterProduct( temp, system->atoms[i].v, system->atoms[i].v );
+        rtensor_ScaledAdd( data->kin_press,
+                system->reax_param.sbp[system->atoms[i].type].mass, temp );
+    }
+    /* unit conversion from mass * velocity^2 to energy */
+    rtensor_Scale( data->kin_press, 48.88821291 * 48.88821291 / 1.0e7, data->kin_press );
 
-    /* virial contribution, in GPa */
+    /* virial contribution */
 #if defined(_OPENMP)
     for ( i = 0; i < control->num_threads; ++i )
     {
         rtensor_Add( data->press, data->press_local[i] );
     }
 #endif
-    rtensor_Scale( data->press, 0.0166053907 / box->volume, data->press );
+    rtensor_Scale( data->press, -1.0, data->press );
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] ke = (%12.6f, %12.6f, %12.6f), virial = (%12.6f, %12.6f, %12.6f)\n",
+            data->kin_press[0][0], data->kin_press[1][1], data->kin_press[2][2],
+            data->press[0][0], data->press[1][1], data->press[2][2] );
+    fflush( stderr );
+#endif
+
+    /* to GPa */
+//    rtensor_Scale( data->kin_press, 0.0166053907 / box->volume, data->kin_press );
+//    rtensor_Scale( data->press, 0.0166053907 / box->volume, data->press );
+    /* to ATM */
+    rtensor_Scale( data->kin_press, 68568.415 / box->volume, data->kin_press );
+    rtensor_Scale( data->press, 68568.415 / box->volume, data->press );
 
     /* total pressure in each direction, in GPa */
-    data->tot_press[0] = data->kin_press + data->press[0][0];
+    data->tot_press[0] = data->kin_press[0][0] + data->press[0][0];
 
-    data->tot_press[1] = data->kin_press + data->press[1][1];
+    data->tot_press[1] = data->kin_press[1][1] + data->press[1][1];
 
-    data->tot_press[2] = data->kin_press + data->press[2][2];
+    data->tot_press[2] = data->kin_press[2][2] + data->press[2][2];
 
     /* average pressure for the whole box */
     data->iso_bar.P = (data->tot_press[0] + data->tot_press[1]

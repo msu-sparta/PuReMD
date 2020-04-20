@@ -820,7 +820,7 @@ struct grid
 
 struct reax_system
 {
-    /* number of atoms */
+    /* number of local (non-periodic image) atoms */
     int N;
     /* dimension of the N x N sparse charge method matrix H */
     int N_cm;
@@ -1031,10 +1031,17 @@ struct control_params
 
 struct thermostat
 {
+    /* temperature scaler */
     real T;
+    /* temperature tensor */
+    rtensor Temp;
+    /**/
     real xi;
+    /**/
     real v_xi;
+    /**/
     real v_xi_old;
+    /**/
     real G_xi;
 };
 
@@ -1200,7 +1207,7 @@ struct simulation_data
     /* virial contribution to pressure */
     rtensor press;
     /* kinetic energy contribution to pressure */
-    real kin_press;
+    rtensor kin_press;
     /* total pressure */
     rvec tot_press;
 
