@@ -30,14 +30,16 @@
 #endif
 
 
-void Print_List( reax_list * const list )
+void Print_List_Indices( reax_list * const l )
 {
     int i;
 
-    for( i = 0; i < list->n; i++ )
+    assert( l != NULL );
+
+    for ( i = 0; i < l->n; i++ )
     {
-        printf( "%d %d\n", list->index[i], list->end_index[i] );
-        if ( i > 1 && list->end_index[i - 1] >= list->index[i] )
+        printf( "%d %d\n", l->index[i], l->end_index[i] );
+        if ( i > 1 && l->end_index[i - 1] >= l->index[i] )
         {
             printf( "===> malformed list %d", i );
         }
@@ -55,6 +57,10 @@ void Print_List( reax_list * const list )
  * */
 void Make_List( int n, int max_intrs, int type, int format, reax_list * const l )
 {
+    assert( n > 0 );
+    assert( max_intrs > 0 );
+    assert( l != NULL );
+
     if ( l->allocated == TRUE )
     {
         fprintf( stderr, "[WARNING] attempted to allocate list which was already allocated."
@@ -101,6 +107,7 @@ void Make_List( int n, int max_intrs, int type, int format, reax_list * const l 
                 "Make_List::far_nbr_list.dvec" );
         break;
 
+#if defined(TEST_FORCES)
     case TYP_DBO:
         l->dbo_list = smalloc( sizeof(dbond_data) * l->max_intrs, "Make_List::dbonds" );
         break;
@@ -108,6 +115,7 @@ void Make_List( int n, int max_intrs, int type, int format, reax_list * const l 
     case TYP_DDELTA:
         l->dDelta_list = smalloc( sizeof(dDelta_data) * l->max_intrs, "Make_List::dDeltas" );
         break;
+#endif
 
     default:
         fprintf( stderr, "[ERROR] unknown list type (%d)\n", l->type );
@@ -119,6 +127,8 @@ void Make_List( int n, int max_intrs, int type, int format, reax_list * const l 
 
 void Delete_List( reax_list * const l )
 {
+    assert( l != NULL );
+
     if ( l->allocated == FALSE )
     {
         fprintf( stderr, "[WARNING] attempted to free list which was not allocated."
@@ -158,6 +168,7 @@ void Delete_List( reax_list * const l )
         sfree( l->far_nbr_list.dvec, "Delete_List::far_nbr_list.dvec" );
         break;
 
+#if defined(TEST_FORCES)
     case TYP_DBO:
         sfree( l->dbo_list, "Delete_List::dbos" );
         break;
@@ -165,6 +176,7 @@ void Delete_List( reax_list * const l )
     case TYP_DDELTA:
         sfree( l->dDelta_list, "Delete_List::dDeltas" );
         break;
+#endif
 
     default:
         fprintf( stderr, "[ERROR] unknown list type (%d)\n", l->type );
@@ -176,20 +188,24 @@ void Delete_List( reax_list * const l )
 
 /* Initialize list indices
  *
- * list: pointer to list
+ * l: pointer to list
  * max_intrs: max. num. of interactions for each list element
  * */
-void Init_List_Indices( reax_list * const list, int * const max_intrs )
+void Init_List_Indices( reax_list * const l, int * const max_intrs )
 {
     int i;
 
+    assert( l != NULL );
+    assert( l->n > 0 );
+    assert( max_intrs > 0 );
+
     /* exclusive prefix sum of max_intrs replaces start indices,
      * set end indices to the same as start indices for safety */
-    Set_Start_Index( 0, 0, list );
-    Set_End_Index( 0, 0, list );
-    for ( i = 1; i < list->n; ++i )
+    Set_Start_Index( 0, 0, l );
+    Set_End_Index( 0, 0, l );
+    for ( i = 1; i < l->n; ++i )
     {
-        Set_Start_Index( i, Start_Index( i - 1, list ) + max_intrs[i - 1], list );
-        Set_End_Index( i, Start_Index( i, list ), list );
+        Set_Start_Index( i, Start_Index( i - 1, l ) + max_intrs[i - 1], l );
+        Set_End_Index( i, Start_Index( i, l ), l );
     }
 }

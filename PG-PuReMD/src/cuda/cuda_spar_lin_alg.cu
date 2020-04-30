@@ -855,7 +855,7 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     if ( i >= control->cm_solver_max_iters )
@@ -985,7 +985,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )

@@ -362,7 +362,7 @@ void Scale_Box( reax_system * const system, control_params * const control,
     {
         lambda = MIN_dT;
     }
-    else if (lambda > MAX_dT )
+    else if ( lambda > MAX_dT )
     {
         lambda = MAX_dT;
     }
@@ -384,7 +384,7 @@ void Scale_Box( reax_system * const system, control_params * const control,
     system->big_box.box[1][1] *= mu[1];
     system->big_box.box[2][2] *= mu[2];
 
-    Make_Consistent( &(system->big_box) );
+    Make_Consistent( &system->big_box );
     Setup_My_Box( system, control );
     Setup_My_Ext_Box( system, control );
     Update_Comm( system );

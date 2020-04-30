@@ -1571,7 +1571,7 @@ static int Init_Forces( reax_system *system, control_params *control,
     }
     else
     {
-        MPI_Reduce( timings, timings, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     return (workspace->realloc.bonds == FALSE 
@@ -2140,7 +2140,7 @@ int Compute_Forces( reax_system * const system, control_params * const control,
         ret = Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
     }
 
-    if ( ret == FAILURE )
+    if ( ret != SUCCESS )
     {
         Estimate_Storages( system, control, lists, &matrix_dim, workspace->H.format );
     }

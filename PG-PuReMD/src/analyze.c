@@ -99,7 +99,6 @@ void Analyze_Fragments( reax_system *system, control_params *control,
     int  fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
     reax_list *new_bonds = lists[BONDS];
-    //list *old_bonds = lists[OLD_BONDS];
 
     /* fragment analysis */
     fprintf( fout, "step%d fragments\n", data->step );
@@ -141,14 +140,6 @@ void Analyze_Fragments( reax_system *system, control_params *control,
             fprintf( fout, "%d of %s\n", fragment_count[i], fragments[i] );
     fprintf( fout, "\n" );
     fflush( fout );
-
-    /* compare new bonds to old bonds */
-    //for( atom = 0; atom < system->N; ++atom ) {
-    // fprintf( fout, "atom: %d\n", atom ); fflush( fout );
-    // Compare_Bonding( atom, system, control, workspace,
-    // old_bonds, new_bonds, fout );
-    //}
-    //Copy_Bond_List( system, control, lists );
 }
 
 

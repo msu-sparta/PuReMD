@@ -495,7 +495,7 @@ void Init_Traj( reax_system *system, control_params *control,
         ret = MPI_File_open( mpi_data->world, fname,
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL,
                 &out_control->trj );
-        Check_MPI_Error( ret, "Init_Traj::MPI_File_open" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         /* build the mpi structs for trajectory */
         /* header_line */
@@ -1100,7 +1100,7 @@ void End_Traj( int my_rank, output_controls *out_control )
     if ( out_control->traj_method == MPI_TRAJ )
     {
         ret = MPI_File_close( &out_control->trj );
-        Check_MPI_Error( ret, "End_Traj::MPI_File_close" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
     else if ( my_rank == MASTER_NODE )
     {

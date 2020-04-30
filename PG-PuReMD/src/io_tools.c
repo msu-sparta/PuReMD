@@ -1287,6 +1287,9 @@ void Output_Results( reax_system *system, control_params *control,
                     data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
 #endif //DEBUG
 
+            fflush( out_control->out );
+            fflush( out_control->pot );
+
 #if defined(LOG_PERFORMANCE)
             t_elapsed = Get_Timing_Info( data->timing.total );
             if ( data->step - data->prev_steps > 0 )
@@ -1295,7 +1298,7 @@ void Output_Results( reax_system *system, control_params *control,
             }
             else
             {
-                denom = 1;
+                denom = 1.0;
             }
 
             fprintf( out_control->log,
@@ -1331,8 +1334,9 @@ void Output_Results( reax_system *system, control_params *control,
 //                    data->timing.cm_solver_orthog * denom,
 //                    data->timing.cm_solver_tri_solve * denom );
 
-            Reset_Timing( &data->timing );
             fflush( out_control->log );
+
+            Reset_Timing( &data->timing );
 #endif //LOG_PERFORMANCE
 
             if ( control->virial )
@@ -1353,9 +1357,6 @@ void Output_Results( reax_system *system, control_params *control,
 
                 fflush( out_control->prs );
             }
-
-            fflush( out_control->out );
-            fflush( out_control->pot );
         }
 
         /* write current frame */

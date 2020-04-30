@@ -2255,7 +2255,7 @@ int SDM( reax_system const * const system, control_params const * const control,
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -2501,7 +2501,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     /* continue to solve the system that has not converged yet */
@@ -2710,7 +2710,7 @@ int CG( reax_system const * const system, control_params const * const control,
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -2979,7 +2979,7 @@ int BiCGStab( reax_system const * const system, control_params const * const con
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     if ( omega == 0.0 && system->my_rank == MASTER_NODE )
@@ -3351,7 +3351,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     /* continue to solve the system that has not converged yet */
@@ -3646,7 +3646,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -3863,7 +3863,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     }
     else
     {
-        MPI_Reduce( timings, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )

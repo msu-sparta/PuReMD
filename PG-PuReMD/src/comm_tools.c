@@ -213,7 +213,7 @@ void Estimate_NT_Atoms( reax_system * const system, mpi_datatypes * const mpi_da
 #endif
 
 
-void Check_MPI_Error( int code, const char * const msg )
+void Check_MPI_Error( int code, const char * const filename, int line )
 {
     char err_msg[MPI_MAX_ERROR_STRING];
     int len;
@@ -222,9 +222,11 @@ void Check_MPI_Error( int code, const char * const msg )
     {
         MPI_Error_string( code, err_msg, &len );
 
-        fprintf( stderr, "[ERROR] MPI error code %d, from %s\n",
-                code, msg );
-        fprintf( stderr, "    [INFO] MPI error message: %s\n", err_msg );
+        fprintf( stderr, "[ERROR] MPI error\n" );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strnlen(filename, MAX_STR), filename );
+        fprintf( stderr, "    [INFO] Error code %d\n", code );
+        fprintf( stderr, "    [INFO] Error message: %.*s\n", len, err_msg );
         MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
     }
 }
@@ -633,17 +635,17 @@ static void Estimate_Init_Storage( int me, neighbor_proc * const nbr1, neighbor_
 
     /* first exchange the estimates, then allocate buffers */
     ret = MPI_Irecv( &nbr1->est_recv, 1, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
-    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Irecv::nbr1" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Irecv( &nbr2->est_recv, 1, MPI_INT, nbr2->rank, 2 * d, comm, &req2 );
-    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Irecv::nbr2" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Send( &nbr1->est_send, 1, MPI_INT, nbr1->rank, 2 * d, comm );
-    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Send::nbr1" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Send( &nbr2->est_send, 1, MPI_INT, nbr2->rank, 2 * d + 1, comm );
-    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Send::nbr2" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Wait( &req1, &stat1 );
-    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Wait::nbr1" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Wait( &req2, &stat2 );
-    Check_MPI_Error( ret, "Estimate_Init_Storage::MPI_Wait::nbr2" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     nrecv[2 * d] = nbr1->est_recv;
     nrecv[2 * d + 1] = nbr2->est_recv;
     new_max = MAX( nbr1->est_recv, nbr2->est_recv );
@@ -862,23 +864,23 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data, MPI_Da
 
         /* initiate recvs */
         ret = MPI_Irecv( mpi_data->in1_buffer, nrecv[2 * d], type, nbr1->rank, 2 * d + 1, comm, &req1 );
-        Check_MPI_Error( ret, "SendRecv::MPI_Irecv::nbr1" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Irecv( mpi_data->in2_buffer, nrecv[2 * d + 1], type, nbr2->rank, 2 * d, comm, &req2 );
-        Check_MPI_Error( ret, "SendRecv::MPI_Irecv::nbr2" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         /* send both messages in dimension d */
         ret = MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt, type,
                 nbr1->rank, 2 * d, comm );
-        Check_MPI_Error( ret, "SendRecv::MPI_Send::nbr1" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt, type,
                 nbr2->rank, 2 * d + 1, comm );
-        Check_MPI_Error( ret, "SendRecv::MPI_Send::nbr2" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         /* recv and unpack atoms from nbr1 in dimension d */
         ret = MPI_Wait( &req1, &stat1 );
-        Check_MPI_Error( ret, "SendRecv::MPI_Wait::nbr1" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Get_count( &stat1, type, &cnt );
-        Check_MPI_Error( ret, "SendRecv::MPI_Count::nbr1" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         unpack( system, end, mpi_data->in1_buffer, cnt, nbr1, d );
         end += cnt;
 
@@ -888,9 +890,9 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data, MPI_Da
 
         /* recv and unpack atoms from nbr2 in dimension d */
         ret = MPI_Wait( &req2, &stat2 );
-        Check_MPI_Error( ret, "SendRecv::MPI_Wait::nbr2" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Get_count( &stat2, type, &cnt );
-        Check_MPI_Error( ret, "SendRecv::MPI_Count::nbr2" );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         unpack( system, end, mpi_data->in2_buffer, cnt, nbr2, d );
         end += cnt;
 

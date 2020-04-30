@@ -36,7 +36,9 @@
 #include "index_utils.h"
 
 
-static void Reset_Atoms( reax_system * const system, control_params * const control )
+/* Calculate atom indices of local and ghost atoms
+ * for hydrogen bonding interactions */
+static void Reset_Atoms_H_Indices( reax_system * const system, control_params * const control )
 {
     int i;
     reax_atom *atom;
@@ -48,7 +50,7 @@ static void Reset_Atoms( reax_system * const system, control_params * const cont
         {
             atom = &system->my_atoms[i];
 
-            if( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
+            if ( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
             {
                 atom->Hindex = system->numH++;
             }
@@ -140,29 +142,29 @@ void Reset_Timing( reax_timing * const rt )
 #ifdef TEST_FORCES
 void Reset_Test_Forces( reax_system * const system, storage * const workspace )
 {
-    memset( workspace->f_ele, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_vdw, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_bo, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_be, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_lp, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_ov, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_un, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_ang, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_coa, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_pen, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_hb, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_tor, 0, system->total_cap * sizeof(rvec) );
-    memset( workspace->f_con, 0, system->total_cap * sizeof(rvec) );
+    memset( workspace->f_ele, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_vdw, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_bo, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_be, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_lp, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_ov, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_un, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_ang, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_coa, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_pen, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_hb, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_tor, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->f_con, 0, sizeof(rvec) * system->total_cap );
 }
 #endif
 
 
 void Reset_Workspace( reax_system * const system, storage * const workspace )
 {
-    memset( workspace->total_bond_order, 0, system->total_cap * sizeof( real ) );
-    memset( workspace->dDeltap_self, 0, system->total_cap * sizeof( rvec ) );
-    memset( workspace->CdDelta, 0, system->total_cap * sizeof( real ) );
-    memset( workspace->f, 0, system->total_cap * sizeof( rvec ) );
+    memset( workspace->total_bond_order, 0, sizeof(real) * system->total_cap );
+    memset( workspace->dDeltap_self, 0, sizeof(rvec) * system->total_cap );
+    memset( workspace->CdDelta, 0, sizeof(real) * system->total_cap );
+    memset( workspace->f, 0, sizeof(rvec) * system->total_cap );
 
 #ifdef TEST_FORCES
     memset( workspace->dDelta, 0, sizeof(rvec) * system->total_cap );
@@ -210,21 +212,21 @@ void Reset_Lists( reax_system * const system, control_params * const control,
 
     if ( system->N > 0 )
     {
-        for ( i = 0; i < system->total_cap; ++i )
+        for ( i = 0; i < bond_list->n; ++i )
         {
             Set_End_Index( i, Start_Index( i, bond_list ), bond_list );
         }
 
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
         {
-            for ( i = 0; i < system->total_cap; ++i )
+            for ( i = 0; i < hbond_list->n; ++i )
             {
                 /* do not use Hindex, unconditionally reset end indices */
                 Set_End_Index( i, Start_Index( i, hbond_list ), hbond_list );
             }
         }
 
-        for ( i = 0; i < system->local_cap; ++i )
+        for ( i = 0; i < workspace->H.n_max; ++i )
         {
             workspace->H.end[i] = workspace->H.start[i];
         }
@@ -236,7 +238,7 @@ void Reset( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         reax_list ** const lists )
 {
-    Reset_Atoms( system, control );
+    Reset_Atoms_H_Indices( system, control );
 
     Reset_Simulation_Data( data );
 
@@ -248,9 +250,4 @@ void Reset( reax_system * const system, control_params * const control,
     Reset_Workspace( system, workspace );
 
     Reset_Lists( system, control, workspace, lists );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 }

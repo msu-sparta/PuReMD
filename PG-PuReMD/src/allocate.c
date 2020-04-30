@@ -63,8 +63,8 @@ void PreAllocate_Space( reax_system * const system, control_params * const contr
         storage * const workspace )
 {
     /* determine capacity based on box vol & est atom volume */
-    system->local_cap = MAX( (int)(system->n * SAFE_ZONE), MIN_CAP );
-    system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
+    system->local_cap = MAX( (int) CEIL( system->n * SAFE_ZONE ), MIN_CAP );
+    system->total_cap = MAX( (int) CEIL( system->N * SAFE_ZONE ), MIN_CAP );
 
 #if defined(DEBUG_FOCUS)||defined(__CUDA_DEBUG_LOG__)
     fprintf( stderr, "p%d: local_cap=%d total_cap=%d\n",
@@ -612,7 +612,6 @@ void Reallocate_HBonds_List( reax_system * const system, reax_list * const hbond
     format = hbond_list->format;
 
     Delete_List( hbond_list );
-//    Make_List( system->Hcap, system->total_hbonds, TYP_HBOND, format, hbond_list );
     Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, format, hbond_list );
 }
 
@@ -688,7 +687,7 @@ int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
         }
     }
 
-    my_max = MAX( (int)CEIL(max_atoms * SAFE_ZONE), MIN_GCELL_POPL );
+    my_max = MAX( (int) CEIL( max_atoms * SAFE_ZONE ), MIN_GCELL_POPL );
     MPI_Allreduce( &my_max, &all_max, 1, MPI_INT, MPI_MAX, comm );
 
 #if defined(DEBUG_FOCUS)
@@ -750,7 +749,8 @@ void Allocate_Grid( reax_system * const system, MPI_Comm comm )
             for ( k = g->native_str[2]; k < g->native_end[2]; ++k )
             {
                 g->cells[ index_grid_3d(i, j, k, g) ].atoms =
-                    scalloc( g->max_atoms, sizeof(int), "Allocate_Grid::g->cells[ ].atoms" );
+                    scalloc( g->max_atoms, sizeof(int),
+                            "Allocate_Grid::g->cells[ ].atoms" );
             }
         }
     }
@@ -892,7 +892,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
         mpi_datatypes * const mpi_data )
 {
     int i, j, k;
-    int nflag, Nflag, Hflag, mpi_flag, total_send;
+    int nflag, Nflag, mpi_flag, total_send;
     int renbr, format;
     reallocate_data * const realloc = &workspace->realloc;
     sparse_matrix * const H = &workspace->H;
@@ -902,35 +902,35 @@ void ReAllocate( reax_system * const system, control_params * const control,
 
     /* IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with FALSE!!! */
     nflag = FALSE;
-    if ( system->n >= DANGER_ZONE * system->local_cap ||
-            (FALSE && system->n <= LOOSE_ZONE * system->local_cap) )
+    if ( system->n >= DANGER_ZONE * system->local_cap
+            || (FALSE && system->n <= (int) CEIL( LOOSE_ZONE * system->local_cap )) )
     {
 #if !defined(NEUTRAL_TERRITORY)
         nflag = TRUE;
 #endif
-        system->local_cap = (int)(system->n * SAFE_ZONE);
+        system->local_cap = (int) CEIL( system->n * SAFE_ZONE );
     }
 
 #if defined(NEUTRAL_TERRITORY)
-    if ( workspace->H->NT >= DANGER_ZONE * workspace->H->n_max )
+    if ( workspace->H->NT >= (int) CEIL( DANGER_ZONE * workspace->H->n_max ) )
     {
         nflag = TRUE;
-        workspace->H->cap = (int)(workspace->H->NT * SAFE_ZONE_NT);
+        workspace->H->cap = (int) CEIL( workspace->H->NT * SAFE_ZONE_NT );
     }
 #endif
 
     Nflag = FALSE;
-    if ( system->N >= DANGER_ZONE * system->total_cap ||
-            (FALSE && system->N <= LOOSE_ZONE * system->total_cap) )
+    if ( system->N >= (int) CEIL( DANGER_ZONE * system->total_cap )
+            || (FALSE && system->N <= (int) CEIL( LOOSE_ZONE * system->total_cap )) )
     {
         Nflag = TRUE;
-        system->total_cap = (int)(system->N * SAFE_ZONE);
+        system->total_cap = (int) CEIL( system->N * SAFE_ZONE );
     }
 
     if ( Nflag == TRUE )
     {
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: reallocating system and workspace -"\
+        fprintf( stderr, "[INFO] p%d: reallocating system and workspace -"\
                 "n=%d  N=%d  local_cap=%d  total_cap=%d\n",
                 system->my_rank, system->n, system->N,
                 system->local_cap, system->total_cap );
@@ -950,7 +950,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
         if ( Nflag == TRUE || realloc->far_nbrs == TRUE )
         {
 #if defined(DEBUG_FOCUS)
-            fprintf( stderr, "p%d: reallocating far_nbrs: far_nbrs=%d, space=%dMB\n",
+            fprintf( stderr, "[INFO] p%d: reallocating far_nbrs: far_nbrs=%d, space=%dMB\n",
                      system->my_rank, (int)(system->total_far_nbrs * SAFE_ZONE),
                      (int)(system->total_far_nbrs * SAFE_ZONE * sizeof(far_neighbor_data) /
                            (1024 * 1024)) );
@@ -966,14 +966,15 @@ void ReAllocate( reax_system * const system, control_params * const control,
     if ( nflag == TRUE || realloc->cm == TRUE )
     {
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
+        fprintf( stderr, "[INFO] p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
                 system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
                 (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
                 (1024 * 1024)) );
 #endif
 
 #if defined(NEUTRAL_TERRITORY)
-        Reallocate_Matrix( H, H->n, system->local_cap, (int)CEIL(system->total_cm_entries * SAFE_ZONE_NT) );
+        Reallocate_Matrix( H, H->n, system->local_cap,
+                (int) CEIL( system->total_cm_entries * SAFE_ZONE_NT ) );
 #else
         Reallocate_Matrix( H, system->n, system->local_cap, system->total_cm_entries );
 #endif
@@ -984,20 +985,10 @@ void ReAllocate( reax_system * const system, control_params * const control,
     /* hydrogen bonds list */
     if ( control->hbond_cut > 0.0 )
     {
-        Hflag = FALSE;
-//        if ( system->numH >= DANGER_ZONE * system->Hcap
-//                || (0 && system->numH <= LOOSE_ZONE * system->Hcap) )
-//        {
-//            Hflag = TRUE;
-//            //system->Hcap = (int)(system->numH * SAFE_ZONE);
-//            // Tried fix
-//            system->Hcap = (int)(system->n * SAFE_ZONE);
-//        }
-
-        if ( Hflag == TRUE || realloc->hbonds == TRUE )
+        if ( Nflag == TRUE || realloc->hbonds == TRUE )
         {
 #if defined(DEBUG_FOCUS)
-            fprintf(stderr, "p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
+            fprintf(stderr, "[INFO] p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
                     system->my_rank, ret, (int)(ret * sizeof(hbond_data) / (1024 * 1024)));
 #endif
 
@@ -1011,7 +1002,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
     if ( Nflag == TRUE || realloc->bonds == TRUE )
     {
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: reallocating bonds: total_bonds=%d, space=%dMB\n",
+        fprintf( stderr, "[INFO] p%d: reallocating bonds: total_bonds=%d, space=%dMB\n",
                  system->my_rank, system->total_bonds,
                  (int)(system->total_bonds * sizeof(bond_data) / (1024 * 1024)) );
 #endif
@@ -1026,7 +1017,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
     if ( realloc->thbody == TRUE )
     {
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: reallocating 3body list: num_3body=%d, space=%dMB\n",
+        fprintf( stderr, "[INFO] p%d: reallocating 3body list: num_3body=%d, space=%dMB\n",
                 system->my_rank, realloc->num_3body,
                 (int)(realloc->num_3body * sizeof(three_body_interaction_data) /
                 (1024 * 1024)) );
@@ -1044,7 +1035,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
     if ( renbr == TRUE && realloc->gcell_atoms > -1 )
     {
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "reallocating gcell: g->max_atoms: %d\n", g->max_atoms );
+        fprintf( stderr, "[INFO] reallocating gcell: g->max_atoms: %d\n", g->max_atoms );
 #endif
 
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
@@ -1110,11 +1101,11 @@ void ReAllocate( reax_system * const system, control_params * const control,
     if ( mpi_flag == TRUE )
     {
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: reallocating mpi_buf: old_recv=%d\n",
+        fprintf( stderr, "[INFO] p%d: reallocating mpi_buf: old_recv=%d\n",
                 system->my_rank, system->est_recv );
         for ( i = 0; i < MAX_NBRS; ++i )
         {
-            fprintf( stderr, "p%d: nbr%d old_send=%d\n",
+            fprintf( stderr, "[INFO] p%d: nbr%d old_send=%d\n",
                     system->my_rank, i, system->my_nbrs[i].est_send );
         }
 #endif
@@ -1142,13 +1133,13 @@ void ReAllocate( reax_system * const system, control_params * const control,
 #endif
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
+        fprintf( stderr, "[INFO] p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
                system->my_rank, system->est_recv, total_send,
                (int)((system->est_recv + total_send) * sizeof(boundary_atom) /
                (1024 * 1024)));
         for ( i = 0; i < MAX_NBRS; ++i )
         {
-            fprintf( stderr, "p%d: nbr%d new_send=%d\n",
+            fprintf( stderr, "[INFO] p%d: nbr%d new_send=%d\n",
                     system->my_rank, i, system->my_nbrs[i].est_send );
         }
 #endif
@@ -1159,7 +1150,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: reallocate done\n",
+    fprintf( stderr, "[INFO] p%d @ step%d: reallocate done\n",
             system->my_rank, data->step );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif

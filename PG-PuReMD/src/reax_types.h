@@ -150,15 +150,15 @@
 /* ??? */
 #define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
 
-/**/
+/* max. num. of characters for string buffers */
 #define MAX_STR (1024)
-/**/
+/* max. num. of characters for a line in files */
 #define MAX_LINE (1024)
-/**/
+/* max. num. of tokens per line */
 #define MAX_TOKENS (1024)
-/**/
+/* max. num. of characters per token */
 #define MAX_TOKEN_LEN (1024)
-/**/
+/* max. num. of characters in atom name */
 #define MAX_ATOM_NAME_LEN (8)
 
 /* ??? */
@@ -170,59 +170,59 @@
 
 /* max. num. of interaction functions */
 #define NUM_INTRS (10)
-/* ??? */
+/* constant for double precision zero */
 #define ZERO (0.000000000000000e+00)
-/* ??? */
-#define ALMOST_ZERO (1e-10)
-/* ??? */
+/* threshold for determining if values are sufficiently close to double precision zero */
+#define ALMOST_ZERO (1.0e-10)
+/* constant for indicating atom pairs are effectively a
+ * negative infinite distance apart along a dimension */
 #define NEG_INF (-1.0e10)
-/* ??? */
-#define NO_BOND (1.0e-3)
-/* ??? */
+/* threshold for determining if bond order values are large enough
+ * to constitute a hydrogen bond interaction */
 #define HB_THRESHOLD (1.0e-2)
 
-/* ??? */
+/* minimum capacity (entries) in various interaction lists */
 #define MIN_CAP (50)
-/* ??? */
+/* minimum number of interactions per entry in the far neighbor list */
 #define MIN_NBRS (100)
-/* ??? */
+/* minimum number of non-zero entries per row in the charge matrix */
 #define MIN_CM_ENTRIES (100)
-/* ??? */
-#define MAX_BONDS (30)
-/* ??? */
+/* minimum number of interactions per entry in the bond list */
 #define MIN_BONDS (15)
-/* ??? */
+/* minimum number of interactions per entry in the hydrogen bond list */
 #define MIN_HBONDS (25)
-/* ??? */
+/* minimum capacity (entries) in 3-body interaction list */
 #define MIN_3BODIES (1000)
-/* ??? */
+/* minimum number of atoms per grid cell */
 #define MIN_GCELL_POPL (50)
 /* ??? */
 #define MIN_SEND (100)
-/* ??? */
+/* over-allocation factor for various data structures */
 #define SAFE_ZONE (1.2)
-/* ??? */
+/* larger over-allocation factor for various data structures */
 #define SAFER_ZONE (1.4)
-/* ??? */
+/* over-allocation factor for various neutral territory data structures */
 #define SAFE_ZONE_NT (2.0)
-/* ??? */
+/* larger over-allocation factor for various neutral territory data structures */
 #define SAFER_ZONE_NT (2.5)
-/* ??? */
+/* utilization threshold which when exceeded triggers reallocation
+ * with increased capacity for various data structures */
 #define DANGER_ZONE (0.90)
-/* ??? */
+/* utilization threshold which when exceeded triggers reallocation
+ * with increased capacity for various data structures */
 #define LOOSE_ZONE (0.75)
 /* ??? */
 #define MAX_3BODY_PARAM (5)
 /* ??? */
 #define MAX_4BODY_PARAM (5)
 
-/* ??? */
+/* max. pressure scaler for simulation box dimenion in NPT ensembles */
 #define MAX_dV (1.01)
-/* ??? */
+/* min. pressure scaler for simulation box dimenion in NPT ensembles */
 #define MIN_dV (0.99)
-/* ??? */
+/* max. temperature scaler for atomic positions and velocities in NPT ensembles */
 #define MAX_dT (4.00)
-/* ??? */
+/* min. temperature scaler for atomic positions and velocities in NPT ensembles */
 #define MIN_dT (0.00)
 
 /* ??? */
@@ -235,10 +235,9 @@
 #define MYSELF (13)
 
 /* ??? */
-#define MAX_ITR (10)
-/* ??? */
 #define RESTART (30)
-/* ??? */
+/* max. num. of main simulation loop retries;
+ * retries occur when memory allocation checks determine more memory is needed */
 #define MAX_RETRIES (5)
 
 /* NaN IEEE 754 representation for C99 in math.h
@@ -321,48 +320,67 @@
   #else
     #define MATVEC_BLOCK_SIZE (512)
   #endif
-  
-  /* Cuda_Validation */
-  #define GPU_TOLERANCE (1.0e-5)
 #endif
 
 
 /* ensemble type */
 enum ensemble
 {
+    /* microcanonical ensemble */
     NVE = 0,
+    /* Berendsen NVT ensemble */
     bNVT = 1,
+    /* Nose-Hoover NVT ensemble */
     nhNVT = 2,
+    /* semi-isotropic NPT ensemble */
     sNPT = 3,
+    /* isotropic NPT ensemble */
     iNPT = 4,
+    /* anisotropic NPT ensemble */
     NPT = 5,
+    /* total number of ensemble types */
     ens_N = 6,
 };
 
-/* interaction list type */
+/* interaction list mapping from type to index */
 enum lists
 {
+    /* far neighbor list */
     FAR_NBRS = 0,
+    /* bond list */
     BONDS = 1,
-    OLD_BONDS = 2,
+    /* hydrogen list */
+    HBONDS = 2,
+    /* 3-body list */
     THREE_BODIES = 3,
-    HBONDS = 4,
-    DBOS = 5,
-    DDELTAS = 6,
-    LIST_N = 7,
+#if defined(TEST_FORCES)
+    /* derivative bond order list */
+    DBOS = 4,
+    /* derivative delta list */
+    DDELTAS = 5,
+    /* total number of list types */
+    LIST_N = 6,
+#else
+    /* total number of list types */
+    LIST_N = 4,
+#endif
 };
 
 /* interaction type */
 enum interactions
 {
     TYP_VOID = 0,
-    TYP_BOND = 1,
-    TYP_THREE_BODY = 2,
+    TYP_FAR_NEIGHBOR = 1,
+    TYP_BOND = 2,
     TYP_HBOND = 3,
-    TYP_FAR_NEIGHBOR = 4,
+    TYP_THREE_BODY = 4,
+#if defined(TEST_FORCES)
     TYP_DBO = 5,
     TYP_DDELTA = 6,
     TYP_N = 7,
+#else
+    TYP_N = 5,
+#endif
 };
 
 /* MPI message tags */
@@ -1308,8 +1326,6 @@ struct reax_system
     /**/
     int gcell_cap;
     /**/
-    int Hcap;
-    /**/
     int est_recv;
     /**/
     int est_trans;
@@ -1735,33 +1751,33 @@ struct energy_data
 {
     /* total energy */
     real e_tot;
-    /* total kinetic energy */
+    /* kinetic energy */
     real e_kin;
-    /* total potential energy */
+    /* potential energy */
     real e_pot;
-    /* total bond energy */
+    /* bond energy */
     real e_bond;
-    /* total over coordination */
+    /* over coordination */
     real e_ov;
-    /* total under coordination energy */
+    /* under coordination energy */
     real e_un;
-    /* total under coordination energy */
+    /* lone pair energy */
     real e_lp;
-    /* total valance angle energy */
+    /* valance angle energy */
     real e_ang;
-    /* total penalty energy */
+    /* penalty energy */
     real e_pen;
-    /* total three body conjugation energy */
+    /* three body conjugation energy */
     real e_coa;
-    /* total Hydrogen bond energy */
+    /* hydrogen bond energy */
     real e_hb;
-    /* total torsional energy */
+    /* torsional energy */
     real e_tor;
-    /* total four body conjugation energy */
+    /* four body conjugation energy */
     real e_con;
-    /* total van der Waals energy */
+    /* van der Waals energy */
     real e_vdW;
-    /* total electrostatics energy */
+    /* electrostatics energy */
     real e_ele;
     /* polarization energy */
     real e_pol;

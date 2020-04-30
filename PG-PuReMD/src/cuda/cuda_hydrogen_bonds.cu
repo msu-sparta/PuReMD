@@ -43,7 +43,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;
     int start_j, end_j, hb_start_j, hb_end_j;
-    int hblist[MAX_BONDS];
+    int *hblist, hblist_size;
     int itr, top;
     ivec rel_jk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
@@ -72,12 +72,21 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
     /* j must be a hydrogen atom */
     if ( sbp[ my_atoms[j].type ].p_hbond == H_ATOM )
     {
+        hblist = NULL;
+        hblist_size = 0;
         type_j = my_atoms[j].type;
         start_j = Start_Index( j, &bond_list );
         end_j = End_Index( j, &bond_list );
         hb_start_j = Start_Index( my_atoms[j].Hindex, &hbond_list );
         hb_end_j = End_Index( my_atoms[j].Hindex, &hbond_list );
         top = 0;
+
+        if ( Num_Entries( j, bond_list ) > hblist_size )
+        {
+            hblist_size = Num_Entries( j, bond_list );
+            hblist = srealloc( hblist, sizeof(int) * hblist_size,
+                    "Cuda_Hydrogen_Bonds_Part1::hblist" );
+        }
 
         /* search bonded atoms i to atom j (hydrogen atom) for potential hydrogen bonding */
         for ( pi = start_j; pi < end_j; ++pi )
@@ -233,6 +242,11 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
                 }
             }
         }
+
+        if ( hblist != NULL )
+        {
+            sfree( hblist, "Cuda_Hydrogen_Bonds_Part1::hblist" );
+        }
     }
 }
 
@@ -247,7 +261,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
     int type_i, type_j, type_k;
     int start_j, end_j, hb_start_j, hb_end_j;
     //TODO: re-write and remove
-    int hblist[MAX_BONDS];
+    int hblist[30];
     int itr, top;
     int loopcount, count;
     ivec rel_jk;

@@ -316,7 +316,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
     }
     else
     {
-        MPI_Reduce( redux, redux, 2, MPI_DOUBLE, MPI_SUM,
+        MPI_Reduce( redux, NULL, 2, MPI_DOUBLE, MPI_SUM,
                 MASTER_NODE, mpi_data->world );
     }
 }

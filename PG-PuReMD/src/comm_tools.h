@@ -36,7 +36,7 @@ void Setup_NT_Comm( reax_system * const, control_params * const,
 void Estimate_NT_Atoms( reax_system * const, mpi_datatypes * const );
 #endif
 
-void Check_MPI_Error( int, const char * const );
+void Check_MPI_Error( int, const char * const, int );
 
 void Setup_Comm( reax_system * const, control_params * const, mpi_datatypes * const );
 

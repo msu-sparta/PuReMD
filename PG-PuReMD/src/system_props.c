@@ -123,7 +123,7 @@ void Compute_Total_Energy( reax_system *system, simulation_data *data,
     my_en[10] = data->my_en.e_vdW;
     my_en[11] = data->my_en.e_ele;
     my_en[12] = data->my_en.e_pol;
-    //my_en[13] = data->my_en.e_kin;
+//    my_en[13] = data->my_en.e_kin;
     MPI_Reduce( my_en, sys_en, 14, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
 
     data->my_en.e_pot = data->my_en.e_bond +

@@ -570,8 +570,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
         index1 = j * __N * __N + k * __N + m;
         index2 = m * __N * __N + k * __N + j;
 
-        if (j < reax->num_atom_types && k < reax->num_atom_types &&
-                m < reax->num_atom_types)
+        if ( j < reax->num_atom_types && k < reax->num_atom_types
+                && m < reax->num_atom_types )
         {
             cnt = reax->thbp[index1].cnt;
             reax->thbp[index1].cnt++;

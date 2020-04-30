@@ -72,12 +72,12 @@ static int Reposition_Atoms( reax_system * const system, control_params * const 
     else if ( control->reposition_atoms == 1 )
     {
         rvec_Scale( dx, 0.5, system->big_box.box_norms );
-        rvec_ScaledAdd( dx, -1., data->xcm );
+        rvec_ScaledAdd( dx, -1.0, data->xcm );
     }
     /* put center of mass to origin */
     else if ( control->reposition_atoms == 2 )
     {
-        rvec_Scale( dx, -1., data->xcm );
+        rvec_Scale( dx, -1.0, data->xcm );
     }
     else
     {
@@ -87,7 +87,7 @@ static int Reposition_Atoms( reax_system * const system, control_params * const 
 
     for ( i = 0; i < system->n; ++i )
     {
-        // Inc_on_T3_Gen( system->my_atoms[i].x, dx, &(system->big_box) );
+//        Inc_on_T3_Gen( system->my_atoms[i].x, dx, &system->big_box );
         rvec_Add( system->my_atoms[i].x, dx );
     }
 
@@ -136,11 +136,6 @@ void Init_System( reax_system * const system, control_params * const control,
 
     Setup_New_Grid( system, control, mpi_data->world );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d GRID:\n", system->my_rank );
-    Print_Grid( &system->my_grid, stderr );
-#endif
-
     Bin_My_Atoms( system, workspace );
     Reorder_My_Atoms( system, workspace );
 
@@ -159,7 +154,7 @@ void Init_System( reax_system * const system, control_params * const control,
     Estimate_NT_Atoms( system, mpi_data );
 #endif
 
-    /* estimate numH and Hcap */
+    /* estimate numH */
     system->numH = 0;
     if ( control->hbond_cut > 0.0 )
     {
@@ -177,9 +172,6 @@ void Init_System( reax_system * const system, control_params * const control,
             }
         }
     }
-    //Tried fix
-    //system->Hcap = MAX( system->numH * SAFER_ZONE, MIN_CAP );
-    system->Hcap = MAX( system->n * SAFER_ZONE, MIN_CAP );
 
     /* list management */
     system->far_nbrs = smalloc( sizeof(int) * system->total_cap,
@@ -203,12 +195,12 @@ void Init_System( reax_system * const system, control_params * const control,
             "ReAllocate_System::max_cm_entries->max_hbonds" );
     
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: n=%d local_cap=%d\n",
+    fprintf( stderr, "p%d: n=%d, local_cap=%d\n",
              system->my_rank, system->n, system->local_cap );
-    fprintf( stderr, "p%d: N=%d total_cap=%d\n",
+    fprintf( stderr, "p%d: N=%d, total_cap=%d\n",
              system->my_rank, system->N, system->total_cap );
-    fprintf( stderr, "p%d: numH=%d H_cap=%d\n",
-             system->my_rank, system->numH, system->Hcap );
+    fprintf( stderr, "p%d: numH=%d\n",
+             system->my_rank, system->numH );
 #endif
 
     Compute_Total_Mass( system, data, mpi_data->comm_mesh3D );
@@ -262,8 +254,8 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         control->virial = 0;
         if ( !control->restart || (control->restart && control->random_vel) )
         {
-            data->therm.G_xi = control->Tau_T *
-                               (2.0 * data->sys_en.e_kin - data->N_f * K_B * control->T );
+            data->therm.G_xi = control->Tau_T
+                * (2.0 * data->sys_en.e_kin - data->N_f * K_B * control->T );
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0;
             data->therm.xi = 0;
@@ -294,22 +286,23 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
 
     /* Anisotropic NPT */
     case NPT:
-        fprintf( stderr, "[ERROR] p%d: init_simulation_data: option not yet implemented\n",
+        fprintf( stderr, "[ERROR] p%d: Init_Simulation_Data: option not yet implemented (anisotropic NPT ensemble)\n",
               system->my_rank );
         MPI_Abort( mpi_data->world,  INVALID_INPUT );
 
         data->N_f = 3 * system->bigN + 9;
         control->Evolve = Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
-        /*if( !control->restart ) {
-          data->therm.G_xi = control->Tau_T *
-          (2.0 * data->my_en.e_Kin - data->N_f * K_B * control->T );
-          data->therm.v_xi = data->therm.G_xi * control->dt;
-          data->iso_bar.eps = (1.0 / 3.0) * LOG(system->box.volume);
-          data->inv_W = 1.0 /
-          ( data->N_f * K_B * control->T * SQR(control->Tau_P) );
-          Compute_Pressure( system, control, data, out_control );
-          }*/
+//        if( !control->restart )
+//        {
+//            data->therm.G_xi = control->Tau_T
+//                * (2.0 * data->my_en.e_Kin - data->N_f * K_B * control->T );
+//            data->therm.v_xi = data->therm.G_xi * control->dt;
+//            data->iso_bar.eps = (1.0 / 3.0) * LOG(system->box.volume);
+//            data->inv_W = 1.0
+//                / ( data->N_f * K_B * control->T * SQR(control->Tau_P) );
+//            Compute_Pressure( system, control, data, out_control );
+//        }
         break;
 
     default:
@@ -343,8 +336,8 @@ void Init_System( reax_system * const system )
     system->big_box.box_norms[1] = 0;
     system->big_box.box_norms[2] = 0;
 
-    system->local_cap = (int)(system->n * SAFE_ZONE);
-    system->total_cap = (int)(system->N * SAFE_ZONE);
+    system->local_cap = (int) CEIL( system->n * SAFE_ZONE );
+    system->total_cap = (int) CEIL( system->N * SAFE_ZONE );
 
     system->far_nbrs = NULL;
     system->max_far_nbrs = NULL;
@@ -448,16 +441,12 @@ void Init_Workspace( reax_system * const system, control_params * const control,
 void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int block[11];
-    int i;
-    MPI_Aint disp[11];
-    MPI_Aint base, size_entry;
-    MPI_Datatype type[11], temp_type;
-    mpi_atom sample[2];
-    boundary_atom b_sample[2];
-    restart_atom r_sample[2];
-    rvec rvec_sample[2];
-    rvec2 rvec2_sample[2];
+    int i, block[11];
+    MPI_Aint disp[11], base;
+    MPI_Datatype type[11];
+    mpi_atom sample[1];
+    boundary_atom b_sample[1];
+    restart_atom r_sample[1];
 
     mpi_data->world = MPI_COMM_WORLD;
 
@@ -467,28 +456,28 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     block[2] = 1;
     block[3] = 1;
     block[4] = 1;
-    block[5] = MAX_ATOM_NAME_LEN;
+    block[5] = sizeof(sample[0].name) / sizeof(char);
     block[6] = 3;
     block[7] = 3;
     block[8] = 3;
     block[9] = 4;
     block[10] = 4;
 
-    MPI_Get_address( sample, disp );
-    MPI_Get_address( &sample[0].imprt_id, disp + 1 );
-    MPI_Get_address( &sample[0].type, disp + 2 );
-    MPI_Get_address( &sample[0].num_bonds, disp + 3 );
-    MPI_Get_address( &sample[0].num_hbonds, disp + 4 );
-    MPI_Get_address( sample[0].name, disp + 5 );
-    MPI_Get_address( sample[0].x, disp + 6 );
-    MPI_Get_address( sample[0].v, disp + 7 );
-    MPI_Get_address( sample[0].f_old, disp + 8 );
-    MPI_Get_address( sample[0].s, disp + 9 );
-    MPI_Get_address( sample[0].t, disp + 10 );
-    base = disp[0];
+    MPI_Get_address( &sample[0], &base );
+    MPI_Get_address( &sample[0].orig_id, &disp[0] );
+    MPI_Get_address( &sample[0].imprt_id, &disp[1] );
+    MPI_Get_address( &sample[0].type, &disp[2] );
+    MPI_Get_address( &sample[0].num_bonds, &disp[3] );
+    MPI_Get_address( &sample[0].num_hbonds, &disp[4] );
+    MPI_Get_address( &sample[0].name, &disp[5] );
+    MPI_Get_address( &sample[0].x, &disp[6] );
+    MPI_Get_address( &sample[0].v, &disp[7] );
+    MPI_Get_address( &sample[0].f_old, &disp[8] );
+    MPI_Get_address( &sample[0].s, &disp[9] );
+    MPI_Get_address( &sample[0].t, &disp[10] );
     for ( i = 0; i < 11; ++i )
     {
-        disp[i] -= base;
+        disp[i] = MPI_Aint_diff( disp[i], base );
     }
 
     type[0] = MPI_INT;
@@ -503,12 +492,7 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[9] = MPI_DOUBLE;
     type[10] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 11, block, disp, type, &temp_type );
-    /* in case of compiler padding, compute difference
-     * between 2 consecutive struct elements */
-    MPI_Get_address( sample + 1, &size_entry );
-    size_entry = MPI_Aint_diff( size_entry, base );
-    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->mpi_atom_type );
+    MPI_Type_create_struct( 11, block, disp, type, &mpi_data->mpi_atom_type );
     MPI_Type_commit( &mpi_data->mpi_atom_type );
 
     /* boundary_atom */
@@ -519,16 +503,16 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     block[4] = 1;
     block[5] = 3;
 
-    MPI_Get_address( b_sample, disp );
-    MPI_Get_address( &b_sample[0].imprt_id, disp + 1 );
-    MPI_Get_address( &b_sample[0].type, disp + 2 );
-    MPI_Get_address( &b_sample[0].num_bonds, disp + 3 );
-    MPI_Get_address( &b_sample[0].num_hbonds, disp + 4 );
-    MPI_Get_address( b_sample[0].x, disp + 5 );
-    base = disp[0];
+    MPI_Get_address( &b_sample[0], &base );
+    MPI_Get_address( &b_sample[0].orig_id, &disp[0] );
+    MPI_Get_address( &b_sample[0].imprt_id, &disp[1] );
+    MPI_Get_address( &b_sample[0].type, &disp[2] );
+    MPI_Get_address( &b_sample[0].num_bonds, &disp[3] );
+    MPI_Get_address( &b_sample[0].num_hbonds, &disp[4] );
+    MPI_Get_address( &b_sample[0].x, &disp[5] );
     for ( i = 0; i < 6; ++i )
     {
-        disp[i] -= base;
+        disp[i] = MPI_Aint_diff( disp[i], base );
     }
 
     type[0] = MPI_INT;
@@ -538,70 +522,33 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[4] = MPI_INT;
     type[5] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 6, block, disp, type, &temp_type );
-    /* in case of compiler padding, compute difference
-     * between 2 consecutive struct elements */
-    MPI_Get_address( b_sample + 1, &size_entry );
-    size_entry = MPI_Aint_diff( size_entry, base );
-    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->boundary_atom_type );
+    MPI_Type_create_struct( 6, block, disp, type, &mpi_data->boundary_atom_type );
     MPI_Type_commit( &mpi_data->boundary_atom_type );
 
     /* mpi_rvec */
-    block[0] = 3;
-
-    MPI_Get_address( &rvec_sample, disp );
-    base = disp[0];
-    for ( i = 0; i < 1; ++i )
-    {
-        disp[i] -= base;
-    }
-
-    type[0] = MPI_DOUBLE;
-
-    MPI_Type_create_struct( 1, block, disp, type, &temp_type );
-    /* in case of compiler padding, compute difference
-     * between 2 consecutive struct elements */
-    MPI_Get_address( rvec_sample + 1, &size_entry );
-    size_entry = MPI_Aint_diff( size_entry, base );
-    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->mpi_rvec );
+    MPI_Type_contiguous( 3, MPI_DOUBLE, &mpi_data->mpi_rvec );
     MPI_Type_commit( &mpi_data->mpi_rvec );
 
     /* mpi_rvec2 */
-    block[0] = 2;
-
-    MPI_Get_address( &rvec2_sample, disp );
-    base = disp[0];
-    for ( i = 0; i < 1; ++i )
-    {
-        disp[i] -= base;
-    }
-
-    type[0] = MPI_DOUBLE;
-
-    MPI_Type_create_struct( 1, block, disp, type, &temp_type );
-    /* in case of compiler padding, compute difference
-     * between 2 consecutive struct elements */
-    MPI_Get_address( rvec2_sample + 1, &size_entry );
-    size_entry = MPI_Aint_diff( size_entry, base );
-    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->mpi_rvec2 );
+    MPI_Type_contiguous( 2, MPI_DOUBLE, &mpi_data->mpi_rvec2 );
     MPI_Type_commit( &mpi_data->mpi_rvec2 );
 
     /* restart_atom */
     block[0] = 1;
     block[1] = 1 ;
-    block[2] = MAX_ATOM_NAME_LEN;
+    block[2] = sizeof(r_sample[0].name) / sizeof(char);
     block[3] = 3;
     block[4] = 3;
 
-    MPI_Get_address( &r_sample, disp );
-    MPI_Get_address( &r_sample[0].type, disp + 1 );
-    MPI_Get_address( r_sample[0].name, disp + 2 );
-    MPI_Get_address( r_sample[0].x, disp + 3 );
-    MPI_Get_address( r_sample[0].v, disp + 4 );
-    base = disp[0];
+    MPI_Get_address( &r_sample[0], &base );
+    MPI_Get_address( &r_sample[0].orig_id, &disp[0] );
+    MPI_Get_address( &r_sample[0].type, &disp[1] );
+    MPI_Get_address( &r_sample[0].name, &disp[2] );
+    MPI_Get_address( &r_sample[0].x, &disp[3] );
+    MPI_Get_address( &r_sample[0].v, &disp[4] );
     for ( i = 0; i < 5; ++i )
     {
-        disp[i] -= base;
+        disp[i] = MPI_Aint_diff( disp[i], base );
     }
 
     type[0] = MPI_INT;
@@ -610,20 +557,30 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[3] = MPI_DOUBLE;
     type[4] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 5, block, disp, type, &temp_type );
-    /* in case of compiler padding, compute difference
-     * between 2 consecutive struct elements */
-    MPI_Get_address( r_sample + 1, &size_entry );
-    size_entry = MPI_Aint_diff( size_entry, base );
-    MPI_Type_create_resized( temp_type, 0, size_entry, &mpi_data->restart_atom_type );
+    MPI_Type_create_struct( 5, block, disp, type, &mpi_data->restart_atom_type );
     MPI_Type_commit( &mpi_data->restart_atom_type );
 
     mpi_data->in1_buffer = NULL;
     mpi_data->in2_buffer = NULL;
+
+    for ( i = 0; i < MAX_NBRS; ++i )
+    {
+        mpi_data->out_buffers[i].cnt = 0;
+        mpi_data->out_buffers[i].index = NULL;
+        mpi_data->out_buffers[i].out_atoms = NULL;
+    }
+
 #if defined(NEUTRAL_TERRITORY)
     for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
         mpi_data->in_nt_buffer[i] = NULL;
+    }
+
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
+    {
+        mpi_data->out_nt_buffers[i].cnt = 0;
+        mpi_data->out_nt_buffers[i].index = NULL;
+        mpi_data->out_nt_buffers[i].out_atoms = NULL;
     }
 #endif
 }
@@ -1019,15 +976,15 @@ static void Finalize_MPI_Datatypes( mpi_datatypes * const mpi_data )
     Deallocate_MPI_Buffers( mpi_data );
 
     ret = MPI_Type_free( &mpi_data->mpi_atom_type );
-    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_atom_type" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Type_free( &mpi_data->boundary_atom_type );
-    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->boundary_atom_type" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Type_free( &mpi_data->mpi_rvec );
-    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_rvec" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Type_free( &mpi_data->mpi_rvec2 );
-    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->mpi_rvec2" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Type_free( &mpi_data->restart_atom_type );
-    Check_MPI_Error( ret, "Finalize_MPI_Datatypes::mpi_data->restart_atom_type" );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 }
 
 
