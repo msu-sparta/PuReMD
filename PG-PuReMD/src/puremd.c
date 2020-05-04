@@ -196,6 +196,15 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     MPI_Comm_size( MPI_COMM_WORLD, &pmd_handle->control->nprocs );
     MPI_Comm_rank( MPI_COMM_WORLD, &pmd_handle->system->my_rank );
 
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] MPI timer resolution: %f\n", MPI_Wtick( ) );
+#endif
+
+    /* initialize logging timing and
+     * globally synchronize clocks across all MPI processes */
+    MPI_Barrier( MPI_COMM_WORLD );
+    pmd_handle->data->timing.start = Get_Time( );
+
     /* read system config files */
     Read_Config_Files( geo_file, ffield_file, control_file,
             pmd_handle->system, pmd_handle->control, pmd_handle->data,
@@ -243,9 +252,7 @@ int simulate( const void * const handle )
     output_controls *out_control;
     mpi_datatypes *mpi_data;
     puremd_handle *pmd_handle;
-    real t_start, t_elapsed;
 
-    t_start = 0;
     ret = PUREMD_FAILURE;
 
     if ( handle != NULL )
@@ -261,11 +268,6 @@ int simulate( const void * const handle )
         mpi_data = pmd_handle->mpi_data;
 
 #if defined(HAVE_CUDA)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            t_start = Get_Time( );
-        }
-
         Cuda_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 
         /* compute f_0 */
@@ -352,10 +354,6 @@ int simulate( const void * const handle )
         }
 
 #else 
-        if ( system->my_rank == MASTER_NODE )
-        {
-            t_start = Get_Time( );
-        }
 
         Initialize( system, control, data, workspace, lists, out_control, mpi_data );
        
@@ -450,21 +448,23 @@ int simulate( const void * const handle )
                   retries );
             MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
         }
-    
 #endif
-
-        /* end of the simulation, write total simulation time */
-        if ( system->my_rank == MASTER_NODE )
-        {
-            t_elapsed = Get_Timing_Info( t_start );
-            fprintf( out_control->out, "Total Simulation Time: %.2f secs\n", t_elapsed );
-        }
 
 //      Write_PDB_File( &system, &lists[BONDS], &out_control );
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
 //      Integrate_Results(control);
 #endif
+
+        /* end of simulation, write total simulation time
+         * (excluding deallocation routine time) after
+         * globally synchronizing clocks across all MPI processes */
+        MPI_Barrier( MPI_COMM_WORLD );
+        if ( system->my_rank == MASTER_NODE )
+        {
+            fprintf( out_control->out, "Total Simulation Time: %.2f secs\n",
+                    Get_Time( ) - data->timing.start );
+        }
 
         ret = PUREMD_SUCCESS;
     }

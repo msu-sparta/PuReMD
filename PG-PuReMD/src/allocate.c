@@ -23,12 +23,14 @@
 
 #if defined(PURE_REAX)
   #include "allocate.h"
+  #include "comm_tools.h"
   #include "list.h"
   #include "reset_tools.h"
   #include "tool_box.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_allocate.h"
+  #include "reax_comm_tools.h"
   #include "reax_list.h"
   #include "reax_reset_tools.h"
   #include "reax_tool_box.h"
@@ -629,7 +631,7 @@ void Reallocate_Bonds_List( reax_system * const system, reax_list * const bond_l
 
 int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
 {
-    int d, i, j, k, l, max_atoms, my_max, all_max;
+    int d, i, j, k, l, max_atoms, my_max, all_max, ret;
     ivec c;
     grid * const g = &system->my_grid;
     grid_cell *gc;
@@ -688,7 +690,8 @@ int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
     }
 
     my_max = MAX( (int) CEIL( max_atoms * SAFE_ZONE ), MIN_GCELL_POPL );
-    MPI_Allreduce( &my_max, &all_max, 1, MPI_INT, MPI_MAX, comm );
+    ret = MPI_Allreduce( &my_max, &all_max, 1, MPI_INT, MPI_MAX, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d max_atoms=%d, my_max=%d, all_max=%d\n",
@@ -814,16 +817,24 @@ void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
         neighbor_proc * const my_nbrs )
 {
     int i;
+    size_t max_size;
+    MPI_Aint extent[3], lower_bound[3];
     mpi_out_data *mpi_buf;
+
+    MPI_Type_get_extent( mpi_data->mpi_atom_type, &lower_bound[0], &extent[0] );
+    MPI_Type_get_extent( mpi_data->boundary_atom_type, &lower_bound[1], &extent[1] );
+    MPI_Type_get_extent( mpi_data->mpi_rvec, &lower_bound[2], &extent[2] );
+    max_size = MAX3( extent[0] + lower_bound[0], extent[1] + lower_bound[1],
+            extent[2] + lower_bound[2] );
 
     /* buffers for incoming messages,
      * see SendRecv for MPI datatypes sent */
-    mpi_data->in1_buffer = scalloc( 2 * est_recv,
-            MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
+    mpi_data->in1_buffer = scalloc( 2 * est_recv, max_size,
             "Allocate_MPI_Buffers::in1_buffer" );
-    mpi_data->in2_buffer = scalloc( 2 * est_recv,
-            MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
+    mpi_data->in1_buffer_size = max_size * 2 * est_recv;
+    mpi_data->in2_buffer = scalloc( 2 * est_recv, max_size,
             "Allocate_MPI_Buffers::in2_buffer" );
+    mpi_data->in2_buffer_size = max_size * 2 * est_recv;
 
     /* buffers for outgoing messages,
      * see SendRecv for MPI datatypes sent */
@@ -834,8 +845,8 @@ void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
         /* allocate storage for the neighbor processor i */
         mpi_buf->index = scalloc( 2 * my_nbrs[i].est_send, sizeof(int),
                 "Allocate_MPI_Buffers::mpi_buf->index" );
-        mpi_buf->out_atoms = scalloc( 2 * my_nbrs[i].est_send,
-                MAX3( sizeof(mpi_atom), sizeof(boundary_atom), sizeof(rvec) ),
+        mpi_buf->out_atoms_size = max_size * 2 * my_nbrs[i].est_send;
+        mpi_buf->out_atoms = scalloc( 2 * my_nbrs[i].est_send, max_size,
                 "Allocate_MPI_Buffers::mpi_buf->out_atoms" );
     }
 
@@ -845,15 +856,16 @@ void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
     {
         /* in buffers */
         mpi_data->in_nt_buffer[i] = scalloc( my_nt_nbrs[i].est_recv, sizeof(real),
-                "mpibuf:in_nt_buffer", comm );
+                "Allocate_MPI_Buffers::in_nt_buffer", comm );
         /* out buffer */
         mpi_buf = &mpi_data->out_nt_buffers[i];
 
         /* allocate storage for the neighbor processor i */
         mpi_buf->index = scalloc( my_nt_nbrs[i].est_send, sizeof(int),
-                "mpibuf:nt_index", comm );
+                "Allocate_MPI_Buffers::nt_index", comm );
+        mpi_buf->out_atoms_size = sizeof(real) * my_nt_nbrs[i].est_send;
         mpi_buf->out_atoms = scalloc( my_nt_nbrs[i].est_send, sizeof(real),
-                "mpibuf:nt_out_atoms", comm );
+                "Allocate_MPI_Buffers::nt_out_atoms", comm );
     }
 #endif
 }
@@ -862,26 +874,32 @@ void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
 void Deallocate_MPI_Buffers( mpi_datatypes * const mpi_data )
 {
     int i;
-    mpi_out_data  *mpi_buf;
+    mpi_out_data *mpi_buf;
 
     sfree( mpi_data->in1_buffer, "Deallocate_MPI_Buffers::in1_buffer" );
+    mpi_data->in1_buffer_size = 0;
     sfree( mpi_data->in2_buffer, "Deallocate_MPI_Buffers::in2_buffer" );
+    mpi_data->in2_buffer_size = 0;
 
     for ( i = 0; i < MAX_NBRS; ++i )
     {
         mpi_buf = &mpi_data->out_buffers[i];
+        mpi_buf->cnt = 0;
         sfree( mpi_buf->index, "Deallocate_MPI_Buffers::mpi_buf->index" );
+        mpi_buf->out_atoms_size = 0;
         sfree( mpi_buf->out_atoms, "Deallocate_MPI_Buffers::mpi_buf->out_atoms" );
     }
 
 #if defined(NEUTRAL_TERRITORY)
     for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
-        sfree( mpi_data->in_nt_buffer[i], "in_nt_buffer" );
+        sfree( mpi_data->in_nt_buffer[i], "Deallocate_MPI_Buffers::in_nt_buffer" );
 
         mpi_buf = &mpi_data->out_nt_buffers[i];
-        sfree( mpi_buf->index, "mpibuf:nt_index" );
-        sfree( mpi_buf->out_atoms, "mpibuf:nt_out_atoms" );
+        mpi_buf->cnt = 0;
+        sfree( mpi_buf->index, "Deallocate_MPI_Buffers::nt_index" );
+        mpi_buf->out_atoms_size = 0;
+        sfree( mpi_buf->out_atoms, "Deallocate_MPI_Buffers::nt_out_atoms" );
     }
 #endif
 }
@@ -945,33 +963,16 @@ void ReAllocate( reax_system * const system, control_params * const control,
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
     /* far neighbors */
-    if ( renbr == TRUE )
+    if ( renbr == TRUE && (Nflag == TRUE || realloc->far_nbrs == TRUE) )
     {
-        if ( Nflag == TRUE || realloc->far_nbrs == TRUE )
-        {
-#if defined(DEBUG_FOCUS)
-            fprintf( stderr, "[INFO] p%d: reallocating far_nbrs: far_nbrs=%d, space=%dMB\n",
-                     system->my_rank, (int)(system->total_far_nbrs * SAFE_ZONE),
-                     (int)(system->total_far_nbrs * SAFE_ZONE * sizeof(far_neighbor_data) /
-                           (1024 * 1024)) );
-#endif
-
-            Reallocate_Neighbor_List( lists[FAR_NBRS], system->total_cap, system->total_far_nbrs );
-            Init_List_Indices( lists[FAR_NBRS], system->max_far_nbrs );
-            realloc->far_nbrs = FALSE;
-        }
+        Reallocate_Neighbor_List( lists[FAR_NBRS], system->total_cap, system->total_far_nbrs );
+        Init_List_Indices( lists[FAR_NBRS], system->max_far_nbrs );
+        realloc->far_nbrs = FALSE;
     }
 
     /* charge matrix */
     if ( nflag == TRUE || realloc->cm == TRUE )
     {
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "[INFO] p%d: reallocating H matrix: Htop=%d, space=%dMB\n",
-                system->my_rank, (int)(realloc->Htop * SAFE_ZONE),
-                (int)(realloc->Htop * SAFE_ZONE * sizeof(sparse_matrix_entry) /
-                (1024 * 1024)) );
-#endif
-
 #if defined(NEUTRAL_TERRITORY)
         Reallocate_Matrix( H, H->n, system->local_cap,
                 (int) CEIL( system->total_cm_entries * SAFE_ZONE_NT ) );
@@ -983,19 +984,17 @@ void ReAllocate( reax_system * const system, control_params * const control,
     }
 
     /* hydrogen bonds list */
-    if ( control->hbond_cut > 0.0 )
+    if ( control->hbond_cut > 0.0
+            && (Nflag == TRUE || realloc->hbonds == TRUE) )
     {
-        if ( Nflag == TRUE || realloc->hbonds == TRUE )
-        {
 #if defined(DEBUG_FOCUS)
-            fprintf(stderr, "[INFO] p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
-                    system->my_rank, ret, (int)(ret * sizeof(hbond_data) / (1024 * 1024)));
+        fprintf(stderr, "[INFO] p%d: reallocating hbonds: total_hbonds=%d space=%dMB\n",
+                system->my_rank, ret, (int)(ret * sizeof(hbond_data) / (1024 * 1024)));
 #endif
 
-            Reallocate_HBonds_List( system, lists[HBONDS] );
-            Init_List_Indices( lists[HBONDS], system->max_hbonds );
-            realloc->hbonds = FALSE;
-        }
+        Reallocate_HBonds_List( system, lists[HBONDS] );
+        Init_List_Indices( lists[HBONDS], system->max_hbonds );
+        realloc->hbonds = FALSE;
     }
 
     /* bonds list */
@@ -1062,7 +1061,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
         mpi_flag = FALSE;
     }
     /* check whether in_buffer capacity is enough */
-    else if ( system->max_recved >= system->est_recv * DANGER_ZONE )
+    else if ( system->max_recved >= (int) CEIL( system->est_recv * DANGER_ZONE ) )
     {
         mpi_flag = TRUE;
     }
@@ -1075,7 +1074,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
             nbr_pr = &system->my_nbrs[i];
             nbr_data = &mpi_data->out_buffers[i];
 
-            if ( nbr_data->cnt >= nbr_pr->est_send * DANGER_ZONE )
+            if ( nbr_data->cnt >= (int) CEIL( nbr_pr->est_send * DANGER_ZONE ) )
             {
                 mpi_flag = TRUE;
                 break;
@@ -1111,7 +1110,8 @@ void ReAllocate( reax_system * const system, control_params * const control,
 #endif
 
         /* update mpi buffer estimates based on last comm */
-        system->est_recv = MAX( system->max_recved * SAFER_ZONE, MIN_SEND );
+        system->est_recv = MAX( (int) CEIL( system->max_recved * SAFER_ZONE ),
+                MIN_SEND );
         system->est_trans =
             (system->est_recv * sizeof(boundary_atom)) / sizeof(mpi_atom);
         total_send = 0;
@@ -1119,7 +1119,8 @@ void ReAllocate( reax_system * const system, control_params * const control,
         {
             nbr_pr = &system->my_nbrs[i];
             nbr_data = &mpi_data->out_buffers[i];
-            nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE, MIN_SEND );
+            nbr_pr->est_send = MAX( (int) CEIL( nbr_data->cnt * SAFER_ZONE ),
+                    MIN_SEND );
             total_send += nbr_pr->est_send;
         }
 

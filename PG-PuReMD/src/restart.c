@@ -33,7 +33,7 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    int i, me, np, cnt, top;
+    int i, me, np, cnt, top, ret;
     char fname[MAX_STR];
     FILE *fres;
     restart_header res_header;
@@ -86,8 +86,9 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
     /* gather the buffers at the master node */
     if ( me != MASTER_NODE )
     {
-        MPI_Send( buffer, system->n, mpi_data->restart_atom_type, MASTER_NODE,
-                  np * RESTART_ATOMS + me, mpi_data->world );
+        ret = MPI_Send( buffer, system->n, mpi_data->restart_atom_type, MASTER_NODE,
+                  np * RESTART_ATOMS + me, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
     else
     {
@@ -96,8 +97,9 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
         {
             if ( i != MASTER_NODE )
             {
-                MPI_Recv( buffer + top, system->bigN - top, mpi_data->restart_atom_type,
-                          i, np * RESTART_ATOMS + i, mpi_data->world, &status );
+                ret = MPI_Recv( buffer + top, system->bigN - top, mpi_data->restart_atom_type,
+                          i, np * RESTART_ATOMS + i, MPI_COMM_WORLD, &status );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
                 MPI_Get_count( &status, mpi_data->restart_atom_type, &cnt );
                 top += cnt;
             }
@@ -119,7 +121,7 @@ void Write_Restart_File( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
-    int i, me, np, buffer_len, buffer_req, cnt;
+    int i, me, np, buffer_len, buffer_req, cnt, ret;
     char fname[MAX_STR];
     FILE *fres;
     char *line;
@@ -177,8 +179,9 @@ void Write_Restart_File( reax_system *system, control_params *control,
     /* gather the buffers at the master node */
     if ( me != MASTER_NODE )
     {
-        MPI_Send( buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
-                np * RESTART_LINE_LEN + me, mpi_data->world );
+        ret = MPI_Send( buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
+                np * RESTART_LINE_LEN + me, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
     else
     {
@@ -187,8 +190,9 @@ void Write_Restart_File( reax_system *system, control_params *control,
         {
             if ( i != MASTER_NODE )
             {
-                MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
-                        MPI_CHAR, i, np * RESTART_LINE_LEN + i, mpi_data->world, &status );
+                ret = MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
+                        MPI_CHAR, i, np * RESTART_LINE_LEN + i, MPI_COMM_WORLD, &status );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
                 MPI_Get_count( &status, MPI_CHAR, &cnt );
                 buffer_len += cnt;
             }

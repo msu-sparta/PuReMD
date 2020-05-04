@@ -23,37 +23,44 @@
 
 #if defined(PURE_REAX)
   #include "tool_box.h"
+  #include "comm_tools.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_tool_box.h"
+  #include "reax_comm_tools.h"
 #endif
 
 
 /************** taken from comm_tools.c **************/
 int SumScan( int n, int me, int root, MPI_Comm comm )
 {
-    int i, my_order, wsize;
-    int *nbuf = NULL;
+    int i, my_order, wsize, *nbuf, ret;
+
+    nbuf = NULL;
 
     if ( me == root )
     {
         MPI_Comm_size( comm, &wsize );
         nbuf = (int *) scalloc( wsize, sizeof(int), "SumScan:nbuf" );
 
-        MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
+        ret = MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         for ( i = 0; i < wsize - 1; ++i )
         {
             nbuf[i + 1] += nbuf[i];
         }
 
-        MPI_Scatter( nbuf, 1, MPI_INT, &my_order, 1, MPI_INT, root, comm );
+        ret = MPI_Scatter( nbuf, 1, MPI_INT, &my_order, 1, MPI_INT, root, comm );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         sfree( nbuf, "SumScan:nbuf" );
     }
     else
     {
-        MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
-        MPI_Scatter( nbuf, 1, MPI_INT, &my_order, 1, MPI_INT, root, comm );
+        ret = MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Scatter( nbuf, 1, MPI_INT, &my_order, 1, MPI_INT, root, comm );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     return my_order;
@@ -62,9 +69,10 @@ int SumScan( int n, int me, int root, MPI_Comm comm )
 
 void SumScanB( int n, int me, int wsize, int root, MPI_Comm comm, int *nbuf )
 {
-    int i;
+    int i, ret;
 
-    MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
+    ret = MPI_Gather( &n, 1, MPI_INT, nbuf, 1, MPI_INT, root, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     if ( me == root )
     {
@@ -158,38 +166,36 @@ void Trim_Spaces( char *element )
 }
 
 
-/************ from system_props.c *************/
+/* Get the current time
+ *
+ * returns: current time in seconds */
 real Get_Time( )
 {
-    struct timeval tim;
-
-    gettimeofday( &tim, NULL );
-
-    return ( tim.tv_sec + (tim.tv_usec / 1000000.0) );
+    return MPI_Wtime( );
 }
 
 
-real Get_Timing_Info( real t_start )
+/* Get the elapsed time given a starting time
+ *
+ * t_start: starting time in seconds
+ * returns: elapsed time in seconds */
+real Get_Elapsed_Time( real t_start )
 {
-    struct timeval tim;
-    real t_end;
-
-    gettimeofday(&tim, NULL );
-    t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
-
-    return (t_end - t_start);
+    return MPI_Wtime( ) - t_start;
 }
 
 
+/* Accumulate elapsed time into timing and update starting time
+ * to be new time from this instant going forward
+ *
+ * t_start: previous starting time
+ * timing: variable to accumulate elapsed time into */
 void Update_Timing_Info( real *t_start, real *timing )
 {
-    struct timeval tim;
-    real t_end;
+    double t_end;
 
-    gettimeofday( &tim, NULL );
-
-    t_end = tim.tv_sec + (tim.tv_usec / 1000000.0);
-    *timing += (t_end - *t_start);
+    t_end = MPI_Wtime( );
+    *timing += t_end - *t_start;
     *t_start = t_end;
 }
 

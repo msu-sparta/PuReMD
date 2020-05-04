@@ -1379,7 +1379,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
 
 #if defined(DEBUG_FOCUS)
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = Get_Elapsed_Time( t_start );
 
         fprintf( stderr, "Bond Orders... return value --> %d --- Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
@@ -1409,7 +1409,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         }
 
 #if defined(DEBUG_FOCUS)
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = Get_Elapsed_Time( t_start );
 
         fprintf( stderr, "Cuda_Bond_Energy ... return value --> %d --- Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
@@ -1461,7 +1461,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         }
 
 #if defined(DEBUG_FOCUS)
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = Get_Elapsed_Time( t_start );
 
         fprintf( stderr, "test_LonePair_postprocess ... return value --> %d --- Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
@@ -1553,7 +1553,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
 
 #if defined(DEBUG_FOCUS)
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = Get_Elapsed_Time( t_start );
 
         fprintf( stderr, "Three_Body_Interactions ...  Timing %lf \n",
                 t_elapsed );
@@ -1615,7 +1615,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
 
 #if defined(DEBUG_FOCUS)
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = Get_Elapsed_Time( t_start );
 
         fprintf( stderr, "Four_Body_post process return value --> %d --- Four body Timing %lf \n",
                 cudaGetLastError( ), t_elapsed );
@@ -1691,7 +1691,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             cudaCheckError( );
 
 #if defined(DEBUG_FOCUS)
-            t_elapsed = Get_Timing_Info( t_start );
+            t_elapsed = Get_Elapsed_Time( t_start );
 
             fprintf( stderr,
                     "Hydrogen bonds return value --> %d --- HydrogenBonds Timing %lf \n",

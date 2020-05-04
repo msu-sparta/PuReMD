@@ -47,8 +47,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int i;
-    int nrecv[MAX_NBRS];
+    int i, nrecv[MAX_NBRS], ret;
 
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
@@ -66,7 +65,9 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
         nrecv[i] = 0;
     }
 
-    MPI_Barrier( MPI_COMM_WORLD );
+    ret = MPI_Barrier( MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+
     system->max_recved = 0;
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
             Estimate_Boundary_Atoms, Unpack_Estimate_Message, TRUE );
@@ -77,7 +78,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
     Cuda_Allocate_System( system );
     Sync_System( system );
 
-    /* estimate numH and Hcap */
+    /* estimate numH */
     Cuda_Reset_Atoms( system, control, workspace );
 
 #if defined(DEBUG_FOCUS)
@@ -85,8 +86,8 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
              system->my_rank, system->n, system->local_cap );
     fprintf( stderr, "p%d: N=%d total_cap=%d\n",
              system->my_rank, system->N, system->total_cap );
-    fprintf( stderr, "p%d: numH=%d H_cap=%d\n",
-             system->my_rank, system->numH, system->Hcap );
+    fprintf( stderr, "p%d: numH=%d\n",
+             system->my_rank, system->numH );
 #endif
 
     Cuda_Compute_Total_Mass( system, control, workspace,
@@ -114,6 +115,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     Cuda_Allocate_Simulation_Data( data );
 
     Reset_Simulation_Data( data );
+    Reset_Timing( &data->timing );
 
     if ( !control->restart )
     {
@@ -186,16 +188,6 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         fprintf( stderr, "p%d: init_simulation_data: ensemble not recognized\n",
               system->my_rank );
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
-    }
-
-    MPI_Barrier( MPI_COMM_WORLD );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.start = Get_Time( );
-
-#if defined(LOG_PERFORMANCE)
-        Reset_Timing( &data->timing );
-#endif
     }
 
 #if defined(DEBUG_FOCUS)

@@ -42,7 +42,8 @@ void Setup_Comm( reax_system * const, control_params * const, mpi_datatypes * co
 
 void Update_Comm( reax_system * const );
 
-void Estimate_Boundary_Atoms( reax_system * const, int, int, int, mpi_out_data * const );
+void Estimate_Boundary_Atoms( reax_system * const, int, int, int, mpi_out_data * const,
+       mpi_datatypes * const );
 
 void Unpack_Estimate_Message( reax_system * const, int, void * const, int,
         neighbor_proc * const, int );

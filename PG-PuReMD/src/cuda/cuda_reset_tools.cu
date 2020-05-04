@@ -73,8 +73,6 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control,
 
     copy_host_device( &system->numH, system->d_numH, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Reset_Atoms::d_numH" );
-
-    system->Hcap = MAX( (int)(system->numH * SAFER_ZONE), MIN_CAP );
 }
 
 
@@ -91,11 +89,6 @@ void Cuda_Reset( reax_system *system, control_params *control,
     }
 
     Cuda_Reset_Workspace( system, workspace );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: reset done\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 }
 
 

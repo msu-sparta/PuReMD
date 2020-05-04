@@ -23,6 +23,7 @@
 
 #include "allocate.h"
 #include "basic_comm.h"
+#include "comm_tools.h"
 #include "io_tools.h"
 #include "lin_alg.h"
 #include "tool_box.h"
@@ -149,10 +150,14 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    real time, t_sort, t_pc, redux[2];
+    int ret;
+    real time, timings[2];
     sparse_matrix *Hptr;
 
-    t_pc = 0.0;
+    time = Get_Time( );
+
+    timings[0] = 0.0;
+    timings[1] = 0.0;
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
@@ -164,13 +169,13 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
     }
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-    time = MPI_Wtime( );
     Sort_Matrix_Rows( &workspace->H );
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
         Sort_Matrix_Rows( &workspace->H_sp );
     }
-    t_sort = MPI_Wtime( ) - time;
+
+    Update_Timing_Info( &time, &timings[0] );
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -190,7 +195,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
 
         case SAI_PC:
-            t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data,
+            setup_sparse_approx_inverse( system, data, workspace, mpi_data,
                     &workspace->H, &workspace->H_spar_patt, 
                     control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
@@ -202,21 +207,22 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
     }
 
-    redux[0] = t_sort;
-    redux[1] = t_pc;
+    Update_Timing_Info( &time, &timings[1] );
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 2, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        data->timing.cm_sort += redux[0] / control->nprocs;
-        data->timing.cm_solver_pre_comp += redux[1] / control->nprocs;
+        data->timing.cm_sort += timings[0] / control->nprocs;
+        data->timing.cm_solver_pre_comp += timings[1] / control->nprocs;
     }
     else
     {
-        MPI_Reduce( redux, NULL, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 2, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 }
 
@@ -244,6 +250,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 {
     int i;
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+    int ret;
     real t_pc, total_pc;
 #endif
 
@@ -260,7 +267,9 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
         t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
                 &workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
 
-        MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         if( system->my_rank == MASTER_NODE )
         {
@@ -294,11 +303,10 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         storage const * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int i;
-    real u;
+    int i, ret;
+    real u, *q;
     rvec2 my_sum, all_sum;
     reax_atom *atom;
-    real *q;
 
     q = smalloc( sizeof(real) * system->N, "Calculate_Charges_QEq::q" );
 
@@ -309,7 +317,9 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         my_sum[0] += workspace->x[i][0];
         my_sum[1] += workspace->x[i][1];
     }
-    MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+    ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     u = all_sum[0] / all_sum[1];
     for ( i = 0; i < system->n; ++i )

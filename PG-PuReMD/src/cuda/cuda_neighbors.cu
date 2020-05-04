@@ -612,15 +612,9 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = Get_Elapsed_Time( t_start );
         data->timing.nbrs += t_elapsed;
     }
-#endif
-
-#if defined(DEBUG_FOCUS)  
-    fprintf( stderr, "p%d @ step%d: nbrs done\n", 
-            system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
     return ret;

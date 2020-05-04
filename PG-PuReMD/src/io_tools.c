@@ -1291,7 +1291,7 @@ void Output_Results( reax_system *system, control_params *control,
             fflush( out_control->pot );
 
 #if defined(LOG_PERFORMANCE)
-            t_elapsed = Get_Timing_Info( data->timing.total );
+            t_elapsed = Get_Elapsed_Time( data->timing.total );
             if ( data->step - data->prev_steps > 0 )
             {
                 denom = 1.0 / out_control->energy_update_freq;

@@ -612,12 +612,12 @@ typedef void (*interaction_function)( reax_system * const, control_params * cons
 typedef real (*lookup_function)( real );
 /**/
 typedef void (*message_sorter)( reax_system * const, int, int, int,
-        mpi_out_data * const );
+        mpi_out_data * const, mpi_datatypes * const );
 /**/
 typedef void (*unpacker)( reax_system * const, int, void * const, int,
         neighbor_proc * const, int );
 /**/
-typedef void (*callback_function)(reax_atom * const, simulation_data * const,
+typedef void (*callback_function)( reax_atom * const, simulation_data * const,
         reax_list * const );
 
 
@@ -717,20 +717,20 @@ struct boundary_atom
 /**/
 struct mpi_out_data
 {
-    /**/
+    /* num. of elements currently contained in the egress buffer */
     int cnt;
-    /**/
+    /* ??? */
     int *index;
-    /**/
+    /* egress buffer */
     void *out_atoms;
+    /* size of egress buffer, in bytes */
+    size_t out_atoms_size;
 };
 
 
 /**/
 struct mpi_datatypes
 {
-    /* communicator for all processes */
-    MPI_Comm world;
     /* communicator for neighboring processes in 3D Cartesian mesh topology */
     MPI_Comm comm_mesh3D;
     /* MPI datatype for mpi_atom */
@@ -753,20 +753,26 @@ struct mpi_datatypes
     MPI_Datatype bond_line;
     /**/
     MPI_Datatype angle_line;
-    /* outgoing buffers for communications with neighbors in
+    /* egress buffers for communications with neighbors in
      * 3D Cartesian topology */
     mpi_out_data out_buffers[MAX_NBRS];
-    /* ingoing buffer for communications with neighbor 1 along
+    /* ingress buffer for communications with neighbor 1 along
      * one dimension of the 3D Cartesian topology */
     void *in1_buffer;
-    /* ingoing buffer for communications with neighbor 2 along
+    /* size of ingress buffer, in bytes */
+    size_t in1_buffer_size;
+    /* ingress buffer for communications with neighbor 2 along
      * one dimension of the 3D Cartesian topology */
     void *in2_buffer;
+    /* size of ingress buffer, in bytes */
+    size_t in2_buffer_size;
 #if defined(NEUTRAL_TERRITORY)
     /**/
     mpi_out_data out_nt_buffers[MAX_NT_NBRS];
     /**/
     void *in_nt_buffer[MAX_NT_NBRS];
+    /* size of ingress buffer, in bytes */
+    size_t in_nt_buffer_size;
 #endif
 };
 
@@ -1686,12 +1692,8 @@ struct flexible_barostat
 
 struct reax_timing
 {
-    /* start time of event */
+    /* simulation start time */
     real start;
-    /* end time of event */
-    real end;
-    /* total elapsed time of event */
-    real elapsed;
     /* total simulation time */
     real total;
     /* communication time */
@@ -1712,27 +1714,25 @@ struct reax_timing
     real init_bond;
     /* atomic charge distribution calculation time */
     real cm;
-    /**/
+    /* charge matrix entry sorting time */
     real cm_sort;
-    /**/
-    real cm_sort_mat_rows;
-    /**/
+    /* charge solver communication time */
     real cm_solver_comm;
-    /**/
+    /* charge solver communication time for all-reduce operations */
     real cm_solver_allreduce;
-    /**/
+    /* charge solver preconditioner computation time */
     real cm_solver_pre_comp;
-    /**/
+    /* charge solver preconditioner application time */
     real cm_solver_pre_app;
     /* num. of steps in iterative linear solver for charge distribution */
     int cm_solver_iters;
-    /**/
+    /* charge solver sparse matrix-dense vector multiplication (SpMV) operation time */
     real cm_solver_spmv;
-    /**/
+    /* charge solver dense vector operation time */
     real cm_solver_vector_ops;
-    /**/
+    /* charge solver vector orthogonalization time */
     real cm_solver_orthog;
-    /**/
+    /* charge solver triangular system (forward/backward substitution) time */
     real cm_solver_tri_solve;
     /* time spent on last preconditioner computation */
     real cm_last_pre_comp;
@@ -1848,10 +1848,10 @@ struct simulation_data
     rvec ext_press;
     /**/
     rvec tot_press;
-    /**/
+    /* struct containing timing of various simulation functions */
     reax_timing timing;
 
-    /**/
+    /* struct containing timing of various simulation functions (GPU) */
     reax_timing d_timing;
     /**/
     void *d_simulation_data;

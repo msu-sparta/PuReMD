@@ -27,6 +27,7 @@
 #include "cuda_reduction.h"
 
 #include "../basic_comm.h"
+#include "../comm_tools.h"
 #include "../tool_box.h"
 
 
@@ -381,7 +382,7 @@ static real Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
     int t_start, t_comm;
     rvec2 *spad;
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, x, buf_type, mpi_type );
@@ -400,7 +401,7 @@ static real Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
     copy_host_device( spad, (void *)x, sizeof(rvec2) * system->total_cap,
             cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part1::x" );
 #endif
-    t_comm = MPI_Wtime( ) - t_start;
+    t_comm = Get_Time( ) - t_start;
 
     return t_comm;
 }
@@ -474,7 +475,7 @@ static real Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
     int t_start, t_comm;
     rvec2 *spad;
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     /* reduction required for symmetric half matrix */
 //    if ( mat_format == SYM_HALF_MATRIX )
     {
@@ -495,7 +496,7 @@ static real Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
                 cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part2::b" );
 #endif
     }
-    t_comm = MPI_Wtime( ) - t_start;
+    t_comm = Get_Time( ) - t_start;
 
     return t_comm;
 }
@@ -547,7 +548,7 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
     int t_start, t_comm;
     real *spad;
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, x, buf_type, mpi_type );
@@ -566,7 +567,7 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
     copy_host_device( spad, (void *)x, sizeof(real) * system->total_cap,
             cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part1::x" );
 #endif
-    t_comm = MPI_Wtime( ) - t_start;
+    t_comm = Get_Time( ) - t_start;
 
     return t_comm;
 }
@@ -639,7 +640,7 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
     int t_start, t_comm;
     real *spad;
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     /* reduction required for symmetric half matrix */
 //    if ( mat_format == SYM_HALF_MATRIX )
     {
@@ -660,7 +661,7 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
                 cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part2::q" );
 #endif
     }
-    t_comm = MPI_Wtime( ) - t_start;
+    t_comm = Get_Time( ) - t_start;
 
     return t_comm;
 }
@@ -699,6 +700,7 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
         rvec2 * const x, mpi_datatypes * const mpi_data, FILE *fout )
 {
     unsigned int i, matvecs;
+    int ret;
     rvec2 tmp, alpha, beta, norm, b_norm;
     rvec2 sig_old, sig_new;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
@@ -714,17 +716,17 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
     t_start = Get_Time( );
     Dual_Sparse_MatVec( system, control, workspace, mpi_data,
             H, x, workspace->d_workspace->q2 );
-    t_spmv += Get_Timing_Info( t_start );
+    t_spmv += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
             -1.0, -1.0, workspace->d_workspace->q2, system->n );
-    t_vops += Get_Timing_Info( t_start );
+    t_vops += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
     dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
             workspace->d_workspace->d2, system->n );
-    t_pa += Get_Timing_Info( t_start );
+    t_pa += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
     Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
@@ -732,17 +734,18 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
     Dot_local_rvec2( control, workspace, workspace->d_workspace->d2,
             workspace->d_workspace->d2, system->n, &redux[2], &redux[3] );
     Dot_local_rvec2( control, workspace, b, b, system->n, &redux[4], &redux[5] );
-    t_vops += Get_Timing_Info( t_start );
+    t_vops += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
-    MPI_Allreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     sig_new[0] = redux[0];
     sig_new[1] = redux[1];
     norm[0] = SQRT( redux[2] );
     norm[1] = SQRT( redux[3] );
     b_norm[0] = SQRT( redux[4] );
     b_norm[1] = SQRT( redux[5] );
-    t_allreduce += Get_Timing_Info( t_start );
+    t_allreduce += Get_Elapsed_Time( t_start );
 
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
@@ -754,19 +757,20 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
         t_start = Get_Time( );
         Dual_Sparse_MatVec( system, control, workspace, mpi_data,
                 H, workspace->d_workspace->d2, workspace->d_workspace->q2 );
-        t_spmv += Get_Timing_Info( t_start );
+        t_spmv += Get_Elapsed_Time( t_start );
 
         /* dot product: d.q */
         t_start = Get_Time( );
         Dot_local_rvec2( control, workspace, workspace->d_workspace->d2,
                 workspace->d_workspace->q2, system->n, &redux[0], &redux[1] );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         tmp[0] = redux[0];
         tmp[1] = redux[1];
-        t_allreduce += Get_Timing_Info( t_start );
+        t_allreduce += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         alpha[0] = sig_new[0] / tmp[0];
@@ -775,12 +779,12 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
                 workspace->d_workspace->d2, system->n );
         Vector_Add_rvec2( workspace->d_workspace->r2, -1.0 * alpha[0], -1.0 * alpha[1],
                 workspace->d_workspace->q2, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
                 workspace->d_workspace->p2, system->n );
-        t_pa += Get_Timing_Info( t_start );
+        t_pa += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         /* dot products: r.p and p.p */
@@ -788,11 +792,12 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
                 workspace->d_workspace->p2, system->n, &redux[0], &redux[1] );
         Dot_local_rvec2( control, workspace, workspace->d_workspace->p2,
                 workspace->d_workspace->p2, system->n, &redux[2], &redux[3] );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
         t_start = Get_Time( );
         sig_old[0] = sig_new[0];
@@ -807,7 +812,7 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
         Vector_Sum_rvec2( workspace->d_workspace->d2,
                 1.0, 1.0, workspace->d_workspace->p2,
                 beta[0], beta[1], workspace->d_workspace->d2, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
     }
 
     if ( norm[0] / b_norm[0] <= tol
@@ -845,7 +850,8 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -855,7 +861,8 @@ int Cuda_dual_CG( reax_system const * const system, control_params const * const
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters )
@@ -884,6 +891,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
         real * const x, mpi_datatypes * const mpi_data )
 {
     unsigned int i;
+    int ret;
     real tmp, alpha, beta, norm, b_norm;
     real sig_old, sig_new;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
@@ -898,17 +906,17 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
     t_start = Get_Time( );
     Sparse_MatVec( system, control, workspace, mpi_data,
             H, x, workspace->d_workspace->q );
-    t_spmv += Get_Timing_Info( t_start );
+    t_spmv += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
             -1.0, workspace->d_workspace->q, system->n );
-    t_vops += Get_Timing_Info( t_start );
+    t_vops += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
     jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
             workspace->d_workspace->d, system->n );
-    t_pa += Get_Timing_Info( t_start );
+    t_pa += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
     redux[0] = Dot_local( workspace, workspace->d_workspace->r,
@@ -916,46 +924,48 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
     redux[1] = Dot_local( workspace, workspace->d_workspace->d,
             workspace->d_workspace->d, system->n );
     redux[2] = Dot_local( workspace, b, b, system->n );
-    t_vops += Get_Timing_Info( t_start );
+    t_vops += Get_Elapsed_Time( t_start );
 
     t_start = Get_Time( );
-    MPI_Allreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     sig_new = redux[0];
     norm = SQRT( redux[1] );
     b_norm = SQRT( redux[2] );
-    t_allreduce += Get_Timing_Info( t_start );
+    t_allreduce += Get_Elapsed_Time( t_start );
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
         t_start = Get_Time( );
         Sparse_MatVec( system, control, workspace, mpi_data,
                 H, workspace->d_workspace->d, workspace->d_workspace->q );
-        t_spmv += Get_Timing_Info( t_start );
+        t_spmv += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         tmp = Dot( workspace, workspace->d_workspace->d, workspace->d_workspace->q,
-                system->n, mpi_data->world );
-        t_allreduce += Get_Timing_Info( t_start );
+                system->n, MPI_COMM_WORLD );
+        t_allreduce += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         alpha = sig_new / tmp;
         Vector_Add( x, alpha, workspace->d_workspace->d, system->n );
         Vector_Add( workspace->d_workspace->r, -1.0 * alpha, workspace->d_workspace->q, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
                 workspace->d_workspace->p, system->n );
-        t_pa += Get_Timing_Info( t_start );
+        t_pa += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         redux[0] = Dot_local( workspace, workspace->d_workspace->r, workspace->d_workspace->p, system->n );
         redux[1] = Dot_local( workspace, workspace->d_workspace->p, workspace->d_workspace->p, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += Get_Timing_Info( t_start );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Elapsed_Time( t_start );
 
         t_start = Get_Time( );
         sig_old = sig_new;
@@ -964,7 +974,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->p,
                 beta, workspace->d_workspace->d, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
     }
 
     timings[0] = t_pa;
@@ -975,7 +985,8 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -985,7 +996,8 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )

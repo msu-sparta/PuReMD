@@ -38,7 +38,7 @@
 
 /* Calculate atom indices of local and ghost atoms
  * for hydrogen bonding interactions */
-static void Reset_Atoms_H_Indices( reax_system * const system, control_params * const control )
+static void Reset_Atoms_HBond_Indices( reax_system * const system, control_params * const control )
 {
     int i;
     reax_atom *atom;
@@ -116,26 +116,26 @@ void Reset_Simulation_Data( simulation_data * const data )
 }
 
 
-void Reset_Timing( reax_timing * const rt )
+void Reset_Timing( reax_timing * const timing )
 {
-    rt->total = Get_Time( );
-    rt->comm = ZERO;
-    rt->nbrs = ZERO;
-    rt->init_forces = ZERO;
-    rt->bonded = ZERO;
-    rt->nonb = ZERO;
-    rt->cm = ZERO;
-    rt->cm_sort = ZERO;
-    rt->cm_solver_pre_comp = ZERO;
-    rt->cm_solver_pre_app = ZERO;
-    rt->cm_solver_comm = ZERO;
-    rt->cm_solver_allreduce = ZERO;
-    rt->cm_solver_iters = 0;
-    rt->cm_solver_spmv = ZERO;
-    rt->cm_solver_vector_ops = ZERO;
-    rt->cm_solver_orthog = ZERO;
-    rt->cm_solver_tri_solve = ZERO;
-    rt->num_retries = 0;
+    timing->total = Get_Time( );
+    timing->comm = ZERO;
+    timing->nbrs = ZERO;
+    timing->init_forces = ZERO;
+    timing->bonded = ZERO;
+    timing->nonb = ZERO;
+    timing->cm = ZERO;
+    timing->cm_sort = ZERO;
+    timing->cm_solver_pre_comp = ZERO;
+    timing->cm_solver_pre_app = ZERO;
+    timing->cm_solver_comm = ZERO;
+    timing->cm_solver_allreduce = ZERO;
+    timing->cm_solver_iters = 0;
+    timing->cm_solver_spmv = ZERO;
+    timing->cm_solver_vector_ops = ZERO;
+    timing->cm_solver_orthog = ZERO;
+    timing->cm_solver_tri_solve = ZERO;
+    timing->num_retries = 0;
 }
 
 
@@ -238,7 +238,7 @@ void Reset( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         reax_list ** const lists )
 {
-    Reset_Atoms_H_Indices( system, control );
+    Reset_Atoms_HBond_Indices( system, control );
 
     Reset_Simulation_Data( data );
 

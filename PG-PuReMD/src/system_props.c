@@ -23,10 +23,12 @@
 
 #if defined(PURE_REAX)
   #include "system_props.h"
+  #include "comm_tools.h"
   #include "tool_box.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_system_props.h"
+  #include "reax_comm_tools.h"
   #include "reax_tool_box.h"
   #include "reax_vector.h"
 #endif
@@ -71,7 +73,7 @@ void Temperature_Control( control_params *control, simulation_data *data )
 void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
         MPI_Comm comm )
 {
-    int i;
+    int i, ret;
     rvec p;
     real m;
 
@@ -85,8 +87,9 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
         data->my_en.e_kin += 0.5 * rvec_Dot( p, system->my_atoms[i].v );
     }
 
-    MPI_Allreduce( &data->my_en.e_kin,  &data->sys_en.e_kin,
-            1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin, 1, MPI_DOUBLE,
+            MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
 
@@ -101,6 +104,7 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 void Compute_Total_Energy( reax_system *system, simulation_data *data,
         MPI_Comm comm )
 {
+    int ret;
     real my_en[14], sys_en[14];
 
     //TODO: remove this is an UGLY fix
@@ -124,7 +128,9 @@ void Compute_Total_Energy( reax_system *system, simulation_data *data,
     my_en[11] = data->my_en.e_ele;
     my_en[12] = data->my_en.e_pol;
 //    my_en[13] = data->my_en.e_kin;
-    MPI_Reduce( my_en, sys_en, 14, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
+
+    ret = MPI_Reduce( my_en, sys_en, 14, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     data->my_en.e_pot = data->my_en.e_bond +
         data->my_en.e_ov + data->my_en.e_un  + data->my_en.e_lp +
@@ -167,7 +173,7 @@ void Compute_Total_Energy( reax_system *system, simulation_data *data,
 void Compute_Total_Mass( reax_system *system, simulation_data *data,
         MPI_Comm comm  )
 {
-    int i;
+    int i, ret;
     real tmp;
 
     tmp = 0;
@@ -176,7 +182,8 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data,
         tmp += system->reax_param.sbp[ system->my_atoms[i].type ].mass;
     }
 
-    MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     data->inv_M = 1.0 / data->M;
 }
@@ -185,7 +192,7 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data,
 void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         mpi_datatypes *mpi_data, MPI_Comm comm )
 {
-    int i;
+    int i, ret;
     real m, det; //xx, xy, xz, yy, yz, zz;
     real tmp_mat[6], tot_mat[6];
     rvec my_xcm, my_vcm, my_amcm, my_avcm;
@@ -209,9 +216,12 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         rvec_ScaledAdd( my_amcm, m, tvec );
     }
 
-    MPI_Allreduce( my_xcm, data->xcm, 3, MPI_DOUBLE, MPI_SUM, comm );
-    MPI_Allreduce( my_vcm, data->vcm, 3, MPI_DOUBLE, MPI_SUM, comm );
-    MPI_Allreduce( my_amcm, data->amcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( my_xcm, data->xcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Allreduce( my_vcm, data->vcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Allreduce( my_amcm, data->amcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     rvec_Scale( data->xcm, data->inv_M, data->xcm );
     rvec_Scale( data->vcm, data->inv_M, data->vcm );
@@ -239,7 +249,8 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         tmp_mat[5]/*my_zz*/ += diff[2] * diff[2] * m;
     }
 
-    MPI_Reduce( tmp_mat, tot_mat, 6, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
+    ret = MPI_Reduce( tmp_mat, tot_mat, 6, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     if ( system->my_rank == MASTER_NODE )
     {
@@ -340,7 +351,7 @@ void Check_Energy( simulation_data* data )
 void Compute_Pressure( reax_system* system, control_params *control,
         simulation_data* data, mpi_datatypes *mpi_data )
 {
-    int i;
+    int i, ret;
     reax_atom *p_atom;
     rvec tmp, tx, int_press;
     simulation_box *big_box;
@@ -382,10 +393,12 @@ void Compute_Pressure( reax_system* system, control_params *control,
 #endif
 
     /* sum up internal and external pressure */
-    MPI_Allreduce( int_press, data->int_press,
-            3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
-    MPI_Allreduce( data->my_ext_press, data->ext_press,
-            3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
+    ret = MPI_Allreduce( int_press, data->int_press, 3, MPI_DOUBLE,
+            MPI_SUM, mpi_data->comm_mesh3D );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Allreduce( data->my_ext_press, data->ext_press, 3, MPI_DOUBLE,
+            MPI_SUM, mpi_data->comm_mesh3D );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",

@@ -7,6 +7,7 @@
 #include "cuda_reduction.h"
 #include "cuda_vector.h"
 
+#include "../comm_tools.h"
 #include "../tool_box.h"
 #include "../vector.h"
 
@@ -717,6 +718,7 @@ void Cuda_Generate_Initial_Velocities( reax_system *system, real T )
 void Cuda_Compute_Kinetic_Energy( reax_system* system, control_params *control,
         storage *workspace, simulation_data* data, MPI_Comm comm )
 {
+    int ret;
     real *block_energy;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
@@ -740,8 +742,9 @@ void Cuda_Compute_Kinetic_Energy( reax_system* system, control_params *control,
     copy_host_device( &data->my_en.e_kin, &block_energy[control->blocks_pow_2],
             sizeof(real), cudaMemcpyDeviceToHost, "Cuda_Compute_Kinetic_Energy::tmp" );
 
-    MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin,
+    ret = MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin,
             1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
 
@@ -778,8 +781,8 @@ void Check_Energy( simulation_data* data )
 void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data, MPI_Comm comm  )
 {
-    real tmp;
-    real *block_mass;
+    int ret;
+    real tmp, *block_mass;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(real) * (control->blocks_pow_2 + 1),
@@ -800,7 +803,8 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
     copy_host_device( &tmp, &block_mass[control->blocks_pow_2], sizeof(real), 
             cudaMemcpyDeviceToHost, "total_mass:tmp" );
 
-    MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     data->inv_M = 1.0 / data->M;
 }
@@ -809,7 +813,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
 void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data, mpi_datatypes *mpi_data, MPI_Comm comm )
 {
-    int i;
+    int i, ret;
     real det; //xx, xy, xz, yy, yz, zz;
     real tmp_mat[6], tot_mat[6];
     rvec my_xcm, my_vcm, my_amcm, my_avcm;
@@ -824,9 +828,12 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
     /* Compute the position, vel. and ang. momentum about the centre of mass */
     Cuda_Compute_Momentum( system, control, workspace, my_xcm, my_vcm, my_amcm );
 
-    MPI_Allreduce( my_xcm, data->xcm, 3, MPI_DOUBLE, MPI_SUM, comm );
-    MPI_Allreduce( my_vcm, data->vcm, 3, MPI_DOUBLE, MPI_SUM, comm );
-    MPI_Allreduce( my_amcm, data->amcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( my_xcm, data->xcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Allreduce( my_vcm, data->vcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Allreduce( my_amcm, data->amcm, 3, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     rvec_Scale( data->xcm, data->inv_M, data->xcm );
     rvec_Scale( data->vcm, data->inv_M, data->vcm );
@@ -842,7 +849,8 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
 
     Cuda_Compute_Inertial_Tensor( system, control, workspace, tmp_mat, my_xcm );
 
-    MPI_Reduce( tmp_mat, tot_mat, 6, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
+    ret = MPI_Reduce( tmp_mat, tot_mat, 6, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     if ( system->my_rank == MASTER_NODE )
     {
@@ -884,7 +892,8 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
         rtensor_MatVec( data->avcm, inv, data->amcm );
     }
 
-    MPI_Bcast( data->avcm, 3, MPI_DOUBLE, MASTER_NODE, comm );
+    ret = MPI_Bcast( data->avcm, 3, MPI_DOUBLE, MASTER_NODE, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* Compute the rotational energy */
     data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
@@ -921,9 +930,8 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
 void Cuda_Compute_Pressure( reax_system* system, control_params *control,
         storage *workspace, simulation_data* data, mpi_datatypes *mpi_data )
 {
-    int blocks, block_size, blocks_n, blocks_pow_2_n;
-    rvec *rvec_spad;
-    rvec int_press;
+    int blocks, block_size, blocks_n, blocks_pow_2_n, ret;
+    rvec *rvec_spad, int_press;
     simulation_box *big_box;
     
     big_box = &system->big_box;
@@ -966,10 +974,12 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
 #endif
 
     /* sum up internal and external pressure */
-    MPI_Allreduce( int_press, data->int_press,
+    ret = MPI_Allreduce( int_press, data->int_press,
             3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
-    MPI_Allreduce( data->my_ext_press, data->ext_press,
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Allreduce( data->my_ext_press, data->ext_press,
             3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",

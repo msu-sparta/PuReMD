@@ -134,7 +134,7 @@ void Init_System( reax_system * const system, control_params * const control,
     reax_atom *atom;
     int nrecv[MAX_NBRS];
 
-    Setup_New_Grid( system, control, mpi_data->world );
+    Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
     Bin_My_Atoms( system, workspace );
     Reorder_My_Atoms( system, workspace );
@@ -144,7 +144,7 @@ void Init_System( reax_system * const system, control_params * const control,
     {
         nrecv[i] = 0;
     }
-    MPI_Barrier( mpi_data->world );
+    MPI_Barrier( MPI_COMM_WORLD );
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
             Estimate_Boundary_Atoms, Unpack_Estimate_Message, TRUE );
 
@@ -227,10 +227,12 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         simulation_data * const data, mpi_datatypes * const mpi_data )
 {
     Reset_Simulation_Data( data );
+    Reset_Timing( &data->timing );
 
     if ( !control->restart )
     {
-        data->step = data->prev_steps = 0;
+        data->step = 0;
+        data->prev_steps = 0;
     }
 
     switch ( control->ensemble )
@@ -288,7 +290,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     case NPT:
         fprintf( stderr, "[ERROR] p%d: Init_Simulation_Data: option not yet implemented (anisotropic NPT ensemble)\n",
               system->my_rank );
-        MPI_Abort( mpi_data->world,  INVALID_INPUT );
+        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
 
         data->N_f = 3 * system->bigN + 9;
         control->Evolve = Velocity_Verlet_Berendsen_NPT;
@@ -308,23 +310,8 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     default:
         fprintf( stderr, "[ERROR] p%d: init_simulation_data: ensemble not recognized\n",
               system->my_rank );
-        MPI_Abort( mpi_data->world,  INVALID_INPUT );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
-
-    /* initialize the timer(s) */
-    MPI_Barrier( mpi_data->world );
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.start = Get_Time( );
-
-#if defined(LOG_PERFORMANCE)
-        Reset_Timing( &data->timing );
-#endif
-    }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "data->N_f: %8.3f\n", data->N_f );
-#endif
 }
 
 
@@ -361,10 +348,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         simulation_data * const data )
 {
     Reset_Simulation_Data( data );
-
-#if defined(LOG_PERFORMANCE)
     Reset_Timing( &data->timing );
-#endif
 
     //if( !control->restart )
     data->step = data->prev_steps = 0;
@@ -391,7 +375,7 @@ void Init_Taper( control_params * const control,  storage * const workspace,
     if ( swb < 0.0 )
     {
         fprintf( stderr, "[ERROR] negative upper Taper-radius cutoff in force field parameters\n" );
-        MPI_Abort( mpi_data->world,  INVALID_INPUT );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
     else if ( swb < 5.0 )
     {
@@ -447,8 +431,6 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     mpi_atom sample[1];
     boundary_atom b_sample[1];
     restart_atom r_sample[1];
-
-    mpi_data->world = MPI_COMM_WORLD;
 
     /* mpi_atom */
     block[0] = 1;
@@ -561,13 +543,16 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     MPI_Type_commit( &mpi_data->restart_atom_type );
 
     mpi_data->in1_buffer = NULL;
+    mpi_data->in1_buffer_size = 0;
     mpi_data->in2_buffer = NULL;
+    mpi_data->in2_buffer_size = 0;
 
     for ( i = 0; i < MAX_NBRS; ++i )
     {
         mpi_data->out_buffers[i].cnt = 0;
         mpi_data->out_buffers[i].index = NULL;
         mpi_data->out_buffers[i].out_atoms = NULL;
+        mpi_data->out_buffers[i].out_atoms_size = 0;
     }
 
 #if defined(NEUTRAL_TERRITORY)
@@ -581,6 +566,7 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
         mpi_data->out_nt_buffers[i].cnt = 0;
         mpi_data->out_nt_buffers[i].index = NULL;
         mpi_data->out_nt_buffers[i].out_atoms = NULL;
+        mpi_data->out_nt_buffers[i].out_atoms_size = 0;
     }
 #endif
 }
@@ -620,7 +606,7 @@ void Init_Lists( reax_system * const system, control_params * const control,
     if ( ret != SUCCESS )
     {
         fprintf( stderr, "[ERROR] p%d: failed to generate neighbor lists. Terminating...\n", system->my_rank );
-        MPI_Abort( mpi_data->world, CANNOT_INITIALIZE );
+        MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
     
     Estimate_Storages( system, control, lists, &matrix_dim, cm_format );

@@ -27,6 +27,7 @@
 
 #include "../basic_comm.h"
 #include "../charges.h"
+#include "../comm_tools.h"
 #include "../tool_box.h"
 
 #include "../cub/cub/device/device_radix_sort.cuh"
@@ -263,14 +264,15 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
+    int ret;
     real time, t_sort, t_pc, redux[2];
 
     t_pc = 0.0;
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-    time = MPI_Wtime( );
+    time = Get_Time( );
 //    Sort_Matrix_Rows( &workspace->d_workspace->H, system );
-    t_sort = MPI_Wtime( ) - time;
+    t_sort = Get_Time( ) - time;
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -308,16 +310,18 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_sort += redux[0] / control->nprocs;
         data->timing.cm_solver_pre_comp += redux[1] / control->nprocs;
     }
     else
     {
-        MPI_Reduce( redux, NULL, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( redux, NULL, 2, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 }
 
@@ -357,7 +361,8 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 //        t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
 //                &workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
 //
-//        MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+//        ret = MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+//        Check_MPI_Error( ret, __FILE__, __LINE__ );
 //
 //        if( system->my_rank == MASTER_NODE )
 //        {
@@ -479,7 +484,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int blocks;
+    int blocks, ret;
     real u, *q;
     rvec2 my_sum, all_sum;
 #if defined(DUAL_SOLVER)
@@ -540,7 +545,8 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 #endif
 
     /* global reduction on pseudo-charges for s and t */
-    MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+    ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     u = all_sum[0] / all_sum[1];
 

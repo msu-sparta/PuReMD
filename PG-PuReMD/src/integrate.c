@@ -115,7 +115,7 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         control_params * const control, simulation_data * const data, storage * const workspace,
         reax_list ** const lists, output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
-    int i, itr, steps, renbr, ret;
+    int i, itr, steps, renbr, ret, ret_mpi;
     static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, coef_v;
     real dt, dt_sqr;
@@ -207,8 +207,9 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
                         * rvec_Dot( atom->v, atom->v );
             }
     
-            MPI_Allreduce( &my_ekin, &new_ekin, 1, MPI_DOUBLE, MPI_SUM,
-                    mpi_data->comm_mesh3D  );
+            ret_mpi = MPI_Allreduce( &my_ekin, &new_ekin, 1, MPI_DOUBLE,
+                    MPI_SUM, mpi_data->comm_mesh3D  );
+            Check_MPI_Error( ret_mpi, __FILE__, __LINE__ );
     
             G_xi_new = control->Tau_T * ( 2.0 * new_ekin - data->N_f * K_B * control->T );
             v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
@@ -263,7 +264,7 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
 
         if ( renbr == TRUE )
         {
-            Update_Grid( system, control, mpi_data->world );
+            Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
@@ -373,7 +374,7 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
 
         if ( renbr == TRUE )
         {
-            Update_Grid( system, control, mpi_data->world );
+            Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );

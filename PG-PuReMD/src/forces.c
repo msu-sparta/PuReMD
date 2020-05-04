@@ -27,6 +27,7 @@
   #include "bonds.h"
   #include "basic_comm.h"
   #include "charges.h"
+  #include "comm_tools.h"
   #include "hydrogen_bonds.h"
   #include "io_tools.h"
   #include "list.h"
@@ -43,6 +44,7 @@
   #include "reax_bonds.h"
   #include "reax_basic_comm.h"
   #include "reax_charges.h"
+  #include "reax_comm_tools.h"
   #include "reax_hydrogen_bonds.h"
   #include "reax_io_tools.h"
   #include "reax_list.h"
@@ -1218,7 +1220,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
         if ( i < system->n
                 && system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
-                > system->max_hbonds[system->my_atoms[i].Hindex] )
+                    > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
             workspace->realloc.hbonds = TRUE;
         }
@@ -1515,14 +1517,18 @@ static int Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    double t_start, t_dist, t_cm, t_bond;
-    double timings[3];
+    int ret;
+#if defined(LOG_PERFORMANCE)
+    double time;
     
-    t_start = MPI_Wtime( );
+    time = Get_Time( );
+#endif
 
     Init_Distance( system, control, data, workspace, lists, out_control );
 
-    t_dist = MPI_Wtime( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.init_dist );
+#endif
 
 #if defined(NEUTRAL_TERRITORY)
     if ( workspace->H.format == SYM_HALF_MATRIX )
@@ -1544,7 +1550,9 @@ static int Init_Forces( reax_system *system, control_params *control,
     }
 #endif
 
-    t_cm = MPI_Wtime();
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.init_cm );
+#endif
 
     if ( lists[FAR_NBRS]->format == HALF_LIST )
     {
@@ -1555,24 +1563,9 @@ static int Init_Forces( reax_system *system, control_params *control,
         Init_Bond_Full( system, control, data, workspace, lists, out_control );
     }
 
-    t_bond = MPI_Wtime();
-
-    timings[0] = t_dist - t_start;
-    timings[1] = t_cm - t_dist;
-    timings[2] = t_bond - t_cm;
-
-    if ( system->my_rank == MASTER_NODE ) 
-    {
-        MPI_Reduce( MPI_IN_PLACE, timings, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
-
-        data->timing.init_dist += timings[0] / control->nprocs;
-        data->timing.init_cm += timings[1] / control->nprocs;
-        data->timing.init_bond += timings[2] / control->nprocs;
-    }
-    else
-    {
-        MPI_Reduce( timings, NULL, 3, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
-    }
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.init_bond );
+#endif
 
     return (workspace->realloc.bonds == FALSE 
             && workspace->realloc.hbonds == FALSE
@@ -2099,7 +2092,7 @@ void Estimate_Storages( reax_system * const system, control_params * const contr
     system->total_thbodies = MAX( system->total_thbodies * SAFE_ZONE, MIN_3BODIES );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ estimate storages: total_cm_entries = %d, total_thbodies = %d\n",
+    fprintf( stderr, "[INFO] p%d @ estimate storages: total_cm_entries = %d, total_thbodies = %d\n",
             system->my_rank, system->total_cm_entries, system->total_thbodies );
     MPI_Barrier( MPI_COMM_WORLD );
 #endif
@@ -2113,12 +2106,9 @@ int Compute_Forces( reax_system * const system, control_params * const control,
 {
     int charge_flag, matrix_dim, ret;
 #if defined(LOG_PERFORMANCE)
-    real t_start = 0.0;
+    real time;
 
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_start = Get_Time( );
-    }
+    time = Get_Time( );
 #endif
 
     /********* init forces ************/
@@ -2146,10 +2136,7 @@ int Compute_Forces( reax_system * const system, control_params * const control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        Update_Timing_Info( &t_start, &data->timing.init_forces );
-    }
+    Update_Timing_Info( &time, &data->timing.init_forces );
 #endif
 
     if ( ret == SUCCESS )
@@ -2158,16 +2145,7 @@ int Compute_Forces( reax_system * const system, control_params * const control,
                 lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.bonded) );
-        }
-#endif
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: completed bonded\n",
-                 system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
+        Update_Timing_Info( &time, &data->timing.bonded );
 #endif
 
     /**************** charges ************************/
@@ -2178,16 +2156,15 @@ int Compute_Forces( reax_system * const system, control_params * const control,
         }
 
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &data->timing.cm );
-        }
+        Update_Timing_Info( &time, &data->timing.cm );
 #endif
 
-        if ( system->my_rank == MASTER_NODE )
+        /* dynamically determine preconditioner recomputation rate */
+        if ( control->cm_solver_pre_comp_refactor == -1 )
         {
-            /* dynamically determine preconditioner recomputation rate */
-            if ( control->cm_solver_pre_comp_refactor == -1 )
+            /* root MPI process determines recomputation
+             * and broadcasts to other processes */
+            if ( system->my_rank == MASTER_NODE )
             {
                 /* preconditioner just recomputed, record timings */
                 if ( data->refactor == TRUE )
@@ -2236,49 +2213,22 @@ int Compute_Forces( reax_system * const system, control_params * const control,
                     }
                 }
             }
-        }
 
-        if ( control->cm_solver_pre_comp_refactor == -1 )
-        {
             MPI_Bcast( &data->refactor, 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
         }
-
-#if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: qeq completed\n", system->my_rank, data->step);
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
 #endif //PURE_REAX
     
         Compute_NonBonded_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.nonb) );
-        }
-#endif
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: nonbonded forces completed\n",
-                 system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
+        Update_Timing_Info( &time, &data->timing.nonb );
 #endif
     
         Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
     
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &(data->timing.bonded) );
-        }
-#endif
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: total forces computed\n",
-                 system->my_rank, data->step );
-        //Print_Total_Force( system, data, workspace );
-        MPI_Barrier( MPI_COMM_WORLD );
+        Update_Timing_Info( &time, &data->timing.bonded );
 #endif
 
 #if defined(TEST_FORCES)

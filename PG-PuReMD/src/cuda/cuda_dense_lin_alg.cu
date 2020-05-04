@@ -3,6 +3,8 @@
 #include "cuda_reduction.h"
 #include "cuda_utils.h"
 
+#include "../comm_tools.h"
+
 
 /* sets all entries of a dense vector to zero
  *
@@ -542,6 +544,7 @@ real Dot( storage * const workspace,
         real const * const v1, real const * const v2,
         unsigned int k, MPI_Comm comm )
 {
+    int ret;
     real sum, *spad;
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) && !MPIX_CUDA_AWARE_SUPPORT
     real temp;
@@ -558,12 +561,14 @@ real Dot( storage * const workspace,
 
     /* global reduction (sum) of local device sums and store on host */
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-    MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 #else
     copy_host_device( &temp, &spad[k], sizeof(real),
             cudaMemcpyDeviceToHost, "Dot::temp" );
 
-    MPI_Allreduce( &temp, &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &temp, &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 #endif
 
     return sum;

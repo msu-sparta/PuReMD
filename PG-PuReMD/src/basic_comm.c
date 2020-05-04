@@ -23,9 +23,11 @@
 
 #if defined(PURE_REAX)
   #include "basic_comm.h"
+  #include "comm_tools.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_basic_comm.h"
+  #include "reax_comm_tools.h"
   #include "reax_vector.h"
 #endif
 
@@ -266,7 +268,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         void const * const buf, int buf_type, MPI_Datatype type )
 {
 #if defined(NEUTRAL_TERRITORY)
-    int d, count, index;
+    int d, count, index, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req[6];
@@ -284,9 +286,10 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         if ( system->my_nt_nbrs[d].atoms_cnt > 0 )
         {
             count++;
-            MPI_Irecv( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+            ret = MPI_Irecv( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
                     system->my_nt_nbrs[d].atoms_cnt, type,
                     system->my_nt_nbrs[d].receive_rank, d, comm, &req[d] );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
     }
 
@@ -296,18 +299,20 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         if ( out_bufs[d].cnt > 0 )
         {
             pack( buf, &out_bufs[d] );
-            MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
+            ret = MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
                     system->my_nt_nbrs[d].rank, d, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
     }
 
     for ( d = 0; d < count; ++d )
     {
-        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
 #else
-    int d;
+    int d, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
@@ -325,39 +330,45 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         nbr1 = &system->my_nbrs[2 * d];
         if ( nbr1->atoms_cnt > 0 )
         {
-            MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
         if ( nbr2->atoms_cnt > 0 )
         {
-            MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         /* send both messages in dimension d */
         if ( out_bufs[2 * d].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d] );
-            MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
+            ret = MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         if ( out_bufs[2 * d + 1].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d + 1] );
-            MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
+            ret = MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d + 1, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         if ( nbr1->atoms_cnt > 0 )
         {
-            MPI_Wait( &req1, &stat1 );
+            ret = MPI_Wait( &req1, &stat1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
         if ( nbr2->atoms_cnt > 0 )
         {
-            MPI_Wait( &req2, &stat2 );
+            ret = MPI_Wait( &req2, &stat2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
     }
 #endif
@@ -367,7 +378,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
 void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         void const * const buf, int buf_type, MPI_Datatype type )
 {
-    int d;
+    int d, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
@@ -385,39 +396,45 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         nbr1 = &system->my_nbrs[2 * d];
         if ( nbr1->atoms_cnt > 0 )
         {
-            MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
         if ( nbr2->atoms_cnt > 0 )
         {
-            MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         /* send both messages in dimension d */
         if ( out_bufs[2 * d].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d] );
-            MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
+            ret = MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         if ( out_bufs[2 * d + 1].cnt > 0 )
         {
             pack( buf, &out_bufs[2 * d + 1] );
-            MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
+            ret = MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d + 1, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         if ( nbr1->atoms_cnt > 0 )
         {
-            MPI_Wait( &req1, &stat1 );
+            ret = MPI_Wait( &req1, &stat1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
         if ( nbr2->atoms_cnt > 0 )
         {
-            MPI_Wait( &req2, &stat2 );
+            ret = MPI_Wait( &req2, &stat2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
     }
 }
@@ -427,7 +444,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         void * const buf, int buf_type, MPI_Datatype type )
 {   
 #if defined(NEUTRAL_TERRITORY)
-    int d, count, index;
+    int d, count, index, ret;
     void *in[6];
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -447,8 +464,9 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         if ( out_bufs[d].cnt > 0 )
         {
             count++;
-            MPI_Irecv( in[d], out_bufs[d].cnt, type,
+            ret = MPI_Irecv( in[d], out_bufs[d].cnt, type,
                     system->my_nt_nbrs[d].rank, d, comm, &req[d] );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
     }
 
@@ -457,20 +475,22 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         /* send both messages in direction d */
         if ( system->my_nt_nbrs[d].atoms_cnt > 0 )
         {
-            MPI_Send( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+            ret = MPI_Send( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
                     system->my_nt_nbrs[d].atoms_cnt, type,
                     system->my_nt_nbrs[d].receive_rank, d, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
     }
     
     for ( d = 0; d < count; ++d )
     {
-        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
         unpack( in[index], buf, &out_bufs[index] );
     }
 
 #else
-    int d;
+    int d, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
@@ -489,8 +509,9 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
 
         if ( out_bufs[2 * d].cnt > 0 )
         {
-            MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
+            ret = MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d + 1, comm, &req1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
@@ -498,21 +519,24 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         if ( out_bufs[2 * d + 1].cnt > 0 )
         {
 
-            MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
+            ret = MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d, comm, &req2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
         
         /* send both messages in dimension d */
         if ( nbr1->atoms_cnt > 0 )
         {
-            MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+            ret = MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
         
         if ( nbr2->atoms_cnt > 0 )
         {
-            MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+            ret = MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
 #if defined(DEBUG_FOCUS)
@@ -526,13 +550,15 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
 
         if ( out_bufs[2 * d].cnt > 0 )
         {
-            MPI_Wait( &req1, &stat1 );
+            ret = MPI_Wait( &req1, &stat1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
             unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
         }
 
         if ( out_bufs[2 * d + 1].cnt > 0 )
         {
-            MPI_Wait( &req2, &stat2 );
+            ret = MPI_Wait( &req2, &stat2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
             unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
         }
     }
@@ -543,7 +569,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
 void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         void * const buf, int buf_type, MPI_Datatype type )
 {   
-    int d;
+    int d, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
@@ -562,8 +588,9 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 
         if ( out_bufs[2 * d].cnt )
         {
-            MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
+            ret = MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
                     type, nbr1->rank, 2 * d + 1, comm, &req1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
@@ -571,21 +598,24 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         if ( out_bufs[2 * d + 1].cnt )
         {
 
-            MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
+            ret = MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
                     type, nbr2->rank, 2 * d, comm, &req2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
         
         /* send both messages in dimension d */
         if ( nbr1->atoms_cnt )
         {
-            MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+            ret = MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                     nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
         
         if ( nbr2->atoms_cnt )
         {
-            MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+            ret = MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                     nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
 #if defined(DEBUG_FOCUS)
@@ -599,13 +629,15 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 
         if ( out_bufs[2 * d].cnt )
         {
-            MPI_Wait( &req1, &stat1 );
+            ret = MPI_Wait( &req1, &stat1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
             unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
         }
 
         if ( out_bufs[2 * d + 1].cnt )
         {
-            MPI_Wait( &req2, &stat2 );
+            ret = MPI_Wait( &req2, &stat2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
             unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
         }
     }
@@ -614,7 +646,7 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 
 real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
 {
-    int i;
+    int i, ret;
     real my_sum, norm_sqr;
 
     my_sum = 0.0;
@@ -625,7 +657,8 @@ real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
         my_sum += SQR( v[i] );
     }
 
-    MPI_Allreduce( &my_sum, &norm_sqr, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &my_sum, &norm_sqr, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     return SQRT( norm_sqr );
 }
@@ -634,7 +667,7 @@ real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
 real Parallel_Dot( real const * const v1, real const * const v2,
         const int n, MPI_Comm comm )
 {
-    int  i;
+    int i, ret;
     real my_dot, res;
 
     my_dot = 0.0;
@@ -645,7 +678,8 @@ real Parallel_Dot( real const * const v1, real const * const v2,
         my_dot += v1[i] * v2[i];
     }
 
-    MPI_Allreduce( &my_dot, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &my_dot, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     return res;
 }
@@ -654,7 +688,7 @@ real Parallel_Dot( real const * const v1, real const * const v2,
 real Parallel_Vector_Acc( real const * const v, const int n,
         MPI_Comm comm )
 {
-    int  i;
+    int i, ret;
     real my_acc, res;
 
     /* compute local part of vector element-wise sum */
@@ -664,7 +698,8 @@ real Parallel_Vector_Acc( real const * const v, const int n,
         my_acc += v[i];
     }
 
-    MPI_Allreduce( &my_acc, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &my_acc, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     return res;
 }
@@ -675,11 +710,11 @@ real Parallel_Vector_Acc( real const * const v, const int n,
 void Coll_ids_at_Master( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int i;
-    int *id_list;
+    int i, *id_list, ret;
 
-    MPI_Gather( &system->n, 1, MPI_INT, workspace->rcounts, 1, MPI_INT,
-            MASTER_NODE, mpi_data->world );
+    ret = MPI_Gather( &system->n, 1, MPI_INT, workspace->rcounts, 1, MPI_INT,
+            MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     if ( system->my_rank == MASTER_NODE )
     {
@@ -696,9 +731,10 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
         id_list[i] = system->my_atoms[i].orig_id;
     }
 
-    MPI_Gatherv( id_list, system->n, MPI_INT, workspace->id_all,
-            workspace->rcounts, workspace->displs, MPI_INT, MASTER_NODE,
-            mpi_data->world );
+    ret = MPI_Gatherv( id_list, system->n, MPI_INT, workspace->id_all,
+            workspace->rcounts, workspace->displs, MPI_INT,
+            MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     sfree( id_list, "Coll_ids_at_Master::id_list" );
 
@@ -717,9 +753,12 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
 void Coll_rvecs_at_Master( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data, rvec* v )
 {
-    MPI_Gatherv( v, system->n, mpi_data->mpi_rvec, workspace->f_all,
+    int ret;
+
+    ret = MPI_Gatherv( v, system->n, mpi_data->mpi_rvec, workspace->f_all,
             workspace->rcounts, workspace->displs, mpi_data->mpi_rvec,
-            MASTER_NODE, mpi_data->world );
+            MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 }
 
 #endif

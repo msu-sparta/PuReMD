@@ -122,7 +122,8 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
                 element[j] = toupper( element[j] );
             }
             atom->type = Get_Atom_Type( &system->reax_param, element );
-            strncpy( atom->name, name, MAX_ATOM_NAME_LEN );
+            strncpy( atom->name, name, sizeof(atom->name) - 1 );
+            atom->name[sizeof(atom->name) - 1] = '\0';
             rvec_Copy( atom->x, x );
             rvec_MakeZero( atom->v );
             rvec_MakeZero( atom->f );
@@ -396,7 +397,8 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
 
                 Trim_Spaces( element );
                 atom->type = Get_Atom_Type( &system->reax_param, element );
-                strncpy( atom->name, atom_name, MAX_ATOM_NAME_LEN );
+                strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
+                atom->name[sizeof(atom->name) - 1] = '\0';
 
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );
@@ -475,7 +477,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
         simulation_data * const data, control_params * const control,
         mpi_datatypes * const mpi_data, output_controls * const out_control )
 {
-    int i, cnt, me, np, buffer_req, buffer_len;
+    int i, cnt, me, np, buffer_req, buffer_len, ret;
     //int j, connect[4];
     char name[8];
     //real bo;
@@ -525,7 +527,10 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
                       (system->big_box.box_norms[2] * system->big_box.box_norms[1]) );
 
 
-        sprintf( fname, "%s-%d.pdb", control->sim_name, data->step );
+        snprintf( fname, sizeof(fname) - 1, "%.*s-%d.pdb",
+                (int) strnlen( control->sim_name, sizeof(control->sim_name) ),
+                control->sim_name, data->step );
+        fname[sizeof(fname) - 1] = '\0';
         pdb = sfopen( fname, "w", "Write_PDB_File::pdb" );
         fprintf( pdb, PDB_CRYST1_FORMAT_O,
                  "CRYST1",
@@ -542,10 +547,11 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
         p_atom = &system->my_atoms[i];
         strncpy( name, p_atom->name, 8 );
         Trim_Spaces(name);
-        sprintf( line, PDB_ATOM_FORMAT_O,
+        snprintf( line, sizeof(line) - 1, PDB_ATOM_FORMAT_O,
                  "ATOM  ", p_atom->orig_id, p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
                  1.0, 0.0, "0", name, "  " );
+        line[sizeof(line) - 1] = '\0';
         fprintf(stderr, "PDB NAME <%s>\n", p_atom->name);
         strncpy( buffer + i * PDB_ATOM_FORMAT_O_LENGTH, line,
                  PDB_ATOM_FORMAT_O_LENGTH );
@@ -554,8 +560,9 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
 
     if ( me != MASTER_NODE)
     {
-        MPI_Send( buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
-                  np * PDB_ATOM_FORMAT_O_LENGTH + me, mpi_data->world );
+        ret = MPI_Send( buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
+                  np * PDB_ATOM_FORMAT_O_LENGTH + me, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
     else
     {
@@ -564,9 +571,10 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
         {
             if ( i != MASTER_NODE )
             {
-                MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
-                          MPI_CHAR, i, np * PDB_ATOM_FORMAT_O_LENGTH + i, mpi_data->world,
+                ret = MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
+                          MPI_CHAR, i, np * PDB_ATOM_FORMAT_O_LENGTH + i, MPI_COMM_WORLD,
                           &status );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
                 MPI_Get_count( &status, MPI_CHAR, &cnt );
                 buffer_len += cnt;
             }

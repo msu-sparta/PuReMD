@@ -32,7 +32,7 @@ extern "C" {
 
 void Sort_Matrix_Rows( sparse_matrix * const );
 
-real setup_sparse_approx_inverse( reax_system const * const,
+void setup_sparse_approx_inverse( reax_system const * const,
         simulation_data * const,
         storage * const, mpi_datatypes * const, 
         sparse_matrix * const, sparse_matrix *, int, double );

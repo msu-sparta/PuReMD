@@ -23,10 +23,12 @@
 
 #if defined(PURE_REAX)
   #include "lookup.h"
+  #include "comm_tools.h"
   #include "nonbonded.h"
   #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_lookup.h"
+  #include "reax_comm_tools.h"
   #include "reax_nonbonded.h"
   #include "reax_tool_box.h"
 #endif
@@ -214,8 +216,7 @@ void LR_Lookup( LR_lookup_table * const t, real r, LR_data * const y )
 void Init_Lookup_Tables( reax_system * const system, control_params * const control,
         storage * const workspace, mpi_datatypes * const mpi_data )
 {
-    int i, j, r;
-    int num_atom_types;
+    int i, j, r, num_atom_types, ret;
     int existing_types[MAX_ATOM_TYPES], aggregated[MAX_ATOM_TYPES];
     real dr;
     real *h, *fh, *fvdw, *fele, *fCEvd, *fCEclmb;
@@ -257,8 +258,9 @@ void Init_Lookup_Tables( reax_system * const system, control_params * const cont
         existing_types[ system->my_atoms[i].type ] = 1;
     }
 
-    MPI_Allreduce( existing_types, aggregated, MAX_ATOM_TYPES,
-            MPI_INT, MPI_SUM, mpi_data->world );
+    ret = MPI_Allreduce( existing_types, aggregated, MAX_ATOM_TYPES,
+            MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* fill in the lookup table entries for existing atom types.
      * only lower half should be enough. */
@@ -345,7 +347,7 @@ void Init_Lookup_Tables( reax_system * const system, control_params * const cont
 #if defined(HAVE_CUDA)
     t_start = Get_Time( );
     copy_LR_table_to_device( system, control, workspace, aggregated );
-    t_end = Get_Timing_Info( t_start );
+    t_end = Get_Elapsed_Time( t_start );
 
     fprintf( stderr, "[INFO] time to copy LR Lookup table from device to host: %f \n", t_end );
 #endif
@@ -355,8 +357,7 @@ void Init_Lookup_Tables( reax_system * const system, control_params * const cont
 void Finalize_LR_Lookup_Table( reax_system * const system, control_params * const control,
        storage * const workspace, mpi_datatypes * const mpi_data )
 {
-    int i, j;
-    int num_atom_types;
+    int i, j, num_atom_types, ret;
     int existing_types[MAX_ATOM_TYPES], aggregated[MAX_ATOM_TYPES];
 
     num_atom_types = system->reax_param.num_atom_types;
@@ -370,8 +371,9 @@ void Finalize_LR_Lookup_Table( reax_system * const system, control_params * cons
         existing_types[ system->my_atoms[i].type ] = 1;
     }
 
-    MPI_Allreduce( existing_types, aggregated, MAX_ATOM_TYPES,
-            MPI_INT, MPI_SUM, mpi_data->world );
+    ret = MPI_Allreduce( existing_types, aggregated, MAX_ATOM_TYPES, MPI_INT,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     for ( i = 0; i < num_atom_types; ++i )
     {

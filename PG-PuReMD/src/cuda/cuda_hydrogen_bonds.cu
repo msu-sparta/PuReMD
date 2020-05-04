@@ -81,11 +81,10 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
         hb_end_j = End_Index( my_atoms[j].Hindex, &hbond_list );
         top = 0;
 
-        if ( Num_Entries( j, bond_list ) > hblist_size )
+        if ( Num_Entries( j, &bond_list ) > hblist_size )
         {
-            hblist_size = Num_Entries( j, bond_list );
-            hblist = srealloc( hblist, sizeof(int) * hblist_size,
-                    "Cuda_Hydrogen_Bonds_Part1::hblist" );
+            hblist_size = Num_Entries( j, &bond_list );
+            hblist = (int *) malloc( sizeof(int) * hblist_size );
         }
 
         /* search bonded atoms i to atom j (hydrogen atom) for potential hydrogen bonding */
@@ -245,7 +244,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
 
         if ( hblist != NULL )
         {
-            sfree( hblist, "Cuda_Hydrogen_Bonds_Part1::hblist" );
+            free( hblist );
         }
     }
 }

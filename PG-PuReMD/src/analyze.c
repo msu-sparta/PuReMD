@@ -27,20 +27,25 @@
 #include "list.h"
 #include "vector.h"
 
-#define MAX_FRAGMENT_TYPES 100
+#define MAX_FRAGMENT_TYPES (100)
 
-void Print_Molecule( reax_system *system, molecule *m, int mode, char *s )
+void Print_Molecule( reax_system *system, molecule *m, int mode,
+        char * const s, size_t size )
 {
     int j, atom;
-
-    s[0] = 0;
 
     if ( mode == 1 )
     {
         /* print molecule summary */
         for ( j = 0; j < MAX_ATOM_TYPES; ++j )
+        {
             if ( m->mtypes[j] )
-                sprintf( s, "%s%s%d", s, system->reax_param.sbp[j].name, m->mtypes[j] );
+            {
+                snprintf( s, size - 1, "%s%d",
+                        system->reax_param.sbp[j].name, m->mtypes[j] );
+                s[size - 1] = '\0';
+            }
+        }
     }
     else if ( mode == 2 )
     {
@@ -48,10 +53,11 @@ void Print_Molecule( reax_system *system, molecule *m, int mode, char *s )
         for ( j = 0; j < m->atom_count; ++j )
         {
             atom = m->atom_list[j];
-            sprintf( s, "%s%s(%d)",
-                     s,
-                     system->reax_param.sbp[system->my_atoms[atom].type].name,
-                     atom );
+
+            snprintf( s, size - 1, "%s(%d)",
+                    system->reax_param.sbp[system->my_atoms[atom].type].name,
+                    atom );
+            s[size - 1] = '\0';
         }
     }
 }
@@ -107,23 +113,26 @@ void Analyze_Fragments( reax_system *system, control_params *control,
     memset( mark, 0, system->N * sizeof(int) );
 
     for ( atom = 0; atom < system->N; ++atom )
+    {
         if ( !mark[atom] )
         {
             /* discover a new fragment */
             memset( m.mtypes, 0, MAX_ATOM_TYPES * sizeof(int) );
             Visit_Bonds( atom, mark, m.mtypes, system, control, new_bonds, ignore );
             ++num_fragments;
-            Print_Molecule( system, &m, 1, fragment );
+            Print_Molecule( system, &m, 1, fragment, sizeof(fragment) );
 
             /* check if a similar fragment already exists */
             flag = 0;
             for ( i = 0; i < num_fragment_types; ++i )
+            {
                 if ( !strcmp( fragments[i], fragment ) )
                 {
                     fragment_count[i]++;
                     flag = 1;
                     break;
                 }
+            }
 
             if ( flag == 0 )
             {
@@ -133,11 +142,16 @@ void Analyze_Fragments( reax_system *system, control_params *control,
                 ++num_fragment_types;
             }
         }
+    }
 
     /* output the results of fragment analysis */
     for ( i = 0; i < num_fragment_types; ++i )
+    {
         if ( strlen(fragments[i]) )
+        {
             fprintf( fout, "%d of %s\n", fragment_count[i], fragments[i] );
+        }
+    }
     fprintf( fout, "\n" );
     fflush( fout );
 }

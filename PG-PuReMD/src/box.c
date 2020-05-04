@@ -277,7 +277,7 @@ void Setup_Environment( reax_system * const system, control_params * const contr
 {
     ivec periodic = {1, 1, 1};
 #if defined(DEBUG_FOCUS)
-    char temp[100] = "";
+    char temp[100];
 #endif
 
     /* initialize communicator - 3D mesh with wrap-arounds = 3D torus */
@@ -296,12 +296,19 @@ void Setup_Environment( reax_system * const system, control_params * const contr
     fprintf( stderr, "p%d coord: %d %d %d\n",
              system->my_rank, system->my_coords[0],
              system->my_coords[1], system->my_coords[2] );
-    sprintf( temp, "p%d big_box", system->my_rank );
+
+    sprintf( temp, sizeof(temp) - 1, "p%d big_box", system->my_rank );
+    temp[sizeof(temp) - 1] = '\0';
     Print_Box( &system->big_box, temp, stderr );
-    sprintf( temp, "p%d my_box", system->my_rank );
+
+    sprintf( temp, sizeof(temp) - 1, "p%d my_box", system->my_rank );
+    temp[sizeof(temp) - 1] = '\0';
     Print_Box( &system->my_box, temp, stderr );
-    sprintf( temp, "p%d ext_box", system->my_rank );
+
+    sprintf( temp, sizeof(temp) - 1, "p%d ext_box", system->my_rank );
+    temp[sizeof(temp) - 1] = '\0';
     Print_Box( &system->my_ext_box, temp, stderr );
+
     MPI_Barrier( MPI_COMM_WORLD );
 
     fprintf( stderr, "p%d: parallel environment initialized\n",

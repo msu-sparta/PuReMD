@@ -293,11 +293,6 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
     real t_over_start, t_over_elapsed;
 #endif
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step %d\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
@@ -311,7 +306,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
 
         if ( renbr )
         {
-            Update_Grid( system, control, mpi_data->world );
+            Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Output_Sync_Atoms( system );
@@ -345,7 +340,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         }
     
 #if defined(DEBUG_FOCUS)
-        t_over_elapsed = Get_Timing_Info( t_over_start );
+        t_over_elapsed = Get_Elapsed_Time( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );
 #endif
@@ -364,11 +359,6 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         verlet_part1_done = FALSE;
         far_nbrs_done = FALSE;
     }
-    
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
     return ret;
 }
@@ -378,18 +368,13 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         control_params* control, simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int itr, steps, renbr, ret;
+    int itr, steps, renbr, ret, ret_mpi;
     real *d_my_ekin, *d_total_my_ekin;
     static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
     real dt, dt_sqr;
     real my_ekin, new_ekin;
     real G_xi_new, v_xi_new, v_xi_old;
     thermostat *therm;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
     dt = control->dt;
     dt_sqr = SQR(dt);
@@ -407,14 +392,9 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
         verlet_part1_done = TRUE;
 
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
         if ( renbr )
         {
-            Update_Grid( system, control, mpi_data->world );
+            Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Output_Sync_Atoms( system );
@@ -449,7 +429,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         }
 
 #if defined(DEBUG_FOCUS)
-        t_over_elapsed = Get_Timing_Info( t_over_start );
+        t_over_elapsed = Get_Elapsed_Time( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );
 #endif
@@ -485,8 +465,9 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             my_ekin = nhNVT_update_velocity_part3( system, workspace->d_workspace, dt, v_xi_old,
                     d_my_ekin, d_total_my_ekin );
     
-            MPI_Allreduce( &my_ekin, &new_ekin, 1, MPI_DOUBLE, MPI_SUM,
+            ret_mpi = MPI_Allreduce( &my_ekin, &new_ekin, 1, MPI_DOUBLE, MPI_SUM,
                     mpi_data->comm_mesh3D  );
+            Check_MPI_Error( ret_mpi, __FILE__, __LINE__ );
     
             G_xi_new = control->Tau_T * ( 2.0 * new_ekin - data->N_f * K_B * control->T );
             v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
@@ -504,11 +485,6 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         verlet_part1_done = FALSE;
         far_nbrs_done = FALSE;
     }
-    
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
     return ret;
 }
@@ -528,11 +504,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     real t_over_start, t_over_elapsed;
 #endif
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
@@ -545,16 +516,11 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
         verlet_part1_done = TRUE;
 
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
         Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
 
         if ( renbr )
         {
-            Update_Grid( system, control, mpi_data->world );
+            Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Output_Sync_Atoms( system );
@@ -593,7 +559,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         }
         
 #if defined(DEBUG_FOCUS)
-        t_over_elapsed  = Get_Timing_Info( t_over_start );
+        t_over_elapsed  = Get_Elapsed_Time( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );
 #endif
@@ -609,11 +575,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     {
         /* velocity verlet, 2nd part */
         update_velocity_part2( system, dt );
-
-#if defined(DEBUG_FOCUS)
-        fprintf(stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step);
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
         /* temperature scaler */
         Cuda_Compute_Kinetic_Energy( system, control, workspace,
@@ -635,12 +596,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
         Cuda_Compute_Kinetic_Energy( system, control, workspace,
                 data, mpi_data->comm_mesh3D );
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: scaled velocities\n",
-                 system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
         verlet_part1_done = FALSE;
         far_nbrs_done = FALSE;
@@ -664,11 +619,6 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
     real t_over_start, t_over_elapsed;
 #endif
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step %d\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
@@ -680,14 +630,9 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
         verlet_part1_done = TRUE;
 
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d @ step%d: verlet1 done\n", system->my_rank, data->step );
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
-
         if ( renbr )
         {
-            Update_Grid( system, control, mpi_data->world );
+            Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Output_Sync_Atoms( system );
@@ -722,7 +667,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         }
     
 #if defined(DEBUG_FOCUS)
-        t_over_elapsed = Get_Timing_Info( t_over_start );
+        t_over_elapsed = Get_Elapsed_Time( t_over_start );
         fprintf( stderr, "p%d --> Overhead (Step-%d) %f \n",
                 system->my_rank, data->step, t_over_elapsed );
 #endif
@@ -748,11 +693,6 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         verlet_part1_done = FALSE;
         far_nbrs_done = FALSE;
     }
-    
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: verlet2 done\n", system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 
     return ret;
 }

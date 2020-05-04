@@ -48,7 +48,7 @@ void Trim_Spaces( char* );
 /* from system_props.h */
 real Get_Time( );
 
-real Get_Timing_Info( real );
+real Get_Elapsed_Time( real );
 
 void Update_Timing_Info( real*, real* );
 

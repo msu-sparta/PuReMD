@@ -25,6 +25,7 @@
 
 #include "allocate.h"
 #include "basic_comm.h"
+#include "comm_tools.h"
 #include "io_tools.h"
 #include "tool_box.h"
 #include "vector.h"
@@ -201,7 +202,7 @@ real jacobi( const reax_system * const system, real * const Hdia_inv )
 //        }
     }
 
-    return Get_Timing_Info( start );
+    return Get_Elapsed_Time( start );
 }
 
 
@@ -474,9 +475,9 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
     t_comm = 0.0;
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     Dist( system, mpi_data, x, buf_type, mpi_type );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Get_Time( ) - t_start;
 
     return t_comm;
 }
@@ -504,16 +505,16 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
 
     if ( mat_format == SYM_HALF_MATRIX )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         Coll( system, mpi_data, b, buf_type, mpi_type );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Get_Time( ) - t_start;
     }
 #if defined(NEUTRAL_TERRITORY)
     else
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         Coll( system, mpi_data, b, buf_type, mpi_type );
-        t_comm += MPI_Wtime( ) - t_start;
+        t_comm += Get_Time( ) - t_start;
     }
 #endif
 
@@ -521,38 +522,29 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
 }
 
 
-real setup_sparse_approx_inverse( reax_system const * const system,
+void setup_sparse_approx_inverse( reax_system const * const system,
         simulation_data * const data,
         storage * const workspace, mpi_datatypes * const mpi_data,
         sparse_matrix * const A, sparse_matrix *A_spar_patt,
         int nprocs, real filter )
 {
-    int i, bin, total, pos;
+    int i, ret, bin, total, pos;
     int n, n_gather, s_local, s, n_local;
     int target_proc;
-    int k;
-    int pj, size;
+    int k, pj, size;
     int left, right, p, turn;
     int num_rows;
-
+    int *srecv, *sdispls;
+    int *scounts_local, *scounts;
+    int *dspls_local, *dspls;
+    int *bin_elements;
     real threshold, pivot, tmp;
     real *input_array;
     real *samplelist_local, *samplelist;
     real *pivotlist;
     real *bucketlist_local, *bucketlist;
-
-    int *srecv, *sdispls;
-    int *scounts_local, *scounts;
-    int *dspls_local, *dspls;
-    int *bin_elements;
-
-    MPI_Comm comm;
-
-    real start, t_start, t_comm;
+    real t_start, t_comm;
     real total_comm;
-
-    start = MPI_Wtime();
-    t_comm = 0.0;
 
     srecv = NULL;
     sdispls = NULL;
@@ -567,8 +559,8 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     dspls_local = NULL;
     dspls = NULL;
     bin_elements = NULL;
+    t_comm = 0.0;
 
-    comm = mpi_data->world;
 #if defined(NEUTRAL_TERRITORY)
     num_rows = A->NT;
     fprintf( stdout,"%d %d %d\n", A->n, A->NT, A->m );
@@ -597,16 +589,18 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     n_local = 0;
-    for( i = 0; i < num_rows; ++i )
+    for ( i = 0; i < num_rows; ++i )
     {
         n_local += (A->end[i] - A->start[i] + 9) / 10;
     }
-    s_local = (int) (12.0 * (log2(n_local) + log2(nprocs)));
+    s_local = (int) (12.0 * (LOG2(n_local) + LOG2(nprocs)));
     
-    t_start = MPI_Wtime();
-    MPI_Allreduce( &n_local, &n, 1, MPI_INT, MPI_SUM, comm );
-    MPI_Reduce( &s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, comm );
-    t_comm += MPI_Wtime() - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Allreduce( &n_local, &n, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Reduce( &s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_comm += Get_Time( ) - t_start;
 
     /* count num. bin elements for each processor, uniform bin sizes */
     input_array = smalloc( sizeof(real) * n_local,
@@ -656,9 +650,10 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     /* gather samples at the root process */
-    t_start = MPI_Wtime();
-    MPI_Gather( &s_local, 1, MPI_INT, srecv, 1, MPI_INT, MASTER_NODE, comm );
-    t_comm += MPI_Wtime() - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Gather( &s_local, 1, MPI_INT, srecv, 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_comm += Get_Time( ) - t_start;
 
     if( system->my_rank == MASTER_NODE )
     {
@@ -669,10 +664,11 @@ real setup_sparse_approx_inverse( reax_system const * const system,
         }
     }
 
-    t_start = MPI_Wtime();
-    MPI_Gatherv( samplelist_local, s_local, MPI_DOUBLE,
-            samplelist, srecv, sdispls, MPI_DOUBLE, MASTER_NODE, comm);
-    t_comm += MPI_Wtime() - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Gatherv( samplelist_local, s_local, MPI_DOUBLE,
+            samplelist, srecv, sdispls, MPI_DOUBLE, MASTER_NODE, MPI_COMM_WORLD);
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_comm += Get_Time( ) - t_start;
 
     /* sort samples at the root process and select pivots */
     if ( system->my_rank == MASTER_NODE )
@@ -686,9 +682,9 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     /* broadcast pivots */
-    t_start = MPI_Wtime();
-    MPI_Bcast( pivotlist, nprocs - 1, MPI_DOUBLE, MASTER_NODE, comm );
-    t_comm += MPI_Wtime() - t_start;
+    t_start = Get_Time( );
+    MPI_Bcast( pivotlist, nprocs - 1, MPI_DOUBLE, MASTER_NODE, MPI_COMM_WORLD );
+    t_comm += Get_Time( ) - t_start;
 
     for ( i = 0; i < nprocs; ++i )
     {
@@ -724,9 +720,10 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     /* determine counts for elements per process */
-    t_start = MPI_Wtime( );
-    MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM, comm );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_comm += Get_Time( ) - t_start;
 
     /* find the target process */
     target_proc = 0;
@@ -752,10 +749,11 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     /* send local buckets to target processor for quickselect */
-    t_start = MPI_Wtime( );
-    MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts,
-            1, MPI_INT, target_proc, comm );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts,
+            1, MPI_INT, target_proc, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_comm += Get_Time( ) - t_start;
 
     if ( system->my_rank == target_proc )
     {
@@ -766,10 +764,11 @@ real setup_sparse_approx_inverse( reax_system const * const system,
         }
     }
 
-    t_start = MPI_Wtime( );
-    MPI_Gatherv( bucketlist_local + dspls_local[target_proc], scounts_local[target_proc], MPI_DOUBLE,
-            bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, comm);
-    t_comm += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Gatherv( bucketlist_local + dspls_local[target_proc], scounts_local[target_proc], MPI_DOUBLE,
+            bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_comm += Get_Time( ) - t_start;
 
     /* apply quick select algorithm at the target process */
     if ( system->my_rank == target_proc )
@@ -837,9 +836,9 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     /* broadcast the filtering value */
-    t_start = MPI_Wtime( );
-    MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, comm );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, MPI_COMM_WORLD );
+    t_comm += Get_Time( ) - t_start;
 
 #if defined(DEBUG_FOCUS)
     int nnz = 0;
@@ -868,20 +867,22 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     }
 
 #if defined(DEBUG_FOCUS)
-    MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, comm );
+    ret = MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+
     if ( system->my_rank == MASTER_NODE )
     {
         fprintf( stdout, "    [INFO] \ntotal nnz in all charge matrices = %d\ntotal nnz in all sparsity patterns = %d\nthreshold = %.15lf\n",
                 n, nnz, threshold );
-        fprintf( stdout, "SAI SETUP takes %.2f seconds\n", MPI_Wtime() - start );
         fflush( stdout );
     }
 #endif
  
-    MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE,
-            mpi_data->world );
+    ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
+            MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    if( system->my_rank == MASTER_NODE )
+    if ( system->my_rank == MASTER_NODE )
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
@@ -893,7 +894,7 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     sfree( dspls_local, "setup_sparse_approx_inverse::displs_local" );
     sfree( bucketlist_local, "setup_sparse_approx_inverse::bucketlist_local" );
     sfree( dspls, "setup_sparse_approx_inverse::dspls" );
-    if ( nprocs > 1)
+    if ( nprocs > 1 )
     {
         sfree( pivotlist, "setup_sparse_approx_inverse::pivotlist" );
     }
@@ -908,8 +909,6 @@ real setup_sparse_approx_inverse( reax_system const * const system,
     {
         sfree( bucketlist, "setup_sparse_approx_inverse::bucketlist" );
     }
-
-    return MPI_Wtime( ) - start;
 }
 
 
@@ -921,35 +920,28 @@ real sparse_approx_inverse( reax_system const * const system,
         sparse_matrix * const A, sparse_matrix * const A_spar_patt,
         sparse_matrix **A_app_inv, int nprocs )
 {
+    int i, k, pj, j_temp, ret;
     int N, M, d_i, d_j;
-    int i, k, pj, j_temp;
     int local_pos, atom_pos, identity_pos;
-    lapack_int m, n, nrhs, lda, ldb, info;
     int *pos_x, *X;
-    real *e_j, *dense_matrix;
     int cnt;
-    
-    reax_atom *atom;
     int *row_nnz;
     int **j_list;
-    real **val_list;
-
     int d, count, index;
+    int *j_send, *j_recv[6];
+    real *e_j, *dense_matrix;
+    real *val_send, *val_recv[6];
+    reax_atom *atom;
+    real **val_list;
+    real start, t_start, t_comm, total_comm;
     mpi_out_data *out_bufs;
-    MPI_Comm comm;
+    neighbor_proc *nbr;
     MPI_Request req[12];
     MPI_Status stat[12];
-    neighbor_proc *nbr;
-    int *j_send, *j_recv[6];
-    real *val_send, *val_recv[6];
-    
-    real start, t_start, t_comm;
-    real total_comm;
+    lapack_int m, n, nrhs, lda, ldb, info;
 
-    start = MPI_Wtime( );
+    start = Get_Time( );
     t_comm = 0.0;
-
-    comm = mpi_data->world;
 
     if ( *A_app_inv == NULL)
     {
@@ -996,9 +988,9 @@ real sparse_approx_inverse( reax_system const * const system,
     }
 
     /* Announce the nnz's in each row that will be communicated later */
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     Dist( system, mpi_data, row_nnz, REAL_PTR_TYPE, MPI_INT );
-    t_comm += MPI_Wtime( ) - t_start;
+    t_comm += Get_Time( ) - t_start;
     fprintf( stdout,"SAI after Dist call\n");
     fflush( stdout );
 
@@ -1030,10 +1022,12 @@ real sparse_approx_inverse( reax_system const * const system,
 
                 fprintf( stdout,"Dist communication receive phase direction %d will receive %d\n", d, cnt);
                 fflush( stdout );
-                t_start = MPI_Wtime( );
-                MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank, d, comm, &req[2 * d] );
-                MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank, d, comm, &req[2 * d + 1] );
-                t_comm += MPI_Wtime( ) - t_start;
+                t_start = Get_Time( );
+                ret = MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank, d, comm, &req[2 * d] );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                ret = MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank, d, comm, &req[2 * d + 1] );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                t_comm += Get_Time( ) - t_start;
             }
         }
     }
@@ -1078,14 +1072,16 @@ real sparse_approx_inverse( reax_system const * const system,
                 fprintf( stdout,"Dist communication    send phase direction %d will    send %d\n", d, cnt );
                 fflush( stdout );
 
-                t_start = MPI_Wtime( );
-                MPI_Send( j_send, cnt, MPI_INT, nbr->rank, d, comm );
+                t_start = Get_Time( );
+                ret = MPI_Send( j_send, cnt, MPI_INT, nbr->rank, d, comm );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
                 fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
-                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank, d, comm );
+                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank, d, comm );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
                 fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
-                t_comm += MPI_Wtime( ) - t_start;
+                t_comm += Get_Time( ) - t_start;
             }
         }
     }
@@ -1094,9 +1090,10 @@ real sparse_approx_inverse( reax_system const * const system,
     ///////////////////////
     for ( d = 0; d < count; ++d )
     {
-        t_start = MPI_Wtime();
-        MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
-        t_comm += MPI_Wtime() - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_comm += Get_Time( ) - t_start;
 
         nbr = &system->my_nt_nbrs[index / 2];
         cnt = 0;
@@ -1290,14 +1287,16 @@ real sparse_approx_inverse( reax_system const * const system,
     free( pos_x);
     free( X );
     /////////////////////
-    MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+    ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
+            MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     if ( system->my_rank == MASTER_NODE )
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
 
-    return MPI_Wtime( ) - start;
+    return Get_Time( ) - start;
 }
 
 
@@ -1308,35 +1307,31 @@ real sparse_approx_inverse( reax_system const * const system,
         sparse_matrix * const A, sparse_matrix * const A_spar_patt,
         sparse_matrix **A_app_inv, int nprocs )
 {
+    int i, k, pj, j_temp, push, ret;
     int N, M, d_i, d_j, mark;
-    int i, k, pj, j_temp, push;
     int local_pos, atom_pos, identity_pos;
-    lapack_int m, n, nrhs, lda, ldb, info;
     int *X, *q;
-    real *e_j, *dense_matrix;
     int size_e, size_dense;
     int cnt;
-    reax_atom *atom;
     int *row_nnz;
     int **j_list;
-    real **val_list;
     int d;
-    mpi_out_data *out_bufs;
-    MPI_Comm comm;
-    MPI_Request req1, req2, req3, req4;
     int flag1, flag2;
-    MPI_Status stat1, stat2, stat3, stat4;
-    const neighbor_proc *nbr1, *nbr2;
     int *j_send, *j_recv1, *j_recv2;
     int size_send, size_recv1, size_recv2;
+    real *e_j, *dense_matrix;
+    real **val_list;
     real *val_send, *val_recv1, *val_recv2;
-    real start, t_start, t_comm;
-    real total_comm;
+    real start, t_start, t_comm, total_comm;
+    reax_atom *atom;
+    mpi_out_data *out_bufs;
+    const neighbor_proc *nbr1, *nbr2;
+    MPI_Request req1, req2, req3, req4;
+    MPI_Status stat1, stat2, stat3, stat4;
+    lapack_int m, n, nrhs, lda, ldb, info;
 
-    start = MPI_Wtime();
+    start = Get_Time( );
     t_comm = 0.0;
-
-    comm = mpi_data->world;
 
     if ( *A_app_inv == NULL)
     {
@@ -1386,9 +1381,9 @@ real sparse_approx_inverse( reax_system const * const system,
     }
 
     /* Announce the nnz's in each row that will be communicated later */
-    t_start = MPI_Wtime();
+    t_start = Get_Time( );
     Dist( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
-    t_comm += MPI_Wtime() - t_start;
+    t_comm += Get_Time( ) - t_start;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -1433,10 +1428,12 @@ real sparse_approx_inverse( reax_system const * const system,
                             "sparse_approx_inverse::val_recv1" );
                 }
 
-                t_start = MPI_Wtime();
-                MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
-                MPI_Irecv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm, &req2 );
-                t_comm += MPI_Wtime() - t_start;
+                t_start = Get_Time( );
+                ret = MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                ret = MPI_Irecv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm, &req2 );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                t_comm += Get_Time( ) - t_start;
             }
         }
 
@@ -1471,10 +1468,12 @@ real sparse_approx_inverse( reax_system const * const system,
                             "sparse_approx_inverse::val_recv2" );
                 }
 
-                t_start = MPI_Wtime();
-                MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
-                MPI_Irecv( val_recv2, cnt, MPI_DOUBLE, nbr2->rank, 2 * d, comm, &req4 );
-                t_comm += MPI_Wtime() - t_start;
+                t_start = Get_Time( );
+                ret = MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                ret = MPI_Irecv( val_recv2, cnt, MPI_DOUBLE, nbr2->rank, 2 * d, comm, &req4 );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                t_comm += Get_Time( ) - t_start;
             }
         }
 
@@ -1529,10 +1528,12 @@ real sparse_approx_inverse( reax_system const * const system,
                     }
                 }
 
-                t_start = MPI_Wtime();
-                MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d, comm );
-                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d, comm );
-                t_comm += MPI_Wtime() - t_start;
+                t_start = Get_Time( );
+                ret = MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d, comm );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d, comm );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                t_comm += Get_Time( ) - t_start;
             }
         }
 
@@ -1587,20 +1588,24 @@ real sparse_approx_inverse( reax_system const * const system,
                     }
                 }
 
-                t_start = MPI_Wtime();
-                MPI_Send( j_send, cnt, MPI_INT, nbr2->rank, 2 * d + 1, comm );
-                MPI_Send( val_send, cnt, MPI_DOUBLE, nbr2->rank, 2 * d + 1, comm );
-                t_comm += MPI_Wtime() - t_start;
+                t_start = Get_Time( );
+                ret = MPI_Send( j_send, cnt, MPI_INT, nbr2->rank, 2 * d + 1, comm );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr2->rank, 2 * d + 1, comm );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+                t_comm += Get_Time( ) - t_start;
             }
 
         }
 
         if ( flag1 )
         {
-            t_start = MPI_Wtime();
-            MPI_Wait( &req1, &stat1 );
-            MPI_Wait( &req2, &stat2 );
-            t_comm += MPI_Wtime() - t_start;
+            t_start = Get_Time( );
+            ret = MPI_Wait( &req1, &stat1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Wait( &req2, &stat2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            t_comm += Get_Time( ) - t_start;
 
             cnt = 0;
             for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
@@ -1621,10 +1626,12 @@ real sparse_approx_inverse( reax_system const * const system,
 
         if ( flag2 )
         {
-            t_start = MPI_Wtime();
-            MPI_Wait( &req3, &stat3 );
-            MPI_Wait( &req4, &stat4 );
-            t_comm += MPI_Wtime() - t_start;
+            t_start = Get_Time( );
+            ret = MPI_Wait( &req3, &stat3 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Wait( &req4, &stat4 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            t_comm += Get_Time( ) - t_start;
 
             cnt = 0;
             for ( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
@@ -1828,15 +1835,16 @@ real sparse_approx_inverse( reax_system const * const system,
     sfree( val_list, "sparse_approx_inverse::val_list" );*/
     sfree( row_nnz, "sparse_approx_inverse::row_nnz" );
 
-    MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE,
-            mpi_data->world );
+    ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
+            MASTER_NODE, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     if ( system->my_rank == MASTER_NODE )
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
 
-    return MPI_Wtime() - start;
+    return Get_Time( ) - start;
 }
 #endif
 #endif
@@ -1850,7 +1858,7 @@ static void apply_preconditioner( const reax_system * const system,
         const int fresh_pre, const int side )
 {
 //    int i, si;
-    real t_start, t_pa, t_spmv, t_comm;
+    real t_start, t_pa, t_comm;
 
     /* no preconditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -1882,13 +1890,13 @@ static void apply_preconditioner( const reax_system * const system,
                                 t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                                         y, REAL_PTR_TYPE, MPI_DOUBLE );
                                 
-                                t_start = MPI_Wtime( );
+                                t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
                                 Sparse_MatVec_local( &workspace->H_app_inv, y, x, H->NT );
 #else
                                 Sparse_MatVec_local( &workspace->H_app_inv, y, x, system->n );
 #endif
-                                t_pa += MPI_Wtime( ) - t_start;
+                                t_pa += Get_Time( ) - t_start;
 
                                 /* no comm part2 because x is only local portion */
                                 break;
@@ -1914,13 +1922,13 @@ static void apply_preconditioner( const reax_system * const system,
                                 t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                                         y, REAL_PTR_TYPE, MPI_DOUBLE );
                                 
-                                t_start = MPI_Wtime( );
+                                t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
                                 Sparse_MatVec_local( &workspace->H_app_inv, y, x, H->NT );
 #else
                                 Sparse_MatVec_local( &workspace->H_app_inv, y, x, system->n );
 #endif
-                                t_pa += MPI_Wtime( ) - t_start;
+                                t_pa += Get_Time( ) - t_start;
 
                                 /* no comm part2 because x is only local portion */
                                 break;
@@ -2108,10 +2116,10 @@ int SDM( reax_system const * const system, control_params const * const control,
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
-    int i, j;
+    int i, j, ret;
     real tmp, alpha, bnorm, sig;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real timings[5], redux[3];
+    real timings[5], redux[2];
 
     t_pa = 0.0;
     t_spmv = 0.0;
@@ -2122,20 +2130,20 @@ int SDM( reax_system const * const system, control_params const * const control,
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->q, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->q, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->q, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == SAI_PC )
@@ -2143,72 +2151,76 @@ int SDM( reax_system const * const system, control_params const * const control,
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because d is only local portion */
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     redux[0] = Dot_local( b, b, system->n );
     redux[1] = Dot_local( workspace->r, workspace->d, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
-    t_start = MPI_Wtime( );
-    MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_allreduce += Get_Time( ) - t_start;
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     bnorm = SQRT( redux[0] );
     sig = redux[1];
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / bnorm > tol; ++i )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->d, workspace->q, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->d, workspace->q, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         redux[0] = Dot_local( workspace->r, workspace->d, system->n );
         redux[1] = Dot_local( workspace->d, workspace->q, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         sig = redux[0];
         tmp = redux[1];
         alpha = sig / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
-        t_vops += Get_Timing_Info( t_start );
+        t_vops += Get_Elapsed_Time( t_start );
 
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
@@ -2216,24 +2228,24 @@ int SDM( reax_system const * const system, control_params const * const control,
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
             
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because d is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
     }
 
@@ -2245,7 +2257,9 @@ int SDM( reax_system const * const system, control_params const * const control,
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -2255,7 +2269,9 @@ int SDM( reax_system const * const system, control_params const * const control,
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -2276,7 +2292,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         storage * const workspace, sparse_matrix * const H, rvec2 * const b,
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data )
 {
-    int  i, j;
+    int i, j, ret;
     rvec2 tmp, alpha, beta;
     rvec2 norm, b_norm;
     rvec2 sig_old, sig_new;
@@ -2292,53 +2308,53 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, x, workspace->q2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, x, workspace->q2, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     /* residual */
     for ( j = 0; j < system->n; ++j )
     {
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->q2[j][1];
     }
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->d2, H->NT );
 #else
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->d2, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because d2 is only local portion */
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->d2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
             workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     for ( j = 0; j < 6; ++j )
     {
         redux[j] = 0.0;
@@ -2354,11 +2370,13 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         redux[4] += b[j][0] * b[j][0];
         redux[5] += b[j][1] * b[j][1];
     }
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
-    t_start = MPI_Wtime( );
-    MPI_Allreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_allreduce += Get_Time( ) - t_start;
 
     sig_new[0] = redux[0];
     sig_new[1] = redux[1];
@@ -2377,19 +2395,19 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->d2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( H, workspace->d2, workspace->q2, H->NT );
 #else
         dual_Sparse_MatVec_local( H, workspace->d2, workspace->q2, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
         /* dot product: d.q */
-        t_start =  MPI_Wtime( );
+        t_start =  Get_Time( );
         redux[0] = 0.0;
         redux[1] = 0.0;
         for ( j = 0; j < system->n; ++j )
@@ -2397,13 +2415,15 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             redux[0] += workspace->d2[j][0] * workspace->q2[j][0];
             redux[1] += workspace->d2[j][1] * workspace->q2[j][1];
         }
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start =  MPI_Wtime( );
-        MPI_Allreduce( &redux, &tmp, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start =  Get_Time( );
+        ret = MPI_Allreduce( &redux, &tmp, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
         /* update x */
@@ -2418,35 +2438,35 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             workspace->r2[j][0] -= alpha[0] * workspace->q2[j][0];
             workspace->r2[j][1] -= alpha[1] * workspace->q2[j][1];
         }
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
         if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->p2, H->NT );
 #else
             dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->p2, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because p2 is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->p2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
                 workspace->p2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         redux[0] = 0.0;
         redux[1] = 0.0;
         redux[2] = 0.0;
@@ -2459,13 +2479,15 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             redux[2] += workspace->p2[j][0] * workspace->p2[j][0];
             redux[3] += workspace->p2[j][1] * workspace->p2[j][1];
         }
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         sig_old[0] = sig_new[0];
         sig_old[1] = sig_new[1];
         sig_new[0] = redux[0];
@@ -2480,7 +2502,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             workspace->d2[j][0] = workspace->p2[j][0] + beta[0] * workspace->d2[j][0];
             workspace->d2[j][1] = workspace->p2[j][1] + beta[1] * workspace->d2[j][1];
         }
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
     }
 
     timings[0] = t_pa;
@@ -2491,7 +2513,9 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
  
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -2501,7 +2525,9 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     /* continue to solve the system that has not converged yet */
@@ -2553,7 +2579,7 @@ int CG( reax_system const * const system, control_params const * const control,
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
-    int i, j;
+    int i, j, ret;
     real tmp, alpha, beta, norm, b_norm;
     real sig_old, sig_new;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
@@ -2568,20 +2594,20 @@ int CG( reax_system const * const system, control_params const * const control,
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->q, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->q, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->q, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == SAI_PC )
@@ -2589,64 +2615,66 @@ int CG( reax_system const * const system, control_params const * const control,
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because d is only local portion */
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     redux[0] = Dot_local( workspace->r, workspace->d, system->n );
     redux[1] = Dot_local( workspace->d, workspace->d, system->n );
     redux[2] = Dot_local( b, b, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
-    t_start = MPI_Wtime( );
-    MPI_Allreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, mpi_data->world );
+    t_start = Get_Time( );
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
     sig_new = redux[0];
     norm = SQRT( redux[1] );
     b_norm = SQRT( redux[2] );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_allreduce += Get_Time( ) - t_start;
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->d, workspace->q, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->d, workspace->q, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start =  MPI_Wtime( );
-        tmp = Parallel_Dot( workspace->d, workspace->q, system->n, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start =  Get_Time( );
+        tmp = Parallel_Dot( workspace->d, workspace->q, system->n, MPI_COMM_WORLD );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         alpha = sig_new / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
@@ -2654,42 +2682,44 @@ int CG( reax_system const * const system, control_params const * const control,
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
 
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->p, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->p, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because p is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         redux[0] = Dot_local( workspace->r, workspace->p, system->n );
         redux[1] = Dot_local( workspace->p, workspace->p, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         sig_old = sig_new;
         sig_new = redux[0];
         norm = SQRT( redux[1] );
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d, 1.0, workspace->p, beta, workspace->d, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
     }
 
     timings[0] = t_pa;
@@ -2700,7 +2730,9 @@ int CG( reax_system const * const system, control_params const * const control,
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -2710,7 +2742,9 @@ int CG( reax_system const * const system, control_params const * const control,
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -2744,7 +2778,7 @@ int BiCGStab( reax_system const * const system, control_params const * const con
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
-    int i, j;
+    int i, j, ret;
     real tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, bnorm;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
     real timings[5], redux[2];
@@ -2758,28 +2792,30 @@ int BiCGStab( reax_system const * const system, control_params const * const con
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->d, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->d, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->d, system->n );
     redux[0] = Dot_local( b, b, system->n );
     redux[1] = Dot_local( workspace->r, workspace->r, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
-    t_start = MPI_Wtime( );
-    MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_allreduce += Get_Time( ) - t_start;
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     bnorm = SQRT( redux[0] );
     rnorm = SQRT( redux[1] );
     if ( bnorm == 0.0 )
@@ -2789,19 +2825,21 @@ int BiCGStab( reax_system const * const system, control_params const * const con
     Vector_Copy( workspace->r_hat, workspace->r, system->n );
     omega = 1.0;
     rho = 1.0;
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     for ( i = 0; i < control->cm_solver_max_iters && rnorm / bnorm > tol; ++i )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         redux[0] = Dot_local( workspace->r_hat, workspace->r, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         rho = redux[0];
         if ( rho == 0.0 )
         {
@@ -2817,7 +2855,7 @@ int BiCGStab( reax_system const * const system, control_params const * const con
         {
             Vector_Copy( workspace->p, workspace->r, system->n );
         }
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
@@ -2825,60 +2863,64 @@ int BiCGStab( reax_system const * const system, control_params const * const con
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->p, REAL_PTR_TYPE, MPI_DOUBLE );
 
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->p, workspace->d, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->p, workspace->d, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because d is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->d[j] = workspace->p[j] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
 
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->d, workspace->z, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->d, workspace->z, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->z, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         redux[0] = Dot_local( workspace->r_hat, workspace->z, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         tmp = redux[0];
         alpha = rho / tmp;
         Vector_Sum( workspace->q, 1.0, workspace->r, -1.0 * alpha, workspace->z, system->n );
         redux[0] = Dot_local( workspace->q, workspace->q, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         tmp = redux[0];
         /* early convergence check */
         if ( tmp < tol )
@@ -2886,7 +2928,7 @@ int BiCGStab( reax_system const * const system, control_params const * const con
             Vector_Add( x, alpha, workspace->d, system->n );
             break;
         }
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == SAI_PC )
@@ -2894,50 +2936,52 @@ int BiCGStab( reax_system const * const system, control_params const * const con
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->q, workspace->q_hat, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->q, workspace->q_hat, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because q_hat is only local portion */
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->q_hat[j] = workspace->q[j] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
 
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->q_hat, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->q_hat, workspace->y, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->q_hat, workspace->y, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->y, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         redux[0] = Dot_local( workspace->y, workspace->q, system->n );
         redux[1] = Dot_local( workspace->y, workspace->y, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         sigma = redux[0];
         tmp = redux[1];
         omega = sigma / tmp;
@@ -2945,20 +2989,22 @@ int BiCGStab( reax_system const * const system, control_params const * const con
         Vector_Add( x, 1.0, workspace->g, system->n );
         Vector_Sum( workspace->r, 1.0, workspace->q, -1.0 * omega, workspace->y, system->n );
         redux[0] = Dot_local( workspace->r, workspace->r, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
-        MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM, mpi_data->world );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         rnorm = SQRT( redux[0] );
         if ( omega == 0.0 )
         {
             break;
         }
         rho_old = rho;
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
     }
 
     timings[0] = t_pa;
@@ -2969,7 +3015,9 @@ int BiCGStab( reax_system const * const system, control_params const * const con
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -2979,7 +3027,9 @@ int BiCGStab( reax_system const * const system, control_params const * const con
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( omega == 0.0 && system->my_rank == MASTER_NODE )
@@ -3018,7 +3068,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         storage * const workspace, sparse_matrix * const H, rvec2 * const b,
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data )
 {
-    int i, j;
+    int i, j, ret;
     rvec2 alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
     real timings[5], redux[8];
@@ -3033,25 +3083,25 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, x, workspace->u2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, x, workspace->u2, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     //Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
     for ( j = 0; j < system->n; ++j )
     {
         workspace->r2[j][0] = b[j][0] - workspace->u2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->u2[j][1];
     }
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3065,26 +3115,26 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->u2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
             workspace->u2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->u2, H->NT );
 #else
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->u2, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because u2 is only local portion */
     }
@@ -3092,18 +3142,18 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, workspace->u2, workspace->w2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, workspace->u2, workspace->w2, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     //redux[0] = Dot_local( workspace->w, workspace->u, system->n );
     //redux[1] = Dot_local( workspace->r, workspace->u, system->n );
     //redux[2] = Dot_local( workspace->u, workspace->u, system->n );
@@ -3126,9 +3176,11 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         redux[6] += b[j][0] * b[j][0];
         redux[7] += b[j][1] * b[j][1];
     }
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
-    MPI_Iallreduce( MPI_IN_PLACE, redux, 8, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+    ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 8, MPI_DOUBLE, MPI_SUM,
+            MPI_COMM_WORLD, &req );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3142,26 +3194,26 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->m2[j][0] = workspace->w2[j][0] * workspace->Hdia_inv[j];
             workspace->m2[j][1] = workspace->w2[j][1] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
 #else
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because m2 is only local portion */
     }
@@ -3169,20 +3221,21 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = MPI_Wtime( );
-    MPI_Wait( &req, MPI_STATUS_IGNORE );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_allreduce += Get_Time( ) - t_start;
     delta[0] = redux[0];
     delta[1] = redux[1];
     gamma_new[0] = redux[2];
@@ -3213,7 +3266,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
             alpha[1] = gamma_new[1] / delta[1];
         }
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         //Vector_Sum( workspace->z, 1.0, workspace->n, beta, workspace->z, system->n );
         //Vector_Sum( workspace->q, 1.0, workspace->m, beta, workspace->q, system->n );
         //Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
@@ -3265,9 +3318,11 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
             redux[5] += workspace->u2[j][1] * workspace->u2[j][1];
 
         }
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        MPI_Iallreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+        ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD, &req );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3281,26 +3336,26 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->m2[j][0] = workspace->w2[j][0] * workspace->Hdia_inv[j];
                 workspace->m2[j][1] = workspace->w2[j][1] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
             
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
 #else
             dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because m2 is only local portion */
         }
@@ -3308,13 +3363,13 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, H->NT );
 #else
         dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
@@ -3322,9 +3377,10 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         gamma_old[0] = gamma_new[0];
         gamma_old[1] = gamma_new[1];
 
-        t_start = MPI_Wtime( );
-        MPI_Wait( &req, MPI_STATUS_IGNORE );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
         delta[0] = redux[0];
         delta[1] = redux[1];
         gamma_new[0] = redux[2];
@@ -3341,7 +3397,9 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -3351,7 +3409,9 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     /* continue to solve the system that has not converged yet */
@@ -3410,7 +3470,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
-    int i, j;
+    int i, j, ret;
     real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
     real timings[5], redux[4];
@@ -3425,20 +3485,20 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->u, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->u, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3447,25 +3507,25 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->u[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because u is only local portion */
     }
@@ -3473,25 +3533,27 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, workspace->u, workspace->w, H->NT );
 #else
     Sparse_MatVec_local( H, workspace->u, workspace->w, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     redux[0] = Dot_local( workspace->w, workspace->u, system->n );
     redux[1] = Dot_local( workspace->r, workspace->u, system->n );
     redux[2] = Dot_local( workspace->u, workspace->u, system->n );
     redux[3] = Dot_local( b, b, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
-    MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+    ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM,
+            MPI_COMM_WORLD, &req );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3500,25 +3562,25 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->m[j] = workspace->w[j] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because m is only local portion */
     }
@@ -3526,20 +3588,21 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
     Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
-    MPI_Wait( &req, MPI_STATUS_IGNORE );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_allreduce += Get_Time( ) - t_start;
     delta = redux[0];
     gamma_new = redux[1];
     norm = SQRT( redux[2] );
@@ -3558,7 +3621,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
             alpha = gamma_new / delta;
         }
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         Vector_Sum( workspace->z, 1.0, workspace->n, beta, workspace->z, system->n );
         Vector_Sum( workspace->q, 1.0, workspace->m, beta, workspace->q, system->n );
         Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
@@ -3570,9 +3633,11 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         redux[0] = Dot_local( workspace->w, workspace->u, system->n );
         redux[1] = Dot_local( workspace->r, workspace->u, system->n );
         redux[2] = Dot_local( workspace->u, workspace->u, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+        ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD, &req );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3581,25 +3646,25 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->m[j] = workspace->w[j] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
             
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because m is only local portion */
         }
@@ -3607,22 +3672,23 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
 
         gamma_old = gamma_new;
 
-        t_start = MPI_Wtime( );
-        MPI_Wait( &req, MPI_STATUS_IGNORE );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
         delta = redux[0];
         gamma_new = redux[1];
         norm = SQRT( redux[2] );
@@ -3636,7 +3702,9 @@ int PIPECG( reax_system const * const system, control_params const * const contr
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -3646,7 +3714,9 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -3670,7 +3740,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
-    int i, j;
+    int i, j, ret;
     real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
     real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
     real timings[5], redux[3];
@@ -3682,29 +3752,31 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     t_comm = 0.0;
     t_allreduce = 0.0;
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     redux[0] = Dot_local( b, b, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
-    MPI_Iallreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+    ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM,
+            MPI_COMM_WORLD, &req );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->u, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->u, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
-    t_vops += MPI_Wtime( ) - t_start;
+    t_vops += Get_Time( ) - t_start;
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3713,25 +3785,25 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->u[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
         
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, system->n );
 #endif
-        t_pa += MPI_Wtime( ) - t_start;
+        t_pa += Get_Time( ) - t_start;
 
         /* no comm part2 because u is only local portion */
     }
@@ -3739,25 +3811,26 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
+    t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, workspace->u, workspace->w, H->NT );
 #else
     Sparse_MatVec_local( H, workspace->u, workspace->w, system->N );
 #endif
-    t_spmv += MPI_Wtime( ) - t_start;
+    t_spmv += Get_Time( ) - t_start;
 
     t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = MPI_Wtime( );
-    MPI_Wait( &req, MPI_STATUS_IGNORE );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_start = Get_Time( );
+    ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    t_allreduce += Get_Time( ) - t_start;
     b_norm = SQRT( redux[0] );
 
-    t_start =  MPI_Wtime( );
-    norm = Parallel_Norm( workspace->u, system->n, mpi_data->world );
-    t_allreduce += MPI_Wtime( ) - t_start;
+    t_start =  Get_Time( );
+    norm = Parallel_Norm( workspace->u, system->n, MPI_COMM_WORLD );
+    t_allreduce += Get_Time( ) - t_start;
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
@@ -3768,54 +3841,57 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->m[j] = workspace->w[j] * workspace->Hdia_inv[j];
             }
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
             t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
             
-            t_start = MPI_Wtime( );
+            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
-            t_pa += MPI_Wtime( ) - t_start;
+            t_pa += Get_Time( ) - t_start;
 
             /* no comm part2 because m is only local portion */
         }
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         redux[0] = Dot_local( workspace->w, workspace->u, system->n );
         redux[1] = Dot_local( workspace->m, workspace->w, system->n );
         redux[2] = Dot_local( workspace->u, workspace->u, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
-        MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM, mpi_data->world, &req );
+        ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD, &req );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
-        t_spmv += MPI_Wtime( ) - t_start;
+        t_spmv += Get_Time( ) - t_start;
 
         t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = MPI_Wtime( );
-        MPI_Wait( &req, MPI_STATUS_IGNORE );
-        t_allreduce += MPI_Wtime( ) - t_start;
+        t_start = Get_Time( );
+        ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        t_allreduce += Get_Time( ) - t_start;
         gamma_new = redux[0];
         delta = redux[1];
         norm = SQRT( redux[2] );
@@ -3831,7 +3907,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
             alpha = gamma_new / delta;
         }
 
-        t_start = MPI_Wtime( );
+        t_start = Get_Time( );
         Vector_Sum( workspace->z, 1.0, workspace->n, beta, workspace->z, system->n );
         Vector_Sum( workspace->q, 1.0, workspace->m, beta, workspace->q, system->n );
         Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
@@ -3840,7 +3916,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         Vector_Sum( workspace->u, 1.0, workspace->u, -alpha, workspace->q, system->n );
         Vector_Sum( workspace->w, 1.0, workspace->w, -alpha, workspace->z, system->n );
         Vector_Sum( workspace->r, 1.0, workspace->r, -alpha, workspace->d, system->n );
-        t_vops += MPI_Wtime( ) - t_start;
+        t_vops += Get_Time( ) - t_start;
 
         gamma_old = gamma_new;
     }
@@ -3853,7 +3929,9 @@ int PIPECR( reax_system const * const system, control_params const * const contr
 
     if ( system->my_rank == MASTER_NODE )
     {
-        MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
         data->timing.cm_solver_spmv += timings[1] / control->nprocs;
@@ -3863,7 +3941,9 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     }
     else
     {
-        MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM, MASTER_NODE, mpi_data->world );
+        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
+                MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )

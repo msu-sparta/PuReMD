@@ -151,7 +151,7 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 #if defined(LOG_PERFORMANCE)
     if ( system->my_rank == MASTER_NODE )
     {
-        t_elapsed = Get_Timing_Info( t_start );
+        t_elapsed = Get_Elapsed_Time( t_start );
         data->timing.nbrs += t_elapsed;
     }
 #endif

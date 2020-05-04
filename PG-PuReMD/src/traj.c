@@ -169,7 +169,7 @@ int Write_Header( reax_system *system, control_params *control,
     buffer_req = my_hdr_lines * HEADER_LINE_LEN;
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
     {
-        Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+        Reallocate_Output_Buffer( out_control, buffer_req, MPI_COMM_WORLD );
     }
 
     /* only the master node writes into trajectory header */
@@ -353,7 +353,7 @@ int Write_Header( reax_system *system, control_params *control,
         out_control->trj_offset = 0;
         Set_My_Trajectory_View( out_control->trj,
                 out_control->trj_offset, mpi_data->header_line,
-                mpi_data->world, system->my_rank,
+                MPI_COMM_WORLD, system->my_rank,
                 my_hdr_lines, num_hdr_lines );
         MPI_File_write_all( out_control->trj, out_control->buffer,
                 num_hdr_lines, mpi_data->header_line, &status );
@@ -372,7 +372,7 @@ int Write_Header( reax_system *system, control_params *control,
 int Write_Init_Desc( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int i, me, np, cnt, buffer_len, buffer_req;
+    int i, me, np, cnt, buffer_len, buffer_req, ret;
     reax_atom *p_atom;
     //MPI_Request request;
     MPI_Status status;
@@ -395,7 +395,7 @@ int Write_Init_Desc( reax_system *system, control_params *control,
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
     {
-        Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+        Reallocate_Output_Buffer( out_control, buffer_req, MPI_COMM_WORLD );
     }
 
     out_control->line[0] = 0;
@@ -413,7 +413,7 @@ int Write_Init_Desc( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                mpi_data->init_desc_line, mpi_data->world,
+                mpi_data->init_desc_line, MPI_COMM_WORLD,
                 me, system->n, system->bigN );
         MPI_File_write( out_control->trj, out_control->buffer, system->n,
                 mpi_data->init_desc_line, &status );
@@ -422,16 +422,20 @@ int Write_Init_Desc( reax_system *system, control_params *control,
     else
     {
         if ( me != MASTER_NODE )
-            MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
-                      np * INIT_DESCS + me, mpi_data->world );
+        {
+            ret = MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
+                      np * INIT_DESCS + me, MPI_COMM_WORLD );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+        }
         else
         {
             buffer_len = system->n * INIT_DESC_LEN;
             for ( i = 0; i < np; ++i )
                 if ( i != MASTER_NODE )
                 {
-                    MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
-                              MPI_CHAR, i, np * INIT_DESCS + i, mpi_data->world, &status );
+                    ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
+                              MPI_CHAR, i, np * INIT_DESCS + i, MPI_COMM_WORLD, &status );
+                    Check_MPI_Error( ret, __FILE__, __LINE__ );
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
@@ -492,7 +496,7 @@ void Init_Traj( reax_system *system, control_params *control,
         }
 
         /* open a fresh trajectory file */
-        ret = MPI_File_open( mpi_data->world, fname,
+        ret = MPI_File_open( MPI_COMM_WORLD, fname,
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL,
                 &out_control->trj );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -563,7 +567,7 @@ int Write_Frame_Header( reax_system *system, control_params *control,
     buffer_req = my_frm_hdr_lines * HEADER_LINE_LEN;
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
     {
-        Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+        Reallocate_Output_Buffer( out_control, buffer_req, MPI_COMM_WORLD );
     }
 
     /* only the master node writes into trajectory header */
@@ -674,7 +678,7 @@ int Write_Frame_Header( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                mpi_data->header_line, mpi_data->world,
+                mpi_data->header_line, MPI_COMM_WORLD,
                 me, my_frm_hdr_lines, num_frm_hdr_lines );
 
         MPI_File_write_all(out_control->trj, out_control->buffer, my_frm_hdr_lines,
@@ -694,7 +698,7 @@ int Write_Frame_Header( reax_system *system, control_params *control,
 int Write_Atoms( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int i, me, np, line_len, buffer_len, buffer_req, cnt;
+    int i, me, np, line_len, buffer_len, buffer_req, cnt, ret;
     MPI_Status status;
     reax_atom *p_atom;
 
@@ -716,7 +720,7 @@ int Write_Atoms( reax_system *system, control_params *control,
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
     {
-        Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+        Reallocate_Output_Buffer( out_control, buffer_req, MPI_COMM_WORLD );
     }
 
     /* fill in buffer */
@@ -752,7 +756,7 @@ int Write_Atoms( reax_system *system, control_params *control,
         default:
             fprintf( stderr,
                      "write_traj_atoms: unknown atom trajectroy format!\n");
-            MPI_Abort( mpi_data->world, UNKNOWN_OPTION );
+            MPI_Abort( MPI_COMM_WORLD, UNKNOWN_OPTION );
         }
 
         strncpy( out_control->buffer + i * line_len, out_control->line, line_len + 1 );
@@ -761,7 +765,7 @@ int Write_Atoms( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                mpi_data->atom_line, mpi_data->world,
+                mpi_data->atom_line, MPI_COMM_WORLD,
                 me, system->n, system->bigN );
         MPI_File_write( out_control->trj, out_control->buffer, system->n,
                 mpi_data->atom_line, &status );
@@ -770,16 +774,20 @@ int Write_Atoms( reax_system *system, control_params *control,
     else
     {
         if ( me != MASTER_NODE )
-            MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
-                      np * ATOM_LINES + me, mpi_data->world );
+        {
+            ret = MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
+                      np * ATOM_LINES + me, MPI_COMM_WORLD );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+        }
         else
         {
             buffer_len = system->n * line_len;
             for ( i = 0; i < np; ++i )
                 if ( i != MASTER_NODE )
                 {
-                    MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
-                              MPI_CHAR, i, np * ATOM_LINES + i, mpi_data->world, &status );
+                    ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
+                              MPI_CHAR, i, np * ATOM_LINES + i, MPI_COMM_WORLD, &status );
+                    Check_MPI_Error( ret, __FILE__, __LINE__ );
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
@@ -795,8 +803,7 @@ int Write_Atoms( reax_system *system, control_params *control,
 int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int i, j, pj, me, np;
-    int my_bonds, num_bonds;
+    int i, j, pj, me, np, my_bonds, num_bonds, ret;
     int line_len, buffer_len, buffer_req, cnt;
     MPI_Status  status;
     bond_data  *bo_ij;
@@ -808,15 +815,21 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
     /* count the number of bonds I will write */
     my_bonds = 0;
     for ( i = 0; i < system->n; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
             j = bonds->bond_list[pj].nbr;
+
             if ( system->my_atoms[i].orig_id <= system->my_atoms[j].orig_id &&
                     bonds->bond_list[pj].bo_data.BO >= control->bg_cut )
+            {
                 ++my_bonds;
+            }
         }
+    }
     /* allreduce - total number of bonds */
-    MPI_Allreduce( &my_bonds, &num_bonds, 1, MPI_INT, MPI_SUM, mpi_data->world );
+    ret = MPI_Allreduce( &my_bonds, &num_bonds, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     Write_Skip_Line( out_control, mpi_data, me, num_bonds * line_len, num_bonds );
 
@@ -831,7 +844,7 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
     {
-        Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+        Reallocate_Output_Buffer( out_control, buffer_req, MPI_COMM_WORLD );
     }
 
     /* fill in the buffer */
@@ -862,7 +875,7 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
                     break;
                 default:
                     fprintf(stderr, "write_traj_bonds: FATAL! invalid bond_info option");
-                    MPI_Abort( mpi_data->world, UNKNOWN_OPTION );
+                    MPI_Abort( MPI_COMM_WORLD, UNKNOWN_OPTION );
                 }
 
                 strncpy( out_control->buffer + my_bonds * line_len,
@@ -874,7 +887,7 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                mpi_data->bond_line, mpi_data->world,
+                mpi_data->bond_line, MPI_COMM_WORLD,
                 me, my_bonds, num_bonds );
         MPI_File_write( out_control->trj, out_control->buffer, my_bonds,
                 mpi_data->bond_line, &status );
@@ -883,16 +896,20 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
     else
     {
         if ( me != MASTER_NODE )
-            MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
-                      np * BOND_LINES + me, mpi_data->world );
+        {
+            ret = MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
+                      np * BOND_LINES + me, MPI_COMM_WORLD );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+        }
         else
         {
             buffer_len = my_bonds * line_len;
             for ( i = 0; i < np; ++i )
                 if ( i != MASTER_NODE )
                 {
-                    MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
-                              MPI_CHAR, i, np * BOND_LINES + i, mpi_data->world, &status );
+                    ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
+                              MPI_CHAR, i, np * BOND_LINES + i, MPI_COMM_WORLD, &status );
+                    Check_MPI_Error( ret, __FILE__, __LINE__ );
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
@@ -909,8 +926,7 @@ int Write_Angles( reax_system *system, control_params *control,
         reax_list *bonds, reax_list *thb_intrs,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int i, j, k, pi, pk, me, np;
-    int my_angles, num_angles;
+    int i, j, k, pi, pk, me, np, my_angles, num_angles, ret;
     int line_len, buffer_len, buffer_req, cnt;
     bond_data  *bo_ij, *bo_jk;
     three_body_interaction_data *angle_ijk;
@@ -948,7 +964,9 @@ int Write_Angles( reax_system *system, control_params *control,
         }
     }
     /* total number of valences */
-    MPI_Allreduce(&my_angles, &num_angles, 1, MPI_INT, MPI_SUM,  mpi_data->world);
+    ret = MPI_Allreduce( &my_angles, &num_angles, 1, MPI_INT,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     Write_Skip_Line( out_control, mpi_data, me, num_angles * line_len, num_angles );
 
@@ -963,7 +981,7 @@ int Write_Angles( reax_system *system, control_params *control,
 
     if ( buffer_req > out_control->buffer_len * DANGER_ZONE )
     {
-        Reallocate_Output_Buffer( out_control, buffer_req, mpi_data->world );
+        Reallocate_Output_Buffer( out_control, buffer_req, MPI_COMM_WORLD );
     }
 
     /* fill in the buffer */
@@ -1005,7 +1023,7 @@ int Write_Angles( reax_system *system, control_params *control,
     if ( out_control->traj_method == MPI_TRAJ )
     {
         Set_My_Trajectory_View( out_control->trj, out_control->trj_offset,
-                mpi_data->angle_line, mpi_data->world,
+                mpi_data->angle_line, MPI_COMM_WORLD,
                 me, my_angles, num_angles );
         MPI_File_write( out_control->trj, out_control->buffer, my_angles,
                 mpi_data->angle_line, &status );
@@ -1014,16 +1032,20 @@ int Write_Angles( reax_system *system, control_params *control,
     else
     {
         if ( me != MASTER_NODE )
-            MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
-                      np * ANGLE_LINES + me, mpi_data->world );
+        {
+            ret = MPI_Send( out_control->buffer, buffer_req - 1, MPI_CHAR, MASTER_NODE,
+                      np * ANGLE_LINES + me, MPI_COMM_WORLD );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+        }
         else
         {
             buffer_len = my_angles * line_len;
             for ( i = 0; i < np; ++i )
                 if ( i != MASTER_NODE )
                 {
-                    MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
-                              MPI_CHAR, i, np * ANGLE_LINES + i, mpi_data->world, &status );
+                    ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
+                              MPI_CHAR, i, np * ANGLE_LINES + i, MPI_COMM_WORLD, &status );
+                    Check_MPI_Error( ret, __FILE__, __LINE__ );
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
