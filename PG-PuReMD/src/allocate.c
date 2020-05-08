@@ -804,73 +804,6 @@ void Deallocate_Grid( grid * const g )
 }
 
 
-/* MPI buffer allocations based on the largest need by the three comms:
- * 1- transfer an atom who has moved into other proc's domain (mpi_atom)
- * 2- exchange boundary atoms (boundary_atom)
- * 3- update position info for boundary atoms (mpi_rvec)
- *
- * the largest space by far is required for the 2nd comm operation above.
- *
- * Note: buffers are (void *), type cast to the correct pointer type to access
- * the allocated buffers */
-void Allocate_MPI_Buffers( mpi_datatypes * const mpi_data, int est_recv,
-        neighbor_proc * const my_nbrs )
-{
-    int i;
-    size_t max_size;
-    MPI_Aint extent[3], lower_bound[3];
-    mpi_out_data *mpi_buf;
-
-    MPI_Type_get_extent( mpi_data->mpi_atom_type, &lower_bound[0], &extent[0] );
-    MPI_Type_get_extent( mpi_data->boundary_atom_type, &lower_bound[1], &extent[1] );
-    MPI_Type_get_extent( mpi_data->mpi_rvec, &lower_bound[2], &extent[2] );
-    max_size = MAX3( extent[0] + lower_bound[0], extent[1] + lower_bound[1],
-            extent[2] + lower_bound[2] );
-
-    /* buffers for incoming messages,
-     * see SendRecv for MPI datatypes sent */
-    mpi_data->in1_buffer = scalloc( 2 * est_recv, max_size,
-            "Allocate_MPI_Buffers::in1_buffer" );
-    mpi_data->in1_buffer_size = max_size * 2 * est_recv;
-    mpi_data->in2_buffer = scalloc( 2 * est_recv, max_size,
-            "Allocate_MPI_Buffers::in2_buffer" );
-    mpi_data->in2_buffer_size = max_size * 2 * est_recv;
-
-    /* buffers for outgoing messages,
-     * see SendRecv for MPI datatypes sent */
-    for ( i = 0; i < MAX_NBRS; ++i )
-    {
-        mpi_buf = &mpi_data->out_buffers[i];
-
-        /* allocate storage for the neighbor processor i */
-        mpi_buf->index = scalloc( 2 * my_nbrs[i].est_send, sizeof(int),
-                "Allocate_MPI_Buffers::mpi_buf->index" );
-        mpi_buf->out_atoms_size = max_size * 2 * my_nbrs[i].est_send;
-        mpi_buf->out_atoms = scalloc( 2 * my_nbrs[i].est_send, max_size,
-                "Allocate_MPI_Buffers::mpi_buf->out_atoms" );
-    }
-
-#if defined(NEUTRAL_TERRITORY)
-    /* Neutral Territory out buffers */
-    for ( i = 0; i < MAX_NT_NBRS; ++i )
-    {
-        /* in buffers */
-        mpi_data->in_nt_buffer[i] = scalloc( my_nt_nbrs[i].est_recv, sizeof(real),
-                "Allocate_MPI_Buffers::in_nt_buffer", comm );
-        /* out buffer */
-        mpi_buf = &mpi_data->out_nt_buffers[i];
-
-        /* allocate storage for the neighbor processor i */
-        mpi_buf->index = scalloc( my_nt_nbrs[i].est_send, sizeof(int),
-                "Allocate_MPI_Buffers::nt_index", comm );
-        mpi_buf->out_atoms_size = sizeof(real) * my_nt_nbrs[i].est_send;
-        mpi_buf->out_atoms = scalloc( my_nt_nbrs[i].est_send, sizeof(real),
-                "Allocate_MPI_Buffers::nt_out_atoms", comm );
-    }
-#endif
-}
-
-
 void Deallocate_MPI_Buffers( mpi_datatypes * const mpi_data )
 {
     int i;
@@ -886,8 +819,9 @@ void Deallocate_MPI_Buffers( mpi_datatypes * const mpi_data )
         mpi_buf = &mpi_data->out_buffers[i];
         mpi_buf->cnt = 0;
         sfree( mpi_buf->index, "Deallocate_MPI_Buffers::mpi_buf->index" );
-        mpi_buf->out_atoms_size = 0;
+        mpi_buf->index_size = 0;
         sfree( mpi_buf->out_atoms, "Deallocate_MPI_Buffers::mpi_buf->out_atoms" );
+        mpi_buf->out_atoms_size = 0;
     }
 
 #if defined(NEUTRAL_TERRITORY)
@@ -898,8 +832,9 @@ void Deallocate_MPI_Buffers( mpi_datatypes * const mpi_data )
         mpi_buf = &mpi_data->out_nt_buffers[i];
         mpi_buf->cnt = 0;
         sfree( mpi_buf->index, "Deallocate_MPI_Buffers::nt_index" );
-        mpi_buf->out_atoms_size = 0;
+        mpi_buf->index_size = 0;
         sfree( mpi_buf->out_atoms, "Deallocate_MPI_Buffers::nt_out_atoms" );
+        mpi_buf->out_atoms_size = 0;
     }
 #endif
 }
@@ -910,13 +845,11 @@ void ReAllocate( reax_system * const system, control_params * const control,
         mpi_datatypes * const mpi_data )
 {
     int i, j, k;
-    int nflag, Nflag, mpi_flag, total_send;
+    int nflag, Nflag;
     int renbr, format;
     reallocate_data * const realloc = &workspace->realloc;
     sparse_matrix * const H = &workspace->H;
     grid * const g = &system->my_grid;
-    neighbor_proc *nbr_pr;
-    mpi_out_data *nbr_data;
 
     /* IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with FALSE!!! */
     nflag = FALSE;
@@ -1052,107 +985,4 @@ void ReAllocate( reax_system * const system, control_params * const control,
 
         realloc->gcell_atoms = -1;
     }
-
-    /* mpi buffers:
-     * we have to be at a renbring step
-     * to ensure correct values at mpi_buffers for update_boundary_positions */
-    if ( renbr == FALSE )
-    {
-        mpi_flag = FALSE;
-    }
-    /* check whether in_buffer capacity is enough */
-    else if ( system->max_recved >= (int) CEIL( system->est_recv * DANGER_ZONE ) )
-    {
-        mpi_flag = TRUE;
-    }
-    else
-    {
-        /* otherwise check individual outgoing buffers */
-        mpi_flag = FALSE;
-        for ( i = 0; i < MAX_NBRS; ++i )
-        {
-            nbr_pr = &system->my_nbrs[i];
-            nbr_data = &mpi_data->out_buffers[i];
-
-            if ( nbr_data->cnt >= (int) CEIL( nbr_pr->est_send * DANGER_ZONE ) )
-            {
-                mpi_flag = TRUE;
-                break;
-            }
-        }
-
-#if defined(NEUTRAL_TERRITORY)
-        /* also check individual outgoing Neutral Territory buffers */
-        for ( p = 0; p < MAX_NT_NBRS; ++p )
-        {
-            nbr_pr = &system->my_nt_nbrs[p];
-            nbr_data = &mpi_data->out_nt_buffers[p];
-
-            if ( nbr_data->cnt >= nbr_pr->est_send * DANGER_ZONE )
-            {
-                mpi_flag = TRUE;
-                break;
-            }
-        }
-#endif
-    }
-
-    if ( mpi_flag == TRUE )
-    {
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "[INFO] p%d: reallocating mpi_buf: old_recv=%d\n",
-                system->my_rank, system->est_recv );
-        for ( i = 0; i < MAX_NBRS; ++i )
-        {
-            fprintf( stderr, "[INFO] p%d: nbr%d old_send=%d\n",
-                    system->my_rank, i, system->my_nbrs[i].est_send );
-        }
-#endif
-
-        /* update mpi buffer estimates based on last comm */
-        system->est_recv = MAX( (int) CEIL( system->max_recved * SAFER_ZONE ),
-                MIN_SEND );
-        system->est_trans =
-            (system->est_recv * sizeof(boundary_atom)) / sizeof(mpi_atom);
-        total_send = 0;
-        for ( i = 0; i < MAX_NBRS; ++i )
-        {
-            nbr_pr = &system->my_nbrs[i];
-            nbr_data = &mpi_data->out_buffers[i];
-            nbr_pr->est_send = MAX( (int) CEIL( nbr_data->cnt * SAFER_ZONE ),
-                    MIN_SEND );
-            total_send += nbr_pr->est_send;
-        }
-
-#if defined(NEUTRAL_TERRITORY)
-        for ( p = 0; p < MAX_NT_NBRS; ++p )
-        {
-            nbr_pr = &system->my_nt_nbrs[p];
-            nbr_data = &mpi_data->out_nt_buffers[p];
-            nbr_pr->est_send = MAX( nbr_data->cnt * SAFER_ZONE_NT, MIN_SEND );
-        }
-#endif
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "[INFO] p%d: reallocating mpi_buf: recv=%d send=%d total=%dMB\n",
-               system->my_rank, system->est_recv, total_send,
-               (int)((system->est_recv + total_send) * sizeof(boundary_atom) /
-               (1024 * 1024)));
-        for ( i = 0; i < MAX_NBRS; ++i )
-        {
-            fprintf( stderr, "[INFO] p%d: nbr%d new_send=%d\n",
-                    system->my_rank, i, system->my_nbrs[i].est_send );
-        }
-#endif
-
-        /* reallocate mpi buffers */
-        Deallocate_MPI_Buffers( mpi_data );
-        Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs );
-    }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] p%d @ step%d: reallocate done\n",
-            system->my_rank, data->step );
-    MPI_Barrier( MPI_COMM_WORLD );
-#endif
 }

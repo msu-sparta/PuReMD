@@ -1517,7 +1517,6 @@ static int Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int ret;
 #if defined(LOG_PERFORMANCE)
     double time;
     

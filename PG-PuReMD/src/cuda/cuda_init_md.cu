@@ -47,30 +47,14 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         mpi_datatypes *mpi_data )
 {
-    int i, nrecv[MAX_NBRS], ret;
-
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d GRID:\n", system->my_rank );
-    Print_Grid( &system->my_grid, stderr );
-#endif
 
     Bin_My_Atoms( system, workspace );
     Reorder_My_Atoms( system, workspace );
 
-    /* estimate N and total capacity */
-    for ( i = 0; i < MAX_NBRS; ++i )
-    {
-        nrecv[i] = 0;
-    }
-
-    ret = MPI_Barrier( MPI_COMM_WORLD );
-    Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-    system->max_recved = 0;
-    system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
-            Estimate_Boundary_Atoms, Unpack_Estimate_Message, TRUE );
+    system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,
+            &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
+            &Unpack_Exchange_Message, TRUE );
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
 

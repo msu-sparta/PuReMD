@@ -668,15 +668,13 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data )
 {
-    int i, j, k, p;
-    int nflag, Nflag, old_total_cap, mpi_flag, total_send;
+    int i, j, k;
+    int nflag, Nflag, old_total_cap; 
     int renbr;
     reallocate_data *realloc;
     reax_list *far_nbrs;
     sparse_matrix *H;
     grid *g;
-    neighbor_proc *nbr_pr;
-    mpi_out_data *nbr_data;
 
     realloc = &workspace->d_workspace->realloc;
     g = &system->my_grid;
@@ -798,58 +796,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         //Cuda_Deallocate_Grid_Cell_Atoms( system );
         //Cuda_Allocate_Grid_Cell_Atoms( system, realloc->gcell_atoms );
         realloc->gcell_atoms = -1;
-    }
-
-    /* mpi buffers:
-     * we have to be at a renbring step
-     * to ensure correct values at mpi_buffers for update_boundary_positions */
-    if ( renbr == FALSE )
-    {
-        mpi_flag = FALSE;
-    }
-    /* check whether in_buffer capacity is enough */
-    else if ( system->max_recved >= (int) CEIL( system->est_recv * DANGER_ZONE ) )
-    {
-        mpi_flag = TRUE;
-    }
-    else
-    {
-        /* otherwise check individual outgoing buffers */
-        mpi_flag = FALSE;
-
-        for ( p = 0; p < MAX_NBRS; ++p )
-        {
-            nbr_pr = &system->my_nbrs[p];
-            nbr_data = &mpi_data->out_buffers[p];
-
-            if ( nbr_data->cnt >= (int) CEIL( nbr_pr->est_send * DANGER_ZONE ) )
-            {
-                mpi_flag = TRUE;
-                break;
-            }
-        }
-    }
-
-    if ( mpi_flag == TRUE )
-    {
-        /* update mpi buffer estimates based on last comm */
-        system->est_recv = MAX( (int) CEIL( system->max_recved * SAFER_ZONE ),
-                MIN_SEND );
-        system->est_trans =
-            (system->est_recv * sizeof(boundary_atom)) / sizeof(mpi_atom);
-        total_send = 0;
-        for ( p = 0; p < MAX_NBRS; ++p )
-        {
-            nbr_pr = &system->my_nbrs[p];
-            nbr_data = &mpi_data->out_buffers[p];
-            nbr_pr->est_send = MAX( (int) CEIL( nbr_data->cnt * SAFER_ZONE ),
-                    MIN_SEND );
-            total_send += nbr_pr->est_send;
-        }
-
-        /* reallocate mpi buffers */
-        Deallocate_MPI_Buffers( mpi_data );
-        Allocate_MPI_Buffers( mpi_data, system->est_recv, system->my_nbrs );
     }
 }
 

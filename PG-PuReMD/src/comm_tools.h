@@ -42,14 +42,18 @@ void Setup_Comm( reax_system * const, control_params * const, mpi_datatypes * co
 
 void Update_Comm( reax_system * const );
 
-void Estimate_Boundary_Atoms( reax_system * const, int, int, int, mpi_out_data * const,
-       mpi_datatypes * const );
+void Count_Boundary_Atoms( reax_system const * const,
+        int, int, int, mpi_out_data * const,
+        int *, int * );
 
-void Unpack_Estimate_Message( reax_system * const, int, void * const, int,
-        neighbor_proc * const, int );
+void Sort_Boundary_Atoms( reax_system * const, int, int,
+        int, mpi_out_data * const, mpi_datatypes * const );
 
-int SendRecv( reax_system * const, mpi_datatypes * const, MPI_Datatype, int * const,
-        message_sorter, unpacker, int );
+void Unpack_Exchange_Message( reax_system * const, int, void * const,
+        int, neighbor_proc * const, int );
+
+int SendRecv( reax_system * const, mpi_datatypes * const, MPI_Datatype,
+        message_counter, message_sorter, unpacker, int );
 
 void Comm_Atoms( reax_system * const, control_params * const, simulation_data * const, storage * const,
         mpi_datatypes * const, int );

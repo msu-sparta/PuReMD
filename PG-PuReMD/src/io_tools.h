@@ -39,8 +39,6 @@ void Print_Box( simulation_box*, char*, FILE* );
 
 void Print_Grid( grid*, FILE* );
 
-void Print_GCell_Exchange_Bounds( int, neighbor_proc* );
-
 void Print_Native_GCells( reax_system* );
 
 void Print_All_GCells( reax_system*);

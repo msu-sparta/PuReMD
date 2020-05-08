@@ -97,8 +97,8 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     rvec diff, cross;
 
     /* remove translational and rotational velocity of the center of mass from system */
-    if ( control->ensemble != NVE && control->remove_CoM_vel &&
-            data->step % control->remove_CoM_vel == 0 )
+    if ( control->ensemble != NVE && control->remove_CoM_vel
+            && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
         Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
@@ -134,8 +134,8 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
         output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     /* remove trans & rot velocity of the center of mass from system */
-    if ( control->ensemble != NVE && control->remove_CoM_vel &&
-            data->step % control->remove_CoM_vel == 0 )
+    if ( control->ensemble != NVE && control->remove_CoM_vel
+            && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
         Cuda_Compute_Center_of_Mass( system, control, workspace,
@@ -320,8 +320,8 @@ int simulate( const void * const handle )
 
                 //TODO: fix this in GPU code
                 /* dump restart info */
-//                if ( out_control->restart_freq &&
-//                        (data->step-data->prev_steps) % out_control->restart_freq == 0 )
+//                if ( out_control->restart_freq
+//                        && (data->step-data->prev_steps) % out_control->restart_freq == 0 )
 //                {
 //                    if( out_control->restart_format == WRITE_ASCII )
 //                    {
@@ -414,8 +414,8 @@ int simulate( const void * const handle )
 //              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
 
                 /* dump restart info */
-                if ( out_control->restart_freq &&
-                        (data->step - data->prev_steps) % out_control->restart_freq == 0 )
+                if ( out_control->restart_freq
+                        && (data->step - data->prev_steps) % out_control->restart_freq == 0 )
                 {
                     if ( out_control->restart_format == WRITE_ASCII )
                     {

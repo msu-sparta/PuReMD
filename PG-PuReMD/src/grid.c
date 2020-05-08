@@ -392,12 +392,6 @@ void Setup_New_Grid( reax_system * const system, control_params * const control,
     ivec_Copy( g->native_str, g->ghost_span );
     ivec_Sum( g->native_end, g->native_str, g->native_cells );
 
-    /* upper bound on the number of gcells to be exchanged with a single nbr */
-    system->gcell_cap =
-        MAX3( g->native_cells[0] * g->native_cells[1] * g->ghost_span[2],
-                g->native_cells[0] * g->native_cells[2] * g->ghost_span[1],
-                g->native_cells[1] * g->native_cells[2] * g->ghost_span[0] ) + 1;
-
     /* allocate grid space */
     Allocate_Grid( system, comm );
 

@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-void bNVP_scale_velocities( reax_system *, real, rvec );
+void Scale_Velocities_NPT( reax_system *, real, rvec );
 
 int Cuda_Velocity_Verlet_NVE( reax_system*, control_params*,
         simulation_data*, storage*, reax_list**, output_controls*,

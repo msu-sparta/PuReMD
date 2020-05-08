@@ -51,66 +51,63 @@ void Sync_Grid( grid *host, grid *device )
 
 
 /* Copy atom info from host to device */
-void Sync_Atoms( reax_system *sys )
+void Sync_Atoms( reax_system *system )
 {
     //TODO METIN FIX, coredump on his machine
-//    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) * sys->total_cap,
+//    copy_host_device( system->my_atoms, system->d_my_atoms,
+//            sizeof(reax_atom) * system->total_cap,
 //            cudaMemcpyHostToDevice, "Sync_Atoms::system->my_atoms" );
 
-#if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, "p:%d - Synching atoms: n: %d N: %d, total_cap: %d \n", 
-            sys->my_rank, sys->n, sys->N, sys->total_cap );
-#endif
-
-    copy_host_device( sys->my_atoms, sys->d_my_atoms, sizeof(reax_atom) * sys->N,
+    copy_host_device( system->my_atoms, system->d_my_atoms,
+            sizeof(reax_atom) * system->N,
             cudaMemcpyHostToDevice, "Sync_Atoms::system->my_atoms" );
     //TODO METIN FIX, coredump on his machine
 }
 
 
 /* Copy atomic system info from host to device */
-void Sync_System( reax_system *sys )
+void Sync_System( reax_system *system )
 {
-    Sync_Atoms( sys );
+    Sync_Atoms( system );
 
-    copy_host_device( &sys->my_box, sys->d_my_box, sizeof(simulation_box),
+    copy_host_device( &system->my_box, system->d_my_box, sizeof(simulation_box),
             cudaMemcpyHostToDevice, "Sync_System::system->my_box" );
 
-    copy_host_device( &sys->my_ext_box, sys->d_my_ext_box,
+    copy_host_device( &system->my_ext_box, system->d_my_ext_box,
             sizeof(simulation_box), cudaMemcpyHostToDevice,
             "Sync_System::system->my_ext_box" );
 
-    copy_host_device( sys->reax_param.sbp, sys->reax_param.d_sbp,
-            sizeof(single_body_parameters) * sys->reax_param.num_atom_types,
+    copy_host_device( system->reax_param.sbp, system->reax_param.d_sbp,
+            sizeof(single_body_parameters) * system->reax_param.num_atom_types,
             cudaMemcpyHostToDevice, "Sync_System::system->sbp" );
-    copy_host_device( sys->reax_param.tbp, sys->reax_param.d_tbp,
-            sizeof(two_body_parameters) * POW(sys->reax_param.num_atom_types, 2),
+    copy_host_device( system->reax_param.tbp, system->reax_param.d_tbp,
+            sizeof(two_body_parameters) * POW(system->reax_param.num_atom_types, 2),
             cudaMemcpyHostToDevice, "Sync_System::system->tbp" );
-    copy_host_device( sys->reax_param.thbp, sys->reax_param.d_thbp,
-            sizeof(three_body_header) * POW(sys->reax_param.num_atom_types, 3),
+    copy_host_device( system->reax_param.thbp, system->reax_param.d_thbp,
+            sizeof(three_body_header) * POW(system->reax_param.num_atom_types, 3),
             cudaMemcpyHostToDevice, "Sync_System::system->thbh" );
-    copy_host_device( sys->reax_param.hbp, sys->reax_param.d_hbp,
-            sizeof(hbond_parameters) * POW(sys->reax_param.num_atom_types, 3),
+    copy_host_device( system->reax_param.hbp, system->reax_param.d_hbp,
+            sizeof(hbond_parameters) * POW(system->reax_param.num_atom_types, 3),
             cudaMemcpyHostToDevice, "Sync_System::system->hbond" );
-    copy_host_device( sys->reax_param.fbp, sys->reax_param.d_fbp, 
-            sizeof(four_body_header) * POW(sys->reax_param.num_atom_types, 4),
+    copy_host_device( system->reax_param.fbp, system->reax_param.d_fbp, 
+            sizeof(four_body_header) * POW(system->reax_param.num_atom_types, 4),
             cudaMemcpyHostToDevice, "Sync_System::system->four_header" );
 
-    copy_host_device( sys->reax_param.gp.l, sys->reax_param.d_gp.l,
-            sizeof(real) * sys->reax_param.gp.n_global, cudaMemcpyHostToDevice,
+    copy_host_device( system->reax_param.gp.l, system->reax_param.d_gp.l,
+            sizeof(real) * system->reax_param.gp.n_global, cudaMemcpyHostToDevice,
             "Sync_System::system->global_parameters" );
 
-    sys->reax_param.d_gp.n_global = sys->reax_param.gp.n_global; 
-    sys->reax_param.d_gp.vdw_type = sys->reax_param.gp.vdw_type; 
+    system->reax_param.d_gp.n_global = system->reax_param.gp.n_global; 
+    system->reax_param.d_gp.vdw_type = system->reax_param.gp.vdw_type; 
 }
 
 
 /* Copy atom info from device to host */
-void Output_Sync_Atoms( reax_system *sys )
+void Output_Sync_Atoms( reax_system *system )
 {
-    copy_host_device( sys->my_atoms, sys->d_my_atoms,
-            sizeof(reax_atom) * sys->total_cap, cudaMemcpyDeviceToHost,
-            "Output_Sync_Atoms::my_atoms" );
+    copy_host_device( system->my_atoms, system->d_my_atoms,
+            sizeof(reax_atom) * system->N,
+            cudaMemcpyDeviceToHost, "Output_Sync_Atoms::my_atoms" );
 }
 
 

@@ -42,8 +42,6 @@ void Allocate_Grid( reax_system * const, MPI_Comm );
 
 void Deallocate_Grid( grid * const );
 
-void Allocate_MPI_Buffers( mpi_datatypes * const, int, neighbor_proc * const );
-
 void Allocate_Matrix( sparse_matrix * const, int, int, int, int );
 
 void Deallocate_Matrix( sparse_matrix * const );

@@ -559,8 +559,6 @@ void Print_Grid( grid* g, FILE *out )
             g->ghost_hbond_span[0], g->ghost_hbond_span[1], g->ghost_hbond_span[2]);
     fprintf( out, "\tbonded ghost gcell span: %d %d %d\n",
              g->ghost_bond_span[0], g->ghost_bond_span[1], g->ghost_bond_span[2]);
-    //fprintf(out, "\t---------------------------------\n" );
-    //fprintf(out, "\tmax number of gcells at the boundary: %d\n", g->gcell_cap);
     fprintf( out, "\t---------------------------------\n" );
 
     fprintf( stderr, "GCELL MARKS:\n" );
@@ -586,54 +584,6 @@ void Print_Grid( grid* g, FILE *out )
              gc_str[0], gc_str[1], gc_str[2], x, y, z,
              gc_type, gcell_type_text[gc_type] );
     fprintf( out, "-------------------------------------\n" );
-}
-
-
-void Print_GCell_Exchange_Bounds( int my_rank, neighbor_proc *my_nbrs )
-{
-    ivec r;
-    int nbr;
-    neighbor_proc *nbr_pr;
-    char fname[100];
-    FILE *f;
-    char exch[3][10] = { "NO_EXCH", "NEAR_EXCH", "FULL_EXCH" };
-
-    sprintf( fname, "gcell_exchange_bounds%d", my_rank );
-    f = sfopen( fname, "w", "Print_GCell_Exchange_Bounds::f" );
-
-    /* loop over neighbor processes */
-    for ( r[0] = -1; r[0] <= 1; ++r[0])
-    {
-        for ( r[1] = -1; r[1] <= 1; ++r[1] )
-        {
-            for ( r[2] = -1; r[2] <= 1; ++r[2] )
-            {
-                if ( (nbr = Relative_Coord_Encoding( r )) != MYSELF )
-                {
-                    nbr_pr = &(my_nbrs[nbr]);
-
-                    fprintf( f, "p%-2d GCELL BOUNDARIES with r(%2d %2d %2d):\n",
-                             my_rank, r[0], r[1], r[2] );
-
-                    fprintf( f, "\tsend_type %s: send(%d %d %d) to (%d %d %d)\n",
-                             exch[nbr_pr->send_type],
-                             nbr_pr->str_send[0], nbr_pr->str_send[1],
-                             nbr_pr->str_send[2],
-                             nbr_pr->end_send[0], nbr_pr->end_send[1],
-                             nbr_pr->end_send[2] );
-
-                    fprintf( f, "\trecv_type %s: recv(%d %d %d) to (%d %d %d)\n",
-                             exch[nbr_pr->recv_type],
-                             nbr_pr->str_recv[0], nbr_pr->str_recv[1],
-                             nbr_pr->str_recv[2],
-                             nbr_pr->end_recv[0], nbr_pr->end_recv[1],
-                             nbr_pr->end_recv[2] );
-                }
-            }
-        }
-    }
-
-    sfclose( f, "Print_GCell_Exchange_Bounds::f" );
 }
 
 

@@ -148,9 +148,9 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         /* Compute xi(t + dt) */
         therm->xi += ( therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi );
 
-        verlet_part1_done = TRUE;
-
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+
+        verlet_part1_done = TRUE;
     }
 
     Reset( system, control, data, workspace, lists );

@@ -610,7 +610,10 @@ typedef void (*interaction_function)( reax_system * const, control_params * cons
         output_controls * const );
 /**/
 typedef real (*lookup_function)( real );
-/**/
+/* function pointer type for counting data going into egress MPI buffers */
+typedef void (*message_counter)( reax_system const * const, int, int, int,
+        mpi_out_data * const, int *, int * );
+/* function pointer type for sorting data into egress MPI buffers */
 typedef void (*message_sorter)( reax_system * const, int, int, int,
         mpi_out_data * const, mpi_datatypes * const );
 /**/
@@ -719,8 +722,10 @@ struct mpi_out_data
 {
     /* num. of elements currently contained in the egress buffer */
     int cnt;
-    /* ??? */
+    /* mapping between elements of egress buffer and another buffer */
     int *index;
+    /* size of index, in bytes */
+    size_t index_size;
     /* egress buffer */
     void *out_atoms;
     /* size of egress buffer, in bytes */
@@ -753,9 +758,6 @@ struct mpi_datatypes
     MPI_Datatype bond_line;
     /**/
     MPI_Datatype angle_line;
-    /* egress buffers for communications with neighbors in
-     * 3D Cartesian topology */
-    mpi_out_data out_buffers[MAX_NBRS];
     /* ingress buffer for communications with neighbor 1 along
      * one dimension of the 3D Cartesian topology */
     void *in1_buffer;
@@ -766,13 +768,16 @@ struct mpi_datatypes
     void *in2_buffer;
     /* size of ingress buffer, in bytes */
     size_t in2_buffer_size;
+    /* egress buffers for communications with neighbors in
+     * 3D Cartesian topology */
+    mpi_out_data out_buffers[MAX_NBRS];
 #if defined(NEUTRAL_TERRITORY)
-    /**/
-    mpi_out_data out_nt_buffers[MAX_NT_NBRS];
     /**/
     void *in_nt_buffer[MAX_NT_NBRS];
     /* size of ingress buffer, in bytes */
     size_t in_nt_buffer_size;
+    /**/
+    mpi_out_data out_nt_buffers[MAX_NT_NBRS];
 #endif
 };
 
@@ -1103,7 +1108,6 @@ struct reax_atom
     int type;
     /* atom name as given in the geo file */
     char name[MAX_ATOM_NAME_LEN];
-
     /* atomic position, 3D */
     rvec x;
     /* atomic velocity, 3D */
@@ -1112,7 +1116,6 @@ struct reax_atom
     rvec f;
     /* net force acting upon atom in previous time step, 3D */
     rvec f_old;
-
     /* atomic charge, computed during coulombic interaction */
     real q;
     /* atomic fictitious charge used during QEq to compute atomic charge,
@@ -1121,7 +1124,6 @@ struct reax_atom
     /* atomic fictitious charge used during QEq to compute atomic charge,
      * multiple entries used to hold old values for extrapolation */
     rvec4 t;
-
     /* unique non-negative integer index of atom if it is a hydrogen atom,
      * -1 otherwise */
     int Hindex;
@@ -1247,37 +1249,20 @@ struct grid
 /**/
 struct neighbor_proc
 {
-    /**/
+    /* MPI rank of neighbor MPI process */
     int rank;
-    /**/
-    int est_send;
-    /**/
-    int est_recv;
-    /**/
+    /* index to beginning of atom list for atom's
+     * received from this process */
     int atoms_str;
-    /**/
+    /* num. of atoms received from this process
+     * during boundary atom exchanges */
     int atoms_cnt;
-    /**/
-    ivec rltv;
     /**/
     ivec prdc;
     /**/
     rvec bndry_min;
     /**/
     rvec bndry_max;
-
-    /**/
-    int  send_type;
-    /**/
-    int  recv_type;
-    /**/
-    ivec str_send;
-    /**/
-    ivec end_send;
-    /**/
-    ivec str_recv;
-    /**/
-    ivec end_recv;
 };
 
 
@@ -1312,7 +1297,6 @@ struct reax_system
 {
     /* atomic interaction parameters */
     reax_interaction reax_param;
-
     /* num. atoms (locally owned) within spatial domain of MPI process */
     int n;
     /* num. atoms (locally owned AND ghost region) within spatial domain of MPI process */
@@ -1325,25 +1309,17 @@ struct reax_system
     int numH;
     /* num. hydrogen atoms (GPU) */
     int *d_numH;
-    /**/
+    /* upper bound of the num. of local atoms owned by this process */
     int local_cap;
-    /**/
+    /* upper bound of the num. of local and ghost atoms owned by this process */
     int total_cap;
-    /**/
-    int gcell_cap;
-    /**/
-    int est_recv;
-    /**/
-    int est_trans;
-    /**/
-    int max_recved;
-    /**/
+    /* MPI rank of this process */
     int my_rank;
-    /**/
+    /* num. of neighboring processes to this MPI process */
     int num_nbrs;
     /* coordinates of processor (according to rank) in MPI cartesian topology */
     ivec my_coords;
-    /* list of neighbor processors */
+    /* info on neighbor MPI processors */
     neighbor_proc my_nbrs[MAX_NBRS];
 
     /* global simulation box */

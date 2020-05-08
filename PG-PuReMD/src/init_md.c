@@ -132,7 +132,6 @@ void Init_System( reax_system * const system, control_params * const control,
 {
     int i;
     reax_atom *atom;
-    int nrecv[MAX_NBRS];
 
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
@@ -140,13 +139,9 @@ void Init_System( reax_system * const system, control_params * const control,
     Reorder_My_Atoms( system, workspace );
 
     /* estimate N and total capacity */
-    for ( i = 0; i < MAX_NBRS; ++i )
-    {
-        nrecv[i] = 0;
-    }
-    MPI_Barrier( MPI_COMM_WORLD );
-    system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type, nrecv,
-            Estimate_Boundary_Atoms, Unpack_Estimate_Message, TRUE );
+    system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,
+            &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
+            &Unpack_Exchange_Message, TRUE );
 
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
@@ -427,7 +422,7 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
 {
     int i, block[11];
     MPI_Aint disp[11], base;
-    MPI_Datatype type[11];
+    MPI_Datatype type[11], temp_type;
     mpi_atom sample[1];
     boundary_atom b_sample[1];
     restart_atom r_sample[1];
@@ -474,7 +469,9 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[9] = MPI_DOUBLE;
     type[10] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 11, block, disp, type, &mpi_data->mpi_atom_type );
+    MPI_Type_create_struct( 11, block, disp, type, &temp_type );
+    MPI_Type_create_resized( temp_type, 0, sizeof(mpi_atom),
+            &mpi_data->mpi_atom_type );
     MPI_Type_commit( &mpi_data->mpi_atom_type );
 
     /* boundary_atom */
@@ -504,7 +501,9 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[4] = MPI_INT;
     type[5] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 6, block, disp, type, &mpi_data->boundary_atom_type );
+    MPI_Type_create_struct( 6, block, disp, type, &temp_type );
+    MPI_Type_create_resized( temp_type, 0, sizeof(boundary_atom),
+            &mpi_data->boundary_atom_type );
     MPI_Type_commit( &mpi_data->boundary_atom_type );
 
     /* mpi_rvec */
@@ -539,7 +538,9 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[3] = MPI_DOUBLE;
     type[4] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 5, block, disp, type, &mpi_data->restart_atom_type );
+    MPI_Type_create_struct( 5, block, disp, type, &temp_type );
+    MPI_Type_create_resized( temp_type, 0, sizeof(restart_atom),
+            &mpi_data->restart_atom_type );
     MPI_Type_commit( &mpi_data->restart_atom_type );
 
     mpi_data->in1_buffer = NULL;
@@ -551,6 +552,7 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     {
         mpi_data->out_buffers[i].cnt = 0;
         mpi_data->out_buffers[i].index = NULL;
+        mpi_data->out_buffers[i].index_size = 0;
         mpi_data->out_buffers[i].out_atoms = NULL;
         mpi_data->out_buffers[i].out_atoms_size = 0;
     }
@@ -565,6 +567,7 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     {
         mpi_data->out_nt_buffers[i].cnt = 0;
         mpi_data->out_nt_buffers[i].index = NULL;
+        mpi_data->out_nt_buffers[i].index_size = 0;
         mpi_data->out_nt_buffers[i].out_atoms = NULL;
         mpi_data->out_nt_buffers[i].out_atoms_size = 0;
     }

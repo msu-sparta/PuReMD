@@ -24,10 +24,12 @@
 #if defined(PURE_REAX)
   #include "basic_comm.h"
   #include "comm_tools.h"
+  #include "tool_box.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_basic_comm.h"
   #include "reax_comm_tools.h"
+  #include "reax_tool_box.h"
   #include "reax_vector.h"
 #endif
 
@@ -40,8 +42,10 @@ typedef void (*coll_unpacker)( void const * const, void * const,
 static void int_packer( void const * const dummy, mpi_out_data * const out_buf )
 {
     int i;
-    int *buf = (int*) dummy;
-    int *out = (int*) out_buf->out_atoms;
+    int *buf, *out;
+
+    buf = (int *) dummy;
+    out = (int *) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -53,8 +57,10 @@ static void int_packer( void const * const dummy, mpi_out_data * const out_buf )
 static void real_packer( void const * const dummy, mpi_out_data * const out_buf )
 {
     int i;
-    real *buf = (real*) dummy;
-    real *out = (real*) out_buf->out_atoms;
+    real *buf, *out;
+
+    buf = (real *) dummy;
+    out = (real *) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
@@ -68,12 +74,12 @@ static void rvec_packer( void const * const dummy, mpi_out_data * const out_buf 
     int i;
     rvec *buf, *out;
 
-    buf = (rvec*) dummy;
-    out = (rvec*) out_buf->out_atoms;
+    buf = (rvec *) dummy;
+    out = (rvec *) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec) );
+        memcpy( &out[i], &buf[out_buf->index[i]], sizeof(rvec) );
     }
 }
 
@@ -83,12 +89,12 @@ static void rvec2_packer( void const * const dummy, mpi_out_data * const out_buf
     int i;
     rvec2 *buf, *out;
 
-    buf = (rvec2*) dummy;
-    out = (rvec2*) out_buf->out_atoms;
+    buf = (rvec2 *) dummy;
+    out = (rvec2 *) out_buf->out_atoms;
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        memcpy( out + i, buf + out_buf->index[i], sizeof(rvec2) );
+        memcpy( &out[i], &buf[out_buf->index[i]], sizeof(rvec2) );
     }
 }
 
@@ -96,20 +102,19 @@ static void rvec2_packer( void const * const dummy, mpi_out_data * const out_buf
 static void int_unpacker( void const * const dummy_in, void * const dummy_buf,
         mpi_out_data * const out_buf )
 {
-        int i;
-        int *in, *buf;
+    int i, *in, *buf;
 
-        in = (int*) dummy_in;
-        buf = (int*) dummy_buf;
+    in = (int*) dummy_in;
+    buf = (int*) dummy_buf;
 
-        for ( i = 0; i < out_buf->cnt; ++i )
+    for ( i = 0; i < out_buf->cnt; ++i )
+    {
+        //TODO: used in SAI, purpose?
+        if ( buf[ out_buf->index[i] ] == -1 && in[i] != -1 )
         {
-            //TODO: used in SAI, purpose?
-            if ( buf[ out_buf->index[i] ] == -1 && in[i] != -1 )
-            {
-                buf[ out_buf->index[i] ] = in[i];
-            }
+            buf[ out_buf->index[i] ] = in[i];
         }
+    }
 }
 
 
@@ -141,11 +146,6 @@ static void rvec_unpacker( void const * const dummy_in, void * const dummy_buf,
     for ( i = 0; i < out_buf->cnt; ++i )
     {
         rvec_Add( buf[ out_buf->index[i] ], in[i] );
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "rvec_unpacker: cnt=%d  i =%d  index[i]=%d\n",
-                out_buf->cnt, i, out_buf->index[i] );
-#endif
     }
 }
 
@@ -175,19 +175,19 @@ static void * Get_Buffer_Offset( void const * const buffer,
     switch ( type )
     {
         case INT_PTR_TYPE:
-            ptr = (int *) buffer + offset;
+            ptr = &((int *) buffer)[offset];
             break;
 
         case REAL_PTR_TYPE:
-            ptr = (real *) buffer + offset;
+            ptr = &((real *) buffer)[offset];
             break;
 
         case RVEC_PTR_TYPE:
-            ptr = (rvec *) buffer + offset;
+            ptr = &((rvec *) buffer)[offset];
             break;
 
         case RVEC2_PTR_TYPE:
-            ptr = (rvec2 *) buffer + offset;
+            ptr = &((rvec2 *) buffer)[offset];
             break;
 
         default:
@@ -202,24 +202,24 @@ static void * Get_Buffer_Offset( void const * const buffer,
 
 static dist_packer Get_Packer( int type )
 {
-    dist_packer ptr;
+    dist_packer func_ptr;
 
     switch ( type )
     {
         case INT_PTR_TYPE:
-            ptr = &int_packer;
+            func_ptr = &int_packer;
             break;
 
         case REAL_PTR_TYPE:
-            ptr = &real_packer;
+            func_ptr = &real_packer;
             break;
 
         case RVEC_PTR_TYPE:
-            ptr = &rvec_packer;
+            func_ptr = &rvec_packer;
             break;
 
         case RVEC2_PTR_TYPE:
-            ptr = &rvec2_packer;
+            func_ptr = &rvec2_packer;
             break;
 
         default:
@@ -228,30 +228,30 @@ static dist_packer Get_Packer( int type )
             break;
     }
 
-    return ptr;
+    return func_ptr;
 }
 
 
 static coll_unpacker Get_Unpacker( int type )
 {
-    coll_unpacker ptr;
+    coll_unpacker func_ptr;
 
     switch ( type )
     {
         case INT_PTR_TYPE:
-            ptr = &int_unpacker;
+            func_ptr = &int_unpacker;
             break;
 
         case REAL_PTR_TYPE:
-            ptr = &real_unpacker;
+            func_ptr = &real_unpacker;
             break;
 
         case RVEC_PTR_TYPE:
-            ptr = &rvec_unpacker;
+            func_ptr = &rvec_unpacker;
             break;
 
         case RVEC2_PTR_TYPE:
-            ptr = &rvec2_unpacker;
+            func_ptr = &rvec2_unpacker;
             break;
 
         default:
@@ -260,7 +260,7 @@ static coll_unpacker Get_Unpacker( int type )
             break;
     }
 
-    return ptr;
+    return func_ptr;
 }
 
 
@@ -268,7 +268,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         void const * const buf, int buf_type, MPI_Datatype type )
 {
 #if defined(NEUTRAL_TERRITORY)
-    int d, count, index, ret;
+    int d, index, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req[6];
@@ -278,47 +278,42 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
     pack = Get_Packer( buf_type );
-    count = 0;
 
     /* initiate recvs */
     for ( d = 0; d < 6; ++d )
     {
-        if ( system->my_nt_nbrs[d].atoms_cnt > 0 )
-        {
-            count++;
-            ret = MPI_Irecv( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
-                    system->my_nt_nbrs[d].atoms_cnt, type,
-                    system->my_nt_nbrs[d].receive_rank, d, comm, &req[d] );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        ret = MPI_Irecv( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+                system->my_nt_nbrs[d].atoms_cnt, type,
+                system->my_nt_nbrs[d].receive_rank, d, comm, &req[d] );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     for ( d = 0; d < 6; ++d )
     {
         /* send both messages in dimension d */
-        if ( out_bufs[d].cnt > 0 )
-        {
-            pack( buf, &out_bufs[d] );
-            ret = MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
-                    system->my_nt_nbrs[d].rank, d, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        pack( buf, &out_bufs[d] );
+        ret = MPI_Send( out_bufs[d].out_atoms, out_bufs[d].cnt, type,
+                system->my_nt_nbrs[d].rank, d, comm );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
-    for ( d = 0; d < count; ++d )
+    for ( d = 0; d < 6; ++d )
     {
         ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
         Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
 #else
-    int d, ret;
+    int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
+    MPI_Aint extent, lower_bound;
+
+    MPI_Type_get_extent( type, &lower_bound, &extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -326,50 +321,56 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     for ( d = 0; d < 3; ++d )
     {
-        /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-        if ( nbr1->atoms_cnt > 0 )
-        {
-            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
-                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-
         nbr2 = &system->my_nbrs[2 * d + 1];
-        if ( nbr2->atoms_cnt > 0 )
-        {
-            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
-                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
 
-        /* send both messages in dimension d */
-        if ( out_bufs[2 * d].cnt > 0 )
-        {
-            pack( buf, &out_bufs[2 * d] );
-            ret = MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
-                    type, nbr1->rank, 2 * d, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        /* pack MPI buffers and initiate sends */
+        check_smalloc( &out_bufs[2 * d].out_atoms,
+                &out_bufs[2 * d].out_atoms_size,
+                out_bufs[2 * d].cnt * (lower_bound + extent),
+                "Dist::mpi_data->out_atoms" );
+        check_srealloc( (void **) &out_bufs[2 * d].index,
+                &out_bufs[2 * d].index_size,
+                out_bufs[2 * d].cnt * sizeof(int),
+                "Dist::mpi_data->index" );
 
-        if ( out_bufs[2 * d + 1].cnt > 0 )
-        {
-            pack( buf, &out_bufs[2 * d + 1] );
-            ret = MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
-                    type, nbr2->rank, 2 * d + 1, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        pack( buf, &out_bufs[2 * d] );
+        ret = MPI_Isend( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
+                type, nbr1->rank, 2 * d, comm, &req1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( nbr1->atoms_cnt > 0 )
-        {
-            ret = MPI_Wait( &req1, &stat1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-        if ( nbr2->atoms_cnt > 0 )
-        {
-            ret = MPI_Wait( &req2, &stat2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        check_smalloc( &out_bufs[2 * d + 1].out_atoms,
+                &out_bufs[2 * d + 1].out_atoms_size,
+                out_bufs[2 * d + 1].cnt * (lower_bound + extent),
+                "Dist::mpi_data->out_atoms" );
+        check_srealloc( (void **) &out_bufs[2 * d + 1].index,
+                &out_bufs[2 * d + 1].index_size,
+                out_bufs[2 * d + 1].cnt * sizeof(int),
+                "Dist::mpi_data->index" );
+
+        pack( buf, &out_bufs[2 * d + 1] );
+        ret = MPI_Isend( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
+                type, nbr2->rank, 2 * d + 1, comm, &req2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        /* recv both messages in dimension d */
+        ret = MPI_Probe( nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat1, type, &cnt1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Recv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                cnt1, type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat2, type, &cnt2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Recv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                cnt2, type, nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 #endif
 }
@@ -378,13 +379,16 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
 void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         void const * const buf, int buf_type, MPI_Datatype type )
 {
-    int d, ret;
+    int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
+    MPI_Aint extent, lower_bound;
+
+    MPI_Type_get_extent( type, &lower_bound, &extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -392,50 +396,56 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     for ( d = 0; d < 3; ++d )
     {
-        /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-        if ( nbr1->atoms_cnt > 0 )
-        {
-            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
-                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d + 1, comm, &req1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-
         nbr2 = &system->my_nbrs[2 * d + 1];
-        if ( nbr2->atoms_cnt > 0 )
-        {
-            ret = MPI_Irecv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
-                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d, comm, &req2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
 
-        /* send both messages in dimension d */
-        if ( out_bufs[2 * d].cnt > 0 )
-        {
-            pack( buf, &out_bufs[2 * d] );
-            ret = MPI_Send( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
-                    type, nbr1->rank, 2 * d, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        /* pack MPI buffers and initiate sends */
+        check_smalloc( &out_bufs[2 * d].out_atoms,
+                &out_bufs[2 * d].out_atoms_size,
+                out_bufs[2 * d].cnt * (lower_bound + extent),
+                "Dist_FS::mpi_data->out_atoms" );
+        check_srealloc( (void **) &out_bufs[2 * d].index,
+                &out_bufs[2 * d].index_size,
+                out_bufs[2 * d].cnt * sizeof(int),
+                "Dist_FS::mpi_data->index" );
 
-        if ( out_bufs[2 * d + 1].cnt > 0 )
-        {
-            pack( buf, &out_bufs[2 * d + 1] );
-            ret = MPI_Send( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
-                    type, nbr2->rank, 2 * d + 1, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        pack( buf, &out_bufs[2 * d] );
+        ret = MPI_Isend( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
+                type, nbr1->rank, 2 * d, comm, &req1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( nbr1->atoms_cnt > 0 )
-        {
-            ret = MPI_Wait( &req1, &stat1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-        if ( nbr2->atoms_cnt > 0 )
-        {
-            ret = MPI_Wait( &req2, &stat2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        check_smalloc( &out_bufs[2 * d + 1].out_atoms,
+                &out_bufs[2 * d + 1].out_atoms_size,
+                out_bufs[2 * d + 1].cnt * (lower_bound + extent),
+                "Dist_FS::mpi_data->out_atoms" );
+        check_smalloc( (void **) &out_bufs[2 * d + 1].index,
+                &out_bufs[2 * d + 1].index_size,
+                out_bufs[2 * d + 1].cnt * sizeof(int),
+                "Dist_FS::mpi_data->index" );
+
+        pack( buf, &out_bufs[2 * d + 1] );
+        ret = MPI_Isend( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
+                type, nbr2->rank, 2 * d + 1, comm, &req2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        /* recv both messages in dimension d */
+        ret = MPI_Probe( nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat1, type, &cnt1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Recv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                cnt1, type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat2, type, &cnt2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Recv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                cnt2, type, nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 }
 
@@ -444,7 +454,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         void * const buf, int buf_type, MPI_Datatype type )
 {   
 #if defined(NEUTRAL_TERRITORY)
-    int d, count, index, ret;
+    int d, index, ret;
     void *in[6];
     mpi_out_data *out_bufs;
     MPI_Comm comm;
@@ -455,34 +465,26 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
     unpack = Get_Unpacker( buf_type );
-    count = 0;
 
     for ( d = 0; d < 6; ++d )
     {
         in[d] = mpi_data->in_nt_buffer[d];
 
-        if ( out_bufs[d].cnt > 0 )
-        {
-            count++;
-            ret = MPI_Irecv( in[d], out_bufs[d].cnt, type,
-                    system->my_nt_nbrs[d].rank, d, comm, &req[d] );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        ret = MPI_Irecv( in[d], out_bufs[d].cnt, type,
+                system->my_nt_nbrs[d].rank, d, comm, &req[d] );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     for ( d = 0; d < 6; ++d )
     {
         /* send both messages in direction d */
-        if ( system->my_nt_nbrs[d].atoms_cnt > 0 )
-        {
-            ret = MPI_Send( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
-                    system->my_nt_nbrs[d].atoms_cnt, type,
-                    system->my_nt_nbrs[d].receive_rank, d, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        ret = MPI_Send( Get_Buffer_Offset( buf, system->my_nt_nbrs[d].atoms_str, buf_type ),
+                system->my_nt_nbrs[d].atoms_cnt, type,
+                system->my_nt_nbrs[d].receive_rank, d, comm );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
     
-    for ( d = 0; d < count; ++d )
+    for ( d = 0; d < 6; ++d )
     {
         ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
         Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -490,13 +492,16 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
     }
 
 #else
-    int d, ret;
+    int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
+    MPI_Aint extent, lower_bound;
+
+    MPI_Type_get_extent( type, &lower_bound, &extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -504,63 +509,48 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     for ( d = 2; d >= 0; --d )
     {
-        /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-
-        if ( out_bufs[2 * d].cnt > 0 )
-        {
-            ret = MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
-                    type, nbr1->rank, 2 * d + 1, comm, &req1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-
         nbr2 = &system->my_nbrs[2 * d + 1];
-
-        if ( out_bufs[2 * d + 1].cnt > 0 )
-        {
-
-            ret = MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
-                    type, nbr2->rank, 2 * d, comm, &req2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
         
         /* send both messages in dimension d */
-        if ( nbr1->atoms_cnt > 0 )
-        {
-            ret = MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
-                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-        
-        if ( nbr2->atoms_cnt > 0 )
-        {
-            ret = MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
-                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        ret = MPI_Isend( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm, &req1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+    
+        ret = MPI_Isend( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm, &req2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d coll[%d] nbr1: str=%d cnt=%d recv=%d\n",
-                system->my_rank, d, nbr1->atoms_str, nbr1->atoms_cnt,
-                out_bufs[2 * d].cnt );
-        fprintf( stderr, "p%d coll[%d] nbr2: str=%d cnt=%d recv=%d\n",
-                system->my_rank, d, nbr2->atoms_str, nbr2->atoms_cnt,
-                out_bufs[2 * d + 1].cnt );
-#endif
+        /* recvs and unpack messages */
+        ret = MPI_Probe( nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat1, type, &cnt1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( out_bufs[2 * d].cnt > 0 )
-        {
-            ret = MPI_Wait( &req1, &stat1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-            unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
-        }
+        check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
+                cnt1 * (lower_bound + extent),
+                "Coll::mpi_data->in1_buffer" );
 
-        if ( out_bufs[2 * d + 1].cnt > 0 )
-        {
-            ret = MPI_Wait( &req2, &stat2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-            unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
-        }
+        ret = MPI_Recv( mpi_data->in1_buffer, cnt1,
+                type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
+
+        ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat2, type, &cnt2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
+                cnt2 * (lower_bound + extent),
+                "Coll::mpi_data->in2_buffer" );
+
+        ret = MPI_Recv( mpi_data->in2_buffer, cnt2,
+                type, nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
     }
 #endif
 }
@@ -569,13 +559,16 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
 void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         void * const buf, int buf_type, MPI_Datatype type )
 {   
-    int d, ret;
+    int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
     MPI_Comm comm;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
+    MPI_Aint extent, lower_bound;
+
+    MPI_Type_get_extent( type, &lower_bound, &extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -583,63 +576,48 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     for ( d = 2; d >= 0; --d )
     {
-        /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-
-        if ( out_bufs[2 * d].cnt )
-        {
-            ret = MPI_Irecv( mpi_data->in1_buffer, out_bufs[2 * d].cnt,
-                    type, nbr1->rank, 2 * d + 1, comm, &req1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-
         nbr2 = &system->my_nbrs[2 * d + 1];
-
-        if ( out_bufs[2 * d + 1].cnt )
-        {
-
-            ret = MPI_Irecv( mpi_data->in2_buffer, out_bufs[2 * d + 1].cnt,
-                    type, nbr2->rank, 2 * d, comm, &req2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
         
         /* send both messages in dimension d */
-        if ( nbr1->atoms_cnt )
-        {
-            ret = MPI_Send( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
-                    nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
-        
-        if ( nbr2->atoms_cnt )
-        {
-            ret = MPI_Send( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
-                    nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-        }
+        ret = MPI_Isend( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
+                nbr1->atoms_cnt, type, nbr1->rank, 2 * d, comm, &req1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+    
+        ret = MPI_Isend( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
+                nbr2->atoms_cnt, type, nbr2->rank, 2 * d + 1, comm, &req2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d coll[%d] nbr1: str=%d cnt=%d recv=%d\n",
-                system->my_rank, d, nbr1->atoms_str, nbr1->atoms_cnt,
-                out_bufs[2 * d].cnt );
-        fprintf( stderr, "p%d coll[%d] nbr2: str=%d cnt=%d recv=%d\n",
-                system->my_rank, d, nbr2->atoms_str, nbr2->atoms_cnt,
-                out_bufs[2 * d + 1].cnt );
-#endif
+        /* recvs and unpack messages */
+        ret = MPI_Probe( nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat1, type, &cnt1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( out_bufs[2 * d].cnt )
-        {
-            ret = MPI_Wait( &req1, &stat1 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-            unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
-        }
+        check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
+                cnt1 * (lower_bound + extent),
+                "Coll_FS::mpi_data->in1_buffer" );
 
-        if ( out_bufs[2 * d + 1].cnt )
-        {
-            ret = MPI_Wait( &req2, &stat2 );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
-            unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
-        }
+        ret = MPI_Recv( mpi_data->in1_buffer, cnt1,
+                type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
+
+        ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Get_count( &stat2, type, &cnt2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
+                cnt2 * (lower_bound + extent),
+                "Coll_FS::mpi_data->in2_buffer" );
+
+        ret = MPI_Recv( mpi_data->in2_buffer, cnt2,
+                type, nbr2->rank, 2 * d, comm, &stat2 );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
     }
 }
 

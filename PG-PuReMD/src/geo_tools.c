@@ -219,8 +219,8 @@ static void Count_PDB_Atoms( FILE *geo, reax_system * const system )
     /* increment number of atoms for each line denoting an atom desc */
     while ( fgets( line, MAX_LINE, geo ) )
     {
-        if ( strncmp( line, "ATOM", 4 ) == 0 ||
-                strncmp( line, "HETATM", 6 ) == 0 )
+        if ( strncmp( line, "ATOM", 4 ) == 0
+                || strncmp( line, "HETATM", 6 ) == 0 )
         {
             system->bigN++;
 
@@ -311,7 +311,8 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
         c1 = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         /* process new line */
-        if ( strncmp(tmp[0], "ATOM", 4) == 0 || strncmp(tmp[0], "HETATM", 6) == 0 )
+        if ( strncmp(tmp[0], "ATOM", 4) == 0
+                || strncmp(tmp[0], "HETATM", 6) == 0 )
         {
             if ( strncmp(tmp[0], "ATOM", 4) == 0 )
             {
