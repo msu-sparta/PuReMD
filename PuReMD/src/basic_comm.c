@@ -607,7 +607,7 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 }
 
 
-real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
+real Parallel_Norm( real const * const v, int n, MPI_Comm comm )
 {
     int i;
     real my_sum, norm_sqr;
@@ -627,7 +627,7 @@ real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
 
 
 real Parallel_Dot( real const * const v1, real const * const v2,
-        const int n, MPI_Comm comm )
+        int n, MPI_Comm comm )
 {
     int  i;
     real my_dot, res;
@@ -646,7 +646,7 @@ real Parallel_Dot( real const * const v1, real const * const v2,
 }
 
 
-real Parallel_Vector_Acc( real const * const v, const int n,
+real Parallel_Vector_Acc( real const * const v, int n,
         MPI_Comm comm )
 {
     int  i;

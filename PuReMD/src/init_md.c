@@ -483,120 +483,156 @@ int Init_Workspace( reax_system *system, control_params *control,
 int Init_MPI_Datatypes( reax_system *system, storage *workspace,
         mpi_datatypes *mpi_data, MPI_Comm comm, char *msg )
 {
-#if defined(PURE_REAX)
-    int           i, block[11];
-    MPI_Aint      base, disp[11];
-    MPI_Datatype  type[11];
-    mpi_atom      sample;
-    boundary_atom b_sample;
-    restart_atom  r_sample;
-    rvec          rvec_sample;
-    rvec2         rvec2_sample;
-#endif
+    int i, block[11];
+    MPI_Aint disp[11], base;
+    MPI_Datatype type[11], temp_type;
+    mpi_atom sample[1];
+    boundary_atom b_sample[1];
+    restart_atom r_sample[1];
 
-    /* setup the world */
-    mpi_data->world = comm;
-    MPI_Comm_size( comm, &(system->wsize) );
+    /* mpi_atom */
+    block[0] = 1;
+    block[1] = 1;
+    block[2] = 1;
+    block[3] = 1;
+    block[4] = 1;
+    block[5] = sizeof(sample[0].name) / sizeof(char);
+    block[6] = 3;
+    block[7] = 3;
+    block[8] = 3;
+    block[9] = 4;
+    block[10] = 4;
 
-#if defined(PURE_REAX)
-    /* init mpi buffers  */
+    MPI_Get_address( &sample[0], &base );
+    MPI_Get_address( &sample[0].orig_id, &disp[0] );
+    MPI_Get_address( &sample[0].imprt_id, &disp[1] );
+    MPI_Get_address( &sample[0].type, &disp[2] );
+    MPI_Get_address( &sample[0].num_bonds, &disp[3] );
+    MPI_Get_address( &sample[0].num_hbonds, &disp[4] );
+    MPI_Get_address( &sample[0].name, &disp[5] );
+    MPI_Get_address( &sample[0].x, &disp[6] );
+    MPI_Get_address( &sample[0].v, &disp[7] );
+    MPI_Get_address( &sample[0].f_old, &disp[8] );
+    MPI_Get_address( &sample[0].s, &disp[9] );
+    MPI_Get_address( &sample[0].t, &disp[10] );
+    for ( i = 0; i < 11; ++i )
+    {
+        disp[i] = MPI_Aint_diff( disp[i], base );
+    }
+
+    type[0] = MPI_INT;
+    type[1] = MPI_INT;
+    type[2] = MPI_INT;
+    type[3] = MPI_INT;
+    type[4] = MPI_INT;
+    type[5] = MPI_CHAR;
+    type[6] = MPI_DOUBLE;
+    type[7] = MPI_DOUBLE;
+    type[8] = MPI_DOUBLE;
+    type[9] = MPI_DOUBLE;
+    type[10] = MPI_DOUBLE;
+
+    MPI_Type_create_struct( 11, block, disp, type, &temp_type );
+    MPI_Type_create_resized( temp_type, 0, sizeof(mpi_atom),
+            &mpi_data->mpi_atom_type );
+    MPI_Type_commit( &mpi_data->mpi_atom_type );
+
+    /* boundary_atom */
+    block[0] = 1;
+    block[1] = 1;
+    block[2] = 1;
+    block[3] = 1;
+    block[4] = 1;
+    block[5] = 3;
+
+    MPI_Get_address( &b_sample[0], &base );
+    MPI_Get_address( &b_sample[0].orig_id, &disp[0] );
+    MPI_Get_address( &b_sample[0].imprt_id, &disp[1] );
+    MPI_Get_address( &b_sample[0].type, &disp[2] );
+    MPI_Get_address( &b_sample[0].num_bonds, &disp[3] );
+    MPI_Get_address( &b_sample[0].num_hbonds, &disp[4] );
+    MPI_Get_address( &b_sample[0].x, &disp[5] );
+    for ( i = 0; i < 6; ++i )
+    {
+        disp[i] = MPI_Aint_diff( disp[i], base );
+    }
+
+    type[0] = MPI_INT;
+    type[1] = MPI_INT;
+    type[2] = MPI_INT;
+    type[3] = MPI_INT;
+    type[4] = MPI_INT;
+    type[5] = MPI_DOUBLE;
+
+    MPI_Type_create_struct( 6, block, disp, type, &temp_type );
+    MPI_Type_create_resized( temp_type, 0, sizeof(boundary_atom),
+            &mpi_data->boundary_atom_type );
+    MPI_Type_commit( &mpi_data->boundary_atom_type );
+
+    /* mpi_rvec */
+    MPI_Type_contiguous( 3, MPI_DOUBLE, &mpi_data->mpi_rvec );
+    MPI_Type_commit( &mpi_data->mpi_rvec );
+
+    /* mpi_rvec2 */
+    MPI_Type_contiguous( 2, MPI_DOUBLE, &mpi_data->mpi_rvec2 );
+    MPI_Type_commit( &mpi_data->mpi_rvec2 );
+
+    /* restart_atom */
+    block[0] = 1;
+    block[1] = 1 ;
+    block[2] = sizeof(r_sample[0].name) / sizeof(char);
+    block[3] = 3;
+    block[4] = 3;
+
+    MPI_Get_address( &r_sample[0], &base );
+    MPI_Get_address( &r_sample[0].orig_id, &disp[0] );
+    MPI_Get_address( &r_sample[0].type, &disp[1] );
+    MPI_Get_address( &r_sample[0].name, &disp[2] );
+    MPI_Get_address( &r_sample[0].x, &disp[3] );
+    MPI_Get_address( &r_sample[0].v, &disp[4] );
+    for ( i = 0; i < 5; ++i )
+    {
+        disp[i] = MPI_Aint_diff( disp[i], base );
+    }
+
+    type[0] = MPI_INT;
+    type[1] = MPI_INT;
+    type[2] = MPI_CHAR;
+    type[3] = MPI_DOUBLE;
+    type[4] = MPI_DOUBLE;
+
+    MPI_Type_create_struct( 5, block, disp, type, &temp_type );
+    MPI_Type_create_resized( temp_type, 0, sizeof(restart_atom),
+            &mpi_data->restart_atom_type );
+    MPI_Type_commit( &mpi_data->restart_atom_type );
+
     mpi_data->in1_buffer = NULL;
     mpi_data->in2_buffer = NULL;
+
+    for ( i = 0; i < MAX_NBRS; ++i )
+    {
+        mpi_data->out_buffers[i].cnt = 0;
+        mpi_data->out_buffers[i].index = NULL;
+        mpi_data->out_buffers[i].out_atoms = NULL;
+    }
+
 #if defined(NEUTRAL_TERRITORY)
     for ( i = 0; i < MAX_NT_NBRS; ++i )
     {
         mpi_data->in_nt_buffer[i] = NULL;
     }
+
+    for ( i = 0; i < MAX_NT_NBRS; ++i )
+    {
+        mpi_data->out_nt_buffers[i].cnt = 0;
+        mpi_data->out_nt_buffers[i].index = NULL;
+        mpi_data->out_nt_buffers[i].out_atoms = NULL;
+    }
 #endif
 
-    /* mpi_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, name,
-       x, v, f_old, s, t] */
-    block[0] = block[1] = block[2] = block[3] = block[4] = 1;
-    block[5] = 8;
-    block[6] = block[7] = block[8] = 3;
-    block[9] = block[10] = 4;
-
-    MPI_Address( &(sample.orig_id),    disp + 0 );
-    MPI_Address( &(sample.imprt_id),   disp + 1 );
-    MPI_Address( &(sample.type),       disp + 2 );
-    MPI_Address( &(sample.num_bonds),  disp + 3 );
-    MPI_Address( &(sample.num_hbonds), disp + 4 );
-    MPI_Address( &(sample.name),       disp + 5 );
-    MPI_Address( &(sample.x[0]),       disp + 6 );
-    MPI_Address( &(sample.v[0]),       disp + 7 );
-    MPI_Address( &(sample.f_old[0]),   disp + 8 );
-    MPI_Address( &(sample.s[0]),       disp + 9 );
-    MPI_Address( &(sample.t[0]),       disp + 10 );
-
-    base = (MPI_Aint)(&(sample));
-    for ( i = 0; i < 11; ++i ) disp[i] -= base;
-
-    type[0] = type[1] = type[2] = type[3] = type[4] = MPI_INT;
-    type[5] = MPI_CHAR;
-    type[6] = type[7] = type[8] = type[9] = type[10] = MPI_DOUBLE;
-
-    MPI_Type_struct( 11, block, disp, type, &(mpi_data->mpi_atom_type) );
-    MPI_Type_commit( &(mpi_data->mpi_atom_type) );
-
-    /* boundary_atom - [orig_id, imprt_id, type, num_bonds, num_hbonds, x] */
-    block[0] = block[1] = block[2] = block[3] = block[4] = 1;
-    block[5] = 3;
-
-    MPI_Address( &(b_sample.orig_id),    disp + 0 );
-    MPI_Address( &(b_sample.imprt_id),   disp + 1 );
-    MPI_Address( &(b_sample.type),       disp + 2 );
-    MPI_Address( &(b_sample.num_bonds),  disp + 3 );
-    MPI_Address( &(b_sample.num_hbonds), disp + 4 );
-    MPI_Address( &(b_sample.x[0]),       disp + 5 );
-
-    base = (MPI_Aint)(&(b_sample));
-    for ( i = 0; i < 6; ++i ) disp[i] -= base;
-
-    type[0] = type[1] = type[2] = type[3] = type[4] = MPI_INT;
-    type[5] = MPI_DOUBLE;
-
-    MPI_Type_struct( 6, block, disp, type, &(mpi_data->boundary_atom_type) );
-    MPI_Type_commit( &(mpi_data->boundary_atom_type) );
-
-    /* mpi_rvec */
-    block[0] = 3;
-    MPI_Address( &(rvec_sample[0]), disp + 0 );
-    base = disp[0];
-    for ( i = 0; i < 1; ++i ) disp[i] -= base;
-    type[0] = MPI_DOUBLE;
-    MPI_Type_struct( 1, block, disp, type, &(mpi_data->mpi_rvec) );
-    MPI_Type_commit( &(mpi_data->mpi_rvec) );
-
-    /* mpi_rvec2 */
-    block[0] = 2;
-    MPI_Address( &(rvec2_sample[0]), disp + 0 );
-    base = disp[0];
-    for ( i = 0; i < 1; ++i ) disp[i] -= base;
-    type[0] = MPI_DOUBLE;
-    MPI_Type_struct( 1, block, disp, type, &(mpi_data->mpi_rvec2) );
-    MPI_Type_commit( &(mpi_data->mpi_rvec2) );
-
-    /* restart_atom - [orig_id, type, name[8], x, v] */
-    block[0] = block[1] = 1 ;
-    block[2] = 8;
-    block[3] = block[4] = 3;
-
-    MPI_Address( &(r_sample.orig_id),    disp + 0 );
-    MPI_Address( &(r_sample.type),       disp + 1 );
-    MPI_Address( &(r_sample.name),       disp + 2 );
-    MPI_Address( &(r_sample.x[0]),       disp + 3 );
-    MPI_Address( &(r_sample.v[0]),       disp + 4 );
-
-    base = (MPI_Aint)(&(r_sample));
-    for ( i = 0; i < 5; ++i ) disp[i] -= base;
-
-    type[0] = type[1] = MPI_INT;
-    type[2] = MPI_CHAR;
-    type[3] = type[4] = MPI_DOUBLE;
-
-    MPI_Type_struct( 5, block, disp, type, &(mpi_data->restart_atom_type) );
-    MPI_Type_commit( &(mpi_data->restart_atom_type) );
-#endif
+    /* setup the world */
+    mpi_data->world = comm;
+    MPI_Comm_size( comm, &system->wsize );
 
     return SUCCESS;
 }
