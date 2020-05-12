@@ -16,7 +16,7 @@ void Cuda_Allocate_Simulation_Data( simulation_data * );
 
 void Cuda_Allocate_Workspace( reax_system *, control_params *, storage *, int, int );
 
-void Cuda_Allocate_Matrix( sparse_matrix *, int, int );
+void Cuda_Allocate_Matrix( sparse_matrix * const, int, int, int, int );
 
 void Cuda_Allocate_Control( control_params * );
 

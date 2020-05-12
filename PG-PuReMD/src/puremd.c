@@ -402,7 +402,8 @@ int simulate( const void * const handle )
 
             if ( ret == SUCCESS )
             {
-                Post_Evolve(system, control, data, workspace, lists, out_control, mpi_data);
+                Post_Evolve( system, control, data, workspace,
+                        lists, out_control, mpi_data );
             }
 
             if ( ret == SUCCESS )

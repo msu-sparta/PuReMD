@@ -756,16 +756,6 @@ static void Finalize_Simulation_Data( reax_system * const system, control_params
 static void Finalize_Workspace( reax_system * const system, control_params * const control,
         storage * const workspace )
 {
-    int i;
-
-    for ( i = 0; i < MAX_NBRS; ++i )
-    {
-        sfree( workspace->tmp_dbl[i], "Finalize_Workspace::tmp_dbl[i]" );
-        sfree( workspace->tmp_rvec[i], "Finalize_Workspace::tmp_rvec[i]" );
-        sfree( workspace->tmp_rvec2[i], "Finalize_Workspace::tmp_rvec2[i]" );
-    }
-
-    sfree( workspace->within_bond_box, "Finalize_Workspace::skin" );
     sfree( workspace->total_bond_order, "Finalize_Workspace::workspace->total_bond_order" );
     sfree( workspace->Deltap, "Finalize_Workspace::workspace->Deltap" );
     sfree( workspace->Deltap_boc, "Finalize_Workspace::workspace->Deltap_boc" );

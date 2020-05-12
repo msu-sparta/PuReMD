@@ -234,8 +234,6 @@
 /* encoding of relative coordinate (0,0,0) */
 #define MYSELF (13)
 
-/* ??? */
-#define RESTART (30)
 /* max. num. of main simulation loop retries;
  * retries occur when memory allocation checks determine more memory is needed */
 #define MAX_RETRIES (5)
@@ -2061,17 +2059,6 @@ struct storage
 {
     /* 0 if struct members are NOT allocated, 1 otherwise */
     int allocated;
-
-    /* communication storage */
-    /**/
-    real *tmp_dbl[MAX_NBRS];
-    /**/
-    rvec *tmp_rvec[MAX_NBRS];
-    /**/
-    rvec2 *tmp_rvec2[MAX_NBRS];
-    /**/
-    int *within_bond_box;
-
     /* bond order related storage */
     /**/
     real *total_bond_order;

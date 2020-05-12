@@ -49,7 +49,7 @@ void Init_Matrix_Row_Indices( sparse_matrix * const H,
      * set end indices to the same as start indices for safety */
     H->start[0] = 0;
     H->end[0] = 0;
-    for ( i = 1; i < H->n; ++i )
+    for ( i = 1; i < H->n_max; ++i )
     {
         H->start[i] = H->start[i - 1] + max_row_entries[i - 1];
         H->end[i] = H->start[i];
@@ -117,8 +117,6 @@ void ReAllocate_System( reax_system * const system, int local_cap, int total_cap
 
 void DeAllocate_Workspace( control_params * const control, storage * const workspace )
 {
-    int i;
-
     if ( workspace->allocated == FALSE )
     {
         return;
@@ -126,16 +124,7 @@ void DeAllocate_Workspace( control_params * const control, storage * const works
 
     workspace->allocated = FALSE;
 
-    /* communication storage */
-    for ( i = 0; i < MAX_NBRS; ++i )
-    {
-        sfree( workspace->tmp_dbl[i], "DeAllocate_Workspace::tmp_dbl[i]" );
-        sfree( workspace->tmp_rvec[i], "DeAllocate_Workspace::tmp_rvec[i]" );
-        sfree( workspace->tmp_rvec2[i], "DeAllocate_Workspace::tmp_rvec2[i]" );
-    }
-
     /* bond order storage */
-    sfree( workspace->within_bond_box, "DeAllocate_Workspace::skin" );
     sfree( workspace->total_bond_order, "DeAllocate_Workspace::total_bo" );
     sfree( workspace->Deltap, "DeAllocate_Workspace::Deltap" );
     sfree( workspace->Deltap_boc, "DeAllocate_Workspace::Deltap_boc" );
@@ -153,102 +142,103 @@ void DeAllocate_Workspace( control_params * const control, storage * const works
     sfree( workspace->vlpex, "DeAllocate_Workspace::vlpex" );
     sfree( workspace->bond_mark, "DeAllocate_Workspace::bond_mark" );
 
+    /* charge matrix storage */
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        sfree( workspace->Hdia_inv, "Finalize_Workspace::workspace->Hdia_inv" );
+        sfree( workspace->Hdia_inv, "DeAllocate_Workspace::workspace->Hdia_inv" );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
+        sfree( workspace->droptol, "DeAllocate_Workspace::workspace->droptol" );
     }
-    sfree( workspace->b_s, "Finalize_Workspace::workspace->b_s" );
-    sfree( workspace->b_t, "Finalize_Workspace::workspace->b_t" );
-    sfree( workspace->b_prc, "Finalize_Workspace::workspace->b_prc" );
-    sfree( workspace->b_prm, "Finalize_Workspace::workspace->b_prm" );
-    sfree( workspace->s, "Finalize_Workspace::workspace->s" );
-    sfree( workspace->t, "Finalize_Workspace::workspace->t" );
+    sfree( workspace->b_s, "DeAllocate_Workspace::workspace->b_s" );
+    sfree( workspace->b_t, "DeAllocate_Workspace::workspace->b_t" );
+    sfree( workspace->b_prc, "DeAllocate_Workspace::workspace->b_prc" );
+    sfree( workspace->b_prm, "DeAllocate_Workspace::workspace->b_prm" );
+    sfree( workspace->s, "DeAllocate_Workspace::workspace->s" );
+    sfree( workspace->t, "DeAllocate_Workspace::workspace->t" );
 
     switch ( control->cm_solver_type )
     {
         case GMRES_S:
         case GMRES_H_S:
-            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
-            sfree( workspace->h, "Finalize_Workspace::workspace->h" );
-            sfree( workspace->hs, "Finalize_Workspace::workspace->hs" );
-            sfree( workspace->hc, "Finalize_Workspace::workspace->hc" );
-            sfree( workspace->v, "Finalize_Workspace::workspace->v" );
+            sfree( workspace->y, "DeAllocate_Workspace::workspace->y" );
+            sfree( workspace->z, "DeAllocate_Workspace::workspace->z" );
+            sfree( workspace->g, "DeAllocate_Workspace::workspace->g" );
+            sfree( workspace->h, "DeAllocate_Workspace::workspace->h" );
+            sfree( workspace->hs, "DeAllocate_Workspace::workspace->hs" );
+            sfree( workspace->hc, "DeAllocate_Workspace::workspace->hc" );
+            sfree( workspace->v, "DeAllocate_Workspace::workspace->v" );
             break;
 
         case CG_S:
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            sfree( workspace->r, "DeAllocate_Workspace::workspace->r" );
+            sfree( workspace->d, "DeAllocate_Workspace::workspace->d" );
+            sfree( workspace->q, "DeAllocate_Workspace::workspace->q" );
+            sfree( workspace->p, "DeAllocate_Workspace::workspace->p" );
+            sfree( workspace->r2, "DeAllocate_Workspace::workspace->r2" );
+            sfree( workspace->d2, "DeAllocate_Workspace::workspace->d2" );
+            sfree( workspace->q2, "DeAllocate_Workspace::workspace->q2" );
+            sfree( workspace->p2, "DeAllocate_Workspace::workspace->p2" );
             break;
 
         case SDM_S:
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            sfree( workspace->r, "DeAllocate_Workspace::workspace->r" );
+            sfree( workspace->d, "DeAllocate_Workspace::workspace->d" );
+            sfree( workspace->q, "DeAllocate_Workspace::workspace->q" );
+            sfree( workspace->p, "DeAllocate_Workspace::workspace->p" );
+            sfree( workspace->r2, "DeAllocate_Workspace::workspace->r2" );
+            sfree( workspace->d2, "DeAllocate_Workspace::workspace->d2" );
+            sfree( workspace->q2, "DeAllocate_Workspace::workspace->q2" );
+            sfree( workspace->p2, "DeAllocate_Workspace::workspace->p2" );
             break;
 
         case BiCGStab_S:
-            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
-            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->r_hat, "Finalize_Workspace::workspace->r_hat" );
-            sfree( workspace->q_hat, "Finalize_Workspace::workspace->q_hat" );
+            sfree( workspace->y, "DeAllocate_Workspace::workspace->y" );
+            sfree( workspace->g, "DeAllocate_Workspace::workspace->g" );
+            sfree( workspace->z, "DeAllocate_Workspace::workspace->z" );
+            sfree( workspace->r, "DeAllocate_Workspace::workspace->r" );
+            sfree( workspace->d, "DeAllocate_Workspace::workspace->d" );
+            sfree( workspace->q, "DeAllocate_Workspace::workspace->q" );
+            sfree( workspace->p, "DeAllocate_Workspace::workspace->p" );
+            sfree( workspace->r_hat, "DeAllocate_Workspace::workspace->r_hat" );
+            sfree( workspace->q_hat, "DeAllocate_Workspace::workspace->q_hat" );
             break;
 
         case PIPECG_S:
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->m, "Finalize_Workspace::workspace->m" );
-            sfree( workspace->n, "Finalize_Workspace::workspace->n" );
-            sfree( workspace->u, "Finalize_Workspace::workspace->u" );
-            sfree( workspace->w, "Finalize_Workspace::workspace->w" );
-            sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
-            sfree( workspace->m2, "Finalize_Workspace::workspace->m2" );
-            sfree( workspace->n2, "Finalize_Workspace::workspace->n2" );
-            sfree( workspace->u2, "Finalize_Workspace::workspace->u2" );
-            sfree( workspace->w2, "Finalize_Workspace::workspace->w2" );
+            sfree( workspace->z, "DeAllocate_Workspace::workspace->z" );
+            sfree( workspace->r, "DeAllocate_Workspace::workspace->r" );
+            sfree( workspace->d, "DeAllocate_Workspace::workspace->d" );
+            sfree( workspace->q, "DeAllocate_Workspace::workspace->q" );
+            sfree( workspace->p, "DeAllocate_Workspace::workspace->p" );
+            sfree( workspace->m, "DeAllocate_Workspace::workspace->m" );
+            sfree( workspace->n, "DeAllocate_Workspace::workspace->n" );
+            sfree( workspace->u, "DeAllocate_Workspace::workspace->u" );
+            sfree( workspace->w, "DeAllocate_Workspace::workspace->w" );
+            sfree( workspace->z2, "DeAllocate_Workspace::workspace->z2" );
+            sfree( workspace->r2, "DeAllocate_Workspace::workspace->r2" );
+            sfree( workspace->d2, "DeAllocate_Workspace::workspace->d2" );
+            sfree( workspace->q2, "DeAllocate_Workspace::workspace->q2" );
+            sfree( workspace->p2, "DeAllocate_Workspace::workspace->p2" );
+            sfree( workspace->m2, "DeAllocate_Workspace::workspace->m2" );
+            sfree( workspace->n2, "DeAllocate_Workspace::workspace->n2" );
+            sfree( workspace->u2, "DeAllocate_Workspace::workspace->u2" );
+            sfree( workspace->w2, "DeAllocate_Workspace::workspace->w2" );
             break;
 
         case PIPECR_S:
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->m, "Finalize_Workspace::workspace->m" );
-            sfree( workspace->n, "Finalize_Workspace::workspace->n" );
-            sfree( workspace->u, "Finalize_Workspace::workspace->u" );
-            sfree( workspace->w, "Finalize_Workspace::workspace->w" );
+            sfree( workspace->z, "DeAllocate_Workspace::workspace->z" );
+            sfree( workspace->r, "DeAllocate_Workspace::workspace->r" );
+            sfree( workspace->d, "DeAllocate_Workspace::workspace->d" );
+            sfree( workspace->q, "DeAllocate_Workspace::workspace->q" );
+            sfree( workspace->p, "DeAllocate_Workspace::workspace->p" );
+            sfree( workspace->m, "DeAllocate_Workspace::workspace->m" );
+            sfree( workspace->n, "DeAllocate_Workspace::workspace->n" );
+            sfree( workspace->u, "DeAllocate_Workspace::workspace->u" );
+            sfree( workspace->w, "DeAllocate_Workspace::workspace->w" );
             break;
 
         default:
@@ -257,9 +247,11 @@ void DeAllocate_Workspace( control_params * const control, storage * const works
             break;
     }
 
-    /* integrator */
-    // sfree( workspace->f_old, "DeAllocate_Workspace::f_old" );
-    sfree( workspace->v_const, "DeAllocate_Workspace::v_const" );
+    /* Nose-Hoover integrator */
+    if ( control->ensemble == nhNVT )
+    {
+        sfree( workspace->v_const, "DeAllocate_Workspace::v_const" );
+    }
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
@@ -308,24 +300,12 @@ void Allocate_Workspace( reax_system * const system, control_params * const cont
     int i, total_real, total_rvec, local_rvec;
 
     workspace->allocated = TRUE;
+
     total_real = sizeof(real) * total_cap;
     total_rvec = sizeof(rvec) * total_cap;
     local_rvec = sizeof(rvec) * local_cap;
 
-    /* communication storage */
-    for ( i = 0; i < MAX_NBRS; ++i )
-    {
-        workspace->tmp_dbl[i] = scalloc( total_cap, sizeof(real),
-                "Allocate_Workspace::tmp_dbl[i]" );
-        workspace->tmp_rvec[i] = scalloc( total_cap, sizeof(rvec),
-                "Allocate_Workspace::tmp_rvec[i]" );
-        workspace->tmp_rvec2[i] = scalloc( total_cap, sizeof(rvec2),
-                "Allocate_Workspace::tmp_rvec2[i]" );
-    }
-
     /* bond order related storage  */
-    workspace->within_bond_box = scalloc( total_cap, sizeof(int),
-            "Allocate_Workspace::skin" );
     workspace->total_bond_order = smalloc( total_real, "Allocate_Workspace::total_bo" );
     workspace->Deltap = smalloc( total_real, "Allocate_Workspace::Deltap" );
     workspace->Deltap_boc = smalloc( total_real, "Allocate_Workspace::Deltap_boc" );
@@ -394,13 +374,13 @@ void Allocate_Workspace( reax_system * const system, control_params * const cont
     {
         case GMRES_S:
         case GMRES_H_S:
-            workspace->y = scalloc( RESTART + 1, sizeof(real), "Allocate_Workspace::y" );
-            workspace->z = scalloc( RESTART + 1, sizeof(real), "Allocate_Workspace::z" );
-            workspace->g = scalloc( RESTART + 1, sizeof(real), "Allocate_Workspace::g" );
-            workspace->h = scalloc ( (RESTART + 1) * (RESTART + 1), sizeof(real), "Allocate_Workspace::h");
-            workspace->hs = scalloc( RESTART + 1, sizeof(real), "Allocate_Workspace::hs" );
-            workspace->hc = scalloc( RESTART + 1, sizeof(real), "Allocate_Workspace::hc" );
-            workspace->v = scalloc ( (RESTART + 1) * (RESTART + 1), sizeof(real), "Allocate_Workspace::v");
+            workspace->y = scalloc( control->cm_solver_restart + 1, sizeof(real), "Allocate_Workspace::y" );
+            workspace->z = scalloc( control->cm_solver_restart + 1, sizeof(real), "Allocate_Workspace::z" );
+            workspace->g = scalloc( control->cm_solver_restart + 1, sizeof(real), "Allocate_Workspace::g" );
+            workspace->h = scalloc ( SQR(control->cm_solver_restart + 1), sizeof(real), "Allocate_Workspace::h");
+            workspace->hs = scalloc( control->cm_solver_restart + 1, sizeof(real), "Allocate_Workspace::hs" );
+            workspace->hc = scalloc( control->cm_solver_restart + 1, sizeof(real), "Allocate_Workspace::hc" );
+            workspace->v = scalloc ( SQR(control->cm_solver_restart + 1), sizeof(real), "Allocate_Workspace::v");
             break;
 
         case CG_S:
@@ -477,7 +457,10 @@ void Allocate_Workspace( reax_system * const system, control_params * const cont
     }
 
     /* integrator storage */
-    workspace->v_const = smalloc( local_rvec, "Allocate_Workspace::v_const" );
+    if ( control->ensemble == nhNVT )
+    {
+        workspace->v_const = smalloc( local_rvec, "Allocate_Workspace::v_const" );
+    }
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
@@ -853,7 +836,7 @@ void ReAllocate( reax_system * const system, control_params * const control,
 
     /* IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with FALSE!!! */
     nflag = FALSE;
-    if ( system->n >= DANGER_ZONE * system->local_cap
+    if ( system->n >= (int) CEIL( DANGER_ZONE * system->local_cap )
             || (FALSE && system->n <= (int) CEIL( LOOSE_ZONE * system->local_cap )) )
     {
 #if !defined(NEUTRAL_TERRITORY)

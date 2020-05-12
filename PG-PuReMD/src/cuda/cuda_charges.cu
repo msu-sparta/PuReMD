@@ -484,23 +484,24 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int blocks, ret;
+    int ret;
     real u, *q;
     rvec2 my_sum, all_sum;
 #if defined(DUAL_SOLVER)
+    int blocks;
     rvec2 *spad_rvec2;
 #else
     real *spad;
 #endif
-
-    blocks = system->n / DEF_BLOCK_SIZE
-        + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(real) * system->n,
             "Calculate_Charges_QEq::workspace->host_scratch" );
     q = (real *) workspace->host_scratch;
 #if defined(DUAL_SOLVER)
+    blocks = system->n / DEF_BLOCK_SIZE
+        + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(rvec2) * 2 * system->n,
             "Calculate_Charges_QEq::workspace->scratch" );
@@ -539,20 +540,11 @@ static void Calculate_Charges_QEq( reax_system const * const system,
             sizeof(real), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
 #endif
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] my_sum = (%f, %f)\n",
-            my_sum[0], my_sum[1] );
-#endif
-
     /* global reduction on pseudo-charges for s and t */
     ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     u = all_sum[0] / all_sum[1];
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] u = %f\n", u );
-#endif
 
     /* derive atomic charges from pseudo-charges
      * and set up extrapolation for next time step */

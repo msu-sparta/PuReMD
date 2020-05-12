@@ -838,10 +838,7 @@ CUDA_GLOBAL void k_print_forces( reax_atom *my_atoms, rvec *f, int n )
     }
 
     printf( "%8d: %24.15f, %24.15f, %24.15f\n",
-            my_atoms[i].orig_id,
-            f[i][0],
-            f[i][1],
-            f[i][2] );
+            my_atoms[i].orig_id, f[i][0], f[i][1], f[i][2] );
 }
 
 
@@ -898,11 +895,11 @@ CUDA_GLOBAL void k_bond_mark( reax_list p_bond_list, storage p_workspace, int N 
 
             if ( i < j )
             {
-                if ( workspace->bond_mark[j] > (workspace->bond_mark[i] + 1) )
+                if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
                 {
                     workspace->bond_mark[j] = workspace->bond_mark[i] + 1;    
                 }
-                else if ( workspace->bond_mark[i] > (workspace->bond_mark[j] + 1) )
+                else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
                 {
                     workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
                 }
@@ -943,8 +940,8 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
                 TYP_THREE_BODY, lists[THREE_BODIES] );
     }
 
-    if ( system->total_thbodies > lists[THREE_BODIES]->max_intrs ||
-            system->total_bonds > lists[THREE_BODIES]->n )
+    if ( system->total_thbodies > lists[THREE_BODIES]->max_intrs
+            || system->total_bonds > lists[THREE_BODIES]->n )
     {
         if ( system->total_thbodies > lists[THREE_BODIES]->max_intrs )
         {
@@ -970,8 +967,8 @@ static void Print_Forces( reax_system *system )
 {
     int blocks;
     
-    blocks = (system->n) / DEF_BLOCK_SIZE + 
-        (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
+    blocks = (system->n) / DEF_BLOCK_SIZE
+        + (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
 
     k_print_forces <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, workspace->d_workspace->f, system->n );
@@ -984,8 +981,8 @@ static void Print_HBonds( reax_system *system, int step )
 {
     int blocks;
     
-    blocks = (system->n) / DEF_BLOCK_SIZE + 
-        (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
+    blocks = (system->n) / DEF_BLOCK_SIZE
+        + (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
 
     k_print_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(lists[HBONDS]), system->n, system->my_rank, step );
@@ -1001,14 +998,17 @@ static void Print_HBonds( reax_system *system, int step )
 void Cuda_Init_Neighbor_Indices( reax_system *system, reax_list **lists )
 {
     int blocks;
-    reax_list *far_nbr_list = lists[FAR_NBRS];
+    reax_list *far_nbr_list;
+
+    blocks = system->total_cap / DEF_BLOCK_SIZE
+        + ((system->total_cap % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+    far_nbr_list = lists[FAR_NBRS];
 
     /* init indices */
     Cuda_Scan_Excl_Sum( system->d_max_far_nbrs, far_nbr_list->index, system->total_cap );
 
     /* init end_indices */
-    blocks = system->total_cap / DEF_BLOCK_SIZE + 
-        ((system->total_cap % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_far_nbrs, far_nbr_list->index, far_nbr_list->end_index, system->total_cap );
     cudaDeviceSynchronize( );
@@ -1025,8 +1025,8 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
     int blocks, *temp;
     reax_list *hbond_list;
 
-    blocks = system->N / DEF_BLOCK_SIZE + 
-        ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = system->N / DEF_BLOCK_SIZE
+        + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     hbond_list = lists[HBONDS];
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
@@ -1115,8 +1115,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 {
     int blocks;
 
-    blocks = system->total_cap / ST_BLOCK_SIZE + 
-        (((system->total_cap % ST_BLOCK_SIZE == 0)) ? 0 : 1);
+    blocks = system->total_cap / ST_BLOCK_SIZE
+        + (((system->total_cap % ST_BLOCK_SIZE == 0)) ? 0 : 1);
 
     k_estimate_storages <<< blocks, ST_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
@@ -1196,8 +1196,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 //    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 
-    blocks = (system->N) / DEF_BLOCK_SIZE + 
-        (((system->N % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
+    blocks = (system->N) / DEF_BLOCK_SIZE
+        + (((system->N % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
 
 //    k_print_hbond_info <<< blocks, DEF_BLOCK_SIZE >>>
 //        ( system->d_my_atoms, system->reax_param.d_sbp,
@@ -1243,6 +1243,9 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
 //    }
 
+    /* update num. rows in matrix for this GPU */
+    workspace->d_workspace->H.n = system->n;
+
     k_init_bond <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp,
           system->reax_param.d_tbp, *(workspace->d_workspace), (control_params *)control->d_control_params,
@@ -1278,8 +1281,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
         {
             /* make hbond_list symmetric */
-            hblocks = (system->N * HB_KER_SYM_THREADS_PER_ATOM / HB_SYM_BLOCK_SIZE) + 
-                ((((system->N * HB_KER_SYM_THREADS_PER_ATOM) % HB_SYM_BLOCK_SIZE) == 0) ? 0 : 1);
+            hblocks = (system->N * HB_KER_SYM_THREADS_PER_ATOM / HB_SYM_BLOCK_SIZE)
+                + ((((system->N * HB_KER_SYM_THREADS_PER_ATOM) % HB_SYM_BLOCK_SIZE) == 0) ? 0 : 1);
 
             k_update_sym_hbond_indices <<< hblocks, HB_BLOCK_SIZE >>>
                 ( system->d_my_atoms, *(lists[HBONDS]), system->N );
@@ -1767,7 +1770,8 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 
     retVal = SUCCESS;
 
-    if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
+    if ( control->charge_freq
+            && (data->step - data->prev_steps) % control->charge_freq == 0 )
     {
         charge_flag = TRUE;
     }
@@ -1780,11 +1784,13 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
     {
         if ( charge_flag == TRUE )
         {
-            retVal = Cuda_Init_Forces( system, control, data, workspace, lists, out_control );
+            retVal = Cuda_Init_Forces( system, control, data,
+                    workspace, lists, out_control );
         }
         else
         {
-            retVal = Cuda_Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
+            retVal = Cuda_Init_Forces_No_Charges( system, control, data,
+                    workspace, lists, out_control );
         }
 
         if ( retVal == SUCCESS )
@@ -1818,7 +1824,8 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
 #if defined(PURE_REAX)
         if ( charge_flag == TRUE )
         {
-            Cuda_Compute_Charges( system, control, data, workspace, out_control, mpi_data );
+            Cuda_Compute_Charges( system, control, data,
+                    workspace, out_control, mpi_data );
         }
 
 #if defined(LOG_PERFORMANCE)

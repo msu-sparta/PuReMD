@@ -470,16 +470,13 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
         const control_params * const control, mpi_datatypes * const mpi_data,
         void const * const x, int buf_type, MPI_Datatype mpi_type )
 {
-    int t_start, t_comm;
-
-    t_comm = 0.0;
+    int t_start;
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     t_start = Get_Time( );
     Dist( system, mpi_data, x, buf_type, mpi_type );
-    t_comm += Get_Time( ) - t_start;
 
-    return t_comm;
+    return Get_Elapsed_Time( t_start );
 }
 
 
