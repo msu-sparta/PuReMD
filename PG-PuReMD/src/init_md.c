@@ -135,15 +135,17 @@ void Init_System( reax_system * const system, control_params * const control,
 
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
+    /* since all processors read in all atoms and select their local atoms
+     * intially, no local atoms comm needed and just bin local atoms */
     Bin_My_Atoms( system, workspace );
     Reorder_My_Atoms( system, workspace );
 
-    /* estimate N and total capacity */
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,
             &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
             &Unpack_Exchange_Message, TRUE );
 
-    system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
+    system->total_cap = MAX( (int) CEIL( system->N * SAFE_ZONE ), MIN_CAP );
+
     Bin_Boundary_Atoms( system );
 #if defined(NEUTRAL_TERRITORY)
     Estimate_NT_Atoms( system, mpi_data );
@@ -170,24 +172,24 @@ void Init_System( reax_system * const system, control_params * const control,
 
     /* list management */
     system->far_nbrs = smalloc( sizeof(int) * system->total_cap,
-            "ReAllocate_System::system->far_nbrs" );
+            "Init_System::system->far_nbrs" );
     system->max_far_nbrs = smalloc( sizeof(int) * system->total_cap,
-            "ReAllocate_System::system->max_far_nbrs" );
+            "Init_System::system->max_far_nbrs" );
 
     system->bonds = smalloc( sizeof(int) * system->total_cap,
-            "ReAllocate_System::system->bonds" );
+            "Init_System::system->bonds" );
     system->max_bonds = smalloc( sizeof(int) * system->total_cap,
-            "ReAllocate_System::system->max_bonds" );
+            "Init_System::system->max_bonds" );
 
     system->hbonds = smalloc( sizeof(int) * system->total_cap,
-            "ReAllocate_System::system->hbonds" );
+            "Init_System::system->hbonds" );
     system->max_hbonds = smalloc( sizeof(int) * system->total_cap,
-            "ReAllocate_System::system->max_hbonds" );
+            "Init_System::system->max_hbonds" );
 
     system->cm_entries = smalloc( sizeof(int) * system->local_cap,
-            "ReAllocate_System::system->cm_entries" );
+            "Init_System::system->cm_entries" );
     system->max_cm_entries = smalloc( sizeof(int) * system->local_cap,
-            "ReAllocate_System::max_cm_entries->max_hbonds" );
+            "Init_System::max_cm_entries->max_hbonds" );
     
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: n=%d, local_cap=%d\n",
@@ -202,7 +204,7 @@ void Init_System( reax_system * const system, control_params * const control,
 
     Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
 
-//    if( Reposition_Atoms( system, control, data, mpi_data ) == FAILURE )
+//    if ( Reposition_Atoms( system, control, data, mpi_data ) == FAILURE )
 //    {
 //        return FAILURE;
 //    }
@@ -313,10 +315,10 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
 #elif defined(LAMMPS_REAX)
 void Init_System( reax_system * const system )
 {
-    system->big_box.V = 0;
-    system->big_box.box_norms[0] = 0;
-    system->big_box.box_norms[1] = 0;
-    system->big_box.box_norms[2] = 0;
+    system->big_box.V = 0.0;
+    system->big_box.box_norms[0] = 0.0;
+    system->big_box.box_norms[1] = 0.0;
+    system->big_box.box_norms[2] = 0.0;
 
     system->local_cap = (int) CEIL( system->n * SAFE_ZONE );
     system->total_cap = (int) CEIL( system->N * SAFE_ZONE );
@@ -335,7 +337,7 @@ void Init_System( reax_system * const system )
              system->my_rank, system->local_cap, system->total_cap );
 #endif
 
-    ReAllocate_System( system, system->local_cap, system->total_cap );
+    Reallocate_System( system, system->local_cap, system->total_cap );
 }
 
 
@@ -420,7 +422,7 @@ void Init_Workspace( reax_system * const system, control_params * const control,
 void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int i, block[11];
+    int i, ret, block[11];
     MPI_Aint disp[11], base;
     MPI_Datatype type[11], temp_type;
     mpi_atom sample[1];
@@ -469,10 +471,15 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[9] = MPI_DOUBLE;
     type[10] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 11, block, disp, type, &temp_type );
-    MPI_Type_create_resized( temp_type, 0, sizeof(mpi_atom),
+    ret = MPI_Type_create_struct( 11, block, disp, type, &temp_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_create_resized( temp_type, 0, sizeof(mpi_atom),
             &mpi_data->mpi_atom_type );
-    MPI_Type_commit( &mpi_data->mpi_atom_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_commit( &mpi_data->mpi_atom_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_free( &temp_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* boundary_atom */
     block[0] = 1;
@@ -501,18 +508,27 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[4] = MPI_INT;
     type[5] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 6, block, disp, type, &temp_type );
-    MPI_Type_create_resized( temp_type, 0, sizeof(boundary_atom),
+    ret = MPI_Type_create_struct( 6, block, disp, type, &temp_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_create_resized( temp_type, 0, sizeof(boundary_atom),
             &mpi_data->boundary_atom_type );
-    MPI_Type_commit( &mpi_data->boundary_atom_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_commit( &mpi_data->boundary_atom_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_free( &temp_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* mpi_rvec */
-    MPI_Type_contiguous( 3, MPI_DOUBLE, &mpi_data->mpi_rvec );
-    MPI_Type_commit( &mpi_data->mpi_rvec );
+    ret = MPI_Type_contiguous( 3, MPI_DOUBLE, &mpi_data->mpi_rvec );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_commit( &mpi_data->mpi_rvec );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* mpi_rvec2 */
-    MPI_Type_contiguous( 2, MPI_DOUBLE, &mpi_data->mpi_rvec2 );
-    MPI_Type_commit( &mpi_data->mpi_rvec2 );
+    ret = MPI_Type_contiguous( 2, MPI_DOUBLE, &mpi_data->mpi_rvec2 );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_commit( &mpi_data->mpi_rvec2 );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* restart_atom */
     block[0] = 1;
@@ -538,10 +554,15 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[3] = MPI_DOUBLE;
     type[4] = MPI_DOUBLE;
 
-    MPI_Type_create_struct( 5, block, disp, type, &temp_type );
-    MPI_Type_create_resized( temp_type, 0, sizeof(restart_atom),
+    ret = MPI_Type_create_struct( 5, block, disp, type, &temp_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_create_resized( temp_type, 0, sizeof(restart_atom),
             &mpi_data->restart_atom_type );
-    MPI_Type_commit( &mpi_data->restart_atom_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_commit( &mpi_data->restart_atom_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_free( &temp_type );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     mpi_data->in1_buffer = NULL;
     mpi_data->in1_buffer_size = 0;
@@ -652,9 +673,11 @@ void Initialize( reax_system * const system, control_params * const control,
 {
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
-    Init_System( system, control, data, workspace, mpi_data );
-
     Init_Simulation_Data( system, control, data, mpi_data );
+
+    Init_System( system, control, data, workspace, mpi_data );
+    /* reset for step 0 */
+    Reset_Simulation_Data( data );
 
     Init_Workspace( system, control, workspace, mpi_data );
 
@@ -697,9 +720,11 @@ void Initialize( reax_system * const system, control_params * const control,
         reax_list ** const lists, output_controls * const out_control,
         mpi_datatypes * const mpi_data )
 {
-    Init_System( system );
-
     Init_Simulation_Data( system, control, data );
+
+    Init_System( system );
+    /* reset for step 0 */
+    Reset_Simulation_Data( data );
 
     Init_Workspace( system, control, workspace );
 
@@ -800,6 +825,8 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
     sfree( workspace->b_prm, "Finalize_Workspace::workspace->b_prm" );
     sfree( workspace->s, "Finalize_Workspace::workspace->s" );
     sfree( workspace->t, "Finalize_Workspace::workspace->t" );
+    sfree( workspace->b, "Finalize_Workspace::workspace->b" );
+    sfree( workspace->x, "Finalize_Workspace::workspace->x" );
 
     switch ( control->cm_solver_type )
     {
@@ -888,7 +915,10 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
     }
 
     /* integrator storage */
-    sfree( workspace->v_const, "Finalize_Workspace::workspace->v_const" );
+    if ( control->ensemble == nhNVT )
+    {
+        sfree( workspace->v_const, "Finalize_Workspace::workspace->v_const" );
+    }
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
@@ -943,6 +973,7 @@ static void Finalize_Lists( control_params * const control, reax_list ** const l
 
     for ( i = 0; i < LIST_N; ++i )
     {
+        Delete_List( lists[i] );
         sfree( lists[i], "Finalize_Lists::lists[i]" );
     }
 }
@@ -987,7 +1018,7 @@ void Finalize( reax_system * const system, control_params * const control,
 
     Finalize_Lists( control, lists );
 
-//    Finalize_Workspace( system, control, workspace );
+    Finalize_Workspace( system, control, workspace );
 
     Finalize_Simulation_Data( system, control, data, out_control );
 

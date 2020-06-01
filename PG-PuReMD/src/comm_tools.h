@@ -43,8 +43,7 @@ void Setup_Comm( reax_system * const, control_params * const, mpi_datatypes * co
 void Update_Comm( reax_system * const );
 
 void Count_Boundary_Atoms( reax_system const * const,
-        int, int, int, mpi_out_data * const,
-        int *, int * );
+        int, int, int, mpi_out_data * const, int * const );
 
 void Sort_Boundary_Atoms( reax_system * const, int, int,
         int, mpi_out_data * const, mpi_datatypes * const );

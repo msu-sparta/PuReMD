@@ -51,7 +51,7 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
 }
 
 
-void Cuda_Reset_Atoms( reax_system* system, control_params *control,
+void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *control,
         storage *workspace )
 {
     int blocks, *hindex;
@@ -61,7 +61,7 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control,
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(int) * system->N,
-            "Cuda_Reset_Atoms::workspace->scratch" );
+            "Cuda_Reset_Atoms_HBond_Indices::workspace->scratch" );
     hindex = (int *) workspace->scratch;
 
     k_reset_hindex <<< blocks, DEF_BLOCK_SIZE >>>
@@ -72,14 +72,14 @@ void Cuda_Reset_Atoms( reax_system* system, control_params *control,
     Cuda_Reduction_Sum( hindex, system->d_numH, system->N );
 
     copy_host_device( &system->numH, system->d_numH, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Reset_Atoms::d_numH" );
+            cudaMemcpyDeviceToHost, "Cuda_Reset_Atoms_HBond_Indices::d_numH" );
 }
 
 
 void Cuda_Reset( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists )
 {
-    Cuda_Reset_Atoms( system, control, workspace );
+    Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
 
     Reset_Simulation_Data( data );
 

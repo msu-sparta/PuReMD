@@ -292,7 +292,8 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
         rtensor_MatVec( data->avcm, inv, data->amcm );
     }
 
-    MPI_Bcast( data->avcm, 3, MPI_DOUBLE, MASTER_NODE, comm );
+    ret = MPI_Bcast( data->avcm, 3, MPI_DOUBLE, MASTER_NODE, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* Compute the rotational energy */
     data->erot_cm = 0.5 * E_CONV * rvec_Dot( data->avcm, data->amcm );
@@ -304,14 +305,14 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
              data->vcm[0], data->vcm[1], data->vcm[2] );
     fprintf( stderr, "amcm: %24.15e %24.15e %24.15e\n",
              data->amcm[0], data->amcm[1], data->amcm[2] );
-    /* fprintf( stderr, "mat:  %f %f %f\n     %f %f %f\n     %f %f %f\n",
+    fprintf( stderr, "mat:  %f %f %f\n     %f %f %f\n     %f %f %f\n",
        mat[0][0], mat[0][1], mat[0][2],
        mat[1][0], mat[1][1], mat[1][2],
        mat[2][0], mat[2][1], mat[2][2] );
-       fprintf( stderr, "inv:  %g %g %g\n     %g %g %g\n     %g %g %g\n",
+    fprintf( stderr, "inv:  %g %g %g\n     %g %g %g\n     %g %g %g\n",
        inv[0][0], inv[0][1], inv[0][2],
        inv[1][0], inv[1][1], inv[1][2],
-       inv[2][0], inv[2][1], inv[2][2] ); */
+       inv[2][0], inv[2][1], inv[2][2] ); 
     fprintf( stderr, "avcm: %24.15e %24.15e %24.15e\n",
              data->avcm[0], data->avcm[1], data->avcm[2] );
 #endif

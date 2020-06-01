@@ -33,7 +33,7 @@ void Init_Matrix_Row_Indices( sparse_matrix * const, int * const );
 
 void PreAllocate_Space( reax_system * const, control_params * const, storage * const );
 
-void ReAllocate_System( reax_system * const, int, int );
+void Reallocate_System( reax_system * const, int, int );
 
 void Allocate_Workspace( reax_system * const, control_params * const, storage * const,
         int, int );
@@ -52,7 +52,11 @@ int Allocate_Bond_List( int, int * const, reax_list * const );
 
 void Deallocate_MPI_Buffers( mpi_datatypes * const );
 
-void ReAllocate( reax_system * const, control_params * const,
+void Reallocate_Part1( reax_system * const, control_params * const,
+        simulation_data * const, storage * const,
+        reax_list** const, mpi_datatypes * const );
+
+void Reallocate_Part2( reax_system * const, control_params * const,
         simulation_data * const, storage * const,
         reax_list** const, mpi_datatypes * const );
 

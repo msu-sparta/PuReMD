@@ -25,6 +25,7 @@
 
 #include "allocate.h"
 #include "box.h"
+#include "comm_tools.h"
 #include "tool_box.h"
 #include "vector.h"
 
@@ -273,10 +274,8 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
 
     pdb = sfopen( pdb_file, "r", "Read_PDB_File::pdb" );
 
-    /* allocate memory for tokenizing pdb lines */
     Allocate_Tokenizer_Space( &s, &s1, &tmp );
 
-    /* read box information */
     if ( Read_Box_Info( system, pdb, PDB ) == FAILURE )
     {
         fprintf( stderr, "[ERROR] Read_Box_Info: no CRYST line in the pdb file!" );
@@ -287,10 +286,6 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
     Setup_Environment( system, control, mpi_data );
     Count_PDB_Atoms( pdb, system );
     PreAllocate_Space( system, control, workspace );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: starting to read the pdb file\n", system->my_rank );
-#endif
 
     /* start reading and processing the pdb file */
     fseek( pdb, 0, SEEK_SET );
@@ -467,6 +462,8 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
         MPI_Abort( MPI_COMM_WORLD, INVALID_GEO );
     }
 
+    Deallocate_Tokenizer_Space( s, s1, tmp );
+
     sfclose( pdb, "Read_PDB_File::pdb" );
 }
 
@@ -573,10 +570,11 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
             if ( i != MASTER_NODE )
             {
                 ret = MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
-                          MPI_CHAR, i, np * PDB_ATOM_FORMAT_O_LENGTH + i, MPI_COMM_WORLD,
-                          &status );
+                        MPI_CHAR, i, np * PDB_ATOM_FORMAT_O_LENGTH + i, MPI_COMM_WORLD,
+                        &status );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                MPI_Get_count( &status, MPI_CHAR, &cnt );
+                ret = MPI_Get_count( &status, MPI_CHAR, &cnt );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
                 buffer_len += cnt;
             }
         }

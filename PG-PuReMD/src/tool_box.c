@@ -82,7 +82,8 @@ void SumScanB( int n, int me, int wsize, int root, MPI_Comm comm, int *nbuf )
         }
     }
 
-    MPI_Bcast( nbuf, wsize, MPI_INT, root, comm );
+    ret = MPI_Bcast( nbuf, wsize, MPI_INT, root, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 }
 
 
@@ -240,6 +241,21 @@ char *Get_Atom_Name( reax_system *system, int i )
 }
 
 
+void Deallocate_Tokenizer_Space( char *line, char *backup, char **tokens )
+{
+    int i;
+
+    for ( i = 0; i < MAX_TOKENS; i++ )
+    {
+        sfree( tokens[i], "Deallocate_Tokenizer_Space::tokens[i]" );
+    }
+
+    sfree( line, "Deallocate_Tokenizer_Space::line" );
+    sfree( backup, "Deallocate_Tokenizer_Space::backup" );
+    sfree( tokens, "Deallocate_Tokenizer_Space::tokens" );
+}
+
+
 void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
 {
     int i;
@@ -288,21 +304,23 @@ void * smalloc( size_t n, const char *name )
 {
     void *ptr;
 
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] malloc requesting %zu bytes for %s\n", n, name );
+    fflush( stderr );
+#endif
+
+    ptr = malloc( n );
+
+    /* cases:
+     * 1) n = 0: malloc either returned NULL or some unique pointer (logic error)
+     * 2) ptr = NULL: failed to allocate enough memory */
     if ( n == 0 )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n, name );
         exit( INSUFFICIENT_MEMORY );
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n, name );
-    fflush( stderr );
-#endif
-
-    ptr = malloc( n );
-
-    if ( ptr == NULL )
+    else if ( ptr == NULL )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n, name );
@@ -310,7 +328,7 @@ void * smalloc( size_t n, const char *name )
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] granted memory at address: %p\n", ptr );
+    fprintf( stderr, "[INFO] malloc granted memory at address: %p\n", ptr );
     fflush( stderr );
 #endif
 
@@ -329,28 +347,24 @@ void * srealloc( void *ptr, size_t n, const char *name )
 {
     void *new_ptr;
 
-    if ( n == 0 )
-    {
-        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
-                n, name );
-        exit( INSUFFICIENT_MEMORY );
-    }
-
 #if defined(DEBUG_FOCUS)
     if ( ptr == NULL )
     {
-        fprintf( stderr, "[INFO] trying to allocate %zu NEW bytes for array %s.\n",
+        fprintf( stderr, "[INFO] realloc requesting %zu NEW bytes for %s.\n",
                 n, name );
     }
-
-    fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n, name );
-    fflush( stderr );
+    else
+    {
+        fprintf( stderr, "[INFO] realloc requesting %zu bytes for %s.\n",
+                n, name );
+    }
 #endif
 
     new_ptr = realloc( ptr, n );
 
-    /* technically, ptr may still be allocated and valid,
-     * but we needed more memory, so abort */
+    /* cases:
+     * 1) n = 0: realloc acted as a call to free( ptr ) and did not allocate anything for new_ptr
+     * 2) new_ptr = NULL: failed to allocate enough memory */
     if ( new_ptr == NULL )
     {
         fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
@@ -359,7 +373,7 @@ void * srealloc( void *ptr, size_t n, const char *name )
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] granted memory at address: %p\n", new_ptr );
+    fprintf( stderr, "[INFO] realloc granted memory at address: %p\n", new_ptr );
     fflush( stderr );
 #endif
 
@@ -379,21 +393,23 @@ void * scalloc( size_t n, size_t size, const char *name )
 {
     void *ptr;
 
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] calloc requesting %zu bytes for %s\n", n * size, name );
+    fflush( stderr );
+#endif
+
+    ptr = calloc( n, size );
+
+    /* cases:
+     * 1) n = 0: malloc either returned NULL or some unique pointer (logic error)
+     * 2) ptr = NULL: failed to allocate enough memory */
     if ( n == 0 )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n * size, name );
         exit( INSUFFICIENT_MEMORY );
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] requesting %zu bytes for %s\n", n * size, name );
-    fflush( stderr );
-#endif
-
-    ptr = calloc( n, size );
-
-    if ( ptr == NULL )
+    else if ( ptr == NULL )
     {
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
                 n * size, name );
@@ -401,7 +417,7 @@ void * scalloc( size_t n, size_t size, const char *name )
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] granted memory at address: %p\n", ptr );
+    fprintf( stderr, "[INFO] calloc granted memory at address: %p\n", ptr );
     fflush( stderr );
 #endif
 
@@ -427,18 +443,16 @@ void check_smalloc( void **ptr, size_t *cur_size, size_t new_size, const char *m
     fflush( stderr );
 #endif
 
-    assert( new_size > 0 );
-
     if ( new_size > *cur_size )
     {
-        if ( *cur_size > 0 && *ptr == NULL )
+        assert( new_size > 0 );
+
+        if ( *cur_size != 0 )
         {
             sfree( *ptr, msg );
         }
 
         //TODO: look into using aligned alloc's
-        /* intentionally over-allocate to reduce the number of allocation operations,
-         * and record the new allocation size */
         *cur_size = new_size;
         *ptr = smalloc( *cur_size, msg );
     }
@@ -460,21 +474,17 @@ void check_srealloc( void **ptr, size_t *cur_size, size_t new_size, const char *
     void *new_ptr;
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] requesting %zu bytes for %s (%zu currently allocated)\n",
+    fprintf( stderr, "[INFO] check_srealloc requesting %zu bytes for %s (%zu currently allocated)\n",
             new_size, msg, *cur_size );
     fflush( stderr );
 #endif
 
-    assert( new_size > 0 );
-
     if ( new_size > *cur_size )
     {
         //TODO: look into using aligned alloc's
-        /* intentionally over-allocate to reduce the number of allocation operations,
-         * and record the new allocation size */
-        *cur_size = new_size;
-        new_ptr = srealloc( *ptr, *cur_size, msg );
+        new_ptr = srealloc( *ptr, new_size, msg );
         *ptr = new_ptr;
+        *cur_size = new_size;
     }
 }
 

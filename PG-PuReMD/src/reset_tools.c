@@ -184,8 +184,8 @@ void Reset_Grid( grid * const g )
             for ( k = 0; k < g->ncells[2]; k++ )
             {
                 g->cells[ index_grid_3d(i, j, k, g) ].top = 0;
-                //g->cells[ index_grid_3d(i, j, k, g) ].str = 0;
-                //g->cells[ index_grid_3d(i, j, k, g) ].end = 0;
+//                g->cells[ index_grid_3d(i, j, k, g) ].str = 0;
+//                g->cells[ index_grid_3d(i, j, k, g) ].end = 0;
             }
         }
     }

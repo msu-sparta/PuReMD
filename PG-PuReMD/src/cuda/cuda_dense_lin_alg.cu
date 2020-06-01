@@ -546,7 +546,7 @@ real Dot( storage * const workspace,
 {
     int ret;
     real sum, *spad;
-#if !defined(MPIX_CUDA_AWARE_SUPPORT) && !MPIX_CUDA_AWARE_SUPPORT
+#if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     real temp;
 #endif
 
@@ -560,16 +560,16 @@ real Dot( storage * const workspace,
     Cuda_Reduction_Sum( spad, &spad[k], k );
 
     /* global reduction (sum) of local device sums and store on host */
-#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-    ret = MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
-    Check_MPI_Error( ret, __FILE__, __LINE__ );
-#else
+//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+//    ret = MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
+//    Check_MPI_Error( ret, __FILE__, __LINE__ );
+//#else
     copy_host_device( &temp, &spad[k], sizeof(real),
             cudaMemcpyDeviceToHost, "Dot::temp" );
 
     ret = MPI_Allreduce( &temp, &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-#endif
+//#endif
 
     return sum;
 }

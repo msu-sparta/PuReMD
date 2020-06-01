@@ -55,6 +55,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,
             &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
             &Unpack_Exchange_Message, TRUE );
+
     system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
     Bin_Boundary_Atoms( system );
 
@@ -63,7 +64,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
     Sync_System( system );
 
     /* estimate numH */
-    Cuda_Reset_Atoms( system, control, workspace );
+    Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: n=%d local_cap=%d\n",
@@ -163,8 +164,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
 
-        fprintf( stderr, "p%d: init_simulation_data: option not yet implemented\n",
-              system->my_rank );
+        fprintf( stderr, "[ERROR] Anisotropic NPT ensemble not yet implemented\n" );
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
         break;
 
@@ -201,13 +201,13 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     Cuda_Make_List( system->total_cap, system->total_far_nbrs,
             TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-
-    Cuda_Init_Neighbor_Indices( system, lists );
+    Cuda_Init_Neighbor_Indices( system, lists[FAR_NBRS] );
 
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
     /* estimate storage for bonds, hbonds, and sparse matrix */
-    Cuda_Estimate_Storages( system, control, lists,
+    workspace->d_workspace->H.n_max = system->local_cap; // first call requires setting this manually before allocation
+    Cuda_Estimate_Storages( system, control, workspace, lists,
             TRUE, TRUE, TRUE, data->step );
 
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->n,
@@ -217,12 +217,12 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         Cuda_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, lists[HBONDS] );
-        Cuda_Init_HBond_Indices( system, workspace, lists );
+        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS] );
     }
 
     /* bonds list */
     Cuda_Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
-    Cuda_Init_Bond_Indices( system, lists );
+    Cuda_Init_Bond_Indices( system, lists[BONDS] );
 
     /* 3bodies list: since a more accurate estimate of the num.
      * three body interactions requires that bond orders have
@@ -240,7 +240,7 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     Cuda_Init_System( system, control, data, workspace, mpi_data );
 
     Cuda_Allocate_Grid( system );
-    Sync_Grid( &system->my_grid, &system->d_my_grid );
+    Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
 
     Cuda_Init_Simulation_Data( system, control, data );
 

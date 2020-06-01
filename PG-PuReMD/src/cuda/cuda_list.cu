@@ -55,40 +55,44 @@ void Cuda_Make_List( int n, int max_intrs, int type, reax_list * const l )
     l->type = type;
 //    l->format = format;
 
-    cuda_malloc( (void **) &l->index, n * sizeof(int), TRUE, "Cuda_Make_List::index" );
-    cuda_malloc( (void **) &l->end_index, n * sizeof(int), TRUE, "Cuda_Make_List::end_index" );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "list: n=%d max_intrs=%d type=%d\n", n, max_intrs, type );
-#endif
+    cuda_malloc( (void **) &l->index, sizeof(int) * n,
+            TRUE, "Cuda_Make_List::index" );
+    cuda_malloc( (void **) &l->end_index, sizeof(int) * n,
+            TRUE, "Cuda_Make_List::end_index" );
 
     switch ( l->type )
     {
         case TYP_BOND:
             cuda_malloc( (void **) &l->bond_list,
-                    l->max_intrs * sizeof(bond_data), TRUE, "Cuda_Make_List::bonds" );
+                    sizeof(bond_data) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::bonds" );
             break;
 
         case TYP_THREE_BODY:
             cuda_malloc( (void **) &l->three_body_list,
-                    l->max_intrs * sizeof(three_body_interaction_data), TRUE,
+                    sizeof(three_body_interaction_data) * l->max_intrs, TRUE,
                     "Cuda_Make_List::three_bodies" );
             break;
 
         case TYP_HBOND:
             cuda_malloc( (void **) &l->hbond_list, 
-                    l->max_intrs * sizeof(hbond_data), TRUE, "Cuda_Make_List::hbonds" );
+                    sizeof(hbond_data) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::hbonds" );
             break;            
 
         case TYP_FAR_NEIGHBOR:
             cuda_malloc( (void **) &l->far_nbr_list.nbr, 
-                    sizeof(int) * l->max_intrs, TRUE, "Cuda_Make_List::far_nbr_list.nbr" );
+                    sizeof(int) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::far_nbr_list.nbr" );
             cuda_malloc( (void **) &l->far_nbr_list.rel_box, 
-                    sizeof(ivec) * l->max_intrs, TRUE, "Cuda_Make_List::far_nbr_list.rel_box" );
+                    sizeof(ivec) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::far_nbr_list.rel_box" );
             cuda_malloc( (void **) &l->far_nbr_list.d, 
-                    sizeof(real) * l->max_intrs, TRUE, "Cuda_Make_List::far_nbr_list.d" );
+                    sizeof(real) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::far_nbr_list.d" );
             cuda_malloc( (void **) &l->far_nbr_list.dvec, 
-                    sizeof(rvec) * l->max_intrs, TRUE, "Cuda_Make_List::far_nbr_list.dvec" );
+                    sizeof(rvec) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::far_nbr_list.dvec" );
             break;
 
         default:

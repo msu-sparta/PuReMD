@@ -87,31 +87,31 @@ void PreAllocate_Space( reax_system * const system, control_params * const contr
 }
 
 
-void ReAllocate_System( reax_system * const system, int local_cap, int total_cap )
+void Reallocate_System( reax_system * const system, int local_cap, int total_cap )
 {
     system->my_atoms = srealloc( system->my_atoms, sizeof(reax_atom) * total_cap,
-            "ReAllocate_System::system->my_atoms" );
+            "Reallocate_System::system->my_atoms" );
 
     /* list management */
     system->far_nbrs = srealloc( system->far_nbrs, sizeof(int) * total_cap,
-            "ReAllocate_System::system->far_nbrs" );
+            "Reallocate_System::system->far_nbrs" );
     system->max_far_nbrs = srealloc( system->max_far_nbrs, sizeof(int) * total_cap,
-            "ReAllocate_System::system->max_far_nbrs" );
+            "Reallocate_System::system->max_far_nbrs" );
 
     system->bonds = srealloc( system->bonds, sizeof(int) * total_cap,
-            "ReAllocate_System::system->bonds" );
+            "Reallocate_System::system->bonds" );
     system->max_bonds = srealloc( system->max_bonds, sizeof(int) * total_cap,
-            "ReAllocate_System::system->max_bonds" );
+            "Reallocate_System::system->max_bonds" );
 
     system->hbonds = srealloc( system->hbonds, sizeof(int) * total_cap,
-            "ReAllocate_System::system->hbonds" );
+            "Reallocate_System::system->hbonds" );
     system->max_hbonds = srealloc( system->max_hbonds, sizeof(int) * total_cap,
-            "ReAllocate_System::system->max_hbonds" );
+            "Reallocate_System::system->max_hbonds" );
 
     system->cm_entries = srealloc( system->cm_entries, sizeof(int) * local_cap,
-            "ReAllocate_System::system->cm_entries" );
+            "Reallocate_System::system->cm_entries" );
     system->max_cm_entries = srealloc( system->max_cm_entries, sizeof(int) * local_cap,
-            "ReAllocate_System::system->max_cm_entries" );
+            "Reallocate_System::system->max_cm_entries" );
 }
 
 
@@ -297,7 +297,7 @@ void DeAllocate_Workspace( control_params * const control, storage * const works
 void Allocate_Workspace( reax_system * const system, control_params * const control,
         storage * const workspace, int local_cap, int total_cap )
 {
-    int i, total_real, total_rvec, local_rvec;
+    int total_real, total_rvec, local_rvec;
 
     workspace->allocated = TRUE;
 
@@ -800,6 +800,7 @@ void Deallocate_MPI_Buffers( mpi_datatypes * const mpi_data )
     for ( i = 0; i < MAX_NBRS; ++i )
     {
         mpi_buf = &mpi_data->out_buffers[i];
+
         mpi_buf->cnt = 0;
         sfree( mpi_buf->index, "Deallocate_MPI_Buffers::mpi_buf->index" );
         mpi_buf->index_size = 0;
@@ -823,16 +824,52 @@ void Deallocate_MPI_Buffers( mpi_datatypes * const mpi_data )
 }
 
 
-void ReAllocate( reax_system * const system, control_params * const control,
+void Reallocate_Part1( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         mpi_datatypes * const mpi_data )
 {
-    int i, j, k;
+    int i, j, k, renbr;
+    reallocate_data * const realloc = &workspace->realloc;
+    grid * const g = &system->my_grid;
+
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
+
+    /* grid */
+    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
+    {
+#if defined(DEBUG_FOCUS)
+        fprintf( stderr, "[INFO] reallocating gcell: g->max_atoms: %d\n", g->max_atoms );
+#endif
+
+        for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
+        {
+            for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
+            {
+                for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
+                {
+                    sfree( g->cells[ index_grid_3d(i, j, k, g) ].atoms,
+                            "Reallocate_Part1::g->cells[ ].atoms" );
+                    g->cells[ index_grid_3d(i, j, k, g) ].atoms = scalloc( realloc->gcell_atoms,
+                            sizeof(int), "Reallocate_Part1::g->cells[ ].atoms" );
+                }
+            }
+        }
+
+        realloc->gcell_atoms = -1;
+    }
+}
+
+
+void Reallocate_Part2( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        mpi_datatypes * const mpi_data )
+{
     int nflag, Nflag;
     int renbr, format;
     reallocate_data * const realloc = &workspace->realloc;
     sparse_matrix * const H = &workspace->H;
-    grid * const g = &system->my_grid;
+
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     /* IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with FALSE!!! */
     nflag = FALSE;
@@ -870,14 +907,13 @@ void ReAllocate( reax_system * const system, control_params * const control,
                 system->local_cap, system->total_cap );
 #endif
 
-        ReAllocate_System( system, system->local_cap, system->total_cap );
+        Reallocate_System( system, system->local_cap, system->total_cap );
 
         DeAllocate_Workspace( control, workspace );
         Allocate_Workspace( system, control, workspace, system->local_cap,
                 system->total_cap );
     }
 
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
     /* far neighbors */
     if ( renbr == TRUE && (Nflag == TRUE || realloc->far_nbrs == TRUE) )
     {
@@ -944,28 +980,5 @@ void ReAllocate( reax_system * const system, control_params * const control,
         Make_List( system->total_bonds, system->total_thbodies,
                 TYP_THREE_BODY, format, lists[THREE_BODIES] );
         realloc->thbody = FALSE;
-    }
-
-    /* grid */
-    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
-    {
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "[INFO] reallocating gcell: g->max_atoms: %d\n", g->max_atoms );
-#endif
-
-        for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
-        {
-            for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
-            {
-                for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
-                {
-                    sfree( g->cells[ index_grid_3d(i, j, k, g) ].atoms, "ReAllocate::g->cells[ ].atoms" );
-                    g->cells[ index_grid_3d(i, j, k, g) ].atoms = scalloc( realloc->gcell_atoms,
-                            sizeof(int), "ReAllocate::g->cells[ ].atoms" );
-                }
-            }
-        }
-
-        realloc->gcell_atoms = -1;
     }
 }

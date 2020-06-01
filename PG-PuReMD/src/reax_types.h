@@ -610,7 +610,7 @@ typedef void (*interaction_function)( reax_system * const, control_params * cons
 typedef real (*lookup_function)( real );
 /* function pointer type for counting data going into egress MPI buffers */
 typedef void (*message_counter)( reax_system const * const, int, int, int,
-        mpi_out_data * const, int *, int * );
+        mpi_out_data * const, int * const );
 /* function pointer type for sorting data into egress MPI buffers */
 typedef void (*message_sorter)( reax_system * const, int, int, int,
         mpi_out_data * const, mpi_datatypes * const );
@@ -1168,11 +1168,10 @@ struct simulation_box
 /**/
 struct grid_cell
 {
-    /* min. cell coordinate (top-front-left) */
+    /* min. cell coordinates */
     rvec min;
-    /* max. cell coordinate (bottom-back-right) */
+    /* max. cell coordinates */
     rvec max;
- 
     /* ??? */
     int mark;
     /* native or ghost cells (contains atoms only of resp. type) */
@@ -1190,7 +1189,7 @@ struct grid
 {
     /* total number of grid cells (native AND ghost) */
     int total;
-    /* max. num. of atoms with a grid cell can contain */
+    /* max. num. of atoms a grid cell can contain */
     int max_atoms;
     /**/
     int max_nbrs;
@@ -1209,11 +1208,11 @@ struct grid
     /* Verlet list (i.e., neighbor list) cutoff in terms of
      * num. of grid cells in each dimension in grid */
     ivec vlist_span;
-    /* partitioning of ??? */
+    /* num. of grid cells containing native atoms */
     ivec native_cells;
-    /**/
+    /* starting indices for grid cells containing native atoms */
     ivec native_str;
-    /**/
+    /* ending indices for grid cells containing native atoms */
     ivec native_end;
     /**/
     real ghost_cut;
@@ -1225,13 +1224,13 @@ struct grid
     ivec ghost_hbond_span;
     /**/
     ivec ghost_bond_span;
-    /**/
-    grid_cell* cells;
+    /* grid cells within the grid */
+    grid_cell *cells;
     /**/
     ivec *order;
-    /**/
+    /* starting index for atom indices recorded for a grid cell */
     int *str;
-    /**/
+    /* ending index for atom indices recorded for a grid cell */
     int *end;
     /**/
     real *cutoff;

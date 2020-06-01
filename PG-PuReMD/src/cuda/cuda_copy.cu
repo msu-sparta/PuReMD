@@ -8,15 +8,15 @@
 
 
 /* Copy grid info from host to device */
-void Sync_Grid( grid *host, grid *device )
+void Cuda_Copy_Grid_Host_to_Device( grid *host, grid *device )
 {
     int total;
 
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
 
-    ivec_Copy( device->ncells, host->ncells);
-    rvec_Copy( device->cell_len, host->cell_len);
-    rvec_Copy( device->inv_len, host->inv_len);
+    ivec_Copy( device->ncells, host->ncells );
+    rvec_Copy( device->cell_len, host->cell_len );
+    rvec_Copy( device->inv_len, host->inv_len );
 
     ivec_Copy( device->bond_span, host->bond_span );
     ivec_Copy( device->nonb_span, host->nonb_span );
@@ -38,10 +38,10 @@ void Sync_Grid( grid *host, grid *device )
             cudaMemcpyHostToDevice, "grid:end" );
     copy_host_device( host->cutoff, device->cutoff, sizeof(real) * total,
             cudaMemcpyHostToDevice, "grid:cutoff" );
-    copy_host_device( host->nbrs_x, device->nbrs_x, sizeof(ivec) * total *
-            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x" );
-    copy_host_device( host->nbrs_cp, device->nbrs_cp, sizeof(rvec) * total *
-            host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp" );
+    copy_host_device( host->nbrs_x, device->nbrs_x, sizeof(ivec) * total
+            * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x" );
+    copy_host_device( host->nbrs_cp, device->nbrs_cp, sizeof(rvec) * total
+            * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp" );
 
     copy_host_device( host->rel_box, device->rel_box, sizeof(ivec) * total,
             cudaMemcpyHostToDevice, "grid:rel_box" );
@@ -51,24 +51,18 @@ void Sync_Grid( grid *host, grid *device )
 
 
 /* Copy atom info from host to device */
-void Sync_Atoms( reax_system *system )
+void Cuda_Copy_Atoms_Host_to_Device( reax_system *system )
 {
-    //TODO METIN FIX, coredump on his machine
-//    copy_host_device( system->my_atoms, system->d_my_atoms,
-//            sizeof(reax_atom) * system->total_cap,
-//            cudaMemcpyHostToDevice, "Sync_Atoms::system->my_atoms" );
-
     copy_host_device( system->my_atoms, system->d_my_atoms,
             sizeof(reax_atom) * system->N,
-            cudaMemcpyHostToDevice, "Sync_Atoms::system->my_atoms" );
-    //TODO METIN FIX, coredump on his machine
+            cudaMemcpyHostToDevice, "Cuda_Copy_Atoms_Host_to_Device::system->my_atoms" );
 }
 
 
 /* Copy atomic system info from host to device */
 void Sync_System( reax_system *system )
 {
-    Sync_Atoms( system );
+    Cuda_Copy_Atoms_Host_to_Device( system );
 
     copy_host_device( &system->my_box, system->d_my_box, sizeof(simulation_box),
             cudaMemcpyHostToDevice, "Sync_System::system->my_box" );
@@ -103,11 +97,11 @@ void Sync_System( reax_system *system )
 
 
 /* Copy atom info from device to host */
-void Output_Sync_Atoms( reax_system *system )
+void Cuda_Copy_Atoms_Device_to_Host( reax_system *system )
 {
     copy_host_device( system->my_atoms, system->d_my_atoms,
             sizeof(reax_atom) * system->N,
-            cudaMemcpyDeviceToHost, "Output_Sync_Atoms::my_atoms" );
+            cudaMemcpyDeviceToHost, "Cuda_Copy_Atoms_Device_to_Host::my_atoms" );
 }
 
 

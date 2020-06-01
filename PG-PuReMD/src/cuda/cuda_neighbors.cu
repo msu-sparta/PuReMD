@@ -567,7 +567,10 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 {
     int blocks, ret, ret_far_nbr;
 #if defined(LOG_PERFORMANCE)
-    real t_start = 0, t_elapsed = 0;
+    real t_start, t_elapsed;
+
+    t_start = 0.0;
+    t_elapsed = 0.0;
 
     if ( system->my_rank == MASTER_NODE )
     {
@@ -586,8 +589,10 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
         ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
 
     k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid, *(lists[FAR_NBRS]),
-          system->n, system->N, system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
+        ( system->d_my_atoms, system->my_ext_box,
+          system->d_my_grid, *(lists[FAR_NBRS]),
+          system->n, system->N,
+          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
@@ -623,15 +628,13 @@ int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 
 /* Estimate the number of far neighbors for each atoms 
  *
- * system: atomic system info
- * returns: SUCCESS if reallocation of the far neighbors list is necessary
- *  based on current per-atom far neighbor limits, FAILURE otherwise */
+ * system: atomic system info */
 void Cuda_Estimate_Neighbors( reax_system *system )
 {
     int blocks;
 
     blocks = system->total_cap / DEF_BLOCK_SIZE
-        + ((system->total_cap % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+        + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     k_estimate_neighbors <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,

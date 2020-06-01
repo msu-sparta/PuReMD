@@ -59,7 +59,9 @@ char *Get_Element( reax_system*, int );
 
 char *Get_Atom_Name( reax_system*, int );
 
-void Allocate_Tokenizer_Space( char**, char**, char*** );
+void Deallocate_Tokenizer_Space( char *, char *, char ** );
+
+void Allocate_Tokenizer_Space( char **, char **, char *** );
 
 int Tokenize( char*, char***, size_t );
 

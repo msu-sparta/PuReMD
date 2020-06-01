@@ -10,19 +10,19 @@ extern "C" {
 #endif
 
 
-void Cuda_Init_Neighbor_Indices( reax_system *, reax_list ** );
+void Cuda_Init_Neighbor_Indices( reax_system *, reax_list * );
 
 void Cuda_Init_HBond_Indices( reax_system *, storage *,
-        reax_list ** );
+        reax_list * );
 
-void Cuda_Init_Bond_Indices( reax_system *, reax_list ** );
+void Cuda_Init_Bond_Indices( reax_system *, reax_list * );
 
 void Cuda_Init_Sparse_Matrix_Indices( reax_system *, sparse_matrix * );
 
 void Cuda_Init_Three_Body_Indices( int *, int, reax_list ** );
 
-void Cuda_Estimate_Storages( reax_system *, control_params *, reax_list **,
-        int, int, int, int );
+void Cuda_Estimate_Storages( reax_system *, control_params *, storage *,
+        reax_list **, int, int, int, int );
 
 int Cuda_Init_Forces( reax_system *, control_params *, simulation_data *,
         storage *, reax_list **, output_controls * );

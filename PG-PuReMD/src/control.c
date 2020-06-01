@@ -129,13 +129,13 @@ void Read_Control_File( const char * const control_file, control_params * const 
     /* memory allocations */
     s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
     tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
-    for (i = 0; i < MAX_TOKENS; i++)
+    for ( i = 0; i < MAX_TOKENS; i++ )
     {
         tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::tmp[i]" );
     }
 
     /* read control parameters file */
-    while( fgets( s, MAX_LINE, fp ) )
+    while ( fgets( s, MAX_LINE, fp ) )
     {
         c = Tokenize( s, &tmp, MAX_LINE );
 
@@ -588,7 +588,5 @@ void Read_Control_File( const char * const control_file, control_params * const 
     sfree( tmp, "Read_Control_File::tmp" );
     sfree( s, "Read_Control_File::s" );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "control file read\n" );
-#endif
+    sfclose( fp, "Read_Control_Field::fp" );
 }

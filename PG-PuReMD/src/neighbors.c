@@ -159,7 +159,6 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d @ step%d: nbrs done - total_num_far=%d\n",
              system->my_rank, data->step, total_num_far );
-    MPI_Barrier( MPI_COMM_WORLD );
 #endif
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
@@ -268,6 +267,5 @@ void Estimate_Num_Neighbors( reax_system *system, int far_nbr_list_format )
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: estimate nbrs done - system->total_far_nbrs=%d\n",
              system->my_rank, system->total_far_nbrs );
-    MPI_Barrier( MPI_COMM_WORLD );
 #endif
 }

@@ -41,15 +41,13 @@
 int Set_My_Trajectory_View( MPI_File trj, int offset, MPI_Datatype etype,
         MPI_Comm comm, int my_rank, int my_n, int big_n )
 {
-    int my_disp;
-    int length[3];
-    MPI_Aint lower_bound, extent;
-    MPI_Aint disp[3];
-    MPI_Datatype type[3];
-    MPI_Datatype view;
+    int my_disp, length[3], ret;
+    MPI_Aint lower_bound, extent, disp[3];
+    MPI_Datatype type[3], view;
 
     /* get old type info */
-    MPI_Type_get_extent( etype, &lower_bound, &extent );
+    ret = MPI_Type_get_extent( etype, &lower_bound, &extent );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* determine where to start writing into the mpi file */
     my_disp = SumScan( my_n, my_rank, MASTER_NODE, comm );
@@ -1075,7 +1073,7 @@ int Append_Frame( reax_system *system, control_params *control,
     if ( out_control->write_atoms )
     {
 #if defined(HAVE_CUDA)
-        Output_Sync_Atoms( system );
+        Cuda_Copy_Atoms_Device_to_Host( system );
 #endif
         Write_Atoms( system, control, out_control, mpi_data );
     }

@@ -25,6 +25,7 @@
 
 #include "allocate.h"
 #include "box.h"
+#include "comm_tools.h"
 #include "tool_box.h"
 #include "vector.h"
 

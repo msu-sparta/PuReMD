@@ -296,7 +296,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int steps, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE, cuda_copy = FALSE;
     real dt;
 
     ret = SUCCESS;
@@ -313,17 +313,22 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
-        Output_Sync_Atoms( system );
+        Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
-
-        Sync_Atoms( system );
-        Sync_Grid( &system->my_grid, &system->d_my_grid );
-        Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+
+    if ( cuda_copy == FALSE )
+    {
+        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+        Cuda_Init_Block_Sizes( system, control );
+
+        cuda_copy = TRUE;
+    }
 
     Cuda_Reset( system, control, data, workspace, lists );
 
@@ -352,6 +357,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
         Velocity_Verlet_Part2( system, dt );
 
         verlet_part1_done = FALSE;
+        cuda_copy = FALSE;
         gen_nbr_list = FALSE;
     }
 
@@ -390,11 +396,11 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
-        Output_Sync_Atoms( system );
+        Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+        Cuda_Copy_Atoms_Host_to_Device( system );
 
-        Sync_Atoms( system );
-        Sync_Grid( &system->my_grid, &system->d_my_grid );
+        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;
@@ -483,7 +489,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int steps, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE, cuda_copy = FALSE;
     real dt, lambda;
 
     ret = SUCCESS;
@@ -501,17 +507,22 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
-        Output_Sync_Atoms( system );
+        Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
-
-        Sync_Atoms( system );
-        Sync_Grid( &system->my_grid, &system->d_my_grid );
-        Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;
     }
 
     Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+
+    if ( cuda_copy == FALSE )
+    {
+        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+        Cuda_Init_Block_Sizes( system, control );
+
+        cuda_copy = TRUE;
+    }
 
     Cuda_Reset( system, control, data, workspace, lists );
 
@@ -562,6 +573,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
                 data, mpi_data->comm_mesh3D );
 
         verlet_part1_done = FALSE;
+        cuda_copy = FALSE;
         gen_nbr_list = FALSE;
     }
 
@@ -594,11 +606,11 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
-        Output_Sync_Atoms( system );
+        Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+        Cuda_Copy_Atoms_Host_to_Device( system );
 
-        Sync_Atoms( system );
-        Sync_Grid( &system->my_grid, &system->d_my_grid );
+        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;

@@ -272,8 +272,8 @@ int simulate( const void * const handle )
 
         /* compute f_0 */
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
-        Sync_Atoms( system );
-        Sync_Grid( &system->my_grid, &system->d_my_grid );
+        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         Cuda_Init_Block_Sizes( system, control );
 
         Cuda_Reset( system, control, data, workspace, lists );

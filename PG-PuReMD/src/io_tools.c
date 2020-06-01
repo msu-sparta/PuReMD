@@ -24,6 +24,7 @@
 #if defined(PURE_REAX)
   #include "io_tools.h"
   #include "basic_comm.h"
+  #include "comm_tools.h"
   #include "list.h"
   #include "reset_tools.h"
   #include "system_props.h"
@@ -33,6 +34,7 @@
 #elif defined(LAMMPS_REAX)
   #include "reax_io_tools.h"
   #include "reax_basic_comm.h"
+  #include "reax_comm_tools.h"
   #include "reax_list.h"
   #include "reax_reset_tools.h"
   #include "reax_system_props.h"
@@ -48,6 +50,7 @@
 void Init_Output_Files( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
+    int ret;
     char temp[MAX_STR];
 
     /* trajectory file */
@@ -164,7 +167,8 @@ void Init_Output_Files( reax_system *system, control_params *control,
                     "Init_Output_Controls::output_control->mol" );
         }
 
-        MPI_Bcast( &out_control->mol, 1, MPI_LONG, 0, MPI_COMM_WORLD );
+        ret = MPI_Bcast( &out_control->mol, 1, MPI_LONG, 0, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
 #if defined(TEST_ENERGY)

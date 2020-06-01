@@ -2093,7 +2093,6 @@ void Estimate_Storages( reax_system * const system, control_params * const contr
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] p%d @ estimate storages: total_cm_entries = %d, total_thbodies = %d\n",
             system->my_rank, system->total_cm_entries, system->total_thbodies );
-    MPI_Barrier( MPI_COMM_WORLD );
 #endif
 }
 
@@ -2103,7 +2102,7 @@ int Compute_Forces( reax_system * const system, control_params * const control,
         reax_list ** const lists, output_controls * const out_control,
         mpi_datatypes * const mpi_data )
 {
-    int charge_flag, matrix_dim, ret;
+    int charge_flag, matrix_dim, ret, ret_mpi;
 #if defined(LOG_PERFORMANCE)
     real time;
 
@@ -2213,7 +2212,8 @@ int Compute_Forces( reax_system * const system, control_params * const control,
                 }
             }
 
-            MPI_Bcast( &data->refactor, 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
+            ret_mpi = MPI_Bcast( &data->refactor, 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
+            Check_MPI_Error( ret_mpi, __FILE__, __LINE__ );
         }
 #endif //PURE_REAX
     

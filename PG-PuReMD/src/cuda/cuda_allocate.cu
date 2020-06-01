@@ -16,27 +16,29 @@ extern "C"
 {
 
 
+CUDA_GLOBAL void k_init_nbrs( ivec *nbrs, int N )
+{
+    int i;
+   
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    nbrs[i][0] = -1; 
+    nbrs[i][1] = -1; 
+    nbrs[i][2] = -1; 
+}
+
+
 void Cuda_Allocate_Control( control_params *control )
 {
     cuda_malloc( (void **)&control->d_control_params,
             sizeof(control_params), TRUE, "control_params" );
     copy_host_device( control, control->d_control_params,
             sizeof(control_params), cudaMemcpyHostToDevice, "control_params" );
-}
-
-
-CUDA_GLOBAL void Init_Nbrs( ivec *nbrs, int N )
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( index >= N )
-    {
-        return;
-    }
-
-    nbrs[index][0] = -1; 
-    nbrs[index][1] = -1; 
-    nbrs[index][2] = -1; 
 }
 
 
@@ -84,7 +86,7 @@ void Cuda_Allocate_Grid( reax_system *system )
 //    int block_size = 512;
 //    int blocks = (host->max_nbrs) / block_size + ((host->max_nbrs) % block_size == 0 ? 0 : 1); 
 //
-//    Init_Nbrs <<< blocks, block_size >>>
+//    k_init_nbrs <<< blocks, block_size >>>
 //        ( nbrs_x, host->max_nbrs );
 //    cudaDeviceSynchronize( );
 //    cudaCheckError( );
@@ -649,24 +651,24 @@ void Cuda_Deallocate_Matrix( sparse_matrix *H )
 }
 
 
-void Cuda_Reallocate_Neighbor_List( reax_list *far_nbrs, size_t n, size_t max_intrs )
+void Cuda_Reallocate_Neighbor_List( reax_list *far_nbr_list, size_t n, size_t max_intrs )
 {
-    Cuda_Delete_List( far_nbrs );
-    Cuda_Make_List( n, max_intrs, TYP_FAR_NEIGHBOR, far_nbrs );
+    Cuda_Delete_List( far_nbr_list );
+    Cuda_Make_List( n, max_intrs, TYP_FAR_NEIGHBOR, far_nbr_list );
 }
 
 
-void Cuda_Reallocate_HBonds_List( reax_list *hbonds, size_t n, size_t max_intrs )
+void Cuda_Reallocate_HBonds_List( reax_list *hbond_list, size_t n, size_t max_intrs )
 {
-    Cuda_Delete_List( hbonds );
-    Cuda_Make_List( n, max_intrs, TYP_HBOND, hbonds );
+    Cuda_Delete_List( hbond_list );
+    Cuda_Make_List( n, max_intrs, TYP_HBOND, hbond_list );
 }
 
 
-void Cuda_Reallocate_Bonds_List( reax_list *bonds, size_t n, size_t max_intrs )
+void Cuda_Reallocate_Bonds_List( reax_list *bond_list, size_t n, size_t max_intrs )
 {
-    Cuda_Delete_List( bonds );
-    Cuda_Make_List( n, max_intrs, TYP_BOND, bonds );
+    Cuda_Delete_List( bond_list );
+    Cuda_Make_List( n, max_intrs, TYP_BOND, bond_list );
 }
 
 
@@ -686,7 +688,6 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     int nflag, Nflag, old_total_cap; 
     int renbr, format;
     reallocate_data *realloc;
-    reax_list *far_nbrs;
     sparse_matrix *H;
     grid *g;
 
@@ -720,18 +721,17 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
 
         /* workspace */
         Cuda_Deallocate_Workspace( control, workspace );
-        Cuda_Allocate_Workspace( system, control, workspace, system->local_cap,
-                system->total_cap );
+        Cuda_Allocate_Workspace( system, control, workspace,
+                system->local_cap, system->total_cap );
     }
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
     /* far neighbors */
     if ( renbr == TRUE && (Nflag == TRUE || realloc->far_nbrs == TRUE) )
     {
-        far_nbrs = lists[FAR_NBRS];
-
-        Cuda_Reallocate_Neighbor_List( far_nbrs, system->total_cap, system->total_far_nbrs );
-        Cuda_Init_Neighbor_Indices( system, lists );
+        Cuda_Reallocate_Neighbor_List( lists[FAR_NBRS],
+                system->total_cap, system->total_far_nbrs );
+        Cuda_Init_Neighbor_Indices( system, lists[FAR_NBRS] );
         realloc->far_nbrs = FALSE;
     }
 
@@ -743,14 +743,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
         Cuda_Deallocate_Matrix( H );
         Cuda_Allocate_Matrix( H, system->n, system->local_cap,
                 system->total_cm_entries, format );
-
         Cuda_Init_Sparse_Matrix_Indices( system, H );
-
-        //Deallocate_Matrix( workspace->L );
-        //Deallocate_Matrix( workspace->U );
-        //workspace->L = NULL;
-        //workspace->U = NULL;
-
         realloc->cm = FALSE;
     }
 
@@ -758,16 +751,18 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     if ( control->hbond_cut > 0.0 && system->numH > 0
             && (Nflag == TRUE || realloc->hbonds == TRUE) )
     {
-        Cuda_Reallocate_HBonds_List( lists[HBONDS], system->total_cap, system->total_hbonds );
-        Cuda_Init_HBond_Indices( system, workspace, lists );
+        Cuda_Reallocate_HBonds_List( lists[HBONDS],
+                system->total_cap, system->total_hbonds );
+        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS] );
         realloc->hbonds = FALSE;
     }
 
     /* bonds list */
     if ( Nflag == TRUE || realloc->bonds == TRUE )
     {
-        Cuda_Reallocate_Bonds_List( lists[BONDS], system->total_cap, system->total_bonds );
-        Cuda_Init_Bond_Indices( system, lists );
+        Cuda_Reallocate_Bonds_List( lists[BONDS],
+                system->total_cap, system->total_bonds );
+        Cuda_Init_Bond_Indices( system, lists[BONDS] );
         realloc->bonds = FALSE;
     }
 
@@ -780,7 +775,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
     }
 
     /* grid */
-    if ( renbr && realloc->gcell_atoms > -1 )
+    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
     {
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
         {

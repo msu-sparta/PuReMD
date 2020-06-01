@@ -48,14 +48,14 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
 
     ret = SUCCESS;
     dt = control->dt;
-    dt_sqr = SQR(dt);
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    ReAllocate( system, control, data, workspace, lists, mpi_data );
-
     if ( verlet_part1_done == FALSE )
     {
+        dt_sqr = SQR(dt);
+
+        /* velocity verlet, 1st part */
         for ( i = 0; i < system->n; i++ )
         {
             atom = &system->my_atoms[i];
@@ -67,10 +67,14 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
             rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
         }
 
+        Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
+
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
         verlet_part1_done = TRUE;
     }
+
+    Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
         
     Reset( system, control, data, workspace, lists );
 
@@ -127,15 +131,15 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 
     ret = SUCCESS;
     dt = control->dt;
-    dt_sqr = SQR(dt);
     therm = &data->therm;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    ReAllocate( system, control, data, workspace, lists, mpi_data );
-
     if ( verlet_part1_done == FALSE )
     {
+        dt_sqr = SQR(dt);
+
+        /* velocity verlet, 1st part */
         for ( i = 0; i < system->n; i++ )
         {
             atom = &system->my_atoms[i];
@@ -146,12 +150,16 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         }
     
         /* Compute xi(t + dt) */
-        therm->xi += ( therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi );
+        therm->xi += therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi;
+
+        Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
         verlet_part1_done = TRUE;
     }
+
+    Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
     Reset( system, control, data, workspace, lists );
 
@@ -244,23 +252,24 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
     dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
-    dt_sqr = SQR( dt );
-
-    ReAllocate( system, control, data, workspace, lists, mpi_data );
 
     if ( verlet_part1_done == FALSE )
     {
+        dt_sqr = SQR( dt );
+
         /* velocity verlet, 1st part */
         for ( i = 0; i < system->n; i++ )
         {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+            /* Compute x(t + dt) */
             rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * dt_sqr, atom->f );
             rvec_Add( atom->x, dx );
+            /* Compute v(t + dt/2) */
             rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
         }
 
-        verlet_part1_done = TRUE;
+        Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
         if ( renbr == TRUE )
         {
@@ -268,7 +277,11 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
         }
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+
+        verlet_part1_done = TRUE;
     }
+
+    Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
         
     Reset( system, control, data, workspace, lists );
 
@@ -354,11 +367,9 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    ReAllocate( system, control, data, workspace, lists, mpi_data );
-
-    /* velocity verlet, 1st part */
     if ( verlet_part1_done == FALSE )
     {
+        /* velocity verlet, 1st part */
         for ( i = 0; i < system->n; i++ )
         {
             atom = &system->my_atoms[i];
@@ -370,15 +381,17 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
             rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
         }
 
-        verlet_part1_done = TRUE;
-
         if ( renbr == TRUE )
         {
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+
+        verlet_part1_done = TRUE;
     }
+
+    Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
     Reset( system, control, data, workspace, lists );
 

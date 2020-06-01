@@ -299,7 +299,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     for ( d = 0; d < 6; ++d )
     {
-        ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat);
+        ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
@@ -311,9 +311,11 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
-    MPI_Aint extent, lower_bound;
+    MPI_Aint extent, lower_bound, type_size;
 
-    MPI_Type_get_extent( type, &lower_bound, &extent );
+    ret = MPI_Type_get_extent( type, &lower_bound, &extent );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    type_size = MPI_Aint_add( lower_bound, extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -327,28 +329,30 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         /* pack MPI buffers and initiate sends */
         check_smalloc( &out_bufs[2 * d].out_atoms,
                 &out_bufs[2 * d].out_atoms_size,
-                out_bufs[2 * d].cnt * (lower_bound + extent),
+                type_size * out_bufs[2 * d].cnt,
                 "Dist::mpi_data->out_atoms" );
         check_srealloc( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
-                out_bufs[2 * d].cnt * sizeof(int),
+                sizeof(int) * out_bufs[2 * d].cnt,
                 "Dist::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d] );
+
         ret = MPI_Isend( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                 type, nbr1->rank, 2 * d, comm, &req1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &out_bufs[2 * d + 1].out_atoms,
                 &out_bufs[2 * d + 1].out_atoms_size,
-                out_bufs[2 * d + 1].cnt * (lower_bound + extent),
+                type_size * out_bufs[2 * d + 1].cnt,
                 "Dist::mpi_data->out_atoms" );
         check_srealloc( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
-                out_bufs[2 * d + 1].cnt * sizeof(int),
+                sizeof(int) * out_bufs[2 * d + 1].cnt,
                 "Dist::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d + 1] );
+
         ret = MPI_Isend( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                 type, nbr2->rank, 2 * d + 1, comm, &req2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -359,8 +363,16 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         ret = MPI_Get_count( &stat1, type, &cnt1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+#if defined(DEBUG)
+        if ( cnt1 + nbr1->atoms_str > system->total_cap )
+        {
+            fprintf( stderr, "[ERROR] Dist: not enough space in recv buffer for nbr1 (dim = %d)\n", d );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+#endif
+
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
-                cnt1, type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+                cnt1, type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
@@ -368,8 +380,21 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         ret = MPI_Get_count( &stat2, type, &cnt2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+#if defined(DEBUG)
+        if ( cnt2 + nbr2->atoms_str > system->total_cap )
+        {
+            fprintf( stderr, "[ERROR] Dist: not enough space in recv buffer for nbr2 (dim = %d)\n", d );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+#endif
+
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
-                cnt2, type, nbr2->rank, 2 * d, comm, &stat2 );
+                cnt2, type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 #endif
@@ -386,9 +411,11 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
-    MPI_Aint extent, lower_bound;
+    MPI_Aint extent, lower_bound, type_size;
 
-    MPI_Type_get_extent( type, &lower_bound, &extent );
+    ret = MPI_Type_get_extent( type, &lower_bound, &extent );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    type_size = MPI_Aint_add( lower_bound, extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -402,28 +429,30 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         /* pack MPI buffers and initiate sends */
         check_smalloc( &out_bufs[2 * d].out_atoms,
                 &out_bufs[2 * d].out_atoms_size,
-                out_bufs[2 * d].cnt * (lower_bound + extent),
+                type_size * out_bufs[2 * d].cnt,
                 "Dist_FS::mpi_data->out_atoms" );
         check_srealloc( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
-                out_bufs[2 * d].cnt * sizeof(int),
+                sizeof(int) * out_bufs[2 * d].cnt,
                 "Dist_FS::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d] );
+
         ret = MPI_Isend( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                 type, nbr1->rank, 2 * d, comm, &req1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &out_bufs[2 * d + 1].out_atoms,
                 &out_bufs[2 * d + 1].out_atoms_size,
-                out_bufs[2 * d + 1].cnt * (lower_bound + extent),
+                type_size * out_bufs[2 * d + 1].cnt,
                 "Dist_FS::mpi_data->out_atoms" );
         check_smalloc( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
-                out_bufs[2 * d + 1].cnt * sizeof(int),
+                sizeof(int) * out_bufs[2 * d + 1].cnt,
                 "Dist_FS::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d + 1] );
+
         ret = MPI_Isend( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                 type, nbr2->rank, 2 * d + 1, comm, &req2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -435,7 +464,7 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
-                cnt1, type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+                cnt1, type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
@@ -444,7 +473,12 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
-                cnt2, type, nbr2->rank, 2 * d, comm, &stat2 );
+                cnt2, type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 }
@@ -499,9 +533,11 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
-    MPI_Aint extent, lower_bound;
+    MPI_Aint extent, lower_bound, type_size;
 
-    MPI_Type_get_extent( type, &lower_bound, &extent );
+    ret = MPI_Type_get_extent( type, &lower_bound, &extent );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    type_size = MPI_Aint_add( lower_bound, extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -528,11 +564,10 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
-                cnt1 * (lower_bound + extent),
-                "Coll::mpi_data->in1_buffer" );
+                type_size * cnt1, "Coll::mpi_data->in1_buffer" );
 
         ret = MPI_Recv( mpi_data->in1_buffer, cnt1,
-                type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+                type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
@@ -543,14 +578,18 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
-                cnt2 * (lower_bound + extent),
-                "Coll::mpi_data->in2_buffer" );
+                type_size * cnt2, "Coll::mpi_data->in2_buffer" );
 
         ret = MPI_Recv( mpi_data->in2_buffer, cnt2,
-                type, nbr2->rank, 2 * d, comm, &stat2 );
+                type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
+
+        ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 #endif
 }
@@ -566,9 +605,11 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
-    MPI_Aint extent, lower_bound;
+    MPI_Aint extent, lower_bound, type_size;
 
-    MPI_Type_get_extent( type, &lower_bound, &extent );
+    ret = MPI_Type_get_extent( type, &lower_bound, &extent );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    type_size = MPI_Aint_add( lower_bound, extent );
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -595,11 +636,10 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
-                cnt1 * (lower_bound + extent),
-                "Coll_FS::mpi_data->in1_buffer" );
+                type_size * cnt1, "Coll_FS::mpi_data->in1_buffer" );
 
         ret = MPI_Recv( mpi_data->in1_buffer, cnt1,
-                type, nbr1->rank, 2 * d + 1, comm, &stat1 );
+                type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
@@ -610,14 +650,18 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
-                cnt2 * (lower_bound + extent),
-                "Coll_FS::mpi_data->in2_buffer" );
+                type_size * cnt2, "Coll_FS::mpi_data->in2_buffer" );
 
         ret = MPI_Recv( mpi_data->in2_buffer, cnt2,
-                type, nbr2->rank, 2 * d, comm, &stat2 );
+                type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
+
+        ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 }
 

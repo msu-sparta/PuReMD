@@ -44,40 +44,40 @@ void Init_List_Indices( reax_list * const, int * const );
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
 static inline CUDA_HOST_DEVICE int Num_Entries( int i, const reax_list * const l )
 {
-    assert( i > 0 );
     assert( l != NULL );
+    assert( 0 <= i && i < l->n );
 
     return l->end_index[i] - l->index[i];
 }
 
 static inline CUDA_HOST_DEVICE int Start_Index( int i, const reax_list * const l )
 {
-    assert( i > 0 );
     assert( l != NULL );
+    assert( 0 <= i && i < l->n );
 
     return l->index[i];
 }
 
 static inline CUDA_HOST_DEVICE int End_Index( int i, const reax_list * const l )
 {
-    assert( i > 0 );
     assert( l != NULL );
+    assert( 0 <= i && i < l->n );
 
     return l->end_index[i];
 }
 
 static inline CUDA_HOST_DEVICE void Set_Start_Index( int i, int val, const reax_list * const l )
 {
-    assert( i > 0 );
     assert( l != NULL );
+    assert( 0 <= i && i < l->n );
 
     l->index[i] = val;
 }
 
 static inline CUDA_HOST_DEVICE void Set_End_Index( int i, int val, const reax_list * const l )
 {
-    assert( i > 0 );
     assert( l != NULL );
+    assert( 0 <= i && i < l->n );
 
     l->end_index[i] = val;
 }

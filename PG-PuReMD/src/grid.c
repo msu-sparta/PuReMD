@@ -440,7 +440,8 @@ void Update_Grid( reax_system * const system, control_params * const control,
     for ( d = 0; d < 3; ++d )
     {
         /* estimate the number of native cells */
-        native_cells[d] = (int)(my_box->box_norms[d] / (control->vlist_cut / 2));
+        native_cells[d] = (int) (my_box->box_norms[d] / (control->vlist_cut / 2.0));
+
         if ( native_cells[d] == 0 )
         {
             native_cells[d] = 1;
@@ -454,22 +455,22 @@ void Update_Grid( reax_system * const system, control_params * const control,
     for ( d = 0; d < 3; ++d )
     {
         /* # of surrounding grid cells to look into for nonbonded & bonded nbrs */
-        nonb_span[d] = (int)CEIL( control->nonb_cut / cell_len[d] );
-        bond_span[d] = (int)CEIL( control->bond_cut / cell_len[d] );
+        nonb_span[d] = (int) CEIL( control->nonb_cut / cell_len[d] );
+        bond_span[d] = (int) CEIL( control->bond_cut / cell_len[d] );
         /* span of the ghost region in terms of gcells */
-        ghost_span[d] = (int) CEIL( system->bndry_cuts.ghost_cutoff /
-                cell_len[d ]);
-        ghost_nonb_span[d] = (int) CEIL( system->bndry_cuts.ghost_nonb /
-                cell_len[d] );
-        ghost_hbond_span[d] = (int) CEIL( system->bndry_cuts.ghost_hbond /
-                cell_len[d] );
-        ghost_bond_span[d] = (int) CEIL( system->bndry_cuts.ghost_bond /
-                cell_len[d] );
+        ghost_span[d] = (int) CEIL( system->bndry_cuts.ghost_cutoff
+                / cell_len[d ]);
+        ghost_nonb_span[d] = (int) CEIL( system->bndry_cuts.ghost_nonb
+                / cell_len[d] );
+        ghost_hbond_span[d] = (int) CEIL( system->bndry_cuts.ghost_hbond
+                / cell_len[d] );
+        ghost_bond_span[d] = (int) CEIL( system->bndry_cuts.ghost_bond
+                / cell_len[d] );
     }
 
     /* gcells are unchanged */
-    if ( ivec_isEqual( native_cells, g->native_cells )
-            && ivec_isEqual( ghost_span, g->ghost_span ) )
+    if ( ivec_isEqual( native_cells, g->native_cells ) == TRUE
+            && ivec_isEqual( ghost_span, g->ghost_span ) == TRUE )
     {
         /* update cell lengths */
         rvec_Copy( g->cell_len, cell_len );
@@ -521,20 +522,17 @@ void Update_Grid( reax_system * const system, control_params * const control,
             }
         }
     }
-    /* the grid has changed! */
     else
     {
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "p%d: whole grid is being updated\n", system->my_rank );
-#endif
-
         Deallocate_Grid( g );
         Setup_New_Grid( system, control, comm );
     }
 }
 
 
-/* Bin my (native) atoms into grid cells */
+/* Bin locally owned (native) atoms by this processor into grid cells.
+ * For efficiency, store indices into the atom list as ranges for
+ * each grid cell (compact format, no-copying). */
 void Bin_My_Atoms( reax_system * const system, storage * const workspace )
 {
     int i, j, k, l, d, max_atoms;
@@ -576,7 +574,8 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
                     MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
                 }
 
-                c[d] = (int)((atoms[l].x[d] - my_ext_box->min[d]) * g->inv_len[d]);
+                /* compute grid cell relative coordinates */
+                c[d] = (int) ((atoms[l].x[d] - my_ext_box->min[d]) * g->inv_len[d]);
                 if ( c[d] >= g->native_end[d] )
                 {
                     c[d] = g->native_end[d] - 1;
@@ -587,16 +586,16 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
                 }
             }
 
+            gc = &g->cells[ index_grid_3d_v(c, g) ];
+            gc->atoms[ gc->top++ ] = l;
+
 #if defined(DEBUG_FOCUS)
-            fprintf( stderr, "p%d bin_my_atoms: l:%d - atom%d @ %.5f %.5f %.5f"\
+            fprintf( stderr, "[INFO] p%d: By_My_Atoms: l:%d - atom%d @ %.5f %.5f %.5f"\
                     "--> cell: %d %d %d\n",
                     system->my_rank, l, atoms[l].orig_id,
                     atoms[l].x[0], atoms[l].x[1], atoms[l].x[2],
                     c[0], c[1], c[2] );
 #endif
-
-            gc = &g->cells[ index_grid_3d_v(c, g) ];
-            gc->atoms[ gc->top++ ] = l;
         }
     }
 
@@ -627,12 +626,14 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
             system->my_rank, max_atoms, g->max_atoms );
 #endif
 
-    /* check if current gcell->max_atoms is safe */
-    if ( max_atoms >= g->max_atoms * DANGER_ZONE )
+    /* check if current num. of max atoms per grid cell is safe */
+    if ( max_atoms >= (int) CEIL( g->max_atoms * DANGER_ZONE ) )
     {
-        workspace->realloc.gcell_atoms = MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
+        workspace->realloc.gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
+                MIN_GCELL_POPL );
 #if defined(HAVE_CUDA)
-        workspace->d_workspace->realloc.gcell_atoms = MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
+        workspace->d_workspace->realloc.gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
+                MIN_GCELL_POPL );
 #endif
     }
     else
@@ -672,7 +673,7 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
         {
             old_id = gc->atoms[l];
             old_atom = &system->my_atoms[old_id];
-            memcpy( new_atoms + top, old_atom, sizeof(reax_atom) );
+            memcpy( &new_atoms[top], old_atom, sizeof(reax_atom) );
             new_atoms[top].imprt_id = -1;
             ++top;
         }
@@ -729,15 +730,15 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
 
 /* Determine the grid cell which a boundary atom falls within */
 static void Get_Boundary_Grid_Cell( grid * const g, rvec base, rvec x, grid_cell ** const gc,
-        rvec * const cur_min, rvec * const cur_max, ivec gcell_cood )
+        rvec * const cur_min, rvec * const cur_max, ivec gc_coord )
 {
     int d;
     ivec c;
-    rvec loosen = {1e-6, 1e-6, 1e-6};
+    rvec loosen = {1.0e-6, 1.0e-6, 1.0e-6};
 
     for ( d = 0; d < 3; ++d )
     {
-        c[d] = (int)((x[d] - base[d]) * g->inv_len[d]);
+        c[d] = (int) ((x[d] - base[d]) * g->inv_len[d]);
         if ( c[d] < 0 )
         {
             c[d] = 0;
@@ -755,7 +756,7 @@ static void Get_Boundary_Grid_Cell( grid * const g, rvec base, rvec x, grid_cell
             base[0], base[1], base[2], x[0], x[1], x[2], c[0], c[1], c[2] );
 #endif
 
-    ivec_Copy( gcell_cood, c );
+    ivec_Copy( gc_coord, c );
 
     *gc = &g->cells[ index_grid_3d_v(c, g) ];
     rvec_ScaledSum( *cur_min, 1.0, (*gc)->min, -1.0, loosen );
@@ -790,7 +791,9 @@ static int is_Within_Grid_Cell( rvec x, rvec cur_min, rvec cur_max )
 }
 
 
-/* bin my boundary atoms into grid cells */
+/* Bin boundary atoms (ghost atoms) for this processor into grid cells.
+ * For efficiency, store indices into the atom list as ranges for
+ * each grid cell (compact format, no-copying). */
 void Bin_Boundary_Atoms( reax_system * const system )
 {
     int i, start, end;
@@ -799,12 +802,7 @@ void Bin_Boundary_Atoms( reax_system * const system )
     grid_cell *gc;
     reax_atom * const atoms = system->my_atoms;
     simulation_box *ext_box;
-    ivec gcell_cood;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d bin_boundary_atoms: entered with start: %d, end: %d\n",
-            system->my_rank, system->n, system->N );
-#endif
+    ivec gc_coord;
 
     start = system->n;
     end = system->N;
@@ -814,13 +812,12 @@ void Bin_Boundary_Atoms( reax_system * const system )
     }
 
     ext_box = &system->my_ext_box;
-    memcpy( base, ext_box->min, sizeof(rvec) );
+    rvec_Copy( base, ext_box->min );
 
-    Get_Boundary_Grid_Cell( g, base, atoms[start].x, &gc, &cur_min, &cur_max, gcell_cood );
-    g->str[ index_grid_3d_v( gcell_cood, g ) ] = start;
+    Get_Boundary_Grid_Cell( g, base, atoms[start].x, &gc, &cur_min, &cur_max, gc_coord );
+    g->str[ index_grid_3d_v( gc_coord, g ) ] = start;
     gc->top = 1;
 
-    /* error check */
     if ( is_Within_Grid_Cell( atoms[start].x, ext_box->min, ext_box->max ) == FALSE )
     {
         fprintf( stderr, "[ERROR] p%d: (start):ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
@@ -831,7 +828,6 @@ void Bin_Boundary_Atoms( reax_system * const system )
 
     for ( i = start + 1; i < end; i++ )
     {
-        /* error check */
         if ( is_Within_Grid_Cell( atoms[i].x, ext_box->min, ext_box->max ) == FALSE )
         {
             fprintf( stderr, "[ERROR] p%d: (middle) ghost atom%d [%f %f %f] is out of my (grid cell) box!\n",
@@ -846,10 +842,13 @@ void Bin_Boundary_Atoms( reax_system * const system )
         }
         else
         {
-            g->end[ index_grid_3d_v( gcell_cood, g ) ] = i;
-            Get_Boundary_Grid_Cell( g, base, atoms[i].x, &gc, &cur_min, &cur_max, gcell_cood );
+            /* mark the end index for atom indices placed in previous grid cell
+             * and get the next grid cell along with its boundaries */
+            g->end[ index_grid_3d_v( gc_coord, g ) ] = i;
+            Get_Boundary_Grid_Cell( g, base, atoms[i].x, &gc,
+                    &cur_min, &cur_max, gc_coord );
 
-            /* sanity check! */
+            /* if atoms were already placed in this grid cell, something went wrong */
             if ( gc->top != 0 )
             {
                 fprintf( stderr, "[ERROR] p%d bin_boundary_atoms: atom%d map was unexpected! ",
@@ -861,11 +860,13 @@ void Bin_Boundary_Atoms( reax_system * const system )
                 MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             }
 
-            g->str[ index_grid_3d_v( gcell_cood, g ) ] = i;
+            /* mark the start index for atom indices placed in new grid cell
+             * and record the atom placement */
+            g->str[ index_grid_3d_v( gc_coord, g ) ] = i;
             gc->top = 1;
         }
     }
 
-    /* mark last gcell's end position */
-    g->end[ index_grid_3d_v( gcell_cood, g ) ] = i;
+    /* mark the end index for atom indices placed in the last grid cell */
+    g->end[ index_grid_3d_v( gc_coord, g ) ] = i;
 }

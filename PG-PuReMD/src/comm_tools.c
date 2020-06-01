@@ -332,12 +332,10 @@ static void Unpack_MPI_Atom( reax_atom * const ratm, const mpi_atom * const matm
  * The ownership of these atoms is to be transferred to other MPI processes. */
 static void Count_Transfer_Atoms( reax_system const * const system,
         int start, int end, int dim, mpi_out_data * const out_bufs,
-        int *cnt1, int *cnt2  )
+        int * const cnt )
 {
     int i, d;
-    simulation_box *my_box;
-
-    my_box = &system->my_box;
+    simulation_box const * const my_box = &system->my_box;
 
     /* count atoms in the appropriate outgoing lists */
     for ( i = start; i < end; ++i )
@@ -346,12 +344,12 @@ static void Count_Transfer_Atoms( reax_system const * const system,
         {
             if ( system->my_atoms[i].x[d] < my_box->min[d] )
             {
-                ++(*cnt1);
+                ++cnt[2 * d];
                 break;
             }
             else if ( system->my_atoms[i].x[d] >= my_box->max[d] )
             {
-                ++(*cnt2);
+                ++cnt[2 * d + 1];
                 break;
             }
         }
@@ -366,29 +364,29 @@ static void Count_Transfer_Atoms( reax_system const * const system,
 static void Sort_Transfer_Atoms( reax_system * const system, int start, int end,
         int dim, mpi_out_data * const out_bufs, mpi_datatypes * const mpi_data )
 {
-    int i, d, out_cnt;
+    int i, d;
     simulation_box * const my_box = &system->my_box;
     mpi_atom *out_buf;
 
-    /* place each atom into the appropriate outgoing list */
+    /* place each atom into the appropriate egress buffer */
     for ( i = start; i < end; ++i )
     {
         for ( d = dim; d < 3; ++d )
         {
             if ( system->my_atoms[i].x[d] < my_box->min[d] )
             {
-                out_cnt = out_bufs[2 * d].cnt++;
                 out_buf = out_bufs[2 * d].out_atoms;
-                Pack_MPI_Atom( &out_buf[out_cnt], &system->my_atoms[i], i );
+                Pack_MPI_Atom( &out_buf[out_bufs[2 * d].cnt], &system->my_atoms[i], i );
                 system->my_atoms[i].orig_id = -1;
+                ++out_bufs[2 * d].cnt;
                 break;
             }
             else if ( system->my_atoms[i].x[d] >= my_box->max[d] )
             {
-                out_cnt = out_bufs[2 * d + 1].cnt++;
                 out_buf = out_bufs[2 * d + 1].out_atoms;
-                Pack_MPI_Atom( &out_buf[out_cnt], &system->my_atoms[i], i );
+                Pack_MPI_Atom( &out_buf[out_bufs[2 * d + 1].cnt], &system->my_atoms[i], i );
                 system->my_atoms[i].orig_id = -1;
+                ++out_bufs[2 * d + 1].cnt;
                 break;
             }
         }
@@ -405,9 +403,11 @@ static void Unpack_Transfer_Message( reax_system * const system,
     real dx;
     mpi_atom * const src = (mpi_atom *) mpi_buffer;
 
-    for ( i = 0; i < cnt; ++i )
+    if ( end + cnt > system->total_cap )
     {
-        Unpack_MPI_Atom( &system->my_atoms[end + i], &src[i] );
+        /* need space for my_atoms now, other reallocations will trigger in Reallocate */
+        system->my_atoms = srealloc( system->my_atoms,
+                sizeof(reax_atom) * (end + cnt), "Unpack_Transfer_Message" );
     }
 
     /* adjust coordinates of recved atoms if nbr is a periodic one */
@@ -417,7 +417,15 @@ static void Unpack_Transfer_Message( reax_system * const system,
 
         for ( i = 0; i < cnt; ++i )
         {
+            Unpack_MPI_Atom( &system->my_atoms[end + i], &src[i] );
             system->my_atoms[end + i].x[dim] += dx;
+        }
+    }
+    else
+    {
+        for ( i = 0; i < cnt; ++i )
+        {
+            Unpack_MPI_Atom( &system->my_atoms[end + i], &src[i] );
         }
     }
 }
@@ -427,7 +435,7 @@ static void Unpack_Transfer_Message( reax_system * const system,
 
 /************ PACK & UNPACK BOUNDARY ATOMS **************/
 static void Pack_Boundary_Atom( boundary_atom * const matm,
-        const reax_atom * const ratm, int i )
+        reax_atom const * const ratm, int i )
 {
     matm->orig_id = ratm->orig_id;
     matm->imprt_id = i;
@@ -446,30 +454,30 @@ static void Unpack_Boundary_Atom( reax_atom * const ratm,
     ratm->type = matm->type;
     ratm->num_bonds = matm->num_bonds;
     ratm->num_hbonds = matm->num_hbonds;
-    //ratm->renumber = offset + matm->imprt_id;
+//    ratm->renumber = offset + matm->imprt_id;
     rvec_Copy( ratm->x, matm->x );
 }
 
 
 void Count_Boundary_Atoms( reax_system const * const system,
         int start, int end, int dim, mpi_out_data * const out_bufs,
-        int *cnt1, int *cnt2 )
+        int * const cnt )
 {
-    int i;
+    int i, d, p;
 
     /* place each atom into the appropriate outgoing list */
-    for ( i = 0; i < end; ++i )
+    for ( i = start; i < end; ++i )
     {
-        if ( system->my_nbrs[2 * dim].bndry_min[dim] <= system->my_atoms[i].x[dim]
-                && system->my_atoms[i].x[dim] < system->my_nbrs[2 * dim].bndry_max[dim] )
+        for ( d = dim; d < 3; ++d )
         {
-            ++(*cnt1);
-        }
-
-        if ( system->my_nbrs[2 * dim + 1].bndry_min[dim] <= system->my_atoms[i].x[dim]
-                && system->my_atoms[i].x[dim] < system->my_nbrs[2 * dim + 1].bndry_max[dim] )
-        {
-            ++(*cnt2);
+            for ( p = 2 * d; p < 2 * d + 2; ++p )
+            {
+                if ( system->my_nbrs[p].bndry_min[d] <= system->my_atoms[i].x[d]
+                        && system->my_atoms[i].x[d] < system->my_nbrs[p].bndry_max[d] )
+                {
+                    ++cnt[p];
+                }
+            }
         }
     }
 }
@@ -478,24 +486,24 @@ void Count_Boundary_Atoms( reax_system const * const system,
 void Sort_Boundary_Atoms( reax_system * const system, int start, int end,
         int dim, mpi_out_data * const out_bufs, mpi_datatypes * const mpi_data )
 {
-    int i, p, out_cnt;
+    int i, d, p;
     boundary_atom *out_buf;
-    neighbor_proc *nbr_pr;
 
     /* place each atom into the appropriate egress buffer */
-    for ( i = 0; i < end; ++i )
+    for ( i = start; i < end; ++i )
     {
-        for ( p = 2 * dim; p < 2 * dim + 2; ++p )
+        for ( d = dim; d < 3; ++d )
         {
-            nbr_pr = &system->my_nbrs[p];
-            out_buf = (boundary_atom *) out_bufs[p].out_atoms;
-
-            if ( nbr_pr->bndry_min[dim] <= system->my_atoms[i].x[dim]
-                    && system->my_atoms[i].x[dim] < nbr_pr->bndry_max[dim] )
+            for ( p = 2 * d; p < 2 * d + 2; ++p )
             {
-                out_cnt = out_bufs[p].cnt++;
-                out_bufs[p].index[out_cnt] = i;
-                Pack_Boundary_Atom( &out_buf[out_cnt], &system->my_atoms[i], i );
+                if ( system->my_nbrs[p].bndry_min[d] <= system->my_atoms[i].x[d]
+                        && system->my_atoms[i].x[d] < system->my_nbrs[p].bndry_max[d] )
+                {
+                    out_bufs[p].index[out_bufs[p].cnt] = i;
+                    out_buf = (boundary_atom *) out_bufs[p].out_atoms;
+                    Pack_Boundary_Atom( &out_buf[out_bufs[p].cnt], &system->my_atoms[i], i );
+                    ++out_bufs[p].cnt;
+                }
             }
         }
     }
@@ -511,11 +519,11 @@ void Unpack_Exchange_Message( reax_system * const system, int end,
     real dx;
     const boundary_atom * const src = (boundary_atom *) mpi_buffer;
 
-    if ( end + cnt > system->N )
+    if ( end + cnt > system->total_cap )
     {
+        /* need space for my_atoms now, other reallocations will trigger in Reallocate */
         system->my_atoms = srealloc( system->my_atoms,
                 sizeof(reax_atom) * (end + cnt), "Unpack_Exchange_Message" );
-        system->N = end + cnt;
     }
 
     if ( nbr->prdc[dim] )
@@ -545,10 +553,16 @@ void Unpack_Exchange_Message( reax_system * const system, int end,
 
 static void Count_Position_Updates( reax_system const * const system,
         int start, int end, int dim, mpi_out_data * const out_bufs,
-        int *cnt1, int *cnt2 )
+        int * const cnt )
 {
-    *cnt1 = out_bufs[2 * dim].cnt;
-    *cnt2 = out_bufs[2 * dim + 1].cnt;
+    int p;
+
+    /* counts set via previous calls to SendRecv in reneighbor steps
+     * (during boundary atom messaging), so just copy */
+    for ( p = 2 * dim; p < 2 * dim + 2; ++p )
+    {
+        cnt[p] = out_bufs[p].cnt;
+    }
 }
 
 
@@ -603,15 +617,17 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
         MPI_Datatype type, message_counter count_func,
         message_sorter sort_func, unpacker unpack, int clr )
 {
-    int d, cnt1, cnt2, start, end, ret;
+    int i, d, cnt1, cnt2, cnt[6], start, end, ret;
     mpi_out_data * const out_bufs = mpi_data->out_buffers;
     const MPI_Comm comm = mpi_data->comm_mesh3D;
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     neighbor_proc *nbr1, *nbr2;
-    MPI_Aint extent, lower_bound;
+    MPI_Aint extent, lower_bound, type_size;
 
-    MPI_Type_get_extent( type, &lower_bound, &extent );
+    ret = MPI_Type_get_extent( type, &lower_bound, &extent );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    type_size = MPI_Aint_add( lower_bound, extent );
 
     if ( clr == TRUE )
     {
@@ -620,50 +636,42 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
     start = 0;
     end = system->n;
 
+    for ( i = 0; i < 6; ++i )
+    {
+        cnt[i] = 0;
+    }
+
     for ( d = 0; d < 3; ++d )
     {
-        cnt1 = 0;
-        cnt2 = 0;
+        /* nbr1 is in the negative direction, nbr2 the positive direction */
         nbr1 = &system->my_nbrs[2 * d];
         nbr2 = &system->my_nbrs[2 * d + 1];
 
-        if ( count_func != NULL )
+        count_func( system, start, end, d, out_bufs, cnt );
+
+        for ( i = 2 * d; i < 6; ++i )
         {
-            count_func( system, start, end, d, out_bufs,
-                    &cnt1, &cnt2 );
+            check_srealloc( &out_bufs[i].out_atoms,
+                    &out_bufs[i].out_atoms_size,
+                    type_size * (out_bufs[i].cnt + cnt[i]),
+                    "SendRecv::mpi_data->out_atoms" );
+            check_srealloc( (void **) &out_bufs[i].index,
+                    &out_bufs[i].index_size,
+                    sizeof(int) * (out_bufs[i].cnt + cnt[i]),
+                    "SendRecv::mpi_data->index" );
         }
 
-        check_srealloc( &out_bufs[2 * d].out_atoms,
-                &out_bufs[2 * d].out_atoms_size,
-                cnt1 * MPI_Aint_add( lower_bound, extent ),
-                "SendRecv::mpi_data->out_atoms" );
-        check_srealloc( (void **) &out_bufs[2 * d].index,
-                &out_bufs[2 * d].index_size,
-                cnt1 * sizeof(int),
-                "SendRecv::mpi_data->index" );
+        sort_func( system, start, end, d, out_bufs, mpi_data );
 
-        check_srealloc( &out_bufs[2 * d + 1].out_atoms,
-                &out_bufs[2 * d + 1].out_atoms_size,
-                cnt2 * MPI_Aint_add( lower_bound, extent ),
-                "SendRecv::mpi_data->out_atoms" );
-        check_srealloc( (void **) &out_bufs[2 * d + 1].index,
-                &out_bufs[2 * d + 1].index_size,
-                cnt2 * sizeof(int),
-                "SendRecv::mpi_data->index" );
-
-        if ( sort_func != NULL )
-        {
-            sort_func( system, start, end, d, out_bufs, mpi_data );
-        }
         start = end;
 
         /* send both messages in dimension d */
-        ret = MPI_Isend( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt, type,
-                nbr1->rank, 2 * d, comm, &req1 );
+        ret = MPI_Isend( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
+                type, nbr1->rank, 2 * d, comm, &req1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        ret = MPI_Isend( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt, type,
-                nbr2->rank, 2 * d + 1, comm, &req2 );
+        ret = MPI_Isend( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
+                type, nbr2->rank, 2 * d + 1, comm, &req2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         /* recv and unpack atoms from nbr1 in dimension d */
@@ -673,18 +681,14 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
-                cnt1 * MPI_Aint_add( lower_bound, extent ),
-                "SendRecv::mpi_data->in1_buffer" );
+                type_size * cnt1, "SendRecv::mpi_data->in1_buffer" );
 
         ret = MPI_Recv( mpi_data->in1_buffer, cnt1, type,
-                nbr1->rank, 2 * d + 1, comm, &stat1 );
+                nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( unpack != NULL )
-        {
-            unpack( system, end, mpi_data->in1_buffer, cnt1, nbr1, d );
-            end += cnt1;
-        }
+        unpack( system, end, mpi_data->in1_buffer, cnt1, nbr1, d );
+        end += cnt1;
 
         /* recv and unpack atoms from nbr2 in dimension d */
         ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
@@ -693,18 +697,19 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
-                cnt2 * MPI_Aint_add( lower_bound, extent ),
-                "SendRecv::mpi_data->in2_buffer" );
+                type_size * cnt2, "SendRecv::mpi_data->in2_buffer" );
 
         ret = MPI_Recv( mpi_data->in2_buffer, cnt2, type,
-                nbr2->rank, 2 * d, comm, &stat2 );
+                nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( unpack != NULL )
-        {
-            unpack( system, end, mpi_data->in2_buffer, cnt2, nbr2, d );
-            end += cnt2;
-        }
+        unpack( system, end, mpi_data->in2_buffer, cnt2, nbr2, d );
+        end += cnt2;
+
+        ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     return end;
@@ -716,15 +721,9 @@ void Comm_Atoms( reax_system * const system, control_params * const control,
         mpi_datatypes * const mpi_data, int renbr )
 {
 #if defined(LOG_PERFORMANCE)
-    real t_start, t_elapsed;
+    real time;
 
-    t_start = 0.0;
-    t_elapsed = 0.0;
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_start = Get_Time( );
-    }
+    time = Get_Time( );
 #endif
 
     if ( renbr == TRUE )
@@ -754,10 +753,6 @@ void Comm_Atoms( reax_system * const system, control_params * const control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_elapsed = Get_Elapsed_Time( t_start );
-        data->timing.comm += t_elapsed;
-    }
+    Update_Timing_Info( &time, &data->timing.comm );
 #endif
 }

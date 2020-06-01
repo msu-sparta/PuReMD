@@ -387,10 +387,10 @@ static real Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
     rvec2 *spad;
 
     t_start = Get_Time( );
-#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, x, buf_type, mpi_type );
-#else
+//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+//    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
+//    Dist( system, mpi_data, x, buf_type, mpi_type );
+//#else
 
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(rvec2) * n, "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
@@ -403,7 +403,7 @@ static real Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
 
     copy_host_device( spad, (void *) x, sizeof(rvec2) * n,
             cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part1::x" );
-#endif
+//#endif
     t_comm = Get_Time( ) - t_start;
 
     return t_comm;
@@ -489,9 +489,9 @@ static real Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
     /* reduction required for symmetric half matrix */
 //    if ( mat_format == SYM_HALF_MATRIX )
     {
-#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-        Coll( system, mpi_data, b, buf_type, mpi_type );
-#else
+//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+//        Coll( system, mpi_data, b, buf_type, mpi_type );
+//#else
 
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(rvec2) * n1, "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
@@ -503,7 +503,7 @@ static real Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
 
         copy_host_device( spad, b, sizeof(rvec2) * n2,
                 cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part2::b" );
-#endif
+//#endif
     }
     t_comm = Get_Time( ) - t_start;
 
@@ -560,10 +560,10 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
     real *spad;
 
     t_start = Get_Time( );
-#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, x, buf_type, mpi_type );
-#else
+//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+//    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
+//    Dist( system, mpi_data, x, buf_type, mpi_type );
+//#else
 
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(real) * n, "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
@@ -576,7 +576,7 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
 
     copy_host_device( spad, (void *) x, sizeof(real) * n,
             cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part1::x" );
-#endif
+//#endif
 
     return Get_Elapsed_Time( t_start );
 }
@@ -621,8 +621,8 @@ static void Sparse_MatVec_local( control_params const * const control,
     {
 //        blocks = (A->n / DEF_BLOCK_SIZE)
 //            + ((A->n % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
-        blocks = (A->n * warpSize / DEF_BLOCK_SIZE)
-            + ((A->n * warpSize % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
+            + ((A->n * 32 % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
 
         /* 1 thread per row implementation */
 //        k_sparse_matvec_full_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE >>>
@@ -630,7 +630,7 @@ static void Sparse_MatVec_local( control_params const * const control,
 
         /* multiple threads per row implementation
          * using registers to accumulate partial row sums */
-        k_sparse_matvec_full_opt_csr <<< control->matvec_blocks, MATVEC_BLOCK_SIZE >>>
+        k_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
              ( A->start, A->end, A->j, A->val, x, b, n );
         cudaDeviceSynchronize( );
         cudaCheckError( );
@@ -667,9 +667,9 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
     /* reduction required for symmetric half matrix */
 //    if ( mat_format == SYM_HALF_MATRIX )
     {
-#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-        Coll( system, mpi_data, b, buf_type, mpi_type );
-#else
+//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+//        Coll( system, mpi_data, b, buf_type, mpi_type );
+//#else
 
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(real) * n1, "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
@@ -681,7 +681,7 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
 
         copy_host_device( spad, b, sizeof(real) * n2,
                 cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part2::q" );
-#endif
+//#endif
     }
 
     return Get_Elapsed_Time( t_start );

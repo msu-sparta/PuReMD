@@ -63,17 +63,19 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
     /* RHS vectors for linear system */
     for ( i = 0; i < system->n; ++i )
     {
-        workspace->b_s[i] = -system->reax_param.sbp[ system->my_atoms[i].type ].chi;
+        workspace->b_s[i] = -1.0 * system->reax_param.sbp[ system->my_atoms[i].type ].chi;
     }
     for ( i = 0; i < system->n; ++i )
     {
         workspace->b_t[i] = -1.0;
     }
+#if defined(DUAL_SOLVER)
     for ( i = 0; i < system->n; ++i )
     {
-        workspace->b[i][0] = -system->reax_param.sbp[ system->my_atoms[i].type ].chi;
+        workspace->b[i][0] = -1.0 * system->reax_param.sbp[ system->my_atoms[i].type ].chi;
         workspace->b[i][1] = -1.0;
     }
+#endif
 
     /* spline extrapolation for s & t */
     for ( i = 0; i < system->n; ++i )
@@ -130,8 +132,13 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
             t_tmp = 0.0;
         }
         
+#if defined(DUAL_SOLVER)
         workspace->x[i][0] = s_tmp;
         workspace->x[i][1] = t_tmp;
+#else
+        workspace->s[i] = s_tmp;
+        workspace->t[i] = t_tmp;
+#endif
     }
 }
 
@@ -150,14 +157,12 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int ret;
-    real time, timings[2];
+    real time;
     sparse_matrix *Hptr;
 
+#if defined(LOG_PERFORMANCE)
     time = Get_Time( );
-
-    timings[0] = 0.0;
-    timings[1] = 0.0;
+#endif
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
@@ -175,7 +180,9 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         Sort_Matrix_Rows( &workspace->H_sp );
     }
 
-    Update_Timing_Info( &time, &timings[0] );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_sort );
+#endif
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -207,23 +214,9 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
     }
 
-    Update_Timing_Info( &time, &timings[1] );
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        ret = MPI_Reduce( MPI_IN_PLACE, timings, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        data->timing.cm_sort += timings[0] / control->nprocs;
-        data->timing.cm_solver_pre_comp += timings[1] / control->nprocs;
-    }
-    else
-    {
-        ret = MPI_Reduce( timings, NULL, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-    }
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_pre_comp );
+#endif
 }
 
 
@@ -312,11 +305,23 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 
     my_sum[0] = 0.0;
     my_sum[1] = 0.0;
+#if defined(DUAL_SOLVER)
     for ( i = 0; i < system->n; ++i )
     {
         my_sum[0] += workspace->x[i][0];
         my_sum[1] += workspace->x[i][1];
     }
+#else
+    for ( i = 0; i < system->n; ++i )
+    {
+        my_sum[0] += workspace->s[i];
+    }
+    for ( i = 0; i < system->n; ++i )
+    {
+        my_sum[1] += workspace->t[i];
+    }
+#endif
+
     ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE,
             MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -327,18 +332,30 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         atom = &system->my_atoms[i];
 
         /* compute charge based on s & t */
+#if defined(DUAL_SOLVER)
         q[i] = atom->q = workspace->x[i][0] - u * workspace->x[i][1];
+#else
+        q[i] = atom->q = workspace->s[i] - u * workspace->t[i];
+#endif
 
         /* update previous solutions in s & t */
         atom->s[3] = atom->s[2];
         atom->s[2] = atom->s[1];
         atom->s[1] = atom->s[0];
+#if defined(DUAL_SOLVER)
         atom->s[0] = workspace->x[i][0];
+#else
+        atom->s[0] = workspace->s[i];
+#endif
 
         atom->t[3] = atom->t[2];
         atom->t[2] = atom->t[1];
         atom->t[1] = atom->t[0];
+#if defined(DUAL_SOLVER)
         atom->t[0] = workspace->x[i][1];
+#else
+        atom->t[0] = workspace->t[i];
+#endif
     }
 
     Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -380,9 +397,6 @@ static void QEq( reax_system const * const system, control_params const * const 
         mpi_datatypes * const mpi_data )
 {
     int iters;
-#if !defined(DUAL_SOLVER)
-    int j;
-#endif
 
     iters = 0;
 
@@ -435,31 +449,11 @@ static void QEq( reax_system const * const system, control_params const * const 
         iters = dual_CG( system, control, data, workspace, &workspace->H, workspace->b,
                 control->cm_solver_q_err, workspace->x, mpi_data );
 #else
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->s[j] = workspace->x[j][0];
-        }
-
         iters = CG( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data );
 
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][0] = workspace->s[j];
-        }
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->t[j] = workspace->x[j][1];
-        }
-
         iters += CG( system, control, data, workspace, &workspace->H, workspace->b_t,
                 control->cm_solver_q_err, workspace->t, mpi_data );
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][1] = workspace->t[j];
-        }
 #endif
         break;
 
@@ -470,31 +464,11 @@ static void QEq( reax_system const * const system, control_params const * const 
 //        iters = dual_SDM( system, control, data, workspace, &workspace->H, workspace->b,
 //                control->cm_solver_q_err, workspace->x, mpi_data );
 #else
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->s[j] = workspace->x[j][0];
-        }
-
         iters = SDM( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data );
 
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][0] = workspace->s[j];
-        }
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->t[j] = workspace->x[j][1];
-        }
-
         iters += SDM( system, control, data, workspace, &workspace->H, workspace->b_t,
                 control->cm_solver_q_err, workspace->t, mpi_data );
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][1] = workspace->t[j];
-        }
 #endif
         break;
 
@@ -505,31 +479,11 @@ static void QEq( reax_system const * const system, control_params const * const 
 //        iters = dual_BiCGStab( system, control, data, workspace, &workspace->H, workspace->b,
 //                control->cm_solver_q_err, workspace->x, mpi_data );
 #else
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->s[j] = workspace->x[j][0];
-        }
-
         iters = BiCGStab( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data );
 
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][0] = workspace->s[j];
-        }
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->t[j] = workspace->x[j][1];
-        }
-
         iters += BiCGStab( system, control, data, workspace, &workspace->H, workspace->b_t,
                 control->cm_solver_q_err, workspace->t, mpi_data );
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][1] = workspace->t[j];
-        }
 #endif
         break;
 
@@ -538,31 +492,11 @@ static void QEq( reax_system const * const system, control_params const * const 
         iters = dual_PIPECG( system, control, data, workspace, &workspace->H, workspace->b,
                 control->cm_solver_q_err, workspace->x, mpi_data );
 #else
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->s[j] = workspace->x[j][0];
-        }
-
         iters = PIPECG( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data );
 
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][0] = workspace->s[j];
-        }
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->t[j] = workspace->x[j][1];
-        }
-
         iters += PIPECG( system, control, data, workspace, &workspace->H, workspace->b_t,
                 control->cm_solver_q_err, workspace->t, mpi_data );
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][1] = workspace->t[j];
-        }
 #endif
         break;
 
@@ -573,31 +507,11 @@ static void QEq( reax_system const * const system, control_params const * const 
 //        iters = dual_PIPECR( system, control, data, workspace, &workspace->H, workspace->b,
 //                control->cm_solver_q_err, workspace->x, mpi_data );
 #else
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->s[j] = workspace->x[j][0];
-        }
-
         iters = PIPECR( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data );
 
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][0] = workspace->s[j];
-        }
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->t[j] = workspace->x[j][1];
-        }
-
         iters += PIPECR( system, control, data, workspace, &workspace->H, workspace->b_t,
                 control->cm_solver_q_err, workspace->t, mpi_data );
-
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->x[j][1] = workspace->t[j];
-        }
 #endif
         break;
 

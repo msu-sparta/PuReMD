@@ -105,9 +105,9 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* 3 lines of comments */
-    fgets(s, MAX_LINE, fp);
-    fgets(s, MAX_LINE, fp);
-    fgets(s, MAX_LINE, fp);
+    fgets( s, MAX_LINE, fp );
+    fgets( s, MAX_LINE, fp );
+    fgets( s, MAX_LINE, fp );
 
     /* Allocating structures in reax_interaction */
     __N = reax->num_atom_types;
@@ -348,9 +348,9 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* next line is number of two body combination and some comments */
-    fgets(s, MAX_LINE, fp);
-    c = Tokenize(s, &tmp, MAX_TOKEN_LEN);
-    l = atoi(tmp[0]);
+    fgets( s, MAX_LINE, fp );
+    c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
+    l = atoi( tmp[0] );
 
     /* a line of comments */
     fgets( s, MAX_LINE, fp );
@@ -358,7 +358,7 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     for ( i = 0; i < l; i++ )
     {
         /* line 1 */
-        fgets(s, MAX_LINE, fp);
+        fgets( s, MAX_LINE, fp );
         c = Tokenize(s, &tmp, MAX_TOKEN_LEN);
 
         j = atoi(tmp[0]) - 1;
@@ -395,8 +395,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             reax->tbp[ index2 ].p_ovun1 = val;
 
             /* line 2 */
-            fgets(s, MAX_LINE, fp);
-            c = Tokenize(s, &tmp, MAX_TOKEN_LEN);
+            fgets( s, MAX_LINE, fp );
+            c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             val = atof(tmp[0]);
             reax->tbp[ index1 ].p_be2 = val;
@@ -479,14 +479,14 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     /* next line is number of two body offdiagonal combinations and comments */
     /* these are two body offdiagonal terms that are different from the
        combination rules defined above */
-    fgets(s, MAX_LINE, fp);
-    c = Tokenize(s, &tmp, MAX_TOKEN_LEN);
+    fgets( s, MAX_LINE, fp );
+    c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi(tmp[0]);
 
-    for (i = 0; i < l; i++)
+    for ( i = 0; i < l; i++ )
     {
-        fgets(s, MAX_LINE, fp);
-        c = Tokenize(s, &tmp, MAX_TOKEN_LEN);
+        fgets( s, MAX_LINE, fp );
+        c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -494,45 +494,45 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
         index1 = j * __N + k;
         index2 = k * __N + j;
 
-        if (j < reax->num_atom_types && k < reax->num_atom_types)
+        if ( j < reax->num_atom_types && k < reax->num_atom_types )
         {
             val = atof(tmp[2]);
-            if (val > 0.0)
+            if ( val > 0.0 )
             {
                 reax->tbp[index1].D = val;
                 reax->tbp[index2].D = val;
             }
 
             val = atof(tmp[3]);
-            if (val > 0.0)
+            if ( val > 0.0 )
             {
                 reax->tbp[index1].r_vdW = 2 * val;
                 reax->tbp[index2].r_vdW = 2 * val;
             }
 
             val = atof(tmp[4]);
-            if (val > 0.0)
+            if ( val > 0.0 )
             {
                 reax->tbp[index1].alpha = val;
                 reax->tbp[index2].alpha = val;
             }
 
             val = atof(tmp[5]);
-            if (val > 0.0)
+            if ( val > 0.0 )
             {
                 reax->tbp[index1].r_s = val;
                 reax->tbp[index2].r_s = val;
             }
 
             val = atof(tmp[6]);
-            if (val > 0.0)
+            if ( val > 0.0 )
             {
                 reax->tbp[index1].r_p = val;
                 reax->tbp[index2].r_p = val;
             }
 
             val = atof(tmp[7]);
-            if (val > 0.0)
+            if ( val > 0.0 )
             {
                 reax->tbp[index1].r_pp = val;
                 reax->tbp[index2].r_pp = val;
@@ -561,8 +561,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
 
     for ( i = 0; i < l; i++ )
     {
-        fgets(s, MAX_LINE, fp);
-        c = Tokenize(s, &tmp, MAX_TOKEN_LEN);
+        fgets( s, MAX_LINE, fp );
+        c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
         k = atoi(tmp[1]) - 1;
@@ -762,7 +762,5 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     sfree( s, "Read_Force_Field::s" );
     sfree( tor_flag, "Read_Force_Field::tor_flag" );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: force field read\n", system->my_rank );
-#endif
+    sfclose( fp, "Read_Force_Field::fp" );
 }

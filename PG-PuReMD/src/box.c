@@ -232,14 +232,14 @@ void Setup_My_Ext_Box( reax_system * const system, control_params * const contro
     for ( d = 0; d < 3; ++d )
     {
         /* estimate the number of native cells */
-        native_gcells[d] = (int)(my_box->box_norms[d] / (control->vlist_cut / 2));
+        native_gcells[d] = (int) (my_box->box_norms[d] / (control->vlist_cut / 2.0));
         if ( native_gcells[d] == 0 )
         {
             native_gcells[d] = 1;
         }
 
         gcell_len[d] = my_box->box_norms[d] / native_gcells[d];
-        ghost_gcells[d] = (int) CEIL(bc->ghost_cutoff / gcell_len[d]);
+        ghost_gcells[d] = (int) CEIL( bc->ghost_cutoff / gcell_len[d] );
 
         /* extend my box with the ghost regions */
         my_ext_box->min[d] = my_box->min[d] - ghost_gcells[d] * gcell_len[d];
@@ -260,7 +260,7 @@ void Setup_Boundary_Cutoffs( reax_system * const system, control_params * const 
 
     bc->ghost_nonb = control->nonb_cut;
     bc->ghost_hbond = control->hbond_cut;
-    bc->ghost_bond = 2 * control->bond_cut;
+    bc->ghost_bond = 2.0 * control->bond_cut;
     bc->ghost_cutoff = MAX( control->vlist_cut, bc->ghost_bond );
 
 #if defined(DEBUG_FOCUS)
@@ -309,8 +309,6 @@ void Setup_Environment( reax_system * const system, control_params * const contr
     temp[sizeof(temp) - 1] = '\0';
     Print_Box( &system->my_ext_box, temp, stderr );
 
-    MPI_Barrier( MPI_COMM_WORLD );
-
     fprintf( stderr, "p%d: parallel environment initialized\n",
             system->my_rank );
 #endif
@@ -331,7 +329,7 @@ void Scale_Box( reax_system * const system, control_params * const control,
     if ( control->ensemble == iNPT )
     {
         mu[0] = POW( 1.0 + (dt / control->Tau_P[0]) * (data->iso_bar.P - control->P[0]),
-                     1. / 3 );
+                1.0 / 3.0 );
 
         if ( mu[0] < MIN_dV )
         {
@@ -349,8 +347,8 @@ void Scale_Box( reax_system * const system, control_params * const control,
     {
         for ( d = 0; d < 3; ++d )
         {
-            mu[d] = POW(1.0 + (dt / control->Tau_P[d]) * (data->tot_press[d] - control->P[d]),
-                        1. / 3 );
+            mu[d] = POW( 1.0 + (dt / control->Tau_P[d]) * (data->tot_press[d] - control->P[d]),
+                        1.0 / 3.0 );
 
             if ( mu[d] < MIN_dV )
             {

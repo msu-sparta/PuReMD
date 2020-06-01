@@ -161,10 +161,10 @@ CUDA_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_at
     }
 
     /* RHS vectors for linear system */
-    workspace.b_s[i] = -sbp[ my_atoms[i].type ].chi;
+    workspace.b_s[i] = -1.0 * sbp[ my_atoms[i].type ].chi;
     workspace.b_t[i] = -1.0;
 #if defined(DUAL_SOLVER)
-    workspace.b[i][0] = -sbp[ my_atoms[i].type ].chi;
+    workspace.b[i][0] = -1.0 * sbp[ my_atoms[i].type ].chi;
     workspace.b[i][1] = -1.0;
 #endif
 
@@ -239,7 +239,7 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
-        + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
@@ -265,14 +265,16 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         mpi_datatypes * const mpi_data )
 {
     int ret;
-    real time, t_sort, t_pc, redux[2];
+    real time, timings[2];
 
-    t_pc = 0.0;
+    time = Get_Time( );
+    timings[0] = 0.0;
+    timings[1] = 0.0;
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-    time = Get_Time( );
 //    Sort_Matrix_Rows( &workspace->d_workspace->H, system );
-    t_sort = Get_Time( ) - time;
+    
+    Update_Timing_Info( &time, &timings[0] );
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -292,7 +294,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
 
         case SAI_PC:
-//            t_pc = setup_sparse_approx_inverse( system, data, workspace, mpi_data,
+//            setup_sparse_approx_inverse( system, data, workspace, mpi_data,
 //                    &workspace->H, &workspace->H_spar_patt, 
 //                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
@@ -304,22 +306,20 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
     }
 
-
-    redux[0] = t_sort;
-    redux[1] = t_pc;
+    Update_Timing_Info( &time, &timings[1] );
 
     if ( system->my_rank == MASTER_NODE )
     {
-        ret = MPI_Reduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
+        ret = MPI_Reduce( MPI_IN_PLACE, timings, 2, MPI_DOUBLE, MPI_SUM,
                 MASTER_NODE, MPI_COMM_WORLD );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        data->timing.cm_sort += redux[0] / control->nprocs;
-        data->timing.cm_solver_pre_comp += redux[1] / control->nprocs;
+        data->timing.cm_sort += timings[0] / control->nprocs;
+        data->timing.cm_solver_pre_comp += timings[1] / control->nprocs;
     }
     else
     {
-        ret = MPI_Reduce( redux, NULL, 2, MPI_DOUBLE, MPI_SUM,
+        ret = MPI_Reduce( timings, NULL, 2, MPI_DOUBLE, MPI_SUM,
                 MASTER_NODE, MPI_COMM_WORLD );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
@@ -422,7 +422,7 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
     real *spad;
 
     blocks = system->n / DEF_BLOCK_SIZE
-        + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(real) * system->n,
@@ -431,7 +431,7 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
     cuda_memset( spad, 0, sizeof(real) * system->n, "Extrapolate_Charges_QEq_Part2::spad" );
 
     k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n);
+        ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
@@ -452,7 +452,7 @@ CUDA_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
         return;
     }
 
-    my_atoms[i + n].q = q[i + n];
+    my_atoms[n + i].q = q[i];
 }
 
 
@@ -463,13 +463,13 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
     real *spad;
 
     blocks = (system->N - system->n) / DEF_BLOCK_SIZE
-        + (( (system->N - system->n) % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+        + (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * system->N,
+            sizeof(real) * (system->N - system->n),
             "Update_Ghost_Atom_Charges::workspace->scratch" );
     spad = (real *) workspace->scratch;
-    copy_host_device( q, spad, system->N * sizeof(real),
+    copy_host_device( &q[system->n], spad, sizeof(real) * (system->N - system->n),
             cudaMemcpyHostToDevice, "Update_Ghost_Atom_Charges::q" );
 
     k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE >>>
@@ -500,7 +500,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     q = (real *) workspace->host_scratch;
 #if defined(DUAL_SOLVER)
     blocks = system->n / DEF_BLOCK_SIZE
-        + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(rvec2) * 2 * system->n,
@@ -524,20 +524,16 @@ static void Calculate_Charges_QEq( reax_system const * const system,
             sizeof(rvec2), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
 #else
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * system->n,
+            sizeof(real) * 2,
             "Calculate_Charges_QEq::workspace->scratch" );
     spad = (real *) workspace->scratch;
-    cuda_memset( spad, 0, sizeof(real) * system->n,
-            "Calculate_Charges_QEq::spad" );
 
     /* local reductions (sums) on device */
     Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n );
     Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n );
 
-    copy_host_device( &my_sum[0], &spad[0],
-            sizeof(real), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
-    copy_host_device( &my_sum[1], &spad[1],
-            sizeof(real), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
+    copy_host_device( my_sum, spad, sizeof(real) * 2,
+            cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
 #endif
 
     /* global reduction on pseudo-charges for s and t */
