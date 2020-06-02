@@ -291,7 +291,7 @@ void Scale_Velocities_NPT( reax_system *system, real lambda, rvec mu )
 }
 
 
-int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
+int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
@@ -308,18 +308,13 @@ int Cuda_Velocity_Verlet_NVE( reax_system* system, control_params* control,
     {
         Velocity_Verlet_Part1( system, dt );
 
-        if ( renbr == TRUE )
-        {
-            Update_Grid( system, control, MPI_COMM_WORLD );
-        }
-
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
         verlet_part1_done = TRUE;
     }
 
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
 
     if ( cuda_copy == FALSE )
     {
@@ -406,7 +401,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         verlet_part1_done = TRUE;
     }
 
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
 
     Cuda_Reset( system, control, data, workspace, lists );
 
@@ -513,7 +508,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         verlet_part1_done = TRUE;
     }
 
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
 
     if ( cuda_copy == FALSE )
     {
@@ -589,7 +584,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int steps, renbr, ret;
-    static int verlet_part1_done = FALSE, far_nbrs_done = FALSE;
+    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real dt;
 
     ret = SUCCESS;
@@ -616,17 +611,17 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         verlet_part1_done = TRUE;
     }
 
-    Cuda_ReAllocate( system, control, data, workspace, lists, mpi_data );
+    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
 
     Cuda_Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && far_nbrs_done == FALSE )
+    if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
         ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
-            far_nbrs_done = TRUE;
+            gen_nbr_list = TRUE;
         }
         else
         {
@@ -652,7 +647,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
                 workspace, data, mpi_data );
 
         verlet_part1_done = FALSE;
-        far_nbrs_done = FALSE;
+        gen_nbr_list = FALSE;
     }
 
     return ret;

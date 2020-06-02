@@ -32,22 +32,30 @@
 int is_refactoring_step( control_params const * const control,
         simulation_data * const data )
 {
-    if ( control->cm_solver_pre_comp_refactor != -1 )
+    int ret;
+
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+    {
+        ret = TRUE;
+    }
+    else if ( control->cm_solver_pre_comp_refactor != -1 )
     {
         if ( control->cm_solver_pre_comp_refactor > 0
                 && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
         {
-            return TRUE;
+            ret = TRUE;
         }
         else
         {
-            return FALSE;
+            ret = FALSE;
         }
     }
     else
     {
-        return data->refactor;
+        ret = data->refactor;
     }
+
+    return ret;
 }
 
 

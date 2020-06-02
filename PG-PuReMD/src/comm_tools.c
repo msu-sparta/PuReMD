@@ -623,7 +623,8 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
     MPI_Request req1, req2;
     MPI_Status stat1, stat2;
     neighbor_proc *nbr1, *nbr2;
-    MPI_Aint extent, lower_bound, type_size;
+    MPI_Aint extent, lower_bound;
+    size_t type_size;
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -654,11 +655,11 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
             check_srealloc( &out_bufs[i].out_atoms,
                     &out_bufs[i].out_atoms_size,
                     type_size * (out_bufs[i].cnt + cnt[i]),
-                    "SendRecv::mpi_data->out_atoms" );
+                    TRUE, SAFE_ZONE, "SendRecv::mpi_data->out_atoms" );
             check_srealloc( (void **) &out_bufs[i].index,
                     &out_bufs[i].index_size,
                     sizeof(int) * (out_bufs[i].cnt + cnt[i]),
-                    "SendRecv::mpi_data->index" );
+                    TRUE, SAFE_ZONE, "SendRecv::mpi_data->index" );
         }
 
         sort_func( system, start, end, d, out_bufs, mpi_data );
@@ -681,7 +682,7 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
-                type_size * cnt1, "SendRecv::mpi_data->in1_buffer" );
+                type_size * cnt1, TRUE, SAFE_ZONE, "SendRecv::mpi_data->in1_buffer" );
 
         ret = MPI_Recv( mpi_data->in1_buffer, cnt1, type,
                 nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
@@ -697,7 +698,7 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
-                type_size * cnt2, "SendRecv::mpi_data->in2_buffer" );
+                type_size * cnt2, TRUE, SAFE_ZONE, "SendRecv::mpi_data->in2_buffer" );
 
         ret = MPI_Recv( mpi_data->in2_buffer, cnt2, type,
                 nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );

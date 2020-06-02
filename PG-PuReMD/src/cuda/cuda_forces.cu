@@ -1615,7 +1615,7 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
     rvec *f;
 
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec) * system->N,
+            sizeof(rvec) * system->N, TRUE, SAFE_ZONE,
             "Cuda_Compute_Total_Force::workspace->host_scratch" );
     f = (rvec *) workspace->host_scratch;
     memset( f, 0, sizeof(rvec) * system->N );
@@ -1645,19 +1645,15 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
-    int charge_flag, retVal;
+    int charge_flag, ret;
     static int init_forces_done = FALSE;
-
 #if defined(LOG_PERFORMANCE)
-    real t_start = 0;
+    real time;
 
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_start = Get_Time( );
-    }
+    time = Get_Time( );
 #endif
 
-    retVal = SUCCESS;
+    ret = SUCCESS;
 
     if ( control->charge_freq
             && (data->step - data->prev_steps) % control->charge_freq == 0 )
@@ -1673,42 +1669,36 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
     {
         if ( charge_flag == TRUE )
         {
-            retVal = Cuda_Init_Forces( system, control, data,
+            ret = Cuda_Init_Forces( system, control, data,
                     workspace, lists, out_control );
         }
         else
         {
-            retVal = Cuda_Init_Forces_No_Charges( system, control, data,
+            ret = Cuda_Init_Forces_No_Charges( system, control, data,
                     workspace, lists, out_control );
         }
 
-        if ( retVal == SUCCESS )
+        if ( ret == SUCCESS )
         {
             init_forces_done = TRUE;
         }
     }
 
-    if ( retVal == SUCCESS )
+    if ( ret == SUCCESS )
     {
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &data->timing.init_forces );
-        }
+        Update_Timing_Info( &time, &data->timing.init_forces );
 #endif
 
-        retVal = Cuda_Compute_Bonded_Forces( system, control, data,
+        ret = Cuda_Compute_Bonded_Forces( system, control, data,
                 workspace, lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &data->timing.bonded );
-        }
+        Update_Timing_Info( &time, &data->timing.bonded );
 #endif
     }
 
-    if ( retVal == SUCCESS )
+    if ( ret == SUCCESS )
     {
 #if defined(PURE_REAX)
         if ( charge_flag == TRUE )
@@ -1718,10 +1708,7 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
         }
 
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &data->timing.cm );
-        }
+        Update_Timing_Info( &time, &data->timing.cm );
 #endif
 
 #endif //PURE_REAX
@@ -1730,23 +1717,17 @@ int Cuda_Compute_Forces( reax_system *system, control_params *control,
                 lists, out_control, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &data->timing.nonb );
-        }
+        Update_Timing_Info( &time, &data->timing.nonb );
 #endif
 
         Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-        if ( system->my_rank == MASTER_NODE )
-        {
-            Update_Timing_Info( &t_start, &data->timing.bonded );
-        }
+        Update_Timing_Info( &time, &data->timing.bonded );
 #endif
 
         init_forces_done = FALSE;
     }
 
-    return retVal;
+    return ret;
 }

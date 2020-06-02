@@ -311,7 +311,8 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
-    MPI_Aint extent, lower_bound, type_size;
+    MPI_Aint extent, lower_bound;
+    size_t type_size;
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -330,11 +331,11 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_smalloc( &out_bufs[2 * d].out_atoms,
                 &out_bufs[2 * d].out_atoms_size,
                 type_size * out_bufs[2 * d].cnt,
-                "Dist::mpi_data->out_atoms" );
+                TRUE, SAFE_ZONE, "Dist::mpi_data->out_atoms" );
         check_srealloc( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
                 sizeof(int) * out_bufs[2 * d].cnt,
-                "Dist::mpi_data->index" );
+                TRUE, SAFE_ZONE, "Dist::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d] );
 
@@ -345,11 +346,11 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_smalloc( &out_bufs[2 * d + 1].out_atoms,
                 &out_bufs[2 * d + 1].out_atoms_size,
                 type_size * out_bufs[2 * d + 1].cnt,
-                "Dist::mpi_data->out_atoms" );
+                TRUE, SAFE_ZONE, "Dist::mpi_data->out_atoms" );
         check_srealloc( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
                 sizeof(int) * out_bufs[2 * d + 1].cnt,
-                "Dist::mpi_data->index" );
+                TRUE, SAFE_ZONE, "Dist::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d + 1] );
 
@@ -411,7 +412,8 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     dist_packer pack;
-    MPI_Aint extent, lower_bound, type_size;
+    MPI_Aint extent, lower_bound;
+    size_t type_size;
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -430,11 +432,11 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_smalloc( &out_bufs[2 * d].out_atoms,
                 &out_bufs[2 * d].out_atoms_size,
                 type_size * out_bufs[2 * d].cnt,
-                "Dist_FS::mpi_data->out_atoms" );
+                TRUE, SAFE_ZONE, "Dist_FS::mpi_data->out_atoms" );
         check_srealloc( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
                 sizeof(int) * out_bufs[2 * d].cnt,
-                "Dist_FS::mpi_data->index" );
+                TRUE, SAFE_ZONE, "Dist_FS::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d] );
 
@@ -445,11 +447,11 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_smalloc( &out_bufs[2 * d + 1].out_atoms,
                 &out_bufs[2 * d + 1].out_atoms_size,
                 type_size * out_bufs[2 * d + 1].cnt,
-                "Dist_FS::mpi_data->out_atoms" );
+                TRUE, SAFE_ZONE, "Dist_FS::mpi_data->out_atoms" );
         check_smalloc( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
                 sizeof(int) * out_bufs[2 * d + 1].cnt,
-                "Dist_FS::mpi_data->index" );
+                TRUE, SAFE_ZONE, "Dist_FS::mpi_data->index" );
 
         pack( buf, &out_bufs[2 * d + 1] );
 
@@ -533,7 +535,8 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
-    MPI_Aint extent, lower_bound, type_size;
+    MPI_Aint extent, lower_bound;
+    size_t type_size;
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -564,7 +567,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
-                type_size * cnt1, "Coll::mpi_data->in1_buffer" );
+                type_size * cnt1, TRUE, SAFE_ZONE, "Coll::mpi_data->in1_buffer" );
 
         ret = MPI_Recv( mpi_data->in1_buffer, cnt1,
                 type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
@@ -578,7 +581,7 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
-                type_size * cnt2, "Coll::mpi_data->in2_buffer" );
+                type_size * cnt2, TRUE, SAFE_ZONE, "Coll::mpi_data->in2_buffer" );
 
         ret = MPI_Recv( mpi_data->in2_buffer, cnt2,
                 type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
@@ -605,7 +608,8 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
     MPI_Status stat1, stat2;
     const neighbor_proc *nbr1, *nbr2;
     coll_unpacker unpack;
-    MPI_Aint extent, lower_bound, type_size;
+    MPI_Aint extent, lower_bound;
+    size_t type_size;
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -636,7 +640,7 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
-                type_size * cnt1, "Coll_FS::mpi_data->in1_buffer" );
+                type_size * cnt1, TRUE, SAFE_ZONE, "Coll_FS::mpi_data->in1_buffer" );
 
         ret = MPI_Recv( mpi_data->in1_buffer, cnt1,
                 type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
@@ -650,7 +654,7 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
-                type_size * cnt2, "Coll_FS::mpi_data->in2_buffer" );
+                type_size * cnt2, TRUE, SAFE_ZONE, "Coll_FS::mpi_data->in2_buffer" );
 
         ret = MPI_Recv( mpi_data->in2_buffer, cnt2,
                 type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
@@ -669,17 +673,17 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
 {
     int i, ret;
-    real my_sum, norm_sqr;
+    real sum_l, norm_sqr;
 
-    my_sum = 0.0;
+    sum_l = 0.0;
 
     /* compute local part of vector 2-norm */
     for ( i = 0; i < n; ++i )
     {
-        my_sum += SQR( v[i] );
+        sum_l += SQR( v[i] );
     }
 
-    ret = MPI_Allreduce( &my_sum, &norm_sqr, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &sum_l, &norm_sqr, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     return SQRT( norm_sqr );
@@ -690,20 +694,20 @@ real Parallel_Dot( real const * const v1, real const * const v2,
         const int n, MPI_Comm comm )
 {
     int i, ret;
-    real my_dot, res;
+    real dot_l, dot;
 
-    my_dot = 0.0;
+    dot_l = 0.0;
 
     /* compute local part of inner product */
     for ( i = 0; i < n; ++i )
     {
-        my_dot += v1[i] * v2[i];
+        dot_l += v1[i] * v2[i];
     }
 
-    ret = MPI_Allreduce( &my_dot, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &dot_l, &dot, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    return res;
+    return dot;
 }
 
 

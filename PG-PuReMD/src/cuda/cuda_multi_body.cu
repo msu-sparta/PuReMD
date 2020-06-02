@@ -68,7 +68,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
     /* lone-pair Energy */
     p_lp2 = sbp_i->p_lp2;      
     expvd2 = EXP( -75.0 * workspace.Delta_lp[i] );
-    inv_expvd2 = 1.0 / (1. + expvd2 );
+    inv_expvd2 = 1.0 / (1.0 + expvd2 );
 
     /* calculate the energy */
     e_lp = p_lp2 * workspace.Delta_lp[i] * inv_expvd2;

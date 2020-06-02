@@ -445,7 +445,7 @@ static void Init_Distance( reax_system *system, control_params *control,
     reax_atom *atom_i, *atom_j;
 
     far_nbr_list = lists[FAR_NBRS];
-    renbr = is_refactoring_step( control, data );
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     if ( renbr == FALSE )
     {
@@ -973,9 +973,9 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
     }
 
     /* reallocation checks */
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->n; ++i )
     {
-        if ( i < system->n && H->end[i] - H->start[i] > system->max_cm_entries[i] )
+        if ( H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
             workspace->realloc.cm = TRUE;
         }
@@ -1044,9 +1044,9 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
     }
 
     /* reallocation checks */
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->n; ++i )
     {
-        if ( i < system->n && H->end[i] - H->start[i] > system->max_cm_entries[i] )
+        if ( H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
             workspace->realloc.cm = TRUE;
         }
@@ -1623,6 +1623,10 @@ static int Init_Forces_No_Charges( reax_system * const system, control_params * 
         {
             btop_i = Start_Index( i, bond_list );
         }
+        else
+        {
+            btop_i = 0;
+        }
         sbp_i = &system->reax_param.sbp[type_i];
         ihb = NON_H_BONDING_ATOM;
         ihb_top = -1;
@@ -2041,14 +2045,19 @@ void Estimate_Storages( reax_system * const system, control_params * const contr
 #endif
         }
     }
+
+    /* set currently unused space to min. capacity */
     for ( i = system->N; i < system->total_cap; ++i )
     {
         system->max_bonds[i] = MIN_BONDS;
+    }
+    for ( i = system->N; i < system->total_cap; ++i )
+    {
         system->max_hbonds[i] = MIN_HBONDS;
-        if ( i < system->local_cap )
-        {
-            system->max_cm_entries[i] = MIN_CM_ENTRIES;
-        }
+    }
+    for ( i = system->N; i < system->local_cap; ++i )
+    {
+        system->max_cm_entries[i] = MIN_CM_ENTRIES;
     }
 
     /* reductions to get totals */
@@ -2056,30 +2065,29 @@ void Estimate_Storages( reax_system * const system, control_params * const contr
     system->total_hbonds = 0;
     system->total_cm_entries = 0;
     system->total_thbodies = 0;
+
     for ( i = 0; i < system->total_cap; ++i )
     {
-        /* duplicate info in atom structs in case of
-         * ownership transfer across processor boundaries */
-        if ( i < system->n )
-        {
-            system->my_atoms[i].num_hbonds = system->hbonds[i];
-        }
-        if ( i < system->N )
-        {
-            system->my_atoms[i].num_bonds = system->bonds[i];
-        }
-
         system->total_bonds += system->max_bonds[i];
+    }
+    for ( i = 0; i < system->total_cap; ++i )
+    {
         system->total_hbonds += system->max_hbonds[i];
-        if ( i < system->local_cap )
-        {
-            system->total_cm_entries += system->max_cm_entries[i];
-        }
-        if ( far_nbr_list->format == HALF_LIST )
+    }
+    for ( i = 0; i < system->local_cap; ++i )
+    {
+        system->total_cm_entries += system->max_cm_entries[i];
+    }
+    if ( far_nbr_list->format == HALF_LIST )
+    {
+        for ( i = 0; i < system->total_cap; ++i )
         {
             system->total_thbodies += SQR( system->max_bonds[i] / 2.0 );
         }
-        else
+    }
+    else
+    {
+        for ( i = 0; i < system->total_cap; ++i )
         {
             system->total_thbodies += SQR( system->max_bonds[i] );
         }
@@ -2089,6 +2097,17 @@ void Estimate_Storages( reax_system * const system, control_params * const contr
     system->total_hbonds = MAX( system->total_hbonds, MIN_CAP * MIN_HBONDS );
     system->total_cm_entries = MAX( system->total_cm_entries, MIN_CAP * MIN_CM_ENTRIES );
     system->total_thbodies = MAX( system->total_thbodies * SAFE_ZONE, MIN_3BODIES );
+
+    /* duplicate info in atom structs in case of
+     * ownership transfer across processor boundaries */
+    for ( i = 0; i < system->n; ++i )
+    {
+        system->my_atoms[i].num_bonds = system->bonds[i];
+    }
+    for ( i = 0; i < system->N; ++i )
+    {
+        system->my_atoms[i].num_hbonds = system->hbonds[i];
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] p%d @ estimate storages: total_cm_entries = %d, total_thbodies = %d\n",
@@ -2110,7 +2129,8 @@ int Compute_Forces( reax_system * const system, control_params * const control,
 #endif
 
     /********* init forces ************/
-    if ( control->charge_freq && (data->step - data->prev_steps) % control->charge_freq == 0 )
+    if ( control->charge_freq
+            && (data->step - data->prev_steps) % control->charge_freq == 0 )
     {
         charge_flag = TRUE;
     }

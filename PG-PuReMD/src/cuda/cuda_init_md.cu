@@ -49,6 +49,8 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
 {
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
+    /* since all processors read in all atoms and select their local atoms
+     * intially, no local atoms comm needed and just bin local atoms */
     Bin_My_Atoms( system, workspace );
     Reorder_My_Atoms( system, workspace );
 
@@ -56,12 +58,12 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
             &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
             &Unpack_Exchange_Message, TRUE );
 
-    system->total_cap = MAX( (int)(system->N * SAFE_ZONE), MIN_CAP );
+    system->total_cap = MAX( (int) CEIL( system->N * SAFE_ZONE ), MIN_CAP );
+
     Bin_Boundary_Atoms( system );
 
-    /* Sync atoms here to continue the computation */
     Cuda_Allocate_System( system );
-    Sync_System( system );
+    Cuda_Copy_System_Host_to_Device( system );
 
     /* estimate numH */
     Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
@@ -237,12 +239,14 @@ void Cuda_Initialize( reax_system *system, control_params *control,
 {
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
+    Cuda_Init_Simulation_Data( system, control, data );
+
     Cuda_Init_System( system, control, data, workspace, mpi_data );
+    /* reset for step 0 */
+    Reset_Simulation_Data( data );
 
     Cuda_Allocate_Grid( system );
     Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
-
-    Cuda_Init_Simulation_Data( system, control, data );
 
     Cuda_Init_Workspace( system, control, workspace, mpi_data );
 

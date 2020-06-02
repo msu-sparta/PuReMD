@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-int is_refactoring_step ( control_params const * const, simulation_data * const );
+int is_refactoring_step( control_params const * const, simulation_data * const );
 
 void Compute_Charges( reax_system const * const, control_params const * const,
         simulation_data * const,

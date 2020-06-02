@@ -338,7 +338,7 @@ void * smalloc( size_t n, const char *name )
 
 /* Safe wrapper around libc realloc
  *
- * n: num. of bytes to reallocated
+ * n: num. of bytes to reallocate
  * name: message with details about pointer, used for warnings/errors
  *
  * returns: ptr to reallocated memory
@@ -435,7 +435,8 @@ void * scalloc( size_t n, size_t size, const char *name )
  * new_size: num. of bytes to be newly allocated, if needed
  * msg: message with details about pointer, used for warnings/errors
  * */
-void check_smalloc( void **ptr, size_t *cur_size, size_t new_size, const char *msg )
+void check_smalloc( void **ptr, size_t *cur_size, size_t new_size, 
+        int over_alloc, real over_alloc_factor, const char *msg )
 {
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] requesting %zu bytes for %s (%zu currently allocated)\n",
@@ -445,15 +446,21 @@ void check_smalloc( void **ptr, size_t *cur_size, size_t new_size, const char *m
 
     if ( new_size > *cur_size )
     {
-        assert( new_size > 0 );
-
         if ( *cur_size != 0 )
         {
             sfree( *ptr, msg );
         }
 
+        if ( over_alloc == TRUE )
+        {
+            *cur_size = (int) CEIL( new_size * over_alloc_factor );
+        }
+        else
+        {
+            *cur_size = new_size;
+        }
+
         //TODO: look into using aligned alloc's
-        *cur_size = new_size;
         *ptr = smalloc( *cur_size, msg );
     }
 }
@@ -469,7 +476,8 @@ void check_smalloc( void **ptr, size_t *cur_size, size_t new_size, const char *m
  * new_size: num. of bytes to be newly allocated, if needed
  * msg: message with details about pointer, used for warnings/errors
  * */
-void check_srealloc( void **ptr, size_t *cur_size, size_t new_size, const char *msg )
+void check_srealloc( void **ptr, size_t *cur_size, size_t new_size,
+        int over_alloc, real over_alloc_factor, const char *msg )
 {
     void *new_ptr;
 
@@ -481,10 +489,18 @@ void check_srealloc( void **ptr, size_t *cur_size, size_t new_size, const char *
 
     if ( new_size > *cur_size )
     {
+        if ( over_alloc == TRUE )
+        {
+            *cur_size = (int) CEIL( new_size * over_alloc_factor );
+        }
+        else
+        {
+            *cur_size = new_size;
+        }
+
         //TODO: look into using aligned alloc's
-        new_ptr = srealloc( *ptr, new_size, msg );
+        new_ptr = srealloc( *ptr, *cur_size, msg );
         *ptr = new_ptr;
-        *cur_size = new_size;
     }
 }
 

@@ -28,7 +28,7 @@ void Cuda_Deallocate_Workspace( control_params *, storage * );
 
 void Cuda_Deallocate_Matrix( sparse_matrix * );
 
-void Cuda_ReAllocate( reax_system*, control_params*, simulation_data*, storage*,
+void Cuda_Reallocate( reax_system*, control_params*, simulation_data*, storage*,
         reax_list**, mpi_datatypes* );
 
 

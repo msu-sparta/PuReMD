@@ -680,7 +680,7 @@ void Cuda_Reallocate_Thbodies_List( reax_list *thbodies, size_t n, size_t max_in
 }
 
 
-void Cuda_ReAllocate( reax_system *system, control_params *control,
+void Cuda_Reallocate( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data )
 {
@@ -785,7 +785,7 @@ void Cuda_ReAllocate( reax_system *system, control_params *control,
                 {
                     // reallocate g->atoms
                     sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, "g:atoms" );
-                    g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int*)
+                    g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int *)
                             scalloc( realloc->gcell_atoms, sizeof(int), "g:atoms" );
                 }
             }

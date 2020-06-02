@@ -393,7 +393,8 @@ static real Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
 //#else
 
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec2) * n, "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
+            sizeof(rvec2) * n, TRUE, SAFE_ZONE,
+            "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
     spad = (rvec2 *) workspace->host_scratch;
     copy_host_device( spad, (void *) x, sizeof(rvec2) * n,
             cudaMemcpyDeviceToHost, "Dual_Sparse_MatVec_Comm_Part1::x" );
@@ -494,7 +495,8 @@ static real Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
 //#else
 
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(rvec2) * n1, "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
+                sizeof(rvec2) * n1, TRUE, SAFE_ZONE,
+                "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
         spad = (rvec2 *) workspace->host_scratch;
         copy_host_device( spad, b, sizeof(rvec2) * n1,
                 cudaMemcpyDeviceToHost, "Dual_Sparse_MatVec_Comm_Part2::b" );
@@ -566,7 +568,8 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
 //#else
 
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * n, "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
+            sizeof(real) * n, TRUE, SAFE_ZONE,
+            "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
     spad = (real *) workspace->host_scratch;
     copy_host_device( spad, (void *) x, sizeof(real) * n,
             cudaMemcpyDeviceToHost, "Sparse_MatVec_Comm_Part1::x" );
@@ -672,7 +675,8 @@ static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
 //#else
 
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(real) * n1, "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
+                sizeof(real) * n1, TRUE, SAFE_ZONE,
+                "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
         spad = (real *) workspace->host_scratch;
         copy_host_device( spad, b, sizeof(real) * n1,
                 cudaMemcpyDeviceToHost, "Sparse_MatVec_Comm_Part2::q" );

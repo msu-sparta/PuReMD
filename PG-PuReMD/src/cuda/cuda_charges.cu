@@ -264,17 +264,19 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int ret;
-    real time, timings[2];
+//    int ret;
+#if defined(LOG_PERFORMANCE)
+    real time;
 
     time = Get_Time( );
-    timings[0] = 0.0;
-    timings[1] = 0.0;
+#endif
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
 //    Sort_Matrix_Rows( &workspace->d_workspace->H, system );
     
-    Update_Timing_Info( &time, &timings[0] );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_sort );
+#endif
 
     switch ( control->cm_solver_pre_comp_type )
     {
@@ -306,23 +308,9 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
     }
 
-    Update_Timing_Info( &time, &timings[1] );
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        ret = MPI_Reduce( MPI_IN_PLACE, timings, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        data->timing.cm_sort += timings[0] / control->nprocs;
-        data->timing.cm_solver_pre_comp += timings[1] / control->nprocs;
-    }
-    else
-    {
-        ret = MPI_Reduce( timings, NULL, 2, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-    }
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_pre_comp );
+#endif
 }
 
 
@@ -495,7 +483,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 #endif
 
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * system->n,
+            sizeof(real) * system->n, TRUE, SAFE_ZONE,
             "Calculate_Charges_QEq::workspace->host_scratch" );
     q = (real *) workspace->host_scratch;
 #if defined(DUAL_SOLVER)

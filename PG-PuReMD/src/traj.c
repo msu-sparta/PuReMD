@@ -41,33 +41,34 @@
 int Set_My_Trajectory_View( MPI_File trj, int offset, MPI_Datatype etype,
         MPI_Comm comm, int my_rank, int my_n, int big_n )
 {
-    int my_disp, length[3], ret;
-    MPI_Aint lower_bound, extent, disp[3];
+    int my_disp, length[3], type_size, ret;
+    MPI_Aint disp[3], lower_bound, extent;
     MPI_Datatype type[3], view;
 
     /* get old type info */
     ret = MPI_Type_get_extent( etype, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+    type_size = MPI_Aint_add( lower_bound, extent );
 
     /* determine where to start writing into the mpi file */
     my_disp = SumScan( my_n, my_rank, MASTER_NODE, comm );
     my_disp -= my_n;
-    extent /= sizeof(char);
+    type_size /= sizeof(char);
 
     length[0] = 1;
     length[1] = my_n;
     length[2] = 1;
     disp[0] = 0;
-    disp[1] = extent * my_disp;
-    disp[2] = extent * big_n;
+    disp[1] = type_size * my_disp;
+    disp[2] = type_size * big_n;
     type[0] = MPI_LB;
     type[1] = etype;
     type[2] = MPI_UB;
 
     MPI_Type_create_struct( 3, length, disp, type, &view );
 
-    //TODO: change due to deprecation of MPI_LB/MPI_UB
-//    MPI_Type_create_resized( etype, lower_bound, extent, &view );
+    //TODO: change due to deprecation of MPI_LB/MPI_UB => set lower bound to negative, upper bound to positive bigger than type size
+//    MPI_Type_create_resized( etype, -1 * type_size * my_disp, type_size * (big_n - my_disp), &view );
 
     MPI_Type_commit( &view );
 

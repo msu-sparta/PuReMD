@@ -6,21 +6,28 @@
 #include "cuda_reduction.h"
 
 #include "../reset_tools.h"
+#include "../vector.h"
 
 
 extern "C"
 {
 
-void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
+
+CUDA_GLOBAL void k_reset_workspace( storage workspace, int N )
 {
-    cuda_memset( workspace->d_workspace->total_bond_order, 0,
-            system->total_cap * sizeof(real), "total_bond_order" );
-    cuda_memset( workspace->d_workspace->dDeltap_self, 0,
-            system->total_cap * sizeof(rvec), "dDeltap_self" );
-    cuda_memset( workspace->d_workspace->CdDelta, 0,
-            system->total_cap * sizeof(real), "CdDelta" );
-    cuda_memset( workspace->d_workspace->f, 0,
-            system->total_cap * sizeof(rvec), "f" );
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    workspace.total_bond_order[i] = 0.0;
+    workspace.CdDelta[i] = 0.0;
+    rvec_MakeZero( workspace.dDeltap_self[i] );
+    rvec_MakeZero( workspace.f[i] );
 }
 
 
@@ -48,6 +55,19 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
 
 //    my_atoms[i].Hindex = hindex[i];
     my_atoms[i].Hindex = i;
+}
+
+void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
+{
+    int blocks;
+
+    blocks = system->total_cap / DEF_BLOCK_SIZE
+        + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+
+    k_reset_workspace <<< blocks, DEF_BLOCK_SIZE >>>
+        ( *(workspace->d_workspace), system->total_cap );
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
 }
 
 

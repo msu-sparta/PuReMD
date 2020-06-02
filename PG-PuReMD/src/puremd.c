@@ -97,7 +97,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     rvec diff, cross;
 
     /* remove translational and rotational velocity of the center of mass from system */
-    if ( control->ensemble != NVE && control->remove_CoM_vel
+    if ( control->ensemble != NVE && control->remove_CoM_vel > 0
             && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
@@ -404,12 +404,8 @@ int simulate( const void * const handle )
             {
                 Post_Evolve( system, control, data, workspace,
                         lists, out_control, mpi_data );
-            }
 
-            if ( ret == SUCCESS )
-            {
                 data->timing.num_retries = retries;
-
                 Output_Results( system, control, data, lists, out_control, mpi_data );
 
 //              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
@@ -451,11 +447,7 @@ int simulate( const void * const handle )
         }
 #endif
 
-//      Write_PDB_File( &system, &lists[BONDS], &out_control );
-
-#if defined(TEST_ENERGY) || defined(TEST_FORCES)
-//      Integrate_Results(control);
-#endif
+//      Write_PDB_File( system, lists[BONDS], data, control, mpi_data, out_control );
 
         /* end of simulation, write total simulation time
          * (excluding deallocation routine time) after

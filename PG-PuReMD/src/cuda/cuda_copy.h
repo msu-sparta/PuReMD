@@ -12,7 +12,7 @@ void Cuda_Copy_Atoms_Host_to_Device( reax_system * );
 
 void Cuda_Copy_Grid_Host_to_Device( grid *, grid * );
 
-void Sync_System( reax_system * );
+void Cuda_Copy_System_Host_to_Device( reax_system * );
 
 void Prep_Device_For_Output( reax_system *, simulation_data * );
 

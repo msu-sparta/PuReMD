@@ -8,26 +8,26 @@ CUDA_DEVICE static inline int Cuda_strncmp( const char * a,
         const char * b, int len )
 {
     int i, ret;
-    char *src, *dst;
+    char *p_a, *p_b;
 
     ret = 0;
-    src = (char *) a;
-    dst = (char *) b;
+    p_a = (char *) a;
+    p_b = (char *) b;
 
     for ( i = 0; i < len; i++ )
     {
-        if ( *src != *dst )
+        if ( *p_a != *p_b )
         {
-            ret = *src > *dst ? 1 : -1;
+            ret = *p_a > *p_b ? 1 : -1;
             break;
         }
-        else if ( *dst == '\0' )
+        else if ( *p_b == '\0' )
         {
             break;
         }
 
-        src++;
-        dst++;
+        ++p_a;
+        ++p_b;
     }
 
     return ret;
