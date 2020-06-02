@@ -164,7 +164,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -pg"
@@ -174,7 +174,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 			DEFAULT_CFLAGS="-Wall -O0"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -p"
@@ -325,7 +325,7 @@ if test "x${pack_gpu_enabled}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -pg"
@@ -335,7 +335,7 @@ if test "x${pack_gpu_enabled}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -p"
@@ -424,7 +424,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -pg"
@@ -434,7 +434,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 			DEFAULT_CFLAGS="-Wall -O0"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -p"
@@ -590,7 +590,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -pg"
@@ -600,7 +600,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 			DEFAULT_CFLAGS="-Wall -O0"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
 		else
-			DEFAULT_CFLAGS="-Wall -O3"
+			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
 			DEFAULT_CFLAGS+=" -p"
@@ -718,7 +718,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 		NVCCFLAGS+=" -ccbin=${CXX}"
 		if test "x${BUILD_DEBUG}" = "xyes"
 		then
-			NVCCFLAGS+=" -g -G"
+			NVCCFLAGS+=" -G -Xcompiler -rdynamic -lineinfo"
 
 		fi
 		AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
