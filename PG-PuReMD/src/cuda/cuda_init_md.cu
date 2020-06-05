@@ -65,17 +65,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
     Cuda_Allocate_System( system );
     Cuda_Copy_System_Host_to_Device( system );
 
-    /* estimate numH */
     Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: n=%d local_cap=%d\n",
-             system->my_rank, system->n, system->local_cap );
-    fprintf( stderr, "p%d: N=%d total_cap=%d\n",
-             system->my_rank, system->N, system->total_cap );
-    fprintf( stderr, "p%d: numH=%d\n",
-             system->my_rank, system->numH );
-#endif
 
     Cuda_Compute_Total_Mass( system, control, workspace,
             data, mpi_data->comm_mesh3D );
@@ -175,10 +165,6 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
               system->my_rank );
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "data->N_f: %8.3f\n", data->N_f );
-#endif
 }
 
 
@@ -188,7 +174,20 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
     Cuda_Allocate_Workspace( system, control, workspace->d_workspace,
             system->local_cap, system->total_cap );
 
-    memset( &workspace->realloc, 0, sizeof(reallocate_data) );
+    workspace->realloc.far_nbrs = FALSE;
+    workspace->realloc.cm = FALSE;
+    workspace->realloc.hbonds = FALSE;
+    workspace->realloc.bonds = FALSE;
+    workspace->realloc.thbody = FALSE;
+    workspace->realloc.gcell_atoms = 0;
+
+    workspace->d_workspace->realloc.far_nbrs = FALSE;
+    workspace->d_workspace->realloc.cm = FALSE;
+    workspace->d_workspace->realloc.hbonds = FALSE;
+    workspace->d_workspace->realloc.bonds = FALSE;
+    workspace->d_workspace->realloc.thbody = FALSE;
+    workspace->d_workspace->realloc.gcell_atoms = 0;
+
     Cuda_Reset_Workspace( system, workspace );
 
     Init_Taper( control, workspace->d_workspace, mpi_data );
@@ -240,6 +239,13 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
     Cuda_Init_Simulation_Data( system, control, data );
+
+    /* scratch space - set before Cuda_Init_Workspace
+     * as Cuda_Init_System utilizes these variables */
+    workspace->scratch = NULL;
+    workspace->scratch_size = 0;
+    workspace->host_scratch = NULL;
+    workspace->host_scratch_size = 0;
 
     Cuda_Init_System( system, control, data, workspace, mpi_data );
     /* reset for step 0 */

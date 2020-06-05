@@ -405,7 +405,7 @@ void Allocate_Workspace( reax_system * const system, control_params * const cont
             workspace->p2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace::p2" );
             break;
 
-        case BiCGStab_S :
+        case BiCGStab_S:
             workspace->y = scalloc( total_cap, sizeof(real), "Allocate_Workspace::y" );
             workspace->g = scalloc( total_cap, sizeof(real), "Allocate_Workspace::g" );
             workspace->z = scalloc( total_cap, sizeof(real), "Allocate_Workspace::z" );

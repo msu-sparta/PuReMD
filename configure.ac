@@ -718,7 +718,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 		NVCCFLAGS+=" -ccbin=${CXX}"
 		if test "x${BUILD_DEBUG}" = "xyes"
 		then
-			NVCCFLAGS+=" -G -Xcompiler -rdynamic -lineinfo"
+			NVCCFLAGS+=" -Xcompiler -rdynamic -lineinfo"
 
 		fi
 		AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])

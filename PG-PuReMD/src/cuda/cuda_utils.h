@@ -22,8 +22,6 @@ void copy_device( void *, void *, size_t, const char * );
 
 void compute_blocks( int *, int *, int );
 
-void compute_matvec_blocks( int *, int );
-
 void compute_nearest_pow_2( int, int * );
 
 void Cuda_Init_Block_Sizes( reax_system *, control_params * );

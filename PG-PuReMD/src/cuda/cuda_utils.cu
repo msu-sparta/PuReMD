@@ -151,14 +151,8 @@ extern "C" void copy_device( void *dest, void *src, size_t size, const char *msg
 
 extern "C" void compute_blocks( int *blocks, int *block_size, int count )
 {
-    *block_size = CUDA_BLOCK_SIZE;
-    *blocks = (int) CEIL((double) count / CUDA_BLOCK_SIZE);
-}
-
-
-extern "C" void compute_matvec_blocks( int *blocks, int count )
-{
-    *blocks = (int) CEIL((double) count * MATVEC_KER_THREADS_PER_ROW / MATVEC_BLOCK_SIZE);
+    *block_size = DEF_BLOCK_SIZE; // threads per block
+    *blocks = (int) CEIL( (double) count / DEF_BLOCK_SIZE ); // blocks per grid
 }
 
 
@@ -194,13 +188,6 @@ extern "C" void Cuda_Init_Block_Sizes( reax_system *system, control_params *cont
     compute_blocks( &control->blocks, &control->block_size, system->n );
     compute_nearest_pow_2( control->blocks, &control->blocks_pow_2 );
 
-    compute_blocks( &control->blocks_n, &control->block_size, system->N );
+    compute_blocks( &control->blocks_n, &control->block_size_n, system->N );
     compute_nearest_pow_2( control->blocks_n, &control->blocks_pow_2_n );
-
-    compute_matvec_blocks( &control->matvec_blocks, system->N );
-
-#if defined(__CUDA_DEBUG_LOG__)
-    fprintf( stderr, "[INFO] control->matvec_blocks = %d, control->matvec_blocksize = %d, system->N = %d\n",
-            control->matvec_blocks, MATVEC_BLOCK_SIZE, system->N );
-#endif
 }

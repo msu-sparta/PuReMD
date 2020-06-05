@@ -361,12 +361,6 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
     total_rvec = sizeof(rvec) * total_cap;
     local_rvec = sizeof(rvec) * local_cap;
 
-    /* scratch space */
-    workspace->scratch = NULL;
-    workspace->scratch_size = 0;
-    workspace->host_scratch = NULL;
-    workspace->host_scratch_size = 0;
-
     /* bond order related storage  */
     cuda_malloc( (void **) &workspace->total_bond_order, total_real, TRUE, "total_bo" );
     cuda_malloc( (void **) &workspace->Deltap, total_real, TRUE, "Deltap" );
@@ -390,10 +384,6 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
     {
         cuda_malloc( (void **) &workspace->Hdia_inv, sizeof(real) * total_cap, TRUE, "Hdia_inv" );
     }
-    cuda_malloc( (void **) &workspace->b_s, sizeof(real) * total_cap, TRUE, "b_s" );
-    cuda_malloc( (void **) &workspace->b_t, sizeof(real) * total_cap, TRUE, "b_t" );
-    cuda_malloc( (void **) &workspace->s, sizeof(real) * total_cap, TRUE, "s" );
-    cuda_malloc( (void **) &workspace->t, sizeof(real) * total_cap, TRUE, "t" );
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
@@ -401,6 +391,10 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
     {
         cuda_malloc( (void **) &workspace->droptol, sizeof(real) * total_cap, TRUE, "droptol" );
     }
+    cuda_malloc( (void **) &workspace->b_s, sizeof(real) * total_cap, TRUE, "b_s" );
+    cuda_malloc( (void **) &workspace->b_t, sizeof(real) * total_cap, TRUE, "b_t" );
+    cuda_malloc( (void **) &workspace->s, sizeof(real) * total_cap, TRUE, "s" );
+    cuda_malloc( (void **) &workspace->t, sizeof(real) * total_cap, TRUE, "t" );
 #if defined(DUAL_SOLVER)
     cuda_malloc( (void **) &workspace->b, sizeof(rvec2) * total_cap, TRUE, "b" );
     cuda_malloc( (void **) &workspace->x, sizeof(rvec2) * total_cap, TRUE, "x" );
@@ -431,6 +425,10 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
         break;
 
     case SDM_S:
+        cuda_malloc( (void **) &workspace->r, sizeof(real) * total_cap, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d, sizeof(real) * total_cap, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q, sizeof(real) * total_cap, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p, sizeof(real) * total_cap, TRUE, "p" );
         break;
 
     case CG_S:
@@ -444,6 +442,24 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
         cuda_malloc( (void **) &workspace->q2, sizeof(rvec2) * total_cap, TRUE, "q2" );
         cuda_malloc( (void **) &workspace->p2, sizeof(rvec2) * total_cap, TRUE, "p2" );
 #endif
+        break;
+
+    case BiCGStab_S:
+        cuda_malloc( (void **) &workspace->y, sizeof(real) * total_cap, TRUE, "y" );
+        cuda_malloc( (void **) &workspace->g, sizeof(real) * total_cap, TRUE, "g" );
+        cuda_malloc( (void **) &workspace->z, sizeof(real) * total_cap, TRUE, "z" );
+        cuda_malloc( (void **) &workspace->r, sizeof(real) * total_cap, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d, sizeof(real) * total_cap, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q, sizeof(real) * total_cap, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p, sizeof(real) * total_cap, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->r_hat, sizeof(real) * total_cap, TRUE, "r_hat" );
+        cuda_malloc( (void **) &workspace->q_hat, sizeof(real) * total_cap, TRUE, "q_hat" );
+        break;
+
+    case PIPECG_S:
+        break;
+
+    case PIPECR_S:
         break;
 
     default:
@@ -470,7 +486,7 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
         workspace->old_mark = NULL;
     }
 
-    if( control->diffusion_coef )
+    if ( control->diffusion_coef )
     {
         cuda_malloc( (void **) &workspace->x_old, local_cap * sizeof(rvec), TRUE, "x_old" );
     }
@@ -565,6 +581,28 @@ void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
             break;
 
         case SDM_S:
+            cuda_free( workspace->r, "r" );
+            cuda_free( workspace->d, "d" );
+            cuda_free( workspace->q, "q" );
+            cuda_free( workspace->p, "p" );
+            break;
+
+        case BiCGStab_S:
+            cuda_free( workspace->y, "y" );
+            cuda_free( workspace->g, "g" );
+            cuda_free( workspace->z, "z" );
+            cuda_free( workspace->r, "r" );
+            cuda_free( workspace->d, "d" );
+            cuda_free( workspace->q, "q" );
+            cuda_free( workspace->p, "p" );
+            cuda_free( workspace->r_hat, "r_hat" );
+            cuda_free( workspace->q_hat, "q_hat" );
+            break;
+
+        case PIPECG_S:
+            break;
+
+        case PIPECR_S:
             break;
 
         default:

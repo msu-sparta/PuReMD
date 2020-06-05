@@ -39,6 +39,11 @@ int Cuda_CG( reax_system const * const, control_params const * const,
         sparse_matrix const * const, real const * const, real,
         real * const, mpi_datatypes * const );
 
+int Cuda_BiCGStab( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, real const * const, real,
+        real * const, mpi_datatypes * const );
+
 #ifdef __cplusplus
 }
 #endif

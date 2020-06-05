@@ -255,20 +255,12 @@
   #define HB_POST_PROC_BLOCK_SIZE (256)
   #define HB_POST_PROC_KER_THREADS_PER_ATOM (32)
   
-  #if defined( __INIT_BLOCK_SIZE__)
+  #if defined(__INIT_BLOCK_SIZE__)
     /* all utility functions and all */
-    #define DEF_BLOCK_SIZE __INIT_BLOCK_SIZE__
-    /* init forces */
-    #define CUDA_BLOCK_SIZE __INIT_BLOCK_SIZE__
-    /* ??? */
-    #define ST_BLOCK_SIZE __INIT_BLOCK_SIZE__
+    #define DEF_BLOCK_SIZE (__INIT_BLOCK_SIZE__)
   #else
     /* all utility functions and all */
     #define DEF_BLOCK_SIZE (256)
-    /* init forces */
-    #define CUDA_BLOCK_SIZE (256)
-    /* ??? */
-    #define ST_BLOCK_SIZE (256)
   #endif
   
   #if defined( __NBRS_THREADS_PER_ATOM__ )
@@ -305,18 +297,6 @@
     #define VDW_BLOCK_SIZE __VDW_BLOCK_SIZE__
   #else
     #define VDW_BLOCK_SIZE (256)
-  #endif
-  
-  #if defined( __MATVEC_THREADS_PER_ROW__ )
-    #define MATVEC_KER_THREADS_PER_ROW __MATVEC_THREADS_PER_ROW__
-  #else
-    #define MATVEC_KER_THREADS_PER_ROW (32)
-  #endif
-  
-  #if defined( __MATVEC_BLOCK_SIZE__)
-    #define MATVEC_BLOCK_SIZE __MATVEC_BLOCK_SIZE__
-  #else
-    #define MATVEC_BLOCK_SIZE (512)
   #endif
 #endif
 
@@ -1587,18 +1567,20 @@ struct control_params
     evolve_function Cuda_Evolve;
     /* control parameters (GPU) */
     void *d_control_params;
-    /**/
+    /* num. CUDA blocks for kernels with 1 thread per atom (local) */
     int blocks;
-    /**/
-    int blocks_pow_2;
-    /**/
+    /* num. CUDA threads per block for kernels with 1 thread per atom (local) */
     int block_size;
-    /**/
+    /* num. of CUDA blocks rounded up to the nearest power of 2
+     * for kernels with 1 thread per atom (local) */
+    int blocks_pow_2;
+    /* num. CUDA blocks for kernels with 1 thread per atom (local AND ghost) */
     int blocks_n;
-    /**/
+    /* num. CUDA threads per block for kernels with 1 thread per atom (local AND ghost) */
+    int block_size_n;
+    /* num. of CUDA blocks rounded up to the nearest power of 2
+     * for kernels with 1 thread per atom (local AND ghost) */
     int blocks_pow_2_n;
-    /**/
-    int matvec_blocks;
 #endif
 };
 

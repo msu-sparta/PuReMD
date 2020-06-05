@@ -922,7 +922,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
 void Cuda_Compute_Pressure( reax_system* system, control_params *control,
         storage *workspace, simulation_data* data, mpi_datatypes *mpi_data )
 {
-    int blocks, block_size, blocks_n, blocks_pow_2_n, ret;
+    int ret;
     rvec *rvec_spad, int_press;
     simulation_box *big_box;
     
@@ -931,39 +931,31 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
     /* 0: both int and ext, 1: ext only, 2: int only */
     if ( control->press_mode == 0 || control->press_mode == 2 )
     {
-        blocks = system->n / DEF_BLOCK_SIZE + 
-            ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-        compute_blocks( &blocks_n, &block_size, system->n );
-        compute_nearest_pow_2( blocks_n, &blocks_pow_2_n );
-
         cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-                sizeof(rvec) * (system->n + blocks_n + 1),
+                sizeof(rvec) * (system->n + control->blocks + 1),
                 "Cuda_Compute_Pressure::workspace->scratch" );
         rvec_spad = (rvec *) workspace->scratch;
 
-        k_compute_pressure <<< blocks, DEF_BLOCK_SIZE >>>
+        k_compute_pressure <<< control->blocks, control->block_size >>>
             ( system->d_my_atoms, system->d_big_box, rvec_spad,
               system->n );
 
-        k_reduction_rvec <<< blocks_n, block_size, sizeof(rvec) * block_size >>>
+        k_reduction_rvec <<< control->blocks, control->block_size,
+                         sizeof(rvec) * control->block_size >>>
             ( rvec_spad, &rvec_spad[system->n],  system->n );
         cudaDeviceSynchronize( );
         cudaCheckError( );
 
-        k_reduction_rvec <<< 1, blocks_pow_2_n, sizeof(rvec) * blocks_pow_2_n >>>
-            ( &rvec_spad[system->n], &rvec_spad[system->n + blocks_n], blocks_n );
+        k_reduction_rvec <<< 1, control->blocks_pow_2,
+                         sizeof(rvec) * control->blocks_pow_2 >>>
+            ( &rvec_spad[system->n], &rvec_spad[system->n + control->blocks],
+              control->blocks );
         cudaDeviceSynchronize( );
         cudaCheckError( );
 
-        copy_host_device( &int_press, &rvec_spad[system->n + blocks_n], sizeof(rvec), 
+        copy_host_device( &int_press, &rvec_spad[system->n + control->blocks], sizeof(rvec), 
                 cudaMemcpyDeviceToHost, "Cuda_Compute_Pressure::d_int_press" );
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d:p_int(%10.5f %10.5f %10.5f)p_ext(%10.5f %10.5f %10.5f)\n",
-            system->my_rank, int_press[0], int_press[1], int_press[2],
-            data->my_ext_press[0], data->my_ext_press[1], data->my_ext_press[2] );
-#endif
 
     /* sum up internal and external pressure */
     ret = MPI_Allreduce( int_press, data->int_press,
@@ -972,15 +964,6 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
     ret = MPI_Allreduce( data->my_ext_press, data->ext_press,
             3, MPI_DOUBLE, MPI_SUM, mpi_data->comm_mesh3D );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",
-             system->my_rank,
-             data->int_press[0], data->int_press[1], data->int_press[2] );
-    fprintf( stderr, "p%d: %10.5f %10.5f %10.5f\n",
-             system->my_rank,
-             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
-#endif
 
     /* kinetic contribution */
     data->kin_press = 2.0 * (E_CONV * data->sys_en.e_kin)
