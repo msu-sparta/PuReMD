@@ -918,7 +918,7 @@ real sparse_approx_inverse( reax_system const * const system,
         simulation_data * const data,
         storage * const workspace, mpi_datatypes * const mpi_data, 
         sparse_matrix * const A, sparse_matrix * const A_spar_patt,
-        sparse_matrix **A_app_inv, int nprocs )
+        sparse_matrix * const A_app_inv, int nprocs )
 {
     int i, k, pj, j_temp, ret;
     int N, M, d_i, d_j;
@@ -943,15 +943,15 @@ real sparse_approx_inverse( reax_system const * const system,
     start = Get_Time( );
     t_comm = 0.0;
 
-    if ( *A_app_inv == NULL)
+    if ( A_app_inv == NULL)
     {
         //TODO: FULL_MATRIX?
         Allocate_Matrix( A_app_inv, A_spar_patt->n, A->NT, A_spar_patt->m, SYM_FULL_MATRIX );
     }
     
-    else /* if ( (*A_app_inv)->m < A_spar_patt->m ) */
+    else /* if ( A_app_inv->m < A_spar_patt->m ) */
     {
-        Deallocate_Matrix( *A_app_inv );
+        Deallocate_Matrix( A_app_inv );
         Allocate_Matrix( A_app_inv, A_spar_patt->n, A->NT, A_spar_patt->m, SYM_FULL_MATRIX );
     }
 
@@ -994,7 +994,6 @@ real sparse_approx_inverse( reax_system const * const system,
     fprintf( stdout,"SAI after Dist call\n");
     fflush( stdout );
 
-    comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_nt_buffers;
     count = 0;
 
@@ -1023,9 +1022,11 @@ real sparse_approx_inverse( reax_system const * const system,
                 fprintf( stdout,"Dist communication receive phase direction %d will receive %d\n", d, cnt);
                 fflush( stdout );
                 t_start = Get_Time( );
-                ret = MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank, d, comm, &req[2 * d] );
+                ret = MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank,
+                        d, mpi_data->comm_mesh3D, &req[2 * d] );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                ret = MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank, d, comm, &req[2 * d + 1] );
+                ret = MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank,
+                        d, mpi_data->comm_mesh3D, &req[2 * d + 1] );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 t_comm += Get_Time( ) - t_start;
             }
@@ -1073,11 +1074,13 @@ real sparse_approx_inverse( reax_system const * const system,
                 fflush( stdout );
 
                 t_start = Get_Time( );
-                ret = MPI_Send( j_send, cnt, MPI_INT, nbr->rank, d, comm );
+                ret = MPI_Send( j_send, cnt, MPI_INT, nbr->rank,
+                        d, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
-                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank, d, comm );
+                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank,
+                        d, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
                 fflush( stdout );
@@ -1273,12 +1276,12 @@ real sparse_approx_inverse( reax_system const * const system,
         }
 
         /* accumulate the resulting vector to build A_app_inv */
-        (*A_app_inv)->start[i] = A_spar_patt->start[i];
-        (*A_app_inv)->end[i] = A_spar_patt->end[i];
-        for ( k = (*A_app_inv)->start[i]; k < (*A_app_inv)->end[i]; ++k)
+        A_app_inv->start[i] = A_spar_patt->start[i];
+        A_app_inv->end[i] = A_spar_patt->end[i];
+        for ( k = A_app_inv->start[i]; k < A_app_inv->end[i]; ++k)
         {
-            (*A_app_inv)->j[k] = A_spar_patt->j[k];
-            (*A_app_inv)->val[k] = e_j[k - A_spar_patt->start[i]];
+            A_app_inv->j[k] = A_spar_patt->j[k];
+            A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
         }
         free( dense_matrix );
         free( e_j );
@@ -1305,7 +1308,7 @@ real sparse_approx_inverse( reax_system const * const system,
         simulation_data * const data,
         storage * const workspace, mpi_datatypes * const mpi_data, 
         sparse_matrix * const A, sparse_matrix * const A_spar_patt,
-        sparse_matrix **A_app_inv, int nprocs )
+        sparse_matrix * const A_app_inv, int nprocs )
 {
     int i, k, pj, j_temp, push, ret;
     int N, M, d_i, d_j, mark;
@@ -1333,14 +1336,14 @@ real sparse_approx_inverse( reax_system const * const system,
     start = Get_Time( );
     t_comm = 0.0;
 
-    if ( *A_app_inv == NULL)
+    if ( A_app_inv == NULL)
     {
         Allocate_Matrix( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
                 SYM_FULL_MATRIX );
     }
-    else /* if ( (*A_app_inv)->m < A_spar_patt->m ) */
+    else /* if ( A_app_inv->m < A_spar_patt->m ) */
     {
-        Deallocate_Matrix( *A_app_inv );
+        Deallocate_Matrix( A_app_inv );
         Allocate_Matrix( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
                 SYM_FULL_MATRIX );
     }
@@ -1385,7 +1388,6 @@ real sparse_approx_inverse( reax_system const * const system,
     Dist( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
     t_comm += Get_Time( ) - t_start;
 
-    comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
 
     /* use a Dist-like approach to send the row information */
@@ -1429,9 +1431,11 @@ real sparse_approx_inverse( reax_system const * const system,
                 }
 
                 t_start = Get_Time( );
-                ret = MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank, 2 * d + 1, comm, &req1 );
+                ret = MPI_Irecv( j_recv1, cnt, MPI_INT, nbr1->rank,
+                        2 * d + 1, mpi_data->comm_mesh3D, &req1 );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                ret = MPI_Irecv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank, 2 * d + 1, comm, &req2 );
+                ret = MPI_Irecv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank,
+                        2 * d + 1, mpi_data->comm_mesh3D, &req2 );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 t_comm += Get_Time( ) - t_start;
             }
@@ -1469,9 +1473,11 @@ real sparse_approx_inverse( reax_system const * const system,
                 }
 
                 t_start = Get_Time( );
-                ret = MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank, 2 * d, comm, &req3 );
+                ret = MPI_Irecv( j_recv2, cnt, MPI_INT, nbr2->rank,
+                        2 * d, mpi_data->comm_mesh3D, &req3 );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                ret = MPI_Irecv( val_recv2, cnt, MPI_DOUBLE, nbr2->rank, 2 * d, comm, &req4 );
+                ret = MPI_Irecv( val_recv2, cnt, MPI_DOUBLE, nbr2->rank,
+                        2 * d, mpi_data->comm_mesh3D, &req4 );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 t_comm += Get_Time( ) - t_start;
             }
@@ -1529,9 +1535,11 @@ real sparse_approx_inverse( reax_system const * const system,
                 }
 
                 t_start = Get_Time( );
-                ret = MPI_Send( j_send, cnt, MPI_INT, nbr1->rank, 2 * d, comm );
+                ret = MPI_Send( j_send, cnt, MPI_INT, nbr1->rank,
+                        2 * d, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank, 2 * d, comm );
+                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr1->rank,
+                        2 * d, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 t_comm += Get_Time( ) - t_start;
             }
@@ -1589,9 +1597,11 @@ real sparse_approx_inverse( reax_system const * const system,
                 }
 
                 t_start = Get_Time( );
-                ret = MPI_Send( j_send, cnt, MPI_INT, nbr2->rank, 2 * d + 1, comm );
+                ret = MPI_Send( j_send, cnt, MPI_INT, nbr2->rank,
+                        2 * d + 1, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr2->rank, 2 * d + 1, comm );
+                ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr2->rank,
+                        2 * d + 1, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 t_comm += Get_Time( ) - t_start;
             }
@@ -1814,12 +1824,12 @@ real sparse_approx_inverse( reax_system const * const system,
         }
 
         /* accumulate the resulting vector to build A_app_inv */
-        (*A_app_inv)->start[i] = A_spar_patt->start[i];
-        (*A_app_inv)->end[i] = A_spar_patt->end[i];
-        for ( k = (*A_app_inv)->start[i]; k < (*A_app_inv)->end[i]; ++k)
+        A_app_inv->start[i] = A_spar_patt->start[i];
+        A_app_inv->end[i] = A_spar_patt->end[i];
+        for ( k = A_app_inv->start[i]; k < A_app_inv->end[i]; ++k)
         {
-            (*A_app_inv)->j[k] = A_spar_patt->j[k];
-            (*A_app_inv)->val[k] = e_j[k - A_spar_patt->start[i]];
+            A_app_inv->j[k] = A_spar_patt->j[k];
+            A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
         }
     }
 

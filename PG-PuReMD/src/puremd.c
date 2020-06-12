@@ -475,12 +475,12 @@ int cleanup( const void * const handle )
 
 #if defined(HAVE_CUDA)
         //TODO: add Cuda_Finalize( ... )
+
+        Cuda_Cleanup_Environment( );
 #else
         Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                 pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                 pmd_handle->mpi_data, pmd_handle->output_enabled );
-
-        Cuda_Cleanup_Environment( );
 #endif
 
 #if defined(HAVE_CUDA)

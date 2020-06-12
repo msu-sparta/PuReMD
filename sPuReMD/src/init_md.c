@@ -429,7 +429,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         case QEQ_CM:
             for ( i = 0; i < system->N; ++i )
             {
-                workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
+                workspace->b_s[i] = -1.0 * system->reax_param.sbp[ system->atoms[i].type ].chi;
                 workspace->b_t[i] = -1.0;
             }
             break;

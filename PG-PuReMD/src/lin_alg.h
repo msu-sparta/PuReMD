@@ -40,7 +40,7 @@ void setup_sparse_approx_inverse( reax_system const * const,
 real sparse_approx_inverse( reax_system const * const,
         simulation_data * const,
         storage * const, mpi_datatypes * const, 
-        sparse_matrix * const, sparse_matrix * const, sparse_matrix **, int );
+        sparse_matrix * const, sparse_matrix * const, sparse_matrix * const, int );
 
 int SDM( reax_system const * const, control_params const * const,
         simulation_data * const,

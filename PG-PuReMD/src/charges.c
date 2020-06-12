@@ -266,7 +266,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
     {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
         t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
-                &workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
+                &workspace->H, &workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
 
         ret = MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM,
                 MASTER_NODE, MPI_COMM_WORLD );
