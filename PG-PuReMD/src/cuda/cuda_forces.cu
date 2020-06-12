@@ -899,7 +899,7 @@ CUDA_GLOBAL void k_bond_mark( reax_list p_bond_list, storage p_workspace, int N 
 
 
 static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params *control, 
-        storage *workspace, int step, reax_list **lists, int *thbody )
+        simulation_data *data, storage *workspace, reax_list **lists, int *thbody )
 {
     int ret;
 
@@ -908,7 +908,7 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
     cuda_memset( thbody, 0, system->total_bonds * sizeof(int),
             "Cuda_Estimate_Storage_Three_Body::thbody" );
 
-    Estimate_Cuda_Valence_Angles <<< control->blocks_n, control->block_size_n >>>
+    Cuda_Estimate_Valence_Angles <<< control->blocks_n, control->block_size_n >>>
         ( system->d_my_atoms, (control_params *)control->d_control_params, 
           *(lists[BONDS]), system->n, system->N, thbody );
     cudaDeviceSynchronize( );
@@ -919,12 +919,11 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
     copy_host_device( &system->total_thbodies, system->d_total_thbodies, sizeof(int),
             cudaMemcpyDeviceToHost, "Cuda_Estimate_Storage_Three_Body::d_total_thbodies" );
 
-    if ( step == 0 )
+    if ( data->step - data->prev_steps == 0 )
     {
-        system->total_thbodies = MAX( (int)(system->total_thbodies * SAFE_ZONE), MIN_3BODIES );
+        system->total_thbodies = MAX( (int) (system->total_thbodies * SAFE_ZONE), MIN_3BODIES );
         system->total_thbodies_indices = system->total_bonds;
 
-        /* create Three-body list */
         Cuda_Make_List( system->total_thbodies_indices, system->total_thbodies,
                 TYP_THREE_BODY, lists[THREE_BODIES] );
     }
@@ -934,12 +933,12 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
     {
         if ( system->total_thbodies > lists[THREE_BODIES]->max_intrs )
         {
-            system->total_thbodies = MAX( (int)(lists[THREE_BODIES]->max_intrs * SAFE_ZONE),
+            system->total_thbodies = MAX( (int) (lists[THREE_BODIES]->max_intrs * SAFE_ZONE),
                     system->total_thbodies );
         }
         if ( system->total_bonds > lists[THREE_BODIES]->n )
         {
-            system->total_thbodies_indices = MAX( (int)(lists[THREE_BODIES]->n * SAFE_ZONE),
+            system->total_thbodies_indices = MAX( (int) (lists[THREE_BODIES]->n * SAFE_ZONE),
                     system->total_bonds );
         }
 
@@ -1010,28 +1009,26 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
 {
     int blocks, *temp;
 
-//    blocks = hbond_list->n / DEF_BLOCK_SIZE
-//        + (hbond_list->n % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-    blocks = system->N / DEF_BLOCK_SIZE
-        + (system->N % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->total_cap / DEF_BLOCK_SIZE
+        + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(int) * hbond_list->n,
+            sizeof(int) * system->total_cap,
             "Cuda_Init_HBond_Indices::workspace->scratch" );
     temp = (int *) workspace->scratch;
 
     /* init Hindices */
     k_init_hindex <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, system->N );
+        ( system->d_my_atoms, system->total_cap );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* init indices and end_indices */
-    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, hbond_list->n );
+    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap );
 
     k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
-          hbond_list->index, hbond_list->end_index, system->N );
+          hbond_list->index, hbond_list->end_index, system->total_cap );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 }
@@ -1044,17 +1041,15 @@ void Cuda_Init_Bond_Indices( reax_system *system, reax_list * bond_list )
 {
     int blocks;
 
-//    blocks = bond_list->n / DEF_BLOCK_SIZE + 
-//        (bond_list->n % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-    blocks = system->N / DEF_BLOCK_SIZE + 
-        (system->N % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->total_cap / DEF_BLOCK_SIZE + 
+        (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_bonds, bond_list->index, bond_list->n );
+    Cuda_Scan_Excl_Sum( system->d_max_bonds, bond_list->index, system->total_cap );
 
     /* init end_indices */
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_bonds, bond_list->index, bond_list->end_index, system->N );
+        ( system->d_bonds, bond_list->index, bond_list->end_index, system->total_cap );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 }
@@ -1125,35 +1120,29 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
                 cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_bonds" );
     }
 
-    if ( system->numH > 0 && control->hbond_cut > 0.0 )
+    if ( system->numH > 0 && control->hbond_cut > 0.0 && realloc_hbonds == TRUE )
     {
-        if ( realloc_hbonds == TRUE )
-        {
-            Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
-                    system->total_cap );
-            copy_host_device( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
-                    cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_hbonds" );
-        }
+        Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
+                system->total_cap );
+        copy_host_device( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_hbonds" );
     }
-    else
+    else if ( step == 0 )
     {
-        if ( step == 0 )
-        {
 #if defined(DEBUG_FOCUS)
-            if ( system->numH == 0 )
-            {
-                fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: NO HYDROGEN ATOMS FOUND\n" );
-            }
+        if ( system->numH == 0 )
+        {
+            fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: NO HYDROGEN ATOMS FOUND\n" );
+        }
 
-            if ( control->hbond_cut <= 0.0 )
-            {
-                fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: BOND CUTOFF LENGTH IS ZERO\n" );
-            }
+        if ( control->hbond_cut <= 0.0 )
+        {
+            fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: BOND CUTOFF LENGTH IS ZERO\n" );
+        }
 #endif
 
-            control->hbond_cut = 0.0;
-            k_disable_hydrogen_bonding <<< 1, 1 >>> ( (control_params *)control->d_control_params );
-        }
+        control->hbond_cut = 0.0;
+        k_disable_hydrogen_bonding <<< 1, 1 >>> ( (control_params *)control->d_control_params );
     }
 
     if ( realloc_cm == TRUE )
@@ -1194,10 +1183,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     if ( renbr == FALSE )
     {
-        blocks = system->N / DEF_BLOCK_SIZE
-            + (system->N % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_distance <<< blocks, DEF_BLOCK_SIZE >>>
+        k_init_distance <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         cudaDeviceSynchronize( );
         cudaCheckError( );
@@ -1205,6 +1191,9 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     blocks = workspace->d_workspace->H.n_max / DEF_BLOCK_SIZE
         + (workspace->d_workspace->H.n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+
+    /* update num. rows in matrix for this GPU */
+    workspace->d_workspace->H.n = system->n;
 
     if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
     {
@@ -1227,13 +1216,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
     }
 
-    /* update num. rows in matrix for this GPU */
-    workspace->d_workspace->H.n = system->n;
-
-    blocks = system->N / DEF_BLOCK_SIZE
-        + (system->N % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-    k_init_bonds <<< blocks, DEF_BLOCK_SIZE >>>
+    k_init_bonds <<< control->blocks_n, control->block_size_n >>>
         ( system->d_my_atoms, system->reax_param.d_sbp,
           system->reax_param.d_tbp, *(workspace->d_workspace),
           (control_params *) control->d_control_params,
@@ -1257,10 +1240,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        blocks = system->N / DEF_BLOCK_SIZE
-            + (system->N % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_update_sym_dbond_indices <<< blocks, DEF_BLOCK_SIZE >>> 
+        k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n >>> 
             ( *(lists[BONDS]), system->N );
         cudaDeviceSynchronize( );
         cudaCheckError( );
@@ -1278,16 +1258,14 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         }
 
         /* update bond_mark */
-//        k_bond_mark <<< blocks, DEF_BLOCK_SIZE >>>
-//        k_bond_mark <<< 1, 1 >>>
-//            ( *(lists[BONDS]), *(workspace->d_workspace), system->N );
+//        k_bond_mark <<< control->blocks_n, control->block_size_n >>>
 //        cudaDeviceSynchronize( );
 //        cudaCheckError( );
     }
     else
     {
         Cuda_Estimate_Storages( system, control, workspace, lists,
-               ret_bonds, ret_hbonds, ret_cm, data->step );
+               ret_bonds, ret_hbonds, ret_cm, data->step - data->prev_steps );
 
         workspace->d_workspace->realloc.bonds = ret_bonds;
         workspace->d_workspace->realloc.hbonds = ret_hbonds;
@@ -1421,8 +1399,8 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             sizeof(int) * system->total_bonds,
             "Cuda_Compute_Bonded_Forces::workspace->scratch" );
     thbody = (int *) workspace->scratch;
-    ret = Cuda_Estimate_Storage_Three_Body( system, control, workspace,
-            data->step, lists, thbody );
+    ret = Cuda_Estimate_Storage_Three_Body( system, control, data, workspace,
+            lists, thbody );
 
     if ( ret == SUCCESS )
     {
@@ -1549,7 +1527,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                       *(workspace->d_workspace),
                       *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
                       system->n, system->reax_param.num_atom_types,
-                      spad, (rvec *) (&spad[2 * system->n]), system->my_rank, data->step );
+                      spad, (rvec *) (&spad[2 * system->n]), system->my_rank );
             cudaDeviceSynchronize( );
             cudaCheckError( );
 
@@ -1646,7 +1624,7 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
 }
 
 
-int Cuda_Compute_Forces( reax_system *system, control_params *control,
+extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {

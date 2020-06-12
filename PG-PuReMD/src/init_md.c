@@ -236,20 +236,20 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     {
     case NVE:
         data->N_f = 3 * system->bigN;
-        control->Evolve = Velocity_Verlet_NVE;
+        control->Evolve = &Velocity_Verlet_NVE;
         control->virial = 0;
         break;
 
     case bNVT:
         data->N_f = 3 * system->bigN + 1;
-        control->Evolve = Velocity_Verlet_Berendsen_NVT;
+        control->Evolve = &Velocity_Verlet_Berendsen_NVT;
         control->virial = 0;
         break;
 
     case nhNVT:
         fprintf( stderr, "[WARNING] Nose-Hoover NVT is still under testing.\n" );
         data->N_f = 3 * system->bigN + 1;
-        control->Evolve = Velocity_Verlet_Nose_Hoover_NVT_Klein;
+        control->Evolve = &Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
         if ( !control->restart || (control->restart && control->random_vel) )
         {
@@ -264,7 +264,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     /* Semi-Isotropic NPT */
     case sNPT:
         data->N_f = 3 * system->bigN + 4;
-        control->Evolve = Velocity_Verlet_Berendsen_NPT;
+        control->Evolve = &Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -275,7 +275,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     /* Isotropic NPT */
     case iNPT:
         data->N_f = 3 * system->bigN + 2;
-        control->Evolve = Velocity_Verlet_Berendsen_NPT;
+        control->Evolve = &Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -290,7 +290,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
 
         data->N_f = 3 * system->bigN + 9;
-        control->Evolve = Velocity_Verlet_Berendsen_NPT;
+        control->Evolve = &Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
 //        if( !control->restart )
 //        {
@@ -305,7 +305,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         break;
 
     default:
-        fprintf( stderr, "[ERROR] p%d: init_simulation_data: ensemble not recognized\n",
+        fprintf( stderr, "[ERROR] p%d: Init_Simulation_Data: ensemble not recognized\n",
               system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
@@ -348,7 +348,8 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
     Reset_Timing( &data->timing );
 
     //if( !control->restart )
-    data->step = data->prev_steps = 0;
+    data->step = 0;
+    data->prev_steps = 0;
 }
 #endif
 

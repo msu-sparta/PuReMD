@@ -520,8 +520,8 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 }
 
 
-CUDA_GLOBAL void k_generate_initial_velocities( single_body_parameters *sbp, reax_atom *my_atoms, 
-        real T, int n )
+CUDA_GLOBAL void k_generate_initial_velocities( single_body_parameters *sbp,
+        reax_atom *my_atoms, real T, int n )
 {
     int i;
     real m, scale, norm;
@@ -545,7 +545,7 @@ CUDA_GLOBAL void k_generate_initial_velocities( single_body_parameters *sbp, rea
         m = sbp[ my_atoms[i].type ].mass;
         scale = SQRT( m * norm / (3.0 * K_B * T) );
 
-        rvec_Scale( my_atoms[i].v, 1. / scale, my_atoms[i].v );
+        rvec_Scale( my_atoms[i].v, 1.0 / scale, my_atoms[i].v );
     }
 }
 
@@ -589,14 +589,14 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     cuda_memset( spad, 0, sizeof(rvec) * (control->blocks_pow_2 + 1),
             "Cuda_Compute_Momentum::tmp" );
     
-    k_center_of_mass_blocks_xcm <<< control->blocks_pow_2, control->block_size,
+    k_center_of_mass_blocks_xcm <<< control->blocks, control->block_size,
                                 sizeof(rvec) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2, sizeof(rvec) * control->blocks_pow_2 >>>
-            ( spad, &spad[control->blocks_pow_2], control->blocks_pow_2 );
+            ( spad, &spad[control->blocks_pow_2], control->blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
@@ -607,14 +607,14 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     cuda_memset( spad, 0, sizeof(rvec) * (control->blocks_pow_2 + 1),
             "Cuda_Compute_Momentum::tmp" );
     
-    k_center_of_mass_blocks_vcm <<< control->blocks_pow_2, control->block_size,
+    k_center_of_mass_blocks_vcm <<< control->blocks, control->block_size,
                                 sizeof(rvec) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2, sizeof(rvec) * control->blocks_pow_2 >>>
-        ( spad, &spad[control->blocks_pow_2], control->blocks_pow_2 );
+        ( spad, &spad[control->blocks_pow_2], control->blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
@@ -625,14 +625,14 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     cuda_memset( spad, 0,  sizeof (rvec) * (control->blocks_pow_2 + 1),
             "Cuda_Compute_Momentum::tmp");
     
-    k_center_of_mass_blocks_amcm <<< control->blocks_pow_2, control->block_size,
+    k_center_of_mass_blocks_amcm <<< control->blocks, control->block_size,
                                  sizeof(rvec) * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2, sizeof(rvec) * control->blocks_pow_2 >>>
-        ( spad, &spad[control->blocks_pow_2], control->blocks_pow_2 );
+        ( spad, &spad[control->blocks_pow_2], control->blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
@@ -653,21 +653,21 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
     cuda_memset( spad, 0, sizeof(real) * 6 * (control->blocks_pow_2 + 1),
             "Cuda_Compute_Intertial_Tensor::tmp" );
 
-    k_compute_inertial_tensor_xx_xy <<< control->blocks_pow_2, control->block_size,
+    k_compute_inertial_tensor_xx_xy <<< control->blocks, control->block_size,
                                 sizeof(real) * 2 * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_compute_inertial_tensor_xz_yy <<< control->blocks_pow_2, control->block_size,
+    k_compute_inertial_tensor_xz_yy <<< control->blocks, control->block_size,
                                 sizeof(real) * 2 * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_compute_inertial_tensor_yz_zz <<< control->blocks_pow_2, control->block_size,
+    k_compute_inertial_tensor_yz_zz <<< control->blocks, control->block_size,
                                 sizeof(real) * 2 * control->block_size >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
@@ -677,19 +677,13 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
     /* reduction of block-level partial sums for inertial tensor */
     k_compute_inertial_tensor_blocks <<< 1, control->blocks_pow_2,
                               sizeof(real) * 6 * control->blocks_pow_2 >>>
-        ( spad, &spad[control->blocks_pow_2 * 6], control->blocks_pow_2 );
+        ( spad, &spad[control->blocks_pow_2 * 6], control->blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( t, &spad[6 * control->blocks_pow_2],
         sizeof(real) * 6, cudaMemcpyDeviceToHost,
         "Cuda_Compute_Intertial_Tensor::t" );
-}
-
-
-extern "C" void Cuda_Sync_Simulation_Data( simulation_data *data )
-{
-    Output_Sync_Simulation_Data( data, (simulation_data *)data->d_simulation_data );
 }
 
 
@@ -710,8 +704,9 @@ void Cuda_Generate_Initial_Velocities( reax_system *system, real T )
 }
 
 
-void Cuda_Compute_Kinetic_Energy( reax_system *system, control_params *control,
-        storage *workspace, simulation_data *data, MPI_Comm comm )
+extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
+        control_params *control, storage *workspace, simulation_data *data,
+        MPI_Comm comm )
 {
     int ret;
     real *block_energy;
@@ -752,63 +747,43 @@ void Cuda_Compute_Kinetic_Energy( reax_system *system, control_params *control,
 }
 
 
-void Check_Energy( simulation_data* data )
-{
-    if ( IS_NAN_REAL(data->my_en.e_kin) )
-    {
-        fprintf( stderr, "[ERROR] NaN detected for kinetic energy. Terminating...\n" );
-        exit( NUMERIC_BREAKDOWN );
-    }
-
-    if ( IS_NAN_REAL(data->my_en.e_pot) )
-    {
-        fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
-        exit( NUMERIC_BREAKDOWN );
-    }
-
-    if ( IS_NAN_REAL(data->my_en.e_tot) )
-    {
-        fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
-        exit( NUMERIC_BREAKDOWN );
-    }
-}
-
-
 void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data, MPI_Comm comm  )
 {
     int ret;
-    real tmp, *block_mass;
+    real M_l, *spad_real;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(real) * (control->blocks_pow_2 + 1),
             "Cuda_Compute_Total_Mass::workspace->scratch" );
-    block_mass = (real *) workspace->scratch;
-    cuda_memset( block_mass, 0, sizeof(real) * (control->blocks_pow_2 + 1),
-            "Cuda_Compute_Total_Mass::block_mass" );
+    spad_real = (real *) workspace->scratch;
+    cuda_memset( spad_real, 0, sizeof(real) * (control->blocks_pow_2 + 1),
+            "Cuda_Compute_Total_Mass::spad_real" );
 
     k_compute_total_mass <<< control->blocks, control->block_size,
                          sizeof(real) * control->block_size >>>
-        ( system->reax_param.d_sbp, system->d_my_atoms, block_mass, system->n );
+        ( system->reax_param.d_sbp, system->d_my_atoms, spad_real, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* note: above kernel sums the mass contribution within blocks,
      * and this call finishes the global reduction across all blocks */
-    Cuda_Reduction_Sum( block_mass, &block_mass[control->blocks_pow_2], control->blocks_pow_2 );
+    Cuda_Reduction_Sum( spad_real, &spad_real[control->blocks_pow_2],
+            control->blocks_pow_2 );
 
-    copy_host_device( &tmp, &block_mass[control->blocks_pow_2], sizeof(real), 
-            cudaMemcpyDeviceToHost, "total_mass:tmp" );
+    copy_host_device( &M_l, &spad_real[control->blocks_pow_2], sizeof(real), 
+            cudaMemcpyDeviceToHost, "total_mass:M_l" );
 
-    ret = MPI_Allreduce( &tmp, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &M_l, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     data->inv_M = 1.0 / data->M;
 }
 
 
-void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
-        storage *workspace, simulation_data *data, mpi_datatypes *mpi_data, MPI_Comm comm )
+extern "C" void Cuda_Compute_Center_of_Mass( reax_system *system,
+        control_params *control, storage *workspace, simulation_data *data,
+        mpi_datatypes *mpi_data, MPI_Comm comm )
 {
     int ret;
     real det; //xx, xy, xz, yy, yz, zz;
@@ -839,7 +814,7 @@ void Cuda_Compute_Center_of_Mass( reax_system *system, control_params *control,
     data->etran_cm = 0.5 * data->M * rvec_Norm_Sqr( data->vcm );
 
     /* Calculate and then invert the inertial tensor */
-    Cuda_Compute_Inertial_Tensor( system, control, workspace, tmp_mat, my_xcm );
+    Cuda_Compute_Inertial_Tensor( system, control, workspace, tmp_mat, data->xcm );
 
     ret = MPI_Reduce( tmp_mat, tot_mat, 6, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );

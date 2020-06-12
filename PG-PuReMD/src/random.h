@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -44,7 +44,7 @@ void Randomize( );
    and standard deviation "sigma" */
 double GRandom( double, double );
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

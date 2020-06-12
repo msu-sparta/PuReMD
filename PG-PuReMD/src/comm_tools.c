@@ -459,9 +459,8 @@ static void Unpack_Boundary_Atom( reax_atom * const ratm,
 }
 
 
-void Count_Boundary_Atoms( reax_system const * const system,
-        int start, int end, int dim, mpi_out_data * const out_bufs,
-        int * const cnt )
+void Count_Boundary_Atoms( reax_system const * const system, int start, int end,
+        int dim, mpi_out_data * const out_bufs, int * const cnt )
 {
     int i, d, p;
 

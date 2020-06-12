@@ -4,10 +4,6 @@
 #include "../reax_types.h"
 
 
-#ifdef __cplusplus
-extern "C"  {
-#endif
-
 void cuda_malloc( void **, size_t, int, const char * );
 
 void cuda_free( void *, const char * );
@@ -20,17 +16,10 @@ void copy_host_device( void *, void *, size_t, enum cudaMemcpyKind, const char *
 
 void copy_device( void *, void *, size_t, const char * );
 
-void compute_blocks( int *, int *, int );
-
-void compute_nearest_pow_2( int, int * );
-
-void Cuda_Init_Block_Sizes( reax_system *, control_params * );
-
 void Cuda_Print_Mem_Usage( );
 
 
-#ifdef __cplusplus
-#define cudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
+#define cudaCheckError() __cudaCheckError( __FILE__, __LINE__ )
 static inline void __cudaCheckError( const char *file, const int line )
 {
     cudaError err;
@@ -54,11 +43,6 @@ static inline void __cudaCheckError( const char *file, const int line )
 
     return;
 }
-#endif
-
-#ifdef __cplusplus
-}
-#endif
 
 
 #endif

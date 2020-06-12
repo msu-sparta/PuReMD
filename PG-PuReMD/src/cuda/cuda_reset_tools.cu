@@ -9,10 +9,6 @@
 #include "../vector.h"
 
 
-extern "C"
-{
-
-
 CUDA_GLOBAL void k_reset_workspace( storage workspace, int N )
 {
     int i;
@@ -74,17 +70,14 @@ void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *control,
         storage *workspace )
 {
-    int blocks, *hindex;
-
-    blocks = system->N / DEF_BLOCK_SIZE
-        + ((system->N % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+    int *hindex;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(int) * system->N,
             "Cuda_Reset_Atoms_HBond_Indices::workspace->scratch" );
     hindex = (int *) workspace->scratch;
 
-    k_reset_hindex <<< blocks, DEF_BLOCK_SIZE >>>
+    k_reset_hindex <<< control->blocks_n, control->block_size_n >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, hindex, system->N );
     cudaDeviceSynchronize( );
     cudaCheckError( );
@@ -96,7 +89,7 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
 }
 
 
-void Cuda_Reset( reax_system *system, control_params *control,
+extern "C" void Cuda_Reset( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists )
 {
     Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
@@ -109,7 +102,4 @@ void Cuda_Reset( reax_system *system, control_params *control,
     }
 
     Cuda_Reset_Workspace( system, workspace );
-}
-
-
 }

@@ -21,17 +21,6 @@
 
 #include "cuda_utils.h"
 
-#if defined(PURE_REAX)
-  #include "../list.h"
-  #include "../tool_box.h"
-#elif defined(LAMMPS_REAX)
-  #include "../reax_list.h"
-  #include "../reax_tool_box.h"
-#endif
-
-
-extern "C" {
-
 
 /* Allocate space for interaction list
  *
@@ -40,7 +29,7 @@ extern "C" {
  * type: list interaction type
  * l: pointer to list to be allocated
  * */
-void Cuda_Make_List( int n, int max_intrs, int type, reax_list * const l )
+extern "C" void Cuda_Make_List( int n, int max_intrs, int type, reax_list * const l )
 {
     if ( l->allocated == TRUE )
     {
@@ -62,24 +51,6 @@ void Cuda_Make_List( int n, int max_intrs, int type, reax_list * const l )
 
     switch ( l->type )
     {
-        case TYP_BOND:
-            cuda_malloc( (void **) &l->bond_list,
-                    sizeof(bond_data) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::bonds" );
-            break;
-
-        case TYP_THREE_BODY:
-            cuda_malloc( (void **) &l->three_body_list,
-                    sizeof(three_body_interaction_data) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::three_bodies" );
-            break;
-
-        case TYP_HBOND:
-            cuda_malloc( (void **) &l->hbond_list, 
-                    sizeof(hbond_data) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::hbonds" );
-            break;            
-
         case TYP_FAR_NEIGHBOR:
             cuda_malloc( (void **) &l->far_nbr_list.nbr, 
                     sizeof(int) * l->max_intrs, TRUE,
@@ -95,6 +66,24 @@ void Cuda_Make_List( int n, int max_intrs, int type, reax_list * const l )
                     "Cuda_Make_List::far_nbr_list.dvec" );
             break;
 
+        case TYP_BOND:
+            cuda_malloc( (void **) &l->bond_list,
+                    sizeof(bond_data) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::bonds" );
+            break;
+
+        case TYP_HBOND:
+            cuda_malloc( (void **) &l->hbond_list, 
+                    sizeof(hbond_data) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::hbonds" );
+            break;            
+
+        case TYP_THREE_BODY:
+            cuda_malloc( (void **) &l->three_body_list,
+                    sizeof(three_body_interaction_data) * l->max_intrs, TRUE,
+                    "Cuda_Make_List::three_bodies" );
+            break;
+
         default:
             fprintf( stderr, "[ERROR] unknown devive list type (%d)\n", l->type );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
@@ -103,7 +92,7 @@ void Cuda_Make_List( int n, int max_intrs, int type, reax_list * const l )
 }
 
 
-void Cuda_Delete_List( reax_list *l )
+extern "C" void Cuda_Delete_List( reax_list *l )
 {
     if ( l->allocated == FALSE )
     {
@@ -121,18 +110,6 @@ void Cuda_Delete_List( reax_list *l )
 
     switch ( l->type )
     {
-        case TYP_BOND:
-            cuda_free( l->bond_list, "Cuda_Delete_List::bonds" );
-            break;
-
-        case TYP_THREE_BODY:
-            cuda_free( l->three_body_list, "Cuda_Delete_List::three_bodies" );
-            break;
-
-        case TYP_HBOND:
-            cuda_free( l->hbond_list, "Cuda_Delete_List::hbonds" );
-            break;
-
         case TYP_FAR_NEIGHBOR:
             cuda_free( l->far_nbr_list.nbr, "Cuda_Delete_List::far_nbr_list.nbr" );
             cuda_free( l->far_nbr_list.rel_box, "Cuda_Delete_List::far_nbr_list.rel_box" );
@@ -140,12 +117,21 @@ void Cuda_Delete_List( reax_list *l )
             cuda_free( l->far_nbr_list.dvec, "Cuda_Delete_List::far_nbr_list.dvec" );
             break;
 
+        case TYP_BOND:
+            cuda_free( l->bond_list, "Cuda_Delete_List::bonds" );
+            break;
+
+        case TYP_HBOND:
+            cuda_free( l->hbond_list, "Cuda_Delete_List::hbonds" );
+            break;
+
+        case TYP_THREE_BODY:
+            cuda_free( l->three_body_list, "Cuda_Delete_List::three_bodies" );
+            break;
+
         default:
             fprintf( stderr, "[ERROR] unknown devive list type (%d)\n", l->type );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             break;
     }
-}
-
-
 }

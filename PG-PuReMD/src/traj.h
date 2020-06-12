@@ -97,7 +97,7 @@ void Init_Traj( reax_system*, control_params*, output_controls*, mpi_datatypes* 
 
 void End_Traj( int, output_controls* );
 
-int Append_Frame( reax_system*, control_params*, simulation_data*, reax_list**,
+void Append_Frame( reax_system*, control_params*, simulation_data*, reax_list**,
         output_controls*, mpi_datatypes* );
 
 #ifdef __cplusplus

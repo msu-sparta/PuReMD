@@ -1,7 +1,7 @@
 #include "cuda_utils.h"
 
 
-extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *msg )
+void cuda_malloc( void **ptr, size_t size, int mem_set, const char *msg )
 {
 
     cudaError_t retVal = cudaSuccess;
@@ -42,7 +42,7 @@ extern "C" void cuda_malloc( void **ptr, size_t size, int mem_set, const char *m
 }
 
 
-extern "C" void cuda_free( void *ptr, const char *msg )
+void cuda_free( void *ptr, const char *msg )
 {
 
     cudaError_t retVal = cudaSuccess;
@@ -65,7 +65,7 @@ extern "C" void cuda_free( void *ptr, const char *msg )
 }
 
 
-extern "C" void cuda_memset( void *ptr, int data, size_t count, const char *msg )
+void cuda_memset( void *ptr, int data, size_t count, const char *msg )
 {
     cudaError_t retVal = cudaSuccess;
 
@@ -109,7 +109,7 @@ void cuda_check_malloc( void **ptr, size_t *cur_size, size_t new_size, const cha
 }
 
 
-extern "C" void copy_host_device( void *host, void *dev, size_t size,
+void copy_host_device( void *host, void *dev, size_t size,
         cudaMemcpyKind dir, const char *msg )
 {
     cudaError_t retVal = cudaErrorNotReady;
@@ -133,7 +133,7 @@ extern "C" void copy_host_device( void *host, void *dev, size_t size,
 }
 
 
-extern "C" void copy_device( void *dest, void *src, size_t size, const char *msg )
+void copy_device( void *dest, void *src, size_t size, const char *msg )
 {
     cudaError_t retVal;
 
@@ -149,20 +149,7 @@ extern "C" void copy_device( void *dest, void *src, size_t size, const char *msg
 }
 
 
-extern "C" void compute_blocks( int *blocks, int *block_size, int count )
-{
-    *block_size = DEF_BLOCK_SIZE; // threads per block
-    *blocks = (int) CEIL( (double) count / DEF_BLOCK_SIZE ); // blocks per grid
-}
-
-
-extern "C" void compute_nearest_pow_2( int blocks, int *result )
-{
-  *result = (int) EXP2( CEIL( LOG2((double) blocks) ) );
-}
-
-
-extern "C" void Cuda_Print_Mem_Usage( )
+void Cuda_Print_Mem_Usage( )
 {
     size_t total, free;
     cudaError_t retVal;
@@ -172,7 +159,8 @@ extern "C" void Cuda_Print_Mem_Usage( )
     if ( retVal != cudaSuccess )
     {
         fprintf( stderr,
-                "[WARNING] could not get message usage info from device\n    [INFO] CUDA API error code: %d\n",
+                "[WARNING] could not get message usage info from device\n"
+                "    [INFO] CUDA API error code: %d\n",
                 retVal );
         return;
     }
@@ -180,14 +168,4 @@ extern "C" void Cuda_Print_Mem_Usage( )
     fprintf( stderr, "Total: %zu bytes (%7.2f MB)\nFree %zu bytes (%7.2f MB)\n", 
             total, (long long int) total / (1024.0 * 1024.0),
             free, (long long int) free / (1024.0 * 1024.0) );
-}
-
-
-extern "C" void Cuda_Init_Block_Sizes( reax_system *system, control_params *control )
-{
-    compute_blocks( &control->blocks, &control->block_size, system->n );
-    compute_nearest_pow_2( control->blocks, &control->blocks_pow_2 );
-
-    compute_blocks( &control->blocks_n, &control->block_size_n, system->N );
-    compute_nearest_pow_2( control->blocks_n, &control->blocks_pow_2_n );
 }

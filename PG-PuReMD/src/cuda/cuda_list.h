@@ -26,18 +26,16 @@
 
 #include "../list.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void Cuda_Make_List( int, int, int, reax_list* );
+void Cuda_Make_List( int, int, int, reax_list * );
 
-void Cuda_Delete_List( reax_list* );
+void Cuda_Delete_List( reax_list * );
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif

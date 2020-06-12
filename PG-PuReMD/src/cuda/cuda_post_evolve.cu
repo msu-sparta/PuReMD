@@ -6,37 +6,35 @@
 #include "../vector.h"
 
 
-CUDA_GLOBAL void ker_post_evolve( reax_atom *my_atoms, 
+/* remove translation and rotational terms from center of mass velocities */
+CUDA_GLOBAL void k_remove_center_of_mass_velocities( reax_atom *my_atoms, 
         simulation_data *data, int n )
 {
+    int i;
     rvec diff, cross;
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i >= n)
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
     {
         return;
     }
 
-    //for( i = 0; i < system->n; i++ ) { 
-    /* remove translational vel */
-    rvec_ScaledAdd( my_atoms[i].v, -1., data->vcm );
+    /* remove translational term */
+    rvec_ScaledAdd( my_atoms[i].v, -1.0, data->vcm );
 
-    /* remove rotational */
-    rvec_ScaledSum( diff, 1., my_atoms[i].x, -1., data->xcm );
+    /* remove rotational term */
+    rvec_ScaledSum( diff, 1.0, my_atoms[i].x, -1.0, data->xcm );
     rvec_Cross( cross, data->avcm, diff );
-    rvec_ScaledAdd( my_atoms[i].v, -1., cross );
-    //}  
+    rvec_ScaledAdd( my_atoms[i].v, -1.0, cross );
 }
 
 
-void post_evolve_velocities( reax_system *system, simulation_data *data )
+extern "C" void Cuda_Remove_CoM_Velocities( reax_system *system,
+        control_params *control, simulation_data *data )
 {
-    int blocks;
-
-    blocks = system->n / DEF_BLOCK_SIZE + 
-        ((system->n % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
-    ker_post_evolve <<< blocks, DEF_BLOCK_SIZE >>>
-        (system->d_my_atoms, (simulation_data *)data->d_simulation_data, system->n);
+    k_remove_center_of_mass_velocities <<< control->blocks, control->block_size >>>
+        ( system->d_my_atoms, (simulation_data *)data->d_simulation_data, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 }

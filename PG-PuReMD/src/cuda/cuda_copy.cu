@@ -8,7 +8,7 @@
 
 
 /* Copy grid info from host to device */
-void Cuda_Copy_Grid_Host_to_Device( grid *host, grid *device )
+extern "C" void Cuda_Copy_Grid_Host_to_Device( grid *host, grid *device )
 {
     int total;
 
@@ -51,7 +51,7 @@ void Cuda_Copy_Grid_Host_to_Device( grid *host, grid *device )
 
 
 /* Copy atom info from host to device */
-void Cuda_Copy_Atoms_Host_to_Device( reax_system *system )
+extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system )
 {
     copy_host_device( system->my_atoms, system->d_my_atoms,
             sizeof(reax_atom) * system->N,
@@ -60,7 +60,7 @@ void Cuda_Copy_Atoms_Host_to_Device( reax_system *system )
 
 
 /* Copy atomic system info from host to device */
-void Cuda_Copy_System_Host_to_Device( reax_system *system )
+extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system )
 {
     Cuda_Copy_Atoms_Host_to_Device( system );
 
@@ -97,7 +97,7 @@ void Cuda_Copy_System_Host_to_Device( reax_system *system )
 
 
 /* Copy atom info from device to host */
-void Cuda_Copy_Atoms_Device_to_Host( reax_system *system )
+extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system )
 {
     copy_host_device( system->my_atoms, system->d_my_atoms,
             sizeof(reax_atom) * system->N,
@@ -106,7 +106,7 @@ void Cuda_Copy_Atoms_Device_to_Host( reax_system *system )
 
 
 /* Copy simulation data from device to host */
-void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
+extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( simulation_data *host, simulation_data *dev )
 {
     copy_host_device( &host->my_en, &dev->my_en, sizeof(energy_data), 
             cudaMemcpyDeviceToHost, "simulation_data:energy_data" );
@@ -121,7 +121,7 @@ void Output_Sync_Simulation_Data( simulation_data *host, simulation_data *dev )
 
 /* Copy interaction lists from device to host,
  * with allocation for the host list */
-void Output_Sync_Lists( reax_list *host_list, reax_list *device_list, int type )
+extern "C" void Cuda_Copy_List_Device_to_Host( reax_list *host_list, reax_list *device_list, int type )
 {
     int format;
 
@@ -141,44 +141,44 @@ void Output_Sync_Lists( reax_list *host_list, reax_list *device_list, int type )
 #endif
 
     copy_host_device( host_list->index, device_list->index, sizeof(int) * device_list->n,
-            cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->index" );
+            cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::list->index" );
     copy_host_device( host_list->end_index, device_list->end_index, sizeof(int) *
-            device_list->n, cudaMemcpyDeviceToHost, "Output_Sync_Lists::list->end_index" );
+            device_list->n, cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::list->end_index" );
 
     switch ( type )
     {   
         case TYP_FAR_NEIGHBOR:
             copy_host_device( host_list->far_nbr_list.nbr, device_list->far_nbr_list.nbr,
                     sizeof(int) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.nbr" );
+                    cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::far_neighbor_list.nbr" );
             copy_host_device( host_list->far_nbr_list.rel_box, device_list->far_nbr_list.rel_box,
                     sizeof(ivec) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.rel_box" );
+                    cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::far_neighbor_list.rel_box" );
             copy_host_device( host_list->far_nbr_list.d, device_list->far_nbr_list.d,
                     sizeof(real) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.d" );
+                    cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::far_neighbor_list.d" );
             copy_host_device( host_list->far_nbr_list.dvec, device_list->far_nbr_list.dvec,
                     sizeof(rvec) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::far_neighbor_list.dvec" );
+                    cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::far_neighbor_list.dvec" );
             break;
 
         case TYP_BOND:
             copy_host_device( host_list->bond_list, device_list->bond_list,
                     sizeof(bond_data) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::bond_list" );
+                    cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::bond_list" );
             break;
 
         case TYP_HBOND:
             copy_host_device( host_list->hbond_list, device_list->hbond_list,
                     sizeof(hbond_data) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::hbond_list" );
+                    cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::hbond_list" );
             break;
 
         case TYP_THREE_BODY:
             copy_host_device( host_list->three_body_list,
                     device_list->three_body_list,
                     sizeof(three_body_interaction_data ) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, "Output_Sync_Lists::three_body_list" );
+                    cudaMemcpyDeviceToHost, "Cuda_Copy_List_Device_to_Host::three_body_list" );
             break;
 
         default:

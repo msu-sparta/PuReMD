@@ -539,7 +539,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part2( reax_atom *atoms,
 
 
 /* Estimate the num. of three-body interactions */
-CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *my_atoms,
+CUDA_GLOBAL void Cuda_Estimate_Valence_Angles( reax_atom *my_atoms,
         control_params *control, reax_list bond_list, int n, int N, int *count )
 {
     int j, pi, pk, start_j, end_j, num_thb_intrs;

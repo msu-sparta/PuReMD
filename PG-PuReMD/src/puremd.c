@@ -48,7 +48,6 @@
   #include "cuda/cuda_post_evolve.h"
   #include "cuda/cuda_reset_tools.h"
   #include "cuda/cuda_system_props.h"
-  #include "cuda/cuda_utils.h"
 #endif
 
 
@@ -89,6 +88,31 @@ static void Read_Config_Files( const char * const geo_file,
 }
 
 
+#if defined(HAVE_CUDA)
+static void Cuda_Post_Evolve( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
+{
+    /* remove translational and rotational velocity of the center of mass from system */
+    if ( control->ensemble != NVE && control->remove_CoM_vel
+            && data->step % control->remove_CoM_vel == 0 )
+    {
+        /* compute velocity of the center of mass */
+        Cuda_Compute_Center_of_Mass( system, control, workspace,
+                data, mpi_data, mpi_data->comm_mesh3D );
+
+        Cuda_Remove_CoM_Velocities( system, control, data );
+    }
+
+    /* compute kinetic energy of the system */
+    Cuda_Compute_Kinetic_Energy( system, control, workspace,
+            data, mpi_data->comm_mesh3D );
+
+    Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+}
+#else
+
+
 static void Post_Evolve( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         output_controls * const out_control, mpi_datatypes * const mpi_data )
@@ -125,30 +149,6 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     {
         Compute_Total_Energy( system, data, MPI_COMM_WORLD );
     }
-}
-
-
-#if defined(HAVE_CUDA)
-static void Cuda_Post_Evolve( reax_system * const system, control_params * const control,
-        simulation_data * const data, storage * const workspace, reax_list ** const lists,
-        output_controls * const out_control, mpi_datatypes * const mpi_data )
-{
-    /* remove trans & rot velocity of the center of mass from system */
-    if ( control->ensemble != NVE && control->remove_CoM_vel
-            && data->step % control->remove_CoM_vel == 0 )
-    {
-        /* compute velocity of the center of mass */
-        Cuda_Compute_Center_of_Mass( system, control, workspace,
-                data, mpi_data, mpi_data->comm_mesh3D );
-
-        post_evolve_velocities( system, data );
-    }
-
-    /* compute kinetic energy of the system */
-    Cuda_Compute_Kinetic_Energy( system, control, workspace,
-            data, mpi_data->comm_mesh3D );
-
-    Compute_Total_Energy( system, data, MPI_COMM_WORLD );
 }
 #endif
 
@@ -196,7 +196,7 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     MPI_Comm_size( MPI_COMM_WORLD, &pmd_handle->control->nprocs );
     MPI_Comm_rank( MPI_COMM_WORLD, &pmd_handle->system->my_rank );
 
-#if defined(DEBUG) || defined(DEBUG_FOCUS)
+#if defined(DEBUG)
     fprintf( stderr, "[INFO] MPI timer resolution: %f\n", MPI_Wtick( ) );
 #endif
 
@@ -211,11 +211,8 @@ void* setup( const char * const geo_file, const char * const ffield_file,
             pmd_handle->workspace, pmd_handle->out_control, pmd_handle->mpi_data );
 
 #if defined(HAVE_CUDA)
-    /* setup the CUDA Device for this process */
-    Setup_Cuda_Environment( pmd_handle->system->my_rank,
+    Cuda_Setup_Environment( pmd_handle->system->my_rank,
             pmd_handle->control->nprocs, pmd_handle->control->gpus_per_node );
-
-    Cuda_Init_Block_Sizes( pmd_handle->system, pmd_handle->control );
 #endif
 
     return (void*) pmd_handle;
@@ -272,9 +269,11 @@ int simulate( const void * const handle )
 
         /* compute f_0 */
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
+
+        Cuda_Init_Block_Sizes( system, control );
+
         Cuda_Copy_Atoms_Host_to_Device( system );
         Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
-        Cuda_Init_Block_Sizes( system, control );
 
         Cuda_Reset( system, control, data, workspace, lists );
 
@@ -318,20 +317,18 @@ int simulate( const void * const handle )
 
 //              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
 
-                //TODO: fix this in GPU code
-                /* dump restart info */
-//                if ( out_control->restart_freq
-//                        && (data->step-data->prev_steps) % out_control->restart_freq == 0 )
-//                {
-//                    if( out_control->restart_format == WRITE_ASCII )
-//                    {
-//                        Write_Restart_File( system, control, data, out_control, mpi_data );
-//                    }
-//                    else if( out_control->restart_format == WRITE_BINARY )
-//                    {
-//                        Write_Binary_Restart_File( system, control, data, out_control, mpi_data );
-//                    }
-//                }
+                if ( out_control->restart_freq
+                        && (data->step - data->prev_steps) % out_control->restart_freq == 0 )
+                {
+                    if( out_control->restart_format == WRITE_ASCII )
+                    {
+                        Write_Restart_File( system, control, data, out_control, mpi_data );
+                    }
+                    else if( out_control->restart_format == WRITE_BINARY )
+                    {
+                        Write_Binary_Restart_File( system, control, data, out_control, mpi_data );
+                    }
+                }
 
                 ++data->step;
                 retries = 0;
@@ -410,7 +407,6 @@ int simulate( const void * const handle )
 
 //              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
 
-                /* dump restart info */
                 if ( out_control->restart_freq
                         && (data->step - data->prev_steps) % out_control->restart_freq == 0 )
                 {
@@ -483,6 +479,8 @@ int cleanup( const void * const handle )
         Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                 pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                 pmd_handle->mpi_data, pmd_handle->output_enabled );
+
+        Cuda_Cleanup_Environment( );
 #endif
 
 #if defined(HAVE_CUDA)

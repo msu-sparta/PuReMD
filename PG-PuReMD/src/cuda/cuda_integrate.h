@@ -25,11 +25,7 @@
 #include "../reax_types.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void Scale_Velocities_NPT( reax_system *, real, rvec );
+void Cuda_Scale_Velocities_NPT( reax_system *, real, rvec );
 
 int Cuda_Velocity_Verlet_NVE( reax_system*, control_params*,
         simulation_data*, storage*, reax_list**, output_controls*,
@@ -46,10 +42,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system*, control_params*,
 int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system*, control_params*,
         simulation_data*, storage*, reax_list**, output_controls*,
         mpi_datatypes* );
-
-#ifdef __cplusplus
-}
-#endif
 
 
 #endif

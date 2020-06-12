@@ -740,7 +740,6 @@ fi
 AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"])
 # Moved from m4/ax_cuda.am to avoid conditionally calling inside AX_CUDA
 AM_CONDITIONAL(USE_CUDA, [test "x${pack_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"])
-AM_CONDITIONAL(CUDA_DEBUG, [(test "x${pack_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes") && test "x${BUILD_DEBUG}" = "xyes"])
 
 
 # Tests using Google C++ testing framework (gtest)

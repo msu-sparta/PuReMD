@@ -34,7 +34,7 @@
 #endif
 
 #if defined(HAVE_CUDA)
-  #include "cuda/cuda_system_props.h"
+  #include "cuda/cuda_copy.h"
 #endif
 
 
@@ -111,7 +111,8 @@ void Compute_Total_Energy( reax_system *system, simulation_data *data,
     my_en[13] = data->my_en.e_kin;
 
 #if defined(HAVE_CUDA)
-    Cuda_Sync_Simulation_Data( data );
+    Cuda_Copy_Simulation_Data_Device_to_Host( data,
+            (simulation_data *)data->d_simulation_data );
 #endif
 
     my_en[0] = data->my_en.e_bond;

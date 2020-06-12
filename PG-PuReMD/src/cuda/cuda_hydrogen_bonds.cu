@@ -38,7 +38,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
         hbond_parameters *d_hbp, global_parameters gp,
         control_params *control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
-        int num_atom_types, real *data_e_hb, rvec *data_ext_press, int rank, int step )
+        int num_atom_types, real *data_e_hb, rvec *data_ext_press, int rank )
 {
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;

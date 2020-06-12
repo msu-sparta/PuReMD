@@ -25,14 +25,14 @@
 #include "reax_types.h"
 
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 void Atom_Energy( reax_system * const, control_params * const, simulation_data * const,
         storage * const, reax_list** const, output_controls * const );
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -1423,9 +1423,8 @@ struct control_params
     real dt;
     /* format of geometry input file */
     int geo_format;
-    /* format of restart file */
+    /* 1 if run from a restart file, 0 otherwise */
     int restart;
-
     /**/
     int restrict_bonds;
     /* flag to control if center of mass velocity is removed */

@@ -498,7 +498,6 @@ void check_srealloc( void **ptr, size_t *cur_size, size_t new_size,
             *cur_size = new_size;
         }
 
-        //TODO: look into using aligned alloc's
         new_ptr = srealloc( *ptr, *cur_size, msg );
         *ptr = new_ptr;
     }

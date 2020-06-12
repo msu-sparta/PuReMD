@@ -4,10 +4,6 @@
 #include "../reax_types.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int Vector_isZero( real const * const, unsigned int );
 
 void Vector_MakeZero( real * const, unsigned int );
@@ -57,10 +53,6 @@ void Dot_local_rvec2( control_params const * const,
         storage * const,
         rvec2 const * const, rvec2 const * const,
         unsigned int, real *, real * );
-
-#ifdef __cplusplus
-}
-#endif
 
 
 #endif

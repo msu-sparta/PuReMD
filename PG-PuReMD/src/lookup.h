@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -35,7 +35,7 @@ void Init_Lookup_Tables( reax_system * const, control_params * const, storage * 
 void Finalize_LR_Lookup_Table( reax_system * const, control_params * const,
        storage * const, mpi_datatypes * const );
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

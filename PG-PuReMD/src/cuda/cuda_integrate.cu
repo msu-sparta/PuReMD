@@ -3,6 +3,7 @@
 
 #include "cuda_allocate.h"
 #include "cuda_box.h"
+#include "cuda_environment.h"
 #include "cuda_forces.h"
 #include "cuda_integrate.h"
 #include "cuda_copy.h"
@@ -263,7 +264,7 @@ real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system, storage *worksp
 }
 
 
-void Scale_Velocities_Berendsen_NVT( reax_system *system, real lambda )
+static void Cuda_Scale_Velocities_Berendsen_NVT( reax_system *system, real lambda )
 {
     int blocks;
 
@@ -277,7 +278,7 @@ void Scale_Velocities_Berendsen_NVT( reax_system *system, real lambda )
 }
 
 
-void Scale_Velocities_NPT( reax_system *system, real lambda, rvec mu )
+void Cuda_Scale_Velocities_NPT( reax_system *system, real lambda, rvec mu )
 {
     int blocks;
 
@@ -311,6 +312,8 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
+        Cuda_Init_Block_Sizes( system, control );
+
         verlet_part1_done = TRUE;
     }
 
@@ -320,7 +323,6 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
     {
         Cuda_Copy_Atoms_Host_to_Device( system );
         Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
-        Cuda_Init_Block_Sizes( system, control );
 
         cuda_copy = TRUE;
     }
@@ -365,7 +367,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         reax_list **lists, output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int itr, steps, renbr, ret, ret_mpi;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE, cuda_copy = FALSE;
     real *d_my_ekin, *d_total_my_ekin;
     real dt, dt_sqr;
     real my_ekin, new_ekin;
@@ -393,15 +395,21 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
-        Cuda_Copy_Atoms_Host_to_Device( system );
 
-        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;
     }
 
     Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
+
+    if ( cuda_copy == FALSE )
+    {
+        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+
+        cuda_copy = TRUE;
+    }
 
     Cuda_Reset( system, control, data, workspace, lists );
 
@@ -469,6 +477,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
                 "Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein::d_my_ekin" );
 
         verlet_part1_done = FALSE;
+        cuda_copy = FALSE;
         gen_nbr_list = FALSE;
     }
 
@@ -505,6 +514,8 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
+        Cuda_Init_Block_Sizes( system, control );
+
         verlet_part1_done = TRUE;
     }
 
@@ -514,7 +525,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     {
         Cuda_Copy_Atoms_Host_to_Device( system );
         Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
-        Cuda_Init_Block_Sizes( system, control );
 
         cuda_copy = TRUE;
     }
@@ -562,7 +572,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         lambda = SQRT( lambda );
 
         /* Scale velocities and positions at t+dt */
-        Scale_Velocities_Berendsen_NVT( system, lambda );
+        Cuda_Scale_Velocities_Berendsen_NVT( system, lambda );
 
         Cuda_Compute_Kinetic_Energy( system, control, workspace,
                 data, mpi_data->comm_mesh3D );
@@ -584,7 +594,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int steps, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE, cuda_copy = FALSE;
     real dt;
 
     ret = SUCCESS;
@@ -603,15 +613,21 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
-        Cuda_Copy_Atoms_Host_to_Device( system );
 
-        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;
     }
 
     Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
+
+    if ( cuda_copy == FALSE )
+    {
+        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+
+        cuda_copy = TRUE;
+    }
 
     Cuda_Reset( system, control, data, workspace, lists );
 
@@ -647,6 +663,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
                 workspace, data, mpi_data );
 
         verlet_part1_done = FALSE;
+        cuda_copy = FALSE;
         gen_nbr_list = FALSE;
     }
 

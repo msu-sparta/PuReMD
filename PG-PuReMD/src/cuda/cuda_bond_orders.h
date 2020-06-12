@@ -6,14 +6,11 @@
 
 #include "../vector.h"
 
-extern "C" {
 
 void Cuda_Total_Forces( reax_system *, control_params *,
         simulation_data *, storage *, reax_list ** );
 
 void Cuda_Total_Forces_PURE( reax_system *, storage * );
-
-}
 
 
 /* Compute the bond order term between atoms i and j,

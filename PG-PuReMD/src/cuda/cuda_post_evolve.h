@@ -9,7 +9,8 @@
 extern "C" {
 #endif
 
-void post_evolve_velocities( reax_system *, simulation_data * );
+void Cuda_Remove_CoM_Velocities( reax_system *, control_params *,
+        simulation_data * );
 
 #ifdef __cplusplus
 }

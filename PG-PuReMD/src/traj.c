@@ -41,9 +41,9 @@
 int Set_My_Trajectory_View( MPI_File trj, int offset, MPI_Datatype etype,
         MPI_Comm comm, int my_rank, int my_n, int big_n )
 {
-    int my_disp, length[3], type_size, ret;
-    MPI_Aint disp[3], lower_bound, extent;
-    MPI_Datatype type[3], view;
+    int my_disp, type_size, ret;
+    MPI_Aint lower_bound, extent;
+    MPI_Datatype view;
 
     /* get old type info */
     ret = MPI_Type_get_extent( etype, &lower_bound, &extent );
@@ -55,22 +55,10 @@ int Set_My_Trajectory_View( MPI_File trj, int offset, MPI_Datatype etype,
     my_disp -= my_n;
     type_size /= sizeof(char);
 
-    length[0] = 1;
-    length[1] = my_n;
-    length[2] = 1;
-    disp[0] = 0;
-    disp[1] = type_size * my_disp;
-    disp[2] = type_size * big_n;
-    type[0] = MPI_LB;
-    type[1] = etype;
-    type[2] = MPI_UB;
-
-    MPI_Type_create_struct( 3, length, disp, type, &view );
-
-    //TODO: change due to deprecation of MPI_LB/MPI_UB => set lower bound to negative, upper bound to positive bigger than type size
-//    MPI_Type_create_resized( etype, -1 * type_size * my_disp, type_size * (big_n - my_disp), &view );
-
-    MPI_Type_commit( &view );
+    ret = MPI_Type_create_resized( etype, -1 * type_size * my_disp, type_size * (big_n - my_disp), &view );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Type_commit( &view );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* create atom_info_view */
     MPI_File_set_view( trj, offset, etype, view, "native", MPI_INFO_NULL );
@@ -112,6 +100,7 @@ void Write_Skip_Line( output_controls *out_control, mpi_datatypes *mpi_data,
         MPI_File_set_view( out_control->trj, out_control->trj_offset,
                            mpi_data->header_line, mpi_data->header_line,
                            "native", MPI_INFO_NULL );
+
         if ( my_rank == MASTER_NODE )
         {
             sprintf( out_control->line, INT2_LINE, "chars_to_skip_section:",
@@ -124,8 +113,10 @@ void Write_Skip_Line( output_controls *out_control, mpi_datatypes *mpi_data,
     else
     {
         if ( my_rank == MASTER_NODE )
+        {
             fprintf( out_control->strj, INT2_LINE,
                      "chars_to_skip_section:", skip, num_section );
+        }
     }
 }
 
@@ -210,11 +201,11 @@ int Write_Header( reax_system *system, control_params *control,
 
         //sprintf( out_control->line, STR_LINE, "restarted_from_file:",
         //     (control->restart ? control->restart_from : "NA") );
-        //strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN+1 );
+        //strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         //sprintf( out_control->line, STR_LINE, "kept_restart_velocities?:",
         //     (control->restart ? (control->random_vel ? "no":"yes"):"NA") );
-        //strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN+1 );
+        //strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, STR_LINE, "write_restart_files?:",
                  ((out_control->restart_freq > 0) ? "yes" : "no") );
@@ -339,7 +330,7 @@ int Write_Header( reax_system *system, control_params *control,
         /* analysis */
         //sprintf( out_control->line, STR_LINE, "molecular_analysis:",
         //     (control->molec_anal ? "yes" : "no") );
-        //strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN+1 );
+        //strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, INT_LINE, "molecular_analysis_frequency:",
                  control->molecular_analysis );
@@ -361,7 +352,9 @@ int Write_Header( reax_system *system, control_params *control,
     else
     {
         if ( system->my_rank == MASTER_NODE )
+        {
             fprintf( out_control->strj, "%s", out_control->buffer );
+        }
     }
 
     return SUCCESS;
@@ -397,15 +390,16 @@ int Write_Init_Desc( reax_system *system, control_params *control,
         Reallocate_Output_Buffer( out_control, buffer_req, MPI_COMM_WORLD );
     }
 
-    out_control->line[0] = 0;
-    out_control->buffer[0] = 0;
+    out_control->line[0] = '\0';
+    out_control->buffer[0] = '\0';
     for ( i = 0; i < system->n; ++i )
     {
-        p_atom = &( system->my_atoms[i] );
+        p_atom = &system->my_atoms[i];
+
         sprintf( out_control->line, INIT_DESC,
                  p_atom->orig_id, p_atom->type, p_atom->name,
                  system->reax_param.sbp[ p_atom->type ].mass );
-        strncpy( out_control->buffer + i * INIT_DESC_LEN,
+        strncpy( &out_control->buffer[i * INIT_DESC_LEN],
                  out_control->line, INIT_DESC_LEN + 1 );
     }
 
@@ -430,14 +424,16 @@ int Write_Init_Desc( reax_system *system, control_params *control,
         {
             buffer_len = system->n * INIT_DESC_LEN;
             for ( i = 0; i < np; ++i )
+            {
                 if ( i != MASTER_NODE )
                 {
-                    ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
+                    ret = MPI_Recv( &out_control->buffer[buffer_len], buffer_req - buffer_len,
                               MPI_CHAR, i, np * INIT_DESCS + i, MPI_COMM_WORLD, &status );
                     Check_MPI_Error( ret, __FILE__, __LINE__ );
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
+            }
             out_control->buffer[buffer_len] = 0;
             fprintf( out_control->strj, "%s", out_control->buffer );
         }
@@ -687,7 +683,9 @@ int Write_Frame_Header( reax_system *system, control_params *control,
     else
     {
         if ( system->my_rank == MASTER_NODE )
+        {
             fprintf( out_control->strj, "%s", out_control->buffer );
+        }
     }
 
     return SUCCESS;
@@ -727,7 +725,7 @@ int Write_Atoms( reax_system *system, control_params *control,
     out_control->buffer[0] = 0;
     for ( i = 0; i < system->n; ++i )
     {
-        p_atom = &( system->my_atoms[i] );
+        p_atom = &system->my_atoms[i];
 
         switch ( out_control->atom_info )
         {
@@ -756,9 +754,10 @@ int Write_Atoms( reax_system *system, control_params *control,
             fprintf( stderr,
                      "write_traj_atoms: unknown atom trajectroy format!\n");
             MPI_Abort( MPI_COMM_WORLD, UNKNOWN_OPTION );
+            break;
         }
 
-        strncpy( out_control->buffer + i * line_len, out_control->line, line_len + 1 );
+        strncpy( &out_control->buffer[i * line_len], out_control->line, line_len + 1 );
     }
 
     if ( out_control->traj_method == MPI_TRAJ )
@@ -782,6 +781,7 @@ int Write_Atoms( reax_system *system, control_params *control,
         {
             buffer_len = system->n * line_len;
             for ( i = 0; i < np; ++i )
+            {
                 if ( i != MASTER_NODE )
                 {
                     ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
@@ -790,7 +790,8 @@ int Write_Atoms( reax_system *system, control_params *control,
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
-            out_control->buffer[buffer_len] = 0;
+            }
+            out_control->buffer[buffer_len] = '\0';
             fprintf( out_control->strj, "%s", out_control->buffer );
         }
     }
@@ -851,6 +852,7 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
     out_control->line[0] = 0;
     out_control->buffer[0] = 0;
     for ( i = 0; i < system->n; ++i )
+    {
         for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
         {
             bo_ij = &bonds->bond_list[pj];
@@ -875,13 +877,15 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
                 default:
                     fprintf(stderr, "write_traj_bonds: FATAL! invalid bond_info option");
                     MPI_Abort( MPI_COMM_WORLD, UNKNOWN_OPTION );
+                    break;
                 }
 
-                strncpy( out_control->buffer + my_bonds * line_len,
+                strncpy( &out_control->buffer[my_bonds * line_len],
                          out_control->line, line_len + 1 );
                 ++my_bonds;
             }
         }
+    }
 
     if ( out_control->traj_method == MPI_TRAJ )
     {
@@ -904,14 +908,16 @@ int Write_Bonds( reax_system *system, control_params *control, reax_list *bonds,
         {
             buffer_len = my_bonds * line_len;
             for ( i = 0; i < np; ++i )
+            {
                 if ( i != MASTER_NODE )
                 {
-                    ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
+                    ret = MPI_Recv( &out_control->buffer[buffer_len], buffer_req - buffer_len,
                               MPI_CHAR, i, np * BOND_LINES + i, MPI_COMM_WORLD, &status );
                     Check_MPI_Error( ret, __FILE__, __LINE__ );
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
+            }
             out_control->buffer[buffer_len] = 0;
             fprintf( out_control->strj, "%s", out_control->buffer );
         }
@@ -942,7 +948,7 @@ int Write_Angles( reax_system *system, control_params *control,
         for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
         {
             bo_ij = &bonds->bond_list[pi];
-            i     = bo_ij->nbr;
+            i = bo_ij->nbr;
 
             if ( bo_ij->bo_data.BO >= control->bg_cut ) // physical j&i bond
             {
@@ -985,8 +991,8 @@ int Write_Angles( reax_system *system, control_params *control,
 
     /* fill in the buffer */
     my_angles = 0;
-    out_control->line[0] = 0;
-    out_control->buffer[0] = 0;
+    out_control->line[0] = '\0';
+    out_control->buffer[0] = '\0';
     for ( j = 0; j < system->n; ++j )
     {
         for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
@@ -1010,7 +1016,7 @@ int Write_Angles( reax_system *system, control_params *control,
                                  system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                  system->my_atoms[k].orig_id, RAD2DEG( angle_ijk->theta ) );
 
-                        strncpy( out_control->buffer + my_angles * line_len,
+                        strncpy( &out_control->buffer[my_angles * line_len],
                                  out_control->line, line_len + 1 );
                         ++my_angles;
                     }
@@ -1040,15 +1046,17 @@ int Write_Angles( reax_system *system, control_params *control,
         {
             buffer_len = my_angles * line_len;
             for ( i = 0; i < np; ++i )
+            {
                 if ( i != MASTER_NODE )
                 {
-                    ret = MPI_Recv( out_control->buffer + buffer_len, buffer_req - buffer_len,
+                    ret = MPI_Recv( &out_control->buffer[buffer_len], buffer_req - buffer_len,
                               MPI_CHAR, i, np * ANGLE_LINES + i, MPI_COMM_WORLD, &status );
                     Check_MPI_Error( ret, __FILE__, __LINE__ );
                     MPI_Get_count( &status, MPI_CHAR, &cnt );
                     buffer_len += cnt;
                 }
-            out_control->buffer[buffer_len] = 0;
+            }
+            out_control->buffer[buffer_len] = '\0';
             fprintf( out_control->strj, "%s", out_control->buffer );
         }
     }
@@ -1057,16 +1065,12 @@ int Write_Angles( reax_system *system, control_params *control,
 }
 
 
-int Append_Frame( reax_system *system, control_params *control,
+void Append_Frame( reax_system *system, control_params *control,
         simulation_data *data, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
 #if defined(HAVE_CUDA)
-    reax_list *l_bond = NULL, *l_three_body = NULL;
-#endif
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: appending frame %d\n", system->my_rank, data->step );
+    reax_list *bond_list = NULL, *thb_list = NULL;
 #endif
 
     Write_Frame_Header( system, control, data, out_control, mpi_data );
@@ -1082,8 +1086,8 @@ int Append_Frame( reax_system *system, control_params *control,
     if ( out_control->write_bonds )
     {
 #if defined(HAVE_CUDA)
-        Output_Sync_Lists( l_bond, lists[BONDS], TYP_BOND );
-        Write_Bonds( system, control, l_bond, out_control, mpi_data );
+        Cuda_Copy_List_Device_to_Host( bond_list, lists[BONDS], TYP_BOND );
+        Write_Bonds( system, control, bond_list, out_control, mpi_data );
 #else
         Write_Bonds( system, control, lists[BONDS], out_control, mpi_data );
 #endif
@@ -1092,8 +1096,8 @@ int Append_Frame( reax_system *system, control_params *control,
     if ( out_control->write_angles )
     {
 #if defined(HAVE_CUDA)
-        Output_Sync_Lists( l_three_body, lists[THREE_BODIES], TYP_THREE_BODY );
-        Write_Angles( system, control, l_bond, l_three_body,
+        Cuda_Copy_List_Device_to_Host( thb_list, lists[THREE_BODIES], TYP_THREE_BODY );
+        Write_Angles( system, control, bond_list, thb_list,
                       out_control, mpi_data );
 #else
         Write_Angles( system, control, lists[BONDS], lists[THREE_BODIES],
@@ -1102,15 +1106,15 @@ int Append_Frame( reax_system *system, control_params *control,
     }
 
 #if defined(HAVE_CUDA)
-    Delete_List( l_bond );
-    Delete_List( l_three_body );
+    if ( bond_list != NULL )
+    {
+        Delete_List( bond_list );
+    }
+    if ( thb_list != NULL )
+    {
+        Delete_List( thb_list );
+    }
 #endif
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: appended frame %d\n", system->my_rank, data->step );
-#endif
-
-    return SUCCESS;
 }
 
 

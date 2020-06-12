@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-void copy_LR_table_to_device( reax_system *, control_params *,
+void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *, control_params *,
         storage *, int * );
 
 #ifdef __cplusplus

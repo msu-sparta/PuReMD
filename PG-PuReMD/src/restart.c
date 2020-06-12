@@ -313,19 +313,18 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
     sfclose( fres, "Read_Binary_Restart_File::fres" );
 
     data->step = data->prev_steps;
-    // nsteps is updated based on the number of steps in the previous run
+    /* nsteps is updated based on the number of steps in the previous run */
     control->nsteps += data->prev_steps;
 }
 
 
 void Count_Restart_Atoms( FILE *fres, reax_system *system )
 {
-    int i = 0;
-    /*temporary variable storage*/
-    int orig_id_temp, type_temp;
+    int i, orig_id_temp, type_temp;
     char name_temp[8];
     rvec x_temp, v_temp;
 
+    i = 0;
     system->n = 0;
     system->N = 0;
 
@@ -371,12 +370,12 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
 
     s = smalloc( sizeof(char) * MAX_LINE, "Read_Restart_File::s" );
     tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Restart_File::tmp" );
-    for (i = 0; i < MAX_TOKENS; i++)
+    for ( i = 0; i < MAX_TOKENS; i++ )
     {
         tmp[i] = smalloc( sizeof(char) * MAX_LINE, "Read_Restart_File::tmp[i]" );
     }
 
-    //read first header lines
+    /* read first header lines */
     fgets( s, MAX_LINE, fres );
     c = Tokenize( s, &tmp, MAX_LINE );
 
@@ -394,7 +393,7 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
     data->therm.v_xi_old = atof(tmp[5]);
     data->therm.G_xi = atof(tmp[6]);
 
-    //read box lines
+    /* read box lines */
     fgets( s, MAX_LINE, fres );
     c = Tokenize( s, &tmp, MAX_LINE );
 
@@ -445,17 +444,17 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
 
     /* set up the simulation envirionment */
     Setup_Environment( system, control, mpi_data );
-    Count_Restart_Atoms(fres, system);
+    Count_Restart_Atoms( fres, system );
     PreAllocate_Space( system, control, workspace );
 
     /* go back to the start of file to read actual atom info */
     rewind( fres );
-    for (i = 0; i < 4; i++)
+    for ( i = 0; i < 4; i++ )
     {
         fgets( s, MAX_LINE, fres );
     }
 
-    /*process atoms*/
+    /* process atoms */
     top = 0;
     for ( i = 0; i < system->bigN; ++i )
     {
@@ -503,6 +502,6 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
     sfree( s, "Read_Restart_File::s" );
 
     data->step = data->prev_steps;
-    // nsteps is updated based on the number of steps in the previous run
+    /* nsteps is updated based on the number of steps in the previous run */
     control->nsteps += data->prev_steps;
 }

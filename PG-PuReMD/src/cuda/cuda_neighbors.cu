@@ -562,8 +562,8 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
 }
 
 
-int Cuda_Generate_Neighbor_Lists( reax_system *system, simulation_data *data, 
-        storage *workspace, reax_list **lists )
+extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
+        simulation_data *data, storage *workspace, reax_list **lists )
 {
     int blocks, ret, ret_far_nbr;
 #if defined(LOG_PERFORMANCE)

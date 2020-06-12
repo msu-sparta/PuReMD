@@ -83,19 +83,6 @@ void Make_List( int n, int max_intrs, int type, int format, reax_list * const l 
         l->v = smalloc( sizeof(void*) * l->max_intrs, "Make_List::v" );
         break;
 
-    case TYP_BOND:
-        l->bond_list = smalloc( sizeof(bond_data) * l->max_intrs, "Make_List::bonds" );
-        break;
-
-    case TYP_THREE_BODY:
-        l->three_body_list = smalloc( sizeof(three_body_interaction_data) * l->max_intrs,
-                "Make_List::three_bodies" );
-        break;
-
-    case TYP_HBOND:
-        l->hbond_list = smalloc( sizeof(hbond_data) * l->max_intrs, "Make_List::hbonds" );
-        break;
-
     case TYP_FAR_NEIGHBOR:
         l->far_nbr_list.nbr = smalloc( sizeof(int) * l->max_intrs,
                 "Make_List::far_nbr_list.nbr" );
@@ -105,6 +92,19 @@ void Make_List( int n, int max_intrs, int type, int format, reax_list * const l 
                 "Make_List::far_nbr_list.d" );
         l->far_nbr_list.dvec = smalloc( sizeof(rvec) * l->max_intrs,
                 "Make_List::far_nbr_list.dvec" );
+        break;
+
+    case TYP_BOND:
+        l->bond_list = smalloc( sizeof(bond_data) * l->max_intrs, "Make_List::bonds" );
+        break;
+
+    case TYP_HBOND:
+        l->hbond_list = smalloc( sizeof(hbond_data) * l->max_intrs, "Make_List::hbonds" );
+        break;
+
+    case TYP_THREE_BODY:
+        l->three_body_list = smalloc( sizeof(three_body_interaction_data) * l->max_intrs,
+                "Make_List::three_bodies" );
         break;
 
 #if defined(TEST_FORCES)
@@ -149,23 +149,23 @@ void Delete_List( reax_list * const l )
         sfree( l->v, "Delete_List::v" );
         break;
 
-    case TYP_BOND:
-        sfree( l->bond_list, "Delete_List::bonds" );
+    case TYP_FAR_NEIGHBOR:
+        sfree( l->far_nbr_list.nbr, "Delete_List::far_nbr_list.nbr" );
+        sfree( l->far_nbr_list.rel_box, "Delete_List::far_nbr_list.rel_box" );
+        sfree( l->far_nbr_list.d, "Delete_List::far_nbr_list.d" );
+        sfree( l->far_nbr_list.dvec, "Delete_List::far_nbr_list.dvec" );
         break;
 
-    case TYP_THREE_BODY:
-        sfree( l->three_body_list, "Delete_List::three_bodies" );
+    case TYP_BOND:
+        sfree( l->bond_list, "Delete_List::bonds" );
         break;
 
     case TYP_HBOND:
         sfree( l->hbond_list, "Delete_List::hbonds" );
         break;
 
-    case TYP_FAR_NEIGHBOR:
-        sfree( l->far_nbr_list.nbr, "Delete_List::far_nbr_list.nbr" );
-        sfree( l->far_nbr_list.rel_box, "Delete_List::far_nbr_list.rel_box" );
-        sfree( l->far_nbr_list.d, "Delete_List::far_nbr_list.d" );
-        sfree( l->far_nbr_list.dvec, "Delete_List::far_nbr_list.dvec" );
+    case TYP_THREE_BODY:
+        sfree( l->three_body_list, "Delete_List::three_bodies" );
         break;
 
 #if defined(TEST_FORCES)

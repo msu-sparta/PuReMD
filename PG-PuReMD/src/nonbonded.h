@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -43,7 +43,7 @@ void LR_vdW_Coulomb( reax_system const * const,
         storage * const,
         int, int, real, LR_data * const );
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

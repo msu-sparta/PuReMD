@@ -3,7 +3,20 @@
 #include "cuda_utils.h"
 
 
-extern "C" void Setup_Cuda_Environment(int rank, int nprocs, int gpus_per_node)
+static void compute_blocks( int *blocks, int *block_size, int count )
+{
+    *block_size = DEF_BLOCK_SIZE; // threads per block
+    *blocks = (int) CEIL( (double) count / DEF_BLOCK_SIZE ); // blocks per grid
+}
+
+
+static void compute_nearest_pow_2( int blocks, int *result )
+{
+  *result = (int) EXP2( CEIL( LOG2((double) blocks) ) );
+}
+
+
+extern "C" void Cuda_Setup_Environment( int rank, int nprocs, int gpus_per_node )
 {
 
     int deviceCount;
@@ -23,24 +36,29 @@ extern "C" void Setup_Cuda_Environment(int rank, int nprocs, int gpus_per_node)
         exit( INVALID_INPUT );
     }
 
-    //Calculate the # of GPUs per processor
-    //and assign the GPU for each process
+    /* assign the GPU for each process */
     //TODO: handle condition where # CPU procs > # GPUs
     cudaSetDevice( rank % gpus_per_node );
 
-#if defined(__CUDA_DEBUG__)
-    fprintf( stderr, "p:%d is using GPU: %d \n", rank, rank % gpus_per_node );
-#endif
-
-    //CHANGE ORIGINAL
-    //cudaDeviceSetLimit( cudaLimitStackSize, 8192 );
-    //cudaDeviceSetCacheConfig( cudaFuncCachePreferL1 );
-    //cudaCheckError();
+//    cudaDeviceSetLimit( cudaLimitStackSize, 8192 );
+//    cudaDeviceSetCacheConfig( cudaFuncCachePreferL1 );
+//    cudaCheckError( );
 }
 
 
-extern "C" void Cleanup_Cuda_Environment()
+extern "C" void Cuda_Init_Block_Sizes( reax_system *system,
+        control_params *control )
 {
-    cudaDeviceReset();
-    cudaDeviceSynchronize();
+    compute_blocks( &control->blocks, &control->block_size, system->n );
+    compute_nearest_pow_2( control->blocks, &control->blocks_pow_2 );
+
+    compute_blocks( &control->blocks_n, &control->block_size_n, system->N );
+    compute_nearest_pow_2( control->blocks_n, &control->blocks_pow_2_n );
+}
+
+
+extern "C" void Cuda_Cleanup_Environment( )
+{
+    cudaDeviceReset( );
+    cudaDeviceSynchronize( );
 }

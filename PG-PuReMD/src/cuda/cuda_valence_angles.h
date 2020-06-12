@@ -35,7 +35,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *, global_parameters,
 CUDA_GLOBAL void Cuda_Valence_Angles_Part2 ( reax_atom *, control_params *,
         storage , reax_list, int );
 
-CUDA_GLOBAL void Estimate_Cuda_Valence_Angles( reax_atom *, control_params *,
+CUDA_GLOBAL void Cuda_Estimate_Valence_Angles( reax_atom *, control_params *,
         reax_list , int , int, int *);
 
 

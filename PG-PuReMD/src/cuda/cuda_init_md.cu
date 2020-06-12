@@ -4,12 +4,12 @@
 #include "cuda_allocate.h"
 #include "cuda_list.h"
 #include "cuda_copy.h"
+#include "cuda_environment.h"
 #include "cuda_forces.h"
 #include "cuda_integrate.h"
 #include "cuda_neighbors.h"
 #include "cuda_reset_tools.h"
 #include "cuda_system_props.h"
-#include "cuda_utils.h"
 
 #if defined(PURE_REAX)
   #include "../box.h"
@@ -17,13 +17,7 @@
   #include "../grid.h"
   #include "../init_md.h"
   #include "../io_tools.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
   #include "../lookup.h"
-#ifdef __cplusplus
-}
-#endif
   #include "../random.h"
   #include "../reset_tools.h"
   #include "../tool_box.h"
@@ -58,9 +52,18 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
             &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
             &Unpack_Exchange_Message, TRUE );
 
+    system->local_cap = MAX( (int) CEIL( system->n * SAFE_ZONE ), MIN_CAP );
     system->total_cap = MAX( (int) CEIL( system->N * SAFE_ZONE ), MIN_CAP );
 
+    system->total_far_nbrs = 0;
+    system->total_bonds = 0;
+    system->total_hbonds = 0;
+    system->total_cm_entries = 0;
+    system->total_thbodies = 0;
+
     Bin_Boundary_Atoms( system );
+
+    Cuda_Init_Block_Sizes( system, control );
 
     Cuda_Allocate_System( system );
     Cuda_Copy_System_Host_to_Device( system );
@@ -96,27 +99,28 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 
     if ( !control->restart )
     {
-        data->step = data->prev_steps = 0;
+        data->step = 0;
+        data->prev_steps = 0;
     }
 
     switch ( control->ensemble )
     {
     case NVE:
         data->N_f = 3 * system->bigN;
-        control->Cuda_Evolve = Cuda_Velocity_Verlet_NVE;
+        control->Cuda_Evolve = &Cuda_Velocity_Verlet_NVE;
         control->virial = 0;
         break;
 
     case bNVT:
         data->N_f = 3 * system->bigN + 1;
-        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NVT;
+        control->Cuda_Evolve = &Cuda_Velocity_Verlet_Berendsen_NVT;
         control->virial = 0;
         break;
 
     case nhNVT:
         fprintf( stderr, "[WARNING] Nose-Hoover NVT is still under testing.\n" );
         data->N_f = 3 * system->bigN + 1;
-        control->Cuda_Evolve = Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein;
+        control->Cuda_Evolve = &Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein;
         control->virial = 0;
         if ( !control->restart || (control->restart && control->random_vel) )
         {
@@ -131,7 +135,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     /* Semi-Isotropic NPT */
     case sNPT:
         data->N_f = 3 * system->bigN + 4;
-        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
+        control->Cuda_Evolve = &Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -142,7 +146,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     /* Isotropic NPT */
     case iNPT:
         data->N_f = 3 * system->bigN + 2;
-        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
+        control->Cuda_Evolve = &Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
         if ( !control->restart )
         {
@@ -153,7 +157,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
     /* Anisotropic NPT */
     case NPT:
         data->N_f = 3 * system->bigN + 9;
-        control->Cuda_Evolve = Cuda_Velocity_Verlet_Berendsen_NPT;
+        control->Cuda_Evolve = &Cuda_Velocity_Verlet_Berendsen_NPT;
         control->virial = 1;
 
         fprintf( stderr, "[ERROR] Anisotropic NPT ensemble not yet implemented\n" );
@@ -161,7 +165,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         break;
 
     default:
-        fprintf( stderr, "p%d: init_simulation_data: ensemble not recognized\n",
+        fprintf( stderr, "[ERROR] p%d: Init_Simulation_Data: ensemble not recognized\n",
               system->my_rank );
         MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
     }
@@ -209,11 +213,14 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     /* estimate storage for bonds, hbonds, and sparse matrix */
     workspace->d_workspace->H.n_max = system->local_cap; // first call requires setting this manually before allocation
     Cuda_Estimate_Storages( system, control, workspace, lists,
-            TRUE, TRUE, TRUE, data->step );
+            TRUE, TRUE, TRUE, data->step - data->prev_steps );
 
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->n,
             system->local_cap, system->total_cm_entries, SYM_FULL_MATRIX );
     Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H );
+
+    Cuda_Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
+    Cuda_Init_Bond_Indices( system, lists[BONDS] );
 
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
@@ -221,17 +228,13 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
         Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS] );
     }
 
-    /* bonds list */
-    Cuda_Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
-    Cuda_Init_Bond_Indices( system, lists[BONDS] );
-
     /* 3bodies list: since a more accurate estimate of the num.
      * three body interactions requires that bond orders have
      * been computed, delay estimation until computation */
 }
 
 
-void Cuda_Initialize( reax_system *system, control_params *control,
+extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
@@ -267,8 +270,6 @@ void Cuda_Initialize( reax_system *system, control_params *control,
     {
         Init_Lookup_Tables( system, control, workspace->d_workspace, mpi_data );
     }
-
-    Cuda_Init_Block_Sizes( system, control );
 
 #if defined(DEBUG_FOCUS)
     Cuda_Print_Mem_Usage( );

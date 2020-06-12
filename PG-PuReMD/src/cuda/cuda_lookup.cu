@@ -6,8 +6,8 @@
 #include "../index_utils.h"
 
 
-void copy_LR_table_to_device( reax_system *system, control_params *control,
-        storage *workspace, int *aggregated )
+extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
+        control_params *control, storage *workspace, int *aggregated )
 {
     int i, j;
     int num_atom_types;

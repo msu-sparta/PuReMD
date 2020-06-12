@@ -25,16 +25,8 @@
 #include "../reax_types.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void Cuda_Scale_Box( reax_system *, control_params *,
         storage *, simulation_data *, mpi_datatypes *);
-
-#ifdef __cplusplus
-}
-#endif
 
 
 #endif

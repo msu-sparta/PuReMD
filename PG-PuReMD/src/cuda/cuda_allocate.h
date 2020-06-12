@@ -3,10 +3,6 @@
 
 #include "../reax_types.h"
 
-#ifdef __cplusplus
-extern "C"  {
-#endif
-
 
 void Cuda_Allocate_System( reax_system * );
 
@@ -31,9 +27,5 @@ void Cuda_Deallocate_Matrix( sparse_matrix * );
 void Cuda_Reallocate( reax_system*, control_params*, simulation_data*, storage*,
         reax_list**, mpi_datatypes* );
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

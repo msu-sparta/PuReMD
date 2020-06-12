@@ -29,7 +29,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *, single_body_parameters 
         hbond_parameters *, global_parameters,
         control_params *, storage ,
         reax_list, reax_list, reax_list, int,
-        int, real *, rvec *, int, int );
+        int, real *, rvec *, int );
 
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *, single_body_parameters *,
         hbond_parameters *, global_parameters, control_params *, storage,
