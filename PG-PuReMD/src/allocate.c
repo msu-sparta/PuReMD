@@ -767,6 +767,7 @@ void Deallocate_Grid( grid * const g )
     sfree( g->cutoff, "Deallocate_Grid::g->cutoff" );
     sfree( g->nbrs_x, "Deallocate_Grid::g->nbrs_x" );
     sfree( g->nbrs_cp, "Deallocate_Grid::g->nbrs_cp" );
+    sfree( g->rel_box, "Deallocate_Grid::g->rel_box" );
 
     /* deallocate the grid cells */
     for ( i = 0; i < g->ncells[0]; i++ )

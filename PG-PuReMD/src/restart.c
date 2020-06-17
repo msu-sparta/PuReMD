@@ -217,18 +217,22 @@ void Count_Binary_Restart_Atoms( FILE *fres, reax_system *system )
     int i;
     restart_atom res_atom;
 
-    system->n = system->N = 0;
+    system->n = 0;
+    system->N = 0;
+
     for ( i = 0; i < system->bigN; i++ )
     {
         fread( &res_atom, sizeof(restart_atom), 1, fres );
 
         /* if the point is inside my_box, add it to my lists */
-        Fit_to_Periodic_Box( &(system->big_box), &(res_atom.x) );
-        if ( is_Inside_Box(&(system->my_box), res_atom.x) )
+        Fit_to_Periodic_Box( &system->big_box, &res_atom.x );
+
+        if ( is_Inside_Box( &system->my_box, res_atom.x ) == TRUE )
         {
             ++system->n;
         }
     }
+
     system->N = system->n;
 
 #if defined(DEBUG_FOCUS)
@@ -292,9 +296,9 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
         fread( &res_atom, sizeof(restart_atom), 1, fres );
 
         /* if the point is inside my_box, add it to my lists */
-        Fit_to_Periodic_Box( &(system->big_box), &(res_atom.x) );
+        Fit_to_Periodic_Box( &system->big_box, &res_atom.x );
         
-        if ( is_Inside_Box(&system->my_box, res_atom.x) )
+        if ( is_Inside_Box( &system->my_box, res_atom.x ) == TRUE )
         {
             /* store orig_id, type, name and coord info of the new atom */
             p_atom = &system->my_atoms[top];
@@ -305,6 +309,14 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
 
             rvec_Copy( p_atom->x, res_atom.x );
             rvec_Copy( p_atom->v, res_atom.v );
+
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr, "atom: id = %d, orig_id = %d, type = %d,"
+                   " name = %8s, x = (%f, %f, %f), v = (%f, %f, %f)\n",
+                    top, p_atom->orig_id, p_atom->type, p_atom->name,
+                    p_atom->x[0], p_atom->x[1], p_atom->x[2],
+                    p_atom->v[0], p_atom->v[1], p_atom->v[2] ); fflush( stderr );
+#endif
 
             top++;
         }

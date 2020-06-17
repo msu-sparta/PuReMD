@@ -268,7 +268,7 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
     /* Lookup Tables */
     if ( control->tabulate )
     {
-        Init_Lookup_Tables( system, control, workspace->d_workspace, mpi_data );
+        Make_LR_Lookup_Table( system, control, workspace->d_workspace, mpi_data );
     }
 
 #if defined(DEBUG_FOCUS)

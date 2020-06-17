@@ -102,8 +102,8 @@ static inline real Init_Charge_Matrix_Entry_Tab( const reax_system * const syste
         const control_params * const control, LR_lookup_table * const LR,
         int i, int j, real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    int r, tmin, tmax;
-    real base, dif, val, ret;
+    int tmin, tmax;
+    real val, ret;
     LR_lookup_table *t;
 
     ret = 0.0;
@@ -121,17 +121,7 @@ static inline real Init_Charge_Matrix_Entry_Tab( const reax_system * const syste
                 tmax = MAX( system->my_atoms[i].type, system->my_atoms[j].type );
                 t = &LR[ index_lr( tmin, tmax, system->reax_param.num_atom_types ) ];
 
-                /* cubic spline interpolation */
-                r = (int)(r_ij * t->inv_dx);
-                if ( r == 0 ) 
-                {
-                    ++r;
-                }
-                base = (real)(r + 1) * t->dx;
-                dif = r_ij - base;
-                val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b)
-                    * dif + t->ele[r].a;
-                val *= EV_to_KCALpMOL / C_ELE;
+                val = LR_Lookup_Entry( t, r_ij, LR_CM );
 
                 ret = ((i == j) ? 0.5 : 1.0) * val;
             break;

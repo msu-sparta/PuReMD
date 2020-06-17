@@ -689,9 +689,9 @@ void Initialize( reax_system * const system, control_params * const control,
 
     Init_Output_Files( system, control, out_control, mpi_data );
 
-    if ( control->tabulate )
+    if ( control->tabulate > 0 )
     {
-        Init_Lookup_Tables( system, control, workspace, mpi_data );
+        Make_LR_Lookup_Table( system, control, workspace, mpi_data );
     }
 
     Init_Force_Functions( control );
@@ -738,9 +738,9 @@ void Initialize( reax_system * const system, control_params * const control,
 
     Init_Output_Files( system, control, out_control, mpi_data );
 
-    if ( control->tabulate )
+    if ( control->tabulate > 0 )
     {
-        Init_Lookup_Tables( system, control, workspace, mpi_data );
+        Make_LR_Lookup_Table( system, control, workspace, mpi_data );
     }
 
     Init_Force_Functions( );

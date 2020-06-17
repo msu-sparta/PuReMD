@@ -2491,18 +2491,19 @@ struct cubic_spline_coef
 };
 
 
-/**/
+/* struct containing lookup table for pairwise atomic interactions
+ * based on atomic distance */
 struct LR_lookup_table
 {
-    /**/
+    /* min. distance between atom pairs contained in lookup table */
     real xmin;
-    /**/
+    /* max. distance between atom pairs contained in lookup table */
     real xmax;
-    /**/
+    /* num. of lookup table entries */
     int n;
-    /**/
+    /* step size between consecutive entries in the lookup table, in angstroms */
     real dx;
-    /**/
+    /* inverse step size for the lookup table, in angstroms */
     real inv_dx;
     /**/
     real a;
@@ -2513,15 +2514,15 @@ struct LR_lookup_table
 
     /**/
     LR_data *y;
-    /**/
+    /* spline coefficients for charge matrix entries */
     cubic_spline_coef *H;
-    /**/
+    /* spline coefficients for van der Waals interactions */
     cubic_spline_coef *vdW;
-    /**/
+    /* spline coefficients for van der Waals interactions */
     cubic_spline_coef *CEvd;
-    /**/
+    /* spline coefficients for Coulomb interactions */
     cubic_spline_coef *ele;
-    /**/
+    /* spline coefficients for Coulomb interactions */
     cubic_spline_coef *CEclmb;
 };
 

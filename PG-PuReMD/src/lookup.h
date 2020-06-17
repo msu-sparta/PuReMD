@@ -25,11 +25,23 @@
 #include "reax_types.h"
 
 
+enum LR_lookup_table_entry_type
+{
+    LR_E_VDW = 0,
+    LR_CE_VDW = 1,
+    LR_E_CLMB = 2,
+    LR_CE_CLMB = 3,
+    LR_CM = 4,
+};
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void Init_Lookup_Tables( reax_system * const, control_params * const, storage * const,
+real LR_Lookup_Entry( LR_lookup_table * const, real, int );
+
+void Make_LR_Lookup_Table( reax_system * const, control_params * const, storage * const,
         mpi_datatypes * const );
 
 void Finalize_LR_Lookup_Table( reax_system * const, control_params * const,

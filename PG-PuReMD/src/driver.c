@@ -37,7 +37,7 @@ static void usage( char * argv[] )
 int main( int argc, char* argv[] )
 {
     void *handle;
-    int ret;
+    int ret, ret_mpi;
 
     MPI_Init( &argc, &argv );
 
@@ -60,8 +60,8 @@ int main( int argc, char* argv[] )
         ret = cleanup( handle );
     }
 
-    MPI_Finalized( &ret );
-    if ( !ret )
+    MPI_Finalized( &ret_mpi );
+    if ( !ret_mpi )
     { 
         MPI_Finalize( );
     }
