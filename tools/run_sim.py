@@ -117,6 +117,10 @@ class TestCase():
                     r'(?P<key>\btraj_format\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'traj_title': lambda l, x: sub(
                     r'(?P<key>\btraj_title\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'restart_format': lambda l, x: sub(
+                    r'(?P<key>\brestart_format\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'restart_freq': lambda l, x: sub(
+                    r'(?P<key>\brestart_freq\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
         }
         self.__params['geo_format'] = geo_format
         self.__min_step = min_step
@@ -190,9 +194,9 @@ test_forces             0                       ! 0: normal run, 1: at every tim
 molec_anal              0                       ! 1: outputs newly formed molecules as the simulation progresses
 freq_molec_anal         0                       ! perform molecular analysis at every 'this many' timesteps
 dipole_anal             0                       ! 1: calculate a electric dipole moment of the system
-freq_dipole_anal        1                       ! calculate electric dipole moment at every 'this many' steps
+freq_dipole_anal        0                       ! calculate electric dipole moment at every 'this many' steps
 diffusion_coef          0                       ! 1: calculate diffusion coefficient of the system
-freq_diffusion_coef     1                       ! calculate diffusion coefficient at every 'this many' steps
+freq_diffusion_coef     0                       ! calculate diffusion coefficient at every 'this many' steps
 restrict_type           2                       ! -1: all types of atoms, 0 and up: only this type of atoms
 
 restart_format          1                       ! 0: restarts in ASCII  1: restarts in binary
@@ -439,7 +443,6 @@ restart_freq            0                       ! 0: do not output any restart f
 #SBATCH --cpus-per-task=28
 #SBATCH --constraint=lac
 
-module purge
 module load {0}
 """.format(' '.join(modules))
         job_script += """\
@@ -669,6 +672,8 @@ if __name__ == '__main__':
                 'traj_format': ['0'],
                 'traj_compress': ['0'],
                 'traj_title': [None],
+                'restart_format': ['0'],
+                'restart_freq': ['0'],
         }
         return data_dir, control_params_dict
 
@@ -825,23 +830,28 @@ if __name__ == '__main__':
         _, control_params_dict = setup_defaults(base_dir)
 
         # overwrite default control file parameter values if supplied via command line args
+        geo_format = None
         if args.params:
             for param in args.params:
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
+                    if param[0] == 'geo_format':
+                        geo_format = param[1].split(',')
                 else:
                     print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
 
         geo_base, geo_ext = path.splitext(args.geo_file[0])
-        # infer geometry file format by file extension
-        if geo_ext.lower() == '.pdb':
-            geo_format = ['1']
-        elif geo_ext.lower() == '.geo':
-            geo_format = ['0']
-        else:
-            print("[ERROR] unrecognized geometry format {0}. Terminating...".format(ext))
-            exit(-1)
+
+        if not geo_format:
+            # infer geometry file format by file extension
+            if geo_ext.lower() == '.pdb':
+                geo_format = ['1']
+            elif geo_ext.lower() == '.geo':
+                geo_format = ['0']
+            else:
+                print("[ERROR] unrecognized geometry format {0}. Terminating...".format(geo_ext))
+                exit(-1)
 
         test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
                 params=control_params_dict, geo_format=geo_format)
@@ -880,7 +890,6 @@ if __name__ == '__main__':
                 else:
                     print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
-
 
         test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict,
                 header_fmt_str=header_fmt_str, header_str=header_str, body_fmt_str=body_fmt_str,
