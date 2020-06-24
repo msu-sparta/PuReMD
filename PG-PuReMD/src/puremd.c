@@ -240,7 +240,7 @@ int setup_callback( const void * const handle, const callback_function callback 
 
 int simulate( const void * const handle )
 {
-    int ret, retries;
+    int ret, ret_pmd, retries;
     reax_system *system;
     control_params *control;
     simulation_data *data;
@@ -250,7 +250,7 @@ int simulate( const void * const handle )
     mpi_datatypes *mpi_data;
     puremd_handle *pmd_handle;
 
-    ret = PUREMD_FAILURE;
+    ret_pmd = PUREMD_FAILURE;
 
     if ( handle != NULL )
     {
@@ -455,19 +455,19 @@ int simulate( const void * const handle )
                     Get_Time( ) - data->timing.start );
         }
 
-        ret = PUREMD_SUCCESS;
+        ret_pmd = PUREMD_SUCCESS;
     }
 
-    return ret;
+    return ret_pmd;
 }
 
 
 int cleanup( const void * const handle )
 {
-    int ret;
+    int ret_pmd;
     puremd_handle *pmd_handle;
 
-    ret = PUREMD_FAILURE;
+    ret_pmd = PUREMD_FAILURE;
 
     if ( handle != NULL )
     {
@@ -496,10 +496,10 @@ int cleanup( const void * const handle )
 
         sfree( pmd_handle, "cleanup::pmd_handle" );
 
-        ret = PUREMD_SUCCESS;
+        ret_pmd = PUREMD_SUCCESS;
     }
 
-    return ret;
+    return ret_pmd;
 }
 
 

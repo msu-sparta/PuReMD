@@ -636,16 +636,16 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
     start = 0;
     end = system->n;
 
-    for ( i = 0; i < 6; ++i )
-    {
-        cnt[i] = 0;
-    }
-
     for ( d = 0; d < 3; ++d )
     {
         /* nbr1 is in the negative direction, nbr2 the positive direction */
         nbr1 = &system->my_nbrs[2 * d];
         nbr2 = &system->my_nbrs[2 * d + 1];
+
+        for ( i = 0; i < 6; ++i )
+        {
+            cnt[i] = 0;
+        }
 
         count_func( system, start, end, d, out_bufs, cnt );
 
@@ -680,6 +680,12 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
         ret = MPI_Get_count( &stat1, type, &cnt1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+        if ( cnt1 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
                 type_size * cnt1, TRUE, SAFE_ZONE, "SendRecv::mpi_data->in1_buffer" );
 
@@ -695,6 +701,12 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Get_count( &stat2, type, &cnt2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        if ( cnt2 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
                 type_size * cnt2, TRUE, SAFE_ZONE, "SendRecv::mpi_data->in2_buffer" );

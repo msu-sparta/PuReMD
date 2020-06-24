@@ -33,10 +33,15 @@ void Init_Matrix_Row_Indices( sparse_matrix * const, int * const );
 
 void PreAllocate_Space( reax_system * const, control_params * const, storage * const );
 
-void Reallocate_System( reax_system * const, int, int );
+void Reallocate_System_Part1( reax_system * const, int );
 
-void Allocate_Workspace( reax_system * const, control_params * const, storage * const,
-        int, int );
+void Reallocate_System_Part2( reax_system * const, int );
+
+void Allocate_Workspace_Part1( reax_system * const,
+        control_params * const, storage * const, int );
+
+void Allocate_Workspace_Part2( reax_system * const,
+        control_params * const, storage * const, int );
 
 void Allocate_Grid( reax_system * const, MPI_Comm );
 

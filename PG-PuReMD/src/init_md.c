@@ -337,7 +337,8 @@ void Init_System( reax_system * const system )
              system->my_rank, system->local_cap, system->total_cap );
 #endif
 
-    Reallocate_System( system, system->local_cap, system->total_cap );
+    Reallocate_System_Part1( system, system->local_cap );
+    Reallocate_System_Part2( system, system->total_cap );
 }
 
 
@@ -402,8 +403,8 @@ void Init_Taper( control_params * const control,  storage * const workspace,
 void Init_Workspace( reax_system * const system, control_params * const control,
         storage * const workspace, mpi_datatypes * const mpi_data )
 {
-    Allocate_Workspace( system, control, workspace, system->local_cap,
-            system->total_cap );
+    Allocate_Workspace_Part1( system, control, workspace, system->local_cap );
+    Allocate_Workspace_Part2( system, control, workspace, system->total_cap );
 
     workspace->realloc.far_nbrs = FALSE;
     workspace->realloc.cm = FALSE;
@@ -999,6 +1000,8 @@ static void Finalize_MPI_Datatypes( mpi_datatypes * const mpi_data )
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Type_free( &mpi_data->restart_atom_type );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+    MPI_Comm_free( &mpi_data->comm_mesh3D );
 }
 
 

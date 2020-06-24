@@ -479,8 +479,6 @@ void check_smalloc( void **ptr, size_t *cur_size, size_t new_size,
 void check_srealloc( void **ptr, size_t *cur_size, size_t new_size,
         int over_alloc, real over_alloc_factor, const char *msg )
 {
-    void *new_ptr;
-
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] check_srealloc requesting %zu bytes for %s (%zu currently allocated)\n",
             new_size, msg, *cur_size );
@@ -491,15 +489,14 @@ void check_srealloc( void **ptr, size_t *cur_size, size_t new_size,
     {
         if ( over_alloc == TRUE )
         {
-            *cur_size = (int) CEIL( new_size * over_alloc_factor );
+            *cur_size = (size_t) CEIL( new_size * over_alloc_factor );
         }
         else
         {
             *cur_size = new_size;
         }
 
-        new_ptr = srealloc( *ptr, *cur_size, msg );
-        *ptr = new_ptr;
+        *ptr = srealloc( *ptr, *cur_size, msg );
     }
 }
 

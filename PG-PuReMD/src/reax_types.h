@@ -2037,8 +2037,6 @@ struct reallocate_data
 
 struct storage
 {
-    /* 0 if struct members are NOT allocated, 1 otherwise */
-    int allocated;
     /* bond order related storage */
     /**/
     real *total_bond_order;

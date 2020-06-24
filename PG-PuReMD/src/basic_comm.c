@@ -364,6 +364,12 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         ret = MPI_Get_count( &stat1, type, &cnt1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+        if ( cnt1 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+
 #if defined(DEBUG)
         if ( cnt1 + nbr1->atoms_str > system->total_cap )
         {
@@ -380,6 +386,12 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Get_count( &stat2, type, &cnt2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        if ( cnt2 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
 
 #if defined(DEBUG)
         if ( cnt2 + nbr2->atoms_str > system->total_cap )
@@ -448,7 +460,7 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
                 &out_bufs[2 * d + 1].out_atoms_size,
                 type_size * out_bufs[2 * d + 1].cnt,
                 TRUE, SAFE_ZONE, "Dist_FS::mpi_data->out_atoms" );
-        check_smalloc( (void **) &out_bufs[2 * d + 1].index,
+        check_srealloc( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
                 sizeof(int) * out_bufs[2 * d + 1].cnt,
                 TRUE, SAFE_ZONE, "Dist_FS::mpi_data->index" );
@@ -465,6 +477,12 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         ret = MPI_Get_count( &stat1, type, &cnt1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+        if ( cnt1 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                 cnt1, type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -473,6 +491,12 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Get_count( &stat2, type, &cnt2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        if ( cnt2 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
 
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                 cnt2, type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
@@ -566,6 +590,12 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
         ret = MPI_Get_count( &stat1, type, &cnt1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+        if ( cnt1 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
                 type_size * cnt1, TRUE, SAFE_ZONE, "Coll::mpi_data->in1_buffer" );
 
@@ -573,12 +603,16 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
                 type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
-
         ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Get_count( &stat2, type, &cnt2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        if ( cnt2 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
                 type_size * cnt2, TRUE, SAFE_ZONE, "Coll::mpi_data->in2_buffer" );
@@ -587,12 +621,13 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
                 type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
-
         ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
+        unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
     }
 #endif
 }
@@ -639,6 +674,12 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         ret = MPI_Get_count( &stat1, type, &cnt1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+        if ( cnt1 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+
         check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
                 type_size * cnt1, TRUE, SAFE_ZONE, "Coll_FS::mpi_data->in1_buffer" );
 
@@ -646,12 +687,16 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
                 type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
-
         ret = MPI_Probe( nbr2->rank, 2 * d, comm, &stat2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Get_count( &stat2, type, &cnt2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        if ( cnt2 == MPI_UNDEFINED )
+        {
+            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
 
         check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
                 type_size * cnt2, TRUE, SAFE_ZONE, "Coll_FS::mpi_data->in2_buffer" );
@@ -660,12 +705,13 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
                 type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
-
         ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        unpack( mpi_data->in1_buffer, buf, &out_bufs[2 * d] );
+        unpack( mpi_data->in2_buffer, buf, &out_bufs[2 * d + 1] );
     }
 }
 
