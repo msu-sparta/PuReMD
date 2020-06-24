@@ -526,10 +526,7 @@ static void QEq( reax_system const * const system, control_params const * const 
     Calculate_Charges_QEq( system, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.cm_solver_iters += iters;
-    }
+    data->timing.cm_solver_iters += iters;
 #endif
 }
 
@@ -628,10 +625,7 @@ static void EE( reax_system const * const system, control_params const * const c
     Calculate_Charges_EE( system, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.cm_solver_iters += iters;
-    }
+    data->timing.cm_solver_iters += iters;
 #endif
 }
 
@@ -730,10 +724,7 @@ static void ACKS2( reax_system const * const system, control_params const * cons
     Calculate_Charges_ACKS2( system, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.cm_solver_iters += iters;
-    }
+    data->timing.cm_solver_iters += iters;
 #endif
 }
 

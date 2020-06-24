@@ -48,16 +48,9 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     reax_list *far_nbr_list;
     reax_atom *atom1, *atom2;
 #if defined(LOG_PERFORMANCE)
-    real t_start;
-    real t_elapsed;
-
-    t_start = 0.0;
-    t_elapsed = 0.0;
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_start = Get_Time( );
-    }
+    double time;
+    
+    time = Get_Time( );
 #endif
 
     far_nbr_list = lists[FAR_NBRS];
@@ -149,13 +142,7 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
     }
 
 #if defined(LOG_PERFORMANCE)
-    t_elapsed = Get_Elapsed_Time( t_start );
-    data->timing.nbrs += t_elapsed;
-#endif
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d @ step%d: nbrs done - total_num_far=%d\n",
-             system->my_rank, data->step, total_num_far );
+    Update_Timing_Info( &time, &data->timing.nbrs );
 #endif
 
 #if defined(TEST_ENERGY) || defined(TEST_FORCES)
@@ -171,13 +158,19 @@ int Generate_Neighbor_Lists( reax_system *system, simulation_data *data,
 }
 
 
-void Estimate_Num_Neighbors( reax_system *system, int far_nbr_list_format )
+void Estimate_Num_Neighbors( reax_system *system, simulation_data *data,
+        int far_nbr_list_format )
 {
     int i, j, k, l, m, itr;
     real d, cutoff;
     rvec dvec;
     grid *g;
     reax_atom *atom1, *atom2;
+#if defined(LOG_PERFORMANCE)
+    double time;
+    
+    time = Get_Time( );
+#endif
 
     g = &system->my_grid;
 
@@ -261,8 +254,7 @@ void Estimate_Num_Neighbors( reax_system *system, int far_nbr_list_format )
     }
     system->total_far_nbrs = (int) CEIL( system->total_far_nbrs * SAFE_ZONE );
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "p%d: estimate nbrs done - system->total_far_nbrs=%d\n",
-             system->my_rank, system->total_far_nbrs );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.nbrs );
 #endif
 }

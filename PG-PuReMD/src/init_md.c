@@ -625,7 +625,7 @@ void Init_Lists( reax_system * const system, control_params * const control,
 #endif
     }
 
-    Estimate_Num_Neighbors( system, far_nbr_list_format );
+    Estimate_Num_Neighbors( system, data, far_nbr_list_format );
 
     Make_List( system->total_cap, system->total_far_nbrs, TYP_FAR_NEIGHBOR,
             far_nbr_list_format, lists[FAR_NBRS] );
