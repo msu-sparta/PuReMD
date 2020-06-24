@@ -252,7 +252,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
     int i;
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
     int ret;
-    real t_pc, total_pc;
+    real t_pc;
 #endif
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
@@ -266,16 +266,10 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
     {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
         t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
-                &workspace->H, &workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
+                &workspace->H, &workspace->H_spar_patt, &workspace->H_app_inv,
+                control->nprocs );
 
-        ret = MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        if( system->my_rank == MASTER_NODE )
-        {
-            data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
-        }
+        data->timing.cm_solver_pre_comp += t_pc;
 #else
         fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
         exit( INVALID_INPUT );

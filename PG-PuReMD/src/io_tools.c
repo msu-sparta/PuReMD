@@ -1234,25 +1234,25 @@ void Output_Results( reax_system *system, control_params *control,
 
             if ( system->my_rank == MASTER_NODE )
             {
-                data->timing.comm = my_timings[0] / control->nprocs;
-                data->timing.nbrs = my_timings[1] / control->nprocs;
-                data->timing.init_forces = my_timings[2] / control->nprocs;
-                data->timing.init_dist = my_timings[3] / control->nprocs;
-                data->timing.init_cm = my_timings[4] / control->nprocs;
-                data->timing.init_bond = my_timings[5] / control->nprocs;
-                data->timing.bonded = my_timings[6] / control->nprocs;
-                data->timing.nonb = my_timings[7] / control->nprocs;
-                data->timing.cm = my_timings[8] / control->nprocs;
-                data->timing.cm_sort = my_timings[9] / control->nprocs;
-                data->timing.cm_solver_iters = my_timings[10] / control->nprocs;
-                data->timing.cm_solver_pre_comp = my_timings[11] / control->nprocs;
-                data->timing.cm_solver_pre_app = my_timings[12] / control->nprocs;
-                data->timing.cm_solver_comm = my_timings[13] / control->nprocs;
-                data->timing.cm_solver_allreduce = my_timings[14] / control->nprocs;
-                data->timing.cm_solver_spmv = my_timings[15] / control->nprocs;
-                data->timing.cm_solver_vector_ops = my_timings[16] / control->nprocs;
-                data->timing.cm_solver_orthog = my_timings[17] / control->nprocs;
-                data->timing.cm_solver_tri_solve = my_timings[18] / control->nprocs;
+                data->timing.comm = total_timings[0] / control->nprocs;
+                data->timing.nbrs = total_timings[1] / control->nprocs;
+                data->timing.init_forces = total_timings[2] / control->nprocs;
+                data->timing.init_dist = total_timings[3] / control->nprocs;
+                data->timing.init_cm = total_timings[4] / control->nprocs;
+                data->timing.init_bond = total_timings[5] / control->nprocs;
+                data->timing.bonded = total_timings[6] / control->nprocs;
+                data->timing.nonb = total_timings[7] / control->nprocs;
+                data->timing.cm = total_timings[8] / control->nprocs;
+                data->timing.cm_sort = total_timings[9] / control->nprocs;
+                data->timing.cm_solver_iters = total_timings[10] / control->nprocs;
+                data->timing.cm_solver_pre_comp = total_timings[11] / control->nprocs;
+                data->timing.cm_solver_pre_app = total_timings[12] / control->nprocs;
+                data->timing.cm_solver_comm = total_timings[13] / control->nprocs;
+                data->timing.cm_solver_allreduce = total_timings[14] / control->nprocs;
+                data->timing.cm_solver_spmv = total_timings[15] / control->nprocs;
+                data->timing.cm_solver_vector_ops = total_timings[16] / control->nprocs;
+                data->timing.cm_solver_orthog = total_timings[17] / control->nprocs;
+                data->timing.cm_solver_tri_solve = total_timings[18] / control->nprocs;
             }
 #endif
 
