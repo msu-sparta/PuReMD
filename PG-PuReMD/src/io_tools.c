@@ -1342,8 +1342,6 @@ void Output_Results( reax_system *system, control_params *control,
 //                        data->timing.cm_solver_tri_solve * denom );
 
                 fflush( out_control->log );
-
-                Reset_Timing( &data->timing );
 #endif //LOG_PERFORMANCE
 
                 if ( control->virial )
@@ -1365,6 +1363,10 @@ void Output_Results( reax_system *system, control_params *control,
                     fflush( out_control->prs );
                 }
             }
+
+#if defined(LOG_PERFORMANCE)
+            Reset_Timing( &data->timing );
+#endif
         }
 
         /* write current frame */
