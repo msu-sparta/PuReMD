@@ -462,18 +462,12 @@ static void Sparse_MatVec_local( sparse_matrix const * const A,
  *
  * returns: communication time
  */
-static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
+static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         const control_params * const control, mpi_datatypes * const mpi_data,
         void const * const x, int buf_type, MPI_Datatype mpi_type )
 {
-    int t_start;
-
-    t_start = Get_Time( );
-
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, x, buf_type, mpi_type );
-
-    return Get_Elapsed_Time( t_start );
 }
 
 
@@ -489,30 +483,20 @@ static real Sparse_MatVec_Comm_Part1( const reax_system * const system,
  *
  * returns: communication time
  */
-static real Sparse_MatVec_Comm_Part2( const reax_system * const system,
+static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         const control_params * const control, mpi_datatypes * const mpi_data,
         int mat_format, void * const b, int buf_type, MPI_Datatype mpi_type )
 {
-    int t_start, t_comm;
-
-    t_comm = 0.0;
-
     if ( mat_format == SYM_HALF_MATRIX )
     {
-        t_start = Get_Time( );
         Coll( system, mpi_data, b, buf_type, mpi_type );
-        t_comm += Get_Time( ) - t_start;
     }
 #if defined(NEUTRAL_TERRITORY)
     else
     {
-        t_start = Get_Time( );
         Coll( system, mpi_data, b, buf_type, mpi_type );
-        t_comm += Get_Time( ) - t_start;
     }
 #endif
-
-    return t_comm;
 }
 
 
@@ -1896,7 +1880,7 @@ static void apply_preconditioner( const reax_system * const system,
 //                                  tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
 //                                  break;
                             case SAI_PC:
-                                t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                                Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                                         y, REAL_PTR_TYPE, MPI_DOUBLE );
                                 
                                 t_start = Get_Time( );
@@ -1928,7 +1912,7 @@ static void apply_preconditioner( const reax_system * const system,
 //                                          workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
 //                                  break;
                             case SAI_PC:
-                                t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                                Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                                         y, REAL_PTR_TYPE, MPI_DOUBLE );
                                 
                                 t_start = Get_Time( );
@@ -2127,160 +2111,186 @@ int SDM( reax_system const * const system, control_params const * const control,
 {
     int i, j, ret;
     real tmp, alpha, bnorm, sig;
-    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real timings[5], redux[2];
+    real redux[2];
+#if defined(LOG_PERFORMANCE)
+    real time;
 
-    t_pa = 0.0;
-    t_spmv = 0.0;
-    t_vops = 0.0;
-    t_comm = 0.0;
-    t_allreduce = 0.0;
+    time = Get_Time( );
+#endif
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->q, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->q, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     Vector_Sum( workspace->r, 1.0,  b, -1.0, workspace->q, system->n );
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
     /* pre-conditioning */
-    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
     {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Vector_Copy( workspace->d, workspace->r, system->n );
+    }
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+    {
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        }
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+    }
+    else if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
         
-        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
         /* no comm part2 because d is only local portion */
     }
-    else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
-    {
-        t_start = Get_Time( );
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
-        }
-        t_pa += Get_Time( ) - t_start;
-    }
 
-    t_start = Get_Time( );
     redux[0] = Dot_local( b, b, system->n );
     redux[1] = Dot_local( workspace->r, workspace->d, system->n );
-    t_vops += Get_Time( ) - t_start;
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
     ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
             MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    t_allreduce += Get_Time( ) - t_start;
-
-    t_start = Get_Time( );
     bnorm = SQRT( redux[0] );
     sig = redux[1];
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
 
     for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / bnorm > tol; ++i )
     {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->d, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->d, workspace->q, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->d, workspace->q, system->N );
 #endif
-        t_spmv += Get_Time( ) - t_start;
 
-        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+        Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
         redux[0] = Dot_local( workspace->r, workspace->d, system->n );
         redux[1] = Dot_local( workspace->d, workspace->q, system->n );
-        t_vops += Get_Time( ) - t_start;
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
         ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
                 MPI_SUM, MPI_COMM_WORLD );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
         sig = redux[0];
         tmp = redux[1];
         alpha = sig / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
         Vector_Add( workspace->r, -alpha, workspace->q, system->n );
-        t_vops += Get_Elapsed_Time( t_start );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
         /* pre-conditioning */
-        if ( control->cm_solver_pre_comp_type == SAI_PC )
+        if ( control->cm_solver_pre_comp_type == NONE_PC )
         {
-            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            Vector_Copy( workspace->d, workspace->r, system->n );
+        }
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+        {
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+            }
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+        }
+        else if ( control->cm_solver_pre_comp_type == SAI_PC )
+        {
+            Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
             
-            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->d, system->n );
 #endif
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
             /* no comm part2 because d is only local portion */
         }
-        else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
-        {
-            t_start = Get_Time( );
-            for ( j = 0; j < system->n; ++j )
-            {
-                workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
-            }
-            t_pa += Get_Time( ) - t_start;
-        }
-    }
-
-    timings[0] = t_pa;
-    timings[1] = t_spmv;
-    timings[2] = t_vops;
-    timings[3] = t_comm;
-    timings[4] = t_allreduce;
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
-        data->timing.cm_solver_spmv += timings[1] / control->nprocs;
-        data->timing.cm_solver_vector_ops += timings[2] / control->nprocs;
-        data->timing.cm_solver_comm += timings[3] / control->nprocs;
-        data->timing.cm_solver_allreduce += timings[4] / control->nprocs;
-    }
-    else
-    {
-        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -2305,65 +2315,90 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     rvec2 tmp, alpha, beta;
     rvec2 norm, b_norm;
     rvec2 sig_old, sig_new;
-    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real timings[5], redux[6];
+    real redux[6];
+#if defined(LOG_PERFORMANCE)
+    real time;
 
-    t_pa = 0.0;
-    t_spmv = 0.0;
-    t_vops = 0.0;
-    t_comm = 0.0;
-    t_allreduce = 0.0;
+    time = Get_Time( );
+#endif
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, x, workspace->q2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, x, workspace->q2, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     /* residual */
     for ( j = 0; j < system->n; ++j )
     {
         workspace->r2[j][0] = b[j][0] - workspace->q2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->q2[j][1];
     }
-    t_vops += Get_Time( ) - t_start;
 
-    if ( control->cm_solver_pre_comp_type == SAI_PC )
-    {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
-                workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-
-        t_start = Get_Time( );
-#if defined(NEUTRAL_TERRITORY)
-        dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->d2, H->NT );
-#else
-        dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->d2, system->n );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
-        t_pa += Get_Time( ) - t_start;
 
-        /* no comm part2 because d2 is only local portion */
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    {
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->d2[j][0] = workspace->r2[j][0];
+            workspace->d2[j][1] = workspace->r2[j][1];
+        }
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->d2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
             workspace->d2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
         }
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+    }
+    else if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
+#if defined(NEUTRAL_TERRITORY)
+        dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->d2, H->NT );
+#else
+        dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->d2, system->n );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+
+        /* no comm part2 because d2 is only local portion */
     }
 
-    t_start = Get_Time( );
     for ( j = 0; j < 6; ++j )
     {
         redux[j] = 0.0;
@@ -2379,13 +2414,14 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         redux[4] += b[j][0] * b[j][0];
         redux[5] += b[j][1] * b[j][1];
     }
-    t_vops += Get_Time( ) - t_start;
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
     ret = MPI_Allreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE,
             MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    t_allreduce += Get_Time( ) - t_start;
 
     sig_new[0] = redux[0];
     sig_new[1] = redux[1];
@@ -2394,6 +2430,10 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     b_norm[0] = SQRT( redux[4] );
     b_norm[1] = SQRT( redux[5] );
 
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
         if ( norm[0] / b_norm[0] <= tol || norm[1] / b_norm[1] <= tol )
@@ -2401,22 +2441,31 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             break;
         }
 
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->d2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( H, workspace->d2, workspace->q2, H->NT );
 #else
         dual_Sparse_MatVec_local( H, workspace->d2, workspace->q2, system->N );
 #endif
-        t_spmv += Get_Time( ) - t_start;
 
-        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+        Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->q2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
         /* dot product: d.q */
-        t_start =  Get_Time( );
         redux[0] = 0.0;
         redux[1] = 0.0;
         for ( j = 0; j < system->n; ++j )
@@ -2424,15 +2473,19 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             redux[0] += workspace->d2[j][0] * workspace->q2[j][0];
             redux[1] += workspace->d2[j][1] * workspace->q2[j][1];
         }
-        t_vops += Get_Time( ) - t_start;
 
-        t_start =  Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
         ret = MPI_Allreduce( &redux, &tmp, 2, MPI_DOUBLE,
                 MPI_SUM, MPI_COMM_WORLD );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        t_allreduce += Get_Time( ) - t_start;
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
         /* update x */
@@ -2447,35 +2500,53 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             workspace->r2[j][0] -= alpha[0] * workspace->q2[j][0];
             workspace->r2[j][1] -= alpha[1] * workspace->q2[j][1];
         }
-        t_vops += Get_Time( ) - t_start;
 
-        if ( control->cm_solver_pre_comp_type == SAI_PC )
-        {
-            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
-                    workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
-
-            t_start = Get_Time( );
-#if defined(NEUTRAL_TERRITORY)
-            dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->p2, H->NT );
-#else
-            dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->p2, system->n );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
-            t_pa += Get_Time( ) - t_start;
 
-            /* no comm part2 because p2 is only local portion */
-        }
-        else if ( control->cm_solver_pre_comp_type == JACOBI_PC)
+        if ( control->cm_solver_pre_comp_type == NONE_PC )
         {
-            t_start = Get_Time( );
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->p2[j][0] = workspace->r2[j][0];
+                workspace->p2[j][1] = workspace->r2[j][1];
+            }
+        }
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+        {
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->p2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
                 workspace->p2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
             }
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+        }
+        else if ( control->cm_solver_pre_comp_type == SAI_PC )
+        {
+            Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+                    workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
+#if defined(NEUTRAL_TERRITORY)
+            dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->p2, H->NT );
+#else
+            dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->p2, system->n );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+
+            /* no comm part2 because p2 is only local portion */
         }
 
-        t_start = Get_Time( );
         redux[0] = 0.0;
         redux[1] = 0.0;
         redux[2] = 0.0;
@@ -2488,15 +2559,19 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             redux[2] += workspace->p2[j][0] * workspace->p2[j][0];
             redux[3] += workspace->p2[j][1] * workspace->p2[j][1];
         }
-        t_vops += Get_Time( ) - t_start;
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
         ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
                 MPI_SUM, MPI_COMM_WORLD );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        t_allreduce += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
         
-        t_start = Get_Time( );
         sig_old[0] = sig_new[0];
         sig_old[1] = sig_new[1];
         sig_new[0] = redux[0];
@@ -2511,32 +2586,10 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             workspace->d2[j][0] = workspace->p2[j][0] + beta[0] * workspace->d2[j][0];
             workspace->d2[j][1] = workspace->p2[j][1] + beta[1] * workspace->d2[j][1];
         }
-        t_vops += Get_Time( ) - t_start;
-    }
 
-    timings[0] = t_pa;
-    timings[1] = t_spmv;
-    timings[2] = t_vops;
-    timings[3] = t_comm;
-    timings[4] = t_allreduce;
-    
-    if ( system->my_rank == MASTER_NODE )
-    {
-        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
- 
-        data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
-        data->timing.cm_solver_spmv += timings[1] / control->nprocs;
-        data->timing.cm_solver_vector_ops += timings[2] / control->nprocs;
-        data->timing.cm_solver_comm += timings[3] / control->nprocs;
-        data->timing.cm_solver_allreduce += timings[4] / control->nprocs;
-    }
-    else
-    {
-        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
     }
 
     /* continue to solve the system that has not converged yet */
@@ -2591,9 +2644,10 @@ int CG( reax_system const * const system, control_params const * const control,
     int i, j, ret;
     real tmp, alpha, beta, r_norm, b_norm;
     real sig_old, sig_new;
-    real time, redux[3];
-
+    real redux[3];
 #if defined(LOG_PERFORMANCE)
+    real time;
+
     time = Get_Time( );
 #endif
 
@@ -2628,7 +2682,22 @@ int CG( reax_system const * const system, control_params const * const control,
 #endif
 
     /* pre-conditioning */
-    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    {
+        Vector_Copy( workspace->d, workspace->r, system->n );
+    }
+    else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+    {
+        for ( j = 0; j < system->n; ++j )
+        {
+            workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
+        }
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+    }
+    else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
         Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -2649,17 +2718,6 @@ int CG( reax_system const * const system, control_params const * const control,
 
         /* no comm part2 because d is only local portion */
     }
-    else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
-    {
-        for ( j = 0; j < system->n; ++j )
-        {
-            workspace->d[j] = workspace->r[j] * workspace->Hdia_inv[j];
-        }
-
-#if defined(LOG_PERFORMANCE)
-        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
-#endif
-    }
 
     redux[0] = Dot_local( workspace->r, workspace->d, system->n );
     redux[1] = Dot_local( workspace->r, workspace->r, system->n );
@@ -2672,6 +2730,7 @@ int CG( reax_system const * const system, control_params const * const control,
     ret = MPI_Allreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE,
             MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
     sig_new = redux[0];
     r_norm = SQRT( redux[1] );
     b_norm = SQRT( redux[2] );
@@ -2721,7 +2780,22 @@ int CG( reax_system const * const system, control_params const * const control,
 #endif
 
         /* pre-conditioning */
-        if ( control->cm_solver_pre_comp_type == SAI_PC )
+        if ( control->cm_solver_pre_comp_type == NONE_PC )
+        {
+            Vector_Copy( workspace->p, workspace->r, system->n );
+        }
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+        {
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
+            }
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+        }
+        else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
             Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -2741,17 +2815,6 @@ int CG( reax_system const * const system, control_params const * const control,
 #endif
 
             /* no comm part2 because p is only local portion */
-        }
-        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
-        {
-            for ( j = 0; j < system->n; ++j )
-            {
-                workspace->p[j] = workspace->r[j] * workspace->Hdia_inv[j];
-            }
-
-#if defined(LOG_PERFORMANCE)
-            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
-#endif
         }
 
         redux[0] = Dot_local( workspace->r, workspace->p, system->n );
@@ -2911,7 +2974,22 @@ int BiCGStab( reax_system const * const system, control_params const * const con
 #endif
 
         /* pre-conditioning */
-        if ( control->cm_solver_pre_comp_type == SAI_PC )
+        if ( control->cm_solver_pre_comp_type == NONE_PC )
+        {
+            Vector_Copy( workspace->d, workspace->p, system->n );
+        }
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+        {
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->d[j] = workspace->p[j] * workspace->Hdia_inv[j];
+            }
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+        }
+        else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
             Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->p, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -2931,17 +3009,6 @@ int BiCGStab( reax_system const * const system, control_params const * const con
 #endif
 
             /* no comm part2 because d is only local portion */
-        }
-        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
-        {
-            for ( j = 0; j < system->n; ++j )
-            {
-                workspace->d[j] = workspace->p[j] * workspace->Hdia_inv[j];
-            }
-
-#if defined(LOG_PERFORMANCE)
-            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
-#endif
         }
 
         Sparse_MatVec_Comm_Part1( system, control, mpi_data,
@@ -3012,7 +3079,22 @@ int BiCGStab( reax_system const * const system, control_params const * const con
 #endif
 
         /* pre-conditioning */
-        if ( control->cm_solver_pre_comp_type == SAI_PC )
+        if ( control->cm_solver_pre_comp_type == NONE_PC )
+        {
+            Vector_Copy( workspace->q_hat, workspace->q, system->n );
+        }
+        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+        {
+            for ( j = 0; j < system->n; ++j )
+            {
+                workspace->q_hat[j] = workspace->q[j] * workspace->Hdia_inv[j];
+            }
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+        }
+        else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
             Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->q, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -3032,17 +3114,6 @@ int BiCGStab( reax_system const * const system, control_params const * const con
 #endif
 
             /* no comm part2 because q_hat is only local portion */
-        }
-        else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
-        {
-            for ( j = 0; j < system->n; ++j )
-            {
-                workspace->q_hat[j] = workspace->q[j] * workspace->Hdia_inv[j];
-            }
-
-#if defined(LOG_PERFORMANCE)
-            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
-#endif
         }
 
         Sparse_MatVec_Comm_Part1( system, control, mpi_data,
@@ -3154,38 +3225,48 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
 {
     int i, j, ret;
     rvec2 alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
-    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real timings[5], redux[8];
+    real redux[8];
     MPI_Request req;
+#if defined(LOG_PERFORMANCE)
+    real time;
 
-    t_pa = 0.0;
-    t_spmv = 0.0;
-    t_vops = 0.0;
-    t_comm = 0.0;
-    t_allreduce = 0.0;
+    time = Get_Time( );
+#endif
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, x, workspace->u2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, x, workspace->u2, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     //Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
     for ( j = 0; j < system->n; ++j )
     {
         workspace->r2[j][0] = b[j][0] - workspace->u2[j][0];
         workspace->r2[j][1] = b[j][1] - workspace->u2[j][1];
     }
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3199,45 +3280,62 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->u2[j][0] = workspace->r2[j][0] * workspace->Hdia_inv[j];
             workspace->u2[j][1] = workspace->r2[j][1] * workspace->Hdia_inv[j];
         }
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
         
-        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->u2, H->NT );
 #else
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->r2, workspace->u2, system->n );
 #endif
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
         /* no comm part2 because u2 is only local portion */
     }
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->u2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, workspace->u2, workspace->w2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, workspace->u2, workspace->w2, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     //redux[0] = Dot_local( workspace->w, workspace->u, system->n );
     //redux[1] = Dot_local( workspace->r, workspace->u, system->n );
     //redux[2] = Dot_local( workspace->u, workspace->u, system->n );
@@ -3260,7 +3358,10 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         redux[6] += b[j][0] * b[j][0];
         redux[7] += b[j][1] * b[j][1];
     }
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 8, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -3278,48 +3379,64 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->m2[j][0] = workspace->w2[j][0] * workspace->Hdia_inv[j];
             workspace->m2[j][1] = workspace->w2[j][1] * workspace->Hdia_inv[j];
         }
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
         
-        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
 #else
         dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
 #endif
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
         /* no comm part2 because m2 is only local portion */
     }
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, H->NT );
 #else
     dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    t_allreduce += Get_Time( ) - t_start;
     delta[0] = redux[0];
     delta[1] = redux[1];
     gamma_new[0] = redux[2];
@@ -3328,6 +3445,10 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     norm[1] = SQRT( redux[5] );
     b_norm[0] = SQRT( redux[6] );
     b_norm[1] = SQRT( redux[7] );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
 
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
@@ -3350,7 +3471,6 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
             alpha[1] = gamma_new[1] / delta[1];
         }
 
-        t_start = Get_Time( );
         //Vector_Sum( workspace->z, 1.0, workspace->n, beta, workspace->z, system->n );
         //Vector_Sum( workspace->q, 1.0, workspace->m, beta, workspace->q, system->n );
         //Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
@@ -3402,7 +3522,10 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
             redux[5] += workspace->u2[j][1] * workspace->u2[j][1];
 
         }
-        t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
         ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD, &req );
@@ -3420,82 +3543,77 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->m2[j][0] = workspace->w2[j][0] * workspace->Hdia_inv[j];
                 workspace->m2[j][1] = workspace->w2[j][1] * workspace->Hdia_inv[j];
             }
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->w2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
             
-            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, H->NT );
 #else
             dual_Sparse_MatVec_local( &workspace->H_app_inv, workspace->w2, workspace->m2, system->n );
 #endif
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
             /* no comm part2 because m2 is only local portion */
         }
 
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->m2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
         dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, H->NT );
 #else
         dual_Sparse_MatVec_local( H, workspace->m2, workspace->n2, system->N );
 #endif
-        t_spmv += Get_Time( ) - t_start;
 
-        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+        Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->n2, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
 
         gamma_old[0] = gamma_new[0];
         gamma_old[1] = gamma_new[1];
 
-        t_start = Get_Time( );
         ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        t_allreduce += Get_Time( ) - t_start;
         delta[0] = redux[0];
         delta[1] = redux[1];
         gamma_new[0] = redux[2];
         gamma_new[1] = redux[3];
         norm[0] = SQRT( redux[4] );
         norm[1] = SQRT( redux[5] );
-    }
 
-    timings[0] = t_pa;
-    timings[1] = t_spmv;
-    timings[2] = t_vops;
-    timings[3] = t_comm;
-    timings[4] = t_allreduce;
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
-        data->timing.cm_solver_spmv += timings[1] / control->nprocs;
-        data->timing.cm_solver_vector_ops += timings[2] / control->nprocs;
-        data->timing.cm_solver_comm += timings[3] / control->nprocs;
-        data->timing.cm_solver_allreduce += timings[4] / control->nprocs;
-    }
-    else
-    {
-        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
     }
 
     /* continue to solve the system that has not converged yet */
@@ -3556,33 +3674,43 @@ int PIPECG( reax_system const * const system, control_params const * const contr
 {
     int i, j, ret;
     real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
-    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real timings[5], redux[4];
+    real redux[4];
     MPI_Request req;
+#if defined(LOG_PERFORMANCE)
+    real time;
 
-    t_pa = 0.0;
-    t_spmv = 0.0;
-    t_vops = 0.0;
-    t_comm = 0.0;
-    t_allreduce = 0.0;
+    time = Get_Time( );
+#endif
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->u, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->u, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3591,49 +3719,69 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->u[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
         
-        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, system->n );
 #endif
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
         /* no comm part2 because u is only local portion */
     }
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, workspace->u, workspace->w, H->NT );
 #else
     Sparse_MatVec_local( H, workspace->u, workspace->w, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     redux[0] = Dot_local( workspace->w, workspace->u, system->n );
     redux[1] = Dot_local( workspace->r, workspace->u, system->n );
     redux[2] = Dot_local( workspace->u, workspace->u, system->n );
     redux[3] = Dot_local( b, b, system->n );
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -3646,51 +3794,71 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->m[j] = workspace->w[j] * workspace->Hdia_inv[j];
         }
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
         
-        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
         /* no comm part2 because m is only local portion */
     }
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
     Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    t_allreduce += Get_Time( ) - t_start;
     delta = redux[0];
     gamma_new = redux[1];
     norm = SQRT( redux[2] );
     b_norm = SQRT( redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
@@ -3705,7 +3873,6 @@ int PIPECG( reax_system const * const system, control_params const * const contr
             alpha = gamma_new / delta;
         }
 
-        t_start = Get_Time( );
         Vector_Sum( workspace->z, 1.0, workspace->n, beta, workspace->z, system->n );
         Vector_Sum( workspace->q, 1.0, workspace->m, beta, workspace->q, system->n );
         Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
@@ -3717,7 +3884,10 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         redux[0] = Dot_local( workspace->w, workspace->u, system->n );
         redux[1] = Dot_local( workspace->r, workspace->u, system->n );
         redux[2] = Dot_local( workspace->u, workspace->u, system->n );
-        t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
         ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD, &req );
@@ -3730,77 +3900,72 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->m[j] = workspace->w[j] * workspace->Hdia_inv[j];
             }
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
             
-            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
             /* no comm part2 because m is only local portion */
         }
 
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
-        t_spmv += Get_Time( ) - t_start;
 
-        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+        Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
 
         gamma_old = gamma_new;
 
-        t_start = Get_Time( );
         ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        t_allreduce += Get_Time( ) - t_start;
         delta = redux[0];
         gamma_new = redux[1];
         norm = SQRT( redux[2] );
-    }
 
-    timings[0] = t_pa;
-    timings[1] = t_spmv;
-    timings[2] = t_vops;
-    timings[3] = t_comm;
-    timings[4] = t_allreduce;
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
-        data->timing.cm_solver_spmv += timings[1] / control->nprocs;
-        data->timing.cm_solver_vector_ops += timings[2] / control->nprocs;
-        data->timing.cm_solver_comm += timings[3] / control->nprocs;
-        data->timing.cm_solver_allreduce += timings[4] / control->nprocs;
-    }
-    else
-    {
-        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
@@ -3826,41 +3991,53 @@ int PIPECR( reax_system const * const system, control_params const * const contr
 {
     int i, j, ret;
     real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
-    real t_start, t_pa, t_spmv, t_vops, t_comm, t_allreduce;
-    real timings[5], redux[3];
+    real redux[3];
     MPI_Request req;
+#if defined(LOG_PERFORMANCE)
+    real time;
 
-    t_pa = 0.0;
-    t_spmv = 0.0;
-    t_vops = 0.0;
-    t_comm = 0.0;
-    t_allreduce = 0.0;
+    time = Get_Time( );
+#endif
 
-    t_start = Get_Time( );
     redux[0] = Dot_local( b, b, system->n );
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, x, workspace->u, H->NT );
 #else
     Sparse_MatVec_local( H, x, workspace->u, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
-    t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
     /* pre-conditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3869,52 +4046,74 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     }
     else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        t_start = Get_Time( );
         for ( j = 0; j < system->n; ++j )
         {
             workspace->u[j] = workspace->r[j] * workspace->Hdia_inv[j];
         }
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->r, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
         
-        t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, H->NT );
 #else
         Sparse_MatVec_local( &workspace->H_app_inv, workspace->r, workspace->u, system->n );
 #endif
-        t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
         /* no comm part2 because u is only local portion */
     }
 
-    t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+    Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
     Sparse_MatVec_local( H, workspace->u, workspace->w, H->NT );
 #else
     Sparse_MatVec_local( H, workspace->u, workspace->w, system->N );
 #endif
-    t_spmv += Get_Time( ) - t_start;
 
-    t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+    Sparse_MatVec_Comm_Part2( system, control, mpi_data,
             H->format, workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
 
-    t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
     ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    t_allreduce += Get_Time( ) - t_start;
     b_norm = SQRT( redux[0] );
 
-    t_start =  Get_Time( );
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
     norm = Parallel_Norm( workspace->u, system->n, MPI_COMM_WORLD );
-    t_allreduce += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
 
     for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
     {
@@ -3925,60 +4124,82 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         }
         else if ( control->cm_solver_pre_comp_type == JACOBI_PC )
         {
-            t_start = Get_Time( );
             for ( j = 0; j < system->n; ++j )
             {
                 workspace->m[j] = workspace->w[j] * workspace->Hdia_inv[j];
             }
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
         }
         else if ( control->cm_solver_pre_comp_type == SAI_PC )
         {
-            t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+            Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                     workspace->w, REAL_PTR_TYPE, MPI_DOUBLE );
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
             
-            t_start = Get_Time( );
 #if defined(NEUTRAL_TERRITORY)
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, H->NT );
 #else
             Sparse_MatVec_local( &workspace->H_app_inv, workspace->w, workspace->m, system->n );
 #endif
-            t_pa += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+            Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
 
             /* no comm part2 because m is only local portion */
         }
 
-        t_start = Get_Time( );
         redux[0] = Dot_local( workspace->w, workspace->u, system->n );
         redux[1] = Dot_local( workspace->m, workspace->w, system->n );
         redux[2] = Dot_local( workspace->u, workspace->u, system->n );
-        t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
         ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 3, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD, &req );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        t_comm += Sparse_MatVec_Comm_Part1( system, control, mpi_data,
+        Sparse_MatVec_Comm_Part1( system, control, mpi_data,
                 workspace->m, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
 #if defined(NEUTRAL_TERRITORY)
         Sparse_MatVec_local( H, workspace->m, workspace->n, H->NT );
 #else
         Sparse_MatVec_local( H, workspace->m, workspace->n, system->N );
 #endif
-        t_spmv += Get_Time( ) - t_start;
 
-        t_comm += Sparse_MatVec_Comm_Part2( system, control, mpi_data,
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
+#endif
+
+        Sparse_MatVec_Comm_Part2( system, control, mpi_data,
                 H->format, workspace->n, REAL_PTR_TYPE, MPI_DOUBLE );
 
-        t_start = Get_Time( );
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_comm );
+#endif
+
         ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        t_allreduce += Get_Time( ) - t_start;
         gamma_new = redux[0];
         delta = redux[1];
         norm = SQRT( redux[2] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
 
         if ( i > 0 )
         {
@@ -3991,7 +4212,6 @@ int PIPECR( reax_system const * const system, control_params const * const contr
             alpha = gamma_new / delta;
         }
 
-        t_start = Get_Time( );
         Vector_Sum( workspace->z, 1.0, workspace->n, beta, workspace->z, system->n );
         Vector_Sum( workspace->q, 1.0, workspace->m, beta, workspace->q, system->n );
         Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
@@ -4000,34 +4220,12 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         Vector_Sum( workspace->u, 1.0, workspace->u, -alpha, workspace->q, system->n );
         Vector_Sum( workspace->w, 1.0, workspace->w, -alpha, workspace->z, system->n );
         Vector_Sum( workspace->r, 1.0, workspace->r, -alpha, workspace->d, system->n );
-        t_vops += Get_Time( ) - t_start;
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
 
         gamma_old = gamma_new;
-    }
-
-    timings[0] = t_pa;
-    timings[1] = t_spmv;
-    timings[2] = t_vops;
-    timings[3] = t_comm;
-    timings[4] = t_allreduce;
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        ret = MPI_Reduce( MPI_IN_PLACE, timings, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        data->timing.cm_solver_pre_app += timings[0] / control->nprocs;
-        data->timing.cm_solver_spmv += timings[1] / control->nprocs;
-        data->timing.cm_solver_vector_ops += timings[2] / control->nprocs;
-        data->timing.cm_solver_comm += timings[3] / control->nprocs;
-        data->timing.cm_solver_allreduce += timings[4] / control->nprocs;
-    }
-    else
-    {
-        ret = MPI_Reduce( timings, NULL, 5, MPI_DOUBLE, MPI_SUM,
-                MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
