@@ -108,7 +108,13 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
     Cuda_Compute_Kinetic_Energy( system, control, workspace,
             data, mpi_data->comm_mesh3D );
 
-    Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+    if ( (out_control->energy_update_freq > 0
+                && (data->step - data->prev_steps) % out_control->energy_update_freq == 0)
+            || (out_control->write_steps > 0
+                && data->step % out_control->write_steps == 0) )
+    {
+        Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+    }
 }
 #else
 
@@ -143,7 +149,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
     if ( (out_control->energy_update_freq > 0
-                && data->step % out_control->energy_update_freq == 0)
+                && (data->step - data->prev_steps) % out_control->energy_update_freq == 0)
             || (out_control->write_steps > 0
                 && data->step % out_control->write_steps == 0) )
     {

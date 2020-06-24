@@ -38,10 +38,6 @@
   #include "lapacke.h"
 #endif
 
-#if defined(CG_PERFORMANCE)
-real t_start, t_elapsed, matvec_time, dot_time;
-#endif
-
 
 typedef struct
 {

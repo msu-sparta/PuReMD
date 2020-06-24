@@ -239,6 +239,7 @@ real LR_Lookup_Entry( LR_lookup_table * const t, real x, int intr_type )
             break;
 
         default:
+            ret = 0.0; // surpress compiler warning of uninitialized value
             fprintf( stderr, "[ERROR] LR_Lookup_Entry: unknown interaction type (%d). Terminating...\n", intr_type );
             MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             break;

@@ -1194,122 +1194,176 @@ void Output_Results( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
 #if defined(LOG_PERFORMANCE)
-    real t_elapsed, denom;
+    int ret;
+    real my_timings[19], total_timings[19], t_elapsed, denom;
 #endif
 
     if ( (out_control->energy_update_freq > 0
-                && data->step % out_control->energy_update_freq == 0)
+                && (data->step - data->prev_steps) % out_control->energy_update_freq == 0)
             || (out_control->write_steps > 0
-                && data->step % out_control->write_steps == 0) )
+                && (data->step - data->prev_steps) % out_control->write_steps == 0) )
     {
         /* output energies */
-        if ( system->my_rank == MASTER_NODE
-                && out_control->energy_update_freq > 0
-                && data->step % out_control->energy_update_freq == 0 )
+        if ( out_control->energy_update_freq > 0
+                && (data->step - data->prev_steps) % out_control->energy_update_freq == 0 )
         {
+#if defined(LOG_PERFORMANCE)
+            my_timings[0] = data->timing.comm;
+            my_timings[1] = data->timing.nbrs;
+            my_timings[2] = data->timing.init_forces;
+            my_timings[3] = data->timing.init_dist;
+            my_timings[4] = data->timing.init_cm;
+            my_timings[5] = data->timing.init_bond;
+            my_timings[6] = data->timing.bonded;
+            my_timings[7] = data->timing.nonb;
+            my_timings[8] = data->timing.cm;
+            my_timings[9] = data->timing.cm_sort;
+            my_timings[10] = (double) data->timing.cm_solver_iters;
+            my_timings[11] = data->timing.cm_solver_pre_comp;
+            my_timings[12] = data->timing.cm_solver_pre_app;
+            my_timings[13] = data->timing.cm_solver_comm;
+            my_timings[14] = data->timing.cm_solver_allreduce;
+            my_timings[15] = data->timing.cm_solver_spmv;
+            my_timings[16] = data->timing.cm_solver_vector_ops;
+            my_timings[17] = data->timing.cm_solver_orthog;
+            my_timings[18] = data->timing.cm_solver_tri_solve;
+
+            ret = MPI_Reduce( my_timings, total_timings, 19, MPI_DOUBLE,
+                    MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+            if ( system->my_rank == MASTER_NODE )
+            {
+                data->timing.comm = my_timings[0] / control->nprocs;
+                data->timing.nbrs = my_timings[1] / control->nprocs;
+                data->timing.init_forces = my_timings[2] / control->nprocs;
+                data->timing.init_dist = my_timings[3] / control->nprocs;
+                data->timing.init_cm = my_timings[4] / control->nprocs;
+                data->timing.init_bond = my_timings[5] / control->nprocs;
+                data->timing.bonded = my_timings[6] / control->nprocs;
+                data->timing.nonb = my_timings[7] / control->nprocs;
+                data->timing.cm = my_timings[8] / control->nprocs;
+                data->timing.cm_sort = my_timings[9] / control->nprocs;
+                data->timing.cm_solver_iters = my_timings[10] / control->nprocs;
+                data->timing.cm_solver_pre_comp = my_timings[11] / control->nprocs;
+                data->timing.cm_solver_pre_app = my_timings[12] / control->nprocs;
+                data->timing.cm_solver_comm = my_timings[13] / control->nprocs;
+                data->timing.cm_solver_allreduce = my_timings[14] / control->nprocs;
+                data->timing.cm_solver_spmv = my_timings[15] / control->nprocs;
+                data->timing.cm_solver_vector_ops = my_timings[16] / control->nprocs;
+                data->timing.cm_solver_orthog = my_timings[17] / control->nprocs;
+                data->timing.cm_solver_tri_solve = my_timings[18] / control->nprocs;
+            }
+#endif
+
+            if ( system->my_rank == MASTER_NODE )
+            {
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
-            fprintf( out_control->out,
-                     "%-6d%14.2f%14.2f%14.2f%11.2f%13.2f%13.5f\n",
-                     data->step, data->sys_en.e_tot, data->sys_en.e_pot,
-                     E_CONV * data->sys_en.e_kin, data->therm.T,
-                     system->big_box.V, data->iso_bar.P );
+                fprintf( out_control->out,
+                         "%-6d%14.2f%14.2f%14.2f%11.2f%13.2f%13.5f\n",
+                         data->step, data->sys_en.e_tot, data->sys_en.e_pot,
+                         E_CONV * data->sys_en.e_kin, data->therm.T,
+                         system->big_box.V, data->iso_bar.P );
 
-            fprintf( out_control->pot,
-                     "%-6d%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f\n",
-                     data->step,
-                     data->sys_en.e_bond,
-                     data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
-                     data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
-                     data->sys_en.e_hb,
-                     data->sys_en.e_tor, data->sys_en.e_con,
-                     data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
+                fprintf( out_control->pot,
+                         "%-6d%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f\n",
+                         data->step,
+                         data->sys_en.e_bond,
+                         data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
+                         data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
+                         data->sys_en.e_hb,
+                         data->sys_en.e_tor, data->sys_en.e_con,
+                         data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
 #else
-            fprintf( out_control->out,
-                    "%-6d%24.15f%24.15f%24.15f%13.5f%16.5f%13.5f\n",
-                    data->step, data->sys_en.e_tot, data->sys_en.e_pot,
-                    E_CONV * data->sys_en.e_kin, data->therm.T,
-                    system->big_box.V, data->iso_bar.P );
+                fprintf( out_control->out,
+                        "%-6d%24.15f%24.15f%24.15f%13.5f%16.5f%13.5f\n",
+                        data->step, data->sys_en.e_tot, data->sys_en.e_pot,
+                        E_CONV * data->sys_en.e_kin, data->therm.T,
+                        system->big_box.V, data->iso_bar.P );
 
-            fprintf( out_control->pot,
-                    "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
-                    data->step,
-                    data->sys_en.e_bond,
-                    data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
-                    data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
-                    data->sys_en.e_hb,
-                    data->sys_en.e_tor, data->sys_en.e_con,
-                    data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
+                fprintf( out_control->pot,
+                        "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
+                        data->step,
+                        data->sys_en.e_bond,
+                        data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
+                        data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
+                        data->sys_en.e_hb,
+                        data->sys_en.e_tor, data->sys_en.e_con,
+                        data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
 #endif //DEBUG
 
-            fflush( out_control->out );
-            fflush( out_control->pot );
+                fflush( out_control->out );
+                fflush( out_control->pot );
 
 #if defined(LOG_PERFORMANCE)
-            t_elapsed = Get_Elapsed_Time( data->timing.total );
-            if ( data->step - data->prev_steps > 0 )
-            {
-                denom = 1.0 / out_control->energy_update_freq;
-            }
-            else
-            {
-                denom = 1.0;
-            }
+                t_elapsed = Get_Elapsed_Time( data->timing.total );
 
-            fprintf( out_control->log,
-                    "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8d%8d\n",
-                    data->step, t_elapsed * denom, data->timing.comm * denom,
-                    data->timing.nbrs * denom, data->timing.init_forces * denom,
-                    data->timing.bonded * denom, data->timing.nonb * denom,
-                    data->timing.cm * denom,
-                    (int)(data->timing.cm_solver_iters * denom),
-                    data->timing.num_retries );
+                /* average times according to logging simulation step frequency */
+                if ( data->step - data->prev_steps > 0 )
+                {
+                    denom = 1.0 / out_control->energy_update_freq;
+                }
+                else
+                {
+                    denom = 1.0;
+                }
 
-//            fprintf( out_control->log,
-//                    "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
-//                    data->step,
-//                    t_elapsed * denom,
-//                    data->timing.comm * denom,
-//                    data->timing.nbrs * denom,
-//                    data->timing.init_forces * denom,
-//                    data->timing.init_dist * denom,
-//                    data->timing.init_cm * denom,
-//                    data->timing.init_bond * denom,
-//                    data->timing.bonded * denom,
-//                    (data->timing.nonb + data->timing.cm) * denom,
-//                    data->timing.cm * denom,
-//                    data->timing.cm_sort * denom,
-//                    (double)(data->timing.cm_solver_iters * denom),
-//                    data->timing.cm_solver_pre_comp * denom,
-//                    data->timing.cm_solver_pre_app * denom,
-//                    data->timing.cm_solver_comm * denom,
-//                    data->timing.cm_solver_allreduce * denom,
-//                    data->timing.cm_solver_spmv * denom,
-//                    data->timing.cm_solver_vector_ops * denom,
-//                    data->timing.cm_solver_orthog * denom,
-//                    data->timing.cm_solver_tri_solve * denom );
+                fprintf( out_control->log,
+                        "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8d%8d\n",
+                        data->step, t_elapsed * denom, data->timing.comm * denom,
+                        data->timing.nbrs * denom, data->timing.init_forces * denom,
+                        data->timing.bonded * denom, data->timing.nonb * denom,
+                        data->timing.cm * denom,
+                        (int) (data->timing.cm_solver_iters * denom),
+                        data->timing.num_retries );
 
-            fflush( out_control->log );
+//                fprintf( out_control->log,
+//                        "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
+//                        data->step,
+//                        t_elapsed * denom,
+//                        data->timing.comm * denom,
+//                        data->timing.nbrs * denom,
+//                        data->timing.init_forces * denom,
+//                        data->timing.init_dist * denom,
+//                        data->timing.init_cm * denom,
+//                        data->timing.init_bond * denom,
+//                        data->timing.bonded * denom,
+//                        (data->timing.nonb + data->timing.cm) * denom,
+//                        data->timing.cm * denom,
+//                        data->timing.cm_sort * denom,
+//                        (double) (data->timing.cm_solver_iters * denom),
+//                        data->timing.cm_solver_pre_comp * denom,
+//                        data->timing.cm_solver_pre_app * denom,
+//                        data->timing.cm_solver_comm * denom,
+//                        data->timing.cm_solver_allreduce * denom,
+//                        data->timing.cm_solver_spmv * denom,
+//                        data->timing.cm_solver_vector_ops * denom,
+//                        data->timing.cm_solver_orthog * denom,
+//                        data->timing.cm_solver_tri_solve * denom );
 
-            Reset_Timing( &data->timing );
+                fflush( out_control->log );
+
+                Reset_Timing( &data->timing );
 #endif //LOG_PERFORMANCE
 
-            if ( control->virial )
-            {
-                fprintf( out_control->prs,
-                         "%8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
-                         data->step,
-                         data->int_press[0], data->int_press[1], data->int_press[2],
-                         data->ext_press[0], data->ext_press[1], data->ext_press[2],
-                         data->kin_press );
+                if ( control->virial )
+                {
+                    fprintf( out_control->prs,
+                             "%8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
+                             data->step,
+                             data->int_press[0], data->int_press[1], data->int_press[2],
+                             data->ext_press[0], data->ext_press[1], data->ext_press[2],
+                             data->kin_press );
 
-                fprintf( out_control->prs,
-                         "%8s%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
-                         "", system->big_box.box_norms[0], system->big_box.box_norms[1],
-                         system->big_box.box_norms[2],
-                         data->tot_press[0], data->tot_press[1], data->tot_press[2],
-                         system->big_box.V );
+                    fprintf( out_control->prs,
+                             "%8s%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",
+                             "", system->big_box.box_norms[0], system->big_box.box_norms[1],
+                             system->big_box.box_norms[2],
+                             data->tot_press[0], data->tot_press[1], data->tot_press[2],
+                             system->big_box.V );
 
-                fflush( out_control->prs );
+                    fflush( out_control->prs );
+                }
             }
         }
 

@@ -63,18 +63,22 @@
   #define inline __inline__
 #endif
 
+/* compile for standalone PuReMD code */
 #define PURE_REAX
-//#define DUAL_SOLVER
-//#define NEUTRAL_TERRITORY
+/* compile for LAMMPS reax/c package integration code */
 //#define LAMMPS_REAX
+/* compile simaltaneous QEq solver code */
+//#define DUAL_SOLVER
+/* compile neutral territory MPI processor communication code */
+//#define NEUTRAL_TERRITORY
+/* compile verbose debug logging */
 //#define DEBUG_FOCUS
+/* compile energy calculation test code */
 //#define TEST_ENERGY
+/* compile force calculation test code */
 //#define TEST_FORCES
-//#define CG_PERFORMANCE
+/* compile performance logging code */
 #define LOG_PERFORMANCE
-#define STANDARD_BOUNDARIES
-//#define OLD_BOUNDARIES
-//#define MIDPOINT_BOUNDARIES
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
