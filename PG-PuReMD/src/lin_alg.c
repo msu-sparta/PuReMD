@@ -2720,7 +2720,7 @@ int CG( reax_system const * const system, control_params const * const control,
     }
 
     redux[0] = Dot_local( workspace->r, workspace->d, system->n );
-    redux[1] = Dot_local( workspace->r, workspace->r, system->n );
+    redux[1] = Dot_local( workspace->d, workspace->d, system->n );
     redux[2] = Dot_local( b, b, system->n );
 
 #if defined(LOG_PERFORMANCE)
@@ -2818,7 +2818,7 @@ int CG( reax_system const * const system, control_params const * const control,
         }
 
         redux[0] = Dot_local( workspace->r, workspace->p, system->n );
-        redux[1] = Dot_local( workspace->r, workspace->r, system->n );
+        redux[1] = Dot_local( workspace->p, workspace->p, system->n );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );

@@ -68,7 +68,7 @@
 /* compile for LAMMPS reax/c package integration code */
 //#define LAMMPS_REAX
 /* compile simaltaneous QEq solver code */
-//#define DUAL_SOLVER
+#define DUAL_SOLVER
 /* compile neutral territory MPI processor communication code */
 //#define NEUTRAL_TERRITORY
 /* compile verbose debug logging */
