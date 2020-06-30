@@ -923,7 +923,7 @@ real sparse_approx_inverse( reax_system const * const system,
     start = Get_Time( );
     t_comm = 0.0;
 
-    if ( A_app_inv == NULL)
+    if ( A_app_inv->allocated == FALSE )
     {
         //TODO: FULL_MATRIX?
         Allocate_Matrix( A_app_inv, A_spar_patt->n, A->NT, A_spar_patt->m, SYM_FULL_MATRIX );
@@ -1316,7 +1316,7 @@ real sparse_approx_inverse( reax_system const * const system,
     start = Get_Time( );
     t_comm = 0.0;
 
-    if ( A_app_inv == NULL)
+    if ( A_app_inv->allocated == FALSE )
     {
         Allocate_Matrix( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
                 SYM_FULL_MATRIX );

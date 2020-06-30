@@ -413,6 +413,14 @@ void Init_Workspace( reax_system * const system, control_params * const control,
     workspace->realloc.thbody = FALSE;
     workspace->realloc.gcell_atoms = 0;
 
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        workspace->H_full.allocated = FALSE;
+        workspace->H_spar_patt.allocated = FALSE;
+        workspace->H_spar_patt_full.allocated = FALSE;
+        workspace->H_app_inv.allocated = FALSE;
+    }
+
     Reset_Workspace( system, workspace );
 
     Init_Taper( control, workspace, mpi_data );

@@ -209,9 +209,10 @@ void Estimate_Num_Neighbors( reax_system *system, simulation_data *data,
                     while ( g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ][0] >= 0 )
                     {
                         /* only search half of grid cells according to stencil used (upper-right) */
-                        if ( (far_nbr_list_format == HALF_LIST
+                        if ( ((far_nbr_list_format == HALF_LIST
                                     && g->str[ index_grid_3d(i, j, k, g) ] <=
                                         g->str[ index_grid_3d_v(g->nbrs_x[ index_grid_nbrs(i, j, k, itr, g) ], g) ])
+                                    || far_nbr_list_format == FULL_LIST)
                                 && DistSqr_to_Special_Point( g->nbrs_cp[ index_grid_nbrs(i, j, k, itr, g) ], atom1->x ) <= cutoff )
                         {
                             /* pick up another atom from the neighbor cell */
