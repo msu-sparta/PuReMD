@@ -122,6 +122,9 @@ void Reset_Timing( reax_timing * const timing )
     timing->comm = ZERO;
     timing->nbrs = ZERO;
     timing->init_forces = ZERO;
+    timing->init_dist = ZERO;
+    timing->init_cm = ZERO;
+    timing->init_bond = ZERO;
     timing->bonded = ZERO;
     timing->nonb = ZERO;
     timing->cm = ZERO;
