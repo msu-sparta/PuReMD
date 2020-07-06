@@ -294,7 +294,17 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
 }
 
 
-CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( sparse_matrix A,
+/* sparse matrix, dense vector multiplication AX = B,
+ * where warps of 32 threads
+ * collaborate to multiply each row
+ *
+ * A: symmetric, full, square matrix,
+ *    stored in CSR format
+ * X: 2 dense vectors, size equal to num. columns in A
+ * B (output): 2 dense vectors, size equal to num. columns in A
+ * N: number of rows in A */
+CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
         rvec2 const * const x, rvec2 * const b, int n )
 {
     int i, pj, thread_id, warp_id, lane_id, offset;
@@ -310,23 +320,27 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( sparse_matrix A,
     if ( warp_id < n )
     {
         i = warp_id;
+        si = row_ptr_start[i];
+        ei = row_ptr_end[i];
         sum[0] = 0.0;
         sum[1] = 0.0;
-        si = A.start[i];
-        ei = A.end[i];
 
+        /* partial sums per thread */
         for ( pj = si + lane_id; pj < ei; pj += warpSize )
         {
-            sum[0] += A.val[pj] * x[ A.j[pj] ][0];
-            sum[1] += A.val[pj] * x[ A.j[pj] ][1];
+            sum[0] += vals[pj] * x[ col_ind[pj] ][0];
+            sum[1] += vals[pj] * x[ col_ind[pj] ][1];
         }
 
+        /* warp-level reduction of partial sums
+         * using registers within a warp */
         for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
             sum[0] += __shfl_down_sync( mask, sum[0], offset );
             sum[1] += __shfl_down_sync( mask, sum[1], offset );
         }
 
+        /* first thread within a warp writes sum to global memory */
         if ( lane_id == 0 )
         {
             b[i][0] = sum[0];
@@ -418,7 +432,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         sparse_matrix const * const A, rvec2 const * const x,
         rvec2 * const b, int n )
 {
-//    int blocks;
+    int blocks;
 
     if ( A->format == SYM_HALF_MATRIX )
     {
@@ -445,11 +459,14 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         /* 1 thread per row implementation */
 //        k_dual_sparse_matvec_full_csr <<< control->blocks_n, control->blocks_size_n >>>
 //             ( *A, x, b, n );
+
+        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
+            + ((A->n * 32 % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
         
-        /* one warp per row implementation,
-         * with shared memory to accumulate partial row sums */
-        k_dual_sparse_matvec_full_opt_csr <<< control->blocks_n, control->block_size_n >>>
-                ( *A, x, b, n );
+        /* multiple threads per row implementation
+         * using registers to accumulate partial row sums */
+        k_dual_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
+                ( A->start, A->end, A->j, A->val, x, b, n );
         cudaDeviceSynchronize( );
         cudaCheckError( );
     }
@@ -621,12 +638,12 @@ static void Sparse_MatVec_local( control_params const * const control,
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
-        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
-            + ((A->n * 32 % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
-
         /* 1 thread per row implementation */
 //        k_sparse_matvec_full_csr <<< control->blocks, control->blocks_size >>>
 //             ( A->start, A->end, A->j, A->val, x, b, n );
+
+        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
+            + ((A->n * 32 % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
 
         /* multiple threads per row implementation
          * using registers to accumulate partial row sums */
@@ -672,12 +689,12 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
                 "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
         spad = (real *) workspace->host_scratch;
         copy_host_device( spad, b, sizeof(real) * n1,
-                cudaMemcpyDeviceToHost, "Sparse_MatVec_Comm_Part2::q" );
+                cudaMemcpyDeviceToHost, "Sparse_MatVec_Comm_Part2::b" );
 
         Coll( system, mpi_data, spad, buf_type, mpi_type );
 
         copy_host_device( spad, b, sizeof(real) * n2,
-                cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part2::q" );
+                cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part2::b" );
 //#endif
     }
 }
@@ -939,8 +956,8 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 
     redux[0] = Dot_local( workspace, workspace->d_workspace->r,
             workspace->d_workspace->d, system->n );
-    redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->r, system->n );
+    redux[1] = Dot_local( workspace, workspace->d_workspace->d,
+            workspace->d_workspace->d, system->n );
     redux[2] = Dot_local( workspace, b, b, system->n );
 
 #if defined(LOG_PERFORMANCE)
@@ -988,8 +1005,8 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
                 workspace->d_workspace->p, system->n );
-        redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->r, system->n );
+        redux[1] = Dot_local( workspace, workspace->d_workspace->p,
+                workspace->d_workspace->p, system->n );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );

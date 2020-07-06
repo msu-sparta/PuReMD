@@ -364,8 +364,6 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
 {
     int total_real, total_rvec, local_rvec;
 
-    workspace->allocated = TRUE;
-
     total_real = sizeof(real) * total_cap;
     total_rvec = sizeof(rvec) * total_cap;
     local_rvec = sizeof(rvec) * local_cap;
@@ -515,13 +513,6 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
 
 void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
 {
-    if ( workspace->allocated == FALSE )
-    {
-        return;
-    }
-
-    workspace->allocated = FALSE;
-
     /* bond order related storage  */
     cuda_free( workspace->total_bond_order, "total_bo" );
     cuda_free( workspace->Deltap, "Deltap" );

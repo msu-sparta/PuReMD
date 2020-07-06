@@ -58,13 +58,13 @@ static void jacobi( reax_system const * const system,
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
-        + (( system->n % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_jacobi <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->n );
-    cudaDeviceSynchronize();
-    cudaCheckError();
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
 }
 
 
@@ -245,8 +245,8 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           (control_params *)control->d_control_params,
           *(workspace->d_workspace), system->n );
-    cudaDeviceSynchronize();
-    cudaCheckError();
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
 }
 
 
@@ -376,6 +376,7 @@ CUDA_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
         return;
     }
 
+    /* compute charge based on s & t */
 #if defined(DUAL_SOLVER)
     my_atoms[i].q = workspace.x[i][0] - u * workspace.x[i][1];
 #else
@@ -525,7 +526,8 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 #endif
 
     /* global reduction on pseudo-charges for s and t */
-    ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );
+    ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     u = all_sum[0] / all_sum[1];

@@ -335,10 +335,11 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 
         /* compute charge based on s & t */
 #if defined(DUAL_SOLVER)
-        q[i] = atom->q = workspace->x[i][0] - u * workspace->x[i][1];
+        atom->q = workspace->x[i][0] - u * workspace->x[i][1];
 #else
-        q[i] = atom->q = workspace->s[i] - u * workspace->t[i];
+        atom->q = workspace->s[i] - u * workspace->t[i];
 #endif
+        q[i] = atom->q;
 
         /* update previous solutions in s & t */
         atom->s[3] = atom->s[2];
