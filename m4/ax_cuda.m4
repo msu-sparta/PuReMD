@@ -38,7 +38,7 @@
 #		AC_SUBST(CUDA_CFLAGS)
 #		AC_SUBST(CUDA_LIBS)
 #		AC_SUBST(NVCC)
-#		AC_SUBST(NVCCFLAGS)
+#		AC_SUBST(NFLAGS)
 #
 AC_DEFUN([AX_CUDA],
 [
@@ -60,6 +60,27 @@ AC_ARG_WITH([cuda],
 [
 	want_cuda="yes"
 ])
+
+AC_ARG_ENABLE([cuda-fast-math],
+    AC_HELP_STRING([--enable-cuda-fast-math], [Turn on fast, less precise math functions in CUDA]),
+    [case "${enableval}" in
+        yes) CUDA_FAST_MATH=true ;;
+        no)  CUDA_FAST_MATH=false ;;
+        *)   AC_MSG_ERROR([bad value ${enableval} for --enable-cuda-fast-math]) ;;
+    esac],
+    [CUDA_FAST_MATH=false]
+)
+
+
+AC_ARG_ENABLE([emu],
+    AS_HELP_STRING([--enable-emu], [Turn on device emulation for CUDA]),
+    [case "${enableval}" in
+        yes) EMULATION=true ;;
+        no)  EMULATION=false ;;
+        *)   AC_MSG_ERROR([bad value ${enableval} for --enable-emu]) ;;
+    esac],
+    [EMULATION=false]
+)
 
 #AM_CONDITIONAL(USE_CUDA, test "x${want_cuda}" = xyes)
 
@@ -141,16 +162,20 @@ then
 		AC_LANG_PROGRAM([@%:@include <cuda.h>],
 		[
 			CUmodule cuModule;
-			cuModuleLoad(&cuModule, "myModule.cubin");
 			CUdeviceptr devPtr;
 			CUfunction cuFunction;
 			size_t pitch, width = 250, height = 500;
-			cuMemAllocPitch(&devPtr, &pitch,width * sizeof(float), height, 4);
-			cuModuleGetFunction(&cuFunction, cuModule, "myKernel");
-			cuFuncSetBlockShape(cuFunction, 512, 1, 1);
-			cuParamSeti(cuFunction, 0, devPtr);
-			cuParamSetSize(cuFunction, sizeof(devPtr));
-			cuLaunchGrid(cuFunction, 100, 1);
+
+			void main()
+			{
+				cuModuleLoad(&cuModule, "myModule.cubin");
+				cuMemAllocPitch(&devPtr, &pitch,width * sizeof(float), height, 4);
+				cuModuleGetFunction(&cuFunction, cuModule, "myKernel");
+				cuFuncSetBlockShape(cuFunction, 512, 1, 1);
+				cuParamSeti(cuFunction, 0, devPtr);
+				cuParamSetSize(cuFunction, sizeof(devPtr));
+				cuLaunchGrid(cuFunction, 100, 1);
+			}
 		])
 	],
 	[
@@ -175,68 +200,19 @@ then
 	fi
 fi
 
+if test x$EMULATION = xtrue
+then
+    NFLAGS+=" -deviceemu"
+fi
+ 
+if test x$CUDA_FAST_MATH = xtrue
+then
+	NFLAGS+=" -use_fast_math"
+fi
+AC_MSG_NOTICE([Using NFLAGS=$NFLAGS])
+
 AC_SUBST(CUDA_CFLAGS)
 AC_SUBST(CUDA_LIBS)
 AC_SUBST(NVCC)
-
-AC_ARG_WITH([cuda-fast-math],
-	[AC_HELP_STRING([--with-cuda-fast-math],
-		[Tell nvcc to use -use_fast_math flag])],
-	[
-		if test "$withval" = "no"
-		then
-			want_fast_math="no"
-		elif test "$withval" = "yes"
-		then
-			want_fast_math="yes"
-		else
-			with_fast_math="$withval"
-			want_fast_math="yes"
-		fi
-	 ],
-         [
-		want_fast_math="yes"
-	 ]
-)
-
-
-AC_ARG_ENABLE([emu],
-    AS_HELP_STRING([--enable-emu], [Turn on device emulation for CUDA]),
-    [case "${enableval}" in
-        yes) EMULATION=true ;;
-        no)  EMULATION=false ;;
-        *)   AC_MSG_ERROR([bad value ${enableval} for --enable-emu]) ;;
-    esac],
-    [EMULATION=false]
-)
-
-# default nvcc flags
-if test x$EMULATION = xtrue
-then
-    NVCCFLAGS=" -deviceemu"
-fi
- 
-#AS_IF([test "x$want_cuda" = xyes],
-#    [AS_IF([test "x$NVCCFLAGS" = x],
-#        [dnl generate CUDA code for broad spectrum of devices
-#         dnl Note: cc 13 for Tesla
-#         dnl Note: cc 20 for Fermi
-#	 dnl Note: cc 30 for Kepler K10
-#	 dnl Note: cc 35 for Kepler K20
-#         NVCCFLAGS=["-gencode arch=compute_10,code=sm_10 \
-# -gencode arch=compute_11,code=sm_11 \
-# -gencode arch=compute_13,code=sm_13 \
-# -gencode arch=compute_20,code=sm_20 \
-# -gencode arch=compute_30,code=sm_30 \
-# -gencode arch=compute_35,code=sm_35"]
-#                ]
-#             )
-#            ]
-#        )
-if test x$want_fast_math = xyes
-then
-	NVCCFLAGS+=" -use_fast_math"
-fi
-AC_MSG_NOTICE([Using NVCCFLAGS=$NVCCFLAGS])
-AC_SUBST(NVCCFLAGS)
+AC_SUBST(NFLAGS)
 ])

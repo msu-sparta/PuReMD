@@ -11,4 +11,4 @@ AM_V_NVCC_0 = @echo "  NVCC    " $@;
 AM_V_NVCC_1 =
 
 .cu.o:
-	$(AM_V_NVCC)$(NVCC) $(NVCCFLAGS) -o $@ -c $<
+	$(AM_V_NVCC)$(NVCC) $(AM_NVCCFLAGS) $(NVCCFLAGS) -o $@ -c $<

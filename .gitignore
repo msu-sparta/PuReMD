@@ -3,6 +3,7 @@
 *.prs
 *.pot
 *.trj
+*.res*
 
 # TeX
 *.aux
