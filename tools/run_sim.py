@@ -217,7 +217,7 @@ restart_freq            0                       ! 0: do not output any restart f
         with open(new_control_file, 'w') as fp:
             fp.write(lines)
 
-    def _create_md_cmd(self, binary, control_file, run_type, mpi_cmd, param_dict, env):
+    def _create_md_cmd(self, binary, control_file, run_type, mpi_cmd, mpi_cmd_extra, param_dict, env):
         from operator import mul
         from functools import reduce
         from sys import exit
@@ -249,15 +249,19 @@ restart_freq            0                       ! 0: do not output any restart f
                 # slurm scheduler wraps MPI commands (e.g., NERSC)
                 cmd_args = [
                     'srun',
-                    '-N',
+                    '--nodes',
                     # number of nodes
                     mpi_cmd[1],
-                    '-n',
+                    '--ntasks',
                     # number of tasks
                     mpi_cmd[2],
-                    '-c',
-                    # number of cores per task
+                    # number of tasks per node
+                    '--tasks-per-node',
                     mpi_cmd[3],
+                    # number of cores per task
+                    '--cpus-per-task',
+                    mpi_cmd[4],
+                ] + mpi_cmd_extra[0].split() + [
                 ] + binary.split() + [
                     self.__geo_file,
                     self.__ffield_file,
@@ -307,7 +311,7 @@ restart_freq            0                       ! 0: do not output any restart f
 
         return name
 
-    def run_md(self, binary, run_type, mpi_cmd):
+    def run_md(self, binary, run_type, mpi_cmd, mpi_cmd_extra):
         from itertools import product
         from os import environ, path, remove, rmdir
         from subprocess import Popen, PIPE
@@ -328,7 +332,7 @@ restart_freq            0                       ! 0: do not output any restart f
             self._create_control_file(param_dict, temp_file)
 
             cmd_args, env = self._create_md_cmd(binary, temp_file, run_type,
-                    mpi_cmd, param_dict, env)
+                    mpi_cmd, mpi_cmd_extra, param_dict, env)
 
             start = time()
             proc_handle = Popen(cmd_args, stdout=PIPE, stderr=PIPE, env=env, universal_newlines=True)
@@ -428,7 +432,7 @@ restart_freq            0                       ! 0: do not output any restart f
 
                 self._process_result(fout, param_dict, self.__min_step, self.__max_step)
 
-    def _build_slurm_script(self, binary, run_type, mpi_cmd, modules, param_values):
+    def _build_slurm_script(self, binary, run_type, mpi_cmd, mpi_cmd_extra, modules, param_values):
         from os import path
 
         # remove executable and back up two directory levels
@@ -458,12 +462,13 @@ python3 {0}/tools/run_sim.py run_md {1} \\
 
         if run_type == 'mpi' or run_type == 'mpi-gpu':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
+            job_script += "\n    -x {0} \\".format(mpi_cmd_extra[0])
 
         job_script += "\n    {0}".format(self.__data_set)
 
         return job_script
 
-    def _build_pbs_script(self, binary, run_type, mpi_cmd, modules, param_values):
+    def _build_pbs_script(self, binary, run_type, mpi_cmd, mpi_cmd_extra, modules, param_values):
         from os import path
 
         # remove executable and back up two directory levels
@@ -490,23 +495,24 @@ python3 {0}/tools/run_sim.py run_md {1} \\
 
         if run_type == 'mpi' or run_type == 'mpi-gpu':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
+            job_script += "\n    -x {0} \\".format(mpi_cmd_extra[0])
 
         job_script += "\n    {0}".format(self.__data_set)
 
         return job_script
 
-    def submit_jobs(self, binary, run_type, job_script_type, mpi_cmd, modules):
+    def submit_jobs(self, binary, run_type, job_script_type, mpi_cmd, mpi_cmd_extra, modules):
         from itertools import product
         from subprocess import Popen, PIPE
 
         for p in product(*[self.__params[k] for k in self.__param_names]):
             if job_script_type == 'slurm':
-                job_script = self._build_slurm_script(binary, run_type, mpi_cmd, modules, p)
+                job_script = self._build_slurm_script(binary, run_type, mpi_cmd, mpi_cmd_extra, modules, p)
 
                 cmd_args = ['sbatch']
 
             if job_script_type == 'pbs':
-                job_script = self._build_pbs_script(binary, run_type, mpi_cmd, modules, p)
+                job_script = self._build_pbs_script(binary, run_type, mpi_cmd, mpi_cmd_extra, modules, p)
                 
                 cmd_args = ['qsub']
 
@@ -554,7 +560,9 @@ if __name__ == '__main__':
                 + ' Multiple values for a parameter can be specified using commas, and each'
                 + ' value will constitute a separate MD simulation.')
         run_md_parser.add_argument('-m', '--mpi_cmd', metavar='mpi_cmd', default=['mpirun'], nargs=1,
-                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:1\'.')
+                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:32:1\' (nodes,tasks,tasks per node,cpus per task).')
+        run_md_parser.add_argument('-x', '--mpi_cmd_extra', metavar='mpi_cmd_extra', default=[''], nargs=1,
+                help='MPI command extra arguments.')
         run_md_parser.add_argument('run_type', nargs=1,
                 choices=RUN_TYPES, help='Run type for the MD simulation(s).')
         run_md_parser.add_argument('data_sets', nargs='+',
@@ -568,7 +576,9 @@ if __name__ == '__main__':
                 + ' Multiple values for a parameter can be specified using commas, and each'
                 + ' value will constitute a separate MD simulation.')
         run_md_custom_parser.add_argument('-m', '--mpi_cmd', metavar='mpi_cmd', default=['mpirun'], nargs=1,
-                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:1\'.')
+                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:32:1\' (nodes,tasks,tasks per node,cpus per task).')
+        run_md_custom_parser.add_argument('-x', '--mpi_cmd_extra', metavar='mpi_cmd_extra', default=[''], nargs=1,
+                help='MPI command extra arguments.')
         run_md_custom_parser.add_argument('run_type', nargs=1,
                 choices=RUN_TYPES, help='Run type for the MD simulation(s).')
         run_md_custom_parser.add_argument('geo_file', nargs=1,
@@ -596,7 +606,9 @@ if __name__ == '__main__':
         submit_jobs_parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
                 help='Paramater name and value pairs for the simulation, with multiple values comma delimited.')
         submit_jobs_parser.add_argument('-m', '--mpi_cmd', metavar='mpi_cmd', default=['mpirun'], nargs=1,
-                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:1\'.')
+                help='MPI command type and arguments. Examples: \'mpirun\', \'srun:1:32:32:1\' (nodes,tasks,tasks per node,cpus per task).')
+        submit_jobs_parser.add_argument('-x', '--mpi_cmd_extra', metavar='mpi_cmd_extra', default=[''], nargs=1,
+                help='MPI command extra arguments.')
         submit_jobs_parser.add_argument('-l', '--modules', metavar='modules', default=['GCC/8.2.0-2.31.1'], nargs=1,
                 help='Modules to load. Multiple values are separated by the \':\' character.'
                 + ' Examples: \'GCC/8.2.0-2.31.1\', \'GCC/8.2.0-2.31.1:OpenMPI/3.1.3:imkl/2019.1.144\'.')
@@ -811,7 +823,7 @@ if __name__ == '__main__':
         test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict)
 
         for test in test_cases:
-            test.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'))
+            test.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'), args.mpi_cmd_extra)
 
     def run_md_custom(args):
         if args.binary:
@@ -856,7 +868,7 @@ if __name__ == '__main__':
         test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
                 params=control_params_dict, geo_format=geo_format)
 
-        test_case.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'))
+        test_case.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'), args.mpi_cmd_extra)
 
     def parse_results(args):
         header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
@@ -927,7 +939,7 @@ if __name__ == '__main__':
 
         for test in test_cases:
             test.submit_jobs(binary, args.run_type[0], args.job_script_type[0],
-                    args.mpi_cmd[0].split(':'), args.modules[0].split(':'))
+                    args.mpi_cmd[0].split(':'), args.mpi_cmd_extra, args.modules[0].split(':'))
 
     def compare_logs(args):
         import numpy as np
