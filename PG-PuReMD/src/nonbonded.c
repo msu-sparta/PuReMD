@@ -19,23 +19,28 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "nonbonded.h"
+
   #include "bond_orders.h"
+  #include "index_utils.h"
   #include "list.h"
   #include "lookup.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_nonbonded.h"
+
   #include "reax_bond_orders.h"
+  #include "reax_index_utils.h"
   #include "reax_list.h"
   #include "reax_lookup.h"
   #include "reax_vector.h"
 #endif
-
-#include "index_utils.h"
 
 
 static void Compute_Polarization_Energy( reax_system const * const system,

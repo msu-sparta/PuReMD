@@ -339,7 +339,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         }
         else
         {
-            Cuda_Estimate_Neighbors( system );
+            Cuda_Estimate_Num_Neighbors( system, data );
         }
     }
 
@@ -423,7 +423,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         }
         else
         {
-            Cuda_Estimate_Neighbors( system );
+            Cuda_Estimate_Num_Neighbors( system, data );
         }
     }
 
@@ -541,7 +541,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         }
         else
         {
-            Cuda_Estimate_Neighbors( system );
+            Cuda_Estimate_Num_Neighbors( system, data );
         }
     }
 
@@ -641,7 +641,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         }
         else
         {
-            Cuda_Estimate_Neighbors( system );
+            Cuda_Estimate_Num_Neighbors( system, data );
         }
     }
 

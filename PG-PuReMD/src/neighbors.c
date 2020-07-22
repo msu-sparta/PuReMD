@@ -19,8 +19,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
-
 #include "neighbors.h"
 
 #include "index_utils.h"

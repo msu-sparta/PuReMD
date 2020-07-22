@@ -19,8 +19,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
-
 #include "comm_tools.h"
 
 #include "grid.h"
@@ -173,6 +171,7 @@ void Estimate_NT_Atoms( reax_system * const system, mpi_datatypes * const mpi_da
 #endif
 
 
+/* Note: filename must be NULL-terminated before calling this function */
 void Check_MPI_Error( int code, const char * const filename, int line )
 {
     int len;
@@ -183,8 +182,9 @@ void Check_MPI_Error( int code, const char * const filename, int line )
         MPI_Error_string( code, err_msg, &len );
 
         fprintf( stderr, "[ERROR] MPI error\n" );
+        /* strlen safe here only if filename is NULL-terminated before calling Check_MPI_Error */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strnlen(filename, MAX_STR), filename );
+                line, (int) strlen(filename), filename );
         fprintf( stderr, "    [INFO] Error code %d\n", code );
         fprintf( stderr, "    [INFO] Error message: %.*s\n", len, err_msg );
         MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );

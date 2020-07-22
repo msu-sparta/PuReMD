@@ -1160,6 +1160,11 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control ) 
 {
     int renbr, blocks, ret, ret_bonds, ret_hbonds, ret_cm;
+#if defined(LOG_PERFORMANCE)
+    double time;
+    
+    time = Get_Time( );
+#endif
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
@@ -1189,6 +1194,10 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
     }
 
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.init_dist );
+#endif
+
     blocks = workspace->d_workspace->H.n_max / DEF_BLOCK_SIZE
         + (workspace->d_workspace->H.n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
@@ -1216,6 +1225,10 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
     }
 
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.init_cm );
+#endif
+
     k_init_bonds <<< control->blocks_n, control->block_size_n >>>
         ( system->d_my_atoms, system->reax_param.d_sbp,
           system->reax_param.d_tbp, *(workspace->d_workspace),
@@ -1226,6 +1239,10 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
           system->d_max_hbonds, system->d_realloc_hbonds );
     cudaDeviceSynchronize( );
     cudaCheckError( );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.init_bond );
+#endif
 
     /* check reallocation flags on device */
     copy_host_device( &ret_bonds, system->d_realloc_bonds, sizeof(int), 
@@ -1605,7 +1622,6 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
 
     Cuda_Total_Forces( system, control, data, workspace, lists );
 
-#if defined(PURE_REAX)
     /* now all forces are computed to their partially-final values
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
@@ -1619,8 +1635,6 @@ void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
             cudaMemcpyHostToDevice, "Cuda_Compute_Total_Force::workspace->d_workspace->f" );
 
     Cuda_Total_Forces_PURE( system, workspace );
-#endif
-
 }
 
 
@@ -1667,12 +1681,12 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         }
     }
 
-    if ( ret == SUCCESS )
-    {
 #if defined(LOG_PERFORMANCE)
-        Update_Timing_Info( &time, &data->timing.init_forces );
+    Update_Timing_Info( &time, &data->timing.init_forces );
 #endif
 
+    if ( ret == SUCCESS )
+    {
         ret = Cuda_Compute_Bonded_Forces( system, control, data,
                 workspace, lists, out_control );
 
@@ -1683,7 +1697,6 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
 
     if ( ret == SUCCESS )
     {
-#if defined(PURE_REAX)
         if ( charge_flag == TRUE )
         {
             Cuda_Compute_Charges( system, control, data,
@@ -1693,8 +1706,6 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm );
 #endif
-
-#endif //PURE_REAX
 
         Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );

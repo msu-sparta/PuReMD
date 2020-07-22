@@ -19,8 +19,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
-
 #include "restart.h"
 
 #include "allocate.h"
@@ -79,7 +77,8 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
         p_atom = &(system->my_atoms[i]);
         buffer[i].orig_id = p_atom->orig_id;
         buffer[i].type = p_atom->type;
-        strncpy( buffer[i].name, p_atom->name, 8 );
+        strncpy( buffer[i].name, p_atom->name, sizeof(buffer[i].name) - 1 );
+        buffer[i].name[sizeof(buffer[i].name) - 1] = '\0';
         rvec_Copy( buffer[i].x, p_atom->x );
         rvec_Copy( buffer[i].v, p_atom->v );
     }
@@ -123,15 +122,13 @@ void Write_Restart_File( reax_system *system, control_params *control,
         mpi_datatypes *mpi_data )
 {
     int i, me, np, buffer_len, buffer_req, cnt, ret;
-    char fname[MAX_STR];
+    char fname[MAX_STR], *line, *buffer;
     FILE *fres;
-    char *line;
-    char *buffer;
     reax_atom *p_atom;
     MPI_Status status;
 
     fres = NULL;
-    line = smalloc(sizeof(char) * RESTART_LINE_LEN, "restart:line");
+    line = smalloc( sizeof(char) * RESTART_LINE_LEN, "restart:line" );
     me = system->my_rank;
     np = control->nprocs;
 
@@ -160,8 +157,8 @@ void Write_Restart_File( reax_system *system, control_params *control,
     }
 
     buffer = smalloc( sizeof(char) * buffer_req, "Write_Restart_File::buffer" );
-    line[0] = 0;
-    buffer[0] = 0;
+    line[0] = '\0';
+    buffer[0] = '\0';
 
     /* fill in the buffers */
     for ( i = 0 ; i < system->n; ++i )
@@ -173,8 +170,7 @@ void Write_Restart_File( reax_system *system, control_params *control,
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
                  p_atom->v[0], p_atom->v[1], p_atom->v[2] );
 
-        strncpy( buffer + i * RESTART_LINE_LEN, line, RESTART_LINE_LEN );
-        //was LINE_LEN +1
+        strncpy( &buffer[i * RESTART_LINE_LEN], line, RESTART_LINE_LEN );
     }
 
     /* gather the buffers at the master node */
@@ -191,14 +187,14 @@ void Write_Restart_File( reax_system *system, control_params *control,
         {
             if ( i != MASTER_NODE )
             {
-                ret = MPI_Recv( buffer + buffer_len, buffer_req - buffer_len,
+                ret = MPI_Recv( &buffer[buffer_len], buffer_req - buffer_len,
                         MPI_CHAR, i, np * RESTART_LINE_LEN + i, MPI_COMM_WORLD, &status );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 MPI_Get_count( &status, MPI_CHAR, &cnt );
                 buffer_len += cnt;
             }
         }
-        buffer[buffer_len] = 0;
+        buffer[buffer_len] = '\0';
     }
 
     /* master node dumps out the restart file */
@@ -305,7 +301,8 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
             p_atom->orig_id = res_atom.orig_id;
             p_atom->type = res_atom.type;
 
-            strcpy( p_atom->name, res_atom.name );
+            strncpy( p_atom->name, res_atom.name, sizeof(p_atom->name) - 1 );
+            p_atom->name[sizeof(p_atom->name) - 1] = '\0';
 
             rvec_Copy( p_atom->x, res_atom.x );
             rvec_Copy( p_atom->v, res_atom.v );
@@ -497,7 +494,8 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
             /* store orig_id, type, name and coord info of the new atom */
             system->my_atoms[top].orig_id = orig_id_temp;
             system->my_atoms[top].type = type_temp;
-            strcpy( system->my_atoms[top].name, name_temp );
+            strncpy( system->my_atoms[top].name, name_temp, sizeof(system->my_atoms[top].name) - 1 );
+            system->my_atoms[top].name[sizeof(system->my_atoms[top].name) - 1] = '\0';
             rvec_Copy( system->my_atoms[top].x, x_temp );
             rvec_Copy( system->my_atoms[top].v, v_temp );
             top++;

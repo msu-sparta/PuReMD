@@ -19,23 +19,28 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "torsion_angles.h"
+
   #include "bond_orders.h"
+  #include "index_utils.h"
   #include "list.h"
   #include "tool_box.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_torsion_angles.h"
+
   #include "reax_bond_orders.h"
+  #include "reax_index_utils.h"
   #include "reax_list.h"
   #include "reax_tool_box.h"
   #include "reax_vector.h"
 #endif
-
-#include "index_utils.h"
 
 #define MIN_SINE (1.0e-10)
 

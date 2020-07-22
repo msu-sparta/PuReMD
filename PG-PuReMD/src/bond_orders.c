@@ -19,15 +19,19 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "bond_orders.h"
+
   #include "list.h"
   #include "vector.h"
-  #include "io_tools.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_bond_orders.h"
+
   #include "reax_list.h"
   #include "reax_vector.h"
 #endif

@@ -19,8 +19,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
-
 #include "geo_tools.h"
 
 #include "allocate.h"
@@ -104,6 +102,7 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
+        element[2] = '\0';
 
         Fit_to_Periodic_Box( &system->big_box, &x );
 
@@ -118,7 +117,8 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
             atom = &system->my_atoms[top];
             atom->orig_id = serial;
 
-            for ( j = 0; j < strnlen(element, 3); j++ )
+            /* strlen safe here as element is NULL-terminated above */
+            for ( j = 0; j < strlen(element); j++ )
             {
                 element[j] = toupper( element[j] );
             }
@@ -313,67 +313,67 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
             {
                 strncpy( &descriptor[0], s1, 6 );
                 descriptor[6] = 0;
-                strncpy( &serial[0], s1 + 6, 5 );
+                strncpy( &serial[0], &s1[6], 5 );
                 serial[5] = 0;
-                strncpy( &atom_name[0], s1 + 12, 4 );
+                strncpy( &atom_name[0], &s1[12], 4 );
                 atom_name[4] = 0;
-                //strncpy( &serial[0], s1+6, 7 );       serial[7] = 0;
-                //strncpy( &atom_name[0], s1+13, 3 );   atom_name[3] = 0;
+                //strncpy( &serial[0], &s1[6], 7 );       serial[7] = 0;
+                //strncpy( &atom_name[0], &s1[13], 3 );   atom_name[3] = 0;
                 alt_loc = s1[16];
-                strncpy( &res_name[0], s1 + 17, 3 );
+                strncpy( &res_name[0], &s1[17], 3 );
                 res_name[3] = 0;
                 chain_id = s1[21];
-                strncpy( &res_seq[0], s1 + 22, 4 );
+                strncpy( &res_seq[0], &s1[22], 4 );
                 res_seq[4] = 0;
                 icode = s1[26];
-                strncpy( &s_x[0], s1 + 30, 8 );
+                strncpy( &s_x[0], &s1[30], 8 );
                 s_x[8] = 0;
-                strncpy( &s_y[0], s1 + 38, 8 );
+                strncpy( &s_y[0], &s1[38], 8 );
                 s_y[8] = 0;
-                strncpy( &s_z[0], s1 + 46, 8 );
+                strncpy( &s_z[0], &s1[46], 8 );
                 s_z[8] = 0;
-                strncpy( &occupancy[0], s1 + 54, 6 );
+                strncpy( &occupancy[0], &s1[54], 6 );
                 occupancy[6] = 0;
-                strncpy( &temp_factor[0], s1 + 60, 6 );
+                strncpy( &temp_factor[0], &s1[60], 6 );
                 temp_factor[6] = 0;
-                strncpy( &seg_id[0], s1 + 72, 4 );
+                strncpy( &seg_id[0], &s1[72], 4 );
                 seg_id[4] = 0;
-                strncpy( &element[0], s1 + 76, 2 );
+                strncpy( &element[0], &s1[76], 2 );
                 element[2] = 0;
-                strncpy( &charge[0], s1 + 78, 2 );
+                strncpy( &charge[0], &s1[78], 2 );
                 charge[2] = 0;
             }
             else if (strncmp(tmp[0], "HETATM", 6) == 0)
             {
                 strncpy( &descriptor[0], s1, 6 );
                 descriptor[6] = 0;
-                strncpy( &serial[0], s1 + 6, 5 );
+                strncpy( &serial[0], &s1[6], 5 );
                 serial[5] = 0;
-                strncpy( &atom_name[0], s1 + 12, 4 );
+                strncpy( &atom_name[0], &s1[12], 4 );
                 atom_name[4] = 0;
-                //strncpy( &serial[0], s1+6, 7 );       serial[7] = 0;
-                //strncpy( &atom_name[0], s1+13, 3 );   atom_name[3] = 0;
+                //strncpy( &serial[0], &s1[6], 7 );       serial[7] = 0;
+                //strncpy( &atom_name[0], &s1[13], 3 );   atom_name[3] = 0;
                 alt_loc = s1[16];
-                strncpy( &res_name[0], s1 + 17, 3 );
+                strncpy( &res_name[0], &s1[17], 3 );
                 res_name[3] = 0;
                 chain_id = s1[21];
-                strncpy( &res_seq[0], s1 + 22, 4 );
+                strncpy( &res_seq[0], &s1[22], 4 );
                 res_seq[4] = 0;
                 icode = s1[26];
-                strncpy( &s_x[0], s1 + 30, 8 );
+                strncpy( &s_x[0], &s1[30], 8 );
                 s_x[8] = 0;
-                strncpy( &s_y[0], s1 + 38, 8 );
+                strncpy( &s_y[0], &s1[38], 8 );
                 s_y[8] = 0;
-                strncpy( &s_z[0], s1 + 46, 8 );
+                strncpy( &s_z[0], &s1[46], 8 );
                 s_z[8] = 0;
-                strncpy( &occupancy[0], s1 + 54, 6 );
+                strncpy( &occupancy[0], &s1[54], 6 );
                 occupancy[6] = 0;
-                strncpy( &temp_factor[0], s1 + 60, 6 );
+                strncpy( &temp_factor[0], &s1[60], 6 );
                 temp_factor[6] = 0;
-                //strncpy( &seg_id[0], s1+72, 4 );      seg_id[4] = 0;
-                strncpy( &element[0], s1 + 76, 2 );
+                //strncpy( &seg_id[0], &s1[72], 4 );      seg_id[4] = 0;
+                strncpy( &element[0], &s1[76], 2 );
                 element[2] = 0;
-                strncpy( &charge[0], s1 + 78, 2 );
+                strncpy( &charge[0], &s1[78], 2 );
                 charge[2] = 0;
             }
 
@@ -477,15 +477,12 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
 {
     int i, cnt, me, np, buffer_req, buffer_len, ret;
     //int j, connect[4];
-    char name[8];
+    char name[8], fname[MAX_STR], *line, *buffer;
+    FILE *pdb;
     //real bo;
     real alpha, beta, gamma;
     MPI_Status status;
     reax_atom *p_atom;
-    char fname[MAX_STR];
-    char *line;
-    char *buffer;
-    FILE *pdb;
 
     me = system->my_rank;
     np = control->nprocs;
@@ -504,30 +501,29 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
     buffer = smalloc( sizeof(char) * buffer_req, "Write_PDB_File::buffer" );
 
     pdb = NULL;
-    line[0] = 0;
-    buffer[0] = 0;
+    line[0] = '\0';
+    buffer[0] = '\0';
 
     /* open pdb and write header */
     if ( me == MASTER_NODE )
     {
         /* Writing Box information */
-        gamma = ACOS( (system->big_box.box[0][0] * system->big_box.box[1][0] +
-                       system->big_box.box[0][1] * system->big_box.box[1][1] +
-                       system->big_box.box[0][2] * system->big_box.box[1][2]) /
-                      (system->big_box.box_norms[0] * system->big_box.box_norms[1]) );
-        beta  = ACOS( (system->big_box.box[0][0] * system->big_box.box[2][0] +
-                       system->big_box.box[0][1] * system->big_box.box[2][1] +
-                       system->big_box.box[0][2] * system->big_box.box[2][2]) /
-                      (system->big_box.box_norms[0] * system->big_box.box_norms[2]) );
-        alpha = ACOS( (system->big_box.box[2][0] * system->big_box.box[1][0] +
-                       system->big_box.box[2][1] * system->big_box.box[1][1] +
-                       system->big_box.box[2][2] * system->big_box.box[1][2]) /
-                      (system->big_box.box_norms[2] * system->big_box.box_norms[1]) );
+        gamma = ACOS( (system->big_box.box[0][0] * system->big_box.box[1][0]
+                    + system->big_box.box[0][1] * system->big_box.box[1][1]
+                    + system->big_box.box[0][2] * system->big_box.box[1][2])
+                / (system->big_box.box_norms[0] * system->big_box.box_norms[1]) );
+        beta  = ACOS( (system->big_box.box[0][0] * system->big_box.box[2][0]
+                    + system->big_box.box[0][1] * system->big_box.box[2][1]
+                    + system->big_box.box[0][2] * system->big_box.box[2][2])
+                / (system->big_box.box_norms[0] * system->big_box.box_norms[2]) );
+        alpha = ACOS( (system->big_box.box[2][0] * system->big_box.box[1][0]
+                    + system->big_box.box[2][1] * system->big_box.box[1][1]
+                    + system->big_box.box[2][2] * system->big_box.box[1][2])
+                / (system->big_box.box_norms[2] * system->big_box.box_norms[1]) );
 
-
+        /* strlen safe here as control->sim_name is NULL-terminated in control.c */
         snprintf( fname, sizeof(fname) - 1, "%.*s-%d.pdb",
-                (int) strnlen( control->sim_name, sizeof(control->sim_name) ),
-                control->sim_name, data->step );
+                (int) strlen(control->sim_name), control->sim_name, data->step );
         fname[sizeof(fname) - 1] = '\0';
         pdb = sfopen( fname, "w", "Write_PDB_File::pdb" );
         fprintf( pdb, PDB_CRYST1_FORMAT_O,
@@ -543,15 +539,19 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
     for ( i = 0; i < system->n; i++)
     {
         p_atom = &system->my_atoms[i];
-        strncpy( name, p_atom->name, 8 );
-        Trim_Spaces(name);
+
+        strncpy( name, p_atom->name, sizeof(name) - 1 );
+        name[sizeof(name) - 1] = '\0';
+
+        Trim_Spaces( name );
+
         snprintf( line, sizeof(line) - 1, PDB_ATOM_FORMAT_O,
                  "ATOM  ", p_atom->orig_id, p_atom->name, ' ', "REX", ' ', 1, ' ',
                  p_atom->x[0], p_atom->x[1], p_atom->x[2],
                  1.0, 0.0, "0", name, "  " );
         line[sizeof(line) - 1] = '\0';
-        fprintf(stderr, "PDB NAME <%s>\n", p_atom->name);
-        strncpy( buffer + i * PDB_ATOM_FORMAT_O_LENGTH, line,
+        fprintf( stderr, "PDB NAME <%s>\n", p_atom->name );
+        strncpy( &buffer[i * PDB_ATOM_FORMAT_O_LENGTH], line,
                  PDB_ATOM_FORMAT_O_LENGTH );
     }
 
@@ -578,7 +578,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
                 buffer_len += cnt;
             }
         }
-        buffer[buffer_len] = 0;
+        buffer[buffer_len] = '\0';
     }
 
     if ( me == MASTER_NODE )

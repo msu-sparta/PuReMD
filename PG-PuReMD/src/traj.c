@@ -19,15 +19,20 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "traj.h"
+
   #include "comm_tools.h"
   #include "list.h"
   #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_traj.h"
+
   #include "reax_comm_tools.h"
   #include "reax_list.h"
   #include "reax_tool_box.h"

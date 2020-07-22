@@ -16,7 +16,7 @@ int Cuda_Generate_Neighbor_Lists( reax_system *, simulation_data *,
 }
 #endif
 
-void Cuda_Estimate_Neighbors( reax_system * );
+void Cuda_Estimate_Num_Neighbors( reax_system *, simulation_data * );
 
 
 #endif

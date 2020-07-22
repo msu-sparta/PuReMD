@@ -20,10 +20,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
+#include "puremd.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "puremd.h"
 
 #define INVALID_INPUT (-1)
 

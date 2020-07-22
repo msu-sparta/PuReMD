@@ -19,13 +19,18 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "ffield.h"
+
   #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_ffield.h"
+
   #include "reax_tool_box.h"
 #endif
 
@@ -146,7 +151,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
         fgets( s, MAX_LINE, fp );
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-        for ( j = 0; j < (int)(strlen(tmp[0])); ++j )
+        /* strlen safe here as tmp[0] is NULL-terminated in Tokenize */
+        for ( j = 0; j < (int) strlen(tmp[0]); ++j )
         {
             if ( c > 0 )
             {

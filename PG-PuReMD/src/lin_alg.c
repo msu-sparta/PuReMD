@@ -19,8 +19,6 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
-
 #include "lin_alg.h"
 
 #include "allocate.h"
@@ -179,12 +177,9 @@ static int find_bucket( double *list, int len, double a )
 
 /* Jacobi preconditioner computation */
 //real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
-real jacobi( const reax_system * const system, real * const Hdia_inv )
+void jacobi( const reax_system * const system, real * const Hdia_inv )
 {
     unsigned int i;
-    real start;
-
-    start = Get_Time( );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -197,8 +192,6 @@ real jacobi( const reax_system * const system, real * const Hdia_inv )
 //            Hdia_inv[i] = 1.0;
 //        }
     }
-
-    return Get_Elapsed_Time( start );
 }
 
 

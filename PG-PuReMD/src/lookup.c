@@ -19,21 +19,26 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "lookup.h"
+
   #include "comm_tools.h"
+  #include "index_utils.h"
   #include "nonbonded.h"
   #include "tool_box.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_lookup.h"
+
   #include "reax_comm_tools.h"
+  #include "reax_index_utils.h"
   #include "reax_nonbonded.h"
   #include "reax_tool_box.h"
 #endif
-
-#include "index_utils.h"
 
 #if defined(HAVE_CUDA)
   #include "cuda/cuda_lookup.h"
@@ -259,9 +264,6 @@ void Make_LR_Lookup_Table( reax_system * const system, control_params * const co
     real dr;
     real *h, *fh, *fvdw, *fele, *fCEvd, *fCEclmb;
     real v0_vdw, v0_ele, vlast_vdw, vlast_ele;
-#if defined(HAVE_CUDA)
-    real t_start, t_end;
-#endif
 
     v0_vdw = 0.0;
     v0_ele = 0.0;
@@ -388,11 +390,7 @@ void Make_LR_Lookup_Table( reax_system * const system, control_params * const co
     sfree( fCEclmb, "Make_LR_Lookup_Table::fCEclmb" );
 
 #if defined(HAVE_CUDA)
-    t_start = Get_Time( );
     Cuda_Copy_LR_Lookup_Table_Host_to_Device( system, control, workspace, aggregated );
-    t_end = Get_Elapsed_Time( t_start );
-
-    fprintf( stderr, "[INFO] time to copy LR Lookup table from device to host: %f \n", t_end );
 #endif
 }
 

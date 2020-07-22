@@ -55,14 +55,43 @@ AC_ARG_ENABLE([mpi-gpu],
 			      [enable MPI+CUDA (multi GPU) support @<:@default: no@:>@])],
 	      [pack_mpi_gpu_enabled=${enableval}], [pack_mpi_gpu_enabled=no])
 
+# Build standalone PuReMD code.
+AC_ARG_ENABLE([puremd-standalone],
+	      [AS_HELP_STRING([--enable-puremd-standalone],
+			      [enable build for standalone PuReMD code @<:@default: yes@:>@])],
+	      [puremd_standalone=${enableval}], [puremd_standalone=yes])
+
+# Build LAMMPS/reaxc integration code.
+AC_ARG_ENABLE([lammps-reaxc],
+	      [AS_HELP_STRING([--enable-lammps-reaxc],
+			      [enable build for LAMMPS/reaxc integration code @<:@default: no@:>@])],
+	      [lammps_reaxc=${enableval}], [lammps_reaxc=no])
+
+# Build dual QEq solver code.
+AC_ARG_ENABLE([qeq-dual-solver],
+	      [AS_HELP_STRING([--enable-qeq-dual-solver],
+			      [enable dual QEq charge solver code @<:@default: yes@:>@])],
+	      [qeq_dual_solver=${enableval}], [qeq_dual_solver=yes])
+
+# Build neutral territory code.
+AC_ARG_ENABLE([neutral-territory],
+	      [AS_HELP_STRING([--enable-neutral-territory],
+			      [enable neutral territory code @<:@default: no@:>@])],
+	      [neutral_territory=${enableval}], [neutral_territory=no])
+
+# Build neutral territory code.
+AC_ARG_ENABLE([log-perf],
+	      [AS_HELP_STRING([--enable-log-perf],
+			      [enable performance logging code @<:@default: yes@:>@])],
+	      [log_perf=${enableval}], [log_perf=yes])
+
 # Provides debug compilation mode.
 AC_ARG_ENABLE([debug],
 	      [AS_HELP_STRING([--enable-debug],
 			      [enable debug support @<:@default: no@:>@])],
 	      [DEBUG=${enableval}], [DEBUG=no]
 	      )
-if test "x${DEBUG}" = "xyes"
-then
+if test "x${DEBUG}" = "xyes"; then
 #	#TODO: fix exporting to subdirs
 #	# See: http://stackoverflow.com/questions/34124337/changing-flags-in-configure-ac-vs-caching-with-subprojects
 	export BUILD_DEBUG="yes"
@@ -83,17 +112,6 @@ AC_ARG_ENABLE([gprof],
 	esac],
 	[]	      
 )
-
-# Timing measurements.
-AC_ARG_ENABLE([timing],
-	[AS_HELP_STRING([--enable-timing],
-		[enable timing measurements and reporting @<:@default: no@:>@])],
-	[timing_enabled=${enableval}], [timing_enabled=no]
-)
-if test "x${timing_enabled}" = "xyes"
-then
-	export BUILD_TIMING="yes"
-fi
 
 AC_ARG_ENABLE([doc],
 	      [AS_HELP_STRING([--enable-doc],
@@ -209,8 +227,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	# Check for LAPACKE
 	LAPACKE_LIBS=
 	AC_CHECK_HEADERS([mkl.h], [MKL_FOUND_HEADERS="yes"])
-	if test "x${MKL_FOUND_HEADERS}" = "xyes"
-	then
+	if test "x${MKL_FOUND_HEADERS}" = "xyes"; then
 		# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
 		save_LIBS="${LIBS}"
 		AC_SEARCH_LIBS([LAPACKE_dgels], [mkl_intel_ilp64],
@@ -223,8 +240,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 		AC_DEFINE([HAVE_LAPACKE_MKL], [1], [Define to 1 if you have MKL LAPACKE support enabled.])
 	else
 		AC_CHECK_HEADERS([lapacke.h], [LAPACKE_FOUND_HEADERS="yes"])
-		if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"
-		then
+		if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"; then
 			# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
 			save_LIBS="${LIBS}"
 			AC_SEARCH_LIBS([LAPACKE_dgels], [lapacke],
@@ -248,8 +264,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	# Check for Tensorflow
 	TENSORFLOW_LIBS=
 	AC_CHECK_HEADERS([tensorflow/c/c_api.h], [TENSORFLOW_FOUND_HEADERS="yes"])
-	if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes"
-	then
+	if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes"; then
 		# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
 		save_LIBS="${LIBS}"
 		AC_SEARCH_LIBS([TF_NewStatus], [tensorflow],
@@ -262,8 +277,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
  Unable to find Tensorflow libraries on this system.
  Disabling support for dependent methods.
 ----------------------------------------------------])])
-		if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes" && test "x${TENSORFLOW_FOUND_LIBS}" = "xyes"
-		then
+		if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes" && test "x${TENSORFLOW_FOUND_LIBS}" = "xyes"; then
 			TENSORFLOW_LIBS="-ltensorflow"
 		fi
 		AC_DEFINE([HAVE_TENSORFLOW], [1], [Define to 1 if you have TENSORFLOW support enabled.])
@@ -345,15 +359,14 @@ if test "x${pack_gpu_enabled}" = "xyes"; then
 	# Check for CUDA support.
 	CONFIGURE_HEADLINE([ CUDA support ])
 	AX_CUDA
-	NVCCFLAGS=
-	if test "x${BUILD_DEBUG}" = "xyes"
-	then
-		NVCCFLAGS="-g -G"
+
+	if test "x${BUILD_DEBUG}" = "xyes"; then
+		NFLAGS_EXTRA+=" --compiler-options='-rdynamic' --debug --device-debug"
 	fi
-	if test "x${BUILD_GPROF}" = "xtrue"
-	then
-		NVCCFLAGS+=" --compiler-options ${gprof_flags}"
+	if test "x${BUILD_GPROF}" = "xtrue"; then
+		NFLAGS_EXTRA+=" --compiler-options ${gprof_flags}"
 	fi
+	AC_SUBST([NFLAGS_EXTRA])
 	AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
 
 	AC_CHECK_LIB([cuda], [cuGetErrorString])
@@ -469,15 +482,13 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 	# try to set MPI_CFLAGS and MPI_LIBS
 	MPI_CFLAGS=
 	MPI_LIBS=
-	if test "x${mpi_vendor}" = "xOpenMPI"
-	then 
+	if test "x${mpi_vendor}" = "xOpenMPI"; then 
 		MPI_CFLAGS=`${MPICC} --showme:compile`
 		MPI_LIBS=`${MPICC} --showme:link`
 		AC_MSG_NOTICE([OpenMPI support found])
 		AC_MSG_NOTICE([MPI_CFLAGS=${MPI_CFLAGS}])
 		AC_MSG_NOTICE([MPI_LIBS=${MPI_LIBS}])
-	elif test "x${mpi_vendor}" = "xMPICH2" || test "x${mpi_vendor}" = "xMPICH3"
-	then
+	elif test "x${mpi_vendor}" = "xMPICH2" || test "x${mpi_vendor}" = "xMPICH3"; then
 		# build MPI_CFLAGS
 		tmp=`${MPICC} -compile-info | awk '{$1=""; print $0 }'`
 		MPI_CFLAGS=
@@ -511,8 +522,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 	# Check for LAPACKE
 	LAPACKE_LIBS=
 	AC_CHECK_HEADERS([mkl.h], [MKL_FOUND_HEADERS="yes"])
-	if test "x${MKL_FOUND_HEADERS}" = "xyes"
-	then
+	if test "x${MKL_FOUND_HEADERS}" = "xyes"; then
 		AC_SEARCH_LIBS([LAPACKE_dgels], [mkl_intel_ilp64],
 			       [MKL_FOUND_LIBS="yes"], [MKL_FOUND_LIBS="no"],
 			       [-lmkl_sequential -lmkl_core -lpthread -lm -ldl])
@@ -525,8 +535,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 		AC_DEFINE([HAVE_LAPACKE_MKL], [1], [Define to 1 if you have MKL LAPACKE support enabled.])
 	else
 		AC_CHECK_HEADERS([lapacke.h], [LAPACKE_FOUND_HEADERS="yes"])
-		if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"
-		then
+		if test "x${LAPACKE_FOUND_HEADERS}" = "xyes"; then
 			AC_SEARCH_LIBS([LAPACKE_dgels], [lapacke],
 				       [LAPACKE_FOUND_LIBS="yes"], [LAPACKE_FOUND_LIBS="no"],
 				       [-llapack])
@@ -543,9 +552,23 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 		fi
 	fi
 	AC_SUBST([L_LIBS], ["${LAPACKE_LIBS}"])
-fi
+
+	AS_IF([test "x${puremd_standalone}" = "xyes"],
+	      [AC_DEFINE([PURE_REAX], [1], [Define to 1 to build standalone PuReMD code.])])
+	AS_IF([test "x${lammps_reaxc}" = "xyes"],
+	      [AC_DEFINE([LAMMPS_REAX], [1], [Define to 1 to build standalone PuReMD code.])])
+	if test "x${puremd_standalone}" = "xyes" && test "x${lammps_reaxc}" = "xyes"; then
+		AC_MSG_ERROR([cannot build for BOTH PuReMD standalone and LAMMPS/reaxc!])
+	fi
+	AS_IF([test "x${qeq_dual_solver}" = "xyes"],
+	      [AC_DEFINE([DUAL_SOLVER], [1], [Define to 1 to enable dual QEq solver code.])])
+	AS_IF([test "x${neutral_territory}" = "xyes"],
+	      [AC_DEFINE([NEUTRAL_TERRITORY], [1], [Define to 1 to enable neutral territory code.])])
+	AS_IF([test "x${log_perf}" = "xyes"],
+	      [AC_DEFINE([LOG_PERFORMANCE], [1], [Define to 1 to enable performance logging code.])])
 
 	AC_LANG_POP([C])
+fi
 AM_CONDITIONAL([BUILD_MPI], [test "x${pack_mpi_old_enabled}" = "xyes"])
 
 
@@ -585,28 +608,29 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	# Check for compiler vendor. If the compiler is recognized,
 	#   the variable ax_cv_c_compiler_vendor is set accordingly.
 	AX_COMPILER_VENDOR
+
+	# GNU GCC compiler
 	if test "x${ax_cv_c_compiler_vendor}" = "xgnu"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
-			DEFAULT_CFLAGS="-Wall -O0 -g2 -D_GLIBCXX_DEBUG"
+			CPPFLAGS_EXTRA+=" -D_GLIBCXX_DEBUG"
+			CFLAGS_EXTRA+=" -O0 -Wall -g2 -rdynamic"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
-		else
-			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
-			DEFAULT_CFLAGS+=" -pg"
+			CFLAGS_EXTRA+=" -pg"
 		fi
+	# Intel compiler
 	elif test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
 		if test "x${BUILD_DEBUG}" = "xyes"; then
-			DEFAULT_CFLAGS="-Wall -O0"
+			CFLAGS_EXTRA+=" -O0 -Wall -rdynamic"
 			AC_DEFINE([DEBUG], [1], [Define to 1 if you have debug support enabled.])
-		else
-			DEFAULT_CFLAGS="-Wall -O2"
 		fi
 		if test "x${BUILD_GPROF}" = "xyes"; then
-			DEFAULT_CFLAGS+=" -p"
+			CFLAGS_EXTRA+=" -p"
 		fi
 	fi
-	AC_SUBST([DFT_CFLAGS], ["${DEFAULT_CFLAGS}"])
+	AC_SUBST(CPPFLAGS_EXTRA)
+	AC_SUBST(CFLAGS_EXTRA)
 
 	# Check for MPI support.
 	CONFIGURE_HEADLINE([ MPI compiler ])
@@ -712,28 +736,54 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	# Check for CUDA support.
 	if test "x${BUILD_GPU}" = "xyes"; then
 		CONFIGURE_HEADLINE([ CUDA support ])
+		# macro in m4/ax_cuda.m4
+		#   sets the following variables with AC_SUBST: 
+		#	CUDA_CFLAGS: CUDA header file include path
+		# 	CUDA_LIBS: CUDA library file include path and link the CUDA driver and runtime libraries (-lcuda -lcudart)
+		#	NVCC: path to the nvcc compiler wrapper
+		#	N_FLAGS: flags directly passed to nvcc
+		#   defines:
+		#	--with-cuda=(path|yes|no) for non-standard CUDA installation directory
+		#	--enable-emu for device emulation
+		#	--with-cuda-fast-math for fast, less percise math functions
+		#   other actions:
+		#	+ appends CUDA_CFLAGS to CPPFLAGS after defining
+		#	+ appends CUDA_LIBS to LIBS after defining
 		AX_CUDA
 
-		NVCCFLAGS=
-		NVCCFLAGS+=" -ccbin=${CXX}"
-		if test "x${BUILD_DEBUG}" = "xyes"
-		then
-			NVCCFLAGS+=" -Xcompiler -rdynamic -lineinfo"
+		# set host compiler to specified C++ compiler
+		NFLAGS_EXTRA+=" --compiler-bindir=${CXX}"
+		if test "x${BUILD_DEBUG}" = "xyes"; then
+			NFLAGS_EXTRA+=" --debug --device-debug"
 
 		fi
 		AC_DEFINE([HAVE_CUDA], [1], [Define to 1 if you have CUDA support enabled.])
 	else
 		AM_CONDITIONAL(USE_CUDA, test "x" = "xyes")
 	fi
+	AC_SUBST([NFLAGS_EXTRA])
 
-	if test "x${BUILD_GPROF}" = "xyes"
-	then
+	if test "x${BUILD_GPROF}" = "xyes"; then
 		if test "x${BUILD_GPU}" = "xyes"; then
-			NVCCFLAGS+=" --compiler-options ${gprof_flags}"
-		else
-			CFLAGS+=" ${gprof_flags}"
+			NFLAGS_EXTRA+=" --generate-line-info"
 		fi
 	fi
+
+	AC_ARG_VAR(NVCCFLAGS,[nvcc compiler flags])
+
+	AS_IF([test "x${puremd_standalone}" = "xyes"],
+	      [AC_DEFINE([PURE_REAX], [1], [Define to 1 to build standalone PuReMD code.])])
+	AS_IF([test "x${lammps_reaxc}" = "xyes"],
+	      [AC_DEFINE([LAMMPS_REAX], [1], [Define to 1 to build standalone PuReMD code.])])
+	if test "x${puremd_standalone}" = "xyes" && test "x${lammps_reaxc}" = "xyes"; then
+		AC_MSG_ERROR([cannot build for BOTH PuReMD standalone and LAMMPS/reaxc!])
+	fi
+	AS_IF([test "x${qeq_dual_solver}" = "xyes"],
+	      [AC_DEFINE([DUAL_SOLVER], [1], [Define to 1 to enable dual QEq solver code.])])
+	AS_IF([test "x${neutral_territory}" = "xyes"],
+	      [AC_DEFINE([NEUTRAL_TERRITORY], [1], [Define to 1 to enable neutral territory code.])])
+	AS_IF([test "x${log_perf}" = "xyes"],
+	      [AC_DEFINE([LOG_PERFORMANCE], [1], [Define to 1 to enable performance logging code.])])
 
 	AC_LANG_POP([C++])
 fi
@@ -749,11 +799,9 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
     #error "broken C++"
     #endif]])],,
   [CXX=;])
-if test "x${CXX}" != "x"
-then
+if test "x${CXX}" != "x"; then
 	AC_CHECK_HEADER([gtest/gtest.h], [HAVE_GTEST_H="yes"])
-	if test "x${HAVE_GTEST_H}" != "xyes"
-	then
+	if test "x${HAVE_GTEST_H}" != "xyes"; then
 		AC_MSG_WARN([gtest.h not found. Unable to build tests. Continuing...])
 	else
 		ACX_PTHREAD([have_pthread=yes])

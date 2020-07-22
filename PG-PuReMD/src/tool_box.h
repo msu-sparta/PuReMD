@@ -65,7 +65,7 @@ void Allocate_Tokenizer_Space( char **, char **, char *** );
 
 int Tokenize( char*, char***, size_t );
 
-void *smalloc( size_t, const char* );
+void *smalloc( size_t, const char * );
 
 void* srealloc( void *, size_t, const char * );
 

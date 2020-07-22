@@ -567,15 +567,9 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 {
     int blocks, ret, ret_far_nbr;
 #if defined(LOG_PERFORMANCE)
-    real t_start, t_elapsed;
-
-    t_start = 0.0;
-    t_elapsed = 0.0;
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_start = Get_Time( );
-    }
+    double time;
+    
+    time = Get_Time( );
 #endif
 
     /* reset reallocation flag on device */
@@ -615,11 +609,7 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
 
 #if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        t_elapsed = Get_Elapsed_Time( t_start );
-        data->timing.nbrs += t_elapsed;
-    }
+    Update_Timing_Info( &time, &data->timing.nbrs );
 #endif
 
     return ret;
@@ -629,9 +619,14 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 /* Estimate the number of far neighbors for each atoms 
  *
  * system: atomic system info */
-void Cuda_Estimate_Neighbors( reax_system *system )
+void Cuda_Estimate_Num_Neighbors( reax_system *system, simulation_data *data )
 {
     int blocks;
+#if defined(LOG_PERFORMANCE)
+    double time;
+    
+    time = Get_Time( );
+#endif
 
     blocks = system->total_cap / DEF_BLOCK_SIZE
         + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
@@ -647,4 +642,8 @@ void Cuda_Estimate_Neighbors( reax_system *system )
             system->total_cap );
     copy_host_device( &system->total_far_nbrs, system->d_total_far_nbrs, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Estimate_Neighbors::d_total_far_nbrs" );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.nbrs );
+#endif
 }

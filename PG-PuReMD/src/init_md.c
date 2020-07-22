@@ -19,12 +19,14 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
-
-#include <stddef.h>
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "init_md.h"
+
   #include "allocate.h"
   #include "box.h"
   #include "comm_tools.h"
@@ -42,6 +44,7 @@
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_init_md.h"
+
   #include "reax_allocate.h"
   #include "reax_forces.h"
   #include "reax_io_tools.h"
@@ -53,11 +56,13 @@
   #include "reax_vector.h"
 #endif
 
+#include <stddef.h>
+
 
 #if defined(PURE_REAX)
 /************************ initialize system ************************/
-static int Reposition_Atoms( reax_system * const system, control_params * const control,
-        simulation_data * const data, mpi_datatypes * const mpi_data, char * const msg )
+static void Reposition_Atoms( reax_system * const system, control_params * const control,
+        simulation_data * const data, mpi_datatypes * const mpi_data )
 {
     int i;
     rvec dx;
@@ -81,8 +86,9 @@ static int Reposition_Atoms( reax_system * const system, control_params * const 
     }
     else
     {
-        strcpy( msg, "[ERROR] reposition_atoms: invalid option" );
-        return FAILURE;
+        fprintf( stderr, "[ERROR] p%d: Reposition_Atoms: invalid option (%d)\n",
+              system->my_rank, control->reposition_atoms );
+        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
     }
 
     for ( i = 0; i < system->n; ++i )
@@ -90,8 +96,6 @@ static int Reposition_Atoms( reax_system * const system, control_params * const 
 //        Inc_on_T3_Gen( system->my_atoms[i].x, dx, &system->big_box );
         rvec_Add( system->my_atoms[i].x, dx );
     }
-
-    return SUCCESS;
 }
 
 
@@ -204,10 +208,7 @@ void Init_System( reax_system * const system, control_params * const control,
 
     Compute_Center_of_Mass( system, data, mpi_data, mpi_data->comm_mesh3D );
 
-//    if ( Reposition_Atoms( system, control, data, mpi_data ) == FAILURE )
-//    {
-//        return FAILURE;
-//    }
+//    Reposition_Atoms( system, control, data, mpi_data );
 
     /* initialize velocities so that desired init T can be attained */
     if ( !control->restart || (control->restart && control->random_vel) )

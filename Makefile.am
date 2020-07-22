@@ -1,5 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
+AM_CFLAGS = -O2 -funroll-loops -Wall
+
 SUBDIRS =
 DIST_SUBDIRS =
 EXTRA_DIST = data environ tools
@@ -70,15 +72,15 @@ sPuReMD_lib_libspuremd_la_SOURCES = sPuReMD/src/allocate.c \
 				    sPuReMD/src/valence_angles.h \
 				    sPuReMD/src/vector.c \
 				    sPuReMD/src/vector.h
-sPuReMD_lib_libspuremd_la_CFLAGS = @DFT_CFLAGS@ @OMP_CFLAGS@
-sPuReMD_lib_libspuremd_la_CPPFLAGS = -I sPuReMD/src
+sPuReMD_lib_libspuremd_la_CFLAGS = @DFT_CFLAGS@ @CFLAGS_EXTRA@ @OMP_CFLAGS@
+sPuReMD_lib_libspuremd_la_CPPFLAGS = -I sPuReMD/src @CPPFLAGS_EXTRA@
 sPuReMD_lib_libspuremd_la_LDFLAGS = -version-info 1:0:0
 sPuReMD_lib_libspuremd_la_LIBADD = @OMP_LIBS@ @L_LIBS@ @T_LIBS@
 
 bin_PROGRAMS = sPuReMD/bin/spuremd
 sPuReMD_bin_spuremd_SOURCES = sPuReMD/src/driver.c
-sPuReMD_bin_spuremd_CFLAGS = @DFT_CFLAGS@ @OMP_CFLAGS@
-sPuReMD_bin_spuremd_CPPFLAGS = -I sPuReMD/src
+sPuReMD_bin_spuremd_CFLAGS = @DFT_CFLAGS@ @CFLAGS_EXTRA@ @OMP_CFLAGS@
+sPuReMD_bin_spuremd_CPPFLAGS = -I sPuReMD/src @CPPFLAGS_EXTRA@
 sPuReMD_bin_spuremd_LDADD = sPuReMD/lib/libspuremd.la @OMP_LIBS@ @L_LIBS@ @T_LIBS@
 
 check_PROGRAMS =
@@ -180,8 +182,8 @@ PuReMD_bin_puremd_SOURCES = PuReMD/src/allocate.c \
 			    PuReMD/src/vector.c \
 			    PuReMD/src/vector.h
 
-PuReMD_bin_puremd_CFLAGS = @DFT_CFLAGS@ @M_CFLAGS@
-PuReMD_bin_puremd_CPPFLAGS = -I PuReMD/src
+PuReMD_bin_puremd_CFLAGS = @DFT_CFLAGS@ @CFLAGS_EXTRA@ @M_CFLAGS@
+PuReMD_bin_puremd_CPPFLAGS = -I PuReMD/src @CPPFLAGS_EXTRA@
 PuReMD_bin_puremd_LDADD = @M_LIBS@ @L_LIBS@
 endif
 
@@ -193,12 +195,7 @@ include cuda.am
 endif
 
 if USE_CUDA
-# flags for CUDA compilation via NVCC (see cuda.am)
-#   Note: cc 13 for Tesla, cc 20 for Fermi, cc 30 for Kepler K10, cc 35 for Kepler K20/K40, etc.
-#NVCCFLAGS += -gencode arch=compute_35,code=sm_35
-NVCCFLAGS += $(NVCC_OPT_CODE)
-NVCCFLAGS += --compiler-options "$(DEFS) $(NVCC_OPT_CODE_DEFS) @DFT_CFLAGS@"
-#NVCCFLAGS += --ptxas-options -v
+AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) @CFLAGS_EXTRA@ $(CFLAGS)" @NFLAGS@ @NFLAGS_EXTRA@
 endif
 
 bin_PROGRAMS = PuReMD-GPU/bin/spuremd
@@ -315,8 +312,8 @@ PuReMD_GPU_bin_spuremd_SOURCES += PuReMD-GPU/src/cuda_allocate.cu \
 nodist_EXTRA_PuReMD_GPU_bin_spuremd_SOURCES = PuReMD-GPU/src/dummy.c
 endif
 
-PuReMD_GPU_bin_spuremd_CFLAGS = @DFT_CFLAGS@
-PuReMD_GPU_bin_spuremd_CPPFLAGS = -I PuReMD-GPU/src
+PuReMD_GPU_bin_spuremd_CFLAGS = @DFT_CFLAGS@ @CFLAGS_EXTRA@
+PuReMD_GPU_bin_spuremd_CPPFLAGS = -I PuReMD-GPU/src @CPPFLAGS_EXTRA@
 
 if USE_CUDA
 PuReMD_GPU_bin_spuremd_CFLAGS += @CUDA_CFLAGS@
@@ -334,12 +331,7 @@ include cuda.am
 endif
 
 if USE_CUDA
-# flags for CUDA compilation via NVCC (see cuda.am)
-#   Note: cc 13 for Tesla, cc 20 for Fermi, cc 30 for Kepler K10, cc 35 for Kepler K20/K40, etc.
-#NVCCFLAGS += -gencode arch=compute_35,code=sm_35
-NVCCFLAGS += $(NVCC_OPT_CODE)
-NVCCFLAGS += --compiler-options "$(DEFS) $(NVCC_OPT_CODE_DEFS) @DFT_CFLAGS@ @M_CFLAGS@"
-#NVCCFLAGS += --ptxas-options -v
+AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) -std=c++11 @CFLAGS_EXTRA@ $(CFLAGS) @M_CFLAGS@" -std=c++11 @NFLAGS@ @NFLAGS_EXTRA@
 endif
 
 bin_PROGRAMS = PG-PuReMD/bin/pg-puremd
@@ -470,8 +462,8 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 nodist_EXTRA_PG_PuReMD_bin_pg_puremd_SOURCES = src/dummy.c
 endif
 
-PG_PuReMD_bin_pg_puremd_CFLAGS = @DFT_CFLAGS@ @M_CFLAGS@
-PG_PuReMD_bin_pg_puremd_CPPFLAGS = -I PG-PuReMD/src
+PG_PuReMD_bin_pg_puremd_CFLAGS = -std=c11 @CFLAGS_EXTRA@ @M_CFLAGS@
+PG_PuReMD_bin_pg_puremd_CPPFLAGS = -I PG-PuReMD/src @CPPFLAGS_EXTRA@
 PG_PuReMD_bin_pg_puremd_LDADD = @M_LIBS@ @L_LIBS@ -lstdc++
 if USE_CUDA
 PG_PuReMD_bin_pg_puremd_CFLAGS += @CUDA_CFLAGS@

@@ -666,10 +666,7 @@ void QEq( reax_system const * const system, control_params const * const control
     Calculate_Charges_QEq( system, control, workspace, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.cm_solver_iters += iters;
-    }
+    data->timing.cm_solver_iters += iters;
 #endif
 }
 

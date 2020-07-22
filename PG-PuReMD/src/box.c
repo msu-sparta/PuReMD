@@ -19,14 +19,26 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
-#include "box.h"
-
-#include "comm_tools.h"
-#include "io_tools.h"
-#include "system_props.h"
-#include "vector.h"
+#if defined(PURE_REAX)
+  #include "box.h"
+  
+  #include "comm_tools.h"
+  #include "io_tools.h"
+  #include "system_props.h"
+  #include "vector.h"
+#elif defined(LAMMPS_REAX)
+  #include "reax_box.h"
+  
+  #include "reax_comm_tools.h"
+  #include "reax_io_tools.h"
+  #include "reax_system_props.h"
+  #include "reax_vector.h"
+#endif
 
 
 void Make_Consistent( simulation_box * const box )

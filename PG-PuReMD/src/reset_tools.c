@@ -19,21 +19,26 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "reset_tools.h"
+
+  #include "index_utils.h"
   #include "list.h"
   #include "tool_box.h"
   #include "vector.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_reset_tools.h"
+
+  #include "reax_index_utils.h"
   #include "reax_list.h"
   #include "reax_tool_box.h"
   #include "reax_vector.h"
 #endif
-
-#include "index_utils.h"
 
 
 /* Calculate atom indices of local and ghost atoms

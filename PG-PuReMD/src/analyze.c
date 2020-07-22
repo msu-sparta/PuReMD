@@ -19,7 +19,10 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #include "analyze.h"
 
@@ -97,14 +100,14 @@ void Analyze_Fragments( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, FILE *fout, int ignore )
 {
-    int  atom, i, flag;
-    int  *mark = workspace->mark;
-    int  num_fragments, num_fragment_types;
-    char fragment[MAX_ATOM_TYPES];
-    char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
-    int  fragment_count[MAX_FRAGMENT_TYPES];
+    int atom, i, flag, *mark;
+    int num_fragments, num_fragment_types, fragment_count[MAX_FRAGMENT_TYPES];
+    char fragment[MAX_ATOM_TYPES], fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
     molecule m;
-    reax_list *new_bonds = lists[BONDS];
+    reax_list *new_bonds;
+
+    mark = workspace->mark;
+    new_bonds = lists[BONDS];
 
     /* fragment analysis */
     fprintf( fout, "step%d fragments\n", data->step );
@@ -126,7 +129,7 @@ void Analyze_Fragments( reax_system *system, control_params *control,
             flag = 0;
             for ( i = 0; i < num_fragment_types; ++i )
             {
-                if ( !strcmp( fragments[i], fragment ) )
+                if ( strncmp( fragments[i], fragment, MAX_ATOM_TYPES ) == 0 )
                 {
                     fragment_count[i]++;
                     flag = 1;
@@ -137,7 +140,8 @@ void Analyze_Fragments( reax_system *system, control_params *control,
             if ( flag == 0 )
             {
                 /* it is a new one, add to the fragments list */
-                strcpy( fragments[num_fragment_types], fragment );
+                strncpy( fragments[num_fragment_types], fragment, sizeof(fragments[num_fragment_types]) - 1 );
+                fragments[num_fragment_types][sizeof(fragments[num_fragment_types]) - 1] = '\0';
                 fragment_count[num_fragment_types] = 1;
                 ++num_fragment_types;
             }
@@ -147,6 +151,7 @@ void Analyze_Fragments( reax_system *system, control_params *control,
     /* output the results of fragment analysis */
     for ( i = 0; i < num_fragment_types; ++i )
     {
+        /* strlen safe here as fragments[i] is NULL-terminated above */
         if ( strlen(fragments[i]) )
         {
             fprintf( fout, "%d of %s\n", fragment_count[i], fragments[i] );

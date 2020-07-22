@@ -19,13 +19,18 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#include "reax_types.h"
+#if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
+  #define __CONFIG_H_
+  #include "../../common/include/config.h"
+#endif
 
 #if defined(PURE_REAX)
   #include "tool_box.h"
+
   #include "comm_tools.h"
 #elif defined(LAMMPS_REAX)
   #include "reax_tool_box.h"
+
   #include "reax_comm_tools.h"
 #endif
 
@@ -150,20 +155,23 @@ int Check_Input_Range( int val, int lo, int hi, char *message )
 }
 
 
+/* Note: element must be NULL-terminated before calling */
 void Trim_Spaces( char *element )
 {
     int i, j;
 
-    // skip initial space chars
-    for ( i = 0; element[i] == ' '; ++i );
+    /* skip initial space chars */
+    for ( i = 0; element[i] == ' '; ++i )
+        ;
 
-    for ( j = i; j < (int)(strlen(element)) && element[j] != ' '; ++j )
+    /* strlen safe here only if element is NULL-terminated before calling Trim_Spaces */
+    for ( j = i; j < (int) strlen(element) && element[j] != ' '; ++j )
     {
-        // make uppercase, offset to 0
+        /* make uppercase, offset to 0 */
         element[j - i] = toupper( element[j] );
     }
-    // finalize the string
-    element[j - i] = 0;
+    /* NULL-terminate the string */
+    element[j - i] = '\0';
 }
 
 
@@ -189,8 +197,8 @@ real Get_Elapsed_Time( real t_start )
 /* Accumulate elapsed time into timing and update starting time
  * to be new time from this instant going forward
  *
- * t_start: previous starting time
- * timing: variable to accumulate elapsed time into */
+ * t_start: previous starting time in seconds
+ * timing: variable to accumulate elapsed time in seconds */
 void Update_Timing_Info( real *t_start, real *timing )
 {
     double t_end;

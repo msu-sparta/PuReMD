@@ -11,30 +11,16 @@
 #include "cuda_reset_tools.h"
 #include "cuda_system_props.h"
 
-#if defined(PURE_REAX)
-  #include "../box.h"
-  #include "../comm_tools.h"
-  #include "../grid.h"
-  #include "../init_md.h"
-  #include "../io_tools.h"
-  #include "../lookup.h"
-  #include "../random.h"
-  #include "../reset_tools.h"
-  #include "../tool_box.h"
-  #include "../vector.h"
-#elif defined(LAMMPS_REAX)
-  #include "../reax_box.h"
-  #include "../reax_comm_tools.h"
-  #include "../reax_grid.h"
-  #include "../reax_init_md.h"
-  #include "../reax_io_tools.h"
-  #include "../reax_list.h"
-  #include "../reax_lookup.h"
-  #include "../reax_random.h"
-  #include "../reax_reset_tools.h"
-  #include "../reax_tool_box.h"
-  #include "../reax_vector.h"
-#endif
+#include "../box.h"
+#include "../comm_tools.h"
+#include "../grid.h"
+#include "../init_md.h"
+#include "../io_tools.h"
+#include "../lookup.h"
+#include "../random.h"
+#include "../reset_tools.h"
+#include "../tool_box.h"
+#include "../vector.h"
 
 
 static void Cuda_Init_System( reax_system *system, control_params *control,
@@ -202,7 +188,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data )
 {
-    Cuda_Estimate_Neighbors( system );
+    Cuda_Estimate_Num_Neighbors( system, data );
 
     Cuda_Make_List( system->total_cap, system->total_far_nbrs,
             TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
