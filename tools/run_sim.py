@@ -1129,7 +1129,6 @@ if __name__ == '__main__':
                     'total_time', 'step_time', 'comm', 'neighbors', 'init',
                     'bonded', 'nonbonded', 'cm', 's_iters']
             body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
-            pass
 
         if args.binary:
             binary = args.binary[0]
@@ -1141,13 +1140,28 @@ if __name__ == '__main__':
         _, control_params_dict = setup_defaults(base_dir)
 
         # overwrite default control file parameter values if supplied via command line args
+        geo_format = None
         if args.params:
             for param in args.params:
                 if param[0] in control_params_dict:
                     control_params_dict[param[0]] = param[1].split(',')
+                    if param[0] == 'geo_format':
+                        geo_format = param[1].split(',')
                 else:
                     print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
                     exit(-1)
+
+        geo_base, geo_ext = path.splitext(args.geo_file[0])
+
+        if not geo_format:
+            # infer geometry file format by file extension
+            if geo_ext.lower() == '.pdb':
+                geo_format = ['1']
+            elif geo_ext.lower() == '.geo':
+                geo_format = ['0']
+            else:
+                print("[ERROR] unrecognized geometry format {0}. Terminating...".format(geo_ext))
+                exit(-1)
 
         if args.out_file:
             result_file = args.out_file[0]
