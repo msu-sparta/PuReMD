@@ -537,9 +537,9 @@ restart_freq            0                       ! 0: do not output any restart f
                         except Exception:
                             pass
 
-            # subtract for header, footer (total time), and extra step
+            # subtract for header and extra step
             # (e.g., 100 steps means steps 0 through 100, inclusive)
-            if (line_cnt - 3) == (int(param['nsteps']) / freq_step):
+            if (line_cnt - 2) == (int(param['nsteps']) / freq_step):
                 fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
                     str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
                     param['nsteps'], param['cm_solver_pre_comp_type'],
@@ -630,9 +630,9 @@ restart_freq            0                       ! 0: do not output any restart f
                         except Exception:
                             pass
 
-            # subtract for header, footer (total time), and extra step
+            # subtract for header and extra step
             # (e.g., 100 steps means steps 0 through 100, inclusive)
-            if (line_cnt - 3) == (int(param['nsteps']) / freq_step):
+            if (line_cnt - 2) == (int(param['nsteps']) / freq_step):
                 fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
                     str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
                     param['nsteps'], param['cm_solver_pre_comp_type'],
