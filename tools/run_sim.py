@@ -351,66 +351,300 @@ restart_freq            0                       ! 0: do not output any restart f
         if path.exists(temp_dir):
             rmdir(temp_dir)
 
-    def _process_result(self, fout, param, min_step, max_step):
-        time = 0.
-        cm = 0.
-        iters = 0.
-        pre_comp = 0.
-        pre_app = 0.
-        spmv = 0.
-        cnt = 0
-        cnt_valid = 0
-        line_cnt = 0
-        log_file = param['name'] + '.log'
+    def _process_result(self, fout, param, min_step, max_step, freq_step, run_type):
+        if run_type == 'serial' or run_type == 'openmp':
+            total_time = 0.
+            cm = 0.
+            iters = 0.
+            pre_comp = 0.
+            pre_app = 0.
+            spmv = 0.
+            cnt = 0
+            cnt_valid = 0
+            line_cnt = 0
+            log_file = param['name'] + '.log'
 
-        if not path.exists(log_file):
-            print('[WARNING] {0} does not exist!'.format(log_file))
-            return
-        with open(log_file, 'r') as fp:
-            for line in fp:
-                line = line.split()
-                try:
-                    if (not min_step and not max_step) or \
-                    (min_step and not max_step and cnt_valid >= min_step) or \
-                    (not min_step and max_step and cnt_valid <= max_step) or \
-                    (cnt_valid >= min_step and cnt_valid <= max_step):
-                        cm = cm + float(line[6])
-                        iters = iters + float(line[8])
-                        pre_comp = pre_comp + float(line[9])
-                        pre_app = pre_app + float(line[10])
-                        spmv = spmv + float(line[11])
-                        cnt = cnt + 1
-                    cnt_valid = cnt_valid + 1
-                except Exception:
-                    pass
-                if line[0] == 'total:':
+            if not path.exists(log_file):
+                print('[WARNING] {0} does not exist!'.format(log_file))
+                return
+            with open(log_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
                     try:
-                        time = float(line[1])
+                        _cm = float(line[6])
+                        _iters = float(line[8])
+                        _pre_comp = float(line[9])
+                        _pre_app = float(line[10])
+                        _spmv = float(line[11])
+
+                        if (not min_step and not max_step) or \
+                        (min_step and not max_step and cnt_valid >= min_step) or \
+                        (not min_step and max_step and cnt_valid <= max_step) or \
+                        (cnt_valid >= min_step and cnt_valid <= max_step):
+                            cm = cm + _cm
+                            iters = iters + _iters
+                            pre_comp = pre_comp + _pre_comp
+                            pre_app = pre_app + _pre_app
+                            spmv = spmv + _spmv
+
+                            cnt = cnt + 1
+
+                        cnt_valid = cnt_valid + 1
                     except Exception:
                         pass
-                line_cnt = line_cnt + 1
+                    if line[0] == 'total:':
+                        try:
+                            total_time = float(line[1])
+                        except Exception:
+                            pass
+                    line_cnt = line_cnt + 1
+                if cnt > 0:
+                    cm = cm / cnt
+                    iters = iters / cnt
+                    pre_comp = pre_comp / cnt
+                    pre_app = pre_app / cnt
+                    spmv = spmv / cnt
+
+            # subtract for header, footer (total time), and extra step
+            # (e.g., 100 steps means steps 0 through 100, inclusive)
+            if (line_cnt - 3) == (int(param['nsteps']) / freq_step):
+                fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
+                    param['nsteps'], param['charge_method'], param['cm_solver_type'],
+                    param['cm_solver_q_err'], param['cm_domain_sparsity'],
+                    param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'],
+                    param['cm_solver_pre_comp_sweeps'], param['cm_solver_pre_comp_sai_thres'],
+                    param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'],
+                    pre_comp, pre_app, iters, spmv,
+                    cm, param['threads'], total_time))
+            else:
+                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
+                    log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
+            fout.flush()
+        elif run_type == 'mpi':
+            from operator import mul
+            from functools import reduce
+            
+            total_time = 0.0
+            step_time = 0.0
+            comm = 0.0
+            neighbors = 0.0
+            init = 0.0
+            init_dist = 0.0
+            init_cm = 0.0
+            init_bond = 0.0
+            bonded = 0.0
+            nonbonded = 0.0
+            cm = 0.0
+            cm_sort = 0.0
+            s_iters = 0.0
+            pre_comp = 0.0
+            pre_app = 0.0
+            s_comm = 0.0
+            s_allr = 0.0
+            s_spmv = 0.0
+            s_vec_ops = 0.0
+            cnt = 0
+            cnt_valid = 0
+            line_cnt = 0
+            log_file = param['name'] + '.log'
+            out_file = param['name'] + '.out'
+
+            if not path.exists(log_file):
+                print('[WARNING] {0} does not exist!'.format(log_file))
+                return
+            with open(log_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
+                    try:
+                        _step_time = float(line[1])
+                        _comm = float(line[2])
+                        _neighbors = float(line[3])
+                        _init = float(line[4])
+                        _init_dist = float(line[5])
+                        _init_cm = float(line[6])
+                        _init_bond = float(line[7])
+                        _bonded = float(line[8])
+                        _nonbonded = float(line[9])
+                        _cm = float(line[10])
+                        _cm_sort = float(line[11])
+                        _s_iters = float(line[12])
+                        _pre_comp = float(line[13])
+                        _pre_app = float(line[14])
+                        _s_comm = float(line[15])
+                        _s_allr = float(line[16])
+                        _s_spmv = float(line[17])
+                        _s_vec_ops = float(line[18])
+
+                        if (not min_step and not max_step) or \
+                        (min_step and not max_step and cnt_valid >= min_step) or \
+                        (not min_step and max_step and cnt_valid <= max_step) or \
+                        (cnt_valid >= min_step and cnt_valid <= max_step):
+                            step_time = step_time + _step_time
+                            comm = comm + _comm
+                            neighbors = neighbors + _neighbors
+                            init = init + _init
+                            init_dist = init_dist + _init_dist
+                            init_cm = init_cm + _init_cm
+                            init_bond = init_bond + _init_bond
+                            bonded = bonded + _bonded
+                            nonbonded = nonbonded + _nonbonded
+                            cm = cm + _cm
+                            cm_sort = cm_sort + _cm_sort
+                            s_iters = s_iters + _s_iters
+                            pre_comp = pre_comp + _pre_comp
+                            pre_app = pre_app + _pre_app
+                            s_comm = s_comm + _s_comm
+                            s_allr = s_allr + _s_allr
+                            s_spmv = s_spmv + _s_spmv
+                            s_vec_ops = s_vec_ops + _s_vec_ops
+
+                            cnt = cnt + 1
+
+                        cnt_valid = cnt_valid + 1
+                    except Exception:
+                        pass
+                    line_cnt = line_cnt + 1
+
             if cnt > 0:
+                step_time = step_time / cnt
+                comm = comm / cnt
+                neighbors = neighbors / cnt
+                init = init / cnt
+                init_dist = init_dist / cnt
+                init_cm = init_cm / cnt
+                init_bond = init_bond / cnt
+                bonded = bonded / cnt
+                nonbonded = nonbonded / cnt
                 cm = cm / cnt
-                iters = iters / cnt
+                cm_sort = cm_sort / cnt
+                s_iters = s_iters / cnt
                 pre_comp = pre_comp / cnt
                 pre_app = pre_app / cnt
-                spmv = spmv / cnt
+                s_comm = s_comm / cnt
+                s_allr = s_allr / cnt
+                s_spmv = s_spmv / cnt
+                s_vec_ops = s_vec_ops / cnt
 
-        # subtract for header, footer (total time), and extra step
-        # (e.g., 100 steps means steps 0 through 100, inclusive)
-        if (line_cnt - 3) == int(param['nsteps']):
-            fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0], 
-                param['nsteps'], param['charge_method'], param['cm_solver_type'],
-                param['cm_solver_q_err'], param['cm_domain_sparsity'],
-                param['cm_solver_pre_comp_type'], param['cm_solver_pre_comp_droptol'],
-                param['cm_solver_pre_comp_sweeps'], param['cm_solver_pre_comp_sai_thres'],
-                param['cm_solver_pre_app_type'], param['cm_solver_pre_app_jacobi_iters'],
-                pre_comp, pre_app, iters, spmv,
-                cm, param['threads'], time))
-        else:
-            print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, counted steps = {2:d}).'.format(
-                log_file, int(param['nsteps']), max(line_cnt - 3, 0)))
-        fout.flush()
+            if not path.exists(out_file):
+                print('[WARNING] {0} does not exist!'.format(out_file))
+                return
+            with open(out_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
+                    if line[0] == 'Total' and line[1] == 'Simulation' and line[2] == 'Time:':
+                        try:
+                            total_time = float(line[3])
+                        except Exception:
+                            pass
+
+            # subtract for header, footer (total time), and extra step
+            # (e.g., 100 steps means steps 0 through 100, inclusive)
+            if (line_cnt - 3) == (int(param['nsteps']) / freq_step):
+                fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
+                    str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
+                    param['nsteps'], param['cm_solver_pre_comp_type'],
+                    param['cm_solver_q_err'],
+                    param['reneighbor'],
+                    param['cm_solver_pre_comp_sai_thres'],
+                    total_time, step_time, comm, neighbors, init, init_dist, init_cm, init_bond,
+                    bonded, nonbonded, cm, cm_sort,
+                    s_iters, pre_comp, pre_app, s_comm, s_allr, s_spmv, s_vec_ops))
+            else:
+                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
+                    log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
+            fout.flush()
+        elif run_type == 'mpi-gpu':
+            from operator import mul
+            from functools import reduce
+            
+            total_time = 0.0
+            step_time = 0.0
+            comm = 0.0
+            neighbors = 0.0
+            init = 0.0
+            bonded = 0.0
+            nonbonded = 0.0
+            cm = 0.0
+            s_iters = 0.0
+            cnt = 0
+            cnt_valid = 0
+            line_cnt = 0
+            log_file = param['name'] + '.log'
+            out_file = param['name'] + '.out'
+
+            if not path.exists(log_file):
+                print('[WARNING] {0} does not exist!'.format(log_file))
+                return
+            with open(log_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
+                    try:
+                        _step_time = float(line[1])
+                        _comm = float(line[2])
+                        _neighbors = float(line[3])
+                        _init = float(line[4])
+                        _bonded = float(line[5])
+                        _nonbonded = float(line[6])
+                        _cm = float(line[7])
+                        _s_iters = float(line[8])
+
+                        if (not min_step and not max_step) or \
+                        (min_step and not max_step and cnt_valid >= min_step) or \
+                        (not min_step and max_step and cnt_valid <= max_step) or \
+                        (cnt_valid >= min_step and cnt_valid <= max_step):
+                            step_time = step_time + _step_time
+                            comm = comm + _comm
+                            neighbors = neighbors + _neighbors
+                            init = init + _init
+                            bonded = bonded + _bonded
+                            nonbonded = nonbonded + _nonbonded
+                            cm = cm + _cm
+                            s_iters = s_iters + _s_iters
+
+                            cnt = cnt + 1
+
+                        cnt_valid = cnt_valid + 1
+                    except Exception:
+                        pass
+                    line_cnt = line_cnt + 1
+
+            if cnt > 0:
+                step_time = step_time / cnt
+                comm = comm / cnt
+                neighbors = neighbors / cnt
+                init = init / cnt
+                bonded = bonded / cnt
+                nonbonded = nonbonded / cnt
+                cm = cm / cnt
+                s_iters = s_iters / cnt
+
+            if not path.exists(out_file):
+                print('[WARNING] {0} does not exist!'.format(out_file))
+                return
+            with open(out_file, 'r') as fp:
+                for line in fp:
+                    line = line.split()
+                    if line[0] == 'Total' and line[1] == 'Simulation' and line[2] == 'Time:':
+                        try:
+                            total_time = float(line[3])
+                        except Exception:
+                            pass
+
+            # subtract for header, footer (total time), and extra step
+            # (e.g., 100 steps means steps 0 through 100, inclusive)
+            if (line_cnt - 3) == (int(param['nsteps']) / freq_step):
+                fout.write(self.__result_body_fmt.format(path.basename(self.__geo_file).split('.')[0],
+                    str(reduce(mul, map(int, param['proc_by_dim'].split(':')), 1)),
+                    param['nsteps'], param['cm_solver_pre_comp_type'],
+                    param['cm_solver_q_err'],
+                    param['reneighbor'],
+                    param['cm_solver_pre_comp_sai_thres'],
+                    total_time, step_time, comm, neighbors, init,
+                    bonded, nonbonded, cm, s_iters))
+            else:
+                print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
+                    log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
+            fout.flush()
 
     def parse_results(self, run_type):
         from itertools import product
@@ -430,7 +664,9 @@ restart_freq            0                       ! 0: do not output any restart f
                 param_dict = dict((k, v) for (k, v) in zip(self.__param_names, p))
                 param_dict['name'] = self._create_output_file_base(run_type, param_dict)
 
-                self._process_result(fout, param_dict, self.__min_step, self.__max_step)
+                self._process_result(fout, param_dict,
+                        self.__min_step, self.__max_step,
+                        int(param_dict['energy_update_freq']), run_type)
 
     def _build_slurm_script(self, binary, run_type, mpi_cmd, mpi_cmd_extra, modules, param_values):
         from os import path
@@ -587,6 +823,8 @@ if __name__ == '__main__':
                 help='Force field parameter file used for the MD simulation.')
         run_md_custom_parser.set_defaults(func=run_md_custom)
 
+        parse_results_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
+                help='Binary file to run.')
         parse_results_parser.add_argument('-f', '--out_file', metavar='out_file', default=None, nargs=1,
                 help='Output file to write results.')
         parse_results_parser.add_argument('-p', '--params', metavar='params', action='append', default=None, nargs=2,
@@ -597,8 +835,10 @@ if __name__ == '__main__':
                 help='Maxiumum simulation step for aggregating results.')
         parse_results_parser.add_argument('run_type', nargs=1,
                 choices=RUN_TYPES, help='Run type for the MD simulation(s).')
-        parse_results_parser.add_argument('data_sets', nargs='+',
-                choices=DATA_SETS, help='Data set(s) for which to parse MD simulation results.')
+        parse_results_parser.add_argument('geo_file', nargs=1,
+                help='Geometry file used for the MD simulation.')
+        parse_results_parser.add_argument('ffield_file', nargs=1,
+                help='Force field parameter file used for the MD simulation.')
         parse_results_parser.set_defaults(func=parse_results)
 
         submit_jobs_parser.add_argument('-b', '--binary', metavar='binary', default=None, nargs=1,
@@ -871,13 +1111,43 @@ if __name__ == '__main__':
         test_case.run_md(binary, args.run_type[0], args.mpi_cmd[0].split(':'), args.mpi_cmd_extra)
 
     def parse_results(args):
-        header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
-        header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre Comp',
-                'Pre App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
-        body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+        if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
+            header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
+            header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q_Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre_Comp',
+                    'Pre_App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+        elif args.run_type[0] == 'mpi':
+            header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
+            header_str = ['Data_Set', 'Proc', 'Steps', 'PreCT', 'Q_Tol', 'Ren', 'PCSAI',
+                    'total_time', 'step_time', 'comm', 'neighbors', 'init', 'init_dist', 'init_cm', 'init_bond',
+                    'bonded', 'nonbonded', 'cm', 'cm_sort',
+                    's_iters', 'pre_comm', 'pre_app', 's_comm', 's_allr', 's_spmv', 's_vec_ops']
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
+        elif args.run_type[0] == 'mpi-gpu':
+            header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
+            header_str = ['Data_Set', 'Proc', 'Steps', 'PreCT', 'Q_Tol', 'Ren', 'PCSAI',
+                    'total_time', 'step_time', 'comm', 'neighbors', 'init',
+                    'bonded', 'nonbonded', 'cm', 's_iters']
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
+            pass
 
-        base_dir = getcwd()
-        data_dir, control_params_dict = setup_defaults(base_dir)
+        if args.binary:
+            binary = args.binary[0]
+            # remove executable and back up two directory levels
+            base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
+        else:
+            base_dir = getcwd()
+
+        _, control_params_dict = setup_defaults(base_dir)
+
+        # overwrite default control file parameter values if supplied via command line args
+        if args.params:
+            for param in args.params:
+                if param[0] in control_params_dict:
+                    control_params_dict[param[0]] = param[1].split(',')
+                else:
+                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
+                    exit(-1)
 
         if args.out_file:
             result_file = args.out_file[0]
@@ -894,21 +1164,12 @@ if __name__ == '__main__':
         else:
             max_step = None
 
-        # overwrite default control file parameter values if supplied via command line args
-        if args.params:
-            for param in args.params:
-                if param[0] in control_params_dict:
-                    control_params_dict[param[0]] = param[1].split(',')
-                else:
-                    print("[ERROR] Invalid parameter {0}. Terminating...".format(param[0]))
-                    exit(-1)
-
-        test_cases = setup_test_cases(args.data_sets, data_dir, control_params_dict,
-                header_fmt_str=header_fmt_str, header_str=header_str, body_fmt_str=body_fmt_str,
+        test_case = TestCase(geo_base, args.geo_file[0], args.ffield_file[0],
+                params=control_params_dict, geo_format=geo_format,
+                result_header_fmt=header_fmt_str, result_header=header_str, result_body_fmt=body_fmt_str,
                 result_file=result_file, min_step=min_step, max_step=max_step)
 
-        for test in test_cases:
-            test.parse_results(args.run_type[0])
+        test_case.parse_results(args.run_type[0])
 
     def submit_jobs(args):
         if args.binary:
