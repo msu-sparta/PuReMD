@@ -130,7 +130,7 @@ def replicate(args):
 
         with open(out_file, 'w') as outfile:
             # box dimensions
-            outfile.write('{:6}{:9.3f}{:9.3f}{:9.3f}{:7}{:7}{:7}{:11}{:4}'.format(
+            outfile.write('{:6}{:9.3f}{:9.3f}{:9.3f}{:7}{:7}{:7} {:11}{:4}'.format(
                 'CRYST1', x_dim * args.X_repl, y_dim * args.Y_repl, z_dim * args.Z_repl,
                 cryst_line[33:40], cryst_line[40:47], cryst_line[47:54],
                 cryst_line[54:65], cryst_line[65:69]) + linesep)
@@ -152,8 +152,63 @@ def replicate(args):
                             count = count + 1
 
     elif args.input_format == 'PUREMD':
-        #TODO
-        pass
+        atom_count = 0
+        atom_lines = []
+        # simulation box info
+        x_dim = 0.0
+        y_dim = 0.0
+        z_dim = 0.0
+        x_ang = 0.0
+        y_ang = 0.0
+        z_ang = 0.0
+
+        with open(args.input_file, 'r') as infile:
+            # BOXGEO line
+            line = infile.readline()
+            line = line.split()
+            x_dim = float(line[1])
+            y_dim = float(line[2])
+            z_dim = float(line[3])
+            x_ang = float(line[4])
+            y_ang = float(line[5])
+            z_ang = float(line[6])
+
+            # atom count line
+            line = infile.readline()
+            line = line.split()
+            atom_count = int(line[0])
+
+            # atom info lines
+            for line in infile:
+                atom_lines.append(line.split())
+
+        if args.output_file:
+            out_file = args.output_file
+        else:
+            out_file = 'output.geo'
+
+        with open(out_file, 'w') as outfile:
+            # BOXGEO line
+            outfile.write('{:6} {:f} {:f} {:f} {:f} {:f} {:f}'.format(
+                'BOXGEO', x_dim * args.X_repl, y_dim * args.Y_repl, z_dim * args.Z_repl,
+                x_ang, y_ang, z_ang) + linesep)
+
+            # atom count line
+            outfile.write('{:d}'.format(atom_count * args.X_repl * args.Y_repl * args.Z_repl) + linesep)
+
+            # atom info lines
+            count = 1
+            for x in range(args.X_repl):
+                for y in range(args.Y_repl):
+                    for z in range(args.Z_repl):
+                        for l in atom_lines:
+                            outfile.write(' {:d} {:2} {:2} {:f} {:f} {:f}'.format(
+                                count, l[1], l[2],
+                                float(l[3]) + x * x_dim,
+                                float(l[4]) + y * y_dim,
+                                float(l[5]) + z * z_dim ) + linesep)
+
+                            count = count + 1
 
 
 def noise(args):
