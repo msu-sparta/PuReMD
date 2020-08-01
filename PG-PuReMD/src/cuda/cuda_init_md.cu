@@ -161,8 +161,10 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 void Cuda_Init_Workspace( reax_system *system, control_params *control,
         storage *workspace, mpi_datatypes *mpi_data )
 {
-    Cuda_Allocate_Workspace( system, control, workspace->d_workspace,
-            system->local_cap, system->total_cap );
+    Cuda_Allocate_Workspace_Part1( system, control, workspace->d_workspace,
+            system->local_cap );
+    Cuda_Allocate_Workspace_Part2( system, control, workspace->d_workspace,
+            system->total_cap );
 
     workspace->realloc.far_nbrs = FALSE;
     workspace->realloc.cm = FALSE;

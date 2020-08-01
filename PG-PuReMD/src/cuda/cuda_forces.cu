@@ -1069,6 +1069,7 @@ void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
     /* init indices */
     Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max );
 
+    //TODO: not needed for full format (Init_Forces sets H->end)
     /* init end_indices */
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_cm_entries, H->start, H->end, H->n_max );
@@ -1160,6 +1161,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control ) 
 {
     int renbr, blocks, ret, ret_bonds, ret_hbonds, ret_cm;
+    static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     double time;
     
@@ -1186,12 +1188,14 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     cuda_memset( system->d_realloc_cm_entries, FALSE, sizeof(int), 
             "Cuda_Init_Forces::d_realloc_cm_entries" );
 
-    if ( renbr == FALSE )
+    if ( renbr == FALSE && dist_done == FALSE )
     {
         k_init_distance <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         cudaDeviceSynchronize( );
         cudaCheckError( );
+
+        dist_done = TRUE;
     }
 
 #if defined(LOG_PERFORMANCE)
@@ -1204,56 +1208,71 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     /* update num. rows in matrix for this GPU */
     workspace->d_workspace->H.n = system->n;
 
-    if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
+    if ( cm_done == FALSE )
     {
-//        k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE >>>
-//            ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
-//              *(workspace->d_workspace), (control_params *) control->d_control_params,
-//              *(lists[FAR_NBRS]), workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_cm_entries, system->d_realloc_cm_entries );
-//        cudaDeviceSynchronize( );
-//        cudaCheckError( );
-    }
-    else
-    {
-        k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE >>>
-            ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
-              *(workspace->d_workspace), (control_params *) control->d_control_params,
-              *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
-              system->d_max_cm_entries, system->d_realloc_cm_entries );
-        cudaDeviceSynchronize( );
-        cudaCheckError( );
+        if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
+        {
+//            k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE >>>
+//                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+//                  *(workspace->d_workspace), (control_params *) control->d_control_params,
+//                  *(lists[FAR_NBRS]), workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
+//                  system->d_max_cm_entries, system->d_realloc_cm_entries );
+//            cudaDeviceSynchronize( );
+//            cudaCheckError( );
+        }
+        else
+        {
+            k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE >>>
+                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+                  *(workspace->d_workspace), (control_params *) control->d_control_params,
+                  *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
+                  system->d_max_cm_entries, system->d_realloc_cm_entries );
+            cudaDeviceSynchronize( );
+            cudaCheckError( );
+        }
     }
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.init_cm );
 #endif
 
-    k_init_bonds <<< control->blocks_n, control->block_size_n >>>
-        ( system->d_my_atoms, system->reax_param.d_sbp,
-          system->reax_param.d_tbp, *(workspace->d_workspace),
-          (control_params *) control->d_control_params,
-          *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
-          workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
-          system->d_max_bonds, system->d_realloc_bonds,
-          system->d_max_hbonds, system->d_realloc_hbonds );
-    cudaDeviceSynchronize( );
-    cudaCheckError( );
+    if ( bonds_done == FALSE )
+    {
+        k_init_bonds <<< control->blocks_n, control->block_size_n >>>
+            ( system->d_my_atoms, system->reax_param.d_sbp,
+              system->reax_param.d_tbp, *(workspace->d_workspace),
+              (control_params *) control->d_control_params,
+              *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
+              workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
+              system->d_max_bonds, system->d_realloc_bonds,
+              system->d_max_hbonds, system->d_realloc_hbonds );
+        cudaDeviceSynchronize( );
+        cudaCheckError( );
+    }
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.init_bond );
 #endif
 
     /* check reallocation flags on device */
+    copy_host_device( &ret_cm, system->d_realloc_cm_entries, sizeof(int), 
+            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_cm_entries" );
     copy_host_device( &ret_bonds, system->d_realloc_bonds, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_bonds" );
     copy_host_device( &ret_hbonds, system->d_realloc_hbonds, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_hbonds" );
-    copy_host_device( &ret_cm, system->d_realloc_cm_entries, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_cm_entries" );
 
-    ret = (ret_bonds == FALSE && ret_hbonds == FALSE && ret_cm == FALSE)
+    ret = (ret_cm == FALSE && ret_bonds == FALSE && ret_hbonds == FALSE)
         ? SUCCESS : FAILURE;
+
+    if ( ret_cm == FALSE )
+    {
+        cm_done = TRUE;
+    }
+    if ( ret_bonds == FALSE && ret_hbonds == FALSE )
+    {
+        bonds_done = TRUE;
+    }
 
     if ( ret == SUCCESS )
     {
@@ -1278,6 +1297,10 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 //        k_bond_mark <<< control->blocks_n, control->block_size_n >>>
 //        cudaDeviceSynchronize( );
 //        cudaCheckError( );
+
+        dist_done = FALSE;
+        cm_done = FALSE;
+        bonds_done = FALSE;
     }
     else
     {
@@ -1652,7 +1675,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
 
     ret = SUCCESS;
 
-    if ( control->charge_freq
+    if ( control->charge_freq > 0
             && (data->step - data->prev_steps) % control->charge_freq == 0 )
     {
         charge_flag = TRUE;

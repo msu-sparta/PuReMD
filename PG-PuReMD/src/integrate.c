@@ -66,7 +66,6 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
         }
 
         Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
-        Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 

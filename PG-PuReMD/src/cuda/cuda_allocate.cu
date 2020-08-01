@@ -253,12 +253,12 @@ void Cuda_Allocate_System( reax_system *system )
 
 
 static void Cuda_Reallocate_System_Part1( reax_system *system, storage *workspace,
-        int local_cap_old, int local_cap )
+        int local_cap_old )
 {
     int *temp;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(int) * local_cap,
+            sizeof(int) * local_cap_old,
             "Cuda_Reallocate_System_Part1::workspace->scratch" );
     temp = (int *) workspace->scratch;
 
@@ -281,7 +281,7 @@ static void Cuda_Reallocate_System_Part1( reax_system *system, storage *workspac
 
 
 static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspace,
-        int total_cap_old, int total_cap )
+        int total_cap_old )
 {
     int *temp;
     reax_atom *temp_atom;
@@ -297,7 +297,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part2::temp_atom" );
     cuda_free( system->d_my_atoms, "system::d_my_atoms" );
     cuda_malloc( (void **) &system->d_my_atoms,
-            sizeof(reax_atom) * total_cap, TRUE, "Cuda_Reallocate_System_Part2::d_my_atoms" );
+            sizeof(reax_atom) * system->total_cap, TRUE,
+            "Cuda_Reallocate_System_Part2::d_my_atoms" );
     copy_device( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
             "Cuda_Reallocate_System_Part2::temp_atom" );
 
@@ -306,7 +307,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part2::temp" );
     cuda_free( system->d_far_nbrs, "Cuda_Reallocate_System_Part2::d_far_nbrs" );
     cuda_malloc( (void **) &system->d_far_nbrs,
-            sizeof(int) * system->total_cap, TRUE, "Cuda_Reallocate_System_Part2::d_far_nbrs" );
+            sizeof(int) * system->total_cap, TRUE,
+            "Cuda_Reallocate_System_Part2::d_far_nbrs" );
     copy_device( system->d_far_nbrs, temp, sizeof(int) * total_cap_old,
             "Cuda_Reallocate_System_Part2::temp" );
 
@@ -314,7 +316,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part2::temp" );
     cuda_free( system->d_max_far_nbrs, "Cuda_Reallocate_System_Part2::d_max_far_nbrs" );
     cuda_malloc( (void **) &system->d_max_far_nbrs,
-            sizeof(int) * system->total_cap, TRUE, "Cuda_Reallocate_System_Part2::d_max_far_nbrs" );
+            sizeof(int) * system->total_cap, TRUE,
+            "Cuda_Reallocate_System_Part2::d_max_far_nbrs" );
     copy_device( system->d_max_far_nbrs, temp, sizeof(int) * total_cap_old,
             "Cuda_Reallocate_System_Part2::temp" );
 
@@ -322,7 +325,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part2::temp" );
     cuda_free( system->d_bonds, "Cuda_Reallocate_System_Part2::d_bonds" );
     cuda_malloc( (void **) &system->d_bonds,
-            sizeof(int) * system->total_cap, TRUE, "Cuda_Reallocate_System_Part2::d_bonds" );
+            sizeof(int) * system->total_cap, TRUE,
+            "Cuda_Reallocate_System_Part2::d_bonds" );
     copy_device( system->d_bonds, temp, sizeof(int) * total_cap_old,
             "Cuda_Reallocate_System_Part2::temp" );
 
@@ -330,7 +334,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part2::temp" );
     cuda_free( system->d_max_bonds, "Cuda_Reallocate_System_Part2::d_max_bonds" );
     cuda_malloc( (void **) &system->d_max_bonds,
-            sizeof(int) * system->total_cap, TRUE, "Cuda_Reallocate_System_Part2::d_max_bonds" );
+            sizeof(int) * system->total_cap, TRUE,
+            "Cuda_Reallocate_System_Part2::d_max_bonds" );
     copy_device( system->d_max_bonds, temp, sizeof(int) * total_cap_old,
             "Cuda_Reallocate_System_Part2::temp" );
 
@@ -338,7 +343,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part2::temp" );
     cuda_free( system->d_hbonds, "system::d_hbonds" );
     cuda_malloc( (void **) &system->d_hbonds,
-            sizeof(int) * system->total_cap, TRUE, "Cuda_Reallocate_System_Part2::d_hbonds" );
+            sizeof(int) * system->total_cap, TRUE,
+            "Cuda_Reallocate_System_Part2::d_hbonds" );
     copy_device( system->d_hbonds, temp, sizeof(int) * total_cap_old,
             "Cuda_Reallocate_System_Part2::temp" );
 
@@ -346,7 +352,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part2::temp" );
     cuda_free( system->d_max_hbonds, "system::d_max_hbonds" );
     cuda_malloc( (void **) &system->d_max_hbonds,
-            sizeof(int) * system->total_cap, TRUE, "Cuda_Reallocate_System_Part2::d_max_hbonds" );
+            sizeof(int) * system->total_cap, TRUE,
+            "Cuda_Reallocate_System_Part2::d_max_hbonds" );
     copy_device( system->d_max_hbonds, temp, sizeof(int) * total_cap_old,
             "Cuda_Reallocate_System_Part2::temp" );
 }
@@ -359,14 +366,49 @@ void Cuda_Allocate_Simulation_Data( simulation_data *data )
 }
 
 
-void Cuda_Allocate_Workspace( reax_system *system, control_params *control, 
-        storage *workspace, int local_cap, int total_cap )
+void Cuda_Allocate_Workspace_Part1( reax_system *system, control_params *control, 
+        storage *workspace, int local_cap )
 {
-    int total_real, total_rvec, local_rvec;
+    int local_rvec;
+
+    local_rvec = sizeof(rvec) * local_cap;
+
+    /* integrator storage */
+    if ( control->ensemble == nhNVT )
+    {
+        cuda_malloc( (void **) &workspace->v_const, local_rvec, TRUE, "v_const" );
+    }
+
+    /* storage for analysis */
+    if ( control->molecular_analysis || control->diffusion_coef )
+    {
+        cuda_malloc( (void **) &workspace->mark, local_cap * sizeof(int), TRUE, "mark" );
+        cuda_malloc( (void **) &workspace->old_mark, local_cap * sizeof(int), TRUE, "old_mark" );
+    }
+    else
+    {
+        workspace->mark = NULL;
+        workspace->old_mark = NULL;
+    }
+
+    if ( control->diffusion_coef )
+    {
+        cuda_malloc( (void **) &workspace->x_old, local_cap * sizeof(rvec), TRUE, "x_old" );
+    }
+    else
+    {
+        workspace->x_old = NULL;
+    }
+}
+
+
+void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control, 
+        storage *workspace, int total_cap )
+{
+    int total_real, total_rvec;
 
     total_real = sizeof(real) * total_cap;
     total_rvec = sizeof(rvec) * total_cap;
-    local_rvec = sizeof(rvec) * local_cap;
 
     /* bond order related storage  */
     cuda_malloc( (void **) &workspace->total_bond_order, total_real, TRUE, "total_bo" );
@@ -475,17 +517,25 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
         break;
     }
 
-    /* integrator storage */
+    /* force related storage */
+    cuda_malloc( (void **) &workspace->f, sizeof(rvec) * total_cap, TRUE, "f" );
+    cuda_malloc( (void **) &workspace->CdDelta, sizeof(rvec) * total_cap, TRUE, "CdDelta" );
+}
+
+
+void Cuda_Deallocate_Workspace_Part1( control_params *control, storage *workspace )
+{
+    /* Nose-Hoover integrator */
     if ( control->ensemble == nhNVT )
     {
-        cuda_malloc( (void **) &workspace->v_const, local_rvec, TRUE, "v_const" );
+        cuda_free( workspace->v_const, "v_const" );
     }
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
     {
-        cuda_malloc( (void **) &workspace->mark, local_cap * sizeof(int), TRUE, "mark" );
-        cuda_malloc( (void **) &workspace->old_mark, local_cap * sizeof(int), TRUE, "old_mark" );
+        cuda_free( workspace->mark, "mark" );
+        cuda_free( workspace->old_mark, "old_mark" );
     }
     else
     {
@@ -495,23 +545,16 @@ void Cuda_Allocate_Workspace( reax_system *system, control_params *control,
 
     if ( control->diffusion_coef )
     {
-        cuda_malloc( (void **) &workspace->x_old, local_cap * sizeof(rvec), TRUE, "x_old" );
+        cuda_free( workspace->x_old, "x_old" );
     }
     else
     {
         workspace->x_old = NULL;
     }
-
-    /* force related storage */
-    cuda_malloc( (void **) &workspace->f, sizeof(rvec) * total_cap, TRUE, "f" );
-    cuda_malloc( (void **) &workspace->CdDelta, sizeof(rvec) * total_cap, TRUE, "CdDelta" );
-
-    /* Taper params */
-    cuda_malloc( (void **) &workspace->Tap, sizeof(real) * 8, TRUE, "Tap" );
 }
 
 
-void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
+void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspace )
 {
     /* bond order related storage  */
     cuda_free( workspace->total_bond_order, "total_bo" );
@@ -611,39 +654,9 @@ void Cuda_Deallocate_Workspace( control_params *control, storage *workspace )
             break;
     }
 
-    /* Nose-Hoover integrator */
-    if ( control->ensemble == nhNVT )
-    {
-        cuda_free( workspace->v_const, "v_const" );
-    }
-
-    /* storage for analysis */
-    if ( control->molecular_analysis || control->diffusion_coef )
-    {
-        cuda_free( workspace->mark, "mark" );
-        cuda_free( workspace->old_mark, "old_mark" );
-    }
-    else
-    {
-        workspace->mark = NULL;
-        workspace->old_mark = NULL;
-    }
-
-    if ( control->diffusion_coef )
-    {
-        cuda_free( workspace->x_old, "x_old" );
-    }
-    else
-    {
-        workspace->x_old = NULL;
-    }
-
     /* force related storage */
     cuda_free( workspace->f, "f" );
     cuda_free( workspace->CdDelta, "CdDelta" );
-
-    /* Taper params */
-    cuda_free( workspace->Tap, "Tap" );
 }
 
 
@@ -718,20 +731,54 @@ void Cuda_Reallocate_Thbodies_List( reax_list *thbodies, size_t n, size_t max_in
 }
 
 
-void Cuda_Reallocate( reax_system *system, control_params *control,
+void Cuda_Reallocate_Part1( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data )
 {
-    int i, j, k;
-    int nflag, Nflag, local_cap_old, total_cap_old; 
-    int renbr, format;
+    int i, j, k, renbr;
     reallocate_data *realloc;
-    sparse_matrix *H;
     grid *g;
 
     realloc = &workspace->d_workspace->realloc;
     g = &system->my_grid;
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
+
+    /* grid */
+    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
+    {
+        for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
+        {
+            for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
+            {
+                for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
+                {
+                    sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, "g:atoms" );
+                    g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int *)
+                            scalloc( realloc->gcell_atoms, sizeof(int), "g:atoms" );
+                }
+            }
+        }
+
+        fprintf( stderr, "p:%d - *** Reallocating Grid Cell Atoms *** Step:%d\n", system->my_rank, data->step );
+
+//        Cuda_Deallocate_Grid_Cell_Atoms( system );
+//        Cuda_Allocate_Grid_Cell_Atoms( system, realloc->gcell_atoms );
+        realloc->gcell_atoms = -1;
+    }
+}
+
+
+void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
+        simulation_data *data, storage *workspace, reax_list **lists,
+        mpi_datatypes *mpi_data )
+{
+    int nflag, Nflag, local_cap_old, total_cap_old, renbr, format;
+    reallocate_data *realloc;
+    sparse_matrix *H;
+
+    realloc = &workspace->d_workspace->realloc;
     H = &workspace->d_workspace->H;
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     /* IMPORTANT: LOOSE ZONES CHECKS ARE DISABLED FOR NOW BY &&'ing with FALSE!!! */
     nflag = FALSE;
@@ -754,21 +801,22 @@ void Cuda_Reallocate( reax_system *system, control_params *control,
 
     if ( nflag == TRUE )
     {
-        Cuda_Reallocate_System_Part1( system, workspace, local_cap_old,
+        Cuda_Reallocate_System_Part1( system, workspace, local_cap_old );
+
+        Cuda_Deallocate_Workspace_Part1( control, workspace );
+        Cuda_Allocate_Workspace_Part1( system, control, workspace,
                 system->local_cap );
     }
 
     if ( Nflag == TRUE )
     {
-        Cuda_Reallocate_System_Part2( system, workspace, total_cap_old,
-                system->total_cap );
+        Cuda_Reallocate_System_Part2( system, workspace, total_cap_old );
 
-        Cuda_Deallocate_Workspace( control, workspace );
-        Cuda_Allocate_Workspace( system, control, workspace,
-                system->local_cap, system->total_cap );
+        Cuda_Deallocate_Workspace_Part2( control, workspace );
+        Cuda_Allocate_Workspace_Part2( system, control, workspace,
+                system->total_cap );
     }
 
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
     /* far neighbors */
     if ( renbr == TRUE && (Nflag == TRUE || realloc->far_nbrs == TRUE) )
     {
@@ -815,29 +863,5 @@ void Cuda_Reallocate( reax_system *system, control_params *control,
         Cuda_Reallocate_Thbodies_List( lists[THREE_BODIES],
                 system->total_thbodies_indices, system->total_thbodies );
         realloc->thbody = FALSE;
-    }
-
-    /* grid */
-    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
-    {
-        for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
-        {
-            for ( j = g->native_str[1]; j < g->native_end[1]; j++ )
-            {
-                for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
-                {
-                    // reallocate g->atoms
-                    sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, "g:atoms" );
-                    g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int *)
-                            scalloc( realloc->gcell_atoms, sizeof(int), "g:atoms" );
-                }
-            }
-        }
-
-        fprintf( stderr, "p:%d - *** Reallocating Grid Cell Atoms *** Step:%d\n", system->my_rank, data->step );
-
-//        Cuda_Deallocate_Grid_Cell_Atoms( system );
-//        Cuda_Allocate_Grid_Cell_Atoms( system, realloc->gcell_atoms );
-        realloc->gcell_atoms = -1;
     }
 }

@@ -33,18 +33,23 @@ extern "C" void Cuda_Copy_Grid_Host_to_Device( grid *host, grid *device )
     ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
     copy_host_device( host->str, device->str, sizeof(int) * total,
-            cudaMemcpyHostToDevice, "grid:str" );
+            cudaMemcpyHostToDevice,
+            "Cuda_Copy_Grid_Host_to_Device::str" );
     copy_host_device( host->end, device->end, sizeof(int) * total,
-            cudaMemcpyHostToDevice, "grid:end" );
+            cudaMemcpyHostToDevice,
+            "Cuda_Copy_Grid_Host_to_Device::end" );
     copy_host_device( host->cutoff, device->cutoff, sizeof(real) * total,
-            cudaMemcpyHostToDevice, "grid:cutoff" );
+            cudaMemcpyHostToDevice,
+            "Cuda_Copy_Grid_Host_to_Device::cutoff" );
     copy_host_device( host->nbrs_x, device->nbrs_x, sizeof(ivec) * total
-            * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_x" );
+            * host->max_nbrs, cudaMemcpyHostToDevice,
+            "Cuda_Copy_Grid_Host_to_Device::nbrs_x" );
     copy_host_device( host->nbrs_cp, device->nbrs_cp, sizeof(rvec) * total
-            * host->max_nbrs, cudaMemcpyHostToDevice, "grid:nbrs_cp" );
+            * host->max_nbrs, cudaMemcpyHostToDevice,
+            "Cuda_Copy_Grid_Host_to_Device::nbrs_cp" );
 
     copy_host_device( host->rel_box, device->rel_box, sizeof(ivec) * total,
-            cudaMemcpyHostToDevice, "grid:rel_box" );
+            cudaMemcpyHostToDevice, "Cuda_Copy_Grid_Host_to_Device::rel_box" );
 
     device->max_nbrs = host->max_nbrs;
 }
@@ -55,7 +60,8 @@ extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system )
 {
     copy_host_device( system->my_atoms, system->d_my_atoms,
             sizeof(reax_atom) * system->N,
-            cudaMemcpyHostToDevice, "Cuda_Copy_Atoms_Host_to_Device::system->my_atoms" );
+            cudaMemcpyHostToDevice,
+            "Cuda_Copy_Atoms_Host_to_Device::system->my_atoms" );
 }
 
 

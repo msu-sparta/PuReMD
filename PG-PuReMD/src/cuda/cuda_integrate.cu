@@ -309,6 +309,8 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
     {
         Velocity_Verlet_Part1( system, dt );
 
+        Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
+
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
@@ -317,8 +319,6 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         verlet_part1_done = TRUE;
     }
 
-    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
-
     if ( cuda_copy == FALSE )
     {
         Cuda_Copy_Atoms_Host_to_Device( system );
@@ -326,6 +326,8 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
         cuda_copy = TRUE;
     }
+
+    Cuda_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
     Cuda_Reset( system, control, data, workspace, lists );
 
@@ -388,6 +390,8 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         /* Compute xi(t + dt) */
         therm->xi += therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi;
 
+        Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
+
         if ( renbr == TRUE )
         {
             Update_Grid( system, control, MPI_COMM_WORLD );
@@ -401,7 +405,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         verlet_part1_done = TRUE;
     }
 
-    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
+    Cuda_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
     if ( cuda_copy == FALSE )
     {
@@ -506,6 +510,8 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         /* velocity verlet, 1st part */
         Velocity_Verlet_Part1( system, dt );
 
+        Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
+
         if ( renbr == TRUE )
         {
             Update_Grid( system, control, MPI_COMM_WORLD );
@@ -519,7 +525,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         verlet_part1_done = TRUE;
     }
 
-    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
+    Cuda_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
     if ( cuda_copy == FALSE )
     {
@@ -606,6 +612,8 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
     {
         Velocity_Verlet_Part1( system, dt );
 
+        Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
+
         if ( renbr == TRUE )
         {
             Update_Grid( system, control, MPI_COMM_WORLD );
@@ -619,7 +627,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         verlet_part1_done = TRUE;
     }
 
-    Cuda_Reallocate( system, control, data, workspace, lists, mpi_data );
+    Cuda_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
     if ( cuda_copy == FALSE )
     {
